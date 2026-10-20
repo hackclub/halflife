@@ -111,6 +111,33 @@ export interface PrinterAwardUpdate {
 }
 
 /**
+ * The award as it leaves the server: the fulfilment fields, with the locked address read only to say whether one is on file.
+ *
+ * The ciphertext is read on the server and never returned: it is what an address is locked from, and the fulfilment sheet needs the flag rather than the address.
+ */
+const printerAwardResponseSelect = {
+	addressLockedAt: true,
+	deliveredAt: true,
+	encryptedAddress: true,
+	id: true,
+	qualifiedAt: true,
+	revokedAt: true,
+	revokedReason: true,
+	shippedAt: true,
+	status: true,
+	trackingCarrier: true,
+	trackingNumber: true,
+	user: { select: { displayName: true, id: true, name: true } },
+} satisfies Prisma.PrinterAwardSelect
+
+type PrinterAwardPayload = Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardResponseSelect }>
+
+/** The award row the API returns: the fulfilment fields, and whether an address is locked on file. */
+export interface PrinterAwardResponse extends Omit<PrinterAwardPayload, "encryptedAddress"> {
+	addressOnFile: boolean
+}
+
+/**
  * Move one award along the fulfilment path: lock the address, then pack, ship and deliver it – or revoke it for the record.
  *
  * Conditional on the status that was read, so two admins saving at once cannot skip a step or overwrite a revoke. Locking the address snapshots the participant's HCA address onto the award, encrypted, so an update there afterwards cannot move a package that is already being packed; a lock with no address to snapshot is refused rather than looking ready while shipping nowhere.
@@ -120,7 +147,7 @@ export async function updatePrinterAwardStatus(
 	input: PrinterAwardUpdate,
 	adminId: string | null,
 	adminEmail: string | null,
-): Promise<PrinterAward> {
+): Promise<PrinterAwardResponse> {
 	const award = await prisma.printerAward.findUnique({
 		include: {
 			user: {
@@ -207,5 +234,10 @@ export async function updatePrinterAwardStatus(
 		targetType: "PrinterAward",
 	})
 
-	return prisma.printerAward.findUniqueOrThrow({ where: { id: awardId } })
+	// The row that goes back to the caller carries the fulfilment fields only: the locked address and the phone are ciphertext and stay on the server.
+	const { encryptedAddress, ...updated } = await prisma.printerAward.findUniqueOrThrow({
+		select: printerAwardResponseSelect,
+		where: { id: awardId },
+	})
+	return Object.assign(updated, { addressOnFile: encryptedAddress !== "" })
 }

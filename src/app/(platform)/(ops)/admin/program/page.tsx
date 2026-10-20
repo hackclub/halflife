@@ -1,4 +1,3 @@
-import { headers } from "next/headers"
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { AirtableImportForm } from "@/app/components/forms/AirtableImportForm"
@@ -15,6 +14,7 @@ import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { formatDeadline } from "@/lib/deadline"
+import { configuredOrigin } from "@/lib/origin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange, weekOpensAt } from "@/lib/program"
@@ -25,19 +25,17 @@ export const dynamic = "force-dynamic"
 export default async function AdminProgramPage() {
 	await requirePermissionPage(Permission.MANAGE_PROGRAM)
 
-	const [settings, week, unsynced, unsyncedAri, disputes, h] = await Promise.all([
+	const [settings, week, unsynced, unsyncedAri, disputes] = await Promise.all([
 		getProgramSettings(),
 		currentWeekNumber(),
 		findUnsyncedSubmissions(),
 		findUnsyncedAriSubmissions(),
 		getOpenDisputes(),
-		headers(),
 	])
 
-	// The callback URL to register with Ari, resolved the same way the phone handoff resolves its origin: the configured public origin wins, the request's own host is only a local-development fallback.
-	const host = h.get("x-forwarded-host") ?? h.get("host")
-	const proto = h.get("x-forwarded-proto") ?? "https"
-	const callbackUrl = ariWebhookUrl(host ? `${proto}://${host}` : "")
+	// The callback URL to register with Ari, from the configured public origin and nothing else. The request's own host used to be the fallback, but that host is whatever the caller put in the `Host` header: a callback URL built from it would send every Ari delivery to a host of the caller's choosing. A deployment that configures no public origin has no callback URL to show, and says so rather than naming one.
+	const origin = configuredOrigin()
+	const callbackUrl = origin ? ariWebhookUrl(origin) : null
 	const ariSending = isAriConfigured()
 	const ariReceiving = isAriWebhookConfigured()
 	const airtableReady = getAirtableConfig() !== null
@@ -47,15 +45,16 @@ export default async function AdminProgramPage() {
 	const schedule = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
 		const n = i + 1
 		const slot = scheduleForWeek(n)
-		const range = weekDateRange(settings.eventStartDate, n)
+		const range = weekDateRange(settings, n)
 		const closesAt = weekClosesAt(settings, n)
 		const opensAt = weekOpensAt(settings, n)
-		const day = { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" } as const
+		// The program's own timezone, because the week is drawn in wall-clock days there: formatting the range in UTC would show the first day's date an hour early in New York and the last day's an hour late.
+		const day = { day: "numeric", month: "short", timeZone: settings.programTimezone, weekday: "short" } as const
 		return {
 			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
 			label: slot ? `${slot.theme.label} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "—",
 			runs: range
-				? `${range.start.toLocaleDateString("en-US", day)} – ${new Date(range.start.getTime() + 6 * 86_400_000).toLocaleDateString("en-US", day)}`
+				? `${range.start.toLocaleDateString("en-US", day)} – ${range.end.toLocaleDateString("en-US", day)}`
 				: "—",
 			state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
 			week: n,
@@ -230,9 +229,13 @@ export default async function AdminProgramPage() {
 				<Table head={["Setting", "Value", "Status"]}>
 					<tr>
 						<td>Callback URL</td>
-						<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-							{callbackUrl}
-						</td>
+						{callbackUrl ? (
+							<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
+								{callbackUrl}
+							</td>
+						) : (
+							<td className="hl-hint">The public app URL is not configured on this deployment</td>
+						)}
 						<td>
 							<Badge tone={ariReceiving ? "success" : "warning"}>{ariReceiving ? "listening" : "secret unset"}</Badge>
 						</td>

@@ -3,7 +3,7 @@ import { fail, ok, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
-import { MAX_CLIP_REF_LENGTH } from "@/lib/schemas/session"
+import { MAX_CLIP_REF_LENGTH, MAX_SESSION_TIMELAPSES } from "@/lib/schemas/session"
 
 export const dynamic = "force-dynamic"
 
@@ -23,8 +23,8 @@ export const GET = withRoute(async (req: NextRequest) => {
 		.split(",")
 		.map(s => s.trim())
 		.filter(Boolean)
-		// How many this reads, not how many an entry may hold: each one costs a round trip to Lapse, so the number is bounded even though the session schema no longer is. The sheet keeps whatever is left over pinned by id rather than dropping it, so stopping here costs a row in the picker, not a clip.
-		.slice(0, 25)
+		// How many this reads, not how many an entry may hold: each one costs a round trip to Lapse, so the number is bounded even though the session schema is. The sheet keeps whatever is left over pinned by id rather than dropping it, so stopping here costs a row in the picker, not a clip.
+		.slice(0, MAX_SESSION_TIMELAPSES)
 	if (ids.length === 0) return fail("VALIDATION_FAILED", "Name the timelapses to resolve")
 	if (ids.some(id => id.length > MAX_CLIP_REF_LENGTH))
 		return fail("VALIDATION_FAILED", "Those timelapses could not be read")

@@ -6,6 +6,7 @@ import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
+import { projectEditLockReason } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
 import { getRepoSyncState, type RepoSyncState } from "@/lib/repo-sync"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
@@ -317,7 +318,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
 		coverImageUrl: publicUrlFor(project.coverImageKey),
 		deleteBlocked: await deleteBlockReason(project),
-		editLocked: inReview ? "In review, so it can't be edited. Unsubmit to change it" : null,
+		editLocked: projectEditLockReason(project),
 		fallbackThumbnail: projectThumbnail(
 			null,
 			project.workSessions,

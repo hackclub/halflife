@@ -22,3 +22,18 @@ export const httpsUrl = z
 export function boundedText(max: number, min = 0): z.ZodString {
 	return z.string().trim().min(min).max(max)
 }
+
+/**
+ * Whether `timeZone` is an IANA name this runtime knows, e.g. "Asia/Kolkata".
+ *
+ * Every program-time computation runs the zone through `Intl.DateTimeFormat`, and that throws `RangeError: invalid time zone` on anything else – so a name that is not a zone has to be refused where it is typed, not where it is used. One typo in the program's timezone would otherwise brick every trail snapshot, every session write, the streak recompute and the admin program page at once.
+ */
+export function isTimeZone(timeZone: string): boolean {
+	try {
+		// Formatted to prove the zone works: an unknown one is a RangeError from the formatter, and that is what says the name is not one this runtime knows.
+		new Intl.DateTimeFormat("en-US", { timeZone }).format()
+		return true
+	} catch {
+		return false
+	}
+}

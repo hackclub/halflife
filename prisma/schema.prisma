@@ -416,7 +416,7 @@ model User {
   firstReelAt              DateTime?
   firstSubmissionAt        DateTime?
   lastSubmissionAt         DateTime?
-  /// When the repo file checks first passed for this person (a preflight whose `canSubmit` came back true). Set once, never moved - see lib/analytics.ts.
+  /// When the repo file checks first passed for this person (the checks that gate a submission came back green). Set once, never moved - see lib/analytics.ts.
   firstChecksPassedAt      DateTime?
   /// The last sign-in - a new session, not a page view.
   lastLoginAt              DateTime?
@@ -846,6 +846,10 @@ model HackatimeLink {
   /// One tracked project backs one phase: `fetchProjectSeconds` returns the project's whole total, not a range, so a second link in the other phase would count the same time twice. Moving a link between phases is deleting it and adding it again.
   @@unique([themeProjectId, hackatimeProject])
   @@index([themeProjectId, phase])
+  /// The sync job's hot path: the links still waiting for a reviewer to approve their hours, least recently refreshed first.
+  ///
+  /// Partial on the exact predicate that job filters by, so it reads only the links it is about to refresh instead of scanning and sorting the whole table four times an hour.
+  @@index([cachedAt], where: raw("\"hoursApproved\" IS NULL"))
   @@map("hackatime_link")
 }
 
@@ -1065,12 +1069,25 @@ model ContentReport {
 
   @@index([status, createdAt])
   @@index([reporterId])
+
+  /// One open report per reporter per row, per target.
+  ///
+  /// The route reads for an existing open report before it creates one, but that read is a race: two presses in flight both pass it, and two open reports for the same thing land in the staff queue. These indexes are the guard that actually holds - the route catches the unique violation and reports it as the same conflict the friendly check would have given.
+  ///
+  /// A decided report may be filed again, so the uniqueness only holds while OPEN. One index per target column, because exactly one of them is ever set.
+  @@unique([reporterId, postId], where: raw("\"status\" = 'OPEN' AND \"postId\" IS NOT NULL"), map: "content_report_open_post_idx")
+  @@unique([reporterId, commentId], where: raw("\"status\" = 'OPEN' AND \"commentId\" IS NOT NULL"), map: "content_report_open_comment_idx")
+  @@unique([reporterId, themeProjectId], where: raw("\"status\" = 'OPEN' AND \"themeProjectId\" IS NOT NULL"), map: "content_report_open_project_idx")
+  @@unique([reporterId, targetUserId], where: raw("\"status\" = 'OPEN' AND \"targetUserId\" IS NOT NULL"), map: "content_report_open_user_idx")
+  @@unique([reporterId, workSessionId], where: raw("\"status\" = 'OPEN' AND \"workSessionId\" IS NOT NULL"), map: "content_report_open_session_idx")
   @@map("content_report")
 }
 
 /// One HCB card-grant top-up Half Life has sent.
 ///
 /// Keyed on (user, project, phase) so a grant is paid once: a double-click or a retried request cannot pay twice. The row is written before HCB is called and marked `sentAt` after, so a call that failed is recorded (and can be retried) while one that succeeded short-circuits the next attempt.
+///
+/// Also unique on the grant hashid, because the hashid is what identifies the card on HCB's side and the project key says nothing about it: two projects (or two people) pointing at the same card would otherwise each pay it, and each carry their own row. One card, one payment.
 model HcbGrantTopUp {
   id             String       @id @default(cuid())
   userId         String
@@ -1092,6 +1109,7 @@ model HcbGrantTopUp {
   createdById String?
 
   @@unique([userId, themeProjectId, phase])
+  @@unique([grantHashid])
   @@map("hcb_grant_topup")
 }
 
@@ -1259,6 +1277,8 @@ model PostView {
 /// Append-only credit ledger. Rows are never updated or deleted.
 ///
 /// Invariant: for a given (userId, themeProjectId, kind) the SUM of amounts equals the current target for that grant. Re-review appends a delta row rather than a second full grant, which is what makes approving the same project five times converge instead of compound. See lib/currency.ts.
+///
+/// The one exception is a reversal the maker's balance cannot absorb: coins they had already spent cannot be taken back, so the sum settles above the target and the row's own note says by how much. A negative balance is a state nothing else in the app is willing to create.
 model LedgerEntry {
   id     String @id @default(cuid())
   userId String
@@ -1387,6 +1407,9 @@ model ShopOrder {
   itemNameSnapshot String
   /// ShopItem.costUsd at order time. Null when the item had no cost set yet.
   unitCostUsd      Float?
+
+  /// Whether this order took stock off the shelf. The catalogue's stock figure can change after the order is placed - an item that was unlimited can be given a figure - so the reject path cannot infer this from the item's stock now, and has to be told. Null on orders placed before this column existed, where it is not known.
+  stockDebited     Boolean?
 
   status          ShopOrderStatus @default(PENDING)
   holdReason      String?
@@ -1631,6 +1654,10 @@ model RsvpBuffer {
 
   /// The drain job's hot path.
   @@index([syncedToAirtable, syncAttempts, createdAt])
+  /// The drain job's ORDERING. The composite index above cannot supply it: `syncAttempts` is a range in the filter, so the index stops being ordered by `createdAt` before the order is used.
+  ///
+  /// Partial on the rows the drain actually wants, so it is an ordered walk of the unsynced rows and not a sort of the whole table.
+  @@index([createdAt], where: raw("\"syncedToAirtable\" = false"))
   @@map("rsvp_buffer")
 }
 
@@ -1654,6 +1681,27 @@ model HelpTicket {
   @@index([authorSlackId, createdAt])
   @@index([resolvedAt])
   @@map("help_ticket")
+}
+
+/// One row per Slack event delivery, for idempotency.
+///
+/// Slack redelivers an event - the same `event_id` - until it gets a 2xx, and a captured signed request can be replayed inside the five-minute replay window. Either way the work behind the delivery must happen once: double-inviting a member and double-posting a ticket are both visible to participants.
+///
+/// The row is claimed before the work runs (see `claimDelivery` in app/api/slack/events/route.ts), so a delivery that failed is logged rather than run again - Slack's own retry is already dropped, and a replay of a half-finished delivery would post the ticket twice.
+model SlackEventDelivery {
+  id String @id @default(cuid())
+
+  /// Slack's own id for the delivery. Unique, so a replay cannot claim the same delivery twice.
+  eventId String @unique
+  /// The event's type (`message`, `member_joined_channel`, ...), so a row can be read without the payload.
+  event String
+  /// The workspace the event came from, for when more than one is connected.
+  teamId String?
+
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
+  @@map("slack_event_delivery")
 }
 
 /// One dated thing on the programme calendar: the weekly call, a lock-in huddle, a show & tell, a soldering workshop.

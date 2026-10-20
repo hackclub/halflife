@@ -12,11 +12,12 @@ import {
 	readablePermission,
 } from "@/lib/permissions"
 import { listUsers } from "@/lib/queries/admin"
+import { firstValues, type SearchParamValue } from "@/lib/search-params"
 
 export const dynamic = "force-dynamic"
 
 interface Props {
-	searchParams: Promise<{ q?: string; cursor?: string }>
+	searchParams: Promise<{ cursor?: SearchParamValue; q?: SearchParamValue }>
 }
 
 /**
@@ -36,7 +37,8 @@ const LEVEL_TONES = {
 
 export default async function AdminUsersPage({ searchParams }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
-	const { q, cursor } = await searchParams
+	// The search box's value, and the page cursor, each taken as the single value the URL named: a repeated parameter arrives as an array, and an array where Prisma expects a string is a 500.
+	const { q, cursor } = firstValues(await searchParams)
 
 	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
 	const { items, nextCursor } = await listUsers({ cursor, limit: 50, q }, { includePii })
@@ -51,7 +53,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 						className="hl-input"
 						defaultValue={q ?? ""}
 						name="q"
-						placeholder="Search by name, email or Slack ID"
+						placeholder={includePii ? "Search by name, email or Slack ID" : "Search by name"}
 						style={{ maxWidth: "24rem" }}
 					/>
 					<button className="hl-btn" type="submit">
