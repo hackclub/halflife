@@ -6,19 +6,20 @@ import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
+import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 import { ProjectRow } from "./ProjectRow"
 
 export const dynamic = "force-dynamic"
 
 interface Search {
-	build?: string
-	cursor?: string
-	design?: string
-	extended?: string
-	q?: string
-	theme?: string
-	tier?: string
-	unstarted?: string
+	build?: SearchParamValue
+	cursor?: SearchParamValue
+	design?: SearchParamValue
+	extended?: SearchParamValue
+	q?: SearchParamValue
+	theme?: SearchParamValue
+	tier?: SearchParamValue
+	unstarted?: SearchParamValue
 }
 interface Props {
 	searchParams: Promise<Search>
@@ -27,7 +28,7 @@ interface Props {
 const STATUSES = Object.values(PhaseStatus)
 
 /** Anything unrecognised in the query string is dropped, not trusted. */
-function filtersFrom(s: Search): ProjectFilters {
+function filtersFrom(s: FirstValues<Search>): ProjectFilters {
 	const status = (v?: string) => STATUSES.find(x => x === v)
 	const tier = Number(s.tier)
 	return {
@@ -43,7 +44,8 @@ function filtersFrom(s: Search): ProjectFilters {
 
 export default async function AdminProjectsPage({ searchParams }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
-	const search = await searchParams
+	// Every filter, taken as the single value the URL named: a repeated parameter arrives as an array, and an array where Prisma expects a string is a 500.
+	const search = firstValues(await searchParams)
 	const filters = filtersFrom(search)
 	const canExtend = hasPermission(roles, Permission.MANAGE_USERS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)

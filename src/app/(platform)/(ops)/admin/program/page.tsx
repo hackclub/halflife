@@ -1,4 +1,3 @@
-import { headers } from "next/headers"
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { AirtableImportForm } from "@/app/components/forms/AirtableImportForm"
@@ -15,6 +14,7 @@ import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { formatDeadline } from "@/lib/deadline"
+import { configuredOrigin } from "@/lib/origin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange, weekOpensAt } from "@/lib/program"
@@ -25,19 +25,17 @@ export const dynamic = "force-dynamic"
 export default async function AdminProgramPage() {
 	await requirePermissionPage(Permission.MANAGE_PROGRAM)
 
-	const [settings, week, unsynced, unsyncedAri, disputes, h] = await Promise.all([
+	const [settings, week, unsynced, unsyncedAri, disputes] = await Promise.all([
 		getProgramSettings(),
 		currentWeekNumber(),
 		findUnsyncedSubmissions(),
 		findUnsyncedAriSubmissions(),
 		getOpenDisputes(),
-		headers(),
 	])
 
-	// The callback URL to register with Ari, resolved the same way the phone handoff resolves its origin: the configured public origin wins, the request's own host is only a local-development fallback.
-	const host = h.get("x-forwarded-host") ?? h.get("host")
-	const proto = h.get("x-forwarded-proto") ?? "https"
-	const callbackUrl = ariWebhookUrl(host ? `${proto}://${host}` : "")
+	// The callback URL to register with Ari, from the configured public origin and nothing else. The request's own host used to be the fallback, but that host is whatever the caller put in the `Host` header: a callback URL built from it would send every Ari delivery to a host of the caller's choosing. A deployment that configures no public origin has no callback URL to show, and says so rather than naming one.
+	const origin = configuredOrigin()
+	const callbackUrl = origin ? ariWebhookUrl(origin) : null
 	const ariSending = isAriConfigured()
 	const ariReceiving = isAriWebhookConfigured()
 	const airtableReady = getAirtableConfig() !== null
@@ -231,9 +229,13 @@ export default async function AdminProgramPage() {
 				<Table head={["Setting", "Value", "Status"]}>
 					<tr>
 						<td>Callback URL</td>
-						<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-							{callbackUrl}
-						</td>
+						{callbackUrl ? (
+							<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
+								{callbackUrl}
+							</td>
+						) : (
+							<td className="hl-hint">The public app URL is not configured on this deployment</td>
+						)}
 						<td>
 							<Badge tone={ariReceiving ? "success" : "warning"}>{ariReceiving ? "listening" : "secret unset"}</Badge>
 						</td>

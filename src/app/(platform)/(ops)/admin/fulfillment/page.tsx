@@ -11,15 +11,16 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import { type FulfillmentFilters, listFulfillmentOrders, listPrinterAwards } from "@/lib/queries/admin"
+import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 
 export const dynamic = "force-dynamic"
 
 interface Search {
-	cursor?: string
-	from?: string
-	method?: string
-	stage?: string
-	to?: string
+	cursor?: SearchParamValue
+	from?: SearchParamValue
+	method?: SearchParamValue
+	stage?: SearchParamValue
+	to?: SearchParamValue
 }
 interface Props {
 	searchParams: Promise<Search>
@@ -35,7 +36,7 @@ function utcDay(v?: string): Date | undefined {
 }
 
 /** Anything unrecognised in the query string is dropped, not trusted. */
-function filtersFrom(s: Search): FulfillmentFilters {
+function filtersFrom(s: FirstValues<Search>): FulfillmentFilters {
 	const to = utcDay(s.to)
 	return {
 		method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find(m => m === s.method),
@@ -64,7 +65,8 @@ const AWARD_TONES = {
 
 export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.FULFILL_ORDERS)
-	const search = await searchParams
+	// Every filter, taken as the single value the URL named: a repeated parameter arrives as an array, and an array is not a value this page can read.
+	const search = firstValues(await searchParams)
 	const filters = filtersFrom(search)
 
 	const [{ items, nextCursor }, awards] = await Promise.all([

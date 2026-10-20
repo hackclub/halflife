@@ -2,13 +2,14 @@ import Link from "next/link"
 import { Callout, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
+import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { isUploadConfigured, listUploadedObjects, UPLOAD_FOLDERS, type UploadFolder } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
 
 interface Search {
-	cursor?: string
-	folder?: string
+	cursor?: SearchParamValue
+	folder?: SearchParamValue
 }
 interface Props {
 	searchParams: Promise<Search>
@@ -46,7 +47,8 @@ function keyParts(key: string): { folder: string; owner: string } {
 
 export default async function AdminUploadsPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.VIEW_UPLOADS)
-	const search = await searchParams
+	// The folder filter and the page cursor, each taken as the single value the URL named: a repeated parameter arrives as an array, and the bucket listing expects one string.
+	const search = firstValues(await searchParams)
 	const folder = UPLOAD_FOLDERS.find(value => value === search.folder)
 	const prefix = folder ? `${folder}/` : ""
 

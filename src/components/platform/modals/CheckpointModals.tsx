@@ -1124,7 +1124,8 @@ export function PublicReelModal({
 		let cancelled = false
 		void (async () => {
 			try {
-				const res = await fetch("/api/me/referral", { cache: "no-store" })
+				// A POST, because the route writes: reading a link assigns the referral code and records the address on the signup list.
+				const res = await fetch("/api/me/referral", { cache: "no-store", method: "POST" })
 				const body = (await res.json().catch(() => null)) as { link?: string } | null
 				if (cancelled) return
 				setReferral(res.ok && body?.link ? { link: body.link, state: "ready" } : { state: "error" })

@@ -1,6 +1,7 @@
 import "server-only"
 import type { PhaseSubmission, ProgramSettings, ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
+import { markChecksPassed } from "@/lib/analytics"
 import { partsFundingFor } from "@/lib/bom"
 import { submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
@@ -169,6 +170,9 @@ export async function submitPhase(
 			{ repoChecks },
 		)
 	}
+
+	// The checks came back green, on the path that enforces them. The stamp used to sit on the advisory preflight GET, which made it a GET that wrote – and a cross-site top-level navigation carries the session cookie, so any site could stamp a participant's funnel marker by linking them at it. Here it sits behind the POST that hands a phase in, so the marker is written when the maker actually tries to submit, and the admin funnel's "repo checks passed" step means what its hint says: the checks that ran for a submission came back green.
+	await markChecksPassed(userId)
 
 	// A cart past the tier's funding is not a refusal, it is a grant that covers part of it – which is something the maker has to agree to rather than something this route infers. The numbers come from the database and never from the sheet: a list edited in another tab, or a tier request changed since the page was opened, decide what the maker is agreeing to.
 	const funding = await partsFundingFor(project, phase)

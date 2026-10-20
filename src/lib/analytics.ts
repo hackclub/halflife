@@ -164,7 +164,11 @@ export function markSubmission(userId: string, at = new Date()): Promise<void> {
 	})
 }
 
-/** The repo file checks first passed: the preflight that gates submissions. */
+/**
+ * The repo file checks first passed: the checks that gate a submission came back green.
+ *
+ * Stamped on the submit path (lib/submissions.ts), where the checks are actually enforced. It used to be stamped by the advisory preflight GET, which made a GET write to the database – and a cross-site navigation reaches a GET with the session cookie attached.
+ */
 export function markChecksPassed(userId: string, at = new Date()): Promise<void> {
 	return quietly("markChecksPassed", () =>
 		prisma.user.updateMany({ data: { firstChecksPassedAt: at }, where: { firstChecksPassedAt: null, id: userId } }),

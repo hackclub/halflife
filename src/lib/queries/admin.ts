@@ -708,7 +708,7 @@ export interface FlowStep {
 /**
  * The participant journey as a funnel. Each row counts people who ALSO did every step above it, so a step never has more people than the one before it and drop-off is never negative – whatever order things actually happened in.
  *
- * Steps with a named marker come from User (lib/analytics); "named a project" and the repo/devlog steps are derived from their own tables; "repo checks passed" is stamped by the preflight that gates submissions. The onboarding and goal steps in between are derived as noted below.
+ * Steps with a named marker come from User (lib/analytics); "named a project" and the repo/devlog steps are derived from their own tables; "repo checks passed" is stamped by the submit path, where the checks that gate a submission came back green. The onboarding and goal steps in between are derived as noted below.
  *
  * The three reel steps that used to sit here ("started a reel upload", "uploaded a reel", "posted a reel") are gone. A funnel can only draw one spine, so putting reel posting on it said every maker who did not post a reel had dropped out, when a maker who is quietly journalling and building has not. Reel posting is one branch of the journey rather than a rung on it, and a branch is what the Sankey view draws: it can show a maker who added a devlog and posted a reel in either order, which a top-to-bottom funnel cannot represent at all.
  *
