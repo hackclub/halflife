@@ -1,4 +1,5 @@
 import "dotenv/config"
+import { Phase } from "../src/app/generated/prisma/enums"
 import { appBaseUrl, projectUrl, reviewUrl } from "../src/lib/app-url"
 import { ariReviewUrl } from "../src/lib/ari-url"
 import { getThemeDef } from "../src/lib/config/program"
@@ -6,14 +7,14 @@ import { displayName } from "../src/lib/display-name"
 import prisma from "../src/lib/prisma"
 
 /**
- * Every Starbie starter project still waiting on a review, one line each, with the five links needed to work through it.
+ * Every Starbie starter project still waiting on its first-stage review, one line each, with the five links needed to work through it.
  *
- * "Unreviewed" is the review queue's own definition: a project with at least one `PhaseSubmission` whose `resolvedAt` is null. A project whose design was decided but whose build has not been handed in is therefore absent, and a resubmission after "needs changes" puts it back. Deleted projects are excluded for the same reason they are absent from the queue.
+ * The review has two stages, design and build, and design comes first. This lists only projects with an open DESIGN hand-in, so a project whose design is decided and whose build is now in the queue – the second stage – is absent, as is one with no hand-in yet. A resubmission after "needs changes" on the design puts the project back. Deleted projects are excluded for the same reason they are absent from the queue.
  *
  * The links are, in order:
  *
  * - the project's page as a maker sees it (`/projects/<id>`);
- * - its hand-in in the review console (`/review/<submission id>`) – one URL per open phase, so a project that somehow has both a design and a build open gets two;
+ * - its design hand-in in the review console (`/review/<submission id>`);
  * - the maker's public profile (`/u/<user id>`);
  * - the maker's admin profile (`/admin/users/<user id>`);
  * - the hand-in's review screen on Ari (`/p/<program>/review/<ship id>`), when Ari is configured and the hand-in reached it – `-` otherwise.
@@ -41,7 +42,7 @@ async function main() {
 			submissions: {
 				orderBy: { createdAt: "asc" },
 				select: { ariSubmissionId: true, createdAt: true, id: true, phase: true },
-				where: { resolvedAt: null },
+				where: { phase: Phase.DESIGN, resolvedAt: null },
 			},
 			theme: true,
 			title: true,
@@ -50,7 +51,7 @@ async function main() {
 		where: {
 			deletedAt: null,
 			starterProjectId: STARTER_PROJECT_ID,
-			submissions: { some: { resolvedAt: null } },
+			submissions: { some: { phase: Phase.DESIGN, resolvedAt: null } },
 		},
 	})
 
@@ -89,7 +90,7 @@ async function main() {
 
 	const oldest = ordered[0]?.waitingSince
 	console.error(
-		`${ordered.length} unreviewed Starbie project(s)${oldest ? `, oldest waiting since ${oldest.toISOString()}` : ""}`,
+		`${ordered.length} Starbie project(s) waiting on design review${oldest ? `, oldest waiting since ${oldest.toISOString()}` : ""}`,
 	)
 }
 
