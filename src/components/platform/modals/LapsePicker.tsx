@@ -23,6 +23,12 @@ type Load =
 	| { state: "error"; message: string }
 	| { state: "ready"; items: LapseTimelapse[]; nextCursor: string | null }
 
+interface LapsePageResponse {
+	error?: { code?: string; message?: string }
+	nextCursor: string | null
+	timelapses: LapseTimelapse[]
+}
+
 const LAPSE_URL = "https://lapse.hackclub.com"
 
 /** Recorded time, the way a person says it: 45m, 1h 20m, 2h. */
@@ -39,13 +45,13 @@ async function fetchPage(cursor?: string, forSession?: string) {
 		...(forSession ? { forSession } : {}),
 	})
 	const res = await fetch(`/api/lapse/timelapses?${query}`, { cache: "no-store" })
-	const body = await res.json().catch(() => null)
+	const body = (await res.json().catch(() => null)) as LapsePageResponse | null
 	if (!res.ok) {
-		const code = body?.error?.code as string | undefined
-		if (code === "LAPSE_NOT_LINKED") return { unlinked: true as const }
+		if (body?.error?.code === "LAPSE_NOT_LINKED") return { unlinked: true as const }
 		throw new Error(body?.error?.message ?? "Could not load your timelapses")
 	}
-	return body as { timelapses: LapseTimelapse[]; nextCursor: string | null }
+	if (!body) throw new Error("Could not load your timelapses")
+	return body
 }
 
 /**
@@ -60,9 +66,9 @@ export function LapsePicker({
 	forSession,
 }: {
 	picked: LapseTimelapse[]
-	onToggle: (t: LapseTimelapse) => void
+	onToggle(t: LapseTimelapse): void
 	/** Leaves the page for Lapse; the caller stashes the draft first. */
-	onSignIn: () => void | Promise<void>
+	onSignIn(): void | Promise<void>
 	/**
 	 * The entry being edited, so its own clips read as free: taking one off and putting it back on stays pickable instead of reading as claimed.
 	 */
@@ -85,8 +91,8 @@ export function LapsePicker({
 	}, [forSession])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
-		refresh()
+		// fetching on mount
+		void refresh()
 	}, [refresh])
 
 	async function loadMore() {
@@ -119,15 +125,14 @@ export function LapsePicker({
 		}
 	}
 
-	if (load.state === "loading") {
+	if (load.state === "loading")
 		return (
 			<p aria-live="polite" className="hand py-10 text-center text-[0.9rem] text-navy-soft">
 				looking for your timelapses on Lapse…
 			</p>
 		)
-	}
 
-	if (load.state === "unlinked") {
+	if (load.state === "unlinked")
 		return (
 			<div
 				className="sketch grid justify-items-center gap-3 rounded-2xl bg-violet-pale px-6 py-8 text-center"
@@ -153,9 +158,8 @@ export function LapsePicker({
 				</p>
 			</div>
 		)
-	}
 
-	if (load.state === "error") {
+	if (load.state === "error")
 		return (
 			<div className="grid justify-items-center gap-3 py-8 text-center">
 				<p className="flex items-start gap-2 text-[0.88rem] font-semibold text-coral-deep" role="alert">
@@ -166,7 +170,6 @@ export function LapsePicker({
 				</Button>
 			</div>
 		)
-	}
 
 	const pickedIds = new Set(picked.map(p => p.id))
 
@@ -214,8 +217,9 @@ export function LapsePicker({
 									aria-pressed={selected}
 									className={cx(
 										"sketch group flex w-full flex-1 items-center gap-3 rounded-2xl p-2.5 text-left transition-[background-color,transform] duration-150",
-										selected ? "bg-violet-pale" : "bg-white hover:bg-cream",
+										selected ? "bg-violet-pale" : "bg-white",
 										blocked ? "cursor-not-allowed opacity-60" : "active:translate-y-px",
+										!selected && !blocked && "hover:bg-cream",
 									)}
 									disabled={blocked}
 									onClick={() => onToggle(t)}
@@ -229,7 +233,7 @@ export function LapsePicker({
 								>
 									<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">
 										{t.thumbnailUrl ? (
-											// Lapse's CDN, sized by the box; next/image would need every Lapse host allow-listed for no gain at 96px. eslint-disable-next-line @next/next/no-img-element
+											// Lapse's CDN, sized by the box; next/image would need every Lapse host allow-listed for no gain at 96px.
 											<img alt="" className="h-full w-full object-cover" loading="lazy" src={t.thumbnailUrl} />
 										) : (
 											<IconFilm className="text-lg text-navy-soft" />

@@ -64,7 +64,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 
 					<div className="mt-9 grid gap-9">
 						{doc.body.map(block => (
-							<section id={block.heading.toLowerCase().replace(/\s+/g, "-")} key={block.heading}>
+							<section id={block.heading.toLowerCase().replaceAll(/\s+/g, "-")} key={block.heading}>
 								<h2 className="text-[1.4rem] leading-tight font-extrabold tracking-[-0.025em] text-navy">
 									{block.heading}
 								</h2>
@@ -100,15 +100,19 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 					</div>
 
 					{next && (
-						<Panel className="mt-12 bg-mint" radius={18} tone="teal">
-							<ArticleLink className="group flex items-center gap-4 px-5 py-4" href={`/docs/${next.slug}`}>
+						<Panel
+							className="group mt-12 bg-mint transition-transform duration-150 hover:-translate-y-0.5 hover:before:border-teal-deep focus-within:before:border-teal-deep active:translate-y-px active:before:border-teal-dark before:transition-colors before:duration-150"
+							radius={18}
+							tone="teal"
+						>
+							<ArticleLink className="flex items-center gap-4 px-5 py-4" href={`/docs/${next.slug}`}>
 								<span className="min-w-0 flex-1">
 									<span className="label block text-teal-ink">Next</span>
-									<span className="mt-0.5 block text-[1.05rem] leading-tight font-extrabold text-navy">
+									<span className="mt-0.5 block text-[1.05rem] leading-tight font-extrabold text-navy transition-colors group-hover:text-teal-dark group-hover:underline group-hover:decoration-2 group-hover:underline-offset-4">
 										{next.title}
 									</span>
 								</span>
-								<IconArrowRight className="shrink-0 text-xl text-teal-ink transition-transform duration-200 group-hover:translate-x-1" />
+								<IconArrowRight className="shrink-0 text-xl text-teal-ink transition-[color,transform] duration-200 group-hover:translate-x-1 group-hover:text-teal-dark group-active:translate-x-1.5" />
 							</ArticleLink>
 						</Panel>
 					)}
@@ -121,7 +125,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 							<li key={b.heading}>
 								<a
 									className="block text-[0.86rem] leading-snug text-navy-soft transition-colors hover:text-navy"
-									href={`#${b.heading.toLowerCase().replace(/\s+/g, "-")}`}
+									href={`#${b.heading.toLowerCase().replaceAll(/\s+/g, "-")}`}
 								>
 									{b.heading}
 								</a>

@@ -83,6 +83,13 @@ function fmtH(h: number) {
 	return `${to2(h)}h`
 }
 
+/** The parts list read, plus the error envelope the route shares. */
+interface BomResponse {
+	error?: { message?: string }
+	items: BomLine[]
+	taxShippingUsd: number
+}
+
 interface JournalDraft {
 	body: string
 	hoursText: string
@@ -136,7 +143,7 @@ const autosaveKey = (checkpointId: string) => `halflife.journal-autosave.${check
 const UPLOADING_PLACEHOLDER = /!\[Uploading .*?\]\(uploading:\d+\)/g
 
 function cleanBodyForAutosave(body: string): string {
-	return body.replace(UPLOADING_PLACEHOLDER, "").replace(/\n{3,}/g, "\n\n")
+	return body.replaceAll(UPLOADING_PLACEHOLDER, "").replaceAll(/\n{3,}/g, "\n\n")
 }
 
 /**
@@ -208,17 +215,17 @@ function droppedImages(transfer: DataTransfer): ImageSource[] {
 /** Alt text for an image: what the page called it, else its file name. */
 function altFor(source: ImageSource): string {
 	let name = source instanceof File ? source.name : source.alt
-	if (!name && !(source instanceof File) && !source.url.startsWith("data:")) {
+	if (!name && !(source instanceof File) && !source.url.startsWith("data:"))
 		try {
 			name = decodeURIComponent(new URL(source.url).pathname.split("/").pop() ?? "")
 		} catch {
 			name = ""
 		}
-	}
+
 	return (
 		name
 			.replace(/\.[^.]+$/, "")
-			.replace(/[[\]()]/g, "")
+			.replaceAll(/[[\]()]/g, "")
 			.trim()
 			.slice(0, 80) || "Journal image"
 	)
@@ -270,6 +277,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const week = weekOfCheckpoint(checkpoint)
 
 	// Every journal node is one entry: write it and it is done. The week's clock is what decides whether wrapping up is on the table yet. Opened again once it is done, the same sheet is that entry, to correct – not a new one.
+	// oxlint-disable-next-line react/hook-use-state
 	const [existing] = useState(() => {
 		const saved = stateOf(checkpoint.id)
 		return saved.done ? saved.log[0] : undefined
@@ -277,6 +285,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const editing = existing !== undefined
 
 	// A Lapse sign-in leaves the page and comes back: that trip's draft is restored once. Anything else typed is autosaved to this browser and restored next time the sheet opens, so clicking out cannot lose it. A saved entry clears it. Peeked (not taken) during render so StrictMode's double-invoked initializer cannot consume it before state is set.
+	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => peekJournalTrip(checkpoint.id) ?? readJournalAutosave(checkpoint.id))
 	const draftRestored = draft != null
 
@@ -339,14 +348,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			try {
 				const query = new URLSearchParams({ forSession: existing.id, ids: existing.clips.join(",") })
 				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
-				const body = (await res.json().catch(() => null)) as {
+				const payload = (await res.json().catch(() => null)) as {
 					resolved?: LapseTimelapse[]
 					pinned?: string[]
 					legacy?: string[]
 				} | null
-				if (!res.ok || !body) throw new Error("unresolvable")
-				seed = { picked: body.resolved ?? [], pinned: body.pinned ?? [] }
-				legacy = body.legacy ?? []
+				if (!res.ok || !payload) throw new Error("unresolvable")
+				seed = { picked: payload.resolved ?? [], pinned: payload.pinned ?? [] }
+				legacy = payload.legacy ?? []
 				// Anything the resolve did not account for stays attached by id. Without this a clip the endpoint declined to read – it reads a bounded number – would fall out of the working set, and saving the edit would take it off the entry for good.
 				const accounted = new Set([...seed.picked.map(t => t.id), ...seed.pinned, ...legacy])
 				for (const id of existing.clips) if (!accounted.has(id)) seed.pinned.push(id)
@@ -386,8 +395,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			|| pinned.length > 0
 			|| (!editing && tab !== "journal")
 		// Clips compare as sets against the seed: reordering a pick is not a change.
-		const workingIds = [...picked.map(t => t.id), ...pinned].sort()
-		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].sort()
+		const workingIds = [...picked.map(t => t.id), ...pinned].toSorted()
+		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].toSorted()
 		const clipsMatch = workingIds.length === seedIds.length && workingIds.every((id, i) => seedIds[i] === id)
 		const matchesSaved = editing && cleanBody === baselineBody && hoursText === baselineHours && clipsMatch
 		if (!hasContent || matchesSaved) {
@@ -408,13 +417,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setPicked(clipSeed.picked)
 			setPinned(clipSeed.pinned)
 			clipsTouchedRef.current = false
-			setTab("journal")
 		} else {
 			setBody("")
 			setHoursText("")
 			setPicked([])
-			setTab("journal")
 		}
+		setTab("journal")
 		writeJournalAutosave(checkpoint.id, null)
 	}
 
@@ -553,7 +561,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		})
 
 		setUploading(n => n + items.length)
-		for (const item of items) {
+		for (const item of items)
 			try {
 				const { url } = await storeImage(item.source)
 				if (!url) throw new Error("Image uploads need a public URL before they can be added here")
@@ -571,7 +579,6 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			} finally {
 				setUploading(n => n - 1)
 			}
-		}
 	}
 
 	/**
@@ -759,7 +766,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						// A link or some text is not an image: left to the textarea, which drops it in as text. Files are always caught, images or not, so a PDF let go over the sheet cannot open in the tab and take the unsaved entry with it.
 						if (found.length === 0 && files.length === 0) return
 						e.preventDefault()
-						addJournalImages(found.length > 0 ? found : files)
+						void addJournalImages(found.length > 0 ? found : files)
 					}}
 				>
 					{editing ? (
@@ -789,7 +796,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								className={cx(borderedInputClass, "tabular-nums")}
 								id="journal-hours"
 								inputMode="decimal"
-								onChange={e => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
+								onChange={e => setHoursText(e.target.value.replaceAll(/[^\d.]/g, ""))}
 								placeholder="0"
 								value={hoursText}
 							/>
@@ -894,7 +901,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									const pasted = Array.from(e.clipboardData.files).filter(f => f.type.startsWith("image/"))
 									if (pasted.length === 0) return
 									e.preventDefault()
-									addJournalImages(pasted)
+									void addJournalImages(pasted)
 								}}
 								placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drag, drop or paste images straight in."
 								ref={entry}
@@ -956,7 +963,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								// Copied out first: clearing the input empties the live list.
 								const files = Array.from(event.target.files ?? [])
 								event.target.value = ""
-								addJournalImages(files)
+								void addJournalImages(files)
 							}}
 							ref={imageInput}
 							tabIndex={-1}
@@ -1085,7 +1092,7 @@ export function PublicReelModal({
 	eyebrow: string
 	/** The clip, so it can be saved and uploaded elsewhere. */
 	videoUrl: string | null
-	onClose: () => void
+	onClose(): void
 	/**
 	 * "links" skips the question – for the Reels page, where pressing "Add where you posted it" has already answered it.
 	 */
@@ -1178,7 +1185,7 @@ export function PublicReelModal({
 		}
 	}
 
-	if (step === "ask") {
+	if (step === "ask")
 		return (
 			<Modal
 				accent="var(--color-violet)"
@@ -1230,9 +1237,8 @@ export function PublicReelModal({
 				</p>
 			</Modal>
 		)
-	}
 
-	if (step === "saved") {
+	if (step === "saved")
 		return (
 			<Modal
 				accent="var(--color-teal)"
@@ -1255,7 +1261,6 @@ export function PublicReelModal({
 				</ModalTitle>
 			</Modal>
 		)
-	}
 
 	const captionLine = referral.state === "ready" ? `${referral.link} ${PUBLIC_REEL_HASHTAG}` : PUBLIC_REEL_HASHTAG
 
@@ -1361,7 +1366,12 @@ export function PublicReelModal({
 								onChange={e => {
 									const v = e.target.value
 									setValues(prev => ({ ...prev, [p]: v }))
-									if (errors[p]) setErrors(({ [p]: _, ...rest }) => rest)
+									if (errors[p])
+										setErrors(prev => {
+											const next = { ...prev }
+											delete next[p]
+											return next
+										})
 								}}
 								placeholder={info.example}
 								spellCheck={false}
@@ -1384,6 +1394,8 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
 	const done = stateOf(checkpoint.id).done
+	// A reel draft is restored once, when the sheet opens, and never changes while it is open – so it is a value to read, not one to set.
+	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => readReelDraft(checkpoint.id))
 	const [clip, setClip] = useState<string | null>(draft?.clip ?? null)
 	// What the preview plays: a blob URL for a file picked on this machine, the bucket's URL for one filmed on the phone or restored from a draft.
@@ -1404,11 +1416,12 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.
-	useEffect(() => {
-		return () => {
+	useEffect(
+		() => () => {
 			if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl)
-		}
-	}, [previewUrl])
+		},
+		[previewUrl],
+	)
 
 	function capture(key: string | null, url?: string | null) {
 		setClip(key)
@@ -1447,7 +1460,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const postBlocker = !clip ? "Add a clip before posting this reel." : captionBlocker
 
 	// Posted: the same sheet now asks whether it is going anywhere else. The clip's URL comes along so it can be saved and uploaded there.
-	if (postedId) {
+	if (postedId)
 		return (
 			<PublicReelModal
 				eyebrow={`${weekName(week)} · ${checkpoint.title}`}
@@ -1456,9 +1469,8 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				videoUrl={previewUrl}
 			/>
 		)
-	}
 
-	if (!again) {
+	if (!again)
 		return (
 			<Modal
 				accent="var(--color-teal)"
@@ -1486,7 +1498,6 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</ModalTitle>
 			</Modal>
 		)
-	}
 
 	return (
 		<Modal
@@ -1647,7 +1658,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const pace = usePrinterPace()
 	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
-		ensureProject(checkpoint.weekId)
+		void ensureProject(checkpoint.weekId)
 	}, [checkpoint.weekId, ensureProject])
 	const [name, setName] = useState("")
 	const [desc, setDesc] = useState("")
@@ -1669,9 +1680,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}
 	const advance = () => {
 		if (pick === undefined) return
-		if (pick === null) {
-			setStarterId(null)
-		} else {
+		if (pick === null) setStarterId(null)
+		else {
 			const s = starters.find(x => x.id === pick)
 			setStarterId(pick)
 			if (s) setName(s.title)
@@ -2032,11 +2042,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// The bucket URL of the closing clip, when there is one, so it can be saved and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
 	// A blob URL for a locally picked clip holds the whole video in memory until it is revoked – the preview is replaced or the sheet closes, not before.
-	useEffect(() => {
-		return () => {
+	useEffect(
+		() => () => {
 			if (clipUrl?.startsWith("blob:")) URL.revokeObjectURL(clipUrl)
-		}
-	}, [clipUrl])
+		},
+		[clipUrl],
+	)
 	// The closing reel once it is posted. A hand-in that fails after the reel went up reuses it on the retry rather than posting the same clip twice; a new clip clears it.
 	const [closingPostId, setClosingPostId] = useState<string | null>(null)
 
@@ -2074,15 +2085,15 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		let live = true
 		fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
 			.then(async res => {
-				const body = await res.json().catch(() => null)
-				if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the parts list")
-				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd ?? 0 })
+				const body = (await res.json().catch(() => null)) as BomResponse | null
+				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
+				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })
 			})
 			.catch((err: Error) => live && setBomError(err.message))
 		return () => {
 			live = false
 		}
-	}, [isBuild, project?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- the id is the input
+	}, [isBuild, project?.id]) // the id is the input
 	// The same arithmetic the submit gate reads (lib/bom-policy), so the total on screen is the total being held to.
 	const bomTotal = useMemo(() => bomTotalUsd(bom?.items ?? [], bom?.taxShippingUsd), [bom])
 
@@ -2110,7 +2121,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const repoReady = repoResult?.canSubmit ?? false
 
-	const hasCover = !!project?.coverImageKey
+	const hasCover = Boolean(project?.coverImageKey)
 	const descriptionLength = project?.description.trim().length ?? 0
 	const descriptionReady = descriptionLength >= MIN_PROJECT_DESCRIPTION_CHARS
 	const descriptionBlocker = `Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting – you have ${descriptionLength}.`

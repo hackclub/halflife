@@ -176,6 +176,14 @@ paid with no review and no record. Every review freezes the numbers it used onto
   exist; the lock is what makes the current key safe.)
 - `typecast: false`, or a typo in a theme name silently adds a sixth option to
   the single-select.
+- A `Justification - …` column is written with what we hold and left alone when
+  we hold nothing: the column is omitted from the payload rather than written
+  blank. Airtable reads an empty string as "clear this cell", and the base is
+  the only place the evidence for the pre-season rows exists – their Lapse links
+  came from the form and were never handed to Postgres as timelapses. The
+  pipeline merges these columns into one `Automation - Unified Justification`
+  blob, so a column left empty is a gap in the justification a grant reviewer
+  reads rather than a cosmetic one.
 - Deletion from the shared unified base goes by exact record id, captured from
   `Automation - YSWS Record ID` before the local rows are removed. Code URL is
   not unique across programs, and here all five of a participant's themed

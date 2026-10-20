@@ -1,7 +1,7 @@
 import "server-only"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
-import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
+import { getTierOrThrow } from "@/lib/config/tiers"
 import { fetchProjectSeconds, fetchProjectSpans } from "@/lib/hackatime"
 import {
 	cachedSpansCover,
@@ -159,12 +159,11 @@ export async function getHoursBreakdown(
 				// Unknown, not zero: the honest answer here is that the overlap may exist. Nothing is subtracted, so the risk is the status quo double-count rather than an underpayment.
 				hackatimeOverlapUnknown = true
 				// Recorded only when a fetch was actually attempted. This runs on read paths too – the projects list breaks down every project – and a write per dashboard load to note a cache that was simply cold would be a great deal of write load for no new information.
-				if (live) {
+				if (live)
 					await prisma.hackatimeLink.update({
 						data: { spansFetchError: spans.error ?? "unknown error" },
 						where: { id: link.id },
 					})
-				}
 			} else {
 				const overlap = capSubtraction(linkSeconds, overlapSeconds(linkWindows, spans.spans))
 				if (overlap > 0) {
@@ -172,7 +171,7 @@ export async function getHoursBreakdown(
 					linkSeconds -= overlap
 				}
 				// Persisted only on a fresh fetch, and with the window they were fetched for rather than as a bare array: the next read has to know whether these spans cover the window it is being asked about, and a list cannot say. Re-writing a cache that was just read from would put a write on every read of this row.
-				if (spans.fetched) {
+				if (spans.fetched)
 					await prisma.hackatimeLink.update({
 						data: {
 							cachedSpans: {
@@ -185,7 +184,6 @@ export async function getHoursBreakdown(
 						},
 						where: { id: link.id },
 					})
-				}
 			}
 		}
 
@@ -223,17 +221,17 @@ async function resolveSpans(
 	opts: { live: boolean; hackatimeUserId: string | null; fromSeconds: number; toSeconds: number },
 ): Promise<{ spans: HackatimeSpan[]; stale: boolean; fetched: boolean; error?: string }> {
 	const cached = parseCachedSpans(link.cachedSpans)
-	if (cached && cachedSpansCover(cached, opts.fromSeconds, opts.toSeconds)) {
+	if (cached && cachedSpansCover(cached, opts.fromSeconds, opts.toSeconds))
 		return { fetched: false, spans: cached.spans, stale: false }
-	}
-	if (!opts.live || !opts.hackatimeUserId) {
+
+	if (!opts.live || !opts.hackatimeUserId)
 		return {
 			error: cached ? "cached spans do not cover this window" : "no cached spans",
 			fetched: false,
 			spans: [],
 			stale: true,
 		}
-	}
+
 	const result = await fetchProjectSpans(opts.hackatimeUserId, link.hackatimeProject, {
 		fromSeconds: opts.fromSeconds,
 		toSeconds: opts.toSeconds,
@@ -511,16 +509,16 @@ export function rollUpHours(
 		const cached = parseCachedSpans(link.cachedSpans)
 		// The recordings beside the link and the ones elsewhere under its name. Empty means nothing to compare, and nothing to warn about.
 		const windows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject ?? "")
-		if (windows.length > 0) {
-			// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
-			if (!cached) {
+		if (windows.length > 0)
+			if (!cached)
+				// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
 				hackatimeOverlapUnknown = true
-			} else {
+			else {
 				const overlap = capSubtraction(seconds, overlapSeconds(windows, cached.spans))
 				hackatimeOverlapSeconds += overlap
 				seconds -= overlap
 			}
-		}
+
 		hackatimeHours += seconds / 3600
 	}
 
@@ -542,6 +540,7 @@ export function rollUpHours(
  *
  * A type alias rather than an interface on purpose: this gets written into the audit row's JSON payload, and Prisma's `InputJsonValue` only accepts types with an implicit index signature, which interfaces do not have.
  */
+// oxlint-disable-next-line typescript/consistent-type-definitions
 export type CoinSplit = {
 	/** Legacy locked half. Always zero on new mints. */
 	banked: number
@@ -563,7 +562,7 @@ export type CoinSplit = {
  *
  * Minted coins are capped, because `approvedHours` can come from a reviewer typing into a box and a fat-fingered 1000 should not mint five thousand coins.
  */
-export function designCoinsFor(tierId: TierId | number, approvedHours: number): CoinSplit {
+export function designCoinsFor(tierId: number, approvedHours: number): CoinSplit {
 	const tier = getTierOrThrow(tierId)
 	const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
 	const spendable = earnCoins(beyondFunding)

@@ -22,7 +22,7 @@ const whenFormat = new Intl.DateTimeFormat("en-US", {
 })
 
 function preview(text: string, max = 90): string {
-	const flat = text.replace(/\s+/g, " ").trim()
+	const flat = text.replaceAll(/\s+/g, " ").trim()
 	return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
 }
 

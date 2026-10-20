@@ -29,7 +29,7 @@ interface Params {
 /** Statuses in which a phase's entries may still be edited or deleted: a draft, or one an admin or reviewer sent back for changes. */
 const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
-async function loadOwned(userId: string, projectId: string, sessionId: string) {
+function loadOwned(userId: string, projectId: string, sessionId: string) {
 	return prisma.workSession.findFirst({
 		include: { themeProject: { select: { buildStatus: true, designStatus: true, theme: true } } },
 		where: {
@@ -82,9 +82,9 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
 	const want =
 		data.timelapses !== undefined
-			? [...new Set(data.timelapses.map(t => t.lapseId).filter(id => !r2Keys.has(id)))]
+			? [...new Set(data.timelapses.map(t => t.lapseId).filter(lapseId => !r2Keys.has(lapseId)))]
 			: null
-	const addIds = want ? want.filter(id => !have.has(id)) : []
+	const addIds = want ? want.filter(lapseId => !have.has(lapseId)) : []
 	// Same rule as creation, asked of Lapse rather than trusted from the sheet. Only brand-new ids are verified; everything already attached stays without a round trip. Verified for its side effects here (ownership, published, processed) and mapped to the shape the reconciler writes: `LapseTimelapse.createdAt` is epoch ms and becomes the recording's start, which is what makes this clip's wall-clock window comparable with Hackatime's tracked intervals.
 	const fresh = (await verifyOwnTimelapses(gate.user.id, addIds)).map(t => ({
 		durationSeconds: t.durationSeconds,

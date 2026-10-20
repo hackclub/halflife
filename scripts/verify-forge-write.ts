@@ -33,17 +33,19 @@ interface Step {
 let script: Step[] = []
 let calls = 0
 
-globalThis.fetch = (async () => {
+globalThis.fetch = () => {
 	// Once the script is spent, the last step repeats, so an exhausted retry can be observed.
-	const step = script[calls] ?? script[script.length - 1]
+	const step = script[calls] ?? script.at(-1)
 	calls++
 	if (!step) throw new Error("fetch called with no scripted step")
 	if (step.throw) throw new TypeError("fetch failed")
-	return new Response(step.body === undefined ? null : JSON.stringify(step.body), {
-		headers: { "content-type": "application/json", ...(step.headers ?? {}) },
-		status: step.status,
-	})
-}) as typeof fetch
+	return Promise.resolve(
+		new Response(step.body === undefined ? null : JSON.stringify(step.body), {
+			headers: { "content-type": "application/json", ...step.headers },
+			status: step.status,
+		}),
+	)
+}
 
 async function run(steps: Step[]): Promise<{ ok: true; value: string } | { ok: false; err: unknown }> {
 	script = steps
@@ -190,11 +192,10 @@ async function main() {
 		// A holder rather than a `let`: the tree body is captured inside the fetch closure, and a plain `let` would be narrowed to null across it.
 		const captured: { tree: TreeEntry[] | null } = { tree: null }
 		let blobs = 0
-		globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
+		globalThis.fetch = ((url: string, init: RequestInit = {}) => {
 			const method = init.method ?? "GET"
-			const u = String(url)
-			const json = (body: unknown, status = 200) =>
-				new Response(JSON.stringify(body), { headers: { "content-type": "application/json" }, status })
+			const u = url
+			const json = (body: unknown, status = 200) => Promise.resolve(Response.json(body, { status }))
 			if (method === "GET" && u.includes("/git/ref/heads/")) return json({ object: { sha: "parent" } })
 			if (method === "GET" && u.includes("/git/commits/parent")) return json({ tree: { sha: "tree0" } })
 			// The old BOM.md is still present, which is what makes the sync send a deletion for it.
@@ -202,7 +203,8 @@ async function main() {
 				return json({ tree: [{ mode: "100644", path: "BOM.md", sha: "old", type: "blob" }] })
 			if (method === "POST" && u.endsWith("/git/blobs")) return json({ sha: `blob${blobs++}` })
 			if (method === "POST" && u.endsWith("/git/trees")) {
-				captured.tree = (JSON.parse(String(init.body)) as { tree: TreeEntry[] }).tree
+				if (typeof init.body !== "string") throw new Error("expected a JSON string body")
+				captured.tree = (JSON.parse(init.body) as { tree: TreeEntry[] }).tree
 				return json({ sha: "tree1" })
 			}
 			if (method === "POST" && u.endsWith("/git/commits")) return json({ sha: "commit1" })

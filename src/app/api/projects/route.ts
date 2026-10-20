@@ -43,8 +43,8 @@ export const GET = withRoute(async () => {
 	)
 
 	// Program order, not insertion order.
-	items.sort((a, b) => a.designWeek - b.designWeek)
-	return ok({ projects: items })
+	const ordered = items.toSorted((a, b) => a.designWeek - b.designWeek)
+	return ok({ projects: ordered })
 })
 
 const createSchema = z.object({ weekId: z.number().int().min(1).max(10) }).strict()

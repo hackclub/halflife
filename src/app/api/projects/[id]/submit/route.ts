@@ -79,7 +79,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	})
 
 	// And into Ari, which reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without Ari secrets logs no noise; a failure lands in the audit log and /api/integrations/ari-retry.
-	if (isAriConfigured()) {
+	if (isAriConfigured())
 		after(async () => {
 			await trackSideEffect(
 				"ari",
@@ -93,7 +93,6 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				() => sendSubmissionToAri(id, parsed.data.phase),
 			)
 		})
-	}
 
 	// Warm the Hackatime cache now so the reviewer opens a page with fresh numbers instead of waiting on the API. The participant does not need to wait for it.
 	after(async () => {

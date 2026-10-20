@@ -241,7 +241,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 
 	// A resolved submission is two moments – handed in, then decided – and the gap between them is part of the story. Only the latest decision per phase has comments on the project row, so older ones are shown without them.
 	const latestResolved = new Map<Phase, string>()
-	for (const sub of [...project.submissions].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
+	for (const sub of [...project.submissions].toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
 		timeline.push({ at: sub.createdAt.getTime(), id: `${sub.id}-in`, kind: "submitted", phase: sub.phase })
 		if (sub.resolvedAt && sub.resolvedResult) latestResolved.set(sub.phase, sub.id)
 	}
@@ -262,7 +262,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		})
 	}
 
-	timeline.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
+	const orderedTimeline = timeline.toSorted((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 
 	const inReview =
 		project.designStatus === PhaseStatus.in_review
@@ -280,11 +280,11 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				.reduce<Date | null>((at, s) => (!at || s.createdAt > at ? s.createdAt : at), null)
 			const disputed = project.submissions
 				.filter(s => s.phase === phase && s.dispute)
-				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.dispute
+				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.dispute
 			// Only an open hand-in can be stuck: one that was decided had its marker cleared by the send that succeeded, and one that was withdrawn was deleted outright.
 			const openShip = project.submissions
 				.filter(s => s.phase === phase && s.resolvedAt === null)
-				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
 			return {
 				comments: isDesign ? project.designReviewComments : project.buildReviewComments,
 				dispute: disputed
@@ -330,7 +330,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		inReview,
 		phases,
 		repoSync: await getRepoSyncState(project.id, userId),
-		timeline,
+		timeline: orderedTimeline,
 	}
 }
 
@@ -394,8 +394,9 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 	if (!project) return null
 
 	const themeIndex = THEMES.findIndex(t => t.id === project.theme)
-	const timeline = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)]
-	timeline.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
+	const timeline = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)].toSorted(
+		(a, b) => b.at - a.at || b.id.localeCompare(a.id),
+	)
 
 	return {
 		author: displayName(project.user, "A maker"),

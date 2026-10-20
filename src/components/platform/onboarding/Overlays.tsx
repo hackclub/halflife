@@ -66,7 +66,7 @@ function CheckpointModal({ id }: { id: string }) {
 	const cp = allCheckpoints.find(c => c.id === id)
 	if (!cp) return null
 	// A hand-in that posted its closing reel celebrates first. The hand-in's refresh flips the week to in_review underneath, and without this branch the unsubmit sheet below would take the modal a frame after the celebration lands.
-	if (sharePost && sharePost.checkpointId === id) {
+	if (sharePost && sharePost.checkpointId === id)
 		return (
 			<PublicReelModal
 				celebration={sharePost.celebration}
@@ -79,11 +79,11 @@ function CheckpointModal({ id }: { id: string }) {
 				videoUrl={sharePost.videoUrl}
 			/>
 		)
-	}
+
 	// Handed in and waiting: the checkpoint's job now is to let it be taken back, not to walk the hand-in again over the top of the one in review.
-	if ((cp.kind === "submit" || cp.kind === "demo") && statusOf(weekOfCheckpoint(cp)) === "in_review") {
+	if ((cp.kind === "submit" || cp.kind === "demo") && statusOf(weekOfCheckpoint(cp)) === "in_review")
 		return <UnsubmitModal checkpoint={cp} />
-	}
+
 	switch (cp.kind) {
 		case "onboarding":
 			return <FirstCheckpoint />

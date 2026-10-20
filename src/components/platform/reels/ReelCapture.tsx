@@ -25,7 +25,7 @@ export function ReelCapture({
 	label = "Your reel",
 }: {
 	objectKey: string | null
-	onCaptured: (objectKey: string | null, previewUrl?: string | null) => void
+	onCaptured(objectKey: string | null, previewUrl?: string | null): void
 	folder?: string
 	label?: string
 }) {
@@ -60,7 +60,7 @@ export function ReelCapture({
 		}
 	}
 
-	if (objectKey) {
+	if (objectKey)
 		return (
 			<Panel className="flex items-center gap-3 bg-cream px-4 py-3" radius={16} tone="teal">
 				<IconFilm className="shrink-0 text-[1.4rem] text-teal-ink" />
@@ -78,7 +78,6 @@ export function ReelCapture({
 				</Button>
 			</Panel>
 		)
-	}
 
 	return (
 		<div className="grid gap-3">
@@ -110,7 +109,7 @@ export function ReelCapture({
 					disabled={busy || handoff.status === "minting"}
 					onClick={() => {
 						setShowQr(true)
-						handoff.mint()
+						void handoff.mint()
 					}}
 					variant="outline"
 				>

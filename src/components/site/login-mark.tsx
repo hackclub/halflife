@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { signInWith, useSession } from "@/lib/auth-client"
 
@@ -45,14 +46,16 @@ export default function LoginMark() {
 	}
 
 	return (
-		<a
+		<Link
 			aria-busy={starting || undefined}
 			className="absolute top-1 right-1 z-20 bg-hl-ink px-3.5 py-1.5 font-display font-bold leading-snug text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan aria-busy:text-hl-cyan min-[830px]:top-3 min-[830px]:right-3 min-[830px]:px-5 min-[830px]:py-2.5"
 			href="/dashboard"
 			onClick={e => signIn(e)}
+			// Not prefetched: most people who see this mark are not signed in, and the dashboard they would be sent to is a redirect for them.
+			prefetch={false}
 			style={{ fontSize: "clamp(0.875rem, 3.6vw, 1rem)" }}
 		>
 			{failed ? "try again" : "log in"}
-		</a>
+		</Link>
 	)
 }

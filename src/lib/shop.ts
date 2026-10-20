@@ -87,7 +87,7 @@ export interface ShopRegionOption {
 	name: string
 }
 
-export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
+export function listActiveShopRegions(): Promise<ShopRegionOption[]> {
 	return prisma.shopRegion.findMany({
 		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 		select: { id: true, name: true },
@@ -156,43 +156,47 @@ export async function getShopItemsFor(userId: string): Promise<{
 
 	const owned = new Map(orders.map(o => [o.shopItemId, o._sum.quantity ?? 0]))
 
+	const view = items.map(item => {
+		const ownedCount = owned.get(item.id) ?? 0
+		let locked = false
+		let lockReason: string | null = null
+
+		if (item.requiresPrinterQualified && !qualification.qualified) {
+			locked = true
+			lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
+		} else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
+			locked = true
+			lockReason = "You already have this"
+		} else if (item.stock !== null && item.stock <= 0) {
+			locked = true
+			lockReason = "Out of stock"
+		}
+
+		// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
+		const { regionPrices, ...base } = item
+		const priceCredits =
+			context.regionId !== null
+				? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
+				: item.priceCredits
+
+		// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
+		const payableFrom = spendableFor(balances, item.category)
+		return Object.assign(base, {
+			affordable: payableFrom >= priceCredits,
+			locked,
+			lockReason,
+			ownedCount,
+			priceCredits,
+		})
+	})
+
+	// The sticker sheet is the one item pinned above the shelf order: it is the cheap add-on people put in alongside a real order, and an admin's sort order should not bury it.
+	const stickerSheet = (item: (typeof view)[number]) => `${item.id} ${item.name}`.toLowerCase().includes("sticker")
+
 	return {
 		balances,
 		country: context.country,
-		items: items.map(item => {
-			const ownedCount = owned.get(item.id) ?? 0
-			let locked = false
-			let lockReason: string | null = null
-
-			if (item.requiresPrinterQualified && !qualification.qualified) {
-				locked = true
-				lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
-			} else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
-				locked = true
-				lockReason = "You already have this"
-			} else if (item.stock !== null && item.stock <= 0) {
-				locked = true
-				lockReason = "Out of stock"
-			}
-
-			// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
-			const { regionPrices, ...base } = item
-			const priceCredits =
-				context.regionId !== null
-					? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
-					: item.priceCredits
-
-			// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
-			const payableFrom = spendableFor(balances, item.category)
-			return {
-				...base,
-				affordable: payableFrom >= priceCredits,
-				locked,
-				lockReason,
-				ownedCount,
-				priceCredits,
-			}
-		}),
+		items: [...view.filter(stickerSheet), ...view.filter(item => !stickerSheet(item))],
 		regionId: context.regionId,
 		regions,
 	}
@@ -213,12 +217,11 @@ export async function purchase(
 	if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
 	// Spending is where identity is asked for. It used to be asked at submit, which turned the last step of a finished week into a wall for anyone who had not got round to verifying – and the shop is the one thing money and a shipping address are actually behind. Checked before the transaction rather than inside it: it is the buyer's own state, read fresh, and nothing concurrent here can undo it.
-	if (!(await isIdentityVerified(userId))) {
+	if (!(await isIdentityVerified(userId)))
 		throw new HttpError(
 			"NOT_VERIFIED",
 			"Identity verification is required to buy things. Verify at identity.hackclub.com.",
 		)
-	}
 
 	const item = await prisma.shopItem.findUnique({ where: { id: shopItemId } })
 	if (!item?.active) throw new HttpError("NOT_FOUND", "Item not found")
@@ -248,9 +251,9 @@ export async function purchase(
 			let inGrace = awaitingReview > 0
 			if (!inGrace) {
 				const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
-					.filter((d): d is Date => !!d)
-					.sort((a, b) => b.getTime() - a.getTime())[0]
-				inGrace = !!reviewedAt && reviewedAt.getTime() + settings.shopGraceDays * 86_400_000 > Date.now()
+					.filter((d): d is Date => Boolean(d))
+					.toSorted((a, b) => b.getTime() - a.getTime())[0]
+				inGrace = reviewedAt !== undefined && reviewedAt.getTime() + settings.shopGraceDays * 86_400_000 > Date.now()
 			}
 			if (!inGrace) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		}
@@ -332,7 +335,7 @@ export async function purchase(
 		})
 
 		// Every coin is spendable on anything, so a purchase is paid out of the whole balance.
-		if (totalCredits > 0) {
+		if (totalCredits > 0)
 			await appendLedgerEntry(tx, {
 				amount: -totalCredits,
 				bucket: CoinBucket.SPENDABLE,
@@ -342,7 +345,6 @@ export async function purchase(
 				shopOrderId: order.id,
 				userId,
 			})
-		}
 
 		if (fresh.stock !== null) {
 			// Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser's update matches nothing and rolls back.
@@ -399,12 +401,11 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 			})
 		}
 
-		if (order.shopItemId) {
+		if (order.shopItemId)
 			await tx.shopItem.updateMany({
 				data: { stock: { increment: order.quantity } },
 				where: { id: order.shopItemId, stock: { not: null } },
 			})
-		}
 
 		return tx.shopOrder.update({
 			data: {

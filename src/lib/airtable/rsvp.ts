@@ -92,7 +92,7 @@ export async function recordDirectSignup(input: {
 				data: {
 					airtableRecordId: input.recordId,
 					email,
-					finishedAccountCreation: !!input.userId,
+					finishedAccountCreation: Boolean(input.userId),
 					ip: input.ip ?? null,
 					referredBy: input.referredBy ?? null,
 					syncedAt: input.userId ? null : new Date(),
@@ -135,9 +135,7 @@ export interface DrainResult {
  */
 export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {}): Promise<DrainResult> {
 	const config = getAirtableConfig()
-	if (!config) {
-		return { attempted: 0, created: 0, failed: 0, skipped: "not_configured", skippedUserId: 0, updated: 0 }
-	}
+	if (!config) return { attempted: 0, created: 0, failed: 0, skipped: "not_configured", skippedUserId: 0, updated: 0 }
 
 	const pending = await prisma.rsvpBuffer.findMany({
 		orderBy: { createdAt: "asc" },
@@ -159,15 +157,14 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 	const skippedColumns = Object.entries(RSVP.fields)
 		.filter(([, field]) => !writable.has(fieldKey(field)))
 		.map(([key]) => key)
-	if (skippedColumns.length > 0) {
+	if (skippedColumns.length > 0)
 		// Said once per drain, naming them, because "the RSVP drain is failing" is otherwise indistinguishable from "Airtable is down".
 		console.warn(
 			`[airtable] rsvp-drain: ${RSVP.tableId} has no column(s) ${skippedColumns.join(", ")}; those values are not `
 				+ "sent. Everything else in the row is still written.",
 		)
-	}
 
-	for (const row of pending) {
+	for (const row of pending)
 		try {
 			// `RsvpBuffer.signupPage` is deliberately absent: the base has no column for it (see RSVP.fields), so a row still carrying one writes everything else and drops that. The field is left on the buffer because /api/rsvp accepts it from outside this repo; the day a column exists, it belongs back in this list.
 			const values = {
@@ -235,12 +232,12 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				where: { id: row.id },
 			})
 		}
-	}
+
 	return result
 }
 
 /** Total RSVPs, for the landing page counter. */
-export async function getRsvpCount(): Promise<number> {
+export function getRsvpCount(): Promise<number> {
 	return prisma.rsvpBuffer.count()
 }
 

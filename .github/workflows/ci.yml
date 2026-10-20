@@ -10,8 +10,7 @@ concurrency:
     cancel-in-progress: true
 
 # Read-only: nothing here writes to the repository. The job reads the checkout and reports. Stated explicitly so the token cannot inherit a read-write default from an older repository or organisation.
-# Note: there is no database in CI, so nothing here may dial one. The
-# DB-backed checks (migrate deploy, seed, verify:ledger/onboarding/feed/store/handoff) run locally against a scratch database instead.
+# Note: there is no database in CI, so nothing here may dial one. The DB-backed checks (migrate deploy, seed, verify:ledger/onboarding/feed/store/handoff) run locally against a scratch database instead.
 permissions:
     contents: read
 
@@ -21,9 +20,7 @@ jobs:
         timeout-minutes: 15
         steps:
             - uses: actions/checkout@v5
-            # No bun-version: setup-bun reads packageManager (bun@1.4.3), which
-            # hits the runner tool cache instead of downloading `latest` every
-            # run, and keeps CI on the same toolchain as local dev.
+            # No bun-version: setup-bun reads packageManager (bun@1.4.3), which hits the runner tool cache instead of downloading `latest` every run, and keeps CI on the same toolchain as local dev.
             - uses: oven-sh/setup-bun@v2
 
             - uses: actions/cache@v4
@@ -33,9 +30,7 @@ jobs:
                   restore-keys: |
                       bun-${{ runner.os }}-
 
-            # Next.js incremental build cache. Keyed on sources for an exact hit
-            # when nothing changed, falling back to the lockfile prefix otherwise;
-            # Next invalidates stale entries itself.
+            # Next.js incremental build cache. Keyed on sources for an exact hit when nothing changed, falling back to the lockfile prefix otherwise; Next invalidates stale entries itself.
             - uses: actions/cache@v4
               with:
                   path: .next/cache
@@ -46,41 +41,21 @@ jobs:
 
             - run: bun install --frozen-lockfile
 
-            # The Prisma client is gitignored, so typegen, typecheck and build all
-            # fail without this. It has to come first.
+            # The Prisma client is gitignored, so typegen, typecheck and build all fail without this. It has to come first.
             - run: bunx prisma generate
 
-            # `next-env.d.ts` and `.next/types` are gitignored but required for
-            # typecheck: image imports resolve through next/image-types/global and
-            # LayoutProps through the generated route types. `next typegen` creates
-            # both without a full build.
+            # `next-env.d.ts` and `.next/types` are gitignored but required for typecheck: image imports resolve through next/image-types/global and LayoutProps through the generated route types. `next typegen` creates both without a full build.
             - run: bunx next typegen
 
+            # Typecheck only. Linting is owned by the two workflows beside this one, and they run on the same triggers: Biome formats, organises imports and lints, and Oxlint lints with the curated rule set in `.oxlintrc.json`. The code reaching this job has already been through both, so a third linter over the same files here repeated all of it – and repeated it with a different rule set, which is how a rule the project deliberately turns off in `.oxlintrc.json` ended up gating the build anyway.
             # `bun check` rather than `bun run typecheck`: it is the built-in, reads the same tsconfig (paths, strict flags, the generated/ exclude) and enforces .next/types, so the `next typegen` step above still earns its place.
-            # Typecheck and ESLint touch disjoint inputs, so run them concurrently
-            # rather than sequentially. The `||` guards keep `set -e` from
-            # exiting on the first `wait` before the other status is collected.
-            - name: Check and lint
-              run: |
-                  CHECK_STATUS=0
-                  LINT_STATUS=0
-                  bun check & CHECK_PID=$!
-                  bun run lint & LINT_PID=$!
-                  wait $CHECK_PID || CHECK_STATUS=$?
-                  wait $LINT_PID || LINT_STATUS=$?
-                  exit $(( CHECK_STATUS || LINT_STATUS ))
+            - name: Typecheck
+              run: bun check
 
-            # Static regression checks: no database, no network, no secrets.
-            # verify-loops pins the Signups join (id over email, skip-not-throw);
-            # verify-contracts pins the client↔API contract (fetch methods vs
-            # route exports, request bodies vs zod schemas, plus pure-lib pins);
-            # verify-forge-write pins the write path's retry/classification with a
-            # scripted fetch. All hermetic: no database, no network, no secrets.
+            # Static regression checks: no database, no network, no secrets. verify-loops pins the Signups join (id over email, skip-not-throw); verify-contracts pins the client↔API contract (fetch methods vs route exports, request bodies vs zod schemas, plus pure-lib pins); verify-forge-write pins the write path's retry/classification with a scripted fetch. All hermetic: no database, no network, no secrets.
             - name: Static regression checks
               env:
-                  # Never dialed: these are hermetic, but they transitively import
-                  # `@/lib/prisma`, whose module-level client initialisation
-                  # requires the variable present (same as the build below).
+                  # Never dialed: these are hermetic, but they transitively import `@/lib/prisma`, whose module-level client initialisation requires the variable present (same as the build below).
                   DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
               run: |
                   bun run verify:loops
@@ -92,7 +67,6 @@ jobs:
                   CI: "true"
                   BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-chars
                   BETTER_AUTH_URL: http://localhost:3000
-                  # Never dialed: the build does not touch the database, but
-                  # Prisma client initialisation requires the variable present.
+                  # Never dialed: the build does not touch the database, but Prisma client initialisation requires the variable present.
                   DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
               run: bun run build

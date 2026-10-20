@@ -84,12 +84,12 @@ async function main() {
 	const wantByUser = new Map<string, Set<number>>()
 	for (const u of users) {
 		const weeks = new Set<number>()
-		for (const p of u.themeProjects) {
+		for (const p of u.themeProjects)
 			for (const s of p.submissions) {
 				const w = s.scheduledWeek ?? scheduledWeekFor(p.theme, s.phase)
 				if (w >= 1 && w <= 10) weeks.add(w)
 			}
-		}
+
 		wantByUser.set(u.id, weeks)
 	}
 	const submitters = users.filter(u => (wantByUser.get(u.id)?.size ?? 0) > 0)
@@ -101,10 +101,9 @@ async function main() {
 		where: { airtableRecordId: { not: null }, userId: { not: null } },
 	})
 	const byRecordId = new Map<string, AirtableRecord>()
-	for (const row of drained) {
+	for (const row of drained)
 		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId))
 			byRecordId.set(row.userId, { fields: {}, id: row.airtableRecordId })
-	}
 
 	const updates = new Map<string, { [_: string]: boolean }>()
 	let matched = 0
@@ -123,7 +122,7 @@ async function main() {
 		// A drained placeholder carries no fields to compare against, so its want-state is written blind – checkbox writes are idempotent, and the hourly sync converges anything this over-writes.
 		const fields: { [_: string]: boolean } = {}
 		for (const c of columns) {
-			const n = Number(c.match(/Week(\d+)ProjectSubmitted/)?.[1])
+			const n = Number(/Week(\d+)ProjectSubmitted/.exec(c)?.[1])
 			const value = want.has(n)
 			if (Object.keys(hit.row.fields).length === 0 || (hit.row.fields[c] === true) !== value) fields[c] = value
 		}
@@ -164,7 +163,7 @@ async function main() {
 			if (updated % 100 === 0) console.log(`updated ${updated}/${entries.length}…`)
 		} catch (err) {
 			failed += batch.length
-			console.error(`  batch failed: ${err instanceof Error ? err.message : err}`)
+			console.error(`  batch failed: ${err instanceof Error ? err.message : String(err)}`)
 		}
 	}
 	console.log(`updated: ${updated}, failed: ${failed}`)

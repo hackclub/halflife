@@ -7,7 +7,7 @@ import { useFeed } from "@/components/platform/reels/useFeed"
 import { Panel } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void; className?: string }) {
+export function DoomscrollerFeed({ onClose, className }: { onClose?(): void; className?: string }) {
 	const feed = useFeed()
 	// The rail sits beside every page in the app, so it does not start talking unprompted. Once the reader has pressed play on one reel they are watching the feed, and from then on scrolling hands playback to the next reel the way the full-page Doomscroller does from the start.
 	const [watching, setWatching] = useState(false)
@@ -40,7 +40,7 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
 						autoplay={watching}
 						className="snap-item h-full min-h-[380px] shrink-0"
 						key={r.id}
-						onPatch={feed.patch}
+						onPatch={feed.handlePatch}
 						onPlayPress={() => setWatching(true)}
 						reel={r}
 					/>
@@ -55,7 +55,7 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
 					<button
 						className="label shrink-0 rounded-full border-2 border-line py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
 						disabled={feed.loading}
-						onClick={feed.more}
+						onClick={feed.handleMore}
 						type="button"
 					>
 						{feed.loading ? "Loading…" : "More"}

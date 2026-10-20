@@ -2,7 +2,7 @@ import "server-only"
 import type { Theme } from "@/app/generated/prisma/enums"
 import { DESIGN_JSON, REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
-import { ForgeUnavailable, forgeGet } from "@/lib/github"
+import { ForgeUnavailableError, forgeGet } from "@/lib/github"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 import { README_GUIDE_URL } from "@/lib/routes"
 
@@ -52,7 +52,7 @@ type Snapshot =
 			 *
 			 * A function rather than a list, because reading costs a request per file and only a kind that has found nothing by name ever asks – most repos never do, and a repo that does asks once and the answer is held for as long as the snapshot is.
 			 */
-			designs: () => Promise<string[]>
+			designs(): Promise<string[]>
 	  }
 	| { kind: "not-found" }
 	| { kind: "unavailable"; why: string }
@@ -101,7 +101,7 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 	const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
 	snapshots.set(key, entry)
 	// Settled, a failure is only kept briefly. Checked against the entry itself, so a newer fetch that has replaced it is left alone.
-	value.then(snap => {
+	void value.then(snap => {
 		if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
 	})
 	return value
@@ -136,7 +136,7 @@ function designFinder(ref: RepoRef, files: readonly string[]): () => Promise<str
 async function findDesignJson(ref: RepoRef, files: readonly string[]): Promise<string[]> {
 	const candidates = files
 		.filter(p => p.toLowerCase().endsWith(DESIGN_JSON.extension) && !DESIGN_JSON_SKIP.test(p))
-		.sort((a, b) => a.split("/").length - b.split("/").length || a.length - b.length)
+		.toSorted((a, b) => a.split("/").length - b.split("/").length || a.length - b.length)
 		.slice(0, DESIGN_JSON_MAX)
 	if (candidates.length === 0) return []
 
@@ -188,19 +188,18 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	} catch (err) {
 		return {
 			kind: "unavailable",
-			why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
+			why: err instanceof ForgeUnavailableError ? err.message : `${forge.label} did not answer.`,
 		}
 	}
 
 	if (treeRes.status === 404) return { kind: "not-found" }
 	// 409 is an empty repo: no commits, so no tree. That is a real finding.
-	if (!treeRes.ok && treeRes.status !== 409) {
+	if (!treeRes.ok && treeRes.status !== 409)
 		return { kind: "unavailable", why: `${forge.label} returned an error (${treeRes.status}).` }
-	}
+
 	// 404 is the only answer that means there is no README. Anything else is the forge failing to say, and blocking on that would tell the maker to add a README they already have.
-	if (!readmeRes.ok && readmeRes.status !== 404) {
+	if (!readmeRes.ok && readmeRes.status !== 404)
 		return { kind: "unavailable", why: `${forge.label} returned an error (${readmeRes.status}).` }
-	}
 
 	const body = treeRes.ok
 		? ((await treeRes.json()) as { tree?: { path: string; type: string }[]; truncated?: boolean })
@@ -234,13 +233,11 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	} catch (err) {
 		return {
 			kind: "unavailable",
-			why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
+			why: err instanceof ForgeUnavailableError ? err.message : `${forge.label} did not answer.`,
 		}
 	}
 	if (first.status === 404) return { kind: "not-found" }
-	if (!first.ok) {
-		return { kind: "unavailable", why: `${forge.label} returned an error (${first.status}).` }
-	}
+	if (!first.ok) return { kind: "unavailable", why: `${forge.label} returned an error (${first.status}).` }
 
 	const files: string[] = []
 	// A generous ceiling: 100 pages of 100 is 10,000 files, which no hardware project is, and it stops a pathological repo looping here forever.
@@ -273,13 +270,13 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
  *
  * GitHub has a `/readme` endpoint that finds it whatever it is called; GitLab does not, so the name is taken from the file list. A repo with several spellings (`README.md`, `readme.rst`) is read from the first that sorts, and only the common names are tried – this is a "has a README" check, not a search for any file that might be prose.
  */
-const README_NAMES = ["readme.md", "readme.markdown", "readme.rst", "readme.txt", "readme"]
+const README_NAMES = new Set(["readme.md", "readme.markdown", "readme.rst", "readme.txt", "readme"])
 
 async function fetchGitLabReadme(forge: Forge, project: string, files: readonly string[]): Promise<string | null> {
 	// Root-level names first, then anything nested, so a docs/README does not shadow the project's own.
 	const candidates = files
-		.filter(f => README_NAMES.includes((f.split("/").pop() ?? "").toLowerCase()))
-		.sort((a, b) => a.split("/").length - b.split("/").length)
+		.filter(f => README_NAMES.has((f.split("/").pop() ?? "").toLowerCase()))
+		.toSorted((a, b) => a.split("/").length - b.split("/").length)
 	const name = candidates[0]
 	if (!name) return null
 
@@ -288,8 +285,20 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 	return res.text()
 }
 
-/** Stasis's image test: markdown or HTML images, or an image file named in it. */
-const README_IMAGE = /!\[.*?\]\(.*?\)|<img\s+[^>]*src\s*=|\.png|\.jpe?g|\.gif|\.webp|\.svg/i
+/** Markdown or HTML images. Global so the README can be counted as well as tested. */
+const README_IMAGE = /!\[[^\]]*\]\([^)]*\)|!\[[^\]]*\]\[[^\]]*\]|<img\b[^>]*>/gi
+const README_MIN_CHARS = 200
+const README_MIN_IMAGES = 2
+
+/** How many images the README embeds. */
+function readmeImageCount(readme: string): number {
+	return [...readme.matchAll(README_IMAGE)].length
+}
+
+/** The README's prose, with images and the whitespace they leave behind removed. */
+function readmeText(readme: string): string {
+	return readme.replaceAll(README_IMAGE, " ").replaceAll(/\s+/g, " ").trim()
+}
 
 /** The paths in the repo that satisfy a file kind by name. */
 function namedMatches(kind: RepoFileKind, snap: RepoSnapshot): string[] {
@@ -329,7 +338,7 @@ function result(repo: string | null, checks: RepoCheck[], unavailable = false): 
 }
 
 export async function checkRepo(repoLink: string | null, theme: Theme): Promise<RepoCheckResult> {
-	if (!repoLink) {
+	if (!repoLink)
 		return result(null, [
 			{
 				blocking: true,
@@ -339,7 +348,6 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 				status: "fail",
 			},
 		])
-	}
 
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) {
@@ -376,7 +384,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 
 	const snap = await snapshot(ref)
 	if (snap.kind === "unavailable") return unavailable(snap.why)
-	if (snap.kind === "not-found") {
+	if (snap.kind === "not-found")
 		return result(repoLink, [
 			{
 				blocking: true,
@@ -386,7 +394,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 				status: "fail",
 			},
 		])
-	}
+
 	const { readme, truncated } = snap
 
 	const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]
@@ -397,9 +405,8 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		? await snap.designs()
 		: []
 
-	const checks: RepoCheck[] = [{ detail: name, key: "repo", label: `Public ${forge.label} repo`, status: "pass" }]
-
-	checks.push(
+	const checks: RepoCheck[] = [
+		{ detail: name, key: "repo", label: `Public ${forge.label} repo`, status: "pass" },
 		readme !== null
 			? { key: "readme", label: "README", status: "pass" }
 			: {
@@ -410,15 +417,28 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
 				},
-	)
+	]
+	const readmeChars = readme === null ? 0 : readmeText(readme).length
+	const imageCount = readme === null ? 0 : readmeImageCount(readme)
+
 	checks.push(
-		readme !== null && README_IMAGE.test(readme)
-			? { key: "readme_photo", label: "Photos in the README", status: "pass" }
+		readme !== null && readmeChars >= README_MIN_CHARS
+			? { detail: `${readmeChars} characters`, key: "readme_length", label: "README length", status: "pass" }
 			: {
 					blocking: true,
-					detail: "Add at least one image of the project – a render, a screenshot of the board, or a photo.",
+					detail: `Add at least ${README_MIN_CHARS} characters about what the project is and how it works. The README has ${readmeChars} once images are removed.`,
+					key: "readme_length",
+					label: "README too short",
+					link: { href: README_GUIDE_URL, label: "What goes in a README" },
+					status: "fail",
+				},
+		readme !== null && imageCount >= README_MIN_IMAGES
+			? { detail: `${imageCount} images`, key: "readme_photo", label: "Photos in the README", status: "pass" }
+			: {
+					blocking: true,
+					detail: `Add at least ${README_MIN_IMAGES} images of the project – renders, screenshots of the board, or photos. The README has ${imageCount}.`,
 					key: "readme_photo",
-					label: "No photos in the README",
+					label: imageCount === 0 ? "No photos in the README" : "Not enough photos in the README",
 					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
 				},
@@ -514,7 +534,7 @@ export async function findRepoFilePath(repoLink: string | null, test: RegExp): P
 	if (!ref) return null
 	const snap = await snapshot(ref)
 	if (snap.kind !== "ok") return null
-	const hits = snap.files.filter(f => test.test(f)).sort((a, b) => a.split("/").length - b.split("/").length)
+	const hits = snap.files.filter(f => test.test(f)).toSorted((a, b) => a.split("/").length - b.split("/").length)
 	return hits[0] ?? null
 }
 
@@ -523,9 +543,9 @@ export async function findRepoFilePath(repoLink: string | null, test: RegExp): P
  *
  * The two forges speak differently here – GitHub's contents API answers with base64, GitLab's raw endpoint with the bytes – so this is the one place that difference lives. It reads the file at HEAD, the default branch, and treats a missing, binary or oversized file as simply unreadable: the caller has picked a path it matched in the same file list, so "not there" is a race, not an error worth a different message.
  */
-export async function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
+export function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
-	if (!ref) return null
+	if (!ref) return Promise.resolve(null)
 	return readRepoFileAt(ref, path)
 }
 

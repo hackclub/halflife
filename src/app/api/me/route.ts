@@ -45,6 +45,6 @@ export const GET = withRoute(async () => {
 		permissions: permissionsFor(gate.roles),
 		printer,
 		roles: gate.roles,
-		user: { ...user, hackatimeLinked: !!user?.hackatimeUserId, image: avatarUrl(user) },
+		user: { ...user, hackatimeLinked: Boolean(user?.hackatimeUserId), image: avatarUrl(user) },
 	})
 })

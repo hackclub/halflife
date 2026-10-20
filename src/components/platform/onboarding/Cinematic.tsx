@@ -6,8 +6,10 @@ import { Avatar } from "@/components/platform/Avatar"
 import { Gato, PrinterPhoto, WeekPainting } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin, IconFilm, IconLock, IconPlay, IconUpload } from "@/components/platform/icons"
 import { Button, onAccent } from "@/components/platform/ui"
-import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers"
+import { MIN_HOURS_PER_WEEK, type PrinterGoal, printerById } from "@/lib/config/printers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"
+import { cx } from "@/lib/cx"
+import { useStore } from "@/lib/store"
 import flightControllerShot from "../../../../public/projects/flightcontroller.png"
 import hexapodShot from "../../../../public/projects/hexapod.png"
 import macropadShot from "../../../../public/projects/macropad.png"
@@ -22,14 +24,11 @@ const MOCK_REELS = [
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the tier-1 shape. The bonus node is earned, not given, so it stays off.
  */
-const WEEKS = WEEK_META.map(meta => ({
-	...meta,
-	checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
-}))
-
-import { type PrinterGoal, printerById } from "@/lib/config/printers"
-import { cx } from "@/lib/cx"
-import { useStore } from "@/lib/store"
+const WEEKS = WEEK_META.map(meta =>
+	Object.assign({}, meta, {
+		checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
+	}),
+)
 
 /**
  * Always the Ender 3 V3 SE, never the picked goal, even if the default goal moves: it is the printer every finisher can reach, as on the trail's grand prize.
@@ -80,7 +79,7 @@ const BLOCKS: Block[] = []
 }
 
 // BLOCKS is built above, one entry per week, so it is never empty; the fallback keeps that a compile-time fact rather than an assertion.
-const LAST = BLOCKS[BLOCKS.length - 1] ?? { height: 0, top: 0, trailTop: 0 }
+const LAST = BLOCKS.at(-1) ?? { height: 0, top: 0, trailTop: 0 }
 const PRIZE_TOP = LAST.top + LAST.height + 40
 const PRIZE_CENTRE = PRIZE_TOP + PRIZE_H / 2
 const STAGE_H = PRIZE_TOP + PRIZE_H + 140
@@ -95,13 +94,13 @@ const T_FALL = 6800
 const T_END = T_HOLD + T_FALL
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
+const clamp01 = (t: number) => Math.min(Math.max(t, 0), 1)
 
 /**
  * What the captions say, keyed to where the camera is rather than to the clock: each line appears as the weeks it describes come into frame, so a slow machine never has a caption naming weeks that are not on screen yet. The banners already name each week, so a caption says only what they don't.
  */
 const article = (name: string) => (/^[aeiou]/i.test(name) ? "an" : "a")
-const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => string }[] = [
+const SCRIPT: { fromWeek: number; fromDepth: number; line(goal: string): string }[] = [
 	{
 		fromDepth: 0,
 		fromWeek: 1,
@@ -128,14 +127,14 @@ const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => str
  * The fall's speed profile: it eases off the title like something starting to drop, runs fastest through the middle weeks, and spends its last stretch braking onto the prize. Asymmetric on purpose – a symmetric ease reads as a glide, and this is an arrival.
  */
 function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
-	const cx = 3 * x1
-	const bx = 3 * (x2 - x1) - cx
-	const ax = 1 - cx - bx
-	const cy = 3 * y1
-	const by = 3 * (y2 - y1) - cy
-	const ay = 1 - cy - by
-	const sampleX = (t: number) => ((ax * t + bx) * t + cx) * t
-	const slopeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx
+	const cpx = 3 * x1
+	const bpx = 3 * (x2 - x1) - cpx
+	const apx = 1 - cpx - bpx
+	const cpy = 3 * y1
+	const bpy = 3 * (y2 - y1) - cpy
+	const apy = 1 - cpy - bpy
+	const sampleX = (t: number) => ((apx * t + bpx) * t + cpx) * t
+	const slopeX = (t: number) => (3 * apx * t + 2 * bpx) * t + cpx
 	return (x: number) => {
 		let t = x
 		for (let i = 0; i < 6; i += 1) {
@@ -144,7 +143,7 @@ function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
 			t -= (sampleX(t) - x) / slope
 		}
 		t = clamp01(t)
-		return ((ay * t + by) * t + cy) * t
+		return ((apy * t + bpy) * t + cpy) * t
 	}
 }
 const fall = cubicBezier(0.5, 0, 0.12, 1)
@@ -449,12 +448,12 @@ export function Cinematic() {
 			const week = place(fy, scale)
 
 			let idx = -1
-			if (t >= T_HOLD) {
+			if (t >= T_HOLD)
 				for (let i = 0; i < SCRIPT.length; i += 1) {
 					const s = SCRIPT[i]
 					if (s && week >= s.fromWeek && depth >= s.fromDepth) idx = i
 				}
-			}
+
 			setBeat(b => (b === idx ? b : idx))
 
 			if (t >= T_END) {

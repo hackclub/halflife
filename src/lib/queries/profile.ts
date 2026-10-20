@@ -104,7 +104,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 	const today = effectiveDateFor(new Date(), settings.programTimezone)
 
 	// Season projects in week order, warm-ups after them.
-	const ordered = [...projects].sort((a, b) => {
+	const ordered = [...projects].toSorted((a, b) => {
 		const da = a.theme === Theme.WARMUP ? Number.MAX_SAFE_INTEGER : getThemeDef(a.theme).designWeek
 		const db = b.theme === Theme.WARMUP ? Number.MAX_SAFE_INTEGER : getThemeDef(b.theme).designWeek
 		return da - db

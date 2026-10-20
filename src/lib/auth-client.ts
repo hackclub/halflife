@@ -10,6 +10,11 @@ export const authClient = createAuthClient({
 
 export const { signOut, useSession } = authClient
 
+/** The result better-auth reports for a redirect that did not start; it resolves rather than throwing. */
+interface AuthRedirectResult {
+	error?: { message?: string }
+}
+
 /**
  * `loginHint` is the address to start the sign-in with. Hack Club Auth reads it as the standard `login_hint` and pre-fills its email box – the one both a returning user and a newcomer start from – so an address typed on the landing page is not asked for twice.
  */
@@ -17,29 +22,26 @@ export function signInWith(
 	providerId: "hca" | "hackatime",
 	callbackURL = "/dashboard",
 	loginHint?: string,
-): ReturnType<typeof authClient.signIn.social> {
+): Promise<AuthRedirectResult> {
 	return authClient.signIn.social({
 		callbackURL,
 		provider: providerId,
 		...(loginHint ? { loginHint } : {}),
-	})
+	}) as Promise<AuthRedirectResult>
 }
 
-export function linkHackatime(callbackURL = "/dashboard"): ReturnType<typeof authClient.linkSocial> {
-	return authClient.linkSocial({ callbackURL, provider: "hackatime" })
+export function linkHackatime(callbackURL = "/dashboard"): Promise<AuthRedirectResult> {
+	return authClient.linkSocial({ callbackURL, provider: "hackatime" }) as Promise<AuthRedirectResult>
 }
 
 /** Timelapses are recorded on Lapse; linking is what lets us list them. */
-export function linkLapse(callbackURL = "/dashboard"): ReturnType<typeof authClient.linkSocial> {
-	return authClient.linkSocial({ callbackURL, provider: "lapse" })
+export function linkLapse(callbackURL = "/dashboard"): Promise<AuthRedirectResult> {
+	return authClient.linkSocial({ callbackURL, provider: "lapse" }) as Promise<AuthRedirectResult>
 }
 
 /**
  * A forge is linked, never signed in with: it is the authorisation that lets the repo sync push to a maker's repository, granted by someone already signed in through Hack Club Auth. `forge` names which service – the two configured today are GitHub and GitLab, both registered in lib/forge.
  */
-export function linkForge(
-	forge: "github" | "gitlab",
-	callbackURL = "/dashboard",
-): ReturnType<typeof authClient.linkSocial> {
-	return authClient.linkSocial({ callbackURL, provider: forge })
+export function linkForge(forge: "github" | "gitlab", callbackURL = "/dashboard"): Promise<AuthRedirectResult> {
+	return authClient.linkSocial({ callbackURL, provider: forge }) as Promise<AuthRedirectResult>
 }

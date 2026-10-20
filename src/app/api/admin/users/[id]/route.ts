@@ -63,7 +63,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		where: { id },
 	})
 
-	if (parsed.data.fraudFlagged !== undefined && parsed.data.fraudFlagged !== before.fraudFlagged) {
+	if (parsed.data.fraudFlagged !== undefined && parsed.data.fraudFlagged !== before.fraudFlagged)
 		await logAudit({
 			action: parsed.data.fraudFlagged ? AuditAction.ADMIN_FLAG_FRAUD : AuditAction.ADMIN_UNFLAG_FRAUD,
 			actorEmail: gate.user.email,
@@ -72,8 +72,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			targetId: id,
 			targetType: "User",
 		})
-	}
-	if (emailChanged) {
+
+	if (emailChanged)
 		await logAudit({
 			action: AuditAction.ADMIN_CHANGE_EMAIL,
 			actorEmail: gate.user.email,
@@ -82,8 +82,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			targetId: id,
 			targetType: "User",
 		})
-	}
-	if (parsed.data.submissionExtensionUntil !== undefined) {
+
+	if (parsed.data.submissionExtensionUntil !== undefined)
 		await logAudit({
 			action: AuditAction.ADMIN_GRANT_EXTENSION,
 			actorEmail: gate.user.email,
@@ -95,7 +95,6 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			targetId: id,
 			targetType: "User",
 		})
-	}
 
 	return ok({ user: updated })
 })

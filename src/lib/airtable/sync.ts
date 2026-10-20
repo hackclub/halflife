@@ -1,12 +1,12 @@
 import "server-only"
 import { Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
+import { justificationValues, timelapseLinks } from "@/lib/airtable/justification"
 import { fieldKey, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
-import { getThemeDef } from "@/lib/config/program"
+import { scheduledWeekFor } from "@/lib/config/program"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
-import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import { decryptUserPII } from "@/lib/pii"
 import prisma from "@/lib/prisma"
@@ -20,9 +20,6 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Half Life has no review page of its own: reviewers work on ari.hackclub.com, straight from this table. So the row is the submission, and everything a reviewer needs to judge it goes into it here – the repo, the hours, the timelapses, the parts money, the address to ship to.
  */
-
-/** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */
-const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
 /**
  * The record id this (project, phase) was last written to, or null.
@@ -103,11 +100,17 @@ export function projectWeekLabel(week: number): string | null {
 async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const project = await prisma.themeProject.findUnique({
 		include: {
-			bomItems: { select: { quantity: true, unitCostUsd: true } },
+			bomItems: { select: { name: true, purpose: true, quantity: true, unitCostUsd: true } },
 			hackatimeLinks: { select: { hackatimeProject: true }, where: { phase } },
 			workSessions: {
+				orderBy: { createdAt: "asc" },
 				select: {
+					content: true,
+					createdAt: true,
+					effectiveDate: true,
+					hoursClaimed: true,
 					timelapses: { select: { externalId: true, objectKey: true, playbackUrl: true, provider: true } },
+					title: true,
 				},
 				where: { deletedAt: null, phase },
 			},
@@ -121,11 +124,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const user = await prisma.user.findUniqueOrThrow({ where: { id: project.userId } })
 	const pii = decryptUserPII(user)
 
-	const def = getThemeDef(project.theme)
-	const week = phase === Phase.DESIGN ? def.designWeek : def.buildWeek
+	const week = scheduledWeekFor(project.theme, phase)
 	const settings = await getProgramSettings()
-	const weekStart = new Date(settings.eventStartDate.getTime() + (week - 1) * 7 * 86_400_000)
-	const weekEnd = new Date(weekStart.getTime() + 6 * 86_400_000)
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
 	const bomTotal = bomTotalUsd(project.bomItems, project.bomTaxShippingUsd)
@@ -145,21 +145,24 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		playableUrl = publicUrlFor(demo?.objectKey ?? null) ?? playableUrl
 	}
 
-	const lapseLinks = project.workSessions
-		.flatMap(s => s.timelapses)
-		.map(t =>
-			t.provider === "lapse" && t.externalId
-				? lapseTimelapseUrl(t.externalId)
-				: (t.playbackUrl ?? publicUrlFor(t.objectKey)),
-		)
-		.filter((u): u is string => !!u)
-
-	const hackatime = project.hackatimeLinks.map(l => `${l.hackatimeProject} (${ymd(weekStart)} to ${ymd(weekEnd)})`)
+	const lapseLinks = timelapseLinks(project.workSessions.flatMap(s => s.timelapses))
 
 	const [firstName, ...rest] = (user.name ?? "").trim().split(/\s+/)
 	const tier = project.tier ?? project.requestedTier
 	const journalUrl = await findRepoFile(project.githubRepo, /(^|\/)journal\.md$/i)
 	const cover = publicUrlFor(project.coverImageKey)
+
+	const justification = justificationValues(
+		{
+			bomItems: project.bomItems,
+			description: project.description,
+			hackatimeProjects: project.hackatimeLinks.map(l => l.hackatimeProject),
+			hackatimeUserId: user.hackatimeUserId,
+			lapseLinks,
+			workSessions: project.workSessions,
+		},
+		{ eventStart: settings.eventStartDate, phase, theme: project.theme },
+	)
 
 	const fields = toFields(YSWS_SUBMISSION.fields, {
 		codeUrl: project.githubRepo ?? "",
@@ -177,11 +180,10 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 			const ref = repoRefFromLink(project.githubRepo)
 			return ref?.forge.id === "github" ? ref.ownerPath : ""
 		})(),
-		hackatimeId: user.hackatimeUserId ?? "",
-		hackatimeProjects: hackatime.join(", "),
+		// The `Justification - …` columns, spread rather than listed: a column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification).
+		...justification,
 		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
 		journalUrl: journalUrl ?? "",
-		lapseLinks: lapseLinks.join(", "),
 		playableUrl,
 		projectName: project.title,
 		projectWeek: projectWeekLabel(week) ?? undefined,
@@ -210,7 +212,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
  *
  * An advisory xact lock releases with the transaction. The work inside is HTTP, so the transaction gets a generous timeout rather than the default 5 seconds, which would release the lock in the middle of Airtable's own retry backoff.
  */
-async function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
+function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
 	return prisma.$transaction(
 		async tx => {
 			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ysws:${themeProjectId}:${phase}`}, 0))`
@@ -328,7 +330,7 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 	})
 
 	const out: { themeProjectId: string; phase: Phase }[] = []
-	for (const p of pending) {
+	for (const p of pending)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const status = phase === Phase.DESIGN ? p.designStatus : p.buildStatus
 			if (status !== PhaseStatus.in_review) continue
@@ -345,6 +347,6 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 			})
 			if (!written) out.push({ phase, themeProjectId: p.id })
 		}
-	}
+
 	return out
 }

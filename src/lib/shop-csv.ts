@@ -73,9 +73,8 @@ function records(text: string): { line: number; fields: string[] }[] {
 			if (c === '"' && src[i + 1] === '"') {
 				field += '"'
 				i += 1
-			} else if (c === '"') {
-				quoted = false
-			} else if (c === "\r" && src[i + 1] === "\n") {
+			} else if (c === '"') quoted = false
+			else if (c === "\r" && src[i + 1] === "\n") {
 				// A Windows line break inside a cell is still one break.
 			} else {
 				if (c === "\n") line += 1
@@ -115,7 +114,7 @@ function bool(raw: string): boolean | undefined | "bad" {
 
 /** A number as a spreadsheet writes it: `$1,250.00` is 1250. */
 function num(raw: string): number {
-	return Number(raw.trim().replace(/[$,\s]/g, ""))
+	return Number(raw.trim().replaceAll(/[$,\s]/g, ""))
 }
 
 /**
@@ -133,26 +132,24 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 				h
 					.trim()
 					.toLowerCase()
-					.replace(/[^a-z]/g, "")
+					.replaceAll(/[^a-z]/g, "")
 			],
 	)
-	for (const [i, h] of head.fields.entries()) {
-		if (!columns[i] && h.trim() !== "") {
+	for (const [i, h] of head.fields.entries())
+		if (!columns[i] && h.trim() !== "")
 			problems.push({ line: 1, message: `Unknown column "${h.trim()}". Columns are: ${SHOP_CSV_COLUMNS.join(", ")}.` })
-		}
-	}
+
 	const missing = REQUIRED.filter(c => !columns.includes(c))
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
 	if (problems.length > 0) return { items: [], problems }
 
 	if (rows.length === 0) return { items: [], problems: [{ line: 0, message: "The file has a header but no items." }] }
-	if (rows.length > SHOP_CSV_MAX_ROWS) {
+	if (rows.length > SHOP_CSV_MAX_ROWS)
 		return {
 			items: [],
 			problems: [{ line: 0, message: `At most ${SHOP_CSV_MAX_ROWS} items per import; this file has ${rows.length}.` }],
 		}
-	}
 
 	const items: ShopCsvItem[] = []
 	const seen = new Map<string, number>()
@@ -160,7 +157,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 	for (const row of rows) {
 		const cell = (c: Column) => {
 			const i = columns.indexOf(c)
-			return i < 0 ? "" : (row.fields[i] ?? "")
+			return i === -1 ? "" : (row.fields[i] ?? "")
 		}
 		const say = (message: string) => problems.push({ line: row.line, message })
 
@@ -171,7 +168,8 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 		}
 
 		const category = cell("category").trim()
-		const categoryValue = category === "" ? undefined : CATEGORY_ALIASES[category.toUpperCase().replace(/[\s-]+/g, "_")]
+		const categoryValue =
+			category === "" ? undefined : CATEGORY_ALIASES[category.toUpperCase().replaceAll(/[\s-]+/g, "_")]
 		if (category !== "" && !categoryValue)
 			say(`Category "${category}" is not one of: upgrade, consumable, misc, printer.`)
 

@@ -69,11 +69,10 @@ export function proxy(request: NextRequest): NextResponse | undefined {
 		// Fail closed. An enabled gate with missing credentials used to fall
 		// through and serve the site, which is the exact opposite of what the
 		// operator who flipped the flag asked for.
-		if (!expectedUser || !expectedPass) {
+		if (!expectedUser || !expectedPass)
 			return new NextResponse("Basic auth is enabled but BASICAUTH_USERNAME/BASICAUTH_PASSWORD are not set", {
 				status: 503,
 			})
-		}
 
 		const header = request.headers.get("authorization") ?? ""
 		const [scheme, encoded] = header.split(" ")
@@ -108,11 +107,10 @@ export function proxy(request: NextRequest): NextResponse | undefined {
 	 * `(site)` with its own root layout and stylesheet, the trail in `(app)`
 	 * with the platform's – so this is what joins them.
 	 */
-	if (request.nextUrl.pathname === "/" && looksSignedIn(request)) {
+	if (request.nextUrl.pathname === "/" && looksSignedIn(request))
 		// Via the public origin, not `nextUrl.clone()`: behind the ingress the
 		// request URL carries the pod's own host (0.0.0.0). See lib/public-origin.
 		return securityHeaders(publicRedirect(request, `${PLATFORM_HOME}${request.nextUrl.search}`))
-	}
 
 	return securityHeaders(NextResponse.next())
 }

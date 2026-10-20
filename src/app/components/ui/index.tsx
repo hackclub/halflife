@@ -131,13 +131,10 @@ export function Avatar({
 	alt = "",
 }: Readonly<{ src?: string | null; large?: boolean; alt?: string }>) {
 	const className = `hl-avatar${large ? " hl-avatar--lg" : ""}`
-	if (src) {
-		// eslint-disable-next-line @next/next/no-img-element
-		return <img alt={alt} className={className} src={src} />
-	}
+	if (src) return <img alt={alt} className={className} src={src} />
+
 	return (
 		<span aria-label={alt || "No picture set"} className={`${className} hl-avatar--fallback`} role="img">
-			{/* eslint-disable-next-line @next/next/no-img-element */}
 			<img alt="" src="/brand/gato/schematic.png" />
 		</span>
 	)
@@ -209,5 +206,5 @@ export function statusTone(status: string): BadgeTone {
 }
 
 export function statusLabel(status: string): string {
-	return status.replace(/_/g, " ")
+	return status.replaceAll("_", " ")
 }

@@ -141,7 +141,7 @@ function addressFrom(
 ): HcaAddress | null {
 	const list = Array.isArray(me?.addresses) ? (me.addresses as { [_: string]: unknown }[]) : []
 	const a = list.find(x => x?.primary === true) ?? list[0]
-	if (a) {
+	if (a)
 		return {
 			city: str(a.city),
 			country: str(a.country),
@@ -150,7 +150,7 @@ function addressFrom(
 			state: str(a.state),
 			zip: str(a.postal_code),
 		}
-	}
+
 	// The standard OIDC claim, when the `address` scope puts it there instead.
 	const o = userinfo?.address as { [_: string]: unknown } | undefined
 	if (o && typeof o === "object") {
@@ -268,11 +268,11 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
 			where: { id: userId },
 		})
 		// Apart, because slackId is unique: a clash with another row must not cost this user their verification status.
-		if (identity.slackId) {
+		if (identity.slackId)
 			await prisma.user
 				.update({ data: { slackId: identity.slackId }, where: { id: userId } })
 				.catch(err => console.warn(`[hca] slack id for ${userId} not stored:`, err))
-		}
+
 		return identity.verificationStatus
 	} catch (err) {
 		console.warn(`[hca] profile sync for ${userId} failed:`, err)

@@ -34,7 +34,7 @@ export default function SignupCounter({ className = "", style }: { className?: s
 			}
 		}
 
-		read()
+		void read()
 		const timer = setInterval(() => read(), REFRESH_MS)
 		return () => {
 			live = false

@@ -5,7 +5,7 @@
  * stylesheet loads and there is no design system to lean on – the button carries
  * its own cursor, hover and press here.
  */
-export default function GlobalError({ reset }: Readonly<{ error: Error; reset: () => void }>) {
+export default function GlobalError({ reset }: Readonly<{ error: Error; reset(): void }>) {
 	return (
 		<html lang="en">
 			<head>

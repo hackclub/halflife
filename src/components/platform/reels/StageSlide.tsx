@@ -19,7 +19,7 @@ const HEART_SVG =
 	'<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="M12 21s-8.6-5-8.6-10.6A4.8 4.8 0 0 1 12 7.8a4.8 4.8 0 0 1 8.6 2.6C20.6 16 12 21 12 21Z" fill="currentColor" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/></svg>'
 
 export interface SlideHandle {
-	toggle: () => void
+	toggle(): void
 }
 
 /**
@@ -49,15 +49,15 @@ export function StageSlide({
 	rate: number
 	autoScroll: boolean
 	/** The browser refused sound; the slide went on muted. */
-	onAutoMuted: () => void
-	onToggleMute: () => void
-	onCycleRate: () => void
-	onToggleAutoScroll: () => void
+	onAutoMuted(): void
+	onToggleMute(): void
+	onCycleRate(): void
+	onToggleAutoScroll(): void
 	/** Reached the end with auto scroll on. */
-	onEnded: () => void
-	onPatch: (id: string, next: Partial<FeedItem>) => void
+	onEnded(): void
+	onPatch(id: string, next: Partial<FeedItem>): void
 	/** Hands the page this slide's controls while it is the current one. */
-	register: (handle: SlideHandle | null) => void
+	register(handle: SlideHandle | null): void
 }) {
 	const video = useRef<HTMLVideoElement>(null)
 	const fill = useRef<HTMLDivElement>(null)
@@ -94,7 +94,7 @@ export function StageSlide({
 		if (prefersStill()) return
 		el.currentTime = 0
 		let cancelled = false
-		playExclusive(el).then(async ok => {
+		void playExclusive(el).then(async ok => {
 			if (ok || cancelled || el.muted) return
 			// Sound before the reader has touched the page is the browser's to refuse, and it does. Muted playback it always allows, so the reel plays silently and the page offers the sound back.
 			el.muted = true
@@ -122,7 +122,7 @@ export function StageSlide({
 	const toggle = useCallback(() => {
 		const el = video.current
 		if (!el || !reel.videoUrl) return
-		if (el.paused) playExclusive(el)
+		if (el.paused) void playExclusive(el)
 		else el.pause()
 	}, [reel.videoUrl])
 
@@ -155,7 +155,7 @@ export function StageSlide({
 		for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i)
 		if (watched < 1) return
 		counted.current = true
-		fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
+		void fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
 	}
 
 	/** The heart that says a double tap landed, where it landed. */
@@ -169,7 +169,7 @@ export function StageSlide({
 		heart.className = "absolute size-24 text-coral drop-shadow-[0_6px_12px_rgb(28_26_89/0.35)]"
 		heart.style.left = `${clientX - box.left}px`
 		heart.style.top = `${clientY - box.top}px`
-		host.appendChild(heart)
+		host.append(heart)
 		const at = (lift: number, scale: number) =>
 			`translate(-50%, calc(-50% - ${lift}px)) rotate(${tilt}deg) scale(${scale})`
 		heart
@@ -447,7 +447,7 @@ function RoundControl({
 	children,
 }: {
 	label: string
-	onClick: () => void
+	onClick(): void
 	disabled?: boolean
 	pressed?: boolean
 	children: React.ReactNode

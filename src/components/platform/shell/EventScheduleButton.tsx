@@ -36,7 +36,7 @@ export function EventScheduleButton({
 	const [viewerZone, setViewerZone] = useState(timeZone)
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- the browser's clock and zone; the server's are different ones
+		// the browser's clock and zone; the server's are different ones
 		setNow(new Date())
 		setViewerZone(Intl.DateTimeFormat().resolvedOptions().timeZone ?? timeZone)
 		const timer = setInterval(() => setNow(new Date()), 1000)
@@ -89,7 +89,7 @@ export function EventScheduleButton({
 						"—"
 					) : now === null ? (
 						<>
-							{"--:--"}
+							--:--
 							<span className="hidden sm:inline">:--</span>
 						</>
 					) : live ? (

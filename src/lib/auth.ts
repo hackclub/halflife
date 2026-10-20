@@ -30,7 +30,7 @@ const gitlabScopes = [...FORGES.gitlab.scopes]
  * The email a link-only provider reports: unique per identity, and on the reserved .invalid TLD, so it can never equal a real user's address. See `trustedProviders` for why that matters.
  */
 function linkOnlyEmail(provider: "hackatime" | "lapse" | "github" | "gitlab", id: string): string {
-	return `${provider}-${id.replace(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
+	return `${provider}-${id.replaceAll(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
 }
 
 /**
@@ -100,23 +100,23 @@ export const auth = betterAuth({
 			create: {
 				after: async account => {
 					// Denormalise the Hackatime id onto User so hour lookups are one query.
-					if (account.providerId === "hackatime") {
+					if (account.providerId === "hackatime")
 						await prisma.user
 							.update({
 								data: { hackatimeUserId: account.accountId },
 								where: { id: account.userId },
 							})
 							.catch(err => console.error("[auth] hackatime id copy failed:", err))
-					}
 				},
 			},
 		},
 		session: {
 			create: {
 				// Every sign-in re-reads the HCA profile, so a status that changed since the last one – most often "pending" becoming "verified" – is current. Not awaited: signing in must not wait on, or fail with, HCA.
-				after: async session => {
-					syncHcaProfile(session.userId)
-					markLogin(session.userId)
+				after: session => {
+					void syncHcaProfile(session.userId)
+					void markLogin(session.userId)
+					return Promise.resolve()
 				},
 			},
 		},
@@ -128,11 +128,10 @@ export const auth = betterAuth({
 					await prisma.user.update({ data: { joinedProgramAt: new Date() }, where: { id: user.id } }).catch(() => {})
 
 					// Buffered, never a synchronous Airtable call: a signup must not fail because a third party is rate-limiting us.
-					if (user.email) {
+					if (user.email)
 						await bufferRsvpForUser(user.id, user.email, user.name ?? null).catch(err =>
 							console.error("[auth] bufferRsvpForUser failed:", err),
 						)
-					}
 
 					// The only way to get a first admin into a fresh database without shell access to production.
 					//
@@ -141,7 +140,7 @@ export const auth = betterAuth({
 						.split(",")
 						.map(s => s.trim().toLowerCase())
 						.filter(Boolean)
-					if (user.emailVerified && user.email && superadmins.includes(user.email.toLowerCase())) {
+					if (user.emailVerified && user.email && superadmins.includes(user.email.toLowerCase()))
 						await prisma.userRole
 							.upsert({
 								create: { grantedBy: "SUPERADMIN_EMAILS", role: Role.ADMIN, userId: user.id },
@@ -149,7 +148,6 @@ export const auth = betterAuth({
 								where: { userId_role: { role: Role.ADMIN, userId: user.id } },
 							})
 							.catch(err => console.error("[auth] superadmin grant failed:", err))
-					}
 				},
 			},
 		},

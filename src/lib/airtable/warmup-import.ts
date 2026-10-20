@@ -81,7 +81,7 @@ function readNumber(record: AirtableRecord, field: FieldDef): number | null {
 	const value = rawField(record, field)
 	if (typeof value === "number" && Number.isFinite(value)) return value
 	if (typeof value === "string") {
-		const parsed = Number(value.replace(/[$,\s]/g, ""))
+		const parsed = Number(value.replaceAll(/[$,\s]/g, ""))
 		return Number.isFinite(parsed) ? parsed : null
 	}
 	return null
@@ -90,10 +90,10 @@ function readNumber(record: AirtableRecord, field: FieldDef): number | null {
 function readAttachmentUrl(record: AirtableRecord, field: FieldDef): string | null {
 	const value = rawField(record, field)
 	if (!Array.isArray(value)) return null
-	for (const entry of value) {
+	for (const entry of value as unknown[])
 		if (entry && typeof entry === "object" && "url" in entry && typeof entry.url === "string" && entry.url)
 			return entry.url
-	}
+
 	return null
 }
 
@@ -126,7 +126,7 @@ function phaseForStage(stage: string | null): Phase {
 function tierForRequestedFunding(usd: number | null): number {
 	if (usd === null || usd <= 0) return TIERS[0].id
 	for (const tier of TIERS) if (usd <= tier.grantUsd) return tier.id
-	return TIERS[TIERS.length - 1]?.id ?? 3
+	return TIERS.at(-1)?.id ?? 3
 }
 
 interface ParsedWarmupRow {
@@ -294,7 +294,7 @@ function encryptedPiiFields(row: ParsedWarmupRow): Partial<Prisma.UserCreateInpu
  *
  * The advisory lock is keyed on the email, so two rows for the same maker, or an admin double-clicking the button, serialize instead of racing each other into a duplicate account. Every row that gets here is a project of its own: the form may have been filled in more than once, and warm-up projects deliberately do not hold a unique slot. Idempotency per Airtable row is re-checked under that lock, because the caller's "not imported yet" read happened before the transaction and a second run can hold the same snapshot. Everything after the transaction – the cover copy and the Ari send – is external and idempotent enough not to belong inside it.
  */
-async function importRow(
+function importRow(
 	record: AirtableRecord,
 	row: ParsedWarmupRow,
 	actor: ImportActor,
@@ -308,7 +308,7 @@ async function importRow(
 		row.journalUrl ? `Journal: ${row.journalUrl}` : null,
 		row.playableUrl ? `Playable: ${row.playableUrl}` : null,
 		row.lapseLinks ? `Timelapse: ${row.lapseLinks}` : null,
-	].filter((part): part is string => !!part)
+	].filter((part): part is string => Boolean(part))
 
 	return prisma.$transaction(
 		async tx => {
@@ -319,14 +319,13 @@ async function importRow(
 				select: { targetId: true },
 				where: { action: IMPORT_ACTION, metadata: { equals: record.id, path: ["airtableRecordId"] } },
 			})
-			if (raced?.targetId) {
+			if (raced?.targetId)
 				return {
 					reason: "another import run filed this row first",
 					status: "skipped" as const,
 					themeProjectId: raced.targetId,
 					userId: null,
 				}
-			}
 
 			let user = await tx.user.findFirst({
 				select: { id: true },
@@ -372,7 +371,7 @@ async function importRow(
 				select: { id: true },
 			})
 
-			if (journalParts.length > 0 || row.hours !== null) {
+			if (journalParts.length > 0 || row.hours !== null)
 				await tx.workSession.create({
 					data: {
 						content: journalParts.length > 0 ? journalParts.join("\n\n") : null,
@@ -386,7 +385,6 @@ async function importRow(
 						weekNumber: 0,
 					},
 				})
-			}
 
 			await tx.phaseSubmission.create({
 				data: {
@@ -512,9 +510,8 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 			if (result.status === "imported") {
 				if (parsed.row.screenshotUrl) {
 					const key = await rehostScreenshot(result.userId, parsed.row.screenshotUrl)
-					if (key) {
+					if (key)
 						await prisma.themeProject.update({ data: { coverImageKey: key }, where: { id: result.themeProjectId } })
-					}
 				}
 				outcome.ari = await sendToAri(result.themeProjectId, parsed.row.phase, actor)
 			}

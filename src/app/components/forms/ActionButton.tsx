@@ -25,7 +25,7 @@ export function ActionButton({
 	variant?: "default" | "primary" | "danger"
 	confirm?: string
 	disabled?: boolean
-	onDone?: () => void
+	onDone?(): void
 	/** Ask for a reason before sending; the text is sent as `{ reason }`. */
 	reasonPrompt?: string
 }>) {

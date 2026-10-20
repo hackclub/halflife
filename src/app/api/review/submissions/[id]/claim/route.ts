@@ -14,13 +14,12 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 	const { id } = await params
 
 	const result = await claimSubmission(id, gate.user.id)
-	if (!result.ok) {
+	if (!result.ok)
 		return fail(
 			"CLAIMED_BY_OTHER",
 			`${result.heldByName ?? "Another reviewer"} is reviewing this until ${result.expiresAt.toISOString()}`,
 			{ expiresAt: result.expiresAt, heldBy: result.heldBy },
 		)
-	}
 
 	await logAudit({
 		action: AuditAction.REVIEW_CLAIM,

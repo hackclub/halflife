@@ -26,27 +26,26 @@ export const POST = withRoute(async (req: Request) => {
 	if (parsed.error) return parsed.error
 
 	const { items, problems } = parseShopCsv(parsed.data.csv)
-	if (problems.length > 0) {
+	if (problems.length > 0)
 		return fail("VALIDATION_FAILED", "Nothing was imported. Fix these and try again.", { problems })
-	}
 
 	const taken = await prisma.shopItem.findMany({
 		select: { id: true },
 		where: { id: { in: items.map(i => i.id) } },
 	})
-	if (taken.length > 0) {
+	if (taken.length > 0)
 		return fail("CONFLICT", "Nothing was imported. These slugs already exist.", {
 			problems: taken.map(t => ({ line: 0, message: `Slug "${t.id}" already exists. Edit it from its own page.` })),
 		})
-	}
 
-	const data = items.map(item => ({
-		...item,
-		costUsd: dollars(item.costUsd ?? null),
-		description: sanitize(item.description),
-		imageUrl: item.imageUrl ?? null,
-		name: sanitize(item.name),
-	}))
+	const data = items.map(item =>
+		Object.assign({}, item, {
+			costUsd: dollars(item.costUsd ?? null),
+			description: sanitize(item.description),
+			imageUrl: item.imageUrl ?? null,
+			name: sanitize(item.name),
+		}),
+	)
 	// createMany is one statement, so a slug added in the meantime fails the whole batch rather than leaving half of it behind.
 	await prisma.shopItem.createMany({ data })
 

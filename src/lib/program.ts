@@ -115,18 +115,18 @@ export async function assertWeekStarted(week: number): Promise<void> {
 	if (week < 1) return
 	const settings = await getProgramSettings()
 	const opensAt = weekOpensAt(settings, week)
-	if (new Date() < opensAt) {
+	if (new Date() < opensAt)
 		throw new HttpError(
 			"WEEK_NOT_STARTED",
 			`Week ${week} opens on ${formatProgramDate(opensAt, settings.programTimezone)}.`,
 		)
-	}
 }
 
 /** Whether `timeZone` is an IANA name this runtime knows, e.g. "Asia/Kolkata". */
 export function isTimeZone(timeZone: string): boolean {
 	try {
-		new Intl.DateTimeFormat("en-US", { timeZone })
+		// Formatted to prove the zone works: an unknown one is a RangeError from the formatter, and that is what says the name is not one this runtime knows.
+		new Intl.DateTimeFormat("en-US", { timeZone }).format()
 		return true
 	} catch {
 		return false
@@ -248,30 +248,30 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 
 	const globallyOpen = settings.submissionsOpen && (!settings.submissionsCloseAt || settings.submissionsCloseAt > now)
 
-	if (globallyOpen) {
+	if (globallyOpen)
 		return {
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: null,
 			open: true,
 			reason: "OPEN",
 		}
-	}
-	if (userExt && userExt > now) {
+
+	if (userExt && userExt > now)
 		return {
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: userExt,
 			open: true,
 			reason: "USER_EXTENSION",
 		}
-	}
-	if (projectExt && projectExt > now) {
+
+	if (projectExt && projectExt > now)
 		return {
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: projectExt,
 			open: true,
 			reason: "PROJECT_EXTENSION",
 		}
-	}
+
 	return {
 		closesAt: settings.submissionsCloseAt,
 		extensionUntil: null,
@@ -301,12 +301,9 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 	const closesAt = settings.shopClosesAt
 	const beforeClose = !closesAt || closesAt > now
 
-	if (settings.shopOpen && beforeClose) {
-		return { closesAt, graceUntil: null, open: true, reason: "OPEN" }
-	}
-	if (!settings.shopOpen) {
-		return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
-	}
+	if (settings.shopOpen && beforeClose) return { closesAt, graceUntil: null, open: true, reason: "OPEN" }
+
+	if (!settings.shopOpen) return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
 
 	const [awaitingReview, lastReview] = await Promise.all([
 		prisma.themeProject.count({
@@ -319,19 +316,15 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 		}),
 	])
 
-	if (awaitingReview > 0) {
-		return { closesAt, graceUntil: null, open: true, reason: "PENDING_REVIEW" }
-	}
+	if (awaitingReview > 0) return { closesAt, graceUntil: null, open: true, reason: "PENDING_REVIEW" }
 
 	const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
-		.filter((d): d is Date => !!d)
-		.sort((a, b) => b.getTime() - a.getTime())[0]
+		.filter((d): d is Date => Boolean(d))
+		.toSorted((a, b) => b.getTime() - a.getTime())[0]
 
 	if (reviewedAt) {
 		const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)
-		if (graceUntil > now) {
-			return { closesAt, graceUntil, open: true, reason: "GRACE_PERIOD" }
-		}
+		if (graceUntil > now) return { closesAt, graceUntil, open: true, reason: "GRACE_PERIOD" }
 	}
 	return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
 }

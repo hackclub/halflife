@@ -35,11 +35,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const { action, phase, reason } = parsed.data
 
 	const note = sanitize(reason)
-	if (action === "unapprove") {
+	if (action === "unapprove")
 		await unapprovePhase(id, phase, gate.user.id, gate.user.email, note, { grantExtension: true })
-	} else {
-		await reopenPhase(id, phase, gate.user.id, gate.user.email, note, { grantExtension: true })
-	}
+	else await reopenPhase(id, phase, gate.user.id, gate.user.email, note, { grantExtension: true })
 
 	// After the response: the reversal has already committed, and a Slack or Airtable outage must not fail an admin's action.
 	after(async () => {

@@ -17,6 +17,7 @@ import {
 	Theme,
 } from "@/app/generated/prisma/enums"
 import { isActiveDay } from "@/lib/analytics"
+import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
 import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
@@ -80,9 +81,11 @@ export async function listUsers(
 	const hasMore = rows.length > opts.limit
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
 	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map(row =>
-		includePii ? row : { ...row, email: "", fraudFlagged: false, slackId: null, verificationStatus: null },
+		includePii
+			? row
+			: Object.assign({}, row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
 	)
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -171,7 +174,7 @@ export async function listProjects(
 	})
 	const hasMore = rows.length > opts.limit
 	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -305,7 +308,7 @@ export async function listOrders(opts: {
 	})
 	const hasMore = rows.length > opts.limit
 	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -411,18 +414,17 @@ export async function listFulfillmentOrders(
 	})
 	const hasMore = rows.length > opts.limit
 	const page = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = page[page.length - 1]
+	const last = page.at(-1)
 
 	const items = page.map(({ shopItem, user, unitCostUsd, ...order }) => {
 		// Orders from before the item had a cost fall back to today's.
 		const unit = unitCostUsd ?? shopItem.costUsd
-		return {
-			...order,
+		return Object.assign(order, {
 			country: safeDecrypt(user.encryptedAddressCountry),
 			fulfillmentStage: fulfillmentStageOf(order),
 			totalUsd: unit === null ? null : unit * order.quantity,
 			user: { id: user.id, name: displayName(user) },
-		}
+		})
 	})
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
@@ -450,7 +452,7 @@ export async function listAuditLog(opts: {
 	})
 	const hasMore = rows.length > opts.limit
 	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -484,10 +486,7 @@ export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]>
 		select: printerAwardSelect,
 		take: limit,
 	})
-	return rows.map(({ encryptedAddress, ...award }) => ({
-		...award,
-		addressOnFile: encryptedAddress !== "",
-	}))
+	return rows.map(({ encryptedAddress, ...award }) => Object.assign(award, { addressOnFile: encryptedAddress !== "" }))
 }
 
 /** Recent live reels, newest first, for the moderation panel. */
@@ -506,7 +505,7 @@ const moderatedPostSelect = {
 	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostSelect
 
-export async function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
+export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
 	return prisma.post.findMany({
 		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
 		select: moderatedPostSelect,
@@ -531,7 +530,7 @@ const moderatedCommentSelect = {
 	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostCommentSelect
 
-export async function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
+export function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
 	return prisma.postComment.findMany({
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		select: moderatedCommentSelect,
@@ -555,7 +554,7 @@ const publicReelSelect = {
 	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.PublicReelSelect
 
-export async function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
+export function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
 	return prisma.publicReel.findMany({
 		orderBy: [{ postedAt: "desc" }, { id: "desc" }],
 		select: publicReelSelect,
@@ -570,27 +569,41 @@ export async function getAdminCounters(): Promise<{
 	participants: number
 	shipped: number
 }> {
-	// A live hand-in: an open submission on a phase that is actually in review, on a project that still exists. The phase check matters on its own – counting every unresolved row also sweeps up submissions whose phase has moved on without the row resolving.
-	const liveHandIn: Prisma.PhaseSubmissionWhereInput = {
-		OR: [
-			{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-			{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-		],
-		resolvedAt: null,
-		themeProject: { deletedAt: null },
-	}
+	// The open hand-ins, each phase's newest only: an older unresolved row is a ship Ari no longer holds, and counting it would put a hand-in in the queue that no reviewer can open. The same rule as the reviewer-activity ring, so the two figures on the page cannot disagree.
+	const open = await prisma.phaseSubmission.findMany({
+		select: {
+			ariSubmissionId: true,
+			createdAt: true,
+			id: true,
+			phase: true,
+			themeProject: { select: { buildStatus: true, designStatus: true } },
+			themeProjectId: true,
+		},
+		where: { resolvedAt: null },
+	})
+	const ships = countAriShips(
+		open.map(submission => ({
+			ariSubmissionId: submission.ariSubmissionId,
+			createdAt: submission.createdAt,
+			id: submission.id,
+			phase: submission.phase,
+			phaseStatus:
+				submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
+			resolvedAt: null,
+			result: null,
+			themeProjectId: submission.themeProjectId,
+		})),
+	)
 
-	const [pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped] = await Promise.all([
-		// Sent, and Ari holds it. This is the number that answers "how much is in the review queue", and the only one comparable to Ari's own pending count.
-		//
-		// `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
-		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: { not: null } } }),
-		// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
-		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: null } }),
+	const [pendingOrders, participants, shipped] = await Promise.all([
 		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
 		prisma.user.count(),
 		prisma.printerAward.count({ where: { revokedAt: null } }),
 	])
+	// Sent, and Ari holds it: the figure comparable to Ari's own pending count. `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
+	const pendingReviews = ships.pending
+	// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
+	const pendingReviewsUnsent = ships.unreached
 	return { participants, pendingOrders, pendingReviews, pendingReviewsUnsent, shipped }
 }
 
@@ -740,12 +753,12 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		let count = 0
 		for (const f of flags) {
 			let ok = true
-			for (let k = 0; k <= n; k += 1) {
+			for (let k = 0; k <= n; k += 1)
 				if (!f[k]) {
 					ok = false
 					break
 				}
-			}
+
 			if (ok) count += 1
 		}
 		const prev = n === 0 ? total : (steps[n - 1]?.count ?? total)
@@ -837,7 +850,7 @@ export async function listContentReports(
 	})
 	const hasMore = rows.length > limit
 	const items = hasMore ? rows.slice(0, limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -1007,7 +1020,7 @@ export async function getAreaStats(): Promise<AreaStat[]> {
 		id,
 		label,
 		users: totals.get(id)?.users ?? 0,
-	})).sort((a, b) => rankLast(b.label, b.users) - rankLast(a.label, a.users))
+	})).toSorted((a, b) => rankLast(b.label, b.users) - rankLast(a.label, a.users))
 }
 
 /** Users and hours per country, from each account's timezone. Ranked by users. */
@@ -1017,7 +1030,7 @@ export async function getCountryStats(): Promise<CountryStat[]> {
 	return [...totals]
 		.filter(([, t]) => t.users > 0 || t.hours > 0)
 		.map(([country, t]) => ({ country, hours: round1(t.hours), users: t.users }))
-		.sort((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
+		.toSorted((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
 }
 
 export interface DayActivity {
@@ -1064,10 +1077,10 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
-	const days = [...byDay.keys()].sort()
+	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
 	const out: DayActivity[] = []
-	const [first, last] = [days[0] as string, days[days.length - 1] as string]
+	const [first, last] = [days[0] as string, days.at(-1) as string]
 	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
 		const day = new Date(at).toISOString().slice(0, 10)
 		const row = byDay.get(day)
@@ -1192,10 +1205,10 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
-	const days = [...byDay.keys()].sort()
+	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
 	const out: GoalDayActivity[] = []
-	const [first, last] = [days[0] as string, days[days.length - 1] as string]
+	const [first, last] = [days[0] as string, days.at(-1) as string]
 	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
 		const day = new Date(at).toISOString().slice(0, 10)
 		const goals = byDay.get(day)
@@ -1259,7 +1272,7 @@ export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 
 export async function getHoursDistribution(): Promise<HoursDistribution> {
 	const inputs = await loadRegionInputs()
 	const byUser = hoursByUser(inputs)
-	const perUser = [...byUser.hours.values()].filter(h => h > 0).sort((a, b) => a - b)
+	const perUser = [...byUser.hours.values()].filter(h => h > 0).toSorted((a, b) => a - b)
 
 	// One bucket per edge, so the trailing Infinity edge becomes the "160+" bar and catches the long tail.
 	const last = HOUR_EDGES.length - 1
@@ -1332,7 +1345,7 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 			starter: starterId !== null,
 			users,
 		}))
-		.sort((a, b) => b.users - a.users)
+		.toSorted((a, b) => b.users - a.users)
 }
 
 /** The four columns each week's cluster is split into. */
@@ -1413,9 +1426,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	})
 
 	const clusters = new Map<number, WeekProjectCluster>()
-	for (const slot of weekSlots()) {
-		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
-	}
+	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 
 	for (const project of projects) {
 		const column = projectColumn(project)
@@ -1430,7 +1441,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 		}
 	}
 
-	return [...clusters.values()].sort((a, b) => a.week - b.week)
+	return [...clusters.values()].toSorted((a, b) => a.week - b.week)
 }
 
 export interface WeekHoursCluster {
@@ -1499,9 +1510,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	})
 
 	const clusters = new Map<number, WeekHoursCluster>()
-	for (const slot of weekSlots()) {
-		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
-	}
+	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 
 	// Each maker's recordings, whatever project or phase they were attached to, so a link is measured against the ones that name its project even when they live on another week's project.
 	const recordingsByUser = new Map<string, RecordedWindow[]>()
@@ -1543,7 +1552,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		cluster.tier3 = round1(cluster.tier3)
 	}
 
-	return [...clusters.values()].sort((a, b) => a.week - b.week)
+	return [...clusters.values()].toSorted((a, b) => a.week - b.week)
 }
 
 export interface VerificationStat {
@@ -1569,7 +1578,7 @@ export async function getVerificationStats(): Promise<VerificationStat[]> {
 					: (VERIFICATION_STATUS_LABELS[row.verificationStatus] ?? row.verificationStatus),
 			users: row._count._all,
 		}))
-		.sort((a, b) => b.users - a.users)
+		.toSorted((a, b) => b.users - a.users)
 }
 
 /**
@@ -1604,7 +1613,7 @@ export interface ReviewerStats {
  *
  * Counted over live decisions only. A review an admin un-approved or Ari reverted is marked `invalidated`, and a row that no longer stands is not a decision the project still has – counting it would make the total only ever grow and leave it disagreeing with Ari after a revert. Only FINAL passes count: a FIRST-pass row is advisory and moves no status and no money (see the ReviewPass enum), so including it would credit a reviewer with a decision they did not make.
  *
- * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getAdminCounters`'s "awaiting review" remains the submission-level figure. Neither is meant to equal a total in Ari's own UI, which counts ships rather than projects, so a reader comparing the two is comparing two different questions. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
+ * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getProjectReviewStatuses` is the ship-level ring that mirrors Ari's own board, and `getAdminCounters`'s "awaiting review" is its pending slice. This figure is deliberately a different question, so it will not equal either of them. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
  *
  * "Today" is the program timezone's day, the same boundary the activity strip and streaks use, so a review that landed at 11pm New York counts the day the dashboard is on rather than the server's.
  *
@@ -1648,19 +1657,22 @@ export interface ProjectReviewStatusStat {
 }
 
 /**
- * The review board as Ari shows it: one row per ship, by the decision standing on it now.
+ * The review board as Ari shows it: one slice per ship Half Life sent, counted the way Ari counts its own.
  *
- * Ari counts ships, not projects – a (project, phase) hand-in – so this counts the latest submission per phase rather than reading the project's status columns. The columns answer a different question: they follow the phase's *current* step, so a design approved long ago reads as pending once its build is handed in, and a sent-back design reads as pending the moment it is resubmitted. That is why the old version showed everything as pending while Ari showed hundreds of standing decisions.
+ * Ari keeps a row per ship, not per project or per phase. A design sent back for changes and handed in again leaves the first ship on Ari's board as "changes" and adds a second as "pending"; the phase has one current ship but two decisions behind it. Counting only the newest submission per phase is what made this ring read hundreds of change requests short and a handful of rejections missing: those ships were real, and they are still in Ari's totals.
  *
- * Each phase contributes at most one slice, decided by its newest submission: an unresolved hand-in Ari holds is pending; a decided one reads from its live FINAL review, falling back to the submission's own recorded result. An un-approval invalidates the review without reopening the submission, so a decided submission with no live review left keeps its recorded result rather than vanishing. A hand-in Ari never received (`ariSubmissionId` null) is counted nowhere – it is not on Ari's board either, and the reviewer-activity panel already counts it apart.
+ * So every resolved submission that reached Ari contributes its decision, however many times its phase has since been resubmitted. Only the pending slice is per phase: a phase can have one open ship, and the newest submission decides whether that is the one Ari holds. That also keeps a stale row from a reverted or superseded ship out of the queue count. A hand-in Ari never received (`ariSubmissionId` null) is counted nowhere – it is not on Ari's board either, and the panel counts it apart.
+ *
+ * Deleted projects are included: Ari keeps their ships, and dropping them here would make the mirror disagree with the board it is meant to mirror. A project can only be deleted once neither phase is in review or approved, so this can only affect decided history.
  */
 export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
 	const submissions = await prisma.phaseSubmission.findMany({
-		// Newest first, so the first row seen for a phase is that phase's current ship.
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		select: {
 			ariDecision: true,
 			ariSubmissionId: true,
+			createdAt: true,
+			id: true,
 			phase: true,
 			resolvedAt: true,
 			resolvedResult: true,
@@ -1670,38 +1682,31 @@ export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusSta
 				take: 1,
 				where: { invalidated: false, pass: ReviewPass.FINAL },
 			},
+			themeProject: { select: { buildStatus: true, designStatus: true } },
 			themeProjectId: true,
 		},
-		where: { themeProject: { deletedAt: null } },
 	})
 
-	const latest = new Map<string, (typeof submissions)[number]>()
-	for (const submission of submissions) {
-		const key = `${submission.themeProjectId}:${submission.phase}`
-		if (!latest.has(key)) latest.set(key, submission)
-	}
-
-	let pending = 0
-	let needsChanges = 0
-	let rejected = 0
-	let approved = 0
-	for (const submission of latest.values()) {
-		if (submission.resolvedAt === null) {
-			if (submission.ariSubmissionId !== null) pending += 1
-			continue
-		}
-		const result = submission.reviews[0]?.result ?? submission.resolvedResult ?? ariToResult(submission.ariDecision)
-		if (result === ReviewResult.APPROVED) approved += 1
-		else if (result === ReviewResult.RETURNED) needsChanges += 1
-		else if (result === ReviewResult.REJECTED) rejected += 1
-		// A resolved submission with no recorded outcome at all is corrupt data, not a slice: counted nowhere rather than misfiled.
-	}
+	const counts = countAriShips(
+		submissions.map(submission => ({
+			ariSubmissionId: submission.ariSubmissionId,
+			createdAt: submission.createdAt,
+			id: submission.id,
+			phase: submission.phase,
+			phaseStatus:
+				submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
+			resolvedAt: submission.resolvedAt,
+			// The live review is the record of a decision; an un-approval invalidates it without reopening the submission, so the submission's own result is the fallback that keeps a decided ship on the board.
+			result: submission.reviews[0]?.result ?? submission.resolvedResult ?? ariToResult(submission.ariDecision),
+			themeProjectId: submission.themeProjectId,
+		})),
+	)
 
 	return [
-		{ label: "Approved", value: approved },
-		{ label: "Needs changes", value: needsChanges },
-		{ label: "Rejected", value: rejected },
-		{ label: "Pending", value: pending },
+		{ label: "Approved", value: counts.approved },
+		{ label: "Needs changes", value: counts.changes },
+		{ label: "Rejected", value: counts.rejected },
+		{ label: "Pending", value: counts.pending },
 	]
 }
 
@@ -2128,13 +2133,13 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const activityShare: ActivityShare = {
 		activities: [
 			...SANKEY_ACTIVITY.map(a => {
-				const users = reachedCount(a.key)
+				const reached = reachedCount(a.key)
 				return {
 					base: a.base,
 					key: a.key,
 					label: a.label,
-					share: finishers.length === 0 ? 0 : users / finishers.length,
-					users,
+					share: finishers.length === 0 ? 0 : reached / finishers.length,
+					users: reached,
 				}
 			}),
 			{
@@ -2144,7 +2149,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 				share: finishers.length === 0 ? 0 : reachedCount("none") / finishers.length,
 				users: reachedCount("none"),
 			},
-		].sort((a, b) => b.users - a.users),
+		].toSorted((a, b) => b.users - a.users),
 		total: finishers.length,
 	}
 
@@ -2162,7 +2167,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 					const [source, target] = key.split("\u0000")
 					return { fan: entry.fan, source: source as string, target: target as string, value: entry.value }
 				})
-				.filter(link => live.has(link.source) && live.has(link.target)),
+				.filter(edge => live.has(edge.source) && live.has(edge.target)),
 			nodes,
 			stages,
 			total: users.length,

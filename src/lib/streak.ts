@@ -51,11 +51,9 @@ export function streakFromDays(daysDesc: readonly string[]): StreakState {
 		const older = daysDesc[i]
 		if (!newer || !older) break
 
-		if (daysBetween(older, newer) <= STREAK_GRACE_DAYS + 1) {
-			run += 1
-		} else {
-			run = 1
-		}
+		if (daysBetween(older, newer) <= STREAK_GRACE_DAYS + 1) run += 1
+		else run = 1
+
 		if (run > longest) longest = run
 		// The current streak is the run that reaches the most recent day, so it stops growing as soon as the walk hits its first break.
 		if (run === i + 1) current = run
@@ -94,7 +92,7 @@ async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
 	for (const p of posts) days.add(effectiveDateFor(p.publishedAt ?? p.createdAt, programTimezone))
 
 	// YYYY-MM-DD sorts lexicographically, so sort-then-reverse is newest-first without parsing a single date.
-	return [...days].sort().reverse()
+	return [...days].toSorted().toReversed()
 }
 
 /**

@@ -3,7 +3,7 @@ import { markProjectCreated } from "@/lib/analytics"
 import { ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
-import { getOnboardingState, type OnboardingAnswer, submitStep } from "@/lib/onboarding"
+import { getOnboardingState, submitStep } from "@/lib/onboarding"
 import { toOnboardingView } from "@/lib/onboarding-view"
 import { assertWeekStarted } from "@/lib/program"
 import { enableRepoSync } from "@/lib/repo-sync"
@@ -28,8 +28,7 @@ export const POST = withRoute(async (req: Request) => {
 	// Get started is week 1's first checkpoint, so it waits for week 1 too. The intro and the tab tour do not: they are the browser's, and play for a new account whatever the date.
 	await assertWeekStarted(1)
 
-	// The schema's variants line up with OnboardingAnswer one for one; the cast is only because Zod infers the literal union separately from the type the state machine declares.
-	const result = await submitStep(gate.user.id, parsed.data as OnboardingAnswer)
+	const result = await submitStep(gate.user.id, parsed.data)
 
 	// The analytics stamp for a named project: after the response, since it is nothing the person is waiting on, and quiet about its own failures.
 	if (result.touchedProject) after(() => markProjectCreated(result.state.project.id, gate.user.id))

@@ -115,7 +115,7 @@ async function main() {
 
 	// Approving the remaining four themes should mint the printer award.
 	const others = [Theme.CAD, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER]
-	for (const theme of others) {
+	for (const theme of others)
 		await prisma.themeProject.create({
 			data: {
 				buildStatus: PhaseStatus.approved,
@@ -127,7 +127,7 @@ async function main() {
 				userId: participant.id,
 			},
 		})
-	}
+
 	const qualification = await getPrinterQualification(participant.id)
 	check("printer qualification", qualification.qualified, true)
 	check("themes shipped", qualification.shippedCount, 5)

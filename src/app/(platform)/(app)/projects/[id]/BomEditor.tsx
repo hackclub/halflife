@@ -28,6 +28,13 @@ interface ImportPreview {
 	skipped: { row: number; name: string; reason: string }[]
 }
 
+/** The BOM routes' success payload, plus the error envelope they share. */
+interface BomPayload {
+	error?: { code?: string; details?: { properties?: { [_: string]: unknown } }; message?: string }
+	items?: BomLine[]
+	taxShippingUsd?: number
+}
+
 interface Draft {
 	link: string
 	name: string
@@ -130,7 +137,7 @@ export function BomEditor({
 				headers: body ? { "content-type": "application/json" } : undefined,
 				method,
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				// The server's field check says which fields, not just "Invalid request": outline those and say it the way the form's own check does. This catches anything the form let through, like a tab still running an older copy of it.
 				const fields = Object.keys(payload?.error?.details?.properties ?? {}).filter(
@@ -139,12 +146,11 @@ export function BomEditor({
 				if (payload?.error?.code === "VALIDATION_FAILED" && fields.length > 0) {
 					setInvalid(new Set(fields))
 					setError(requiredMessage(fields))
-				} else {
-					setError(payload?.error?.message ?? "That did not save. Try again.")
-				}
+				} else setError(payload?.error?.message ?? "That did not save. Try again.")
+
 				return false
 			}
-			setItems(payload.items as BomLine[])
+			setItems(payload?.items as BomLine[])
 			router.refresh()
 			return true
 		} catch {
@@ -164,7 +170,7 @@ export function BomEditor({
 		if (link && !/^https?:\/\//i.test(link)) link = `https://${link}`
 		let linkOk = false
 		try {
-			linkOk = !!link && new URL(link).hostname.includes(".")
+			linkOk = Boolean(link) && new URL(link).hostname.includes(".")
 		} catch {
 			linkOk = false
 		}
@@ -191,13 +197,12 @@ export function BomEditor({
 			editing === "new"
 				? await send("POST", `/api/projects/${projectId}/bom`, body)
 				: await send("PATCH", `/api/projects/${projectId}/bom/${editing}`, body)
-		if (done) {
-			// Adding is usually several parts in a row, so the form stays open and the cursor goes back to the first field.
+		if (done)
 			if (editing === "new") {
+				// Adding is usually several parts in a row, so the form stays open and the cursor goes back to the first field.
 				setDraft(EMPTY)
 				nameInput.current?.focus()
 			} else setEditing(null)
-		}
 	}
 
 	async function remove(line: BomLine) {
@@ -218,12 +223,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setImportError(payload?.error?.message ?? "Could not read the repo. Try again.")
 				return
 			}
-			setPreview(payload as ImportPreview)
+			setPreview(payload as unknown as ImportPreview)
 		} catch {
 			setImportError("Could not reach the server. Try again.")
 		} finally {
@@ -240,12 +245,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setImportError(payload?.error?.message ?? "That did not save. Try again.")
 				return
 			}
-			setItems(payload.items as BomLine[])
+			setItems(payload?.items as BomLine[])
 			setImportOpen(false)
 			router.refresh()
 		} catch {
@@ -266,12 +271,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "PATCH",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setError(payload?.error?.message ?? "That did not save. Try again.")
 				return false
 			}
-			setTaxShipping(payload.taxShippingUsd)
+			setTaxShipping(payload?.taxShippingUsd ?? 0)
 			router.refresh()
 			return true
 		} catch {
@@ -290,13 +295,12 @@ export function BomEditor({
 		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
 			setDraft(d => ({ ...d, [key]: e.target.value }))
 			if (error) setError(null)
-			if (invalid.has(key)) {
+			if (invalid.has(key))
 				setInvalid(s => {
 					const next = new Set(s)
 					next.delete(key)
 					return next
 				})
-			}
 		},
 		required: true,
 		value: draft[key],
@@ -441,7 +445,7 @@ export function BomEditor({
 					}}
 					onSubmit={e => {
 						e.preventDefault()
-						save()
+						void save()
 					}}
 				>
 					<p className="text-[0.9rem] font-extrabold text-navy">
@@ -627,14 +631,14 @@ function ExtraRow({
 	value: number
 	locked: string | null
 	disabled: boolean
-	onSave: (value: number) => Promise<boolean>
+	onSave(value: number): Promise<boolean>
 }) {
 	const id = useId()
 	const [draft, setDraft] = useState(value ? value.toFixed(2) : "")
 	const [invalid, setInvalid] = useState(false)
 
 	async function commit() {
-		const n = draft.trim() === "" ? 0 : Number.parseFloat(draft)
+		const n = draft.trim() === "" ? 0 : Number(draft)
 		if (!Number.isFinite(n) || n < 0) {
 			setInvalid(true)
 			return

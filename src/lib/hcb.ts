@@ -59,10 +59,10 @@ async function accessToken(force = false): Promise<string> {
 	// Default an hour when HCB does not say; either way the token is now bounded rather than cached for the life of the process.
 	const lifetimeMs = (typeof data.expires_in === "number" && data.expires_in > 0 ? data.expires_in : 3600) * 1000
 	cachedToken = { expiresAt: Date.now() + lifetimeMs, token: data.access_token }
-	if (data.refresh_token && data.refresh_token !== refresh) {
+	if (data.refresh_token && data.refresh_token !== refresh)
 		// HCB rotates refresh tokens, and an env var cannot be rewritten. This token is used for the life of the process; persisting the new one (see docs) is what keeps the next process able to refresh.
 		console.warn("[hcb] refresh token rotated; persist the new value or the next refresh will fail")
-	}
+
 	return cachedToken.token
 }
 
@@ -73,9 +73,11 @@ async function hcbFetch(path: string, init: RequestInit & { timeoutMs?: number }
 	const { timeoutMs = 15_000, headers, ...rest } = init
 	for (let attempt = 0; ; attempt++) {
 		const token = await accessToken(attempt > 0)
+		const mergedHeaders = new Headers({ accept: "application/json", authorization: `Bearer ${token}` })
+		for (const [key, value] of new Headers(headers)) mergedHeaders.set(key, value)
 		const res = await fetch(`${base()}${path}`, {
 			...rest,
-			headers: { accept: "application/json", authorization: `Bearer ${token}`, ...headers },
+			headers: mergedHeaders,
 			signal: AbortSignal.timeout(timeoutMs),
 		})
 		if (res.status === 401 && attempt === 0 && !process.env.HCB_ACCESS_TOKEN) {

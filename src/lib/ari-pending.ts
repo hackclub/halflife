@@ -31,13 +31,13 @@ export function selectPendingShips(
 	}
 
 	const out: { themeProjectId: string; phase: Phase }[] = []
-	for (const project of projects) {
+	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (status !== PhaseStatus.in_review) continue
 			const submission = newest.get(`${project.id}:${phase}`)
 			if (submission && !submission.ariSubmissionId) out.push({ phase, themeProjectId: project.id })
 		}
-	}
+
 	return out
 }

@@ -79,12 +79,12 @@ async function main() {
 
 	// Warm the cached spans for every phase that just gained a window, so the review screen shows the deduplicated total rather than discovering the overlap at approval time.
 	const phases = new Map<string, { themeProjectId: string; phase: Phase }>()
-	for (const row of rows) {
+	for (const row of rows)
 		phases.set(`${row.workSession.themeProjectId}:${row.workSession.phase}`, {
 			phase: row.workSession.phase,
 			themeProjectId: row.workSession.themeProjectId,
 		})
-	}
+
 	for (const target of phases.values()) await refreshOverlapSpans(target.themeProjectId, target.phase)
 
 	console.log(

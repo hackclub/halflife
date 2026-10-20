@@ -68,7 +68,7 @@ export function imageSources(source: string): string[] {
  * Cut as Markdown rather than as a string: slicing through `![a](url)` or `**bold**` would leave a half-token that renders as literal syntax, so tokens are kept whole and the cut falls on a word boundary between them. Images cost nothing against the limit, but only the first one is kept – an excerpt that is mostly photographs is not an excerpt.
  */
 export function excerpt(source: string, limit: number): { text: string; cut: boolean } {
-	const text = source.replace(/\r\n/g, "\n")
+	const text = source.replaceAll("\r\n", "\n")
 	let used = 0
 	let images = 0
 	let last = 0
@@ -123,7 +123,7 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
  * Images are the evidence half of an entry and are counted by `countImages`; counting their markdown here too would let a pasted CDN URL – often a hundred characters on its own – write most of the minimum. So every image, alt text included, comes out before the length is taken: alt text is not prose, and leaving it in would only move the padding into the brackets.
  */
 export function proseLength(source: string): number {
-	return source.replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim().length
+	return source.replaceAll(/!\[[^\]]*\]\([^)]*\)/g, "").trim().length
 }
 
 /**
@@ -148,7 +148,7 @@ function inline(text: string, key: string): ReactNode[] {
 			const src = safeSrc(m[2])
 			out.push(
 				src ? (
-					// eslint-disable-next-line @next/next/no-img-element -- arbitrary remote source typed by the maker
+					// arbitrary remote source typed by the maker
 					<img
 						alt={m[1]}
 						className="my-1 block max-w-full rounded-xl border-2 border-line"
@@ -162,21 +162,20 @@ function inline(text: string, key: string): ReactNode[] {
 					</span>
 				),
 			)
-		} else if (m[3] !== undefined) {
+		} else if (m[3] !== undefined)
 			out.push(
 				<code className="rounded bg-violet-pale px-1 py-0.5 font-mono text-[0.88em] text-violet-deep" key={k}>
 					{m[3]}
 				</code>,
 			)
-		} else if (m[4] !== undefined || m[5] !== undefined) {
+		else if (m[4] !== undefined || m[5] !== undefined)
 			out.push(
 				<strong className="font-extrabold text-navy" key={k}>
 					{m[4] ?? m[5]}
 				</strong>,
 			)
-		} else if (m[6] !== undefined || m[7] !== undefined) {
-			out.push(<em key={k}>{m[6] ?? m[7]}</em>)
-		} else {
+		else if (m[6] !== undefined || m[7] !== undefined) out.push(<em key={k}>{m[6] ?? m[7]}</em>)
+		else {
 			const href = safeHref(m[9] ?? "")
 			out.push(
 				href ? (
@@ -203,7 +202,7 @@ function inline(text: string, key: string): ReactNode[] {
 const HEADING = ["text-[1.15rem]", "text-[1.05rem]", "text-[0.98rem]"]
 
 export function Markdown({ source, className }: { source: string; className?: string }) {
-	const lines = source.replace(/\r\n/g, "\n").split("\n")
+	const lines = source.replaceAll("\r\n", "\n").split("\n")
 	// Every loop below is already bounded by `lines.length`; this states that invariant in a form the compiler can use rather than asserting past it.
 	const at = (n: number): string => lines[n] ?? ""
 	const out: ReactNode[] = []

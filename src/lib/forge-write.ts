@@ -51,33 +51,69 @@ export interface ForgeCredentials {
 	login: string
 }
 
-export class ForgeWriteUnavailable extends Error {}
+export class ForgeWriteUnavailableError extends Error {
+	constructor(message: string) {
+		super(message)
+		this.name = "ForgeWriteUnavailableError"
+	}
+}
+
+/**
+ * A refresh already running for one account row.
+ *
+ * GitLab rotates the refresh token on every use and invalidates the old one, so two requests refreshing the same account cannot both succeed: the second presents a token the first just spent and is refused with `invalid_grant`, on a link that is perfectly healthy. That is not hypothetical here – a repo listing and a project sync can ask for one maker's token in the same second, and each app instance is another independent caller. Joining the in-flight call makes that one refresh with one answer.
+ */
+const refreshing = new Map<string, Promise<string | null>>()
+
+function refreshAccessToken(accountId: string, userId: string): Promise<string | null> {
+	const running = refreshing.get(accountId)
+	if (running) return running
+	const pending = (async () => {
+		try {
+			// Imported lazily: lib/auth reaches back into the database and its hooks, and importing it at module scope here would close a cycle.
+			const { auth } = await import("@/lib/auth")
+			const fresh = await auth.api.getAccessToken({ body: { accountId, userId } })
+			return fresh?.accessToken ?? null
+		} finally {
+			refreshing.delete(accountId)
+		}
+	})()
+	refreshing.set(accountId, pending)
+	return pending
+}
 
 /**
  * The token for one forge, refreshed when it has expired.
  *
  * Read through `auth.api.getAccessToken`, not straight from the account row. That distinction is the whole reason GitLab is safe to support: GitLab's OAuth access tokens expire after **two hours**, so a token read raw from the database is dead within one syncing session. better-auth's call refreshes it from the stored refresh token and writes the new one back, which is exactly what a two-hour lifetime needs and what GitHub never asked of us (GitHub tokens do not expire).
  *
- * Resolves null when the user has not linked this forge, or when the refresh fails (the refresh token was revoked) – both mean "offer the forge again".
+ * Only an expiring token is refreshed. GitHub has no refresh token and no expiry, so asking better-auth on every sync was a read of every account for an answer that never changed; GitLab is the one that needs it, and a refresh is shared per account rather than fired twice (`refreshAccessToken`).
+ *
+ * Resolves null when the user has not linked this forge. A refresh that fails keeps the stored token: a concurrent request may have just written a new one, which the re-read below picks up, and the call the caller makes next is what decides whether the old one is dead.
  */
 export async function forgeCredentials(userId: string, forge: Forge): Promise<ForgeCredentials | null> {
 	const account = await prisma.account.findFirst({
 		orderBy: { updatedAt: "desc" },
-		select: { accessToken: true, accountId: true, id: true },
+		select: { accessToken: true, accessTokenExpiresAt: true, accountId: true, id: true, refreshToken: true },
 		where: { providerId: forge.id, userId },
 	})
 	if (!account?.accessToken) return null
 
 	let accessToken = account.accessToken
-	try {
-		// Imported lazily: lib/auth reaches back into the database and its hooks, and importing it at module scope here would close a cycle.
-		const { auth } = await import("@/lib/auth")
-		const fresh = await auth.api.getAccessToken({ body: { accountId: account.id, userId } })
-		if (fresh?.accessToken) accessToken = fresh.accessToken
-	} catch (err) {
-		// A refresh that fails is not fatal on its own: the stored token may still be good (GitHub's never expire). The call below is what finds out.
-		console.warn(`[forge-write] token refresh for ${forge.id} failed:`, err)
-	}
+	// Matches better-auth's own five-second margin, so a token is refreshed exactly when `getAccessToken` would refresh it.
+	const expiring = account.accessTokenExpiresAt !== null && account.accessTokenExpiresAt.getTime() - Date.now() < 5_000
+	if (account.refreshToken && expiring)
+		try {
+			accessToken = (await refreshAccessToken(account.id, userId)) ?? accessToken
+		} catch (err) {
+			// The losing half of a refresh race is not a broken link: if another request refreshed and persisted while this one failed, its token is the good one.
+			const latest = await prisma.account.findUnique({ select: { accessToken: true }, where: { id: account.id } })
+			if (latest?.accessToken) accessToken = latest.accessToken
+			console.warn(
+				`[forge-write] token refresh for ${forge.id} failed for account ${account.id}; using the stored token:`,
+				err,
+			)
+		}
 
 	return { accessToken, forge, login: account.accountId }
 }
@@ -87,7 +123,7 @@ let inFlightCalls = 0
 const waiting: (() => void)[] = []
 
 async function slot(): Promise<() => void> {
-	if (inFlightCalls >= MAX_IN_FLIGHT) await new Promise<void>(go => waiting.push(go))
+	if (inFlightCalls >= MAX_IN_FLIGHT) await new Promise<void>(resolve => waiting.push(resolve))
 	inFlightCalls++
 	return () => {
 		inFlightCalls--
@@ -95,7 +131,7 @@ async function slot(): Promise<() => void> {
 	}
 }
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /**
  * How long an answer asks us to wait, in ms, when it is a rate limit that says so.
@@ -148,7 +184,7 @@ async function apiDetail(res: Response): Promise<string | null> {
 		// Not JSON: a proxy page or a plain-text error, where the text itself is the only detail there is.
 	}
 
-	message = message.replace(/\s+/g, " ").trim()
+	message = message.replaceAll(/\s+/g, " ").trim()
 	// An HTML page has no sentence to quote, and reading a regex tag out of one helps nobody.
 	if (!message || /<[a-z!/]/i.test(message)) return null
 	return message.length > 200 ? `${message.slice(0, 199)}…` : message
@@ -183,7 +219,7 @@ async function errorMessage(forge: Forge, res: Response): Promise<string> {
  * Read the answer and throw the maker-facing error for it. Typed `never`, so a call site reads as the end of its branch and the compiler agrees it cannot fall through to the `res.ok` path.
  */
 async function throwForgeError(forge: Forge, res: Response): Promise<never> {
-	throw new ForgeWriteUnavailable(await errorMessage(forge, res))
+	throw new ForgeWriteUnavailableError(await errorMessage(forge, res))
 }
 
 /**
@@ -207,6 +243,8 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 				}
 
 	const method = init.method ?? "GET"
+	const mergedHeaders = new Headers(headers)
+	for (const [key, value] of new Headers(init.headers)) mergedHeaders.set(key, value)
 	// What the maker is told if every attempt fails. A transport failure leaves this at the network wording; a named answer replaces it with the sentence for its status.
 	let why = `${forge.label} did not answer after several attempts; this is usually a temporary network or ${forge.label} problem, so try again.`
 
@@ -217,7 +255,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 			res = await fetch(url, {
 				...init,
 				cache: "no-store",
-				headers: { ...headers, ...(init.headers ?? {}) },
+				headers: mergedHeaders,
 				signal: AbortSignal.timeout(TIMEOUT_MS),
 			})
 		} catch (err) {
@@ -264,7 +302,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 		return res
 	}
 
-	throw new ForgeWriteUnavailable(why)
+	throw new ForgeWriteUnavailableError(why)
 }
 
 /** A repo the caller can push to, as the picker shows it. */
@@ -433,7 +471,7 @@ export interface WrittenFile {
  *
  * A file whose contents already match is left alone rather than rewritten, so the common case – a journal entry that changed nothing about BOM.csv, or a retried sync – produces no commit at all. Both implementations honour that, and both make the whole set land atomically or not at all.
  */
-export async function commitFiles(
+export function commitFiles(
 	creds: ForgeCredentials,
 	ref: RepoRef,
 	branch: string,
@@ -531,10 +569,9 @@ async function commitGitHub(
 		}),
 	)
 
-	if (entries.length === 0) {
+	if (entries.length === 0)
 		// Every file already held this content. No tree, no commit, no ref update.
-		return written.sort((a, b) => a.path.localeCompare(b.path))
-	}
+		return written.toSorted((a, b) => a.path.localeCompare(b.path))
 
 	const treeRes = await call(creds, `${base}/git/trees`, {
 		body: JSON.stringify({
@@ -566,7 +603,7 @@ async function commitGitHub(
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
 	if (!updateRes.ok) await throwForgeError(creds.forge, updateRes)
 
-	return written.sort((a, b) => a.path.localeCompare(b.path))
+	return written.toSorted((a, b) => a.path.localeCompare(b.path))
 }
 
 /**
@@ -717,7 +754,7 @@ async function commitGitLab(
 		}),
 	)
 
-	if (actions.length === 0) return written.sort((a, b) => a.path.localeCompare(b.path))
+	if (actions.length === 0) return written.toSorted((a, b) => a.path.localeCompare(b.path))
 
 	const commitRes = await call(creds, `projects/${project}/repository/commits`, {
 		body: JSON.stringify({ actions, branch, commit_message: message }),
@@ -731,5 +768,7 @@ async function commitGitLab(
 	const commit = (await commitRes.json()) as { id: string }
 
 	// GitLab's commit response carries the commit sha, not per-file shas, so the run history records that per file. It is what a maker would look up anyway.
-	return written.map(w => ({ ...w, sha: w.unchanged ? w.sha : commit.id })).sort((a, b) => a.path.localeCompare(b.path))
+	return written
+		.map(w => Object.assign({}, w, { sha: w.unchanged ? w.sha : commit.id }))
+		.toSorted((a, b) => a.path.localeCompare(b.path))
 }

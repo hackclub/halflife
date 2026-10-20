@@ -240,7 +240,7 @@ export function ReelViewer() {
 		const id = params.get("reel")
 		if (id) {
 			deepLink.current = { comments: params.get("comments") === "1", id }
-			// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
+			// reading the URL after mount
 			setResume({ id, leadIds: [] })
 			return
 		}
@@ -248,7 +248,7 @@ export function ReelViewer() {
 	}, [])
 
 	// Walk the feed down to the saved reel, a page at a time.
-	const { more, done, loading, error, items, leading } = feed
+	const { done, error, handleMore, items, leading, loading } = feed
 	useEffect(() => {
 		if (!resume || loading) return
 		// A link goes straight to its reel; the unseen-admin-reel rule below is for picking up where someone left off, not for following a card.
@@ -264,19 +264,18 @@ export function ReelViewer() {
 			setResume(null)
 		} else if (!unseenLead && !done && !error && resumePages.current < RESUME_MAX_PAGES) {
 			resumePages.current += 1
-			more()
-		} else {
-			// Deleted, hidden, or further back than it is worth walking: the top.
-			setResume(null)
+			handleMore()
 		}
-	}, [resume, loading, items, leading, done, error, more])
+		// Deleted, hidden, or further back than it is worth walking: the top.
+		else setResume(null)
+	}, [resume, loading, items, leading, done, error, handleMore])
 
 	// A card's comments link opens the conversation once its reel has landed. Wide, that is the panel beside the reel; below it, the sheet over it.
 	useEffect(() => {
 		if (!pendingComments || restoring) return
 		if (wide) setPrefs({ comments: true })
 		else {
-			// eslint-disable-next-line react-hooks/set-state-in-effect -- a deep link asks for the comments once
+			// a deep link asks for the comments once
 			setSheetShown(true)
 			setSheetOpen(true)
 		}
@@ -300,8 +299,8 @@ export function ReelViewer() {
 
 	// Endless, the way a reel feed is: the next page is asked for a few reels before the end, so the reader scrolls into it rather than up to a wall.
 	useEffect(() => {
-		if (!done && !loading && !error && last > 0 && index >= last - PREFETCH_AHEAD) more()
-	}, [index, last, done, loading, error, more])
+		if (!done && !loading && !error && last > 0 && index >= last - PREFETCH_AHEAD) handleMore()
+	}, [index, last, done, loading, error, handleMore])
 
 	const toggleMute = useCallback(() => {
 		if (muted) {
@@ -395,7 +394,7 @@ export function ReelViewer() {
 									onAutoMuted={onAutoMuted}
 									onCycleRate={cycleRate}
 									onEnded={advance}
-									onPatch={feed.patch}
+									onPatch={feed.handlePatch}
 									onToggleAutoScroll={toggleAutoScroll}
 									onToggleMute={toggleMute}
 									rate={prefs.rate}
@@ -425,7 +424,7 @@ export function ReelViewer() {
 									<p className="hand text-[1.05rem] text-coral-deep">{feed.error}</p>
 									<button
 										className="label mt-1 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
-										onClick={feed.more}
+										onClick={feed.handleMore}
 										type="button"
 									>
 										Try again
@@ -499,7 +498,7 @@ export function ReelViewer() {
 							<Action
 								count={current.likeCount}
 								label={current.likedByMe ? "Unlike" : "Like"}
-								onClick={() => sendLike(current, !current.likedByMe, feed.patch)}
+								onClick={() => sendLike(current, !current.likedByMe, feed.handlePatch)}
 								pop={current.likedByMe}
 								popKey={current.id}
 								pressed={current.likedByMe}
@@ -543,7 +542,7 @@ export function ReelViewer() {
 					<ReelComments
 						className="h-full w-full"
 						onClose={() => setPrefs({ comments: false })}
-						onPatch={feed.patch}
+						onPatch={feed.handlePatch}
 						reel={current ?? null}
 						viewer={viewer}
 					/>
@@ -581,7 +580,7 @@ export function ReelViewer() {
 						<ReelComments
 							className="min-h-0 flex-1"
 							onClose={() => setSheetOpen(false)}
-							onPatch={feed.patch}
+							onPatch={feed.handlePatch}
 							reel={current ?? null}
 							viewer={viewer}
 						/>
@@ -600,7 +599,7 @@ function NavButton({
 	children,
 }: {
 	label: string
-	onClick: () => void
+	onClick(): void
 	disabled: boolean
 	children: React.ReactNode
 }) {
@@ -645,7 +644,7 @@ function Action({
 	count: number
 	pressed?: boolean
 	tone?: "coral" | "violet"
-	onClick?: () => void
+	onClick?(): void
 	/** Plays the acknowledgement when this turns true – a like landing. */
 	pop?: boolean
 	/** Which reel it belongs to, so arriving on an already-liked reel does not play it. */

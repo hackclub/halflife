@@ -2,7 +2,7 @@ import "server-only"
 import { Role } from "@/app/generated/prisma/enums"
 import prisma from "@/lib/prisma"
 
-export { Role }
+export { Role } from "@/app/generated/prisma/enums"
 
 export enum Permission {
 	FULFILL_ORDERS = "FULFILL_ORDERS",
@@ -62,7 +62,11 @@ export const PERMISSION_COUNT = Object.values(Permission).length
  *
  * A list rather than a rule, so that a permission added later is reported as `write` until someone says otherwise. Over-reporting what an account can do is the safe direction to be wrong in: the alternative is reading a new read-only permission as an ability to change things, and the display is the thing a staff member trusts about it.
  */
-const READ_ONLY_PERMISSIONS: Permission[] = [Permission.VIEW_AUDIT_LOG, Permission.VIEW_UPLOADS, Permission.VIEW_USERS]
+const READ_ONLY_PERMISSIONS = new Set<Permission>([
+	Permission.VIEW_AUDIT_LOG,
+	Permission.VIEW_UPLOADS,
+	Permission.VIEW_USERS,
+])
 
 /**
  * What the roles add up to.
@@ -82,7 +86,7 @@ export interface PermissionSummary {
  * The audit log shows its own enum names raw, but that is a log being looked up; this is somebody being told what an account may do.
  */
 export function readablePermission(permission: Permission): string {
-	return permission.toLowerCase().replace(/_/g, " ")
+	return permission.toLowerCase().replaceAll("_", " ")
 }
 
 /**
@@ -97,7 +101,7 @@ export function permissionSummary(roles: Role[]): PermissionSummary {
 			? "none"
 			: permissions.includes(Permission.MANAGE_ROLES)
 				? "full"
-				: permissions.every(p => READ_ONLY_PERMISSIONS.includes(p))
+				: permissions.every(p => READ_ONLY_PERMISSIONS.has(p))
 					? "read"
 					: "write"
 	return { level, permissions }

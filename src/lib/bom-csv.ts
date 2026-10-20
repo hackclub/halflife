@@ -101,7 +101,7 @@ const NOT_A_PART = /^(shipping|postage|delivery|handling|tax|vat|gst|discount|su
 function normalize(cell: string): string {
 	return cell
 		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, " ")
+		.replaceAll(/[^a-z0-9]+/g, " ")
 		.trim()
 }
 
@@ -112,7 +112,7 @@ function normalize(cell: string): string {
  */
 function parseRows(input: string): string[][] {
 	// A UTF-8 BOM is invisible and would otherwise become part of the first header cell, so the name column is never found.
-	const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input
+	const text = input.codePointAt(0) === 0xfeff ? input.slice(1) : input
 	const rows: string[][] = []
 	let row: string[] = []
 	let field = ""
@@ -131,12 +131,12 @@ function parseRows(input: string): string[][] {
 	for (let i = 0; i < text.length; i++) {
 		const ch = text[i]
 		if (quoted) {
-			if (ch === '"') {
+			if (ch === '"')
 				if (text[i + 1] === '"') {
 					field += '"'
 					i++
 				} else quoted = false
-			} else field += ch
+			else field += ch
 			continue
 		}
 		if (ch === '"') quoted = true
@@ -184,15 +184,15 @@ function findHeader(rows: readonly string[][]): { index: number; map: Partial<Re
 /** Markdown links keep their label; other markup is stripped by the route. */
 function cleanName(value: string): string {
 	return value
-		.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-		.replace(/\s+/g, " ")
+		.replaceAll(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+		.replaceAll(/\s+/g, " ")
 		.trim()
 		.slice(0, MAX_IMPORT_NAME)
 }
 
 /** `"100pc"`, `"1 set"`, `"2"` -> a whole number of parts. */
 function parseQuantity(value: string | undefined): number {
-	const match = (value ?? "").replace(/,/g, "").match(/\d+/)
+	const match = /\d+/.exec((value ?? "").replaceAll(",", ""))
 	if (!match) return 1
 	const n = Number(match[0])
 	if (!Number.isFinite(n) || n < 1) return 1
@@ -207,9 +207,9 @@ function parseQuantity(value: string | undefined): number {
 function parseUsd(value: string | undefined): number | null {
 	const v = (value ?? "").trim()
 	if (!v) return null
-	const raw = v.match(/\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/)?.[1] ?? v.match(/^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*$/)?.[1]
+	const raw = /\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/.exec(v)?.[1] ?? /^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*$/.exec(v)?.[1]
 	if (!raw) return null
-	const n = Number(raw.replace(/,/g, ""))
+	const n = Number(raw.replaceAll(",", ""))
 	if (!Number.isFinite(n) || n < 0) return null
 	return n
 }
@@ -222,7 +222,7 @@ function parseUsd(value: string | undefined): number | null {
 function parseLink(value: string | undefined): string | null {
 	let v = (value ?? "").trim()
 	if (!v || /^[-––]+$/.test(v) || /^(n\/?a|none)$/i.test(v)) return null
-	const markdown = v.match(/\]\(\s*([^)]+?)\s*\)/)
+	const markdown = /\]\(\s*([^)]+?)\s*\)/.exec(v)
 	if (markdown) v = markdown[1] ?? v
 	if (!/^https?:\/\//i.test(v)) v = `https://${v}`
 	if (v.length > 1000) return null
@@ -261,7 +261,7 @@ function vendorFromLink(link: string | null): string | null {
 		const known = KNOWN_VENDORS[host]
 		if (known) return known.slice(0, MAX_IMPORT_VENDOR)
 		const labels = host.split(".")
-		const label = labels.length >= 2 ? labels[labels.length - 2] : labels[0]
+		const label = labels.length >= 2 ? labels.at(-2) : labels[0]
 		if (!label) return null
 		const named = label.length <= 4 ? label.toUpperCase() : label.charAt(0).toUpperCase() + label.slice(1)
 		return named.slice(0, MAX_IMPORT_VENDOR)
@@ -272,7 +272,7 @@ function vendorFromLink(link: string | null): string | null {
 
 /** Trim, collapse whitespace, cap – the same treatment every other maker text gets. */
 function clean(value: string | undefined, max: number): string | null {
-	const v = (value ?? "").replace(/\s+/g, " ").trim()
+	const v = (value ?? "").replaceAll(/\s+/g, " ").trim()
 	return v ? v.slice(0, max) : null
 }
 

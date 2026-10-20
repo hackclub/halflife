@@ -32,7 +32,7 @@ export function SubmissionReelPicker({
 	/** The already-posted reel currently standing in, if any. */
 	selectedId: string | null
 	/** Picks a reel, or clears the pick when handed null. */
-	onSelect: (reel: SubmissionReel | null) => void
+	onSelect(reel: SubmissionReel | null): void
 }) {
 	const [reels, setReels] = useState<SubmissionReel[] | null>(null)
 
@@ -40,9 +40,13 @@ export function SubmissionReelPicker({
 		let live = true
 		fetch(`/api/me/reels?checkpointKey=${encodeURIComponent(checkpointKey)}`, { cache: "no-store" })
 			.then(async res => {
-				const body = await res.json().catch(() => null)
+				const body = (await res.json().catch(() => null)) as {
+					error?: { message?: string }
+					reels: SubmissionReel[]
+				} | null
 				if (!res.ok) throw new Error(body?.error?.message ?? "Could not load your previous reels")
-				return body as { reels: SubmissionReel[] }
+				if (!body) throw new Error("Could not load your previous reels")
+				return body
 			})
 			.then(body => {
 				if (live) setReels(body.reels)
@@ -87,7 +91,6 @@ export function SubmissionReelPicker({
 								<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">
 									{reel.thumbnailUrl ? (
 										// Same origin as the feed's own <video> poster; next/image would need the bucket host allow-listed for a 96px tile.
-										// eslint-disable-next-line @next/next/no-img-element
 										<img alt="" className="h-full w-full object-cover" loading="lazy" src={reel.thumbnailUrl} />
 									) : (
 										<IconFilm className="text-lg text-navy-soft" />

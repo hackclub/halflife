@@ -113,15 +113,15 @@ export function ReelCard({
 	reel: FeedItem
 	className?: string
 	/** Apply a change to this row after the server has taken it. */
-	onPatch?: (id: string, next: Partial<FeedItem>) => void
+	onPatch?(id: string, next: Partial<FeedItem>): void
 	/** Start playing when this card becomes the current reel. */
 	autoplay?: boolean
 	/** The reader pressed play themselves. */
-	onPlayPress?: () => void
+	onPlayPress?(): void
 	/**
 	 * The reader asked for this reel's comments. When given, the comment button calls back instead of deep-linking to the Doomscroller, so a host (like a profile) can show the conversation in place.
 	 */
-	onComments?: (reel: FeedItem) => void
+	onComments?(reel: FeedItem): void
 }) {
 	const { viewer } = useStore()
 	const card = useRef<HTMLElement>(null)
@@ -147,7 +147,7 @@ export function ReelCard({
 		if (!box || !el) return
 		const io = new IntersectionObserver(
 			([entry]) => {
-				const now = !!entry?.isIntersecting && entry.intersectionRatio >= CURRENT
+				const now = Boolean(entry?.isIntersecting) && (entry?.intersectionRatio ?? 0) >= CURRENT
 				if (now === current.current) return
 				current.current = now
 				if (!now) {
@@ -157,7 +157,7 @@ export function ReelCard({
 				// Only in a feed being watched. The rail sits idle beside every page, and replaying an arrival on each navigation would be motion for its own sake.
 				if (!wantsAutoplay.current || prefersStill()) return
 				meta.current?.animate?.(ARRIVE, ARRIVE_TIMING)
-				start(el)
+				void start(el)
 			},
 			{ threshold: CURRENT },
 		)
@@ -177,7 +177,7 @@ export function ReelCard({
 			return
 		}
 		onPlayPress?.()
-		start(el)
+		void start(el)
 	}
 
 	// A view is a second of actual playback, not a press or an autoplay that a quick flick scrolled straight past. It is counted once per card, and the server counts it once per person by unique row – so neither a replay nor a retried request can inflate it.
@@ -188,7 +188,7 @@ export function ReelCard({
 		for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i)
 		if (watched < 1) return
 		counted.current = true
-		fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
+		void fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
 	}
 
 	function like() {

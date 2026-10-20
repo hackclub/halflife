@@ -210,6 +210,7 @@ export const DOCS: DocArticle[] = [
 				],
 				paragraphs: [
 					"A folder of files and two sentences is not documentation. Write the README for someone who has never heard of your project and wants to build one:",
+					"The submit sheet checks two hard floors: at least 200 characters of text (images do not count towards it), and at least two images.",
 				],
 			},
 			{

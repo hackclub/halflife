@@ -14,13 +14,20 @@ import type { ProjectOpenDispute, PublicProjectData } from "@/lib/queries/projec
 import { Timeline } from "./Timeline"
 
 /**
+ * The default for a project with no open dispute.
+ *
+ * A shared list rather than a literal in the signature: an array literal there is a fresh array on every render, so anything comparing the prop by identity sees a change every time and re-renders for nothing.
+ */
+const NO_DISPUTES: ProjectOpenDispute[] = []
+
+/**
  * Someone else's project: what it is, and the story of it, and nothing to edit. The owner's page reads the trail's store for its name and weeks; this one cannot – the store only holds the viewer's own projects – so everything on it comes from the server in `data`.
  *
  * A reviewer gets one addition: when a dispute is open, a way back to the console page where its thread is answered. The page cannot carry the thread itself, and a reviewer arrives here from the dispute notice to read the project before replying.
  */
 export function PublicProjectDetail({
 	data,
-	openDisputes = [],
+	openDisputes = NO_DISPUTES,
 }: {
 	data: PublicProjectData
 	openDisputes?: ProjectOpenDispute[]

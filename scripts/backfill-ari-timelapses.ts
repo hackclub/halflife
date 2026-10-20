@@ -1,8 +1,8 @@
 import "dotenv/config"
 import { Phase, PhaseStatus } from "../src/app/generated/prisma/enums"
-import { isAriConfigured, sendSubmissionToAri, withdrawSubmissionFromAri } from "../src/lib/ari"
+import { isAriConfigured } from "../src/lib/ari"
 import prisma from "../src/lib/prisma"
-import { trackSideEffect } from "../src/lib/side-effects"
+import { type AriRefreshTarget, flag, limitArg, phaseArg, refreshAriShip } from "./ari-backfill"
 
 /**
  * Refresh in-review hand-ins in Ari so their journals carry their timelapses.
@@ -16,41 +16,12 @@ import { trackSideEffect } from "../src/lib/side-effects"
  * Run with `bun run ari:backfill-timelapses` (dry run), then `bun run ari:backfill-timelapses -- --limit 1 --commit` to prove it on one hand-in. Flags: `--commit`, `--phase design|build`, `--project <themeProjectId>`, `--limit <n>`.
  */
 
-interface AriBackfillTarget {
-	ariSubmissionId: string | null
-	phase: Phase
+interface AriBackfillTarget extends AriRefreshTarget {
 	sessions: number
-	submissionId: string
-	themeProjectId: string
 	title: string
 }
 
 const commit = process.argv.includes("--commit")
-
-function flag(name: string): string | null {
-	const args = process.argv.slice(2)
-	for (const [index, arg] of args.entries()) {
-		if (arg === `--${name}`) return args[index + 1] ?? null
-		if (arg.startsWith(`--${name}=`)) return arg.slice(name.length + 3)
-	}
-	return null
-}
-
-function phaseArg(): Phase | null {
-	const raw = flag("phase")
-	if (raw === null) return null
-	const phase = raw.toUpperCase()
-	if (phase === Phase.DESIGN || phase === Phase.BUILD) return phase
-	throw new Error(`--phase must be design or build, got ${raw}`)
-}
-
-function limitArg(): number | null {
-	const raw = flag("limit")
-	if (raw === null) return null
-	const value = Number(raw)
-	if (!Number.isInteger(value) || value <= 0) throw new Error(`--limit must be a positive integer, got ${raw}`)
-	return value
-}
 
 /** Every in-review phase that has at least one timelapse to carry, with its open submission. */
 async function loadTargets(phase: Phase | null, projectId: string | null): Promise<AriBackfillTarget[]> {
@@ -75,7 +46,7 @@ async function loadTargets(phase: Phase | null, projectId: string | null): Promi
 	})
 
 	const targets: AriBackfillTarget[] = []
-	for (const project of projects) {
+	for (const project of projects)
 		for (const candidate of [Phase.DESIGN, Phase.BUILD] as const) {
 			if (phase && candidate !== phase) continue
 			const status = candidate === Phase.DESIGN ? project.designStatus : project.buildStatus
@@ -93,56 +64,8 @@ async function loadTargets(phase: Phase | null, projectId: string | null): Promi
 				title: project.title,
 			})
 		}
-	}
+
 	return targets
-}
-
-/** The state a hand-in was left in, so the summary can tell a fresh send from a replaced ship. */
-type RefreshOutcome = "not-queued" | "replaced" | "sent"
-
-/**
- * Send one hand-in with its current evidence.
- *
- * A ship that is already in Ari has to be withdrawn first: creating another ship for the same external id while one is open is a conflict, not an update. `not_queued` means Ari holds no open ship under that id – usually because it has already decided it – and re-sending would put a decided hand-in back in the queue, so it is reported and left alone.
- */
-async function refresh(target: AriBackfillTarget): Promise<RefreshOutcome> {
-	let replaced = false
-	if (target.ariSubmissionId) {
-		const withdrawn = await trackSideEffect(
-			"ari",
-			{
-				actorId: null,
-				metadata: { backfill: true, phase: target.phase, withdrawn: true },
-				targetId: target.themeProjectId,
-				targetType: "ThemeProject",
-			},
-			() => withdrawSubmissionFromAri(target.themeProjectId, target.phase),
-			{ rethrow: true },
-		)
-		if (withdrawn && "status" in withdrawn) {
-			if (withdrawn.status === "not_queued") return "not-queued"
-			replaced = true
-		}
-		// The old ship is gone, so its id must go too: if the send below fails, `ari-retry` has to see this hand-in as unsent rather than skip it because a stale id says it already reached Ari.
-		await prisma.phaseSubmission.updateMany({
-			data: { ariSubmissionId: null },
-			where: { id: target.submissionId, resolvedAt: null },
-		})
-	}
-
-	const sent = await trackSideEffect(
-		"ari",
-		{
-			actorId: null,
-			metadata: { backfill: true, phase: target.phase, refreshed: target.ariSubmissionId !== null },
-			targetId: target.themeProjectId,
-			targetType: "ThemeProject",
-		},
-		() => sendSubmissionToAri(target.themeProjectId, target.phase),
-		{ rethrow: true },
-	)
-	if (!sent || "skipped" in sent) throw new Error("Ari is not configured, or the hand-in is no longer awaiting review")
-	return replaced ? "replaced" : "sent"
 }
 
 async function main() {
@@ -173,9 +96,9 @@ async function main() {
 	let notQueued = 0
 	let replaced = 0
 	let sent = 0
-	for (const target of run) {
+	for (const target of run)
 		try {
-			const outcome = await refresh(target)
+			const outcome = await refreshAriShip(target)
 			if (outcome === "replaced") replaced++
 			else if (outcome === "sent") sent++
 			else {
@@ -186,7 +109,6 @@ async function main() {
 			failed++
 			console.error(`  ${target.phase} ${target.title} (${target.themeProjectId}) failed:`, err)
 		}
-	}
 
 	console.log(`replaced: ${replaced}, sent: ${sent}, not queued: ${notQueued}, failed: ${failed}`)
 	if (failed > 0) process.exitCode = 1

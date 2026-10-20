@@ -87,11 +87,11 @@ export async function getOwedReelKeys(userId: string): Promise<string[]> {
 	for (const p of live) if (p.checkpointKey) projectByKey.delete(p.checkpointKey)
 
 	const owed: string[] = []
-	for (const [key, projectId] of projectByKey) {
-		// Only a reel that can still be re-recorded holds anything up.
+	// Only a reel that can still be re-recorded holds anything up.
+	for (const [key, projectId] of projectByKey)
 		if (projectId && (await reelLockReason(userId, projectId, key)) === null) owed.push(key)
-	}
-	return owed.sort()
+
+	return owed.toSorted()
 }
 
 /**

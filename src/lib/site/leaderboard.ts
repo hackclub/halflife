@@ -30,5 +30,5 @@ export function tallyBoard<T, K extends string>(
 
 	return [...counts]
 		.map(([key, count]) => ({ count, key }))
-		.sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
+		.toSorted((a, b) => b.count - a.count || a.key.localeCompare(b.key))
 }

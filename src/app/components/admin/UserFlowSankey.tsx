@@ -157,7 +157,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			const mine = ribbons
 				.filter(r => (side === "out" ? r.source === node : r.target === node))
 				// Order by where the other end sits, so ribbons leave a box in the order their destinations are stacked.
-				.sort((a, b) => {
+				.toSorted((a, b) => {
 					const other = (r: Ribbon) => (side === "out" ? r.target : r.source)
 					return other(a).y0 - other(b).y0
 				})
@@ -221,7 +221,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		const boxes = stage.nodes
 			.map(id => placed.find(p => p.id === id))
 			.filter((p): p is Placed => p !== undefined)
-			.sort((a, b) => a.y0 - b.y0)
+			.toSorted((a, b) => a.y0 - b.y0)
 		if (boxes.length === 0) continue
 
 		const rows: { node: Placed; y: number; home: number }[] = []
@@ -254,9 +254,9 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		return `M ${x0} ${r.sy0} C ${xm} ${r.sy0} ${xm} ${r.ty0} ${x1} ${r.ty0} L ${x1} ${r.ty1} C ${xm} ${r.ty1} ${xm} ${r.sy1} ${x0} ${r.sy1} Z`
 	}
 
-	const biggest = ribbons.reduce((a, b) => (b.value > (a?.value ?? 0) ? b : a), undefined as Ribbon | undefined)
+	const biggest = ribbons.reduce<Ribbon | undefined>((a, b) => (b.value > (a?.value ?? 0) ? b : a), undefined)
 	// Fan ribbons paint first: they are the shared-user wash underneath, and chain ribbons – real divergences sharing an edge – stay readable on top of it. Stable, so order within each group is untouched.
-	const painted = [...ribbons].sort((a, b) => Number(b.fan !== null) - Number(a.fan !== null))
+	const painted = [...ribbons].toSorted((a, b) => Number(b.fan !== null) - Number(a.fan !== null))
 	const summary = biggest
 		? `Largest route: ${fmt(biggest.value)} people from ${biggest.source.label} to ${biggest.target.label}.`
 		: ""

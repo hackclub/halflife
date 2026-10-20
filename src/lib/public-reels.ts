@@ -49,9 +49,9 @@ export function readPublicReelLink(platform: PublicReelPlatform, raw: string): {
 		return { error: `That isn't a link. Copy it from the post's Share button on ${info.label}.` }
 	}
 	const seen = url.hostname.toLowerCase().replace(/^(www|m|mobile)\./, "")
-	if (!info.hosts.some(h => seen === h || seen.endsWith(`.${h}`))) {
+	if (!info.hosts.some(h => seen === h || seen.endsWith(`.${h}`)))
 		return { error: `That isn't a ${info.label} link – it should look like ${info.example}` }
-	}
+
 	// One post, one link: X still answers on its old name, and the same status shared from each would otherwise be two claims on one post.
 	const host = seen === "twitter.com" ? "x.com" : seen
 	const path = url.pathname.replace(/\/+$/, "")

@@ -22,7 +22,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	// Fraction sent. The phone is where the wait is longest, so it shows here.
 	const [progress, setProgress] = useState(0)
 
-	async function submit(e: React.FormEvent) {
+	async function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setError(null)
 
@@ -57,13 +57,12 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 		}
 	}
 
-	if (state === "done") {
+	if (state === "done")
 		return (
 			<div className="hl-stack hl-stack--tight">
 				<Callout>Sent. Go back to your computer to finish the post – you can close this.</Callout>
 			</div>
 		)
-	}
 
 	return (
 		<form className="hl-stack hl-stack--tight" onSubmit={submit}>

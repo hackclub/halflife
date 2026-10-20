@@ -65,7 +65,7 @@ const VIDEO_FTYP_BRANDS = new Set([
 /** Four ASCII bytes at `offset`, or fewer/`\0` when the buffer is short. */
 function brandAt(bytes: Uint8Array, offset: number): string {
 	let brand = ""
-	for (let i = 0; i < 4; i += 1) brand += String.fromCharCode(bytes[offset + i] ?? 0)
+	for (let i = 0; i < 4; i += 1) brand += String.fromCodePoint(bytes[offset + i] ?? 0)
 	return brand
 }
 
@@ -123,11 +123,11 @@ export interface UploadedObjectPage {
 }
 
 export function isUploadConfigured(): boolean {
-	return !!(
+	return Boolean(
 		process.env.S3_ACCESS_KEY_ID
-		&& process.env.S3_SECRET_ACCESS_KEY
-		&& process.env.S3_BUCKET_NAME
-		&& process.env.S3_ENDPOINT
+			&& process.env.S3_SECRET_ACCESS_KEY
+			&& process.env.S3_BUCKET_NAME
+			&& process.env.S3_ENDPOINT,
 	)
 }
 
@@ -152,7 +152,7 @@ function endpointIncludesBucket(): boolean {
 	const bucket = process.env.S3_BUCKET_NAME
 	if (!endpoint || !bucket) return false
 	try {
-		const path = new URL(endpoint).pathname.replace(/^\/+|\/+$/g, "")
+		const path = new URL(endpoint).pathname.replaceAll(/^\/+|\/+$/g, "")
 		return path === bucket
 	} catch {
 		return false
@@ -161,9 +161,8 @@ function endpointIncludesBucket(): boolean {
 
 function listingClient(): S3Client {
 	const endpoint = process.env.S3_ENDPOINT
-	if (!endpoint || !endpointIncludesBucket()) {
+	if (!endpoint || !endpointIncludesBucket())
 		return new S3Client({ credentials: credentials(), endpoint, region: "auto" })
-	}
 
 	const root = new URL(endpoint)
 	root.pathname = root.pathname.replace(/\/[^/]+$/, "")
@@ -223,15 +222,13 @@ export function validateUpload(
 	contentType: string,
 	size: number,
 ): { ok: true; ext: string } | { ok: false; reason: string } {
-	if (size > MAX_UPLOAD_BYTES) {
-		return { ok: false, reason: `File is larger than ${MAX_UPLOAD_BYTES} bytes` }
-	}
+	if (size > MAX_UPLOAD_BYTES) return { ok: false, reason: `File is larger than ${MAX_UPLOAD_BYTES} bytes` }
+
 	const ext = filename.split(".").pop()?.toLowerCase() ?? ""
 	const allowed = EXTENSION_MIME[ext]
 	if (!allowed) return { ok: false, reason: `Unsupported file type: .${ext}` }
-	if (!allowed.includes(contentType)) {
-		return { ok: false, reason: `Content type ${contentType} does not match .${ext}` }
-	}
+	if (!allowed.includes(contentType)) return { ok: false, reason: `Content type ${contentType} does not match .${ext}` }
+
 	return { ext, ok: true }
 }
 

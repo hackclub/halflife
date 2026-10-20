@@ -43,7 +43,7 @@ export function DecisionPanel({
 
 	const approvingDesign = result === "APPROVED" && phase === "DESIGN"
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		const body =
 			result === "APPROVED"

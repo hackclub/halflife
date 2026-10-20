@@ -66,7 +66,7 @@ async function main() {
 	})
 
 	// Three sessions, written in order. Their order IS the node order.
-	for (const [index, hours] of [1.5, 2, 3].entries()) {
+	for (const [index, hours] of [1.5, 2, 3].entries())
 		await prisma.workSession.create({
 			data: {
 				content: `Body ${index + 1}`,
@@ -78,7 +78,6 @@ async function main() {
 				title: `Session ${index + 1}`,
 			},
 		})
-	}
 
 	// Two reels, on nodes that are ten hours apart. Only one has been earned, and counting by kind would tick both.
 	await prisma.post.create({

@@ -1,10 +1,9 @@
 "use client"
 
 import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react"
+import { cx } from "@/lib/cx"
 
 export { cx } from "@/lib/cx"
-
-import { cx } from "@/lib/cx"
 
 /* ------------------------------------------------------------------ *
  * Panel – the cream card with a wobbling marker outline
@@ -91,47 +90,48 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	variant?: "solid" | "outline" | "ghost" | "gold" | "teal" | "coral"
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-	{ variant = "solid", size = "md", full, className, children, ...rest },
-	ref,
-) {
-	const sizes = {
-		lg: "h-13 px-7 text-[0.95rem]",
-		md: "h-11 px-5 text-[0.85rem]",
-		sm: "h-9 px-3.5 text-[0.76rem]",
-	}[size]
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+	({ variant = "solid", size = "md", full, className, children, ...rest }, ref) => {
+		const sizes = {
+			lg: "h-13 px-7 text-[0.95rem]",
+			md: "h-11 px-5 text-[0.85rem]",
+			sm: "h-9 px-3.5 text-[0.76rem]",
+		}[size]
 
-	const variants = {
-		coral:
-			"bg-coral-deep text-white border-coral-dark hover:bg-coral-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-		ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5 active:translate-y-px",
-		gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
-		outline:
-			"bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
-		// Each solid fill is the deep tone, rimmed and hovered one darker: a white label on the plain violet, teal and coral read 3.37, 2.80 and 3.33:1.
-		solid:
-			"bg-violet-deep text-white border-violet-dark hover:bg-violet-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-		teal: "bg-teal-deep text-white border-teal-dark hover:bg-teal-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-	}[variant]
+		const variants = {
+			coral:
+				"bg-coral-deep text-white border-coral-dark hover:bg-coral-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
+			ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5 active:translate-y-px",
+			gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
+			outline:
+				"bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
+			// Each solid fill is the deep tone, rimmed and hovered one darker: a white label on the plain violet, teal and coral read 3.37, 2.80 and 3.33:1.
+			solid:
+				"bg-violet-deep text-white border-violet-dark hover:bg-violet-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
+			teal: "bg-teal-deep text-white border-teal-dark hover:bg-teal-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
+		}[variant]
 
-	return (
-		<button
-			className={cx(
-				"label inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 whitespace-nowrap",
-				"transition-[background-color,color,transform,filter] duration-150",
-				"disabled:cursor-not-allowed disabled:opacity-70",
-				sizes,
-				variants,
-				full && "w-full",
-				className,
-			)}
-			ref={ref}
-			{...rest}
-		>
-			{children}
-		</button>
-	)
-})
+		return (
+			<button
+				className={cx(
+					"label inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 whitespace-nowrap",
+					"transition-[background-color,color,transform,filter] duration-150",
+					"disabled:cursor-not-allowed disabled:opacity-70",
+					sizes,
+					variants,
+					full && "w-full",
+					className,
+				)}
+				ref={ref}
+				{...rest}
+			>
+				{children}
+			</button>
+		)
+	},
+)
+// A forwardRef is an object rather than a function, so React DevTools has no name to show for it and the component reads as "ForwardRef" in a stack trace. Told one, it is "Button" in both.
+Button.displayName = "Button"
 
 /* ------------------------------------------------------------------ *
  * Torn tape – the week banner / page signs
@@ -176,7 +176,7 @@ export function OptionRow({
 }: {
 	children: ReactNode
 	selected?: boolean
-	onClick?: () => void
+	onClick?(): void
 	disabled?: boolean
 	tone?: "violet" | "gold" | "sky"
 	hint?: ReactNode

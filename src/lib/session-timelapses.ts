@@ -44,9 +44,9 @@ export async function reconcileSessionTimelapses(
 	const addIds = want.filter(id => !have.has(id))
 	const adding = fresh.filter(t => addIds.includes(t.id))
 
-	for (const lapseId of [...addIds].sort()) {
+	for (const lapseId of [...addIds].toSorted())
 		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
-	}
+
 	if (addIds.length > 0) {
 		// This session's own rows do not count: keeping a clip is not taking it from anywhere.
 		const taken = await tx.sessionTimelapse.findFirst({
@@ -63,10 +63,9 @@ export async function reconcileSessionTimelapses(
 			throw new HttpError("CONFLICT", `"${title}" already backs another journal entry`)
 		}
 	}
-	if (removeIds.length > 0) {
-		await tx.sessionTimelapse.deleteMany({ where: { id: { in: removeIds } } })
-	}
-	if (adding.length > 0) {
+	if (removeIds.length > 0) await tx.sessionTimelapse.deleteMany({ where: { id: { in: removeIds } } })
+
+	if (adding.length > 0)
 		await tx.sessionTimelapse.createMany({
 			data: adding.map(t => ({
 				coveredSeconds: t.durationSeconds,
@@ -80,6 +79,6 @@ export async function reconcileSessionTimelapses(
 				workSessionId: sessionId,
 			})),
 		})
-	}
+
 	return { added: adding.map(t => t.id), removed: removeIds }
 }

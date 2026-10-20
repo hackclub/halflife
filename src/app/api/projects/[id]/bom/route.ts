@@ -14,7 +14,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-async function ownProject(userId: string, id: string) {
+function ownProject(userId: string, id: string) {
 	return prisma.themeProject.findFirst({
 		select: { bomTaxShippingUsd: true, buildStatus: true, designStatus: true, id: true },
 		where: { deletedAt: null, id, userId },

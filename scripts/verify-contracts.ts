@@ -2,6 +2,8 @@ import "dotenv/config"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import type { z } from "zod"
+import type { ReviewResult as AriReviewResult } from "../src/app/generated/prisma/enums"
+import type { JournalEntry } from "../src/lib/repo-sync-files"
 
 /**
  * The contract between the browser and the API.
@@ -43,17 +45,15 @@ function routeTable(): Map<string, Set<string>> {
 		if (!file.endsWith("route.ts")) continue
 		const source = readFileSync(file, "utf8")
 		const found = new Set<string>()
-		for (const method of METHODS) {
-			// Both forms are in use: `export const POST = withRoute(...)` and `export async function POST(...)`.
+		// Both forms are in use: `export const POST = withRoute(...)` and `export async function POST(...)`.
+		for (const method of METHODS)
 			if (new RegExp(`export (const|async function) ${method}\\b`).test(source)) found.add(method)
-		}
-		const url =
-			"/"
-			// Either separator: `relative` hands back backslashes on Windows.
-			+ relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
-				.split(/[\\/]/)
-				.filter(segment => !segment.startsWith("("))
-				.join("/")
+
+		// Either separator: `relative` hands back backslashes on Windows.
+		const url = `/${relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
+			.split(/[\\/]/)
+			.filter(segment => !segment.startsWith("("))
+			.join("/")}`
 		table.set(url, found)
 	}
 	return table
@@ -77,7 +77,7 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 			const methods = [...options.matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
 				.flatMap(m => [m[1], m[2]])
 				.filter((m): m is string => Boolean(m))
-			calls.push({ file, methods: methods.length ? methods : ["GET"], path })
+			calls.push({ file, methods: methods.length > 0 ? methods : ["GET"], path })
 		}
 	}
 	return calls
@@ -132,11 +132,11 @@ const COMPONENT_CALLS: { path: string; methods: string[] }[] = [
 const routes = routeTable()
 
 function routeFor(path: string): Set<string> | null {
-	const clean = (path.split("?")[0] ?? "").replace(/\$\{[^}]*\}/g, "X").replace(/\/$/, "")
+	const clean = (path.split("?")[0] ?? "").replaceAll(/\$\{[^}]*\}/g, "X").replace(/\/$/, "")
 	// A static segment beats the variable one it shares a slot with – `bom/import` is its own route, not `bom/[itemId]` – and Next resolves it that way, so a client calling `bom/import` must be checked against the import route. The fewest variables is that rule spelled out; without it the walker could hand back `[itemId]` and report a POST as a 405 that Next would never send.
 	let best: { methods: Set<string>; dynamic: number } | null = null
 	for (const [url, methods] of routes) {
-		if (!new RegExp(`^${url.replace(/\[[^\]]+\]/g, "[^/]+")}$`).test(clean)) continue
+		if (!new RegExp(`^${url.replaceAll(/\[[^\]]+\]/g, "[^/]+")}$`).test(clean)) continue
 		const dynamic = (url.match(/\[/g) ?? []).length
 		if (!best || dynamic < best.dynamic) best = { dynamic, methods }
 	}
@@ -145,8 +145,8 @@ function routeFor(path: string): Set<string> | null {
 
 for (const call of [
 	...clientCalls(),
-	...STORE_CALLS.map(c => ({ ...c, file: "src/lib/store.tsx" })),
-	...COMPONENT_CALLS.map(c => ({ ...c, file: "src/components/platform/RepoSyncSettings.tsx" })),
+	...STORE_CALLS.map(c => Object.assign({}, c, { file: "src/lib/store.tsx" })),
+	...COMPONENT_CALLS.map(c => Object.assign({}, c, { file: "src/components/platform/RepoSyncSettings.tsx" })),
 ]) {
 	const exported = routeFor(call.path)
 	const label = `${call.path} [${call.methods.join("/")}]`
@@ -155,7 +155,7 @@ for (const call of [
 		continue
 	}
 	const missing = call.methods.filter(m => !exported.has(m))
-	check(label, missing.length === 0, `route exports ${[...exported].sort().join("/") || "nothing"}`)
+	check(label, missing.length === 0, `route exports ${[...exported].toSorted().join("/") || "nothing"}`)
 }
 
 /* ── 2. Bodies ───────────────────────────────────────────────────────────── */
@@ -300,7 +300,7 @@ async function bodies() {
 	const importDefaults = bomImportSchema.safeParse({})
 	check(
 		"body · bomImport defaults to a preview, not a write",
-		importDefaults.success && importDefaults.data.apply === false && importDefaults.data.replace === false,
+		importDefaults.success && !importDefaults.data.apply && !importDefaults.data.replace,
 	)
 	check("body · bomImport rejects an unknown field", !bomImportSchema.safeParse({ write: true }).success)
 
@@ -321,43 +321,43 @@ async function bodies() {
 			try {
 				// A transport error twice, then success: two failures, one answer.
 				let attempts = 0
-				globalThis.fetch = (async () => {
+				globalThis.fetch = () => {
 					attempts++
 					if (attempts < 3) {
 						const err = new Error("aborted") as Error & { name: string }
 						err.name = "TimeoutError"
 						throw err
 					}
-					return new Response('{"ok":true}', { status: 200 })
-				}) as typeof fetch
+					return Promise.resolve(new Response('{"ok":true}', { status: 200 }))
+				}
 				const res = await fetchWithRetry("https://example.test/a", { retries: 2 })
 				check("fetch-retry · a timeout is retried until it lands", attempts === 3 && res.status === 200)
 
 				// A 4xx is a real answer, not a blip.
 				let seen = 0
-				globalThis.fetch = (async () => {
+				globalThis.fetch = () => {
 					seen++
-					return new Response("nope", { status: 401 })
-				}) as typeof fetch
+					return Promise.resolve(new Response("nope", { status: 401 }))
+				}
 				const unauthorized = await fetchWithRetry("https://example.test/b", { retries: 2 })
 				check("fetch-retry · a 4xx is not retried", seen === 1 && unauthorized.status === 401)
 
 				// A 5xx is worth another go.
 				let fives = 0
-				globalThis.fetch = (async () => {
+				globalThis.fetch = () => {
 					fives++
-					return new Response("bad", { status: 503 })
-				}) as typeof fetch
+					return Promise.resolve(new Response("bad", { status: 503 }))
+				}
 				const down = await fetchWithRetry("https://example.test/c", { retries: 2 })
 				check("fetch-retry · a 5xx is retried then returned", fives === 3 && down.status === 503)
 
 				// Exhausting the retries throws rather than returning nothing.
 				let threw = false
-				globalThis.fetch = (async () => {
+				globalThis.fetch = () => {
 					const err = new Error("nope") as Error & { name: string }
 					err.name = "TimeoutError"
 					throw err
-				}) as typeof fetch
+				}
 				try {
 					await fetchWithRetry("https://example.test/d", { retries: 1 })
 				} catch {
@@ -366,8 +366,8 @@ async function bodies() {
 				check("fetch-retry · a persistent failure throws", threw)
 
 				// A body larger than the cap is refused rather than buffered whole.
-				globalThis.fetch = (async () =>
-					new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 })) as typeof fetch
+				globalThis.fetch = () =>
+					Promise.resolve(new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 }))
 				let oversizeThrew = false
 				try {
 					await fetchWithRetry("https://example.test/e", { retries: 0 })
@@ -406,7 +406,7 @@ async function bodies() {
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
 	// A MIME type and an extension are only claims; the bytes decide. The `ftyp` box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a video one – otherwise a still image renamed `.mp4` becomes a reel.
-	const asciiBytes = (s: string) => [...s].map(c => c.charCodeAt(0))
+	const asciiBytes = (s: string) => Array.from(s, c => c.codePointAt(0) ?? 0)
 	const isoFile = (major: string, compatible: string[] = []) => {
 		const body = [
 			0,
@@ -503,6 +503,70 @@ async function bodies() {
 	check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
 	check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
 
+	/* ── 5b-iii. The reviewer-activity ring, counted as Ari counts ─────────── */
+	//
+	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
+	const { countAriShips } = await import("../src/lib/ari-counts")
+	const { ReviewResult } = await import("../src/app/generated/prisma/enums")
+	const ship = (over: Partial<Parameters<typeof countAriShips>[0][number]> = {}) => ({
+		ariSubmissionId: "ship_1",
+		createdAt: at(0),
+		id: "sub_1",
+		phase: Phase.DESIGN,
+		phaseStatus: PhaseStatus.in_review,
+		resolvedAt: null as Date | null,
+		result: null as AriReviewResult | null,
+		themeProjectId: "p1",
+		...over,
+	})
+	{
+		// A design sent back and handed in again: the changes ship stays on Ari's board beside the new pending one.
+		const counts = countAriShips([
+			ship({ id: "old", resolvedAt: at(1), result: ReviewResult.RETURNED }),
+			ship({ ariSubmissionId: "ship_2", createdAt: at(5), id: "new" }),
+		])
+		check(
+			"ari · counts: a resubmission keeps the earlier changes ship",
+			counts.changes === 1 && counts.pending === 1,
+			JSON.stringify(counts),
+		)
+	}
+	{
+		// A reverted ship is terminal at Ari: the phase waits for a new hand-in, and the old ship is not pending.
+		const counts = countAriShips([ship({ phaseStatus: PhaseStatus.update_requested })])
+		check("ari · counts: a reverted ship is not pending", counts.pending === 0, JSON.stringify(counts))
+	}
+	{
+		// Two open rows for one phase is a stale reset left behind; only the newest can be Ari's open ship.
+		const counts = countAriShips([
+			ship({ id: "old" }),
+			ship({ ariSubmissionId: "ship_2", createdAt: at(5), id: "new" }),
+		])
+		check("ari · counts: only the newest open row per phase is pending", counts.pending === 1, JSON.stringify(counts))
+	}
+	{
+		// The newest hand-in never reached Ari, so the phase is waiting on us and the older ship must not stand in for it.
+		const counts = countAriShips([ship({ id: "old" }), ship({ ariSubmissionId: null, createdAt: at(5), id: "new" })])
+		check(
+			"ari · counts: an unsent newest hand-in is counted apart",
+			counts.pending === 0 && counts.unreached === 1,
+			JSON.stringify(counts),
+		)
+	}
+	{
+		// A console decision on a hand-in Ari never received is not a ship on its board.
+		const counts = countAriShips([ship({ ariSubmissionId: null, resolvedAt: at(1), result: ReviewResult.APPROVED })])
+		check("ari · counts: a decided hand-in Ari never saw is not a ship", counts.approved === 0, JSON.stringify(counts))
+	}
+	{
+		// The same ship recorded on two rows through a data fault is still one ship at Ari.
+		const counts = countAriShips([
+			ship({ id: "a", resolvedAt: at(1), result: ReviewResult.REJECTED }),
+			ship({ id: "b", resolvedAt: at(2), result: ReviewResult.REJECTED }),
+		])
+		check("ari · counts: one ship id counts once", counts.rejected === 1, JSON.stringify(counts))
+	}
+
 	/* ── 5b-ii. The decision standing on a ship ────────────────────────────── */
 	//
 	// What the reconciliation applies when a webhook delivery never arrived. Ari's decision vocabulary ("changes") and its event name ("review.changes") are the two halves that could drift apart silently, and a decided ship must never be read from a phase that is not final.
@@ -575,31 +639,31 @@ async function bodies() {
 	//
 	// Approval reads this live, so the difference between "genuinely zero" and "Hackatime no longer lists that project" decides whether someone is paid zero silently or the decision is refused.
 	const { projectSecondsFrom } = await import("../src/lib/hackatime")
-	const stats = (...projects: { name: string; total_seconds: number }[]) => ({ data: { projects } })
+	const stats = (...items: { name: string; total_seconds: number }[]) => ({ data: { projects: items } })
 
 	const presentZero = projectSecondsFrom(stats({ name: "firmware", total_seconds: 0 }), "firmware")
-	check("hackatime · present with 0s is a live zero", presentZero.stale === false && presentZero.seconds === 0)
+	check("hackatime · present with 0s is a live zero", !presentZero.stale && presentZero.seconds === 0)
 
 	const presentSeconds = projectSecondsFrom(stats({ name: "firmware", total_seconds: 4321 }), "firmware")
-	check("hackatime · present seconds are read", presentSeconds.stale === false && presentSeconds.seconds === 4321)
+	check("hackatime · present seconds are read", !presentSeconds.stale && presentSeconds.seconds === 4321)
 
 	const renamed = projectSecondsFrom(stats({ name: "firmware-v2", total_seconds: 4321 }), "firmware")
 	check(
 		"hackatime · a renamed project is stale, not zero",
-		renamed.stale === true && renamed.notFound === true && renamed.seconds === 0,
+		Boolean(renamed.stale && renamed.notFound && renamed.seconds === 0),
 	)
 
 	const missingFromEmpty = projectSecondsFrom(stats(), "firmware")
 	check(
 		"hackatime · a name missing from an empty list is stale",
-		missingFromEmpty.stale === true && missingFromEmpty.notFound === true,
+		Boolean(missingFromEmpty.stale && missingFromEmpty.notFound),
 	)
 
 	const noList = projectSecondsFrom({ data: {} }, "firmware")
-	check("hackatime · a response with no list is stale", noList.stale === true && !noList.notFound)
+	check("hackatime · a response with no list is stale", noList.stale && !noList.notFound)
 
 	const nullBody = projectSecondsFrom(null, "firmware")
-	check("hackatime · a null body is stale", nullBody.stale === true && !nullBody.notFound)
+	check("hackatime · a null body is stale", nullBody.stale && !nullBody.notFound)
 
 	/* ── 5d-ii. Hackatime spans, and the overlap arithmetic ────────────────── */
 	//
@@ -618,27 +682,21 @@ async function bodies() {
 
 	const spanList = (...spans: { start_time: number; end_time: number }[]) => ({ spans })
 	const read = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 2000, start_time: 1700 }))
-	check(
-		"hackatime spans · two spans are read",
-		read.stale === false && read.spans.length === 2 && read.spans[0]?.start === 1000,
-	)
+	check("hackatime spans · two spans are read", !read.stale && read.spans.length === 2 && read.spans[0]?.start === 1000)
 
 	// An empty list is a real answer: the project was tracked at no time in the window. A missing list is not, and must never read as "no overlap".
 	const emptyList = spansFrom(spanList())
-	check("hackatime spans · an empty list is a finding", emptyList.stale === false && emptyList.spans.length === 0)
+	check("hackatime spans · an empty list is a finding", !emptyList.stale && emptyList.spans.length === 0)
 
 	const noSpans = spansFrom({ data: {} })
-	check("hackatime spans · a response with no spans is stale", noSpans.stale === true && noSpans.spans.length === 0)
+	check("hackatime spans · a response with no spans is stale", noSpans.stale && noSpans.spans.length === 0)
 
 	const nullSpans = spansFrom(null)
-	check("hackatime spans · a null body is stale", nullSpans.stale === true)
+	check("hackatime spans · a null body is stale", nullSpans.stale)
 
 	// One malformed row costs that row, not the participant's hours.
 	const mixed = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 5, start_time: null } as never))
-	check(
-		"hackatime spans · a malformed row is dropped, the rest survive",
-		mixed.stale === false && mixed.spans.length === 1,
-	)
+	check("hackatime spans · a malformed row is dropped, the rest survive", !mixed.stale && mixed.spans.length === 1)
 
 	// A backwards span is not time anybody spent.
 	const backwards = spansFrom(spanList({ end_time: 1000, start_time: 1600 }))
@@ -744,7 +802,7 @@ async function bodies() {
 	const coldCache = rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: null }], null)
 	check(
 		"rollup · a cold span cache is reported as unchecked",
-		coldCache.hackatimeOverlapUnknown === true && coldCache.hackatimeOverlapSeconds === 0,
+		coldCache.hackatimeOverlapUnknown && coldCache.hackatimeOverlapSeconds === 0,
 		`unknown=${coldCache.hackatimeOverlapUnknown} overlap=${coldCache.hackatimeOverlapSeconds}`,
 	)
 	check(
@@ -752,17 +810,17 @@ async function bodies() {
 		coldCache.computedTotal === 4,
 		`got ${coldCache.computedTotal}`,
 	)
-	check("rollup · a warm cache reports the overlap as checked", deduped.hackatimeOverlapUnknown === false)
+	check("rollup · a warm cache reports the overlap as checked", !deduped.hackatimeOverlapUnknown)
 	check(
 		"rollup · a phase with no recording has nothing to check",
-		rollUpHours(noTimelapses, [{ cachedSeconds: 3600, cachedSpans: null, hoursApproved: null }], null)
-			.hackatimeOverlapUnknown === false,
+		!rollUpHours(noTimelapses, [{ cachedSeconds: 3600, cachedSpans: null, hoursApproved: null }], null)
+			.hackatimeOverlapUnknown,
 	)
 	// A reviewer override is a decision, not a computed value: it must not be reported as an unchecked overlap either, or every decided phase would carry a warning it cannot act on.
 	check(
 		"rollup · an overridden link is never an unchecked overlap",
-		rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: 5 }], null).hackatimeOverlapUnknown
-			=== false,
+		!rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: 5 }], null)
+			.hackatimeOverlapUnknown,
 	)
 
 	// The reported case: a maker journals and records a sitting in one project and links the tracked time on another. The recording and the link live on different rows, so nothing compared them and the sitting was paid for on both sides. The recording's own Hackatime project is what pairs them.
@@ -795,7 +853,7 @@ async function bodies() {
 	const crossCold = rollUpHours([], [{ ...crossLink, cachedSpans: null }], null, [crossWindow])
 	check(
 		"rollup · a cross-week recording with a cold cache is reported as unchecked",
-		crossCold.hackatimeOverlapUnknown === true && crossCold.computedTotal === 2,
+		crossCold.hackatimeOverlapUnknown && crossCold.computedTotal === 2,
 		`unknown=${crossCold.hackatimeOverlapUnknown}, total=${crossCold.computedTotal}`,
 	)
 
@@ -931,10 +989,10 @@ async function bodies() {
 	// Cached spans carry the window they were fetched for. A cached answer to a narrower question is not an answer, and must force a refetch rather than conclude "no overlap" about minutes it never covered.
 	const cache = parseCachedSpans({ from: 100, spans: [{ end: 200, start: 100 }], to: 200 })
 	check("overlap · cached spans are read back", cache !== null && cache.spans.length === 1)
-	check("overlap · a cache covering the window is used", cache !== null && cachedSpansCover(cache, 120, 180) === true)
+	check("overlap · a cache covering the window is used", cache !== null && cachedSpansCover(cache, 120, 180))
 	check(
 		"overlap · a cache narrower than the window is not used",
-		cache !== null && cachedSpansCover(cache, 50, 180) === false && cachedSpansCover(cache, 120, 250) === false,
+		cache !== null && !cachedSpansCover(cache, 50, 180) && !cachedSpansCover(cache, 120, 250),
 	)
 	// A shape this did not write is no cache at all: one refetch, not a wrong answer.
 	check("overlap · an unrecognised cache shape is ignored", parseCachedSpans([{ end: 2, start: 1 }]) === null)
@@ -999,7 +1057,7 @@ async function bodies() {
 			title: "Hackpad",
 			weekId: 1,
 		}
-		const entry = (over: Partial<import("../src/lib/repo-sync-files").JournalEntry> = {}) => ({
+		const entry = (over: Partial<JournalEntry> = {}) => ({
 			content: "<p>Wired <strong>everything</strong> up.</p>",
 			createdAt: new Date("2026-10-06T12:00:00Z"),
 			effectiveDate: "2026-10-06",
@@ -1012,22 +1070,22 @@ async function bodies() {
 			...over,
 		})
 
-		const journal = renderJournal(project, [
+		const rendered = renderJournal(project, [
 			entry({ createdAt: new Date("2026-10-08T12:00:00Z"), effectiveDate: "2026-10-08", id: "s2", title: "Later" }),
 			entry({ id: "s1" }),
 		])
-		check("repo-files · journal path", journal.path === "JOURNAL.md")
+		check("repo-files · journal path", rendered.path === "JOURNAL.md")
 		// On the entry headings, not bare dates: the banner now carries a date too, and when the newest entry dates the file that date appears above them.
 		check(
 			"repo-files · entries oldest first",
-			journal.content.indexOf("### 2026-10-06 – Routed it") < journal.content.indexOf("### 2026-10-08 – Later"),
+			rendered.content.indexOf("### 2026-10-06 – Routed it") < rendered.content.indexOf("### 2026-10-08 – Later"),
 		)
-		check("repo-files · html becomes markdown", journal.content.includes("Wired **everything** up."))
-		check("repo-files · the generated banner is present", journal.content.includes("Generated by Half Life"))
+		check("repo-files · html becomes markdown", rendered.content.includes("Wired **everything** up."))
+		check("repo-files · the generated banner is present", rendered.content.includes("Generated by Half Life"))
 		// The project link is the one thing in the file that points back at the platform's copy of this project rather than the marketing site, so it is the one that a wrong origin would quietly make useless.
 		check(
 			"repo-files · the journal links the project page",
-			journal.content.includes(`[open the project](${projectUrl(project.id)})`),
+			rendered.content.includes(`[open the project](${projectUrl(project.id)})`),
 		)
 		// Absolute, and never a bare `/projects/...`: a repo is read outside the app, where a relative link resolves to the forge. Unset, the origin falls back to the real site rather than dropping the link.
 		check("repo-files · the project link is absolute", /^https?:\/\/[^/]+\/projects\/p1$/.test(projectUrl(project.id)))
@@ -1121,7 +1179,7 @@ async function bodies() {
 		check(
 			"repo-files · the banner date is not the current instant",
 			(() => {
-				const stamped = a.content.match(/<!-- Generated: (.+?) -->/)?.[1]
+				const stamped = /<!-- Generated: (.+?) -->/.exec(a.content)?.[1]
 				if (!stamped) return false
 				// The fixture's newest entry is 2026-10-06T12:00Z. If the banner ever carries "now", it drifts forward on every run and this stays true.
 				return Math.abs(Date.now() - new Date(stamped).getTime()) > 60_000
@@ -1224,7 +1282,7 @@ async function bodies() {
 	const { FORGES } = await import("../src/lib/forge")
 	{
 		// [label, input, expected fullName, forge the result must carry]
-		const okCases: Array<[string, string, string, string]> = [
+		const okCases: [string, string, string, string][] = [
 			["a bare owner/name", "Heliodex/coputer", "Heliodex/coputer", "github"],
 			["a full https URL", "https://github.com/hackclub/halflife", "hackclub/halflife", "github"],
 			["a scheme-less host URL", "github.com/hackclub/halflife", "hackclub/halflife", "github"],
@@ -1247,7 +1305,7 @@ async function bodies() {
 		// A bare slug with no forge named is genuinely ambiguous and must be refused rather than guessed at.
 		check("repo-ref · a bare slug without a named forge is refused", parseRepoRef("Heliodex/coputer") === null)
 
-		const rejectCases: Array<[string, string]> = [
+		const rejectCases: [string, string][] = [
 			["an unknown host", "https://codeberg.org/a/b"],
 			["a single segment", "Heliodex"],
 			["three GitHub segments", "a/b/c"],
@@ -1255,9 +1313,8 @@ async function bodies() {
 			["a dot segment", "https://gitlab.com/a/../b"],
 			["an empty string", ""],
 		]
-		for (const [label, input] of rejectCases) {
+		for (const [label, input] of rejectCases)
 			check(`repo-ref · ${label} is refused`, parseRepoRef(input, { forge: FORGES.github }) === null)
-		}
 	}
 
 	/* ── 6d. Ticket message buttons, resolve and reopen ─────────────────────── */
@@ -1284,7 +1341,7 @@ async function bodies() {
 			"tickets · button values round-trip the ref",
 			buttons.every(b => {
 				try {
-					const parsed = JSON.parse(b.value ?? "")
+					const parsed = JSON.parse(b.value ?? "") as { helpTs?: string; ticketsTs?: string }
 					return parsed.helpTs === ref.helpTs && parsed.ticketsTs === ref.ticketsTs
 				} catch {
 					return false
@@ -1295,12 +1352,12 @@ async function bodies() {
 		const open = [{ text: { text: "reminders", type: "mrkdwn" }, type: "section" }, actions]
 		const atResolve = { ...ref, ticketsTs: "555.666" }
 		const resolved = tickets.resolveBlocks(open, "U9", undefined, atResolve)
-		const resolvedIds = resolved.map(b => b.block_id)
+		const resolvedIds = new Set(resolved.map(b => b.block_id))
 		check(
 			"tickets · resolving swaps actions for note plus reopen",
-			!resolvedIds.includes("self_resolve_actions")
-				&& resolvedIds.includes("ticket_resolved")
-				&& resolvedIds.includes("reopen_actions"),
+			!resolvedIds.has("self_resolve_actions")
+				&& resolvedIds.has("ticket_resolved")
+				&& resolvedIds.has("reopen_actions"),
 		)
 		check(
 			"tickets · reminders survive resolving",
@@ -1309,19 +1366,152 @@ async function bodies() {
 
 		const atReopen = { ...ref, ticketsTs: "777.888" }
 		const reopened = tickets.reopenBlocks(resolved, atReopen)
-		const reopenedIds = reopened.map(b => b.block_id)
+		const reopenedIds = new Set(reopened.map(b => b.block_id))
 		check(
 			"tickets · reopening restores resolve buttons with the fresh mirror",
-			reopenedIds.includes("self_resolve_actions")
-				&& !reopenedIds.includes("reopen_actions")
-				&& !reopenedIds.includes("ticket_resolved"),
+			reopenedIds.has("self_resolve_actions")
+				&& !reopenedIds.has("reopen_actions")
+				&& !reopenedIds.has("ticket_resolved"),
 		)
 		const restored = reopened.find(b => b.block_id === "self_resolve_actions")
 		const restoredElements = (restored?.elements ?? []) as { value?: string }[]
-		const restoredValues = restoredElements.map(el => String(el.value ?? ""))
+		const restoredValues = restoredElements.map(el => el.value ?? "")
 		check(
 			"tickets · restored buttons point at the new mirror",
 			restoredValues.length === 2 && restoredValues.every(v => v.includes("777.888")),
+		)
+	}
+
+	/* ── 6d. The Airtable justification columns ─────────────────────────────── */
+	//
+	// The `Justification - …` columns on a submission row are the evidence a grant reviewer reads, and the pipeline merges them into one blob on the row. Two things about them are pinned here, because both fail silently: a column we have nothing for must be left OUT of the payload rather than written blank (a blank erases the only record of evidence the base holds – the Lapse links on the pre-season rows came from the form and were never given to Postgres), and the technical-features text must not repeat the description it already quotes.
+	const { justificationValues, specificTechnicalFeatures, timelapseLinks } = await import(
+		"../src/lib/airtable/justification"
+	)
+	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/app/generated/prisma/enums")
+	{
+		const description = "A moonboard case, 3D printed in PLA."
+		const source = {
+			bomItems: [{ name: "PLA filament", purpose: "the case itself", quantity: 2 }],
+			description,
+			hackatimeProjects: ["firmware"],
+			hackatimeUserId: "8539",
+			lapseLinks: ["https://lapse.hackclub.com/timelapse/abc"],
+			workSessions: [
+				{
+					content: "Modelled it and printed a test fit.",
+					createdAt: new Date("2026-10-06T10:00:00Z"),
+					effectiveDate: "2026-10-06",
+					hoursClaimed: 3,
+					title: "Modelling",
+				},
+			],
+		}
+
+		const features = specificTechnicalFeatures(source, JustPhase.DESIGN)
+		check("justification · the description is the first thing said", features.startsWith(description))
+		check("justification · a part carries its purpose", features.includes("- PLA filament – the case itself (×2)"))
+		check("justification · the work log is in it", features.includes("- Modelling – 3h (2026-10-06)"))
+		check("justification · the log is headed for the phase", features.includes("Design log:"))
+
+		// A warm-up row's one session holds the description and the links that came with it, so quoting it would only repeat the description above it.
+		const warmup = {
+			...source,
+			workSessions: [
+				{
+					content: `${description}\n\nJournal: https://example.test/j.md\n\nPlayable: https://example.test/p\n\nTimelapse: https://lapse.hackclub.com/timelapse/abc`,
+					createdAt: new Date("2026-09-28T10:00:00Z"),
+					effectiveDate: "2026-09-28",
+					hoursClaimed: 15,
+					title: "Moonboard case – warm-up submission",
+				},
+			],
+		}
+		const warmupFeatures = specificTechnicalFeatures(warmup, JustPhase.BUILD)
+		check(
+			"justification · a warm-up session does not repeat the description",
+			warmupFeatures.split(description).length === 2,
+			"the description appears twice",
+		)
+		check("justification · a warm-up session still names the work", warmupFeatures.includes("warm-up submission"))
+		check("justification · a build's log is headed for the phase", warmupFeatures.includes("Build log:"))
+
+		// A maker's own entry that opens with "Journal:" is their words, not one of the import's link lines.
+		const journalish = specificTechnicalFeatures(
+			{
+				...source,
+				workSessions: [
+					{
+						content: "Journal: the flux finally took.",
+						createdAt: new Date("2026-10-06T10:00:00Z"),
+						effectiveDate: "2026-10-06",
+						hoursClaimed: 1,
+						title: "Soldering",
+					},
+				],
+			},
+			JustPhase.DESIGN,
+		)
+		check("justification · a maker's own journal line is quoted", journalish.includes("the flux finally took."))
+
+		// Nothing at all is nothing, not a heading with nothing under it.
+		check(
+			"justification · an empty project says nothing",
+			specificTechnicalFeatures(
+				{
+					bomItems: [],
+					description: null,
+					hackatimeProjects: [],
+					hackatimeUserId: null,
+					lapseLinks: [],
+					workSessions: [],
+				},
+				JustPhase.BUILD,
+			) === "",
+		)
+
+		const values = justificationValues(source, {
+			eventStart: new Date("2026-10-05T00:00:00.000Z"),
+			phase: JustPhase.DESIGN,
+			theme: JustTheme.PCB,
+		})
+		check("justification · the Hackatime account is written", values.hackatimeId === "8539")
+		check(
+			"justification · a Hackatime project carries the week it was tracked in",
+			values.hackatimeProjects === "firmware (2026-10-05 to 2026-10-11)",
+			values.hackatimeProjects,
+		)
+		check("justification · the Lapse links are written", values.lapseLinks === source.lapseLinks[0])
+		check("justification · the technical features are written", values.specificTechnicalFeatures === features)
+
+		// The rule that keeps a re-sync from destroying evidence: a column we have nothing for is left out of the payload, not written as an empty string. Airtable treats an empty string as "clear this cell".
+		const bare = justificationValues(
+			{
+				bomItems: [],
+				description: null,
+				hackatimeProjects: [],
+				hackatimeUserId: null,
+				lapseLinks: [],
+				workSessions: [],
+			},
+			{ eventStart: new Date("2026-10-05T00:00:00.000Z"), phase: JustPhase.BUILD, theme: JustTheme.PCB },
+		)
+		check("justification · an empty column is omitted, not blanked", Object.keys(bare).length === 0)
+		check(
+			"justification · a column with nothing in it is not an empty string",
+			Object.values(bare).every(value => value !== ""),
+		)
+
+		// A Lapse recording is watched on Lapse by its own id; an older upload is watched where it was put.
+		check(
+			"justification · a Lapse timelapse is watched on Lapse",
+			timelapseLinks([{ externalId: "abc", objectKey: null, playbackUrl: null, provider: "lapse" }])[0]
+				=== "https://lapse.hackclub.com/timelapse/abc",
+		)
+		check(
+			"justification · an older timelapse is watched where it was put",
+			timelapseLinks([{ externalId: null, objectKey: null, playbackUrl: "https://cdn.test/a.mp4", provider: "r2" }])[0]
+				=== "https://cdn.test/a.mp4",
 		)
 	}
 

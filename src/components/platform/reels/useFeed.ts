@@ -15,8 +15,8 @@ export function useFeed(limit = 12): {
 	loading: boolean
 	error: string | null
 	done: boolean
-	more: () => void
-	patch: (id: string, next: Partial<FeedItem>) => void
+	handleMore(): void
+	handlePatch(id: string, next: Partial<FeedItem>): void
 } {
 	const [items, setItems] = useState<FeedItem[]>([])
 	// Today's admin reels, as the first page put them in front of the rest.
@@ -61,24 +61,24 @@ export function useFeed(limit = 12): {
 
 	// Fetching the first page is the external-system sync an effect is for, and every state update inside `load` happens after the await – the rule cannot see that through the call, so it is exempted here rather than worked around with a timeout that would only add a frame of blank feed.
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- updates land after await
-		load(null)
+		// updates land after await
+		void load(null)
 	}, [load])
 
 	return {
 		done,
 		error,
+		// `load` never raises the loading flag itself: everything it sets happens after an await, which is what keeps the mount effect free of the synchronous setState that cascades renders. Asking for more is a click, so it can flip the flag here.
+		handleMore: useCallback(() => {
+			setLoading(true)
+			void load(cursor)
+		}, [load, cursor]),
+		/** Replace one row in place, for a like that has already been sent. */
+		handlePatch: useCallback((id: string, next: Partial<FeedItem>) => {
+			setItems(prev => prev.map(i => (i.id === id ? { ...i, ...next } : i)))
+		}, []),
 		items,
 		leading,
 		loading,
-		// `load` never raises the loading flag itself: everything it sets happens after an await, which is what keeps the mount effect free of the synchronous setState that cascades renders. Asking for more is a click, so it can flip the flag here.
-		more: useCallback(() => {
-			setLoading(true)
-			load(cursor)
-		}, [load, cursor]),
-		/** Replace one row in place, for a like that has already been sent. */
-		patch: useCallback((id: string, next: Partial<FeedItem>) => {
-			setItems(prev => prev.map(i => (i.id === id ? { ...i, ...next } : i)))
-		}, []),
 	}
 }

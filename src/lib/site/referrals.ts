@@ -65,7 +65,7 @@ export function getReferralLeaderboard(): Promise<ReferralLeaderboard | null> {
 	const value = walkReferrals(config)
 	const entry: Cached = { at: now, ttl: CACHE_TTL_MS, value }
 	cached = entry
-	value.then(result => {
+	void value.then(result => {
 		if (result === null && cached === entry) entry.ttl = FAILED_TTL_MS
 	})
 	return value
@@ -125,7 +125,7 @@ async function walkReferrals(
 
 	const rows: ReferralLeaderRow[] = [...counts.entries()]
 		.map(([code, signups]) => ({ code, email: owners.get(code) ?? null, signups }))
-		.sort((a, b) => b.signups - a.signups || a.code.localeCompare(b.code, undefined, { numeric: true }))
+		.toSorted((a, b) => b.signups - a.signups || a.code.localeCompare(b.code, undefined, { numeric: true }))
 
 	return { activeCodes: rows.length, referred: attributed.size, rows }
 }

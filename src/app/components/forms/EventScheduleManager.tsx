@@ -4,8 +4,7 @@ import { useState } from "react"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { EventForm } from "@/app/components/forms/EventForm"
 import { Badge, Callout, EmptyState, Panel } from "@/app/components/ui"
-import type { CalendarEvent } from "@/lib/events"
-import { calendarDay, dayLabel, eventColour, eventRangeLabel } from "@/lib/events"
+import { type CalendarEvent, calendarDay, dayLabel, eventColour, eventRangeLabel } from "@/lib/events"
 
 /**
  * The admin half of the calendar: the form, and the list it writes.
@@ -26,7 +25,7 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 	// has already happened. Splitting it here rather than sorting twice keeps the
 	// boundary honest – "past" is decided once, by the day.
 	const upcoming = events.filter(event => calendarDay(event.startsAt, timeZone) >= today)
-	const past = events.filter(event => calendarDay(event.startsAt, timeZone) < today).reverse()
+	const past = events.filter(event => calendarDay(event.startsAt, timeZone) < today).toReversed()
 
 	const seriesCount = new Map<string, number>()
 	for (const event of events)
@@ -92,7 +91,7 @@ function RowTable({
 	events: CalendarEvent[]
 	timeZone: string
 	seriesCount: Map<string, number>
-	onEdit: (event: CalendarEvent) => void
+	onEdit(event: CalendarEvent): void
 }) {
 	return (
 		<div className="hl-scroll">

@@ -171,7 +171,7 @@ export function ShopGrid({
 									{/* The photo staff set on the item; until there is one, gato
                       minding a box of parts, so the shelf never shows a hole. */}
 									{item.imageUrl ? (
-										// eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
+										// staff paste any host into the item's image field
 										<img alt="" className="h-full w-full object-contain" loading="lazy" src={item.imageUrl} />
 									) : (
 										<Gato className="sticker-shadow h-full w-auto max-w-full" pose="box" sizes="200px" />

@@ -20,10 +20,10 @@ export function Avatar({
 }) {
 	const label = (name ?? "?").trim()
 	let n = 0
-	for (const ch of label) n = (n + ch.charCodeAt(0)) % TONES.length
+	for (const ch of label) n = (n + (ch.codePointAt(0) ?? 0)) % TONES.length
 	const radius = shape === "tile" ? "rounded-lg" : "rounded-full"
 	return image ? (
-		// eslint-disable-next-line @next/next/no-img-element -- avatars come from the identity provider's CDN
+		// avatars come from the identity provider's CDN
 		<img alt="" className={cx("shrink-0 bg-sky-pale object-cover", radius, className)} src={image} />
 	) : (
 		<span

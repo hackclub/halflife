@@ -116,7 +116,7 @@ export function recomputeActiveDays(userId: string): Promise<void> {
  * Whether a project has actually been started. Not its title: every row is made at sign-up already titled with its theme's name. The app counts a project once it has a description and a tier – that is what completes the trail's "project" node (lib/queries/store) – so this does too.
  */
 function isCreated(p: { description: string | null; tier: number | null; requestedTier: number | null }) {
-	return !!p.description?.trim() && (p.tier ?? p.requestedTier) != null
+	return Boolean(p.description?.trim()) && (p.tier ?? p.requestedTier) != null
 }
 
 /**
@@ -255,17 +255,16 @@ export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 		if (posts[0]) await markReel(userId, posts[0].createdAt)
 		// The first and last of the list, named rather than indexed twice: the narrowing is what keeps the write off `undefined` without an assertion.
 		const firstSubmission = submissions[0]
-		const lastSubmission = submissions[submissions.length - 1]
-		if (firstSubmission && lastSubmission) {
+		const lastSubmission = submissions.at(-1)
+		if (firstSubmission && lastSubmission)
 			await prisma.user.update({
 				data: { firstSubmissionAt: firstSubmission.createdAt, lastSubmissionAt: lastSubmission.createdAt },
 				where: { id: userId },
 			})
-		}
-		const lastLogin = logins[logins.length - 1]?.createdAt
-		if (lastLogin) {
+
+		const lastLogin = logins.at(-1)?.createdAt
+		if (lastLogin)
 			await prisma.user.updateMany({ data: { lastLoginAt: lastLogin }, where: { id: userId, lastLoginAt: null } })
-		}
 
 		// Active days are rebuilt outright, which also clears any left from when a page view counted as one.
 		counts.days += await rebuildActiveDays(userId, programTimezone)
@@ -299,9 +298,9 @@ export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 				update: { hours },
 				where: { userId_week: { userId, week } },
 			})
-			for (const [field, at] of Object.entries(reached)) {
+			for (const [field, at] of Object.entries(reached))
 				await prisma.userWeek.updateMany({ data: { [field]: at }, where: { userId, week, [field]: null } })
-			}
+
 			counts.weeks++
 		}
 	}
@@ -464,6 +463,6 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 	return {
 		dau: dau.map(d => ({ day: d.day, users: d._count._all })),
 		funnel,
-		weeklyMilestones: [...byWeek.values()].sort((a, b) => a.week - b.week),
+		weeklyMilestones: [...byWeek.values()].toSorted((a, b) => a.week - b.week),
 	}
 }

@@ -20,7 +20,7 @@ function fmtH(h: number) {
 /**
  * Start a warm-up project: the season's "create a project" sheet, for any hardware idea rather than a theme, plus the one question a warm-up adds – whether it is handed in as a design or as a finished build. It is handed in once, as that.
  */
-export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closesOn: string | null }) {
+export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: string | null }) {
 	const router = useRouter()
 	const [name, setName] = useState("")
 	const [desc, setDesc] = useState("")

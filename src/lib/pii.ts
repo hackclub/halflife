@@ -15,7 +15,7 @@ function deriveKey(): Buffer {
 }
 
 export function isPiiConfigured(): boolean {
-	return !!process.env.PII_ENCRYPTION_KEY
+	return Boolean(process.env.PII_ENCRYPTION_KEY)
 }
 
 export function encryptPII(plaintext: string): string {

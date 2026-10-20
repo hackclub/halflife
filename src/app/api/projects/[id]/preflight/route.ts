@@ -28,6 +28,6 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 
 	const checks = await checkRepo(project.githubRepo, project.theme)
 	// First time the checks come back green, stamp it – the admin funnel uses it to separate "passed the repo checks" from "actually submitted".
-	if (checks.canSubmit) markChecksPassed(gate.user.id)
+	if (checks.canSubmit) void markChecksPassed(gate.user.id)
 	return ok(checks)
 })

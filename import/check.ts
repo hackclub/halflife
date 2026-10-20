@@ -1,20 +1,23 @@
-import { config } from "dotenv"
 import { PrismaPg } from "@prisma/adapter-pg"
+import { config } from "dotenv"
 import { PrismaClient } from "@/app/generated/prisma/client"
 
 config()
-const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) })
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) throw new Error("DATABASE_URL missing")
+const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) })
 
-async function q<T extends { [_: string]: unknown }>(label: string, sql: string) {
-  const rows = await db.$queryRawUnsafe<T[]>(sql)
-  console.log(`\n${label}`)
-  for (const r of rows) console.log("  " + JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v)))
+async function q(label: string, sql: string) {
+	const rows = await db.$queryRawUnsafe<{ [_: string]: unknown }[]>(sql)
+	console.log(`\n${label}`)
+	for (const r of rows)
+		console.log(`  ${JSON.stringify(r, (_k, v: unknown) => (typeof v === "bigint" ? Number(v) : v))}`)
 }
 
 async function main() {
-  await q(
-    "counts",
-    `SELECT
+	await q(
+		"counts",
+		`SELECT
        (SELECT count(*) FROM "user") AS users,
        (SELECT count(*) FROM "user" WHERE email LIKE 'imported+%@halflife.test') AS imported_users,
        (SELECT count(*) FROM theme_project) AS projects,
@@ -28,11 +31,11 @@ async function main() {
        (SELECT count(*) FROM ledger_entry) AS ledger,
        (SELECT count(*) FROM shop_item) AS shop_items,
        (SELECT count(*) FROM shop_order) AS shop_orders`,
-  )
+	)
 
-  await q(
-    "orphaned foreign keys (all must be 0)",
-    `SELECT
+	await q(
+		"orphaned foreign keys (all must be 0)",
+		`SELECT
        (SELECT count(*) FROM theme_project p LEFT JOIN "user" u ON u.id = p."userId" WHERE u.id IS NULL) AS projects_no_user,
        (SELECT count(*) FROM work_session s LEFT JOIN theme_project p ON p.id = s."themeProjectId" WHERE p.id IS NULL) AS sessions_no_project,
        (SELECT count(*) FROM session_media m LEFT JOIN work_session s ON s.id = m."workSessionId" WHERE s.id IS NULL) AS media_no_session,
@@ -41,18 +44,18 @@ async function main() {
        (SELECT count(*) FROM ledger_entry l LEFT JOIN "user" u ON u.id = l."userId" WHERE u.id IS NULL) AS ledger_no_user,
        (SELECT count(*) FROM shop_order o LEFT JOIN "user" u ON u.id = o."userId" WHERE u.id IS NULL) AS orders_no_user,
        (SELECT count(*) FROM shop_order o LEFT JOIN shop_item i ON i.id = o."shopItemId" WHERE i.id IS NULL) AS orders_no_item`,
-  )
+	)
 
-  await q(
-    "theme uniqueness violations (must be 0)",
-    `SELECT count(*)::int AS dupes FROM (
+	await q(
+		"theme uniqueness violations (must be 0)",
+		`SELECT count(*)::int AS dupes FROM (
        SELECT "userId", theme FROM theme_project GROUP BY 1, 2 HAVING count(*) > 1
      ) t`,
-  )
+	)
 
-  await q(
-    "a sample of imported projects",
-    `SELECT p.title, p.theme, p."designStatus", p."buildStatus",
+	await q(
+		"a sample of imported projects",
+		`SELECT p.title, p.theme, p."designStatus", p."buildStatus",
             count(DISTINCT s.id)::int AS sessions, count(DISTINCT b.id)::int AS bom
      FROM theme_project p
      LEFT JOIN work_session s ON s."themeProjectId" = p.id
@@ -61,11 +64,11 @@ async function main() {
      GROUP BY p.id
      ORDER BY sessions DESC
      LIMIT 5`,
-  )
+	)
 
-  await q(
-    "richest imported maker",
-    `SELECT u.name, count(DISTINCT p.id)::int AS projects, count(s.id)::int AS sessions,
+	await q(
+		"richest imported maker",
+		`SELECT u.name, count(DISTINCT p.id)::int AS projects, count(s.id)::int AS sessions,
             count(DISTINCT r.id)::int AS reviews_written
      FROM "user" u
      LEFT JOIN theme_project p ON p."userId" = u.id
@@ -73,12 +76,12 @@ async function main() {
      LEFT JOIN submission_review r ON r."reviewerId" = u.id
      WHERE u.email LIKE 'imported+%@halflife.test'
      GROUP BY u.id ORDER BY sessions DESC LIMIT 3`,
-  )
+	)
 }
 
 main()
-  .catch((e) => {
-    console.error(e)
-    process.exitCode = 1
-  })
-  .finally(() => db.$disconnect())
+	.catch(e => {
+		console.error(e)
+		process.exitCode = 1
+	})
+	.finally(() => db.$disconnect())

@@ -3,7 +3,7 @@ import type { NextConfig } from "next"
 // `output: "standalone"` traces the whole dependency graph, which is what the
 // container image needs and pure overhead for a local `pnpm build`. Gate it on
 // the two env vars that only ever appear in CI or a Docker build.
-const isDeployBuild = !!(process.env.CI || process.env.DOCKER_BUILD)
+const isDeployBuild = Boolean(process.env.CI || process.env.DOCKER_BUILD)
 
 const nextConfig: NextConfig = {
 	...(isDeployBuild && { output: "standalone" }),
@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
 	 * routes. The proxy sets the same set for the pages it handles; duplicates
 	 * are harmless and this is the one that covers the gaps.
 	 */
-	async headers() {
+	headers() {
 		return [
 			{
 				headers: [

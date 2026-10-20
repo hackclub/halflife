@@ -42,7 +42,7 @@ export function ProjectDetails({
 	/** The facts under the description while reading: progress, then what it is. */
 	meta: React.ReactNode
 	/** Take the phase in review back out of it, when one is. */
-	unsubmit?: { label: string; run: () => Promise<string | null> }
+	unsubmit?: { label: string; run(): Promise<string | null> }
 }) {
 	const [editing, setEditing] = useState(false)
 	const lockedId = useId()
@@ -61,9 +61,8 @@ export function ProjectDetails({
 		else setConfirming(false)
 	}
 
-	if (editing) {
+	if (editing)
 		return <DetailsForm hours={hours} onDone={() => setEditing(false)} project={project} tierLocked={tierLocked} />
-	}
 
 	return (
 		<div>
@@ -77,7 +76,7 @@ export function ProjectDetails({
 				<div className="mt-1 flex shrink-0 flex-col items-end gap-1">
 					<Button
 						aria-describedby={locked ? lockedId : undefined}
-						disabled={!!locked}
+						disabled={Boolean(locked)}
 						onClick={() => setEditing(true)}
 						size="sm"
 						title={locked ?? undefined}
@@ -155,7 +154,7 @@ function DetailsForm({
 	project: Project
 	hours: number
 	tierLocked: boolean
-	onDone: () => void
+	onDone(): void
 }) {
 	const { updateProject, goalId, participantGoal } = useStore()
 	const id = useId()
@@ -185,8 +184,8 @@ function DetailsForm({
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
 
-	function takeStarter(id: string) {
-		setStarterId(id)
+	function takeStarter(chosen: string) {
+		setStarterId(chosen)
 		// A starter is scoped to tier 1 from the start, so taking one carries the tier with it – the server holds the same rule.
 		setTier(STARTER_PROJECT_TIER)
 	}
@@ -227,7 +226,7 @@ function DetailsForm({
 			}}
 			onSubmit={e => {
 				e.preventDefault()
-				save()
+				void save()
 			}}
 		>
 			<div className="grid gap-1.5">
@@ -290,7 +289,8 @@ function DetailsForm({
 					value={repo}
 				/>
 				<p className="text-[0.78rem] leading-snug text-navy-soft">
-					Your repo needs a README that says what the project is, how it works, and shows photos of it –{" "}
+					Your repo needs a README that says what the project is, how it works, and shows at least two photos of it – at
+					least 200 characters of text, once images are removed –{" "}
 					<a
 						className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 						href={README_GUIDE_URL}

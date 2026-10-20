@@ -34,7 +34,7 @@ export function canSubmitPhase(
 	phase: Phase,
 ): { ok: true } | { ok: false; code: "ALREADY_SUBMITTED" | "PHASE_LOCKED"; message: string } {
 	// A warm-up is one submission, as the phase it was made for: a design asking for funding, or a finished build. Never the other, never both.
-	if (project.theme === Theme.WARMUP && phase !== warmupPhaseOf(project)) {
+	if (project.theme === Theme.WARMUP && phase !== warmupPhaseOf(project))
 		return {
 			code: "PHASE_LOCKED",
 			message:
@@ -43,30 +43,29 @@ export function canSubmitPhase(
 					: "This warm-up project is submitted as a finished build",
 			ok: false,
 		}
-	}
 
 	const status = statusFor(project, phase)
-	if (status === PhaseStatus.in_review) {
+	if (status === PhaseStatus.in_review)
 		return { code: "ALREADY_SUBMITTED", message: "This phase is already in review", ok: false }
-	}
-	if (status === PhaseStatus.approved) {
+
+	if (status === PhaseStatus.approved)
 		return { code: "PHASE_LOCKED", message: "This phase is already approved", ok: false }
-	}
-	if (status === PhaseStatus.rejected) {
+
+	if (status === PhaseStatus.rejected)
 		return {
 			code: "PHASE_LOCKED",
 			message: "This phase was rejected. Ask an admin to reopen it.",
 			ok: false,
 		}
-	}
+
 	// A warm-up project is one phase by nature – it was handed in through the pre-season form, not designed and then built – so the design-first rule does not apply to it.
-	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft) {
+	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft)
 		return {
 			code: "PHASE_LOCKED",
 			message: "Submit your design for this theme before submitting the build",
 			ok: false,
 		}
-	}
+
 	return { ok: true }
 }
 
@@ -154,13 +153,12 @@ export async function submitPhase(
 
 	// A cart past the tier's funding is not a refusal, it is a grant that covers part of it – which is something the maker has to agree to rather than something this route infers. The numbers come from the database and never from the sheet: a list edited in another tab, or a tier request changed since the page was opened, decide what the maker is agreeing to.
 	const funding = await partsFundingFor(project, phase)
-	if (funding.needsAgreement && !partialFundingAccepted) {
+	if (funding.needsAgreement && !partialFundingAccepted)
 		throw new HttpError(
 			"UNPROCESSABLE",
 			`Your parts list is $${funding.totalUsd.toFixed(2)} and this tier funds $${funding.capUsd}, so $${funding.shortfallUsd.toFixed(2)} of it is yours to pay. Confirm you understand that before submitting.`,
 			{ details: funding },
 		)
-	}
 
 	// Parts money is a design-week question, so declining it on any other phase is refused rather than recorded: a flag the reviewer cannot act on would only confuse the decision.
 	if (fundingDeclined && phase !== Phase.DESIGN)

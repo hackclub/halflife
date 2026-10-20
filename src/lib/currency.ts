@@ -65,7 +65,7 @@ export function spendableFor(balances: Balances, _category: ShopItemCategory): n
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
-export async function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
+export function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
 	return sumFor(tx, { kind: { in: EARNING_KINDS }, userId })
 }
 
@@ -162,8 +162,8 @@ export async function getLedgerPage(
 	})
 	const hasMore = rows.length > limit
 	const items = hasMore ? rows.slice(0, limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export { CoinBucket, LedgerKind }
+export { CoinBucket, LedgerKind } from "@/app/generated/prisma/enums"

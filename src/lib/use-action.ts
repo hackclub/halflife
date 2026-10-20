@@ -44,9 +44,8 @@ export async function sendJson<T = unknown>(url: string, options: SendOptions = 
 	// A proxy or a crash can answer with HTML or nothing, so the body is allowed to be unparseable rather than treated as a bug here.
 	const payload = (await res.json().catch(() => null)) as ({ error?: { message?: string } } & T) | null
 
-	if (!res.ok) {
-		return { message: payload?.error?.message ?? `Request failed (${res.status})`, ok: false }
-	}
+	if (!res.ok) return { message: payload?.error?.message ?? `Request failed (${res.status})`, ok: false }
+
 	return { data: (payload ?? {}) as T, ok: true }
 }
 
@@ -60,8 +59,8 @@ export async function sendJson<T = unknown>(url: string, options: SendOptions = 
 export function useAction(): {
 	busy: string | null
 	error: string | null
-	run: <T = unknown>(key: string, send: () => Promise<SendResult<T>>, after?: (data: T) => void) => Promise<void>
-	refuse: (message: string) => void
+	run<T = unknown>(key: string, send: () => Promise<SendResult<T>>, after?: (data: T) => void): Promise<void>
+	refuse(message: string): void
 	setError: Dispatch<SetStateAction<string | null>>
 } {
 	const router = useRouter()

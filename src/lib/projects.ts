@@ -50,12 +50,12 @@ export function projectWeeks(project: Project, weeks: Week[]): Week[] {
 export function projectEvents(project: Project, weeks: Week[], read: (id: string) => CheckpointRead): ProjectEvent[] {
 	const out: ProjectEvent[] = []
 
-	for (const week of projectWeeks(project, weeks)) {
+	for (const week of projectWeeks(project, weeks))
 		for (const cp of week.checkpoints) {
 			const state = read(cp.id)
 
-			if (cp.kind === "journal") {
-				for (const entry of state.log) {
+			if (cp.kind === "journal")
+				for (const entry of state.log)
 					out.push({
 						// Sessions written before entries were dated carry no time. Zero rather than undefined, or the subtraction below goes NaN and takes the whole ordering with it.
 						at: entry.at ?? 0,
@@ -66,8 +66,7 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 						minutes: entry.minutes,
 						weekId: week.id,
 					})
-				}
-			} else if (cp.kind === "reel" && state.done) {
+			else if (cp.kind === "reel" && state.done)
 				out.push({
 					// Saves written before completions were dated have no time on them. Nothing sensible orders them, so they sort to the bottom rather than claiming the top with a zero.
 					at: state.at ?? 0,
@@ -78,11 +77,9 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 					title: cp.title,
 					weekId: week.id,
 				})
-			}
 		}
-	}
 
-	return out.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
+	return out.toSorted((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 }
 
 /** The running totals a project card and its header both want. */
@@ -94,7 +91,7 @@ export function projectStats(events: ProjectEvent[]): {
 } {
 	const sessions = events.filter(e => e.kind === "session")
 	const minutes = sessions.reduce((n, e) => n + (e.kind === "session" ? e.minutes : 0), 0)
-	const started = events[events.length - 1]?.at ?? 0
+	const started = events.at(-1)?.at ?? 0
 	return {
 		hours: minutes / 60,
 		reels: events.length - sessions.length,

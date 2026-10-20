@@ -154,12 +154,13 @@ export async function getFeed(
 	const all = [...leading, ...pageItems]
 
 	// One query for the viewer's likes across the whole page, rather than a correlated exists() per row.
-	const liked = all.length
-		? await prisma.postLike.findMany({
-				select: { postId: true },
-				where: { postId: { in: all.map(p => p.id) }, userId: viewerId },
-			})
-		: []
+	const liked =
+		all.length > 0
+			? await prisma.postLike.findMany({
+					select: { postId: true },
+					where: { postId: { in: all.map(p => p.id) }, userId: viewerId },
+				})
+			: []
 	const likedIds = new Set(liked.map(l => l.postId))
 
 	return {
@@ -281,7 +282,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
  *
  * The unique key does the work: a repeat view is a failed insert, so the count only moves when a genuinely new viewer arrives. This matters because the program pays prizes on virality – a number anyone can inflate by refreshing is a number that decides who gets a drawing tablet.
  */
-export async function recordView(postId: string, userId: string): Promise<number> {
+export function recordView(postId: string, userId: string): Promise<number> {
 	return prisma.$transaction(async tx => {
 		// Only a live, published reel counts. Without this, views keep accruing on a hidden or deleted post, and the virality number those prizes rest on could be moved for a reel that is out of the feed.
 		const post = await tx.post.findFirst({ select: { id: true }, where: { id: postId, ...visible } })
@@ -310,7 +311,7 @@ export async function recordView(postId: string, userId: string): Promise<number
 /**
  * Like or unlike. Explicitly stated rather than toggled: a toggle sent twice by an impatient double-tap ends in whichever state the race landed on, and the client always knows which one it means.
  */
-export async function setLike(
+export function setLike(
 	postId: string,
 	userId: string,
 	liked: boolean,
@@ -377,7 +378,7 @@ export async function getComments(
 	}
 }
 
-export async function addComment(postId: string, userId: string, body: string): Promise<CommentView> {
+export function addComment(postId: string, userId: string, body: string): Promise<CommentView> {
 	const clean = sanitize(body)
 	if (!clean) throw new HttpError("VALIDATION_FAILED", "Say something")
 
@@ -476,4 +477,4 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 	})
 }
 
-export { PostKind, PostStatus }
+export { PostKind, PostStatus } from "@/app/generated/prisma/enums"

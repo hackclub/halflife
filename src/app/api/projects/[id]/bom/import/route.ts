@@ -41,31 +41,30 @@ interface RepoBom {
  * `limit` is what the import may add, so the overflow is reported as skipped by the parser rather than by the caller.
  */
 async function readRepoBom(repoLink: string | null, limit: number): Promise<RepoBom | { error: string }> {
-	if (!repoLink) {
-		return { error: "This project has no repo linked yet. Add one, then import." }
-	}
-	if (!repoRefFromLink(repoLink)) {
+	if (!repoLink) return { error: "This project has no repo linked yet. Add one, then import." }
+
+	if (!repoRefFromLink(repoLink))
 		return {
 			error:
 				"Half Life can only read repos on GitHub or GitLab. This project's repo is on another service, so its parts have to be added by hand.",
 		}
-	}
+
 	const path = await findRepoFilePath(repoLink, BOM_CSV_PATTERN)
-	if (!path) {
+	if (!path)
 		return {
 			error: "No bom*.csv file was found in the repo. Export one from your design tool and push it, then try again.",
 		}
-	}
+
 	const csv = await readRepoFile(repoLink, path)
-	if (csv === null) {
+	if (csv === null)
 		return {
 			error: `Could not read ${path} from the repo. It may be too large, or on a service Half Life cannot read.`,
 		}
-	}
+
 	const parsed = parseBomCsv(csv, { limit })
-	if (!parsed.header) {
+	if (!parsed.header)
 		return { error: `${path} does not look like a BOM table – no header row with part names was found.` }
-	}
+
 	return { lines: parsed.lines, path, skipped: parsed.skipped }
 }
 

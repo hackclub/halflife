@@ -3,6 +3,7 @@ import { createHmac, randomBytes } from "node:crypto"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
 import { Phase, PostKind, PostStatus, Role, Theme } from "../src/app/generated/prisma/enums"
+import { auth } from "../src/lib/auth"
 
 /**
  * Does anything private reach a browser that should not have it?
@@ -41,7 +42,7 @@ const S = {
 	viewerSlack: "USENTINELSLACKA",
 }
 
-async function makeUser(email: string, name: string, slackId: string) {
+function makeUser(email: string, name: string, slackId: string) {
 	return prisma.user.create({
 		data: {
 			email,
@@ -71,7 +72,8 @@ async function cookieFor(userId: string): Promise<string> {
 	const sig = createHmac("sha256", process.env.BETTER_AUTH_SECRET ?? "")
 		.update(token)
 		.digest("base64")
-	return `better-auth.session_token=${token}.${sig}`
+	const { authCookies } = await auth.$context
+	return `${authCookies.sessionToken.name}=${encodeURIComponent(`${token}.${sig}`)}`
 }
 
 /** Surfaces a participant is signed in for. */
@@ -99,9 +101,7 @@ async function main() {
 	const { ensureThemeProject } = await import("../src/lib/provisioning")
 	const { THEMES } = await import("../src/lib/config/program")
 
-	for (const email of [S.viewerEmail, S.otherEmail, S.probeEmail]) {
-		await prisma.user.deleteMany({ where: { email } })
-	}
+	for (const email of [S.viewerEmail, S.otherEmail, S.probeEmail]) await prisma.user.deleteMany({ where: { email } })
 
 	const viewer = await makeUser(S.viewerEmail, "Viewer Person", S.viewerSlack)
 	const other = await makeUser(S.otherEmail, "Other Person", S.otherSlack)
@@ -207,4 +207,8 @@ main()
 		console.error(err)
 		process.exitCode = 1
 	})
-	.finally(() => prisma.$disconnect())
+	.finally(async () => {
+		await prisma.$disconnect()
+		// Importing the auth module opens its own Prisma pool, so the process would otherwise stay alive after the checks finish.
+		process.exit(process.exitCode ?? 0)
+	})

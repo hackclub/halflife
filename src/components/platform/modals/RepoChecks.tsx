@@ -21,7 +21,7 @@ export function RepoChecks({
 	editable = true,
 }: {
 	project: Project
-	onResult: (result: RepoCheckResult | null) => void
+	onResult(result: RepoCheckResult | null): void
 	/**
 	 * Whether the link can be changed from here. The submit sheet says yes, so a wrong link is fixed without leaving it; the project page says no, because its own details editor already owns the link.
 	 */
@@ -48,8 +48,8 @@ export function RepoChecks({
 	}, [project.id])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and a new project
-		loadSync()
+		// fetching on mount and a new project
+		void loadSync()
 	}, [loadSync])
 
 	async function linkProject() {
@@ -68,21 +68,22 @@ export function RepoChecks({
 		onResult(null)
 		try {
 			const res = await fetch(`/api/projects/${project.id}/preflight`, { cache: "no-store" })
-			const body = await res.json().catch(() => null)
+			const body = (await res.json().catch(() => null)) as (RepoCheckResult & { error?: { message?: string } }) | null
 			if (!res.ok) throw new Error(body?.error?.message ?? "Could not check the repo")
-			setData(body as RepoCheckResult)
-			onResult(body as RepoCheckResult)
+			if (!body) throw new Error("Could not check the repo")
+			setData(body)
+			onResult(body)
 		} catch (err) {
 			setError((err as Error).message)
 		} finally {
 			setLoading(false)
 		}
-		// The link is the input: a new one means a fresh check. eslint-disable-next-line react-hooks/exhaustive-deps
+		// The link is the input: a new one means a fresh check.
 	}, [project.id, project.githubRepo])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and on a new link
-		run()
+		// fetching on mount and on a new link
+		void run()
 	}, [run])
 
 	const blocking = data?.checks.filter(c => c.blocking && c.status === "fail").length ?? 0

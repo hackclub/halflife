@@ -69,7 +69,7 @@ export function band(
 	const h = r(dy)
 
 	return {
-		d: `M${r(topLeft - left)} 0H${r(topRight - left)}` + `L${r(botRight - left)} ${h}H${r(botLeft - left)}Z`,
+		d: `M${r(topLeft - left)} 0H${r(topRight - left)}L${r(botRight - left)} ${h}H${r(botLeft - left)}Z`,
 		h,
 		w: r(Math.max(topRight, botRight) - left),
 		x: r(left),
@@ -124,9 +124,7 @@ export function stackWeld(lean: "left" | "right"): string {
 	const thick = thin * BAND_TAPER
 	const r = (n: number) => Number(n.toFixed(2))
 
-	return (
-		`M${r(near - thin / 2)} 0H${r(near + thin / 2)}` + `L${r(far + thick / 2)} ${STACK_VIEW.h}H${r(far - thick / 2)}Z`
-	)
+	return `M${r(near - thin / 2)} 0H${r(near + thin / 2)}L${r(far + thick / 2)} ${STACK_VIEW.h}H${r(far - thick / 2)}Z`
 }
 
 /** A plate's absolute box, for `style`. */

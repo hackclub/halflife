@@ -28,7 +28,7 @@ export function ExtensionForm({
 	// Filled in after mount: the server renders in its own timezone, and the input has to show the admin's.
 	const [value, setValue] = useState("")
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the browser's timezone
+		// reading the browser's timezone
 		setValue(current ? toLocalInput(new Date(current)) : "")
 	}, [current])
 	const { busy, error, run } = useAction()

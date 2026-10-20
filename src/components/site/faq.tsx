@@ -21,7 +21,7 @@ const CARD_SCALE = 0.75
  * A comp size as a clamp. Only the fluid slope and the ceiling take the scale: the rem floor is the phone's size, where the field is already one column reading correctly and 0.75 of 16px body copy would be 12px.
  */
 const size = (floorRem: number, vw: number, maxPx: number) =>
-	`clamp(${floorRem}rem, ${+(vw * CARD_SCALE).toFixed(4)}vw, ${+(maxPx * CARD_SCALE).toFixed(2)}px)`
+	`clamp(${floorRem}rem, ${Number((vw * CARD_SCALE).toFixed(4))}vw, ${Number((maxPx * CARD_SCALE).toFixed(2))}px)`
 
 const FIELD = {
 	answer: size(1, 1.74, 30),

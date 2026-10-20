@@ -47,7 +47,7 @@ export function EventForm({
 	events: CalendarEvent[]
 	/** The occurrence being edited, or null to add a new one. */
 	editing: CalendarEvent | null
-	onDone: () => void
+	onDone(): void
 }) {
 	const router = useRouter()
 	const [title, setTitle] = useState(editing?.title ?? "")
@@ -60,7 +60,7 @@ export function EventForm({
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
-	async function submit(e: React.FormEvent) {
+	async function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setBusy(true)
 		setError(null)

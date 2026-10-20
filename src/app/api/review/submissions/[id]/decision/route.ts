@@ -28,9 +28,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		"grantUsdOverride" in body
 		&& body.grantUsdOverride !== undefined
 		&& !hasPermission(gate.roles, Permission.MANAGE_CREDIT)
-	) {
+	)
 		return fail("FORBIDDEN", "Overriding the grant amount requires the MANAGE_CREDIT permission")
-	}
 
 	const feedback = sanitize(body.feedback ?? "")
 

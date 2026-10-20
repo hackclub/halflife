@@ -113,10 +113,13 @@ async function main() {
 	console.log(`fine (user has a real entry): ${fine}`)
 	console.log(`matched stale (user has only Hackatime evidence): ${matchedStale.length}`)
 	console.log(`unmatched rows (no join to any user): ${unmatched.length}`)
-	for (const r of unmatched.slice(0, 20))
+	for (const r of unmatched.slice(0, 20)) {
+		const email = r.fields[LOOPS_FIELDS.email]
+		const lastEntryAt = r.fields[LOOPS_FIELDS.lastEntryAt]
 		console.log(
-			`  unmatched ${r.id} email=${String(r.fields[LOOPS_FIELDS.email] ?? "?")} value=${String(r.fields[LOOPS_FIELDS.lastEntryAt])}`,
+			`  unmatched ${r.id} email=${typeof email === "string" ? email : "?"} value=${typeof lastEntryAt === "string" ? lastEntryAt : ""}`,
 		)
+	}
 	if (unmatched.length > 20) console.log(`  …and ${unmatched.length - 20} more`)
 
 	if (!clear) {

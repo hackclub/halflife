@@ -2,9 +2,7 @@ import "server-only"
 import { type HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import {
 	ONBOARDING_STEP_COUNT,
-	ONBOARDING_STEPS,
 	type OnboardingStep,
-	type OnboardingStepId,
 	STARTER_PROJECT_TIER,
 	type StarterProject,
 	seesStarterProjects,
@@ -261,12 +259,12 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 				if (!before.project.tierLocked) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 				break
 			}
-			if (before.project.tierLocked) {
+			if (before.project.tierLocked)
 				throw new HttpError(
 					"VALIDATION_FAILED",
 					"Starter projects are Tier 1. Write your own project idea to choose a different tier.",
 				)
-			}
+
 			if (!isTierId(answer.requestedTier)) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 			projectData.requestedTier = answer.requestedTier
 			break
@@ -330,14 +328,14 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		const targetProjectId = txProject?.id ?? before.project.id
 
-		const projectAfter = touchesProject
+		const updatedProject = touchesProject
 			? await tx.themeProject.update({
 					data: projectData,
 					select: PROJECT_SELECT,
 					where: { id: targetProjectId },
 				})
 			: (txProject ?? before.project)
-		const userAfter = await tx.user.update({
+		const updatedUser = await tx.user.update({
 			...userWrite,
 			data: {
 				...userWrite.data,
@@ -352,7 +350,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 			where: { id: userId, onboardingStep: { lt: reachedNow } },
 		})
 
-		return { projectAfter, reached: reachedNow, userAfter }
+		return { projectAfter: updatedProject, reached: reachedNow, userAfter: updatedUser }
 	})
 
 	const state: OnboardingState = {
@@ -432,5 +430,5 @@ export async function needsOnboarding(userId: string): Promise<boolean> {
 	return started === 0
 }
 
-export type { OnboardingStepId }
-export { ONBOARDING_STEPS }
+export type { OnboardingStepId } from "@/lib/config/onboarding"
+export { ONBOARDING_STEPS } from "@/lib/config/onboarding"

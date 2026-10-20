@@ -3,16 +3,15 @@ import { ActionButton } from "@/app/components/forms/ActionButton"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { EmailForm } from "@/app/components/forms/EmailForm"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
-import { GrantForm } from "@/app/components/forms/GrantForm"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
-import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
-import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, statusTone, Table } from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { isHcbConfigured } from "@/lib/hcb"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePermission } from "@/lib/permissions"
 import { getUserDetail } from "@/lib/queries/admin"
+import { ThemedProjectRow } from "./ThemedProjectRow"
 
 export const dynamic = "force-dynamic"
 
@@ -108,7 +107,7 @@ export default async function AdminUserPage({ params }: Props) {
 				</p>
 			</Panel>
 
-			<Panel title="Themed projects">
+			<Panel title="Themed projects" wide>
 				{canSendGrant && (
 					<p className="hl-hint" style={{ marginTop: 0 }}>
 						Sending a grant tops up the maker&apos;s HCB card grant directly. It is a manual fallback – the payout
@@ -116,89 +115,37 @@ export default async function AdminUserPage({ params }: Props) {
 					</p>
 				)}
 				<Table
+					className="hl-table--roomy"
 					head={[
-						"Theme",
-						"Design",
-						"Build",
+						"Project",
+						"Review",
 						"Tier",
 						"Grant",
 						"Hours",
-						canSendGrant ? "Send grant" : null,
-						canMoveTheme ? "Move" : null,
-						canManageUsers ? "Extension" : null,
-						canOverride ? "" : null,
+						canSendGrant || canMoveTheme || canManageUsers || canOverride ? "Actions" : null,
 					].filter(Boolean)}
 				>
 					{user.themeProjects.map(project => (
-						<tr id={`project-${project.id}`} key={project.id}>
-							<td>
-								{getThemeDef(project.theme).label}
-								<div className="hl-hint">{project.title}</div>
-							</td>
-							<td>
-								<Badge tone={statusTone(project.designStatus)}>{statusLabel(project.designStatus)}</Badge>
-							</td>
-							<td>
-								<Badge tone={statusTone(project.buildStatus)}>{statusLabel(project.buildStatus)}</Badge>
-							</td>
-							<td>{project.tier ?? "—"}</td>
-							<td>{project.grantUsd !== null ? `$${project.grantUsd}` : "—"}</td>
-							<td className="hl-mono">{project.approvedHours ?? "—"}</td>
-							{canSendGrant ? (
-								<td style={{ minWidth: "14rem" }}>
-									{project.designStatus === "approved" && project.grantUsd ? (
-										<GrantForm
-											alreadySent={project.hcbGrantTopUps.length > 0}
-											amountUsd={project.grantUsd}
-											projectId={project.id}
-										/>
-									) : (
-										<span className="hl-hint">–</span>
-									)}
-								</td>
-							) : null}
-							{canMoveTheme ? (
-								<td style={{ minWidth: "12rem" }}>
-									<ThemeMoveForm current={project.theme} projectId={project.id} />
-								</td>
-							) : null}
-							{canManageUsers ? (
-								<td style={{ minWidth: "18rem" }}>
-									<ExtensionForm
-										current={project.submissionExtensionUntil?.toISOString() ?? null}
-										url={`/api/admin/theme-projects/${project.id}`}
-									/>
-								</td>
-							) : null}
-							{canOverride ? (
-								<td>
-									{project.designStatus === "approved" ? (
-										<ActionButton
-											body={{
-												action: "unapprove",
-												phase: "DESIGN",
-												reason: "Un-approved by an admin",
-											}}
-											confirm="Un-approve the design? This clears the tier and grant."
-											label="Un-approve design"
-											url={`/api/admin/theme-projects/${project.id}/override`}
-										/>
-									) : null}
-									{project.buildStatus === "approved" ? (
-										<ActionButton
-											body={{
-												action: "unapprove",
-												phase: "BUILD",
-												reason: "Un-approved by an admin",
-											}}
-											confirm={`Un-approve the build? This reconciles their ${CREDIT_NAME_PLURAL} back down.`}
-											label="Un-approve build"
-											url={`/api/admin/theme-projects/${project.id}/override`}
-										/>
-									) : null}
-								</td>
-							) : null}
-						</tr>
+						<ThemedProjectRow
+							canExtend={canManageUsers}
+							canMoveTheme={canMoveTheme}
+							canOverride={canOverride}
+							canSendGrant={canSendGrant}
+							data={{
+								approvedHours: project.approvedHours,
+								buildStatus: project.buildStatus,
+								designStatus: project.designStatus,
+								extension: project.submissionExtensionUntil?.toISOString() ?? null,
+								grantSent: project.hcbGrantTopUps.length > 0,
+								grantUsd: project.grantUsd,
+								id: project.id,
+								theme: project.theme,
+								themeLabel: getThemeDef(project.theme).label,
+								tier: project.tier,
+								title: project.title,
+							}}
+							key={project.id}
+						/>
 					))}
 				</Table>
 			</Panel>

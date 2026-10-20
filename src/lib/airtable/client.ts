@@ -23,13 +23,12 @@ export function getAirtableConfig(): AirtableConfig | null {
  * Strip control characters, then escape backslashes, then quotes – in that order. Escaping quotes first would double-escape the backslashes you just inserted. Every formula interpolation goes through this: siege's duplicate check interpolates a URL raw, which is a formula-injection hole, and stasis has one call site that hand-rolls the replace and misses the control characters.
  */
 export function escapeAirtableValue(value: string): string {
-	return (
-		value
-			// biome-ignore lint/suspicious/noControlCharactersInRegex: removing them is the job
-			.replace(/[\x00-\x1F\x7F]/g, "")
-			.replace(/\\/g, "\\\\")
-			.replace(/'/g, "\\'")
-	)
+	// Strip control characters by code point rather than with a regex: the rule that reads patterns cannot see that removing them is the job.
+	const clean = Array.from(value).filter(char => {
+		const code = char.codePointAt(0) ?? 0
+		return code > 31 && code !== 127
+	})
+	return clean.join("").replaceAll("\\", String.raw`\\`).replaceAll("'", String.raw`\'`)
 }
 
 export class AirtableError extends Error {
@@ -60,7 +59,7 @@ async function throttle(): Promise<void> {
 	const slot = Math.max(now, nextSlot)
 	nextSlot = slot + MIN_INTERVAL_MS
 	const wait = slot - now
-	if (wait > 0) await new Promise(r => setTimeout(r, wait))
+	if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait))
 }
 
 /**
@@ -77,7 +76,7 @@ export async function withRateLimitRetry<T>(
 	const baseSleepMs = opts.baseSleepMs ?? 1000
 	const retryServerErrors = opts.retryServerErrors ?? true
 
-	for (let attempt = 1; ; attempt++) {
+	for (let attempt = 1; ; attempt++)
 		try {
 			await throttle()
 			return await fn()
@@ -90,20 +89,21 @@ export async function withRateLimitRetry<T>(
 			console.warn(
 				`[airtable] ${operation} attempt ${attempt} failed (${err instanceof Error ? err.message : err}); retrying in ${Math.round(wait)}ms`,
 			)
-			await new Promise(r => setTimeout(r, wait))
+			await new Promise(resolve => setTimeout(resolve, wait))
 		}
-	}
 }
 
 export async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {
+	const headers = new Headers({
+		Authorization: `Bearer ${config.apiKey}`,
+		"Content-Type": "application/json",
+	})
+	for (const [key, value] of new Headers(init.headers)) headers.set(key, value)
+
 	const res = await fetch(`${API_BASE}/${config.baseId}/${path}`, {
 		...init,
 		cache: "no-store",
-		headers: {
-			Authorization: `Bearer ${config.apiKey}`,
-			"Content-Type": "application/json",
-			...init.headers,
-		},
+		headers,
 		signal: AbortSignal.timeout(20_000),
 	})
 	if (!res.ok) {
