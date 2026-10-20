@@ -25,6 +25,7 @@ import prisma from "@/lib/prisma"
 import { normalizeRepo } from "@/lib/repo"
 import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
 import { sanitize } from "@/lib/sanitize"
+import { DEFAULT_SESSION_TITLE } from "@/lib/schemas/session"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -99,6 +100,13 @@ async function buildDemoUrl(userId: string, buildWeek: number): Promise<string |
 	return publicUrlFor(reel?.objectKey ?? null)
 }
 
+/**
+ * What a journal that is only a recording says to a reviewer.
+ *
+ * The journal form asks for words or a timelapse, and an entry with only the latter used to reach Ari titled "Work session" with no text at all – indistinguishable from an entry where the maker forgot to write anything. Naming the situation lets the reviewer judge the footage on its own instead of reading silence as a gap.
+ */
+const EMPTY_TIMELAPSE_SESSION = "[This is an empty work session with timelapses attached.]"
+
 interface ShipBundle {
 	input: AriShipInput
 	submissionId: string | null
@@ -160,7 +168,6 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	const def = getThemeDef(project.theme)
 
 	const journals = project.workSessions.slice(-200).map(session => {
-		const body = sanitize(session.content ?? session.title) || session.title || "Journal entry"
 		const clips = session.timelapses.flatMap(t => {
 			const url =
 				t.provider === "lapse" && t.externalId
@@ -168,6 +175,15 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 					: (t.playbackUrl ?? publicUrlFor(t.objectKey))
 			return url ? [url] : []
 		})
+		// An entry can be a recording and nothing else: the maker attached a timelapse and logged the time without writing a word, so the stored title is the "Work session" placeholder. Sent as-is that reads as a blank entry to Ari, as if the work were missing rather than recorded, so say what the entry actually is – the clip links below are its evidence.
+		const written = sanitize(session.content ?? "")
+		const storedTitle = sanitize(session.title)
+		const body =
+			written
+			|| (storedTitle && storedTitle !== DEFAULT_SESSION_TITLE ? storedTitle : "")
+			|| (clips.length > 0 ? EMPTY_TIMELAPSE_SESSION : "")
+			|| storedTitle
+			|| "Journal entry"
 		return Object.assign(
 			{
 				at: session.createdAt,
