@@ -39,11 +39,11 @@ async function main() {
 	const summary = await reconcileAriDecisions({ announce, commit, limit })
 
 	console.log(
-		`checked ${summary.checked} open hand-in(s): ${summary.pending} still with Ari, ${summary.decided} decided, ${summary.skipped} skipped, ${summary.failed} failed to read`,
+		`checked ${summary.checked} open hand-in(s): ${summary.pending} still with Ari, ${summary.decided} decided, ${summary.reverted} reverted, ${summary.skipped} skipped, ${summary.failed} failed to read`,
 	)
 	if (!commit) {
 		console.log(
-			`Dry run. Pass --commit to apply the ${summary.decided} standing decision(s); --announce also notifies the makers.`,
+			`Dry run. Pass --commit to apply the ${summary.decided} standing decision(s) and ${summary.reverted} revert(s); --announce also notifies the makers.`,
 		)
 		return
 	}

@@ -128,9 +128,22 @@ and it refuses an already-resolved submission.
   rather than invented.
 - **Idempotent.** The `delivery_id` is checked first and recorded only after the
   work succeeds, so Ari's retries are safe and a failed delivery is retried.
-  `review.reverted` / `review.requeued` undo the local status and credit and put
-  the phase back in review; `review.fraud` flags the maker on a failed verdict;
-  `ship.updated` and unknown events are recorded and ignored.
+  `review.requeued` undoes the local status and credit and puts the same ship
+  back in front of reviewers; `review.reverted` does the same but leaves the
+  phase on `update_requested`, because the ship is terminal at Ari and only a
+  fresh hand-in can be reviewed. `review.fraud` flags the maker on a failed
+  verdict; `ship.updated` and unknown events are recorded and ignored.
+- **A 409 `already_queued` is an answer, not a failure.** Ari refuses to replace
+  an open ship but names the ship it found, so `sendSubmissionToAri` records that
+  id on the hand-in instead of retrying forever. This is the recovery for a
+  create whose response was lost, and it stops a ship Ari already has from being
+  invisible to every local count.
+- **The admin ring counts ships, as Ari does.** `getProjectReviewStatuses`
+  counts every resolved submission that reached Ari – each resubmission is a new
+  ship and leaves its predecessor's decision on the board – and only the pending
+  slice is per phase, from the newest hand-in. Collapsing all four slices to the
+  newest submission per phase is what made the ring read hundreds of change
+  requests short of Ari.
 - **A delivery can be lost, so decisions are also pulled.** The webhook is
   fire-and-forget: a delivery sent while the endpoint was unregistered,
   misconfigured or briefly unreachable is gone, and the hand-in sits decided at
@@ -138,7 +151,9 @@ and it refuses an already-resolved submission.
   ring then reads hundreds of hand-ins more pending than Ari's own board.
   `reconcileAriDecisions` (`lib/ari.ts`) asks `ari.ships.status` for each open
   hand-in and applies any standing decision through the same `finalizeReview`
-  the webhook calls. `ari-retry` runs a bounded pass every hour, and
+  the webhook calls; a ship Ari reports as `reverted` is reset from there too,
+  because a lost revert leaves the phase looking pending forever. `ari-retry`
+  runs a bounded pass every hour, and
   `pnpm reviews:backfill-ari` (dry run; `--commit` writes) drains a backlog in
   one go. `status` carries the decision and nothing else – `id`, `external_id`,
   `version`, `phase`, `decision` – so a replayed decision has no note to store
