@@ -53,6 +53,7 @@ export function regionOfTimezone(timezone: string | null | undefined): RegionId 
 		case "NZ":
 			return "oceania"
 		case undefined:
+			return "other"
 		default:
 			return "other"
 	}
