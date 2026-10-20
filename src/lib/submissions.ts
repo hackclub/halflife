@@ -2,10 +2,13 @@ import "server-only"
 import type { PhaseSubmission, ProgramSettings, ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { partsFundingFor } from "@/lib/bom"
+import { submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
+import { ENTRY_TIER, getTierOrThrow } from "@/lib/config/tiers"
 import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
 import { getHoursBreakdown } from "@/lib/hours"
+import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 import {
 	assertWeekStarted,
@@ -132,6 +135,21 @@ export async function submitPhase(
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
 	if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0)
 		throw new HttpError("UNPROCESSABLE", "Log at least one work session before submitting this phase")
+
+	// A tier's funded block is the floor a design week is handed in on, and until now that floor lived only in the
+	// submit sheet. It is the gate the tier promises: a tier-3 request funds twenty hours and a hundred dollars of
+	// parts, so it cannot be handed in on an hour of work. The client refuses a tier below its floor; this is the
+	// same rule held by the server, so a request that bypasses the sheet cannot buy a grant with less work than the
+	// grant is for.
+	if (phase === Phase.DESIGN) {
+		const tierId = project.tier ?? project.requestedTier ?? ENTRY_TIER.id
+		const floor = submitFloorFor(getTierOrThrow(tierId).fundingHours)
+		if (breakdown.effectiveHours < floor)
+			throw new HttpError(
+				"UNPROCESSABLE",
+				`Tier ${tierId} needs ${floor}h of design time to hand in and you have logged ${round2(breakdown.effectiveHours)}h. Pick a tier you have earned.`,
+			)
+	}
 
 	// An account under review is stopped here. Identity verification is not: it is asked of the shop instead (see lib/shop), so a maker can explore, journal and hand work in without having verified, and meets it only when they try to spend.
 	const user = await prisma.user.findUnique({

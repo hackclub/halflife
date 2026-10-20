@@ -12,7 +12,7 @@ import {
 import { AuditAction, logAudit } from "@/lib/audit"
 import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
 import { getThemeDef, THEME_COMPLETION_BONUS } from "@/lib/config/program"
-import { getTierOrThrow, isTierId } from "@/lib/config/tiers"
+import { ENTRY_TIER, getTierOrThrow, isTierId, tierForHours } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { HttpError } from "@/lib/errors"
@@ -195,6 +195,25 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		approving && phase === Phase.DESIGN && tier
 			? (input.grantUsdOverride ?? (submission.fundingDeclined ? 0 : getTierOrThrow(tier).grantUsd))
 			: project.grantUsd
+
+	// A tier's grant buys that tier's funded block of hours, so it is not paid on fewer hours than it funds. The
+	// submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when the decision approves
+	// less time than was logged. Then the tier is what has to move, not the grant: a hundred dollars of parts for a
+	// five-hour week is money for work that was not done. An explicit grant override is an admin decision about the
+	// amount, so it is left alone.
+	if (approving && phase === Phase.DESIGN && tier && (grantUsd ?? 0) > 0 && input.grantUsdOverride == null) {
+		const funded = getTierOrThrow(tier).fundingHours
+		const approved = approvedHours ?? 0
+		if (approved < funded) {
+			const affordable = tierForHours(approved)
+			throw new HttpError(
+				"VALIDATION_FAILED",
+				affordable
+					? `Tier ${tier} funds ${funded} hours and this decision approves ${approved}h. Tier ${affordable.id} is the tier those hours earn.`
+					: `Tier ${tier} funds ${funded} hours and this decision approves ${approved}h, which is under every tier. Approve at least ${ENTRY_TIER.fundingHours} hours, or return the design for more work.`,
+			)
+		}
+	}
 
 	// The machine this participant is saving for is frozen alongside the tier for the pacing displays: it no longer sizes the payout, but the goal tracker still reads it to say what this week's work means for the goal. Someone who never chose one is paced against the default.
 	const goal = printerById(project.user.printerGoalId ?? DEFAULT_GOAL_ID)
