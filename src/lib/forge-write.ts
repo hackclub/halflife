@@ -212,6 +212,8 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 				}
 
 	const method = init.method ?? "GET"
+	const mergedHeaders = new Headers(headers)
+	for (const [key, value] of new Headers(init.headers)) mergedHeaders.set(key, value)
 	// What the maker is told if every attempt fails. A transport failure leaves this at the network wording; a named answer replaces it with the sentence for its status.
 	let why = `${forge.label} did not answer after several attempts; this is usually a temporary network or ${forge.label} problem, so try again.`
 
@@ -222,7 +224,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 			res = await fetch(url, {
 				...init,
 				cache: "no-store",
-				headers: { ...headers, ...init.headers },
+				headers: mergedHeaders,
 				signal: AbortSignal.timeout(TIMEOUT_MS),
 			})
 		} catch (err) {

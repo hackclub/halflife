@@ -24,7 +24,7 @@ export function getAirtableConfig(): AirtableConfig | null {
  */
 export function escapeAirtableValue(value: string): string {
 	// Strip control characters by code point rather than with a regex: the rule that reads patterns cannot see that removing them is the job.
-	const clean = [...value].filter(char => {
+	const clean = Array.from(value).filter(char => {
 		const code = char.codePointAt(0) ?? 0
 		return code > 31 && code !== 127
 	})
@@ -94,14 +94,16 @@ export async function withRateLimitRetry<T>(
 }
 
 export async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {
+	const headers = new Headers({
+		Authorization: `Bearer ${config.apiKey}`,
+		"Content-Type": "application/json",
+	})
+	for (const [key, value] of new Headers(init.headers)) headers.set(key, value)
+
 	const res = await fetch(`${API_BASE}/${config.baseId}/${path}`, {
 		...init,
 		cache: "no-store",
-		headers: {
-			Authorization: `Bearer ${config.apiKey}`,
-			"Content-Type": "application/json",
-			...init.headers,
-		},
+		headers,
 		signal: AbortSignal.timeout(20_000),
 	})
 	if (!res.ok) {

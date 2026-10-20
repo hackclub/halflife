@@ -405,7 +405,7 @@ async function bodies() {
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
 	// A MIME type and an extension are only claims; the bytes decide. The `ftyp` box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a video one – otherwise a still image renamed `.mp4` becomes a reel.
-	const asciiBytes = (s: string) => [...s].map(c => c.codePointAt(0) ?? 0)
+	const asciiBytes = (s: string) => Array.from(s, c => c.codePointAt(0) ?? 0)
 	const isoFile = (major: string, compatible: string[] = []) => {
 		const body = [
 			0,

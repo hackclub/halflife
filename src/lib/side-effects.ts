@@ -10,6 +10,12 @@ export interface SideEffectContext {
 	targetType: string
 }
 
+/** The metadata object to spread into an audit row, ignoring JSON values that are not objects. */
+function metadataObject(value: Prisma.InputJsonValue | undefined): { [_: string]: Prisma.InputJsonValue } {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return {}
+	return value as { [_: string]: Prisma.InputJsonValue }
+}
+
 /**
  * Run an external side effect so its outcome becomes a queryable audit row rather than a swallowed console error.
  *
@@ -41,9 +47,7 @@ export async function trackSideEffect<T>(
 				actorEmail: ctx.actorEmail,
 				actorId: ctx.actorId,
 				metadata: {
-					...(typeof ctx.metadata === "object" && ctx.metadata !== null && !Array.isArray(ctx.metadata)
-						? ctx.metadata
-						: {}),
+					...metadataObject(ctx.metadata),
 					...(recordId ? { recordId } : {}),
 				},
 				targetId: ctx.targetId,
@@ -56,9 +60,7 @@ export async function trackSideEffect<T>(
 				actorEmail: ctx.actorEmail,
 				actorId: ctx.actorId,
 				metadata: {
-					...(typeof ctx.metadata === "object" && ctx.metadata !== null && !Array.isArray(ctx.metadata)
-						? ctx.metadata
-						: {}),
+					...metadataObject(ctx.metadata),
 					...(result && typeof result === "object" && "id" in result && typeof result.id === "string"
 						? { ariSubmissionId: result.id }
 						: {}),
@@ -80,7 +82,7 @@ export async function trackSideEffect<T>(
 						: AuditAction.NOTIFICATION_FAILURE,
 			actorEmail: ctx.actorEmail,
 			actorId: ctx.actorId,
-			metadata: { ...(typeof ctx.metadata === "object" ? ctx.metadata : {}), error: message },
+			metadata: { ...metadataObject(ctx.metadata), error: message },
 			targetId: ctx.targetId,
 			targetType: ctx.targetType,
 		})

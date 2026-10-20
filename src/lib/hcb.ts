@@ -73,9 +73,11 @@ async function hcbFetch(path: string, init: RequestInit & { timeoutMs?: number }
 	const { timeoutMs = 15_000, headers, ...rest } = init
 	for (let attempt = 0; ; attempt++) {
 		const token = await accessToken(attempt > 0)
+		const mergedHeaders = new Headers({ accept: "application/json", authorization: `Bearer ${token}` })
+		for (const [key, value] of new Headers(headers)) mergedHeaders.set(key, value)
 		const res = await fetch(`${base()}${path}`, {
 			...rest,
-			headers: { accept: "application/json", authorization: `Bearer ${token}`, ...headers },
+			headers: mergedHeaders,
 			signal: AbortSignal.timeout(timeoutMs),
 		})
 		if (res.status === 401 && attempt === 0 && !process.env.HCB_ACCESS_TOKEN) {
