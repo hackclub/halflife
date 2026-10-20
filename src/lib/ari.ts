@@ -101,11 +101,12 @@ async function buildDemoUrl(userId: string, buildWeek: number): Promise<string |
 }
 
 /**
- * What a journal that is only a recording says to a reviewer.
+ * What a journal that is only recordings says to a reviewer.
  *
- * The journal form asks for words or a timelapse, and an entry with only the latter used to reach Ari titled "Work session" with no text at all – indistinguishable from an entry where the maker forgot to write anything. Naming the situation lets the reviewer judge the footage on its own instead of reading silence as a gap.
+ * The journal form asks for words or timelapses, and an entry with only the latter used to reach Ari titled "Work session" with no text at all – indistinguishable from an entry where the maker forgot to write anything. Naming the situation and its clip count lets the reviewer judge the footage on its own instead of reading silence as a gap.
  */
-const EMPTY_TIMELAPSE_SESSION = "[This is an empty work session with timelapses attached.]"
+const emptyTimelapseSession = (timelapses: number): string =>
+	`[This is an empty work session with ${timelapses} timelapse${timelapses === 1 ? "" : "s"} attached.]`
 
 interface ShipBundle {
 	input: AriShipInput
@@ -181,7 +182,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 		const body =
 			written
 			|| (storedTitle && storedTitle !== DEFAULT_SESSION_TITLE ? storedTitle : "")
-			|| (clips.length > 0 ? EMPTY_TIMELAPSE_SESSION : "")
+			|| (clips.length > 0 ? emptyTimelapseSession(clips.length) : "")
 			|| storedTitle
 			|| "Journal entry"
 		return Object.assign(
