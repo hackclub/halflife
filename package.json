@@ -11,6 +11,7 @@
 		"ari:backfill-empty-journals": "bun --conditions=react-server scripts/backfill-ari-empty-journals.ts",
 		"ari:backfill-timelapses": "bun --conditions=react-server scripts/backfill-ari-timelapses.ts",
 		"ari:resend-all": "bun scripts/ari-resend-all.ts",
+		"ari:review-counts": "bun --conditions=react-server scripts/ari-review-counts.ts",
 		"build": "next build",
 		"db:deploy": "prisma migrate deploy",
 		"db:generate": "prisma generate",
