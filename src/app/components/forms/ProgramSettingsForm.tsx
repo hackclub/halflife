@@ -22,7 +22,7 @@ export function ProgramSettingsForm({
 	const [saved, setSaved] = useState(false)
 	const { busy, error, run } = useAction()
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setSaved(false)
 		void run(

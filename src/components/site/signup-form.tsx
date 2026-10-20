@@ -65,7 +65,7 @@ export default function SignupForm({
 		inputRef.current?.focus()
 	}
 
-	async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+	async function onSubmit(event: React.SubmitEvent<HTMLFormElement>) {
 		event.preventDefault()
 		const field = inputRef.current
 		const email = field?.value.trim() ?? ""

@@ -8,7 +8,7 @@ export function CreditGrantForm({ userId }: Readonly<{ userId: string }>) {
 	const [reason, setReason] = useState("")
 	const { busy, error, run } = useAction()
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		void run(
 			"submit",

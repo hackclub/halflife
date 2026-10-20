@@ -117,7 +117,7 @@ export function ReelComments({
 		setSendError(null)
 	}
 
-	async function send(e: React.FormEvent) {
+	async function send(e: React.SubmitEvent) {
 		e.preventDefault()
 		const body = draft.trim()
 		if (!reel || !body || sending) return

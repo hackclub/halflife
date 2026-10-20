@@ -26,7 +26,7 @@ export function EmailForm({
 	// An unchanged submit is a no-op the server would refuse anyway, so it is never offered.
 	const canSave = trimmed.length > 0 && trimmed.toLowerCase() !== current.toLowerCase()
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		if (!canSave) return
 		// This is an identity change with no undo and no second copy of the old address anywhere but the audit log, so it is confirmed rather than fired off with a stray click.

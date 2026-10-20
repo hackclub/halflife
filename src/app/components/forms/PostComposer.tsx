@@ -47,7 +47,7 @@ export function PostComposer({
 
 	const busy = stage !== "idle"
 
-	async function submit(e: React.FormEvent) {
+	async function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setError(null)
 

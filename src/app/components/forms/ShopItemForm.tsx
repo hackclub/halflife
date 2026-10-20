@@ -92,7 +92,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 		}
 	}
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setSaved(false)
 		const fields = {

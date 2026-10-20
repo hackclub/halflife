@@ -22,7 +22,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	// Fraction sent. The phone is where the wait is longest, so it shows here.
 	const [progress, setProgress] = useState(0)
 
-	async function submit(e: React.FormEvent) {
+	async function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setError(null)
 
