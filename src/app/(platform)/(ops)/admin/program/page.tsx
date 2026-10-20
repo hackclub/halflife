@@ -47,15 +47,16 @@ export default async function AdminProgramPage() {
 	const schedule = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
 		const n = i + 1
 		const slot = scheduleForWeek(n)
-		const range = weekDateRange(settings.eventStartDate, n)
+		const range = weekDateRange(settings, n)
 		const closesAt = weekClosesAt(settings, n)
 		const opensAt = weekOpensAt(settings, n)
-		const day = { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" } as const
+		// The program's own timezone, because the week is drawn in wall-clock days there: formatting the range in UTC would show the first day's date an hour early in New York and the last day's an hour late.
+		const day = { day: "numeric", month: "short", timeZone: settings.programTimezone, weekday: "short" } as const
 		return {
 			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
 			label: slot ? `${slot.theme.label} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "—",
 			runs: range
-				? `${range.start.toLocaleDateString("en-US", day)} – ${new Date(range.start.getTime() + 6 * 86_400_000).toLocaleDateString("en-US", day)}`
+				? `${range.start.toLocaleDateString("en-US", day)} – ${range.end.toLocaleDateString("en-US", day)}`
 				: "—",
 			state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
 			week: n,

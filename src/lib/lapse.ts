@@ -123,26 +123,39 @@ export async function listMyTimelapses(
 }
 
 /**
+ * How many timelapses are asked about at once.
+ *
+ * Each id is one request to Lapse, so a list is checked a few at a time rather than all at once: a single body naming thousands of ids would otherwise turn into thousands of concurrent requests to a third party. The session schema caps how many ids a body may name, and this caps how many of them are in flight at once.
+ */
+const VERIFY_CHUNK_SIZE = 5
+
+/**
  * The timelapses a session is about to claim, each confirmed with Lapse as the claimant's own, published, and finished processing.
  *
  * The id alone proves nothing – Lapse ids show up in every share link – so this is the same rule the R2 uploads had ("evidence has to be your own"), asked of the system that actually knows. Refused as a whole rather than filtered: a participant who thinks they attached a timelapse and finds it missing at review has been failed silently.
+ *
+ * Checked in chunks rather than in one fan-out: the ids are verified a few at a time, so the number of requests in flight is bounded by the chunk rather than by the length of the list.
  */
 export async function verifyOwnTimelapses(userId: string, ids: readonly string[]): Promise<LapseTimelapse[]> {
 	if (ids.length === 0) return []
 	const { lapseUserId, accessToken } = await lapseCredentials(userId)
 
-	const found = await Promise.all(
-		ids.map(async id =>
-			toTimelapse((await call<{ timelapse: RawTimelapse }>(accessToken, "/timelapse/query", { id })).timelapse),
-		),
-	)
-
-	for (const t of found) {
-		if (t.ownerId !== lapseUserId)
-			throw new HttpError("VALIDATION_FAILED", `"${t.title}" is not one of your timelapses`)
-		if (t.visibility === "FAILED_PROCESSING")
-			throw new HttpError("VALIDATION_FAILED", `"${t.title}" failed processing on Lapse`)
-		if (!t.playbackUrl) throw new HttpError("VALIDATION_FAILED", `"${t.title}" is still processing on Lapse`)
+	const found: LapseTimelapse[] = []
+	for (let at = 0; at < ids.length; at += VERIFY_CHUNK_SIZE) {
+		const chunk = ids.slice(at, at + VERIFY_CHUNK_SIZE)
+		const verified = await Promise.all(
+			chunk.map(async id =>
+				toTimelapse((await call<{ timelapse: RawTimelapse }>(accessToken, "/timelapse/query", { id })).timelapse),
+			),
+		)
+		for (const t of verified) {
+			if (t.ownerId !== lapseUserId)
+				throw new HttpError("VALIDATION_FAILED", `"${t.title}" is not one of your timelapses`)
+			if (t.visibility === "FAILED_PROCESSING")
+				throw new HttpError("VALIDATION_FAILED", `"${t.title}" failed processing on Lapse`)
+			if (!t.playbackUrl) throw new HttpError("VALIDATION_FAILED", `"${t.title}" is still processing on Lapse`)
+		}
+		found.push(...verified)
 	}
 	return found
 }

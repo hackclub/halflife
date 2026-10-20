@@ -6,8 +6,12 @@ import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from 
 import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
 
+/**
+ * Re-exported rather than kept here: the check itself belongs next to the other shape helpers, because a zone is validated where it is typed and this module is server-only.
+ */
+export { isTimeZone } from "@/lib/schemas/common"
+
 const DAY_MS = 24 * 60 * 60 * 1000
-const WEEK_MS = 7 * DAY_MS
 
 /**
  * The settings row is created on demand so a fresh database is usable without a seed step having run first.
@@ -52,12 +56,17 @@ function utcCalendarDay(date: Date): number {
 	return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / DAY_MS)
 }
 
-export function weekDateRange(start: Date, week: number): { start: Date; end: Date } | null {
+/**
+ * The span a program week covers, in the program's own timezone: the midnight its first day opens at, and the 11:59 PM its last day closes at.
+ *
+ * Derived from `weekOpensAt` and `weekClosesAt` rather than counted in elapsed milliseconds from the start date, because those are the instants the server enforces. A range that ended hours before the deadline it describes would tell a client the week closed early, and counting UTC instants drifts by an hour across a daylight-saving change.
+ */
+export function weekDateRange(
+	settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
+	week: number,
+): { start: Date; end: Date } | null {
 	if (week < 1 || week > TOTAL_WEEKS) return null
-	const weekStart = new Date(start.getTime() + (week - 1) * WEEK_MS)
-	// End of the last day, not the start of the next week, so a "closes on" label reads correctly.
-	const weekEnd = new Date(weekStart.getTime() + WEEK_MS - 1)
-	return { end: weekEnd, start: weekStart }
+	return { end: weekClosesAt(settings, week), start: weekOpensAt(settings, week) }
 }
 
 /**
@@ -120,17 +129,6 @@ export async function assertWeekStarted(week: number): Promise<void> {
 			"WEEK_NOT_STARTED",
 			`Week ${week} opens on ${formatProgramDate(opensAt, settings.programTimezone)}.`,
 		)
-}
-
-/** Whether `timeZone` is an IANA name this runtime knows, e.g. "Asia/Kolkata". */
-export function isTimeZone(timeZone: string): boolean {
-	try {
-		// Formatted to prove the zone works: an unknown one is a RangeError from the formatter, and that is what says the name is not one this runtime knows.
-		new Intl.DateTimeFormat("en-US", { timeZone }).format()
-		return true
-	} catch {
-		return false
-	}
 }
 
 /** How far ahead of UTC a timezone's wall clock is at an instant, in ms. */
@@ -339,4 +337,24 @@ export const SHOP_CLOSED_MESSAGE =
  */
 export function isPhaseDecided(status: PhaseStatus): boolean {
 	return status === PhaseStatus.approved || status === PhaseStatus.rejected
+}
+
+/**
+ * The phase statuses in which a project's own details may no longer change: one a reviewer is reading right now, and one already decided.
+ *
+ * A decided phase is frozen everywhere else too – its entries, its parts list and its tier are the record the decision was made against – so the title, description, repo link, cover and artifact links cannot change under it either.
+ */
+export const FROZEN_PHASE_STATUSES: PhaseStatus[] = [PhaseStatus.in_review, PhaseStatus.approved, PhaseStatus.rejected]
+
+/**
+ * Why a project's own details cannot change right now, or null when they can.
+ *
+ * One place, so the route that refuses the edit and the page that says so cannot disagree about which phases are frozen.
+ */
+export function projectEditLockReason(project: { buildStatus: PhaseStatus; designStatus: PhaseStatus }): string | null {
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
+		return "In review, so it can't be edited. Unsubmit to change it"
+	if (isPhaseDecided(project.designStatus) || isPhaseDecided(project.buildStatus))
+		return "A phase of this project has been decided, so its details are final"
+	return null
 }

@@ -1,6 +1,6 @@
 import "server-only"
 import type { PhaseSubmission, ProgramSettings, ThemeProject } from "@/app/generated/prisma/client"
-import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
 import { partsFundingFor } from "@/lib/bom"
 import { submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
@@ -133,8 +133,9 @@ export async function submitPhase(
 	if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
-	if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0)
-		throw new HttpError("UNPROCESSABLE", "Log at least one work session before submitting this phase")
+	// Counted in hours rather than in entries: a HACKATIME_TRACKED entry is a journal entry that claims no time of its own, so counting entries would let a phase be handed in with no countable work at all.
+	if (breakdown.journalHours <= 0 && breakdown.hackatimeHours <= 0)
+		throw new HttpError("UNPROCESSABLE", "Log at least one work session with hours on it before submitting this phase")
 
 	// A tier's funded block is the floor a design week is handed in on, and until now that floor lived only in the
 	// submit sheet. It is the gate the tier promises: a tier-3 request funds twenty hours and a hundred dollars of
@@ -271,12 +272,21 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 		if (open.claim && open.claim.expiresAt > new Date())
 			throw new HttpError("CLAIMED_BY_OTHER", "A reviewer is looking at this right now")
 
+		// The decision this phase carries, read before the open submission is withdrawn: a phase that was returned for changes goes back to `update_requested` rather than `draft`, so the reviewer's note stays an action item instead of reading as "not started".
+		const lastDecision = await tx.phaseSubmission.findFirst({
+			orderBy: [{ resolvedAt: "desc" }, { createdAt: "desc" }],
+			select: { resolvedResult: true },
+			where: { phase, resolvedAt: { not: null }, resolvedResult: { not: null }, themeProjectId },
+		})
+		const restored =
+			lastDecision?.resolvedResult === ReviewResult.RETURNED ? PhaseStatus.update_requested : PhaseStatus.draft
+
 		// Conditional on still being unresolved: a decision that committed before the lock was ours has made this row its record, and withdrawing it would cascade the review away and put a decided phase back to draft.
 		const withdrawn = await tx.phaseSubmission.deleteMany({ where: { id: open.id, resolvedAt: null } })
 		if (withdrawn.count !== 1) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
 
 		const flipped = await tx.themeProject.updateMany({
-			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.draft } : { buildStatus: PhaseStatus.draft },
+			data: phase === Phase.DESIGN ? { designStatus: restored } : { buildStatus: restored },
 			where: {
 				id: themeProjectId,
 				...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review }),

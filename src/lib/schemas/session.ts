@@ -44,6 +44,13 @@ export const MAX_SESSION_CONTENT = 20_000
  */
 export const DEFAULT_SESSION_TITLE = "Work session"
 
+/**
+ * How many timelapses one entry may hold.
+ *
+ * Capped because every id is checked with its own request to Lapse, so a body carrying a few thousand ids would otherwise fire a few thousand concurrent requests at a third party. The same cap the resolve route reads.
+ */
+export const MAX_SESSION_TIMELAPSES = 25
+
 export const sessionCreateSchema = z
 	.object({
 		content: boundedText(MAX_SESSION_CONTENT).optional(),
@@ -56,13 +63,19 @@ export const sessionCreateSchema = z
 		media: z.array(mediaSchema).max(10).default([]),
 		phase: phaseSchema,
 		/**
-		 * Uncapped, because the picker does not cap: it lists every timelapse the maker has, and a cap the sheet does not enforce is a save refused after the clips were chosen. The work it does is bounded anyway – one verified clip per row written, against rows this account owns.
+		 * Capped, because each id costs a round trip to Lapse. The picker itself does not cap how many clips a maker may tick – so the cap is a server-side bound on the work one request may cause, not a promise about the sheet.
 		 */
-		timelapses: z.array(timelapseSchema).default([]),
+		timelapses: z
+			.array(timelapseSchema)
+			.max(MAX_SESSION_TIMELAPSES, `An entry can hold at most ${MAX_SESSION_TIMELAPSES} timelapses`)
+			.default([]),
 		title: boundedText(200, 1),
 	})
 	.strict()
 
-export const sessionUpdateSchema = sessionCreateSchema.partial().strict()
+/**
+ * Editing an entry does not touch its images: the PATCH route writes the title, the content, the claimed hours and the source, and nothing else. `media` is left out so the shape says what the route does, rather than accepting a field and dropping it.
+ */
+export const sessionUpdateSchema = sessionCreateSchema.omit({ media: true }).partial().strict()
 
 export type SessionCreateInput = z.infer<typeof sessionCreateSchema>
