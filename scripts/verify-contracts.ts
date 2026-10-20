@@ -583,10 +583,16 @@ async function bodies() {
 	check("hackatime · present seconds are read", presentSeconds.stale && presentSeconds.seconds === 4321)
 
 	const renamed = projectSecondsFrom(stats({ name: "firmware-v2", total_seconds: 4321 }), "firmware")
-	check("hackatime · a renamed project is stale, not zero", renamed.stale && renamed.notFound && renamed.seconds === 0)
+	check(
+		"hackatime · a renamed project is stale, not zero",
+		Boolean(renamed.stale && renamed.notFound && renamed.seconds === 0),
+	)
 
 	const missingFromEmpty = projectSecondsFrom(stats(), "firmware")
-	check("hackatime · a name missing from an empty list is stale", missingFromEmpty.stale && missingFromEmpty.notFound)
+	check(
+		"hackatime · a name missing from an empty list is stale",
+		Boolean(missingFromEmpty.stale && missingFromEmpty.notFound),
+	)
 
 	const noList = projectSecondsFrom({ data: {} }, "firmware")
 	check("hackatime · a response with no list is stale", noList.stale && !noList.notFound)
