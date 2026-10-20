@@ -3,7 +3,6 @@ import { Ari, type AriShipPhase } from "@hackclub/ari"
 import type { Phase } from "../src/app/generated/prisma/enums"
 import { appBaseUrl, projectUrl, reviewUrl } from "../src/lib/app-url"
 import { ariReviewUrl } from "../src/lib/ari-url"
-import { getThemeDef } from "../src/lib/config/program"
 import { displayName } from "../src/lib/display-name"
 import prisma from "../src/lib/prisma"
 
@@ -27,10 +26,10 @@ import prisma from "../src/lib/prisma"
  * - the maker's admin profile (`/admin/users/<user id>`);
  * - each hand-in's review screen on Ari (`/p/<program>/review/<ship id>`), or `-` when the deployment has no Ari program configured.
  *
- * Needs `ARI_PROGRAM_ID` and `ARI_SIGNING_SECRET` (and `ARI_BASE_URL` when it is not Ari's default), because the pass is only knowable from Ari. Read-only, and safe to run against production:
+ * Needs `ARI_PROGRAM_ID` and `ARI_SIGNING_SECRET` (and `ARI_BASE_URL` when it is not Ari's default), because the pass is only knowable from Ari. Output is a Markdown table on stdout, so it can be pasted into a doc or a PR; theme and phase are omitted because they said the same thing on every line. The summary goes to stderr and stays out of a redirected file. Read-only, and safe to run against production:
  *
  *   bun --conditions=react-server scripts/list-unreviewed-starbies.ts
- *   bun --conditions=react-server scripts/list-unreviewed-starbies.ts > starbies.tsv
+ *   bun --conditions=react-server scripts/list-unreviewed-starbies.ts > starbies.md
  *
  * In production run it where `DATABASE_URL` and the `ARI_*` secrets point at the live program (the Orchard pod, not a dev machine).
  */
@@ -47,6 +46,11 @@ const STATUS_CONCURRENCY = 4
 /** Tabs and newlines would break the one-line-per-project shape; a title with either reads the same with a space in its place. */
 function oneLine(value: string): string {
 	return value.replaceAll(/[\t\r\n]+/g, " ").trim()
+}
+
+/** A Markdown table cell. A pipe in a project title would otherwise split the row into an extra column; the entity renders as one without being one. */
+function mdCell(value: string): string {
+	return oneLine(value).replaceAll("|", "&#124;")
 }
 
 /** Run `worker` over `items` at most `size` at a time. */
@@ -78,6 +82,13 @@ function ariClient(): Ari {
 	})
 }
 
+/** One hand-in of a project that turned out to be in Ari's first pass. */
+interface FirstPassHandIn {
+	ariSubmissionId: string
+	createdAt: Date
+	id: string
+}
+
 async function main() {
 	const ari = ariClient()
 	const projects = await prisma.themeProject.findMany({
@@ -88,7 +99,6 @@ async function main() {
 				select: { ariSubmissionId: true, createdAt: true, id: true, phase: true },
 				where: { resolvedAt: null },
 			},
-			theme: true,
 			title: true,
 			user: { select: { displayName: true, id: true, name: true } },
 		},
@@ -126,14 +136,10 @@ async function main() {
 	})
 
 	const excluded = new Map<string, number>()
-	const rows: {
-		firstPass: { ariSubmissionId: string; createdAt: Date; id: string; phase: Phase }[]
-		project: (typeof projects)[number]
-		waitingSince: Date
-	}[] = []
+	const rows: { firstPass: FirstPassHandIn[]; project: (typeof projects)[number]; waitingSince: Date }[] = []
 
 	for (const project of projects) {
-		const firstPass: { ariSubmissionId: string; createdAt: Date; id: string; phase: Phase }[] = []
+		const firstPass: FirstPassHandIn[] = []
 		for (const submission of project.submissions) {
 			if (!submission.ariSubmissionId) continue
 			const phase = phases.get(submission.ariSubmissionId)
@@ -146,7 +152,6 @@ async function main() {
 				ariSubmissionId: submission.ariSubmissionId,
 				createdAt: submission.createdAt,
 				id: submission.id,
-				phase: submission.phase,
 			})
 		}
 		const first = firstPass[0]
@@ -158,29 +163,26 @@ async function main() {
 	rows.sort((a, b) => a.waitingSince.getTime() - b.waitingSince.getTime())
 
 	const base = appBaseUrl()
-	console.log(
-		["maker", "project", "theme", "phase", "waiting since", "page", "review", "profile", "admin", "ari"].join("\t"),
-	)
+	console.log("| Maker | Project | Waiting since | Page | Review | Profile | Admin | Ari |")
+	console.log("| --- | --- | --- | --- | --- | --- | --- | --- |")
 
 	for (const { firstPass, project, waitingSince } of rows) {
-		const reviewLinks = firstPass.map(submission => reviewUrl(submission.id))
-		const ariLinks = firstPass.map(submission => ariReviewUrl(submission.ariSubmissionId)).filter(link => link !== null)
-		console.log(
-			[
-				displayName(project.user, "—"),
-				project.title || project.id,
-				getThemeDef(project.theme).label,
-				firstPass.map(submission => submission.phase.toLowerCase()).join(", "),
-				waitingSince.toISOString(),
-				projectUrl(project.id),
-				reviewLinks.join(" "),
-				`${base}/u/${project.user.id}`,
-				`${base}/admin/users/${project.user.id}`,
-				ariLinks.length > 0 ? ariLinks.join(" ") : "-",
-			]
-				.map(value => oneLine(value))
-				.join("\t"),
-		)
+		const reviewCell = firstPass.map(submission => `[Review](${reviewUrl(submission.id)})`).join("<br>")
+		const ariLinks = firstPass
+			.map(submission => ariReviewUrl(submission.ariSubmissionId))
+			.filter(link => link !== null)
+			.map(link => `[Ari](${link})`)
+		const cells = [
+			displayName(project.user, "—"),
+			project.title || project.id,
+			waitingSince.toISOString(),
+			`[Page](${projectUrl(project.id)})`,
+			reviewCell,
+			`[Profile](${base}/u/${project.user.id})`,
+			`[Admin](${base}/admin/users/${project.user.id})`,
+			ariLinks.length > 0 ? ariLinks.join("<br>") : "—",
+		]
+		console.log(`| ${cells.map(value => mdCell(value)).join(" | ")} |`)
 	}
 
 	const oldest = rows[0]?.waitingSince
