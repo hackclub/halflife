@@ -8,6 +8,7 @@
 		"airtable:backfill-review": "bun --conditions=react-server scripts/backfill-airtable-review.ts",
 		"airtable:backfill-starters": "bun --conditions=react-server scripts/backfill-airtable-starters.ts",
 		"analytics:backfill": "bun --conditions=react-server scripts/backfill-analytics.ts",
+		"ari:backfill-empty-journals": "bun --conditions=react-server scripts/backfill-ari-empty-journals.ts",
 		"ari:backfill-timelapses": "bun --conditions=react-server scripts/backfill-ari-timelapses.ts",
 		"ari:resend-all": "bun scripts/ari-resend-all.ts",
 		"build": "next build",

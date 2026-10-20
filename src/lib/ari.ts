@@ -108,6 +108,16 @@ async function buildDemoUrl(userId: string, buildWeek: number): Promise<string |
 const emptyTimelapseSession = (timelapses: number): string =>
 	`[This is an empty work session with ${timelapses} timelapse${timelapses === 1 ? "" : "s"} attached.]`
 
+/**
+ * Whether an entry carries no words of its own, leaving only the title column's "Work session" placeholder.
+ *
+ * Exported for the backfill that replaces ships already in Ari: a ship cannot be updated in place, so the script finds the entries whose text this rule rewrites.
+ */
+export function isWordlessJournal(content: string | null, title: string): boolean {
+	const storedTitle = sanitize(title)
+	return !sanitize(content ?? "") && (!storedTitle || storedTitle === DEFAULT_SESSION_TITLE)
+}
+
 interface ShipBundle {
 	input: AriShipInput
 	submissionId: string | null
@@ -178,13 +188,10 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 		})
 		// An entry can be a recording and nothing else: the maker attached a timelapse and logged the time without writing a word, so the stored title is the "Work session" placeholder. Sent as-is that reads as a blank entry to Ari, as if the work were missing rather than recorded, so say what the entry actually is – the clip links below are its evidence.
 		const written = sanitize(session.content ?? "")
-		const storedTitle = sanitize(session.title)
 		const body =
-			written
-			|| (storedTitle && storedTitle !== DEFAULT_SESSION_TITLE ? storedTitle : "")
-			|| (clips.length > 0 ? emptyTimelapseSession(clips.length) : "")
-			|| storedTitle
-			|| "Journal entry"
+			isWordlessJournal(session.content, session.title) && clips.length > 0
+				? emptyTimelapseSession(clips.length)
+				: written || sanitize(session.title) || "Journal entry"
 		return Object.assign(
 			{
 				at: session.createdAt,
