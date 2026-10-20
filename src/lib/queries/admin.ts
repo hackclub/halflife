@@ -20,7 +20,14 @@ import { isActiveDay } from "@/lib/analytics"
 import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
-import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
+import {
+	getThemeDef,
+	scheduledWeekFor,
+	scheduleForWeek,
+	TOTAL_WEEKS,
+	WARMUP_THEME,
+	WARMUP_WEEK_ID,
+} from "@/lib/config/program"
 import { isTierId, TIERS } from "@/lib/config/tiers"
 import { type Balances, getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
@@ -30,7 +37,7 @@ import { pctOf, round1 } from "@/lib/numbers"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
-import { effectiveDateFor, getProgramSettings, startOfDay } from "@/lib/program"
+import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
@@ -771,6 +778,75 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		})
 	}
 	return steps
+}
+
+export interface WeekFlowStep {
+	/** Distinct people who handed in a project for this week. */
+	count: number
+	/** What the week's project is, e.g. "PCBs · design week". */
+	hint: string
+	label: string
+	/** Share of everyone signed up who handed in this week's project. */
+	ofSignupsPct: number
+	week: number
+}
+
+/**
+ * The season week by week: how many people handed in each week's project, for the weeks that have opened.
+ *
+ * "This week's project" is the theme and phase the schedule puts in that week, not the week a hand-in happened to land in – a maker who hands week 2's design in during week 4 still belongs to week 2, which is the week the work was for. Any hand-in counts, in review, approved or sent back, because all three say the maker put the work in; a week taken back has had its open row deleted, so it stops counting. Rows from before `scheduledWeek` was recorded fall back to the theme and phase's own week, the same rule the Loops sync resolves a submission by.
+ *
+ * Only weeks that have opened are returned. A week still in the future has no submitters because nobody could hand in yet, which is not the same finding as a week nobody handed in for, and drawing it as a zero would read as the latter.
+ *
+ * The count is people, not hand-ins: a maker who handed in both the design and the build for a week is one person on that week's row.
+ */
+export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
+	const settings = await getProgramSettings()
+	const openWeeks = Math.min(
+		TOTAL_WEEKS,
+		weekNumberForDate(settings.eventStartDate, new Date(), settings.programTimezone),
+	)
+	if (openWeeks < 1) return []
+
+	const [signups, submissions] = await Promise.all([
+		prisma.user.count(),
+		prisma.phaseSubmission.findMany({
+			select: {
+				phase: true,
+				scheduledWeek: true,
+				themeProject: { select: { theme: true, userId: true } },
+			},
+			// Null rows are kept because a hand-in from before `scheduledWeek` was recorded only finds its week through its theme and phase below.
+			where: {
+				OR: [{ scheduledWeek: { gte: 1, lte: openWeeks } }, { scheduledWeek: null }],
+				themeProject: { deletedAt: null },
+			},
+		}),
+	])
+
+	const submitters = new Map<number, Set<string>>()
+	for (const submission of submissions) {
+		const week = submission.scheduledWeek ?? scheduledWeekFor(submission.themeProject.theme, submission.phase)
+		if (week < 1 || week > openWeeks) continue
+		const seen = submitters.get(week) ?? new Set<string>()
+		seen.add(submission.themeProject.userId)
+		submitters.set(week, seen)
+	}
+
+	return Array.from({ length: openWeeks }, (_, i) => {
+		const week = i + 1
+		const scheduled = scheduleForWeek(week)
+		const count = submitters.get(week)?.size ?? 0
+		return {
+			count,
+			hint: scheduled
+				? `${scheduled.theme.label} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
+				: "No theme scheduled",
+			label: `Week ${week}`,
+			ofSignupsPct: pctOf(count, signups),
+			week,
+		}
+	})
 }
 
 export type ReportStatusFilter = ReportStatus | "ALL"
