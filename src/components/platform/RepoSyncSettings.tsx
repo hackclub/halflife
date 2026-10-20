@@ -43,6 +43,8 @@ interface SyncState {
 	syncRepoDiffers: boolean
 }
 
+type SyncPayload = Omit<SyncState, "error"> & { error?: { message?: string } }
+
 /** The forges a maker can connect here, and how each is named in the UI. */
 const FORGES = [
 	{ id: "github", label: "GitHub" },
@@ -79,12 +81,12 @@ export function RepoSyncSettings({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/repo-sync`, { cache: "no-store" })
-			const body = await res.json().catch(() => null)
+			const body = (await res.json().catch(() => null)) as SyncPayload | null
 			if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the sync settings")
 			setState(body as SyncState)
 			// Pre-select the repo a project already points at, if it is one of the writable ones, so re-enabling does not need the picker used again.
-			const current = body.repo as string | null
-			setPicked(p => p ?? (body.repos as WritableRepo[]).find(r => r.url === current)?.url ?? null)
+			const current = body?.repo ?? null
+			setPicked(p => p ?? body?.repos.find(r => r.url === current)?.url ?? null)
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Could not load the sync settings")
 		} finally {
@@ -106,7 +108,7 @@ export function RepoSyncSettings({
 				headers: body ? { "content-type": "application/json" } : undefined,
 				method,
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 			if (!res.ok) {
 				setError(payload?.error?.message ?? "That did not work. Try again.")
 				return false

@@ -28,6 +28,13 @@ interface ImportPreview {
 	skipped: { row: number; name: string; reason: string }[]
 }
 
+/** The BOM routes' success payload, plus the error envelope they share. */
+interface BomPayload {
+	error?: { code?: string; details?: { properties?: { [_: string]: unknown } }; message?: string }
+	items?: BomLine[]
+	taxShippingUsd?: number
+}
+
 interface Draft {
 	link: string
 	name: string
@@ -130,7 +137,7 @@ export function BomEditor({
 				headers: body ? { "content-type": "application/json" } : undefined,
 				method,
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				// The server's field check says which fields, not just "Invalid request": outline those and say it the way the form's own check does. This catches anything the form let through, like a tab still running an older copy of it.
 				const fields = Object.keys(payload?.error?.details?.properties ?? {}).filter(
@@ -143,7 +150,7 @@ export function BomEditor({
 
 				return false
 			}
-			setItems(payload.items as BomLine[])
+			setItems(payload?.items as BomLine[])
 			router.refresh()
 			return true
 		} catch {
@@ -216,12 +223,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setImportError(payload?.error?.message ?? "Could not read the repo. Try again.")
 				return
 			}
-			setPreview(payload as ImportPreview)
+			setPreview(payload as unknown as ImportPreview)
 		} catch {
 			setImportError("Could not reach the server. Try again.")
 		} finally {
@@ -238,12 +245,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setImportError(payload?.error?.message ?? "That did not save. Try again.")
 				return
 			}
-			setItems(payload.items as BomLine[])
+			setItems(payload?.items as BomLine[])
 			setImportOpen(false)
 			router.refresh()
 		} catch {
@@ -264,12 +271,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "PATCH",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setError(payload?.error?.message ?? "That did not save. Try again.")
 				return false
 			}
-			setTaxShipping(payload.taxShippingUsd)
+			setTaxShipping(payload?.taxShippingUsd ?? 0)
 			router.refresh()
 			return true
 		} catch {

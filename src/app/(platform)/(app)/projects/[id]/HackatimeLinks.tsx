@@ -24,11 +24,15 @@ type Account =
 	| { state: "linked"; projects: { name: string; totalSeconds: number }[] }
 	| { state: "error" }
 
+interface ApiErrorBody {
+	error?: { code?: string; message?: string }
+}
+
 async function read<T>(res: Response): Promise<T> {
-	const body = await res.json().catch(() => null)
+	const body = (await res.json().catch(() => null)) as ApiErrorBody | null
 	if (!res.ok)
 		throw Object.assign(new Error(body?.error?.message ?? "Something went wrong"), {
-			code: body?.error?.code as string | undefined,
+			code: body?.error?.code,
 		})
 
 	return body as T

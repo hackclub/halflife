@@ -68,10 +68,11 @@ export function RepoChecks({
 		onResult(null)
 		try {
 			const res = await fetch(`/api/projects/${project.id}/preflight`, { cache: "no-store" })
-			const body = await res.json().catch(() => null)
+			const body = (await res.json().catch(() => null)) as (RepoCheckResult & { error?: { message?: string } }) | null
 			if (!res.ok) throw new Error(body?.error?.message ?? "Could not check the repo")
-			setData(body as RepoCheckResult)
-			onResult(body as RepoCheckResult)
+			if (!body) throw new Error("Could not check the repo")
+			setData(body)
+			onResult(body)
 		} catch (err) {
 			setError((err as Error).message)
 		} finally {

@@ -153,7 +153,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 
 	let ref: Partial<TicketRef> = {}
 	try {
-		ref = action.value ? JSON.parse(action.value) : {}
+		ref = action.value ? (JSON.parse(action.value) as Partial<TicketRef>) : {}
 	} catch {
 		// Malformed value – still clear the mirror below.
 	}
@@ -206,7 +206,9 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 
 	let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {}
 	try {
-		ref = action.value ? JSON.parse(action.value) : {}
+		ref = action.value
+			? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
+			: {}
 	} catch {
 		return
 	}
@@ -258,7 +260,9 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 
 	let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {}
 	try {
-		ref = action.value ? JSON.parse(action.value) : {}
+		ref = action.value
+			? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
+			: {}
 	} catch {
 		return
 	}
@@ -327,7 +331,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 
 	let ref: Partial<TicketRef & { ticketsChannel: string }> = {}
 	try {
-		ref = action.value ? JSON.parse(action.value) : {}
+		ref = action.value ? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string }>) : {}
 	} catch {
 		return
 	}
@@ -465,7 +469,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	let payload: InteractionPayload
 	try {
-		payload = JSON.parse(raw)
+		payload = JSON.parse(raw) as InteractionPayload
 	} catch {
 		return NextResponse.json({ ok: false }, { status: 400 })
 	}

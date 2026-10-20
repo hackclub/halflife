@@ -23,6 +23,12 @@ type Load =
 	| { state: "error"; message: string }
 	| { state: "ready"; items: LapseTimelapse[]; nextCursor: string | null }
 
+interface LapsePageResponse {
+	error?: { code?: string; message?: string }
+	nextCursor: string | null
+	timelapses: LapseTimelapse[]
+}
+
 const LAPSE_URL = "https://lapse.hackclub.com"
 
 /** Recorded time, the way a person says it: 45m, 1h 20m, 2h. */
@@ -39,13 +45,13 @@ async function fetchPage(cursor?: string, forSession?: string) {
 		...(forSession ? { forSession } : {}),
 	})
 	const res = await fetch(`/api/lapse/timelapses?${query}`, { cache: "no-store" })
-	const body = await res.json().catch(() => null)
+	const body = (await res.json().catch(() => null)) as LapsePageResponse | null
 	if (!res.ok) {
-		const code = body?.error?.code as string | undefined
-		if (code === "LAPSE_NOT_LINKED") return { unlinked: true as const }
+		if (body?.error?.code === "LAPSE_NOT_LINKED") return { unlinked: true as const }
 		throw new Error(body?.error?.message ?? "Could not load your timelapses")
 	}
-	return body as { timelapses: LapseTimelapse[]; nextCursor: string | null }
+	if (!body) throw new Error("Could not load your timelapses")
+	return body
 }
 
 /**

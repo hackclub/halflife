@@ -90,7 +90,7 @@ function readNumber(record: AirtableRecord, field: FieldDef): number | null {
 function readAttachmentUrl(record: AirtableRecord, field: FieldDef): string | null {
 	const value = rawField(record, field)
 	if (!Array.isArray(value)) return null
-	for (const entry of value)
+	for (const entry of value as unknown[])
 		if (entry && typeof entry === "object" && "url" in entry && typeof entry.url === "string" && entry.url)
 			return entry.url
 

@@ -40,9 +40,13 @@ export function SubmissionReelPicker({
 		let live = true
 		fetch(`/api/me/reels?checkpointKey=${encodeURIComponent(checkpointKey)}`, { cache: "no-store" })
 			.then(async res => {
-				const body = await res.json().catch(() => null)
+				const body = (await res.json().catch(() => null)) as {
+					error?: { message?: string }
+					reels: SubmissionReel[]
+				} | null
 				if (!res.ok) throw new Error(body?.error?.message ?? "Could not load your previous reels")
-				return body as { reels: SubmissionReel[] }
+				if (!body) throw new Error("Could not load your previous reels")
+				return body
 			})
 			.then(body => {
 				if (live) setReels(body.reels)

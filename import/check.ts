@@ -10,7 +10,8 @@ const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: database
 async function q(label: string, sql: string) {
 	const rows = await db.$queryRawUnsafe<{ [_: string]: unknown }[]>(sql)
 	console.log(`\n${label}`)
-	for (const r of rows) console.log(`  ${JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v))}`)
+	for (const r of rows)
+		console.log(`  ${JSON.stringify(r, (_k, v: unknown) => (typeof v === "bigint" ? Number(v) : v))}`)
 }
 
 async function main() {

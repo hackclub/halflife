@@ -159,7 +159,7 @@ async function main() {
 			continue
 		}
 		const fields: { [_: string]: string } = {}
-		for (const [key, value] of Object.entries(target.values)) {
+		for (const [key, value] of Object.entries(target.values) as [string, string | undefined][]) {
 			if (value === undefined) continue
 			if (row.get(key)) continue
 			fields[keys.get(key) ?? key] = value

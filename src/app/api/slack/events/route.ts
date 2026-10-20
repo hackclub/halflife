@@ -195,7 +195,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	let body: { type?: string; challenge?: string; event?: SlackEvent }
 	try {
-		body = JSON.parse(rawBody)
+		body = JSON.parse(rawBody) as typeof body
 	} catch {
 		return NextResponse.json({ ok: false }, { status: 400 })
 	}

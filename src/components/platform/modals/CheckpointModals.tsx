@@ -83,6 +83,13 @@ function fmtH(h: number) {
 	return `${to2(h)}h`
 }
 
+/** The parts list read, plus the error envelope the route shares. */
+interface BomResponse {
+	error?: { message?: string }
+	items: BomLine[]
+	taxShippingUsd: number
+}
+
 interface JournalDraft {
 	body: string
 	hoursText: string
@@ -2078,9 +2085,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		let live = true
 		fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
 			.then(async res => {
-				const body = await res.json().catch(() => null)
-				if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the parts list")
-				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd ?? 0 })
+				const body = (await res.json().catch(() => null)) as BomResponse | null
+				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
+				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })
 			})
 			.catch((err: Error) => live && setBomError(err.message))
 		return () => {
