@@ -48,12 +48,12 @@ export interface Balances {
 
 /**
  * Authoritative balances. Always SUM(amount) – there is no balance column.
+ *
+ * The two sums are read one after the other, never together. An interactive transaction is a single connection, so two queries issued at once on the same `tx` are interleaved on that one connection rather than run in parallel: the second aggregate is evaluated against a snapshot the first one already moved past, and the transaction's timeout is spent on both at once. Sequential reads keep the two halves of a balance describing the same moment, which is the only thing a balance is for.
  */
 export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
-	const [spendable, banked] = await Promise.all([
-		sumFor(tx, { bucket: CoinBucket.SPENDABLE, userId }),
-		sumFor(tx, { bucket: CoinBucket.BANKED, userId }),
-	])
+	const spendable = await sumFor(tx, { bucket: CoinBucket.SPENDABLE, userId })
+	const banked = await sumFor(tx, { bucket: CoinBucket.BANKED, userId })
 	return { banked, spendable, total: spendable + banked }
 }
 

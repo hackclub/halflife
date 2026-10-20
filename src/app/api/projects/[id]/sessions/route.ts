@@ -1,4 +1,5 @@
 import { after, type NextRequest } from "next/server"
+import type { Prisma } from "@/app/generated/prisma/client"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery, withRoute } from "@/lib/api"
@@ -8,7 +9,7 @@ import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
-import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
+import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import {
 	assertWeekStarted,
@@ -34,6 +35,17 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
+/**
+ * The entries' order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
+ */
+const SESSIONS_ORDER = {
+	at: (row: { createdAt: Date }) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<{ createdAt: Date }, Prisma.WorkSessionOrderByWithRelationInput>
+
 export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	const gate = await requireSession()
 	if (gate.error) return gate.error
@@ -49,13 +61,16 @@ export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	const rows = await prisma.workSession.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		where: { deletedAt: null, themeProjectId: id },
-		...cursorArgs(query.data.cursor, query.data.limit),
 		include: { media: true, timelapses: true },
+		orderBy: orderByFor(SESSIONS_ORDER),
+		take: query.data.limit + 1,
+		where: cursorWhere<Prisma.WorkSessionWhereInput>(query.data.cursor, SESSIONS_ORDER, {
+			deletedAt: null,
+			themeProjectId: id,
+		}),
 	})
 
-	const page = pageResult(rows, query.data.limit)
+	const page = pageResult(rows, query.data.limit, SESSIONS_ORDER)
 	return ok({
 		items: page.items.map(s => ({
 			...s,

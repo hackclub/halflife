@@ -846,6 +846,10 @@ model HackatimeLink {
   /// One tracked project backs one phase: `fetchProjectSeconds` returns the project's whole total, not a range, so a second link in the other phase would count the same time twice. Moving a link between phases is deleting it and adding it again.
   @@unique([themeProjectId, hackatimeProject])
   @@index([themeProjectId, phase])
+  /// The sync job's hot path: the links still waiting for a reviewer to approve their hours, least recently refreshed first.
+  ///
+  /// Partial on the exact predicate that job filters by, so it reads only the links it is about to refresh instead of scanning and sorting the whole table four times an hour.
+  @@index([cachedAt], where: raw("\"hoursApproved\" IS NULL"))
   @@map("hackatime_link")
 }
 
@@ -1065,6 +1069,17 @@ model ContentReport {
 
   @@index([status, createdAt])
   @@index([reporterId])
+
+  /// One open report per reporter per row, per target.
+  ///
+  /// The route reads for an existing open report before it creates one, but that read is a race: two presses in flight both pass it, and two open reports for the same thing land in the staff queue. These indexes are the guard that actually holds - the route catches the unique violation and reports it as the same conflict the friendly check would have given.
+  ///
+  /// A decided report may be filed again, so the uniqueness only holds while OPEN. One index per target column, because exactly one of them is ever set.
+  @@unique([reporterId, postId], where: raw("\"status\" = 'OPEN' AND \"postId\" IS NOT NULL"), map: "content_report_open_post_idx")
+  @@unique([reporterId, commentId], where: raw("\"status\" = 'OPEN' AND \"commentId\" IS NOT NULL"), map: "content_report_open_comment_idx")
+  @@unique([reporterId, themeProjectId], where: raw("\"status\" = 'OPEN' AND \"themeProjectId\" IS NOT NULL"), map: "content_report_open_project_idx")
+  @@unique([reporterId, targetUserId], where: raw("\"status\" = 'OPEN' AND \"targetUserId\" IS NOT NULL"), map: "content_report_open_user_idx")
+  @@unique([reporterId, workSessionId], where: raw("\"status\" = 'OPEN' AND \"workSessionId\" IS NOT NULL"), map: "content_report_open_session_idx")
   @@map("content_report")
 }
 
@@ -1634,6 +1649,10 @@ model RsvpBuffer {
 
   /// The drain job's hot path.
   @@index([syncedToAirtable, syncAttempts, createdAt])
+  /// The drain job's ORDERING. The composite index above cannot supply it: `syncAttempts` is a range in the filter, so the index stops being ordered by `createdAt` before the order is used.
+  ///
+  /// Partial on the rows the drain actually wants, so it is an ordered walk of the unsynced rows and not a sort of the whole table.
+  @@index([createdAt], where: raw("\"syncedToAirtable\" = false"))
   @@map("rsvp_buffer")
 }
 

@@ -1,10 +1,12 @@
 import "server-only"
-import { HoursSource } from "@/app/generated/prisma/enums"
-import { getBalances } from "@/lib/currency"
+import type { Prisma } from "@/app/generated/prisma/client"
+import { CoinBucket, HoursSource } from "@/app/generated/prisma/enums"
 import { pctOf } from "@/lib/numbers"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
+
+type Tx = Prisma.TransactionClient
 
 /**
  * Analytics time markers: when each step of a person's journey happened.
@@ -71,37 +73,50 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
 }
 
 /**
+ * Serialise the active-day rebuild for one person.
+ *
+ * The same pattern as the credit ledger's lock (lib/currency.ts, `lockUserCredit`): `pg_advisory_xact_lock` is released automatically when the transaction ends, including on a rollback, and a different namespace string keeps this lock from ever colliding with the ledger's.
+ */
+async function lockActiveDays(tx: Tx, userId: string): Promise<void> {
+	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`active-days:${userId}`}, 0))`
+}
+
+/**
  * Rebuild one person's active days from their live time entries. Rebuilt rather than incremented, as the streak is (lib/streak): an entry can be created, edited below the threshold, deleted, or go with its project, and a counter would have to be right on every one of those paths.
  *
  * The bar is on the day's total rather than on one entry, so two ten-minute entries make a day active just as one twenty-minute entry does. That is why the sum happens here and not as a filter in SQL.
+ *
+ * The whole rebuild runs inside one transaction, under the person's lock. A rebuild is a delete-then-insert, and `UserDay` is keyed on (user, day), so two of them running at once would interleave – one deletes, the other deletes, the first inserts, the second inserts the same days again – and the second's insert would fail on the primary key, losing the rebuild entirely. The lock makes them take turns: the second waits for the first to commit, so the rows it inserts are the rows the first one deleted, and no other rebuild can insert into that (user, day) range in between. What is left on the table is always one rebuild's output, and `User.activeDays` always matches the number of days that rebuild wrote.
  */
-async function rebuildActiveDays(userId: string, programTimezone: string): Promise<number> {
-	const sessions = await prisma.workSession.findMany({
-		select: { createdAt: true, effectiveDate: true, hoursClaimed: true },
-		where: {
-			deletedAt: null,
-			themeProject: { deletedAt: null, userId },
-		},
-	})
-	// day → the day's total hours and the earliest entry that fell on it, in one pass.
-	const totals = new Map<string, { hours: number; firstSeenAt: Date }>()
-	for (const s of sessions) {
-		const day = s.effectiveDate ?? effectiveDateFor(s.createdAt, programTimezone)
-		const seen = totals.get(day)
-		if (seen === undefined) {
-			totals.set(day, { firstSeenAt: s.createdAt, hours: s.hoursClaimed })
-			continue
+function rebuildActiveDays(userId: string, programTimezone: string): Promise<number> {
+	return prisma.$transaction(async tx => {
+		await lockActiveDays(tx, userId)
+
+		const sessions = await tx.workSession.findMany({
+			select: { createdAt: true, effectiveDate: true, hoursClaimed: true },
+			where: {
+				deletedAt: null,
+				themeProject: { deletedAt: null, userId },
+			},
+		})
+		// day → the day's total hours and the earliest entry that fell on it, in one pass.
+		const totals = new Map<string, { hours: number; firstSeenAt: Date }>()
+		for (const s of sessions) {
+			const day = s.effectiveDate ?? effectiveDateFor(s.createdAt, programTimezone)
+			const seen = totals.get(day)
+			if (seen === undefined) {
+				totals.set(day, { firstSeenAt: s.createdAt, hours: s.hoursClaimed })
+				continue
+			}
+			seen.hours += s.hoursClaimed
+			if (s.createdAt < seen.firstSeenAt) seen.firstSeenAt = s.createdAt
 		}
-		seen.hours += s.hoursClaimed
-		if (s.createdAt < seen.firstSeenAt) seen.firstSeenAt = s.createdAt
-	}
-	const days = [...totals].filter(([, day]) => isActiveDay(day.hours))
-	await prisma.$transaction([
-		prisma.userDay.deleteMany({ where: { userId } }),
-		prisma.userDay.createMany({ data: days.map(([day, { firstSeenAt }]) => ({ day, firstSeenAt, userId })) }),
-		prisma.user.update({ data: { activeDays: days.length }, where: { id: userId } }),
-	])
-	return days.length
+		const days = [...totals].filter(([, day]) => isActiveDay(day.hours))
+		await tx.userDay.deleteMany({ where: { userId } })
+		await tx.userDay.createMany({ data: days.map(([day, { firstSeenAt }]) => ({ day, firstSeenAt, userId })) })
+		await tx.user.update({ data: { activeDays: days.length }, where: { id: userId } })
+		return days.length
+	})
 }
 
 /** Recount active days. Called after a time entry is written, edited or deleted. */
@@ -340,34 +355,52 @@ export interface UserAnalyticsRow {
 export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 	const { programTimezone } = await getProgramSettings()
 	const today = effectiveDateFor(new Date(), programTimezone)
-	const users = await prisma.user.findMany({
-		orderBy: { createdAt: "asc" },
-		select: {
-			activeDays: true,
-			activityWeeks: { orderBy: { week: "asc" } },
-			createdAt: true,
-			currentStreak: true,
-			email: true,
-			firstChecksPassedAt: true,
-			firstProjectAt: true,
-			firstReelAt: true,
-			firstSubmissionAt: true,
-			id: true,
-			lastActiveAt: true,
-			lastLoginAt: true,
-			lastStreakDate: true,
-			lastSubmissionAt: true,
-			longestStreak: true,
-			onboardingCompletedAt: true,
-		},
-	})
+	const [users, ledger] = await Promise.all([
+		prisma.user.findMany({
+			orderBy: { createdAt: "asc" },
+			select: {
+				activeDays: true,
+				activityWeeks: { orderBy: { week: "asc" } },
+				createdAt: true,
+				currentStreak: true,
+				email: true,
+				firstChecksPassedAt: true,
+				firstProjectAt: true,
+				firstReelAt: true,
+				firstSubmissionAt: true,
+				id: true,
+				lastActiveAt: true,
+				lastLoginAt: true,
+				lastStreakDate: true,
+				lastSubmissionAt: true,
+				longestStreak: true,
+				onboardingCompletedAt: true,
+			},
+		}),
+		// Every balance in one aggregate, rather than a transaction per person.
+		//
+		// The balances are a SUM over the ledger grouped by (person, pot), so the ledger can answer for everyone at once. Reading them one person at a time meant a transaction and two queries each: at a few thousand participants that is thousands of transactions and tens of thousands of queries, on a route with a two-minute budget. One groupBy is one query, and it gives every person's balance from the same snapshot of the ledger.
+		prisma.ledgerEntry.groupBy({
+			_sum: { amount: true },
+			by: ["userId", "bucket"],
+		}),
+	])
+	// person → the two pots, joined in memory with the rows above.
+	const balances = new Map<string, { banked: number; spendable: number }>()
+	for (const row of ledger) {
+		const amount = row._sum.amount ?? 0
+		const pots = balances.get(row.userId) ?? { banked: 0, spendable: 0 }
+		if (row.bucket === CoinBucket.BANKED) pots.banked += amount
+		else pots.spendable += amount
+		balances.set(row.userId, pots)
+	}
 	const out: UserAnalyticsRow[] = []
 	for (const u of users) {
-		const balances = await prisma.$transaction(tx => getBalances(tx, u.id))
+		const pots = balances.get(u.id) ?? { banked: 0, spendable: 0 }
 		out.push({
 			activeDays: u.activeDays,
-			bankedCoins: balances.banked,
-			coins: balances.spendable,
+			bankedCoins: pots.banked,
+			coins: pots.spendable,
 			// The stored column is a cache only correct as of the last devlog or reel; an export that reads it directly calls a lapsed run current.
 			currentStreak: streakAsOf(u, today),
 			email: u.email,
