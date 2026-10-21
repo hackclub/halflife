@@ -20,6 +20,19 @@ const CATEGORIES = [
 	{ label: "Everything else", match: "MISC" },
 ] as const
 
+/**
+ * How the shelves can be read. Default keeps the order staff curated with sortOrder, which the server already sent.
+ */
+const SORTS = [
+	{ label: "Default", value: "default" },
+	{ label: "Price: low to high", value: "price-asc" },
+	{ label: "Price: high to low", value: "price-desc" },
+	{ label: "Name: A–Z", value: "name-asc" },
+	{ label: "Name: Z–A", value: "name-desc" },
+] as const
+
+type Sort = (typeof SORTS)[number]["value"]
+
 export function ShopGrid({
 	items: all,
 	regions,
@@ -32,6 +45,7 @@ export function ShopGrid({
 	const router = useRouter()
 	const { printerFund } = useStore()
 	const [cat, setCat] = useState<string>("All")
+	const [sort, setSort] = useState<Sort>("default")
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [savingRegion, setSavingRegion] = useState(false)
@@ -40,8 +54,20 @@ export function ShopGrid({
 
 	const items = useMemo(() => {
 		const shelf = CATEGORIES.find(c => c.label === cat)
-		return !shelf?.match ? all : all.filter(i => i.category === shelf.match)
-	}, [all, cat])
+		const filtered = !shelf?.match ? all : all.filter(i => i.category === shelf.match)
+		switch (sort) {
+			case "default":
+				return filtered
+			case "price-asc":
+				return filtered.toSorted((a, b) => a.priceCredits - b.priceCredits || a.name.localeCompare(b.name))
+			case "price-desc":
+				return filtered.toSorted((a, b) => b.priceCredits - a.priceCredits || a.name.localeCompare(b.name))
+			case "name-asc":
+				return filtered.toSorted((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+			case "name-desc":
+				return filtered.toSorted((a, b) => b.name.localeCompare(a.name, undefined, { sensitivity: "base" }))
+		}
+	}, [all, cat, sort])
 
 	/**
 	 * Buying is a request, not a transaction the browser can settle.
@@ -120,23 +146,43 @@ export function ShopGrid({
 					</select>
 				</div>
 			)}
-			<div className="mb-6 flex flex-wrap items-center justify-center gap-2">
-				{CATEGORIES.map(({ label: c }) => (
-					<button
-						aria-pressed={cat === c}
-						className={cx(
-							"label rounded-full border-2 px-4 py-1.5 transition-colors",
-							cat === c
-								? "border-navy bg-navy text-white"
-								: "border-line text-navy-soft hover:border-navy hover:text-navy",
-						)}
-						key={c}
-						onClick={() => setCat(c)}
-						type="button"
+			<div className="mb-6 flex flex-wrap items-center justify-center gap-3 sm:justify-between">
+				<div className="flex flex-wrap items-center justify-center gap-2">
+					{CATEGORIES.map(({ label: c }) => (
+						<button
+							aria-pressed={cat === c}
+							className={cx(
+								"label rounded-full border-2 px-4 py-1.5 transition-colors",
+								cat === c
+									? "border-navy bg-navy text-white"
+									: "border-line text-navy-soft hover:border-navy hover:text-navy",
+							)}
+							key={c}
+							onClick={() => setCat(c)}
+							type="button"
+						>
+							{c}
+						</button>
+					))}
+				</div>
+
+				<div className="flex items-center gap-2">
+					<label className="label text-navy-soft" htmlFor="shop-sort">
+						Sort by
+					</label>
+					<select
+						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy"
+						id="shop-sort"
+						onChange={e => setSort(e.target.value as Sort)}
+						value={sort}
 					>
-						{c}
-					</button>
-				))}
+						{SORTS.map(({ label: l, value: v }) => (
+							<option key={v} value={v}>
+								{l}
+							</option>
+						))}
+					</select>
+				</div>
 			</div>
 
 			{error && (
