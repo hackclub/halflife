@@ -11,6 +11,7 @@ import { WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
 import type { ProjectOpenDispute, PublicProjectData } from "@/lib/queries/project-page"
+import { displayRepo } from "@/lib/repo"
 import { Timeline } from "./Timeline"
 
 /**
@@ -83,7 +84,7 @@ export function PublicProjectDetail({
 						}}
 					>
 						{data.thumbnail ? (
-							<ProjectThumb className="h-full w-full" thumb={data.thumbnail} />
+							<ProjectThumb className="absolute inset-0 size-full" thumb={data.thumbnail} />
 						) : (
 							<WeekPainting
 								alt=""
@@ -136,6 +137,22 @@ export function PublicProjectDetail({
 									<span>
 										weeks {data.weekId} &amp; {buildWeekId}
 									</span>
+								)}
+								{data.githubRepo && (
+									<>
+										<span aria-hidden="true" className="text-navy-faint">
+											·
+										</span>
+										<a
+											className="min-w-0 truncate text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
+											href={data.githubRepo}
+											rel="noopener noreferrer"
+											target="_blank"
+											title={data.githubRepo}
+										>
+											{displayRepo(data.githubRepo)}
+										</a>
+									</>
 								)}
 							</p>
 						</div>

@@ -338,13 +338,15 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 /**
  * Someone else's project, as Explore's "See more" opens it.
  *
- * Only what is already public elsewhere: the entries Explore shows, the reels the Doomscroller shows (published ones – a hidden or processing reel is nobody's business but its author's), and the project's name and picture. No parts list, no repo checks, no review comments, no submissions: those are between the maker and their reviewer. Author by display name only, as lib/queries/community has it.
+ * Only what is already public elsewhere: the entries Explore shows, the reels the Doomscroller shows (published ones – a hidden or processing reel is nobody's business but its author's), and the project's name, picture and repo link. No parts list, no repo checks, no review comments, no submissions: those are between the maker and their reviewer. Author by display name only, as lib/queries/community has it.
  */
 export interface PublicProjectData {
 	author: string
 	/** The author's user id, so their name can open their profile. */
 	authorId: string
 	description: string
+	/** The project's own repo link, as the maker saved it, or null until they add one. */
+	githubRepo: string | null
 	id: string
 	thumbnail: ProjectThumbnail | null
 	timeline: TimelineItem[]
@@ -379,6 +381,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		select: {
 			coverImageKey: true,
 			description: true,
+			githubRepo: true,
 			id: true,
 			posts: {
 				select: POST_SELECT,
@@ -403,6 +406,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		author: displayName(project.user, "A maker"),
 		authorId: project.user.id,
 		description: project.description ?? "",
+		githubRepo: project.githubRepo,
 		id: project.id,
 		thumbnail: projectThumbnail(
 			publicUrlFor(project.coverImageKey),

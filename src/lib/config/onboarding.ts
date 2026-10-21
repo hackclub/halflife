@@ -114,7 +114,7 @@ export const STARTER_PROJECTS = [
 		id: "starbie",
 		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
 		repoUrl: "https://github.com/SharKingStudios/Starbie",
-		// Week one's starter, in every week until each has its own repo.
+		// Week one's starter, and the stand-in for weeks 4 and 5 until each has one of its own. CAD and Music have theirs; Starbie must not be listed for Music, or week 3 hands out the week-one guide.
 		themes: [Theme.PCB, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER],
 		title: "Starbie",
 	},

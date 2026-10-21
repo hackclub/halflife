@@ -78,11 +78,11 @@ export function CoverImage({
 	return (
 		<div>
 			<div
-				className="relative grid aspect-[21/9] place-items-center overflow-hidden rounded-2xl @3xl:aspect-[4/3]"
+				className="relative grid aspect-21/9 place-items-center overflow-hidden rounded-2xl @3xl:aspect-4/3"
 				style={{ background: shown ? "var(--color-navy)" : accent }}
 			>
 				{shown ? (
-					<ProjectThumb className="h-full w-full" thumb={shown} />
+					<ProjectThumb className="absolute inset-0 size-full" thumb={shown} />
 				) : (
 					<WeekPainting
 						alt=""
