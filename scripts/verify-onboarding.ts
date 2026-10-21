@@ -2,6 +2,7 @@ import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
 import { HardwareExperience, Theme } from "../src/app/generated/prisma/enums"
+import { scheduleForWeek } from "../src/lib/config/program"
 
 /**
  * End-to-end check of the first checkpoint.
@@ -41,6 +42,15 @@ async function refused(label: string, fn: () => Promise<unknown>): Promise<void>
 async function main() {
 	const { getOnboardingState, submitStep, needsOnboarding } = await import("../src/lib/onboarding")
 	const { getStarterProject, starterProjectsFor } = await import("../src/lib/config/onboarding")
+
+	// ── The week's starter ─────────────────────────────────────────────────────
+	// The starter on offer is part of the curriculum, not an override: week 3 is Music, so its card is the MIDI keyboard. Starbie used to be listed for every theme without a starter of its own, which put a week-one guide on a week-three project. A theme reorder or a copied `themes` array is exactly how that comes back, so the pairing is asserted here rather than trusted.
+	check("week 3 is Music", scheduleForWeek(3)?.theme.id, Theme.SYNTH)
+	check(
+		"week 3 offers the MIDI keyboard",
+		starterProjectsFor(Theme.SYNTH).map(p => p.id),
+		["midi"],
+	)
 
 	const stamp = Date.now()
 	const user = await prisma.user.create({

@@ -38,6 +38,7 @@
 		"reviews:unreviewed-starbies": "bun --conditions=react-server scripts/list-unreviewed-starbies.ts",
 		"slack:backfill-tickets": "bun --conditions=react-server scripts/backfill-slack-tickets.ts",
 		"start": "next start",
+		"starters:backfill-week-3": "bun --conditions=react-server scripts/backfill-week-3-starters.ts",
 		"streaks:recompute": "bun --conditions=react-server scripts/recompute-streaks.ts",
 		"typecheck": "tsc --noEmit",
 		"verify:contracts": "bun --conditions=react-server scripts/verify-contracts.ts",
