@@ -291,7 +291,7 @@ export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 		// Last seen, from everything that left a timestamp.
 		const moments = [...logins, ...sessions, ...posts, ...submissions].map(x => x.createdAt)
 		if (moments.length > 0) {
-			const last = moments.reduce((a, b) => (b > a ? b : a))
+			const last = new Date(Math.max(...moments.map(moment => moment.getTime())))
 			await prisma.user.updateMany({ data: { lastActiveAt: last }, where: { id: userId, lastActiveAt: null } })
 		}
 
