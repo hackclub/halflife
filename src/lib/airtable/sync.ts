@@ -324,7 +324,7 @@ export async function syncReviewDecisionToYsws(
 	// The override columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
 	const overrides: { [_: string]: unknown } = {}
 	const config = getAirtableConfig()
-	if (config) {
+	if (config)
 		try {
 			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, Object.values(LOOPS_REVIEW_OVERRIDE))
 			if (writable.size > 0) {
@@ -349,7 +349,6 @@ export async function syncReviewDecisionToYsws(
 			// A probe failure is not a reason to lose the status; the next decision retries it.
 			console.error("[airtable] could not probe the Loops override columns; writing the decision without them:", err)
 		}
-	}
 
 	const complete = { ...statusField, ...noteField, ...overrides }
 	const moved = await updateYswsRecord(recordId, complete)
