@@ -309,6 +309,26 @@ async function bodies() {
 	)
 	check("body · bomImport rejects an unknown field", !bomImportSchema.safeParse({ write: true }).success)
 
+	// The review email's project identity is a pair of Airtable override
+	// columns. email-tools only forwards a Loops field whose value changed, so
+	// these are separate fields the decision writes; a typo in either name means
+	// the workflow silently ignores it and the email names the wrong project.
+	const { reviewOverrideValues } = await import("../src/lib/airtable/sync")
+	const { LOOPS_REVIEW_OVERRIDE } = await import("../src/lib/airtable/schema")
+	const overrides = reviewOverrideValues("Macropad", 3)
+	check(
+		"loops overrides · name the decided project",
+		overrides[LOOPS_REVIEW_OVERRIDE.projectName]?.startsWith("Macropad") === true,
+	)
+	check(
+		"loops overrides · name the decided week",
+		overrides[LOOPS_REVIEW_OVERRIDE.projectWeek]?.startsWith("Week 3") === true,
+	)
+	check(
+		"loops overrides · use the columns email-tools reads as overrides",
+		Object.keys(overrides).every(field => field.startsWith("Loops - Override - ")),
+	)
+
 	/* ── 2b. fetchWithRetry ─────────────────────────────────────────────────── */
 	//
 	// A transient failure at an identity endpoint used to abort an OAuth callback with a raw TimeoutError. The retry is the fix, and these pin the parts that matter: it retries what is worth retrying, leaves a 4xx alone, gives up after the retries, and never leaks an oversized body into memory.

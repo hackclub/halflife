@@ -104,6 +104,27 @@ export const YSWS_REVIEW_STATUS = {
 } as const
 
 /**
+ * The two columns a review decision writes alongside the status, so the Loops
+ * workflow that reads the contact has the project this decision is about.
+ *
+ * The email-tools poller only forwards a `Loops - …` field when its value
+ * changed on that row. The row's normal project name and week were written at
+ * submit, so a decision on an older project changes only status and notes – the
+ * poller never re-sends the name, and the contact keeps whatever the maker
+ * submitted most recently. These `Override` columns are separate fields, so
+ * writing them in the decision changes their values and the poller forwards
+ * them; email-tools maps the `Loops - Override - ` prefix onto the same Loops
+ * property with its `override` strategy.
+ *
+ * They are plain single-line text fields, because the app does not know their
+ * Airtable field ids and writes them by name (see `syncReviewDecisionToYsws`).
+ */
+export const LOOPS_REVIEW_OVERRIDE = {
+	projectName: "Loops - Override - halfLifeProjectName",
+	projectWeek: "Loops - Override - halfLifeProjectWeek",
+} as const
+
+/**
  * The landing page's sign-up list, in its own base. The RSVP buffer drains into it and the Loops sync reads/writes its Loops columns, so both name it from here – the two modules used to default to different tables ("RSVPs" vs "Signups"), which silently split the funnel from the emails.
  */
 export const RSVP_TABLE_ID = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"

@@ -296,6 +296,40 @@ response and in the `airtable_loops` sync-run row, and logs an error. Look for
 that flag before trusting a run: a row that is not found is skipped and counted
 rather than raised, which is exactly how this stayed invisible.
 
+### Review decision emails (the override columns)
+
+The `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes` columns on
+`YSWS Project Submission` are what the review email triggers on. They are not
+enough on their own: email-tools only forwards a `Loops - …` field when its value
+**changed** on that row, and the project name and week were written at submit, so
+a decision on an older project never re-sent them and the contact kept the
+project from the maker's most recent submission.
+
+Two extra columns on that table fix it:
+
+- `Loops - Override - halfLifeProjectName`
+- `Loops - Override - halfLifeProjectWeek`
+
+They must be single-line text fields. `syncReviewDecisionToYsws`
+(`src/lib/airtable/sync.ts`) writes them in the same patch as the status and
+note. email-tools recognises the `Loops - Override - ` prefix, maps each onto
+the same contact property as the normal column, and applies it with its
+`override` strategy. The value carries a zero-width stamp so a repeated decision
+on the same project is still a change the poller forwards; it is invisible in
+the email.
+
+Set them up in this order, or the first poll after the fields appear will do a
+full resync and write a blank project name to every contact:
+
+1. Pause the Airtable source in the email-tools admin.
+2. Create both columns as single-line text.
+3. `bun --conditions=react-server scripts/backfill-loops-review-overrides.ts`
+   (dry run), then repeat with `--commit`.
+4. Resume the source.
+
+The app skips the columns when they are absent, so a base without them keeps
+working as before.
+
 ### Cloudflare kills anything over ~100 seconds
 
 `halflife.hackclub.com` sits behind Cloudflare, which caps the proxy read timeout

@@ -29,6 +29,7 @@
 		"lint": "oxlint; biome check",
 		"lint:fix": "oxlint --fix; biome check --fix",
 		"loops:backfill": "bun --conditions=react-server scripts/backfill-loops.ts",
+		"loops:backfill-review-overrides": "bun --conditions=react-server scripts/backfill-loops-review-overrides.ts",
 		"loops:backfill-submitted": "bun --conditions=react-server scripts/backfill-loops-submitted.ts",
 		"reviews:backfill-ari": "bun --conditions=react-server scripts/backfill-ari-reviews.ts",
 		"reviews:backfill-identities": "bun --conditions=react-server scripts/backfill-review-identities.ts",
