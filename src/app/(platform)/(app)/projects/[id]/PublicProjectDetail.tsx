@@ -84,7 +84,7 @@ export function PublicProjectDetail({
 						}}
 					>
 						{data.thumbnail ? (
-							<ProjectThumb className="h-full w-full" thumb={data.thumbnail} />
+							<ProjectThumb className="absolute inset-0 size-full" thumb={data.thumbnail} />
 						) : (
 							<WeekPainting
 								alt=""

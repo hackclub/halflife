@@ -82,7 +82,7 @@ export function CoverImage({
 				style={{ background: shown ? "var(--color-navy)" : accent }}
 			>
 				{shown ? (
-					<ProjectThumb className="h-full w-full" thumb={shown} />
+					<ProjectThumb className="absolute inset-0 size-full" thumb={shown} />
 				) : (
 					<WeekPainting
 						alt=""
