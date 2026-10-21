@@ -27,6 +27,13 @@ that remain before launch.
   `syncReviewDecisionToYsws` in `src/lib/airtable/sync.ts`) – and a Loops
   workflow sends from there. The Resend path was removed rather than kept as a
   second sender.
+  The same write fills two override columns –
+  `Loops - Override - halfLifeProjectName` and
+  `Loops - Override - halfLifeProjectWeek` – because email-tools only forwards
+  a `Loops - …` field whose value changed on that row. Without them a decision
+  on an older project changed only status and note, so the contact kept the
+  project name and week from the maker's most recent submission. The override
+  prefix makes email-tools apply them to the same contact property.
 - **Notifications — all three outcomes, to the maker, Slack DM plus the Loops
   email.** `approved`, `changes requested` and `rejected` all notify.
 - **Green border — the current phase approved.** The design until the build
@@ -40,7 +47,14 @@ that remain before launch.
    `ari-retry` job.
 2. **Email:** build the Loops workflow on the Airtable base – it reads
    `Loops - halfLifeReviewStatus` (and quotes `Loops - halfLifeReviewerNotes`)
-   and sends for `Approved`, `Changes Requested` and `Rejected`.
+   and sends for `Approved`, `Changes Requested` and `Rejected`. Create
+   `Loops - Override - halfLifeProjectName` and
+   `Loops - Override - halfLifeProjectWeek` as single-line text fields, then run
+   `pnpm loops:backfill-review-overrides` once (dry run first, then `--commit`)
+   so the new columns start with each row's own values. Pause the email-tools
+   Airtable source while doing this: the first poll after new `Loops - …` fields
+   appear does a full resync, and blank overrides on that pass would clear the
+   project name on every contact. Resume once the backfill has filled them.
 3. **HCB (only if the manual fallback is wanted):** register the OAuth app,
    invite it to the org as a manager, run a $1 top-up on a test org, and decide
    where the rotated refresh token is persisted.
