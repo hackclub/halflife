@@ -109,6 +109,25 @@ async function main() {
 	check("at the week its theme is designed in", snap.projects[0]?.weekId, 1)
 	check("with the tier they asked for", snap.projects[0]?.tier, 2)
 
+	// A project can be handed in and rejected before a requested tier is ever recorded – the submit path falls back to Tier 1. It still has to appear, or the rejection has no surface on either the grid or its own page.
+	const rejectedUser = await prisma.user.create({
+		data: {
+			email: `store-rejected-${stamp}@example.test`,
+			joinedProgramAt: new Date(),
+			name: "Rejected Check",
+			verificationStatus: "verified",
+		},
+	})
+	const rejectedProject = await ensureThemeProject(rejectedUser.id, Theme.PCB)
+	await prisma.themeProject.update({
+		data: { designStatus: PhaseStatus.rejected, title: "Rejected project" },
+		where: { id: rejectedProject.id },
+	})
+	const rejected = await getStoreSnapshot(rejectedUser.id)
+	check("a rejected project with no requested tier is listed", rejected.projects.length, 1)
+	check("and keeps its rejected state", rejected.projects[0]?.designStatus, PhaseStatus.rejected)
+	check("with the tier the submit path fell back to", rejected.projects[0]?.tier, 1)
+
 	check("entry 1 is the first session written", snap.progress["w1-entry-1"]?.minutes, 90)
 	check("entry 2 is the second", snap.progress["w1-entry-2"]?.minutes, 120)
 	check("entry 3 is the third", snap.progress["w1-entry-3"]?.minutes, 180)

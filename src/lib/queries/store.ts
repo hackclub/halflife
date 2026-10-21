@@ -177,6 +177,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					designStatus: true,
 					githubRepo: true,
 					id: true,
+					namedAt: true,
 					requestedTier: true,
 					starterProjectId: true,
 					submissionExtensionUntil: true,
@@ -432,8 +433,13 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			const warmup = project.theme === Theme.WARMUP
 			const themeIndex = THEMES.findIndex(t => t.id === project.theme)
 			const tier = project.tier ?? project.requestedTier
-			// A project whose checkpoint was opened but never finished is not one the trail should list: the row exists from the moment "create a project" is opened, before anything has been decided about it.
-			if ((!warmup && themeIndex === -1) || !project.title || !tier) return []
+			// The row is made when its checkpoint is opened, before anything is decided about it. A project is started once it has been named or described, or has left draft; `tier` alone is not the signal, because a project can be submitted and rejected without a requested tier (the submit path falls back to Tier 1) and it has to stay visible with that rejection.
+			const started =
+				project.namedAt !== null
+				|| Boolean(project.description?.trim())
+				|| project.designStatus !== PhaseStatus.draft
+				|| project.buildStatus !== PhaseStatus.draft
+			if ((!warmup && themeIndex === -1) || !started) return []
 			return [
 				{
 					buildStatus: project.buildStatus,
@@ -456,7 +462,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 								videoUrl: publicUrlFor(p.objectKey),
 							})),
 					),
-					tier: clampTier(tier),
+					tier: clampTier(tier ?? 1),
 					weekId: warmup ? WARMUP_WEEK_ID : weekOf(themeIndex, Phase.DESIGN),
 				},
 			]
