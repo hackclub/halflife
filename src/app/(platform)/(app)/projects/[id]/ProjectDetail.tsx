@@ -397,13 +397,13 @@ function ReviewState({
 }
 
 /**
- * What a returned phase needs, before anything else on the page.
+ * What a decided phase needs, before anything else on the page.
  *
  * A return is the one review state a maker is expected to act on, but its note used to live only in the Review block below the project's own details – far enough down that "Design needs changes" on the projects page read as a change the project page never explained. This puts the same note and the resubmit action at the very top, so opening a project answers the question its card raised.
  *
- * Only phases returned for changes: an approved phase has nothing left to do and a rejected one cannot be resubmitted, so both keep their reason in the Review block below.
+ * A rejection is the other half of that: it has no resubmit action, because the phase cannot be handed in again until an admin reopens it, but it still needs its reason and its state at the top. Leaving it only in the Review block made a rejected project look like one nobody had looked at.
  */
-function ChangesNeeded({
+function DecisionNotice({
 	phases,
 	projectId,
 	warmup,
@@ -417,15 +417,16 @@ function ChangesNeeded({
 }) {
 	const { setOpenCheckpoint } = useStore()
 	const returned = phases.filter(p => p.status === "update_requested")
-	if (returned.length === 0) return null
+	const rejected = phases.filter(p => p.status === "rejected")
+	if (returned.length === 0 && rejected.length === 0) return null
 
 	return (
-		<Panel className="mt-5 bg-gold-pale/70 px-5 py-5 sm:px-6" radius={20} tone="gold">
-			<div className="flex items-start gap-2.5">
-				<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
-				<div className="grid min-w-0 flex-1 gap-5">
-					{returned.map(p => (
-						<div className="min-w-0" key={p.phase}>
+		<div className="mt-5 grid gap-4">
+			{returned.map(p => (
+				<Panel className="bg-gold-pale/70 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="gold">
+					<div className="flex items-start gap-2.5">
+						<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
+						<div className="min-w-0 flex-1">
 							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
 								{p.phase === "DESIGN" ? "Design" : "Build"} needs changes
 							</p>
@@ -449,10 +450,36 @@ function ChangesNeeded({
 								I&apos;ve made these changes – resubmit
 							</Button>
 						</div>
-					))}
-				</div>
-			</div>
-		</Panel>
+					</div>
+				</Panel>
+			))}
+
+			{rejected.map(p => (
+				<Panel className="bg-coral/10 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="coral">
+					<div className="flex items-start gap-2.5">
+						<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-coral-deep" />
+						<div className="min-w-0 flex-1">
+							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
+								{p.phase === "DESIGN" ? "Design" : "Build"} was rejected
+							</p>
+							{p.comments ? (
+								<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
+									{p.comments}
+								</p>
+							) : (
+								<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">
+									no reason was recorded with this decision.
+								</p>
+							)}
+							<p className="mt-2 text-[0.88rem] leading-relaxed text-navy-soft">
+								A rejected phase cannot be resubmitted. If you think this decision is wrong, dispute it from the Review
+								section below.
+							</p>
+						</div>
+					</div>
+				</Panel>
+			))}
+		</div>
 	)
 }
 
@@ -544,8 +571,8 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
 			<BackLink />
 
-			{/* ---------- what a return asks for, first ---------- */}
-			<ChangesNeeded phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
+			{/* ---------- what a decision asks for, first ---------- */}
+			<DecisionNotice phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
 
 			{/* ---------- the project itself ---------- */}
 			{/* Sized by its own width, not the viewport's: the rails either side of
