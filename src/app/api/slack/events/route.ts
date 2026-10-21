@@ -1,4 +1,6 @@
 import { after, NextResponse } from "next/server"
+import { Prisma } from "@/app/generated/prisma/client"
+import prisma from "@/lib/prisma"
 import {
 	addReaction,
 	getBotUserId,
@@ -183,6 +185,30 @@ async function handleMainChannelJoin(event: SlackEvent) {
 	await Promise.all(targets.map(channel => inviteToChannel(channel, joined)))
 }
 
+/**
+ * Claim one Slack delivery, so the work behind it happens once.
+ *
+ * Slack redelivers an event (the same `event_id`) when it does not get a 200 within three seconds, and a captured signed request can be replayed inside the five-minute replay window – either way the event carries the same `event_id`, and running the work twice double-invites a member and double-posts a ticket. The row is claimed before the work runs, and the unique index on the event id is what makes the claim: a replay that arrives while the first delivery is still working loses the race and does nothing.
+ *
+ * Returns false when the delivery has already been claimed.
+ */
+async function claimDelivery(
+	eventId: string | undefined,
+	eventType: string,
+	teamId: string | undefined,
+): Promise<boolean> {
+	if (!eventId) return true
+	try {
+		await prisma.slackEventDelivery.create({ data: { event: eventType, eventId, teamId: teamId ?? null } })
+		return true
+	} catch (err) {
+		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return false
+		// The table is unreachable, so the delivery cannot be recorded and a replay could not be told apart from the original. The work still runs: a member waiting to be invited is worse than the rare duplicate, and the failure is logged.
+		console.error(`[slack] could not record the delivery ${eventId}:`, err)
+		return true
+	}
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
 	const rawBody = await request.text()
 
@@ -193,7 +219,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 	)
 	if (!verified) return NextResponse.json({ ok: false }, { status: 401 })
 
-	let body: { type?: string; challenge?: string; event?: SlackEvent }
+	let body: { event_id?: string; team_id?: string; type?: string; challenge?: string; event?: SlackEvent }
 	try {
 		body = JSON.parse(rawBody) as typeof body
 	} catch {
@@ -202,14 +228,18 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	if (body.type === "url_verification") return NextResponse.json({ challenge: body.challenge })
 
-	// Slack retries delivery if it doesn't get a 200 within 3s. Reprocessing a retry would double-invite members and double-post tickets, so only the original delivery is handled – Slack has already gotten the point across.
+	// Slack retries delivery if it doesn't get a 200 within 3s. Reprocessing a retry would double-invite members and double-post tickets, so only the original delivery is handled – Slack has already gotten the point across. The event id is recorded as well (see claimDelivery), which catches the retry that is not a Slack retry: a captured signed request replayed inside the five-minute window.
 	if (request.headers.get("x-slack-retry-num")) return NextResponse.json({ ok: true })
 
 	if (body.type === "event_callback" && body.event) {
 		const event = body.event
+		const eventId = body.event_id
+		const teamId = body.team_id
 		// Ack first, work second. Slack abandons a delivery it hasn't seen a 200 for within 3s and retries, and the guard above drops every retry – so if a slow Slack call held the response open past that window, the retry carrying the same work would be discarded and the invite lost with nothing in the logs. `after` keeps the response instant so the retry path stays a genuine safety net rather than a silent failure.
 		after(async () => {
 			try {
+				// Claimed before the work, not after: the claim is what stops a replay running the work a second time, and it has to be in place before the first side effect.
+				if (!(await claimDelivery(eventId, event.type, teamId))) return
 				if (event.type === "member_joined_channel") await handleMainChannelJoin(event)
 				else if (event.type === "message" && event.channel === process.env.SLACK_HELP_CHANNEL_ID)
 					await handleHelpMessage(event)

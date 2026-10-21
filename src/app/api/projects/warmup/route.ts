@@ -1,12 +1,12 @@
 import { after } from "next/server"
 import { z } from "zod"
-import { Phase, Theme } from "@/app/generated/prisma/enums"
+import { Phase } from "@/app/generated/prisma/enums"
 import { markProjectCreated } from "@/lib/analytics"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { WARMUP_THEME } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import { createWarmupProject } from "@/lib/provisioning"
 import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
 import { warmupCreationWindow } from "@/lib/warmup"
 
@@ -26,7 +26,9 @@ const createSchema = z
 /**
  * Start a warm-up project: any hardware idea, before week 1 opens.
  *
- * A maker may start as many as they like – warm-up rows are exempt from the one-per-theme index – and none of them takes one of the five season slots. Everything after this is the ordinary flow: journal against it, then hand it in once, as the phase chosen here.
+ * A maker may start several – warm-up rows are exempt from the one-per-theme index – and none of them takes one of the five season slots. How many is capped, though: a warm-up handed in as a design is approved like any other and carries a real parts grant, so the number of them is the number of grants. The cap is on that budget, not on the ideas (see MAX_WARMUP_PROJECTS).
+ *
+ * Everything after this is the ordinary flow: journal against it, then hand it in once, as the phase chosen here.
  */
 export const POST = withRoute(async (req: Request) => {
 	const gate = await requireSession()
@@ -39,17 +41,13 @@ export const POST = withRoute(async (req: Request) => {
 	const window = await warmupCreationWindow()
 	if (!window.open) return fail("CONFLICT", `Warm-up projects closed ${window.closesOn}.`)
 
-	const project = await prisma.themeProject.create({
-		data: {
-			description: data.description?.trim() || null,
-			githubRepo: data.githubRepo ?? null,
-			requestedTier: data.requestedTier,
-			theme: Theme.WARMUP,
-			title: data.title,
-			userId: gate.user.id,
-			warmupPhase: data.phase === "BUILD" ? Phase.BUILD : Phase.DESIGN,
-		},
-		select: { id: true },
+	const project = await createWarmupProject({
+		description: data.description?.trim() || null,
+		githubRepo: data.githubRepo ?? null,
+		requestedTier: data.requestedTier,
+		title: data.title,
+		userId: gate.user.id,
+		warmupPhase: data.phase === "BUILD" ? Phase.BUILD : Phase.DESIGN,
 	})
 
 	after(() => markProjectCreated(project.id, gate.user.id))

@@ -15,6 +15,21 @@ Dockerfile*
 .DS_Store
 .env*
 !.env.example
+# Credentials. .gitignore keeps every one of these out of the repository, so they
+# have to be kept out of the build context too: the builder runs `COPY . .`, and a
+# key file in the working tree would land in an image layer and in everything
+# pushed from it.
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+*.jks
+*.keystore
+# The local preview config holds a throwaway auth secret (see .gitignore).
+.claude
 # Local signup sink (data/signups.jsonl) holds real email addresses and has no
 # business in a build context.
 data

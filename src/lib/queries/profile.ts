@@ -67,7 +67,6 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 				joinedProgramAt: true,
 				lastStreakDate: true,
 				name: true,
-				slackId: true,
 			},
 			where: { id: userId },
 		}),

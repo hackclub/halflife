@@ -4,6 +4,7 @@ import { Phase } from "@/app/generated/prisma/enums"
 import { getThemeDef, projectDisplayTitle } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
+import { type CursorOrderOf, orderByFor, pageResult, positionWhere, readCursor } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
@@ -26,6 +27,32 @@ export interface QueueItem {
 	tier: number | null
 }
 
+const queueInclude = {
+	claim: { include: { reviewer: { select: { displayName: true, id: true, name: true } } } },
+	themeProject: {
+		select: {
+			id: true,
+			theme: true,
+			tier: true,
+			title: true,
+			user: { select: { displayName: true, id: true, name: true } },
+		},
+	},
+} satisfies Prisma.PhaseSubmissionInclude
+
+type QueueSubmission = Prisma.PhaseSubmissionGetPayload<{ include: typeof queueInclude }>
+
+/**
+ * The queue's order: oldest submission first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops a submission or hands one out twice.
+ */
+const QUEUE_ORDER = {
+	at: (row: QueueSubmission) => row.createdAt,
+	column: "createdAt",
+	direction: "asc",
+} as const satisfies CursorOrderOf<QueueSubmission, Prisma.PhaseSubmissionOrderByWithRelationInput>
+
 export async function getReviewQueue(opts: {
 	/** The signed-in reviewer. Their own submissions are excluded from the queue. */
 	reviewerId: string
@@ -42,36 +69,23 @@ export async function getReviewQueue(opts: {
 
 	const [rows, designCount, buildCount] = await Promise.all([
 		prisma.phaseSubmission.findMany({
+			include: queueInclude,
 			// Oldest first: a review queue that surfaces the newest work leaves the people who submitted first waiting longest.
-			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+			orderBy: orderByFor(QUEUE_ORDER),
 			take: opts.limit + 1,
-			where,
-			...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-			include: {
-				claim: { include: { reviewer: { select: { displayName: true, id: true, name: true } } } },
-				themeProject: {
-					select: {
-						id: true,
-						theme: true,
-						tier: true,
-						title: true,
-						user: { select: { displayName: true, id: true, name: true } },
-					},
-				},
-			},
+			// The queue is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+			where: positionWhere<Prisma.PhaseSubmissionWhereInput>(readCursor(opts.cursor), QUEUE_ORDER, where),
 		}),
 		prisma.phaseSubmission.count({ where: { ...where, phase: Phase.DESIGN } }),
 		prisma.phaseSubmission.count({ where: { ...where, phase: Phase.BUILD } }),
 	])
 
-	const hasMore = rows.length > opts.limit
-	const page = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = page.at(-1)
+	const page = pageResult(rows, opts.limit, QUEUE_ORDER)
 	const now = Date.now()
 
 	return {
 		counts: { build: buildCount, design: designCount },
-		items: page.map(row => ({
+		items: page.items.map(row => ({
 			claimExpiresAt: row.claim?.expiresAt ?? null,
 			claimedBy: row.claim ? { id: row.claim.reviewer.id, name: displayName(row.claim.reviewer) } : null,
 			claimLive: row.claim !== null && row.claim.expiresAt.getTime() > now,
@@ -86,7 +100,7 @@ export async function getReviewQueue(opts: {
 			themeProjectId: row.themeProject.id,
 			tier: row.themeProject.tier,
 		})),
-		nextCursor: hasMore && last ? last.id : null,
+		nextCursor: page.nextCursor,
 	}
 }
 

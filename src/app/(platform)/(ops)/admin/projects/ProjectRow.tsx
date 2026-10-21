@@ -18,10 +18,8 @@ export interface ProjectRowData {
 	extensionLabel: string | null
 	githubRepo: string | null
 	id: string
-	ownerEmail: string
 	ownerId: string
 	ownerName: string
-	ownerSlackId: string | null
 	requestedTier: number | null
 	theme: Theme
 	themeLabel: string
@@ -76,7 +74,6 @@ export function ProjectRow({
 						<Link href={`/admin/users/${data.ownerId}`}>Admin user</Link>
 						<Link href={`/u/${data.ownerId}`}>Public profile</Link>
 					</div>
-					<div className="hl-hint hl-mono">{data.ownerSlackId ?? data.ownerEmail}</div>
 				</td>
 				<td style={{ minWidth: "9rem" }}>{data.themeLabel}</td>
 				<td>{tier}</td>

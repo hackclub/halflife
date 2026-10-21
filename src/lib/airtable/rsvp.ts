@@ -129,7 +129,7 @@ export interface DrainResult {
 }
 
 /**
- * Push buffered RSVPs upstream. Idempotent and safe to run on a schedule: anything that fails stays unsynced with an incremented attempt count, and the index on (syncedToAirtable, syncAttempts, createdAt) makes finding them a single scan.
+ * Push buffered RSVPs upstream. Idempotent and safe to run on a schedule: anything that fails stays unsynced with an incremented attempt count, and the partial index on createdAt over the unsynced rows finds them in the order they are drained.
  *
  * The user id is the one field asked about rather than assumed. Airtable refuses a request whose `fields` names a column the table does not have, and it refuses the WHOLE record – so on a base without that column, sending it did not leave the id blank, it stopped the email, the name, the referral number and the rest of that row from landing, and after the attempt cap the row was abandoned for good. Probing once and omitting the field means the rest of the payload is written on a base that has not been set up yet, and the id starts filling itself the moment somebody adds the column.
  */

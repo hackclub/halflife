@@ -28,6 +28,7 @@
 			"!public/**/*.svg",
 			"scripts/**",
 			"src/**",
+			"!src/app/generated",
 			".impeccable/**",
 			".github/**",
 			"prisma/**",

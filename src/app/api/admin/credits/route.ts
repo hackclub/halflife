@@ -1,5 +1,5 @@
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
-import { AuditAction, logAudit } from "@/lib/audit"
+import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { appendLedgerEntry, CoinBucket, getBalances, LedgerKind, lockUserCredit } from "@/lib/currency"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
@@ -18,6 +18,10 @@ export const POST = withRoute(async (req: Request) => {
 	const target = await prisma.user.findUnique({ select: { id: true }, where: { id: userId } })
 	if (!target) return fail("NOT_FOUND", "User not found")
 
+	// Read here rather than inside the transaction: `headers()` is request-scoped, and the audit row
+	// has to carry the address and browser of the admin who made the adjustment.
+	const { ip, userAgent } = await requestInfo()
+
 	const entry = await prisma
 		.$transaction(async tx => {
 			await lockUserCredit(tx, userId)
@@ -31,7 +35,7 @@ export const POST = withRoute(async (req: Request) => {
 					balance,
 				})
 
-			return appendLedgerEntry(tx, {
+			const created = await appendLedgerEntry(tx, {
 				amount,
 				bucket: bucket === "BANKED" ? CoinBucket.BANKED : CoinBucket.SPENDABLE,
 				createdById: gate.user.id,
@@ -39,6 +43,28 @@ export const POST = withRoute(async (req: Request) => {
 				note: sanitize(reason),
 				userId,
 			})
+
+			// The trail joins the transaction, because a credit that outlives its audit row is the failure
+			// this route exists to prevent: `logAudit` swallows failures, so a row written after the commit
+			// can be missing entirely and nothing would notice. `logAuditTx` is the variant that refuses.
+			await logAuditTx(tx, {
+				action: AuditAction.ADMIN_ADJUST_CREDIT,
+				actorEmail: gate.user.email,
+				actorId: gate.user.id,
+				ip,
+				metadata: {
+					after: created.balanceAfter,
+					amount,
+					before: created.balanceBefore,
+					bucket,
+					reason,
+				},
+				targetId: userId,
+				targetType: "User",
+				userAgent,
+			})
+
+			return created
 		})
 		.catch((err: unknown) => {
 			if (err && typeof err === "object" && "__insufficient" in err) return null
@@ -46,21 +72,6 @@ export const POST = withRoute(async (req: Request) => {
 		})
 
 	if (!entry) return fail("INSUFFICIENT_CREDIT", "That adjustment would make the balance negative")
-
-	await logAudit({
-		action: AuditAction.ADMIN_ADJUST_CREDIT,
-		actorEmail: gate.user.email,
-		actorId: gate.user.id,
-		metadata: {
-			after: entry.balanceAfter,
-			amount,
-			before: entry.balanceBefore,
-			bucket,
-			reason,
-		},
-		targetId: userId,
-		targetType: "User",
-	})
 
 	return ok({ entry }, { status: 201 })
 })

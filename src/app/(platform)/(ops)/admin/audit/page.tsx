@@ -3,16 +3,18 @@ import { EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
+import { firstValues, type SearchParamValue } from "@/lib/search-params"
 
 export const dynamic = "force-dynamic"
 
 interface Props {
-	searchParams: Promise<{ action?: string; targetId?: string; cursor?: string }>
+	searchParams: Promise<{ action?: SearchParamValue; cursor?: SearchParamValue; targetId?: SearchParamValue }>
 }
 
 export default async function AdminAuditPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.VIEW_AUDIT_LOG)
-	const { action, targetId, cursor } = await searchParams
+	// Each filter is taken as the single value the URL named: a repeated parameter arrives as an array, and an array where a string was expected is not a value this page can read.
+	const { action, targetId, cursor } = firstValues(await searchParams)
 
 	const { items, nextCursor } = await listAuditLog({ action, cursor, limit: 50, targetId })
 

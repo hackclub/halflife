@@ -9,6 +9,7 @@ import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
 import { countryOfTimezone } from "@/lib/regions"
+import { sanitize } from "@/lib/sanitize"
 
 /**
  * The catalogue row as a participant sees it.
@@ -56,6 +57,11 @@ export const shopOrderStaffSelect = {
 	holdReason: true,
 	id: true,
 	itemNameSnapshot: true,
+	/**
+	 * What the buyer wrote about the order. Staff are the ones who fulfil it, so it is theirs to read; the
+	 * buyer's own view below leaves it out, because it is a note to staff rather than part of the order's state.
+	 */
+	notes: { select: { authorId: true, body: true, createdAt: true } },
 	orderNumber: true,
 	placedAt: true,
 	quantity: true,
@@ -206,12 +212,15 @@ export async function getShopItemsFor(userId: string): Promise<{
  * Buy something.
  *
  * The whole thing runs under a per-user advisory lock. The ledger's `@@unique([shopOrderId, kind, bucket])` only stops one order being charged twice – two concurrent purchases mint two different order ids and collide with nothing, so without the lock ten parallel requests all read the same balance and all succeed.
+ *
+ * `note` is the buyer's own words for the staff who fulfil the order. It is written inside the transaction, against the order, with the buyer as its author – so a note that is accepted is a note that is kept, rather than one that is silently dropped on the floor.
  */
 export async function purchase(
 	userId: string,
 	shopItemId: string,
 	quantity: number,
 	idempotencyKey?: string,
+	note?: string | null,
 ): Promise<ShopOrderPublic> {
 	const access = await getShopAccess(userId)
 	if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
@@ -225,6 +234,10 @@ export async function purchase(
 
 	const item = await prisma.shopItem.findUnique({ where: { id: shopItemId } })
 	if (!item?.active) throw new HttpError("NOT_FOUND", "Item not found")
+
+	// The note is read as plain text, so its markup is stripped before anything is stored – outside the
+	// transaction, because it is work that has nothing to do with the rows.
+	const body = note ? sanitize(note) : null
 
 	if (item.requiresPrinterQualified) {
 		const qualification = await getPrinterQualification(userId)
@@ -289,7 +302,14 @@ export async function purchase(
 				select: shopOrderPublicSelect,
 				where: { idempotencyKey, userId },
 			})
-			if (existing) return existing
+			if (existing) {
+				// A key whose order was refused afterwards is not a success to hand back. The order was
+				// rejected and refunded, this request creates nothing, and returning it as a fresh purchase
+				// would tell the caller it owns a thing it never received.
+				if (existing.status === ShopOrderStatus.REJECTED || existing.status === ShopOrderStatus.CANCELLED)
+					throw new HttpError("CONFLICT", "That order has already been rejected or cancelled")
+				return existing
+			}
 		}
 
 		// Re-read stock inside the transaction; the catalogue page may be stale.
@@ -325,6 +345,10 @@ export async function purchase(
 				itemNameSnapshot: fresh.name,
 				quantity,
 				shopItemId,
+				// Whether this order takes stock off the shelf. The catalogue can change after the order is
+				// placed – an item that was unlimited can be given a stock figure – so the reject path cannot
+				// work it out from the item's stock later, and has to be told.
+				stockDebited: fresh.stock !== null,
 				totalCredits,
 				unitCostUsd: fresh.costUsd,
 				unitCredits: unitPrice,
@@ -334,17 +358,40 @@ export async function purchase(
 			select: shopOrderPublicSelect,
 		})
 
-		// Every coin is spendable on anything, so a purchase is paid out of the whole balance.
-		if (totalCredits > 0)
+		// The buyer's note, kept against the order with the buyer as its author. Written here, inside the
+		// transaction, so it lands with the order it belongs to: a note that is accepted but not kept is
+		// worse than no note at all, because the staff reading the order would have no way to know one was sent.
+		if (body)
+			await tx.shopOrderNote.create({
+				data: { authorId: userId, body, orderId: order.id },
+			})
+
+		// Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole
+		// balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy
+		// banked pot for whatever is left. Writing the whole debit against SPENDABLE would drive that pot
+		// negative whenever the coins happen to sit in BANKED, and a negative pot is a state nothing else in
+		// the app is willing to create. The refund path reads these rows back, so each pot is given back
+		// exactly what it paid.
+		let remaining = totalCredits
+		for (const bucket of [CoinBucket.SPENDABLE, CoinBucket.BANKED]) {
+			if (remaining <= 0) break
+			const available = bucket === CoinBucket.SPENDABLE ? balances.spendable : balances.banked
+			const amount = Math.min(Math.max(available, 0), remaining)
+			if (amount <= 0) continue
 			await appendLedgerEntry(tx, {
-				amount: -totalCredits,
-				bucket: CoinBucket.SPENDABLE,
+				amount: -amount,
+				bucket,
 				createdById: userId,
 				kind: LedgerKind.SHOP_PURCHASE,
 				note: `${quantity}× ${fresh.name}`,
 				shopOrderId: order.id,
 				userId,
 			})
+			remaining -= amount
+		}
+		// Only reachable when a pot is already negative, which the combined check above cannot see. The
+		// purchase is refused rather than deepening the hole.
+		if (remaining > 0) throw new HttpError("INSUFFICIENT_CREDIT", `You need ${remaining} more to buy this`)
 
 		if (fresh.stock !== null) {
 			// Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser's update matches nothing and rolls back.
@@ -401,7 +448,12 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 			})
 		}
 
-		if (order.shopItemId)
+		// The stock goes back only if it was taken. The catalogue's stock figure can change after the
+		// order was placed – an item that was unlimited can be given a figure – so the order carries the
+		// answer rather than the item's stock now. Orders placed before that column existed do not carry
+		// it, and are treated as having taken stock, which is what this path always did.
+		const stockDebited = order.stockDebited ?? true
+		if (stockDebited && order.shopItemId)
 			await tx.shopItem.updateMany({
 				data: { stock: { increment: order.quantity } },
 				where: { id: order.shopItemId, stock: { not: null } },

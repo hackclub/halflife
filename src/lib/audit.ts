@@ -18,7 +18,13 @@ export interface AuditInput {
 	targetType?: string | null
 }
 
-async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
+/**
+ * The caller's address and browser, as the audit trail records them.
+ *
+ * Exported because `logAuditTx` cannot read them itself: it joins a transaction, and `headers()` is
+ * request-scoped, so the caller has to resolve them here and pass them in.
+ */
+export async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
 	try {
 		const h = await headers()
 		const forwarded = h.get("x-forwarded-for")

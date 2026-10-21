@@ -22,6 +22,8 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 
 	const links = await prisma.hackatimeLink.findMany({
 		// Least-recently refreshed first (never-refreshed before those), so a run that hits the batch bound still advances through the whole set instead of restarting at the same head of the list every 15 minutes.
+		//
+		// NULLS FIRST is not a detail: the partial index on cachedAt over the links waiting for a reviewer is built in that order, so this walks the index and takes the batch it needs rather than sorting the table four times an hour.
 		orderBy: { cachedAt: { nulls: "first", sort: "asc" } },
 		// cachedSpans rides along so the warm below can tell a link that already answers from one whose cache was never written or was fetched for a narrower window, and the owner's id so a recording attached under another project can be found and warmed for.
 		select: {

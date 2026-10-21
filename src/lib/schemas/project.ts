@@ -8,7 +8,10 @@ export const projectUpdateSchema = z
 			.max(10)
 			.optional(),
 		coverImageKey: z.string().max(500).nullable().optional(),
-		description: boundedText(4000).optional(),
+		/**
+		 * Not blankable. A project with no description is a project a reviewer has nothing to read, and the submit gate already refuses one below its floor – so the blank has to be refused here too, where the details are written.
+		 */
+		description: boundedText(4000, 1).optional(),
 		githubRepo: httpsUrl.nullable().optional(),
 		/**
 		 * The tier the participant is ASKING for. Never the assigned one: that is a reviewer's decision at design approval, because it is parts money.
