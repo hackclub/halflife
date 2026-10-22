@@ -336,10 +336,6 @@ html[data-promo="hidden"] .root {
 		padding: 0.8rem 3.2rem 0.9rem 1rem;
 	}
 
-	.logo {
-		display: none;
-	}
-
 	.copy {
 		flex: 1 1 100%;
 		padding-right: 0.5rem;

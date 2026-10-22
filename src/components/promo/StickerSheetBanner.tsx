@@ -101,21 +101,23 @@ export function StickerSheetBanner({
 			<div aria-hidden="true" className={styles.scrim} />
 
 			<div className={card ? styles.cardInner : styles.inner}>
-				<span className={styles.logo}>
-					<Image alt="" className={styles.logoImage} sizes="(min-width: 1024px) 88px, 68px" src={logoArt} />
-				</span>
+				{card && (
+					<span className={styles.logo}>
+						<Image alt="" className={styles.logoImage} sizes="(min-width: 1024px) 88px, 68px" src={logoArt} />
+					</span>
+				)}
 
 				{card ? (
 					<button className={styles.copyButton} onClick={expand} ref={cardCopyRef} type="button">
-						<span className={styles.eyebrow}>Free sticker sheet</span>
-						<span className={styles.headline}>Ship a project both weeks.</span>
-						<span className={styles.detail}>Week 3 and week 4. One project each. Tap to reopen.</span>
+						<span className={styles.eyebrow}>Weeks 3 &amp; 4</span>
+						<span className={styles.headline}>Ship a project both weeks,<br />win a sticker sheet</span>
+						<span className={styles.detail}>Requires an approved project for both weeks 3 and 4. Click to reopen.</span>
 					</button>
 				) : (
 					<div className={styles.copy}>
-						<p className={styles.eyebrow}>Weeks 3 + 4 challenge</p>
-						<p className={styles.headline}>Ship a project both weeks. Get a free Half Life sticker sheet.</p>
-						<p className={styles.detail}>One project in week 3, one in week 4.</p>
+						<p className={styles.eyebrow}>Weeks 3 &amp; 4 challenge</p>
+						<p className={styles.headline}>Ship a project both weeks to win a free Half Life sticker sheet!</p>
+						<p className={styles.detail}>A music project for week 3 and a display project for week 4.</p>
 					</div>
 				)}
 
