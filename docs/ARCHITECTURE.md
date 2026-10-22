@@ -151,6 +151,19 @@ requires only that the design has left `draft`. **Finalising** a build still
 requires the design to be approved, so the ordering invariant holds where money
 is involved and not where it only costs people time.
 
+## The submit gate re-checks the repo, not the form
+
+`submitPhase` runs `checkRepo` again rather than trusting the submit sheet: a
+public repo, a README with at least 200 characters, three lines and two images,
+and the file kinds the theme needs. The README BOM table is a warning, not a
+block – the BOM CSV is what the PCB week requires. The CAD source list is
+deliberately limited to editable files from accepted tools: Tinkercad, OpenSCAD,
+Blender and STL-only submissions fail the source check. A starter project still
+carrying the starter's own description is refused before the review queue,
+because the maker has not said what they changed; the comparison ignores case,
+whitespace, zero-width characters and typographic variants but not an added
+sentence.
+
 ## Live switches are database rows, not env vars
 
 Submissions open, shop open, event start date and the Airtable kill switch live
@@ -194,14 +207,18 @@ paid with no review and no record. Every review freezes the numbers it used onto
 - Failures write an `AIRTABLE_SYNC_FAILURE` audit row and are replayable from
   `/admin/program` and by the hourly retry job, because approval and the row
   reaching Airtable are separate steps and only the first one is transactional.
-- The writes made after the row exists are the two Loops columns: the status,
-  set from every committed decision (the Ari webhook, the review console, an
-  admin's un-approve or reopen), and the reviewer's note the email quotes.
-  Both go through `mirrorReviewDecision`, which splits them into separate
-  requests so a notes column that refuses its value cannot cost the status its
-  update. Best-effort and never throwing: the review is committed in Postgres
-  first, and a base that is briefly unreachable must not make Ari redeliver a
-  decision that has already been applied.
+- The writes made after the row exists are the Loops columns: the status, set
+  from every committed decision (the Ari webhook, the review console, an
+  admin's un-approve or reopen), the reviewer's note the email quotes, and the
+  two `Loops - Override - …` columns that carry the project name and week. The
+  override values carry a zero-width stamp, because email-tools only forwards a
+  field whose value changed and a repeated decision on the same project would
+  otherwise be invisible. They go through `mirrorReviewDecision`, which tries
+  the status, note and overrides together and then keeps the status load-bearing
+  with fallbacks, so a notes or override column that refuses its value cannot
+  cost the status its update. Best-effort and never throwing: the review is
+  committed in Postgres first, and a base that is briefly unreachable must not
+  make Ari redeliver a decision that has already been applied.
 
 ## RSVP is write-behind
 
@@ -232,6 +249,13 @@ stops an unauthorised page rendering at all – stasis does admin auth in a
 
 Permission checks 404 rather than 403 where the resource's existence is itself
 information, so guessing at `/admin` tells you nothing.
+
+A maker has to be identity-verified before a grant is sent or a positive manual
+coin adjustment is made. The shop already asked for it at purchase; the reward
+paths now ask too. `isIdentityVerified` refreshes a stale stored status from
+HCA, so a maker who verified since their last sign-in is not refused, and a
+clawback is still allowed because taking credit back is not a reward. See
+`docs/BACKEND.md` → Payouts.
 
 ## Uploads store keys, not URLs
 

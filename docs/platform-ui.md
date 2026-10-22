@@ -71,6 +71,11 @@ funded hours. It writes `requestedTier`; the route refuses the change once
 design is approved, or on a starter project. The same page links Hackatime
 projects, which is how code hours reach a week's total.
 
+A starter's description is written into the project when the starter is taken.
+The submit sheet refuses that default text, with a callout linking back to the
+project page, so the maker has to say what they changed before the week can be
+handed in.
+
 ## Where the data comes from
 
 `lib/queries/store.ts` reads one snapshot per navigation – projects, checkpoint
