@@ -4,6 +4,7 @@ import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { phaseSchema } from "@/lib/schemas/common"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -35,7 +36,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		where: { id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
-	const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
+	const status = statusFor(project, parsed.data.phase)
 	if (status === PhaseStatus.draft)
 		return fail("VALIDATION_FAILED", "That phase has not been submitted, so it has no Airtable row")
 

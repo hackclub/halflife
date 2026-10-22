@@ -11,6 +11,7 @@ import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
 import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"
+import { statusFor } from "@/lib/phase"
 import { decryptUserPII } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
@@ -429,7 +430,7 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 	const out: { themeProjectId: string; phase: Phase }[] = []
 	for (const p of pending)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
-			const status = phase === Phase.DESIGN ? p.designStatus : p.buildStatus
+			const status = statusFor(p, phase)
 			if (status !== PhaseStatus.in_review) continue
 			const submittedAt = p.submissions.find(s => s.phase === phase)?.createdAt
 			// Written since the latest hand-in counts; an older write was for a submission that has since been taken back and handed in again.

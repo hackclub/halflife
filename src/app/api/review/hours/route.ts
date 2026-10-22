@@ -5,6 +5,7 @@ import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { hoursDecisionSchema } from "@/lib/schemas/review"
@@ -69,7 +70,7 @@ export const POST = withRoute(async (req: Request) => {
 		for (const userId of userIds) await lockUserCredit(tx, userId)
 
 		for (const row of all) {
-			const status = row.phase === Phase.DESIGN ? row.themeProject.designStatus : row.themeProject.buildStatus
+			const status = statusFor(row.themeProject, row.phase)
 			if (status !== PhaseStatus.in_review)
 				throw new HttpError("PHASE_LOCKED", "Hours can only be approved while the phase is in review")
 		}

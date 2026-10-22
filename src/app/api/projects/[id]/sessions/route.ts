@@ -11,6 +11,7 @@ import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { lockKey } from "@/lib/locks"
 import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import {
 	assertWeekStarted,
@@ -108,7 +109,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	await assertWeekStarted(week)
 	if (!(await isWeekOpen(gate.user.id, id, week))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
-	const phaseStatus = data.phase === "DESIGN" ? project.designStatus : project.buildStatus
+	const phaseStatus = statusFor(project, data.phase)
 	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
 	// Same rule as editing an entry: once a week is decided, its entries are the record the decision was made against. Without this, hours could be logged after approval and paid out on the next un-approve/re-approve cycle.
@@ -152,7 +153,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			select: { buildStatus: true, designStatus: true, submissionExtensionUntil: true },
 			where: { id },
 		})
-		const currentStatus = data.phase === "DESIGN" ? current?.designStatus : current?.buildStatus
+		const currentStatus = current ? statusFor(current, data.phase) : undefined
 		if (currentStatus === PhaseStatus.in_review)
 			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
 		if (currentStatus && isPhaseDecided(currentStatus))

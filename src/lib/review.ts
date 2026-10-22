@@ -18,6 +18,7 @@ import { displayName } from "@/lib/display-name"
 import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
+import { statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
@@ -457,7 +458,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			before: {
 				approvedHours: project.approvedHours,
 				grantUsd: project.grantUsd,
-				status: phase === Phase.DESIGN ? project.designStatus : project.buildStatus,
+				status: statusFor(project, phase),
 				tier: project.tier,
 			},
 			phase,
@@ -490,7 +491,7 @@ export async function unapprovePhase(
 	const project = await prisma.themeProject.findUnique({ where: { id: themeProjectId } })
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+	const status = statusFor(project, phase)
 	if (status !== PhaseStatus.approved) throw new HttpError("CONFLICT", "That phase is not approved")
 
 	const { unrecovered } = await prisma.$transaction(async tx => {
@@ -501,7 +502,7 @@ export async function unapprovePhase(
 			select: { buildStatus: true, designStatus: true },
 			where: { id: themeProjectId },
 		})
-		if ((phase === Phase.DESIGN ? fresh?.designStatus : fresh?.buildStatus) !== PhaseStatus.approved)
+		if (!fresh || statusFor(fresh, phase) !== PhaseStatus.approved)
 			throw new HttpError("CONFLICT", "That phase is no longer approved")
 
 		// A grant send holds no credit lock while HCB is called, so a design un-approval must not race it: the money would be sent for an approval that no longer stands, and the sent row would block a later send. `sendGrant` marks the row errored before it throws, which is what lets this same check pass on the retry after the window.
@@ -653,7 +654,7 @@ export async function reopenPhase(
 	const project = await prisma.themeProject.findUnique({ where: { id: themeProjectId } })
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+	const status = statusFor(project, phase)
 	if (status !== PhaseStatus.rejected) throw new HttpError("CONFLICT", "That phase is not rejected")
 
 	// Conditional on the status that was read: an admin double-click, or a reopen racing a resubmission, must not overwrite a newer state.

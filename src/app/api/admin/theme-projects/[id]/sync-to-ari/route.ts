@@ -5,6 +5,7 @@ import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { HttpError } from "@/lib/errors"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { phaseSchema } from "@/lib/schemas/common"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -38,7 +39,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		where: { deletedAt: null, id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
-	const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
+	const status = statusFor(project, parsed.data.phase)
 	if (status !== PhaseStatus.in_review)
 		return fail("CONFLICT", "That phase is not awaiting review, so there is no ship to send")
 

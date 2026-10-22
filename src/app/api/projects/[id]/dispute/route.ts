@@ -4,6 +4,7 @@ import { projectDisplayTitle } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
 import { disputeSchema } from "@/lib/schemas/project"
@@ -42,7 +43,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		})
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 
-		const status = phase === "DESIGN" ? fresh.designStatus : fresh.buildStatus
+		const status = statusFor(fresh, phase)
 		if (status !== "update_requested" && status !== "rejected")
 			throw new HttpError("CONFLICT", "Only a review that asked for changes or rejected the work can be disputed")
 

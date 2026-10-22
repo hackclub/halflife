@@ -10,6 +10,7 @@ import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
 import { getHoursBreakdown } from "@/lib/hours"
 import { round2 } from "@/lib/money"
+import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import {
 	assertWeekStarted,
@@ -23,10 +24,6 @@ import { assertNoOwedReel } from "@/lib/reel-gate"
 import { checkRepo } from "@/lib/repo-checks"
 import { isOwnedKey } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
-
-export function statusFor(project: ThemeProject, phase: Phase): PhaseStatus {
-	return phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-}
 
 /**
  * Whether a phase can be submitted right now.
@@ -213,7 +210,7 @@ export async function submitPhase(
 
 		// Claim the phase first, conditionally on it still being one that can be submitted. Two concurrent submits both read the same outside state, so without this both would create an open submission and both flip the status; the row lock makes the loser's update match nothing.
 		const claimed = await tx.themeProject.updateMany({
-			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
+			data: phaseStatusUpdate(phase, PhaseStatus.in_review),
 			where: {
 				deletedAt: null,
 				id: themeProjectId,
@@ -262,7 +259,7 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 			select: { buildStatus: true, designStatus: true },
 			where: { id: themeProjectId },
 		})
-		if ((phase === Phase.DESIGN ? current.designStatus : current.buildStatus) !== PhaseStatus.in_review)
+		if (statusFor(current, phase) !== PhaseStatus.in_review)
 			throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
 
 		const open = await tx.phaseSubmission.findFirst({
@@ -290,10 +287,10 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 		if (withdrawn.count !== 1) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
 
 		const flipped = await tx.themeProject.updateMany({
-			data: phase === Phase.DESIGN ? { designStatus: restored } : { buildStatus: restored },
+			data: phaseStatusUpdate(phase, restored),
 			where: {
 				id: themeProjectId,
-				...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review }),
+				...phaseStatusUpdate(phase, PhaseStatus.in_review),
 			},
 		})
 		if (flipped.count !== 1) throw new HttpError("CONFLICT", "This project moved while it was being withdrawn")
