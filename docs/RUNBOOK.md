@@ -52,7 +52,7 @@ Coolify.
    rewrites them in one pass. See [BACKEND.md](./BACKEND.md) → Reviewing with
    Ari.
 
-   **When the review ring disagrees with Ari's board.**
+   **When the Ari ship counts disagree with Ari's board.**
    `bun --conditions=react-server scripts/ari-review-counts.ts --ari` prints the
    local ship counts beside the phase Ari reports for every recorded ship id,
    including the states Ari's four slices omit, and names any ship whose local

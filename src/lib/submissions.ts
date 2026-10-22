@@ -3,6 +3,7 @@ import type { PhaseSubmission, ProgramSettings, ThemeProject } from "@/app/gener
 import { Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
 import { markChecksPassed } from "@/lib/analytics"
 import { partsFundingFor } from "@/lib/bom"
+import { usesStarterDefaultDescription } from "@/lib/config/onboarding"
 import { submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
 import { ENTRY_TIER, getTierOrThrow } from "@/lib/config/tiers"
@@ -115,6 +116,13 @@ export async function submitPhase(
 		throw new HttpError(
 			"UNPROCESSABLE",
 			`Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting this phase (you have ${descriptionLength})`,
+		)
+
+	// A starter's description is the guide's words, not the maker's. A project that still carries it has not said what it made or changed, and the reviewer has nothing to judge originality against – so refuse here, before the review queue, with the fix the maker can make.
+	if (usesStarterDefaultDescription(project.starterProjectId, project.description))
+		throw new HttpError(
+			"UNPROCESSABLE",
+			"Write your own project description before submitting: this is still the starter project's default description. Say what you changed, why you made it, and what makes it yours.",
 		)
 
 	if (!project.coverImageKey)

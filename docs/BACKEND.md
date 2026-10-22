@@ -94,6 +94,13 @@ nobody worked.
 **Nobody reviews their own work**, and a build cannot be approved before its
 design.
 
+**The submit gate is server-side.** `submitPhase` re-runs `checkRepo` rather than
+trusting the submit sheet: a missing README, too little text or too few photos,
+or a missing required file blocks, while the README BOM table is only a warning.
+The CAD source list accepts editable files from accepted tools only – Tinkercad,
+OpenSCAD, Blender and STL-only fail – and a starter project still carrying the
+starter's own description is refused. See `docs/ARCHITECTURE.md`.
+
 ---
 
 ## Reviewing with Ari
@@ -108,8 +115,10 @@ and it refuses an already-resolved submission.
   helpers (`ariExternalId` / `parseAriExternalId`) so `verify:contracts` can pin
   the format.
 - **One ship per (project, phase).** `external_id` is `<themeProjectId>:design`
-  or `:build`, matching the Airtable rows, which are keyed on (Half-Life ID,
-  Stage). Design and build get independent decisions.
+  or `:build`, so design and build get independent decisions. The Airtable row
+  is found by the record id kept in the audit log; when that id is unknown, the
+  write adopts a row matching (email, project name, stage) under an advisory
+  lock, because the table has no Half-Life ID column.
 - **Outbound** happens in the submit/unsubmit `after` hooks, like the Airtable
   write, and no-ops when the `ARI_*` secrets are unset. A failed send logs an
   `ARI_SYNC_FAILURE` audit row and is replayed by `ari-retry`, or by hand from
@@ -138,17 +147,18 @@ and it refuses an already-resolved submission.
   id on the hand-in instead of retrying forever. This is the recovery for a
   create whose response was lost, and it stops a ship Ari already has from being
   invisible to every local count.
-- **The admin ring counts ships, as Ari does.** `getProjectReviewStatuses`
-  counts every resolved submission that reached Ari – each resubmission is a new
-  ship and leaves its predecessor's decision on the board – and only the pending
-  slice is per phase, from the newest hand-in. Collapsing all four slices to the
-  newest submission per phase is what made the ring read hundreds of change
-  requests short of Ari.
+- **The admin ring counts projects, one state each.** `getProjectReviewStatuses`
+  gives every project the single state its card shows (`projectReviewState`:
+  rejected > needs changes > pending > approved) and counts it once, so the
+  ring's total is the number of projects that have been submitted and a project
+  cannot appear in two slices. The ship-level count still exists for the queue:
+  `countAriShips` backs the admin pending figure and `ari-review-counts` mirrors
+  Ari's own board, so the ring and Ari's board answer different questions.
 - **A delivery can be lost, so decisions are also pulled.** The webhook is
   fire-and-forget: a delivery sent while the endpoint was unregistered,
   misconfigured or briefly unreachable is gone, and the hand-in sits decided at
-  Ari while Half Life still shows it pending – the admin "Reviewer activity"
-  ring then reads hundreds of hand-ins more pending than Ari's own board.
+  Ari while Half Life still shows it pending – the admin pending figure then
+  reads hundreds of hand-ins more pending than Ari's own board.
   `reconcileAriDecisions` (`lib/ari.ts`) asks `ari.ships.status` for each open
   hand-in and applies any standing decision through the same `finalizeReview`
   the webhook calls; a ship Ari reports as `reverted` is reset from there too,
@@ -241,8 +251,9 @@ it against a scratch copy, and re-run the diff to confirm it comes back empty.
 
 ### The checks
 
-Eight suites. They write to whatever `DATABASE_URL` points at and clean up after
-themselves – **point them at a scratch database, never production.**
+Eleven suites. The DB-backed ones write to whatever `DATABASE_URL` points at
+and clean up after themselves – **point them at a scratch database, never
+production.**
 
 | | |
 | --- | --- |
@@ -254,6 +265,9 @@ themselves – **point them at a scratch database, never production.**
 | `verify:feed` | moderation actually removes things |
 | `verify:handoff` | the QR upload token is single-use |
 | `verify:uploads` | R2 round-trip smoke test |
+| `verify:forge-write` | the forge write path's retries and status classification (no DB) |
+| `verify:loops` | the Loops Signups-row join (no network, no DB) |
+| `verify:loops-entries` | audit `Loops - halfLifeLastEntryAt` against the devlog rule (read-only unless `--clear`) |
 
 `verify:pii` and `verify:contracts` exist because the compiler cannot see either
 problem: an RSC serialises whatever it hands a client component into the HTML, so
@@ -275,6 +289,11 @@ identical to "the click did nothing".
   suites cannot run in a pod as-is.
 - **`.env.example` comments live above values, not beside them** – a trailing
   comment gets copy-pasted into a deployment and a 32-character R2 key becomes 59.
+- **Asset URLs stored in journals have two possible key layouts.** Before the S3
+  client stopped putting the bucket name in the path, an object landed at
+  `<bucket>/<key>` and its URL was `<origin>/<bucket>/<key>`. Both that and the
+  current `<origin>/<key>` are valid, so `pnpm uploads:backfill-urls` asks the
+  bucket before rewriting anything rather than assuming one layout.
 - **Coins are minted at review approval, not when hours are logged.** The trail
   moves immediately because the node is the entry, not the payment.
 

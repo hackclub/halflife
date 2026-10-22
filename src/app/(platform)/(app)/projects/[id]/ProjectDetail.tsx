@@ -445,7 +445,7 @@ function DecisionNotice({
 								className="mt-3"
 								onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
 								size="sm"
-								variant="solid"
+								variant="gold"
 							>
 								I&apos;ve made these changes – resubmit
 							</Button>

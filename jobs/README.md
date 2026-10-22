@@ -1,6 +1,6 @@
 # Orchard jobs
 
-Step definitions for the eight scheduled jobs, plus the `orchard job` commands
+Step definitions for the nine scheduled jobs, plus the `orchard job` commands
 that create them. `docs/RUNBOOK.md` has the jobs table; this directory is what
 actually recreates them.
 
@@ -70,13 +70,14 @@ is in the same namespace, so it reaches the service directly. `src/proxy.ts`
 still runs, and `/api/integrations` is already excluded from basic auth there, so
 `REQUIRE_BASICAUTH` does not get in the way.
 
-All eight routes declare `maxDuration = 300`. On a long-running server Next does
-not enforce that, so a route that overruns it keeps going and the step's own
-timeout is what finally applies – which is why the two internal jobs carry
-`timeoutSeconds: 1800` and `--max-time 1740` rather than the 600 the rest use. A
-measured `loops-sync` run took 10m38s. The runbook's suggested `timeoutSeconds:
-600` would have killed it. If the Cloudflare limit is ever raised, or these two
-routes get faster, they can go back to the public ingress like the rest.
+The slow routes declare `maxDuration = 300`; the quick ones do not need it. On a
+long-running server Next does not enforce it, so a route that overruns it keeps
+going and the step's own timeout is what finally applies – which is why the two
+internal jobs carry `timeoutSeconds: 1800` and `--max-time 1740` rather than the
+600 the rest use. A measured `loops-sync` run took 10m38s. The runbook's
+suggested `timeoutSeconds: 600` would have killed it. If the Cloudflare limit
+is ever raised, or these two routes get faster, they can go back to the public
+ingress like the rest.
 
 ## Verifying a change
 

@@ -274,6 +274,20 @@ export async function putObject(key: string, body: Buffer, contentType: string):
 }
 
 /**
+ * Whether a key is in the bucket, by HEAD.
+ *
+ * For the repair script rather than a request path: a stored URL is only wrong if the bytes are somewhere else, and the bucket is the only thing that knows.
+ */
+export async function objectExists(key: string): Promise<boolean> {
+	try {
+		const s3 = await client()
+		return await s3.exists(key)
+	} catch (err) {
+		throw asConfigError(err)
+	}
+}
+
+/**
  * Credentials the bucket rejected are an operator problem, not a user one.
  *
  * Without this they surface as an unhandled exception and the participant is told "Something went wrong" – which happened, with a Cloudflare API token pasted into `S3_ACCESS_KEY_ID`, and the phone only found out AFTER the video had been recorded and uploaded. A 503 saying uploads are misconfigured is both true and actionable; the detail stays in the server log, because the message the bucket returns names the credential.
