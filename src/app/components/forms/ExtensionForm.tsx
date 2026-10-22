@@ -1,15 +1,10 @@
 "use client"
 import { useEffect, useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
+import { toLocalInput } from "@/lib/deadline"
 import { sendJson, useAction } from "@/lib/use-action"
 
 const DAY_MS = 24 * 60 * 60 * 1000
-
-/** A Date as the value a datetime-local input takes, in the admin's own zone. */
-function toLocalInput(date: Date): string {
-	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-	return local.toISOString().slice(0, 16)
-}
 
 /**
  * Grant, move or clear an extension.

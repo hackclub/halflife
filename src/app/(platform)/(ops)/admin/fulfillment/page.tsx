@@ -4,6 +4,7 @@ import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/app/generated/prisma/enums"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { formatUsd } from "@/lib/money"
@@ -46,12 +47,6 @@ function filtersFrom(s: FirstValues<Search>): FulfillmentFilters {
 		stage: Object.values(ShopFulfillmentStage).find(x => x === s.stage),
 	}
 }
-
-const placedFormat = new Intl.DateTimeFormat("en-US", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-})
 
 /** Award-state colours, matching the badge tones the console already uses. */
 const AWARD_TONES = {
@@ -153,7 +148,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 									{order.totalUsd === null ? <span className="hl-hint">not set</span> : formatUsd(order.totalUsd)}
 								</td>
 								<td>{order.country ?? <span className="hl-hint">unknown</span>}</td>
-								<td className="hl-mono">{placedFormat.format(order.placedAt)}</td>
+								<td className="hl-mono">{formatUtcDateTime(order.placedAt)}</td>
 								<td>
 									<OrderFulfillment
 										cancelled={order.status === "CANCELLED"}
@@ -190,7 +185,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 								<td>
 									<Link href={`/admin/users/${award.user.id}`}>{displayName(award.user)}</Link>
 								</td>
-								<td className="hl-mono">{placedFormat.format(award.qualifiedAt)}</td>
+								<td className="hl-mono">{formatUtcDateTime(award.qualifiedAt)}</td>
 								<td>
 									<Badge tone={AWARD_TONES[award.status]}>{PRINTER_AWARD_LABELS[award.status]}</Badge>
 									{award.status === "REVOKED" && award.revokedReason ? (
@@ -200,7 +195,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 								<td>
 									{award.addressOnFile ? "locked on file" : <span className="hl-hint">none</span>}
 									{award.addressLockedAt ? (
-										<div className="hl-hint">{placedFormat.format(award.addressLockedAt)}</div>
+										<div className="hl-hint">{formatUtcDateTime(award.addressLockedAt)}</div>
 									) : null}
 								</td>
 								<td className="hl-mono">

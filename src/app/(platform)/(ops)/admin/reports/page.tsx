@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
 import type { ReportReason, ReportStatus } from "@/app/generated/prisma/enums"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -13,19 +14,9 @@ import {
 } from "@/lib/queries/admin"
 import { REPORT_REASONS, REPORT_STATUS_LABELS, REPORT_TARGET_LABELS } from "@/lib/reports"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
+import { preview } from "@/lib/text"
 
 export const dynamic = "force-dynamic"
-
-const whenFormat = new Intl.DateTimeFormat("en-US", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-})
-
-function preview(text: string, max = 90): string {
-	const flat = text.replaceAll(/\s+/g, " ").trim()
-	return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
-}
 
 const REASON_LABELS = Object.fromEntries(REPORT_REASONS.map(r => [r.id, r.label])) as Record<ReportReason, string>
 
@@ -141,11 +132,11 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 				<Badge tone={reasonTone(report.reason)}>{REASON_LABELS[report.reason]}</Badge>
 			</td>
 			<td className="hl-hint">{displayName(report.reporter, report.reporter.email)}</td>
-			<td className="hl-mono">{whenFormat.format(report.createdAt)}</td>
+			<td className="hl-mono">{formatUtcDateTime(report.createdAt)}</td>
 			<td>
 				<Badge tone={statusTone(report.status)}>{REPORT_STATUS_LABELS[report.status]}</Badge>
 				{report.status !== "OPEN" && report.resolvedAt ? (
-					<div className="hl-hint">{whenFormat.format(report.resolvedAt)}</div>
+					<div className="hl-hint">{formatUtcDateTime(report.resolvedAt)}</div>
 				) : null}
 			</td>
 			<td>
