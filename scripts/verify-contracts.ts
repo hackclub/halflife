@@ -1206,7 +1206,9 @@ async function bodies() {
 		check("repo-files · legacy bom deletion is a delete", legacy.content === null)
 
 		// The BOM is what a PCB design week's funding is asked against, so its absence blocks the hand-in rather than warning. Pinned because the two lists are plain arrays a later edit can quietly re-sort a kind out of.
-		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN, readmeBomTable } = await import("../src/lib/config/repo-checks")
+		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN, readmeBomTable, REPO_FILE_KINDS } = await import(
+			"../src/lib/config/repo-checks"
+		)
 		const { Theme } = await import("../src/app/generated/prisma/enums")
 		check("repo-checks · a PCB repo must carry a BOM", THEME_REPO_REQUIREMENTS[Theme.PCB].required.includes("bom"))
 		check(
@@ -1224,6 +1226,21 @@ async function bodies() {
 		check(
 			"repo-checks · a CAD week suggests one README BOM row",
 			THEME_REPO_REQUIREMENTS[Theme.CAD].bomTable?.minRows === 1,
+		)
+
+		// CAD policy: the source has to be editable, and the tools reviewers return are not sources. Tinkercad has no source format at all, OpenSCAD and Blender are excluded, and a printable mesh is a model, never a source.
+		const cadSource = REPO_FILE_KINDS.cadSource.extensions ?? []
+		check(
+			"repo-checks · CAD source excludes Tinkercad, OpenSCAD, Blender and STL",
+			![".scad", ".blend", ".stl", ".obj", ".3mf"].some(ext => cadSource.includes(ext)),
+		)
+		check(
+			"repo-checks · the CAD week still requires a source",
+			THEME_REPO_REQUIREMENTS[Theme.CAD].required.includes("cadSource"),
+		)
+		check(
+			"repo-checks · the missing-source message names the rejected tools",
+			REPO_FILE_KINDS.cadSource.missing.includes("not accepted as the source"),
 		)
 
 		// The README BOM table is a hint a reviewer prices the week from, so it is checked by shape: a part-like header, a price/cost/link/supplier column, and enough data rows. These pin the shapes that actually turn up, including the ones that must not count: a pinout, a screenshot, a link to a CSV, and a one-row board BOM.

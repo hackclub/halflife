@@ -72,14 +72,17 @@ export const REPO_FILE_KINDS: Record<
 		pattern: BOM_CSV_PATTERN,
 	},
 	cadModel: {
+		// A printable mesh is a deliverable for the print, never a substitute for the editable source below. STL-only submissions fail the source check, which is the policy.
 		extensions: [".stl", ".obj", ".3mf"],
 		label: "Printable models",
 		missing: "No printable models (.stl, .3mf, .obj) found",
 	},
 	cadSource: {
-		extensions: [".f3d", ".step", ".stp", ".fcstd", ".scad", ".blend", ".sldprt", ".sldasm", ".iges", ".igs"],
+		// The editable source from a CAD tool the program accepts. OpenSCAD and Blender are deliberately absent: reviewers return them, and Tinkercad has no source file at all – it exports a mesh. A .stl/.obj/.3mf is a printable model, not a source.
+		extensions: [".f3d", ".step", ".stp", ".fcstd", ".sldprt", ".sldasm", ".iges", ".igs"],
 		label: "CAD source files",
-		missing: "No editable CAD files (.step, .f3d, .scad, .fcstd…) found",
+		missing:
+			"No editable CAD source found. Tinkercad, OpenSCAD, Blender and STL-only exports are not accepted as the source. Export an editable file from Fusion, Onshape, FreeCAD or SolidWorks (.step, .f3d, .fcstd, .sldprt…).",
 	},
 	firmware: {
 		// .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built images, which count when the source lives elsewhere.

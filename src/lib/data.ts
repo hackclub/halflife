@@ -189,7 +189,7 @@ export const DOCS: DocArticle[] = [
 				list: [
 					"Every week: a public repo, with a README that has enough text and photos in it.",
 					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), a bom.csv, and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a BOM table in the README.",
-					"CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf) and a BOM table in the README.",
+					"CAD week: editable CAD files (.step, .f3d, .fcstd, .sldprt). Tinkercad, OpenSCAD, Blender and STL-only exports are not accepted as the source. Recommended: printable models (.stl, .3mf) and a BOM table in the README.",
 					"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
 					"Displays week: firmware or code. Recommended: a schematic.",
 					"Breadboard computer week: a schematic (KiCad, Logisim or Digital).",
@@ -216,7 +216,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Source files, not exports",
 				paragraphs: [
-					"Upload the files someone would need to change your design, not just look at it. A PDF of a schematic is not a schematic, and an STL is not a CAD model. Keep the repo organised in folders, with firmware, libraries and anything you referenced alongside it.",
+					"Upload the files someone would need to change your design, not just look at it. A PDF of a schematic is not a schematic, and an STL is not a CAD model. For the CAD week, Tinkercad, OpenSCAD and Blender are not accepted as the final source: export an editable file from Fusion, Onshape, FreeCAD or SolidWorks. Keep the repo organised in folders, with firmware, libraries and anything you referenced alongside it.",
 				],
 			},
 			{
