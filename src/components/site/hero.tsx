@@ -1,4 +1,4 @@
-import Image from "next/image"
+import Image, { type StaticImageData } from "next/image"
 import type { CSSProperties } from "react"
 import LoginMark from "@/components/site/login-mark"
 import SignupCounter from "@/components/site/signup-counter"
@@ -402,7 +402,7 @@ function HackClubFlag() {
 			rel="noopener noreferrer"
 			target="_blank"
 		>
-			<Image alt="Hack Club" className="w-full" priority src={flagArt} />
+			<Image alt="Hack Club" className="w-full" priority src={flagArt as StaticImageData} />
 		</a>
 	)
 }

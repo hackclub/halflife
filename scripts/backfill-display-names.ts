@@ -31,9 +31,8 @@ async function main() {
 		// Also refreshes the verification status and the address on file, which is what a sign-in would have done anyway. Never throws.
 		await syncHcaProfile(user.id)
 		const row = await prisma.user.findUnique({ select: { displayName: true }, where: { id: user.id } })
-		if (row?.displayName) {
-			filled += 1
-		} else {
+		if (row?.displayName) filled += 1
+		else {
 			left += 1
 			console.warn(`no answer from HCA for ${user.id}; they keep the full name until their next sign-in`)
 		}

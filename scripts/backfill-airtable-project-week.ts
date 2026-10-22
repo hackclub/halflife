@@ -81,7 +81,7 @@ async function main() {
 	const targets: { phase: Phase; recordId: string; title: string; week: string }[] = []
 	let withoutRow = 0
 	let warmup = 0
-	for (const project of projects) {
+	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const recordId = records.get(`${project.id}:${phase}`)
 			if (!recordId) {
@@ -96,7 +96,6 @@ async function main() {
 			}
 			targets.push({ phase, recordId, title: project.title, week: label })
 		}
-	}
 
 	// Only rows the base disagrees with are written: a row that already carries its week is left untouched.
 	const current = await currentColumns(config, weekKey)

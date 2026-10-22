@@ -81,7 +81,7 @@ async function respondEphemeral(responseUrl: string, text: string) {
 			signal: AbortSignal.timeout(10_000),
 		})
 	} catch (err) {
-		console.error(`Failed to post ephemeral response: ${err}`)
+		console.error(`Failed to post ephemeral response: ${String(err)}`)
 	}
 }
 
@@ -95,12 +95,12 @@ async function reactResolved(ref: Partial<TicketRef>) {
 	try {
 		await removeReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
 	} catch (err) {
-		console.error(`Failed to clear the pending reaction: ${err}`)
+		console.error(`Failed to clear the pending reaction: ${String(err)}`)
 	}
 	try {
 		await addReaction(ref.helpChannel, ref.helpTs, RESOLVED_REACTION)
 	} catch (err) {
-		console.error(`Failed to add resolved reaction: ${err}`)
+		console.error(`Failed to add resolved reaction: ${String(err)}`)
 	}
 }
 
@@ -153,7 +153,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 
 	let ref: Partial<TicketRef> = {}
 	try {
-		ref = action.value ? JSON.parse(action.value) : {}
+		ref = action.value ? (JSON.parse(action.value) as Partial<TicketRef>) : {}
 	} catch {
 		// Malformed value – still clear the mirror below.
 	}
@@ -171,31 +171,28 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 					helpedAck(payload.user.id),
 					resolveBlocks(reminder.blocks, payload.user.id, undefined, reopenRef),
 				)
-			} else {
-				console.error(`mark_helped found no reminder to mark helped in thread ${ref.helpTs}`)
-			}
+			} else console.error(`mark_helped found no reminder to mark helped in thread ${ref.helpTs}`)
 		} catch (err) {
-			console.error(`Failed to mark help thread ${ref.helpTs} as helped: ${err}`)
+			console.error(`Failed to mark help thread ${ref.helpTs} as helped: ${String(err)}`)
 		}
 
 		// Best-effort: a database hiccup must not sink the resolution.
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
-			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${String(err)}`)
 		}
 	}
 
 	// Out of the queue, like the in-thread path. Fall back to editing it into its resolved state if the delete fails, so a ticket is never left sitting there with a live button.
 	try {
-		if (!(await deleteTicketMessage(payload.channel.id, payload.message.ts))) {
+		if (!(await deleteTicketMessage(payload.channel.id, payload.message.ts)))
 			await updateMessage(payload.channel.id, payload.message.ts, `Ticket resolved by <@${payload.user.id}>`, [
 				ticketSection(ref as TicketRef),
 				...resolveBlocks(undefined, payload.user.id),
 			])
-		}
 	} catch (err) {
-		console.error(`Failed to clear the tickets-channel message: ${err}`)
+		console.error(`Failed to clear the tickets-channel message: ${String(err)}`)
 	}
 
 	await reactResolved(ref)
@@ -209,18 +206,20 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 
 	let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {}
 	try {
-		ref = action.value ? JSON.parse(action.value) : {}
+		ref = action.value
+			? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
+			: {}
 	} catch {
 		return
 	}
 
 	if (!ref.authorId || payload.user.id !== ref.authorId) {
-		if (payload.response_url) {
+		if (payload.response_url)
 			await respondEphemeral(
 				payload.response_url,
 				'Only the person who asked can close it themselves – helpers can use "Mark as helped" right here in the thread.',
 			)
-		}
+
 		return
 	}
 
@@ -231,27 +230,24 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 		resolveBlocks(payload.message.blocks, payload.user.id, undefined, reopenRefFrom(ref)),
 	)
 
-	if (ref.helpChannel && ref.helpTs) {
+	if (ref.helpChannel && ref.helpTs)
 		// Best-effort, like the helper path – the ack above already went out.
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
-			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${String(err)}`)
 		}
-	}
 
-	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel) {
+	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel)
 		try {
-			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs))) {
+			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs)))
 				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
 					ticketSection(ref as TicketRef),
 					...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
 				])
-			}
 		} catch (err) {
-			console.error(`Failed to clear the tickets-channel message: ${err}`)
+			console.error(`Failed to clear the tickets-channel message: ${String(err)}`)
 		}
-	}
 
 	await reactResolved(ref)
 }
@@ -264,7 +260,9 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 
 	let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {}
 	try {
-		ref = action.value ? JSON.parse(action.value) : {}
+		ref = action.value
+			? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
+			: {}
 	} catch {
 		return
 	}
@@ -304,27 +302,24 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 		resolveBlocks(payload.message.blocks, payload.user.id, undefined, reopenRefFrom(ref)),
 	)
 
-	if (ref.helpChannel && ref.helpTs) {
+	if (ref.helpChannel && ref.helpTs)
 		// Best-effort, like the staff-channel path.
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
-			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${String(err)}`)
 		}
-	}
 
-	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel) {
+	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel)
 		try {
-			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs))) {
+			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs)))
 				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
 					ticketSection(ref as TicketRef),
 					...resolveBlocks(undefined, payload.user.id),
 				])
-			}
 		} catch (err) {
-			console.error(`Failed to clear the tickets-channel message: ${err}`)
+			console.error(`Failed to clear the tickets-channel message: ${String(err)}`)
 		}
-	}
 
 	await reactResolved(ref)
 }
@@ -336,7 +331,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 
 	let ref: Partial<TicketRef & { ticketsChannel: string }> = {}
 	try {
-		ref = action.value ? JSON.parse(action.value) : {}
+		ref = action.value ? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string }>) : {}
 	} catch {
 		return
 	}
@@ -374,7 +369,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 	try {
 		reopened = await reopenHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs })
 	} catch (err) {
-		console.error(`Failed to reopen ticket ${ref.helpTs}: ${err}`)
+		console.error(`Failed to reopen ticket ${ref.helpTs}: ${String(err)}`)
 	}
 	if (!reopened) return
 
@@ -389,21 +384,23 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 			helpTs: ref.helpTs,
 			permalink: ref.permalink ?? null,
 		}
-		const mirrorBlocks: SlackBlock[] = [ticketSection(threadRef)]
-		mirrorBlocks.push(ticketHistory(ref.authorId, priorTickets))
-		mirrorBlocks.push({
-			block_id: TICKET_ACTIONS_BLOCK_ID,
-			elements: [
-				{
-					action_id: "mark_helped",
-					style: "primary",
-					text: { emoji: true, text: MARK_HELPED_BUTTON, type: "plain_text" },
-					type: "button",
-					value: JSON.stringify(threadRef),
-				},
-			],
-			type: "actions",
-		})
+		const mirrorBlocks: SlackBlock[] = [
+			ticketSection(threadRef),
+			ticketHistory(ref.authorId, priorTickets),
+			{
+				block_id: TICKET_ACTIONS_BLOCK_ID,
+				elements: [
+					{
+						action_id: "mark_helped",
+						style: "primary",
+						text: { emoji: true, text: MARK_HELPED_BUTTON, type: "plain_text" },
+						type: "button",
+						value: JSON.stringify(threadRef),
+					},
+				],
+				type: "actions",
+			},
+		]
 		const mirror = await postMessage(
 			ticketsChannel,
 			threadRef.permalink
@@ -417,7 +414,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 				`[slack] reopened ticket mirror post to ${ticketsChannel} failed (${mirror.error ?? "no message ts"})`,
 			)
 	} catch (err) {
-		console.error(`[slack] failed to re-queue reopened ticket ${ref.helpTs}: ${err}`)
+		console.error(`[slack] failed to re-queue reopened ticket ${ref.helpTs}: ${String(err)}`)
 	}
 
 	// The thread goes back to exactly the open state: reminders-era buttons rebuilt with the fresh mirror reference, reopen button and resolved note stripped.
@@ -437,7 +434,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 			reopenBlocks(payload.message.blocks, threadRef),
 		)
 	} catch (err) {
-		console.error(`Failed to rewrite reopened thread message ${ref.helpTs}: ${err}`)
+		console.error(`Failed to rewrite reopened thread message ${ref.helpTs}: ${String(err)}`)
 	}
 
 	// Reactions swap back: done off, waiting on.
@@ -445,12 +442,12 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 		try {
 			await removeReaction(ref.helpChannel, ref.helpTs, RESOLVED_REACTION)
 		} catch (err) {
-			console.error(`Failed to clear the resolved reaction: ${err}`)
+			console.error(`Failed to clear the resolved reaction: ${String(err)}`)
 		}
 		try {
 			await addReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
 		} catch (err) {
-			console.error(`Failed to re-add the pending reaction: ${err}`)
+			console.error(`Failed to re-add the pending reaction: ${String(err)}`)
 		}
 	}
 }
@@ -463,9 +460,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 		request.headers.get("x-slack-request-timestamp"),
 		request.headers.get("x-slack-signature"),
 	)
-	if (!verified) {
-		return NextResponse.json({ ok: false }, { status: 401 })
-	}
+	if (!verified) return NextResponse.json({ ok: false }, { status: 401 })
 
 	// Interactivity payloads arrive form-encoded with the JSON under `payload`. The first thing Slack sends to a newly saved Request URL is a `url_verification` challenge, and it arrives the same way.
 	const form = new URLSearchParams(rawBody)
@@ -474,34 +469,25 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	let payload: InteractionPayload
 	try {
-		payload = JSON.parse(raw)
+		payload = JSON.parse(raw) as InteractionPayload
 	} catch {
 		return NextResponse.json({ ok: false }, { status: 400 })
 	}
 
 	// Slack refuses to save the interactivity Request URL unless the challenge is echoed verbatim, so this has to be answered before anything else.
-	if (payload.type === "url_verification") {
-		return NextResponse.json({ challenge: payload.challenge })
-	}
+	if (payload.type === "url_verification") return NextResponse.json({ challenge: payload.challenge })
 
 	// Slack retries an interaction it has not seen a 200 for within 3 seconds, and these handlers make up to two Slack calls each. Ack first and run the work in `after`, so a slow call cannot cause a duplicate resolution; the same reasoning the events route uses. A retry that still arrives is dropped – the original delivery was already accepted.
-	if (request.headers.get("x-slack-retry-num")) {
-		return NextResponse.json({ ok: true })
-	}
+	if (request.headers.get("x-slack-retry-num")) return NextResponse.json({ ok: true })
 
 	if (payload.type === "block_actions") {
 		const action = payload.actions?.[0]
 		after(async () => {
 			try {
-				if (action?.action_id === "mark_helped") {
-					await handleMarkHelped(payload, action)
-				} else if (action?.action_id === "mark_resolved_by_author") {
-					await handleSelfResolve(payload, action)
-				} else if (action?.action_id === "mark_helped_from_thread") {
-					await handleThreadMarkHelped(payload, action)
-				} else if (action?.action_id === "reopen_ticket") {
-					await handleReopen(payload, action)
-				}
+				if (action?.action_id === "mark_helped") await handleMarkHelped(payload, action)
+				else if (action?.action_id === "mark_resolved_by_author") await handleSelfResolve(payload, action)
+				else if (action?.action_id === "mark_helped_from_thread") await handleThreadMarkHelped(payload, action)
+				else if (action?.action_id === "reopen_ticket") await handleReopen(payload, action)
 			} catch (err) {
 				// The response is already sent and Slack has its 200, so the log is the only trace a failure leaves.
 				console.error("[slack] interaction handler threw:", err)

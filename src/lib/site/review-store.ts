@@ -68,7 +68,7 @@ function reviewerBoard(
 		key => key,
 	).map(({ key: email, count: reviewed }) => ({ email, name: names.get(email) ?? null, reviewed }))
 	if (anonymous > 0) board.push({ email: ANONYMOUS_ARI, name: "Ari", reviewed: anonymous })
-	return board.sort((a, b) => b.reviewed - a.reviewed || a.email.localeCompare(b.email))
+	return board.toSorted((a, b) => b.reviewed - a.reviewed || a.email.localeCompare(b.email))
 }
 
 /** One design week's review progress: named projects, and how many have at least one live review. */
@@ -134,7 +134,7 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 			total: totals.get(theme.id) ?? 0,
 			week: theme.designWeek,
 		}))
-		.sort((a, b) => a.week - b.week)
+		.toSorted((a, b) => a.week - b.week)
 }
 /** The counts behind the daily project review summary. `since` is normally 24 hours ago. */
 export async function getProjectReviewStats(since: Date): Promise<ProjectReviewStats> {

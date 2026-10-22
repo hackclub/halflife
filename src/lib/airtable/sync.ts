@@ -1,13 +1,17 @@
 import "server-only"
 import { Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
-import { fieldKey, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
+import { getAirtableConfig } from "@/lib/airtable/client"
+import { existingColumns } from "@/lib/airtable/field-probe"
+import { justificationValues, timelapseLinks } from "@/lib/airtable/justification"
+import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
-import { getThemeDef } from "@/lib/config/program"
+import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
-import { lapseTimelapseUrl } from "@/lib/lapse"
+import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"
+import { statusFor } from "@/lib/phase"
 import { decryptUserPII } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
@@ -20,9 +24,6 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Half Life has no review page of its own: reviewers work on ari.hackclub.com, straight from this table. So the row is the submission, and everything a reviewer needs to judge it goes into it here – the repo, the hours, the timelapses, the parts money, the address to ship to.
  */
-
-/** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */
-const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
 /**
  * The record id this (project, phase) was last written to, or null.
@@ -99,15 +100,57 @@ export function projectWeekLabel(week: number): string | null {
 	return week >= 1 && week <= 10 ? `Week ${week}` : null
 }
 
+/**
+ * A zero-width stamp appended to an override value.
+ *
+ * The poller compares values to decide whether a field changed, and the
+ * dispatcher's override strategy then always sends whatever is in the envelope.
+ * A decision on the same project, or two decisions that name the same week,
+ * would otherwise write the same value the field already holds and be invisible
+ * to the poller. The stamp changes the source value without changing what the
+ * email renders.
+ */
+const ZERO_WIDTH = ["\u200B", "\u200C", "\u200D", "\u2060"]
+
+function overrideStamp(value: string): string {
+	let n = Date.now()
+	let stamp = ""
+	for (let i = 0; i < 8; i += 1) {
+		stamp += ZERO_WIDTH[n % ZERO_WIDTH.length]
+		n = Math.floor(n / ZERO_WIDTH.length)
+	}
+	return `${value}${stamp}`
+}
+
+/**
+ * The two values a decision puts on its row's override columns.
+ *
+ * Exported so the field names and the week label can be checked without a
+ * database or an Airtable call: a typo in either name is the difference
+ * between email-tools recognising the field and ignoring it.
+ */
+export function reviewOverrideValues(title: string, week: number | null): { [_: string]: string } {
+	return {
+		[LOOPS_REVIEW_OVERRIDE.projectName]: overrideStamp(title),
+		[LOOPS_REVIEW_OVERRIDE.projectWeek]: overrideStamp(projectWeekLabel(week ?? 0) ?? ""),
+	}
+}
+
 /** The fields for this submission, exactly as the table names them. */
 async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const project = await prisma.themeProject.findUnique({
 		include: {
-			bomItems: { select: { quantity: true, unitCostUsd: true } },
+			bomItems: { select: { name: true, purpose: true, quantity: true, unitCostUsd: true } },
 			hackatimeLinks: { select: { hackatimeProject: true }, where: { phase } },
 			workSessions: {
+				orderBy: { createdAt: "asc" },
 				select: {
+					content: true,
+					createdAt: true,
+					effectiveDate: true,
+					hoursClaimed: true,
 					timelapses: { select: { externalId: true, objectKey: true, playbackUrl: true, provider: true } },
+					title: true,
 				},
 				where: { deletedAt: null, phase },
 			},
@@ -121,11 +164,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const user = await prisma.user.findUniqueOrThrow({ where: { id: project.userId } })
 	const pii = decryptUserPII(user)
 
-	const def = getThemeDef(project.theme)
-	const week = phase === Phase.DESIGN ? def.designWeek : def.buildWeek
+	const week = scheduledWeekFor(project.theme, phase)
 	const settings = await getProgramSettings()
-	const weekStart = new Date(settings.eventStartDate.getTime() + (week - 1) * 7 * 86_400_000)
-	const weekEnd = new Date(weekStart.getTime() + 6 * 86_400_000)
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
 	const bomTotal = bomTotalUsd(project.bomItems, project.bomTaxShippingUsd)
@@ -145,21 +185,24 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		playableUrl = publicUrlFor(demo?.objectKey ?? null) ?? playableUrl
 	}
 
-	const lapseLinks = project.workSessions
-		.flatMap(s => s.timelapses)
-		.map(t =>
-			t.provider === "lapse" && t.externalId
-				? lapseTimelapseUrl(t.externalId)
-				: (t.playbackUrl ?? publicUrlFor(t.objectKey)),
-		)
-		.filter((u): u is string => !!u)
-
-	const hackatime = project.hackatimeLinks.map(l => `${l.hackatimeProject} (${ymd(weekStart)} to ${ymd(weekEnd)})`)
+	const lapseLinks = timelapseLinks(project.workSessions.flatMap(s => s.timelapses))
 
 	const [firstName, ...rest] = (user.name ?? "").trim().split(/\s+/)
 	const tier = project.tier ?? project.requestedTier
 	const journalUrl = await findRepoFile(project.githubRepo, /(^|\/)journal\.md$/i)
 	const cover = publicUrlFor(project.coverImageKey)
+
+	const justification = justificationValues(
+		{
+			bomItems: project.bomItems,
+			description: project.description,
+			hackatimeProjects: project.hackatimeLinks.map(l => l.hackatimeProject),
+			hackatimeUserId: user.hackatimeUserId,
+			lapseLinks,
+			workSessions: project.workSessions,
+		},
+		{ eventStart: settings.eventStartDate, phase, theme: project.theme },
+	)
 
 	const fields = toFields(YSWS_SUBMISSION.fields, {
 		codeUrl: project.githubRepo ?? "",
@@ -177,11 +220,10 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 			const ref = repoRefFromLink(project.githubRepo)
 			return ref?.forge.id === "github" ? ref.ownerPath : ""
 		})(),
-		hackatimeId: user.hackatimeUserId ?? "",
-		hackatimeProjects: hackatime.join(", "),
+		// The `Justification - …` columns, spread rather than listed: a column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification).
+		...justification,
 		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
 		journalUrl: journalUrl ?? "",
-		lapseLinks: lapseLinks.join(", "),
 		playableUrl,
 		projectName: project.title,
 		projectWeek: projectWeekLabel(week) ?? undefined,
@@ -210,10 +252,10 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
  *
  * An advisory xact lock releases with the transaction. The work inside is HTTP, so the transaction gets a generous timeout rather than the default 5 seconds, which would release the lock in the middle of Airtable's own retry backoff.
  */
-async function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
+function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
 	return prisma.$transaction(
 		async tx => {
-			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ysws:${themeProjectId}:${phase}`}, 0))`
+			await lockKey(tx, `ysws:${themeProjectId}:${phase}`)
 			return fn()
 		},
 		{ maxWait: 30_000, timeout: 120_000 },
@@ -237,13 +279,33 @@ export async function syncSubmissionToYsws(
 }
 
 /**
- * Move a submission's row on to the decision Ari just reached: the status Loops triggers on, and the reviewer's note the email quotes.
+ * Move a submission's row on to the decision Ari just reached: the status Loops
+ * triggers on, the reviewer's note the email quotes, and the project and week
+ * that decision is about.
  *
- * Half Life writes the row as "Pending Review" and reviewers work from ari.hackclub.com, but a decision there changes nothing in the base – without this the status sits at "Pending Review" forever and the note is never written, and those columns are how Loops tells a maker their work was decided (see YSWS_REVIEW_STATUS in lib/airtable/schema).
+ * The email-tools poller only forwards a `Loops - …` field when the value on
+ * that row changed. The row's `Loops - halfLifeProjectName` and
+ * `Loops - halfLifeProjectWeek` are written at submit and never change on a
+ * decision, so the poller never re-sends them; the contact keeps whatever was
+ * submitted most recently. The `Loops - Override - …` columns are separate
+ * fields, so writing them here is a change the poller forwards, and email-tools
+ * maps them onto the same contact property with its override strategy. The
+ * status trigger and the project it names then arrive in one contact update.
  *
- * Best-effort, and only ever after the fact: the review is already committed in Postgres by the time this runs, so a base that is briefly unreachable must not throw and turn a decided submission into one Ari redelivers. No row is not a failure either – a submission written before this sync existed has no record id, and one taken back has none any more.
+ * Half Life writes the row as "Pending Review" and reviewers work from
+ * ari.hackclub.com, but a decision there changes nothing in the base – without
+ * this the status sits at "Pending Review" forever and the note is never
+ * written (see YSWS_REVIEW_STATUS in lib/airtable/schema).
  *
- * The two columns are separate requests on purpose. The status is the load-bearing one Loops triggers on; the note is a bonus, and a notes column that refuses its value (a type this deployment cannot see without schema access) must not cost the status its update. Each failure is therefore named by the column it belongs to.
+ * Best-effort, and only ever after the fact: the review is already committed in
+ * Postgres by the time this runs, so a base that is briefly unreachable must not
+ * throw and turn a decided submission into one Ari redelivers. No row is not a
+ * failure either – a submission written before this sync existed has no record
+ * id, and one taken back has none any more.
+ *
+ * The status and note are written together with the overrides in the ordinary
+ * case. If that request is refused, the fallback keeps the status load-bearing:
+ * status + overrides, then status alone, then the note. Each failure is named.
  */
 export async function syncReviewDecisionToYsws(
 	themeProjectId: string,
@@ -258,11 +320,49 @@ export async function syncReviewDecisionToYsws(
 	if (!recordId) return { reason: "no_row", updated: false }
 
 	const { reviewStatus, reviewerNotes } = YSWS_SUBMISSION.fields
-	const moved = await updateYswsRecord(recordId, { [fieldKey(reviewStatus)]: status })
-	if (!moved.ok) return { reason: moved.reason, updated: false }
+	const statusField = { [fieldKey(reviewStatus)]: status }
+	const noteField = { [fieldKey(reviewerNotes)]: note ?? "" }
 
-	// `null` clears the column: a decision with no note must not leave the previous decision's words on the row for an email to quote back. A refusal here is reported separately, so the status is still counted as moved.
-	const noted = await updateYswsRecord(recordId, { [fieldKey(reviewerNotes)]: note ?? "" })
+	// The override columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
+	const overrides: { [_: string]: unknown } = {}
+	const config = getAirtableConfig()
+	if (config)
+		try {
+			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, Object.values(LOOPS_REVIEW_OVERRIDE))
+			if (writable.size > 0) {
+				const [project, submission] = await Promise.all([
+					prisma.themeProject.findUnique({
+						select: { theme: true, title: true },
+						where: { id: themeProjectId },
+					}),
+					prisma.phaseSubmission.findFirst({
+						orderBy: { createdAt: "desc" },
+						select: { scheduledWeek: true },
+						where: { phase, themeProjectId },
+					}),
+				])
+				if (project) {
+					const week = submission?.scheduledWeek ?? scheduledWeekFor(project.theme, phase)
+					const values = reviewOverrideValues(projectDisplayTitle(project), week)
+					for (const [field, value] of Object.entries(values)) if (writable.has(field)) overrides[field] = value
+				}
+			}
+		} catch (err) {
+			// A probe failure is not a reason to lose the status; the next decision retries it.
+			console.error("[airtable] could not probe the Loops override columns; writing the decision without them:", err)
+		}
+
+	const complete = { ...statusField, ...noteField, ...overrides }
+	const moved = await updateYswsRecord(recordId, complete)
+	if (moved.ok) return { updated: true }
+
+	// The complete write was refused. Keep the status load-bearing, and keep the overrides with it so the email can still name the project.
+	const core = await updateYswsRecord(recordId, { ...statusField, ...overrides })
+	if (!core.ok) {
+		const statusOnly = await updateYswsRecord(recordId, statusField)
+		if (!statusOnly.ok) return { reason: statusOnly.reason, updated: false }
+	}
+	const noted = await updateYswsRecord(recordId, noteField)
 	return noted.ok ? { updated: true } : { noteFailed: noted.reason, updated: true }
 }
 
@@ -328,9 +428,9 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 	})
 
 	const out: { themeProjectId: string; phase: Phase }[] = []
-	for (const p of pending) {
+	for (const p of pending)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
-			const status = phase === Phase.DESIGN ? p.designStatus : p.buildStatus
+			const status = statusFor(p, phase)
 			if (status !== PhaseStatus.in_review) continue
 			const submittedAt = p.submissions.find(s => s.phase === phase)?.createdAt
 			// Written since the latest hand-in counts; an older write was for a submission that has since been taken back and handed in again.
@@ -345,6 +445,6 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 			})
 			if (!written) out.push({ phase, themeProjectId: p.id })
 		}
-	}
+
 	return out
 }

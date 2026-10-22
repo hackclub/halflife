@@ -1,12 +1,13 @@
 import { after } from "next/server"
 import { PhaseStatus } from "@/app/generated/prisma/enums"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import { warmLinkSpans } from "@/lib/hours"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { assertWeekStarted, getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { hackatimeLinkSchema } from "@/lib/schemas/project"
@@ -15,9 +16,9 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const GET = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const dynamic = "force-dynamic"
+
+export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({
@@ -39,9 +40,7 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	})
 })
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, hackatimeLinkSchema)
@@ -59,7 +58,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	await assertWeekStarted(scheduledWeekFor(project.theme, parsed.data.phase))
 
 	// Linking adds hours to the phase, and the decision recomputes those hours live, so an in-review phase is frozen for this too – not only a decided one.
-	const phaseStatus = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
+	const phaseStatus = statusFor(project, parsed.data.phase)
 	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
 	// A decided phase is frozen: linking a project adds hours to a number that has already been judged, so it waits for a return or an un-approval.
@@ -93,12 +92,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	const fetched = await fetchProjectSeconds(project.user.hackatimeUserId, parsed.data.hackatimeProject)
 	// A name Hackatime does not list is a typo or a renamed project, not a link: creating it would leave a row that can never contribute hours and only surfaces again at approval time. A transient fetch failure still creates the link, so it can be refreshed once Hackatime answers.
-	if (fetched.notFound) {
+	if (fetched.notFound)
 		return fail(
 			"VALIDATION_FAILED",
 			`Hackatime has no project named "${parsed.data.hackatimeProject}". Check the name on Hackatime and try again.`,
 		)
-	}
 
 	const link = await prisma.$transaction(async tx => {
 		// Re-read the phase on the transaction client immediately before the link lands: a submit that commits between the checks above and this create would otherwise attach hours to a phase the decision has already frozen.
@@ -106,7 +104,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			select: { buildStatus: true, designStatus: true },
 			where: { id },
 		})
-		const currentStatus = parsed.data.phase === "DESIGN" ? current?.designStatus : current?.buildStatus
+		const currentStatus = current ? statusFor(current, parsed.data.phase) : undefined
 		if (currentStatus === PhaseStatus.in_review)
 			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
 		if (currentStatus && isPhaseDecided(currentStatus))

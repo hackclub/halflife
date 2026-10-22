@@ -1,13 +1,14 @@
 import { after } from "next/server"
 import { Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import {
 	getSubmissionAccess,
@@ -29,7 +30,7 @@ interface Params {
 /** Statuses in which a phase's entries may still be edited or deleted: a draft, or one an admin or reviewer sent back for changes. */
 const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
-async function loadOwned(userId: string, projectId: string, sessionId: string) {
+function loadOwned(userId: string, projectId: string, sessionId: string) {
 	return prisma.workSession.findFirst({
 		include: { themeProject: { select: { buildStatus: true, designStatus: true, theme: true } } },
 		where: {
@@ -46,9 +47,7 @@ function weekOpenFor(userId: string, projectId: string, session: { phase: Phase;
 	return isWeekOpen(userId, projectId, scheduledWeekFor(session.themeProject.theme, session.phase))
 }
 
-export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const parsed = await parseBody(req, sessionUpdateSchema)
@@ -63,7 +62,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (!(await weekOpenFor(gate.user.id, id, session))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 	// A submitted week's entries are what it was judged on, or is being judged on: in review, a reviewer is reading them; decided, they are the record the decision was made against. Only a week that is still open or has been sent back for changes can have its entries corrected.
-	const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
+	const phaseStatus = statusFor(session.themeProject, session.phase)
 	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before editing its entries")
 	if (isPhaseDecided(phaseStatus))
@@ -82,9 +81,9 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
 	const want =
 		data.timelapses !== undefined
-			? [...new Set(data.timelapses.map(t => t.lapseId).filter(id => !r2Keys.has(id)))]
+			? [...new Set(data.timelapses.map(t => t.lapseId).filter(lapseId => !r2Keys.has(lapseId)))]
 			: null
-	const addIds = want ? want.filter(id => !have.has(id)) : []
+	const addIds = want ? want.filter(lapseId => !have.has(lapseId)) : []
 	// Same rule as creation, asked of Lapse rather than trusted from the sheet. Only brand-new ids are verified; everything already attached stays without a round trip. Verified for its side effects here (ownership, published, processed) and mapped to the shape the reconciler writes: `LapseTimelapse.createdAt` is epoch ms and becomes the recording's start, which is what makes this clip's wall-clock window comparable with Hackatime's tracked intervals.
 	const fresh = (await verifyOwnTimelapses(gate.user.id, addIds)).map(t => ({
 		durationSeconds: t.durationSeconds,
@@ -145,9 +144,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	return ok({ session: updated })
 })
 
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const session = await loadOwned(gate.user.id, id, sessionId)
@@ -159,7 +156,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	if (session.hoursApproved !== null)
 		return fail("PHASE_LOCKED", "This entry has been reviewed and can no longer be deleted")
 	// Deleting an entry is a correction to the record, so it freezes with the phase: while a reviewer is reading the week, its evidence has to sit still, exactly as editing it does.
-	const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
+	const phaseStatus = statusFor(session.themeProject, session.phase)
 	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before deleting its entries")
 	// Once the week is decided its entries are final, exactly as editing is.

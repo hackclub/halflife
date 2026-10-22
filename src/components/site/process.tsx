@@ -2,8 +2,7 @@ import Image from "next/image"
 import type { CSSProperties } from "react"
 // Parked: the corner decals, to be placed later. import CornerDecal, { type DecalName } from "@/components/site/corner-decal";
 import ImageSlot from "@/components/site/image-slot"
-import type { Step } from "@/lib/site/content"
-import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/site/content"
+import { ASIDES, DESIGN_WEEKS, STEPS, type Step } from "@/lib/site/content"
 import { at, box, COMP_WIDTH, plate, plateBox, STACK_VIEW, stackWeld, u, weld } from "@/lib/site/stage"
 import gatoandspirit from "../../../public/art/extras/gatoandspirit.png"
 import gatohead from "../../../public/art/extras/gatohead.png"
@@ -176,11 +175,10 @@ function StepArt({
 }) {
 	if (!step.slot) return null
 
-	if (!step.art) {
+	if (!step.art)
 		return (
 			<ImageSlot className={className} label={step.slot.label} ratio={step.slot.ratio} scale={scale} style={style} />
 		)
-	}
 
 	return (
 		<div
@@ -663,7 +661,7 @@ type AsideProps = { aside: (typeof ASIDES)[number] } & (
 function Aside(props: AsideProps) {
 	const { aside } = props
 
-	if (props.stacked) {
+	if (props.stacked)
 		return (
 			<div className="rounded-xl bg-hl-lavender px-5 py-7 text-center text-hl-indigo sm:px-7">
 				<h3 className="font-display text-xl font-bold sm:text-2xl">{aside.title}</h3>
@@ -671,7 +669,6 @@ function Aside(props: AsideProps) {
 				{/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
 			</div>
 		)
-	}
 
 	return (
 		<div

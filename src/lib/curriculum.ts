@@ -276,7 +276,7 @@ export function checkpointsFor(
 			if (needsProject) out.push(newProject)
 			// The fork: the idea reel, or straight to the first devlog. The entry arm is entry 1 itself, so skipping is just starting the work – no extra "skip" node to settle. A submitted week with no entries logged them nowhere (Hackatime-only), so there is no live entry to offer; the reel stands alone as it always has.
 			out.push(ideaReel)
-			if (!submitted || entryMinutes.length >= 1) {
+			if (!submitted || entryMinutes.length > 0) {
 				out.push(entry(1, "skip"))
 				hours += (entryMinutes[0] ?? 0) / 60
 				while (hours >= progressReelHours(meta.phase, reels + 1)) {
@@ -286,13 +286,10 @@ export function checkpointsFor(
 				for (let n = 2; n <= live; n += 1) pushEntry(n)
 			}
 		} else {
-			out.push(newProject)
-			out.push(ideaReel)
+			out.push(newProject, ideaReel)
 			for (let n = 1; n <= live; n += 1) pushEntry(n)
 		}
-	} else {
-		for (let n = 1; n <= live; n += 1) pushEntry(n)
-	}
+	} else for (let n = 1; n <= live; n += 1) pushEntry(n)
 
 	// The next one on the clock, so the cadence is visible before you get there. Two weeks have no use for it. A submitted week has already shipped its closing reel inside Submit, so an unearned one trailing the chain would be a node nobody can ever take. And a forked week ends in a question: a locked node standing between the last of the work and that question reads as a step you have to clear first, when in truth it gates nothing and only belongs to one of the two answers. It comes back the moment the hours earn it.
 	if (!submitted && !forked) out.push(milestoneReel(reels + 1))

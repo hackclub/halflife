@@ -1,4 +1,5 @@
 import "server-only"
+import { createSlot, sleep } from "@/lib/concurrency"
 import type { Forge } from "@/lib/forge"
 
 /**
@@ -34,7 +35,12 @@ const MAX_BACKOFF_MS = 15 * 60_000
 const RETRY_DELAYS_MS = [300, 1000]
 
 /** How a forge being unreachable reads to whoever asked. */
-export class ForgeUnavailable extends Error {}
+export class ForgeUnavailableError extends Error {
+	constructor(message: string) {
+		super(message)
+		this.name = "ForgeUnavailableError"
+	}
+}
 
 /**
  * A route is a forge plus a transport. GitHub has two (the proxy and its own API); GitLab has one. They are separate backoff lanes because being limited on one says nothing about the others.
@@ -42,19 +48,7 @@ export class ForgeUnavailable extends Error {}
 type Route = "proxy" | "github-direct" | "gitlab-direct"
 
 const blockedUntil: Record<Route, number> = { "github-direct": 0, "gitlab-direct": 0, proxy: 0 }
-let inFlight = 0
-const waiting: (() => void)[] = []
-
-async function slot(): Promise<() => void> {
-	if (inFlight >= MAX_IN_FLIGHT) await new Promise<void>(go => waiting.push(go))
-	inFlight++
-	return () => {
-		inFlight--
-		waiting.shift()?.()
-	}
-}
-
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+const slot = createSlot(MAX_IN_FLIGHT)
 
 /** How long a rate-limited answer asks us to wait, in ms, if it says. */
 function backoffFrom(res: Response): number | null {
@@ -110,13 +104,14 @@ function request(route: Route, path: string): { url: string; headers: { [_: stri
 }
 
 /**
- * One route, with retries for what is worth retrying. Resolves to the forge's answer – any status it chose, including 404 – or throws ForgeUnavailable.
+ * One route, with retries for what is worth retrying. Resolves to the forge's answer – any status it chose, including 404 – or throws ForgeUnavailableError.
  */
 async function via(forge: Forge, route: Route, path: string): Promise<Response> {
 	let why = `${forge.label} did not answer.`
 	let timeouts = 0
 	for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-		if (Date.now() < blockedUntil[route]) throw new ForgeUnavailable(`${forge.label} is rate-limiting us right now.`)
+		if (Date.now() < blockedUntil[route])
+			throw new ForgeUnavailableError(`${forge.label} is rate-limiting us right now.`)
 		if (attempt > 0) await sleep(RETRY_DELAYS_MS[attempt - 1] ?? 1000)
 
 		const { url, headers } = request(route, path)
@@ -142,7 +137,7 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
 		if (isRateLimited(forge, res)) {
 			const wait = Math.min(MAX_BACKOFF_MS, Math.max(1000, backoffFrom(res) ?? 60_000))
 			blockedUntil[route] = Math.max(blockedUntil[route], Date.now() + wait)
-			throw new ForgeUnavailable(`${forge.label} is rate-limiting us right now.`)
+			throw new ForgeUnavailableError(`${forge.label} is rate-limiting us right now.`)
 		}
 		if (res.status >= 500) {
 			const body = await res.text().catch(() => "")
@@ -154,13 +149,13 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
 		}
 		return res
 	}
-	throw new ForgeUnavailable(why)
+	throw new ForgeUnavailableError(why)
 }
 
 /**
  * GET a forge REST path, e.g. `repos/owner/repo/readme` on GitHub or `projects/owner%2Frepo` on GitLab.
  *
- * Resolves to the response for any status the forge answered with, including 404 – that is a finding, not a failure. Throws ForgeUnavailable when there is no answer to be had on any route.
+ * Resolves to the response for any status the forge answered with, including 404 – that is a finding, not a failure. Throws ForgeUnavailableError when there is no answer to be had on any route.
  */
 export async function forgeGet(forge: Forge, path: string): Promise<Response> {
 	if (forge.id === "gitlab") return via(forge, "gitlab-direct", path)
@@ -169,7 +164,7 @@ export async function forgeGet(forge: Forge, path: string): Promise<Response> {
 	try {
 		return await via(forge, "proxy", path)
 	} catch (err) {
-		if (!(err instanceof ForgeUnavailable)) throw err
+		if (!(err instanceof ForgeUnavailableError)) throw err
 		console.warn(`[forge] proxy unavailable for ${path}, going to GitHub directly: ${err.message}`)
 		return via(forge, "github-direct", path)
 	}

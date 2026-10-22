@@ -196,7 +196,7 @@ function RedoOnboarding() {
 	const link =
 		"hand text-[0.76rem] underline decoration-dashed underline-offset-4 transition-colors disabled:opacity-60"
 
-	if (!asking) {
+	if (!asking)
 		return (
 			<button
 				className={cx(link, "-mt-3 self-start text-navy-faint hover:text-navy")}
@@ -206,7 +206,6 @@ function RedoOnboarding() {
 				Redo onboarding <span className="label ml-1 text-[0.6rem] no-underline">admin</span>
 			</button>
 		)
-	}
 
 	return (
 		<div className="-mt-2 rounded-xl border-2 border-dashed border-line px-3.5 py-3">

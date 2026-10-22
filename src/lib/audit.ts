@@ -1,10 +1,11 @@
 import "server-only"
 import { headers } from "next/headers"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { AuditAction } from "@/app/generated/prisma/enums"
+import type { AuditAction } from "@/app/generated/prisma/enums"
+import { clientIp } from "@/lib/client-ip"
 import prisma from "@/lib/prisma"
 
-export { AuditAction }
+export { AuditAction } from "@/app/generated/prisma/enums"
 
 export interface AuditInput {
 	action: AuditAction
@@ -18,12 +19,17 @@ export interface AuditInput {
 	targetType?: string | null
 }
 
-async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
+/**
+ * The caller's address and browser, as the audit trail records them.
+ *
+ * Exported because `logAuditTx` cannot read them itself: it joins a transaction, and `headers()` is
+ * request-scoped, so the caller has to resolve them here and pass them in.
+ */
+export async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
 	try {
 		const h = await headers()
-		const forwarded = h.get("x-forwarded-for")
-		const ip = forwarded?.split(",")[0]?.trim() || h.get("x-real-ip") || h.get("cf-connecting-ip") || null
-		return { ip, userAgent: h.get("user-agent") }
+		const ip = clientIp(h)
+		return { ip: ip === "unknown" ? null : ip, userAgent: h.get("user-agent") }
 	} catch {
 		// Called outside a request scope (a cron script). Not an error.
 		return { ip: null, userAgent: null }

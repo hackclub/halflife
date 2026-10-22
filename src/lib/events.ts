@@ -1,4 +1,7 @@
 import type { EventColour } from "@/app/generated/prisma/client"
+import { calendarDay, DAY_MS } from "@/lib/time"
+
+export { calendarDay } from "@/lib/time"
 
 /**
  * What a calendar surface needs, and nothing more.
@@ -40,7 +43,7 @@ export const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
  *   elapsed milliseconds puts the late evening of a Sunday in the next column.
  */
 
-export type { EventColour }
+export type { EventColour } from "@/app/generated/prisma/client"
 
 /**
  * The display name and swatch for every colour.
@@ -106,18 +109,6 @@ export function msUntilStart(event: Pick<CalendarEvent, "startsAt">, now: Date):
 	return Math.max(0, event.startsAt.getTime() - now.getTime())
 }
 
-/** The `YYYY-MM-DD` a moment falls on in `timeZone`. */
-export function calendarDay(at: Date, timeZone: string): string {
-	// en-CA formats as YYYY-MM-DD, which is the one thing Intl gives us that is
-	// sortable as a string and readable as a date without parsing it back.
-	return new Intl.DateTimeFormat("en-CA", {
-		day: "2-digit",
-		month: "2-digit",
-		timeZone,
-		year: "numeric",
-	}).format(at)
-}
-
 /** `YYYY-MM-DD` for a year/month/day, zero-padded. */
 export function dayKey(year: number, month: number, day: number): string {
 	const pad = (n: number) => n.toString().padStart(2, "0")
@@ -133,7 +124,7 @@ export function monthOf(day: string): { year: number; month: number } {
 /** A `YYYY-MM-DD` shifted by whole days. UTC throughout: these are calendar labels, not instants. */
 function addDays(day: string, offset: number): string {
 	const [year = 1970, month = 1, dayOfMonth = 1] = day.split("-").map(Number)
-	const at = new Date(Date.UTC(year, month - 1, dayOfMonth) + offset * 86_400_000)
+	const at = new Date(Date.UTC(year, month - 1, dayOfMonth) + offset * DAY_MS)
 	return dayKey(at.getUTCFullYear(), at.getUTCMonth() + 1, at.getUTCDate())
 }
 
@@ -253,7 +244,8 @@ export function eventsOnDay<T extends CalendarEvent>(events: readonly T[], day: 
 /** The soonest event that has not finished, or null when the programme is clear. */
 export function nextEvent<T extends CalendarEvent>(events: readonly T[], now: Date): T | null {
 	return (
-		[...events].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()).find(event => eventIsUpcoming(event, now))
-		?? null
+		[...events]
+			.toSorted((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+			.find(event => eventIsUpcoming(event, now)) ?? null
 	)
 }

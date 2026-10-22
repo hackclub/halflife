@@ -9,8 +9,7 @@ import { Button, inputClass } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd } from "@/lib/bom-policy"
 import { cx } from "@/lib/cx"
-
-const usd = (n: number) => `$${n.toFixed(2)}`
+import { formatUsd, round2 } from "@/lib/money"
 
 /** What the import route reports after reading the repo's CSV. */
 interface ImportPreview {
@@ -26,6 +25,13 @@ interface ImportPreview {
 	}[]
 	path: string
 	skipped: { row: number; name: string; reason: string }[]
+}
+
+/** The BOM routes' success payload, plus the error envelope they share. */
+interface BomPayload {
+	error?: { code?: string; details?: { properties?: { [_: string]: unknown } }; message?: string }
+	items?: BomLine[]
+	taxShippingUsd?: number
 }
 
 interface Draft {
@@ -52,6 +58,14 @@ function requiredMessage(fields: (keyof Draft)[]) {
 }
 
 const EMPTY: Draft = { link: "", name: "", purpose: "", quantity: "1", unitCostUsd: "", vendor: "" }
+
+/**
+ * Pasted prices often carry a `$` (`$12.50`) or commas (`1,299.99`), which `Number` would reject. Strip them so pasting just works.
+ */
+function parsePrice(value: string): number {
+	const cleaned = value.replaceAll("$", "").replaceAll(",", "").trim()
+	return cleaned ? Number(cleaned) : Number.NaN
+}
 
 function draftOf(line: BomLine): Draft {
 	return {
@@ -130,7 +144,7 @@ export function BomEditor({
 				headers: body ? { "content-type": "application/json" } : undefined,
 				method,
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				// The server's field check says which fields, not just "Invalid request": outline those and say it the way the form's own check does. This catches anything the form let through, like a tab still running an older copy of it.
 				const fields = Object.keys(payload?.error?.details?.properties ?? {}).filter(
@@ -139,12 +153,11 @@ export function BomEditor({
 				if (payload?.error?.code === "VALIDATION_FAILED" && fields.length > 0) {
 					setInvalid(new Set(fields))
 					setError(requiredMessage(fields))
-				} else {
-					setError(payload?.error?.message ?? "That did not save. Try again.")
-				}
+				} else setError(payload?.error?.message ?? "That did not save. Try again.")
+
 				return false
 			}
-			setItems(payload.items as BomLine[])
+			setItems(payload?.items as BomLine[])
 			router.refresh()
 			return true
 		} catch {
@@ -159,12 +172,12 @@ export function BomEditor({
 		if (saving) return
 		// Every field, because a reviewer prices the tier from this list: a line without a vendor, a link or a price is one they cannot check.
 		const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : Number.NaN
-		const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : Number.NaN
+		const unitCostUsd = parsePrice(draft.unitCostUsd)
 		let link = draft.link.trim()
 		if (link && !/^https?:\/\//i.test(link)) link = `https://${link}`
 		let linkOk = false
 		try {
-			linkOk = !!link && new URL(link).hostname.includes(".")
+			linkOk = Boolean(link) && new URL(link).hostname.includes(".")
 		} catch {
 			linkOk = false
 		}
@@ -191,13 +204,12 @@ export function BomEditor({
 			editing === "new"
 				? await send("POST", `/api/projects/${projectId}/bom`, body)
 				: await send("PATCH", `/api/projects/${projectId}/bom/${editing}`, body)
-		if (done) {
-			// Adding is usually several parts in a row, so the form stays open and the cursor goes back to the first field.
+		if (done)
 			if (editing === "new") {
+				// Adding is usually several parts in a row, so the form stays open and the cursor goes back to the first field.
 				setDraft(EMPTY)
 				nameInput.current?.focus()
 			} else setEditing(null)
-		}
 	}
 
 	async function remove(line: BomLine) {
@@ -218,12 +230,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setImportError(payload?.error?.message ?? "Could not read the repo. Try again.")
 				return
 			}
-			setPreview(payload as ImportPreview)
+			setPreview(payload as unknown as ImportPreview)
 		} catch {
 			setImportError("Could not reach the server. Try again.")
 		} finally {
@@ -240,12 +252,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setImportError(payload?.error?.message ?? "That did not save. Try again.")
 				return
 			}
-			setItems(payload.items as BomLine[])
+			setItems(payload?.items as BomLine[])
 			setImportOpen(false)
 			router.refresh()
 		} catch {
@@ -266,12 +278,12 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "PATCH",
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setError(payload?.error?.message ?? "That did not save. Try again.")
 				return false
 			}
-			setTaxShipping(payload.taxShippingUsd)
+			setTaxShipping(payload?.taxShippingUsd ?? 0)
 			router.refresh()
 			return true
 		} catch {
@@ -288,15 +300,16 @@ export function BomEditor({
 		className: cx(inputClass, "py-2 text-[0.88rem]", invalid.has(key) && "border-coral-deep! bg-coral/5"),
 		id: `${id}-${key}`,
 		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-			setDraft(d => ({ ...d, [key]: e.target.value }))
+			// Strip a pasted `$` straight off the price field, so what the maker sees is what saves.
+			const value = key === "unitCostUsd" ? e.target.value.replaceAll("$", "") : e.target.value
+			setDraft(d => ({ ...d, [key]: value }))
 			if (error) setError(null)
-			if (invalid.has(key)) {
+			if (invalid.has(key))
 				setInvalid(s => {
 					const next = new Set(s)
 					next.delete(key)
 					return next
 				})
-			}
 		},
 		required: true,
 		value: draft[key],
@@ -349,8 +362,10 @@ export function BomEditor({
 									{l.purpose && <span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>}
 								</td>
 								<td className="px-3 py-2.5 tabular-nums">{l.quantity}</td>
-								<td className="px-3 py-2.5 tabular-nums">{usd(l.unitCostUsd)}</td>
-								<td className="px-3 py-2.5 font-semibold text-navy tabular-nums">{usd(l.quantity * l.unitCostUsd)}</td>
+								<td className="px-3 py-2.5 tabular-nums">{formatUsd(l.unitCostUsd)}</td>
+								<td className="px-3 py-2.5 font-semibold text-navy tabular-nums">
+									{formatUsd(l.quantity * l.unitCostUsd)}
+								</td>
 								<td className="hand px-3 py-2.5 text-navy-soft">
 									{l.link ? (
 										<a
@@ -407,14 +422,14 @@ export function BomEditor({
 				<p className="text-[0.9rem] text-navy-soft">
 					Total{" "}
 					<span className={cx("text-[1.05rem] font-extrabold tabular-nums", over ? "text-coral-deep" : "text-navy")}>
-						{usd(total)}
+						{formatUsd(total)}
 					</span>{" "}
 					of <span className="font-bold text-navy tabular-nums">${grantUsd}</span> tier {tier} funding
 					{over && (
 						<span className="hand block text-[0.84rem] text-coral-deep">
 							{pastMargin
-								? `${usd(total - grantUsd)} over – you can still submit, but only $${grantUsd} of it will be funded and you'll cover the rest.`
-								: `${usd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
+								? `${formatUsd(total - grantUsd)} over – you can still submit, but only $${grantUsd} of it will be funded and you'll cover the rest.`
+								: `${formatUsd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
 						</span>
 					)}
 				</p>
@@ -441,7 +456,7 @@ export function BomEditor({
 					}}
 					onSubmit={e => {
 						e.preventDefault()
-						save()
+						void save()
 					}}
 				>
 					<p className="text-[0.9rem] font-extrabold text-navy">
@@ -581,7 +596,11 @@ export function BomEditor({
 													</td>
 													<td className="px-3 py-2 tabular-nums">{l.quantity}</td>
 													<td className="px-3 py-2 tabular-nums">
-														{l.unitCostUsd > 0 ? usd(l.unitCostUsd) : <span className="text-coral-deep">no price</span>}
+														{l.unitCostUsd > 0 ? (
+															formatUsd(l.unitCostUsd)
+														) : (
+															<span className="text-coral-deep">no price</span>
+														)}
 													</td>
 													<td className="hand px-3 py-2 text-navy-soft">{l.vendor || "—"}</td>
 												</tr>
@@ -627,20 +646,21 @@ function ExtraRow({
 	value: number
 	locked: string | null
 	disabled: boolean
-	onSave: (value: number) => Promise<boolean>
+	onSave(value: number): Promise<boolean>
 }) {
 	const id = useId()
 	const [draft, setDraft] = useState(value ? value.toFixed(2) : "")
 	const [invalid, setInvalid] = useState(false)
 
 	async function commit() {
-		const n = draft.trim() === "" ? 0 : Number.parseFloat(draft)
+		const cleaned = draft.replaceAll("$", "").replaceAll(",", "").trim()
+		const n = cleaned === "" ? 0 : Number(cleaned)
 		if (!Number.isFinite(n) || n < 0) {
 			setInvalid(true)
 			return
 		}
 		setInvalid(false)
-		const cents = Math.round(n * 100) / 100
+		const cents = round2(n)
 		if (await onSave(cents)) setDraft(cents ? cents.toFixed(2) : "")
 	}
 
@@ -656,7 +676,7 @@ function ExtraRow({
 			<td className="px-3 py-2.5 text-navy-soft">–</td>
 			<td className="px-3 py-1.5 font-semibold text-navy tabular-nums" colSpan={locked ? 2 : 3}>
 				{locked ? (
-					usd(value)
+					formatUsd(value)
 				) : (
 					<span className="inline-flex items-center gap-1">
 						<span aria-hidden="true">$</span>
@@ -674,7 +694,7 @@ function ExtraRow({
 							inputMode="decimal"
 							onBlur={() => commit()}
 							onChange={e => {
-								setDraft(e.target.value)
+								setDraft(e.target.value.replaceAll("$", ""))
 								if (invalid) setInvalid(false)
 							}}
 							onKeyDown={e => {

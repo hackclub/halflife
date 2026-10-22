@@ -1,0 +1,122 @@
+import "dotenv/config"
+import { Phase, PhaseStatus } from "../src/app/generated/prisma/enums"
+import { isAriConfigured } from "../src/lib/ari"
+import prisma from "../src/lib/prisma"
+import { type AriRefreshTarget, flag, limitArg, phaseArg, refreshAriShip } from "./ari-backfill"
+
+/**
+ * Refresh in-review hand-ins in Ari so their journals carry their timelapses.
+ *
+ * Ari has no update-in-place API: a ship's journals and project keys are fixed at ingestion. A hand-in already in Ari is therefore replaced by withdrawing its ship and creating it again under the same external id, which becomes the next version. This walks every phase still in review that has a timelapse, sends the ones that never reached Ari, and withdraws and re-sends the rest.
+ *
+ * Only in-review work is touched. A decided hand-in is not reopened: re-sending it would put already-reviewed work back in front of reviewers.
+ *
+ * Read-only unless `--commit` is passed.
+ *
+ * Run with `bun run ari:backfill-timelapses` (dry run), then `bun run ari:backfill-timelapses -- --limit 1 --commit` to prove it on one hand-in. Flags: `--commit`, `--phase design|build`, `--project <themeProjectId>`, `--limit <n>`.
+ */
+
+interface AriBackfillTarget extends AriRefreshTarget {
+	sessions: number
+	title: string
+}
+
+const commit = process.argv.includes("--commit")
+
+/** Every in-review phase that has at least one timelapse to carry, with its open submission. */
+async function loadTargets(phase: Phase | null, projectId: string | null): Promise<AriBackfillTarget[]> {
+	const projects = await prisma.themeProject.findMany({
+		orderBy: { id: "asc" },
+		select: {
+			buildStatus: true,
+			designStatus: true,
+			id: true,
+			submissions: {
+				orderBy: { createdAt: "desc" },
+				select: { ariSubmissionId: true, id: true, phase: true, resolvedAt: true },
+			},
+			title: true,
+			workSessions: { select: { phase: true }, where: { deletedAt: null, timelapses: { some: {} } } },
+		},
+		where: {
+			deletedAt: null,
+			...(projectId ? { id: projectId } : {}),
+			OR: [{ designStatus: PhaseStatus.in_review }, { buildStatus: PhaseStatus.in_review }],
+		},
+	})
+
+	const targets: AriBackfillTarget[] = []
+	for (const project of projects)
+		for (const candidate of [Phase.DESIGN, Phase.BUILD] as const) {
+			if (phase && candidate !== phase) continue
+			const status = candidate === Phase.DESIGN ? project.designStatus : project.buildStatus
+			if (status !== PhaseStatus.in_review) continue
+			const sessions = project.workSessions.filter(s => s.phase === candidate).length
+			if (sessions === 0) continue
+			const open = project.submissions.find(s => s.phase === candidate && s.resolvedAt === null)
+			if (!open) continue
+			targets.push({
+				ariSubmissionId: open.ariSubmissionId,
+				phase: candidate,
+				sessions,
+				submissionId: open.id,
+				themeProjectId: project.id,
+				title: project.title,
+			})
+		}
+
+	return targets
+}
+
+async function main() {
+	if (!isAriConfigured()) {
+		console.error("Set ARI_PROGRAM_ID and ARI_SIGNING_SECRET first.")
+		process.exitCode = 1
+		return
+	}
+
+	const targets = await loadTargets(phaseArg(), flag("project"))
+	const limit = limitArg()
+	const run = limit === null ? targets : targets.slice(0, limit)
+
+	console.log(
+		`In-review hand-ins with timelapses: ${targets.length}${limit === null ? "" : ` (running ${run.length})`}`,
+	)
+	for (const target of run)
+		console.log(
+			`  ${target.phase.padEnd(6)}  ${target.title}  · ${target.sessions} entr${target.sessions === 1 ? "y" : "ies"} with timelapses  · ${target.ariSubmissionId ? "in Ari" : "never sent"}  · ${target.themeProjectId}`,
+		)
+
+	if (!commit) {
+		console.log("Dry run. Pass --commit to withdraw and re-send these hand-ins.")
+		return
+	}
+
+	let failed = 0
+	let notQueued = 0
+	let replaced = 0
+	let sent = 0
+	for (const target of run)
+		try {
+			const outcome = await refreshAriShip(target)
+			if (outcome === "replaced") replaced++
+			else if (outcome === "sent") sent++
+			else {
+				notQueued++
+				console.warn(`  ${target.phase} ${target.title}: Ari has no open ship, so it was left alone`)
+			}
+		} catch (err) {
+			failed++
+			console.error(`  ${target.phase} ${target.title} (${target.themeProjectId}) failed:`, err)
+		}
+
+	console.log(`replaced: ${replaced}, sent: ${sent}, not queued: ${notQueued}, failed: ${failed}`)
+	if (failed > 0) process.exitCode = 1
+}
+
+main()
+	.catch(err => {
+		console.error(err)
+		process.exitCode = 1
+	})
+	.finally(() => prisma.$disconnect())

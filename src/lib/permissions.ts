@@ -2,7 +2,7 @@ import "server-only"
 import { Role } from "@/app/generated/prisma/enums"
 import prisma from "@/lib/prisma"
 
-export { Role }
+export { Role } from "@/app/generated/prisma/enums"
 
 export enum Permission {
 	FULFILL_ORDERS = "FULFILL_ORDERS",
@@ -45,6 +45,74 @@ export function permissionsFor(roles: Role[]): Permission[] {
 	const set = new Set<Permission>()
 	for (const role of roles) for (const p of ROLE_PERMISSIONS[role] ?? []) set.add(p)
 	return [...set]
+}
+
+/**
+ * How far a set of roles reaches, in one word.
+ *
+ * This is reach, not trust. The roles are deliberately not a ladder – a REVIEWER and a FULFILLER are different kinds of seat, and `lib/review.ts` says so – but the permissions behind them are comparable, because they are the same thing the guards check. So the level is read off the union of the permissions those roles grant, which is also why somebody holding two roles is described by what the two together allow rather than by either one alone.
+ */
+export type PermissionLevel = "full" | "write" | "read" | "none"
+
+/** How many permissions there are to have, for saying "3 of 13" rather than "3". */
+export const PERMISSION_COUNT = Object.values(Permission).length
+
+/**
+ * The permissions that only look.
+ *
+ * A list rather than a rule, so that a permission added later is reported as `write` until someone says otherwise. Over-reporting what an account can do is the safe direction to be wrong in: the alternative is reading a new read-only permission as an ability to change things, and the display is the thing a staff member trusts about it.
+ */
+const READ_ONLY_PERMISSIONS = new Set<Permission>([
+	Permission.VIEW_AUDIT_LOG,
+	Permission.VIEW_UPLOADS,
+	Permission.VIEW_USERS,
+])
+
+/**
+ * What the roles add up to.
+ *
+ * `full` is the top because MANAGE_ROLES hands out every other permission, including to oneself: it is the only level from which the rest can be reached. `write` is anything that changes the programme without changing who has access to it, `read` is looking without touching, and `none` is a participant, who holds no staff permissions at all – which says nothing about the platform itself, since a participant runs their own projects.
+ */
+export interface PermissionSummary {
+	/** How far those permissions reach. */
+	level: PermissionLevel
+	/** The permissions the roles grant, in the order the roles list them. */
+	permissions: Permission[]
+}
+
+/**
+ * A permission as a person reads it: `MANAGE_CREDIT` becomes "manage credit".
+ *
+ * The audit log shows its own enum names raw, but that is a log being looked up; this is somebody being told what an account may do.
+ */
+export function readablePermission(permission: Permission): string {
+	return permission.toLowerCase().replaceAll("_", " ")
+}
+
+/**
+ * The level a set of roles reaches, and the permissions that get it there.
+ *
+ * The union of the roles' permissions is the thing `hasPermission` asks about, so it is the thing summarised here: a person with REVIEWER and AUDITOR together is described by what the two together allow.
+ */
+export function permissionSummary(roles: Role[]): PermissionSummary {
+	const permissions = permissionsFor(roles)
+	const level: PermissionLevel =
+		permissions.length === 0
+			? "none"
+			: permissions.includes(Permission.MANAGE_ROLES)
+				? "full"
+				: permissions.every(p => READ_ONLY_PERMISSIONS.has(p))
+					? "read"
+					: "write"
+	return { level, permissions }
+}
+
+/** The words the console shows for each level. */
+export const PERMISSION_LEVEL_LABELS: Record<PermissionLevel, string> = {
+	full: "full access",
+	none: "no staff access",
+	read: "read only",
+	write: "write access",
 }
 
 export function hasPermission(roles: Role[], permission: Permission): boolean {

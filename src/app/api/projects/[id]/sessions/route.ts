@@ -1,15 +1,17 @@
-import type { NextRequest } from "next/server"
-import { after } from "next/server"
+import { after, type NextRequest } from "next/server"
+import type { Prisma } from "@/app/generated/prisma/client"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
-import { fail, ok, parseBody, parseQuery, withRoute } from "@/lib/api"
+import { fail, ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
-import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
+import { lockKey } from "@/lib/locks"
+import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import {
 	assertWeekStarted,
@@ -35,9 +37,20 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const dynamic = "force-dynamic"
+
+/**
+ * The entries' order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
+ */
+const SESSIONS_ORDER = {
+	at: (row: { createdAt: Date }) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<{ createdAt: Date }, Prisma.WorkSessionOrderByWithRelationInput>
+
+export const GET = withSession(async (req: NextRequest, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const query = parseQuery(req, paginationQuery)
@@ -50,13 +63,16 @@ export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	const rows = await prisma.workSession.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		where: { deletedAt: null, themeProjectId: id },
-		...cursorArgs(query.data.cursor, query.data.limit),
 		include: { media: true, timelapses: true },
+		orderBy: orderByFor(SESSIONS_ORDER),
+		take: query.data.limit + 1,
+		where: cursorWhere<Prisma.WorkSessionWhereInput>(query.data.cursor, SESSIONS_ORDER, {
+			deletedAt: null,
+			themeProjectId: id,
+		}),
 	})
 
-	const page = pageResult(rows, query.data.limit)
+	const page = pageResult(rows, query.data.limit, SESSIONS_ORDER)
 	return ok({
 		items: page.items.map(s => ({
 			...s,
@@ -66,9 +82,7 @@ export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	})
 })
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, sessionCreateSchema)
@@ -93,7 +107,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	await assertWeekStarted(week)
 	if (!(await isWeekOpen(gate.user.id, id, week))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
-	const phaseStatus = data.phase === "DESIGN" ? project.designStatus : project.buildStatus
+	const phaseStatus = statusFor(project, data.phase)
 	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
 	// Same rule as editing an entry: once a week is decided, its entries are the record the decision was made against. Without this, hours could be logged after approval and paid out on the next un-approve/re-approve cycle.
@@ -116,9 +130,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const session = await prisma.$transaction(async tx => {
 		if (lapseIds.length > 0) {
 			// Sorted so two requests naming the same recordings cannot deadlock on each other's locks.
-			for (const lapseId of [...lapseIds].sort()) {
-				await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
-			}
+			for (const lapseId of [...lapseIds].toSorted()) await lockKey(tx, `lapse:${lapseId}`)
+
 			const taken = await tx.sessionTimelapse.findFirst({
 				select: { externalId: true },
 				where: {
@@ -138,7 +151,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			select: { buildStatus: true, designStatus: true, submissionExtensionUntil: true },
 			where: { id },
 		})
-		const currentStatus = data.phase === "DESIGN" ? current?.designStatus : current?.buildStatus
+		const currentStatus = current ? statusFor(current, data.phase) : undefined
 		if (currentStatus === PhaseStatus.in_review)
 			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
 		if (currentStatus && isPhaseDecided(currentStatus))

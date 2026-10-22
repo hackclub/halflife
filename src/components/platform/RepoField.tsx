@@ -5,6 +5,7 @@ import { IconPencil } from "@/components/platform/icons"
 import { Button, Field, inputClass } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 import { displayRepo, normalizeRepo } from "@/lib/repo"
+import { README_GUIDE_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
@@ -15,7 +16,7 @@ import type { Project } from "@/lib/types"
  * while it is still being typed. The form reads the same check back through
  * `repoIsValid` to hold its own submit button.
  */
-export function RepoInput({ value, onChange, id }: { value: string; onChange: (value: string) => void; id: string }) {
+export function RepoInput({ value, onChange, id }: { value: string; onChange(value: string): void; id: string }) {
 	const [touched, setTouched] = useState(false)
 	const { error } = normalizeRepo(value)
 	return (
@@ -26,7 +27,7 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange: (v
 		>
 			<input
 				aria-describedby={touched && error ? `${id}-err` : undefined}
-				aria-invalid={(touched && !!error) || undefined}
+				aria-invalid={(touched && Boolean(error)) || undefined}
 				autoComplete="url"
 				className={inputClass}
 				id={id}
@@ -42,6 +43,20 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange: (v
 					{error}
 				</p>
 			)}
+			{/* The repo is asked for before there is anything in it, so this is the first and often only moment to say what the repo has to end up holding. The README is the part a reviewer opens first and the part nothing else on this form explains. */}
+			<p className="mt-1.5 text-[0.78rem] leading-snug text-navy-soft">
+				Your repo needs a README that says what the project is, how it works, and shows at least two photos of it – at
+				least 200 characters of text over at least 3 lines, once images are removed –{" "}
+				<a
+					className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+					href={README_GUIDE_URL}
+					rel="noopener noreferrer"
+					target="_blank"
+				>
+					see how to write one
+				</a>
+				.
+			</p>
 		</Field>
 	)
 }
@@ -84,7 +99,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 		else setEditing(false)
 	}
 
-	if (!editing) {
+	if (!editing)
 		return (
 			<div className={cx("flex min-w-0 items-center gap-2", className)}>
 				{current ? (
@@ -126,14 +141,13 @@ export function RepoEditor({ project, className }: { project: Project; className
 				)}
 			</div>
 		)
-	}
 
 	return (
 		<form
 			className={cx("grid gap-2", className)}
 			onSubmit={e => {
 				e.preventDefault()
-				save()
+				void save()
 			}}
 		>
 			<label className="sr-only" htmlFor={id}>
@@ -141,7 +155,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 			</label>
 			<input
 				aria-describedby={error ? `${id}-err` : undefined}
-				aria-invalid={!!error || undefined}
+				aria-invalid={Boolean(error) || undefined}
 				autoComplete="url"
 				className={cx(inputClass, "py-2 text-[0.88rem]")}
 				id={id}

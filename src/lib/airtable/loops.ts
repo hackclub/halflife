@@ -96,12 +96,12 @@ async function loopsValues(): Promise<LoopsValues[]> {
 		}
 		// Submitted means a hand-in exists for that scheduled week, in any state – in review, approved, or sent back. Rows from before `scheduledWeek` was recorded fall back to the theme and phase's own week, and the warm-up's week 0 is not a program week. Unsubmitting deletes the open row, so a week taken back with no other hand-in reads as unsubmitted again.
 		const submittedWeeks = new Set<number>()
-		for (const p of u.themeProjects) {
+		for (const p of u.themeProjects)
 			for (const s of p.submissions) {
 				const w = s.scheduledWeek ?? scheduledWeekFor(p.theme, s.phase)
 				if (w >= 1 && w <= 10) submittedWeeks.add(w)
 			}
-		}
+
 		const weeksSubmitted: { [_: number]: boolean } = {}
 		for (const n of WEEKS) weeksSubmitted[n] = submittedWeeks.has(n)
 		// Last entry means evidence of an actual entry: a manually written session, or a session carrying a timelapse. A HACKATIME_TRACKED row only says a Hackatime project was linked and contributes nothing on its own – someone who has only linked Hackatime gets no timestamp, and a previously stamped one is cleared below.
@@ -184,12 +184,11 @@ async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 		select: { airtableRecordId: true, userId: true },
 		where: { airtableRecordId: { not: null }, userId: { not: null } },
 	})
-	for (const row of rows) {
-		// The row id in the listing and the one the drain recorded are the same thing, so this needs no second request: a placeholder is enough for the join, and the write below addresses the real record by that id.
-		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId)) {
+	// The row id in the listing and the one the drain recorded are the same thing, so this needs no second request: a placeholder is enough for the join, and the write below addresses the real record by that id.
+	for (const row of rows)
+		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId))
 			byRecordId.set(row.userId, { fields: {}, id: row.airtableRecordId })
-		}
-	}
+
 	return byRecordId
 }
 
@@ -355,7 +354,7 @@ export async function syncLoopsProperties(
 	const degraded = values.length >= 50 && matched * 2 < values.length
 	const result: LoopsSyncResult = {
 		degraded,
-		dryRun: !!opts.dryRun,
+		dryRun: Boolean(opts.dryRun),
 		matched,
 		matchedByEmail,
 		matchedById,
@@ -368,7 +367,7 @@ export async function syncLoopsProperties(
 	}
 
 	// A join that stops matching does not throw: rows are skipped and counted, so the run reports success while writing nothing, and the only symptom is that the columns stay empty. That is precisely how this went unnoticed, so a collapse in the match rate is called out loudly rather than returned as a number somebody has to notice. Most often it means the base has no `Half-Life User ID` column, or the RSVP drain has not been running to fill it – either way the fix is on the Airtable side, not here.
-	if (degraded) {
+	if (degraded)
 		console.error(
 			`[airtable] Loops sync matched only ${matched}/${values.length} Half Life users to a Signups row `
 				+ `(${matchedById} by id, ${matchedByRecord} by drained record id, ${matchedByEmail} by email) – `
@@ -378,7 +377,7 @@ export async function syncLoopsProperties(
 				+ "their Signups row was written straight from the landing page with no buffer entry naming it, so neither the user id nor the record id joins can reach it; "
 				+ "or the person never had a Signups row at all.",
 		)
-	}
+
 	if (opts.dryRun) {
 		result.preview = updates.slice(0, 5).map(({ email, fields }) => ({ email, fields }))
 		return result
@@ -426,12 +425,12 @@ export async function syncLoopsWeekSubmitted(
 	})
 	let want = false
 	for (const p of projects) {
-		for (const s of p.submissions) {
+		for (const s of p.submissions)
 			if ((s.scheduledWeek ?? scheduledWeekFor(p.theme, s.phase)) === week) {
 				want = true
 				break
 			}
-		}
+
 		if (want) break
 	}
 

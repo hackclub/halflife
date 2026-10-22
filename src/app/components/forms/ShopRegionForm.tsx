@@ -11,7 +11,7 @@ export function ShopRegionForm() {
 	const [name, setName] = useState("")
 	const { busy, error, run } = useAction()
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		void run(
 			"submit",

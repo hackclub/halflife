@@ -1,4 +1,3 @@
-import Link from "next/link"
 import type { ReactNode } from "react"
 
 /**
@@ -19,18 +18,6 @@ export function Button({
 	...props
 }: Readonly<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }>) {
 	return <button {...props} className={`${variantClass[variant]} ${className ?? ""}`} />
-}
-
-export function LinkButton({
-	href,
-	variant = "default",
-	children,
-}: Readonly<{ href: string; variant?: Variant; children: ReactNode }>) {
-	return (
-		<Link className={variantClass[variant]} href={href}>
-			{children}
-		</Link>
-	)
 }
 
 export function Panel({
@@ -95,10 +82,18 @@ export function PageHeader({
 	)
 }
 
-type BadgeTone = "success" | "warning" | "danger" | "muted"
+type BadgeTone = "success" | "warning" | "danger" | "muted" | "access"
 
-export function Badge({ tone = "muted", children }: Readonly<{ tone?: BadgeTone; children: ReactNode }>) {
-	return <span className={`hl-badge hl-badge--${tone}`}>{children}</span>
+export function Badge({
+	tone = "muted",
+	title,
+	children,
+}: Readonly<{ tone?: BadgeTone; title?: string; children: ReactNode }>) {
+	return (
+		<span className={`hl-badge hl-badge--${tone}`} title={title}>
+			{children}
+		</span>
+	)
 }
 
 export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warning" | "info"; children: ReactNode }>) {
@@ -110,31 +105,6 @@ export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warnin
  *
  * Drawn rather than the Unicode ✕: that glyph's weight, size and baseline come from whatever font happens to render it, so it never matches the stroke of anything around it.
  */
-/**
- * A participant's avatar, falling back to the programme's own art.
- *
- * The comp puts a gato illustration in the account card rather than an empty square, and most participants will not have set a picture – so the fallback is the common case, not the edge case.
- *
- * Not next/image: an avatar URL comes from Slack or R2 and its host is only known at runtime, which next/image refuses unless it is listed at build time.
- */
-export function Avatar({
-	src,
-	large = false,
-	alt = "",
-}: Readonly<{ src?: string | null; large?: boolean; alt?: string }>) {
-	const className = `hl-avatar${large ? " hl-avatar--lg" : ""}`
-	if (src) {
-		// eslint-disable-next-line @next/next/no-img-element
-		return <img alt={alt} className={className} src={src} />
-	}
-	return (
-		<span aria-label={alt || "No picture set"} className={`${className} hl-avatar--fallback`} role="img">
-			{/* eslint-disable-next-line @next/next/no-img-element */}
-			<img alt="" src="/brand/gato/schematic.png" />
-		</span>
-	)
-}
-
 export function Stat({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
 	return (
 		<div className="hl-stat">
@@ -163,10 +133,14 @@ export function Field({ label, hint, children }: Readonly<{ label: string; hint?
 	)
 }
 
-export function Table({ head, children }: Readonly<{ head: ReactNode[]; children: ReactNode }>) {
+export function Table({
+	head,
+	children,
+	className,
+}: Readonly<{ head: ReactNode[]; children: ReactNode; className?: string }>) {
 	return (
 		<div className="hl-scroll">
-			<table className="hl-table">
+			<table className={className ? `hl-table ${className}` : "hl-table"}>
 				<thead>
 					<tr>
 						{head.map((h, i) => (
@@ -197,5 +171,5 @@ export function statusTone(status: string): BadgeTone {
 }
 
 export function statusLabel(status: string): string {
-	return status.replace(/_/g, " ")
+	return status.replaceAll("_", " ")
 }

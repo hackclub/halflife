@@ -2,6 +2,7 @@ import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
 import { HardwareExperience, Theme } from "../src/app/generated/prisma/enums"
+import { scheduleForWeek } from "../src/lib/config/program"
 
 /**
  * End-to-end check of the first checkpoint.
@@ -42,6 +43,15 @@ async function main() {
 	const { getOnboardingState, submitStep, needsOnboarding } = await import("../src/lib/onboarding")
 	const { getStarterProject, starterProjectsFor } = await import("../src/lib/config/onboarding")
 
+	// ── The week's starter ─────────────────────────────────────────────────────
+	// The starter on offer is part of the curriculum, not an override: week 3 is Music, so its card is the MIDI keyboard. Starbie used to be listed for every theme without a starter of its own, which put a week-one guide on a week-three project. A theme reorder or a copied `themes` array is exactly how that comes back, so the pairing is asserted here rather than trusted.
+	check("week 3 is Music", scheduleForWeek(3)?.theme.id, Theme.SYNTH)
+	check(
+		"week 3 offers the MIDI keyboard",
+		starterProjectsFor(Theme.SYNTH).map(p => p.id),
+		["midi"],
+	)
+
 	const stamp = Date.now()
 	const user = await prisma.user.create({
 		data: {
@@ -56,7 +66,7 @@ async function main() {
 	check("starts at step 0", start.reached, 0)
 	check("first step is the experience question", start.current?.id, "experience")
 	check("seven steps", start.stepCount, 7)
-	check("provisioned the PCB project", typeof start.project.id, "string")
+	check("provisioned the onboarding project", typeof start.project.id, "string")
 	check("needs onboarding", await needsOnboarding(user.id), true)
 
 	// Skipping ahead must fail: without this, a client could post the last step first and land on the dashboard having answered nothing.
@@ -74,9 +84,9 @@ async function main() {
 	check("advanced to the week step", afterExperience.state.current?.id, "week")
 
 	// ── 2. Week intro: a beginner's fork, taking the starter ───────────────────
-	const starters = starterProjectsFor(Theme.PCB)
+	const starters = starterProjectsFor(afterExperience.state.theme)
 	const starter = starters[0]
-	if (!starter) throw new Error("no PCB starter projects configured")
+	if (!starter) throw new Error("no starter projects configured for the onboarding theme")
 	check("a first-timer is offered the starter", afterExperience.state.starterProjects[0]?.id, starter.id)
 
 	await refused("rejects a starter id that does not exist", () =>
@@ -118,7 +128,7 @@ async function main() {
 	// The invariant this whole split exists for.
 	const project = await prisma.themeProject.findFirstOrThrow({
 		select: { grantUsd: true, requestedTier: true, tier: true },
-		where: { theme: Theme.PCB, userId: user.id },
+		where: { theme: start.theme, userId: user.id },
 	})
 	check("onboarding never set the reviewer's tier", project.tier, null)
 	check("onboarding never set a grant", project.grantUsd, null)

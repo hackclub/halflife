@@ -1,25 +1,25 @@
 import Link from "next/link"
-import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
-import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
-import { Badge, EmptyState, PageHeader, Panel, statusLabel, statusTone, Table } from "@/app/components/ui"
+import { EmptyState, PageHeader, Panel, statusLabel, Table } from "@/app/components/ui"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { getThemeDef, THEMES } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { hasPermission, Permission } from "@/lib/permissions"
+import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
+import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
+import { ProjectRow } from "./ProjectRow"
 
 export const dynamic = "force-dynamic"
 
 interface Search {
-	build?: string
-	cursor?: string
-	design?: string
-	extended?: string
-	q?: string
-	theme?: string
-	tier?: string
-	unstarted?: string
+	build?: SearchParamValue
+	cursor?: SearchParamValue
+	design?: SearchParamValue
+	extended?: SearchParamValue
+	q?: SearchParamValue
+	theme?: SearchParamValue
+	tier?: SearchParamValue
+	unstarted?: SearchParamValue
 }
 interface Props {
 	searchParams: Promise<Search>
@@ -28,7 +28,7 @@ interface Props {
 const STATUSES = Object.values(PhaseStatus)
 
 /** Anything unrecognised in the query string is dropped, not trusted. */
-function filtersFrom(s: Search): ProjectFilters {
+function filtersFrom(s: FirstValues<Search>): ProjectFilters {
 	const status = (v?: string) => STATUSES.find(x => x === v)
 	const tier = Number(s.tier)
 	return {
@@ -44,12 +44,14 @@ function filtersFrom(s: Search): ProjectFilters {
 
 export default async function AdminProjectsPage({ searchParams }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
-	const search = await searchParams
+	// Every filter, taken as the single value the URL named: a repeated parameter arrives as an array, and an array where Prisma expects a string is a 500.
+	const search = firstValues(await searchParams)
 	const filters = filtersFrom(search)
 	const canExtend = hasPermission(roles, Permission.MANAGE_USERS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
-
-	const { items, nextCursor } = await listProjects({ ...filters, cursor: search.cursor, limit: 50 })
+	// The owner's email and Slack ID are contact details: they leave the server for ADMIN/AUDITOR only, exactly as the user directory does.
+	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
+	const { items, nextCursor } = await listProjects({ ...filters, cursor: search.cursor, limit: 50 }, { includePii })
 
 	// The next page keeps every filter; only the cursor moves.
 	const nextParams = new URLSearchParams(
@@ -60,9 +62,13 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	const now = new Date()
 
 	return (
-		<div className="hl-stack">
+		<div className="hl-stack hl-page-wide">
 			<PageHeader
-				subtitle="Search by title, description, repo, project ID, or the owner's name, email or Slack ID."
+				subtitle={
+					includePii
+						? "Search by title, description, repo, project ID, or the owner's name, email or Slack ID."
+						: "Search by title, description, repo, project ID, or the owner's name."
+				}
 				title="Projects"
 			/>
 
@@ -142,62 +148,37 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 				{items.length === 0 ? (
 					<EmptyState>No projects match.</EmptyState>
 				) : (
-					<Table head={["Project", "Owner", "Theme", "Design", "Build", "Tier", "Extension"]}>
+					<Table
+						className="hl-table--roomy"
+						head={["Project", "Owner", "Theme", "Tier", "Review", canExtend || canMoveTheme ? "Actions" : "Extension"]}
+					>
 						{items.map(project => {
-							const userExt =
+							const userExtension =
 								project.user.submissionExtensionUntil && project.user.submissionExtensionUntil > now
-									? project.user.submissionExtensionUntil
+									? project.user.submissionExtensionUntil.toLocaleString()
 									: null
 							return (
-								<tr key={project.id}>
-									<td>
-										{/* The participant's project page opens for its owner only, so
-                        this goes to the owner's admin page, where it is listed. */}
-										<Link href={`/admin/users/${project.user.id}#project-${project.id}`}>
-											{project.title || "Untitled"}
-										</Link>
-										<div className="hl-hint hl-mono">{project.id}</div>
-										{project.githubRepo ? (
-											<div className="hl-hint hl-mono">
-												{project.githubRepo.replace(/^https:\/\/github\.com\//, "")}
-											</div>
-										) : null}
-									</td>
-									<td>
-										<Link href={`/admin/users/${project.user.id}`}>
-											{displayName(project.user, project.user.email)}
-										</Link>
-										<div className="hl-hint hl-mono">{project.user.slackId ?? project.user.email}</div>
-									</td>
-									<td>
-										{getThemeDef(project.theme).label}
-										{canMoveTheme ? (
-											<div style={{ marginTop: "0.5rem" }}>
-												<ThemeMoveForm current={project.theme} projectId={project.id} />
-											</div>
-										) : null}
-									</td>
-									<td>
-										<Badge tone={statusTone(project.designStatus)}>{statusLabel(project.designStatus)}</Badge>
-									</td>
-									<td>
-										<Badge tone={statusTone(project.buildStatus)}>{statusLabel(project.buildStatus)}</Badge>
-									</td>
-									<td>{project.tier ?? (project.requestedTier ? `${project.requestedTier} (asked)` : "—")}</td>
-									<td style={{ minWidth: "18rem" }}>
-										{canExtend ? (
-											<ExtensionForm
-												current={project.submissionExtensionUntil?.toISOString() ?? null}
-												url={`/api/admin/theme-projects/${project.id}`}
-											/>
-										) : project.submissionExtensionUntil ? (
-											<span className="hl-mono">{project.submissionExtensionUntil.toLocaleString()}</span>
-										) : (
-											"—"
-										)}
-										{userExt ? <div className="hl-hint">Owner extended until {userExt.toLocaleString()}</div> : null}
-									</td>
-								</tr>
+								<ProjectRow
+									canExtend={canExtend}
+									canMoveTheme={canMoveTheme}
+									data={{
+										buildStatus: project.buildStatus,
+										designStatus: project.designStatus,
+										extension: project.submissionExtensionUntil?.toISOString() ?? null,
+										extensionLabel: project.submissionExtensionUntil?.toLocaleString() ?? null,
+										githubRepo: project.githubRepo,
+										id: project.id,
+										ownerId: project.user.id,
+										ownerName: displayName(project.user) ?? "—",
+										requestedTier: project.requestedTier,
+										theme: project.theme,
+										themeLabel: getThemeDef(project.theme).label,
+										tier: project.tier,
+										title: project.title,
+										userExtension,
+									}}
+									key={project.id}
+								/>
 							)
 						})}
 					</Table>

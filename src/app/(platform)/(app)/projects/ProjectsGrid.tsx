@@ -39,7 +39,7 @@ export function ProjectsGrid() {
 	// Before week 1 the yellow checkpoint is shut, and the warm-up card above this grid is the way in, so the empty state would only contradict it.
 	if (projects.length === 0 && !weekStarted(1)) return null
 
-	if (projects.length === 0) {
+	if (projects.length === 0)
 		return (
 			<Panel className="bg-paper px-6 py-14 text-center" radius={20} tone="line">
 				<Gato className="mx-auto h-auto w-[90px]" pose="confused" sizes="180px" />
@@ -55,7 +55,6 @@ export function ProjectsGrid() {
 				</Link>
 			</Panel>
 		)
-	}
 
 	const anyReviewState = projects.some(p => reviewTone(p.designStatus, p.buildStatus) !== "line")
 

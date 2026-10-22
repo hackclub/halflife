@@ -21,7 +21,7 @@ export function Timeline({
 }: {
 	items: TimelineItem[]
 	/** The trail week a phase of this project ran in, for the "Week 3" labels. */
-	weekFor: (phase: "DESIGN" | "BUILD") => number
+	weekFor(phase: "DESIGN" | "BUILD"): number
 	/**
 	 * Whether journal entries and reels carry a report button. On for someone else's project, off on your own – reporting your own work is noise.
 	 */
@@ -100,7 +100,7 @@ function When({ at }: { at: number }) {
 const PHASE = { BUILD: "build", DESIGN: "design" } as const
 
 function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean }) {
-	if (item.kind === "session") {
+	if (item.kind === "session")
 		return (
 			<article>
 				<header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -125,9 +125,8 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 				{item.lapses.length > 0 && <Lapses lapses={item.lapses} />}
 			</article>
 		)
-	}
 
-	if (item.kind === "reel") {
+	if (item.kind === "reel")
 		return (
 			<article>
 				<header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -164,9 +163,8 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 				) : null}
 			</article>
 		)
-	}
 
-	if (item.kind === "submitted") {
+	if (item.kind === "submitted")
 		return (
 			<p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 				<span className="text-[0.95rem] font-extrabold text-navy">
@@ -175,7 +173,6 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 				<When at={item.at} />
 			</p>
 		)
-	}
 
 	const verdict = {
 		APPROVED: { text: "approved", tone: "text-teal-ink" },
@@ -271,7 +268,7 @@ function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
 					<>
 						<span className="relative block aspect-video w-40 overflow-hidden rounded-xl bg-navy/90">
 							{l.thumbnailUrl ? (
-								// eslint-disable-next-line @next/next/no-img-element -- Lapse's own CDN, not ours to optimise
+								// Lapse's own CDN, not ours to optimise
 								<img alt="" className="h-full w-full object-cover" loading="lazy" src={l.thumbnailUrl} />
 							) : null}
 							<span className="absolute inset-0 grid place-items-center">

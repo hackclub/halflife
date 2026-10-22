@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/time"
 /**
  * The arithmetic behind a countdown – the landing page's wait for week 1, and the platform's run down the week being lived.
  *
@@ -8,7 +9,7 @@
 
 /** The units the countdown shows, largest first. */
 export const COUNTDOWN_UNITS = [
-	{ key: "days", label: "days", ms: 24 * 60 * 60 * 1000 },
+	{ key: "days", label: "days", ms: DAY_MS },
 	{ key: "hours", label: "hours", ms: 60 * 60 * 1000 },
 	{ key: "minutes", label: "minutes", ms: 60 * 1000 },
 	{ key: "seconds", label: "seconds", ms: 1000 },

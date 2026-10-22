@@ -7,8 +7,9 @@ import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
-import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
+import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/program"
 import { countryOfTimezone } from "@/lib/regions"
+import { sanitize } from "@/lib/sanitize"
 
 /**
  * The catalogue row as a participant sees it.
@@ -56,6 +57,11 @@ export const shopOrderStaffSelect = {
 	holdReason: true,
 	id: true,
 	itemNameSnapshot: true,
+	/**
+	 * What the buyer wrote about the order. Staff are the ones who fulfil it, so it is theirs to read; the
+	 * buyer's own view below leaves it out, because it is a note to staff rather than part of the order's state.
+	 */
+	notes: { select: { authorId: true, body: true, createdAt: true } },
 	orderNumber: true,
 	placedAt: true,
 	quantity: true,
@@ -71,8 +77,6 @@ export const shopOrderStaffSelect = {
 	userId: true,
 } satisfies Prisma.ShopOrderSelect
 
-export type ShopOrderStaff = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderStaffSelect }>
-
 export interface ShopItemView extends ShopItemPublic {
 	/** Against the pot this item may be paid from, not against the total. */
 	affordable: boolean
@@ -87,7 +91,7 @@ export interface ShopRegionOption {
 	name: string
 }
 
-export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
+export function listActiveShopRegions(): Promise<ShopRegionOption[]> {
 	return prisma.shopRegion.findMany({
 		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 		select: { id: true, name: true },
@@ -156,43 +160,47 @@ export async function getShopItemsFor(userId: string): Promise<{
 
 	const owned = new Map(orders.map(o => [o.shopItemId, o._sum.quantity ?? 0]))
 
+	const view = items.map(item => {
+		const ownedCount = owned.get(item.id) ?? 0
+		let locked = false
+		let lockReason: string | null = null
+
+		if (item.requiresPrinterQualified && !qualification.qualified) {
+			locked = true
+			lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
+		} else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
+			locked = true
+			lockReason = "You already have this"
+		} else if (item.stock !== null && item.stock <= 0) {
+			locked = true
+			lockReason = "Out of stock"
+		}
+
+		// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
+		const { regionPrices, ...base } = item
+		const priceCredits =
+			context.regionId !== null
+				? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
+				: item.priceCredits
+
+		// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
+		const payableFrom = spendableFor(balances, item.category)
+		return Object.assign(base, {
+			affordable: payableFrom >= priceCredits,
+			locked,
+			lockReason,
+			ownedCount,
+			priceCredits,
+		})
+	})
+
+	// The sticker sheet is the one item pinned above the shelf order: it is the cheap add-on people put in alongside a real order, and an admin's sort order should not bury it.
+	const stickerSheet = (item: (typeof view)[number]) => `${item.id} ${item.name}`.toLowerCase().includes("sticker")
+
 	return {
 		balances,
 		country: context.country,
-		items: items.map(item => {
-			const ownedCount = owned.get(item.id) ?? 0
-			let locked = false
-			let lockReason: string | null = null
-
-			if (item.requiresPrinterQualified && !qualification.qualified) {
-				locked = true
-				lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
-			} else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
-				locked = true
-				lockReason = "You already have this"
-			} else if (item.stock !== null && item.stock <= 0) {
-				locked = true
-				lockReason = "Out of stock"
-			}
-
-			// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
-			const { regionPrices, ...base } = item
-			const priceCredits =
-				context.regionId !== null
-					? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
-					: item.priceCredits
-
-			// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
-			const payableFrom = spendableFor(balances, item.category)
-			return {
-				...base,
-				affordable: payableFrom >= priceCredits,
-				locked,
-				lockReason,
-				ownedCount,
-				priceCredits,
-			}
-		}),
+		items: [...view.filter(stickerSheet), ...view.filter(item => !stickerSheet(item))],
 		regionId: context.regionId,
 		regions,
 	}
@@ -202,26 +210,32 @@ export async function getShopItemsFor(userId: string): Promise<{
  * Buy something.
  *
  * The whole thing runs under a per-user advisory lock. The ledger's `@@unique([shopOrderId, kind, bucket])` only stops one order being charged twice – two concurrent purchases mint two different order ids and collide with nothing, so without the lock ten parallel requests all read the same balance and all succeed.
+ *
+ * `note` is the buyer's own words for the staff who fulfil the order. It is written inside the transaction, against the order, with the buyer as its author – so a note that is accepted is a note that is kept, rather than one that is silently dropped on the floor.
  */
 export async function purchase(
 	userId: string,
 	shopItemId: string,
 	quantity: number,
 	idempotencyKey?: string,
+	note?: string | null,
 ): Promise<ShopOrderPublic> {
 	const access = await getShopAccess(userId)
 	if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
 	// Spending is where identity is asked for. It used to be asked at submit, which turned the last step of a finished week into a wall for anyone who had not got round to verifying – and the shop is the one thing money and a shipping address are actually behind. Checked before the transaction rather than inside it: it is the buyer's own state, read fresh, and nothing concurrent here can undo it.
-	if (!(await isIdentityVerified(userId))) {
+	if (!(await isIdentityVerified(userId)))
 		throw new HttpError(
 			"NOT_VERIFIED",
 			"Identity verification is required to buy things. Verify at identity.hackclub.com.",
 		)
-	}
 
 	const item = await prisma.shopItem.findUnique({ where: { id: shopItemId } })
 	if (!item?.active) throw new HttpError("NOT_FOUND", "Item not found")
+
+	// The note is read as plain text, so its markup is stripped before anything is stored – outside the
+	// transaction, because it is work that has nothing to do with the rows.
+	const body = note ? sanitize(note) : null
 
 	if (item.requiresPrinterQualified) {
 		const qualification = await getPrinterQualification(userId)
@@ -245,14 +259,12 @@ export async function purchase(
 					where: { deletedAt: null, userId },
 				}),
 			])
-			let inGrace = awaitingReview > 0
-			if (!inGrace) {
-				const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
-					.filter((d): d is Date => !!d)
-					.sort((a, b) => b.getTime() - a.getTime())[0]
-				inGrace = !!reviewedAt && reviewedAt.getTime() + settings.shopGraceDays * 86_400_000 > Date.now()
-			}
-			if (!inGrace) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
+			const grace = shopGraceAccess(settings, {
+				awaitingReview,
+				buildReviewedAt: lastReview._max.buildReviewedAt,
+				designReviewedAt: lastReview._max.designReviewedAt,
+			})
+			if (!grace.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		}
 		if (item.requiresPrinterQualified) {
 			const shipped = await tx.themeProject.count({
@@ -286,7 +298,14 @@ export async function purchase(
 				select: shopOrderPublicSelect,
 				where: { idempotencyKey, userId },
 			})
-			if (existing) return existing
+			if (existing) {
+				// A key whose order was refused afterwards is not a success to hand back. The order was
+				// rejected and refunded, this request creates nothing, and returning it as a fresh purchase
+				// would tell the caller it owns a thing it never received.
+				if (existing.status === ShopOrderStatus.REJECTED || existing.status === ShopOrderStatus.CANCELLED)
+					throw new HttpError("CONFLICT", "That order has already been rejected or cancelled")
+				return existing
+			}
 		}
 
 		// Re-read stock inside the transaction; the catalogue page may be stale.
@@ -322,6 +341,10 @@ export async function purchase(
 				itemNameSnapshot: fresh.name,
 				quantity,
 				shopItemId,
+				// Whether this order takes stock off the shelf. The catalogue can change after the order is
+				// placed – an item that was unlimited can be given a stock figure – so the reject path cannot
+				// work it out from the item's stock later, and has to be told.
+				stockDebited: fresh.stock !== null,
 				totalCredits,
 				unitCostUsd: fresh.costUsd,
 				unitCredits: unitPrice,
@@ -331,18 +354,40 @@ export async function purchase(
 			select: shopOrderPublicSelect,
 		})
 
-		// Every coin is spendable on anything, so a purchase is paid out of the whole balance.
-		if (totalCredits > 0) {
+		// The buyer's note, kept against the order with the buyer as its author. Written here, inside the
+		// transaction, so it lands with the order it belongs to: a note that is accepted but not kept is
+		// worse than no note at all, because the staff reading the order would have no way to know one was sent.
+		if (body)
+			await tx.shopOrderNote.create({
+				data: { authorId: userId, body, orderId: order.id },
+			})
+
+		// Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole
+		// balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy
+		// banked pot for whatever is left. Writing the whole debit against SPENDABLE would drive that pot
+		// negative whenever the coins happen to sit in BANKED, and a negative pot is a state nothing else in
+		// the app is willing to create. The refund path reads these rows back, so each pot is given back
+		// exactly what it paid.
+		let remaining = totalCredits
+		for (const bucket of [CoinBucket.SPENDABLE, CoinBucket.BANKED]) {
+			if (remaining <= 0) break
+			const available = bucket === CoinBucket.SPENDABLE ? balances.spendable : balances.banked
+			const amount = Math.min(Math.max(available, 0), remaining)
+			if (amount <= 0) continue
 			await appendLedgerEntry(tx, {
-				amount: -totalCredits,
-				bucket: CoinBucket.SPENDABLE,
+				amount: -amount,
+				bucket,
 				createdById: userId,
 				kind: LedgerKind.SHOP_PURCHASE,
 				note: `${quantity}× ${fresh.name}`,
 				shopOrderId: order.id,
 				userId,
 			})
+			remaining -= amount
 		}
+		// Only reachable when a pot is already negative, which the combined check above cannot see. The
+		// purchase is refused rather than deepening the hole.
+		if (remaining > 0) throw new HttpError("INSUFFICIENT_CREDIT", `You need ${remaining} more to buy this`)
 
 		if (fresh.stock !== null) {
 			// Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser's update matches nothing and rolls back.
@@ -399,12 +444,16 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 			})
 		}
 
-		if (order.shopItemId) {
+		// The stock goes back only if it was taken. The catalogue's stock figure can change after the
+		// order was placed – an item that was unlimited can be given a figure – so the order carries the
+		// answer rather than the item's stock now. Orders placed before that column existed do not carry
+		// it, and are treated as having taken stock, which is what this path always did.
+		const stockDebited = order.stockDebited ?? true
+		if (stockDebited && order.shopItemId)
 			await tx.shopItem.updateMany({
 				data: { stock: { increment: order.quantity } },
 				where: { id: order.shopItemId, stock: { not: null } },
 			})
-		}
 
 		return tx.shopOrder.update({
 			data: {

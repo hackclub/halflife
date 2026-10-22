@@ -12,15 +12,17 @@ import {
 import { AuditAction, logAudit } from "@/lib/audit"
 import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
 import { getThemeDef, THEME_COMPLETION_BONUS } from "@/lib/config/program"
-import { getTierOrThrow, isTierId } from "@/lib/config/tiers"
+import { ENTRY_TIER, getTierOrThrow, isTierId, tierForHours } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
+import { statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
+import { DAY_MS } from "@/lib/time"
 
 // ─── Claim locks ─────────────────────────────────────────────────────────────
 
@@ -90,7 +92,7 @@ export async function sweepExpiredClaims(): Promise<number> {
  *
  * A returned phase is a request for changes, so its maker has to open the project again, fix it and hand it in – and by the time a review lands late in a week that work may no longer fit before the close. The window is measured from the return rather than the week's own close, so an extension only bites when the scheduled close is sooner, and it never shortens a longer extension an admin already put on record.
  */
-export const RETURN_EXTENSION_MS = 7 * 24 * 60 * 60 * 1000
+export const RETURN_EXTENSION_MS = 7 * DAY_MS
 
 /** A returned phase's extension: at least a week from now, kept at whichever is later than what is already on record. */
 export function returnExtensionUntil(current: Date | null | undefined, now: Date = new Date()): Date {
@@ -166,9 +168,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		&& phase === Phase.BUILD
 		&& project.theme !== Theme.WARMUP
 		&& project.designStatus !== PhaseStatus.approved
-	) {
+	)
 		throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
-	}
 
 	let tier = project.tier
 	if (approving && phase === Phase.DESIGN) {
@@ -180,17 +181,19 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	// Frozen before the snapshot read, so sessions created after it are not stamped as reviewed below.
 	const snapshotAt = new Date()
-	const breakdown = await getHoursBreakdown(project.id, phase, { live: approving })
+
+	// The live Hackatime read is the one part of this that cannot happen inside the transaction: it is
+	// network I/O with a ten second timeout and two retries, so an interactive transaction would sit on a
+	// connection – and hold this maker's credit lock – for all of it. What it does is refresh the cache the
+	// decision then reads under the lock, so the number that ends up frozen is the fresh one.
+	const live = await getHoursBreakdown(project.id, phase, { live: approving })
 	// A reviewer (human or Ari) who supplied the hours explicitly has already covered the underpayment risk that a stale Hackatime reading creates, so staleness must not block a decision that does not depend on the live value.
-	if (approving && input.hoursOverride == null && breakdown.hackatimeStale) {
+	if (approving && input.hoursOverride == null && live.hackatimeStale)
 		// Refusing here is the point: stasis's client returns 0 on a Hackatime timeout and that zero flows into the grant row, silently underpaying someone with no trace.
 		throw new HttpError(
 			"HACKATIME_STALE",
 			"Hackatime data could not be refreshed. Retry, or set an explicit hours override.",
 		)
-	}
-
-	const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
 	// A declined grant defaults to nothing: the maker asked for no parts money, so approving the design must not mint one behind their back. An explicit reviewer override still wins – setting a number there is a deliberate choice, not an accident.
 	const grantUsd =
@@ -200,16 +203,6 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	// The machine this participant is saving for is frozen alongside the tier for the pacing displays: it no longer sizes the payout, but the goal tracker still reads it to say what this week's work means for the goal. Someone who never chose one is paced against the default.
 	const goal = printerById(project.user.printerGoalId ?? DEFAULT_GOAL_ID)
-
-	// Both phases mint coins, by different rules. A design pays out only above its tier's funded hours; a build has no funded block, so every hour pays. Either way every coin is spendable on anything.
-	const coins: CoinSplit | null =
-		approving && approvedHours !== null
-			? phase === Phase.DESIGN
-				? tier
-					? designCoinsFor(tier, approvedHours)
-					: null
-				: buildCoinsFor(approvedHours)
-			: null
 
 	const tierDef = tier ? getTierOrThrow(tier) : null
 
@@ -247,7 +240,43 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
 		}
 
-		if (approving) {
+		// The hours, read under the lock rather than before it. The hours-approval route takes this same
+		// lock before it rewrites a session or a link, so a batch that rewrote them while this decision was
+		// waiting for Hackatime is already in this read, and one still waiting cannot commit until this
+		// decision has. The total the decision freezes is the total the rows hold at the moment it is made.
+		const breakdown = await getHoursBreakdown(project.id, phase, { client: tx })
+		const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
+
+		// A tier's grant buys that tier's funded block of hours, so it is not paid on fewer hours than it funds. The
+		// submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when the decision approves
+		// less time than was logged. Then the tier is what has to move, not the grant: a hundred dollars of parts for a
+		// five-hour week is money for work that was not done. An explicit grant override is an admin decision about the
+		// amount, so it is left alone.
+		if (approving && phase === Phase.DESIGN && tier && (grantUsd ?? 0) > 0 && input.grantUsdOverride == null) {
+			const funded = getTierOrThrow(tier).fundingHours
+			const approved = approvedHours ?? 0
+			if (approved < funded) {
+				const affordable = tierForHours(approved)
+				throw new HttpError(
+					"VALIDATION_FAILED",
+					affordable
+						? `Tier ${tier} funds ${funded} hours and this decision approves ${approved}h. Tier ${affordable.id} is the tier those hours earn.`
+						: `Tier ${tier} funds ${funded} hours and this decision approves ${approved}h, which is under every tier. Approve at least ${ENTRY_TIER.fundingHours} hours, or return the design for more work.`,
+				)
+			}
+		}
+
+		// Both phases mint coins, by different rules. A design pays out only above its tier's funded hours; a build has no funded block, so every hour pays. Either way every coin is spendable on anything.
+		const coins: CoinSplit | null =
+			approving && approvedHours !== null
+				? phase === Phase.DESIGN
+					? tier
+						? designCoinsFor(tier, approvedHours)
+						: null
+					: buildCoinsFor(approvedHours)
+				: null
+
+		if (approving)
 			// Accept every unreviewed session at its claimed hours, so the per-session numbers stay consistent with the frozen total.
 			// Only sessions in the snapshot: one created after it was never counted in the frozen total.
 			await tx.workSession.updateMany({
@@ -260,7 +289,6 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 					themeProjectId: project.id,
 				},
 			})
-		}
 
 		await tx.submissionReview.create({
 			data: {
@@ -404,7 +432,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			coins,
 			grantUsd,
 			phase,
-			printerQualified: !!award,
+			printerQualified: Boolean(award),
 			result: input.result,
 			themeProjectId: project.id,
 			tier,
@@ -431,7 +459,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			before: {
 				approvedHours: project.approvedHours,
 				grantUsd: project.grantUsd,
-				status: phase === Phase.DESIGN ? project.designStatus : project.buildStatus,
+				status: statusFor(project, phase),
 				tier: project.tier,
 			},
 			phase,
@@ -449,6 +477,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
  *
  * Because credit is reconciled to a target, undoing is the same call with `target: 0` – there is no separate reversal code path, so there is no separate reversal code path to get wrong.
  *
+ * The reversal takes what the maker still has, and only that. A grant they have already spent cannot be taken back, and a negative balance is a state the shop, the admin adjustment route and every display refuse to create – so the pot stops at zero, the row's own note says how much could not be taken, and the audit row says the same. The alternative, refusing the un-approval, would leave a wrongly approved design standing with its grant and its tier, which is the thing this exists to undo.
+ *
  * `grantExtension` is opt-in because the admin reversal it serves asks the maker to act (the override route notifies them), whereas Ari's own revert calls this on its way back to `in_review` – a state the maker never holds, and one where re-opening their week would be time nobody asked for.
  */
 export async function unapprovePhase(
@@ -462,10 +492,10 @@ export async function unapprovePhase(
 	const project = await prisma.themeProject.findUnique({ where: { id: themeProjectId } })
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+	const status = statusFor(project, phase)
 	if (status !== PhaseStatus.approved) throw new HttpError("CONFLICT", "That phase is not approved")
 
-	await prisma.$transaction(async tx => {
+	const { unrecovered } = await prisma.$transaction(async tx => {
 		await lockUserCredit(tx, project.userId)
 
 		// Re-read under the lock: the fast check above ran against a read taken before it, and a decision or re-approval can have committed since.
@@ -473,7 +503,7 @@ export async function unapprovePhase(
 			select: { buildStatus: true, designStatus: true },
 			where: { id: themeProjectId },
 		})
-		if ((phase === Phase.DESIGN ? fresh?.designStatus : fresh?.buildStatus) !== PhaseStatus.approved)
+		if (!fresh || statusFor(fresh, phase) !== PhaseStatus.approved)
 			throw new HttpError("CONFLICT", "That phase is no longer approved")
 
 		// A grant send holds no credit lock while HCB is called, so a design un-approval must not race it: the money would be sent for an approval that no longer stands, and the sent row would block a later send. `sendGrant` marks the row errored before it throws, which is what lets this same check pass on the retry after the window.
@@ -489,12 +519,11 @@ export async function unapprovePhase(
 					userId: project.userId,
 				},
 			})
-			if (inFlight) {
+			if (inFlight)
 				throw new HttpError(
 					"CONFLICT",
 					"A grant send is in flight for this design – wait for it to finish before un-approving",
 				)
-			}
 		}
 
 		await tx.submissionReview.updateMany({
@@ -530,62 +559,85 @@ export async function unapprovePhase(
 			where: { id: themeProjectId },
 		})
 
+		// Each reversal reports what it could not take back, so the audit row can say how much of the grant
+		// the maker had already spent. The number is in the ledger row's own note as well.
+		let unrecoveredCoins = 0
+
 		if (phase === Phase.DESIGN) {
 			// Includes the banked half. Forced savings are still savings someone was credited for work that is no longer approved, so they unwind too – otherwise un-approving a design leaves free printer money behind.
-			await reconcileGrant(tx, {
-				bucket: CoinBucket.BANKED,
-				createdById: adminId,
-				kind: LedgerKind.DESIGN_BANKED_HOURS,
-				note: `Design un-approved: ${reason}`,
-				target: 0,
-				themeProjectId,
-				userId: project.userId,
-			})
-			await reconcileGrant(tx, {
-				createdById: adminId,
-				kind: LedgerKind.DESIGN_EXCESS_HOURS,
-				note: `Design un-approved: ${reason}`,
-				target: 0,
-				themeProjectId,
-				userId: project.userId,
-			})
+			unrecoveredCoins += (
+				await reconcileGrant(tx, {
+					bucket: CoinBucket.BANKED,
+					createdById: adminId,
+					kind: LedgerKind.DESIGN_BANKED_HOURS,
+					note: `Design un-approved: ${reason}`,
+					target: 0,
+					themeProjectId,
+					userId: project.userId,
+				})
+			).unrecovered
+			unrecoveredCoins += (
+				await reconcileGrant(tx, {
+					createdById: adminId,
+					kind: LedgerKind.DESIGN_EXCESS_HOURS,
+					note: `Design un-approved: ${reason}`,
+					target: 0,
+					themeProjectId,
+					userId: project.userId,
+				})
+			).unrecovered
 		}
 
 		if (phase === Phase.BUILD) {
 			// The banked half unwinds too, for the same reason the design's does: forced savings are still savings credited for work no longer approved.
-			await reconcileGrant(tx, {
-				bucket: CoinBucket.BANKED,
-				createdById: adminId,
-				kind: LedgerKind.BUILD_BANKED_HOURS,
-				note: `Build un-approved: ${reason}`,
-				target: 0,
-				themeProjectId,
-				userId: project.userId,
-			})
-			await reconcileGrant(tx, {
-				createdById: adminId,
-				kind: LedgerKind.BUILD_HOURS,
-				note: `Build un-approved: ${reason}`,
-				target: 0,
-				themeProjectId,
-				userId: project.userId,
-			})
-			await reconcileGrant(tx, {
-				createdById: adminId,
-				kind: LedgerKind.THEME_COMPLETION_BONUS,
-				note: `Build un-approved: ${reason}`,
-				target: 0,
-				themeProjectId,
-				userId: project.userId,
-			})
+			unrecoveredCoins += (
+				await reconcileGrant(tx, {
+					bucket: CoinBucket.BANKED,
+					createdById: adminId,
+					kind: LedgerKind.BUILD_BANKED_HOURS,
+					note: `Build un-approved: ${reason}`,
+					target: 0,
+					themeProjectId,
+					userId: project.userId,
+				})
+			).unrecovered
+			unrecoveredCoins += (
+				await reconcileGrant(tx, {
+					createdById: adminId,
+					kind: LedgerKind.BUILD_HOURS,
+					note: `Build un-approved: ${reason}`,
+					target: 0,
+					themeProjectId,
+					userId: project.userId,
+				})
+			).unrecovered
+			unrecoveredCoins += (
+				await reconcileGrant(tx, {
+					createdById: adminId,
+					kind: LedgerKind.THEME_COMPLETION_BONUS,
+					note: `Build un-approved: ${reason}`,
+					target: 0,
+					themeProjectId,
+					userId: project.userId,
+				})
+			).unrecovered
 		}
+
+		return { unrecovered: unrecoveredCoins }
 	})
 
 	await logAudit({
 		action: AuditAction.ADMIN_UNAPPROVE_PHASE,
 		actorEmail: adminEmail,
 		actorId: adminId,
-		metadata: { before: { status: PhaseStatus.approved }, phase, reason },
+		metadata: {
+			before: { status: PhaseStatus.approved },
+			phase,
+			reason,
+			// What the reversal could not take back, because the maker had already spent it. Zero in the
+			// ordinary case; a number here is the programme carrying a grant that was withdrawn too late.
+			unrecoveredCoins: unrecovered,
+		},
 		targetId: themeProjectId,
 		targetType: "ThemeProject",
 	})
@@ -603,7 +655,7 @@ export async function reopenPhase(
 	const project = await prisma.themeProject.findUnique({ where: { id: themeProjectId } })
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+	const status = statusFor(project, phase)
 	if (status !== PhaseStatus.rejected) throw new HttpError("CONFLICT", "That phase is not rejected")
 
 	// Conditional on the status that was read: an admin double-click, or a reopen racing a resubmission, must not overwrite a newer state.

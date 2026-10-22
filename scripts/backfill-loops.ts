@@ -87,16 +87,16 @@ async function main() {
 			alreadyLinked++
 			continue
 		}
-		pending.push({ email: key, hasRow: !!buf, recordId, userId: u.id })
+		pending.push({ email: key, hasRow: Boolean(buf), recordId, userId: u.id })
 	}
 
-	if (!commit) {
+	if (!commit)
 		console.log(
 			`[dry run] already linked: ${alreadyLinked}, would link: ${pending.length}, unmappable (no Signups row for this email): ${unmappable}`,
 		)
-	} else {
+	else {
 		for (const p of pending) {
-			if (p.hasRow) {
+			if (p.hasRow)
 				await prisma.rsvpBuffer.update({
 					data: {
 						airtableRecordId: p.recordId,
@@ -107,7 +107,7 @@ async function main() {
 					},
 					where: { email: p.email },
 				})
-			} else {
+			else
 				await prisma.rsvpBuffer.create({
 					data: {
 						airtableRecordId: p.recordId,
@@ -117,7 +117,7 @@ async function main() {
 						userId: p.userId,
 					},
 				})
-			}
+
 			linked++
 			if (linked % 100 === 0) console.log(`linked ${linked}/${pending.length}…`)
 		}
@@ -130,9 +130,8 @@ async function main() {
 	}
 
 	const result = await syncLoopsProperties({ dryRun: !commit })
-	if ("skipped" in result) {
-		console.log(`loops sync skipped: ${result.skipped}`)
-	} else {
+	if ("skipped" in result) console.log(`loops sync skipped: ${result.skipped}`)
+	else {
 		console.log(
 			`loops sync (${result.dryRun ? "dry run" : "commit"}): users=${result.users} matched=${result.matched} `
 				+ `(by id=${result.matchedById}, by record=${result.matchedByRecord}, by email=${result.matchedByEmail}) `

@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/time"
 /**
  * How a daily summary post is put together.
  *
@@ -14,7 +15,7 @@ export const LEADERBOARD_LIMIT = 10
  *
  * Kept next to the `":mc-clock: in the last 24 hours..."` line that promises it, so the two cannot drift – the constant used to live in each route and the line here, and nothing stopped someone changing one without the other.
  */
-export const SUMMARY_WINDOW_MS = 24 * 60 * 60 * 1000
+export const SUMMARY_WINDOW_MS = DAY_MS
 
 /** The start of the window, for a caller that wants to pass the `since` down to a query. */
 export const summarySince = (now: Date = new Date()): Date => new Date(now.getTime() - SUMMARY_WINDOW_MS)

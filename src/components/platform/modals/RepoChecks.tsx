@@ -19,20 +19,25 @@ export function RepoChecks({
 	project,
 	onResult,
 	editable = true,
+	syncRepo: initialSyncRepo,
 }: {
 	project: Project
-	onResult: (result: RepoCheckResult | null) => void
+	onResult(result: RepoCheckResult | null): void
 	/**
 	 * Whether the link can be changed from here. The submit sheet says yes, so a wrong link is fixed without leaving it; the project page says no, because its own details editor already owns the link.
 	 */
 	editable?: boolean
+	/**
+	 * The sync target the page already loaded, when it has one. Passing it – even as null – skips the second read of an endpoint the server render has already answered; omitting it makes the sheet load the shortcut for itself.
+	 */
+	syncRepo?: { repo: string; differs: boolean } | null
 }) {
 	const { linkSyncRepoToProject } = useStore()
 	const [data, setData] = useState<RepoCheckResult | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	// Whether the sync writes to a different repo than the project links to, and what that repo is – the shortcut offered when the link is missing or wrong.
-	const [syncRepo, setSyncRepo] = useState<{ repo: string; differs: boolean } | null>(null)
+	const [syncRepo, setSyncRepo] = useState<{ repo: string; differs: boolean } | null>(initialSyncRepo ?? null)
 	const [linking, setLinking] = useState(false)
 
 	// Runs on mount and on a new link. The sync state is a second read, and only its repo identity is kept: the rest of it belongs to the sync settings box.
@@ -48,9 +53,10 @@ export function RepoChecks({
 	}, [project.id])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and a new project
-		loadSync()
-	}, [loadSync])
+		// The page already loaded the sync state; only a surface without it asks.
+		if (initialSyncRepo !== undefined) return
+		void loadSync()
+	}, [initialSyncRepo, loadSync])
 
 	async function linkProject() {
 		if (!syncRepo) return
@@ -68,21 +74,22 @@ export function RepoChecks({
 		onResult(null)
 		try {
 			const res = await fetch(`/api/projects/${project.id}/preflight`, { cache: "no-store" })
-			const body = await res.json().catch(() => null)
+			const body = (await res.json().catch(() => null)) as (RepoCheckResult & { error?: { message?: string } }) | null
 			if (!res.ok) throw new Error(body?.error?.message ?? "Could not check the repo")
-			setData(body as RepoCheckResult)
-			onResult(body as RepoCheckResult)
+			if (!body) throw new Error("Could not check the repo")
+			setData(body)
+			onResult(body)
 		} catch (err) {
 			setError((err as Error).message)
 		} finally {
 			setLoading(false)
 		}
-		// The link is the input: a new one means a fresh check. eslint-disable-next-line react-hooks/exhaustive-deps
+		// The link is the input: a new one means a fresh check.
 	}, [project.id, project.githubRepo])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and on a new link
-		run()
+		// fetching on mount and on a new link
+		void run()
 	}, [run])
 
 	const blocking = data?.checks.filter(c => c.blocking && c.status === "fail").length ?? 0
@@ -180,6 +187,16 @@ function CheckRow({ check }: { check: RepoCheck }) {
 					<span className="block text-[0.8rem] leading-snug [overflow-wrap:anywhere] text-navy-soft">
 						{check.detail}
 					</span>
+				)}
+				{check.link && (
+					<a
+						className="mt-1 inline-flex items-center gap-1 text-[0.8rem] font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+						href={check.link.href}
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						{check.link.label}
+					</a>
 				)}
 			</span>
 		</li>

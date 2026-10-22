@@ -1,5 +1,5 @@
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok, parseBody } from "@/lib/api"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { PLATFORM_INFO, readPublicReelLink } from "@/lib/public-reels"
 import { publicReelLinksSchema } from "@/lib/schemas/feed"
@@ -15,9 +15,7 @@ interface Params {
  *
  * Only the reel's author can add links to it. Each link is checked against its platform and stored in its tidy form (lib/public-reels.ts), which is also what makes a post claimable once: the same link sent again by its owner is accepted and not duplicated, and a link someone else already added is refused. Nothing is written unless every link passes, so a typo in one field never leaves the others half saved.
  */
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, publicReelLinksSchema)
@@ -46,13 +44,12 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		if (link && row.userId !== gate.user.id)
 			errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
 	}
-	if (Object.keys(errors).length > 0) {
+	if (Object.keys(errors).length > 0)
 		return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })
-	}
 
 	const mine = new Set(taken.map(t => t.url))
 	const fresh = links.filter(l => !mine.has(l.url))
-	if (fresh.length > 0) {
+	if (fresh.length > 0)
 		await prisma.publicReel.createMany({
 			data: fresh.map(l => ({
 				email: gate.user.email,
@@ -65,7 +62,6 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			// Two tabs sending the same link at once: the unique url settles it.
 			skipDuplicates: true,
 		})
-	}
 
 	return ok({ saved: links.length }, { status: 201 })
 })

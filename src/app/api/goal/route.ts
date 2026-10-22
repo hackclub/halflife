@@ -1,8 +1,8 @@
 import { ParticipantGoal } from "@/app/generated/prisma/enums"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { PRINTERS } from "@/lib/config/printers"
-import { requireSession } from "@/lib/guards"
+import { withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { setGoalSchema } from "@/lib/schemas/goal"
 
@@ -15,10 +15,7 @@ export const dynamic = "force-dynamic"
  *
  * Choosing a funding answer leaves `printerGoalId` exactly as it was rather than nulling it. Somebody who goes for funding this week and changes their mind next week gets their own machine back, not the default; and nothing already banked was ever paced against the wrong target, because the pace is read live from this column rather than frozen at approval.
  */
-export const PATCH = withRoute(async (req: Request) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const PATCH = withSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, setGoalSchema)
 	if (parsed.error) return parsed.error
 
@@ -49,9 +46,8 @@ export const PATCH = withRoute(async (req: Request) => {
 	}
 
 	// The machine has its own audit trail because it is the part that moves money: every design approval from here on mints against it.
-	if (printer && before?.printerGoalId !== printer) {
+	if (printer && before?.printerGoalId !== printer)
 		await logAudit({ action: AuditAction.USER_SET_PRINTER_GOAL, ...who, metadata: { printerGoalId: printer } })
-	}
 
 	// The only interesting fact about a change is what it changed from, and for the two funding answers it is also the count the program reports on.
 	await logAudit({

@@ -16,11 +16,11 @@ function matches(presented: string, expected: string): boolean {
  * An unset env var yields 503, never an open route: a machine endpoint that silently stops checking its key is worse than one that stops working.
  */
 export function requireBearerAuth(request: NextRequest, envVars: string[]): NextResponse<ApiErrorBody> | null {
-	const expected = envVars.map(v => process.env[v]).filter((v): v is string => !!v)
+	const expected = envVars.map(v => process.env[v]).filter((v): v is string => Boolean(v))
 	if (expected.length === 0) return fail("NOT_CONFIGURED", `Set one of ${envVars.join(", ")} to enable this endpoint`)
 
 	const header = request.headers.get("authorization") ?? ""
-	const match = header.match(/^Bearer\s+(.+)$/i)
+	const match = /^Bearer\s+(.+)$/i.exec(header)
 	if (!match?.[1]) return fail("UNAUTHENTICATED", "Missing bearer token")
 
 	const presented = match[1].trim()
@@ -43,12 +43,11 @@ export function requireExportAuth(
 ): { denied: NextResponse<ApiErrorBody> } | { scope: ExportScope } {
 	const internal = process.env.INTEGRATION_API_KEY
 	const partner = process.env.EXPORT_API_KEY
-	if (!internal && !partner) {
+	if (!internal && !partner)
 		return { denied: fail("NOT_CONFIGURED", "Set EXPORT_API_KEY or INTEGRATION_API_KEY to enable this endpoint") }
-	}
 
 	const header = request.headers.get("authorization") ?? ""
-	const match = header.match(/^Bearer\s+(.+)$/i)
+	const match = /^Bearer\s+(.+)$/i.exec(header)
 	if (!match?.[1]) return { denied: fail("UNAUTHENTICATED", "Missing bearer token") }
 
 	const presented = match[1].trim()

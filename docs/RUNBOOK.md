@@ -52,6 +52,15 @@ Coolify.
    rewrites them in one pass. See [BACKEND.md](./BACKEND.md) → Reviewing with
    Ari.
 
+   **When the review ring disagrees with Ari's board.**
+   `bun --conditions=react-server scripts/ari-review-counts.ts --ari` prints the
+   local ship counts beside the phase Ari reports for every recorded ship id,
+   including the states Ari's four slices omit, and names any ship whose local
+   state disagrees. Run it with the production `DATABASE_URL` and the program's
+   `ARI_*` secrets. A 409 `already_queued` that `ari-retry` used to retry forever
+   is now adopted as the ship's id, so one run of the hourly job also links any
+   hand-in whose original send response was lost.
+
 3. **Create the project and database.**
 
    ```
@@ -92,8 +101,20 @@ Coolify.
    Watch `get_build_logs`. `next.config.ts` runs at build time, so
    `NEXT_PUBLIC_UPLOAD_HOST` only reaches the image's `next/image` allowlist if
    the builder passes it as a build arg; runtime env does not (the Dockerfile
-   declares it). `NEXT_PUBLIC_APP_URL` is optional – the browser falls back to
-   the page origin and server code to `BETTER_AUTH_URL`.
+   declares it).
+
+   **`NEXT_PUBLIC_APP_URL` is the public origin, and production needs it.** Set it
+   to `https://<the host people use>` – the same value as `BETTER_AUTH_URL`, and the
+   same value as the `NEXT_PUBLIC_APP_URL` build arg the builder passes. It is the
+   origin in every absolute link the app writes: the QR code a phone opens, the
+   project and review links in a notification, and the banner committed into a
+   maker's repository. `.env.example` leaves it blank on purpose, so a file copied
+   over verbatim leaves production pointing at `localhost`.
+
+   `APP_PUBLIC_HOSTS` names the hosts this deployment answers on (`halflife.hackclub.com`
+   and the `half-life.k.hackclub.dev` ingress by default). The redirect resolver and
+   better-auth's allowed hosts read the same list, so a deployment reached on another
+   name – a second ingress, a vanity domain – needs it here rather than a code change.
 
    Set `REQUIRE_BASICAUTH=true` plus
    `BASICAUTH_USERNAME`/`BASICAUTH_PASSWORD` until launch day – the gate now
@@ -275,6 +296,40 @@ response and in the `airtable_loops` sync-run row, and logs an error. Look for
 that flag before trusting a run: a row that is not found is skipped and counted
 rather than raised, which is exactly how this stayed invisible.
 
+### Review decision emails (the override columns)
+
+The `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes` columns on
+`YSWS Project Submission` are what the review email triggers on. They are not
+enough on their own: email-tools only forwards a `Loops - …` field when its value
+**changed** on that row, and the project name and week were written at submit, so
+a decision on an older project never re-sent them and the contact kept the
+project from the maker's most recent submission.
+
+Two extra columns on that table fix it:
+
+- `Loops - Override - halfLifeProjectName`
+- `Loops - Override - halfLifeProjectWeek`
+
+They must be single-line text fields. `syncReviewDecisionToYsws`
+(`src/lib/airtable/sync.ts`) writes them in the same patch as the status and
+note. email-tools recognises the `Loops - Override - ` prefix, maps each onto
+the same contact property as the normal column, and applies it with its
+`override` strategy. The value carries a zero-width stamp so a repeated decision
+on the same project is still a change the poller forwards; it is invisible in
+the email.
+
+Set them up in this order, or the first poll after the fields appear will do a
+full resync and write a blank project name to every contact:
+
+1. Pause the Airtable source in the email-tools admin.
+2. Create both columns as single-line text.
+3. `bun --conditions=react-server scripts/backfill-loops-review-overrides.ts`
+   (dry run), then repeat with `--commit`.
+4. Resume the source.
+
+The app skips the columns when they are absent, so a base without them keeps
+working as before.
+
 ### Cloudflare kills anything over ~100 seconds
 
 `halflife.hackclub.com` sits behind Cloudflare, which caps the proxy read timeout
@@ -356,7 +411,9 @@ every such project (dry run) and `--commit` gives each the same week,
 project with an extension already running and is safe to re-run. Run it where
 `DATABASE_URL` points at the real database.
 
-**A project was auto-returned for a maker who had not verified their identity** – Ari's *Identity screening* answers a ship from an unverified maker with an automated request-changes, which lands the phase on "needs changes". Turning that screen off is forward-only: the projects already returned that way are still waiting on a return that should not have been made. `bun --conditions=react-server scripts/repair-identity-returns.ts` reports every such phase (dry run) and `--commit` puts each back in review and clears its Ari ship id, so `ari-retry` sends a fresh ship for a real review on the next hourly run. It only touches phases whose standing decision is the identity return, so a real return is left alone, and re-running is safe. Run it where `DATABASE_URL` points at the real database.
+**A project was auto-returned for a maker who had not verified their identity** – Ari's *Identity screening* answers a ship from an unverified maker with an automated request-changes, which lands the phase on "needs changes". Turning that screen off is forward-only: the projects already returned that way are still waiting on a return that should not have been made. `bun --conditions=react-server scripts/repair-identity-returns.ts` reports every such phase (dry run) and `--commit` puts each back in review, clears its Ari ship id and puts its Airtable row back on "Pending Review", so `ari-retry` sends a fresh ship for a real review on the next hourly run. It only touches phases whose standing decision is the identity return, so a real return is left alone, and re-running is safe.
+
+Runs from before the row was mirrored left it on "Changes Requested" while the phase went back in review. The next return then writes the value the row already holds, and email-tools forwards only changed values – so the maker never hears the real decision. `--heal` reports those phases (dry run) and `--heal --commit` puts their rows back on "Pending Review" and clears the stale note. It touches only phases this script reopened and that are still in review, so a repaired phase that has since been decided is left alone. Run both where `DATABASE_URL` points at the real database.
 
 **Import the pre-season warm-up projects** – `/admin/program` → *Warm-up
 projects from Airtable* pulls the rows the Fillout form wrote into the `YSWS

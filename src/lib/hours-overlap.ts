@@ -18,6 +18,7 @@
  *
  * A type alias rather than an interface on purpose, for the same reason `CoinSplit` is one in hours.ts: these get written into Prisma's JSON columns, and `InputJsonValue` only accepts types with an implicit index signature, which interfaces do not have.
  */
+// oxlint-disable-next-line typescript/consistent-type-definitions
 export type Interval = {
 	start: number
 	end: number
@@ -37,19 +38,17 @@ export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
 	const clean: Interval[] = intervals
 		.filter(i => Number.isFinite(i?.start) && Number.isFinite(i?.end) && (i?.end ?? 0) > (i?.start ?? 0))
 		.map(i => ({ end: i.end, start: i.start }))
-		.sort((a, b) => a.start - b.start)
+		.toSorted((a, b) => a.start - b.start)
 	const first = clean[0]
 	if (!first) return []
 
 	const merged: Interval[] = [first]
 	for (const next of clean.slice(1)) {
-		const last = merged[merged.length - 1]
+		const last = merged.at(-1)
 		if (!last) continue
 		if (next.start <= last.end) {
 			if (next.end > last.end) last.end = next.end
-		} else {
-			merged.push(next)
-		}
+		} else merged.push(next)
 	}
 	return merged
 }
@@ -59,9 +58,9 @@ export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
  *
  * Both sides are merged first, so the answer is the size of the intersection of the two unions, counted once however many windows happened to describe it. Zero is the honest answer for "these two sets never touch", which is the common case: most people track with one tool or the other.
  */
-export function overlapSeconds(a: readonly Interval[], b: readonly Interval[]): number {
-	const left = mergeIntervals(a)
-	const right = mergeIntervals(b)
+export function overlapSeconds(first: readonly Interval[], second: readonly Interval[]): number {
+	const left = mergeIntervals(first)
+	const right = mergeIntervals(second)
 	if (left.length === 0 || right.length === 0) return 0
 
 	let total = 0
@@ -173,9 +172,8 @@ export function windowsForLink(
 	hackatimeProject: string,
 ): Interval[] {
 	const windows: Interval[] = [...ownPhase]
-	for (const recording of elsewhere) {
-		if (recording.hackatimeProject === hackatimeProject) windows.push(recording.window)
-	}
+	for (const recording of elsewhere) if (recording.hackatimeProject === hackatimeProject) windows.push(recording.window)
+
 	return windows
 }
 

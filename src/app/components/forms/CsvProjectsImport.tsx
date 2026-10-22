@@ -39,9 +39,9 @@ export function CsvProjectsImport() {
 			!window.confirm(
 				`Import ${file.name} as warm-up projects? This creates an account for any email that has none, one Theme.WARMUP project per row, and a devlog per entry in the row's journals column.`,
 			)
-		) {
+		)
 			return
-		}
+
 		setBusy(true)
 		setError(null)
 		setProblems([])

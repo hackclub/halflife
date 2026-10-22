@@ -1,6 +1,7 @@
+/// <reference types="bun-types/s3" />
 import "server-only"
 import { createHash, randomUUID } from "node:crypto"
-import { DeleteObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import type { S3Client as BunS3Client } from "bun"
 import { HttpError } from "@/lib/errors"
 
 const DEFAULT_MAX_UPLOAD_BYTES = 104_857_600
@@ -65,7 +66,7 @@ const VIDEO_FTYP_BRANDS = new Set([
 /** Four ASCII bytes at `offset`, or fewer/`\0` when the buffer is short. */
 function brandAt(bytes: Uint8Array, offset: number): string {
 	let brand = ""
-	for (let i = 0; i < 4; i += 1) brand += String.fromCharCode(bytes[offset + i] ?? 0)
+	for (let i = 0; i < 4; i += 1) brand += String.fromCodePoint(bytes[offset + i] ?? 0)
 	return brand
 }
 
@@ -123,11 +124,11 @@ export interface UploadedObjectPage {
 }
 
 export function isUploadConfigured(): boolean {
-	return !!(
+	return Boolean(
 		process.env.S3_ACCESS_KEY_ID
-		&& process.env.S3_SECRET_ACCESS_KEY
-		&& process.env.S3_BUCKET_NAME
-		&& process.env.S3_ENDPOINT
+			&& process.env.S3_SECRET_ACCESS_KEY
+			&& process.env.S3_BUCKET_NAME
+			&& process.env.S3_ENDPOINT,
 	)
 }
 
@@ -138,75 +139,73 @@ function credentials() {
 	}
 }
 
-function client(): S3Client {
-	return new S3Client({
-		credentials: credentials(),
-		endpoint: process.env.S3_ENDPOINT,
-		region: "auto",
-	})
-}
-
-/** Some R2 configurations put the bucket in the endpoint path, e.g. `/my-bucket`. */
-function endpointIncludesBucket(): boolean {
-	const endpoint = process.env.S3_ENDPOINT
+/**
+ * The S3 endpoint, without a bucket segment.
+ *
+ * Some configurations put the bucket in the endpoint path, like `/my-bucket`. Bun appends the bucket to a path-style endpoint, so leaving it there addresses the bucket twice; strip that one segment here and pass the bucket separately, as every other deployment already does.
+ */
+function endpoint(): string | undefined {
+	const raw = process.env.S3_ENDPOINT
 	const bucket = process.env.S3_BUCKET_NAME
-	if (!endpoint || !bucket) return false
+	if (!raw || !bucket) return raw
 	try {
-		const path = new URL(endpoint).pathname.replace(/^\/+|\/+$/g, "")
-		return path === bucket
+		const url = new URL(raw)
+		if (url.pathname.replaceAll(/^\/+|\/+$/g, "") !== bucket) return raw
+		url.pathname = url.pathname.replace(/\/[^/]+\/?$/, "")
+		return url.toString().replace(/\/$/, "")
 	} catch {
-		return false
+		// Not a URL; the client will report that as a configuration error when it runs.
+		return raw
 	}
 }
 
-function listingClient(): S3Client {
-	const endpoint = process.env.S3_ENDPOINT
-	if (!endpoint || !endpointIncludesBucket()) {
-		return new S3Client({ credentials: credentials(), endpoint, region: "auto" })
-	}
+let cachedClient: BunS3Client | undefined
 
-	const root = new URL(endpoint)
-	root.pathname = root.pathname.replace(/\/[^/]+$/, "")
-	return new S3Client({
-		credentials: credentials(),
-		endpoint: root.toString().replace(/\/$/, ""),
+/**
+ * The Bun S3 client, made on first use.
+ *
+ * Loaded at call time rather than at module load so a runtime without Bun still serves every page that only mints public URLs; the pages that read or write objects are the ones that need it. Production runs on Bun, which is where this exists.
+ */
+async function client(): Promise<BunS3Client> {
+	if (cachedClient) return cachedClient
+	const bun = await import("bun").catch(err => {
+		console.error("[uploads] the Bun S3 client could not be loaded:", err)
+		throw new HttpError("NOT_CONFIGURED", "File uploads need the Bun runtime on this deployment.")
+	})
+	cachedClient = new bun.S3Client({
+		...credentials(),
+		bucket: process.env.S3_BUCKET_NAME,
+		endpoint: endpoint(),
 		region: "auto",
 	})
+	return cachedClient
 }
 
 export async function listUploadedObjects(
 	opts: { prefix?: string; cursor?: string; limit?: number } = {},
 ): Promise<UploadedObjectPage> {
-	const bucket = process.env.S3_BUCKET_NAME
-	if (!isUploadConfigured() || !bucket)
-		throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
+	if (!isUploadConfigured()) throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 
 	const prefix = opts.prefix ?? ""
-	const bucketPrefix = endpointIncludesBucket() ? `${bucket}/` : ""
-	const requestPrefix = bucketPrefix ? `${bucketPrefix}${prefix}` : prefix || undefined
 	try {
-		const result = await listingClient().send(
-			new ListObjectsV2Command({
-				Bucket: bucket,
-				ContinuationToken: opts.cursor || undefined,
-				MaxKeys: Math.min(Math.max(opts.limit ?? 100, 1), 1000),
-				Prefix: requestPrefix || undefined,
-			}),
-		)
+		const s3 = await client()
+		const result = await s3.list({
+			continuationToken: opts.cursor || undefined,
+			maxKeys: Math.min(Math.max(opts.limit ?? 100, 1), 1000),
+			prefix: prefix || undefined,
+		})
 
 		return {
-			nextCursor: result.IsTruncated ? (result.NextContinuationToken ?? null) : null,
-			objects: (result.Contents ?? []).flatMap(object => {
-				if (!object.Key) return []
-				const key =
-					bucketPrefix && object.Key.startsWith(bucketPrefix) ? object.Key.slice(bucketPrefix.length) : object.Key
+			nextCursor: result.isTruncated ? (result.nextContinuationToken ?? null) : null,
+			objects: (result.contents ?? []).flatMap(object => {
+				if (!object.key) return []
 				return [
 					{
-						key,
-						lastModified: object.LastModified ?? null,
-						size: object.Size ?? 0,
-						storageClass: object.StorageClass ?? null,
-						url: publicUrlFor(key),
+						key: object.key,
+						lastModified: object.lastModified ? new Date(object.lastModified) : null,
+						size: object.size ?? 0,
+						storageClass: object.storageClass ?? null,
+						url: publicUrlFor(object.key),
 					},
 				]
 			}),
@@ -223,15 +222,13 @@ export function validateUpload(
 	contentType: string,
 	size: number,
 ): { ok: true; ext: string } | { ok: false; reason: string } {
-	if (size > MAX_UPLOAD_BYTES) {
-		return { ok: false, reason: `File is larger than ${MAX_UPLOAD_BYTES} bytes` }
-	}
+	if (size > MAX_UPLOAD_BYTES) return { ok: false, reason: `File is larger than ${MAX_UPLOAD_BYTES} bytes` }
+
 	const ext = filename.split(".").pop()?.toLowerCase() ?? ""
 	const allowed = EXTENSION_MIME[ext]
 	if (!allowed) return { ok: false, reason: `Unsupported file type: .${ext}` }
-	if (!allowed.includes(contentType)) {
-		return { ok: false, reason: `Content type ${contentType} does not match .${ext}` }
-	}
+	if (!allowed.includes(contentType)) return { ok: false, reason: `Content type ${contentType} does not match .${ext}` }
+
 	return { ext, ok: true }
 }
 
@@ -269,14 +266,8 @@ export function isOwnedKey(userId: string, key: string): boolean {
 
 export async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
 	try {
-		await client().send(
-			new PutObjectCommand({
-				Body: body,
-				Bucket: process.env.S3_BUCKET_NAME,
-				ContentType: contentType,
-				Key: key,
-			}),
-		)
+		const s3 = await client()
+		await s3.write(key, body, { type: contentType })
 	} catch (err) {
 		throw asConfigError(err)
 	}
@@ -290,14 +281,16 @@ export async function putObject(key: string, body: Buffer, contentType: string):
  * Only client-side faults are translated. A network blip or a bucket outage is genuinely transient and should keep its own error and its retry semantics.
  */
 function asConfigError(err: unknown): unknown {
-	const fault = (err as { $fault?: string })?.$fault
 	const name = (err as { name?: string })?.name
+	const code = (err as { code?: string })?.code
+	// Bun's own refusals are configuration too: a bad endpoint, a missing credential or a signature it could not build.
+	const bunConfigFault = code?.startsWith("ERR_S3_") === true
 	const credentialFault =
-		fault === "client"
+		name === "S3Error"
 		&& ["InvalidArgument", "InvalidAccessKeyId", "SignatureDoesNotMatch", "AccessDenied", "NoSuchBucket"].includes(
-			name ?? "",
+			code ?? "",
 		)
-	if (!credentialFault) return err
+	if (!bunConfigFault && !credentialFault) return err
 	console.error("[uploads] the bucket rejected our credentials:", err)
 	return new HttpError(
 		"NOT_CONFIGURED",
@@ -311,7 +304,12 @@ function asConfigError(err: unknown): unknown {
  * Deleting a post row does not delete its bytes – a soft-deleted reel can be restored by a moderator, and its video has to still be there when it is. So this is for the orphan sweep and for the smoke test, not for the delete path.
  */
 export async function deleteObject(key: string): Promise<void> {
-	await client().send(new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET_NAME, Key: key }))
+	try {
+		const s3 = await client()
+		await s3.delete(key)
+	} catch (err) {
+		throw asConfigError(err)
+	}
 }
 
 /**

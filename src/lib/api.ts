@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { API_ERROR_STATUS, type ApiErrorCode, HttpError } from "@/lib/errors"
+import { rateLimited } from "@/lib/rate-limit"
 
 export interface ApiErrorBody {
 	error: { code: ApiErrorCode; message: string; details?: unknown }
@@ -41,22 +42,22 @@ export async function parseBody<S extends z.ZodType>(request: Request, schema: S
 	}
 
 	const result = schema.safeParse(raw)
-	if (!result.success) {
+	if (!result.success)
 		return {
 			error: fail("VALIDATION_FAILED", "Invalid request", z.treeifyError(result.error)),
 		}
-	}
+
 	return { data: result.data }
 }
 
 export function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S): Parsed<z.output<S>> {
 	const raw = Object.fromEntries(request.nextUrl.searchParams.entries())
 	const result = schema.safeParse(raw)
-	if (!result.success) {
+	if (!result.success)
 		return {
 			error: fail("INVALID_QUERY", "Invalid query parameters", z.treeifyError(result.error)),
 		}
-	}
+
 	return { data: result.data }
 }
 
@@ -68,11 +69,104 @@ const MULTIPART_OVERHEAD_BYTES = 1 << 20
 type ParsedForm = { data: FormData; error?: never } | { data?: never; error: NextResponse<ApiErrorBody> }
 
 /**
+ * How many bytes of upload body may be held in memory at once, process-wide.
+ *
+ * A body is held several times over while it is parsed – the chunks as they arrive, the concatenated buffer, and the multipart blob the runtime builds from that – so the number of concurrent requests is what decides the process's peak memory, and a per-request cap does not bound it.
+ *
+ * A count of requests is the wrong unit, though: a cohort posting journal photographs is a hundred small bodies, while a maker uploading one phone video is a single large one, and a count treats the two as the same thing. The budget is in bytes, so the video does not squeeze out the hundred and the hundred does not add up to a gigabyte.
+ *
+ * This is a reservation, not a measurement: a request reserves what it says it will send, and one that says nothing (a chunked body) reserves the whole cap, because nothing is known about it until it has been read.
+ */
+const UPLOAD_MEMORY_BUDGET_BYTES = 128 * 1024 * 1024
+
+/** How long a request waits for room in the budget before it is refused. */
+const UPLOAD_RESERVATION_WAIT_MS = 30_000
+
+/** Bytes reserved by bodies being buffered right now. */
+let reservedUploadBytes = 0
+
+/** Requests waiting for room, in the order they asked. */
+interface UploadWaiter {
+	bytes: number
+	resolve(granted: boolean): void
+}
+const uploadWaiters: UploadWaiter[] = []
+
+/**
+ * Hand the freed bytes to the first waiter they fit.
+ *
+ * First come, first served, and a waiter that does not fit is passed over rather than blocking the queue behind it: one large upload must not stop a hundred small ones from going through.
+ */
+function drainUploadWaiters(): void {
+	for (let i = 0; i < uploadWaiters.length; ) {
+		const waiter = uploadWaiters[i]
+		if (!waiter) break
+		if (reservedUploadBytes + waiter.bytes > UPLOAD_MEMORY_BUDGET_BYTES) {
+			i += 1
+			continue
+		}
+		reservedUploadBytes += waiter.bytes
+		uploadWaiters.splice(i, 1)
+		waiter.resolve(true)
+	}
+}
+
+/**
+ * Reserve room in the budget for a body, waiting for it if the budget is full.
+ *
+ * Waiting rather than refusing is what keeps a cohort upload working: the room is taken before the body is read, so a request that waits costs no memory of its own.
+ */
+function reserveUploadBytes(bytes: number): Promise<boolean> {
+	if (reservedUploadBytes + bytes <= UPLOAD_MEMORY_BUDGET_BYTES) {
+		reservedUploadBytes += bytes
+		return Promise.resolve(true)
+	}
+	return new Promise<boolean>(resolve => {
+		const waiter: UploadWaiter = { bytes, resolve }
+		uploadWaiters.push(waiter)
+		const timer = setTimeout(() => {
+			const index = uploadWaiters.indexOf(waiter)
+			if (index === -1) return
+			uploadWaiters.splice(index, 1)
+			resolve(false)
+		}, UPLOAD_RESERVATION_WAIT_MS)
+		// The timer must not be what keeps the process alive on its way out.
+		timer.unref?.()
+	})
+}
+
+/** Give the reservation back and let the queue move. */
+function releaseUploadBytes(bytes: number): void {
+	reservedUploadBytes = Math.max(0, reservedUploadBytes - bytes)
+	drainUploadWaiters()
+}
+
+/**
  * Parse an upload's multipart form without letting the caller decide how much memory the server spends before a single field can be read.
  *
  * `request.formData()` materialises the whole body first, and both upload routes check their size limits afterwards – fine for a small staff form, but a denial of service for an upload. The handoff path is deliberately unauthenticated and reads its token out of the form, so a limit checked after parsing arrives too late. Content-Length is checked first (cheap, and what a normal client sends), then the stream is counted as it is read, so a chunked request cannot skip the check by omitting the header.
  */
 export async function parseUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
+	const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
+	const declared = Number(request.headers.get("content-length") ?? "")
+	const reservation = Number.isFinite(declared) && declared > 0 ? Math.min(declared, cap) : cap
+
+	if (!(await reserveUploadBytes(reservation)))
+		return { error: fail("RATE_LIMITED", "Too many uploads at once – wait a moment and try again") }
+
+	try {
+		return await bufferUploadForm(request, maxFileBytes)
+	} finally {
+		releaseUploadBytes(reservation)
+	}
+}
+
+/**
+ * The parse itself, with the cap applied while the body streams in.
+ *
+ * The room in the budget is held for this and not for the whole request: the peak is here, where the chunks, the concatenated buffer and the multipart blob are all alive at once. What the caller does with the form afterwards is its own memory, and it is one copy rather than three.
+ */
+async function bufferUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
 	const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
 	const tooLarge = () => fail("VALIDATION_FAILED", `That upload is larger than ${maxFileBytes} bytes`)
 	const invalid = () => fail("INVALID_BODY", "Expected a multipart form")
@@ -101,42 +195,29 @@ export async function parseUploadForm(request: Request, maxFileBytes: number): P
 		return { error: invalid() }
 	}
 
-	// Rebuild a request so the runtime's multipart parser does the parsing rather than hand-rolling boundaries.
+	// Rebuild a request so the runtime's multipart parser does the parsing rather than hand-rolling boundaries. The chunks are released first: from here on only the joined buffer is needed, and the two together would be twice the body for nothing.
+	const joined = Buffer.concat(chunks)
+	chunks.length = 0
 	const headers = new Headers(request.headers)
 	headers.delete("content-length")
-	const buffered = new Request(request.url, { body: Buffer.concat(chunks), headers, method: "POST" })
+	const buffered = new Request(request.url, { body: joined, headers, method: "POST" })
 	const form = await buffered.formData().catch(() => null)
 	return form ? { data: form } : { error: invalid() }
 }
 
 /**
- * A coarse per-instance limiter for authenticated write endpoints that have no other brake. Resets on cold start and is not shared across instances, so it stops one account spending the process's memory or storage in a loop, not a distributed attacker.
+ * A coarse per-instance limiter for authenticated write endpoints that have no other brake: ten requests a minute, and a refused request does not extend the block.
+ *
+ * Kept as a thin wrapper over `lib/rate-limit` so existing call sites keep their budget while the implementation lives in one place.
  */
-const limiterHits = new Map<string, number[]>()
-
-/** How many distinct buckets a single process will hold before the oldest are evicted. */
-const LIMITER_MAX_KEYS = 10_000
-
 export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
-	const now = Date.now()
-	const recent = (limiterHits.get(key) ?? []).filter(at => now - at < windowMs)
-	if (recent.length >= max) {
-		limiterHits.set(key, recent)
-		return true
-	}
-	recent.push(now)
-	limiterHits.set(key, recent)
-	// Evict the oldest buckets one at a time rather than clearing the map: a wholesale clear drops live buckets such as `upload:<userId>` along with the stale ones, which would hand a throttled caller a fresh budget.
-	if (limiterHits.size > LIMITER_MAX_KEYS)
-		for (const oldest of limiterHits.keys()) {
-			if (limiterHits.size <= LIMITER_MAX_KEYS) break
-			if (oldest !== key) limiterHits.delete(oldest)
-		}
-	return false
+	return rateLimited(key, { max, windowMs })
 }
 
 /**
  * Wraps a handler so a thrown HttpError becomes its proper response and anything else becomes a logged 500 instead of an unhandled rejection.
+ *
+ * Authenticated routes should use `withSession`, `withPermission` or `withRole` from `lib/guards` instead: those put the guard in front of the handler and pass the session in as `ctx.gate`, so a route cannot forget the check. This is the transport wrapper they, and the unauthenticated routes, are built on.
  */
 export function withRoute<A extends unknown[]>(
 	handler: (...args: A) => Promise<NextResponse>,

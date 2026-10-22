@@ -17,7 +17,7 @@ export default async function LoginPage() {
 					Half-Life uses your Hack Club account. Linking Hackatime is optional and only matters for firmware and code
 					hours.
 				</p>
-				<SignInButtons hasSession={!!session} />
+				<SignInButtons hasSession={Boolean(session)} />
 			</Panel>
 			{session ? (
 				<p>

@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/time"
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { PostKind } from "@/app/generated/prisma/enums"
@@ -24,7 +25,7 @@ function daysBetween(earlier: string, later: string): number {
 	// Parsed as UTC midnight deliberately: these are calendar dates with no time component, and UTC is the one zone with no DST, so the subtraction can never come out as 23 or 25 hours and round to the wrong day.
 	const a = Date.parse(`${earlier}T00:00:00Z`)
 	const b = Date.parse(`${later}T00:00:00Z`)
-	return Math.round((b - a) / 86_400_000)
+	return Math.round((b - a) / DAY_MS)
 }
 
 export interface StreakState {
@@ -51,11 +52,9 @@ export function streakFromDays(daysDesc: readonly string[]): StreakState {
 		const older = daysDesc[i]
 		if (!newer || !older) break
 
-		if (daysBetween(older, newer) <= STREAK_GRACE_DAYS + 1) {
-			run += 1
-		} else {
-			run = 1
-		}
+		if (daysBetween(older, newer) <= STREAK_GRACE_DAYS + 1) run += 1
+		else run = 1
+
 		if (run > longest) longest = run
 		// The current streak is the run that reaches the most recent day, so it stops growing as soon as the walk hits its first break.
 		if (run === i + 1) current = run
@@ -94,7 +93,7 @@ async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
 	for (const p of posts) days.add(effectiveDateFor(p.publishedAt ?? p.createdAt, programTimezone))
 
 	// YYYY-MM-DD sorts lexicographically, so sort-then-reverse is newest-first without parsing a single date.
-	return [...days].sort().reverse()
+	return [...days].toSorted().toReversed()
 }
 
 /**

@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server"
-import { fail, ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok } from "@/lib/api"
+import { withSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
-import { MAX_CLIP_REF_LENGTH } from "@/lib/schemas/session"
+import { MAX_CLIP_REF_LENGTH, MAX_SESSION_TIMELAPSES } from "@/lib/schemas/session"
 
 export const dynamic = "force-dynamic"
 
@@ -14,17 +14,14 @@ export const dynamic = "force-dynamic"
  *
  * `forSession` names the session being edited and must be theirs: otherwise one maker could probe another's attachments a guess at a time.
  */
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (req: NextRequest, { gate }) => {
 	const params = req.nextUrl.searchParams
 	const ids = (params.get("ids") ?? "")
 		.split(",")
 		.map(s => s.trim())
 		.filter(Boolean)
-		// How many this reads, not how many an entry may hold: each one costs a round trip to Lapse, so the number is bounded even though the session schema no longer is. The sheet keeps whatever is left over pinned by id rather than dropping it, so stopping here costs a row in the picker, not a clip.
-		.slice(0, 25)
+		// How many this reads, not how many an entry may hold: each one costs a round trip to Lapse, so the number is bounded even though the session schema is. The sheet keeps whatever is left over pinned by id rather than dropping it, so stopping here costs a row in the picker, not a clip.
+		.slice(0, MAX_SESSION_TIMELAPSES)
 	if (ids.length === 0) return fail("VALIDATION_FAILED", "Name the timelapses to resolve")
 	if (ids.some(id => id.length > MAX_CLIP_REF_LENGTH))
 		return fail("VALIDATION_FAILED", "Those timelapses could not be read")

@@ -5,6 +5,7 @@ import { IconFilm } from "@/components/platform/icons"
 import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button, Panel } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
+import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 import { uploadFile, useHandoff } from "@/lib/use-handoff"
 
 /**
@@ -25,7 +26,7 @@ export function ReelCapture({
 	label = "Your reel",
 }: {
 	objectKey: string | null
-	onCaptured: (objectKey: string | null, previewUrl?: string | null) => void
+	onCaptured(objectKey: string | null, previewUrl?: string | null): void
 	folder?: string
 	label?: string
 }) {
@@ -43,8 +44,8 @@ export function ReelCapture({
 
 	async function pick(file: File | undefined) {
 		if (!file) return
-		if (!file.type.startsWith("video/")) {
-			setError("Choose a video file (MP4, WebM, or MOV).")
+		if (!isVideoFile(file)) {
+			setError(VIDEO_TYPE_MESSAGE)
 			return
 		}
 		setBusy(true)
@@ -60,7 +61,7 @@ export function ReelCapture({
 		}
 	}
 
-	if (objectKey) {
+	if (objectKey)
 		return (
 			<Panel className="flex items-center gap-3 bg-cream px-4 py-3" radius={16} tone="teal">
 				<IconFilm className="shrink-0 text-[1.4rem] text-teal-ink" />
@@ -78,7 +79,6 @@ export function ReelCapture({
 				</Button>
 			</Panel>
 		)
-	}
 
 	return (
 		<div className="grid gap-3">
@@ -110,7 +110,7 @@ export function ReelCapture({
 					disabled={busy || handoff.status === "minting"}
 					onClick={() => {
 						setShowQr(true)
-						handoff.mint()
+						void handoff.mint()
 					}}
 					variant="outline"
 				>
@@ -120,7 +120,7 @@ export function ReelCapture({
 
 			{/* No `capture`: this one is the picker. */}
 			<input
-				accept="video/*"
+				accept={VIDEO_ACCEPT}
 				aria-hidden="true"
 				className="sr-only"
 				onChange={e => pick(e.target.files?.[0])}
@@ -131,7 +131,7 @@ export function ReelCapture({
 
 			{/* `capture` is a hint, not a constraint: on a phone it opens the rear camera straight into the native recorder, and hands back the platform's own format. A desktop browser ignores it, which is why the button that opens this one is hidden there. */}
 			<input
-				accept="video/*"
+				accept={VIDEO_ACCEPT}
 				aria-hidden="true"
 				capture="environment"
 				className="sr-only"

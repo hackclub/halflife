@@ -11,7 +11,7 @@ import { Button, Chip, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
-import { TIERS } from "@/lib/curriculum"
+import { getTier } from "@/lib/config/tiers"
 import { cx } from "@/lib/cx"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
@@ -68,15 +68,7 @@ function Section({
  */
 
 /** Ask a reviewer to read a decision again. Changes no state. */
-function DisputeForm({
-	projectId,
-	phase,
-	onClose,
-}: {
-	projectId: string
-	phase: "DESIGN" | "BUILD"
-	onClose: () => void
-}) {
+function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: "DESIGN" | "BUILD"; onClose(): void }) {
 	const router = useRouter()
 	const [note, setNote] = useState("")
 	const [saving, setSaving] = useState(false)
@@ -235,7 +227,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 	// Once the journal has closed, what there is can still be handed in, as a season week that has passed can.
 	const canSubmit = !handedIn && (hours >= need || (passed && hours > 0))
 	const short = Math.max(0, need - hours)
-	const hasCover = !!project?.coverImageKey
+	const hasCover = Boolean(project?.coverImageKey)
 	const canActuallySubmit = canSubmit && hasCover
 
 	return (
@@ -323,7 +315,7 @@ function ReviewState({
 }: {
 	projectId: string
 	phases: ProjectPageData["phases"]
-	weekFor: (phase: "DESIGN" | "BUILD") => number
+	weekFor(phase: "DESIGN" | "BUILD"): number
 	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
 	warmup: boolean
 }) {
@@ -405,13 +397,13 @@ function ReviewState({
 }
 
 /**
- * What a returned phase needs, before anything else on the page.
+ * What a decided phase needs, before anything else on the page.
  *
  * A return is the one review state a maker is expected to act on, but its note used to live only in the Review block below the project's own details – far enough down that "Design needs changes" on the projects page read as a change the project page never explained. This puts the same note and the resubmit action at the very top, so opening a project answers the question its card raised.
  *
- * Only phases returned for changes: an approved phase has nothing left to do and a rejected one cannot be resubmitted, so both keep their reason in the Review block below.
+ * A rejection is the other half of that: it has no resubmit action, because the phase cannot be handed in again until an admin reopens it, but it still needs its reason and its state at the top. Leaving it only in the Review block made a rejected project look like one nobody had looked at.
  */
-function ChangesNeeded({
+function DecisionNotice({
 	phases,
 	projectId,
 	warmup,
@@ -421,19 +413,20 @@ function ChangesNeeded({
 	projectId: string
 	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
 	warmup: boolean
-	weekFor: (phase: "DESIGN" | "BUILD") => number
+	weekFor(phase: "DESIGN" | "BUILD"): number
 }) {
 	const { setOpenCheckpoint } = useStore()
 	const returned = phases.filter(p => p.status === "update_requested")
-	if (returned.length === 0) return null
+	const rejected = phases.filter(p => p.status === "rejected")
+	if (returned.length === 0 && rejected.length === 0) return null
 
 	return (
-		<Panel className="mt-5 bg-gold-pale/70 px-5 py-5 sm:px-6" radius={20} tone="gold">
-			<div className="flex items-start gap-2.5">
-				<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
-				<div className="grid min-w-0 flex-1 gap-5">
-					{returned.map(p => (
-						<div className="min-w-0" key={p.phase}>
+		<div className="mt-5 grid gap-4">
+			{returned.map(p => (
+				<Panel className="bg-gold-pale/70 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="gold">
+					<div className="flex items-start gap-2.5">
+						<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
+						<div className="min-w-0 flex-1">
 							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
 								{p.phase === "DESIGN" ? "Design" : "Build"} needs changes
 							</p>
@@ -457,10 +450,36 @@ function ChangesNeeded({
 								I&apos;ve made these changes – resubmit
 							</Button>
 						</div>
-					))}
-				</div>
-			</div>
-		</Panel>
+					</div>
+				</Panel>
+			))}
+
+			{rejected.map(p => (
+				<Panel className="bg-coral/10 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="coral">
+					<div className="flex items-start gap-2.5">
+						<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-coral-deep" />
+						<div className="min-w-0 flex-1">
+							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
+								{p.phase === "DESIGN" ? "Design" : "Build"} was rejected
+							</p>
+							{p.comments ? (
+								<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
+									{p.comments}
+								</p>
+							) : (
+								<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">
+									no reason was recorded with this decision.
+								</p>
+							)}
+							<p className="mt-2 text-[0.88rem] leading-relaxed text-navy-soft">
+								A rejected phase cannot be resubmitted. If you think this decision is wrong, dispute it from the Review
+								section below.
+							</p>
+						</div>
+					</div>
+				</Panel>
+			))}
+		</div>
 	)
 }
 
@@ -542,7 +561,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 	// The tier is final once the design decision is approved, not the moment it is handed in: a phase returned for changes is still the maker's to revise, and the week a return reopens is exactly when they would. The build week inherits the design's tier, and a warm-up's one submit claims it the same way.
 	const tierLocked = statusOf(week) === "approved"
-	const grantUsd = TIERS.find(t => t.id === project.tier)?.grantUsd ?? 0
+	const grantUsd = getTier(project.tier)?.grantUsd ?? 0
 	// Kept in a local so the phase survives into the unsubmit handler below.
 	const inReview = data.inReview
 	// The overlap between a recording and a Hackatime link could not be checked for a phase of this project, so the total on this page may still be counting the same sitting once through each. A season project spans its design and build weeks, five apart, so either of them is enough.
@@ -552,8 +571,8 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
 			<BackLink />
 
-			{/* ---------- what a return asks for, first ---------- */}
-			<ChangesNeeded phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
+			{/* ---------- what a decision asks for, first ---------- */}
+			<DecisionNotice phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
 
 			{/* ---------- the project itself ---------- */}
 			{/* Sized by its own width, not the viewport's: the rails either side of
@@ -669,7 +688,14 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 			{/* ---------- what the repo has ---------- */}
 			<div className="mt-6">
-				<RepoChecks editable={false} onResult={noop} project={project} />
+				<RepoChecks
+					editable={false}
+					onResult={noop}
+					project={project}
+					syncRepo={
+						data.repoSync.repo && data.repoSync.syncRepoDiffers ? { differs: true, repo: data.repoSync.repo } : null
+					}
+				/>
 			</div>
 
 			{/* ---------- keeping the repo in step ---------- */}

@@ -66,7 +66,7 @@ async function main() {
 	})
 
 	// Three sessions, written in order. Their order IS the node order.
-	for (const [index, hours] of [1.5, 2, 3].entries()) {
+	for (const [index, hours] of [1.5, 2, 3].entries())
 		await prisma.workSession.create({
 			data: {
 				content: `Body ${index + 1}`,
@@ -78,7 +78,6 @@ async function main() {
 				title: `Session ${index + 1}`,
 			},
 		})
-	}
 
 	// Two reels, on nodes that are ten hours apart. Only one has been earned, and counting by kind would tick both.
 	await prisma.post.create({
@@ -110,6 +109,25 @@ async function main() {
 	check("at the week its theme is designed in", snap.projects[0]?.weekId, 1)
 	check("with the tier they asked for", snap.projects[0]?.tier, 2)
 
+	// A project can be handed in and rejected before a requested tier is ever recorded – the submit path falls back to Tier 1. It still has to appear, or the rejection has no surface on either the grid or its own page.
+	const rejectedUser = await prisma.user.create({
+		data: {
+			email: `store-rejected-${stamp}@example.test`,
+			joinedProgramAt: new Date(),
+			name: "Rejected Check",
+			verificationStatus: "verified",
+		},
+	})
+	const rejectedProject = await ensureThemeProject(rejectedUser.id, Theme.PCB)
+	await prisma.themeProject.update({
+		data: { designStatus: PhaseStatus.rejected, title: "Rejected project" },
+		where: { id: rejectedProject.id },
+	})
+	const rejected = await getStoreSnapshot(rejectedUser.id)
+	check("a rejected project with no requested tier is listed", rejected.projects.length, 1)
+	check("and keeps its rejected state", rejected.projects[0]?.designStatus, PhaseStatus.rejected)
+	check("with the tier the submit path fell back to", rejected.projects[0]?.tier, 1)
+
 	check("entry 1 is the first session written", snap.progress["w1-entry-1"]?.minutes, 90)
 	check("entry 2 is the second", snap.progress["w1-entry-2"]?.minutes, 120)
 	check("entry 3 is the third", snap.progress["w1-entry-3"]?.minutes, 180)
@@ -137,6 +155,24 @@ async function main() {
 	check("submitting ticks the submit node", submitted.progress["w1-submit"]?.done, true)
 	// The build half of the same theme is week 6 and must stay untouched: one project, two weeks, and a design submission is not a build submission.
 	check("but not the build week's", submitted.progress["w6-submit"], undefined)
+
+	// A phase sent back for changes is open again: the maker has to be able to log the work the reviewer asked for, and the trail cannot keep calling the week handed in.
+	await prisma.themeProject.update({
+		data: { designStatus: PhaseStatus.update_requested },
+		where: { id: pcb.id },
+	})
+	const returned = await getStoreSnapshot(user.id)
+	check("a returned week unticks the submit node", returned.progress["w1-submit"], undefined)
+	check("while keeping its existing entries", returned.progress["w1-entry-3"]?.done, true)
+	const { checkpointsFor, WEEK_META } = await import("../src/lib/curriculum")
+	const firstWeek = WEEK_META[0]
+	if (!firstWeek) throw new Error("the curriculum has no week 1")
+	const returnedNodes = checkpointsFor(firstWeek, [90, 120, 180], id => returned.progress[id]?.done ?? false, 0, false)
+	check(
+		"and the trail offers the next journal entry",
+		returnedNodes.some(c => c.id === "w1-entry-4"),
+		true,
+	)
 
 	// ── The first checkpoint ──────────────────────────────────────────────────
 	//

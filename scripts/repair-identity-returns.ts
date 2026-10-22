@@ -1,5 +1,13 @@
 import "dotenv/config"
 import { Phase, PhaseStatus, ReviewResult, type Theme } from "../src/app/generated/prisma/enums"
+import { getAirtableConfig } from "../src/lib/airtable/client"
+import { currentReviewColumns } from "../src/lib/airtable/review-columns"
+import {
+	mirrorReviewDecision,
+	recordIdsFromSyncEvents,
+	reviewStatusFor,
+	syncReviewDecisionToYsws,
+} from "../src/lib/airtable/sync"
 import { AuditAction, logAudit } from "../src/lib/audit"
 import prisma from "../src/lib/prisma"
 
@@ -10,6 +18,8 @@ import prisma from "../src/lib/prisma"
  *
  * This walks the phases still on `update_requested` whose standing decision is that identity return and puts each back in front of reviewers. It mirrors the reopen an Ari requeue performs (see `applyReset` in lib/ari.ts): the phase goes to `in_review`, its reviews are invalidated and its submission reopened, so its state is exactly a hand-in awaiting review again. The one addition is the cleared `ariSubmissionId`: the old ship still carries the changes decision at Ari, and `ari-retry` only resends a hand-in with no ship id, so clearing it is what sends a fresh ship for a real review on the next hourly run.
  *
+ * The Airtable row follows the phase, as it does on a requeue: back on "Pending Review" with the identity note cleared. Left on "Changes Requested", the next return would write the value the row already holds, and email-tools forwards only changed values – so the maker would never be told the real decision. Runs from before that mirror existed are healed by `--heal` (see `heal`), which touches only phases this script reopened and that are still in review.
+ *
  * Only the identity return is touched. The phase has to be on `update_requested` *and* its latest live review has to be the system return whose note is exactly Ari's identity sentence – which is also what tells it apart from the disallowed-Hackatime auto-return, the one other automated `changes` decision – so a real return, or a project returned again since, is left alone. Read-only unless `--commit`.
  *
  * The return's week (`submissionExtensionUntil`) is left as it stands: extending a maker's window a little costs nothing, and shortening one is not this script's business. Re-running is safe – a phase this reopens is on `in_review` and no longer a candidate.
@@ -18,6 +28,8 @@ import prisma from "../src/lib/prisma"
  *
  *   bun --conditions=react-server scripts/repair-identity-returns.ts
  *   bun --conditions=react-server scripts/repair-identity-returns.ts --commit
+ *   bun --conditions=react-server scripts/repair-identity-returns.ts --heal
+ *   bun --conditions=react-server scripts/repair-identity-returns.ts --heal --commit
  */
 
 /** Ari's note on an identity auto-return, verbatim. The rest of the decision is not a reliable signal: the disallowed-Hackatime auto-return is also a system `changes` decision. */
@@ -28,6 +40,7 @@ const IDENTITY_NOTE =
 const SYSTEM_REVIEWER_EMAIL = "system@ari"
 
 const commit = process.argv.includes("--commit")
+const healOnly = process.argv.includes("--heal")
 const limitArg = process.argv.find(arg => arg.startsWith("--limit="))
 const limit = limitArg ? Number(limitArg.slice("--limit=".length)) : undefined
 
@@ -38,6 +51,15 @@ interface Candidate {
 	reviewId: string
 	submissionId: string
 	theme: Theme
+	themeProjectId: string
+	title: string | null
+}
+
+/** One phase this script reopened that is still waiting on a fresh review. */
+interface HealTarget {
+	email: string
+	phase: Phase
+	recordId: string
 	themeProjectId: string
 	title: string | null
 }
@@ -74,7 +96,7 @@ async function findCandidates(): Promise<Candidate[]> {
 	})
 
 	const candidates: Candidate[] = []
-	for (const project of projects) {
+	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			if ((phase === Phase.DESIGN ? project.designStatus : project.buildStatus) !== PhaseStatus.update_requested)
 				continue
@@ -94,7 +116,7 @@ async function findCandidates(): Promise<Candidate[]> {
 				title: project.title,
 			})
 		}
-	}
+
 	return candidates
 }
 
@@ -132,6 +154,124 @@ async function repair(candidate: Candidate): Promise<void> {
 		targetId: candidate.themeProjectId,
 		targetType: "ThemeProject",
 	})
+
+	// The row follows the phase, exactly as an Ari requeue's does (see `applyReset` in lib/ari.ts). Left on "Changes Requested", the next return writes the value the row already holds, and email-tools forwards only changed values – so the maker would never hear that decision. The note goes with the return it belonged to.
+	await mirrorReviewDecision(candidate.themeProjectId, candidate.phase, reviewStatusFor(PhaseStatus.in_review), null)
+}
+
+/** The phases this script reopened that are still in review, with the row each one was last written to. */
+async function findHealTargets(): Promise<{ targets: HealTarget[]; withoutRow: number }> {
+	const projects = await prisma.themeProject.findMany({
+		select: {
+			buildStatus: true,
+			designStatus: true,
+			id: true,
+			title: true,
+			user: { select: { email: true } },
+		},
+		where: {
+			deletedAt: null,
+			OR: [{ designStatus: PhaseStatus.in_review }, { buildStatus: PhaseStatus.in_review }],
+		},
+	})
+	if (projects.length === 0) return { targets: [], withoutRow: 0 }
+
+	// The audit row each repair left names the project and phase, and is how a run from before the row was mirrored is told apart from any other reopen.
+	const reopened = new Set<string>()
+	const events = await prisma.auditLog.findMany({
+		orderBy: { createdAt: "desc" },
+		select: { metadata: true, targetId: true },
+		where: { action: AuditAction.ADMIN_REOPEN_PHASE, targetId: { in: projects.map(p => p.id) } },
+	})
+	for (const event of events) {
+		const meta = event.metadata as { phase?: string; source?: string } | null
+		if (meta?.source !== "repair-identity-returns" || !meta.phase || !event.targetId) continue
+		reopened.add(`${event.targetId}:${meta.phase}`)
+	}
+	if (reopened.size === 0) return { targets: [], withoutRow: 0 }
+
+	// The record id is not on the project; it is on the audit row each successful write left (see `lastRecordId` in lib/airtable/sync).
+	const synced = await prisma.auditLog.findMany({
+		orderBy: { createdAt: "desc" },
+		select: { metadata: true, targetId: true },
+		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
+	})
+	const records = recordIdsFromSyncEvents(synced)
+
+	const targets: HealTarget[] = []
+	let withoutRow = 0
+	for (const project of projects)
+		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
+			if (!reopened.has(`${project.id}:${phase}`)) continue
+			// A repaired phase that has since been decided carries that decision on its row, which is not this script's to undo.
+			if ((phase === Phase.DESIGN ? project.designStatus : project.buildStatus) !== PhaseStatus.in_review) continue
+			const recordId = records.get(`${project.id}:${phase}`)
+			if (!recordId) {
+				withoutRow++
+				continue
+			}
+			targets.push({ email: project.user.email, phase, recordId, themeProjectId: project.id, title: project.title })
+		}
+	return { targets, withoutRow }
+}
+
+/**
+ * Put the rows of phases an older run reopened back on "Pending Review".
+ *
+ * That run changed Postgres only, so the row stayed on "Changes Requested" while the phase went back in review. The next return then writes the value the row already holds and the Loops poller forwards nothing, so the maker never hears the real decision. Only phases this script reopened, and that are still in review, are touched: a repaired phase that has since been approved or returned is left alone, because its row already carries that decision and rewriting it would email a decision nobody just made.
+ */
+async function heal(): Promise<void> {
+	const config = getAirtableConfig()
+	if (!config) {
+		console.error("Set AIRTABLE_API_KEY and AIRTABLE_BASE_ID first")
+		process.exit(1)
+	}
+
+	const { targets, withoutRow } = await findHealTargets()
+	console.log(`phases this script reopened and that are still in review: ${targets.length + withoutRow}`)
+	if (withoutRow > 0) console.log(`  ${withoutRow} without a known Airtable row; left alone`)
+	if (targets.length === 0) return
+
+	const current = await currentReviewColumns(config)
+	const pending = reviewStatusFor(PhaseStatus.in_review)
+	const stale = targets.filter(t => {
+		const row = current.get(t.recordId)
+		return !row || row.status !== pending || row.note !== ""
+	})
+	console.log(`aligned: ${targets.length - stale.length}, to heal: ${stale.length}`)
+	for (const target of stale.slice(0, 10)) {
+		const row = current.get(target.recordId)
+		const before = row ? `${row.status || "(blank)"} / ${JSON.stringify(row.note)}` : "row gone"
+		console.log(
+			`  ${target.phase}  ${target.title ?? target.themeProjectId} (${target.email}): ${before} -> ${pending}`,
+		)
+	}
+	if (stale.length > 10) console.log(`  …and ${stale.length - 10} more`)
+	if (!commit) {
+		console.log("Dry run. Pass --heal --commit to put these rows back on Pending Review.")
+		return
+	}
+
+	let healed = 0
+	let gone = 0
+	let failed = 0
+	for (const target of stale) {
+		const mirrored = await syncReviewDecisionToYsws(target.themeProjectId, target.phase, pending, null)
+		if (mirrored.updated) {
+			healed++
+			if (mirrored.noteFailed)
+				console.error(
+					`  ${target.phase}  ${target.title ?? target.themeProjectId} (${target.recordId}) moved but the note failed: ${mirrored.noteFailed}`,
+				)
+		} else if (mirrored.reason === "no_row" || mirrored.reason === "row_gone") gone++
+		else {
+			failed++
+			console.error(
+				`  ${target.phase}  ${target.title ?? target.themeProjectId} (${target.recordId}) failed: ${mirrored.reason}`,
+			)
+		}
+	}
+	console.log(`healed: ${healed}, row gone: ${gone}, failed: ${failed}`)
 }
 
 async function main() {
@@ -140,16 +280,17 @@ async function main() {
 		process.exit(1)
 	}
 
+	if (healOnly) return heal()
+
 	const candidates = await findCandidates()
 	const chosen = candidates.slice(0, limit ?? candidates.length)
 	console.log(`phases auto-returned for a missing Hack Club identity: ${candidates.length}`)
 	console.log(`this run: ${chosen.length}`)
 
-	for (const candidate of chosen) {
+	for (const candidate of chosen)
 		console.log(
 			`${commit ? "reopen" : "would reopen"} ${candidate.theme}/${candidate.title ?? candidate.themeProjectId} (${candidate.email}): ${candidate.phase.toLowerCase()} -> in review, re-queued to Ari`,
 		)
-	}
 
 	if (chosen.length === 0) return
 	if (!commit) {

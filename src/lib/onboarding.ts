@@ -2,9 +2,7 @@ import "server-only"
 import { type HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import {
 	ONBOARDING_STEP_COUNT,
-	ONBOARDING_STEPS,
 	type OnboardingStep,
-	type OnboardingStepId,
 	STARTER_PROJECT_TIER,
 	type StarterProject,
 	seesStarterProjects,
@@ -13,9 +11,11 @@ import {
 	stepIndexOf,
 	suggestedTierFor,
 } from "@/lib/config/onboarding"
+import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
 import { isTierId, type TierId } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
+import { getProgramSettings, weekNumberForDate } from "@/lib/program"
 import { ensureThemeProject } from "@/lib/provisioning"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 
@@ -28,7 +28,7 @@ import { sanitize, sanitizeHtml } from "@/lib/sanitize"
  * 2. Nothing here writes `ThemeProject.tier`. The participant's choice lands in `requestedTier`; the reviewer's decision at design approval is a different column, and money is paid against theirs.
  */
 
-/** The theme the first checkpoint runs against. The comp: "This is PCB week!" */
+/** Week one's theme, and the fallback for anything that cannot resolve the participant's join week. The comp: "This is PCB week!" */
 export const ONBOARDING_THEME: Theme = Theme.PCB
 
 export interface OnboardingState {
@@ -50,11 +50,15 @@ export interface OnboardingState {
 	starterProjects: readonly StarterProject[]
 	stepCount: number
 	suggestedTier: TierId
+	/** The theme this person is onboarding into: the one their first project belongs to. */
+	theme: Theme
 	trackingDismissed: boolean
 }
 
 export async function getOnboardingState(userId: string): Promise<OnboardingState> {
-	// One round trip for both reads. Onboarding is week one's "create a project" checkpoint, so it is where the PCB project comes into being, but only the first visit needs to make it: every later step finds the row already there, and ensuring it up front cost each of them a query of its own.
+	// One round trip for both reads. Onboarding edits the participant's first project, which exists once they have one; the theme is that project's, not a fixed week one. A late joiner who starts in week 3 is onboarded into Music and offered the MIDI keyboard, rather than being shown week one's PCB starter.
+	//
+	// An existing project is the anchor: once the flow has made one, the theme cannot move under someone who finishes the questions the next day. With no project yet, the fallback is the theme of the current program week, so an onboarding started today is for the week it is actually happening in.
 	const [user, found] = await Promise.all([
 		prisma.user.findUniqueOrThrow({
 			select: {
@@ -66,11 +70,22 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 			where: { id: userId },
 		}),
 		prisma.themeProject.findFirst({
-			select: PROJECT_SELECT,
-			where: { deletedAt: null, theme: ONBOARDING_THEME, userId },
+			orderBy: { createdAt: "asc" },
+			select: { ...PROJECT_SELECT, theme: true },
+			where: { deletedAt: null, theme: { not: Theme.WARMUP }, userId },
 		}),
 	])
-	const project = found ?? pickProject(await ensureThemeProject(userId, ONBOARDING_THEME))
+
+	let project: ReturnType<typeof pickProject>
+	let theme: Theme
+	if (found) {
+		project = pickProject(found)
+		theme = found.theme
+	} else {
+		const settings = await getProgramSettings()
+		theme = themeForCurrentWeek(settings.eventStartDate, settings.programTimezone)
+		project = pickProject(await ensureThemeProject(userId, theme))
+	}
 
 	const reached = clampStep(user.onboardingStep)
 
@@ -83,11 +98,21 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 			tierLocked: project.starterProjectId !== null,
 		},
 		reached,
-		starterProjects: startersShownTo(user.hardwareExperience),
+		starterProjects: startersShownTo(user.hardwareExperience, theme),
 		stepCount: ONBOARDING_STEP_COUNT,
 		suggestedTier: suggestedTierFor(user.hardwareExperience),
+		theme,
 		trackingDismissed: user.trackingTutorialDismissedAt !== null,
 	}
+}
+
+/**
+ * The season theme for the program week happening now. Before week one it is PCB week; after week five it wraps to the same theme the build week belongs to.
+ */
+function themeForCurrentWeek(eventStartDate: Date, programTimezone: string): Theme {
+	const week = weekNumberForDate(eventStartDate, new Date(), programTimezone)
+	const designWeek = ((Math.max(week, 1) - 1) % DESIGN_WEEKS) + 1
+	return THEMES.find(t => t.designWeek === designWeek)?.id ?? ONBOARDING_THEME
 }
 
 /** The project fields the flow reads and writes. */
@@ -115,9 +140,9 @@ function pickProject(p: {
 	}
 }
 
-/** The starter projects this answer to question one is offered, for the onboarding week. */
-function startersShownTo(experience: HardwareExperience | null): readonly StarterProject[] {
-	return seesStarterProjects(experience) ? starterProjectsFor(ONBOARDING_THEME) : []
+/** The starter projects this answer to question one is offered, for the onboarding theme. */
+function startersShownTo(experience: HardwareExperience | null, theme: Theme): readonly StarterProject[] {
+	return seesStarterProjects(experience) ? starterProjectsFor(theme) : []
 }
 
 function clampStep(step: number): number {
@@ -234,12 +259,12 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 				if (!before.project.tierLocked) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 				break
 			}
-			if (before.project.tierLocked) {
+			if (before.project.tierLocked)
 				throw new HttpError(
 					"VALIDATION_FAILED",
 					"Starter projects are Tier 1. Write your own project idea to choose a different tier.",
 				)
-			}
+
 			if (!isTierId(answer.requestedTier)) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 			projectData.requestedTier = answer.requestedTier
 			break
@@ -294,7 +319,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 		})
 		const txProject = await tx.themeProject.findFirst({
 			select: PROJECT_SELECT,
-			where: { deletedAt: null, theme: ONBOARDING_THEME, userId },
+			where: { deletedAt: null, theme: before.theme, userId },
 		})
 		const freshReached = clampStep(txUser.onboardingStep)
 		if (index > freshReached) throw new HttpError("VALIDATION_FAILED", "Finish the earlier steps first")
@@ -303,14 +328,14 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		const targetProjectId = txProject?.id ?? before.project.id
 
-		const projectAfter = touchesProject
+		const updatedProject = touchesProject
 			? await tx.themeProject.update({
 					data: projectData,
 					select: PROJECT_SELECT,
 					where: { id: targetProjectId },
 				})
 			: (txProject ?? before.project)
-		const userAfter = await tx.user.update({
+		const updatedUser = await tx.user.update({
 			...userWrite,
 			data: {
 				...userWrite.data,
@@ -325,7 +350,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 			where: { id: userId, onboardingStep: { lt: reachedNow } },
 		})
 
-		return { projectAfter, reached: reachedNow, userAfter }
+		return { projectAfter: updatedProject, reached: reachedNow, userAfter: updatedUser }
 	})
 
 	const state: OnboardingState = {
@@ -339,7 +364,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 		},
 		reached: reachedAfter,
 		// Re-read, not carried over: answering question one changes who is offered them.
-		starterProjects: startersShownTo(userAfter.hardwareExperience),
+		starterProjects: startersShownTo(userAfter.hardwareExperience, before.theme),
 		suggestedTier: suggestedTierFor(userAfter.hardwareExperience),
 		trackingDismissed: userAfter.trackingTutorialDismissedAt !== null,
 	}
@@ -350,9 +375,14 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 /**
  * Put someone back at the start of the first checkpoint, for an admin who wants to walk it again as a participant would.
  *
- * Only the progress and the answers the flow owns are cleared. The week-one project keeps its row, name and entries, and the flow edits it in place as the questions are answered again; its starter pick is dropped so the tier is not left locked by an answer that no longer stands.
+ * Only the progress and the answers the flow owns are cleared. The onboarding project keeps its row, name and entries, and the flow edits it in place as the questions are answered again; its starter pick is dropped so the tier is not left locked by an answer that no longer stands.
  */
 export async function resetOnboarding(userId: string): Promise<void> {
+	const project = await prisma.themeProject.findFirst({
+		orderBy: { createdAt: "asc" },
+		select: { theme: true },
+		where: { deletedAt: null, theme: { not: Theme.WARMUP }, userId },
+	})
 	await prisma.$transaction([
 		prisma.user.update({
 			data: {
@@ -363,10 +393,14 @@ export async function resetOnboarding(userId: string): Promise<void> {
 			},
 			where: { id: userId },
 		}),
-		prisma.themeProject.updateMany({
-			data: { starterProjectId: null },
-			where: { deletedAt: null, theme: ONBOARDING_THEME, userId },
-		}),
+		...(project
+			? [
+					prisma.themeProject.updateMany({
+						data: { starterProjectId: null },
+						where: { deletedAt: null, theme: project.theme, userId },
+					}),
+				]
+			: []),
 	])
 }
 
@@ -396,5 +430,5 @@ export async function needsOnboarding(userId: string): Promise<boolean> {
 	return started === 0
 }
 
-export type { OnboardingStepId }
-export { ONBOARDING_STEPS }
+export type { OnboardingStepId } from "@/lib/config/onboarding"
+export { ONBOARDING_STEPS } from "@/lib/config/onboarding"

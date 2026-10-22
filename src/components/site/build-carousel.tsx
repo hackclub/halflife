@@ -1,8 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import type { CSSProperties } from "react"
-import { useCallback, useEffect, useRef } from "react"
+import { type CSSProperties, useCallback, useEffect, useRef } from "react"
 import ImageSlot from "@/components/site/image-slot"
 import { BUILD_CARDS } from "@/lib/site/content"
 
@@ -37,7 +36,7 @@ const BAND_H = "32.012%"
  * The floor does not halve with it. On a phone the cards stop shrinking at their own 13rem – 208px – so the gap has to hold against a card that is no longer getting smaller, and the halved slope would put 13.9px between two 208px cards and read as a seam. 1.5rem is 11.5% of that card, near the 12.4% the full-size pair keeps.
  */
 const GAP_PX = 64
-const GAP = `clamp(1.5rem, ${+((GAP_PX / 1728) * 100).toFixed(3)}cqw, ${GAP_PX}px)`
+const GAP = `clamp(1.5rem, ${Number(((GAP_PX / 1728) * 100).toFixed(3))}cqw, ${GAP_PX}px)`
 const INSET = "clamp(1rem, 4.514cqw, 78px)"
 const LABEL = "clamp(0.95rem, 1.447cqw, 25px)"
 const CREDIT = "clamp(0.7rem, 0.984cqw, 17px)"
@@ -163,7 +162,7 @@ export default function BuildCarousel() {
 		// A decorative loop has no business running off-screen.
 		const observer = new IntersectionObserver(
 			entries => {
-				const entry = entries[entries.length - 1]
+				const entry = entries.at(-1)
 				if (!entry) return
 				onscreenRef.current = entry.isIntersecting
 				wake()

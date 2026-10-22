@@ -1,11 +1,11 @@
 import { after } from "next/server"
 import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
 import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { unsubmitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -15,9 +15,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, unsubmitSchema)
@@ -60,7 +58,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	})
 
 	// Withdraw it from Ari too, or its queue keeps a hand-in that no longer exists in Half Life.
-	if (isAriConfigured()) {
+	if (isAriConfigured())
 		after(async () => {
 			await trackSideEffect(
 				"ari",
@@ -74,7 +72,6 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				() => withdrawSubmissionFromAri(id, parsed.data.phase),
 			)
 		})
-	}
 
 	return ok({ ok: true })
 })

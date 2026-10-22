@@ -1,31 +1,29 @@
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
 import { createPost } from "@/lib/feed"
-import { requireSession } from "@/lib/guards"
-import { getUserRoles, hasPermission, Permission } from "@/lib/permissions"
+import { withSession } from "@/lib/guards"
+import { hasPermission, Permission } from "@/lib/permissions"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { createPostSchema } from "@/lib/schemas/feed"
 
 export const dynamic = "force-dynamic"
 
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { gate }) => {
+	// A refusal is recorded before it is returned. `withRoute` turns an HttpError into a response and keeps it to itself, so before this a maker blocked by an owed reel, or by an upload-ownership check, left no row anywhere: the client was told why and the server forgot. This is the only place the number of people stuck this way can be seen.
+	const parsed = await parseBody(req, createPostSchema)
+	if (parsed.error) {
+		await logPostRefusal(gate.user.id, gate.user.email, req, parsed.error)
+		return parsed.error
+	}
 
-	// A refusal is recorded before it is thrown. `withRoute` turns an HttpError into a response and keeps it to itself, so before this a maker blocked by an owed reel, or by an upload-ownership check, left no row anywhere: the client was told why and the server forgot. This is the only place the number of people stuck this way can be seen.
 	try {
-		const parsed = await parseBody(req, createPostSchema)
-		if (parsed.error) throw parsed.error
-
 		// A checkpoint reel is checkpoint work, so a deleted reel that is still owed holds it – unless this is that reel coming back. Freeform posts are not a checkpoint and are never held.
 		if (parsed.data.checkpointKey) await assertNoOwedReel(gate.user.id, parsed.data.checkpointKey)
 
-		const roles = await getUserRoles(gate.user.id)
-
 		const post = await createPost({
 			byteSize: parsed.data.byteSize ?? null,
-			canManageFeed: hasPermission(roles, Permission.MANAGE_FEED),
+			canManageFeed: hasPermission(gate.roles, Permission.MANAGE_FEED),
 			caption: parsed.data.caption,
 			checkpointKey: parsed.data.checkpointKey ?? null,
 			contentType: parsed.data.contentType ?? null,

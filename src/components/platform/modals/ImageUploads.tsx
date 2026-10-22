@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { IconUpload, IconX } from "@/components/platform/icons"
 import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button } from "@/components/platform/ui"
@@ -26,7 +26,7 @@ export function ImageUploads({
 	label,
 }: {
 	images: UploadedImage[]
-	onChange: (next: UploadedImage[]) => void
+	onChange(next: UploadedImage[]): void
 	folder: string
 	/** The server takes at most this many attachments with a submission. */
 	max: number
@@ -38,9 +38,11 @@ export function ImageUploads({
 	const [pending, setPending] = useState<{ id: string; name: string; progress: number | null }[]>([])
 	const busy = pending.length
 	const [errors, setErrors] = useState<string[]>([])
-	// The newest list, for uploads that finish after another has changed it.
+	// The newest list, for uploads that finish after another has changed it. Kept in step in an effect rather than written during render, which is not a pure render: a ref written there can hold a value no render ever produced.
 	const latest = useRef(images)
-	latest.current = images
+	useEffect(() => {
+		latest.current = images
+	}, [images])
 
 	const room = max - images.length
 
@@ -88,7 +90,7 @@ export function ImageUploads({
 				<ul aria-label={`${label}s`} className="flex flex-wrap gap-2.5">
 					{images.map((img, i) => (
 						<li className="relative" key={img.objectKey}>
-							{/* eslint-disable-next-line @next/next/no-img-element -- a local blob preview */}
+							{/* a local blob preview */}
 							<img
 								alt={`${label} ${i + 1}`}
 								className="size-24 rounded-xl border-2 border-line bg-white object-cover"

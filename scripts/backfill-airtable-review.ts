@@ -1,7 +1,8 @@
 import "dotenv/config"
 import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/app/generated/prisma/enums"
-import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
+import { getAirtableConfig } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
+import { currentReviewColumns } from "../src/lib/airtable/review-columns"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents, reviewStatusFor } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
@@ -36,9 +37,6 @@ interface StandingReview {
 	reviewerId: string | null
 }
 
-/** A string cell, or "" when Airtable has nothing there. */
-const text = (value: unknown): string => (typeof value === "string" ? value : "")
-
 /**
  * The note the column should hold for a phase.
  *
@@ -52,28 +50,6 @@ function noteFor(comments: string | null, status: PhaseStatus, standing: Standin
 	return note
 }
 
-/** Every row's current status and note, by record id. */
-async function currentColumns(
-	config: NonNullable<ReturnType<typeof getAirtableConfig>>,
-	statusKey: string,
-	notesKey: string,
-): Promise<Map<string, { note: string; status: string }>> {
-	const byId = new Map<string, { note: string; status: string }>()
-	const fieldsQs = [statusKey, notesKey].map(k => `fields%5B%5D=${encodeURIComponent(k)}`).join("&")
-	let offset: string | undefined
-	do {
-		const page = await withRateLimitRetry("listYswsReviewColumns", () =>
-			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
-				config,
-				`${encodeURIComponent(YSWS_SUBMISSION.tableId)}?pageSize=100&${fieldsQs}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
-			),
-		)
-		for (const r of page.records) byId.set(r.id, { note: text(r.fields[notesKey]), status: text(r.fields[statusKey]) })
-		offset = page.offset
-	} while (offset)
-	return byId
-}
-
 async function main() {
 	const config = getAirtableConfig()
 	if (!config) {
@@ -84,14 +60,14 @@ async function main() {
 	const statusField = YSWS_SUBMISSION.fields.reviewStatus
 	const notesField = YSWS_SUBMISSION.fields.reviewerNotes
 	// Probed by name, because `columnExists` reads Airtable's `UNKNOWN_FIELD_NAME` refusal; written by `fieldKey`, which is the id once the base is written by id.
-	for (const field of [statusField, notesField]) {
+	for (const field of [statusField, notesField])
 		if (!(await columnExists(config, YSWS_SUBMISSION.tableId, field.name))) {
 			console.error(
 				`The \`${field.name}\` column is not on ${YSWS_SUBMISSION.tableId}; create it in Airtable before backfilling.`,
 			)
 			process.exit(1)
 		}
-	}
+
 	const statusKey = fieldKey(statusField)
 	const notesKey = fieldKey(notesField)
 
@@ -140,7 +116,7 @@ async function main() {
 
 	const targets: { note: string; phase: Phase; recordId: string; status: string; title: string }[] = []
 	let withoutRow = 0
-	for (const project of projects) {
+	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const recordId = records.get(`${project.id}:${phase}`)
 			if (!recordId) {
@@ -161,10 +137,9 @@ async function main() {
 				title: project.title,
 			})
 		}
-	}
 
 	// Only rows the base disagrees with are written: a decided row that already carries both columns is left untouched.
-	const current = await currentColumns(config, statusKey, notesKey)
+	const current = await currentReviewColumns(config)
 	const updates: typeof targets = []
 	let aligned = 0
 	let gone = 0

@@ -6,6 +6,7 @@ import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
+import { projectEditLockReason } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
 import { getRepoSyncState, type RepoSyncState } from "@/lib/repo-sync"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
@@ -241,7 +242,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 
 	// A resolved submission is two moments – handed in, then decided – and the gap between them is part of the story. Only the latest decision per phase has comments on the project row, so older ones are shown without them.
 	const latestResolved = new Map<Phase, string>()
-	for (const sub of [...project.submissions].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
+	for (const sub of [...project.submissions].toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
 		timeline.push({ at: sub.createdAt.getTime(), id: `${sub.id}-in`, kind: "submitted", phase: sub.phase })
 		if (sub.resolvedAt && sub.resolvedResult) latestResolved.set(sub.phase, sub.id)
 	}
@@ -262,7 +263,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		})
 	}
 
-	timeline.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
+	const orderedTimeline = timeline.toSorted((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 
 	const inReview =
 		project.designStatus === PhaseStatus.in_review
@@ -280,11 +281,11 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				.reduce<Date | null>((at, s) => (!at || s.createdAt > at ? s.createdAt : at), null)
 			const disputed = project.submissions
 				.filter(s => s.phase === phase && s.dispute)
-				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.dispute
+				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.dispute
 			// Only an open hand-in can be stuck: one that was decided had its marker cleared by the send that succeeded, and one that was withdrawn was deleted outright.
 			const openShip = project.submissions
 				.filter(s => s.phase === phase && s.resolvedAt === null)
-				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
 			return {
 				comments: isDesign ? project.designReviewComments : project.buildReviewComments,
 				dispute: disputed
@@ -317,7 +318,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
 		coverImageUrl: publicUrlFor(project.coverImageKey),
 		deleteBlocked: await deleteBlockReason(project),
-		editLocked: inReview ? "In review, so it can't be edited. Unsubmit to change it" : null,
+		editLocked: projectEditLockReason(project),
 		fallbackThumbnail: projectThumbnail(
 			null,
 			project.workSessions,
@@ -330,20 +331,22 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		inReview,
 		phases,
 		repoSync: await getRepoSyncState(project.id, userId),
-		timeline,
+		timeline: orderedTimeline,
 	}
 }
 
 /**
  * Someone else's project, as Explore's "See more" opens it.
  *
- * Only what is already public elsewhere: the entries Explore shows, the reels the Doomscroller shows (published ones – a hidden or processing reel is nobody's business but its author's), and the project's name and picture. No parts list, no repo checks, no review comments, no submissions: those are between the maker and their reviewer. Author by display name only, as lib/queries/community has it.
+ * Only what is already public elsewhere: the entries Explore shows, the reels the Doomscroller shows (published ones – a hidden or processing reel is nobody's business but its author's), and the project's name, picture and repo link. No parts list, no repo checks, no review comments, no submissions: those are between the maker and their reviewer. Author by display name only, as lib/queries/community has it.
  */
 export interface PublicProjectData {
 	author: string
 	/** The author's user id, so their name can open their profile. */
 	authorId: string
 	description: string
+	/** The project's own repo link, as the maker saved it, or null until they add one. */
+	githubRepo: string | null
 	id: string
 	thumbnail: ProjectThumbnail | null
 	timeline: TimelineItem[]
@@ -352,11 +355,33 @@ export interface PublicProjectData {
 	weekId: number
 }
 
+/** A dispute still waiting on a reviewer, as the public project page offers the way back to it. */
+export interface ProjectOpenDispute {
+	phase: Phase
+	/** The review console page that carries the thread. */
+	submissionId: string
+}
+
+/**
+ * The open disputes on a project, if there are any.
+ *
+ * Read only for a reviewer looking at someone else's project: the review console is where a dispute is answered, so the project page needs each submission id to open it. The maker's own page already carries the threads themselves and never calls this.
+ */
+export async function getOpenDisputesForProject(projectId: string): Promise<ProjectOpenDispute[]> {
+	const submissions = await prisma.phaseSubmission.findMany({
+		orderBy: { createdAt: "asc" },
+		select: { id: true, phase: true },
+		where: { dispute: { is: { resolvedAt: null } }, themeProjectId: projectId },
+	})
+	return submissions.map(submission => ({ phase: submission.phase, submissionId: submission.id }))
+}
+
 export async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {
 	const project = await prisma.themeProject.findFirst({
 		select: {
 			coverImageKey: true,
 			description: true,
+			githubRepo: true,
 			id: true,
 			posts: {
 				select: POST_SELECT,
@@ -373,13 +398,15 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 	if (!project) return null
 
 	const themeIndex = THEMES.findIndex(t => t.id === project.theme)
-	const timeline = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)]
-	timeline.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
+	const timeline = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)].toSorted(
+		(a, b) => b.at - a.at || b.id.localeCompare(a.id),
+	)
 
 	return {
 		author: displayName(project.user, "A maker"),
 		authorId: project.user.id,
 		description: project.description ?? "",
+		githubRepo: project.githubRepo,
 		id: project.id,
 		thumbnail: projectThumbnail(
 			publicUrlFor(project.coverImageKey),

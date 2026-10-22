@@ -1,11 +1,16 @@
 import "server-only"
 import type { PhaseSubmission, ProgramSettings, ThemeProject } from "@/app/generated/prisma/client"
-import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
+import { markChecksPassed } from "@/lib/analytics"
 import { partsFundingFor } from "@/lib/bom"
-import { scheduledWeekFor } from "@/lib/config/program"
+import { submitFloorFor } from "@/lib/config/printers"
+import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
+import { ENTRY_TIER, getTierOrThrow } from "@/lib/config/tiers"
 import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
 import { getHoursBreakdown } from "@/lib/hours"
+import { round2 } from "@/lib/money"
+import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import {
 	assertWeekStarted,
@@ -20,10 +25,6 @@ import { checkRepo } from "@/lib/repo-checks"
 import { isOwnedKey } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
-export function statusFor(project: ThemeProject, phase: Phase): PhaseStatus {
-	return phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-}
-
 /**
  * Whether a phase can be submitted right now.
  *
@@ -34,7 +35,7 @@ export function canSubmitPhase(
 	phase: Phase,
 ): { ok: true } | { ok: false; code: "ALREADY_SUBMITTED" | "PHASE_LOCKED"; message: string } {
 	// A warm-up is one submission, as the phase it was made for: a design asking for funding, or a finished build. Never the other, never both.
-	if (project.theme === Theme.WARMUP && phase !== warmupPhaseOf(project)) {
+	if (project.theme === Theme.WARMUP && phase !== warmupPhaseOf(project))
 		return {
 			code: "PHASE_LOCKED",
 			message:
@@ -43,30 +44,29 @@ export function canSubmitPhase(
 					: "This warm-up project is submitted as a finished build",
 			ok: false,
 		}
-	}
 
 	const status = statusFor(project, phase)
-	if (status === PhaseStatus.in_review) {
+	if (status === PhaseStatus.in_review)
 		return { code: "ALREADY_SUBMITTED", message: "This phase is already in review", ok: false }
-	}
-	if (status === PhaseStatus.approved) {
+
+	if (status === PhaseStatus.approved)
 		return { code: "PHASE_LOCKED", message: "This phase is already approved", ok: false }
-	}
-	if (status === PhaseStatus.rejected) {
+
+	if (status === PhaseStatus.rejected)
 		return {
 			code: "PHASE_LOCKED",
 			message: "This phase was rejected. Ask an admin to reopen it.",
 			ok: false,
 		}
-	}
+
 	// A warm-up project is one phase by nature – it was handed in through the pre-season form, not designed and then built – so the design-first rule does not apply to it.
-	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft) {
+	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft)
 		return {
 			code: "PHASE_LOCKED",
 			message: "Submit your design for this theme before submitting the build",
 			ok: false,
 		}
-	}
+
 	return { ok: true }
 }
 
@@ -108,8 +108,14 @@ export async function submitPhase(
 	if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
 	// The Ari SDK refuses a ship without a description. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
-	if (!project.description?.trim())
-		throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
+	//
+	// The floor is the same 100 characters the project page and submit sheet show: a description that only repeats the title gives a reviewer nothing to decide against.
+	const descriptionLength = project.description?.trim().length ?? 0
+	if (descriptionLength < MIN_PROJECT_DESCRIPTION_CHARS)
+		throw new HttpError(
+			"UNPROCESSABLE",
+			`Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting this phase (you have ${descriptionLength})`,
+		)
 
 	if (!project.coverImageKey)
 		throw new HttpError(
@@ -125,8 +131,24 @@ export async function submitPhase(
 	if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
-	if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0)
-		throw new HttpError("UNPROCESSABLE", "Log at least one work session before submitting this phase")
+	// Counted in hours rather than in entries: a HACKATIME_TRACKED entry is a journal entry that claims no time of its own, so counting entries would let a phase be handed in with no countable work at all.
+	if (breakdown.journalHours <= 0 && breakdown.hackatimeHours <= 0)
+		throw new HttpError("UNPROCESSABLE", "Log at least one work session with hours on it before submitting this phase")
+
+	// A tier's funded block is the floor a design week is handed in on, and until now that floor lived only in the
+	// submit sheet. It is the gate the tier promises: a tier-3 request funds twenty hours and a hundred dollars of
+	// parts, so it cannot be handed in on an hour of work. The client refuses a tier below its floor; this is the
+	// same rule held by the server, so a request that bypasses the sheet cannot buy a grant with less work than the
+	// grant is for.
+	if (phase === Phase.DESIGN) {
+		const tierId = project.tier ?? project.requestedTier ?? ENTRY_TIER.id
+		const floor = submitFloorFor(getTierOrThrow(tierId).fundingHours)
+		if (breakdown.effectiveHours < floor)
+			throw new HttpError(
+				"UNPROCESSABLE",
+				`Tier ${tierId} needs ${floor}h of design time to hand in and you have logged ${round2(breakdown.effectiveHours)}h. Pick a tier you have earned.`,
+			)
+	}
 
 	// An account under review is stopped here. Identity verification is not: it is asked of the shop instead (see lib/shop), so a maker can explore, journal and hand work in without having verified, and meets it only when they try to spend.
 	const user = await prisma.user.findUnique({
@@ -146,15 +168,17 @@ export async function submitPhase(
 		)
 	}
 
+	// The checks came back green, on the path that enforces them. The stamp used to sit on the advisory preflight GET, which made it a GET that wrote – and a cross-site top-level navigation carries the session cookie, so any site could stamp a participant's funnel marker by linking them at it. Here it sits behind the POST that hands a phase in, so the marker is written when the maker actually tries to submit, and the admin funnel's "repo checks passed" step means what its hint says: the checks that ran for a submission came back green.
+	await markChecksPassed(userId)
+
 	// A cart past the tier's funding is not a refusal, it is a grant that covers part of it – which is something the maker has to agree to rather than something this route infers. The numbers come from the database and never from the sheet: a list edited in another tab, or a tier request changed since the page was opened, decide what the maker is agreeing to.
 	const funding = await partsFundingFor(project, phase)
-	if (funding.needsAgreement && !partialFundingAccepted) {
+	if (funding.needsAgreement && !partialFundingAccepted)
 		throw new HttpError(
 			"UNPROCESSABLE",
 			`Your parts list is $${funding.totalUsd.toFixed(2)} and this tier funds $${funding.capUsd}, so $${funding.shortfallUsd.toFixed(2)} of it is yours to pay. Confirm you understand that before submitting.`,
 			{ details: funding },
 		)
-	}
 
 	// Parts money is a design-week question, so declining it on any other phase is refused rather than recorded: a flag the reviewer cannot act on would only confuse the decision.
 	if (fundingDeclined && phase !== Phase.DESIGN)
@@ -186,7 +210,7 @@ export async function submitPhase(
 
 		// Claim the phase first, conditionally on it still being one that can be submitted. Two concurrent submits both read the same outside state, so without this both would create an open submission and both flip the status; the row lock makes the loser's update match nothing.
 		const claimed = await tx.themeProject.updateMany({
-			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
+			data: phaseStatusUpdate(phase, PhaseStatus.in_review),
 			where: {
 				deletedAt: null,
 				id: themeProjectId,
@@ -235,7 +259,7 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 			select: { buildStatus: true, designStatus: true },
 			where: { id: themeProjectId },
 		})
-		if ((phase === Phase.DESIGN ? current.designStatus : current.buildStatus) !== PhaseStatus.in_review)
+		if (statusFor(current, phase) !== PhaseStatus.in_review)
 			throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
 
 		const open = await tx.phaseSubmission.findFirst({
@@ -249,15 +273,24 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 		if (open.claim && open.claim.expiresAt > new Date())
 			throw new HttpError("CLAIMED_BY_OTHER", "A reviewer is looking at this right now")
 
+		// The decision this phase carries, read before the open submission is withdrawn: a phase that was returned for changes goes back to `update_requested` rather than `draft`, so the reviewer's note stays an action item instead of reading as "not started".
+		const lastDecision = await tx.phaseSubmission.findFirst({
+			orderBy: [{ resolvedAt: "desc" }, { createdAt: "desc" }],
+			select: { resolvedResult: true },
+			where: { phase, resolvedAt: { not: null }, resolvedResult: { not: null }, themeProjectId },
+		})
+		const restored =
+			lastDecision?.resolvedResult === ReviewResult.RETURNED ? PhaseStatus.update_requested : PhaseStatus.draft
+
 		// Conditional on still being unresolved: a decision that committed before the lock was ours has made this row its record, and withdrawing it would cascade the review away and put a decided phase back to draft.
 		const withdrawn = await tx.phaseSubmission.deleteMany({ where: { id: open.id, resolvedAt: null } })
 		if (withdrawn.count !== 1) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
 
 		const flipped = await tx.themeProject.updateMany({
-			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.draft } : { buildStatus: PhaseStatus.draft },
+			data: phaseStatusUpdate(phase, restored),
 			where: {
 				id: themeProjectId,
-				...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review }),
+				...phaseStatusUpdate(phase, PhaseStatus.in_review),
 			},
 		})
 		if (flipped.count !== 1) throw new HttpError("CONFLICT", "This project moved while it was being withdrawn")

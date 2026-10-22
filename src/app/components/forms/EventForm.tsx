@@ -4,17 +4,11 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import { cx } from "@/lib/cx"
-import { formatShortDate } from "@/lib/deadline"
+import { formatShortDate, toLocalInput } from "@/lib/deadline"
 import { type CalendarEvent, EVENT_COLOURS, type EventColour, eventColour, HUDDLE_URL } from "@/lib/events"
+import { DAY_MS } from "@/lib/time"
 
-const WEEK_MS = 7 * 86_400_000
-
-/** A Date as the value a datetime-local input takes, in this browser's zone. */
-function toLocalInput(date: Date): string {
-	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-	return local.toISOString().slice(0, 16)
-}
-
+const WEEK_MS = 7 * DAY_MS
 /** The label for a series, so "the weekly call" reads as one thing on the list. */
 function seriesLabel(events: CalendarEvent[], event: CalendarEvent): string | null {
 	if (!event.seriesId) return null
@@ -47,7 +41,7 @@ export function EventForm({
 	events: CalendarEvent[]
 	/** The occurrence being edited, or null to add a new one. */
 	editing: CalendarEvent | null
-	onDone: () => void
+	onDone(): void
 }) {
 	const router = useRouter()
 	const [title, setTitle] = useState(editing?.title ?? "")
@@ -60,7 +54,7 @@ export function EventForm({
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
-	async function submit(e: React.FormEvent) {
+	async function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setBusy(true)
 		setError(null)

@@ -18,6 +18,7 @@ import { Chip, onAccent, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { printerById } from "@/lib/config/printers"
 import { cx } from "@/lib/cx"
+import { fmtHours } from "@/lib/numbers"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
 
@@ -40,7 +41,7 @@ const offsetAt = (i: number, phase: number) => Number((50 + AMP * Math.sin((phas
 const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: string) => boolean): number => {
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
-		const last = rows[rows.length - 1]
+		const last = rows.at(-1)
 		if (cp.branch && last?.[0]?.branch) last.push(cp)
 		else rows.push([cp])
 	}
@@ -83,13 +84,10 @@ const isBeat = (c: Checkpoint) => c.kind === "journal" && !c.branch
 const offsetOf = (full: number, beats: number, extra = "") =>
 	`calc(var(--lead) + var(--step) * ${full} + var(--step-sm) * ${beats}${extra})`
 
-/** Hours, two decimals at most and never a trailing zero. */
-const fmtH = (h: number) => `${Math.round(h * 100) / 100}h`
-
 /**
  * Checkpoints that bring something into existence rather than record it. Going through onboarding or the project form a second time would mint a second project for a week that already has one, and every lookup in the app finds a week's project with `.find` – so the duplicate would not replace the first, it would sit behind it, unreachable and counting for nothing.
  */
-const ONE_TIME: Checkpoint["kind"][] = ["onboarding", "project"]
+const ONE_TIME = new Set<Checkpoint["kind"]>(["onboarding", "project"])
 
 function nodeTone(kind: Checkpoint["kind"], done: boolean, unlocked: boolean, passed: boolean, held: boolean) {
 	// Held behind a deleted reel: greyed like a passed node, done or not, so the one owed reel is the only colour left on the map.
@@ -142,7 +140,7 @@ function CheckpointNode({
 	const decided = reviewStatus === "approved" || reviewStatus === "rejected"
 	// Admins can walk a finished project form again. It fills in the week's existing row rather than making a second one, since `ensureProject` hands back the project the week already has.
 	const redoable = st.done && checkpoint.kind === "project" && viewer.isAdmin
-	const settled = (st.done && ONE_TIME.includes(checkpoint.kind) && !redoable) || final || decided
+	const settled = (st.done && ONE_TIME.has(checkpoint.kind) && !redoable) || final || decided
 	const doneNote = redoable
 		? "click to redo it."
 		: checkpoint.kind === "reel"
@@ -330,7 +328,7 @@ function CheckpointNode({
 				</button>
 			)}
 			{(unlocked || passed) && st.done && st.minutes > 0 && (
-				<p className="hand text-[0.66rem] leading-tight text-navy-soft tabular-nums">{fmtH(st.minutes / 60)}</p>
+				<p className="hand text-[0.66rem] leading-tight text-navy-soft tabular-nums">{fmtHours(st.minutes / 60)}</p>
 			)}
 		</div>
 	)
@@ -412,7 +410,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	// Group into rows: singles all the way down, each fork as one row of two – the opening idea/skip fork in week 1, the keep/submit fork at a week's end.
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
-		const last = rows[rows.length - 1]
+		const last = rows.at(-1)
 		if (cp.branch && last?.[0]?.branch) last.push(cp)
 		else rows.push([cp])
 	}
@@ -428,11 +426,12 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	let full = 0
 	let beats = 0
 	for (const [i, { row, ghost }] of lined.entries()) {
-		if (i > 0) {
-			// The stride belongs to the row we are stepping off, not this one.
-			if (placed[i - 1]?.beat) beats += 1
+		if (i > 0)
+			if (placed[i - 1]?.beat)
+				// The stride belongs to the row we are stepping off, not this one.
+				beats += 1
 			else full += 1
-		}
+
 		placed.push({ beat: ghost || row.every(isBeat), beats, full, ghost, row })
 	}
 
@@ -448,8 +447,8 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 		const size = here.beat ? "var(--node-sm)" : "var(--node)"
 		// Into a fork the run splits and each arm is drawn straight to its node; down the chain the dots keep sampling the sine, so the curve they have always traced is untouched. A ghost row is one slot wide, like the single node it stands between.
 		const slots = next.row.length > 0 ? next.row : [undefined]
-		for (const [j] of slots.entries()) {
-			for (const f of [0.3, 0.5, 0.7]) {
+		for (const [j] of slots.entries())
+			for (const f of [0.3, 0.5, 0.7])
 				dots.push(
 					<span
 						aria-hidden="true"
@@ -465,8 +464,6 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 						}}
 					/>,
 				)
-			}
-		}
 	}
 
 	return (

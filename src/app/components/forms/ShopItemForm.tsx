@@ -47,7 +47,7 @@ function previewImageUrl(value: string): string | null {
 	try {
 		const url = new URL(value.trim())
 		if (url.protocol !== "https:") return null
-		return url.href.replace(/[<>"']/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+		return url.href.replaceAll(/[<>"']/g, c => `%${(c.codePointAt(0) ?? 0).toString(16).toUpperCase()}`)
 	} catch {
 		return null
 	}
@@ -92,7 +92,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 		}
 	}
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setSaved(false)
 		const fields = {
@@ -190,7 +190,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 						onChange={e => {
 							const file = e.target.files?.[0]
 							e.target.value = ""
-							uploadImage(file)
+							void uploadImage(file)
 						}}
 						ref={picker}
 						type="file"

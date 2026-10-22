@@ -25,6 +25,7 @@ import {
 	getReviewerStats,
 	getUserFlowFunnel,
 	getUserFlowSankey,
+	getUserFlowWeekly,
 	getVerificationStats,
 	type HoursDistribution,
 	type WeekHoursCluster,
@@ -60,6 +61,7 @@ export default async function AdminOverviewPage() {
 		syncs,
 		flow,
 		sankeyData,
+		weeklyFlow,
 		areas,
 		countries,
 		activity,
@@ -87,6 +89,7 @@ export default async function AdminOverviewPage() {
 		]),
 		getUserFlowFunnel(),
 		getUserFlowSankey(),
+		getUserFlowWeekly(),
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
@@ -115,7 +118,7 @@ export default async function AdminOverviewPage() {
 			<Panel
 				actions={
 					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						the headline counts hand-ins, the outcome rows count projects
+						each project counted once, in the state its card shows
 					</span>
 				}
 				title="Reviewer activity"
@@ -130,6 +133,7 @@ export default async function AdminOverviewPage() {
 					}}
 				>
 					<ShareDonut
+						centerLabel="submitted"
 						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
 						empty="No projects with a review state yet."
 						measure="Project review status"
@@ -157,16 +161,15 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					The ring counts ships the way Ari does – one slice per (project, phase) hand-in, by the decision standing on
-					it now. A design approved long ago still reads as approved even once its build is handed in, and a sent-back
-					design only leaves changes requested when it is resubmitted. Pending is unresolved hand-ins Ari holds;
-					anything Ari never received is counted apart above, because a hand-in Ari has never seen is not on its board.
-					Console decisions are included. A review an admin later undid still reads by the submission it decided, since
-					the hand-in itself stays resolved.
+					Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
+					changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved. It
+					is the same state the project&apos;s card shows, so a design approved while its build is still in review reads
+					as pending rather than as two slices, and a resubmission does not leave a second copy of the project behind.
+					Projects that have never been submitted are left out. Console decisions are included.
 				</p>
 			</Panel>
 
-			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} />
+			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} weeks={weeklyFlow} />
 
 			<Panel title="Activities after onboarding">
 				<ActivityShareChart share={sankeyData.activityShare} />
@@ -325,13 +328,13 @@ function MetricPie({
 }: {
 	title: string
 	rows: { label: string; users: number; hours: number }[]
-	pick: (row: { label: string; users: number; hours: number }) => number
-	format: (n: number) => string
+	pick(row: { label: string; users: number; hours: number }): number
+	format(n: number): string
 }) {
 	const ranked = rows
 		.map(r => ({ label: r.label, value: pick(r) }))
 		.filter(s => s.value > 0)
-		.sort((a, b) => b.value - a.value)
+		.toSorted((a, b) => b.value - a.value)
 	const total = ranked.reduce((n, s) => n + s.value, 0)
 	if (total === 0) return <EmptyState>No data yet.</EmptyState>
 
@@ -353,14 +356,15 @@ function MetricPie({
 		"var(--color-ink-strong)",
 		"var(--color-field-edge)",
 	]
-	const colored = slices.map((s, i) => ({
-		...s,
-		// Other is always the grey tail, whatever landed in the last slot.
-		color: s.label.startsWith("Other (")
-			? "var(--color-field-edge)"
-			: (COLORS[i % COLORS.length] ?? "var(--color-accent)"),
-		pct: (s.value / total) * 100,
-	}))
+	const colored = slices.map((s, i) =>
+		Object.assign({}, s, {
+			// Other is always the grey tail, whatever landed in the last slot.
+			color: s.label.startsWith("Other (")
+				? "var(--color-field-edge)"
+				: (COLORS[i % COLORS.length] ?? "var(--color-accent)"),
+			pct: (s.value / total) * 100,
+		}),
+	)
 	const only = colored.length === 1 ? colored[0] : undefined
 
 	const R = 88
@@ -576,7 +580,7 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
-	const last = days[days.length - 1]?.day
+	const last = days.at(-1)?.day
 	const what = perUser ? "per active user " : ""
 	const note = perUser
 		? " Each line is divided by the people who logged something that day, so a quiet day with one contributor reads tall."
@@ -841,7 +845,7 @@ function DauChart({ days }: { days: ActiveDay[] }) {
 	const ticks = Array.from({ length: 5 }, (_, i) => Math.round((max / 4) * i))
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
-	const last = days[days.length - 1]?.day
+	const last = days.at(-1)?.day
 
 	return (
 		<div>
@@ -1030,7 +1034,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
-	const last = days[days.length - 1]?.day
+	const last = days.at(-1)?.day
 	// One title per day on every line's dot, so hovering any of the three gives the whole day rather than a third of it.
 	const title = (d: GoalDayActivity) =>
 		`${d.day}: ${d.byGoal
@@ -1215,11 +1219,12 @@ function seasonBands(weeks: WeekColumn[]) {
 		{ phase: Phase.DESIGN, text: "design · weeks 1-5" },
 		{ phase: Phase.BUILD, text: "build · weeks 6-10" },
 	]
-		.map(band => ({
-			...band,
-			at: weeks.findIndex(week => week.phase === band.phase),
-			span: weeks.filter(week => week.phase === band.phase).length,
-		}))
+		.map(band =>
+			Object.assign({}, band, {
+				at: weeks.findIndex(week => week.phase === band.phase),
+				span: weeks.filter(week => week.phase === band.phase).length,
+			}),
+		)
 		.filter(band => band.span > 0)
 }
 
@@ -1301,8 +1306,7 @@ function WeekAxisLabels({ weeks }: { weeks: WeekColumn[] }) {
  */
 function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 	const totals = weeks.map(week => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
-	if (totals.length === 0 || totals.every(t => t === 0))
-		return <EmptyState>No project has been started yet.</EmptyState>
+	if (totals.every(t => t === 0)) return <EmptyState>No project has been started yet.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
 	// Four bars to a cluster, sized as shares of the stride so the labels – one grid cell per cluster – still land
@@ -1436,7 +1440,7 @@ function niceHoursMax(max: number): number {
  */
 function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 	const totals = weeks.map(week => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
-	if (totals.length === 0 || totals.every(t => t === 0)) return <EmptyState>No hours have been logged yet.</EmptyState>
+	if (totals.every(t => t === 0)) return <EmptyState>No hours have been logged yet.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
 	// One bar per week rather than four: the stack is one column, so it takes most of the stride and the rest is the gutter between weeks.
@@ -1766,6 +1770,7 @@ function ShareDonut({
 	measure,
 	empty,
 	colors,
+	centerLabel,
 }: {
 	rows: { label: string; value: number }[]
 	/** What the ring counts, for the figure's accessible name. */
@@ -1773,6 +1778,8 @@ function ShareDonut({
 	empty: string
 	/** Optional per-slice colors, in row order. Falls back to the default palette. */
 	colors?: string[]
+	/** When set, the ring's total is written in the middle under this caption. */
+	centerLabel?: string
 }) {
 	const total = rows.reduce((n, r) => n + r.value, 0)
 	if (total === 0) return <EmptyState>{empty}</EmptyState>
@@ -1805,7 +1812,7 @@ function ShareDonut({
 			}}
 		>
 			<svg
-				aria-label={`${measure}: ${summary}`}
+				aria-label={`${measure}${centerLabel ? `, ${fmtInt(total)} ${centerLabel} in total` : ""}: ${summary}`}
 				role="img"
 				style={{ flexShrink: 0, height: "11rem", width: "11rem" }}
 				viewBox="0 0 42 42"
@@ -1827,6 +1834,33 @@ function ShareDonut({
 						/>
 					))}
 				</g>
+				{centerLabel ? (
+					<>
+						<text
+							dominantBaseline="middle"
+							style={{
+								fill: "var(--color-ink-strong)",
+								fontSize: "6px",
+								fontVariantNumeric: "tabular-nums",
+								fontWeight: 800,
+							}}
+							textAnchor="middle"
+							x="21"
+							y="19.4"
+						>
+							{fmtInt(total)}
+						</text>
+						<text
+							dominantBaseline="middle"
+							style={{ fill: "var(--color-ink-muted)", fontSize: "2.9px" }}
+							textAnchor="middle"
+							x="21"
+							y="24"
+						>
+							{centerLabel}
+						</text>
+					</>
+				) : null}
 			</svg>
 			<table style={{ borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
 				<tbody>

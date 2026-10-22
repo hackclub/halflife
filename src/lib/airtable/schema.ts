@@ -69,6 +69,11 @@ export const YSWS_SUBMISSION = {
 		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
 		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
 		slackId: f<string>("fldYswsSlackId", "Slack ID"),
+		// The maker's own account of what they built: the description they wrote, the parts they listed, the work they logged. The pipeline merges it with the other `Justification - …` columns into one blob (see lib/airtable/justification), and an empty column here is an empty blob there.
+		specificTechnicalFeatures: f<string>(
+			"fldYswsSpecificTechnicalFeatures",
+			"Justification - Specific Technical Features",
+		),
 		stage: f<"Design" | "Build">("fldYswsStage", "Design or build"),
 		// A plain checkbox, true when the maker took one of the week's starter projects rather than bringing their own idea (see `starterProjectId` on ThemeProject). Written for the reviewer, who judges a starter by whether it was made the maker's own rather than as a finished build (see STARTER_MODIFICATION_NOTE in lib/config/onboarding); the base needs the fact, not which starter it was.
 		starterProject: f<boolean>("fldYswsStarterProject", "Starter project"),
@@ -96,6 +101,27 @@ export const YSWS_REVIEW_STATUS = {
 	changesRequested: "Changes Requested",
 	pending: YSWS_PENDING_REVIEW,
 	rejected: "Rejected",
+} as const
+
+/**
+ * The two columns a review decision writes alongside the status, so the Loops
+ * workflow that reads the contact has the project this decision is about.
+ *
+ * The email-tools poller only forwards a `Loops - …` field when its value
+ * changed on that row. The row's normal project name and week were written at
+ * submit, so a decision on an older project changes only status and notes – the
+ * poller never re-sends the name, and the contact keeps whatever the maker
+ * submitted most recently. These `Override` columns are separate fields, so
+ * writing them in the decision changes their values and the poller forwards
+ * them; email-tools maps the `Loops - Override - ` prefix onto the same Loops
+ * property with its `override` strategy.
+ *
+ * They are plain single-line text fields, because the app does not know their
+ * Airtable field ids and writes them by name (see `syncReviewDecisionToYsws`).
+ */
+export const LOOPS_REVIEW_OVERRIDE = {
+	projectName: "Loops - Override - halfLifeProjectName",
+	projectWeek: "Loops - Override - halfLifeProjectWeek",
 } as const
 
 /**

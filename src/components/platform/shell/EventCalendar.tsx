@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import { IconChevronLeft, IconChevronRight } from "@/components/platform/icons"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { cx } from "@/lib/cx"
-import type { CalendarEvent } from "@/lib/events"
 import {
+	type CalendarEvent,
 	calendarDay,
 	dayLabel,
 	daySegment,
@@ -66,7 +66,7 @@ export function EventCalendar({
 	timeZone,
 }: {
 	open: boolean
-	onClose: () => void
+	onClose(): void
 	events: CalendarEvent[]
 	timeZone: string
 }) {
@@ -112,17 +112,15 @@ export function EventCalendar({
 				.filter(
 					(slice): slice is { event: CalendarEvent; seg: { startMin: number; endMin: number } } => slice.seg !== null,
 				)
-				.sort((a, b) => a.seg.startMin - b.seg.startMin || a.seg.endMin - b.seg.endMin)
+				.toSorted((a, b) => a.seg.startMin - b.seg.startMin || a.seg.endMin - b.seg.endMin)
 			// Crowds overlap transitively, so the running maximum end is the test: sorted by start, anything starting before it belongs to the crowd. Back-to-back events touch but never overlap, so each keeps the full width.
 			const crowds: { slices: typeof slices; end: number }[] = []
 			for (const slice of slices) {
-				const open = crowds[crowds.length - 1]
-				if (open && slice.seg.startMin < open.end) {
-					open.slices.push(slice)
-					open.end = Math.max(open.end, slice.seg.endMin)
-				} else {
-					crowds.push({ end: slice.seg.endMin, slices: [slice] })
-				}
+				const crowd = crowds.at(-1)
+				if (crowd && slice.seg.startMin < crowd.end) {
+					crowd.slices.push(slice)
+					crowd.end = Math.max(crowd.end, slice.seg.endMin)
+				} else crowds.push({ end: slice.seg.endMin, slices: [slice] })
 			}
 			const dayPlaced: PlacedSegment[] = []
 			for (const crowd of crowds) {
@@ -132,9 +130,8 @@ export function EventCalendar({
 					if (lane === -1) {
 						lane = laneEnds.length
 						laneEnds.push(seg.endMin)
-					} else {
-						laneEnds[lane] = seg.endMin
-					}
+					} else laneEnds[lane] = seg.endMin
+
 					earliest = Math.min(earliest, seg.startMin)
 					latest = Math.max(latest, seg.endMin)
 					dayPlaced.push({ event, ...seg, lane, lanes: Math.max(1, laneEnds.length) })
@@ -350,7 +347,7 @@ function EventBlock({
 	gridHeight: number
 	timeZone: string
 	isLive: boolean
-	onSelect: () => void
+	onSelect(): void
 }) {
 	const { event, startMin, endMin, lane, lanes } = segment
 	const colour = eventColour(event.colour)
@@ -446,7 +443,7 @@ function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string 
 	)
 }
 
-function GridButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+function GridButton({ label, onClick, children }: { label: string; onClick(): void; children: React.ReactNode }) {
 	return (
 		<button
 			aria-label={label}

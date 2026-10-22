@@ -1,11 +1,25 @@
 import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { clientIp } from "@/lib/client-ip"
 import { completeHandoff, resolveHandoff } from "@/lib/handoff"
-import { clientIp } from "@/lib/site/signups"
-import { isUploadConfigured, MAX_UPLOAD_BYTES } from "@/lib/uploads/r2"
+import { isUploadConfigured } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
+
+/**
+ * This route's own budget, rather than the shared one.
+ *
+ * Every other upload is behind a session, so the size of a body is a decision the signed-in user made about their own storage. This one is not: the token inside the form is the only credential and it is not read until the body has been buffered, so the body size is the attacker's choice. A phone video is tens of megabytes, so 64 MiB is generous for the thing this route is for, and it is a quarter of what the authenticated upload route allows.
+ */
+const HANDOFF_MAX_UPLOAD_BYTES = 64 * 1024 * 1024
+
+/**
+ * How many uploads one address may start in a minute.
+ *
+ * The shared limiter allows ten; this is the same idea with less room, because the requests it counts are the ones that cost the most memory to refuse.
+ */
+const HANDOFF_MAX_PER_MINUTE = 5
 
 /**
  * The phone's upload. DELIBERATELY UNAUTHENTICATED.
@@ -17,11 +31,11 @@ export const POST = withRoute(async (req: Request) => {
 	if (!isUploadConfigured()) return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 
 	// The token is the only credential and it lives inside the form, so without this a caller could loop the largest allowed body until the process runs out of memory before any token is ever read.
-	if (rateLimitedInMemory(`handoff-upload:${clientIp(req.headers)}`))
+	if (rateLimitedInMemory(`handoff-upload:${clientIp(req.headers)}`, HANDOFF_MAX_PER_MINUTE))
 		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
 
 	// Capped before it is parsed, because this route has no session and the token is inside the form: `req.formData()` would otherwise buffer whatever the caller sends before any credential is checked.
-	const parsed = await parseUploadForm(req, MAX_UPLOAD_BYTES)
+	const parsed = await parseUploadForm(req, HANDOFF_MAX_UPLOAD_BYTES)
 	if (parsed.error) return parsed.error
 	const form = parsed.data
 
@@ -41,7 +55,7 @@ export const POST = withRoute(async (req: Request) => {
 		type: file.type,
 	})
 
-	if (target) {
+	if (target)
 		await logAudit({
 			action: AuditAction.USER_HANDOFF_UPLOAD,
 			actorEmail: null,
@@ -50,7 +64,6 @@ export const POST = withRoute(async (req: Request) => {
 			targetId: target.id,
 			targetType: "UploadHandoff",
 		})
-	}
 
 	return ok({ uploaded: true }, { status: 201 })
 })

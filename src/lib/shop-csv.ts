@@ -1,5 +1,6 @@
 import type { z } from "zod"
 import { ShopItemCategory } from "@/app/generated/prisma/enums"
+import { parseCsvRecords } from "@/lib/csv"
 import { shopItemSchema } from "@/lib/schemas/admin"
 
 /**
@@ -55,56 +56,6 @@ export interface ShopCsvProblem {
 	message: string
 }
 
-/**
- * RFC 4180, which is what every spreadsheet exports: commas, double-quoted fields that may hold commas and line breaks, and `""` for a literal quote. Each record carries the line it started on, so problems can point at it.
- */
-function records(text: string): { line: number; fields: string[] }[] {
-	const out: { line: number; fields: string[] }[] = []
-	let fields: string[] = []
-	let field = ""
-	let quoted = false
-	let line = 1
-	let start = 1
-	const src = text.replace(/^﻿/, "")
-
-	for (let i = 0; i < src.length; i += 1) {
-		const c = src[i]
-		if (quoted) {
-			if (c === '"' && src[i + 1] === '"') {
-				field += '"'
-				i += 1
-			} else if (c === '"') {
-				quoted = false
-			} else if (c === "\r" && src[i + 1] === "\n") {
-				// A Windows line break inside a cell is still one break.
-			} else {
-				if (c === "\n") line += 1
-				field += c
-			}
-			continue
-		}
-		if (c === '"') quoted = true
-		else if (c === ",") {
-			fields.push(field)
-			field = ""
-		} else if (c === "\n" || c === "\r") {
-			if (c === "\r" && src[i + 1] === "\n") i += 1
-			fields.push(field)
-			out.push({ fields, line: start })
-			fields = []
-			field = ""
-			line += 1
-			start = line
-		} else field += c
-	}
-	if (field !== "" || fields.length > 0) {
-		fields.push(field)
-		out.push({ fields, line: start })
-	}
-	// Spreadsheets pad the end with empty rows; they are not items.
-	return out.filter(r => r.fields.some(f => f.trim() !== ""))
-}
-
 function bool(raw: string): boolean | undefined | "bad" {
 	const v = raw.trim().toLowerCase()
 	if (v === "") return undefined
@@ -115,14 +66,14 @@ function bool(raw: string): boolean | undefined | "bad" {
 
 /** A number as a spreadsheet writes it: `$1,250.00` is 1250. */
 function num(raw: string): number {
-	return Number(raw.trim().replace(/[$,\s]/g, ""))
+	return Number(raw.trim().replaceAll(/[$,\s]/g, ""))
 }
 
 /**
  * Parse and validate a whole file. Either every row is good and `items` holds them all, or `problems` says what to fix, line by line. Nothing in between: a half-imported catalogue is harder to fix than a refused one.
  */
 export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: ShopCsvProblem[] } {
-	const rows = records(text)
+	const rows = parseCsvRecords(text)
 	const head = rows.shift()
 	if (!head) return { items: [], problems: [{ line: 0, message: "The file is empty." }] }
 
@@ -133,26 +84,24 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 				h
 					.trim()
 					.toLowerCase()
-					.replace(/[^a-z]/g, "")
+					.replaceAll(/[^a-z]/g, "")
 			],
 	)
-	for (const [i, h] of head.fields.entries()) {
-		if (!columns[i] && h.trim() !== "") {
+	for (const [i, h] of head.fields.entries())
+		if (!columns[i] && h.trim() !== "")
 			problems.push({ line: 1, message: `Unknown column "${h.trim()}". Columns are: ${SHOP_CSV_COLUMNS.join(", ")}.` })
-		}
-	}
+
 	const missing = REQUIRED.filter(c => !columns.includes(c))
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
 	if (problems.length > 0) return { items: [], problems }
 
 	if (rows.length === 0) return { items: [], problems: [{ line: 0, message: "The file has a header but no items." }] }
-	if (rows.length > SHOP_CSV_MAX_ROWS) {
+	if (rows.length > SHOP_CSV_MAX_ROWS)
 		return {
 			items: [],
 			problems: [{ line: 0, message: `At most ${SHOP_CSV_MAX_ROWS} items per import; this file has ${rows.length}.` }],
 		}
-	}
 
 	const items: ShopCsvItem[] = []
 	const seen = new Map<string, number>()
@@ -160,7 +109,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 	for (const row of rows) {
 		const cell = (c: Column) => {
 			const i = columns.indexOf(c)
-			return i < 0 ? "" : (row.fields[i] ?? "")
+			return i === -1 ? "" : (row.fields[i] ?? "")
 		}
 		const say = (message: string) => problems.push({ line: row.line, message })
 
@@ -171,7 +120,8 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 		}
 
 		const category = cell("category").trim()
-		const categoryValue = category === "" ? undefined : CATEGORY_ALIASES[category.toUpperCase().replace(/[\s-]+/g, "_")]
+		const categoryValue =
+			category === "" ? undefined : CATEGORY_ALIASES[category.toUpperCase().replaceAll(/[\s-]+/g, "_")]
 		if (category !== "" && !categoryValue)
 			say(`Category "${category}" is not one of: upgrade, consumable, misc, printer.`)
 

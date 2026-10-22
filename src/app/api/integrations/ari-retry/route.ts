@@ -17,11 +17,12 @@ import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 import prisma from "@/lib/prisma"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
+import { DAY_MS } from "@/lib/time"
 
 export const maxDuration = 300
 
 /** A failed withdraw is replayed for a week, then left to a human. */
-const WITHDRAW_REPLAY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const WITHDRAW_REPLAY_WINDOW_MS = 7 * DAY_MS
 
 function phaseOf(metadata: unknown): Phase | null {
 	const phase = (metadata as { phase?: unknown } | null)?.phase
@@ -114,7 +115,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 			take: 25,
 			where: { appliedAt: null, payload: { not: Prisma.DbNull } },
 		})
-		for (const row of waiting) {
+		for (const row of waiting)
 			try {
 				await applyStoredEvent(row.payload as unknown as AriWebhookEvent)
 				await prisma.ariWebhookDelivery.update({ data: { appliedAt: new Date() }, where: { id: row.id } })
@@ -124,16 +125,17 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 				if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") continue
 				deferredFailed++
 			}
-		}
 	}
 
 	// Missed decisions: a delivery the webhook never received leaves a hand-in open here while Ari has decided it. Bounded and shuffled, so the job stays inside its timeout, no hand-in is starved, and a backlog clears over a few runs. Quiet – the maker was told by the webhook in the normal case, and a catch-up must not become a flood.
 	let reconciled = 0
 	let reconciledApplied = 0
+	let reconciledReverted = 0
 	if (isAriConfigured()) {
 		const result = await reconcileAriDecisions({ commit: true, limit: 150 })
 		reconciled = result.checked
 		reconciledApplied = result.applied
+		reconciledReverted = result.reverted
 	}
 
 	const summary = {
@@ -143,6 +145,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		failed,
 		reconciled,
 		reconciledApplied,
+		reconciledReverted,
 		skipped,
 		synced,
 		withdrawFailed,

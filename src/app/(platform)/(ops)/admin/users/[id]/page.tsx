@@ -3,16 +3,16 @@ import { ActionButton } from "@/app/components/forms/ActionButton"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { EmailForm } from "@/app/components/forms/EmailForm"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
-import { GrantForm } from "@/app/components/forms/GrantForm"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
-import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
-import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, statusTone, Table } from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
+import { isIdentityVerified } from "@/lib/hca-profile"
 import { isHcbConfigured } from "@/lib/hcb"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
+import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePermission } from "@/lib/permissions"
 import { getUserDetail } from "@/lib/queries/admin"
+import { ThemedProjectRow } from "./ThemedProjectRow"
 
 export const dynamic = "force-dynamic"
 
@@ -23,6 +23,9 @@ interface Props {
 export default async function AdminUserPage({ params }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
 	const { id } = await params
+	const canManageCredit = hasPermission(roles, Permission.MANAGE_CREDIT)
+	// Fresh from HCA, not the status stored at the last sign-in: a maker who verified since then must not be shown a locked payout, and the routes check the same answer. Only asked when this page can issue something, because it may call HCA.
+	const identityVerified = canManageCredit ? await isIdentityVerified(id) : false
 
 	const detail = await getUserDetail(id, {
 		includeSensitive: hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR),
@@ -30,12 +33,12 @@ export default async function AdminUserPage({ params }: Props) {
 	if (!detail) notFound()
 
 	const { user, balances, ledger, orders, printer } = detail
+	const summary = permissionSummary(user.roles.map(r => r.role))
 	const canManageRoles = hasPermission(roles, Permission.MANAGE_ROLES)
-	const canManageCredit = hasPermission(roles, Permission.MANAGE_CREDIT)
 	const canManageUsers = hasPermission(roles, Permission.MANAGE_USERS)
 	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
-	const canSendGrant = canManageCredit && isHcbConfigured()
+	const canSendGrant = canManageCredit && isHcbConfigured() && identityVerified
 
 	return (
 		<div className="hl-stack">
@@ -98,104 +101,62 @@ export default async function AdminUserPage({ params }: Props) {
 				</Panel>
 			) : null}
 
-			<Panel title="Themed projects">
-				{canSendGrant && (
+			{/* What the roles above actually amount to, which is the question a person granting one is really asking. A seat is a name; the level is the reach. */}
+			<Panel title="Access">
+				<p className="hl-hint" style={{ marginTop: 0 }}>
+					{summary.permissions.length > 0
+						? `Can ${summary.permissions.map(readablePermission).join(", ")}.`
+						: "Holds no staff permissions, so this account cannot reach the staff console."}
+				</p>
+			</Panel>
+
+			<Panel title="Themed projects" wide>
+				{canManageCredit && isHcbConfigured() && (
 					<p className="hl-hint" style={{ marginTop: 0 }}>
-						Sending a grant tops up the maker&apos;s HCB card grant directly. It is a manual fallback – the payout
-						pipeline is the normal path – and can only be sent once per project.
+						{identityVerified
+							? "Sending a grant tops up the maker's HCB card grant directly. It is a manual fallback – the payout pipeline is the normal path – and can only be sent once per project."
+							: "Grants are locked until this maker verifies their identity at identity.hackclub.com."}
 					</p>
 				)}
 				<Table
+					className="hl-table--roomy"
 					head={[
-						"Theme",
-						"Design",
-						"Build",
+						"Project",
+						"Review",
 						"Tier",
 						"Grant",
 						"Hours",
-						canSendGrant ? "Send grant" : null,
-						canMoveTheme ? "Move" : null,
-						canManageUsers ? "Extension" : null,
-						canOverride ? "" : null,
+						canSendGrant || canMoveTheme || canManageUsers || canOverride ? "Actions" : null,
 					].filter(Boolean)}
 				>
 					{user.themeProjects.map(project => (
-						<tr id={`project-${project.id}`} key={project.id}>
-							<td>
-								{getThemeDef(project.theme).label}
-								<div className="hl-hint">{project.title}</div>
-							</td>
-							<td>
-								<Badge tone={statusTone(project.designStatus)}>{statusLabel(project.designStatus)}</Badge>
-							</td>
-							<td>
-								<Badge tone={statusTone(project.buildStatus)}>{statusLabel(project.buildStatus)}</Badge>
-							</td>
-							<td>{project.tier ?? "—"}</td>
-							<td>{project.grantUsd !== null ? `$${project.grantUsd}` : "—"}</td>
-							<td className="hl-mono">{project.approvedHours ?? "—"}</td>
-							{canSendGrant ? (
-								<td style={{ minWidth: "14rem" }}>
-									{project.designStatus === "approved" && project.grantUsd ? (
-										<GrantForm
-											alreadySent={project.hcbGrantTopUps.length > 0}
-											amountUsd={project.grantUsd}
-											projectId={project.id}
-										/>
-									) : (
-										<span className="hl-hint">–</span>
-									)}
-								</td>
-							) : null}
-							{canMoveTheme ? (
-								<td style={{ minWidth: "12rem" }}>
-									<ThemeMoveForm current={project.theme} projectId={project.id} />
-								</td>
-							) : null}
-							{canManageUsers ? (
-								<td style={{ minWidth: "18rem" }}>
-									<ExtensionForm
-										current={project.submissionExtensionUntil?.toISOString() ?? null}
-										url={`/api/admin/theme-projects/${project.id}`}
-									/>
-								</td>
-							) : null}
-							{canOverride ? (
-								<td>
-									{project.designStatus === "approved" ? (
-										<ActionButton
-											body={{
-												action: "unapprove",
-												phase: "DESIGN",
-												reason: "Un-approved by an admin",
-											}}
-											confirm="Un-approve the design? This clears the tier and grant."
-											label="Un-approve design"
-											url={`/api/admin/theme-projects/${project.id}/override`}
-										/>
-									) : null}
-									{project.buildStatus === "approved" ? (
-										<ActionButton
-											body={{
-												action: "unapprove",
-												phase: "BUILD",
-												reason: "Un-approved by an admin",
-											}}
-											confirm={`Un-approve the build? This reconciles their ${CREDIT_NAME_PLURAL} back down.`}
-											label="Un-approve build"
-											url={`/api/admin/theme-projects/${project.id}/override`}
-										/>
-									) : null}
-								</td>
-							) : null}
-						</tr>
+						<ThemedProjectRow
+							canExtend={canManageUsers}
+							canMoveTheme={canMoveTheme}
+							canOverride={canOverride}
+							canSendGrant={canSendGrant}
+							data={{
+								approvedHours: project.approvedHours,
+								buildStatus: project.buildStatus,
+								designStatus: project.designStatus,
+								extension: project.submissionExtensionUntil?.toISOString() ?? null,
+								grantSent: project.hcbGrantTopUps.length > 0,
+								grantUsd: project.grantUsd,
+								id: project.id,
+								theme: project.theme,
+								themeLabel: getThemeDef(project.theme).label,
+								tier: project.tier,
+								title: project.title,
+							}}
+							key={project.id}
+						/>
 					))}
 				</Table>
 			</Panel>
 
 			{canManageCredit ? (
 				<Panel title="Adjust credit">
-					<CreditGrantForm userId={id} />
+					<CreditGrantForm canGrant={identityVerified} userId={id} />
 				</Panel>
 			) : null}
 

@@ -1,7 +1,7 @@
 import { after } from "next/server"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { projectDisplayTitle } from "@/lib/config/program"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
@@ -16,9 +16,7 @@ interface Params {
  *
  * Scoped through the project so one maker's dispute id cannot be written to from another's session. A reply pings staff the same way the original dispute did, so a maker answering a reviewer's question is not left waiting on a channel nobody is reading.
  */
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { disputeId, id } = await params
 
 	const parsed = await parseBody(req, disputeMessageSchema)

@@ -1,6 +1,5 @@
 import prisma from "@/lib/prisma"
-import type { ProjectReviewStats, WeekReviewProgress } from "./review-store"
-import { ANONYMOUS_ARI } from "./review-store"
+import { ANONYMOUS_ARI, type ProjectReviewStats, type WeekReviewProgress } from "./review-store"
 import { getSlackUserNames } from "./slack"
 import { countedLine, creditedLine, rankedShareBoard, renderSummary, type SummaryBoard } from "./summary"
 

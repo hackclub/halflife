@@ -1,3 +1,4 @@
+import { getTier, isTierId } from "@/lib/config/tiers"
 import "server-only"
 import type { AuditLog, LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import {
@@ -17,21 +18,24 @@ import {
 	Theme,
 } from "@/app/generated/prisma/enums"
 import { isActiveDay } from "@/lib/analytics"
+import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
-import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { isTierId, TIERS } from "@/lib/config/tiers"
+import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { type Balances, getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
+import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, positionWhere, readCursor } from "@/lib/pagination"
 import { safeDecrypt } from "@/lib/pii"
-import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
+import { getPrinterQualification, type PrinterQualification, printerAwardSelect } from "@/lib/printer"
 import prisma from "@/lib/prisma"
-import { effectiveDateFor, getProgramSettings, startOfDay } from "@/lib/program"
+import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
+import { projectReviewState } from "@/lib/review-state"
 import { shopOrderStaffSelect } from "@/lib/shop"
+import { eachDayBetween } from "@/lib/time"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
 export interface DirectoryUser {
@@ -46,25 +50,45 @@ export interface DirectoryUser {
 	verificationStatus: string | null
 }
 
+/**
+ * The directory's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an account or hands one out twice.
+ */
+const USERS_ORDER = {
+	at: (row: DirectoryUser) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<DirectoryUser, Prisma.UserOrderByWithRelationInput>
+
 export async function listUsers(
 	opts: { q?: string; cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
+	// Without PII the search box matches names only. Matching an address or a Slack id would turn the directory into a registration oracle: anybody holding VIEW_USERS could confirm whether a given person has an account here.
+	//
+	// The search sits inside an AND array rather than at the top level. The cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying: a page of search results that ignored the search would be a worse answer than no page at all.
+	const base: Prisma.UserWhereInput = opts.q
+		? {
+				AND: [
+					{
+						OR: [
+							{ name: { contains: opts.q, mode: "insensitive" } },
+							{ displayName: { contains: opts.q, mode: "insensitive" } },
+							...(includePii
+								? ([
+										{ email: { contains: opts.q, mode: "insensitive" } },
+										{ slackId: { contains: opts.q, mode: "insensitive" } },
+									] satisfies Prisma.UserWhereInput[])
+								: []),
+						],
+					},
+				],
+			}
+		: {}
 	const rows = await prisma.user.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		take: opts.limit + 1,
-		where: opts.q
-			? {
-					OR: [
-						{ email: { contains: opts.q, mode: "insensitive" } },
-						{ name: { contains: opts.q, mode: "insensitive" } },
-						{ displayName: { contains: opts.q, mode: "insensitive" } },
-						{ slackId: { contains: opts.q, mode: "insensitive" } },
-					],
-				}
-			: undefined,
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		orderBy: orderByFor(USERS_ORDER),
 		select: {
 			createdAt: true,
 			displayName: true,
@@ -76,14 +100,18 @@ export async function listUsers(
 			slackId: true,
 			verificationStatus: true,
 		},
+		take: opts.limit + 1,
+		// The directory is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.UserWhereInput>(readCursor(opts.cursor), USERS_ORDER, base),
 	})
-	const hasMore = rows.length > opts.limit
+	const page = pageResult(rows, opts.limit, USERS_ORDER)
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
-	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map(row =>
-		includePii ? row : { ...row, email: "", fraudFlagged: false, slackId: null, verificationStatus: null },
+	const items = page.items.map(row =>
+		includePii
+			? row
+			: Object.assign({}, row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
 	)
-	const last = items[items.length - 1]
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return { items, nextCursor: page.nextCursor }
 }
 
 export interface ProjectFilters {
@@ -91,7 +119,7 @@ export interface ProjectFilters {
 	designStatus?: PhaseStatus
 	/** Only projects, or owners, with an extension still running. */
 	extended?: boolean
-	/** Matches the project's title, description or repo, or its owner's name, email or Slack ID. */
+	/** Matches the project's title, description or repo, or its owner's name. The owner's email and Slack ID are matched too, but only for a caller who may see PII. */
 	q?: string
 	theme?: Theme
 	tier?: number
@@ -127,18 +155,33 @@ const projectDirectorySelect = {
 	},
 } satisfies Prisma.ThemeProjectSelect
 
+/**
+ * The project directory's order: most recently touched first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops a project or hands one out twice.
+ */
+const PROJECTS_ORDER = {
+	at: (row: ProjectDirectoryRow) => row.updatedAt,
+	column: "updatedAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<ProjectDirectoryRow, Prisma.ThemeProjectOrderByWithRelationInput>
+
 export async function listProjects(
 	opts: ProjectFilters & { cursor?: string; limit: number },
+	flags?: { includePii?: boolean },
 ): Promise<{ items: ProjectDirectoryRow[]; nextCursor: string | null }> {
+	const includePii = flags?.includePii ?? false
 	const now = new Date()
 	const q = opts.q?.trim()
+	// The owner's email and Slack id are contact details, so they are matched only for a caller who may see them. A REVIEWER searching for an address gets the same answer whether or not it is registered here.
+	//
+	// Every filter that is itself an OR lives in the AND array, never at the top level: the cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying.
 	const where: Prisma.ThemeProjectWhereInput = {
 		deletedAt: null,
 		...(opts.unstarted ? {} : { namedAt: { not: null } }),
 		...(opts.theme ? { theme: opts.theme } : {}),
 		...(opts.designStatus ? { designStatus: opts.designStatus } : {}),
 		...(opts.buildStatus ? { buildStatus: opts.buildStatus } : {}),
-		...(opts.tier ? { OR: [{ tier: opts.tier }, { requestedTier: opts.tier, tier: null }] } : {}),
 		AND: [
 			q
 				? {
@@ -149,8 +192,12 @@ export async function listProjects(
 							{ githubRepo: { contains: q, mode: "insensitive" } },
 							{ user: { name: { contains: q, mode: "insensitive" } } },
 							{ user: { displayName: { contains: q, mode: "insensitive" } } },
-							{ user: { email: { contains: q, mode: "insensitive" } } },
-							{ user: { slackId: { contains: q, mode: "insensitive" } } },
+							...(includePii
+								? ([
+										{ user: { email: { contains: q, mode: "insensitive" } } },
+										{ user: { slackId: { contains: q, mode: "insensitive" } } },
+									] satisfies Prisma.ThemeProjectWhereInput[])
+								: []),
 						],
 					}
 				: {},
@@ -159,20 +206,23 @@ export async function listProjects(
 						OR: [{ submissionExtensionUntil: { gt: now } }, { user: { submissionExtensionUntil: { gt: now } } }],
 					}
 				: {},
+			opts.tier ? { OR: [{ tier: opts.tier }, { requestedTier: opts.tier, tier: null }] } : {},
 		],
 	}
 
 	const rows = await prisma.themeProject.findMany({
-		orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-		take: opts.limit + 1,
-		where,
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		orderBy: orderByFor(PROJECTS_ORDER),
 		select: projectDirectorySelect,
+		take: opts.limit + 1,
+		// The directory is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.ThemeProjectWhereInput>(readCursor(opts.cursor), PROJECTS_ORDER, where),
 	})
-	const hasMore = rows.length > opts.limit
-	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	const page = pageResult(rows, opts.limit, PROJECTS_ORDER)
+	// The same rule as the user directory: the owner's contact details leave the server for ADMIN/AUDITOR only. A REVIEWER/FULFILLER gets names and roles, with no email or Slack id to scrape.
+	const items = page.items.map(row =>
+		includePii ? row : Object.assign({}, row, { user: Object.assign({}, row.user, { email: "", slackId: null }) }),
+	)
+	return { items, nextCursor: page.nextCursor }
 }
 
 const userDetailSelect = {
@@ -184,7 +234,21 @@ const userDetailSelect = {
 	id: true,
 	joinedProgramAt: true,
 	name: true,
-	printerAward: true,
+	// The award's fulfilment fields only. The locked address and phone are ciphertext and the snapshot is write-only, so none of them are part of a profile that anybody with VIEW_USERS may read.
+	printerAward: {
+		select: {
+			addressLockedAt: true,
+			deliveredAt: true,
+			id: true,
+			qualifiedAt: true,
+			revokedAt: true,
+			revokedReason: true,
+			shippedAt: true,
+			status: true,
+			trackingCarrier: true,
+			trackingNumber: true,
+		},
+	},
 	roles: { select: { grantedAt: true, grantedBy: true, role: true } },
 	slackDisplayName: true,
 	slackId: true,
@@ -290,23 +354,35 @@ const orderDirectorySelect = {
 	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.ShopOrderSelect
 
+/**
+ * The order directory's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an order or hands one out twice.
+ */
+const ORDERS_ORDER = {
+	at: (row: OrderDirectoryRow) => row.placedAt,
+	column: "placedAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<OrderDirectoryRow, Prisma.ShopOrderOrderByWithRelationInput>
+
 export async function listOrders(opts: {
 	status?: ShopOrderStatus
 	cursor?: string
 	limit: number
 }): Promise<{ items: OrderDirectoryRow[]; nextCursor: string | null }> {
 	const rows = await prisma.shopOrder.findMany({
-		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
-		take: opts.limit + 1,
-		where: opts.status ? { status: opts.status } : undefined,
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		orderBy: orderByFor(ORDERS_ORDER),
 		// Explicit select, not `include`: a whole-row response carries the encrypted address/phone and `lastActorId` this API has no use for.
 		select: orderDirectorySelect,
+		take: opts.limit + 1,
+		// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+		where: cursorWhere<Prisma.ShopOrderWhereInput>(
+			opts.cursor,
+			ORDERS_ORDER,
+			opts.status ? { status: opts.status } : {},
+		),
 	})
-	const hasMore = rows.length > opts.limit
-	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return pageResult(rows, opts.limit, ORDERS_ORDER)
 }
 
 /**
@@ -356,10 +432,42 @@ export interface FulfillmentOrderRow {
 	user: { id: string; name: string | null }
 }
 
+/** The columns the fulfilment sheet reads, and the order they are read in. */
+const fulfillmentOrderSelect = {
+	fulfillmentMethod: true,
+	fulfillmentStage: true,
+	id: true,
+	itemNameSnapshot: true,
+	orderNumber: true,
+	placedAt: true,
+	quantity: true,
+	shopItem: { select: { costUsd: true } },
+	status: true,
+	unitCostUsd: true,
+	user: {
+		select: { displayName: true, encryptedAddressCountry: true, id: true, name: true },
+	},
+} satisfies Prisma.ShopOrderSelect
+
+/** One row as it comes out of the database, before the sheet's own arithmetic. */
+type FulfillmentOrderModel = Prisma.ShopOrderGetPayload<{ select: typeof fulfillmentOrderSelect }>
+
+/**
+ * The fulfilment sheet's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an order or hands one out twice.
+ */
+const FULFILLMENT_ORDERS_ORDER = {
+	at: (row: FulfillmentOrderModel) => row.placedAt,
+	column: "placedAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<FulfillmentOrderModel, Prisma.ShopOrderOrderByWithRelationInput>
+
 export async function listFulfillmentOrders(
 	filters: FulfillmentFilters,
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
+	// The stage filter lives in the AND array rather than at the top level: the cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying.
 	const where: Prisma.ShopOrderWhereInput = {
 		status: { in: FULFILLMENT_ORDER_STATUSES },
 		...(filters.placedFrom || filters.placedBefore
@@ -375,56 +483,43 @@ export async function listFulfillmentOrders(
 			: filters.method
 				? { fulfillmentMethod: filters.method }
 				: {}),
-		...(filters.stage === ShopFulfillmentStage.CANCELLED
+		...(filters.stage
 			? {
-					OR: [{ status: ShopOrderStatus.CANCELLED }, { fulfillmentStage: ShopFulfillmentStage.CANCELLED }],
+					AND: [
+						filters.stage === ShopFulfillmentStage.CANCELLED
+							? {
+									OR: [{ status: ShopOrderStatus.CANCELLED }, { fulfillmentStage: ShopFulfillmentStage.CANCELLED }],
+								}
+							: {
+									// A cancelled order shows as cancelled, so it matches no other stage.
+									fulfillmentStage: filters.stage,
+									status: { not: ShopOrderStatus.CANCELLED },
+								},
+					],
 				}
-			: filters.stage
-				? {
-						// A cancelled order shows as cancelled, so it matches no other stage.
-						AND: [{ status: { not: ShopOrderStatus.CANCELLED } }],
-						fulfillmentStage: filters.stage,
-					}
-				: {}),
+			: {}),
 	}
 
 	const rows = await prisma.shopOrder.findMany({
-		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
+		orderBy: orderByFor(FULFILLMENT_ORDERS_ORDER),
+		select: fulfillmentOrderSelect,
 		take: opts.limit + 1,
-		where,
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-		select: {
-			fulfillmentMethod: true,
-			fulfillmentStage: true,
-			id: true,
-			itemNameSnapshot: true,
-			orderNumber: true,
-			placedAt: true,
-			quantity: true,
-			shopItem: { select: { costUsd: true } },
-			status: true,
-			unitCostUsd: true,
-			user: {
-				select: { displayName: true, encryptedAddressCountry: true, id: true, name: true },
-			},
-		},
+		// The sheet is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.ShopOrderWhereInput>(readCursor(opts.cursor), FULFILLMENT_ORDERS_ORDER, where),
 	})
-	const hasMore = rows.length > opts.limit
-	const page = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = page[page.length - 1]
+	const page = pageResult(rows, opts.limit, FULFILLMENT_ORDERS_ORDER)
 
-	const items = page.map(({ shopItem, user, unitCostUsd, ...order }) => {
+	const items = page.items.map(({ shopItem, user, unitCostUsd, ...order }) => {
 		// Orders from before the item had a cost fall back to today's.
 		const unit = unitCostUsd ?? shopItem.costUsd
-		return {
-			...order,
+		return Object.assign(order, {
 			country: safeDecrypt(user.encryptedAddressCountry),
 			fulfillmentStage: fulfillmentStageOf(order),
 			totalUsd: unit === null ? null : unit * order.quantity,
 			user: { id: user.id, name: displayName(user) },
-		}
+		})
 	})
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return { items, nextCursor: page.nextCursor }
 }
 
 /** True for one of the recorded action names. Guards the audit-log filter. */
@@ -432,26 +527,35 @@ export function isAuditAction(value: string): value is AuditAction {
 	return (Object.values(AuditAction) as string[]).includes(value)
 }
 
+/**
+ * The audit log's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
+ */
+const AUDIT_LOG_ORDER = {
+	at: (row: AuditLog) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<AuditLog, Prisma.AuditLogOrderByWithRelationInput>
+
 export async function listAuditLog(opts: {
 	action?: string
 	targetId?: string
 	cursor?: string
 	limit: number
 }): Promise<{ items: AuditLog[]; nextCursor: string | null }> {
+	const base: Prisma.AuditLogWhereInput = {
+		// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
+		...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
+		...(opts.targetId ? { targetId: opts.targetId } : {}),
+	}
 	const rows = await prisma.auditLog.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		orderBy: orderByFor(AUDIT_LOG_ORDER),
 		take: opts.limit + 1,
-		where: {
-			// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
-			...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
-			...(opts.targetId ? { targetId: opts.targetId } : {}),
-		},
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		// The log is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.AuditLogWhereInput>(readCursor(opts.cursor), AUDIT_LOG_ORDER, base),
 	})
-	const hasMore = rows.length > opts.limit
-	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return pageResult(rows, opts.limit, AUDIT_LOG_ORDER)
 }
 
 /**
@@ -463,31 +567,13 @@ export interface PrinterAwardRow
 	addressOnFile: boolean
 }
 
-const printerAwardSelect = {
-	addressLockedAt: true,
-	deliveredAt: true,
-	encryptedAddress: true,
-	id: true,
-	qualifiedAt: true,
-	revokedAt: true,
-	revokedReason: true,
-	shippedAt: true,
-	status: true,
-	trackingCarrier: true,
-	trackingNumber: true,
-	user: { select: { displayName: true, id: true, name: true } },
-} satisfies Prisma.PrinterAwardSelect
-
 export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
 	const rows = await prisma.printerAward.findMany({
 		orderBy: [{ qualifiedAt: "desc" }],
 		select: printerAwardSelect,
 		take: limit,
 	})
-	return rows.map(({ encryptedAddress, ...award }) => ({
-		...award,
-		addressOnFile: encryptedAddress !== "",
-	}))
+	return rows.map(({ encryptedAddress, ...award }) => Object.assign(award, { addressOnFile: encryptedAddress !== "" }))
 }
 
 /** Recent live reels, newest first, for the moderation panel. */
@@ -506,7 +592,7 @@ const moderatedPostSelect = {
 	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostSelect
 
-export async function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
+export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
 	return prisma.post.findMany({
 		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
 		select: moderatedPostSelect,
@@ -531,7 +617,7 @@ const moderatedCommentSelect = {
 	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostCommentSelect
 
-export async function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
+export function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
 	return prisma.postComment.findMany({
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		select: moderatedCommentSelect,
@@ -555,7 +641,7 @@ const publicReelSelect = {
 	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.PublicReelSelect
 
-export async function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
+export function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
 	return prisma.publicReel.findMany({
 		orderBy: [{ postedAt: "desc" }, { id: "desc" }],
 		select: publicReelSelect,
@@ -570,27 +656,41 @@ export async function getAdminCounters(): Promise<{
 	participants: number
 	shipped: number
 }> {
-	// A live hand-in: an open submission on a phase that is actually in review, on a project that still exists. The phase check matters on its own – counting every unresolved row also sweeps up submissions whose phase has moved on without the row resolving.
-	const liveHandIn: Prisma.PhaseSubmissionWhereInput = {
-		OR: [
-			{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-			{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-		],
-		resolvedAt: null,
-		themeProject: { deletedAt: null },
-	}
+	// The open hand-ins, each phase's newest only: an older unresolved row is a ship Ari no longer holds, and counting it would put a hand-in in the queue that no reviewer can open. The same rule as the reviewer-activity ring, so the two figures on the page cannot disagree.
+	const open = await prisma.phaseSubmission.findMany({
+		select: {
+			ariSubmissionId: true,
+			createdAt: true,
+			id: true,
+			phase: true,
+			themeProject: { select: { buildStatus: true, designStatus: true } },
+			themeProjectId: true,
+		},
+		where: { resolvedAt: null },
+	})
+	const ships = countAriShips(
+		open.map(submission => ({
+			ariSubmissionId: submission.ariSubmissionId,
+			createdAt: submission.createdAt,
+			id: submission.id,
+			phase: submission.phase,
+			phaseStatus:
+				submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
+			resolvedAt: null,
+			result: null,
+			themeProjectId: submission.themeProjectId,
+		})),
+	)
 
-	const [pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped] = await Promise.all([
-		// Sent, and Ari holds it. This is the number that answers "how much is in the review queue", and the only one comparable to Ari's own pending count.
-		//
-		// `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
-		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: { not: null } } }),
-		// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
-		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: null } }),
+	const [pendingOrders, participants, shipped] = await Promise.all([
 		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
 		prisma.user.count(),
 		prisma.printerAward.count({ where: { revokedAt: null } }),
 	])
+	// Sent, and Ari holds it: the figure comparable to Ari's own pending count. `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
+	const pendingReviews = ships.pending
+	// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
+	const pendingReviewsUnsent = ships.unreached
 	return { participants, pendingOrders, pendingReviews, pendingReviewsUnsent, shipped }
 }
 
@@ -610,7 +710,7 @@ export interface FlowStep {
 /**
  * The participant journey as a funnel. Each row counts people who ALSO did every step above it, so a step never has more people than the one before it and drop-off is never negative – whatever order things actually happened in.
  *
- * Steps with a named marker come from User (lib/analytics); "named a project" and the repo/devlog steps are derived from their own tables; "repo checks passed" is stamped by the preflight that gates submissions. The onboarding and goal steps in between are derived as noted below.
+ * Steps with a named marker come from User (lib/analytics); "named a project" and the repo/devlog steps are derived from their own tables; "repo checks passed" is stamped by the submit path, where the checks that gate a submission came back green. The onboarding and goal steps in between are derived as noted below.
  *
  * The three reel steps that used to sit here ("started a reel upload", "uploaded a reel", "posted a reel") are gone. A funnel can only draw one spine, so putting reel posting on it said every maker who did not post a reel had dropped out, when a maker who is quietly journalling and building has not. Reel posting is one branch of the journey rather than a rung on it, and a branch is what the Sankey view draws: it can show a maker who added a devlog and posted a reel in either order, which a top-to-bottom funnel cannot represent at all.
  *
@@ -740,12 +840,12 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		let count = 0
 		for (const f of flags) {
 			let ok = true
-			for (let k = 0; k <= n; k += 1) {
+			for (let k = 0; k <= n; k += 1)
 				if (!f[k]) {
 					ok = false
 					break
 				}
-			}
+
 			if (ok) count += 1
 		}
 		const prev = n === 0 ? total : (steps[n - 1]?.count ?? total)
@@ -758,6 +858,75 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		})
 	}
 	return steps
+}
+
+export interface WeekFlowStep {
+	/** Distinct people who handed in a project for this week. */
+	count: number
+	/** What the week's project is, e.g. "PCBs · design week". */
+	hint: string
+	label: string
+	/** Share of everyone signed up who handed in this week's project. */
+	ofSignupsPct: number
+	week: number
+}
+
+/**
+ * The season week by week: how many people handed in each week's project, for the weeks that have opened.
+ *
+ * "This week's project" is the theme and phase the schedule puts in that week, not the week a hand-in happened to land in – a maker who hands week 2's design in during week 4 still belongs to week 2, which is the week the work was for. Any hand-in counts, in review, approved or sent back, because all three say the maker put the work in; a week taken back has had its open row deleted, so it stops counting. Rows from before `scheduledWeek` was recorded fall back to the theme and phase's own week, the same rule the Loops sync resolves a submission by.
+ *
+ * Only weeks that have opened are returned. A week still in the future has no submitters because nobody could hand in yet, which is not the same finding as a week nobody handed in for, and drawing it as a zero would read as the latter.
+ *
+ * The count is people, not hand-ins: a maker who handed in both the design and the build for a week is one person on that week's row.
+ */
+export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
+	const settings = await getProgramSettings()
+	const openWeeks = Math.min(
+		TOTAL_WEEKS,
+		weekNumberForDate(settings.eventStartDate, new Date(), settings.programTimezone),
+	)
+	if (openWeeks < 1) return []
+
+	const [signups, submissions] = await Promise.all([
+		prisma.user.count(),
+		prisma.phaseSubmission.findMany({
+			select: {
+				phase: true,
+				scheduledWeek: true,
+				themeProject: { select: { theme: true, userId: true } },
+			},
+			// Null rows are kept because a hand-in from before `scheduledWeek` was recorded only finds its week through its theme and phase below.
+			where: {
+				OR: [{ scheduledWeek: { gte: 1, lte: openWeeks } }, { scheduledWeek: null }],
+				themeProject: { deletedAt: null },
+			},
+		}),
+	])
+
+	const submitters = new Map<number, Set<string>>()
+	for (const submission of submissions) {
+		const week = submission.scheduledWeek ?? scheduledWeekFor(submission.themeProject.theme, submission.phase)
+		if (week < 1 || week > openWeeks) continue
+		const seen = submitters.get(week) ?? new Set<string>()
+		seen.add(submission.themeProject.userId)
+		submitters.set(week, seen)
+	}
+
+	return Array.from({ length: openWeeks }, (_, i) => {
+		const week = i + 1
+		const scheduled = scheduleForWeek(week)
+		const count = submitters.get(week)?.size ?? 0
+		return {
+			count,
+			hint: scheduled
+				? `${scheduled.theme.label} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
+				: "No theme scheduled",
+			label: `Week ${week}`,
+			ofSignupsPct: pctOf(count, signups),
+			week,
+		}
+	})
 }
 
 export type ReportStatusFilter = ReportStatus | "ALL"
@@ -823,22 +992,34 @@ const contentReportSelect = {
 /** One row of the content-report directory, with every reportable target attached. */
 export type ContentReportRow = Prisma.ContentReportGetPayload<{ select: typeof contentReportSelect }>
 
+/**
+ * The reports' order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops a report or hands one out twice.
+ */
+const CONTENT_REPORTS_ORDER = {
+	at: (row: ContentReportRow) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<ContentReportRow, Prisma.ContentReportOrderByWithRelationInput>
+
 export async function listContentReports(
 	status: ReportStatusFilter = "OPEN",
 	opts: { cursor?: string; limit?: number } = {},
 ): Promise<{ items: ContentReportRow[]; nextCursor: string | null }> {
 	const limit = opts.limit ?? 50
 	const rows = await prisma.contentReport.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		take: limit + 1,
-		where: status === "ALL" ? undefined : { status },
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		orderBy: orderByFor(CONTENT_REPORTS_ORDER),
 		select: contentReportSelect,
+		take: limit + 1,
+		// The queue is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.ContentReportWhereInput>(
+			readCursor(opts.cursor),
+			CONTENT_REPORTS_ORDER,
+			status === "ALL" ? {} : { status },
+		),
 	})
-	const hasMore = rows.length > limit
-	const items = hasMore ? rows.slice(0, limit) : rows
-	const last = items[items.length - 1]
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return pageResult(rows, limit, CONTENT_REPORTS_ORDER)
 }
 
 export async function countContentReports(): Promise<Record<ReportStatus, number>> {
@@ -1007,7 +1188,7 @@ export async function getAreaStats(): Promise<AreaStat[]> {
 		id,
 		label,
 		users: totals.get(id)?.users ?? 0,
-	})).sort((a, b) => rankLast(b.label, b.users) - rankLast(a.label, a.users))
+	})).toSorted((a, b) => rankLast(b.label, b.users) - rankLast(a.label, a.users))
 }
 
 /** Users and hours per country, from each account's timezone. Ranked by users. */
@@ -1017,7 +1198,7 @@ export async function getCountryStats(): Promise<CountryStat[]> {
 	return [...totals]
 		.filter(([, t]) => t.users > 0 || t.hours > 0)
 		.map(([country, t]) => ({ country, hours: round1(t.hours), users: t.users }))
-		.sort((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
+		.toSorted((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
 }
 
 export interface DayActivity {
@@ -1064,12 +1245,11 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
-	const days = [...byDay.keys()].sort()
+	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
 	const out: DayActivity[] = []
-	const [first, last] = [days[0] as string, days[days.length - 1] as string]
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
+	const [first, last] = [days[0] as string, days.at(-1) as string]
+	for (const day of eachDayBetween(first, last)) {
 		const row = byDay.get(day)
 		out.push({
 			day,
@@ -1138,10 +1318,7 @@ export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today:
 	if (!first) return { days: [], today: activeToday }
 
 	const days: ActiveDay[] = []
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${today}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
-		days.push({ day, users: byDay.get(day) ?? 0 })
-	}
+	for (const day of eachDayBetween(first, today)) days.push({ day, users: byDay.get(day) ?? 0 })
 	return { days, today: activeToday }
 }
 
@@ -1192,12 +1369,11 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
-	const days = [...byDay.keys()].sort()
+	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
 	const out: GoalDayActivity[] = []
-	const [first, last] = [days[0] as string, days[days.length - 1] as string]
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
+	const [first, last] = [days[0] as string, days.at(-1) as string]
+	for (const day of eachDayBetween(first, last)) {
 		const goals = byDay.get(day)
 		out.push({
 			byGoal: GOAL_OPTIONS.map(option => ({
@@ -1259,7 +1435,7 @@ export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 
 export async function getHoursDistribution(): Promise<HoursDistribution> {
 	const inputs = await loadRegionInputs()
 	const byUser = hoursByUser(inputs)
-	const perUser = [...byUser.hours.values()].filter(h => h > 0).sort((a, b) => a - b)
+	const perUser = [...byUser.hours.values()].filter(h => h > 0).toSorted((a, b) => a - b)
 
 	// One bucket per edge, so the trailing Infinity edge becomes the "160+" bar and catches the long tail.
 	const last = HOUR_EDGES.length - 1
@@ -1332,7 +1508,7 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 			starter: starterId !== null,
 			users,
 		}))
-		.sort((a, b) => b.users - a.users)
+		.toSorted((a, b) => b.users - a.users)
 }
 
 /** The four columns each week's cluster is split into. */
@@ -1397,7 +1573,7 @@ function weekSlots(): WeekSlot[] {
  *
  * What this deliberately no longer does is count every project in both weeks regardless. That made a theme's two columns identical – 2,178 PCB projects in week 1 and the same 2,178 in week 6 – when only a fraction had reached the build. A named project nothing has happened to yet is in neither column, because no week is funding it yet.
  *
- * The warm-up track needs no special case: it is one phase on one of the two statuses, and `weekOfPhase` sends both to the single warm-up column.
+ * The warm-up track needs no special case: it is one phase on one of the two statuses, and `scheduledWeekFor` sends both to the single warm-up column.
  */
 export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	const projects = await prisma.themeProject.findMany({
@@ -1413,9 +1589,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	})
 
 	const clusters = new Map<number, WeekProjectCluster>()
-	for (const slot of weekSlots()) {
-		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
-	}
+	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 
 	for (const project of projects) {
 		const column = projectColumn(project)
@@ -1423,14 +1597,14 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 			// The same threshold `getHoursByWeek` reads: a phase starts being one of these stages when it stops being a draft, so the two charts change together rather than one counting a project the other has no hours for.
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (status === PhaseStatus.draft) continue
-			const cluster = clusters.get(weekOfPhase(project.theme, phase))
+			const cluster = clusters.get(scheduledWeekFor(project.theme, phase))
 			// A theme scheduled outside the season draws nowhere rather than inventing a column for itself.
 			if (!cluster) continue
 			cluster[column] += 1
 		}
 	}
 
-	return [...clusters.values()].sort((a, b) => a.week - b.week)
+	return [...clusters.values()].toSorted((a, b) => a.week - b.week)
 }
 
 export interface WeekHoursCluster {
@@ -1445,17 +1619,6 @@ export interface WeekHoursCluster {
 	tier3: number
 	/** 0 for the warm-up import, then the ten program weeks in order. */
 	week: number
-}
-
-/**
- * The week a phase's hours belong to: the theme's own design or build week, or the warm-up track for everything off-season.
- *
- * The same two weeks `getProjectsByWeek` places a project's stages in, so the two charts describe one cohort. Phase decides which of the two, which is also what keeps every logged hour counted exactly once – a build week's column is the build phases of its projects, not their design phases as well.
- */
-function weekOfPhase(theme: Theme, phase: Phase): number {
-	if (theme === Theme.WARMUP) return WARMUP_WEEK_ID
-	const def = getThemeDef(theme)
-	return phase === Phase.DESIGN ? def.designWeek : def.buildWeek
 }
 
 /**
@@ -1499,9 +1662,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	})
 
 	const clusters = new Map<number, WeekHoursCluster>()
-	for (const slot of weekSlots()) {
-		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
-	}
+	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 
 	// Each maker's recordings, whatever project or phase they were attached to, so a link is measured against the ones that name its project even when they live on another week's project.
 	const recordingsByUser = new Map<string, RecordedWindow[]>()
@@ -1528,7 +1689,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 			if (sessions.length === 0 && links.length === 0) continue
 
 			const { computedTotal } = rollUpHours(sessions, links, null, recordings)
-			const cluster = clusters.get(weekOfPhase(project.theme, phase))
+			const cluster = clusters.get(scheduledWeekFor(project.theme, phase))
 			// A theme scheduled outside the season draws nowhere rather than inventing a column for itself.
 			if (!cluster) continue
 			cluster[column] += computedTotal
@@ -1543,7 +1704,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		cluster.tier3 = round1(cluster.tier3)
 	}
 
-	return [...clusters.values()].sort((a, b) => a.week - b.week)
+	return [...clusters.values()].toSorted((a, b) => a.week - b.week)
 }
 
 export interface VerificationStat {
@@ -1569,7 +1730,7 @@ export async function getVerificationStats(): Promise<VerificationStat[]> {
 					: (VERIFICATION_STATUS_LABELS[row.verificationStatus] ?? row.verificationStatus),
 			users: row._count._all,
 		}))
-		.sort((a, b) => b.users - a.users)
+		.toSorted((a, b) => b.users - a.users)
 }
 
 /**
@@ -1604,7 +1765,7 @@ export interface ReviewerStats {
  *
  * Counted over live decisions only. A review an admin un-approved or Ari reverted is marked `invalidated`, and a row that no longer stands is not a decision the project still has – counting it would make the total only ever grow and leave it disagreeing with Ari after a revert. Only FINAL passes count: a FIRST-pass row is advisory and moves no status and no money (see the ReviewPass enum), so including it would credit a reviewer with a decision they did not make.
  *
- * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getAdminCounters`'s "awaiting review" remains the submission-level figure. Neither is meant to equal a total in Ari's own UI, which counts ships rather than projects, so a reader comparing the two is comparing two different questions. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
+ * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getProjectReviewStatuses` counts each project in the one state its card shows, including the ones still waiting, so it is a different question again. This figure is deliberately different from that ring and from `getAdminCounters`'s "awaiting review". The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
  *
  * "Today" is the program timezone's day, the same boundary the activity strip and streaks use, so a review that landed at 11pm New York counts the day the dashboard is on rather than the server's.
  *
@@ -1648,71 +1809,27 @@ export interface ProjectReviewStatusStat {
 }
 
 /**
- * The review board as Ari shows it: one row per ship, by the decision standing on it now.
+ * The review board as one state per project: the same single state its card shows, counted once.
  *
- * Ari counts ships, not projects – a (project, phase) hand-in – so this counts the latest submission per phase rather than reading the project's status columns. The columns answer a different question: they follow the phase's *current* step, so a design approved long ago reads as pending once its build is handed in, and a sent-back design reads as pending the moment it is resubmitted. That is why the old version showed everything as pending while Ari showed hundreds of standing decisions.
+ * A project has two phases and can be resubmitted, so a per-ship count puts one project in several slices at once – an approved design beside a build still in review, or a changes ship beside the resubmission that replaced it. This ring asks how many projects are in each state now, so every project contributes exactly one slice and the total is the number of projects that have been submitted. A project that has never left draft is in none of them.
  *
- * Each phase contributes at most one slice, decided by its newest submission: an unresolved hand-in Ari holds is pending; a decided one reads from its live FINAL review, falling back to the submission's own recorded result. An un-approval invalidates the review without reopening the submission, so a decided submission with no live review left keeps its recorded result rather than vanishing. A hand-in Ari never received (`ariSubmissionId` null) is counted nowhere – it is not on Ari's board either, and the reviewer-activity panel already counts it apart.
+ * The state is `projectReviewState`, the same function the projects grid uses to colour a card, so the ring and the cards cannot disagree about which state a project is in. Deleted projects are left out, as they are on the grid.
  */
 export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
-	const submissions = await prisma.phaseSubmission.findMany({
-		// Newest first, so the first row seen for a phase is that phase's current ship.
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		select: {
-			ariDecision: true,
-			ariSubmissionId: true,
-			phase: true,
-			resolvedAt: true,
-			resolvedResult: true,
-			reviews: {
-				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-				select: { result: true },
-				take: 1,
-				where: { invalidated: false, pass: ReviewPass.FINAL },
-			},
-			themeProjectId: true,
-		},
-		where: { themeProject: { deletedAt: null } },
+	const projects = await prisma.themeProject.findMany({
+		select: { buildStatus: true, designStatus: true },
+		where: { deletedAt: null },
 	})
 
-	const latest = new Map<string, (typeof submissions)[number]>()
-	for (const submission of submissions) {
-		const key = `${submission.themeProjectId}:${submission.phase}`
-		if (!latest.has(key)) latest.set(key, submission)
-	}
-
-	let pending = 0
-	let needsChanges = 0
-	let rejected = 0
-	let approved = 0
-	for (const submission of latest.values()) {
-		if (submission.resolvedAt === null) {
-			if (submission.ariSubmissionId !== null) pending += 1
-			continue
-		}
-		const result = submission.reviews[0]?.result ?? submission.resolvedResult ?? ariToResult(submission.ariDecision)
-		if (result === ReviewResult.APPROVED) approved += 1
-		else if (result === ReviewResult.RETURNED) needsChanges += 1
-		else if (result === ReviewResult.REJECTED) rejected += 1
-		// A resolved submission with no recorded outcome at all is corrupt data, not a slice: counted nowhere rather than misfiled.
-	}
+	const counts = { approved: 0, changes: 0, not_started: 0, pending: 0, rejected: 0 }
+	for (const project of projects) counts[projectReviewState(project.designStatus, project.buildStatus)] += 1
 
 	return [
-		{ label: "Approved", value: approved },
-		{ label: "Needs changes", value: needsChanges },
-		{ label: "Rejected", value: rejected },
-		{ label: "Pending", value: pending },
+		{ label: "Approved", value: counts.approved },
+		{ label: "Needs changes", value: counts.changes },
+		{ label: "Rejected", value: counts.rejected },
+		{ label: "Pending", value: counts.pending },
 	]
-}
-
-/** The decision string Ari reports, back into the enum the reviews table speaks. */
-function ariToResult(decision: string | null): ReviewResult | null {
-	if (decision === "approved") return ReviewResult.APPROVED
-	if (decision === "changes") return ReviewResult.RETURNED
-	if (decision === "rejected") return ReviewResult.REJECTED
-	// Ari is an external system, so a decision string we do not know is a vocabulary drift, not corrupt local data: log it rather than let the submission vanish from the chart silently.
-	if (decision !== null) console.warn(`[admin] unrecognised Ari decision "${decision}"; counted nowhere`)
-	return null
 }
 
 // ─── User-flow Sankey ─────────────────────────────────────────────────────────
@@ -1981,7 +2098,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		}
 		for (const [userId, { project, tier }] of latest) {
 			userTier.set(userId, tier)
-			const floor = TIERS.find(t => t.id === tier)?.fundingHours ?? 0
+			const floor = getTier(tier)?.fundingHours ?? 0
 			const hours = (journalByProject.get(project.id) ?? 0) + (hackByProject.get(project.id) ?? 0)
 			tierMet.set(userId, hours >= floor)
 		}
@@ -2128,13 +2245,13 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const activityShare: ActivityShare = {
 		activities: [
 			...SANKEY_ACTIVITY.map(a => {
-				const users = reachedCount(a.key)
+				const reached = reachedCount(a.key)
 				return {
 					base: a.base,
 					key: a.key,
 					label: a.label,
-					share: finishers.length === 0 ? 0 : users / finishers.length,
-					users,
+					share: finishers.length === 0 ? 0 : reached / finishers.length,
+					users: reached,
 				}
 			}),
 			{
@@ -2144,7 +2261,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 				share: finishers.length === 0 ? 0 : reachedCount("none") / finishers.length,
 				users: reachedCount("none"),
 			},
-		].sort((a, b) => b.users - a.users),
+		].toSorted((a, b) => b.users - a.users),
 		total: finishers.length,
 	}
 
@@ -2162,7 +2279,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 					const [source, target] = key.split("\u0000")
 					return { fan: entry.fan, source: source as string, target: target as string, value: entry.value }
 				})
-				.filter(link => live.has(link.source) && live.has(link.target)),
+				.filter(edge => live.has(edge.source) && live.has(edge.target)),
 			nodes,
 			stages,
 			total: users.length,

@@ -32,8 +32,8 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 	minted: MintedHandoff | null
 	status: HandoffStatus
 	error: string | null
-	mint: () => Promise<void>
-	cancel: () => void
+	mint(): Promise<void>
+	cancel(): void
 } {
 	const [minted, setMinted] = useState<MintedHandoff | null>(null)
 	const [status, setStatus] = useState<HandoffStatus>("idle")
@@ -62,18 +62,18 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 				try {
 					const res = await fetch(`/api/handoff/${id}`)
 					if (!res.ok) return
-					const status = (await res.json()) as {
+					const payload = (await res.json()) as {
 						state: string
 						objectKey?: string
 						url?: string | null
 					}
-					if (status.state === "ready" && status.objectKey) {
+					if (payload.state === "ready" && payload.objectKey) {
 						stop()
 						setStatus("ready")
-						ready.current(status.objectKey, status.url ?? null)
+						ready.current(payload.objectKey, payload.url ?? null)
 						// Tell the server we have it, so nothing keeps this row live.
-						fetch(`/api/handoff/${id}`, { method: "POST" })
-					} else if (status.state === "expired") {
+						void fetch(`/api/handoff/${id}`, { method: "POST" })
+					} else if (payload.state === "expired") {
 						stop()
 						setStatus("expired")
 					}

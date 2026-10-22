@@ -1,6 +1,6 @@
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { sendGrant } from "@/lib/grants"
-import { requirePermission } from "@/lib/guards"
+import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { grantSchema } from "@/lib/schemas/admin"
 
@@ -15,20 +15,21 @@ export const maxDuration = 60
  *
  * A payout is a MANAGE_CREDIT action, not a review one: a reviewer decides what a project is worth, and granting the money is deliberately a different permission. Idempotent per (user, project, design) in lib/grants.
  */
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requirePermission(Permission.MANAGE_CREDIT)
-	if (gate.error) return gate.error
-	const { id } = await params
+export const POST = withPermission(
+	Permission.MANAGE_CREDIT,
+	async (req: Request, { params, gate }: Params & AuthedContext) => {
+		const { id } = await params
 
-	const parsed = await parseBody(req, grantSchema)
-	if (parsed.error) return parsed.error
+		const parsed = await parseBody(req, grantSchema)
+		if (parsed.error) return parsed.error
 
-	const result = await sendGrant({
-		adminEmail: gate.user.email,
-		adminId: gate.user.id,
-		grantUrl: parsed.data.grantUrl,
-		phase: parsed.data.phase,
-		themeProjectId: id,
-	})
-	return ok(result)
-})
+		const result = await sendGrant({
+			adminEmail: gate.user.email,
+			adminId: gate.user.id,
+			grantUrl: parsed.data.grantUrl,
+			phase: parsed.data.phase,
+			themeProjectId: id,
+		})
+		return ok(result)
+	},
+)

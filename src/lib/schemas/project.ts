@@ -8,7 +8,10 @@ export const projectUpdateSchema = z
 			.max(10)
 			.optional(),
 		coverImageKey: z.string().max(500).nullable().optional(),
-		description: boundedText(4000).optional(),
+		/**
+		 * Not blankable. A project with no description is a project a reviewer has nothing to read, and the submit gate already refuses one below its floor – so the blank has to be refused here too, where the details are written.
+		 */
+		description: boundedText(4000, 1).optional(),
 		githubRepo: httpsUrl.nullable().optional(),
 		/**
 		 * The tier the participant is ASKING for. Never the assigned one: that is a reviewer's decision at design approval, because it is parts money.
@@ -62,8 +65,6 @@ export const hackatimeLinkSchema = z
 	})
 	.strict()
 
-export type ProjectUpdateInput = z.infer<typeof projectUpdateSchema>
-
 /** One line of a bill of materials, as the maker writes it. */
 export const bomItemSchema = z
 	.object({
@@ -96,8 +97,6 @@ export const bomImportSchema = z
 	})
 	.strict()
 
-export type BomImportInput = z.infer<typeof bomImportSchema>
-
 /**
  * A repo URL a forge picker may have offered: `github.com/owner/name`, or `gitlab.com/group/sub/repo` for GitLab's nested groups. Two to four path segments, an optional scheme, an optional trailing slash.
  *
@@ -117,5 +116,3 @@ export const repoSyncSettingsSchema = z
 		repo: z.string().trim().regex(REPO_URL_RE, "Pick a repository to sync to").max(300).optional(),
 	})
 	.strict()
-
-export type RepoSyncSettingsInput = z.infer<typeof repoSyncSettingsSchema>

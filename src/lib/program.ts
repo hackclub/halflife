@@ -5,9 +5,13 @@ import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
+import { calendarDayNumber, DAY_MS, effectiveDateFor, utcCalendarDay } from "@/lib/time"
 
-const DAY_MS = 24 * 60 * 60 * 1000
-const WEEK_MS = 7 * DAY_MS
+/**
+ * Re-exported rather than kept here: the check itself belongs next to the other shape helpers, because a zone is validated where it is typed and this module is server-only.
+ */
+export { isTimeZone } from "@/lib/schemas/common"
+export { effectiveDateFor } from "@/lib/time"
 
 /**
  * The settings row is created on demand so a fresh database is usable without a seed step having run first.
@@ -36,28 +40,22 @@ export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
  * The start is anchored to its UTC calendar date, which is what `eventStartDate` stores (see `weekClosesAt`), while the moment being placed is read in the program's timezone.
  */
 export function weekNumberForDate(start: Date, date: Date, timeZone: string): number {
-	const elapsed = calendarDay(date, timeZone) - utcCalendarDay(start)
+	const elapsed = calendarDayNumber(date, timeZone) - utcCalendarDay(start)
 	if (elapsed < 0) return 0
 	return Math.floor(elapsed / 7) + 1
 }
 
-/** Days since the epoch for a moment's calendar date in `timeZone`. */
-function calendarDay(date: Date, timeZone: string): number {
-	const [year, month, day] = effectiveDateFor(date, timeZone).split("-")
-	return Math.floor(Date.UTC(Number(year), Number(month) - 1, Number(day)) / DAY_MS)
-}
-
-/** Days since the epoch for a moment's own UTC calendar date. */
-function utcCalendarDay(date: Date): number {
-	return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / DAY_MS)
-}
-
-export function weekDateRange(start: Date, week: number): { start: Date; end: Date } | null {
+/**
+ * The span a program week covers, in the program's own timezone: the midnight its first day opens at, and the 11:59 PM its last day closes at.
+ *
+ * Derived from `weekOpensAt` and `weekClosesAt` rather than counted in elapsed milliseconds from the start date, because those are the instants the server enforces. A range that ended hours before the deadline it describes would tell a client the week closed early, and counting UTC instants drifts by an hour across a daylight-saving change.
+ */
+export function weekDateRange(
+	settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
+	week: number,
+): { start: Date; end: Date } | null {
 	if (week < 1 || week > TOTAL_WEEKS) return null
-	const weekStart = new Date(start.getTime() + (week - 1) * WEEK_MS)
-	// End of the last day, not the start of the next week, so a "closes on" label reads correctly.
-	const weekEnd = new Date(weekStart.getTime() + WEEK_MS - 1)
-	return { end: weekEnd, start: weekStart }
+	return { end: weekClosesAt(settings, week), start: weekOpensAt(settings, week) }
 }
 
 /**
@@ -115,22 +113,11 @@ export async function assertWeekStarted(week: number): Promise<void> {
 	if (week < 1) return
 	const settings = await getProgramSettings()
 	const opensAt = weekOpensAt(settings, week)
-	if (new Date() < opensAt) {
+	if (new Date() < opensAt)
 		throw new HttpError(
 			"WEEK_NOT_STARTED",
 			`Week ${week} opens on ${formatProgramDate(opensAt, settings.programTimezone)}.`,
 		)
-	}
-}
-
-/** Whether `timeZone` is an IANA name this runtime knows, e.g. "Asia/Kolkata". */
-export function isTimeZone(timeZone: string): boolean {
-	try {
-		new Intl.DateTimeFormat("en-US", { timeZone })
-		return true
-	} catch {
-		return false
-	}
 }
 
 /** How far ahead of UTC a timezone's wall clock is at an instant, in ms. */
@@ -188,20 +175,6 @@ export async function currentWeekNumber(): Promise<number> {
 	return weekNumberForDate(settings.eventStartDate, new Date(), settings.programTimezone)
 }
 
-/**
- * The YYYY-MM-DD a moment falls on in the program's timezone.
- *
- * Doing this in the program timezone rather than the server's is not pedantry: siege computes week buckets against the server clock, so its per-week hour totals shift if the container moves region.
- */
-export function effectiveDateFor(date: Date, timeZone: string): string {
-	return new Intl.DateTimeFormat("en-CA", {
-		day: "2-digit",
-		month: "2-digit",
-		timeZone,
-		year: "numeric",
-	}).format(date)
-}
-
 export function formatProgramDate(date: Date, timeZone: string): string {
 	return date.toLocaleDateString("en-US", {
 		day: "numeric",
@@ -248,30 +221,30 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 
 	const globallyOpen = settings.submissionsOpen && (!settings.submissionsCloseAt || settings.submissionsCloseAt > now)
 
-	if (globallyOpen) {
+	if (globallyOpen)
 		return {
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: null,
 			open: true,
 			reason: "OPEN",
 		}
-	}
-	if (userExt && userExt > now) {
+
+	if (userExt && userExt > now)
 		return {
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: userExt,
 			open: true,
 			reason: "USER_EXTENSION",
 		}
-	}
-	if (projectExt && projectExt > now) {
+
+	if (projectExt && projectExt > now)
 		return {
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: projectExt,
 			open: true,
 			reason: "PROJECT_EXTENSION",
 		}
-	}
+
 	return {
 		closesAt: settings.submissionsCloseAt,
 		extensionUntil: null,
@@ -292,6 +265,34 @@ export interface ShopAccess {
 }
 
 /**
+ * What a maker's review activity buys them past the shop's close date.
+ *
+ * The shop stays open while anything is awaiting review, and for a grace window after the latest review. Pure, so the purchase transaction can ask the same question of the rows it just read instead of re-deriving the rule next to the money.
+ */
+export interface ShopGraceState {
+	awaitingReview: number
+	buildReviewedAt: Date | null
+	designReviewedAt: Date | null
+}
+
+export function shopGraceAccess(
+	settings: { shopGraceDays: number },
+	state: ShopGraceState,
+	now: Date = new Date(),
+): { graceUntil: Date | null; open: boolean } {
+	if (state.awaitingReview > 0) return { graceUntil: null, open: true }
+
+	// The last review is a max over every project's two review dates, not the most recently *updated* row: editing a title or granting an extension bumps `updatedAt` without touching a review, which would mask a review that just landed and close the grace window early.
+	const reviewedAt = [state.designReviewedAt, state.buildReviewedAt]
+		.filter((d): d is Date => Boolean(d))
+		.toSorted((a, b) => b.getTime() - a.getTime())[0]
+	if (!reviewedAt) return { graceUntil: null, open: false }
+
+	const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)
+	return { graceUntil, open: graceUntil > now }
+}
+
+/**
  * The shop stays open past its close date for anyone with work still in the queue, and for a grace window after their last review – otherwise credit awarded at the buzzer is unspendable through no fault of the participant.
  */
 export async function getShopAccess(userId: string): Promise<ShopAccess> {
@@ -301,12 +302,9 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 	const closesAt = settings.shopClosesAt
 	const beforeClose = !closesAt || closesAt > now
 
-	if (settings.shopOpen && beforeClose) {
-		return { closesAt, graceUntil: null, open: true, reason: "OPEN" }
-	}
-	if (!settings.shopOpen) {
-		return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
-	}
+	if (settings.shopOpen && beforeClose) return { closesAt, graceUntil: null, open: true, reason: "OPEN" }
+
+	if (!settings.shopOpen) return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
 
 	const [awaitingReview, lastReview] = await Promise.all([
 		prisma.themeProject.count({
@@ -319,21 +317,22 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 		}),
 	])
 
-	if (awaitingReview > 0) {
-		return { closesAt, graceUntil: null, open: true, reason: "PENDING_REVIEW" }
+	const grace = shopGraceAccess(
+		settings,
+		{
+			awaitingReview,
+			buildReviewedAt: lastReview._max.buildReviewedAt,
+			designReviewedAt: lastReview._max.designReviewedAt,
+		},
+		now,
+	)
+	if (!grace.open) return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
+	return {
+		closesAt,
+		graceUntil: grace.graceUntil,
+		open: true,
+		reason: grace.graceUntil ? "GRACE_PERIOD" : "PENDING_REVIEW",
 	}
-
-	const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
-		.filter((d): d is Date => !!d)
-		.sort((a, b) => b.getTime() - a.getTime())[0]
-
-	if (reviewedAt) {
-		const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)
-		if (graceUntil > now) {
-			return { closesAt, graceUntil, open: true, reason: "GRACE_PERIOD" }
-		}
-	}
-	return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
 }
 
 export const SHOP_CLOSED_MESSAGE =
@@ -346,4 +345,24 @@ export const SHOP_CLOSED_MESSAGE =
  */
 export function isPhaseDecided(status: PhaseStatus): boolean {
 	return status === PhaseStatus.approved || status === PhaseStatus.rejected
+}
+
+/**
+ * The phase statuses in which a project's own details may no longer change: one a reviewer is reading right now, and one already decided.
+ *
+ * A decided phase is frozen everywhere else too – its entries, its parts list and its tier are the record the decision was made against – so the title, description, repo link, cover and artifact links cannot change under it either.
+ */
+export const FROZEN_PHASE_STATUSES: PhaseStatus[] = [PhaseStatus.in_review, PhaseStatus.approved, PhaseStatus.rejected]
+
+/**
+ * Why a project's own details cannot change right now, or null when they can.
+ *
+ * One place, so the route that refuses the edit and the page that says so cannot disagree about which phases are frozen.
+ */
+export function projectEditLockReason(project: { buildStatus: PhaseStatus; designStatus: PhaseStatus }): string | null {
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
+		return "In review, so it can't be edited. Unsubmit to change it"
+	if (isPhaseDecided(project.designStatus) || isPhaseDecided(project.buildStatus))
+		return "A phase of this project has been decided, so its details are final"
+	return null
 }

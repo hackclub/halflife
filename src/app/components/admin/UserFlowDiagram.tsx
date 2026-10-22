@@ -2,30 +2,53 @@
 import { useState } from "react"
 import { UserFlowFunnel } from "@/app/components/admin/UserFlowFunnel"
 import { UserFlowSankey } from "@/app/components/admin/UserFlowSankey"
+import { UserFlowWeekly } from "@/app/components/admin/UserFlowWeekly"
 import { Panel } from "@/app/components/ui"
-import type { FlowStep, SankeyDiagram } from "@/lib/queries/admin"
+import type { FlowStep, SankeyDiagram, WeekFlowStep } from "@/lib/queries/admin"
 
 /**
- * The two ways of reading the same participant journey.
+ * Three ways of reading the same participant journey.
  *
  * The funnel is a spine: one path, each stage the people who also cleared everything above it, so the drop-off between two stages is the number to read. It cannot show order that is not the spine's – a maker who added a devlog before posting a reel is counted in both rows with no way to say which came first, and a maker who never posts a reel reads as having dropped out.
  *
+ * The weekly funnel is the season as a spine instead of the sign-up path: one stage per week that has opened, and the people who handed in that week's project. The two weeks hold different projects, so it is volume week by week rather than cumulative survival, which is why its stages are not shares of the one above.
+ *
  * The Sankey is the other shape: every route side by side, so a step that happens out of order, or on a branch the spine never had, is visible as its own ribbon rather than folded into a chain. Left-to-right, because the axis is progression and the bands are the volume. It now draws the funnel's own journey stages, so the two can be read stage for stage; what it adds is the branch – the tracked activities, and an outcome that says what happened to a hand-in rather than stopping at "submitted".
  *
- * The Sankey is wider than any panel, so it carries its own horizontal scroll. Read them together rather than picking one: the funnel answers "how many are left", the Sankey "which way did they go".
+ * The Sankey is wider than any panel, so it carries its own horizontal scroll. Read them together rather than picking one: the funnel answers "how many are left", the weekly funnel "who handed in each week", the Sankey "which way did they go".
  */
 const TABS = [
-	{ hint: "One spine, top to bottom: each stage also cleared everything above it", id: "funnel", label: "Funnel" },
+	{
+		hint: "One spine, top to bottom: each stage also cleared everything above it",
+		id: "funnel",
+		label: "Funnel",
+		note: "each step includes everyone who completed every step above it",
+	},
+	{
+		hint: "One band per week that has opened: how many people handed in that week's project, out of everyone who signed up",
+		id: "weekly",
+		label: "Weekly funnel",
+		note: "only weeks that have opened, the busiest one setting the width",
+	},
 	{
 		hint: "Every route at once, left to right: out-of-order and side steps get their own ribbon",
 		id: "sankey",
 		label: "Sankey",
+		note: "every route at once rather than one cumulative spine",
 	},
 ] as const
 
 type TabId = (typeof TABS)[number]["id"]
 
-export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: SankeyDiagram }) {
+export function UserFlowDiagram({
+	steps,
+	sankey,
+	weeks,
+}: {
+	steps: FlowStep[]
+	sankey: SankeyDiagram
+	weeks: WeekFlowStep[]
+}) {
 	const [active, setActive] = useState<TabId>("funnel")
 	const index = TABS.findIndex(t => t.id === active)
 	const current = TABS[index] ?? TABS[0]
@@ -42,7 +65,7 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 		const target = TABS[next]
 		if (!target) return
 		setActive(target.id)
-		document.getElementById(`user-flow-tab-${target.id}`)?.focus()
+		document.querySelector<HTMLElement>(`#user-flow-tab-${target.id}`)?.focus()
 	}
 
 	// The Sankey is far wider than the page's reading column, so the panel goes full-bleed while it is up. The funnel is a narrow top-to-bottom shape and stays in the column, where it reads better. The tabs and the diagram live inside this panel rather than beside it, because the tab choice is what changes the panel's width – a page-level panel could not know which tab is selected.
@@ -52,7 +75,7 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 		<Panel
 			actions={
 				<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-					each step includes everyone who completed every step above it
+					{current?.note}
 				</span>
 			}
 			title="User flow"
@@ -88,7 +111,13 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 			</div>
 
 			<div aria-labelledby={`user-flow-tab-${active}`} id={`user-flow-panel-${active}`} role="tabpanel">
-				{active === "funnel" ? <UserFlowFunnel steps={steps} /> : <UserFlowSankey diagram={sankey} />}
+				{active === "funnel" ? (
+					<UserFlowFunnel steps={steps} />
+				) : active === "weekly" ? (
+					<UserFlowWeekly steps={weeks} />
+				) : (
+					<UserFlowSankey diagram={sankey} />
+				)}
 			</div>
 
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem", textAlign: "center" }}>

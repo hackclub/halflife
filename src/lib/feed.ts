@@ -5,7 +5,7 @@ import { markReel } from "@/lib/analytics"
 import { avatarUrl } from "@/lib/avatar"
 import { displayName } from "@/lib/display-name"
 import { HttpError } from "@/lib/errors"
-import { cursorArgs, NEWEST_FIRST, pageResult } from "@/lib/pagination"
+import { type CursorOrderOf, cursorWhere, orderByFor, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@/lib/program"
 import { sanitize } from "@/lib/sanitize"
@@ -53,11 +53,39 @@ export interface FeedItem {
 const feedInclude = {
 	themeProject: { select: { deletedAt: true, id: true, theme: true, title: true } },
 	user: {
-		select: { currentStreak: true, displayName: true, id: true, image: true, name: true, slackId: true },
+		// No Slack id: nothing here renders it, and a selected column rides along in the RSC payload to every browser that opens the feed.
+		select: { currentStreak: true, displayName: true, id: true, image: true, name: true },
 	},
 } satisfies Prisma.PostInclude
 
 type PostWithAuthor = Prisma.PostGetPayload<{ include: typeof feedInclude }>
+
+/**
+ * The feed's order: newest first by the moment a reel went up, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary that falls between two reels posted in the same millisecond drops neither of them. A cursor over the id alone would: a cuid is random, so it says nothing about the timestamp it sits next to, and the reels around the boundary would come back out of order.
+ */
+const FEED_ORDER = {
+	at: (row: PostWithAuthor) => row.publishedAt,
+	column: "publishedAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<PostWithAuthor, Prisma.PostOrderByWithRelationInput>
+
+const commentInclude = {
+	// No Slack id, for the same reason as the feed's author above.
+	user: { select: { displayName: true, id: true, image: true, name: true } },
+} satisfies Prisma.PostCommentInclude
+
+type CommentWithAuthor = Prisma.PostCommentGetPayload<{ include: typeof commentInclude }>
+
+/**
+ * The comments' order: newest first, with the id as the tiebreaker.
+ */
+const COMMENTS_ORDER = {
+	at: (row: CommentWithAuthor) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<CommentWithAuthor, Prisma.PostCommentOrderByWithRelationInput>
 
 function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): FeedItem {
 	return {
@@ -126,9 +154,9 @@ export async function getFeed(
 ): Promise<FeedPage> {
 	const rows = await prisma.post.findMany({
 		include: feedInclude,
-		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-		where: visible,
-		...cursorArgs(opts.cursor, opts.limit),
+		orderBy: orderByFor(FEED_ORDER),
+		take: opts.limit + 1,
+		where: cursorWhere<Prisma.PostWhereInput>(opts.cursor, FEED_ORDER, visible),
 	})
 
 	let leading: typeof rows = []
@@ -137,7 +165,7 @@ export async function getFeed(
 			opts.timeZone && isTimeZone(opts.timeZone) ? opts.timeZone : (await getProgramSettings()).programTimezone
 		leading = await prisma.post.findMany({
 			include: feedInclude,
-			orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+			orderBy: orderByFor(FEED_ORDER),
 			take: 5,
 			where: {
 				...visible,
@@ -149,17 +177,18 @@ export async function getFeed(
 
 	// Each reel once: the leading ones are taken out of the page below them. A later page can still carry one, which the client drops as already seen.
 	const leadIds = new Set(leading.map(p => p.id))
-	const page = pageResult(rows, opts.limit)
+	const page = pageResult(rows, opts.limit, FEED_ORDER)
 	const pageItems = page.items.filter(p => !leadIds.has(p.id))
 	const all = [...leading, ...pageItems]
 
 	// One query for the viewer's likes across the whole page, rather than a correlated exists() per row.
-	const liked = all.length
-		? await prisma.postLike.findMany({
-				select: { postId: true },
-				where: { postId: { in: all.map(p => p.id) }, userId: viewerId },
-			})
-		: []
+	const liked =
+		all.length > 0
+			? await prisma.postLike.findMany({
+					select: { postId: true },
+					where: { postId: { in: all.map(p => p.id) }, userId: viewerId },
+				})
+			: []
 	const likedIds = new Set(liked.map(l => l.postId))
 
 	return {
@@ -281,7 +310,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
  *
  * The unique key does the work: a repeat view is a failed insert, so the count only moves when a genuinely new viewer arrives. This matters because the program pays prizes on virality – a number anyone can inflate by refreshing is a number that decides who gets a drawing tablet.
  */
-export async function recordView(postId: string, userId: string): Promise<number> {
+export function recordView(postId: string, userId: string): Promise<number> {
 	return prisma.$transaction(async tx => {
 		// Only a live, published reel counts. Without this, views keep accruing on a hidden or deleted post, and the virality number those prizes rest on could be moved for a reel that is out of the feed.
 		const post = await tx.post.findFirst({ select: { id: true }, where: { id: postId, ...visible } })
@@ -310,7 +339,7 @@ export async function recordView(postId: string, userId: string): Promise<number
 /**
  * Like or unlike. Explicitly stated rather than toggled: a toggle sent twice by an impatient double-tap ends in whichever state the race landed on, and the client always knows which one it means.
  */
-export async function setLike(
+export function setLike(
 	postId: string,
 	userId: string,
 	liked: boolean,
@@ -359,12 +388,16 @@ export async function getComments(
 
 	// Newest first, like every other conversation on the platform. The thread reads top-down from what just happened, and "show older comments" walks the cursor further back rather than forward – so the order and the affordance name the same direction.
 	const rows = await prisma.postComment.findMany({
-		include: { user: { select: { displayName: true, id: true, image: true, name: true, slackId: true } } },
-		orderBy: [...NEWEST_FIRST],
-		where: { deletedAt: null, hiddenAt: null, postId },
-		...cursorArgs(opts.cursor, opts.limit),
+		include: commentInclude,
+		orderBy: orderByFor(COMMENTS_ORDER),
+		take: opts.limit + 1,
+		where: cursorWhere<Prisma.PostCommentWhereInput>(opts.cursor, COMMENTS_ORDER, {
+			deletedAt: null,
+			hiddenAt: null,
+			postId,
+		}),
 	})
-	const page = pageResult(rows, opts.limit)
+	const page = pageResult(rows, opts.limit, COMMENTS_ORDER)
 	return {
 		items: page.items.map(c => ({
 			author: { id: c.user.id, image: avatarUrl(c.user), name: displayName(c.user) },
@@ -377,7 +410,7 @@ export async function getComments(
 	}
 }
 
-export async function addComment(postId: string, userId: string, body: string): Promise<CommentView> {
+export function addComment(postId: string, userId: string, body: string): Promise<CommentView> {
 	const clean = sanitize(body)
 	if (!clean) throw new HttpError("VALIDATION_FAILED", "Say something")
 
@@ -387,7 +420,7 @@ export async function addComment(postId: string, userId: string, body: string): 
 
 		const comment = await tx.postComment.create({
 			data: { body: clean, postId, userId },
-			include: { user: { select: { displayName: true, id: true, image: true, name: true, slackId: true } } },
+			include: commentInclude,
 		})
 		await tx.post.update({ data: { commentCount: { increment: 1 } }, where: { id: postId } })
 
@@ -476,4 +509,4 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 	})
 }
 
-export { PostKind, PostStatus }
+export { PostKind, PostStatus } from "@/app/generated/prisma/enums"

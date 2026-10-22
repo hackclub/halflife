@@ -19,7 +19,7 @@ export function WarmupStart() {
 	const opensOn = weekOpensOn(1)
 	const modal = open && <WarmupModal closesOn={warmupDeadline} onClose={() => setOpen(false)} />
 
-	if (projects.some(p => p.weekId === WARMUP_WEEK_ID)) {
+	if (projects.some(p => p.weekId === WARMUP_WEEK_ID))
 		return (
 			<>
 				<div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -31,7 +31,6 @@ export function WarmupStart() {
 				{modal}
 			</>
 		)
-	}
 
 	return (
 		<>

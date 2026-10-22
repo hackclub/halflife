@@ -29,6 +29,8 @@ export interface OnboardingStateData {
 	starterProjects: readonly StarterProjectView[]
 	stepCount: number
 	suggestedTier: number
+	/** The theme this participant is onboarding into. */
+	theme: Theme
 	trackingDismissed: boolean
 }
 
@@ -72,7 +74,19 @@ export interface OnboardingView {
  * The API and the dashboard modal deliberately share this view model. The server remains authoritative for progress; the client only chooses which answered step to display.
  */
 export function toOnboardingView(state: OnboardingStateData): OnboardingView {
-	const intro = weekIntroFor(Theme.PCB)
+	const themeIndex = THEMES.findIndex(t => t.id === state.theme)
+	const meta = WEEK_META[themeIndex]
+	const custom = weekIntroFor(state.theme)
+	// The curriculum's own copy for the theme, with week one's shorter intro kept where it has one. A late joiner onboarded into Music gets Music's primer, examples and painting rather than PCB's.
+	const intro = meta
+		? {
+				examples: [...(custom?.examples ?? meta.examples)],
+				headline: custom?.headline ?? meta.headline,
+				kicker: custom?.kicker ?? meta.fullName,
+				painting: meta.theme,
+				primer: custom?.primer ?? meta.primer,
+			}
+		: null
 
 	return {
 		beginner: isBeginner(state.experience),
@@ -97,7 +111,7 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 			title: p.title,
 		})),
 		stepCount: state.stepCount,
-		steps: ONBOARDING_STEPS.map(step => ({ ...step })),
+		steps: ONBOARDING_STEPS.map(step => Object.assign({}, step)),
 		suggestedTier: state.suggestedTier,
 		tiers: TIERS.map(tier => ({
 			estimate: tier.estimate,
@@ -106,14 +120,6 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 			name: tier.name,
 			showcase: [...(tier.showcase[Theme.PCB] ?? [])],
 		})),
-		weekIntro: intro
-			? {
-					examples: [...intro.examples],
-					headline: intro.headline,
-					kicker: intro.kicker,
-					painting: WEEK_META[THEMES.findIndex(t => t.id === intro.theme)]?.theme ?? "",
-					primer: intro.primer,
-				}
-			: null,
+		weekIntro: intro ? { ...intro, examples: [...intro.examples] } : null,
 	}
 }

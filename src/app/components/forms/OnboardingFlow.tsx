@@ -30,8 +30,8 @@ function StepActions({
 	canSubmit = true,
 	busy,
 }: {
-	onBack?: () => void
-	onSubmit?: () => void
+	onBack?(): void
+	onSubmit?(): void
 	label?: string
 	canSubmit?: boolean
 	busy: boolean
@@ -61,7 +61,7 @@ function SelectButton({
 }: {
 	selected: boolean
 	disabled: boolean
-	onClick: () => void
+	onClick(): void
 	label: string
 }) {
 	return (
@@ -89,10 +89,7 @@ function Note({ children }: { children: ReactNode }) {
 /**
  * The one onboarding interaction. It is rendered by the dashboard's Get started modal; the server owns the state machine and every response returns the next canonical view.
  */
-export function OnboardingFlow({
-	initial,
-	onComplete,
-}: Readonly<{ initial: OnboardingView; onComplete?: () => void }>) {
+export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: OnboardingView; onComplete?(): void }>) {
 	const [view, setView] = useState(initial)
 	const [viewing, setViewing] = useState(Math.min(initial.reached, initial.steps.length - 1))
 	const [busy, setBusy] = useState(false)
@@ -294,7 +291,8 @@ export function OnboardingFlow({
 											title="Your own idea"
 										>
 											<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
-												Make your own project! It can be anything you want.
+												Make your own project! It can be anything you want within this week&rsquo;s theme:{' '}
+												{view.weekIntro.kicker}.
 											</p>
 										</ProjectChoiceCard>
 									</div>
@@ -306,7 +304,7 @@ export function OnboardingFlow({
 									canSubmit={start !== undefined}
 									onBack={back}
 									onSubmit={() => {
-										if (start !== undefined) chooseStart(start)
+										if (start !== undefined) void chooseStart(start)
 									}}
 								/>
 							</>
@@ -321,7 +319,7 @@ export function OnboardingFlow({
 						className="space-y-5"
 						onSubmit={event => {
 							event.preventDefault()
-							sendProject()
+							void sendProject()
 						}}
 					>
 						<p className="text-[0.9rem] leading-relaxed text-navy-soft">

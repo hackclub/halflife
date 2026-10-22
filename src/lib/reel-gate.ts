@@ -3,6 +3,7 @@ import { Phase, PhaseStatus, PostStatus } from "@/app/generated/prisma/enums"
 import { DESIGN_WEEKS } from "@/lib/config/program"
 import { progressReelHours } from "@/lib/curriculum"
 import { HttpError } from "@/lib/errors"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { isWeekOpen } from "@/lib/program"
 
@@ -61,7 +62,7 @@ export async function reelLockReason(
 	})
 	if (!project) return null
 	const phase = week > DESIGN_WEEKS ? Phase.BUILD : Phase.DESIGN
-	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+	const status = statusFor(project, phase)
 	if (status === PhaseStatus.in_review) return "This week is in review. Unsubmit it to delete its reels."
 	if (status === PhaseStatus.approved || status === PhaseStatus.rejected)
 		return "This week has been reviewed, so its reels stay as the record."
@@ -87,11 +88,11 @@ export async function getOwedReelKeys(userId: string): Promise<string[]> {
 	for (const p of live) if (p.checkpointKey) projectByKey.delete(p.checkpointKey)
 
 	const owed: string[] = []
-	for (const [key, projectId] of projectByKey) {
-		// Only a reel that can still be re-recorded holds anything up.
+	// Only a reel that can still be re-recorded holds anything up.
+	for (const [key, projectId] of projectByKey)
 		if (projectId && (await reelLockReason(userId, projectId, key)) === null) owed.push(key)
-	}
-	return owed.sort()
+
+	return owed.toSorted()
 }
 
 /**

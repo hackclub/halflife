@@ -15,12 +15,12 @@ export function postForm(
 		xhr.open("POST", url)
 		xhr.responseType = "text"
 		if (onProgress) {
-			xhr.upload.onprogress = e => {
+			xhr.upload.addEventListener("progress", e => {
 				if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
-			}
-			xhr.upload.onload = () => onProgress(1)
+			})
+			xhr.upload.addEventListener("load", () => onProgress(1))
 		}
-		xhr.onload = () => {
+		xhr.addEventListener("load", () => {
 			let json: unknown = null
 			try {
 				json = JSON.parse(xhr.responseText)
@@ -28,9 +28,11 @@ export function postForm(
 				json = null
 			}
 			resolve({ json, ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status })
-		}
-		xhr.onerror = () => reject(new Error("The upload did not get through. Check your connection and try again."))
-		xhr.onabort = () => reject(new Error("The upload was cancelled."))
+		})
+		xhr.addEventListener("error", () =>
+			reject(new Error("The upload did not get through. Check your connection and try again.")),
+		)
+		xhr.addEventListener("abort", () => reject(new Error("The upload was cancelled.")))
 		xhr.send(body)
 	})
 }

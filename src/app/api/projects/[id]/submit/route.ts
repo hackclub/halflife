@@ -2,10 +2,10 @@ import { after } from "next/server"
 import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
 import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { markSubmission } from "@/lib/analytics"
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshLinkCache } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
 import { sanitizeOptional } from "@/lib/sanitize"
@@ -17,9 +17,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, submitSchema)
@@ -79,7 +77,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	})
 
 	// And into Ari, which reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without Ari secrets logs no noise; a failure lands in the audit log and /api/integrations/ari-retry.
-	if (isAriConfigured()) {
+	if (isAriConfigured())
 		after(async () => {
 			await trackSideEffect(
 				"ari",
@@ -93,7 +91,6 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				() => sendSubmissionToAri(id, parsed.data.phase),
 			)
 		})
-	}
 
 	// Warm the Hackatime cache now so the reviewer opens a page with fresh numbers instead of waiting on the API. The participant does not need to wait for it.
 	after(async () => {

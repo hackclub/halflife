@@ -1,9 +1,11 @@
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { Prisma } from "@/app/generated/prisma/client"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
 import { disputeSchema } from "@/lib/schemas/project"
@@ -17,9 +19,7 @@ interface Params {
  *
  * It changes no state: the phase stays returned or rejected. It records the maker's own words against the submission and puts it in front of staff, so a decision is never silently overridden by a button – and, because `ReviewDispute.submissionId` is unique, neither is the queue flooded.
  */
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, disputeSchema)
@@ -42,7 +42,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		})
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 
-		const status = phase === "DESIGN" ? fresh.designStatus : fresh.buildStatus
+		const status = statusFor(fresh, phase)
 		if (status !== "update_requested" && status !== "rejected")
 			throw new HttpError("CONFLICT", "Only a review that asked for changes or rejected the work can be disputed")
 
@@ -57,9 +57,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			await tx.reviewDispute.create({
 				data: { note, submissionId: submission.id, userId: gate.user.id },
 			})
-		} catch {
-			// The unique submissionId is the guard: one second look per decision.
-			throw new HttpError("CONFLICT", "You have already asked for a second look at this review")
+		} catch (err) {
+			// The unique submissionId is the guard: one second look per decision. Anything else – a dropped connection, a constraint that is not this one – is not the caller's conflict to be told about.
+			if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
+				throw new HttpError("CONFLICT", "You have already asked for a second look at this review")
+			throw err
 		}
 
 		return submission.id

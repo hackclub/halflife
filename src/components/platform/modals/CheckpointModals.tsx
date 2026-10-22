@@ -13,6 +13,7 @@ import {
 	IconEye,
 	IconFilm,
 	IconMic,
+	IconPencil,
 	IconUpload,
 	IconVolume,
 	IconVolumeOff,
@@ -29,10 +30,13 @@ import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
 import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
-import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { formatShortDate } from "@/lib/deadline"
+import { round2 } from "@/lib/money"
+import { fmtHours } from "@/lib/numbers"
 import {
 	PLATFORM_INFO,
 	PUBLIC_REEL_HASHTAG,
@@ -57,11 +61,6 @@ import { type SubmissionReel, SubmissionReelPicker } from "./SubmissionReelPicke
 /* ================================================================== *
  * Journal + timelapse
  * ================================================================== */
-/**
- * Two decimals at most, never a trailing zero: 7.5h, 9h, 9.55h. Rounded rather than truncated because binary floats land on 44.799999999999955, and cutting that gives 44.79 for a remainder that is really 44.8.
- */
-const to2 = (n: number) => Math.round(n * 100) / 100
-
 /** Hours, written the way a person says them. */
 /**
  * How a sheet names its week. The warm-up is week 0 in the store, which is only an address; to the person it is their warm-up.
@@ -78,8 +77,11 @@ function isWeeksProject(week: Week, project: Project): boolean {
 	return project.weekId === (week.phase === "build" ? week.id - 5 : week.id)
 }
 
-function fmtH(h: number) {
-	return `${to2(h)}h`
+/** The parts list read, plus the error envelope the route shares. */
+interface BomResponse {
+	error?: { message?: string }
+	items: BomLine[]
+	taxShippingUsd: number
 }
 
 interface JournalDraft {
@@ -135,7 +137,7 @@ const autosaveKey = (checkpointId: string) => `halflife.journal-autosave.${check
 const UPLOADING_PLACEHOLDER = /!\[Uploading .*?\]\(uploading:\d+\)/g
 
 function cleanBodyForAutosave(body: string): string {
-	return body.replace(UPLOADING_PLACEHOLDER, "").replace(/\n{3,}/g, "\n\n")
+	return body.replaceAll(UPLOADING_PLACEHOLDER, "").replaceAll(/\n{3,}/g, "\n\n")
 }
 
 /**
@@ -207,17 +209,17 @@ function droppedImages(transfer: DataTransfer): ImageSource[] {
 /** Alt text for an image: what the page called it, else its file name. */
 function altFor(source: ImageSource): string {
 	let name = source instanceof File ? source.name : source.alt
-	if (!name && !(source instanceof File) && !source.url.startsWith("data:")) {
+	if (!name && !(source instanceof File) && !source.url.startsWith("data:"))
 		try {
 			name = decodeURIComponent(new URL(source.url).pathname.split("/").pop() ?? "")
 		} catch {
 			name = ""
 		}
-	}
+
 	return (
 		name
 			.replace(/\.[^.]+$/, "")
-			.replace(/[[\]()]/g, "")
+			.replaceAll(/[[\]()]/g, "")
 			.trim()
 			.slice(0, 80) || "Journal image"
 	)
@@ -269,6 +271,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const week = weekOfCheckpoint(checkpoint)
 
 	// Every journal node is one entry: write it and it is done. The week's clock is what decides whether wrapping up is on the table yet. Opened again once it is done, the same sheet is that entry, to correct – not a new one.
+	// oxlint-disable-next-line react/hook-use-state
 	const [existing] = useState(() => {
 		const saved = stateOf(checkpoint.id)
 		return saved.done ? saved.log[0] : undefined
@@ -276,6 +279,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const editing = existing !== undefined
 
 	// A Lapse sign-in leaves the page and comes back: that trip's draft is restored once. Anything else typed is autosaved to this browser and restored next time the sheet opens, so clicking out cannot lose it. A saved entry clears it. Peeked (not taken) during render so StrictMode's double-invoked initializer cannot consume it before state is set.
+	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => peekJournalTrip(checkpoint.id) ?? readJournalAutosave(checkpoint.id))
 	const draftRestored = draft != null
 
@@ -300,7 +304,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [body, setBody] = useState(draft ? clampToContentLimit(draft.body) : (existing?.body ?? ""))
 	const [preview, setPreview] = useState(false)
 	// Free text, not a number: a controlled number input that coerces as you type eats the decimal point the moment you reach for "1.5".
-	const [hoursText, setHoursText] = useState(draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""))
+	const [hoursText, setHoursText] = useState(
+		draft?.hoursText ?? (existing ? String(round2(existing.minutes / 60)) : ""),
+	)
 	const [saving, setSaving] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
 	const imageInput = useRef<HTMLInputElement>(null)
@@ -316,7 +322,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// Autosave: every keystroke lands in this browser, so closing the sheet, reloading, or navigating away cannot lose it. Empty sheets and edits matching the saved entry keep no draft; a saved entry clears it.
 	const baselineBody = existing?.body ?? ""
 	// In the box's own arithmetic, once the seed below restates it: the box holds what the timelapses do not cover, so the baseline moves with it.
-	const [baselineHours, setBaselineHours] = useState(existing ? String(to2(existing.minutes / 60)) : "")
+	const [baselineHours, setBaselineHours] = useState(existing ? String(round2(existing.minutes / 60)) : "")
 	// An entry logged under the old arithmetic whose old total does not cover its resolved timelapses: restating the box clamps it at zero and the total grows on open. Named on screen rather than silently absorbed, so a typo fix never quietly logs extra hours.
 	const [legacyBump, setLegacyBump] = useState<{ from: number; lapse: number } | null>(null)
 	// The trip draft has been restored into state: consume it so it cannot resurrect an entry days later. Autosave below keeps it from here on.
@@ -338,14 +344,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			try {
 				const query = new URLSearchParams({ forSession: existing.id, ids: existing.clips.join(",") })
 				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
-				const body = (await res.json().catch(() => null)) as {
+				const payload = (await res.json().catch(() => null)) as {
 					resolved?: LapseTimelapse[]
 					pinned?: string[]
 					legacy?: string[]
 				} | null
-				if (!res.ok || !body) throw new Error("unresolvable")
-				seed = { picked: body.resolved ?? [], pinned: body.pinned ?? [] }
-				legacy = body.legacy ?? []
+				if (!res.ok || !payload) throw new Error("unresolvable")
+				seed = { picked: payload.resolved ?? [], pinned: payload.pinned ?? [] }
+				legacy = payload.legacy ?? []
 				// Anything the resolve did not account for stays attached by id. Without this a clip the endpoint declined to read – it reads a bounded number – would fall out of the working set, and saving the edit would take it off the entry for good.
 				const accounted = new Set([...seed.picked.map(t => t.id), ...seed.pinned, ...legacy])
 				for (const id of existing.clips) if (!accounted.has(id)) seed.pinned.push(id)
@@ -363,7 +369,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				// The saved figure was logged under the old arithmetic, so restate the box as the part the timelapses do not cover: the total is unchanged unless the maker edits it. The baseline moves with the box – autosave, discard and "matches saved" all compare against it, and leaving it at the old total would restore that total as a residual on discard and count the timelapses twice.
 				const seedLapseHours = Math.round((seed.picked.reduce((n, t) => n + t.durationSeconds, 0) / 3600) * 100) / 100
 				if (seedLapseHours > 0) {
-					const baseHours = to2(existing.minutes / 60)
+					const baseHours = round2(existing.minutes / 60)
 					const restated = String(Math.max(0, Math.round((baseHours - seedLapseHours) * 100) / 100))
 					setHoursText(restated)
 					setBaselineHours(restated)
@@ -385,8 +391,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			|| pinned.length > 0
 			|| (!editing && tab !== "journal")
 		// Clips compare as sets against the seed: reordering a pick is not a change.
-		const workingIds = [...picked.map(t => t.id), ...pinned].sort()
-		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].sort()
+		const workingIds = [...picked.map(t => t.id), ...pinned].toSorted()
+		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].toSorted()
 		const clipsMatch = workingIds.length === seedIds.length && workingIds.every((id, i) => seedIds[i] === id)
 		const matchesSaved = editing && cleanBody === baselineBody && hoursText === baselineHours && clipsMatch
 		if (!hasContent || matchesSaved) {
@@ -407,13 +413,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setPicked(clipSeed.picked)
 			setPinned(clipSeed.pinned)
 			clipsTouchedRef.current = false
-			setTab("journal")
 		} else {
 			setBody("")
 			setHoursText("")
 			setPicked([])
-			setTab("journal")
 		}
+		setTab("journal")
 		writeJournalAutosave(checkpoint.id, null)
 	}
 
@@ -454,7 +459,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				? "Add the hours you spent on this session, or pick a Lapse timelapse."
 				: !longEnough
 					? `${200 - written} more characters in your entry, not counting images.${orLapse}`
-					: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(typed)}.${orLapse}`
+					: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtHours(typed)}.${orLapse}`
 		: null
 
 	const hours = hoursOf(week)
@@ -552,7 +557,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		})
 
 		setUploading(n => n + items.length)
-		for (const item of items) {
+		for (const item of items)
 			try {
 				const { url } = await storeImage(item.source)
 				if (!url) throw new Error("Image uploads need a public URL before they can be added here")
@@ -570,7 +575,6 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			} finally {
 				setUploading(n => n - 1)
 			}
-		}
 	}
 
 	/**
@@ -641,11 +645,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								"Saving replaces this entry. It keeps its place on the map."
 							) : toFloor > 0 ? (
 								<>
-									{fmtH(toFloor)} more before you can {week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
+									{fmtHours(toFloor)} more before you can{" "}
+									{week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
 									{showGoal ? (
 										<>
 											{" "}
-											– {fmtH(toGoal)} more if you want to reach your goal of{" "}
+											– {fmtHours(toGoal)} more if you want to reach your goal of{" "}
 											<strong className="rounded bg-gold-pale px-1 text-gold-ink">{weeklyGoalCoins} coins</strong> per
 											week.
 										</>
@@ -758,7 +763,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						// A link or some text is not an image: left to the textarea, which drops it in as text. Files are always caught, images or not, so a PDF let go over the sheet cannot open in the tab and take the unsaved entry with it.
 						if (found.length === 0 && files.length === 0) return
 						e.preventDefault()
-						addJournalImages(found.length > 0 ? found : files)
+						void addJournalImages(found.length > 0 ? found : files)
 					}}
 				>
 					{editing ? (
@@ -788,7 +793,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								className={cx(borderedInputClass, "tabular-nums")}
 								id="journal-hours"
 								inputMode="decimal"
-								onChange={e => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
+								onChange={e => setHoursText(e.target.value.replaceAll(/[^\d.]/g, ""))}
 								placeholder="0"
 								value={hoursText}
 							/>
@@ -797,15 +802,15 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						    the timelapses recorded. */}
 						{lapseHours > 0 && (
 							<p className="hand mt-1.5 text-[0.76rem] tabular-nums text-navy-soft" role="status">
-								{fmtH(lapseHours)} from timelapses{typed > 0 ? ` + ${fmtH(typed)} declared` : ""} = {fmtH(claimed)}{" "}
-								logged
+								{fmtDuration(coveredSeconds)} from timelapses
+								{typed > 0 ? ` + ${fmtDuration(typed * 3600)} declared` : ""} = {fmtDuration(claimed * 3600)} logged
 							</p>
 						)}
 						{editing && legacyBump && (
 							<p className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep" role="note">
-								This entry was logged as {fmtH(legacyBump.from)} before timelapses added hours on top – with its{" "}
-								{fmtH(legacyBump.lapse)} of recording it now totals {fmtH(claimed)}. Unpick timelapses on the Timelapse
-								tab to bring it back down.
+								This entry was logged as {fmtHours(legacyBump.from)} before timelapses added hours on top – with its{" "}
+								{fmtHours(legacyBump.lapse)} of recording it now totals {fmtHours(claimed)}. Unpick timelapses on the
+								Timelapse tab to bring it back down.
 							</p>
 						)}
 					</div>
@@ -893,7 +898,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									const pasted = Array.from(e.clipboardData.files).filter(f => f.type.startsWith("image/"))
 									if (pasted.length === 0) return
 									e.preventDefault()
-									addJournalImages(pasted)
+									void addJournalImages(pasted)
 								}}
 								placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drag, drop or paste images straight in."
 								ref={entry}
@@ -955,7 +960,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								// Copied out first: clearing the input empties the live list.
 								const files = Array.from(event.target.files ?? [])
 								event.target.value = ""
-								addJournalImages(files)
+								void addJournalImages(files)
 							}}
 							ref={imageInput}
 							tabIndex={-1}
@@ -1024,7 +1029,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						{picked.length === 0
 							? " "
 							: `${picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} picked · ${fmtDuration(coveredSeconds)} recorded${
-									claimed > 0 ? `, logged as ${fmtH(claimed)}` : ""
+									claimed > 0 ? `, logged as ${fmtHours(claimed)}` : ""
 								}`}
 					</p>
 				</div>
@@ -1084,7 +1089,7 @@ export function PublicReelModal({
 	eyebrow: string
 	/** The clip, so it can be saved and uploaded elsewhere. */
 	videoUrl: string | null
-	onClose: () => void
+	onClose(): void
 	/**
 	 * "links" skips the question – for the Reels page, where pressing "Add where you posted it" has already answered it.
 	 */
@@ -1116,7 +1121,8 @@ export function PublicReelModal({
 		let cancelled = false
 		void (async () => {
 			try {
-				const res = await fetch("/api/me/referral", { cache: "no-store" })
+				// A POST, because the route writes: reading a link assigns the referral code and records the address on the signup list.
+				const res = await fetch("/api/me/referral", { cache: "no-store", method: "POST" })
 				const body = (await res.json().catch(() => null)) as { link?: string } | null
 				if (cancelled) return
 				setReferral(res.ok && body?.link ? { link: body.link, state: "ready" } : { state: "error" })
@@ -1177,7 +1183,7 @@ export function PublicReelModal({
 		}
 	}
 
-	if (step === "ask") {
+	if (step === "ask")
 		return (
 			<Modal
 				accent="var(--color-violet)"
@@ -1212,7 +1218,7 @@ export function PublicReelModal({
 									<>
 										Once review is complete and assuming no deflation, you&apos;ll earn{" "}
 										<strong className="rounded bg-gold-pale px-1 text-gold-ink">coins</strong> at 5 per hour for your{" "}
-										{fmtH(celebration.extraHours)} past your tier&apos;s funded hours.
+										{fmtHours(celebration.extraHours)} past your tier&apos;s funded hours.
 									</>
 								) : (
 									<>It&apos;s with the reviewers now.</>
@@ -1229,9 +1235,8 @@ export function PublicReelModal({
 				</p>
 			</Modal>
 		)
-	}
 
-	if (step === "saved") {
+	if (step === "saved")
 		return (
 			<Modal
 				accent="var(--color-teal)"
@@ -1254,7 +1259,6 @@ export function PublicReelModal({
 				</ModalTitle>
 			</Modal>
 		)
-	}
 
 	const captionLine = referral.state === "ready" ? `${referral.link} ${PUBLIC_REEL_HASHTAG}` : PUBLIC_REEL_HASHTAG
 
@@ -1360,7 +1364,12 @@ export function PublicReelModal({
 								onChange={e => {
 									const v = e.target.value
 									setValues(prev => ({ ...prev, [p]: v }))
-									if (errors[p]) setErrors(({ [p]: _, ...rest }) => rest)
+									if (errors[p])
+										setErrors(prev => {
+											const next = { ...prev }
+											delete next[p]
+											return next
+										})
 								}}
 								placeholder={info.example}
 								spellCheck={false}
@@ -1383,6 +1392,8 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
 	const done = stateOf(checkpoint.id).done
+	// A reel draft is restored once, when the sheet opens, and never changes while it is open – so it is a value to read, not one to set.
+	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => readReelDraft(checkpoint.id))
 	const [clip, setClip] = useState<string | null>(draft?.clip ?? null)
 	// What the preview plays: a blob URL for a file picked on this machine, the bucket's URL for one filmed on the phone or restored from a draft.
@@ -1403,11 +1414,12 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.
-	useEffect(() => {
-		return () => {
+	useEffect(
+		() => () => {
 			if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl)
-		}
-	}, [previewUrl])
+		},
+		[previewUrl],
+	)
 
 	function capture(key: string | null, url?: string | null) {
 		setClip(key)
@@ -1446,7 +1458,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const postBlocker = !clip ? "Add a clip before posting this reel." : captionBlocker
 
 	// Posted: the same sheet now asks whether it is going anywhere else. The clip's URL comes along so it can be saved and uploaded there.
-	if (postedId) {
+	if (postedId)
 		return (
 			<PublicReelModal
 				eyebrow={`${weekName(week)} · ${checkpoint.title}`}
@@ -1455,9 +1467,8 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				videoUrl={previewUrl}
 			/>
 		)
-	}
 
-	if (!again) {
+	if (!again)
 		return (
 			<Modal
 				accent="var(--color-teal)"
@@ -1485,7 +1496,6 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</ModalTitle>
 			</Modal>
 		)
-	}
 
 	return (
 		<Modal
@@ -1646,7 +1656,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const pace = usePrinterPace()
 	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
-		ensureProject(checkpoint.weekId)
+		void ensureProject(checkpoint.weekId)
 	}, [checkpoint.weekId, ensureProject])
 	// Set when an admin redoes a finished form: it starts from what the project already says rather than from blank.
 	const existing = projects.find(p => p.weekId === checkpoint.weekId)
@@ -1674,21 +1684,18 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}
 	const advance = () => {
 		if (pick === undefined) return
-		if (pick === null) {
-			setStarterId(null)
-		} else {
+		if (pick === null) setStarterId(null)
+		else {
 			const s = starters.find(x => x.id === pick)
 			setStarterId(pick)
-			if (s) {
-				setName(s.title)
-				setDesc(s.description)
-			}
+			if (s) setName(s.title)
 			setTier(STARTER_PROJECT_TIER)
 		}
 		setStage("details")
 	}
 
 	const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo)
+	const selectedStarter = starterId === null ? undefined : starters.find(s => s.id === starterId)
 
 	return (
 		<Modal
@@ -1803,7 +1810,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						title="Your own idea"
 					>
 						<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
-							Make your own project! It can be anything you want.
+							Make your own project! It can be anything you want within this week&rsquo;s theme: {week.fullName}.
 						</p>
 					</ProjectChoiceCard>
 					{/* Only once a starter is the pick: it is a rule about the choice, not about the step, and beside "make your own" it read as a warning about the whole fork. */}
@@ -1823,8 +1830,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						{starterId !== null && (
 							<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 								<Chip tone="teal">
-									<IconCheck className="text-[0.9rem]" /> Building{" "}
-									{starters.find(s => s.id === starterId)?.title ?? "starter"}
+									<IconCheck className="text-[0.9rem]" /> Building {selectedStarter?.title ?? "starter"}
 								</Chip>
 								<button
 									className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
@@ -1849,35 +1855,40 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								className={cx(inputClass, "resize-none")}
 								id="np-desc"
 								onChange={e => setDesc(e.target.value)}
-								placeholder={week.examples[0]}
+								placeholder={selectedStarter ? selectedStarter.description : week.examples[0]}
 								rows={3}
 								value={desc}
 							/>
 						</Field>
 						<RepoInput id="np-repo" onChange={setRepo} value={repo} />
 
-						<button
-							className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-							onClick={() => setShowExamples(v => !v)}
-							type="button"
-						>
-							{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
-						</button>
-						{showExamples && (
-							<ul className="grid gap-2">
-								{week.examples.map(e => (
-									<li key={e}>
-										<button
-											className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
-											onClick={() => setDesc(e)}
-											style={{ "--sk-radius": "12px" } as React.CSSProperties}
-											type="button"
-										>
-											{e}
-										</button>
-									</li>
-								))}
-							</ul>
+						{/* The week's examples are ideas for a project of your own. A starter is already the idea, so they would be a second, unrelated choice under a form that is about the starter. */}
+						{!selectedStarter && (
+							<>
+								<button
+									className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									onClick={() => setShowExamples(v => !v)}
+									type="button"
+								>
+									{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
+								</button>
+								{showExamples && (
+									<ul className="grid gap-2">
+										{week.examples.map(e => (
+											<li key={e}>
+												<button
+													className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
+													onClick={() => setDesc(e)}
+													style={{ "--sk-radius": "12px" } as React.CSSProperties}
+													type="button"
+												>
+													{e}
+												</button>
+											</li>
+										))}
+									</ul>
+								)}
+							</>
 						)}
 
 						<div className="mt-2">
@@ -1898,9 +1909,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											<>
 												{t.detail}
 												<span className="mt-1 block text-navy-soft/90">
-													You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
-													hours and nothing more. Every hour past that (once your tier&apos;s funding is achieved) earns
-													5 spendable coins.
+													You can submit on tier {t.id} from {fmtHours(t.fundingHours)} of design time – the
+													parts-funding hours and nothing more. Every hour past that (once your tier&apos;s funding is
+													achieved) earns 5 spendable coins.
 												</span>
 											</>
 										}
@@ -1912,7 +1923,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 											<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
 											<span className="hand text-[0.8rem] text-navy-soft">
-												· {fmtH(submitFloorFor(t.fundingHours))} to submit
+												· {fmtHours(submitFloorFor(t.fundingHours))} to submit
 											</span>
 										</span>
 									</OptionRow>
@@ -2035,11 +2046,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// The bucket URL of the closing clip, when there is one, so it can be saved and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
 	// A blob URL for a locally picked clip holds the whole video in memory until it is revoked – the preview is replaced or the sheet closes, not before.
-	useEffect(() => {
-		return () => {
+	useEffect(
+		() => () => {
 			if (clipUrl?.startsWith("blob:")) URL.revokeObjectURL(clipUrl)
-		}
-	}, [clipUrl])
+		},
+		[clipUrl],
+	)
 	// The closing reel once it is posted. A hand-in that fails after the reel went up reuses it on the retry rather than posting the same clip twice; a new clip clears it.
 	const [closingPostId, setClosingPostId] = useState<string | null>(null)
 
@@ -2077,15 +2089,15 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		let live = true
 		fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
 			.then(async res => {
-				const body = await res.json().catch(() => null)
-				if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the parts list")
-				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd ?? 0 })
+				const body = (await res.json().catch(() => null)) as BomResponse | null
+				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
+				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })
 			})
 			.catch((err: Error) => live && setBomError(err.message))
 		return () => {
 			live = false
 		}
-	}, [isBuild, project?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- the id is the input
+	}, [isBuild, project?.id]) // the id is the input
 	// The same arithmetic the submit gate reads (lib/bom-policy), so the total on screen is the total being held to.
 	const bomTotal = useMemo(() => bomTotalUsd(bom?.items ?? [], bom?.taxShippingUsd), [bom])
 
@@ -2097,7 +2109,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const hours = hoursOf(week)
 	const tierFloor = submitFloorFor
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
-	const selectedTier = TIERS.find(t => t.id === tier) ?? TIERS[0]
+	const selectedTier = getTier(tier) ?? ENTRY_TIER
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
 	// Over the tier's funding warns; past the leeway the grant covers only part of the cart, which is allowed but has to be agreed to rather than discovered at review.
 	const funding = partsFunding(bomTotal, selectedTier.grantUsd)
@@ -2113,17 +2125,20 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const repoReady = repoResult?.canSubmit ?? false
 
-	const hasCover = !!project?.coverImageKey
+	const hasCover = Boolean(project?.coverImageKey)
+	const descriptionLength = project?.description.trim().length ?? 0
+	const descriptionReady = descriptionLength >= MIN_PROJECT_DESCRIPTION_CHARS
+	const descriptionBlocker = `Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting – you have ${descriptionLength}.`
 
 	const canAdvance =
 		step === 1
 			? repoReady
 			: isBuild
-				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
+				? clip && descriptionReady && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
 						(carts.length > 0 || fundingDeclined) && !tierBlocked && fundingOk
-					: clip && !tierBlocked && fundingOk && hasCover
+					: clip && !tierBlocked && fundingOk && hasCover && descriptionReady
 
 	/**
 	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
@@ -2136,18 +2151,21 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (step === 1) return null
 		// These two block whichever of the later steps is showing.
 		if (tierBlocked)
-			return `Your tier needs ${fmtH(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
+			return `Your tier needs ${fmtHours(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
 		if (!fundingOk) return "Tick the box agreeing to cover the part of the cart the grant does not."
 		if (isBuild)
 			return !clip
 				? "Record your demo video to carry on."
 				: works === "no" && writeup.trim().length < 40
 					? "Say what needs to change – a sentence or two."
-					: null
+					: !descriptionReady
+						? descriptionBlocker
+						: null
 		if (step === 2)
 			return carts.length === 0 && !fundingDeclined ? "Add a screenshot of your cart above to carry on." : null
 		if (!clip) return "Record your closing reel to carry on."
 		if (!hasCover) return "Add a cover image to your project before you can submit."
+		if (!descriptionReady) return descriptionBlocker
 		return null
 	}
 
@@ -2291,6 +2309,33 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									onClick={() => setOpenCheckpoint(null)}
 								>
 									Go to project page
+								</Link>
+							)}
+						</p>
+					</div>
+				</div>
+			)}
+
+			{!descriptionReady && (
+				<div
+					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+				>
+					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
+					<div className="min-w-0">
+						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
+							{project ? `${project.name} needs a longer description.` : "Your project needs a longer description."}
+						</p>
+						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+							A reviewer decides from the description, so it needs at least {MIN_PROJECT_DESCRIPTION_CHARS} characters –
+							you have {descriptionLength}.{" "}
+							{project && (
+								<Link
+									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									href={`/projects/${project.id}`}
+									onClick={() => setOpenCheckpoint(null)}
+								>
+									Edit the description
 								</Link>
 							)}
 						</p>
@@ -2512,7 +2557,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
 							Find out which tier you&apos;re eligible for! Your current goal is a{" "}
 							<span className="font-bold text-navy">{goal.name}</span> and you have{" "}
-							<span className="font-bold text-navy tabular-nums">{fmtH(hours)}</span> logged this week.
+							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span> logged this week.
 						</p>
 						<div className="grid gap-2.5 sm:grid-cols-3">
 							{TIERS.map(t => {
@@ -2561,7 +2606,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											)}
 										>
 											{short > 0
-												? `Opens at ${fmtH(tierFloor(t.fundingHours))} of design time, ${fmtH(short)} to go`
+												? `Opens at ${fmtHours(tierFloor(t.fundingHours))} of design time, ${fmtHours(short)} to go`
 												: `Every hour past this tier's ${t.fundingHours}h earns 5 spendable coins`}
 										</span>
 										{short === 0 && over && (

@@ -2,6 +2,7 @@
 import { useRef, useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import { postForm } from "@/lib/upload-progress"
+import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 
 interface ApiError {
 	error?: { message?: string }
@@ -22,7 +23,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	// Fraction sent. The phone is where the wait is longest, so it shows here.
 	const [progress, setProgress] = useState(0)
 
-	async function submit(e: React.FormEvent) {
+	async function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setError(null)
 
@@ -31,8 +32,8 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 			setError("Record or choose a video first.")
 			return
 		}
-		if (!file.type.startsWith("video/")) {
-			setError("Choose a video file (MP4, WebM, or MOV).")
+		if (!isVideoFile(file)) {
+			setError(VIDEO_TYPE_MESSAGE)
 			return
 		}
 
@@ -57,13 +58,12 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 		}
 	}
 
-	if (state === "done") {
+	if (state === "done")
 		return (
 			<div className="hl-stack hl-stack--tight">
 				<Callout>Sent. Go back to your computer to finish the post – you can close this.</Callout>
 			</div>
 		)
-	}
 
 	return (
 		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
@@ -71,7 +71,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 
 			<Field hint="Tap to record, or pick one you already have." label="Video">
 				<input
-					accept="video/*"
+					accept={VIDEO_ACCEPT}
 					capture="environment"
 					className="hl-input"
 					disabled={state === "uploading"}

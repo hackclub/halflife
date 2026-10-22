@@ -9,7 +9,7 @@ export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; co
 	const { busy, error, run } = useAction()
 	const dirty = value !== (costUsd === null ? "" : String(costUsd))
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		void run("submit", () =>
 			sendJson(`/api/admin/shop/items/${itemId}`, {

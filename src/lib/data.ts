@@ -1,4 +1,4 @@
-import { EXAMPLE_JOURNAL_URL } from "./routes"
+import { EXAMPLE_JOURNAL_URL, README_GUIDE_URL } from "./routes"
 import type { DocArticle } from "./types"
 
 /**
@@ -173,9 +173,21 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 			{
+				heading: "AI Usage, Project Quality, and Originality",
+				list: [
+					"You may not use AI to generate any graphics used in the final github repo.",
+					"You may use AI to help with coding, up to ~30% of code can be generated, the majority should still be your own work.",
+					"Journals and your README cannot be written with the help of AI.",
+					"Your project should be polished, something you'd be proud to show to others, and something that you can potentially sell as a product!",
+					"Copied designs, stolen project files, and more will result in a rejection and potential ban from Half life and Hack Club as a whole",
+					"Projects should be original, with most parts being designed by you. That means depending on the week, you cannot for example buy a kit, or use only premade modules for a project",
+				],
+				paragraphs: ["Failure to meet the below expectations may result in your project rejected"],
+			},
+			{
 				heading: "Your repo",
 				list: [
-					"Every week: a public repo, with a README that has photos in it.",
+					"Every week: a public repo, with a README that has enough text and photos in it.",
 					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
 					"CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf).",
 					"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
@@ -183,11 +195,12 @@ export const DOCS: DocArticle[] = [
 					"Breadboard computer week: a schematic (KiCad, Logisim or Digital).",
 				],
 				paragraphs: [
-					"The submit sheet checks your repo before it lets you submit. A missing README, a README with no photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
+					"The submit sheet checks your repo before it lets you submit. A missing README, a README with too little text or too few photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
 				],
 			},
 			{
 				heading: "A README worth reading",
+				link: { href: README_GUIDE_URL, label: "How to write the README" },
 				list: [
 					"What it is, and why you made it.",
 					"How it works: how the parts fit together.",
@@ -197,6 +210,7 @@ export const DOCS: DocArticle[] = [
 				],
 				paragraphs: [
 					"A folder of files and two sentences is not documentation. Write the README for someone who has never heard of your project and wants to build one:",
+					"The submit sheet checks three hard floors: at least 200 characters of text (images do not count towards it), at least three lines of text, and at least two images.",
 				],
 			},
 			{
@@ -225,18 +239,17 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Before your first submit",
 				paragraphs: [
-					"You need at least one logged session for the week, and a cover image on the project. The cover is what your project's card and the review queue show, so it has to be a photo or screenshot of the project itself – not a logo or a stock photo.",
+					"You need at least one logged session for the week, a project description of at least 100 characters, and a cover image on the project. The cover is what your project's card and the review queue show, so it has to be a photo or screenshot of the project itself – not a logo or a stock photo.",
 					"Your Hack Club identity has to be verified at identity.hackclub.com before you can buy anything in the shop – you can explore, journal and submit without it.",
 				],
 			},
 			{
 				heading: "What gets a week sent back",
 				list: [
-					"The README does not explain the project, or has no photos.",
+					"The README does not explain the project, or has too little text or too few photos.",
 					"Source files are missing, or only exports are there.",
 					"The journal does not back the hours claimed.",
 					"The BOM does not match the cart, or has no real prices.",
-					"Work that is not yours: copied designs, or a README or journal written by AI.",
 				],
 				paragraphs: [
 					"Reviewers can approve a week, send it back with changes to make, or reject it. A week sent back can be fixed and submitted again. The usual reasons:",

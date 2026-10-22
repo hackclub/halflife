@@ -22,7 +22,7 @@ export function ProgramSettingsForm({
 	const [saved, setSaved] = useState(false)
 	const { busy, error, run } = useAction()
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setSaved(false)
 		void run(
@@ -34,9 +34,9 @@ export function ProgramSettingsForm({
 						airtableSyncEnabled: form.airtableSyncEnabled,
 						programTimezone: form.programTimezone,
 						repoSyncEnabled: form.repoSyncEnabled,
-						reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
+						reviewClaimTtlMinutes: form.reviewClaimTtlMinutes,
 						shopClosesAt: form.shopClosesAt ? new Date(`${form.shopClosesAt}Z`).toISOString() : null,
-						shopGraceDays: Number(form.shopGraceDays),
+						shopGraceDays: form.shopGraceDays,
 						shopOpen: form.shopOpen,
 						submissionsCloseAt: form.submissionsCloseAt ? new Date(`${form.submissionsCloseAt}Z`).toISOString() : null,
 						submissionsOpen: form.submissionsOpen,

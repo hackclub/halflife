@@ -5,6 +5,7 @@ import { getThemeDef } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { displayName } from "@/lib/display-name"
 import { type FeedItem, getCreatorReels } from "@/lib/feed"
+import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
@@ -67,7 +68,6 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 				joinedProgramAt: true,
 				lastStreakDate: true,
 				name: true,
-				slackId: true,
 			},
 			where: { id: userId },
 		}),
@@ -103,11 +103,11 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 
 	const today = effectiveDateFor(new Date(), settings.programTimezone)
 
-	// Season projects in week order, warm-ups after them.
-	const ordered = [...projects].sort((a, b) => {
-		const da = a.theme === Theme.WARMUP ? Number.MAX_SAFE_INTEGER : getThemeDef(a.theme).designWeek
-		const db = b.theme === Theme.WARMUP ? Number.MAX_SAFE_INTEGER : getThemeDef(b.theme).designWeek
-		return da - db
+	// Later weeks first, warm-ups after them: a warm-up is not one of the season's weeks, and it comes before week 1.
+	const ordered = projects.toSorted((a, b) => {
+		const da = a.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(a.theme).designWeek
+		const db = b.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(b.theme).designWeek
+		return db - da
 	})
 
 	const shaped: ProfileProject[] = ordered.map(p => {
@@ -120,7 +120,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		return {
 			accent: warmup ? "var(--color-violet-pale)" : (week?.accent ?? "var(--color-violet-pale)"),
 			entries: p.workSessions.length,
-			hours: Math.round(hours * 100) / 100,
+			hours: round2(hours),
 			id: p.id,
 			painting: warmup ? "Warm Up" : (week?.theme ?? "PCB"),
 			themeLabel: def.label,

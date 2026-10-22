@@ -25,7 +25,14 @@ import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
 import { getUserRoles, hasRole } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
-import { effectiveDateFor, effectiveWeekClose, getProgramSettings, weekClosesAt, weekOpensAt } from "@/lib/program"
+import {
+	effectiveDateFor,
+	effectiveWeekClose,
+	getProgramSettings,
+	isPhaseDecided,
+	weekClosesAt,
+	weekOpensAt,
+} from "@/lib/program"
 import { getOwedReelKeys } from "@/lib/reel-gate"
 import { streakAsOf } from "@/lib/streak"
 import { projectThumbnail } from "@/lib/thumbnail"
@@ -170,6 +177,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					designStatus: true,
 					githubRepo: true,
 					id: true,
+					namedAt: true,
 					requestedTier: true,
 					starterProjectId: true,
 					submissionExtensionUntil: true,
@@ -273,7 +281,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		}
 	}
 
-	if (user.onboardingCompletedAt) {
+	if (user.onboardingCompletedAt)
 		progress[ONBOARDING_CHECKPOINT_ID] = {
 			artefacts: 0,
 			at: user.onboardingCompletedAt.getTime(),
@@ -281,7 +289,6 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			log: [],
 			minutes: 0,
 		}
-	}
 
 	// One phase of one project, written under the key prefix it is addressed by: `w<week>` for a season week, `wu-<id>` for a warm-up project, which has no week of its own. Returns the phase's off-book hours; a season week also records them, and its status, against its week number.
 	const recordPhase = (project: (typeof projects)[number], phase: Phase, prefix: string, week?: number): number => {
@@ -294,17 +301,16 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			// Week one's project comes into existence through the first checkpoint rather than a project form, so the node that stands for it is different and is already recorded above. A warm-up has no such node at all.
 			if (phase === Phase.DESIGN && week !== undefined && week > 1) {
 				const tier = project.tier ?? project.requestedTier
-				if (project.title && project.description && tier) {
+				if (project.title && project.description && tier)
 					progress[id("project")] = {
 						artefacts: 0,
 						done: true,
 						log: [],
 						minutes: 0,
 					}
-				}
 			}
 
-			for (const [index, session] of phaseSessions.entries()) {
+			for (const [index, session] of phaseSessions.entries())
 				progress[id(`entry-${index + 1}`)] = {
 					artefacts: session.media.length,
 					at: session.createdAt.getTime(),
@@ -323,13 +329,12 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					],
 					minutes: minutesOf(session),
 				}
-			}
 
-			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is draft again with its old submission rows still there, and it has to read as not handed in, or the trail would hide the Submit it needs again.
-			const submission = submissions.filter(s => s.themeProjectId === project.id && s.phase === phase).at(-1)
+			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is `update_requested`, with its old submission rows still there, and it has to read as not handed in, or the trail would hide the live entry and the Submit it needs again. Decided phases and one still in review stay handed in. `findLast` and not `find`, because the rows come back oldest first and the newest hand-in is the one that counts.
+			const submission = submissions.findLast(s => s.themeProjectId === project.id && s.phase === phase)
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (week !== undefined) phaseStatusByWeek[week] = status
-			if (status !== PhaseStatus.draft) {
+			if (status === PhaseStatus.in_review || isPhaseDecided(status))
 				progress[id("submit")] = {
 					artefacts: 0,
 					at: submission?.createdAt.getTime(),
@@ -337,7 +342,6 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					log: [],
 					minutes: 0,
 				}
-			}
 
 			// What the phase is worth, minus what its entries already account for. `rollUpHours` is the function the ledger uses, so the trail's gates and the reviewer's totals cannot answer this differently.
 			const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
@@ -429,8 +433,13 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			const warmup = project.theme === Theme.WARMUP
 			const themeIndex = THEMES.findIndex(t => t.id === project.theme)
 			const tier = project.tier ?? project.requestedTier
-			// A project whose checkpoint was opened but never finished is not one the trail should list: the row exists from the moment "create a project" is opened, before anything has been decided about it.
-			if ((!warmup && themeIndex === -1) || !project.title || !tier) return []
+			// The row is made when its checkpoint is opened, before anything is decided about it. A project is started once it has been named or described, or has left draft; `tier` alone is not the signal, because a project can be submitted and rejected without a requested tier (the submit path falls back to Tier 1) and it has to stay visible with that rejection.
+			const started =
+				project.namedAt !== null
+				|| Boolean(project.description?.trim())
+				|| project.designStatus !== PhaseStatus.draft
+				|| project.buildStatus !== PhaseStatus.draft
+			if ((!warmup && themeIndex === -1) || !started) return []
 			return [
 				{
 					buildStatus: project.buildStatus,
@@ -453,7 +462,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 								videoUrl: publicUrlFor(p.objectKey),
 							})),
 					),
-					tier: clampTier(tier),
+					tier: clampTier(tier ?? 1),
 					weekId: warmup ? WARMUP_WEEK_ID : weekOf(themeIndex, Phase.DESIGN),
 				},
 			]

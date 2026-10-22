@@ -13,6 +13,8 @@ import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAuditTx } from "@/lib/audit"
 import { TIERS } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
+import { lockKey } from "@/lib/locks"
+import { round2 } from "@/lib/money"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -81,7 +83,7 @@ function readNumber(record: AirtableRecord, field: FieldDef): number | null {
 	const value = rawField(record, field)
 	if (typeof value === "number" && Number.isFinite(value)) return value
 	if (typeof value === "string") {
-		const parsed = Number(value.replace(/[$,\s]/g, ""))
+		const parsed = Number(value.replaceAll(/[$,\s]/g, ""))
 		return Number.isFinite(parsed) ? parsed : null
 	}
 	return null
@@ -90,10 +92,10 @@ function readNumber(record: AirtableRecord, field: FieldDef): number | null {
 function readAttachmentUrl(record: AirtableRecord, field: FieldDef): string | null {
 	const value = rawField(record, field)
 	if (!Array.isArray(value)) return null
-	for (const entry of value) {
+	for (const entry of value as unknown[])
 		if (entry && typeof entry === "object" && "url" in entry && typeof entry.url === "string" && entry.url)
 			return entry.url
-	}
+
 	return null
 }
 
@@ -126,7 +128,7 @@ function phaseForStage(stage: string | null): Phase {
 function tierForRequestedFunding(usd: number | null): number {
 	if (usd === null || usd <= 0) return TIERS[0].id
 	for (const tier of TIERS) if (usd <= tier.grantUsd) return tier.id
-	return TIERS[TIERS.length - 1]?.id ?? 3
+	return TIERS.at(-1)?.id ?? 3
 }
 
 interface ParsedWarmupRow {
@@ -184,7 +186,7 @@ function parseRow(record: AirtableRecord): { ok: true; row: ParsedWarmupRow } | 
 			description: readString(record, f.description),
 			email,
 			hackatimeId: cleanExternalId(readString(record, f.hackatimeId)),
-			hours: hours !== null && hours > 0 ? Math.round(hours * 100) / 100 : null,
+			hours: hours !== null && hours > 0 ? round2(hours) : null,
 			journalUrl: readString(record, f.journalUrl),
 			lapseLinks: readString(record, f.lapseLinks),
 			name,
@@ -294,7 +296,7 @@ function encryptedPiiFields(row: ParsedWarmupRow): Partial<Prisma.UserCreateInpu
  *
  * The advisory lock is keyed on the email, so two rows for the same maker, or an admin double-clicking the button, serialize instead of racing each other into a duplicate account. Every row that gets here is a project of its own: the form may have been filled in more than once, and warm-up projects deliberately do not hold a unique slot. Idempotency per Airtable row is re-checked under that lock, because the caller's "not imported yet" read happened before the transaction and a second run can hold the same snapshot. Everything after the transaction – the cover copy and the Ari send – is external and idempotent enough not to belong inside it.
  */
-async function importRow(
+function importRow(
 	record: AirtableRecord,
 	row: ParsedWarmupRow,
 	actor: ImportActor,
@@ -308,25 +310,24 @@ async function importRow(
 		row.journalUrl ? `Journal: ${row.journalUrl}` : null,
 		row.playableUrl ? `Playable: ${row.playableUrl}` : null,
 		row.lapseLinks ? `Timelapse: ${row.lapseLinks}` : null,
-	].filter((part): part is string => !!part)
+	].filter((part): part is string => Boolean(part))
 
 	return prisma.$transaction(
 		async tx => {
-			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`warmup-import:${row.email}`}, 0))`
+			await lockKey(tx, `warmup-import:${row.email}`)
 
 			// Two runs of the same click (two admins, two tabs) both read their "not imported yet" snapshot before either transaction started. Since warm-up rows are no longer held unique by `(userId, theme)`, the insert below would happily make a second project for one Airtable row; this re-read under the lock is what keeps a row to one project.
 			const raced = await tx.auditLog.findFirst({
 				select: { targetId: true },
 				where: { action: IMPORT_ACTION, metadata: { equals: record.id, path: ["airtableRecordId"] } },
 			})
-			if (raced?.targetId) {
+			if (raced?.targetId)
 				return {
 					reason: "another import run filed this row first",
 					status: "skipped" as const,
 					themeProjectId: raced.targetId,
 					userId: null,
 				}
-			}
 
 			let user = await tx.user.findFirst({
 				select: { id: true },
@@ -372,7 +373,7 @@ async function importRow(
 				select: { id: true },
 			})
 
-			if (journalParts.length > 0 || row.hours !== null) {
+			if (journalParts.length > 0 || row.hours !== null)
 				await tx.workSession.create({
 					data: {
 						content: journalParts.length > 0 ? journalParts.join("\n\n") : null,
@@ -386,7 +387,6 @@ async function importRow(
 						weekNumber: 0,
 					},
 				})
-			}
 
 			await tx.phaseSubmission.create({
 				data: {
@@ -512,9 +512,8 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 			if (result.status === "imported") {
 				if (parsed.row.screenshotUrl) {
 					const key = await rehostScreenshot(result.userId, parsed.row.screenshotUrl)
-					if (key) {
+					if (key)
 						await prisma.themeProject.update({ data: { coverImageKey: key }, where: { id: result.themeProjectId } })
-					}
 				}
 				outcome.ari = await sendToAri(result.themeProjectId, parsed.row.phase, actor)
 			}

@@ -7,12 +7,13 @@ import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor } from "@/lib/config/printers"
-import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { ENTRY_TIER } from "@/lib/config/tiers"
+import { DESIGN_WEEKS, MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
+import { README_GUIDE_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
@@ -41,7 +42,7 @@ export function ProjectDetails({
 	/** The facts under the description while reading: progress, then what it is. */
 	meta: React.ReactNode
 	/** Take the phase in review back out of it, when one is. */
-	unsubmit?: { label: string; run: () => Promise<string | null> }
+	unsubmit?: { label: string; run(): Promise<string | null> }
 }) {
 	const [editing, setEditing] = useState(false)
 	const lockedId = useId()
@@ -60,9 +61,8 @@ export function ProjectDetails({
 		else setConfirming(false)
 	}
 
-	if (editing) {
+	if (editing)
 		return <DetailsForm hours={hours} onDone={() => setEditing(false)} project={project} tierLocked={tierLocked} />
-	}
 
 	return (
 		<div>
@@ -76,7 +76,7 @@ export function ProjectDetails({
 				<div className="mt-1 flex shrink-0 flex-col items-end gap-1">
 					<Button
 						aria-describedby={locked ? lockedId : undefined}
-						disabled={!!locked}
+						disabled={Boolean(locked)}
 						onClick={() => setEditing(true)}
 						size="sm"
 						title={locked ?? undefined}
@@ -154,7 +154,7 @@ function DetailsForm({
 	project: Project
 	hours: number
 	tierLocked: boolean
-	onDone: () => void
+	onDone(): void
 }) {
 	const { updateProject, goalId, participantGoal } = useStore()
 	const id = useId()
@@ -174,16 +174,18 @@ function DetailsForm({
 
 	const takingStarter = starterId !== null
 	const tierEditable = !takingStarter && !tierLocked
+	// A longer starter (the MIDI keyboard) is deliberately past the usual Tier 1 pace, so the "about N hours, no more" warning below would be wrong for it.
+	const selectedStarter = starterId === null ? undefined : getStarterProject(starterId)
 
 	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
-	const selectedTier = TIERS.find(t => t.id === tier)
+	const selectedTier = getTier(tier)
 	const readyToSubmit = selectedTier !== undefined && hours >= submitFloorFor(selectedTier.fundingHours)
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
 
-	function takeStarter(id: string) {
-		setStarterId(id)
+	function takeStarter(chosen: string) {
+		setStarterId(chosen)
 		// A starter is scoped to tier 1 from the start, so taking one carries the tier with it – the server holds the same rule.
 		setTier(STARTER_PROJECT_TIER)
 	}
@@ -224,7 +226,7 @@ function DetailsForm({
 			}}
 			onSubmit={e => {
 				e.preventDefault()
-				save()
+				void save()
 			}}
 		>
 			<div className="grid gap-1.5">
@@ -257,6 +259,15 @@ function DetailsForm({
 					rows={4}
 					value={description}
 				/>
+				<p
+					className={cx(
+						"hand text-[0.78rem] leading-snug",
+						description.trim().length < MIN_PROJECT_DESCRIPTION_CHARS ? "text-coral-deep" : "text-navy-soft",
+					)}
+				>
+					{description.trim().length}/{MIN_PROJECT_DESCRIPTION_CHARS} characters – a week needs at least{" "}
+					{MIN_PROJECT_DESCRIPTION_CHARS} to submit.
+				</p>
 			</div>
 
 			<div className="grid gap-1.5">
@@ -277,6 +288,19 @@ function DetailsForm({
 					spellCheck={false}
 					value={repo}
 				/>
+				<p className="text-[0.78rem] leading-snug text-navy-soft">
+					Your repo needs a README that says what the project is, how it works, and shows at least two photos of it – at
+					least 200 characters of text over at least 3 lines, once images are removed –{" "}
+					<a
+						className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+						href={README_GUIDE_URL}
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						see how to write one
+					</a>
+					.
+				</p>
 			</div>
 
 			{showStarterPicker && (
@@ -287,7 +311,7 @@ function DetailsForm({
 							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
 							: "Building from a starter, or your own idea? Picked the wrong one by accident – change it here."}
 					</p>
-					{takingStarter && hotGoal && (
+					{takingStarter && hotGoal && !selectedStarter?.longerBuild && (
 						<p className="hand text-[0.82rem] leading-snug text-coral-deep" role="status">
 							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of
 							work, no more. Your {goal.name} needs roughly {Math.round(goal.paceHours * 5)} coins a design week on top

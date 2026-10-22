@@ -3,6 +3,7 @@ import { ActionButton } from "@/app/components/forms/ActionButton"
 import { type ComposerProject, PostComposer } from "@/app/components/forms/PostComposer"
 import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
 import { getThemeDef } from "@/lib/config/program"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
@@ -12,19 +13,9 @@ import {
 	listRecentPostsForModeration,
 	listRecentPublicReels,
 } from "@/lib/queries/admin"
+import { preview } from "@/lib/text"
 
 export const dynamic = "force-dynamic"
-
-const whenFormat = new Intl.DateTimeFormat("en-US", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-})
-
-function preview(text: string, max = 90): string {
-	const flat = text.replace(/\s+/g, " ").trim()
-	return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
-}
 
 /**
  * Where the Half Life team posts to the Doomscroller, and where a reel or comment that should not be visible is taken down.
@@ -77,7 +68,7 @@ export default async function AdminFeedPage() {
 									<span className="hl-hint"> {preview(post.caption) || post.themeProject?.title || "no caption"}</span>
 									{post.hiddenReason ? <div className="hl-hint">hidden: {preview(post.hiddenReason, 60)}</div> : null}
 								</td>
-								<td className="hl-mono">{whenFormat.format(post.publishedAt ?? post.createdAt)}</td>
+								<td className="hl-mono">{formatUtcDateTime(post.publishedAt ?? post.createdAt)}</td>
 								<td>
 									{post.hiddenAt ? (
 										<ActionButton
@@ -120,7 +111,7 @@ export default async function AdminFeedPage() {
 										<div className="hl-hint">on {preview(comment.post.caption, 60) || "a reel"}</div>
 									) : null}
 								</td>
-								<td className="hl-mono">{whenFormat.format(comment.createdAt)}</td>
+								<td className="hl-mono">{formatUtcDateTime(comment.createdAt)}</td>
 								<td>
 									{comment.hiddenAt ? (
 										<span className="hl-hint">hidden</span>
@@ -157,7 +148,7 @@ export default async function AdminFeedPage() {
 									</a>
 								</td>
 								<td className="hl-hint">{reel.themeProject?.title ?? reel.post?.caption?.slice(0, 60) ?? "—"}</td>
-								<td className="hl-mono">{whenFormat.format(reel.postedAt)}</td>
+								<td className="hl-mono">{formatUtcDateTime(reel.postedAt)}</td>
 							</tr>
 						))}
 					</Table>

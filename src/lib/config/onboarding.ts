@@ -55,7 +55,9 @@ export function suggestedTierFor(experience: HardwareExperience | null): TierId 
 			return 3
 		case HardwareExperience.A_GOOD_AMOUNT:
 			return 2
-		default:
+		case HardwareExperience.A_LITTLE:
+		case HardwareExperience.FIRST_TIME:
+		case null:
 			return 1
 	}
 }
@@ -92,6 +94,10 @@ export interface StarterProject {
 	readonly description: string
 	readonly guideUrl: string
 	readonly id: string
+	/**
+	 * A starter that asks more than the usual Tier 1 design week, so the "about N hours, no more" pace warning does not apply to it.
+	 */
+	readonly longerBuild?: boolean
 	/** What goes on the board, for the card's parts line. */
 	readonly parts: readonly string[]
 	readonly repoUrl: string
@@ -108,7 +114,7 @@ export const STARTER_PROJECTS = [
 		id: "starbie",
 		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
 		repoUrl: "https://github.com/SharKingStudios/Starbie",
-		// Week one's starter, in every week until each has its own repo.
+		// Week one's starter, and the stand-in for weeks 4 and 5 until each has one of its own. CAD and Music have theirs; Starbie must not be listed for Music, or week 3 hands out the week-one guide.
 		themes: [Theme.PCB, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER],
 		title: "Starbie",
 	},
@@ -129,6 +135,7 @@ export const STARTER_PROJECTS = [
 			"Learn PCB design by creating your own custom MIDI keypad with switches, sliders, rotary encoders, neopixels and capacitive touch!",
 		guideUrl: "https://github.com/KaiPereira/MIDI-Keypad/blob/master/README.md",
 		id: "midi",
+		longerBuild: true,
 		parts: ["ESP32-S3-Zero", "Kailh Choc switches", "Slide potentiometers", "EC11 rotary encoder", "SK6812 neopixels"],
 		repoUrl: "https://github.com/KaiPereira/MIDI-Keypad",
 		themes: [Theme.SYNTH],

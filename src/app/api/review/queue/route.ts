@@ -1,16 +1,13 @@
 import type { NextRequest } from "next/server"
-import { ok, parseQuery, withRoute } from "@/lib/api"
-import { requirePermission } from "@/lib/guards"
+import { ok, parseQuery } from "@/lib/api"
+import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { getReviewQueue } from "@/lib/queries/review"
 import { reviewQueueQuery } from "@/lib/schemas/review"
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = await requirePermission(Permission.REVIEW_SUBMISSIONS)
-	if (gate.error) return gate.error
-
+export const GET = withPermission(Permission.REVIEW_SUBMISSIONS, async (req: NextRequest, { gate }) => {
 	const query = parseQuery(req, reviewQueueQuery)
 	if (query.error) return query.error
 

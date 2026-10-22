@@ -28,9 +28,15 @@
 			"!public/**/*.svg",
 			"scripts/**",
 			"src/**",
+			"!src/app/generated",
+			".impeccable/**",
+			".github/**",
+			"prisma/**",
+			"import/**",
 			"!src/**/*.svg",
 			"*.config.mjs",
-			"*.config.ts"
+			"*.config.ts",
+			"*.json"
 		]
 	},
 	"formatter": {
@@ -85,6 +91,23 @@
 				"noConsole": "off",
 				"noEvolvingTypes": "off"
 			}
+		}
+	},
+	"overrides": [
+		{
+			"assist": {
+				"actions": {
+					"source": {
+						"useSortedKeys": "off"
+					}
+				}
+			},
+			"includes": ["package.json"]
+		}
+	],
+	"yaml": {
+		"formatter": {
+			"indentWidth": 4
 		}
 	}
 }

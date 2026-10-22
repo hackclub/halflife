@@ -1,7 +1,8 @@
 import "server-only"
+import type { Prisma } from "@/app/generated/prisma/client"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
-import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
+import { getTierOrThrow } from "@/lib/config/tiers"
 import { fetchProjectSeconds, fetchProjectSpans } from "@/lib/hackatime"
 import {
 	cachedSpansCover,
@@ -55,16 +56,19 @@ export interface HoursBreakdown {
  * A timelapse is a recording *of* a session whose hours were already claimed, so adding its duration is a straight double-count. It surfaces instead as `timelapseCoverage` – a session claiming six hours with five hours of timelapse reads very differently from one with none.
  *
  * Journal and Hackatime can double-count too, which is what `WorkSession.hoursSource` exists to prevent: a HACKATIME_TRACKED session still exists as a journal entry and as evidence, but contributes zero hours because its time already arrives through the link.
+ *
+ * `client` runs the reads on a transaction instead of the shared pool, which is how the decision path reads the total it freezes under the maker's credit lock: the number that ends up frozen has to be the one read while nothing else can be rewriting the rows behind it. The live Hackatime fetch stays outside any transaction – it is network I/O with a ten second timeout and retries, and holding a connection (and a lock) open for it would be far worse than the race it closes.
  */
 export async function getHoursBreakdown(
 	themeProjectId: string,
 	phase: Phase,
-	opts: { live?: boolean } = {},
+	opts: { client?: Prisma.TransactionClient; live?: boolean } = {},
 ): Promise<HoursBreakdown> {
 	const live = opts.live ?? false
+	const db: Prisma.TransactionClient = opts.client ?? prisma
 
 	const [project, sessions, links] = await Promise.all([
-		prisma.themeProject.findUnique({
+		db.themeProject.findUnique({
 			select: {
 				approvedHours: true,
 				designApprovedHours: true,
@@ -73,7 +77,7 @@ export async function getHoursBreakdown(
 			},
 			where: { id: themeProjectId },
 		}),
-		prisma.workSession.findMany({
+		db.workSession.findMany({
 			select: {
 				hoursApproved: true,
 				hoursClaimed: true,
@@ -82,7 +86,7 @@ export async function getHoursBreakdown(
 			},
 			where: { deletedAt: null, phase, themeProjectId },
 		}),
-		prisma.hackatimeLink.findMany({
+		db.hackatimeLink.findMany({
 			select: {
 				cachedSeconds: true,
 				cachedSpans: true,
@@ -119,7 +123,7 @@ export async function getHoursBreakdown(
 	const hackatimeUserId = project?.user.hackatimeUserId ?? null
 	// This maker's recordings on their OTHER projects and phases, fetched only when there is a link to deduplicate against – the only time they can matter. A clip attached in one week carries tracked time that may have been linked on another week's project, and the recording's own `hackatimeProject` is what pairs the two.
 	const elsewhere =
-		links.length === 0 || !project ? [] : await elsewhereRecordings(project.userId, themeProjectId, phase)
+		links.length === 0 || !project ? [] : await elsewhereRecordings(db, project.userId, themeProjectId, phase)
 
 	for (const link of links) {
 		// A reviewer override replaces the live value permanently, so there is nothing to fetch and nothing that can go stale. It is also a human decision made against a breakdown that already showed the overlap, so it stands untouched: the subtraction is for computed values.
@@ -135,7 +139,7 @@ export async function getHoursBreakdown(
 				linkSeconds = link.cachedSeconds ?? 0
 			} else {
 				linkSeconds = result.seconds
-				await prisma.hackatimeLink.update({
+				await db.hackatimeLink.update({
 					data: { cachedAt: new Date(), cachedSeconds: result.seconds, lastFetchError: null },
 					where: { id: link.id },
 				})
@@ -159,12 +163,11 @@ export async function getHoursBreakdown(
 				// Unknown, not zero: the honest answer here is that the overlap may exist. Nothing is subtracted, so the risk is the status quo double-count rather than an underpayment.
 				hackatimeOverlapUnknown = true
 				// Recorded only when a fetch was actually attempted. This runs on read paths too – the projects list breaks down every project – and a write per dashboard load to note a cache that was simply cold would be a great deal of write load for no new information.
-				if (live) {
-					await prisma.hackatimeLink.update({
+				if (live)
+					await db.hackatimeLink.update({
 						data: { spansFetchError: spans.error ?? "unknown error" },
 						where: { id: link.id },
 					})
-				}
 			} else {
 				const overlap = capSubtraction(linkSeconds, overlapSeconds(linkWindows, spans.spans))
 				if (overlap > 0) {
@@ -172,8 +175,8 @@ export async function getHoursBreakdown(
 					linkSeconds -= overlap
 				}
 				// Persisted only on a fresh fetch, and with the window they were fetched for rather than as a bare array: the next read has to know whether these spans cover the window it is being asked about, and a list cannot say. Re-writing a cache that was just read from would put a write on every read of this row.
-				if (spans.fetched) {
-					await prisma.hackatimeLink.update({
+				if (spans.fetched)
+					await db.hackatimeLink.update({
 						data: {
 							cachedSpans: {
 								from: linkSpanWindow.fromSeconds,
@@ -185,7 +188,6 @@ export async function getHoursBreakdown(
 						},
 						where: { id: link.id },
 					})
-				}
 			}
 		}
 
@@ -223,17 +225,17 @@ async function resolveSpans(
 	opts: { live: boolean; hackatimeUserId: string | null; fromSeconds: number; toSeconds: number },
 ): Promise<{ spans: HackatimeSpan[]; stale: boolean; fetched: boolean; error?: string }> {
 	const cached = parseCachedSpans(link.cachedSpans)
-	if (cached && cachedSpansCover(cached, opts.fromSeconds, opts.toSeconds)) {
+	if (cached && cachedSpansCover(cached, opts.fromSeconds, opts.toSeconds))
 		return { fetched: false, spans: cached.spans, stale: false }
-	}
-	if (!opts.live || !opts.hackatimeUserId) {
+
+	if (!opts.live || !opts.hackatimeUserId)
 		return {
 			error: cached ? "cached spans do not cover this window" : "no cached spans",
 			fetched: false,
 			spans: [],
 			stale: true,
 		}
-	}
+
 	const result = await fetchProjectSpans(opts.hackatimeUserId, link.hackatimeProject, {
 		fromSeconds: opts.fromSeconds,
 		toSeconds: opts.toSeconds,
@@ -247,11 +249,12 @@ async function resolveSpans(
  * These are the windows that let a link find a recording made somewhere other than beside it. The exclusion is only an optimisation – `windowsForLink` would ignore the own-phase ones anyway once they are already in its own set – but it keeps this query to the rows that can actually add a window.
  */
 async function elsewhereRecordings(
+	db: Prisma.TransactionClient,
 	userId: string,
 	notThemeProjectId: string,
 	notPhase: Phase,
 ): Promise<RecordedWindow[]> {
-	const rows = await prisma.sessionTimelapse.findMany({
+	const rows = await db.sessionTimelapse.findMany({
 		select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true },
 		where: {
 			workSession: {
@@ -303,7 +306,7 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 			}),
 		)
 		// The recordings on this maker's other projects and phases, so a link whose time was journalled in another week is warmed for the window that actually matters to it. Fetched once for the phase rather than once per link.
-		const elsewhere = await elsewhereRecordings(project.userId, themeProjectId, phase)
+		const elsewhere = await elsewhereRecordings(prisma, project.userId, themeProjectId, phase)
 
 		for (const link of links) {
 			const spanWindow = spanWindowFor(windowsForLink(ownWindows, elsewhere, link.hackatimeProject))
@@ -511,16 +514,16 @@ export function rollUpHours(
 		const cached = parseCachedSpans(link.cachedSpans)
 		// The recordings beside the link and the ones elsewhere under its name. Empty means nothing to compare, and nothing to warn about.
 		const windows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject ?? "")
-		if (windows.length > 0) {
-			// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
-			if (!cached) {
+		if (windows.length > 0)
+			if (!cached)
+				// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
 				hackatimeOverlapUnknown = true
-			} else {
+			else {
 				const overlap = capSubtraction(seconds, overlapSeconds(windows, cached.spans))
 				hackatimeOverlapSeconds += overlap
 				seconds -= overlap
 			}
-		}
+
 		hackatimeHours += seconds / 3600
 	}
 
@@ -542,6 +545,7 @@ export function rollUpHours(
  *
  * A type alias rather than an interface on purpose: this gets written into the audit row's JSON payload, and Prisma's `InputJsonValue` only accepts types with an implicit index signature, which interfaces do not have.
  */
+// oxlint-disable-next-line typescript/consistent-type-definitions
 export type CoinSplit = {
 	/** Legacy locked half. Always zero on new mints. */
 	banked: number
@@ -563,7 +567,7 @@ export type CoinSplit = {
  *
  * Minted coins are capped, because `approvedHours` can come from a reviewer typing into a box and a fat-fingered 1000 should not mint five thousand coins.
  */
-export function designCoinsFor(tierId: TierId | number, approvedHours: number): CoinSplit {
+export function designCoinsFor(tierId: number, approvedHours: number): CoinSplit {
 	const tier = getTierOrThrow(tierId)
 	const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
 	const spendable = earnCoins(beyondFunding)

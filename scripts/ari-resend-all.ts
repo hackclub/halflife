@@ -104,7 +104,7 @@ function readOptions(args: string[]): Options {
 
 /** Escape a literal for a regular expression, so a program id with punctuation cannot break the match. */
 function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+	return value.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
 }
 
 /** Every submission id linked from a Reviewed page's HTML. */

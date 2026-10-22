@@ -1,6 +1,6 @@
 import type { NextRequest, NextResponse } from "next/server"
 import { withRoute } from "@/lib/api"
-import { requireIntegrationAuth } from "@/lib/integration-auth"
+import { type ExportScope, requireExportAuth, requireIntegrationAuth } from "@/lib/integration-auth"
 import { postMessage } from "@/lib/site/slack"
 
 /**
@@ -18,10 +18,26 @@ export function withIntegrationRoute<A extends unknown[]>(
 	handler: (...args: A) => Promise<NextResponse>,
 ): (...args: A) => Promise<NextResponse> {
 	const routed = withRoute(handler)
-	return async (...args: A) => {
+	return (...args: A) => {
 		const denied = requireIntegrationAuth(args[0] as NextRequest)
-		if (denied) return denied
+		if (denied) return Promise.resolve(denied)
 		return routed(...args)
+	}
+}
+
+/**
+ * The export's own wrapper, because it accepts a second, narrower key and the handler needs to know which one matched.
+ *
+ * Same shape as `withIntegrationRoute`: authorise first, then run the handler with a context it can trust, so the route body cannot accidentally read the request before the check.
+ */
+export function withExportRoute<A extends unknown[]>(
+	handler: (req: NextRequest, gate: { scope: ExportScope }, ...args: A) => Promise<NextResponse>,
+): (req: NextRequest, ...args: A) => Promise<NextResponse> {
+	const run = withRoute(handler)
+	return (req: NextRequest, ...args: A) => {
+		const gate = requireExportAuth(req)
+		if ("denied" in gate) return Promise.resolve(gate.denied)
+		return run(req, gate, ...args)
 	}
 }
 

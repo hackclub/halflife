@@ -25,5 +25,5 @@ export const PRINTER_AWARD_NEXT: Record<PrinterAwardStatus, readonly PrinterAwar
 }
 
 export function canMovePrinterAward(from: PrinterAwardStatus, to: PrinterAwardStatus): boolean {
-	return (PRINTER_AWARD_NEXT[from] as readonly PrinterAwardStatus[]).includes(to)
+	return PRINTER_AWARD_NEXT[from].includes(to)
 }

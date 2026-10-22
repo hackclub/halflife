@@ -151,7 +151,7 @@ const SHEET: SheetRow[] = [
 /**
  * The coins one paced hour is worth – the sheet's $5, at a coin to the dollar. Re-exported rather than restated so the catalogue and the ledger cannot disagree about what an hour is worth.
  */
-export { COINS_PER_HOUR }
+export { COINS_PER_HOUR } from "./program"
 
 /**
  * Where a printer is paid out as a grant instead of being shipped.
@@ -181,9 +181,9 @@ export const PRINTER_GRANT_NOTICE =
 	"3D printers are notoriously expensive in Egypt, so if you earn one we'll give you its value as a grant instead of delivering it. The grant may not stretch to the exact printer we'd have shipped, so you may not be able to get that specific model for the money."
 
 /** The season, counted off the program schedule rather than restated here. */
-export const SEASON_WEEKS = TOTAL_WEEKS
+export { TOTAL_WEEKS as SEASON_WEEKS } from "./program"
 export const BUILD_WEEKS = TOTAL_WEEKS - DESIGN_WEEKS
-export { DESIGN_WEEKS }
+export { DESIGN_WEEKS } from "./program"
 
 /**
  * What the build half earns for everyone, whichever machine is on the wall: BUILD_HOURS a week, none of it funded, at COINS_PER_HOUR. This is the `5 hours * 5 build weeks * $5` term the sheet subtracts before it works out column 4, so it is money the projection may count on rather than ask for.
@@ -193,11 +193,12 @@ export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS
 /**
  * Column 4 is the economy and is left exactly as the sheet has it – every tier earns the same hours for the same machine. The ten-hour floor only touches the tier-1 hours figure the goal picker shows; it must never reach the pace hours, or the sheet's arithmetic stops landing on the price.
  */
-export const PRINTERS: PrinterGoal[] = SHEET.map(p => ({
-	...p,
-	coinsPerWeek: p.paceHours * COINS_PER_HOUR,
-	hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
-}))
+export const PRINTERS: PrinterGoal[] = SHEET.map(p =>
+	Object.assign({}, p, {
+		coinsPerWeek: p.paceHours * COINS_PER_HOUR,
+		hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
+	}),
+)
 
 export const DEFAULT_GOAL_ID = "ender-3-v3-se"
 

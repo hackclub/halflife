@@ -49,7 +49,7 @@ async function refused(label: string, fn: () => Promise<unknown>): Promise<void>
 function fakeVideo() {
 	const bytes = Buffer.from("00000018667479706d703432000000006d70343269736f6d", "hex")
 	return {
-		bytes: async () => bytes,
+		bytes: () => Promise.resolve(bytes),
 		name: "clip.mp4",
 		size: bytes.byteLength,
 		type: "video/mp4",
@@ -119,7 +119,7 @@ async function main() {
 	// ── Content type ───────────────────────────────────────────────────────────
 	await refused("a non-video is rejected", () =>
 		completeHandoff(live.token, {
-			bytes: async () => Buffer.from("plain text"),
+			bytes: () => Promise.resolve(Buffer.from("plain text")),
 			name: "notes.txt",
 			size: 10,
 			type: "text/plain",

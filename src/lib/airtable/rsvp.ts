@@ -92,7 +92,7 @@ export async function recordDirectSignup(input: {
 				data: {
 					airtableRecordId: input.recordId,
 					email,
-					finishedAccountCreation: !!input.userId,
+					finishedAccountCreation: Boolean(input.userId),
 					ip: input.ip ?? null,
 					referredBy: input.referredBy ?? null,
 					syncedAt: input.userId ? null : new Date(),
@@ -129,15 +129,13 @@ export interface DrainResult {
 }
 
 /**
- * Push buffered RSVPs upstream. Idempotent and safe to run on a schedule: anything that fails stays unsynced with an incremented attempt count, and the index on (syncedToAirtable, syncAttempts, createdAt) makes finding them a single scan.
+ * Push buffered RSVPs upstream. Idempotent and safe to run on a schedule: anything that fails stays unsynced with an incremented attempt count, and the partial index on createdAt over the unsynced rows finds them in the order they are drained.
  *
  * The user id is the one field asked about rather than assumed. Airtable refuses a request whose `fields` names a column the table does not have, and it refuses the WHOLE record – so on a base without that column, sending it did not leave the id blank, it stopped the email, the name, the referral number and the rest of that row from landing, and after the attempt cap the row was abandoned for good. Probing once and omitting the field means the rest of the payload is written on a base that has not been set up yet, and the id starts filling itself the moment somebody adds the column.
  */
 export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {}): Promise<DrainResult> {
 	const config = getAirtableConfig()
-	if (!config) {
-		return { attempted: 0, created: 0, failed: 0, skipped: "not_configured", skippedUserId: 0, updated: 0 }
-	}
+	if (!config) return { attempted: 0, created: 0, failed: 0, skipped: "not_configured", skippedUserId: 0, updated: 0 }
 
 	const pending = await prisma.rsvpBuffer.findMany({
 		orderBy: { createdAt: "asc" },
@@ -159,15 +157,14 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 	const skippedColumns = Object.entries(RSVP.fields)
 		.filter(([, field]) => !writable.has(fieldKey(field)))
 		.map(([key]) => key)
-	if (skippedColumns.length > 0) {
+	if (skippedColumns.length > 0)
 		// Said once per drain, naming them, because "the RSVP drain is failing" is otherwise indistinguishable from "Airtable is down".
 		console.warn(
 			`[airtable] rsvp-drain: ${RSVP.tableId} has no column(s) ${skippedColumns.join(", ")}; those values are not `
 				+ "sent. Everything else in the row is still written.",
 		)
-	}
 
-	for (const row of pending) {
+	for (const row of pending)
 		try {
 			// `RsvpBuffer.signupPage` is deliberately absent: the base has no column for it (see RSVP.fields), so a row still carrying one writes everything else and drops that. The field is left on the buffer because /api/rsvp accepts it from outside this repo; the day a column exists, it belongs back in this list.
 			const values = {
@@ -235,12 +232,12 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				where: { id: row.id },
 			})
 		}
-	}
+
 	return result
 }
 
 /** Total RSVPs, for the landing page counter. */
-export async function getRsvpCount(): Promise<number> {
+export function getRsvpCount(): Promise<number> {
 	return prisma.rsvpBuffer.count()
 }
 

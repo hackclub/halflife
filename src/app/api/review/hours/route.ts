@@ -1,9 +1,11 @@
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
-import { requirePermission } from "@/lib/guards"
+import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { hoursDecisionSchema } from "@/lib/schemas/review"
@@ -13,10 +15,7 @@ import { hoursDecisionSchema } from "@/lib/schemas/review"
  *
  * These numbers feed `getHoursBreakdown` and therefore the payout, so the route is scoped to work actually awaiting review: every entry must belong to a phase that is `in_review`, and another reviewer's live claim refuses the whole batch. Without that, a REVIEW_HOURS holder could rewrite accepted hours on a draft project or after a decision, which a later un-approve/re-approve cycle would then pay against.
  */
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requirePermission(Permission.REVIEW_HOURS)
-	if (gate.error) return gate.error
-
+export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, hoursDecisionSchema)
 	if (parsed.error) return parsed.error
 
@@ -26,7 +25,7 @@ export const POST = withRoute(async (req: Request) => {
 
 	const applied = await prisma.$transaction(async tx => {
 		const [sessions, links] = await Promise.all([
-			sessionIds.length
+			sessionIds.length > 0
 				? tx.workSession.findMany({
 						select: {
 							id: true,
@@ -37,7 +36,7 @@ export const POST = withRoute(async (req: Request) => {
 						where: { deletedAt: null, id: { in: sessionIds } },
 					})
 				: [],
-			linkIds.length
+			linkIds.length > 0
 				? tx.hackatimeLink.findMany({
 						select: {
 							id: true,
@@ -59,8 +58,16 @@ export const POST = withRoute(async (req: Request) => {
 		if (all.some(row => row.themeProject.userId === gate.user.id))
 			throw new HttpError("FORBIDDEN", "You cannot approve hours on your own work")
 
+		// The same per-user credit lock the decision path takes. A decision freezes a total computed from
+		// these very rows, so a batch that rewrote them without the lock could change the number a decision
+		// is about to freeze. One lock per distinct user, because a batch can span several projects and
+		// several people, taken in a fixed order so two batches covering the same people queue behind each
+		// other instead of deadlocking.
+		const userIds = [...new Set(all.map(row => row.themeProject.userId))].toSorted()
+		for (const userId of userIds) await lockUserCredit(tx, userId)
+
 		for (const row of all) {
-			const status = row.phase === Phase.DESIGN ? row.themeProject.designStatus : row.themeProject.buildStatus
+			const status = statusFor(row.themeProject, row.phase)
 			if (status !== PhaseStatus.in_review)
 				throw new HttpError("PHASE_LOCKED", "Hours can only be approved while the phase is in review")
 		}
@@ -82,7 +89,7 @@ export const POST = withRoute(async (req: Request) => {
 
 		const changes: { kind: string; id: string; before: number | null; after: number }[] = []
 
-		for (const decision of parsed.data.decisions) {
+		for (const decision of parsed.data.decisions)
 			if (decision.kind === "session") {
 				const before = await tx.workSession.findUnique({
 					select: { hoursApproved: true },
@@ -140,7 +147,7 @@ export const POST = withRoute(async (req: Request) => {
 					kind: "hackatime",
 				})
 			}
-		}
+
 		return changes
 	})
 

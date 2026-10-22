@@ -10,7 +10,7 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 	const [reason, setReason] = useState("")
 	const { busy, error, run } = useAction()
 
-	function submit(e: React.FormEvent) {
+	function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		const body =
 			action === "FULFILL"

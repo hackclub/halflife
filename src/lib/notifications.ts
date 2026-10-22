@@ -1,7 +1,7 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { Phase, ReviewResult } from "@/app/generated/prisma/enums"
-import { projectUrl } from "@/lib/app-url"
+import { projectUrl, reviewUrl } from "@/lib/app-url"
 import { ariReviewUrl } from "@/lib/ari-url"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
@@ -274,17 +274,19 @@ export async function notifyShipFailed(input: { themeProjectId: string; phase: P
 
 /** Escapes the three characters Slack mrkdwn gives meaning to, so interpolated text cannot become a mention or a link. */
 function escapeSlackText(value: string): string {
-	return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+	return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 }
 
 /**
- * Who decided the submission a dispute is about, and where its review lives on Ari.
+ * Who decided the submission a dispute is about, and where its review and thread live.
  *
  * A console decision carries the reviewer's own account, so the id is one join away. An Ari decision has no account link by design (see `finalizeReview`), so the address Ari reported is matched to an account instead – the same resolution the daily review summary makes – and a reviewer with no account here pings nobody rather than the wrong person.
  *
- * The link names the ship rather than the local row: Ari's path takes its own eight-character ship id, which is exactly what `ariSubmissionId` holds.
+ * The Ari link names the ship rather than the local row: Ari's path takes its own eight-character ship id, which is exactly what `ariSubmissionId` holds. The console link names the local submission because `/review/<id>` is where the dispute thread is read and answered; it is always available, unlike Ari's.
  */
-async function disputeContext(submissionId: string): Promise<{ reviewUrl: string | null; slackId: string | null }> {
+async function disputeContext(
+	submissionId: string,
+): Promise<{ ariUrl: string | null; reviewPageUrl: string; slackId: string | null }> {
 	const submission = await prisma.phaseSubmission.findUnique({
 		select: {
 			ariSubmissionId: true,
@@ -310,7 +312,8 @@ async function disputeContext(submissionId: string): Promise<{ reviewUrl: string
 	}
 
 	return {
-		reviewUrl: submission?.ariSubmissionId ? ariReviewUrl(submission.ariSubmissionId) : null,
+		ariUrl: submission?.ariSubmissionId ? ariReviewUrl(submission.ariSubmissionId) : null,
+		reviewPageUrl: reviewUrl(submissionId),
 		slackId,
 	}
 }
@@ -320,10 +323,10 @@ async function disputeContext(submissionId: string): Promise<{ reviewUrl: string
  *
  * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
  *
- * The reviewer who made the disputed decision is pinged and given a link straight to the hand-in on Ari, where the decision can be re-read and made again. Both are additions to the same channel post rather than a DM: the point is that whoever picks it up has the reviewer named and the review a click away. A reviewer with no account on this deployment, or a hand-in that never reached Ari, simply drops its half.
+ * The reviewer who made the disputed decision is pinged and given links straight to the hand-in: the review console thread, where the dispute can be answered, and Ari, where the decision can be re-read and made again. Both are additions to the same channel post rather than a DM: the point is that whoever picks it up has the reviewer named and the conversation a click away. A reviewer with no account on this deployment, or a hand-in that never reached Ari, simply drops its half.
  */
 export async function notifyStaffDispute(input: {
-	/** The decided submission the dispute is against, so the reviewer and the Ari link can be found. */
+	/** The decided submission the dispute is against, so the reviewer and links can be found. */
 	submissionId: string
 	themeProjectId: string
 	title: string
@@ -335,7 +338,7 @@ export async function notifyStaffDispute(input: {
 	if (!channel) return
 	const phase = input.phase === Phase.DESIGN ? "design" : "build"
 
-	const { reviewUrl, slackId } = await disputeContext(input.submissionId)
+	const { ariUrl, reviewPageUrl, slackId } = await disputeContext(input.submissionId)
 	const disputeUrl = projectUrl(input.themeProjectId)
 	// A participant's words land in staff's channel, where `<@U…>` and `<!channel>` are live mentions and `<url|text>` is a link; quoting does not neutralise them, so the three characters Slack mrkdwn gives meaning to are escaped. The reviewer ping and our own links are ours, so they stay outside the escaping.
 	const quoted = escapeSlackText(input.note)
@@ -345,7 +348,10 @@ export async function notifyStaffDispute(input: {
 		.join("\n")
 	const links = [
 		disputeUrl ? `<${disputeUrl}|Open the project>` : null,
-		reviewUrl ? `<${reviewUrl}|Open the review on Ari>` : null,
+		// Empty when the deployment names no origin (lib/app-url), so the link is left
+		// out rather than sent with no URL in it.
+		reviewPageUrl ? `<${reviewPageUrl}|Open the review thread>` : null,
+		ariUrl ? `<${ariUrl}|Open the review on Ari>` : null,
 	].filter(link => link !== null)
 	const text = `${slackId ? `<@${slackId}> ` : ""}Review dispute on *${escapeSlackText(input.title)}* (${phase}) by ${escapeSlackText(input.participant)}:\n\n${quoted}${
 		links.length > 0 ? `\n\n${links.join("\n")}` : ""

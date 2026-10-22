@@ -24,13 +24,17 @@ type Account =
 	| { state: "linked"; projects: { name: string; totalSeconds: number }[] }
 	| { state: "error" }
 
+interface ApiErrorBody {
+	error?: { code?: string; message?: string }
+}
+
 async function read<T>(res: Response): Promise<T> {
-	const body = await res.json().catch(() => null)
-	if (!res.ok) {
+	const body = (await res.json().catch(() => null)) as ApiErrorBody | null
+	if (!res.ok)
 		throw Object.assign(new Error(body?.error?.message ?? "Something went wrong"), {
-			code: body?.error?.code as string | undefined,
+			code: body?.error?.code,
 		})
-	}
+
 	return body as T
 }
 
@@ -85,12 +89,12 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 		setError(null)
 		setLinks(null)
 		setAccount({ state: "loading" })
-		load()
+		void load()
 	}, [load])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
-		load()
+		// fetching on mount
+		void load()
 	}, [load])
 
 	async function run(key: string, fn: () => Promise<void>) {

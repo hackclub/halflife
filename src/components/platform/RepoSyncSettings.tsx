@@ -43,6 +43,8 @@ interface SyncState {
 	syncRepoDiffers: boolean
 }
 
+type SyncPayload = Omit<SyncState, "error"> & { error?: { message?: string } }
+
 /** The forges a maker can connect here, and how each is named in the UI. */
 const FORGES = [
 	{ id: "github", label: "GitHub" },
@@ -62,7 +64,7 @@ export function RepoSyncSettings({
 	compact = false,
 }: {
 	projectId: string
-	onEnabled?: () => void
+	onEnabled?(): void
 	compact?: boolean
 }) {
 	const { linkSyncRepoToProject } = useStore()
@@ -79,12 +81,12 @@ export function RepoSyncSettings({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/repo-sync`, { cache: "no-store" })
-			const body = await res.json().catch(() => null)
+			const body = (await res.json().catch(() => null)) as SyncPayload | null
 			if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the sync settings")
 			setState(body as SyncState)
 			// Pre-select the repo a project already points at, if it is one of the writable ones, so re-enabling does not need the picker used again.
-			const current = body.repo as string | null
-			setPicked(p => p ?? (body.repos as WritableRepo[]).find(r => r.url === current)?.url ?? null)
+			const current = body?.repo ?? null
+			setPicked(p => p ?? body?.repos.find(r => r.url === current)?.url ?? null)
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Could not load the sync settings")
 		} finally {
@@ -93,8 +95,8 @@ export function RepoSyncSettings({
 	}, [projectId])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and on a new project
-		load()
+		// fetching on mount and on a new project
+		void load()
 	}, [load])
 
 	async function send(method: "POST" | "PUT", body?: unknown) {
@@ -106,7 +108,7 @@ export function RepoSyncSettings({
 				headers: body ? { "content-type": "application/json" } : undefined,
 				method,
 			})
-			const payload = await res.json().catch(() => null)
+			const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 			if (!res.ok) {
 				setError(payload?.error?.message ?? "That did not work. Try again.")
 				return false
@@ -133,23 +135,22 @@ export function RepoSyncSettings({
 		else setLinked(true)
 	}
 
-	if (loading && !state) {
+	if (loading && !state)
 		return (
 			<p aria-live="polite" className="hand text-[0.84rem] text-navy-soft">
 				checking your repos…
 			</p>
 		)
-	}
-	if (!state) {
+
+	if (!state)
 		return (
 			<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
 				{error ?? "Could not load the sync settings"}
 			</p>
 		)
-	}
 
 	// No forge linked: the whole feature is gated on it, so the prompt is the panel. A maker picks whichever service their project already lives on.
-	if (state.linkedForges.length === 0) {
+	if (state.linkedForges.length === 0)
 		return (
 			<div className="grid gap-3">
 				<p className="text-[0.9rem] leading-relaxed text-navy-soft">
@@ -175,9 +176,8 @@ export function RepoSyncSettings({
 				</div>
 			</div>
 		)
-	}
 
-	if (state.enabled) {
+	if (state.enabled)
 		return (
 			<div className="grid gap-3">
 				<p className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
@@ -240,7 +240,6 @@ export function RepoSyncSettings({
 				</div>
 			</div>
 		)
-	}
 
 	// Linked, off: pick a repo and switch it on.
 	return (
@@ -343,7 +342,7 @@ function LinkProjectButton({
 	repo: string | null
 	existing: string | null
 	busy: boolean
-	onClick: () => void
+	onClick(): void
 }) {
 	const to = repo ? displayRepo(repo) : "the repo"
 	return (

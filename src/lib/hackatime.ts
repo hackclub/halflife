@@ -28,19 +28,16 @@ interface StatsBody {
  */
 export function projectSecondsFrom(body: unknown, project: string): HackatimeFetch {
 	const projects = (body as StatsBody | null)?.data?.projects
-	if (!Array.isArray(projects)) {
-		return { error: "Hackatime returned no project list", seconds: 0, stale: true }
-	}
+	if (!Array.isArray(projects)) return { error: "Hackatime returned no project list", seconds: 0, stale: true }
 
 	const match = projects.find(p => p?.name === project)
-	if (!match) {
+	if (!match)
 		return {
 			error: `Hackatime does not list a project named "${project}"`,
 			notFound: true,
 			seconds: 0,
 			stale: true,
 		}
-	}
 
 	const total = match.total_seconds
 	const seconds = typeof total === "number" && Number.isFinite(total) ? Math.max(0, total) : 0
@@ -77,9 +74,7 @@ export async function fetchProjectSeconds(hackatimeUserId: string, project: stri
  */
 export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boolean; error?: string } {
 	const raw = (body as { spans?: unknown } | null)?.spans
-	if (!Array.isArray(raw)) {
-		return { error: "Hackatime returned no spans", spans: [], stale: true }
-	}
+	if (!Array.isArray(raw)) return { error: "Hackatime returned no spans", spans: [], stale: true }
 
 	const spans: HackatimeSpan[] = []
 	for (const row of raw) {
@@ -91,9 +86,9 @@ export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boole
 			|| !Number.isFinite(start)
 			|| !Number.isFinite(end)
 			|| end <= start
-		) {
+		)
 			continue
-		}
+
 		spans.push({ end, start })
 	}
 	return { spans, stale: false }
@@ -159,9 +154,8 @@ export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> 
 	if (!link) return { error: "link not found", seconds: 0, stale: true }
 
 	const hackatimeUserId = link.themeProject.user.hackatimeUserId
-	if (!hackatimeUserId) {
+	if (!hackatimeUserId)
 		return { error: "user has no linked Hackatime account", seconds: link.cachedSeconds ?? 0, stale: true }
-	}
 
 	const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
 	if (result.stale) {

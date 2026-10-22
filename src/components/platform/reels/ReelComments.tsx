@@ -42,8 +42,8 @@ export function ReelComments({
 }: {
 	reel: FeedItem | null
 	viewer: { name: string; image: string | null }
-	onPatch: (id: string, next: Partial<FeedItem>) => void
-	onClose: () => void
+	onPatch(id: string, next: Partial<FeedItem>): void
+	onClose(): void
 	className?: string
 }) {
 	// Two ReelComments can be mounted at once (the side panel and the narrow sheet), so fixed ids would collide; useId scopes them to this instance.
@@ -98,15 +98,15 @@ export function ReelComments({
 			nextCursor: prev?.nextCursor ?? null,
 			status: "loading",
 		}))
-		load(id, cursor)
+		void load(id, cursor)
 	}
 
 	// Fetching the thread for whichever reel is current is exactly the external-system sync an effect is for. Once asked, a reel keeps its thread for the visit, so scrolling back does not ask again.
 	const asked = thread !== undefined
 	useEffect(() => {
 		if (!reelId || asked) return
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- every update in `load` lands after its await
-		load(reelId, null)
+		// every update in `load` lands after its await
+		void load(reelId, null)
 	}, [reelId, asked, load])
 
 	// A different reel is a different conversation: whatever was half-typed for the last one is not an answer to this one.
@@ -117,7 +117,7 @@ export function ReelComments({
 		setSendError(null)
 	}
 
-	async function send(e: React.FormEvent) {
+	async function send(e: React.SubmitEvent) {
 		e.preventDefault()
 		const body = draft.trim()
 		if (!reel || !body || sending) return

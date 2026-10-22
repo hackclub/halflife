@@ -9,7 +9,7 @@ import {
 	ShopItemCategory,
 	Theme,
 } from "@/app/generated/prisma/enums"
-import { boundedText, cuid, httpsUrl } from "@/lib/schemas/common"
+import { boundedText, cuid, httpsUrl, isTimeZone } from "@/lib/schemas/common"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
 
@@ -210,7 +210,14 @@ export const programSettingsSchema = z
 	.object({
 		airtableSyncEnabled: z.boolean().optional(),
 		eventStartDate: z.coerce.date().optional(),
-		programTimezone: boundedText(64, 1).optional(),
+		/**
+		 * The program's own IANA zone, e.g. "America/New_York".
+		 *
+		 * Checked here rather than trusted: every week boundary, journal date and streak is computed through `Intl.DateTimeFormat`, which throws on a name that is not a zone, so one typo would otherwise take down every trail snapshot, every session write and the admin program page at once.
+		 */
+		programTimezone: boundedText(64, 1)
+			.refine(isTimeZone, "That is not a timezone this server knows, e.g. America/New_York")
+			.optional(),
 		repoSyncEnabled: z.boolean().optional(),
 		reviewClaimTtlMinutes: z.number().int().min(5).max(240).optional(),
 		shopClosesAt: z.coerce.date().nullable().optional(),

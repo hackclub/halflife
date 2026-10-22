@@ -3,7 +3,8 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { PhoneHandoff } from "@/app/components/forms/PhoneHandoff"
 import { Button, Callout, Field, Panel } from "@/app/components/ui"
-import { postForm } from "@/lib/upload-progress"
+import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
+import { uploadFile } from "@/lib/use-handoff"
 
 interface ApiError {
 	error?: { message?: string }
@@ -47,7 +48,7 @@ export function PostComposer({
 
 	const busy = stage !== "idle"
 
-	async function submit(e: React.FormEvent) {
+	async function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		setError(null)
 
@@ -56,8 +57,8 @@ export function PostComposer({
 			setError("Record or pick a video first.")
 			return
 		}
-		if (file && !file.type.startsWith("video/")) {
-			setError("Choose a video file (MP4, WebM, or MOV).")
+		if (file && !isVideoFile(file)) {
+			setError(VIDEO_TYPE_MESSAGE)
 			return
 		}
 
@@ -68,19 +69,7 @@ export function PostComposer({
 			if (!objectKey && file) {
 				setStage("uploading")
 				setProgress(0)
-				const form = new FormData()
-				form.append("file", file)
-				form.append("folder", "posts")
-
-				const uploaded = await postForm("/api/upload", form, setProgress)
-				if (!uploaded.ok) {
-					const payload = (uploaded.json ?? {}) as ApiError
-					setError(payload.error?.message ?? `Upload failed (${uploaded.status})`)
-					return
-				}
-				// No `data` envelope: ok() returns the payload itself, and only a failure is wrapped. See lib/api.ts.
-				const data = uploaded.json as { objectKey: string }
-				objectKey = data.objectKey
+				objectKey = (await uploadFile(file, "posts", setProgress)).objectKey
 			}
 
 			if (!objectKey) {
@@ -134,7 +123,7 @@ export function PostComposer({
 				</Callout>
 			) : (
 				<Field hint="mp4, webm or mov. Or record on your phone above." label="Video">
-					<input accept="video/*" className="hl-input" disabled={busy} ref={fileRef} type="file" />
+					<input accept={VIDEO_ACCEPT} className="hl-input" disabled={busy} ref={fileRef} type="file" />
 				</Field>
 			)}
 

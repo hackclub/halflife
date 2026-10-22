@@ -1,6 +1,4 @@
-import type { StaticImageData } from "next/image"
-
-import Image from "next/image"
+import Image, { type StaticImageData } from "next/image"
 import { BRAND } from "@/lib/site/content"
 import logoArt from "../../../public/art/logo.png"
 
@@ -45,7 +43,7 @@ export default function Wordmark({
 }: Props) {
 	const Tag = as
 
-	if (art && LOGO_SRC) {
+	if (art && LOGO_SRC)
 		return (
 			<Tag className={`relative block ${className}`}>
 				<span className="sr-only">{BRAND.name}</span>
@@ -71,7 +69,6 @@ export default function Wordmark({
 				</span>
 			</Tag>
 		)
-	}
 
 	return (
 		<Tag className={`font-hand leading-[0.86] text-white ${className}`} style={{ fontSize, letterSpacing: "-0.045em" }}>

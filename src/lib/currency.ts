@@ -1,6 +1,8 @@
 import "server-only"
 import type { LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import { CoinBucket, LedgerKind, type ShopItemCategory } from "@/app/generated/prisma/enums"
+import { lockKey } from "@/lib/locks"
+import { type CursorOrderOf, cursorWhere, orderByFor, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 
 type Tx = Prisma.TransactionClient
@@ -8,13 +10,10 @@ type Tx = Prisma.TransactionClient
 /**
  * Serialize every credit mutation for one user.
  *
- * The balance is `SUM(amount)` over an append-only table, so there is no row to lock and READ COMMITTED lets two concurrent transactions both read the same pre-existing balance and both commit – which is a double-spend, not a theoretical race: the window spans several round trips, and the goods on the other side are physical.
- *
- * `pg_advisory_xact_lock` is released automatically when the transaction ends, including on rollback. MUST be the first statement inside any `$transaction` that reads a balance and then writes against it.
+ * MUST be the first statement inside any `$transaction` that reads a balance and then writes against it; see `lockKey`.
  */
-export async function lockUserCredit(tx: Tx, userId: string): Promise<void> {
-	// hashtextextended gives a stable bigint for the key; the constant is just a namespace so this lock cannot collide with an unrelated advisory lock. $executeRaw rather than $queryRaw: pg_advisory_xact_lock returns void, and the driver adapter cannot deserialize that as a result row.
-	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`credit:${userId}`}, 0))`
+export function lockUserCredit(tx: Tx, userId: string): Promise<void> {
+	return lockKey(tx, `credit:${userId}`)
 }
 
 /** Kinds that represent earning, as opposed to spending. */
@@ -48,12 +47,12 @@ export interface Balances {
 
 /**
  * Authoritative balances. Always SUM(amount) – there is no balance column.
+ *
+ * The two sums are read one after the other, never together. An interactive transaction is a single connection, so two queries issued at once on the same `tx` are interleaved on that one connection rather than run in parallel: the second aggregate is evaluated against a snapshot the first one already moved past, and the transaction's timeout is spent on both at once. Sequential reads keep the two halves of a balance describing the same moment, which is the only thing a balance is for.
  */
 export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
-	const [spendable, banked] = await Promise.all([
-		sumFor(tx, { bucket: CoinBucket.SPENDABLE, userId }),
-		sumFor(tx, { bucket: CoinBucket.BANKED, userId }),
-	])
+	const spendable = await sumFor(tx, { bucket: CoinBucket.SPENDABLE, userId })
+	const banked = await sumFor(tx, { bucket: CoinBucket.BANKED, userId })
 	return { banked, spendable, total: spendable + banked }
 }
 
@@ -65,7 +64,7 @@ export function spendableFor(balances: Balances, _category: ShopItemCategory): n
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
-export async function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
+export function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
 	return sumFor(tx, { kind: { in: EARNING_KINDS }, userId })
 }
 
@@ -121,33 +120,77 @@ export interface ReconcileParams {
 }
 
 /**
- * Append a single delta row so that SUM(amount) over (userId, themeProjectId, kind) equals `target`. Returns null when nothing needed to change.
+ * What a reconcile did.
+ */
+export interface ReconcileResult {
+	/** The row it wrote, or null when the total was already where it had to be. */
+	entry: LedgerEntry | null
+	/**
+	 * Coins the maker had already spent, so the reversal could not take them back.
+	 */
+	unrecovered: number
+}
+
+/**
+ * Append a single delta row so that SUM(amount) over (userId, themeProjectId, kind) equals `target`. Writes nothing when the total is already there.
  *
  * This is what makes re-review idempotent: approving the same project five times converges on one balance instead of compounding, and un-approving is the same call with `target: 0` rather than a separate reversal code path – so there is no separate reversal code path to get wrong.
+ *
+ * A delta that takes coins back only takes what the maker still has. The sum it reconciles against is the grant's own rows, which say nothing about what has since been spent: a grant of 100 coins that has been spent down to 70 would take 100 back and leave the pot at −30. A negative balance is a state the shop and every display refuse to render, so the reversal stops at zero, says in the row's note how much it could not take, and reports it here. The maker keeps what they spent and the programme carries the difference; the alternative – refusing the un-approval – would leave a wrongly approved design standing, which is the thing the un-approval exists to fix.
  *
  * Stasis instead pairs every kind with a *_REVERSED twin and cancels by hand, which means every aggregate over the ledger has to remember to include the twin. Its lib/currency.ts carries a long comment about the query that forgot and overcounted forever.
  *
  * Must run inside a transaction, for the same reason as appendLedgerEntry.
  */
-export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<LedgerEntry | null> {
+export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<ReconcileResult> {
 	const current = await sumFor(tx, {
 		kind: params.kind,
 		themeProjectId: params.themeProjectId,
 		userId: params.userId,
 	})
 	const delta = params.target - current
-	if (delta === 0) return null
+	if (delta === 0) return { entry: null, unrecovered: 0 }
 
-	return appendLedgerEntry(tx, {
-		amount: delta,
-		bucket: params.bucket ?? CoinBucket.SPENDABLE,
+	const bucket = params.bucket ?? CoinBucket.SPENDABLE
+	let amount = delta
+	let unrecovered = 0
+	if (delta < 0) {
+		// The pot being moved, not the combined balance: banked coins are not available to cover a spendable shortfall, exactly as the admin adjustment route guards it.
+		const balance = await sumFor(tx, { bucket, userId: params.userId })
+		const take = Math.min(-delta, Math.max(balance, 0))
+		amount = -take
+		unrecovered = -delta - take
+	}
+
+	// The note carries the shortfall, so the row is the whole story: a "-70" on its own would hide that 30 coins of the grant are still out there.
+	const note =
+		unrecovered > 0
+			? `${params.note} – ${unrecovered} could not be taken back: the maker had already spent them`
+			: params.note
+
+	const entry = await appendLedgerEntry(tx, {
+		amount,
+		bucket,
 		createdById: params.createdById ?? null,
 		kind: params.kind,
-		note: params.note,
+		note,
 		themeProjectId: params.themeProjectId,
 		userId: params.userId,
 	})
+
+	return { entry, unrecovered }
 }
+
+/**
+ * The ledger's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
+ */
+const LEDGER_ORDER = {
+	at: (row: LedgerEntry) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<LedgerEntry, Prisma.LedgerEntryOrderByWithRelationInput>
 
 export async function getLedgerPage(
 	userId: string,
@@ -155,15 +198,12 @@ export async function getLedgerPage(
 	limit: number,
 ): Promise<{ items: LedgerEntry[]; nextCursor: string | null }> {
 	const rows = await prisma.ledgerEntry.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		orderBy: orderByFor(LEDGER_ORDER),
 		take: limit + 1,
-		where: { userId },
-		...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+		// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+		where: cursorWhere<Prisma.LedgerEntryWhereInput>(cursor, LEDGER_ORDER, { userId }),
 	})
-	const hasMore = rows.length > limit
-	const items = hasMore ? rows.slice(0, limit) : rows
-	const last = items[items.length - 1]
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return pageResult(rows, limit, LEDGER_ORDER)
 }
 
-export { CoinBucket, LedgerKind }
+export { CoinBucket, LedgerKind } from "@/app/generated/prisma/enums"

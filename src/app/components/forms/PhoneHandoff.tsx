@@ -7,7 +7,7 @@ import { useHandoff } from "@/lib/use-handoff"
  *
  * The rules – minting, polling, retiring the code once a phone has delivered – live in `useHandoff`, because the platform's reel modal needs exactly the same ones wearing completely different clothes. Only the markup is here.
  */
-export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string) => void }>) {
+export function PhoneHandoff({ onReady }: Readonly<{ onReady(objectKey: string): void }>) {
 	const { minted, status, error, mint } = useHandoff(onReady)
 	const busy = status === "minting"
 

@@ -37,9 +37,9 @@ for (const [net, prefix] of [
 	["203.0.113.0", 24],
 	["224.0.0.0", 4],
 	["240.0.0.0", 4],
-] as const) {
+] as const)
 	blocked.addSubnet(net, prefix, "ipv4")
-}
+
 for (const [net, prefix] of [
 	["::", 128],
 	["::1", 128],
@@ -50,9 +50,8 @@ for (const [net, prefix] of [
 	["fc00::", 7],
 	["fe80::", 10],
 	["ff00::", 8],
-] as const) {
+] as const)
 	blocked.addSubnet(net, prefix, "ipv6")
-}
 
 function isBlocked(address: string, family: number): boolean {
 	return blocked.check(address, family === 6 ? "ipv6" : "ipv4")
@@ -70,11 +69,11 @@ function safeLookup(
 ): void {
 	dnsLookup(hostname, { ...options, all: true }, (err, addresses) => {
 		if (err) return callback(err, "")
-		const list = addresses as LookupAddress[]
+		const list = addresses
 		const first = list[0]
-		if (!first || list.some(a => isBlocked(a.address, a.family))) {
+		if (!first || list.some(a => isBlocked(a.address, a.family)))
 			return callback(Object.assign(new Error(`Refused to connect to ${hostname}`), { code: "EBLOCKED" }), "")
-		}
+
 		if (options.all) callback(null, list)
 		else callback(null, first.address, first.family)
 	})
@@ -85,7 +84,7 @@ function assertFetchable(url: URL): void {
 	if (url.port && url.port !== "443" && url.port !== "80") throw refused()
 	if (url.username || url.password) throw refused()
 	// An IP literal never reaches the lookup, so it is checked here.
-	const host = url.hostname.replace(/^\[|\]$/g, "")
+	const host = url.hostname.replaceAll(/^\[|\]$/g, "")
 	const family = isIP(host)
 	if (family !== 0 && isBlocked(host, family)) throw refused()
 }
@@ -122,22 +121,22 @@ async function readCapped(res: IncomingMessage, maxBytes: number): Promise<Buffe
 
 /** What the bytes are, from their first few, or null if not an image we take. */
 export function sniffImage(bytes: Buffer): { ext: string; contentType: string } | null {
-	if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+	if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
 		return { contentType: "image/png", ext: "png" }
-	}
-	if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+
+	if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
 		return { contentType: "image/jpeg", ext: "jpg" }
-	}
-	if (bytes.length >= 6 && /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString("latin1"))) {
+
+	if (bytes.length >= 6 && /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString("latin1")))
 		return { contentType: "image/gif", ext: "gif" }
-	}
+
 	if (
 		bytes.length >= 12
 		&& bytes.subarray(0, 4).toString("latin1") === "RIFF"
 		&& bytes.subarray(8, 12).toString("latin1") === "WEBP"
-	) {
+	)
 		return { contentType: "image/webp", ext: "webp" }
-	}
+
 	return null
 }
 

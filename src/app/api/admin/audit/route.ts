@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server"
 import { z } from "zod"
 import { AuditAction } from "@/app/generated/prisma/enums"
-import { ok, parseQuery, withRoute } from "@/lib/api"
-import { requirePermission } from "@/lib/guards"
+import { ok, parseQuery } from "@/lib/api"
+import { withPermission } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
@@ -15,10 +15,7 @@ const query = paginationQuery.extend({
 	targetId: z.string().max(80).optional(),
 })
 
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = await requirePermission(Permission.VIEW_AUDIT_LOG)
-	if (gate.error) return gate.error
-
+export const GET = withPermission(Permission.VIEW_AUDIT_LOG, async (req: NextRequest) => {
 	const parsed = parseQuery(req, query)
 	if (parsed.error) return parsed.error
 

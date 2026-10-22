@@ -1,5 +1,6 @@
 import "server-only"
-import { airtableFetch, getAirtableConfig, withRateLimitRetry } from "@/lib/airtable/client"
+import { cachedAirtableWalk } from "@/lib/airtable/cache"
+import { type AirtableConfig, airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 
 /**
@@ -22,11 +23,6 @@ const REFERRAL_NUMBER_FIELD = "Loops - halfLifeReferralNumber"
 /** Airtable's page size, and the walk's memory bound. */
 const PAGE_SIZE = 100
 
-/** How long a leaderboard is reused. Mirrors signup-count.ts. */
-const CACHE_TTL_MS = 60_000
-/** A failure is held briefly so a blip does not pin an empty table for a minute. */
-const FAILED_TTL_MS = 15_000
-
 export interface ReferralLeaderRow {
 	code: string
 	/** The code owner's address, when their own sign-up row is still present. */
@@ -43,33 +39,10 @@ export interface ReferralLeaderboard {
 	rows: ReferralLeaderRow[]
 }
 
-interface Cached {
-	at: number
-	ttl: number
-	value: Promise<ReferralLeaderboard | null>
-}
-
-/** One entry per process, the promise so concurrent renders share one walk. */
-let cached: Cached | null = null
-
 /**
- * The referral leaderboard, or null when Airtable is not configured or does not answer. Never rejects: the cache holds the promise, so a rejection would be handed to every render for the next minute instead of the short failure it should be.
+ * The referral leaderboard, or null when Airtable is not configured or does not answer.
  */
-export function getReferralLeaderboard(): Promise<ReferralLeaderboard | null> {
-	const now = Date.now()
-	if (cached && now - cached.at < cached.ttl) return cached.value
-
-	const config = getAirtableConfig()
-	if (!config) return Promise.resolve(null)
-
-	const value = walkReferrals(config)
-	const entry: Cached = { at: now, ttl: CACHE_TTL_MS, value }
-	cached = entry
-	value.then(result => {
-		if (result === null && cached === entry) entry.ttl = FAILED_TTL_MS
-	})
-	return value
-}
+export const getReferralLeaderboard = cachedAirtableWalk(walkReferrals)
 
 /** Airtable cells come back as strings here, but the number column can be typed. */
 function asText(value: unknown): string | null {
@@ -78,9 +51,7 @@ function asText(value: unknown): string | null {
 	return null
 }
 
-async function walkReferrals(
-	config: NonNullable<ReturnType<typeof getAirtableConfig>>,
-): Promise<ReferralLeaderboard | null> {
+async function walkReferrals(config: AirtableConfig): Promise<ReferralLeaderboard | null> {
 	const want = [EMAIL_FIELD, REFERRED_BY_FIELD, REFERRAL_NUMBER_FIELD]
 		.map(field => `fields%5B%5D=${encodeURIComponent(field)}`)
 		.join("&")
@@ -125,7 +96,7 @@ async function walkReferrals(
 
 	const rows: ReferralLeaderRow[] = [...counts.entries()]
 		.map(([code, signups]) => ({ code, email: owners.get(code) ?? null, signups }))
-		.sort((a, b) => b.signups - a.signups || a.code.localeCompare(b.code, undefined, { numeric: true }))
+		.toSorted((a, b) => b.signups - a.signups || a.code.localeCompare(b.code, undefined, { numeric: true }))
 
 	return { activeCodes: rows.length, referred: attributed.size, rows }
 }

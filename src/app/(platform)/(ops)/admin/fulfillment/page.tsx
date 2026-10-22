@@ -4,6 +4,7 @@ import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/app/generated/prisma/enums"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { formatUsd } from "@/lib/money"
@@ -11,21 +12,21 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import { type FulfillmentFilters, listFulfillmentOrders, listPrinterAwards } from "@/lib/queries/admin"
+import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
+import { DAY_MS } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
 interface Search {
-	cursor?: string
-	from?: string
-	method?: string
-	stage?: string
-	to?: string
+	cursor?: SearchParamValue
+	from?: SearchParamValue
+	method?: SearchParamValue
+	stage?: SearchParamValue
+	to?: SearchParamValue
 }
 interface Props {
 	searchParams: Promise<Search>
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 /** A `YYYY-MM-DD` from a date input, as midnight UTC. Anything else is dropped. */
 function utcDay(v?: string): Date | undefined {
@@ -35,7 +36,7 @@ function utcDay(v?: string): Date | undefined {
 }
 
 /** Anything unrecognised in the query string is dropped, not trusted. */
-function filtersFrom(s: Search): FulfillmentFilters {
+function filtersFrom(s: FirstValues<Search>): FulfillmentFilters {
 	const to = utcDay(s.to)
 	return {
 		method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find(m => m === s.method),
@@ -45,12 +46,6 @@ function filtersFrom(s: Search): FulfillmentFilters {
 		stage: Object.values(ShopFulfillmentStage).find(x => x === s.stage),
 	}
 }
-
-const placedFormat = new Intl.DateTimeFormat("en-US", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-})
 
 /** Award-state colours, matching the badge tones the console already uses. */
 const AWARD_TONES = {
@@ -64,7 +59,8 @@ const AWARD_TONES = {
 
 export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.FULFILL_ORDERS)
-	const search = await searchParams
+	// Every filter, taken as the single value the URL named: a repeated parameter arrives as an array, and an array is not a value this page can read.
+	const search = firstValues(await searchParams)
 	const filters = filtersFrom(search)
 
 	const [{ items, nextCursor }, awards] = await Promise.all([
@@ -151,7 +147,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 									{order.totalUsd === null ? <span className="hl-hint">not set</span> : formatUsd(order.totalUsd)}
 								</td>
 								<td>{order.country ?? <span className="hl-hint">unknown</span>}</td>
-								<td className="hl-mono">{placedFormat.format(order.placedAt)}</td>
+								<td className="hl-mono">{formatUtcDateTime(order.placedAt)}</td>
 								<td>
 									<OrderFulfillment
 										cancelled={order.status === "CANCELLED"}
@@ -188,7 +184,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 								<td>
 									<Link href={`/admin/users/${award.user.id}`}>{displayName(award.user)}</Link>
 								</td>
-								<td className="hl-mono">{placedFormat.format(award.qualifiedAt)}</td>
+								<td className="hl-mono">{formatUtcDateTime(award.qualifiedAt)}</td>
 								<td>
 									<Badge tone={AWARD_TONES[award.status]}>{PRINTER_AWARD_LABELS[award.status]}</Badge>
 									{award.status === "REVOKED" && award.revokedReason ? (
@@ -198,7 +194,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 								<td>
 									{award.addressOnFile ? "locked on file" : <span className="hl-hint">none</span>}
 									{award.addressLockedAt ? (
-										<div className="hl-hint">{placedFormat.format(award.addressLockedAt)}</div>
+										<div className="hl-hint">{formatUtcDateTime(award.addressLockedAt)}</div>
 									) : null}
 								</td>
 								<td className="hl-mono">

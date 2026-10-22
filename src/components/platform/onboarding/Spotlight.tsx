@@ -19,7 +19,8 @@ function firstVisible(selector: string): HTMLElement | null {
 }
 
 const same = (a: Rect | null, b: Rect | null) =>
-	a === b || (!!a && !!b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height)
+	a === b
+	|| (a !== null && b !== null && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height)
 
 /**
  * The line drawn between a step's two targets, from the near edge of one to the near edge of the other. It leaves and arrives horizontally whichever way it is going, so the curve reads as a route across the screen rather than a diagonal someone forgot to straighten.
@@ -62,8 +63,8 @@ export function Spotlight({
 	title: string
 	body: string
 	cta?: string
-	onNext: () => void
-	onSkip?: () => void
+	onNext(): void
+	onSkip?(): void
 	step?: number
 	total?: number
 	clickAnywhere?: boolean
@@ -77,7 +78,7 @@ export function Spotlight({
 	const raf = useRef(0)
 	const until = useRef(0)
 	const placed = useRef(false)
-	const uid = useId().replace(/:/g, "")
+	const uid = useId().replaceAll(":", "")
 
 	const measure = useCallback(() => {
 		const el = firstVisible(selector)
@@ -162,9 +163,8 @@ export function Spotlight({
 			if (
 				target instanceof HTMLElement
 				&& target.closest("a, button, input, textarea, select, [contenteditable='true']")
-			) {
+			)
 				return
-			}
 
 			if ((e.key === "Enter" || e.key === " ") && clickAnywhere) {
 				e.preventDefault()
