@@ -118,7 +118,7 @@ export default async function AdminOverviewPage() {
 			<Panel
 				actions={
 					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						counted like Ari: every ship, including resubmissions
+						each project counted once, in the state its card shows
 					</span>
 				}
 				title="Reviewer activity"
@@ -133,6 +133,7 @@ export default async function AdminOverviewPage() {
 					}}
 				>
 					<ShareDonut
+						centerLabel="submitted"
 						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
 						empty="No projects with a review state yet."
 						measure="Project review status"
@@ -160,12 +161,11 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					The ring counts ships the way Ari does – every version of every (project, phase) hand-in, not just the newest.
-					A design sent back and resubmitted therefore keeps its old changes ship alongside the new pending one, which
-					is why this total matches Ari&apos;s board. Pending is the newest hand-in of each phase that Ari still holds;
-					anything Ari never received is counted apart above, because a hand-in Ari has never seen is not on its board.
-					Console decisions are included. A ship an admin or Ari undid no longer counts, and a reverted ship leaves the
-					queue rather than lingering as pending.
+					Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
+					changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved. It
+					is the same state the project&apos;s card shows, so a design approved while its build is still in review reads
+					as pending rather than as two slices, and a resubmission does not leave a second copy of the project behind.
+					Projects that have never been submitted are left out. Console decisions are included.
 				</p>
 			</Panel>
 
@@ -1770,6 +1770,7 @@ function ShareDonut({
 	measure,
 	empty,
 	colors,
+	centerLabel,
 }: {
 	rows: { label: string; value: number }[]
 	/** What the ring counts, for the figure's accessible name. */
@@ -1777,6 +1778,8 @@ function ShareDonut({
 	empty: string
 	/** Optional per-slice colors, in row order. Falls back to the default palette. */
 	colors?: string[]
+	/** When set, the ring's total is written in the middle under this caption. */
+	centerLabel?: string
 }) {
 	const total = rows.reduce((n, r) => n + r.value, 0)
 	if (total === 0) return <EmptyState>{empty}</EmptyState>
@@ -1809,7 +1812,7 @@ function ShareDonut({
 			}}
 		>
 			<svg
-				aria-label={`${measure}: ${summary}`}
+				aria-label={`${measure}${centerLabel ? `, ${fmtInt(total)} ${centerLabel} in total` : ""}: ${summary}`}
 				role="img"
 				style={{ flexShrink: 0, height: "11rem", width: "11rem" }}
 				viewBox="0 0 42 42"
@@ -1831,6 +1834,33 @@ function ShareDonut({
 						/>
 					))}
 				</g>
+				{centerLabel ? (
+					<>
+						<text
+							dominantBaseline="middle"
+							style={{
+								fill: "var(--color-ink-strong)",
+								fontSize: "6px",
+								fontVariantNumeric: "tabular-nums",
+								fontWeight: 800,
+							}}
+							textAnchor="middle"
+							x="21"
+							y="19.4"
+						>
+							{fmtInt(total)}
+						</text>
+						<text
+							dominantBaseline="middle"
+							style={{ fill: "var(--color-ink-muted)", fontSize: "2.9px" }}
+							textAnchor="middle"
+							x="21"
+							y="24"
+						>
+							{centerLabel}
+						</text>
+					</>
+				) : null}
 			</svg>
 			<table style={{ borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
 				<tbody>

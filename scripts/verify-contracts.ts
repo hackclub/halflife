@@ -528,7 +528,7 @@ async function bodies() {
 	check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
 	check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
 
-	/* ── 5b-iii. The reviewer-activity ring, counted as Ari counts ─────────── */
+	/* ── 5b-iii. Ari's board, counted as Ari counts ────────────────────────── */
 	//
 	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
 	const { countAriShips } = await import("../src/lib/ari-counts")
@@ -591,6 +591,31 @@ async function bodies() {
 		])
 		check("ari · counts: one ship id counts once", counts.rejected === 1, JSON.stringify(counts))
 	}
+
+	/* ── 5b-iv. The reviewer-activity ring, one state per project ──────────── */
+	//
+	// The ring counts projects, not ships: a project with two phases or a resubmission must land in exactly one slice, so its total is the number of projects submitted. The state is the same one the projects grid colours a card from, so the ring and the cards cannot disagree.
+	const { projectReviewState } = await import("../src/lib/review-state")
+	check(
+		"review ring · a design approved while the build waits reads as approved",
+		projectReviewState(PhaseStatus.approved, PhaseStatus.draft) === "approved",
+	)
+	check(
+		"review ring · a build in review wins over an approved design",
+		projectReviewState(PhaseStatus.approved, PhaseStatus.in_review) === "pending",
+	)
+	check(
+		"review ring · a returned phase wins over a pending one",
+		projectReviewState(PhaseStatus.update_requested, PhaseStatus.in_review) === "changes",
+	)
+	check(
+		"review ring · a rejection wins over everything",
+		projectReviewState(PhaseStatus.rejected, PhaseStatus.approved) === "rejected",
+	)
+	check(
+		"review ring · a project that never left draft is in no slice",
+		projectReviewState(PhaseStatus.draft, PhaseStatus.draft) === "not_started",
+	)
 
 	/* ── 5b-ii. The decision standing on a ship ────────────────────────────── */
 	//
@@ -1181,7 +1206,9 @@ async function bodies() {
 		check("repo-files · legacy bom deletion is a delete", legacy.content === null)
 
 		// The BOM is what a PCB design week's funding is asked against, so its absence blocks the hand-in rather than warning. Pinned because the two lists are plain arrays a later edit can quietly re-sort a kind out of.
-		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN } = await import("../src/lib/config/repo-checks")
+		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN, readmeBomTable, REPO_FILE_KINDS } = await import(
+			"../src/lib/config/repo-checks"
+		)
 		const { Theme } = await import("../src/app/generated/prisma/enums")
 		check("repo-checks · a PCB repo must carry a BOM", THEME_REPO_REQUIREMENTS[Theme.PCB].required.includes("bom"))
 		check(
@@ -1191,6 +1218,65 @@ async function bodies() {
 		check(
 			"repo-checks · the BOM pattern is the one the check reads",
 			BOM_CSV_PATTERN.test("BOM.csv") && BOM_CSV_PATTERN.test("hardware/bom-v2.csv") && !BOM_CSV_PATTERN.test("bom.md"),
+		)
+		check(
+			"repo-checks · a PCB week suggests two README BOM rows",
+			THEME_REPO_REQUIREMENTS[Theme.PCB].bomTable?.minRows === 2,
+		)
+		check(
+			"repo-checks · a CAD week suggests one README BOM row",
+			THEME_REPO_REQUIREMENTS[Theme.CAD].bomTable?.minRows === 1,
+		)
+
+		// CAD policy: the source has to be editable, and the tools reviewers return are not sources. Tinkercad has no source format at all, OpenSCAD and Blender are excluded, and a printable mesh is a model, never a source.
+		const cadSource = REPO_FILE_KINDS.cadSource.extensions ?? []
+		check(
+			"repo-checks · CAD source excludes Tinkercad, OpenSCAD, Blender and STL",
+			![".scad", ".blend", ".stl", ".obj", ".3mf"].some(ext => cadSource.includes(ext)),
+		)
+		check(
+			"repo-checks · the CAD week still requires a source",
+			THEME_REPO_REQUIREMENTS[Theme.CAD].required.includes("cadSource"),
+		)
+		check(
+			"repo-checks · the missing-source message names the rejected tools",
+			REPO_FILE_KINDS.cadSource.missing.includes("not accepted as the source"),
+		)
+
+		// The README BOM table is a hint a reviewer prices the week from, so it is checked by shape: a part-like header, a price/cost/link/supplier column, and enough data rows. These pin the shapes that actually turn up, including the ones that must not count: a pinout, a screenshot, a link to a CSV, and a one-row board BOM.
+		const markdownBom =
+			"| Part | Qty | Unit price | Link |\n| --- | --- | --- | --- |\n| PCB | 5 | $2 | https://example.com/pcb |\n| XIAO | 1 | $5 | https://example.com/xiao |"
+		check("repo-checks · a README BOM table passes", readmeBomTable(markdownBom, 2)?.rows === 2)
+		check(
+			"repo-checks · a table without outer pipes passes",
+			readmeBomTable("Part | Price | Link\n--- | --- | ---\nPCB | $2 | https://example.com", 1)?.rows === 1,
+		)
+		check(
+			"repo-checks · a BOM table without a price or link does not count",
+			readmeBomTable("| Part | Qty |\n| --- | --- |\n| PCB | 5 |", 1) === null,
+		)
+		check(
+			"repo-checks · a pinout table does not count",
+			readmeBomTable("| Pin | Function |\n| --- | --- |\n| D1 | SDA |", 1) === null,
+		)
+		check("repo-checks · a screenshot of a BOM does not count", readmeBomTable("![BOM](bom.png)", 1) === null)
+		check("repo-checks · a link to a BOM file does not count", readmeBomTable("[BOM](BOM.csv)", 1) === null)
+		check(
+			"repo-checks · a table in a code block does not count",
+			readmeBomTable("```\n| Part | Price |\n| --- | --- |\n| PCB | $2 |\n```", 1) === null,
+		)
+		check(
+			"repo-checks · a one-row board BOM is short",
+			readmeBomTable("| Part | Price |\n| --- | --- |\n| PCB | $2 |", 2) === null,
+		)
+		check(
+			"repo-checks · a one-row material BOM is enough for CAD",
+			readmeBomTable("| Material | Cost |\n| --- | --- |\n| PLA | $20 |", 1)?.rows === 1,
+		)
+		check(
+			"repo-checks · an HTML BOM table passes",
+			readmeBomTable("<table><tr><th>Part</th><th>Price</th></tr><tr><td>PCB</td><td>$2</td></tr></table>", 1)?.rows
+				=== 1,
 		)
 
 		// The date in the banner has to come from the data, not the wall clock. When it was `new Date()`, two renders of identical content differed, so the blob SHA never matched, "skip unchanged files" never fired, and every debounced sync committed a no-op diff. A render now pins the date to the newest entry (or the project row), so identical content is byte-identical.

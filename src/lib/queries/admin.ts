@@ -33,6 +33,7 @@ import { getPrinterQualification, type PrinterQualification, printerAwardSelect 
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
+import { projectReviewState } from "@/lib/review-state"
 import { shopOrderStaffSelect } from "@/lib/shop"
 import { eachDayBetween } from "@/lib/time"
 
@@ -1764,7 +1765,7 @@ export interface ReviewerStats {
  *
  * Counted over live decisions only. A review an admin un-approved or Ari reverted is marked `invalidated`, and a row that no longer stands is not a decision the project still has – counting it would make the total only ever grow and leave it disagreeing with Ari after a revert. Only FINAL passes count: a FIRST-pass row is advisory and moves no status and no money (see the ReviewPass enum), so including it would credit a reviewer with a decision they did not make.
  *
- * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getProjectReviewStatuses` is the ship-level ring that mirrors Ari's own board, and `getAdminCounters`'s "awaiting review" is its pending slice. This figure is deliberately a different question, so it will not equal either of them. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
+ * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getProjectReviewStatuses` counts each project in the one state its card shows, including the ones still waiting, so it is a different question again. This figure is deliberately different from that ring and from `getAdminCounters`'s "awaiting review". The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
  *
  * "Today" is the program timezone's day, the same boundary the activity strip and streaks use, so a review that landed at 11pm New York counts the day the dashboard is on rather than the server's.
  *
@@ -1808,50 +1809,20 @@ export interface ProjectReviewStatusStat {
 }
 
 /**
- * The review board as Ari shows it: one slice per ship Half Life sent, counted the way Ari counts its own.
+ * The review board as one state per project: the same single state its card shows, counted once.
  *
- * Ari keeps a row per ship, not per project or per phase. A design sent back for changes and handed in again leaves the first ship on Ari's board as "changes" and adds a second as "pending"; the phase has one current ship but two decisions behind it. Counting only the newest submission per phase is what made this ring read hundreds of change requests short and a handful of rejections missing: those ships were real, and they are still in Ari's totals.
+ * A project has two phases and can be resubmitted, so a per-ship count puts one project in several slices at once – an approved design beside a build still in review, or a changes ship beside the resubmission that replaced it. This ring asks how many projects are in each state now, so every project contributes exactly one slice and the total is the number of projects that have been submitted. A project that has never left draft is in none of them.
  *
- * So every resolved submission that reached Ari contributes its decision, however many times its phase has since been resubmitted. Only the pending slice is per phase: a phase can have one open ship, and the newest submission decides whether that is the one Ari holds. That also keeps a stale row from a reverted or superseded ship out of the queue count. A hand-in Ari never received (`ariSubmissionId` null) is counted nowhere – it is not on Ari's board either, and the panel counts it apart.
- *
- * Deleted projects are included: Ari keeps their ships, and dropping them here would make the mirror disagree with the board it is meant to mirror. A project can only be deleted once neither phase is in review or approved, so this can only affect decided history.
+ * The state is `projectReviewState`, the same function the projects grid uses to colour a card, so the ring and the cards cannot disagree about which state a project is in. Deleted projects are left out, as they are on the grid.
  */
 export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
-	const submissions = await prisma.phaseSubmission.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		select: {
-			ariDecision: true,
-			ariSubmissionId: true,
-			createdAt: true,
-			id: true,
-			phase: true,
-			resolvedAt: true,
-			resolvedResult: true,
-			reviews: {
-				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-				select: { result: true },
-				take: 1,
-				where: { invalidated: false, pass: ReviewPass.FINAL },
-			},
-			themeProject: { select: { buildStatus: true, designStatus: true } },
-			themeProjectId: true,
-		},
+	const projects = await prisma.themeProject.findMany({
+		select: { buildStatus: true, designStatus: true },
+		where: { deletedAt: null },
 	})
 
-	const counts = countAriShips(
-		submissions.map(submission => ({
-			ariSubmissionId: submission.ariSubmissionId,
-			createdAt: submission.createdAt,
-			id: submission.id,
-			phase: submission.phase,
-			phaseStatus:
-				submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
-			resolvedAt: submission.resolvedAt,
-			// The live review is the record of a decision; an un-approval invalidates it without reopening the submission, so the submission's own result is the fallback that keeps a decided ship on the board.
-			result: submission.reviews[0]?.result ?? submission.resolvedResult ?? ariToResult(submission.ariDecision),
-			themeProjectId: submission.themeProjectId,
-		})),
-	)
+	const counts = { approved: 0, changes: 0, not_started: 0, pending: 0, rejected: 0 }
+	for (const project of projects) counts[projectReviewState(project.designStatus, project.buildStatus)] += 1
 
 	return [
 		{ label: "Approved", value: counts.approved },
@@ -1859,16 +1830,6 @@ export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusSta
 		{ label: "Rejected", value: counts.rejected },
 		{ label: "Pending", value: counts.pending },
 	]
-}
-
-/** The decision string Ari reports, back into the enum the reviews table speaks. */
-function ariToResult(decision: string | null): ReviewResult | null {
-	if (decision === "approved") return ReviewResult.APPROVED
-	if (decision === "changes") return ReviewResult.RETURNED
-	if (decision === "rejected") return ReviewResult.REJECTED
-	// Ari is an external system, so a decision string we do not know is a vocabulary drift, not corrupt local data: log it rather than let the submission vanish from the chart silently.
-	if (decision !== null) console.warn(`[admin] unrecognised Ari decision "${decision}"; counted nowhere`)
-	return null
 }
 
 // ─── User-flow Sankey ─────────────────────────────────────────────────────────

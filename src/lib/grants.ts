@@ -3,6 +3,7 @@ import { Prisma } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit, logAuditTx, requestInfo } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
+import { isIdentityVerified } from "@/lib/hca-profile"
 import {
 	isHcbConfigured,
 	listCardGrantDisbursements,
@@ -23,6 +24,7 @@ import prisma from "@/lib/prisma"
  * - one top-up per (user, project, design), enforced by a unique row;
  * - one top-up per card, enforced by a unique index on the grant hashid: the hashid is what identifies the card on HCB's side, and two projects (or two people) pointing at the same card would otherwise each pay it;
  * - the card is checked against the maker before it is paid, because the top-up moves the money as it answers and a grant paid to somebody else's card cannot be recalled;
+ * - the maker's Hack Club identity is verified before anything is sent, because a grant is a reward and an unverified account is not eligible for one;
  * - the row is written before HCB is called and marked `sentAt` after, so a crash or a failed call is recoverable rather than silently retried;
  * - a retry asks HCB what the previous attempt left behind before sending again: a timeout can lose the response after the money moved, and a blind resend pays twice;
  * - a failed attempt records its error and may be retried; one still in flight may not, and a row stranded by a crash is treated as in flight
@@ -176,6 +178,14 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 	if (project.designStatus !== PhaseStatus.approved || !project.grantUsd)
 		throw new HttpError("CONFLICT", "A grant is only due on an approved design")
+
+	// A grant is money, so the maker has to have cleared HCA's identity check before any of it is sent. Asked before the HCB row is claimed or the card is read, so an unverified account never starts a payout that would then have to be unwound. `isIdentityVerified` refreshes a stale stored status from HCA and never throws, so an HCA outage refuses rather than pays.
+	if (!(await isIdentityVerified(project.userId)))
+		throw new HttpError(
+			"NOT_VERIFIED",
+			"This maker's identity is not verified, so no grant can be sent. Ask them to verify at identity.hackclub.com.",
+		)
+
 	const amountCents = Math.round(project.grantUsd * 100)
 	const memo = `[grant] ${project.title || "Half Life project"} – Half Life tier ${project.tier ?? "?"}`
 

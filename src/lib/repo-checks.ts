@@ -1,6 +1,12 @@
 import "server-only"
 import type { Theme } from "@/app/generated/prisma/enums"
-import { DESIGN_JSON, REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
+import {
+	DESIGN_JSON,
+	REPO_FILE_KINDS,
+	type RepoFileKind,
+	readmeBomTable,
+	THEME_REPO_REQUIREMENTS,
+} from "@/lib/config/repo-checks"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
 import { ForgeUnavailableError, forgeGet } from "@/lib/github"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
@@ -9,7 +15,7 @@ import { README_GUIDE_URL } from "@/lib/routes"
 /**
  * Pre-submission repo checks, ported from Hack Club Stasis (lib/github-checks) and now forge-aware.
  *
- * The checks themselves are the same on every forge – a README with enough text and photos, and the file kinds the week exists to produce. What changes per forge is how the file list and the README are read, which is why `fetchSnapshot` branches and everything below it does not.
+ * The checks themselves are the same on every forge – a README with enough text and photos, the BOM table a reviewer prices the week from, and the file kinds the week exists to produce. What changes per forge is how the file list and the README are read, which is why `fetchSnapshot` branches and everything below it does not.
  *
  * A forge we do not speak is still a repo a maker may hand in: `checkRepo` warns rather than blocks, exactly as it did for a GitLab link before GitLab was understood. That path stays, because Codeberg and a self-hosted Gitea are still real answers to "where is your project".
  */
@@ -410,7 +416,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 
 	const { readme, truncated } = snap
 
-	const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]
+	const { bomTable, required, recommended } = THEME_REPO_REQUIREMENTS[theme]
 	// Reading the repo's JSON is what finds an EasyEDA design, so it is done only when a kind that accepts one has found nothing by name – which for a PCB week is a repo exported from EasyEDA, and for every other repo never happens.
 	const designs = [...required, ...recommended].some(
 		kind => REPO_FILE_KINDS[kind].json && namedMatches(kind, snap).length === 0,
@@ -467,6 +473,26 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					status: "fail",
 				},
 	)
+
+	if (readme !== null && bomTable) {
+		const table = readmeBomTable(readme, bomTable.minRows)
+		checks.push(
+			table
+				? {
+						detail: `${table.rows} row${table.rows === 1 ? "" : "s"}`,
+						key: "readme_bom",
+						label: "BOM table in README",
+						status: "pass",
+					}
+				: {
+						detail: `Recommended, not required: add a Markdown table with one row per part or material and columns for quantity, unit price and a buying link. The README needs at least ${bomTable.minRows} row${bomTable.minRows === 1 ? "" : "s"} to count.`,
+						key: "readme_bom",
+						label: "No BOM table in the README",
+						link: { href: README_GUIDE_URL, label: "What goes in a README" },
+						status: "warn",
+					},
+		)
+	}
 
 	for (const kind of required) {
 		const found = matches(kind, snap, designs)

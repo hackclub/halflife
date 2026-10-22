@@ -7,6 +7,7 @@ import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
+import { isIdentityVerified } from "@/lib/hca-profile"
 import { isHcbConfigured } from "@/lib/hcb"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePermission } from "@/lib/permissions"
@@ -22,6 +23,9 @@ interface Props {
 export default async function AdminUserPage({ params }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
 	const { id } = await params
+	const canManageCredit = hasPermission(roles, Permission.MANAGE_CREDIT)
+	// Fresh from HCA, not the status stored at the last sign-in: a maker who verified since then must not be shown a locked payout, and the routes check the same answer. Only asked when this page can issue something, because it may call HCA.
+	const identityVerified = canManageCredit ? await isIdentityVerified(id) : false
 
 	const detail = await getUserDetail(id, {
 		includeSensitive: hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR),
@@ -31,11 +35,10 @@ export default async function AdminUserPage({ params }: Props) {
 	const { user, balances, ledger, orders, printer } = detail
 	const summary = permissionSummary(user.roles.map(r => r.role))
 	const canManageRoles = hasPermission(roles, Permission.MANAGE_ROLES)
-	const canManageCredit = hasPermission(roles, Permission.MANAGE_CREDIT)
 	const canManageUsers = hasPermission(roles, Permission.MANAGE_USERS)
 	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
-	const canSendGrant = canManageCredit && isHcbConfigured()
+	const canSendGrant = canManageCredit && isHcbConfigured() && identityVerified
 
 	return (
 		<div className="hl-stack">
@@ -108,10 +111,11 @@ export default async function AdminUserPage({ params }: Props) {
 			</Panel>
 
 			<Panel title="Themed projects" wide>
-				{canSendGrant && (
+				{canManageCredit && isHcbConfigured() && (
 					<p className="hl-hint" style={{ marginTop: 0 }}>
-						Sending a grant tops up the maker&apos;s HCB card grant directly. It is a manual fallback – the payout
-						pipeline is the normal path – and can only be sent once per project.
+						{identityVerified
+							? "Sending a grant tops up the maker's HCB card grant directly. It is a manual fallback – the payout pipeline is the normal path – and can only be sent once per project."
+							: "Grants are locked until this maker verifies their identity at identity.hackclub.com."}
 					</p>
 				)}
 				<Table
@@ -152,7 +156,7 @@ export default async function AdminUserPage({ params }: Props) {
 
 			{canManageCredit ? (
 				<Panel title="Adjust credit">
-					<CreditGrantForm userId={id} />
+					<CreditGrantForm canGrant={identityVerified} userId={id} />
 				</Panel>
 			) : null}
 

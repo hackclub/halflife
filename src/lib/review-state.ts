@@ -8,19 +8,41 @@ import type { PhaseStatus } from "@/app/generated/prisma/enums"
 
 export type ReviewTone = "line" | "sky" | "teal" | "orange" | "coral"
 
+/** The one state a project is in, for the single status its card shows and the one slice it occupies in a project count. */
+export type ProjectReviewState = "approved" | "changes" | "not_started" | "pending" | "rejected"
+
+/**
+ * Where a project stands, as one state rather than one per phase.
+ *
+ * Attention wins: something rejected or sent back is what the maker needs to see first, then a phase under review. Otherwise it follows the current phase – the build once it has started, the design until then – so a design that passed while the build has not begun still reads as approved. The projects grid colours a card from this, and the admin overview counts each project in exactly one slice of it, so a project can never appear in two states at once.
+ */
+export function projectReviewState(design: PhaseStatus, build: PhaseStatus): ProjectReviewState {
+	const phases = new Set([design, build])
+	if (phases.has("rejected")) return "rejected"
+	if (phases.has("update_requested")) return "changes"
+	if (phases.has("in_review")) return "pending"
+	const current = build !== "draft" ? build : design
+	return current === "approved" ? "approved" : "not_started"
+}
+
 /**
  * Where a project stands, as one colour for its card.
  *
- * Attention wins: something rejected or sent back is what the maker needs to see first, then a phase under review. Otherwise it follows the current phase – the build once it has started, the design until then – so a design that passed while the build has not begun still reads as approved. The per-phase chips carry the detail this single colour cannot.
+ * The tone is `projectReviewState`'s state, so a card and any count built on the same state cannot disagree about which slice the project is in.
  */
 export function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone {
-	const phases = new Set([design, build])
-	if (phases.has("rejected")) return "coral"
-	if (phases.has("update_requested")) return "orange"
-	if (phases.has("in_review")) return "sky"
-	const current = build !== "draft" ? build : design
-	if (current === "approved") return "teal"
-	return "line"
+	switch (projectReviewState(design, build)) {
+		case "rejected":
+			return "coral"
+		case "changes":
+			return "orange"
+		case "pending":
+			return "sky"
+		case "approved":
+			return "teal"
+		case "not_started":
+			return "line"
+	}
 }
 
 /** Plain words, not the enum. */
