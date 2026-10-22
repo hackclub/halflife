@@ -1,6 +1,7 @@
 import "server-only"
 import type { LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import { CoinBucket, LedgerKind, type ShopItemCategory } from "@/app/generated/prisma/enums"
+import { lockKey } from "@/lib/locks"
 import { type CursorOrderOf, cursorWhere, orderByFor, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 
@@ -9,13 +10,10 @@ type Tx = Prisma.TransactionClient
 /**
  * Serialize every credit mutation for one user.
  *
- * The balance is `SUM(amount)` over an append-only table, so there is no row to lock and READ COMMITTED lets two concurrent transactions both read the same pre-existing balance and both commit – which is a double-spend, not a theoretical race: the window spans several round trips, and the goods on the other side are physical.
- *
- * `pg_advisory_xact_lock` is released automatically when the transaction ends, including on rollback. MUST be the first statement inside any `$transaction` that reads a balance and then writes against it.
+ * MUST be the first statement inside any `$transaction` that reads a balance and then writes against it; see `lockKey`.
  */
-export async function lockUserCredit(tx: Tx, userId: string): Promise<void> {
-	// hashtextextended gives a stable bigint for the key; the constant is just a namespace so this lock cannot collide with an unrelated advisory lock. $executeRaw rather than $queryRaw: pg_advisory_xact_lock returns void, and the driver adapter cannot deserialize that as a result row.
-	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`credit:${userId}`}, 0))`
+export function lockUserCredit(tx: Tx, userId: string): Promise<void> {
+	return lockKey(tx, `credit:${userId}`)
 }
 
 /** Kinds that represent earning, as opposed to spending. */

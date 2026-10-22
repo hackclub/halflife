@@ -1,6 +1,7 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { CoinBucket, HoursSource } from "@/app/generated/prisma/enums"
+import { lockKey } from "@/lib/locks"
 import { pctOf } from "@/lib/numbers"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -77,8 +78,8 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
  *
  * The same pattern as the credit ledger's lock (lib/currency.ts, `lockUserCredit`): `pg_advisory_xact_lock` is released automatically when the transaction ends, including on a rollback, and a different namespace string keeps this lock from ever colliding with the ledger's.
  */
-async function lockActiveDays(tx: Tx, userId: string): Promise<void> {
-	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`active-days:${userId}`}, 0))`
+function lockActiveDays(tx: Tx, userId: string): Promise<void> {
+	return lockKey(tx, `active-days:${userId}`)
 }
 
 /**

@@ -9,6 +9,7 @@ import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
+import { lockKey } from "@/lib/locks"
 import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import {
@@ -130,8 +131,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const session = await prisma.$transaction(async tx => {
 		if (lapseIds.length > 0) {
 			// Sorted so two requests naming the same recordings cannot deadlock on each other's locks.
-			for (const lapseId of [...lapseIds].toSorted())
-				await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
+			for (const lapseId of [...lapseIds].toSorted()) await lockKey(tx, `lapse:${lapseId}`)
 
 			const taken = await tx.sessionTimelapse.findFirst({
 				select: { externalId: true },

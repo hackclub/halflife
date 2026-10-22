@@ -13,6 +13,7 @@ import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAuditTx } from "@/lib/audit"
 import { TIERS } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
+import { lockKey } from "@/lib/locks"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -312,7 +313,7 @@ function importRow(
 
 	return prisma.$transaction(
 		async tx => {
-			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`warmup-import:${row.email}`}, 0))`
+			await lockKey(tx, `warmup-import:${row.email}`)
 
 			// Two runs of the same click (two admins, two tabs) both read their "not imported yet" snapshot before either transaction started. Since warm-up rows are no longer held unique by `(userId, theme)`, the insert below would happily make a second project for one Airtable row; this re-read under the lock is what keeps a row to one project.
 			const raced = await tx.auditLog.findFirst({

@@ -1,6 +1,7 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HttpError } from "@/lib/errors"
+import { lockKey } from "@/lib/locks"
 
 type Tx = Prisma.TransactionClient
 
@@ -44,8 +45,7 @@ export async function reconcileSessionTimelapses(
 	const addIds = want.filter(id => !have.has(id))
 	const adding = fresh.filter(t => addIds.includes(t.id))
 
-	for (const lapseId of [...addIds].toSorted())
-		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
+	for (const lapseId of [...addIds].toSorted()) await lockKey(tx, `lapse:${lapseId}`)
 
 	if (addIds.length > 0) {
 		// This session's own rows do not count: keeping a clip is not taking it from anywhere.

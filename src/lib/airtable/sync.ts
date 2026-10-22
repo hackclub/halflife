@@ -9,6 +9,7 @@ import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
+import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"
 import { decryptUserPII } from "@/lib/pii"
 import prisma from "@/lib/prisma"
@@ -253,7 +254,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
 	return prisma.$transaction(
 		async tx => {
-			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ysws:${themeProjectId}:${phase}`}, 0))`
+			await lockKey(tx, `ysws:${themeProjectId}:${phase}`)
 			return fn()
 		},
 		{ maxWait: 30_000, timeout: 120_000 },

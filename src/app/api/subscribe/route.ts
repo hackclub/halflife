@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { parseBody } from "@/lib/api"
+import { clientIp } from "@/lib/client-ip"
 import { subscribeSchema } from "@/lib/schemas/admin"
-import { clientIp, normalizeEmail, rateLimited, recordSignup } from "@/lib/site/signups"
+import { normalizeEmail, recordSignup, signupRateLimited } from "@/lib/site/signups"
 
 export async function POST(request: Request): Promise<NextResponse> {
 	const ip = clientIp(request.headers)
 
-	if (rateLimited(ip))
+	if (signupRateLimited(ip))
 		return NextResponse.json({ error: "Slow down a second, then try again.", ok: false }, { status: 429 })
 
 	const parsed = await parseBody(request, subscribeSchema)
