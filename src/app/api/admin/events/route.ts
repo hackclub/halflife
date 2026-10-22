@@ -1,6 +1,6 @@
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requirePermission } from "@/lib/guards"
+import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { getProgramSettings, startOfDay } from "@/lib/program"
@@ -22,10 +22,7 @@ export const dynamic = "force-dynamic"
  * after the clocks change instead of quietly becoming a 6pm call for the rest of
  * the season.
  */
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
-	if (gate.error) return gate.error
-
+export const POST = withPermission(Permission.MANAGE_PROGRAM, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, programEventCreateSchema)
 	if (parsed.error) return parsed.error
 	const { repeatWeeks, ...fields } = parsed.data
@@ -118,10 +115,7 @@ function zoneOffsetMs(at: number, timeZone: string): number {
 	return wall - (at - (at % 1000))
 }
 
-export const DELETE = withRoute(async (_req: Request) => {
-	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
-	if (gate.error) return gate.error
-
+export const DELETE = withPermission(Permission.MANAGE_PROGRAM, async (_req: Request, { gate }) => {
 	const { programTimezone } = await getProgramSettings()
 	const threshold = startOfDay(new Date(), programTimezone)
 

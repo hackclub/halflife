@@ -1,5 +1,4 @@
-import { withRoute } from "@/lib/api"
-import { requirePermission } from "@/lib/guards"
+import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { decideReport } from "@/lib/report-decisions"
 
@@ -10,10 +9,11 @@ interface Params {
 }
 
 /** Close a report as no violation. */
-export const POST = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requirePermission(Permission.MANAGE_FEED)
-	if (gate.error) return gate.error
-	const { id } = await params
+export const POST = withPermission(
+	Permission.MANAGE_FEED,
+	async (_req: Request, { params, gate }: Params & AuthedContext) => {
+		const { id } = await params
 
-	return decideReport(gate, id, "DISMISSED")
-})
+		return decideReport(gate, id, "DISMISSED")
+	},
+)

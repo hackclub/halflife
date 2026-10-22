@@ -1,10 +1,10 @@
 import { after } from "next/server"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
 import { type ImportedBomLine, parseBomCsv, type SkippedRow } from "@/lib/bom-csv"
 import { BOM_CSV_PATTERN } from "@/lib/config/repo-checks"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
@@ -69,9 +69,7 @@ async function readRepoBom(repoLink: string | null, limit: number): Promise<Repo
 	return { lines: parsed.lines, path, skipped: parsed.skipped }
 }
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, bomImportSchema)

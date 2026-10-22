@@ -1,11 +1,11 @@
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { markProjectCreated, recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { starterProjectsFor } from "@/lib/config/onboarding"
 import { getThemeDef } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
 import {
@@ -26,9 +26,7 @@ interface Params {
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({
@@ -65,9 +63,7 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	})
 })
 
-export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, projectUpdateSchema)
@@ -175,9 +171,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 /**
  * Delete a project: a soft delete, so the row and its record stay for audit and every read that filters on `deletedAt` stops seeing it. What may be deleted is `deleteBlockReason`'s call, shared with the page.
  */
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({

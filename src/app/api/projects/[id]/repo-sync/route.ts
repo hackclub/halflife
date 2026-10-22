@@ -1,9 +1,9 @@
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
 import { type Forge, forgeById } from "@/lib/forge"
 import { forgeCredentials, listWritableRepos, type WritableRepo } from "@/lib/forge-write"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { repoRefFromLink } from "@/lib/repo-ref"
 import { disableRepoSync, enableRepoSync, getRepoSyncState, runProjectSync } from "@/lib/repo-sync"
@@ -22,9 +22,7 @@ interface Params {
  *
  * POST switches the sync on or off. Turning it on writes the first commit before the setting takes (see enableRepoSync), so a repo the token cannot push to is refused here rather than failing silently on every entry afterwards.
  */
-export const GET = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const state = await getRepoSyncState(id, gate.user.id)
@@ -46,9 +44,7 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	return ok({ ...state, repos, reposError })
 })
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, repoSyncSettingsSchema)
@@ -97,9 +93,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 /**
  * Force a sync now. Separate from the settings POST because it is a different intent: not "turn this on or off" but "do it again", which is what a maker reaches for after fixing a failure or pushing a change from elsewhere.
  */
-export const PUT = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const PUT = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const state = await getRepoSyncState(id, gate.user.id)

@@ -2,10 +2,10 @@ import { after } from "next/server"
 import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
 import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { markSubmission } from "@/lib/analytics"
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshLinkCache } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
 import { sanitizeOptional } from "@/lib/sanitize"
@@ -17,9 +17,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, submitSchema)

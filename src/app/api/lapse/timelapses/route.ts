@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
-import { ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { ok } from "@/lib/api"
+import { withSession } from "@/lib/guards"
 import { listMyTimelapses } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
 
@@ -11,10 +11,7 @@ export const dynamic = "force-dynamic"
  *
  * Each carries `attached` – whether a session already claims it – because one recording backs one session. Otherwise the same two hours of footage could be offered as proof for two entries. The session route refuses it too; this is only so the picker can say so before anyone tries. `forSession` names the entry being edited, whose own clips read as free.
  */
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (req: NextRequest, { gate }) => {
 	const cursor = req.nextUrl.searchParams.get("cursor") ?? undefined
 	const page = await listMyTimelapses(gate.user.id, cursor)
 

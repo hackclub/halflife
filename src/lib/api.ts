@@ -216,6 +216,8 @@ export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): b
 
 /**
  * Wraps a handler so a thrown HttpError becomes its proper response and anything else becomes a logged 500 instead of an unhandled rejection.
+ *
+ * Authenticated routes should use `withSession`, `withPermission` or `withRole` from `lib/guards` instead: those put the guard in front of the handler and pass the session in as `ctx.gate`, so a route cannot forget the check. This is the transport wrapper they, and the unauthenticated routes, are built on.
  */
 export function withRoute<A extends unknown[]>(
 	handler: (...args: A) => Promise<NextResponse>,

@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server"
-import { ok, parseBody, parseQuery, withRoute } from "@/lib/api"
+import { ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { addComment, getComments } from "@/lib/feed"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import { commentSchema } from "@/lib/schemas/feed"
 
@@ -12,9 +12,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const GET = withSession(async (req: NextRequest, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = parseQuery(req, paginationQuery)
@@ -23,9 +21,7 @@ export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	return ok(await getComments(id, gate.user.id, { cursor: parsed.data.cursor, limit: parsed.data.limit }))
 })
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, commentSchema)

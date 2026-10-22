@@ -1,14 +1,11 @@
-import { fail, ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok } from "@/lib/api"
+import { withSession } from "@/lib/guards"
 import { listUserProjects } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async () => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (_req: Request, { gate }) => {
 	const user = await prisma.user.findUnique({
 		select: { hackatimeUserId: true },
 		where: { id: gate.user.id },

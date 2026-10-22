@@ -1,11 +1,11 @@
 import { after } from "next/server"
 import { Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { statusFor } from "@/lib/phase"
@@ -47,9 +47,7 @@ function weekOpenFor(userId: string, projectId: string, session: { phase: Phase;
 	return isWeekOpen(userId, projectId, scheduledWeekFor(session.themeProject.theme, session.phase))
 }
 
-export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const parsed = await parseBody(req, sessionUpdateSchema)
@@ -146,9 +144,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	return ok({ session: updated })
 })
 
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const session = await loadOwned(gate.user.id, id, sessionId)

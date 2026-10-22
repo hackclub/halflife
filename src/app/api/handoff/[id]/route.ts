@@ -1,5 +1,5 @@
-import { fail, ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok } from "@/lib/api"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { claimHandoff, getHandoffStatus } from "@/lib/handoff"
 
 export const dynamic = "force-dynamic"
@@ -9,9 +9,7 @@ interface Params {
 }
 
 /** Polled by the desktop while it waits for the phone. */
-export const GET = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const status = await getHandoffStatus(id, gate.user.id)
@@ -21,9 +19,7 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 })
 
 /** Called once the desktop has taken the object key, to stop the polling. */
-export const POST = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const claimed = await claimHandoff(id, gate.user.id)

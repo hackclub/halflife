@@ -1,7 +1,7 @@
 import { Prisma } from "@/app/generated/prisma/client"
-import { fail, ok, parseBody, rateLimitedInMemory, withRoute } from "@/lib/api"
+import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requireSession } from "@/lib/guards"
+import { withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { REPORT_TARGET_LABELS, type ReportTarget } from "@/lib/reports"
 import { createReportSchema } from "@/lib/schemas/report"
@@ -13,10 +13,7 @@ export const dynamic = "force-dynamic"
  *
  * It changes no state: the row stays up and the queue gains a row. Taking something down stays a separate admin action, so a report is never a silent takedown – and, because an open report per reporter per row is the most the queue holds, neither is it a flood.
  */
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const POST = withSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, createReportSchema)
 	if (parsed.error) return parsed.error
 	const { target, targetId, reason, details } = parsed.data

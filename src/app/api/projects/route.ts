@@ -1,8 +1,8 @@
 import { z } from "zod"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { getThemeDef, themeForDesignWeek } from "@/lib/config/program"
-import { requireSession } from "@/lib/guards"
+import { withSession } from "@/lib/guards"
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import prisma from "@/lib/prisma"
@@ -11,10 +11,7 @@ import { ensureThemeProject } from "@/lib/provisioning"
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async () => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (_req: Request, { gate }) => {
 	// The rows behind every project's hours, loaded once for the whole list.
 	//
 	// This used to ask `getHoursBreakdown` for each project and phase, which is three queries each – six per project, on a page that shows every project the maker has. `rollUpHours` is the summation half of that breakdown, separated so a caller holding the rows in bulk can apply the same rules without the extra round trips.
@@ -107,10 +104,7 @@ const createSchema = z.object({ weekId: z.number().int().min(1).max(10) }).stric
 /**
  * Create the project for a design week – called when its "create a project" checkpoint is opened, which is the only moment a project row is made (see lib/provisioning). Opening it again returns the same row.
  */
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const POST = withSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, createSchema)
 	if (parsed.error) return parsed.error
 

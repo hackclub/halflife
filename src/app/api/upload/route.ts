@@ -1,5 +1,5 @@
-import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok, parseUploadForm, rateLimitedInMemory } from "@/lib/api"
+import { withSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import {
 	buildObjectKey,
@@ -18,10 +18,7 @@ export const maxDuration = 60
 
 const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts", "shop"])
 
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const POST = withSession(async (req: Request, { gate }) => {
 	if (rateLimitedInMemory(`upload:${gate.user.id}`))
 		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
 

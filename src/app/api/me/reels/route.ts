@@ -1,5 +1,5 @@
-import { fail, ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok } from "@/lib/api"
+import { withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
@@ -14,10 +14,7 @@ export const dynamic = "force-dynamic"
  */
 const SUBMISSION_KEY = /^(w([1-9]|10)-reel-submission|wu-[A-Za-z0-9_]{1,64}-reel-submission)$/
 
-export const GET = withRoute(async (req: Request) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (req: Request, { gate }) => {
 	const checkpointKey = new URL(req.url).searchParams.get("checkpointKey")
 	if (!checkpointKey || !SUBMISSION_KEY.test(checkpointKey))
 		return fail("VALIDATION_FAILED", "Not a submission checkpoint")

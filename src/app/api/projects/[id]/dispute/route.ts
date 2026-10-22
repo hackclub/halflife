@@ -1,9 +1,9 @@
 import { Prisma } from "@/app/generated/prisma/client"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
 import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
@@ -19,9 +19,7 @@ interface Params {
  *
  * It changes no state: the phase stays returned or rejected. It records the maker's own words against the submission and puts it in front of staff, so a decision is never silently overridden by a button – and, because `ReviewDispute.submissionId` is unique, neither is the queue flooded.
  */
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, disputeSchema)

@@ -1,5 +1,5 @@
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok, parseBody } from "@/lib/api"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { PLATFORM_INFO, readPublicReelLink } from "@/lib/public-reels"
 import { publicReelLinksSchema } from "@/lib/schemas/feed"
@@ -15,9 +15,7 @@ interface Params {
  *
  * Only the reel's author can add links to it. Each link is checked against its platform and stored in its tidy form (lib/public-reels.ts), which is also what makes a post claimable once: the same link sent again by its owner is accepted and not duplicated, and a link someone else already added is refused. Nothing is written unless every link passes, so a typo in one field never leaves the others half saved.
  */
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, publicReelLinksSchema)

@@ -1,7 +1,7 @@
 import { z } from "zod"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requirePermission } from "@/lib/guards"
+import { withPermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
@@ -18,10 +18,7 @@ const importSchema = z.object({ csv: z.string().min(1).max(500_000) }).strict()
  *
  * A file with any bad row, or any slug that already exists, imports nothing and says which lines to fix – the same refusal the single-item form gives, once per line. Existing items are never touched: changing one is what its own page is for.
  */
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requirePermission(Permission.MANAGE_SHOP)
-	if (gate.error) return gate.error
-
+export const POST = withPermission(Permission.MANAGE_SHOP, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, importSchema)
 	if (parsed.error) return parsed.error
 

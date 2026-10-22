@@ -1,7 +1,7 @@
 import { PhaseStatus } from "@/app/generated/prisma/enums"
-import { fail, ok, withRoute } from "@/lib/api"
+import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { getRepoSyncState, scheduleRepoSync } from "@/lib/repo-sync"
@@ -21,9 +21,7 @@ interface Params {
  *
  * What it refuses, it refuses for the same reasons a repo edit is refused anywhere else: submissions closed, or a phase in review because that is the thing a reviewer is reading. The local phase check is repeated inside the write, as every write that races a review is, so a review landing between the two cannot be edited out from under.
  */
-export const POST = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({

@@ -1,7 +1,7 @@
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { fail, ok, withRoute } from "@/lib/api"
+import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
@@ -13,9 +13,7 @@ interface Params {
 /** Statuses in which a phase's links may still be removed: a draft, or one an admin or reviewer sent back for changes. */
 const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, linkId } = await params
 
 	const link = await prisma.hackatimeLink.findFirst({

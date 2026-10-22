@@ -2,10 +2,10 @@ import { after } from "next/server"
 import { z } from "zod"
 import { Phase } from "@/app/generated/prisma/enums"
 import { markProjectCreated } from "@/lib/analytics"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { WARMUP_THEME } from "@/lib/config/program"
-import { requireSession } from "@/lib/guards"
+import { withSession } from "@/lib/guards"
 import { createWarmupProject } from "@/lib/provisioning"
 import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
 import { warmupCreationWindow } from "@/lib/warmup"
@@ -30,10 +30,7 @@ const createSchema = z
  *
  * Everything after this is the ordinary flow: journal against it, then hand it in once, as the phase chosen here.
  */
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const POST = withSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, createSchema)
 	if (parsed.error) return parsed.error
 	const data = parsed.data

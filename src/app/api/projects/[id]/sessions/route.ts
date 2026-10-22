@@ -2,11 +2,11 @@ import { after, type NextRequest } from "next/server"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
-import { fail, ok, parseBody, parseQuery, withRoute } from "@/lib/api"
+import { fail, ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { lockKey } from "@/lib/locks"
@@ -50,9 +50,7 @@ const SESSIONS_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<{ createdAt: Date }, Prisma.WorkSessionOrderByWithRelationInput>
 
-export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const GET = withSession(async (req: NextRequest, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const query = parseQuery(req, paginationQuery)
@@ -84,9 +82,7 @@ export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	})
 })
 
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, sessionCreateSchema)

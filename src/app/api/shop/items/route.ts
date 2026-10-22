@@ -1,14 +1,11 @@
-import { ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { ok } from "@/lib/api"
+import { withSession } from "@/lib/guards"
 import { getShopAccess } from "@/lib/program"
 import { getShopItemsFor } from "@/lib/shop"
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async () => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (_req: Request, { gate }) => {
 	const [{ items, balances, regions, regionId }, access] = await Promise.all([
 		getShopItemsFor(gate.user.id),
 		getShopAccess(gate.user.id),
