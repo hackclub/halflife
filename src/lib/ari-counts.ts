@@ -12,7 +12,7 @@ import { type Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/en
  *
  * A pending row only counts while its phase is actually `in_review`: a reverted or un-approved ship is terminal at Ari, and keeping it here would make the console's pending figure outrun the queue reviewers can open.
  *
- * Pure and order-independent, so `verify:contracts` can pin the rules without a database. This is the figure the admin reviewer-activity ring shows, and the one a human compares with Ari's own board – the failure it exists to prevent is a page that quietly disagrees with the queue.
+ * Pure and order-independent, so `verify:contracts` can pin the rules without a database. This is the figure behind the admin page's pending count and the `ari-review-counts` comparison with Ari's own board – the failure it exists to prevent is a page that quietly disagrees with the queue.
  */
 export interface AriShipRow {
 	ariSubmissionId: string | null

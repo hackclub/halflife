@@ -528,7 +528,7 @@ async function bodies() {
 	check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
 	check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
 
-	/* ── 5b-iii. The reviewer-activity ring, counted as Ari counts ─────────── */
+	/* ── 5b-iii. Ari's board, counted as Ari counts ────────────────────────── */
 	//
 	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
 	const { countAriShips } = await import("../src/lib/ari-counts")
@@ -591,6 +591,31 @@ async function bodies() {
 		])
 		check("ari · counts: one ship id counts once", counts.rejected === 1, JSON.stringify(counts))
 	}
+
+	/* ── 5b-iv. The reviewer-activity ring, one state per project ──────────── */
+	//
+	// The ring counts projects, not ships: a project with two phases or a resubmission must land in exactly one slice, so its total is the number of projects submitted. The state is the same one the projects grid colours a card from, so the ring and the cards cannot disagree.
+	const { projectReviewState } = await import("../src/lib/review-state")
+	check(
+		"review ring · a design approved while the build waits reads as approved",
+		projectReviewState(PhaseStatus.approved, PhaseStatus.draft) === "approved",
+	)
+	check(
+		"review ring · a build in review wins over an approved design",
+		projectReviewState(PhaseStatus.approved, PhaseStatus.in_review) === "pending",
+	)
+	check(
+		"review ring · a returned phase wins over a pending one",
+		projectReviewState(PhaseStatus.update_requested, PhaseStatus.in_review) === "changes",
+	)
+	check(
+		"review ring · a rejection wins over everything",
+		projectReviewState(PhaseStatus.rejected, PhaseStatus.approved) === "rejected",
+	)
+	check(
+		"review ring · a project that never left draft is in no slice",
+		projectReviewState(PhaseStatus.draft, PhaseStatus.draft) === "not_started",
+	)
 
 	/* ── 5b-ii. The decision standing on a ship ────────────────────────────── */
 	//

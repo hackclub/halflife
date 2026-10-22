@@ -118,7 +118,7 @@ export default async function AdminOverviewPage() {
 			<Panel
 				actions={
 					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						counted like Ari: every ship, including resubmissions
+						each project counted once, in the state its card shows
 					</span>
 				}
 				title="Reviewer activity"
@@ -161,12 +161,11 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					The ring counts ships the way Ari does – every version of every (project, phase) hand-in, not just the newest.
-					A design sent back and resubmitted therefore keeps its old changes ship alongside the new pending one, which
-					is why this total matches Ari&apos;s board. Pending is the newest hand-in of each phase that Ari still holds;
-					anything Ari never received is counted apart above, because a hand-in Ari has never seen is not on its board.
-					Console decisions are included. A ship an admin or Ari undid no longer counts, and a reverted ship leaves the
-					queue rather than lingering as pending.
+					Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
+					changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved. It
+					is the same state the project&apos;s card shows, so a design approved while its build is still in review reads
+					as pending rather than as two slices, and a resubmission does not leave a second copy of the project behind.
+					Projects that have never been submitted are left out. Console decisions are included.
 				</p>
 			</Panel>
 
