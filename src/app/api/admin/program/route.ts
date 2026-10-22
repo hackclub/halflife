@@ -1,6 +1,6 @@
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requirePermission } from "@/lib/guards"
+import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
@@ -8,19 +8,12 @@ import { programSettingsSchema } from "@/lib/schemas/admin"
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async () => {
-	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
-	if (gate.error) return gate.error
-	return ok({ settings: await getProgramSettings() })
-})
+export const GET = withPermission(Permission.MANAGE_PROGRAM, async () => ok({ settings: await getProgramSettings() }))
 
 /**
  * The kill switches live here rather than in env vars deliberately. Stasis put its submission gate in SUBMISSIONS_CLOSED and it was never flipped in the dashboard, so submissions silently stayed open for two weeks after the event ended. A row with a toggle and an audit trail cannot be forgotten.
  */
-export const PATCH = withRoute(async (req: Request) => {
-	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
-	if (gate.error) return gate.error
-
+export const PATCH = withPermission(Permission.MANAGE_PROGRAM, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, programSettingsSchema)
 	if (parsed.error) return parsed.error
 

@@ -1,4 +1,5 @@
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { statusFor } from "@/lib/phase"
 
 /**
  * Which (project, phase) hand-ins never reached Ari.
@@ -33,7 +34,7 @@ export function selectPendingShips(
 	const out: { themeProjectId: string; phase: Phase }[] = []
 	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
-			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+			const status = statusFor(project, phase)
 			if (status !== PhaseStatus.in_review) continue
 			const submission = newest.get(`${project.id}:${phase}`)
 			if (submission && !submission.ariSubmissionId) out.push({ phase, themeProjectId: project.id })

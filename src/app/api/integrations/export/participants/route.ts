@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server"
 import { z } from "zod"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { ok, parseQuery, withRoute } from "@/lib/api"
+import { ok, parseQuery } from "@/lib/api"
 import { getThemeDef } from "@/lib/config/program"
-import { requireExportAuth } from "@/lib/integration-auth"
+import { withExportRoute } from "@/lib/integration-route"
 import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 
@@ -27,9 +27,7 @@ const PARTICIPANTS_ORDER = {
  *
  * `INTEGRATION_API_KEY` is the internal key and sees the full roster. The narrower `EXPORT_API_KEY` gets the same rows without the contact identifiers (email, Slack id), so a partner key is not a full PII dump.
  */
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = requireExportAuth(req)
-	if ("denied" in gate) return gate.denied
+export const GET = withExportRoute(async (req: NextRequest, gate) => {
 	const internal = gate.scope === "internal"
 
 	const parsed = parseQuery(req, query)

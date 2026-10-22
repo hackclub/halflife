@@ -1,10 +1,13 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { CoinBucket, HoursSource } from "@/app/generated/prisma/enums"
+import { lockKey } from "@/lib/locks"
+import { round2 } from "@/lib/money"
 import { pctOf } from "@/lib/numbers"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
+import { DAY_MS } from "@/lib/time"
 
 type Tx = Prisma.TransactionClient
 
@@ -77,8 +80,8 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
  *
  * The same pattern as the credit ledger's lock (lib/currency.ts, `lockUserCredit`): `pg_advisory_xact_lock` is released automatically when the transaction ends, including on a rollback, and a different namespace string keeps this lock from ever colliding with the ledger's.
  */
-async function lockActiveDays(tx: Tx, userId: string): Promise<void> {
-	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`active-days:${userId}`}, 0))`
+function lockActiveDays(tx: Tx, userId: string): Promise<void> {
+	return lockKey(tx, `active-days:${userId}`)
 }
 
 /**
@@ -191,7 +194,7 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
 				weekNumber: week,
 			},
 		})
-		const hours = Math.round((sum._sum.hoursClaimed ?? 0) * 100) / 100
+		const hours = round2(sum._sum.hoursClaimed ?? 0)
 		await prisma.userWeek.upsert({
 			create: { hours, userId, week },
 			update: { hours },
@@ -311,7 +314,7 @@ export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 				for (const h of HOUR_MILESTONES)
 					if (running >= h && !reached[milestoneField(h)]) reached[milestoneField(h)] = s.at
 			}
-			const hours = Math.round(running * 100) / 100
+			const hours = round2(running)
 			await prisma.userWeek.upsert({
 				create: { hours, userId, week, ...reached },
 				update: { hours },
@@ -418,7 +421,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 			longestStreak: u.longestStreak,
 			onboardedAt: u.onboardingCompletedAt,
 			signedUpAt: u.createdAt,
-			totalHours: Math.round(u.activityWeeks.reduce((n, w) => n + w.hours, 0) * 100) / 100,
+			totalHours: round2(u.activityWeeks.reduce((n, w) => n + w.hours, 0)),
 			userId: u.id,
 			weeks: u.activityWeeks.map(({ week, hours, reached1hAt, reached5hAt, reached10hAt, reached20hAt }) => ({
 				hours,
@@ -442,7 +445,7 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 	weeklyMilestones: { week: number; over1h: number; over5h: number; over10h: number; over20h: number }[]
 }> {
 	const { programTimezone } = await getProgramSettings()
-	const since = effectiveDateFor(new Date(Date.now() - days * 86_400_000), programTimezone)
+	const since = effectiveDateFor(new Date(Date.now() - days * DAY_MS), programTimezone)
 
 	const [dau, people, weeks] = await Promise.all([
 		prisma.userDay.groupBy({

@@ -1,9 +1,10 @@
 import { headers } from "next/headers"
 import { bufferRsvp, getRsvpCount } from "@/lib/airtable/rsvp"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { clientIp } from "@/lib/client-ip"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { rsvpSchema } from "@/lib/schemas/admin"
-import { clientIp, rateLimited } from "@/lib/site/signups"
+import { signupRateLimited } from "@/lib/site/signups"
 
 export const dynamic = "force-dynamic"
 
@@ -14,7 +15,7 @@ export const POST = withRoute(async (req: Request) => {
 	const ip = clientIp(h)
 
 	// This is a public, unauthenticated write that lands a row in the drain queue (and the public counter); the landing form's limiter applies here too rather than leaving it open to a script. Checked before the body is parsed, so an over-limit caller cannot make the server buffer a body first.
-	if (rateLimited(ip ?? "unknown")) return fail("RATE_LIMITED", "Slow down a second, then try again.")
+	if (signupRateLimited(ip)) return fail("RATE_LIMITED", "Slow down a second, then try again.")
 
 	const parsed = await parseBody(req, rsvpSchema)
 	if (parsed.error) return parsed.error

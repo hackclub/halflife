@@ -124,8 +124,6 @@ export const THEMES = [
 	},
 ] as const satisfies readonly ThemeDef[]
 
-export type ThemeSlug = (typeof THEMES)[number]["slug"]
-
 /**
  * The pre-season track warm-up projects are filed on.
  *
@@ -183,4 +181,14 @@ export function scheduleForWeek(week: number): { theme: ThemeDef; phase: Phase }
 export function scheduledWeekFor(theme: Theme, phase: Phase): number {
 	const def = getThemeDef(theme)
 	return phase === Phase.DESIGN ? def.designWeek : def.buildWeek
+}
+
+/**
+ * The theme a design week belongs to, or null for a week that is not one.
+ *
+ * A schedule lookup, so it lives with the schedule rather than in the module that creates project rows.
+ */
+export function themeForDesignWeek(week: number): Theme | null {
+	const scheduled = scheduleForWeek(week)
+	return scheduled?.phase === Phase.DESIGN ? scheduled.theme.id : null
 }

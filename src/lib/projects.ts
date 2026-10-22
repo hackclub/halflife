@@ -122,7 +122,4 @@ export function fmtDay(day: string): string {
 	return `${date} ${MONTHS[month - 1]} ${year}`
 }
 
-/** Hours, two decimals at most and never a trailing zero. */
-export function fmtHours(h: number): string {
-	return `${Math.round(h * 100) / 100}h`
-}
+export { fmtHours } from "@/lib/numbers"

@@ -2,6 +2,7 @@ import "server-only"
 import { headers } from "next/headers"
 import type { Prisma } from "@/app/generated/prisma/client"
 import type { AuditAction } from "@/app/generated/prisma/enums"
+import { clientIp } from "@/lib/client-ip"
 import prisma from "@/lib/prisma"
 
 export { AuditAction } from "@/app/generated/prisma/enums"
@@ -27,9 +28,8 @@ export interface AuditInput {
 export async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
 	try {
 		const h = await headers()
-		const forwarded = h.get("x-forwarded-for")
-		const ip = forwarded?.split(",")[0]?.trim() || h.get("x-real-ip") || h.get("cf-connecting-ip") || null
-		return { ip, userAgent: h.get("user-agent") }
+		const ip = clientIp(h)
+		return { ip: ip === "unknown" ? null : ip, userAgent: h.get("user-agent") }
 	} catch {
 		// Called outside a request scope (a cron script). Not an error.
 		return { ip: null, userAgent: null }

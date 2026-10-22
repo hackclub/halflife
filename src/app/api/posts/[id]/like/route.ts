@@ -1,6 +1,6 @@
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { setLike } from "@/lib/feed"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { likeSchema } from "@/lib/schemas/feed"
 
 export const dynamic = "force-dynamic"
@@ -9,9 +9,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const PUT = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const PUT = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, likeSchema)

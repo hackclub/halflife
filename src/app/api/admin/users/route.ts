@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { z } from "zod"
-import { ok, parseQuery, withRoute } from "@/lib/api"
-import { requirePermission } from "@/lib/guards"
+import { ok, parseQuery } from "@/lib/api"
+import { withPermission } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import { hasRole, Permission, Role } from "@/lib/permissions"
 import { listUsers } from "@/lib/queries/admin"
@@ -10,10 +10,7 @@ export const dynamic = "force-dynamic"
 
 const query = paginationQuery.extend({ q: z.string().trim().max(200).optional() })
 
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = await requirePermission(Permission.VIEW_USERS)
-	if (gate.error) return gate.error
-
+export const GET = withPermission(Permission.VIEW_USERS, async (req: NextRequest, { gate }) => {
 	const parsed = parseQuery(req, query)
 	if (parsed.error) return parsed.error
 

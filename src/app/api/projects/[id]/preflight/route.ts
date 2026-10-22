@@ -1,5 +1,5 @@
-import { fail, ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok } from "@/lib/api"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { checkRepo } from "@/lib/repo-checks"
 
@@ -16,9 +16,7 @@ interface Params {
  *
  * A read, and only a read. The first green check used to be stamped here, which made this a GET that wrote to the database – and a cross-site top-level navigation carries the session cookie, so any site could stamp a participant's funnel marker by linking them at it. The stamp moved to the path that enforces the checks (lib/submissions.ts), where it sits behind the POST that hands a phase in.
  */
-export const GET = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({

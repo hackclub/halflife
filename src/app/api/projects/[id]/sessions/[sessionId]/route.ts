@@ -1,13 +1,14 @@
 import { after } from "next/server"
 import { Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import {
 	getSubmissionAccess,
@@ -46,9 +47,7 @@ function weekOpenFor(userId: string, projectId: string, session: { phase: Phase;
 	return isWeekOpen(userId, projectId, scheduledWeekFor(session.themeProject.theme, session.phase))
 }
 
-export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const parsed = await parseBody(req, sessionUpdateSchema)
@@ -63,7 +62,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (!(await weekOpenFor(gate.user.id, id, session))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 	// A submitted week's entries are what it was judged on, or is being judged on: in review, a reviewer is reading them; decided, they are the record the decision was made against. Only a week that is still open or has been sent back for changes can have its entries corrected.
-	const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
+	const phaseStatus = statusFor(session.themeProject, session.phase)
 	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before editing its entries")
 	if (isPhaseDecided(phaseStatus))
@@ -145,9 +144,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	return ok({ session: updated })
 })
 
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const session = await loadOwned(gate.user.id, id, sessionId)
@@ -159,7 +156,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	if (session.hoursApproved !== null)
 		return fail("PHASE_LOCKED", "This entry has been reviewed and can no longer be deleted")
 	// Deleting an entry is a correction to the record, so it freezes with the phase: while a reviewer is reading the week, its evidence has to sit still, exactly as editing it does.
-	const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
+	const phaseStatus = statusFor(session.themeProject, session.phase)
 	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before deleting its entries")
 	// Once the week is decided its entries are final, exactly as editing is.

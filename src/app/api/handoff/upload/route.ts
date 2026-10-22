@@ -1,7 +1,7 @@
 import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { clientIp } from "@/lib/client-ip"
 import { completeHandoff, resolveHandoff } from "@/lib/handoff"
-import { clientIp } from "@/lib/site/signups"
 import { isUploadConfigured } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"

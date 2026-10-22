@@ -16,3 +16,24 @@ export function formatDeadline(at: Date | number, timeZone: string, style: "long
 export function formatShortDate(at: Date | number | string): string {
 	return new Date(at).toLocaleDateString("en-US", { day: "numeric", month: "short" })
 }
+
+/**
+ * A Date as the value a `datetime-local` input takes, in the browser's own zone.
+ *
+ * The subtraction is what makes it local: `toISOString` would print UTC and the input would show a time offset from the one the reader picked.
+ */
+export function toLocalInput(date: Date): string {
+	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+	return local.toISOString().slice(0, 16)
+}
+
+const UTC_DATE_TIME = new Intl.DateTimeFormat("en-US", {
+	dateStyle: "medium",
+	timeStyle: "short",
+	timeZone: "UTC",
+})
+
+/** An audit or moderation timestamp, pinned to UTC so the console does not disagree with itself between server and browser. */
+export function formatUtcDateTime(at: Date | number): string {
+	return UTC_DATE_TIME.format(at)
+}

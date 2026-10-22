@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { ok, parseBody, parseQuery, withRoute } from "@/lib/api"
+import { ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requireSession } from "@/lib/guards"
+import { withSession } from "@/lib/guards"
 import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import { purchaseSchema } from "@/lib/schemas/shop"
@@ -21,10 +21,7 @@ const ORDERS_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<{ placedAt: Date }, Prisma.ShopOrderOrderByWithRelationInput>
 
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (req: NextRequest, { gate }) => {
 	const query = parseQuery(req, paginationQuery)
 	if (query.error) return query.error
 
@@ -41,10 +38,7 @@ export const GET = withRoute(async (req: NextRequest) => {
 	return ok(pageResult(rows, query.data.limit, ORDERS_ORDER))
 })
 
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const POST = withSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, purchaseSchema)
 	if (parsed.error) return parsed.error
 

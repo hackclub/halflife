@@ -1,16 +1,13 @@
 import type { NextRequest } from "next/server"
-import { ok, parseQuery, withRoute } from "@/lib/api"
+import { ok, parseQuery } from "@/lib/api"
 import { getBalances, getEarnedCredit, getLedgerPage } from "@/lib/currency"
-import { requireSession } from "@/lib/guards"
+import { withSession } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (req: NextRequest, { gate }) => {
 	const query = parseQuery(req, paginationQuery)
 	if (query.error) return query.error
 

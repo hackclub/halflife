@@ -19,6 +19,7 @@ export function RepoChecks({
 	project,
 	onResult,
 	editable = true,
+	syncRepo: initialSyncRepo,
 }: {
 	project: Project
 	onResult(result: RepoCheckResult | null): void
@@ -26,13 +27,17 @@ export function RepoChecks({
 	 * Whether the link can be changed from here. The submit sheet says yes, so a wrong link is fixed without leaving it; the project page says no, because its own details editor already owns the link.
 	 */
 	editable?: boolean
+	/**
+	 * The sync target the page already loaded, when it has one. Passing it – even as null – skips the second read of an endpoint the server render has already answered; omitting it makes the sheet load the shortcut for itself.
+	 */
+	syncRepo?: { repo: string; differs: boolean } | null
 }) {
 	const { linkSyncRepoToProject } = useStore()
 	const [data, setData] = useState<RepoCheckResult | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	// Whether the sync writes to a different repo than the project links to, and what that repo is – the shortcut offered when the link is missing or wrong.
-	const [syncRepo, setSyncRepo] = useState<{ repo: string; differs: boolean } | null>(null)
+	const [syncRepo, setSyncRepo] = useState<{ repo: string; differs: boolean } | null>(initialSyncRepo ?? null)
 	const [linking, setLinking] = useState(false)
 
 	// Runs on mount and on a new link. The sync state is a second read, and only its repo identity is kept: the rest of it belongs to the sync settings box.
@@ -48,9 +53,10 @@ export function RepoChecks({
 	}, [project.id])
 
 	useEffect(() => {
-		// fetching on mount and a new project
+		// The page already loaded the sync state; only a surface without it asks.
+		if (initialSyncRepo !== undefined) return
 		void loadSync()
-	}, [loadSync])
+	}, [initialSyncRepo, loadSync])
 
 	async function linkProject() {
 		if (!syncRepo) return

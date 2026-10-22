@@ -2,6 +2,7 @@
 import { useRef, useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import { postForm } from "@/lib/upload-progress"
+import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 
 interface ApiError {
 	error?: { message?: string }
@@ -31,8 +32,8 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 			setError("Record or choose a video first.")
 			return
 		}
-		if (!file.type.startsWith("video/")) {
-			setError("Choose a video file (MP4, WebM, or MOV).")
+		if (!isVideoFile(file)) {
+			setError(VIDEO_TYPE_MESSAGE)
 			return
 		}
 
@@ -70,7 +71,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 
 			<Field hint="Tap to record, or pick one you already have." label="Video">
 				<input
-					accept="video/*"
+					accept={VIDEO_ACCEPT}
 					capture="environment"
 					className="hl-input"
 					disabled={state === "uploading"}

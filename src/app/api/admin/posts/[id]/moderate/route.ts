@@ -1,7 +1,7 @@
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { hidePost, restorePost } from "@/lib/feed"
-import { requirePermission } from "@/lib/guards"
+import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { moderatePostSchema } from "@/lib/schemas/feed"
 
@@ -12,43 +12,45 @@ interface Params {
 }
 
 /** Hide a reel. */
-export const POST = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requirePermission(Permission.MANAGE_FEED)
-	if (gate.error) return gate.error
-	const { id } = await params
+export const POST = withPermission(
+	Permission.MANAGE_FEED,
+	async (req: Request, { params, gate }: Params & AuthedContext) => {
+		const { id } = await params
 
-	const parsed = await parseBody(req, moderatePostSchema)
-	if (parsed.error) return parsed.error
+		const parsed = await parseBody(req, moderatePostSchema)
+		if (parsed.error) return parsed.error
 
-	await hidePost(id, gate.user.id, parsed.data.reason)
+		await hidePost(id, gate.user.id, parsed.data.reason)
 
-	await logAudit({
-		action: AuditAction.ADMIN_HIDE_POST,
-		actorEmail: gate.user.email,
-		actorId: gate.user.id,
-		metadata: { reason: parsed.data.reason },
-		targetId: id,
-		targetType: "Post",
-	})
+		await logAudit({
+			action: AuditAction.ADMIN_HIDE_POST,
+			actorEmail: gate.user.email,
+			actorId: gate.user.id,
+			metadata: { reason: parsed.data.reason },
+			targetId: id,
+			targetType: "Post",
+		})
 
-	return ok({ hidden: true })
-})
+		return ok({ hidden: true })
+	},
+)
 
 /** Put it back. */
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requirePermission(Permission.MANAGE_FEED)
-	if (gate.error) return gate.error
-	const { id } = await params
+export const DELETE = withPermission(
+	Permission.MANAGE_FEED,
+	async (_req: Request, { params, gate }: Params & AuthedContext) => {
+		const { id } = await params
 
-	await restorePost(id)
+		await restorePost(id)
 
-	await logAudit({
-		action: AuditAction.ADMIN_RESTORE_POST,
-		actorEmail: gate.user.email,
-		actorId: gate.user.id,
-		targetId: id,
-		targetType: "Post",
-	})
+		await logAudit({
+			action: AuditAction.ADMIN_RESTORE_POST,
+			actorEmail: gate.user.email,
+			actorId: gate.user.id,
+			targetId: id,
+			targetType: "Post",
+		})
 
-	return ok({ restored: true })
-})
+		return ok({ restored: true })
+	},
+)

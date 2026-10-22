@@ -1,16 +1,13 @@
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { appendLedgerEntry, CoinBucket, getBalances, LedgerKind, lockUserCredit } from "@/lib/currency"
-import { requirePermission } from "@/lib/guards"
+import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
 import { creditAdjustSchema } from "@/lib/schemas/admin"
 
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requirePermission(Permission.MANAGE_CREDIT)
-	if (gate.error) return gate.error
-
+export const POST = withPermission(Permission.MANAGE_CREDIT, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, creditAdjustSchema)
 	if (parsed.error) return parsed.error
 	const { userId, amount, reason, bucket } = parsed.data

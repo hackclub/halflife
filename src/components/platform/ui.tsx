@@ -134,36 +134,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button"
 
 /* ------------------------------------------------------------------ *
- * Torn tape – the week banner / page signs
- * ------------------------------------------------------------------ */
-export function Tape({
-	children,
-	className,
-	color = "var(--color-sky)",
-	soft = false,
-}: {
-	children?: ReactNode
-	className?: string
-	color?: string
-	soft?: boolean
-}) {
-	return (
-		<div className={cx("relative", className)}>
-			<div
-				aria-hidden="true"
-				className={cx("absolute inset-0", soft ? "torn-soft" : "torn")}
-				style={{
-					background: color,
-					borderRadius: 4,
-					boxShadow: "0 3px 6px rgba(28,26,89,.1), 0 14px 30px -14px rgba(28,26,89,.4)",
-				}}
-			/>
-			<div className="relative">{children}</div>
-		</div>
-	)
-}
-
-/* ------------------------------------------------------------------ *
  * Option row – the big pick-one buttons used across every modal
  * ------------------------------------------------------------------ */
 export function OptionRow({

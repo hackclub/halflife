@@ -72,5 +72,3 @@ export const onboardingStepSchema = z.discriminatedUnion("step", [
 		})
 		.strict(),
 ])
-
-export type OnboardingStepInput = z.infer<typeof onboardingStepSchema>

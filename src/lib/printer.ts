@@ -115,7 +115,8 @@ export interface PrinterAwardUpdate {
  *
  * The ciphertext is read on the server and never returned: it is what an address is locked from, and the fulfilment sheet needs the flag rather than the address.
  */
-const printerAwardResponseSelect = {
+/** The award row both the API and the staff list return: fulfilment fields plus the ciphertext, which is folded into a flag before it leaves. */
+export const printerAwardSelect = {
 	addressLockedAt: true,
 	deliveredAt: true,
 	encryptedAddress: true,
@@ -130,7 +131,7 @@ const printerAwardResponseSelect = {
 	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.PrinterAwardSelect
 
-type PrinterAwardPayload = Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardResponseSelect }>
+type PrinterAwardPayload = Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>
 
 /** The award row the API returns: the fulfilment fields, and whether an address is locked on file. */
 export interface PrinterAwardResponse extends Omit<PrinterAwardPayload, "encryptedAddress"> {
@@ -236,7 +237,7 @@ export async function updatePrinterAwardStatus(
 
 	// The row that goes back to the caller carries the fulfilment fields only: the locked address and the phone are ciphertext and stay on the server.
 	const { encryptedAddress, ...updated } = await prisma.printerAward.findUniqueOrThrow({
-		select: printerAwardResponseSelect,
+		select: printerAwardSelect,
 		where: { id: awardId },
 	})
 	return Object.assign(updated, { addressOnFile: encryptedAddress !== "" })

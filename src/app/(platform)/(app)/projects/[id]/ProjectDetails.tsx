@@ -8,7 +8,7 @@ import { Button, Chip, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor } from "@/lib/config/printers"
 import { DESIGN_WEEKS, MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { ENTRY_TIER } from "@/lib/config/tiers"
+import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
@@ -179,7 +179,7 @@ function DetailsForm({
 
 	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
-	const selectedTier = TIERS.find(t => t.id === tier)
+	const selectedTier = getTier(tier)
 	const readyToSubmit = selectedTier !== undefined && hours >= submitFloorFor(selectedTier.fundingHours)
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
@@ -290,7 +290,7 @@ function DetailsForm({
 				/>
 				<p className="text-[0.78rem] leading-snug text-navy-soft">
 					Your repo needs a README that says what the project is, how it works, and shows at least two photos of it – at
-					least 200 characters of text, once images are removed –{" "}
+					least 200 characters of text over at least 3 lines, once images are removed –{" "}
 					<a
 						className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 						href={README_GUIDE_URL}

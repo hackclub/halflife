@@ -291,7 +291,8 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 											title="Your own idea"
 										>
 											<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
-												Make your own project! It can be anything you want.
+												Make your own project! It can be anything you want within this week&rsquo;s theme:{' '}
+												{view.weekIntro.kicker}.
 											</p>
 										</ProjectChoiceCard>
 									</div>

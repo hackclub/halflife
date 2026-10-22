@@ -31,9 +31,12 @@ import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
 import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { formatShortDate } from "@/lib/deadline"
+import { round2 } from "@/lib/money"
+import { fmtHours } from "@/lib/numbers"
 import {
 	PLATFORM_INFO,
 	PUBLIC_REEL_HASHTAG,
@@ -58,11 +61,6 @@ import { type SubmissionReel, SubmissionReelPicker } from "./SubmissionReelPicke
 /* ================================================================== *
  * Journal + timelapse
  * ================================================================== */
-/**
- * Two decimals at most, never a trailing zero: 7.5h, 9h, 9.55h. Rounded rather than truncated because binary floats land on 44.799999999999955, and cutting that gives 44.79 for a remainder that is really 44.8.
- */
-const to2 = (n: number) => Math.round(n * 100) / 100
-
 /** Hours, written the way a person says them. */
 /**
  * How a sheet names its week. The warm-up is week 0 in the store, which is only an address; to the person it is their warm-up.
@@ -77,10 +75,6 @@ function weekName(week: { id: number }): string {
 function isWeeksProject(week: Week, project: Project): boolean {
 	if (week.projectId) return project.id === week.projectId
 	return project.weekId === (week.phase === "build" ? week.id - 5 : week.id)
-}
-
-function fmtH(h: number) {
-	return `${to2(h)}h`
 }
 
 /** The parts list read, plus the error envelope the route shares. */
@@ -310,7 +304,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [body, setBody] = useState(draft ? clampToContentLimit(draft.body) : (existing?.body ?? ""))
 	const [preview, setPreview] = useState(false)
 	// Free text, not a number: a controlled number input that coerces as you type eats the decimal point the moment you reach for "1.5".
-	const [hoursText, setHoursText] = useState(draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""))
+	const [hoursText, setHoursText] = useState(
+		draft?.hoursText ?? (existing ? String(round2(existing.minutes / 60)) : ""),
+	)
 	const [saving, setSaving] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
 	const imageInput = useRef<HTMLInputElement>(null)
@@ -326,7 +322,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// Autosave: every keystroke lands in this browser, so closing the sheet, reloading, or navigating away cannot lose it. Empty sheets and edits matching the saved entry keep no draft; a saved entry clears it.
 	const baselineBody = existing?.body ?? ""
 	// In the box's own arithmetic, once the seed below restates it: the box holds what the timelapses do not cover, so the baseline moves with it.
-	const [baselineHours, setBaselineHours] = useState(existing ? String(to2(existing.minutes / 60)) : "")
+	const [baselineHours, setBaselineHours] = useState(existing ? String(round2(existing.minutes / 60)) : "")
 	// An entry logged under the old arithmetic whose old total does not cover its resolved timelapses: restating the box clamps it at zero and the total grows on open. Named on screen rather than silently absorbed, so a typo fix never quietly logs extra hours.
 	const [legacyBump, setLegacyBump] = useState<{ from: number; lapse: number } | null>(null)
 	// The trip draft has been restored into state: consume it so it cannot resurrect an entry days later. Autosave below keeps it from here on.
@@ -373,7 +369,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				// The saved figure was logged under the old arithmetic, so restate the box as the part the timelapses do not cover: the total is unchanged unless the maker edits it. The baseline moves with the box – autosave, discard and "matches saved" all compare against it, and leaving it at the old total would restore that total as a residual on discard and count the timelapses twice.
 				const seedLapseHours = Math.round((seed.picked.reduce((n, t) => n + t.durationSeconds, 0) / 3600) * 100) / 100
 				if (seedLapseHours > 0) {
-					const baseHours = to2(existing.minutes / 60)
+					const baseHours = round2(existing.minutes / 60)
 					const restated = String(Math.max(0, Math.round((baseHours - seedLapseHours) * 100) / 100))
 					setHoursText(restated)
 					setBaselineHours(restated)
@@ -463,7 +459,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				? "Add the hours you spent on this session, or pick a Lapse timelapse."
 				: !longEnough
 					? `${200 - written} more characters in your entry, not counting images.${orLapse}`
-					: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(typed)}.${orLapse}`
+					: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtHours(typed)}.${orLapse}`
 		: null
 
 	const hours = hoursOf(week)
@@ -649,11 +645,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								"Saving replaces this entry. It keeps its place on the map."
 							) : toFloor > 0 ? (
 								<>
-									{fmtH(toFloor)} more before you can {week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
+									{fmtHours(toFloor)} more before you can{" "}
+									{week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
 									{showGoal ? (
 										<>
 											{" "}
-											– {fmtH(toGoal)} more if you want to reach your goal of{" "}
+											– {fmtHours(toGoal)} more if you want to reach your goal of{" "}
 											<strong className="rounded bg-gold-pale px-1 text-gold-ink">{weeklyGoalCoins} coins</strong> per
 											week.
 										</>
@@ -811,9 +808,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						)}
 						{editing && legacyBump && (
 							<p className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep" role="note">
-								This entry was logged as {fmtH(legacyBump.from)} before timelapses added hours on top – with its{" "}
-								{fmtH(legacyBump.lapse)} of recording it now totals {fmtH(claimed)}. Unpick timelapses on the Timelapse
-								tab to bring it back down.
+								This entry was logged as {fmtHours(legacyBump.from)} before timelapses added hours on top – with its{" "}
+								{fmtHours(legacyBump.lapse)} of recording it now totals {fmtHours(claimed)}. Unpick timelapses on the
+								Timelapse tab to bring it back down.
 							</p>
 						)}
 					</div>
@@ -1032,7 +1029,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						{picked.length === 0
 							? " "
 							: `${picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} picked · ${fmtDuration(coveredSeconds)} recorded${
-									claimed > 0 ? `, logged as ${fmtH(claimed)}` : ""
+									claimed > 0 ? `, logged as ${fmtHours(claimed)}` : ""
 								}`}
 					</p>
 				</div>
@@ -1221,7 +1218,7 @@ export function PublicReelModal({
 									<>
 										Once review is complete and assuming no deflation, you&apos;ll earn{" "}
 										<strong className="rounded bg-gold-pale px-1 text-gold-ink">coins</strong> at 5 per hour for your{" "}
-										{fmtH(celebration.extraHours)} past your tier&apos;s funded hours.
+										{fmtHours(celebration.extraHours)} past your tier&apos;s funded hours.
 									</>
 								) : (
 									<>It&apos;s with the reviewers now.</>
@@ -1807,7 +1804,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						title="Your own idea"
 					>
 						<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
-							Make your own project! It can be anything you want.
+							Make your own project! It can be anything you want within this week&rsquo;s theme: {week.fullName}.
 						</p>
 					</ProjectChoiceCard>
 					{/* Only once a starter is the pick: it is a rule about the choice, not about the step, and beside "make your own" it read as a warning about the whole fork. */}
@@ -1906,9 +1903,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											<>
 												{t.detail}
 												<span className="mt-1 block text-navy-soft/90">
-													You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
-													hours and nothing more. Every hour past that (once your tier&apos;s funding is achieved) earns
-													5 spendable coins.
+													You can submit on tier {t.id} from {fmtHours(t.fundingHours)} of design time – the
+													parts-funding hours and nothing more. Every hour past that (once your tier&apos;s funding is
+													achieved) earns 5 spendable coins.
 												</span>
 											</>
 										}
@@ -1920,7 +1917,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 											<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
 											<span className="hand text-[0.8rem] text-navy-soft">
-												· {fmtH(submitFloorFor(t.fundingHours))} to submit
+												· {fmtHours(submitFloorFor(t.fundingHours))} to submit
 											</span>
 										</span>
 									</OptionRow>
@@ -2106,7 +2103,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const hours = hoursOf(week)
 	const tierFloor = submitFloorFor
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
-	const selectedTier = TIERS.find(t => t.id === tier) ?? TIERS[0]
+	const selectedTier = getTier(tier) ?? ENTRY_TIER
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
 	// Over the tier's funding warns; past the leeway the grant covers only part of the cart, which is allowed but has to be agreed to rather than discovered at review.
 	const funding = partsFunding(bomTotal, selectedTier.grantUsd)
@@ -2148,7 +2145,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (step === 1) return null
 		// These two block whichever of the later steps is showing.
 		if (tierBlocked)
-			return `Your tier needs ${fmtH(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
+			return `Your tier needs ${fmtHours(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
 		if (!fundingOk) return "Tick the box agreeing to cover the part of the cart the grant does not."
 		if (isBuild)
 			return !clip
@@ -2554,7 +2551,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
 							Find out which tier you&apos;re eligible for! Your current goal is a{" "}
 							<span className="font-bold text-navy">{goal.name}</span> and you have{" "}
-							<span className="font-bold text-navy tabular-nums">{fmtH(hours)}</span> logged this week.
+							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span> logged this week.
 						</p>
 						<div className="grid gap-2.5 sm:grid-cols-3">
 							{TIERS.map(t => {
@@ -2603,7 +2600,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											)}
 										>
 											{short > 0
-												? `Opens at ${fmtH(tierFloor(t.fundingHours))} of design time, ${fmtH(short)} to go`
+												? `Opens at ${fmtHours(tierFloor(t.fundingHours))} of design time, ${fmtHours(short)} to go`
 												: `Every hour past this tier's ${t.fundingHours}h earns 5 spendable coins`}
 										</span>
 										{short === 0 && over && (

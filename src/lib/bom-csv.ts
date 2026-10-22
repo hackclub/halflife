@@ -1,3 +1,4 @@
+import { parseCsvRows } from "@/lib/csv"
 /**
  * A BOM CSV from a maker's own repo, read into the platform's parts list.
  *
@@ -103,50 +104,6 @@ function normalize(cell: string): string {
 		.toLowerCase()
 		.replaceAll(/[^a-z0-9]+/g, " ")
 		.trim()
-}
-
-/**
- * Split CSV text into rows and cells, honouring quotes.
- *
- * The RFC's shape, not its every clause: quoted fields may contain commas and newlines, a doubled quote is a literal quote, and a bare CR is ignored. That covers what the exporters emit – the one thing worth noting is that a BOM with a part description containing a comma is exactly the case that breaks a naive `split(",")`.
- */
-function parseRows(input: string): string[][] {
-	// A UTF-8 BOM is invisible and would otherwise become part of the first header cell, so the name column is never found.
-	const text = input.codePointAt(0) === 0xfeff ? input.slice(1) : input
-	const rows: string[][] = []
-	let row: string[] = []
-	let field = ""
-	let quoted = false
-
-	const push = () => {
-		row.push(field)
-		field = ""
-	}
-	const endRow = () => {
-		push()
-		rows.push(row)
-		row = []
-	}
-
-	for (let i = 0; i < text.length; i++) {
-		const ch = text[i]
-		if (quoted) {
-			if (ch === '"')
-				if (text[i + 1] === '"') {
-					field += '"'
-					i++
-				} else quoted = false
-			else field += ch
-			continue
-		}
-		if (ch === '"') quoted = true
-		else if (ch === ",") push()
-		else if (ch === "\n") endRow()
-		else if (ch !== "\r") field += ch
-	}
-	if (field !== "" || row.length > 0) endRow()
-
-	return rows
 }
 
 /** Which column each field lives in, by the names its cells carry. */
@@ -283,7 +240,7 @@ function clean(value: string | undefined, max: number): string | null {
  */
 export function parseBomCsv(text: string, opts: { limit?: number } = {}): ParsedBom {
 	const limit = opts.limit ?? Number.POSITIVE_INFINITY
-	const rows = parseRows(text)
+	const rows = parseCsvRows(text)
 	const head = findHeader(rows)
 	if (!head) return { header: null, lines: [], skipped: [] }
 

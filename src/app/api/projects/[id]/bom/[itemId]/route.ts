@@ -1,8 +1,8 @@
 import { after } from "next/server"
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { bomData, bomLockReason, listBom } from "@/lib/bom"
 import { HttpError } from "@/lib/errors"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { scheduleRepoSync } from "@/lib/repo-sync"
@@ -31,9 +31,7 @@ async function guard(userId: string, id: string, itemId: string) {
 	return { item }
 }
 
-export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, itemId } = await params
 
 	const parsed = await parseBody(req, bomItemUpdateSchema)
@@ -66,9 +64,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	return ok({ items: await listBom(id) })
 })
 
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, itemId } = await params
 
 	const g = await guard(gate.user.id, id, itemId)

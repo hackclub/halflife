@@ -3,6 +3,7 @@ import type { Prisma, ThemeProject } from "@/app/generated/prisma/client"
 import { type Phase, Theme } from "@/app/generated/prisma/enums"
 import { MAX_WARMUP_PROJECTS, THEMES } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
+import { lockKey } from "@/lib/locks"
 import prisma from "@/lib/prisma"
 
 /**
@@ -31,19 +32,13 @@ export async function ensureThemeProject(userId: string, theme: Theme): Promise<
 	})
 }
 
-/** The theme a design week belongs to, or null for a week that is not one. */
-export function themeForDesignWeek(weekId: number): Theme | null {
-	return THEMES.find(t => t.designWeek === weekId)?.id ?? null
-}
-
 /**
  * Serialize warm-up creation for one maker.
  *
  * The cap is a count, and a count read before the create is a race: two requests at once both read a count under the cap and both create, so the cap would be a suggestion rather than a cap. The lock is the same per-maker advisory lock the money paths take (see `lockUserCredit` in lib/currency.ts), in its own namespace so it cannot collide with a credit mutation, and it is the first statement in the transaction so the count cannot be read before the other request has finished creating.
  */
-async function lockWarmupProjects(tx: Prisma.TransactionClient, userId: string): Promise<void> {
-	// hashtextextended gives a stable bigint for the key; the constant is just a namespace so this lock cannot collide with an unrelated advisory lock. $executeRaw rather than $queryRaw: pg_advisory_xact_lock returns void, and the driver adapter cannot deserialize that as a result row.
-	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`warmup:${userId}`}, 0))`
+function lockWarmupProjects(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+	return lockKey(tx, `warmup:${userId}`)
 }
 
 export interface WarmupProjectInput {

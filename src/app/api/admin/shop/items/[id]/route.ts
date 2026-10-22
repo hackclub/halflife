@@ -1,6 +1,6 @@
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requirePermission } from "@/lib/guards"
+import { type AuthedContext, withPermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
@@ -11,87 +11,89 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requirePermission(Permission.MANAGE_SHOP)
-	if (gate.error) return gate.error
-	const { id } = await params
+export const PATCH = withPermission(
+	Permission.MANAGE_SHOP,
+	async (req: Request, { params, gate }: Params & AuthedContext) => {
+		const { id } = await params
 
-	const parsed = await parseBody(req, shopItemUpdateSchema)
-	if (parsed.error) return parsed.error
-	const data = parsed.data
+		const parsed = await parseBody(req, shopItemUpdateSchema)
+		if (parsed.error) return parsed.error
+		const data = parsed.data
 
-	const before = await prisma.shopItem.findUnique({ where: { id } })
-	if (!before) return fail("NOT_FOUND", "Item not found")
+		const before = await prisma.shopItem.findUnique({ where: { id } })
+		if (!before) return fail("NOT_FOUND", "Item not found")
 
-	const item = await prisma.shopItem.update({
-		data: {
-			...data,
-			...(data.name !== undefined ? { name: sanitize(data.name) } : {}),
-			...(data.description !== undefined ? { description: sanitize(data.description) } : {}),
-			...(data.costUsd !== undefined ? { costUsd: dollars(data.costUsd) } : {}),
-		},
-		where: { id },
-	})
-
-	await logAudit({
-		action: AuditAction.ADMIN_UPDATE_SHOP_ITEM,
-		actorEmail: gate.user.email,
-		actorId: gate.user.id,
-		// Everything the edit form can change. Category and gating decide who can buy an item and with which coins, so a change to them has to be traceable.
-		metadata: {
-			after: {
-				active: item.active,
-				category: item.category,
-				costUsd: item.costUsd,
-				imageUrl: item.imageUrl,
-				maxPerUser: item.maxPerUser,
-				name: item.name,
-				priceCredits: item.priceCredits,
-				requiresPrinterQualified: item.requiresPrinterQualified,
-				sortOrder: item.sortOrder,
-				stock: item.stock,
+		const item = await prisma.shopItem.update({
+			data: {
+				...data,
+				...(data.name !== undefined ? { name: sanitize(data.name) } : {}),
+				...(data.description !== undefined ? { description: sanitize(data.description) } : {}),
+				...(data.costUsd !== undefined ? { costUsd: dollars(data.costUsd) } : {}),
 			},
-			before: {
-				active: before.active,
-				category: before.category,
-				costUsd: before.costUsd,
-				imageUrl: before.imageUrl,
-				maxPerUser: before.maxPerUser,
-				name: before.name,
-				priceCredits: before.priceCredits,
-				requiresPrinterQualified: before.requiresPrinterQualified,
-				sortOrder: before.sortOrder,
-				stock: before.stock,
-			},
-		},
-		targetId: id,
-		targetType: "ShopItem",
-	})
+			where: { id },
+		})
 
-	return ok({ item })
-})
+		await logAudit({
+			action: AuditAction.ADMIN_UPDATE_SHOP_ITEM,
+			actorEmail: gate.user.email,
+			actorId: gate.user.id,
+			// Everything the edit form can change. Category and gating decide who can buy an item and with which coins, so a change to them has to be traceable.
+			metadata: {
+				after: {
+					active: item.active,
+					category: item.category,
+					costUsd: item.costUsd,
+					imageUrl: item.imageUrl,
+					maxPerUser: item.maxPerUser,
+					name: item.name,
+					priceCredits: item.priceCredits,
+					requiresPrinterQualified: item.requiresPrinterQualified,
+					sortOrder: item.sortOrder,
+					stock: item.stock,
+				},
+				before: {
+					active: before.active,
+					category: before.category,
+					costUsd: before.costUsd,
+					imageUrl: before.imageUrl,
+					maxPerUser: before.maxPerUser,
+					name: before.name,
+					priceCredits: before.priceCredits,
+					requiresPrinterQualified: before.requiresPrinterQualified,
+					sortOrder: before.sortOrder,
+					stock: before.stock,
+				},
+			},
+			targetId: id,
+			targetType: "ShopItem",
+		})
+
+		return ok({ item })
+	},
+)
 
 /**
  * Retire, never delete: orders reference the item forever, and "retired" is a different concept from "deleted".
  */
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requirePermission(Permission.MANAGE_SHOP)
-	if (gate.error) return gate.error
-	const { id } = await params
+export const DELETE = withPermission(
+	Permission.MANAGE_SHOP,
+	async (_req: Request, { params, gate }: Params & AuthedContext) => {
+		const { id } = await params
 
-	const before = await prisma.shopItem.findUnique({ where: { id } })
-	if (!before) return fail("NOT_FOUND", "Item not found")
+		const before = await prisma.shopItem.findUnique({ where: { id } })
+		if (!before) return fail("NOT_FOUND", "Item not found")
 
-	const item = await prisma.shopItem.update({ data: { active: false }, where: { id } })
+		const item = await prisma.shopItem.update({ data: { active: false }, where: { id } })
 
-	await logAudit({
-		action: AuditAction.ADMIN_RETIRE_SHOP_ITEM,
-		actorEmail: gate.user.email,
-		actorId: gate.user.id,
-		metadata: { after: { active: false }, before: { active: before.active } },
-		targetId: id,
-		targetType: "ShopItem",
-	})
+		await logAudit({
+			action: AuditAction.ADMIN_RETIRE_SHOP_ITEM,
+			actorEmail: gate.user.email,
+			actorId: gate.user.id,
+			metadata: { after: { active: false }, before: { active: before.active } },
+			targetId: id,
+			targetType: "ShopItem",
+		})
 
-	return ok({ item })
-})
+		return ok({ item })
+	},
+)

@@ -1,3 +1,5 @@
+import { fmtHours } from "@/lib/numbers"
+import { DAY_MS } from "@/lib/time"
 import "server-only"
 import { Phase, type Theme } from "@/app/generated/prisma/enums"
 import { scheduledWeekFor } from "@/lib/config/program"
@@ -144,8 +146,8 @@ export function justificationValues(
 	opts: { eventStart: Date; phase: Phase; theme: Theme },
 ): JustificationValues {
 	const week = scheduledWeekFor(opts.theme, opts.phase)
-	const start = new Date(opts.eventStart.getTime() + (week - 1) * 7 * 86_400_000)
-	const end = new Date(start.getTime() + 6 * 86_400_000)
+	const start = new Date(opts.eventStart.getTime() + (week - 1) * 7 * DAY_MS)
+	const end = new Date(start.getTime() + 6 * DAY_MS)
 	const projects = source.hackatimeProjects.map(name => `${name} (${ymd(start)} to ${ymd(end)})`)
 	const features = specificTechnicalFeatures(source, opts.phase)
 	return {
@@ -170,7 +172,7 @@ function sessionLine(session: JustificationSession, description: string): string
 	const title = session.title.trim()
 	if (!title) return null
 	const date = session.effectiveDate?.trim() || ymd(session.createdAt)
-	const head = `- ${title} – ${formatHours(session.hoursClaimed)}${date ? ` (${date})` : ""}`
+	const head = `- ${title} – ${fmtHours(session.hoursClaimed)}${date ? ` (${date})` : ""}`
 	const excerpt = sessionExcerpt(session.content, description)
 	return excerpt ? `${head}\n  ${excerpt}` : head
 }
@@ -195,9 +197,4 @@ function sessionExcerpt(content: string | null, description: string): string | n
 	const opening = description.trim().slice(0, OPENING_CHARS)
 	if (opening.length >= OPENING_CHARS && kept.startsWith(opening)) return null
 	return kept.length > EXCERPT_CHARS ? `${kept.slice(0, EXCERPT_CHARS).trimEnd()}…` : kept
-}
-
-/** The claimed hours, without a trailing zero. */
-function formatHours(hours: number): string {
-	return `${Math.round(hours * 100) / 100}h`
 }

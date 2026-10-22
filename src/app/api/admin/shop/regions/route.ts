@@ -1,16 +1,14 @@
-import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { requirePermission } from "@/lib/guards"
+import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { shopRegionSchema } from "@/lib/schemas/admin"
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async () => {
-	const gate = await requirePermission(Permission.MANAGE_SHOP)
-	if (gate.error) return gate.error
-	return ok({
+export const GET = withPermission(Permission.MANAGE_SHOP, async () =>
+	ok({
 		items: await prisma.shopRegion.findMany({
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 			select: {
@@ -21,13 +19,10 @@ export const GET = withRoute(async () => {
 				sortOrder: true,
 			},
 		}),
-	})
-})
+	}),
+)
 
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requirePermission(Permission.MANAGE_SHOP)
-	if (gate.error) return gate.error
-
+export const POST = withPermission(Permission.MANAGE_SHOP, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, shopRegionSchema)
 	if (parsed.error) return parsed.error
 	const data = parsed.data

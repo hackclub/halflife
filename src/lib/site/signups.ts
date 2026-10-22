@@ -1,6 +1,7 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import { bufferRsvp, recordDirectSignup } from "@/lib/airtable/rsvp"
+import { rateLimited } from "@/lib/rate-limit"
 import { redactForLog } from "@/lib/redact"
 
 /**
@@ -259,71 +260,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 }
 
 /**
- * The client address for rate limiting, from the hop the ingress set.
- *
- * The first `x-forwarded-for` entry is what the caller sent – nginx and Traefik append, they do not replace – so keying on it let anyone rotate a header for a fresh bucket. Cloudflare overwrites `cf-connecting-ip`; behind a plain proxy the last XFF entry is the address the edge itself saw.
+ * The landing page's budget: eight attempts a minute, and a refused attempt still counts, so a caller hammering the endpoint does not get a fresh window by continuing.
  */
-export function clientIp(h: { get(name: string): string | null }): string {
-	const cf = h.get("cf-connecting-ip")?.trim()
-	if (cf) return cf
-	const forwarded = h.get("x-forwarded-for")
-	const last = forwarded
-		?.split(",")
-		.map(part => part.trim())
-		.findLast(Boolean)
-	return last || h.get("x-real-ip")?.trim() || "unknown"
-}
-
-/* ── Coarse per-instance rate limit ──────────────────────────────────────
-   Enough to stop a bored browser tab hammering the endpoint. For real abuse
-   protection put Vercel BotID or the WAF in front of the route. */
-const WINDOW_MS = 60_000
-const MAX_PER_WINDOW = 8
-/** How many distinct buckets a single process will hold before the oldest are evicted. */
-const MAX_BUCKETS = 5_000
-
-/**
- * One caller's bucket: the hits inside the window, and when the bucket was last touched.
- *
- * The two are not the same thing. A throttled caller is refused, so no hit is recorded – but they are still asking, and their bucket is still in use. Without the separate timestamp the bucket's recency would be its last *accepted* hit, which for a throttled caller is the oldest in the map: exactly the bucket that gets flushed.
- */
-interface SignupBucket {
-	hits: number[]
-	lastSeen: number
-}
-
-const hits = new Map<string, SignupBucket>()
-
-/**
- * The bucket to drop when the map is over its cap.
- *
- * A Map keeps its keys in the order they were first seen, so "the oldest key" is the bucket that was created first – and the bucket that was created first is the one a throttled caller owns, because they were the first to ask and they are still asking. Evicting by when the bucket was last touched instead drops the one nobody has come back to, and the caller's own bucket is never a candidate: dropping it would hand a throttled caller a fresh budget.
- */
-function evictionVictim(exclude: string): string | null {
-	let victim: string | null = null
-	let oldest = Number.POSITIVE_INFINITY
-	for (const [key, bucket] of hits) {
-		if (key === exclude) continue
-		if (bucket.lastSeen >= oldest) continue
-		oldest = bucket.lastSeen
-		victim = key
-	}
-	return victim
-}
-
-export function rateLimited(key: string): boolean {
-	const now = Date.now()
-	const bucket = hits.get(key)
-	const recent = (bucket?.hits ?? []).filter(at => now - at < WINDOW_MS)
-	recent.push(now)
-	// The bucket is touched either way: a refused caller is still a caller, and their bucket is still live.
-	hits.set(key, { hits: recent, lastSeen: now })
-
-	// Evict the buckets that have gone longest without a touch, one at a time, rather than clearing the map: a wholesale clear drops every live bucket along with the stale ones, which hands a throttled caller a fresh budget.
-	while (hits.size > MAX_BUCKETS) {
-		const victim = evictionVictim(key)
-		if (!victim) break
-		hits.delete(victim)
-	}
-	return recent.length > MAX_PER_WINDOW
+export function signupRateLimited(key: string): boolean {
+	return rateLimited(key, { countThrottled: true, max: 8 })
 }

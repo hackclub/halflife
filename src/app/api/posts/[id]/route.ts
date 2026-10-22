@@ -1,7 +1,7 @@
-import { fail, ok, withRoute } from "@/lib/api"
+import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { deleteOwnPost } from "@/lib/feed"
-import { requireSession } from "@/lib/guards"
+import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { reelLockReason } from "@/lib/reel-gate"
 
@@ -16,9 +16,7 @@ interface Params {
  *
  * A reel on a checkpoint can only go while its week can still take work: a week in review or decided keeps its reels as its record, and a passed week could never have the reel re-recorded, which would hold the rest of the map forever (see lib/reel-gate).
  */
-export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
+export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const post = await prisma.post.findFirst({

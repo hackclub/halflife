@@ -11,7 +11,7 @@ import { Button, Chip, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
-import { TIERS } from "@/lib/curriculum"
+import { getTier } from "@/lib/config/tiers"
 import { cx } from "@/lib/cx"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
@@ -561,7 +561,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 	// The tier is final once the design decision is approved, not the moment it is handed in: a phase returned for changes is still the maker's to revise, and the week a return reopens is exactly when they would. The build week inherits the design's tier, and a warm-up's one submit claims it the same way.
 	const tierLocked = statusOf(week) === "approved"
-	const grantUsd = TIERS.find(t => t.id === project.tier)?.grantUsd ?? 0
+	const grantUsd = getTier(project.tier)?.grantUsd ?? 0
 	// Kept in a local so the phase survives into the unsubmit handler below.
 	const inReview = data.inReview
 	// The overlap between a recording and a Hackatime link could not be checked for a phase of this project, so the total on this page may still be counting the same sitting once through each. A season project spans its design and build weeks, five apart, so either of them is enough.
@@ -688,7 +688,14 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 			{/* ---------- what the repo has ---------- */}
 			<div className="mt-6">
-				<RepoChecks editable={false} onResult={noop} project={project} />
+				<RepoChecks
+					editable={false}
+					onResult={noop}
+					project={project}
+					syncRepo={
+						data.repoSync.repo && data.repoSync.syncRepoDiffers ? { differs: true, repo: data.repoSync.repo } : null
+					}
+				/>
 			</div>
 
 			{/* ---------- keeping the repo in step ---------- */}

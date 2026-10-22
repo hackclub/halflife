@@ -10,6 +10,7 @@ import { requireSessionPage } from "@/lib/page-guards"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { fmtDay } from "@/lib/projects"
 import { getJournalFeed, type JournalRow } from "@/lib/queries/community"
+import { DAY_MS } from "@/lib/time"
 
 export const metadata: Metadata = {
 	description: "Journal entries from everyone building hardware this week.",
@@ -128,7 +129,7 @@ export default async function ExplorePage() {
 
 	const now = new Date()
 	const today = effectiveDateFor(now, settings.programTimezone)
-	const yesterday = effectiveDateFor(new Date(now.getTime() - 24 * 60 * 60 * 1000), settings.programTimezone)
+	const yesterday = effectiveDateFor(new Date(now.getTime() - DAY_MS), settings.programTimezone)
 
 	return (
 		<div className="mx-auto w-full max-w-[780px] px-4 pt-2 sm:px-8">

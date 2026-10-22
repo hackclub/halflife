@@ -1,7 +1,7 @@
-import { ok, withRoute } from "@/lib/api"
+import { ok } from "@/lib/api"
 import { avatarUrl } from "@/lib/avatar"
 import { getBalances, getEarnedCredit } from "@/lib/currency"
-import { requireSession } from "@/lib/guards"
+import { withSession } from "@/lib/guards"
 import { permissionsFor } from "@/lib/permissions"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
@@ -16,10 +16,7 @@ export const dynamic = "force-dynamic"
  * paced against a machine they never asked for.
  */
 
-export const GET = withRoute(async () => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (_req: Request, { gate }) => {
 	const [user, balances, earned, printer] = await Promise.all([
 		prisma.user.findUnique({
 			select: {

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { API_ERROR_STATUS, type ApiErrorCode, HttpError } from "@/lib/errors"
+import { rateLimited } from "@/lib/rate-limit"
 
 export interface ApiErrorBody {
 	error: { code: ApiErrorCode; message: string; details?: unknown }
@@ -66,16 +67,6 @@ export function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S)
 const MULTIPART_OVERHEAD_BYTES = 1 << 20
 
 type ParsedForm = { data: FormData; error?: never } | { data?: never; error: NextResponse<ApiErrorBody> }
-
-/**
- * One caller's bucket: the hits inside the window, and when the bucket was last touched.
- *
- * The two are not the same thing. A throttled caller is refused, so no hit is recorded – but they are still asking, and their bucket is still in use. Without the separate timestamp the bucket's recency would be its last *accepted* hit, which for a throttled caller is the oldest in the map: exactly the bucket that gets flushed.
- */
-interface LimiterBucket {
-	hits: number[]
-	lastSeen: number
-}
 
 /**
  * How many bytes of upload body may be held in memory at once, process-wide.
@@ -215,49 +206,18 @@ async function bufferUploadForm(request: Request, maxFileBytes: number): Promise
 }
 
 /**
- * A coarse per-instance limiter for authenticated write endpoints that have no other brake. Resets on cold start and is not shared across instances, so it stops one account spending the process's memory or storage in a loop, not a distributed attacker.
- */
-const limiterHits = new Map<string, LimiterBucket>()
-
-/** How many distinct buckets a single process will hold before the oldest are evicted. */
-const LIMITER_MAX_KEYS = 10_000
-
-/**
- * The bucket to drop when the map is over its cap.
+ * A coarse per-instance limiter for authenticated write endpoints that have no other brake: ten requests a minute, and a refused request does not extend the block.
  *
- * A Map keeps its keys in the order they were first seen, so "the oldest key" is the bucket that was created first – and the bucket that was created first is the one a throttled caller owns, because they were the first to ask and they are still asking. Evicting by when the bucket was last touched instead drops the one nobody has come back to, and the caller's own bucket is never a candidate: dropping it would hand a throttled caller a fresh budget.
+ * Kept as a thin wrapper over `lib/rate-limit` so existing call sites keep their budget while the implementation lives in one place.
  */
-function evictionVictim(buckets: Map<string, LimiterBucket>, exclude: string): string | null {
-	let victim: string | null = null
-	let oldest = Number.POSITIVE_INFINITY
-	for (const [key, bucket] of buckets) {
-		if (key === exclude) continue
-		if (bucket.lastSeen >= oldest) continue
-		oldest = bucket.lastSeen
-		victim = key
-	}
-	return victim
-}
-
 export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
-	const now = Date.now()
-	const bucket = limiterHits.get(key)
-	const recent = (bucket?.hits ?? []).filter(at => now - at < windowMs)
-	const limited = recent.length >= max
-	if (!limited) recent.push(now)
-	// The bucket is touched either way: a refused caller is still a caller, and their bucket is still live.
-	limiterHits.set(key, { hits: recent, lastSeen: now })
-	// Evict the buckets that have gone longest without a touch, one at a time, rather than clearing the map: a wholesale clear drops live buckets such as `upload:<userId>` along with the stale ones, which would hand a throttled caller a fresh budget.
-	while (limiterHits.size > LIMITER_MAX_KEYS) {
-		const victim = evictionVictim(limiterHits, key)
-		if (!victim) break
-		limiterHits.delete(victim)
-	}
-	return limited
+	return rateLimited(key, { max, windowMs })
 }
 
 /**
  * Wraps a handler so a thrown HttpError becomes its proper response and anything else becomes a logged 500 instead of an unhandled rejection.
+ *
+ * Authenticated routes should use `withSession`, `withPermission` or `withRole` from `lib/guards` instead: those put the guard in front of the handler and pass the session in as `ctx.gate`, so a route cannot forget the check. This is the transport wrapper they, and the unauthenticated routes, are built on.
  */
 export function withRoute<A extends unknown[]>(
 	handler: (...args: A) => Promise<NextResponse>,

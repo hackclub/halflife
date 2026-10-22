@@ -9,7 +9,7 @@ import { README_GUIDE_URL } from "@/lib/routes"
 /**
  * Pre-submission repo checks, ported from Hack Club Stasis (lib/github-checks) and now forge-aware.
  *
- * The checks themselves are the same on every forge – a README, photos in it, and the file kinds the week exists to produce. What changes per forge is how the file list and the README are read, which is why `fetchSnapshot` branches and everything below it does not.
+ * The checks themselves are the same on every forge – a README with enough text and photos, and the file kinds the week exists to produce. What changes per forge is how the file list and the README are read, which is why `fetchSnapshot` branches and everything below it does not.
  *
  * A forge we do not speak is still a repo a maker may hand in: `checkRepo` warns rather than blocks, exactly as it did for a GitLab link before GitLab was understood. That path stays, because Codeberg and a self-hosted Gitea are still real answers to "where is your project".
  */
@@ -289,6 +289,7 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 const README_IMAGE = /!\[[^\]]*\]\([^)]*\)|!\[[^\]]*\]\[[^\]]*\]|<img\b[^>]*>/gi
 const README_MIN_CHARS = 200
 const README_MIN_IMAGES = 2
+const README_MIN_LINES = 3
 
 /** How many images the README embeds. */
 function readmeImageCount(readme: string): number {
@@ -298,6 +299,18 @@ function readmeImageCount(readme: string): number {
 /** The README's prose, with images and the whitespace they leave behind removed. */
 function readmeText(readme: string): string {
 	return readme.replaceAll(README_IMAGE, " ").replaceAll(/\s+/g, " ").trim()
+}
+
+/**
+ * How many lines of writing the README has.
+ *
+ * Counted from the text that is left once images come out, so a line holding only a picture is not a line of writing. Blank lines do not count either; the floor is about how the README reads, not how it is spaced.
+ */
+function readmeLineCount(readme: string): number {
+	return readme
+		.replaceAll(README_IMAGE, "")
+		.split(/\r?\n/)
+		.filter(line => line.trim().length > 0).length
 }
 
 /** The paths in the repo that satisfy a file kind by name. */
@@ -420,6 +433,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 	]
 	const readmeChars = readme === null ? 0 : readmeText(readme).length
 	const imageCount = readme === null ? 0 : readmeImageCount(readme)
+	const readmeLines = readme === null ? 0 : readmeLineCount(readme)
 
 	checks.push(
 		readme !== null && readmeChars >= README_MIN_CHARS
@@ -429,6 +443,16 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					detail: `Add at least ${README_MIN_CHARS} characters about what the project is and how it works. The README has ${readmeChars} once images are removed.`,
 					key: "readme_length",
 					label: "README too short",
+					link: { href: README_GUIDE_URL, label: "What goes in a README" },
+					status: "fail",
+				},
+		readme !== null && readmeLines >= README_MIN_LINES
+			? { detail: `${readmeLines} lines of text`, key: "readme_lines", label: "README lines", status: "pass" }
+			: {
+					blocking: true,
+					detail: `Write at least ${README_MIN_LINES} lines about what the project is and how it works. The README has ${readmeLines} line${readmeLines === 1 ? "" : "s"} of text once images are removed.`,
+					key: "readme_lines",
+					label: "README too few lines",
 					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
 				},

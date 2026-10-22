@@ -10,12 +10,9 @@ import { submitFloorFor } from "@/lib/config/printers"
 import { WARMUP_THEME } from "@/lib/config/program"
 import { BUILD_HOURS, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
+import { fmtHours } from "@/lib/numbers"
 import { normalizeRepo } from "@/lib/repo"
 import { Modal, ModalTitle } from "./Modal"
-
-function fmtH(h: number) {
-	return `${Number.isInteger(h) ? h : h.toFixed(1)}h`
-}
 
 /**
  * Start a warm-up project: the season's "create a project" sheet, for any hardware idea rather than a theme, plus the one question a warm-up adds – whether it is handed in as a design or as a finished build. It is handed in once, as that.
@@ -152,8 +149,8 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 										{t.detail}
 										{phase !== "BUILD" && (
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time – every
-												hour past that (once your tier&apos;s funding is achieved) earns 5 spendable coins.
+												You can submit on tier {t.id} from {fmtHours(submitFloorFor(t.fundingHours))} of design time –
+												every hour past that (once your tier&apos;s funding is achieved) earns 5 spendable coins.
 											</span>
 										)}
 									</>

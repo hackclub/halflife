@@ -1,3 +1,4 @@
+import { getTier, isTierId } from "@/lib/config/tiers"
 import "server-only"
 import type { AuditLog, LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import {
@@ -20,15 +21,7 @@ import { isActiveDay } from "@/lib/analytics"
 import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
-import {
-	getThemeDef,
-	scheduledWeekFor,
-	scheduleForWeek,
-	TOTAL_WEEKS,
-	WARMUP_THEME,
-	WARMUP_WEEK_ID,
-} from "@/lib/config/program"
-import { isTierId, TIERS } from "@/lib/config/tiers"
+import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { type Balances, getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
@@ -36,11 +29,12 @@ import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
 import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, positionWhere, readCursor } from "@/lib/pagination"
 import { safeDecrypt } from "@/lib/pii"
-import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
+import { getPrinterQualification, type PrinterQualification, printerAwardSelect } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
+import { eachDayBetween } from "@/lib/time"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
 export interface DirectoryUser {
@@ -571,21 +565,6 @@ export interface PrinterAwardRow
 	extends Omit<Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>, "encryptedAddress"> {
 	addressOnFile: boolean
 }
-
-const printerAwardSelect = {
-	addressLockedAt: true,
-	deliveredAt: true,
-	encryptedAddress: true,
-	id: true,
-	qualifiedAt: true,
-	revokedAt: true,
-	revokedReason: true,
-	shippedAt: true,
-	status: true,
-	trackingCarrier: true,
-	trackingNumber: true,
-	user: { select: { displayName: true, id: true, name: true } },
-} satisfies Prisma.PrinterAwardSelect
 
 export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
 	const rows = await prisma.printerAward.findMany({
@@ -1269,8 +1248,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 	if (days.length === 0) return []
 	const out: DayActivity[] = []
 	const [first, last] = [days[0] as string, days.at(-1) as string]
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
+	for (const day of eachDayBetween(first, last)) {
 		const row = byDay.get(day)
 		out.push({
 			day,
@@ -1339,10 +1317,7 @@ export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today:
 	if (!first) return { days: [], today: activeToday }
 
 	const days: ActiveDay[] = []
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${today}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
-		days.push({ day, users: byDay.get(day) ?? 0 })
-	}
+	for (const day of eachDayBetween(first, today)) days.push({ day, users: byDay.get(day) ?? 0 })
 	return { days, today: activeToday }
 }
 
@@ -1397,8 +1372,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 	if (days.length === 0) return []
 	const out: GoalDayActivity[] = []
 	const [first, last] = [days[0] as string, days.at(-1) as string]
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
+	for (const day of eachDayBetween(first, last)) {
 		const goals = byDay.get(day)
 		out.push({
 			byGoal: GOAL_OPTIONS.map(option => ({
@@ -1598,7 +1572,7 @@ function weekSlots(): WeekSlot[] {
  *
  * What this deliberately no longer does is count every project in both weeks regardless. That made a theme's two columns identical – 2,178 PCB projects in week 1 and the same 2,178 in week 6 – when only a fraction had reached the build. A named project nothing has happened to yet is in neither column, because no week is funding it yet.
  *
- * The warm-up track needs no special case: it is one phase on one of the two statuses, and `weekOfPhase` sends both to the single warm-up column.
+ * The warm-up track needs no special case: it is one phase on one of the two statuses, and `scheduledWeekFor` sends both to the single warm-up column.
  */
 export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	const projects = await prisma.themeProject.findMany({
@@ -1622,7 +1596,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 			// The same threshold `getHoursByWeek` reads: a phase starts being one of these stages when it stops being a draft, so the two charts change together rather than one counting a project the other has no hours for.
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (status === PhaseStatus.draft) continue
-			const cluster = clusters.get(weekOfPhase(project.theme, phase))
+			const cluster = clusters.get(scheduledWeekFor(project.theme, phase))
 			// A theme scheduled outside the season draws nowhere rather than inventing a column for itself.
 			if (!cluster) continue
 			cluster[column] += 1
@@ -1644,17 +1618,6 @@ export interface WeekHoursCluster {
 	tier3: number
 	/** 0 for the warm-up import, then the ten program weeks in order. */
 	week: number
-}
-
-/**
- * The week a phase's hours belong to: the theme's own design or build week, or the warm-up track for everything off-season.
- *
- * The same two weeks `getProjectsByWeek` places a project's stages in, so the two charts describe one cohort. Phase decides which of the two, which is also what keeps every logged hour counted exactly once – a build week's column is the build phases of its projects, not their design phases as well.
- */
-function weekOfPhase(theme: Theme, phase: Phase): number {
-	if (theme === Theme.WARMUP) return WARMUP_WEEK_ID
-	const def = getThemeDef(theme)
-	return phase === Phase.DESIGN ? def.designWeek : def.buildWeek
 }
 
 /**
@@ -1725,7 +1688,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 			if (sessions.length === 0 && links.length === 0) continue
 
 			const { computedTotal } = rollUpHours(sessions, links, null, recordings)
-			const cluster = clusters.get(weekOfPhase(project.theme, phase))
+			const cluster = clusters.get(scheduledWeekFor(project.theme, phase))
 			// A theme scheduled outside the season draws nowhere rather than inventing a column for itself.
 			if (!cluster) continue
 			cluster[column] += computedTotal
@@ -2174,7 +2137,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		}
 		for (const [userId, { project, tier }] of latest) {
 			userTier.set(userId, tier)
-			const floor = TIERS.find(t => t.id === tier)?.fundingHours ?? 0
+			const floor = getTier(tier)?.fundingHours ?? 0
 			const hours = (journalByProject.get(project.id) ?? 0) + (hackByProject.get(project.id) ?? 0)
 			tierMet.set(userId, hours >= floor)
 		}

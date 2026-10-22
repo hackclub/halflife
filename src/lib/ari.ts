@@ -21,6 +21,7 @@ import { HttpError } from "@/lib/errors"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import { notifyReviewOutcome, notifyShipFailed } from "@/lib/notifications"
+import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { normalizeRepo } from "@/lib/repo"
 import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
@@ -158,7 +159,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
 	// A retry job snapshots what is pending and sends later; the maker can have unsubmitted in between. The row the decision would land on is gone, so sending would leave an untracked ship in Ari's queue.
-	const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+	const phaseStatus = statusFor(project, phase)
 	if (phaseStatus !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is no longer awaiting review, so there is no ship to send")
 
@@ -704,7 +705,7 @@ async function applyReset(event: ResetInput): Promise<void> {
 		return
 	}
 
-	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+	const status = statusFor(project, phase)
 	const reason = `Ari ${event.event === "review.requeued" ? "requeued" : "reverted"} the review`
 	if (status === PhaseStatus.approved) await unapprovePhase(themeProjectId, phase, null, null, reason)
 	else if (status === PhaseStatus.rejected) await reopenPhase(themeProjectId, phase, null, null, reason)
@@ -725,7 +726,7 @@ async function applyReset(event: ResetInput): Promise<void> {
 			where: { id: latest.id },
 		})
 		await tx.themeProject.update({
-			data: phase === Phase.DESIGN ? { designStatus: nextStatus } : { buildStatus: nextStatus },
+			data: phaseStatusUpdate(phase, nextStatus),
 			where: { id: themeProjectId },
 		})
 	})

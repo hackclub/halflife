@@ -1,10 +1,11 @@
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { ok, parseBody, withRoute } from "@/lib/api"
+import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
-import { requirePermission } from "@/lib/guards"
+import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
+import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { hoursDecisionSchema } from "@/lib/schemas/review"
@@ -14,10 +15,7 @@ import { hoursDecisionSchema } from "@/lib/schemas/review"
  *
  * These numbers feed `getHoursBreakdown` and therefore the payout, so the route is scoped to work actually awaiting review: every entry must belong to a phase that is `in_review`, and another reviewer's live claim refuses the whole batch. Without that, a REVIEW_HOURS holder could rewrite accepted hours on a draft project or after a decision, which a later un-approve/re-approve cycle would then pay against.
  */
-export const POST = withRoute(async (req: Request) => {
-	const gate = await requirePermission(Permission.REVIEW_HOURS)
-	if (gate.error) return gate.error
-
+export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, hoursDecisionSchema)
 	if (parsed.error) return parsed.error
 
@@ -69,7 +67,7 @@ export const POST = withRoute(async (req: Request) => {
 		for (const userId of userIds) await lockUserCredit(tx, userId)
 
 		for (const row of all) {
-			const status = row.phase === Phase.DESIGN ? row.themeProject.designStatus : row.themeProject.buildStatus
+			const status = statusFor(row.themeProject, row.phase)
 			if (status !== PhaseStatus.in_review)
 				throw new HttpError("PHASE_LOCKED", "Hours can only be approved while the phase is in review")
 		}

@@ -5,6 +5,7 @@ import { getThemeDef } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { displayName } from "@/lib/display-name"
 import { type FeedItem, getCreatorReels } from "@/lib/feed"
+import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
@@ -119,7 +120,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		return {
 			accent: warmup ? "var(--color-violet-pale)" : (week?.accent ?? "var(--color-violet-pale)"),
 			entries: p.workSessions.length,
-			hours: Math.round(hours * 100) / 100,
+			hours: round2(hours),
 			id: p.id,
 			painting: warmup ? "Warm Up" : (week?.theme ?? "PCB"),
 			themeLabel: def.label,

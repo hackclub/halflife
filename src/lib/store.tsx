@@ -5,8 +5,10 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
-import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
+import { ENTRY_TIER, getTier } from "./config/tiers"
+import { BUILD_HOURS, checkpointsFor, WEEK_META } from "./curriculum"
 import { formatDeadline } from "./deadline"
+import { round2 } from "./money"
 import type { StoreSnapshot } from "./queries/store"
 import { DEFAULT_SESSION_TITLE } from "./schemas/session"
 import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from "./types"
@@ -92,7 +94,7 @@ const withoutOptionalIdea = (list: Checkpoint[]) => list.filter(c => c.id !== WE
  */
 function warmupWeek(project: Project, build: boolean, isDone: (id: string) => boolean): Week {
 	const key = (suffix: string) => `wu-${project.id}-${suffix}`
-	const tier = TIERS.find(t => t.id === project.tier) ?? TIERS[0]
+	const tier = getTier(project.tier) ?? ENTRY_TIER
 	const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
 	const meta: WeekMeta = {
 		accent: "var(--color-violet-pale)",
@@ -1034,7 +1036,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		() =>
 			WEEK_META.map(meta => {
 				const tierId = tierForWeek(meta.id)
-				const tier = TIERS.find(t => t.id === tierId) ?? TIERS[0]
+				const tier = getTier(tierId) ?? ENTRY_TIER
 				const build = meta.phase === "build"
 				// Column 5 is the tier-1 week and is already floored to a flat 10 hours, so every other tier is that plus the extra hours its grant funds.
 				const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)
@@ -1098,7 +1100,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					res = await fetch(`/api/projects/${route.projectId}/sessions`, {
 						body: JSON.stringify({
 							content: body,
-							hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+							hoursClaimed: round2(minutes / 60),
 							phase: route.phase,
 							timelapses: clips.map(lapseId => ({ lapseId })),
 							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
@@ -1161,7 +1163,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				res = await fetch(`/api/projects/${route.projectId}/sessions/${entry.id}`, {
 					body: JSON.stringify({
 						content: body,
-						hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+						hoursClaimed: round2(minutes / 60),
 						timelapses: clips.map(lapseId => ({ lapseId })),
 						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 					}),
@@ -1421,7 +1423,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					c => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
 				)
 				if (owed) return firstFinish(owed)
-				const toGo = Math.round((self.atHours - hours) * 100) / 100
+				const toGo = round2(self.atHours - hours)
 				return `Opens at ${self.atHours}h logged this week – ${toGo}h to go.`
 			}
 

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
-import { fail, ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok } from "@/lib/api"
+import { withSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
 import { MAX_CLIP_REF_LENGTH, MAX_SESSION_TIMELAPSES } from "@/lib/schemas/session"
@@ -14,10 +14,7 @@ export const dynamic = "force-dynamic"
  *
  * `forSession` names the session being edited and must be theirs: otherwise one maker could probe another's attachments a guess at a time.
  */
-export const GET = withRoute(async (req: NextRequest) => {
-	const gate = await requireSession()
-	if (gate.error) return gate.error
-
+export const GET = withSession(async (req: NextRequest, { gate }) => {
 	const params = req.nextUrl.searchParams
 	const ids = (params.get("ids") ?? "")
 		.split(",")
