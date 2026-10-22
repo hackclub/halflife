@@ -265,6 +265,34 @@ export interface ShopAccess {
 }
 
 /**
+ * What a maker's review activity buys them past the shop's close date.
+ *
+ * The shop stays open while anything is awaiting review, and for a grace window after the latest review. Pure, so the purchase transaction can ask the same question of the rows it just read instead of re-deriving the rule next to the money.
+ */
+export interface ShopGraceState {
+	awaitingReview: number
+	buildReviewedAt: Date | null
+	designReviewedAt: Date | null
+}
+
+export function shopGraceAccess(
+	settings: { shopGraceDays: number },
+	state: ShopGraceState,
+	now: Date = new Date(),
+): { graceUntil: Date | null; open: boolean } {
+	if (state.awaitingReview > 0) return { graceUntil: null, open: true }
+
+	// The last review is a max over every project's two review dates, not the most recently *updated* row: editing a title or granting an extension bumps `updatedAt` without touching a review, which would mask a review that just landed and close the grace window early.
+	const reviewedAt = [state.designReviewedAt, state.buildReviewedAt]
+		.filter((d): d is Date => Boolean(d))
+		.toSorted((a, b) => b.getTime() - a.getTime())[0]
+	if (!reviewedAt) return { graceUntil: null, open: false }
+
+	const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)
+	return { graceUntil, open: graceUntil > now }
+}
+
+/**
  * The shop stays open past its close date for anyone with work still in the queue, and for a grace window after their last review – otherwise credit awarded at the buzzer is unspendable through no fault of the participant.
  */
 export async function getShopAccess(userId: string): Promise<ShopAccess> {
@@ -289,17 +317,22 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 		}),
 	])
 
-	if (awaitingReview > 0) return { closesAt, graceUntil: null, open: true, reason: "PENDING_REVIEW" }
-
-	const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
-		.filter((d): d is Date => Boolean(d))
-		.toSorted((a, b) => b.getTime() - a.getTime())[0]
-
-	if (reviewedAt) {
-		const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)
-		if (graceUntil > now) return { closesAt, graceUntil, open: true, reason: "GRACE_PERIOD" }
+	const grace = shopGraceAccess(
+		settings,
+		{
+			awaitingReview,
+			buildReviewedAt: lastReview._max.buildReviewedAt,
+			designReviewedAt: lastReview._max.designReviewedAt,
+		},
+		now,
+	)
+	if (!grace.open) return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
+	return {
+		closesAt,
+		graceUntil: grace.graceUntil,
+		open: true,
+		reason: grace.graceUntil ? "GRACE_PERIOD" : "PENDING_REVIEW",
 	}
-	return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
 }
 
 export const SHOP_CLOSED_MESSAGE =

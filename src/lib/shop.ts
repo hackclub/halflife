@@ -1,4 +1,3 @@
-import { DAY_MS } from "@/lib/time"
 import "server-only"
 import type { Prisma, ShopItem, ShopOrder } from "@/app/generated/prisma/client"
 import { CoinBucket, LedgerKind, PhaseStatus, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
@@ -8,7 +7,7 @@ import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
-import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
+import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/program"
 import { countryOfTimezone } from "@/lib/regions"
 import { sanitize } from "@/lib/sanitize"
 
@@ -260,14 +259,12 @@ export async function purchase(
 					where: { deletedAt: null, userId },
 				}),
 			])
-			let inGrace = awaitingReview > 0
-			if (!inGrace) {
-				const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
-					.filter((d): d is Date => Boolean(d))
-					.toSorted((a, b) => b.getTime() - a.getTime())[0]
-				inGrace = reviewedAt !== undefined && reviewedAt.getTime() + settings.shopGraceDays * DAY_MS > Date.now()
-			}
-			if (!inGrace) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
+			const grace = shopGraceAccess(settings, {
+				awaitingReview,
+				buildReviewedAt: lastReview._max.buildReviewedAt,
+				designReviewedAt: lastReview._max.designReviewedAt,
+			})
+			if (!grace.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		}
 		if (item.requiresPrinterQualified) {
 			const shipped = await tx.themeProject.count({

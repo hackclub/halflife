@@ -29,7 +29,7 @@ import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
 import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, positionWhere, readCursor } from "@/lib/pagination"
 import { safeDecrypt } from "@/lib/pii"
-import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
+import { getPrinterQualification, type PrinterQualification, printerAwardSelect } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
@@ -565,21 +565,6 @@ export interface PrinterAwardRow
 	extends Omit<Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>, "encryptedAddress"> {
 	addressOnFile: boolean
 }
-
-const printerAwardSelect = {
-	addressLockedAt: true,
-	deliveredAt: true,
-	encryptedAddress: true,
-	id: true,
-	qualifiedAt: true,
-	revokedAt: true,
-	revokedReason: true,
-	shippedAt: true,
-	status: true,
-	trackingCarrier: true,
-	trackingNumber: true,
-	user: { select: { displayName: true, id: true, name: true } },
-} satisfies Prisma.PrinterAwardSelect
 
 export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
 	const rows = await prisma.printerAward.findMany({
