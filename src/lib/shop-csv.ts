@@ -1,5 +1,6 @@
 import type { z } from "zod"
 import { ShopItemCategory } from "@/app/generated/prisma/enums"
+import { parseCsvRecords } from "@/lib/csv"
 import { shopItemSchema } from "@/lib/schemas/admin"
 
 /**
@@ -55,55 +56,6 @@ export interface ShopCsvProblem {
 	message: string
 }
 
-/**
- * RFC 4180, which is what every spreadsheet exports: commas, double-quoted fields that may hold commas and line breaks, and `""` for a literal quote. Each record carries the line it started on, so problems can point at it.
- */
-function records(text: string): { line: number; fields: string[] }[] {
-	const out: { line: number; fields: string[] }[] = []
-	let fields: string[] = []
-	let field = ""
-	let quoted = false
-	let line = 1
-	let start = 1
-	const src = text.replace(/^﻿/, "")
-
-	for (let i = 0; i < src.length; i += 1) {
-		const c = src[i]
-		if (quoted) {
-			if (c === '"' && src[i + 1] === '"') {
-				field += '"'
-				i += 1
-			} else if (c === '"') quoted = false
-			else if (c === "\r" && src[i + 1] === "\n") {
-				// A Windows line break inside a cell is still one break.
-			} else {
-				if (c === "\n") line += 1
-				field += c
-			}
-			continue
-		}
-		if (c === '"') quoted = true
-		else if (c === ",") {
-			fields.push(field)
-			field = ""
-		} else if (c === "\n" || c === "\r") {
-			if (c === "\r" && src[i + 1] === "\n") i += 1
-			fields.push(field)
-			out.push({ fields, line: start })
-			fields = []
-			field = ""
-			line += 1
-			start = line
-		} else field += c
-	}
-	if (field !== "" || fields.length > 0) {
-		fields.push(field)
-		out.push({ fields, line: start })
-	}
-	// Spreadsheets pad the end with empty rows; they are not items.
-	return out.filter(r => r.fields.some(f => f.trim() !== ""))
-}
-
 function bool(raw: string): boolean | undefined | "bad" {
 	const v = raw.trim().toLowerCase()
 	if (v === "") return undefined
@@ -121,7 +73,7 @@ function num(raw: string): number {
  * Parse and validate a whole file. Either every row is good and `items` holds them all, or `problems` says what to fix, line by line. Nothing in between: a half-imported catalogue is harder to fix than a refused one.
  */
 export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: ShopCsvProblem[] } {
-	const rows = records(text)
+	const rows = parseCsvRecords(text)
 	const head = rows.shift()
 	if (!head) return { items: [], problems: [{ line: 0, message: "The file is empty." }] }
 

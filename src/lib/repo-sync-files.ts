@@ -1,3 +1,4 @@
+import { csvRow } from "@/lib/csv"
 import { fmtHours } from "@/lib/numbers"
 import "server-only"
 import { Phase } from "@/app/generated/prisma/enums"
@@ -130,16 +131,6 @@ function row(...cells: (string | number | null | undefined)[]): string {
  *
  * The quoting is not cosmetic. A parts link is a query string, and those are full of commas – unquoted, a link lets a seventh cell into the row and every spreadsheet mis-parses it. So a cell holding a comma, a quote or a newline is wrapped and its quotes doubled, per RFC 4180.
  */
-function cell(value: string | number): string {
-	const text = String(value)
-	if (/[",\r\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`
-	return text
-}
-
-function csvRow(cells: (string | number)[]): string {
-	return cells.map(cell).join(",")
-}
-
 /** `$12.30` – dollars, two places, the way the BOM page shows them. */
 function usd(n: number): string {
 	return `$${n.toFixed(2)}`
