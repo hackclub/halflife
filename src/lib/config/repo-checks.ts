@@ -5,7 +5,7 @@ import { Theme } from "@/app/generated/prisma/enums"
  *
  * Ported from Hack Club Stasis's pre-submission checks, with one difference: Stasis asks the maker what kind of project it is, and Half Life already knows, because every week has a theme. So the file requirements are keyed by theme here rather than ticked on a form.
  *
- * Every theme needs a public repo with a README that has photos in it – that is what a reviewer opens first. On top of that, each theme names:
+ * Every theme needs a public repo with a README that has enough text and photos in it – that is what a reviewer opens first. On top of that, each theme names:
  * - `required`: file kinds that block submitting when none are found. These are the files the week exists to produce.
  * - `recommended`: file kinds worth having, reported to the maker and the reviewer but never blocking.
  *

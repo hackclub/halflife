@@ -187,7 +187,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Your repo",
 				list: [
-					"Every week: a public repo, with a README that has photos in it.",
+					"Every week: a public repo, with a README that has enough text and photos in it.",
 					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
 					"CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf).",
 					"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
@@ -195,7 +195,7 @@ export const DOCS: DocArticle[] = [
 					"Breadboard computer week: a schematic (KiCad, Logisim or Digital).",
 				],
 				paragraphs: [
-					"The submit sheet checks your repo before it lets you submit. A missing README, a README with no photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
+					"The submit sheet checks your repo before it lets you submit. A missing README, a README with too little text or too few photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
 				],
 			},
 			{
@@ -210,7 +210,7 @@ export const DOCS: DocArticle[] = [
 				],
 				paragraphs: [
 					"A folder of files and two sentences is not documentation. Write the README for someone who has never heard of your project and wants to build one:",
-					"The submit sheet checks two hard floors: at least 200 characters of text (images do not count towards it), and at least two images.",
+					"The submit sheet checks three hard floors: at least 200 characters of text (images do not count towards it), at least three lines of text, and at least two images.",
 				],
 			},
 			{
@@ -246,7 +246,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What gets a week sent back",
 				list: [
-					"The README does not explain the project, or has no photos.",
+					"The README does not explain the project, or has too little text or too few photos.",
 					"Source files are missing, or only exports are there.",
 					"The journal does not back the hours claimed.",
 					"The BOM does not match the cart, or has no real prices.",

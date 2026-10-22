@@ -290,7 +290,7 @@ function DetailsForm({
 				/>
 				<p className="text-[0.78rem] leading-snug text-navy-soft">
 					Your repo needs a README that says what the project is, how it works, and shows at least two photos of it – at
-					least 200 characters of text, once images are removed –{" "}
+					least 200 characters of text over at least 3 lines, once images are removed –{" "}
 					<a
 						className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 						href={README_GUIDE_URL}
