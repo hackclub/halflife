@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
+import { PromoBootScript } from "@/components/promo/PromoBootScript"
+import { StickerSheetBanner } from "@/components/promo/StickerSheetBanner"
 import { siteFontVariables } from "@/components/site/fonts"
 import "./globals.css"
 
@@ -24,8 +26,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 		<html className={`${siteFontVariables} h-full antialiased`} lang="en">
 			<head>
 				<PlausibleAnalytics />
+				<PromoBootScript />
 			</head>
-			<body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">{children}</body>
+			<body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">
+				<a
+					className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:bg-hl-cyan focus:px-4 focus:py-2 focus:font-semibold focus:text-hl-ink"
+					href="#how-it-works"
+				>
+					Skip to how it works
+				</a>
+				<StickerSheetBanner />
+				{children}
+			</body>
 		</html>
 	)
 }
