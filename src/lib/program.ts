@@ -5,13 +5,13 @@ import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
+import { calendarDayNumber, DAY_MS, effectiveDateFor, utcCalendarDay } from "@/lib/time"
 
 /**
  * Re-exported rather than kept here: the check itself belongs next to the other shape helpers, because a zone is validated where it is typed and this module is server-only.
  */
 export { isTimeZone } from "@/lib/schemas/common"
-
-const DAY_MS = 24 * 60 * 60 * 1000
+export { effectiveDateFor } from "@/lib/time"
 
 /**
  * The settings row is created on demand so a fresh database is usable without a seed step having run first.
@@ -40,20 +40,9 @@ export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
  * The start is anchored to its UTC calendar date, which is what `eventStartDate` stores (see `weekClosesAt`), while the moment being placed is read in the program's timezone.
  */
 export function weekNumberForDate(start: Date, date: Date, timeZone: string): number {
-	const elapsed = calendarDay(date, timeZone) - utcCalendarDay(start)
+	const elapsed = calendarDayNumber(date, timeZone) - utcCalendarDay(start)
 	if (elapsed < 0) return 0
 	return Math.floor(elapsed / 7) + 1
-}
-
-/** Days since the epoch for a moment's calendar date in `timeZone`. */
-function calendarDay(date: Date, timeZone: string): number {
-	const [year, month, day] = effectiveDateFor(date, timeZone).split("-")
-	return Math.floor(Date.UTC(Number(year), Number(month) - 1, Number(day)) / DAY_MS)
-}
-
-/** Days since the epoch for a moment's own UTC calendar date. */
-function utcCalendarDay(date: Date): number {
-	return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / DAY_MS)
 }
 
 /**
@@ -184,20 +173,6 @@ export async function isWeekOpen(userId: string, themeProjectId: string, week: n
 export async function currentWeekNumber(): Promise<number> {
 	const settings = await getProgramSettings()
 	return weekNumberForDate(settings.eventStartDate, new Date(), settings.programTimezone)
-}
-
-/**
- * The YYYY-MM-DD a moment falls on in the program's timezone.
- *
- * Doing this in the program timezone rather than the server's is not pedantry: siege computes week buckets against the server clock, so its per-week hour totals shift if the container moves region.
- */
-export function effectiveDateFor(date: Date, timeZone: string): string {
-	return new Intl.DateTimeFormat("en-CA", {
-		day: "2-digit",
-		month: "2-digit",
-		timeZone,
-		year: "numeric",
-	}).format(date)
 }
 
 export function formatProgramDate(date: Date, timeZone: string): string {

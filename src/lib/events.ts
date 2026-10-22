@@ -1,4 +1,7 @@
 import type { EventColour } from "@/app/generated/prisma/client"
+import { calendarDay } from "@/lib/time"
+
+export { calendarDay } from "@/lib/time"
 
 /**
  * What a calendar surface needs, and nothing more.
@@ -104,18 +107,6 @@ export function eventIsUpcoming(event: Pick<CalendarEvent, "startsAt" | "endsAt"
 /** Milliseconds until the event starts, floored at zero. */
 export function msUntilStart(event: Pick<CalendarEvent, "startsAt">, now: Date): number {
 	return Math.max(0, event.startsAt.getTime() - now.getTime())
-}
-
-/** The `YYYY-MM-DD` a moment falls on in `timeZone`. */
-export function calendarDay(at: Date, timeZone: string): string {
-	// en-CA formats as YYYY-MM-DD, which is the one thing Intl gives us that is
-	// sortable as a string and readable as a date without parsing it back.
-	return new Intl.DateTimeFormat("en-CA", {
-		day: "2-digit",
-		month: "2-digit",
-		timeZone,
-		year: "numeric",
-	}).format(at)
 }
 
 /** `YYYY-MM-DD` for a year/month/day, zero-padded. */
