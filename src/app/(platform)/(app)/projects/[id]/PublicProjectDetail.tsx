@@ -64,7 +64,7 @@ export function PublicProjectDetail({
 									Open its review thread to answer.
 								</p>
 								<Link
-									className="label inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-violet-dark bg-violet-deep px-5 text-[0.85rem] whitespace-nowrap text-white transition-[background-color,color,transform] duration-150 hover:bg-violet-dark active:translate-y-px"
+									className="label inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-gold-deep bg-gold px-5 text-[0.85rem] whitespace-nowrap text-navy transition-[background-color,color,transform,filter] duration-150 hover:brightness-105 active:translate-y-px"
 									href={`/review/${dispute.submissionId}`}
 								>
 									Open the review thread <IconArrowRight className="text-base" />
