@@ -188,14 +188,14 @@ export const DOCS: DocArticle[] = [
 				heading: "Your repo",
 				list: [
 					"Every week: a public repo, with a README that has enough text and photos in it.",
-					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
-					"CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf).",
+					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), a bom.csv, and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a BOM table in the README.",
+					"CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf) and a BOM table in the README.",
 					"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
 					"Displays week: firmware or code. Recommended: a schematic.",
 					"Breadboard computer week: a schematic (KiCad, Logisim or Digital).",
 				],
 				paragraphs: [
-					"The submit sheet checks your repo before it lets you submit. A missing README, a README with too little text or too few photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
+					"The submit sheet checks your repo before it lets you submit. A missing README, a README with too little text or too few photos, or a missing required file blocks the submit and tells you what to add. Recommended files, including a BOM table in the README, are flagged but never block.",
 				],
 			},
 			{
@@ -206,7 +206,7 @@ export const DOCS: DocArticle[] = [
 					"How it works: how the parts fit together.",
 					"Photos and screenshots: the schematic, the board layout, the 3D model, and the real thing once it exists.",
 					"A wiring diagram, if anything is wired by hand.",
-					"The bill of materials, as a table with links to where each part is bought.",
+					"The bill of materials, as a table with prices and links to where each part is bought.",
 				],
 				paragraphs: [
 					"A folder of files and two sentences is not documentation. Write the README for someone who has never heard of your project and wants to build one:",
