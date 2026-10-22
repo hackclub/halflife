@@ -116,8 +116,19 @@ function CheckpointNode({
 	/** One half of a fork: both arms are live, and neither is the recommendation. */
 	choice?: boolean
 }) {
-	const { stateOf, isUnlocked, isPassed, isHeld, lockReason, setOpenCheckpoint, phase, weekSubmitted, phaseStatusOf } =
-		useStore()
+	const {
+		stateOf,
+		isUnlocked,
+		isPassed,
+		isHeld,
+		lockReason,
+		setOpenCheckpoint,
+		phase,
+		weekSubmitted,
+		phaseStatusOf,
+		viewer,
+		bypassCheckpoint,
+	} = useStore()
 	const st = stateOf(checkpoint.id)
 	const unlocked = isUnlocked(checkpoint.id)
 	// Its week ran out of time. Done or not, it is the record now: no redo, no more entries, and the tooltip says only that.
@@ -129,9 +140,12 @@ function CheckpointNode({
 	const handIn = checkpoint.kind === "submit" || checkpoint.kind === "demo"
 	const reviewStatus = handIn && st.done ? phaseStatusOf(checkpoint.weekId) : null
 	const decided = reviewStatus === "approved" || reviewStatus === "rejected"
-	const settled = (st.done && ONE_TIME.includes(checkpoint.kind)) || final || decided
-	const doneNote =
-		checkpoint.kind === "reel"
+	// Admins can walk a finished project form again. It fills in the week's existing row rather than making a second one, since `ensureProject` hands back the project the week already has.
+	const redoable = st.done && checkpoint.kind === "project" && viewer.isAdmin
+	const settled = (st.done && ONE_TIME.includes(checkpoint.kind) && !redoable) || final || decided
+	const doneNote = redoable
+		? "click to redo it."
+		: checkpoint.kind === "reel"
 			? "click to post another reel."
 			: checkpoint.kind === "journal"
 				? final
@@ -302,6 +316,19 @@ function CheckpointNode({
 			>
 				{checkpoint.title}
 			</p>
+			{/* Admins only: past this one lock, the rest of the trail untouched. Shown on hover or focus so a mostly locked trail is not a column of links, and always on touch, where there is no hover. */}
+			{viewer.isAdmin && !unlocked && (
+				<button
+					className="hand text-[0.64rem] leading-tight text-navy-faint underline decoration-dashed underline-offset-2 opacity-0 transition-opacity group-hover:opacity-100 hover:text-navy focus-visible:opacity-100 pointer-coarse:opacity-100"
+					onClick={() => {
+						bypassCheckpoint(checkpoint.id)
+						setOpenCheckpoint(checkpoint.id)
+					}}
+					type="button"
+				>
+					open anyway
+				</button>
+			)}
 			{(unlocked || passed) && st.done && st.minutes > 0 && (
 				<p className="hand text-[0.66rem] leading-tight text-navy-soft tabular-nums">{fmtH(st.minutes / 60)}</p>
 			)}

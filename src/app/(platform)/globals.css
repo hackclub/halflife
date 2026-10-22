@@ -229,6 +229,38 @@ body {
 	.torn-soft {
 		filter: url(#hl-tear-soft);
 	}
+
+	/* Four corner marks that close in on a tile when you point at it or pick it: Stasis's grid cursor, in white with a soft shadow so it reads on any photo. */
+	.tile-corners::after {
+		--c: white;
+		position: absolute;
+		inset: 7px;
+		pointer-events: none;
+		content: "";
+		background:
+			linear-gradient(var(--c), var(--c)) top left / 16px 3px,
+			linear-gradient(var(--c), var(--c)) top left / 3px 16px,
+			linear-gradient(var(--c), var(--c)) top right / 16px 3px,
+			linear-gradient(var(--c), var(--c)) top right / 3px 16px,
+			linear-gradient(var(--c), var(--c)) bottom left / 16px 3px,
+			linear-gradient(var(--c), var(--c)) bottom left / 3px 16px,
+			linear-gradient(var(--c), var(--c)) bottom right / 16px 3px,
+			linear-gradient(var(--c), var(--c)) bottom right / 3px 16px;
+		background-repeat: no-repeat;
+		opacity: 0;
+		filter: drop-shadow(0 1px 2px rgba(28, 26, 89, 0.55));
+		transform: scale(1.12);
+		transition:
+			opacity 0.18s ease-out,
+			transform 0.35s var(--ease-out-expo);
+	}
+
+	.tile-corners:hover::after,
+	.tile-corners:focus-visible::after,
+	.tile-corners[aria-pressed="true"]::after {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 @layer components {

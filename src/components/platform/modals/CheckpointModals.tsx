@@ -1641,24 +1641,30 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * Project creation (weeks 2-5, and week 1 once its project is deleted)
  * ================================================================== */
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
-	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore()
+	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf, projects } = useStore()
 	const week = weekOf(checkpoint.weekId)
 	const pace = usePrinterPace()
 	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
 		ensureProject(checkpoint.weekId)
 	}, [checkpoint.weekId, ensureProject])
-	const [name, setName] = useState("")
-	const [desc, setDesc] = useState("")
-	const [tier, setTier] = useState<1 | 2 | 3>(experience === "lots" ? 3 : experience === "some" ? 2 : 1)
+	// Set when an admin redoes a finished form: it starts from what the project already says rather than from blank.
+	const existing = projects.find(p => p.weekId === checkpoint.weekId)
+	const [name, setName] = useState(existing?.name ?? "")
+	const [desc, setDesc] = useState(existing?.description ?? "")
+	const [tier, setTier] = useState<1 | 2 | 3>(
+		existing?.tier ?? (experience === "lots" ? 3 : experience === "some" ? 2 : 1),
+	)
 	const [showExamples, setShowExamples] = useState(false)
-	const [repo, setRepo] = useState("")
+	const [repo, setRepo] = useState(existing?.githubRepo ?? "")
 	// The week's starter projects, for someone who said they are new to hardware. Weeks follow the theme order, design then build, so the week number names the theme.
 	const theme = THEMES[(week.id - 1) % THEMES.length]?.id
 	const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
 	// Taking one fills the form in and holds the tier at 1, as onboarding does.
-	const [starterId, setStarterId] = useState<string | null>(null)
-	const [pick, setPick] = useState<string | null | undefined>(undefined)
+	const [starterId, setStarterId] = useState<string | null>(existing?.starterProjectId ?? null)
+	const [pick, setPick] = useState<string | null | undefined>(
+		existing ? (existing.starterProjectId ?? null) : undefined,
+	)
 	const [stage, setStage] = useState<"choose" | "details">(starters.length > 0 ? "choose" : "details")
 	const takeStarter = (s: (typeof starters)[number]) => {
 		setPick(s.id)

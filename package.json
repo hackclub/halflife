@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "db:seed": "bun prisma/seed.ts",
     "grant-role": "bun scripts/grant-role.ts",
+    "seed-help-calls": "bun scripts/seed-help-calls.ts",
     "analytics:backfill": "bun --conditions=react-server scripts/backfill-analytics.ts",
     "loops:backfill": "bun --conditions=react-server scripts/backfill-loops.ts",
     "loops:backfill-submitted": "bun --conditions=react-server scripts/backfill-loops-submitted.ts",

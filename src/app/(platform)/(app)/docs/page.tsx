@@ -18,6 +18,22 @@ export default function DocsIndex() {
 			<PageSign color="var(--color-teal)" ink="#ffffff" label="DOCS" sub="Confused? Start here!" />
 
 			<div className="grid gap-9">
+				<section>
+					<h2 className="label mb-3 text-navy-faint">Starter projects</h2>
+					<Panel className="bg-paper" radius={18} tone="orange">
+						<ArticleLink className="group flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5" href="/starter-projects">
+							<span className="min-w-0 flex-1">
+								<span className="block text-[1.1rem] leading-tight font-extrabold text-navy transition-colors group-hover:text-orange-ink">
+									Week 4: seven displays to start from
+								</span>
+								<span className="mt-1 block text-[0.88rem] leading-snug text-navy-soft">
+									LEDs, filament, 7-segment, NeoPixels, matrices, OLEDs and TFTs, each with a full guide.
+								</span>
+							</span>
+							<IconArrowRight className="shrink-0 text-xl text-navy-faint transition-transform duration-200 group-hover:translate-x-1 group-hover:text-orange-ink" />
+						</ArticleLink>
+					</Panel>
+				</section>
 				{sections.map(section => (
 					<section key={section}>
 						<h2 className="label mb-3 text-navy-faint">{section}</h2>
