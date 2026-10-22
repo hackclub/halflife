@@ -8,10 +8,16 @@
  * cyan rather than on `transparent` or the browser's blue.
  *
  * The promo is a deliberate visitor from the landing: the painting, the
- * wordmark, the cyan plate and the square-cut plate language are the landing's
- * branding, and that is what makes a strip across the top of the platform read
- * as an announcement from the programme rather than as another platform panel.
- * Keep the fallbacks in step with `(site)/globals.css` by hand.
+ * wordmark and the cyan eyebrow are the landing's branding, and that is what
+ * makes a strip across the top of the platform read as an announcement from
+ * the programme rather than as another platform panel.
+ *
+ * Its controls are the exception. On the platform the banner sits directly
+ * above the dashboard and is used far more often there, so its buttons and
+ * edges wear that side's chrome: the drawn 12px control radius, a two-pixel
+ * rim, the hand label face, and the platform's own `line` stroke and panel
+ * radius. The site keeps the landing's bevel-cut cyan plate. Keep the
+ * fallbacks in step with both globals.css files by hand.
  */
 
 .root {
@@ -20,6 +26,13 @@
 	--cyan: var(--color-hl-cyan, #8ed3dc);
 	--paper-soft: color-mix(in srgb, var(--paper) 78%, var(--ink));
 	--font-promo: var(--font-ubuntu, var(--font-jakarta, ui-sans-serif)), system-ui, sans-serif;
+	/* The platform's chrome, for the skin at the end of the file. The same
+	   fallbacks as its own tokens, so the platform rules stay readable here. */
+	--line: var(--color-line, #c8c3d6);
+	--navy: var(--color-navy, #1c1a59);
+	--sky: var(--color-sky, #52b4d5);
+	--sky-deep: var(--color-sky-deep, #2e8cae);
+	--violet: var(--color-violet, #a47cc0);
 
 	position: relative;
 	font-family: var(--font-promo);
@@ -303,6 +316,63 @@
 	width: 2rem;
 	height: 2rem;
 	translate: none;
+}
+
+/* ── The platform skin ─────────────────────────────────────────────────── */
+
+/* On the dashboard the strip is the first row of the app, so its controls
+   and edges borrow the dashboard's material rather than the landing's: the
+   primary action is a sky plate on a sky-deep two-pixel rim with navy type,
+   as the platform sets any label on an accent fill, the close is one of the
+   chrome's round outlined icon controls, and every edge is the platform's
+   `line` at the panel weight and radius. */
+.root[data-platform="true"].banner {
+	border-bottom: 2px solid color-mix(in srgb, var(--line) 62%, transparent);
+}
+
+.root[data-platform="true"] .cta {
+	min-height: 2.75rem;
+	padding: 0 1.25rem;
+	font-family: var(--font-hand, var(--font-promo));
+	font-size: 0.78rem;
+	letter-spacing: 0.11em;
+	color: var(--navy);
+	background-color: var(--sky);
+	border: 2px solid var(--sky-deep);
+	border-radius: 0.75rem;
+	corner-shape: round;
+	transition:
+		background-color 150ms,
+		filter 150ms,
+		transform 150ms;
+}
+
+.root[data-platform="true"] .cta:hover {
+	filter: brightness(1.06);
+}
+
+.root[data-platform="true"] .close {
+	width: 2.25rem;
+	height: 2.25rem;
+	color: var(--paper);
+	background-color: color-mix(in srgb, var(--ink) 55%, transparent);
+	border: 2px solid color-mix(in srgb, var(--line) 55%, transparent);
+	border-radius: 999px;
+	corner-shape: round;
+}
+
+.root[data-platform="true"] .close:hover {
+	color: #ffffff;
+	background-color: color-mix(in srgb, var(--paper) 14%, transparent);
+	border-color: var(--violet);
+}
+
+/* The floating card is a panel on the platform, not a sticker: the same
+   line stroke, the 16px panel radius, and the tape shadow it already had. */
+.root[data-platform="true"].card {
+	border: 2px solid color-mix(in srgb, var(--line) 62%, transparent);
+	border-radius: 1rem;
+	corner-shape: round;
 }
 
 /* ── Before React remembers ────────────────────────────────────────────── */
