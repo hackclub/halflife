@@ -133,6 +133,7 @@ export default async function AdminOverviewPage() {
 					}}
 				>
 					<ShareDonut
+						centerLabel="submitted"
 						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
 						empty="No projects with a review state yet."
 						measure="Project review status"
@@ -1770,6 +1771,7 @@ function ShareDonut({
 	measure,
 	empty,
 	colors,
+	centerLabel,
 }: {
 	rows: { label: string; value: number }[]
 	/** What the ring counts, for the figure's accessible name. */
@@ -1777,6 +1779,8 @@ function ShareDonut({
 	empty: string
 	/** Optional per-slice colors, in row order. Falls back to the default palette. */
 	colors?: string[]
+	/** When set, the ring's total is written in the middle under this caption. */
+	centerLabel?: string
 }) {
 	const total = rows.reduce((n, r) => n + r.value, 0)
 	if (total === 0) return <EmptyState>{empty}</EmptyState>
@@ -1809,7 +1813,7 @@ function ShareDonut({
 			}}
 		>
 			<svg
-				aria-label={`${measure}: ${summary}`}
+				aria-label={`${measure}${centerLabel ? `, ${fmtInt(total)} ${centerLabel} in total` : ""}: ${summary}`}
 				role="img"
 				style={{ flexShrink: 0, height: "11rem", width: "11rem" }}
 				viewBox="0 0 42 42"
@@ -1831,6 +1835,33 @@ function ShareDonut({
 						/>
 					))}
 				</g>
+				{centerLabel ? (
+					<>
+						<text
+							dominantBaseline="middle"
+							style={{
+								fill: "var(--color-ink-strong)",
+								fontSize: "6px",
+								fontVariantNumeric: "tabular-nums",
+								fontWeight: 800,
+							}}
+							textAnchor="middle"
+							x="21"
+							y="19.4"
+						>
+							{fmtInt(total)}
+						</text>
+						<text
+							dominantBaseline="middle"
+							style={{ fill: "var(--color-ink-muted)", fontSize: "2.9px" }}
+							textAnchor="middle"
+							x="21"
+							y="24"
+						>
+							{centerLabel}
+						</text>
+					</>
+				) : null}
 			</svg>
 			<table style={{ borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
 				<tbody>
