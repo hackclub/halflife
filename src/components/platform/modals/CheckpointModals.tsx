@@ -1804,7 +1804,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						title="Your own idea"
 					>
 						<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
-							Make your own project! It can be anything you want.
+							Make your own project! It can be anything you want within this week&rsquo;s theme: {week.fullName}.
 						</p>
 					</ProjectChoiceCard>
 					{/* Only once a starter is the pick: it is a rule about the choice, not about the step, and beside "make your own" it read as a warning about the whole fork. */}
