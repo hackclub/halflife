@@ -1,4 +1,3 @@
-import { z } from "zod"
 import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
@@ -6,7 +5,7 @@ import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
-import { phaseSchema } from "@/lib/schemas/common"
+import { phaseBodySchema } from "@/lib/schemas/common"
 import { trackSideEffect } from "@/lib/side-effects"
 
 interface Params {
@@ -14,8 +13,6 @@ interface Params {
 }
 
 export const maxDuration = 60
-
-const bodySchema = z.object({ phase: phaseSchema }).strict()
 
 /**
  * Replay a submission-row write that failed the first time, or refresh a row with the project as it stands now. Writes to the same row as before.
@@ -27,7 +24,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (gate.error) return gate.error
 	const { id } = await params
 
-	const parsed = await parseBody(req, bodySchema)
+	const parsed = await parseBody(req, phaseBodySchema)
 	if (parsed.error) return parsed.error
 
 	// A row is a submission, so only a phase that has been handed in gets one – never a draft, which is how an empty 0-hour row would otherwise appear.

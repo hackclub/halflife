@@ -5,6 +5,9 @@ export const cuid = z.string().min(1).max(64)
 
 export const phaseSchema = z.enum(Phase)
 
+/** A body that names only a phase, for the replay routes that re-run one phase of a project. */
+export const phaseBodySchema = z.object({ phase: phaseSchema }).strict()
+
 /** Rejects javascript:, data:, http: and friends – a URL field is not a script host. */
 export const httpsUrl = z
 	.string()

@@ -24,6 +24,8 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
+export const dynamic = "force-dynamic"
+
 export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requireSession()
 	if (gate.error) return gate.error

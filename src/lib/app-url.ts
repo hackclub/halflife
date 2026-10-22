@@ -1,3 +1,4 @@
+import { HttpError } from "@/lib/errors"
 import { configuredOrigin } from "@/lib/origin"
 
 /**
@@ -17,6 +18,17 @@ import { configuredOrigin } from "@/lib/origin"
  */
 export function appBaseUrl(): string {
 	return configuredOrigin() ?? ""
+}
+
+/**
+ * The public origin, failing rather than returning an empty string.
+ *
+ * For routes whose whole output is a link – a referral URL, a hand-off QR – an empty origin is not a lesser answer, it is a broken one. They fail closed with `NOT_CONFIGURED` so a deployment that names no origin says so plainly instead of handing out URLs that start at `/`.
+ */
+export function requireAppBaseUrl(): string {
+	const base = appBaseUrl()
+	if (!base) throw new HttpError("NOT_CONFIGURED", "The public app URL is not configured on this deployment")
+	return base
 }
 
 /**

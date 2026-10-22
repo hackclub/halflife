@@ -37,6 +37,8 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
+export const dynamic = "force-dynamic"
+
 /**
  * The entries' order: newest first, with the id as the tiebreaker.
  *

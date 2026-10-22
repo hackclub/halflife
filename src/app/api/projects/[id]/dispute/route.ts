@@ -1,3 +1,4 @@
+import { Prisma } from "@/app/generated/prisma/client"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
@@ -58,9 +59,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			await tx.reviewDispute.create({
 				data: { note, submissionId: submission.id, userId: gate.user.id },
 			})
-		} catch {
-			// The unique submissionId is the guard: one second look per decision.
-			throw new HttpError("CONFLICT", "You have already asked for a second look at this review")
+		} catch (err) {
+			// The unique submissionId is the guard: one second look per decision. Anything else – a dropped connection, a constraint that is not this one – is not the caller's conflict to be told about.
+			if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
+				throw new HttpError("CONFLICT", "You have already asked for a second look at this review")
+			throw err
 		}
 
 		return submission.id

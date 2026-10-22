@@ -1,6 +1,6 @@
 import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
-import { getUserRoles, hasPermission, Permission } from "@/lib/permissions"
+import { hasPermission, Permission } from "@/lib/permissions"
 import {
 	buildObjectKey,
 	contentHash,
@@ -37,7 +37,7 @@ export const POST = withRoute(async (req: Request) => {
 
 	// Shop pictures are the catalogue's, so only someone who runs the shop puts them there – and only pictures.
 	if (folder === "shop") {
-		if (!hasPermission(await getUserRoles(gate.user.id), Permission.MANAGE_SHOP))
+		if (!hasPermission(gate.roles, Permission.MANAGE_SHOP))
 			return fail("FORBIDDEN", "Only shop managers can upload shop images")
 		if (!file.type.startsWith("image/")) return fail("VALIDATION_FAILED", "Shop images must be pictures")
 	}

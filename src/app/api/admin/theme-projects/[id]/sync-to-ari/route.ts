@@ -1,4 +1,3 @@
-import { z } from "zod"
 import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
@@ -7,7 +6,7 @@ import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
 import prisma from "@/lib/prisma"
-import { phaseSchema } from "@/lib/schemas/common"
+import { phaseBodySchema } from "@/lib/schemas/common"
 import { trackSideEffect } from "@/lib/side-effects"
 
 interface Params {
@@ -15,8 +14,6 @@ interface Params {
 }
 
 export const maxDuration = 60
-
-const bodySchema = z.object({ phase: phaseSchema }).strict()
 
 /**
  * Re-send a hand-in that never reached Ari – a send that failed, or one made before the ARI_* secrets were set. Same work the hourly retry job does, for the one submission an admin is looking at.
@@ -28,7 +25,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (gate.error) return gate.error
 	const { id } = await params
 
-	const parsed = await parseBody(req, bodySchema)
+	const parsed = await parseBody(req, phaseBodySchema)
 	if (parsed.error) return parsed.error
 
 	if (!isAriConfigured()) return fail("NOT_CONFIGURED", "Ari is not configured on this deployment")

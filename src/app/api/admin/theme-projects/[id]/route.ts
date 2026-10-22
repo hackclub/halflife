@@ -1,3 +1,4 @@
+import { Prisma } from "@/app/generated/prisma/client"
 import { Theme } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
@@ -53,8 +54,10 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			select: { id: true, submissionExtensionUntil: true, theme: true },
 			where: { id },
 		})
-	} catch {
-		return fail("CONFLICT", "That maker already has a live project on the target theme")
+	} catch (err) {
+		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
+			return fail("CONFLICT", "That maker already has a live project on the target theme")
+		throw err
 	}
 
 	if (data.submissionExtensionUntil !== undefined)
