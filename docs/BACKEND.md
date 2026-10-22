@@ -289,6 +289,11 @@ identical to "the click did nothing".
   suites cannot run in a pod as-is.
 - **`.env.example` comments live above values, not beside them** – a trailing
   comment gets copy-pasted into a deployment and a 32-character R2 key becomes 59.
+- **Asset URLs stored in journals have two possible key layouts.** Before the S3
+  client stopped putting the bucket name in the path, an object landed at
+  `<bucket>/<key>` and its URL was `<origin>/<bucket>/<key>`. Both that and the
+  current `<origin>/<key>` are valid, so `pnpm uploads:backfill-urls` asks the
+  bucket before rewriting anything rather than assuming one layout.
 - **Coins are minted at review approval, not when hours are logged.** The trail
   moves immediately because the node is the entry, not the payment.
 

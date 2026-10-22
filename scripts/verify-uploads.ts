@@ -5,7 +5,7 @@ import "dotenv/config"
  *
  * Uploads a small object through the same code path `/api/upload` uses, mints its public URL the way the feed does, fetches that URL over the open internet, compares the bytes, and deletes it again.
  *
- * The fetch is the point. Credentials that can write and a bucket the browser can read are two different things: a deployment can upload every reel successfully and play none of them, and nothing in the app would say so – `publicUrlFor` just returns a URL that 403s. This catches that before there is a feed sitting on top of it.
+ * The fetch is the point. Credentials that can write and a bucket the browser can read are two different things: a deployment can upload every reel successfully and play none of them, and nothing in the app would say so – `publicUrlFor` just returns a URL that 403s (the bucket is not public) or 404s (the public base points at a path the host does not serve). This catches both before there is a feed sitting on top of it.
  *
  * Prints no secret values, only whether each is present.
  *
@@ -20,6 +20,33 @@ function check(label: string, ok: boolean, detail = "") {
 
 /** A 1x1 transparent PNG. Small enough to be free, real enough to be a file. */
 const PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+/**
+ * Why the public URL refused an object the PUT just stored, in terms an operator can act on.
+ *
+ * A 403 is the bucket's access policy. A 404 is not the same fault: the bytes were written, so the URL is pointing at the wrong place – most often a bucket segment in `S3_PUBLIC_URL` on a custom domain that already serves the bucket at its root. Proving that with the bare origin is worth one extra request, because the alternative is sending someone to the R2 dashboard over a broken picture.
+ */
+async function unreadableReason(res: Response, url: string, key: string, body: Buffer): Promise<string> {
+	const status = `${res.status} ${res.statusText}`
+	if (res.status === 401 || res.status === 403)
+		return `${status}. The bucket is not public: enable the r2.dev subdomain or attach a custom domain, or reels will upload fine and never play.`
+
+	if (res.status === 404) {
+		const bare = new URL(url)
+		bare.pathname = `/${key}`
+		if (bare.toString() !== url)
+			try {
+				const probe = await fetch(bare, { cache: "no-store" })
+				if (probe.ok && Buffer.from(await probe.arrayBuffer()).equals(body))
+					return `${status} at ${url}, but the same object is readable at ${bare}. S3_PUBLIC_URL carries a path prefix the bucket does not serve – set it to that origin alone.`
+			} catch {
+				// Best-effort; the 404 below stands either way.
+			}
+		return `${status} at ${url}. The PUT succeeded, so the object exists – check that S3_PUBLIC_URL is the origin the bucket is actually served from, path included.`
+	}
+
+	return `${status} at ${url}.`
+}
 
 async function main() {
 	const { isUploadConfigured, putObject, publicUrlFor, deleteObject, MAX_UPLOAD_BYTES } = await import(
@@ -105,9 +132,7 @@ async function main() {
 			check(
 				"the object is publicly readable",
 				res.ok,
-				res.ok
-					? `${res.status}`
-					: `${res.status} ${res.statusText}, the bucket is not public. Enable the r2.dev subdomain or attach a custom domain, or reels will upload fine and never play`,
+				res.ok ? `${res.status}` : await unreadableReason(res, url, key, body),
 			)
 			if (res.ok) {
 				const fetched = Buffer.from(await res.arrayBuffer())
