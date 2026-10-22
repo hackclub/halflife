@@ -5,6 +5,7 @@ import { type ImportedBomLine, parseBomCsv, type SkippedRow } from "@/lib/bom-cs
 import { BOM_CSV_PATTERN } from "@/lib/config/repo-checks"
 import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
+import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { findRepoFilePath, readRepoFile } from "@/lib/repo-checks"
@@ -132,7 +133,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				quantity: line.quantity,
 				sortOrder: base + i,
 				themeProjectId: id,
-				unitCostUsd: Math.round(line.unitCostUsd * 100) / 100,
+				unitCostUsd: round2(line.unitCostUsd),
 				vendor: sanitizeOptional(line.vendor),
 			})),
 		})

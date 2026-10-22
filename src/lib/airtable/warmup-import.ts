@@ -14,6 +14,7 @@ import { AuditAction, logAuditTx } from "@/lib/audit"
 import { TIERS } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
 import { lockKey } from "@/lib/locks"
+import { round2 } from "@/lib/money"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -185,7 +186,7 @@ function parseRow(record: AirtableRecord): { ok: true; row: ParsedWarmupRow } | 
 			description: readString(record, f.description),
 			email,
 			hackatimeId: cleanExternalId(readString(record, f.hackatimeId)),
-			hours: hours !== null && hours > 0 ? Math.round(hours * 100) / 100 : null,
+			hours: hours !== null && hours > 0 ? round2(hours) : null,
 			journalUrl: readString(record, f.journalUrl),
 			lapseLinks: readString(record, f.lapseLinks),
 			name,

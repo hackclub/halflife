@@ -7,6 +7,7 @@ import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk 
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
 import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import { formatDeadline } from "./deadline"
+import { round2 } from "./money"
 import type { StoreSnapshot } from "./queries/store"
 import { DEFAULT_SESSION_TITLE } from "./schemas/session"
 import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from "./types"
@@ -1098,7 +1099,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					res = await fetch(`/api/projects/${route.projectId}/sessions`, {
 						body: JSON.stringify({
 							content: body,
-							hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+							hoursClaimed: round2(minutes / 60),
 							phase: route.phase,
 							timelapses: clips.map(lapseId => ({ lapseId })),
 							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
@@ -1161,7 +1162,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				res = await fetch(`/api/projects/${route.projectId}/sessions/${entry.id}`, {
 					body: JSON.stringify({
 						content: body,
-						hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+						hoursClaimed: round2(minutes / 60),
 						timelapses: clips.map(lapseId => ({ lapseId })),
 						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 					}),
@@ -1421,7 +1422,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					c => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
 				)
 				if (owed) return firstFinish(owed)
-				const toGo = Math.round((self.atHours - hours) * 100) / 100
+				const toGo = round2(self.atHours - hours)
 				return `Opens at ${self.atHours}h logged this week – ${toGo}h to go.`
 			}
 

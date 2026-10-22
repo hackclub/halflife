@@ -9,8 +9,7 @@ import { Button, inputClass } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd } from "@/lib/bom-policy"
 import { cx } from "@/lib/cx"
-
-const usd = (n: number) => `$${n.toFixed(2)}`
+import { formatUsd, round2 } from "@/lib/money"
 
 /** What the import route reports after reading the repo's CSV. */
 interface ImportPreview {
@@ -363,8 +362,10 @@ export function BomEditor({
 									{l.purpose && <span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>}
 								</td>
 								<td className="px-3 py-2.5 tabular-nums">{l.quantity}</td>
-								<td className="px-3 py-2.5 tabular-nums">{usd(l.unitCostUsd)}</td>
-								<td className="px-3 py-2.5 font-semibold text-navy tabular-nums">{usd(l.quantity * l.unitCostUsd)}</td>
+								<td className="px-3 py-2.5 tabular-nums">{formatUsd(l.unitCostUsd)}</td>
+								<td className="px-3 py-2.5 font-semibold text-navy tabular-nums">
+									{formatUsd(l.quantity * l.unitCostUsd)}
+								</td>
 								<td className="hand px-3 py-2.5 text-navy-soft">
 									{l.link ? (
 										<a
@@ -421,14 +422,14 @@ export function BomEditor({
 				<p className="text-[0.9rem] text-navy-soft">
 					Total{" "}
 					<span className={cx("text-[1.05rem] font-extrabold tabular-nums", over ? "text-coral-deep" : "text-navy")}>
-						{usd(total)}
+						{formatUsd(total)}
 					</span>{" "}
 					of <span className="font-bold text-navy tabular-nums">${grantUsd}</span> tier {tier} funding
 					{over && (
 						<span className="hand block text-[0.84rem] text-coral-deep">
 							{pastMargin
-								? `${usd(total - grantUsd)} over – you can still submit, but only $${grantUsd} of it will be funded and you'll cover the rest.`
-								: `${usd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
+								? `${formatUsd(total - grantUsd)} over – you can still submit, but only $${grantUsd} of it will be funded and you'll cover the rest.`
+								: `${formatUsd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
 						</span>
 					)}
 				</p>
@@ -595,7 +596,11 @@ export function BomEditor({
 													</td>
 													<td className="px-3 py-2 tabular-nums">{l.quantity}</td>
 													<td className="px-3 py-2 tabular-nums">
-														{l.unitCostUsd > 0 ? usd(l.unitCostUsd) : <span className="text-coral-deep">no price</span>}
+														{l.unitCostUsd > 0 ? (
+															formatUsd(l.unitCostUsd)
+														) : (
+															<span className="text-coral-deep">no price</span>
+														)}
 													</td>
 													<td className="hand px-3 py-2 text-navy-soft">{l.vendor || "—"}</td>
 												</tr>
@@ -655,7 +660,7 @@ function ExtraRow({
 			return
 		}
 		setInvalid(false)
-		const cents = Math.round(n * 100) / 100
+		const cents = round2(n)
 		if (await onSave(cents)) setDraft(cents ? cents.toFixed(2) : "")
 	}
 
@@ -671,7 +676,7 @@ function ExtraRow({
 			<td className="px-3 py-2.5 text-navy-soft">–</td>
 			<td className="px-3 py-1.5 font-semibold text-navy tabular-nums" colSpan={locked ? 2 : 3}>
 				{locked ? (
-					usd(value)
+					formatUsd(value)
 				) : (
 					<span className="inline-flex items-center gap-1">
 						<span aria-hidden="true">$</span>

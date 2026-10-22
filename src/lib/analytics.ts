@@ -2,6 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { CoinBucket, HoursSource } from "@/app/generated/prisma/enums"
 import { lockKey } from "@/lib/locks"
+import { round2 } from "@/lib/money"
 import { pctOf } from "@/lib/numbers"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -192,7 +193,7 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
 				weekNumber: week,
 			},
 		})
-		const hours = Math.round((sum._sum.hoursClaimed ?? 0) * 100) / 100
+		const hours = round2(sum._sum.hoursClaimed ?? 0)
 		await prisma.userWeek.upsert({
 			create: { hours, userId, week },
 			update: { hours },
@@ -312,7 +313,7 @@ export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 				for (const h of HOUR_MILESTONES)
 					if (running >= h && !reached[milestoneField(h)]) reached[milestoneField(h)] = s.at
 			}
-			const hours = Math.round(running * 100) / 100
+			const hours = round2(running)
 			await prisma.userWeek.upsert({
 				create: { hours, userId, week, ...reached },
 				update: { hours },
@@ -419,7 +420,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 			longestStreak: u.longestStreak,
 			onboardedAt: u.onboardingCompletedAt,
 			signedUpAt: u.createdAt,
-			totalHours: Math.round(u.activityWeeks.reduce((n, w) => n + w.hours, 0) * 100) / 100,
+			totalHours: round2(u.activityWeeks.reduce((n, w) => n + w.hours, 0)),
 			userId: u.id,
 			weeks: u.activityWeeks.map(({ week, hours, reached1hAt, reached5hAt, reached10hAt, reached20hAt }) => ({
 				hours,

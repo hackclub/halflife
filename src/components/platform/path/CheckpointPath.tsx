@@ -18,6 +18,7 @@ import { Chip, onAccent, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { printerById } from "@/lib/config/printers"
 import { cx } from "@/lib/cx"
+import { fmtHours } from "@/lib/numbers"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
 
@@ -82,9 +83,6 @@ const isBeat = (c: Checkpoint) => c.kind === "journal" && !c.branch
 /** Where a node sits, counting the strides taken to reach it. */
 const offsetOf = (full: number, beats: number, extra = "") =>
 	`calc(var(--lead) + var(--step) * ${full} + var(--step-sm) * ${beats}${extra})`
-
-/** Hours, two decimals at most and never a trailing zero. */
-const fmtH = (h: number) => `${Math.round(h * 100) / 100}h`
 
 /**
  * Checkpoints that bring something into existence rather than record it. Going through onboarding or the project form a second time would mint a second project for a week that already has one, and every lookup in the app finds a week's project with `.find` – so the duplicate would not replace the first, it would sit behind it, unreachable and counting for nothing.
@@ -303,7 +301,7 @@ function CheckpointNode({
 				{checkpoint.title}
 			</p>
 			{(unlocked || passed) && st.done && st.minutes > 0 && (
-				<p className="hand text-[0.66rem] leading-tight text-navy-soft tabular-nums">{fmtH(st.minutes / 60)}</p>
+				<p className="hand text-[0.66rem] leading-tight text-navy-soft tabular-nums">{fmtHours(st.minutes / 60)}</p>
 			)}
 		</div>
 	)

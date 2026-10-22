@@ -1,3 +1,4 @@
+import { fmtHours } from "@/lib/numbers"
 import "server-only"
 import { Phase } from "@/app/generated/prisma/enums"
 import { projectUrl } from "@/lib/app-url"
@@ -54,12 +55,6 @@ export interface JournalEntry {
  * Whether an entry belongs where it does: DESIGN weeks read as designing, BUILD weeks as building. Used for the heading, not for filtering – every entry is written either way.
  */
 const phaseWord = (phase: Phase) => (phase === Phase.DESIGN ? "Design" : "Build")
-
-/** `1,234.5h` – the journal's own rounding, so the file matches the page. */
-function hours(n: number): string {
-	const rounded = Math.round(n * 100) / 100
-	return `${rounded}h`
-}
 
 function dateOf(entry: JournalEntry): string {
 	return entry.effectiveDate ?? entry.createdAt.toISOString().slice(0, 10)
@@ -197,7 +192,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 		row(
 			project.isWarmup ? "Warm-up" : `Week ${project.weekId}`,
 			`Tier ${project.tier}`,
-			hours(entries.reduce((n, e) => n + (e.hoursApproved ?? e.hoursClaimed), 0)),
+			fmtHours(entries.reduce((n, e) => n + (e.hoursApproved ?? e.hoursClaimed), 0)),
 			entries.length,
 		),
 		"",
@@ -228,7 +223,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 		const claimed = entry.hoursApproved ?? entry.hoursClaimed
 		const adjusted = entry.hoursApproved !== null && entry.hoursApproved !== entry.hoursClaimed
 		lines.push(
-			`**${hours(claimed)}**${adjusted ? ` _(${hours(entry.hoursClaimed)} logged, adjusted by a reviewer)_` : ""}`,
+			`**${fmtHours(claimed)}**${adjusted ? ` _(${fmtHours(entry.hoursClaimed)} logged, adjusted by a reviewer)_` : ""}`,
 			"",
 		)
 		if (entry.content) lines.push(htmlToMarkdown(entry.content), "")
