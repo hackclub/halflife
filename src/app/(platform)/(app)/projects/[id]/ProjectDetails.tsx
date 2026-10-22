@@ -8,7 +8,7 @@ import { Button, Chip, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor } from "@/lib/config/printers"
 import { DESIGN_WEEKS, MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { ENTRY_TIER } from "@/lib/config/tiers"
+import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
@@ -179,7 +179,7 @@ function DetailsForm({
 
 	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
-	const selectedTier = TIERS.find(t => t.id === tier)
+	const selectedTier = getTier(tier)
 	const readyToSubmit = selectedTier !== undefined && hours >= submitFloorFor(selectedTier.fundingHours)
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK

@@ -22,6 +22,7 @@ import { statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
+import { DAY_MS } from "@/lib/time"
 
 // ─── Claim locks ─────────────────────────────────────────────────────────────
 
@@ -91,7 +92,7 @@ export async function sweepExpiredClaims(): Promise<number> {
  *
  * A returned phase is a request for changes, so its maker has to open the project again, fix it and hand it in – and by the time a review lands late in a week that work may no longer fit before the close. The window is measured from the return rather than the week's own close, so an extension only bites when the scheduled close is sooner, and it never shortens a longer extension an admin already put on record.
  */
-export const RETURN_EXTENSION_MS = 7 * 24 * 60 * 60 * 1000
+export const RETURN_EXTENSION_MS = 7 * DAY_MS
 
 /** A returned phase's extension: at least a week from now, kept at whichever is later than what is already on record. */
 export function returnExtensionUntil(current: Date | null | undefined, now: Date = new Date()): Date {

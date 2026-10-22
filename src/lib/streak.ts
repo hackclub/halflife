@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/time"
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { PostKind } from "@/app/generated/prisma/enums"
@@ -24,7 +25,7 @@ function daysBetween(earlier: string, later: string): number {
 	// Parsed as UTC midnight deliberately: these are calendar dates with no time component, and UTC is the one zone with no DST, so the subtraction can never come out as 23 or 25 hours and round to the wrong day.
 	const a = Date.parse(`${earlier}T00:00:00Z`)
 	const b = Date.parse(`${later}T00:00:00Z`)
-	return Math.round((b - a) / 86_400_000)
+	return Math.round((b - a) / DAY_MS)
 }
 
 export interface StreakState {

@@ -1,3 +1,4 @@
+import { getTier, isTierId } from "@/lib/config/tiers"
 import "server-only"
 import type { AuditLog, LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import {
@@ -21,7 +22,6 @@ import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
 import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { isTierId, TIERS } from "@/lib/config/tiers"
 import { type Balances, getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
@@ -34,6 +34,7 @@ import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
+import { eachDayBetween } from "@/lib/time"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
 export interface DirectoryUser {
@@ -1262,8 +1263,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 	if (days.length === 0) return []
 	const out: DayActivity[] = []
 	const [first, last] = [days[0] as string, days.at(-1) as string]
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
+	for (const day of eachDayBetween(first, last)) {
 		const row = byDay.get(day)
 		out.push({
 			day,
@@ -1332,10 +1332,7 @@ export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today:
 	if (!first) return { days: [], today: activeToday }
 
 	const days: ActiveDay[] = []
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${today}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
-		days.push({ day, users: byDay.get(day) ?? 0 })
-	}
+	for (const day of eachDayBetween(first, today)) days.push({ day, users: byDay.get(day) ?? 0 })
 	return { days, today: activeToday }
 }
 
@@ -1390,8 +1387,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 	if (days.length === 0) return []
 	const out: GoalDayActivity[] = []
 	const [first, last] = [days[0] as string, days.at(-1) as string]
-	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
-		const day = new Date(at).toISOString().slice(0, 10)
+	for (const day of eachDayBetween(first, last)) {
 		const goals = byDay.get(day)
 		out.push({
 			byGoal: GOAL_OPTIONS.map(option => ({
@@ -2156,7 +2152,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		}
 		for (const [userId, { project, tier }] of latest) {
 			userTier.set(userId, tier)
-			const floor = TIERS.find(t => t.id === tier)?.fundingHours ?? 0
+			const floor = getTier(tier)?.fundingHours ?? 0
 			const hours = (journalByProject.get(project.id) ?? 0) + (hackByProject.get(project.id) ?? 0)
 			tierMet.set(userId, hours >= floor)
 		}

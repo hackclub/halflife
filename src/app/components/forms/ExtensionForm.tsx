@@ -2,9 +2,8 @@
 import { useEffect, useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
 import { toLocalInput } from "@/lib/deadline"
+import { DAY_MS } from "@/lib/time"
 import { sendJson, useAction } from "@/lib/use-action"
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 /**
  * Grant, move or clear an extension.

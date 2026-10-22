@@ -1,9 +1,9 @@
 "use client"
+
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { DAY_MS } from "@/lib/time"
 import { sendJson, useAction } from "@/lib/use-action"
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 /** A YYYY-MM-DD plus some days, as a short label. Calendar arithmetic only, so UTC. */
 function dayLabel(ymd: string, plusDays: number): string {

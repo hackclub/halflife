@@ -1,13 +1,13 @@
 import { z } from "zod"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
-import { getThemeDef } from "@/lib/config/program"
+import { getThemeDef, themeForDesignWeek } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import prisma from "@/lib/prisma"
 import { assertWeekStarted } from "@/lib/program"
-import { ensureThemeProject, themeForDesignWeek } from "@/lib/provisioning"
+import { ensureThemeProject } from "@/lib/provisioning"
 
 export const dynamic = "force-dynamic"
 

@@ -32,11 +32,6 @@ export async function ensureThemeProject(userId: string, theme: Theme): Promise<
 	})
 }
 
-/** The theme a design week belongs to, or null for a week that is not one. */
-export function themeForDesignWeek(weekId: number): Theme | null {
-	return THEMES.find(t => t.designWeek === weekId)?.id ?? null
-}
-
 /**
  * Serialize warm-up creation for one maker.
  *

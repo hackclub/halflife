@@ -17,11 +17,12 @@ import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 import prisma from "@/lib/prisma"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
+import { DAY_MS } from "@/lib/time"
 
 export const maxDuration = 300
 
 /** A failed withdraw is replayed for a week, then left to a human. */
-const WITHDRAW_REPLAY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const WITHDRAW_REPLAY_WINDOW_MS = 7 * DAY_MS
 
 function phaseOf(metadata: unknown): Phase | null {
 	const phase = (metadata as { phase?: unknown } | null)?.phase

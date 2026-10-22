@@ -5,7 +5,8 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
-import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
+import { ENTRY_TIER, getTier } from "./config/tiers"
+import { BUILD_HOURS, checkpointsFor, WEEK_META } from "./curriculum"
 import { formatDeadline } from "./deadline"
 import { round2 } from "./money"
 import type { StoreSnapshot } from "./queries/store"
@@ -93,7 +94,7 @@ const withoutOptionalIdea = (list: Checkpoint[]) => list.filter(c => c.id !== WE
  */
 function warmupWeek(project: Project, build: boolean, isDone: (id: string) => boolean): Week {
 	const key = (suffix: string) => `wu-${project.id}-${suffix}`
-	const tier = TIERS.find(t => t.id === project.tier) ?? TIERS[0]
+	const tier = getTier(project.tier) ?? ENTRY_TIER
 	const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
 	const meta: WeekMeta = {
 		accent: "var(--color-violet-pale)",
@@ -1035,7 +1036,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		() =>
 			WEEK_META.map(meta => {
 				const tierId = tierForWeek(meta.id)
-				const tier = TIERS.find(t => t.id === tierId) ?? TIERS[0]
+				const tier = getTier(tierId) ?? ENTRY_TIER
 				const build = meta.phase === "build"
 				// Column 5 is the tier-1 week and is already floored to a flat 10 hours, so every other tier is that plus the extra hours its grant funds.
 				const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)

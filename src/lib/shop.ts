@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/time"
 import "server-only"
 import type { Prisma, ShopItem, ShopOrder } from "@/app/generated/prisma/client"
 import { CoinBucket, LedgerKind, PhaseStatus, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
@@ -264,7 +265,7 @@ export async function purchase(
 				const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
 					.filter((d): d is Date => Boolean(d))
 					.toSorted((a, b) => b.getTime() - a.getTime())[0]
-				inGrace = reviewedAt !== undefined && reviewedAt.getTime() + settings.shopGraceDays * 86_400_000 > Date.now()
+				inGrace = reviewedAt !== undefined && reviewedAt.getTime() + settings.shopGraceDays * DAY_MS > Date.now()
 			}
 			if (!inGrace) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		}

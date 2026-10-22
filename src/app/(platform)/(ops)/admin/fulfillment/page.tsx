@@ -13,6 +13,7 @@ import { Permission } from "@/lib/permissions"
 import { PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import { type FulfillmentFilters, listFulfillmentOrders, listPrinterAwards } from "@/lib/queries/admin"
 import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
+import { DAY_MS } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -26,8 +27,6 @@ interface Search {
 interface Props {
 	searchParams: Promise<Search>
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 /** A `YYYY-MM-DD` from a date input, as midnight UTC. Anything else is dropped. */
 function utcDay(v?: string): Date | undefined {

@@ -31,6 +31,7 @@ import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
 import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { formatShortDate } from "@/lib/deadline"
@@ -2102,7 +2103,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const hours = hoursOf(week)
 	const tierFloor = submitFloorFor
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
-	const selectedTier = TIERS.find(t => t.id === tier) ?? TIERS[0]
+	const selectedTier = getTier(tier) ?? ENTRY_TIER
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
 	// Over the tier's funding warns; past the leeway the grant covers only part of the cart, which is allowed but has to be agreed to rather than discovered at review.
 	const funding = partsFunding(bomTotal, selectedTier.grantUsd)

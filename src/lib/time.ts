@@ -35,3 +35,12 @@ export function calendarDayNumber(at: Date, timeZone: string): number {
 export function utcCalendarDay(at: Date): number {
 	return Math.floor(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()) / DAY_MS)
 }
+
+/** Every `YYYY-MM-DD` from `first` to `last`, inclusive, for filling the gaps in a daily series. */
+export function eachDayBetween(first: string, last: string): string[] {
+	const out: string[] = []
+	const end = Date.parse(`${last}T00:00:00Z`)
+	for (let at = Date.parse(`${first}T00:00:00Z`); at <= end; at += DAY_MS)
+		out.push(new Date(at).toISOString().slice(0, 10))
+	return out
+}

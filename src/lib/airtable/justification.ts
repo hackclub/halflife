@@ -1,4 +1,5 @@
 import { fmtHours } from "@/lib/numbers"
+import { DAY_MS } from "@/lib/time"
 import "server-only"
 import { Phase, type Theme } from "@/app/generated/prisma/enums"
 import { scheduledWeekFor } from "@/lib/config/program"
@@ -145,8 +146,8 @@ export function justificationValues(
 	opts: { eventStart: Date; phase: Phase; theme: Theme },
 ): JustificationValues {
 	const week = scheduledWeekFor(opts.theme, opts.phase)
-	const start = new Date(opts.eventStart.getTime() + (week - 1) * 7 * 86_400_000)
-	const end = new Date(start.getTime() + 6 * 86_400_000)
+	const start = new Date(opts.eventStart.getTime() + (week - 1) * 7 * DAY_MS)
+	const end = new Date(start.getTime() + 6 * DAY_MS)
 	const projects = source.hackatimeProjects.map(name => `${name} (${ymd(start)} to ${ymd(end)})`)
 	const features = specificTechnicalFeatures(source, opts.phase)
 	return {

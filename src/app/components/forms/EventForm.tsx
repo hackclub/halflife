@@ -6,9 +6,9 @@ import { Button, Callout, Field } from "@/app/components/ui"
 import { cx } from "@/lib/cx"
 import { formatShortDate, toLocalInput } from "@/lib/deadline"
 import { type CalendarEvent, EVENT_COLOURS, type EventColour, eventColour, HUDDLE_URL } from "@/lib/events"
+import { DAY_MS } from "@/lib/time"
 
-const WEEK_MS = 7 * 86_400_000
-
+const WEEK_MS = 7 * DAY_MS
 /** The label for a series, so "the weekly call" reads as one thing on the list. */
 function seriesLabel(events: CalendarEvent[], event: CalendarEvent): string | null {
 	if (!event.seriesId) return null

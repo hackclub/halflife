@@ -1,5 +1,5 @@
 import type { EventColour } from "@/app/generated/prisma/client"
-import { calendarDay } from "@/lib/time"
+import { calendarDay, DAY_MS } from "@/lib/time"
 
 export { calendarDay } from "@/lib/time"
 
@@ -124,7 +124,7 @@ export function monthOf(day: string): { year: number; month: number } {
 /** A `YYYY-MM-DD` shifted by whole days. UTC throughout: these are calendar labels, not instants. */
 function addDays(day: string, offset: number): string {
 	const [year = 1970, month = 1, dayOfMonth = 1] = day.split("-").map(Number)
-	const at = new Date(Date.UTC(year, month - 1, dayOfMonth) + offset * 86_400_000)
+	const at = new Date(Date.UTC(year, month - 1, dayOfMonth) + offset * DAY_MS)
 	return dayKey(at.getUTCFullYear(), at.getUTCMonth() + 1, at.getUTCDate())
 }
 

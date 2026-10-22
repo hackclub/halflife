@@ -7,6 +7,7 @@ import { pctOf } from "@/lib/numbers"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
+import { DAY_MS } from "@/lib/time"
 
 type Tx = Prisma.TransactionClient
 
@@ -444,7 +445,7 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 	weeklyMilestones: { week: number; over1h: number; over5h: number; over10h: number; over20h: number }[]
 }> {
 	const { programTimezone } = await getProgramSettings()
-	const since = effectiveDateFor(new Date(Date.now() - days * 86_400_000), programTimezone)
+	const since = effectiveDateFor(new Date(Date.now() - days * DAY_MS), programTimezone)
 
 	const [dau, people, weeks] = await Promise.all([
 		prisma.userDay.groupBy({
