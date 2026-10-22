@@ -158,6 +158,27 @@ export function getStarterProject(id: string): StarterProject | undefined {
 	return STARTER_PROJECTS.find(p => p.id === id)
 }
 
+/**
+ * Whether a project is still carrying the starter's own description.
+ *
+ * Taking a starter writes its description into the project, so a maker who never replaces it has handed in the guide's words rather than their own. The comparison ignores case, whitespace, zero-width characters and typographic quote/dash variants, because those are not a change; it does not ignore an added sentence, which is a real edit the reviewer can judge.
+ */
+export function usesStarterDefaultDescription(starterProjectId: string | null, description: string | null): boolean {
+	if (!starterProjectId) return false
+	const starter = getStarterProject(starterProjectId)
+	if (!starter) return false
+	const normalise = (text: string | null) =>
+		(text ?? "")
+			.replaceAll(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+			.replaceAll(/[\u2018\u2019]/g, "'")
+			.replaceAll(/[\u201C\u201D]/g, '"')
+			.replaceAll(/[\u2013\u2014]/g, "-")
+			.replaceAll(/\s+/g, " ")
+			.trim()
+			.toLowerCase()
+	return normalise(description) === normalise(starter.description)
+}
+
 /** The tier a starter project is scoped to. Not configurable – see above. */
 export const STARTER_PROJECT_TIER: TierId = 1
 
@@ -168,7 +189,7 @@ export const STARTER_PROJECT_TIER: TierId = 1
  * once here so the two onboarding steps that offer a starter cannot drift apart in how they answer it.
  */
 export const STARTER_MODIFICATION_NOTE =
-	"A starter is a starting point, not the finished project. Make it yours – it needs enough of your own changes, to the design or the code, that the result is clearly unique to you. Handing in the guide's build with only small tweaks is not enough."
+	"A starter is a starting point, not the finished project. Make it yours – it needs enough of your own changes, to the design or the code, that the result is clearly unique to you. Handing in the guide's build with only small tweaks is not enough. Write your own project description too: the starter's default description blocks the hand-in."
 
 /**
  * Step two's copy: "Each week will have a theme, this week it's..."

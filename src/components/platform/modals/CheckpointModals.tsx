@@ -28,7 +28,12 @@ import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
-import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
+import {
+	STARTER_MODIFICATION_NOTE,
+	STARTER_PROJECT_TIER,
+	starterProjectsFor,
+	usesStarterDefaultDescription,
+} from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
@@ -2123,16 +2128,26 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const descriptionLength = project?.description.trim().length ?? 0
 	const descriptionReady = descriptionLength >= MIN_PROJECT_DESCRIPTION_CHARS
 	const descriptionBlocker = `Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting – you have ${descriptionLength}.`
+	// A starter's description is written into the project when it is taken. The server refuses it; the sheet says so before the button is pressed, so the maker fixes it where the field is.
+	const starterDescriptionReady = !usesStarterDefaultDescription(
+		project?.starterProjectId ?? null,
+		project?.description ?? null,
+	)
+	const starterDescriptionBlocker =
+		"Replace the starter project's default description with your own – say what you changed, why you made it, and what makes it yours."
 
 	const canAdvance =
 		step === 1
 			? repoReady
 			: isBuild
-				? clip && descriptionReady && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
+				? clip
+					&& descriptionReady
+					&& starterDescriptionReady
+					&& (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
 						(carts.length > 0 || fundingDeclined) && !tierBlocked && fundingOk
-					: clip && !tierBlocked && fundingOk && hasCover && descriptionReady
+					: clip && !tierBlocked && fundingOk && hasCover && descriptionReady && starterDescriptionReady
 
 	/**
 	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
@@ -2154,12 +2169,15 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					? "Say what needs to change – a sentence or two."
 					: !descriptionReady
 						? descriptionBlocker
-						: null
+						: !starterDescriptionReady
+							? starterDescriptionBlocker
+							: null
 		if (step === 2)
 			return carts.length === 0 && !fundingDeclined ? "Add a screenshot of your cart above to carry on." : null
 		if (!clip) return "Record your closing reel to carry on."
 		if (!hasCover) return "Add a cover image to your project before you can submit."
 		if (!descriptionReady) return descriptionBlocker
+		if (!starterDescriptionReady) return starterDescriptionBlocker
 		return null
 	}
 
@@ -2323,6 +2341,34 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
 							A reviewer decides from the description, so it needs at least {MIN_PROJECT_DESCRIPTION_CHARS} characters –
 							you have {descriptionLength}.{" "}
+							{project && (
+								<Link
+									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									href={`/projects/${project.id}`}
+									onClick={() => setOpenCheckpoint(null)}
+								>
+									Edit the description
+								</Link>
+							)}
+						</p>
+					</div>
+				</div>
+			)}
+
+			{!starterDescriptionReady && (
+				<div
+					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+				>
+					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
+					<div className="min-w-0">
+						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
+							{project
+								? `${project.name} still has the starter's description.`
+								: "This project still has the starter's description."}
+						</p>
+						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+							Write your own description – say what you changed, why you made it, and what makes it yours.{" "}
 							{project && (
 								<Link
 									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"

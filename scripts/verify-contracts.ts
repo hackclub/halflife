@@ -1296,6 +1296,41 @@ async function bodies() {
 				return Math.abs(Date.now() - new Date(stamped).getTime()) > 60_000
 			})(),
 		)
+
+		// Taking a starter writes its description into the project. A maker who never replaces it has handed in the guide's words, so submitPhase refuses it; the comparison is pinned on the cases that decide that gate.
+		const { STARTER_PROJECTS, usesStarterDefaultDescription } = await import("../src/lib/config/onboarding")
+		const starbie = STARTER_PROJECTS.find(p => p.id === "starbie")
+		const merbl = STARTER_PROJECTS.find(p => p.id === "merbl")
+		check(
+			"starter · the default description is recognised",
+			starbie !== undefined && usesStarterDefaultDescription("starbie", starbie.description),
+		)
+		check(
+			"starter · case and whitespace do not make it the maker's",
+			starbie !== undefined && usesStarterDefaultDescription("starbie", `  ${starbie.description.toUpperCase()}  `),
+		)
+		check(
+			"starter · punctuation and zero-width variants do not make it the maker's",
+			starbie !== undefined
+				&& usesStarterDefaultDescription(
+					"starbie",
+					starbie.description.replaceAll("-", "–").replace("Starboy", "Star\u200Bboy"),
+				),
+		)
+		check(
+			"starter · an added sentence is a change",
+			starbie !== undefined
+				&& !usesStarterDefaultDescription("starbie", `${starbie.description} I made the case from cardboard.`),
+		)
+		check(
+			"starter · a different starter's description does not match",
+			starbie !== undefined && merbl !== undefined && !usesStarterDefaultDescription("starbie", merbl.description),
+		)
+		check("starter · no starter id never matches", !usesStarterDefaultDescription(null, starbie?.description ?? ""))
+		check(
+			"starter · an unknown starter id never matches",
+			!usesStarterDefaultDescription("unknown", starbie?.description ?? ""),
+		)
 	}
 
 	/* ── 6bb. Reading a BOM CSV out of a repo ───────────────────────────────── */
