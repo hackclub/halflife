@@ -1,4 +1,5 @@
 import "server-only"
+import { createSlot, sleep } from "@/lib/concurrency"
 import type { Forge } from "@/lib/forge"
 
 /**
@@ -47,19 +48,7 @@ export class ForgeUnavailableError extends Error {
 type Route = "proxy" | "github-direct" | "gitlab-direct"
 
 const blockedUntil: Record<Route, number> = { "github-direct": 0, "gitlab-direct": 0, proxy: 0 }
-let inFlight = 0
-const waiting: (() => void)[] = []
-
-async function slot(): Promise<() => void> {
-	if (inFlight >= MAX_IN_FLIGHT) await new Promise<void>(resolve => waiting.push(resolve))
-	inFlight++
-	return () => {
-		inFlight--
-		waiting.shift()?.()
-	}
-}
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const slot = createSlot(MAX_IN_FLIGHT)
 
 /** How long a rate-limited answer asks us to wait, in ms, if it says. */
 function backoffFrom(res: Response): number | null {

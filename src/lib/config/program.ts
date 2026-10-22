@@ -124,8 +124,6 @@ export const THEMES = [
 	},
 ] as const satisfies readonly ThemeDef[]
 
-export type ThemeSlug = (typeof THEMES)[number]["slug"]
-
 /**
  * The pre-season track warm-up projects are filed on.
  *

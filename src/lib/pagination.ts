@@ -9,8 +9,6 @@ export const paginationQuery = z.object({
 	limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
 })
 
-export type PaginationQuery = z.infer<typeof paginationQuery>
-
 /**
  * Where a page stops: the leading order column's value, and the id of the last row on it.
  *

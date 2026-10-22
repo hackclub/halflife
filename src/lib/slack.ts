@@ -30,30 +30,6 @@ async function slackCall<T>(method: string, body: { [_: string]: unknown }): Pro
 	return data as T
 }
 
-export async function getSlackProfile(
-	slackId: string,
-): Promise<{ image: string | null; displayName: string | null } | null> {
-	const bot = token()
-	if (!bot) return null
-	try {
-		const res = await fetch(`${SLACK_API}/users.info?user=${encodeURIComponent(slackId)}`, {
-			headers: { Authorization: `Bearer ${bot}` },
-			signal: AbortSignal.timeout(10_000),
-		})
-		const data = (await res.json()) as {
-			ok: boolean
-			user?: { profile?: { image_512?: string; display_name?: string; real_name?: string } }
-		}
-		if (!data.ok || !data.user?.profile) return null
-		return {
-			displayName: data.user.profile.display_name || data.user.profile.real_name || null,
-			image: data.user.profile.image_512 ?? null,
-		}
-	} catch {
-		return null
-	}
-}
-
 export async function postMessage(channel: string, text: string): Promise<void> {
 	await slackCall("chat.postMessage", { channel, text })
 }

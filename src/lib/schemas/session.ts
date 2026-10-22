@@ -77,5 +77,3 @@ export const sessionCreateSchema = z
  * Editing an entry does not touch its images: the PATCH route writes the title, the content, the claimed hours and the source, and nothing else. `media` is left out so the shape says what the route does, rather than accepting a field and dropping it.
  */
 export const sessionUpdateSchema = sessionCreateSchema.omit({ media: true }).partial().strict()
-
-export type SessionCreateInput = z.infer<typeof sessionCreateSchema>

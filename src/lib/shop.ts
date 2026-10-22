@@ -77,8 +77,6 @@ export const shopOrderStaffSelect = {
 	userId: true,
 } satisfies Prisma.ShopOrderSelect
 
-export type ShopOrderStaff = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderStaffSelect }>
-
 export interface ShopItemView extends ShopItemPublic {
 	/** Against the pot this item may be paid from, not against the total. */
 	affordable: boolean

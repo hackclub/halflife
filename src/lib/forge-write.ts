@@ -1,5 +1,6 @@
 import "server-only"
 import { createHash } from "node:crypto"
+import { createSlot, sleep } from "@/lib/concurrency"
 import { HttpError } from "@/lib/errors"
 import { type Forge, repoUrl } from "@/lib/forge"
 import prisma from "@/lib/prisma"
@@ -119,19 +120,7 @@ export async function forgeCredentials(userId: string, forge: Forge): Promise<Fo
 }
 
 /** In flight at once. A burst of syncs waits here rather than all hitting one forge at once. */
-let inFlightCalls = 0
-const waiting: (() => void)[] = []
-
-async function slot(): Promise<() => void> {
-	if (inFlightCalls >= MAX_IN_FLIGHT) await new Promise<void>(resolve => waiting.push(resolve))
-	inFlightCalls++
-	return () => {
-		inFlightCalls--
-		waiting.shift()?.()
-	}
-}
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const slot = createSlot(MAX_IN_FLIGHT)
 
 /**
  * How long an answer asks us to wait, in ms, when it is a rate limit that says so.
