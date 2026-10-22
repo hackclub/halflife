@@ -2,6 +2,7 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { appendLedgerEntry, CoinBucket, getBalances, LedgerKind, lockUserCredit } from "@/lib/currency"
 import { withPermission } from "@/lib/guards"
+import { isIdentityVerified } from "@/lib/hca-profile"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
@@ -14,6 +15,13 @@ export const POST = withPermission(Permission.MANAGE_CREDIT, async (req: Request
 
 	const target = await prisma.user.findUnique({ select: { id: true }, where: { id: userId } })
 	if (!target) return fail("NOT_FOUND", "User not found")
+
+	// Issuing coins is a reward, so the maker has to have cleared HCA's identity check first. A clawback is not a reward and is still allowed: taking credit back must not be blocked by the state of the account it is taken from. Asked before the transaction, because `isIdentityVerified` may call HCA and that must not hold a lock.
+	if (amount > 0 && !(await isIdentityVerified(userId)))
+		return fail(
+			"NOT_VERIFIED",
+			"Coins can only be granted to a maker whose identity is verified. Ask them to verify at identity.hackclub.com, or make a negative adjustment to claw credit back.",
+		)
 
 	// Read here rather than inside the transaction: `headers()` is request-scoped, and the audit row
 	// has to carry the address and browser of the admin who made the adjustment.

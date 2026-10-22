@@ -186,6 +186,9 @@ up a maker's HCB card grant directly (`lib/hcb.ts`, `lib/grants.ts`). It is
 deliberately narrow:
 
 - only on an **approved design**, for the frozen `grantUsd`;
+- only for a maker whose **Hack Club identity is verified** – checked fresh with
+  HCA before anything is claimed or sent, and the same rule refuses a positive
+  manual credit adjustment in `/admin/users/[id]` (a clawback is still allowed);
 - **once per (user, project, design)** – `HcbGrantTopUp` has a unique key and
   the row is claimed before HCB is called, so a double-click cannot pay twice;
 - **once per card** – the grant hashid is unique, so two projects (or two
