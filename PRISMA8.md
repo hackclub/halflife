@@ -39,7 +39,8 @@ bun run p8:verify            # run a read-only query with the Prisma 8 client
 
 - `bun run p8:contract:emit` succeeds against the development database.
 - `bun run p8:verify` returns 5,224 users, ordered rows, a date as a string, an `include("user")` relation, and the shop-page queries.
-- `bunx prisma7 generate`, `bun run typecheck`, `bun run build`, and a `next start` smoke test pass with both clients installed.
+- Both migrated page components were executed with the auth guard mocked, and rendered without errors.
+- `bunx prisma7 generate`, `bun run typecheck`, `bun run build`, and a `next start` smoke test pass with both clients installed. `/admin/shop` redirects to login (307) as an anonymous visitor instead of 500ing, and `/api/health` (still Prisma 7 raw SQL) returns 200.
 
 ## Migrated so far
 
