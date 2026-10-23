@@ -102,6 +102,3 @@ yarn.lock
 /.claude/launch.json
 
 .opencode
-
-# Prisma 8 contract artifacts — regenerate with `bun run p8:contract:emit`
-/generated/prisma8

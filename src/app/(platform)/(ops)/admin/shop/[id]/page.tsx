@@ -5,7 +5,7 @@ import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { Badge, PageHeader, Panel } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 
 export const dynamic = "force-dynamic"
 
@@ -14,14 +14,12 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 	await requirePermissionPage(Permission.MANAGE_SHOP)
 	const { id } = await params
 	const [item, regions] = await Promise.all([
-		prisma.shopItem.findUnique({
-			include: { regionPrices: { select: { priceCredits: true, regionId: true } } },
-			where: { id },
-		}),
-		prisma.shopRegion.findMany({
-			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-			select: { id: true, name: true },
-		}),
+		db.orm.public.ShopItem.whereUnique({ id })
+			.include("regionPrices", prices => prices.select("regionId", "priceCredits"))
+			.first(),
+		db.orm.public.ShopRegion.select("id", "name")
+			.orderBy([r => r.sortOrder.asc(), r => r.name.asc()])
+			.all(),
 	])
 	if (!item) notFound()
 

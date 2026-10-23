@@ -7,6 +7,6 @@ export default definePrismaConfig({
 	orm: definePostgresConfig({
 		contract: "prisma8/contract.prisma",
 		db: { connection: process.env.DATABASE_URL },
-		output: "generated/prisma8",
+		output: "src/app/generated/prisma8",
 	}),
 })

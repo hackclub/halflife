@@ -20,9 +20,9 @@ Prisma 8 is not a drop-in major upgrade of the Prisma 7 client. It replaces the 
 | Prisma 7 CLI | `@prisma/prisma7@7.10.1`, binary `prisma7`, config `prisma7.config.ts` |
 | Prisma 8 CLI | `prisma@8.0.0-rc.27`, binary `prisma`, config `prisma.config.ts` |
 | Prisma 8 runtime | `@prisma/orm-postgres@8.0.0-rc.20` |
-| Contract source | `prisma8/contract.prisma`, inferred from the live database |
-| Contract artifacts | `generated/prisma8/contract.json` and `contract.d.ts` (gitignored) |
-| Verification | `bun run p8:verify` reads users, dates, and a relation through the Prisma 8 client |
+| Contract source | `prisma8/contract.prisma`, printed from a Prisma 7 schema copy with the index arguments Prisma 8 refuses stripped |
+| Contract artifacts | `src/app/generated/prisma8/contract.json` and `contract.d.ts` (gitignored with the rest of `src/app/generated`) |
+| Verification | `bun run p8:verify` reads users, dates, a relation, and the queries behind the shop pages |
 
 Prisma 7 still owns schema changes. See `prisma7.config.ts`, and the `db:*` scripts in `package.json`.
 
@@ -31,7 +31,6 @@ Prisma 7 still owns schema changes. See `prisma7.config.ts`, and the `db:*` scri
 ```sh
 bun run db:generate          # Prisma 7 client (unchanged app)
 bun run db:migrate           # Prisma 7 migrate dev
-bun run p8:contract:infer    # re-read the database into prisma8/contract.prisma
 bun run p8:contract:emit     # write generated/prisma8/contract.{json,d.ts}
 bun run p8:verify            # run a read-only query with the Prisma 8 client
 ```
@@ -39,8 +38,23 @@ bun run p8:verify            # run a read-only query with the Prisma 8 client
 ### Verified locally
 
 - `bun run p8:contract:emit` succeeds against the development database.
-- `bun run p8:verify` returns 5,224 users, ordered rows, a date as a string, and an `include("user")` relation.
-- `bunx prisma7 generate`, `bun run typecheck`, and `bun run build` all pass with both clients installed.
+- `bun run p8:verify` returns 5,224 users, ordered rows, a date as a string, an `include("user")` relation, and the shop-page queries.
+- `bunx prisma7 generate`, `bun run typecheck`, `bun run build`, and a `next start` smoke test pass with both clients installed.
+
+## Migrated so far
+
+| Route | Queries |
+| --- | --- |
+| `/admin/shop` | `ShopItem.orderBy(...)`, `ShopRegion` with `include("prices", count)` |
+| `/admin/shop/[id]` | `ShopItem.whereUnique({ id }).include("regionPrices", select).first()`, `ShopRegion` select + order |
+
+Both pages are read-only. Their mutations stay on the existing API routes, which still use Prisma 7. Neither page renders timestamps, so the `DateTime` change is not exposed there.
+
+### Contract generation caveat
+
+`prisma contract infer` derives relation names from table and column names, so it renamed `ShopItem.regionPrices` to `shopItemRegionPrices` and `ShopItem.orders` to `shopOrders`. The contract is therefore printed from a temporary Prisma 7 schema copy (`prisma contract print`) with only the 8 partial-index predicates and 3 index sort directions removed. That preserves every field and relation name the app already uses.
+
+The printed contract does not carry those partial indexes, so do not use it for `db verify` or migration planning until the indexes are re-expressed in Prisma 8 syntax.
 
 ## Why the whole app was not switched
 

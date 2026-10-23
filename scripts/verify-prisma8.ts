@@ -1,13 +1,5 @@
 import "dotenv/config"
-import postgres from "@prisma/orm-postgres/runtime"
-import { contractFromJson } from "@prisma/orm-postgres/static"
-import type { Contract } from "../generated/prisma8/contract.d"
-import contractJson from "../generated/prisma8/contract.json" with { type: "json" }
-
-const contract = contractFromJson<Contract>(contractJson)
-const connectionString = process.env.DATABASE_URL
-if (!connectionString) throw new Error("DATABASE_URL is not set")
-const db = postgres({ contract, url: connectionString })
+import db from "@/lib/prisma8"
 
 const { users } = await db.orm.public.User.aggregate(a => ({ users: a.count() }))
 console.log("user count:", users)
@@ -25,5 +17,15 @@ const project = await db.orm.public.ThemeProject.select("id", "title")
 	.limit(1)
 	.all()
 console.log("project + user:", project)
+
+// The exact queries behind the migrated /admin/shop page.
+const items = await db.orm.public.ShopItem.orderBy([i => i.sortOrder.asc(), i => i.name.asc()]).all()
+const regions = await db.orm.public.ShopRegion.select("id", "name", "active")
+	.include("prices", prices => prices.count())
+	.orderBy([r => r.sortOrder.asc(), r => r.name.asc()])
+	.all()
+console.log("shop items:", items.length)
+console.log("shop regions:", regions)
+console.log("region override count type:", typeof regions[0]?.prices)
 
 await db.close()
