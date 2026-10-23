@@ -87,7 +87,11 @@ Coolify.
 5. **Create the R2 bucket**, an API token scoped to it, and a public custom
    domain. Put that hostname in `NEXT_PUBLIC_UPLOAD_HOST` – `next/image` refuses
    any host not in `next.config.ts`'s `remotePatterns`, and the failure is a
-   broken image with no console error.
+   broken image with no console error. A bucket that already holds uploads from
+   before the S3 endpoint lost its bucket segment has objects under
+   `<bucket>/<key>`; `bun scripts/migrate-legacy-uploads.ts --commit` copies them
+   to the root keys the app stores, and `uploads:backfill-urls` then normalises
+   journal URLs that still name the legacy layout.
 
 6. **Deploy.**
 

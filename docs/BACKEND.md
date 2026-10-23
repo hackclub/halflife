@@ -292,8 +292,14 @@ identical to "the click did nothing".
 - **Asset URLs stored in journals have two possible key layouts.** Before the S3
   client stopped putting the bucket name in the path, an object landed at
   `<bucket>/<key>` and its URL was `<origin>/<bucket>/<key>`. Both that and the
-  current `<origin>/<key>` are valid, so `pnpm uploads:backfill-urls` asks the
-  bucket before rewriting anything rather than assuming one layout.
+  current `<origin>/<key>` are valid, so `pnpm uploads:backfill-urls` lists the
+  bucket once before rewriting anything rather than assuming one layout. Objects
+  themselves are the other half: `pnpm uploads:migrate-legacy` copies every
+  legacy `<bucket>/<key>` object to `<key>` server-side, which is what makes the
+  keys rows already hold resolve. It leaves the legacy copies unless
+  `--delete-legacy` is passed; run the URL backfill first if those are to go,
+  because a journal may still name the legacy URL, and let mirrored projects
+  sync `JOURNAL.md` once more before deleting.
 - **Coins are minted at review approval, not when hours are logged.** The trail
   moves immediately because the node is the entry, not the payment.
 

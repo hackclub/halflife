@@ -44,6 +44,7 @@
 		"streaks:recompute": "bun --conditions=react-server scripts/recompute-streaks.ts",
 		"typecheck": "tsc --noEmit",
 		"uploads:backfill-urls": "bun --conditions=react-server scripts/backfill-upload-urls.ts",
+		"uploads:migrate-legacy": "bun scripts/migrate-legacy-uploads.ts",
 		"verify:contracts": "bun --conditions=react-server scripts/verify-contracts.ts",
 		"verify:feed": "bun --conditions=react-server scripts/verify-feed.ts",
 		"verify:forge-write": "bun --conditions=react-server scripts/verify-forge-write.ts",
