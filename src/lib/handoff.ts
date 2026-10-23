@@ -3,6 +3,8 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 import { HttpError } from "@/lib/errors"
 import { POST_UPLOAD_FOLDER } from "@/lib/feed"
 import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { parseDbTimestamp } from "@/lib/time"
 import {
 	buildObjectKey,
 	deleteObject,
@@ -92,20 +94,20 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	if (!token) return null
 	const tokenHash = hashToken(token)
 
-	const row = await prisma.uploadHandoff.findUnique({
-		select: { expiresAt: true, id: true, tokenHash: true, usedAt: true, userId: true },
-		where: { tokenHash },
-	})
+	const row = await db.orm.public.UploadHandoff.where({ tokenHash })
+		.select("expiresAt", "id", "tokenHash", "usedAt", "userId")
+		.first()
 	if (!row) return null
 
 	const a = Buffer.from(row.tokenHash, "hex")
 	const b = Buffer.from(tokenHash, "hex")
 	if (a.length !== b.length || !timingSafeEqual(a, b)) return null
 
+	const expiresAt = parseDbTimestamp(row.expiresAt)
 	if (row.usedAt) return null
-	if (row.expiresAt <= new Date()) return null
+	if (expiresAt <= new Date()) return null
 
-	return { expiresAt: row.expiresAt, id: row.id, userId: row.userId }
+	return { expiresAt, id: row.id, userId: row.userId }
 }
 
 export interface HandoffUploadResult {

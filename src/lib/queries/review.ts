@@ -1,11 +1,14 @@
 import "server-only"
+import { and } from "@prisma/orm-postgres/orm-client"
 import type { HackatimeLink, Prisma, SessionMedia } from "@/app/generated/prisma/client"
 import { Phase } from "@/app/generated/prisma/enums"
 import { getThemeDef, projectDisplayTitle } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
-import { type CursorOrderOf, orderByFor, pageResult, positionWhere, readCursor } from "@/lib/pagination"
+import { encodeCursor, readCursor } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 export interface QueueItem {
@@ -27,32 +30,6 @@ export interface QueueItem {
 	tier: number | null
 }
 
-const queueInclude = {
-	claim: { include: { reviewer: { select: { displayName: true, id: true, name: true } } } },
-	themeProject: {
-		select: {
-			id: true,
-			theme: true,
-			tier: true,
-			title: true,
-			user: { select: { displayName: true, id: true, name: true } },
-		},
-	},
-} satisfies Prisma.PhaseSubmissionInclude
-
-type QueueSubmission = Prisma.PhaseSubmissionGetPayload<{ include: typeof queueInclude }>
-
-/**
- * The queue's order: oldest submission first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops a submission or hands one out twice.
- */
-const QUEUE_ORDER = {
-	at: (row: QueueSubmission) => row.createdAt,
-	column: "createdAt",
-	direction: "asc",
-} as const satisfies CursorOrderOf<QueueSubmission, Prisma.PhaseSubmissionOrderByWithRelationInput>
-
 export async function getReviewQueue(opts: {
 	/** The signed-in reviewer. Their own submissions are excluded from the queue. */
 	reviewerId: string
@@ -60,47 +37,66 @@ export async function getReviewQueue(opts: {
 	cursor?: string
 	limit: number
 }): Promise<{ items: QueueItem[]; nextCursor: string | null; counts: { design: number; build: number } }> {
-	const where = {
-		resolvedAt: null,
-		...(opts.phase ? { phase: opts.phase } : {}),
+	const base = db.orm.public.PhaseSubmission.where({ resolvedAt: null }).where(submission =>
 		// Nobody reviews their own work, so it should never show up as something to act on. The decision path refuses it too – this is so the queue counts are honest, not the enforcement.
-		themeProject: { deletedAt: null, userId: { not: opts.reviewerId } },
-	}
-
-	const [rows, designCount, buildCount] = await Promise.all([
-		prisma.phaseSubmission.findMany({
-			include: queueInclude,
-			// Oldest first: a review queue that surfaces the newest work leaves the people who submitted first waiting longest.
-			orderBy: orderByFor(QUEUE_ORDER),
-			take: opts.limit + 1,
-			// The queue is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-			where: positionWhere<Prisma.PhaseSubmissionWhereInput>(readCursor(opts.cursor), QUEUE_ORDER, where),
-		}),
-		prisma.phaseSubmission.count({ where: { ...where, phase: Phase.DESIGN } }),
-		prisma.phaseSubmission.count({ where: { ...where, phase: Phase.BUILD } }),
+		submission.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.neq(opts.reviewerId))),
+	)
+	const filtered = opts.phase ? base.where({ phase: opts.phase }) : base
+	const position = readCursor(opts.cursor)
+	// Oldest first: a review queue that surfaces the newest work leaves the people who submitted first waiting longest.
+	const ordered = filtered.orderBy([submission => submission.createdAt.asc(), submission => submission.id.asc()])
+	// The queue is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged = position?.at
+		? ordered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+		: ordered
+	const [rows, design, build] = await Promise.all([
+		paged
+			.limit(opts.limit + 1)
+			.include("claim", claim =>
+				claim.select("expiresAt").include("reviewer", reviewer => reviewer.select("displayName", "id", "name")),
+			)
+			.include("themeProject", project =>
+				project
+					.select("id", "theme", "tier", "title")
+					.include("user", user => user.select("displayName", "id", "name")),
+			)
+			.all(),
+		filtered.where({ phase: Phase.DESIGN }).aggregate(a => ({ count: a.count() })),
+		filtered.where({ phase: Phase.BUILD }).aggregate(a => ({ count: a.count() })),
 	])
 
-	const page = pageResult(rows, opts.limit, QUEUE_ORDER)
+	const items = rows.slice(0, opts.limit)
+	const last = items.at(-1)
 	const now = Date.now()
 
 	return {
-		counts: { build: buildCount, design: designCount },
-		items: page.items.map(row => ({
-			claimExpiresAt: row.claim?.expiresAt ?? null,
-			claimedBy: row.claim ? { id: row.claim.reviewer.id, name: displayName(row.claim.reviewer) } : null,
-			claimLive: row.claim !== null && row.claim.expiresAt.getTime() > now,
-			id: row.id,
-			onTime: row.onTime,
-			participant: { ...row.themeProject.user, name: displayName(row.themeProject.user) },
-			phase: row.phase,
-			projectTitle: row.themeProject.title,
-			submittedAt: row.createdAt,
-			submittedInWeek: row.submittedInWeek,
-			themeLabel: getThemeDef(row.themeProject.theme).label,
-			themeProjectId: row.themeProject.id,
-			tier: row.themeProject.tier,
-		})),
-		nextCursor: page.nextCursor,
+		counts: { build: build.count, design: design.count },
+		items: items.map(row => {
+			const project = row.themeProject
+			if (!project) throw new Error(`submission ${row.id} has no project`)
+			const user = project.user
+			if (!user) throw new Error(`submission ${row.id} has no author`)
+			const reviewer = row.claim?.reviewer ?? null
+			if (row.claim && !reviewer) throw new Error(`submission ${row.id} has a claim with no reviewer`)
+			const expiresAt = row.claim ? parseDbTimestamp(row.claim.expiresAt) : null
+			return {
+				claimExpiresAt: expiresAt,
+				claimedBy: reviewer ? { id: reviewer.id, name: displayName(reviewer) } : null,
+				claimLive: expiresAt !== null && expiresAt.getTime() > now,
+				id: row.id,
+				onTime: row.onTime,
+				participant: { id: user.id, name: displayName(user) },
+				phase: row.phase,
+				projectTitle: project.title,
+				submittedAt: parseDbTimestamp(row.createdAt),
+				submittedInWeek: row.submittedInWeek,
+				themeLabel: getThemeDef(project.theme).label,
+				themeProjectId: project.id,
+				tier: project.tier,
+			}
+		}),
+		nextCursor:
+			rows.length > opts.limit && last ? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id }) : null,
 	}
 }
 

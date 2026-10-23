@@ -8,6 +8,16 @@
 
 export const DAY_MS = 24 * 60 * 60 * 1000
 
+/**
+ * A Prisma 8 `TimestampString(3)` value as a Date.
+ *
+ * The Prisma 8 contract prints a `timestamp(3)` column the way PostgreSQL stores it, such as `2026-10-22 14:25:05.757`, with no zone. The program's convention is that those values are UTC, and `new Date(value)` would read the space-separated form as local time.
+ */
+export const parseDbTimestamp = (value: string): Date => new Date(`${value.replace(" ", "T")}Z`)
+
+/** A Date as the text a Prisma 8 `TimestampString(3)` field accepts. */
+export const formatDbTimestamp = (date: Date): string => date.toISOString().replace("T", " ").replace("Z", "")
+
 /** The `YYYY-MM-DD` a moment falls on in `timeZone`. */
 export function calendarDay(at: Date, timeZone: string): string {
 	return new Intl.DateTimeFormat("en-CA", {

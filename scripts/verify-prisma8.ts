@@ -1,5 +1,20 @@
 import "dotenv/config"
+import prisma from "@/lib/prisma"
 import db from "@/lib/prisma8"
+import {
+	countContentReports,
+	listAuditLog,
+	listContentReports,
+	listRecentCommentsForModeration,
+	listRecentPostsForModeration,
+	listRecentPublicReels,
+	listUsers,
+} from "@/lib/queries/admin"
+import { getJournalFeed } from "@/lib/queries/community"
+import { listAllEvents, listUpcomingEvents } from "@/lib/queries/events"
+import { getProfile } from "@/lib/queries/profile"
+import { getMyReels } from "@/lib/queries/reels"
+import { getReviewQueue } from "@/lib/queries/review"
 
 const { users } = await db.orm.public.User.aggregate(a => ({ users: a.count() }))
 console.log("user count:", users)
@@ -28,4 +43,74 @@ console.log("shop items:", items.length)
 console.log("shop regions:", regions)
 console.log("region override count type:", typeof regions[0]?.prices)
 
+// The audit page and its API route share this query; exercise the cursor too.
+const audit = await listAuditLog({ limit: 2 })
+const auditNext = audit.nextCursor ? await listAuditLog({ cursor: audit.nextCursor, limit: 2 }) : null
+console.log("audit page:", audit.items.length, typeof audit.items[0]?.createdAt, "next:", Boolean(audit.nextCursor))
+console.log("audit second page:", auditNext?.items.length ?? 0, auditNext?.items[0]?.id !== audit.items[0]?.id)
+
+const events = await listAllEvents()
+const upcoming = await listUpcomingEvents(new Date(Date.now() - 365 * 86_400_000), 3)
+console.log(
+	"events:",
+	events.length,
+	events[0]?.startsAt instanceof Date,
+	"upcoming:",
+	upcoming.length,
+	upcoming[0]?.startsAt instanceof Date,
+)
+
+const poster = await db.orm.public.Post.select("userId")
+	.where({ deletedAt: null })
+	.orderBy(post => post.createdAt.desc())
+	.first()
+if (poster) {
+	const reels = await getMyReels(poster.userId)
+	console.log(
+		"reel groups:",
+		reels.length,
+		"reels:",
+		reels.reduce((n, group) => n + group.reels.length, 0),
+		"at is number:",
+		typeof reels[0]?.reels[0]?.at,
+	)
+	const queue = await getReviewQueue({ limit: 2, reviewerId: poster.userId })
+	console.log("review queue:", queue.items.length, queue.counts, Boolean(queue.nextCursor))
+	const profile = await getProfile(poster.userId, poster.userId)
+	console.log("profile:", profile?.name, profile?.projects.length, profile?.reelCount, typeof profile?.joinedAt)
+	const feed = await getJournalFeed()
+	console.log("journal:", feed.length, typeof feed[0]?.when, feed[0]?.day)
+}
+
+const reports = await listContentReports("ALL", { limit: 2 })
+const reportCounts = await countContentReports()
+console.log("reports:", reports.items.length, typeof reports.items[0]?.createdAt, reportCounts)
+
+const directory = await listUsers({ limit: 2 })
+const directoryQ = await listUsers({ limit: 2, q: directory.items[0]?.name?.slice(0, 3) ?? "a" }, { includePii: true })
+console.log(
+	"users:",
+	directory.items.length,
+	directory.items[0]?.createdAt instanceof Date,
+	typeof directory.items[0]?.roles[0]?.role,
+	"search:",
+	directoryQ.items.length,
+	Boolean(directory.nextCursor),
+)
+
+const moderatedPosts = await listRecentPostsForModeration(2)
+const moderatedComments = await listRecentCommentsForModeration(2)
+const publicReels = await listRecentPublicReels(2)
+console.log(
+	"moderation:",
+	moderatedPosts.length,
+	moderatedPosts[0]?.createdAt instanceof Date,
+	moderatedComments.length,
+	moderatedComments[0]?.createdAt instanceof Date,
+	publicReels.length,
+	publicReels[0]?.postedAt instanceof Date,
+)
+
 await db.close()
+// Some migrated helpers still call the Prisma 7 client (for example the reel lock check), so close its pool too.
+await prisma.$disconnect()

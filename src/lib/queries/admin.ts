@@ -1,6 +1,7 @@
 import { getTier, isTierId } from "@/lib/config/tiers"
 import "server-only"
-import type { AuditLog, LedgerEntry, Prisma } from "@/app/generated/prisma/client"
+import { or } from "@prisma/orm-postgres/orm-client"
+import type { LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
 	HoursSource,
@@ -17,6 +18,7 @@ import {
 	ShopOrderStatus,
 	Theme,
 } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { isActiveDay } from "@/lib/analytics"
 import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
@@ -27,15 +29,25 @@ import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
-import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, positionWhere, readCursor } from "@/lib/pagination"
+import {
+	type CursorOrderOf,
+	cursorWhere,
+	encodeCursor,
+	orderByFor,
+	pageResult,
+	positionWhere,
+	readCursor,
+} from "@/lib/pagination"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification, type PrinterQualification, printerAwardSelect } from "@/lib/printer"
 import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { projectReviewState } from "@/lib/review-state"
 import { shopOrderStaffSelect } from "@/lib/shop"
-import { eachDayBetween } from "@/lib/time"
+import { containsPattern } from "@/lib/text"
+import { eachDayBetween, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
 export interface DirectoryUser {
@@ -50,68 +62,51 @@ export interface DirectoryUser {
 	verificationStatus: string | null
 }
 
-/**
- * The directory's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an account or hands one out twice.
- */
-const USERS_ORDER = {
-	at: (row: DirectoryUser) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<DirectoryUser, Prisma.UserOrderByWithRelationInput>
-
 export async function listUsers(
 	opts: { q?: string; cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
+	const ordered = db.orm.public.User.orderBy([user => user.createdAt.desc(), user => user.id.desc()])
 	// Without PII the search box matches names only. Matching an address or a Slack id would turn the directory into a registration oracle: anybody holding VIEW_USERS could confirm whether a given person has an account here.
-	//
-	// The search sits inside an AND array rather than at the top level. The cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying: a page of search results that ignored the search would be a worse answer than no page at all.
-	const base: Prisma.UserWhereInput = opts.q
-		? {
-				AND: [
-					{
-						OR: [
-							{ name: { contains: opts.q, mode: "insensitive" } },
-							{ displayName: { contains: opts.q, mode: "insensitive" } },
-							...(includePii
-								? ([
-										{ email: { contains: opts.q, mode: "insensitive" } },
-										{ slackId: { contains: opts.q, mode: "insensitive" } },
-									] satisfies Prisma.UserWhereInput[])
-								: []),
-						],
-					},
-				],
-			}
-		: {}
-	const rows = await prisma.user.findMany({
-		orderBy: orderByFor(USERS_ORDER),
-		select: {
-			createdAt: true,
-			displayName: true,
-			email: true,
-			fraudFlagged: true,
-			id: true,
-			name: true,
-			roles: { select: { role: true } },
-			slackId: true,
-			verificationStatus: true,
-		},
-		take: opts.limit + 1,
-		// The directory is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.UserWhereInput>(readCursor(opts.cursor), USERS_ORDER, base),
-	})
-	const page = pageResult(rows, opts.limit, USERS_ORDER)
+	const term = opts.q
+	const pattern = term === undefined ? null : containsPattern(term)
+	const filtered =
+		pattern === null
+			? ordered
+			: ordered.where(user =>
+					or(
+						user.name.ilike(pattern),
+						user.displayName.ilike(pattern),
+						// The PII columns are only searched when the caller may see them, per the rule above.
+						...(includePii ? [user.email.ilike(pattern), user.slackId.ilike(pattern)] : []),
+					),
+				)
+	const position = readCursor(opts.cursor)
+	// The directory is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged =
+		position?.at === undefined || position?.at === null
+			? filtered
+			: filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+	const rows = await paged
+		.limit(opts.limit + 1)
+		.select("createdAt", "displayName", "email", "fraudFlagged", "id", "name", "slackId", "verificationStatus")
+		.include("roles", roles => roles.select("role"))
+		.all()
+	const items = rows.slice(0, opts.limit).map(row => ({
+		...row,
+		createdAt: parseDbTimestamp(row.createdAt),
+	}))
+	const last = items.at(-1)
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
-	const items = page.items.map(row =>
-		includePii
-			? row
-			: Object.assign({}, row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
-	)
-	return { items, nextCursor: page.nextCursor }
+	return {
+		items: includePii
+			? items
+			: items.map(row =>
+					Object.assign(row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
+				),
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.createdAt, id: last.id }) : null,
+	}
 }
 
 export interface ProjectFilters {
@@ -527,35 +522,35 @@ export function isAuditAction(value: string): value is AuditAction {
 	return (Object.values(AuditAction) as string[]).includes(value)
 }
 
-/**
- * The audit log's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
- */
-const AUDIT_LOG_ORDER = {
-	at: (row: AuditLog) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<AuditLog, Prisma.AuditLogOrderByWithRelationInput>
+/** One row of the audit log as Prisma 8 reads it. Its timestamps are PostgreSQL text, not Dates. */
+export type AuditLogRow = Models.public_AuditLog
 
 export async function listAuditLog(opts: {
 	action?: string
 	targetId?: string
 	cursor?: string
 	limit: number
-}): Promise<{ items: AuditLog[]; nextCursor: string | null }> {
-	const base: Prisma.AuditLogWhereInput = {
+}): Promise<{ items: AuditLogRow[]; nextCursor: string | null }> {
+	const position = readCursor(opts.cursor)
+	const base = db.orm.public.AuditLog.where({
 		// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
 		...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
 		...(opts.targetId ? { targetId: opts.targetId } : {}),
+	}).orderBy([entry => entry.createdAt.desc(), entry => entry.id.desc()])
+	// The log is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const rows = position?.at
+		? await base
+				.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+				.limit(opts.limit + 1)
+				.all()
+		: await base.limit(opts.limit + 1).all()
+	const items = rows.slice(0, opts.limit)
+	const last = items.at(-1)
+	return {
+		items,
+		nextCursor:
+			rows.length > opts.limit && last ? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id }) : null,
 	}
-	const rows = await prisma.auditLog.findMany({
-		orderBy: orderByFor(AUDIT_LOG_ORDER),
-		take: opts.limit + 1,
-		// The log is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.AuditLogWhereInput>(readCursor(opts.cursor), AUDIT_LOG_ORDER, base),
-	})
-	return pageResult(rows, opts.limit, AUDIT_LOG_ORDER)
 }
 
 /**
@@ -578,26 +573,40 @@ export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]>
 
 /** Recent live reels, newest first, for the moderation panel. */
 /** One row of the listRecentPostsForModeration list. */
-export type ModeratedPost = Prisma.PostGetPayload<{ select: typeof moderatedPostSelect }>
+export interface ModeratedPost {
+	caption: string
+	createdAt: Date
+	hiddenAt: Date | null
+	hiddenReason: string | null
+	id: string
+	kind: Models.public_Post["kind"]
+	publishedAt: Date | null
+	themeProject: { id: string; title: string } | null
+	user: { displayName: string | null; email: string; id: string; name: string | null }
+}
 
-const moderatedPostSelect = {
-	caption: true,
-	createdAt: true,
-	hiddenAt: true,
-	hiddenReason: true,
-	id: true,
-	kind: true,
-	publishedAt: true,
-	themeProject: { select: { id: true, title: true } },
-	user: { select: { displayName: true, email: true, id: true, name: true } },
-} satisfies Prisma.PostSelect
-
-export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
-	return prisma.post.findMany({
-		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-		select: moderatedPostSelect,
-		take: limit,
-		where: { deletedAt: null },
+export async function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
+	const rows = await db.orm.public.Post.where({ deletedAt: null })
+		.orderBy([post => post.publishedAt.desc(), post => post.id.desc()])
+		.limit(limit)
+		.select("caption", "createdAt", "hiddenAt", "hiddenReason", "id", "kind", "publishedAt")
+		.include("themeProject", project => project.select("id", "title"))
+		.include("user", user => user.select("displayName", "email", "id", "name"))
+		.all()
+	return rows.map(post => {
+		// The foreign key is required, so a missing user is a data-integrity error rather than a row to render without an author.
+		if (!post.user) throw new Error(`post ${post.id} has no author`)
+		return {
+			caption: post.caption,
+			createdAt: parseDbTimestamp(post.createdAt),
+			hiddenAt: post.hiddenAt === null ? null : parseDbTimestamp(post.hiddenAt),
+			hiddenReason: post.hiddenReason,
+			id: post.id,
+			kind: post.kind,
+			publishedAt: post.publishedAt === null ? null : parseDbTimestamp(post.publishedAt),
+			themeProject: post.themeProject,
+			user: post.user,
+		}
 	})
 }
 
@@ -605,47 +614,73 @@ export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[
  * Recent live comments, newest first. A comment on a soft-deleted post is not shown – nobody can reach it to report it – but a hidden comment stays in the list so staff can see it was handled.
  */
 /** One row of the listRecentCommentsForModeration list. */
-export type ModeratedComment = Prisma.PostCommentGetPayload<{ select: typeof moderatedCommentSelect }>
+export interface ModeratedComment {
+	body: string
+	createdAt: Date
+	hiddenAt: Date | null
+	hiddenReason: string | null
+	id: string
+	post: { caption: string; id: string }
+	user: { displayName: string | null; email: string; id: string; name: string | null }
+}
 
-const moderatedCommentSelect = {
-	body: true,
-	createdAt: true,
-	hiddenAt: true,
-	hiddenReason: true,
-	id: true,
-	post: { select: { caption: true, id: true } },
-	user: { select: { displayName: true, email: true, id: true, name: true } },
-} satisfies Prisma.PostCommentSelect
-
-export function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
-	return prisma.postComment.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		select: moderatedCommentSelect,
-		take: limit,
-		where: { deletedAt: null, post: { deletedAt: null } },
+export async function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
+	const rows = await db.orm.public.PostComment.where({ deletedAt: null })
+		.where(comment => comment.post.some(post => post.deletedAt.isNull()))
+		.orderBy([comment => comment.createdAt.desc(), comment => comment.id.desc()])
+		.limit(limit)
+		.select("body", "createdAt", "hiddenAt", "hiddenReason", "id")
+		.include("post", post => post.select("caption", "id"))
+		.include("user", user => user.select("displayName", "email", "id", "name"))
+		.all()
+	return rows.map(comment => {
+		if (!comment.post) throw new Error(`comment ${comment.id} has no post`)
+		if (!comment.user) throw new Error(`comment ${comment.id} has no author`)
+		return {
+			body: comment.body,
+			createdAt: parseDbTimestamp(comment.createdAt),
+			hiddenAt: comment.hiddenAt === null ? null : parseDbTimestamp(comment.hiddenAt),
+			hiddenReason: comment.hiddenReason,
+			id: comment.id,
+			post: comment.post,
+			user: comment.user,
+		}
 	})
 }
 
 /** Public reel links, newest first, so staff can find a post that went viral. */
 /** One row of the public-reel directory. */
-export type PublicReelRow = Prisma.PublicReelGetPayload<{ select: typeof publicReelSelect }>
+export interface PublicReelRow {
+	email: string | null
+	id: string
+	platform: Models.public_PublicReel["platform"]
+	post: { caption: string; id: string } | null
+	postedAt: Date
+	themeProject: { id: string; title: string } | null
+	url: string
+	user: { displayName: string | null; id: string; name: string | null }
+}
 
-const publicReelSelect = {
-	email: true,
-	id: true,
-	platform: true,
-	post: { select: { caption: true, id: true } },
-	postedAt: true,
-	themeProject: { select: { id: true, title: true } },
-	url: true,
-	user: { select: { displayName: true, id: true, name: true } },
-} satisfies Prisma.PublicReelSelect
-
-export function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
-	return prisma.publicReel.findMany({
-		orderBy: [{ postedAt: "desc" }, { id: "desc" }],
-		select: publicReelSelect,
-		take: limit,
+export async function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
+	const rows = await db.orm.public.PublicReel.orderBy([reel => reel.postedAt.desc(), reel => reel.id.desc()])
+		.limit(limit)
+		.select("email", "id", "platform", "postedAt", "url")
+		.include("post", post => post.select("caption", "id"))
+		.include("themeProject", project => project.select("id", "title"))
+		.include("user", user => user.select("displayName", "id", "name"))
+		.all()
+	return rows.map(reel => {
+		if (!reel.user) throw new Error(`public reel ${reel.id} has no user`)
+		return {
+			email: reel.email,
+			id: reel.id,
+			platform: reel.platform,
+			post: reel.post,
+			postedAt: parseDbTimestamp(reel.postedAt),
+			themeProject: reel.themeProject,
+			url: reel.url,
+			user: reel.user,
+		}
 	})
 }
 
@@ -934,98 +969,60 @@ export type ReportStatusFilter = ReportStatus | "ALL"
 /**
  * The moderation queue for user reports: who flagged what, why, and what staff did about it. Newest first, with the reported row's own preview and author alongside, so a report reads without opening five tabs. Cursor- paged like the audit log, so a busy queue never silently drops its tail.
  */
-const contentReportSelect = {
-	comment: {
-		select: {
-			body: true,
-			deletedAt: true,
-			hiddenAt: true,
-			id: true,
-			postId: true,
-			user: { select: { displayName: true, id: true, name: true } },
-		},
-	},
-	createdAt: true,
-	details: true,
-	id: true,
-	post: {
-		select: {
-			caption: true,
-			deletedAt: true,
-			hiddenAt: true,
-			id: true,
-			user: { select: { displayName: true, id: true, name: true } },
-		},
-	},
-	reason: true,
-	reporter: { select: { displayName: true, email: true, id: true, name: true } },
-	resolvedAt: true,
-	resolvedById: true,
-	status: true,
-	target: true,
-	targetUser: { select: { displayName: true, id: true, name: true } },
-	themeProject: {
-		select: {
-			deletedAt: true,
-			id: true,
-			title: true,
-			user: { select: { displayName: true, id: true, name: true } },
-		},
-	},
-	workSession: {
-		select: {
-			content: true,
-			deletedAt: true,
-			id: true,
-			themeProject: {
-				select: {
-					id: true,
-					title: true,
-					user: { select: { displayName: true, id: true, name: true } },
-				},
-			},
-			title: true,
-		},
-	},
-} satisfies Prisma.ContentReportSelect
-
-/** One row of the content-report directory, with every reportable target attached. */
-export type ContentReportRow = Prisma.ContentReportGetPayload<{ select: typeof contentReportSelect }>
-
-/**
- * The reports' order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops a report or hands one out twice.
- */
-const CONTENT_REPORTS_ORDER = {
-	at: (row: ContentReportRow) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<ContentReportRow, Prisma.ContentReportOrderByWithRelationInput>
-
 export async function listContentReports(
 	status: ReportStatusFilter = "OPEN",
 	opts: { cursor?: string; limit?: number } = {},
-): Promise<{ items: ContentReportRow[]; nextCursor: string | null }> {
+) {
 	const limit = opts.limit ?? 50
-	const rows = await prisma.contentReport.findMany({
-		orderBy: orderByFor(CONTENT_REPORTS_ORDER),
-		select: contentReportSelect,
-		take: limit + 1,
-		// The queue is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.ContentReportWhereInput>(
-			readCursor(opts.cursor),
-			CONTENT_REPORTS_ORDER,
-			status === "ALL" ? {} : { status },
-		),
-	})
-	return pageResult(rows, limit, CONTENT_REPORTS_ORDER)
+	const position = readCursor(opts.cursor)
+	const ordered = db.orm.public.ContentReport.where(status === "ALL" ? {} : { status }).orderBy([
+		report => report.createdAt.desc(),
+		report => report.id.desc(),
+	])
+	// The queue is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged = position?.at ? ordered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id }) : ordered
+	const rows = await paged
+		.limit(limit + 1)
+		.select("createdAt", "details", "id", "reason", "resolvedAt", "resolvedById", "status", "target")
+		.include("comment", comment =>
+			comment
+				.select("body", "deletedAt", "hiddenAt", "id", "postId")
+				.include("user", user => user.select("displayName", "id", "name")),
+		)
+		.include("post", post =>
+			post
+				.select("caption", "deletedAt", "hiddenAt", "id")
+				.include("user", user => user.select("displayName", "id", "name")),
+		)
+		.include("reporter", reporter => reporter.select("displayName", "email", "id", "name"))
+		.include("themeProject", project =>
+			project.select("deletedAt", "id", "title").include("user", user => user.select("displayName", "id", "name")),
+		)
+		.include("workSession", session =>
+			session
+				.select("content", "deletedAt", "id", "title")
+				.include("themeProject", project =>
+					project.select("id", "title").include("user", user => user.select("displayName", "id", "name")),
+				),
+		)
+		.include("targetUser", user => user.select("displayName", "id", "name"))
+		.all()
+	const items = rows.slice(0, limit)
+	const last = items.at(-1)
+	return {
+		items,
+		nextCursor:
+			rows.length > limit && last ? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id }) : null,
+	}
 }
 
+/** One row of the content-report directory, with every reportable target attached. */
+export type ContentReportRow = Awaited<ReturnType<typeof listContentReports>>["items"][number]
+
 export async function countContentReports(): Promise<Record<ReportStatus, number>> {
-	const groups = await prisma.contentReport.groupBy({ _count: { _all: true }, by: ["status"] })
+	const groups = await db.orm.public.ContentReport.groupBy("status").aggregate(group => ({ count: group.count() }))
 	const counts: Record<ReportStatus, number> = { DISMISSED: 0, OPEN: 0, RESOLVED: 0 }
-	for (const group of groups) counts[group.status] = group._count._all
+	for (const group of groups) counts[group.status] = group.count
 	return counts
 }
 

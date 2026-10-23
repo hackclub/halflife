@@ -7,7 +7,7 @@ import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import {
 	listRecentCommentsForModeration,
 	listRecentPostsForModeration,
@@ -26,10 +26,9 @@ export default async function AdminFeedPage() {
 	const { user, roles } = await requirePermissionPage(Permission.MANAGE_FEED)
 
 	const [projects, posts, comments, publicReels] = await Promise.all([
-		prisma.themeProject.findMany({
-			select: { id: true, theme: true, title: true },
-			where: { deletedAt: null, userId: user.id },
-		}),
+		db.orm.public.ThemeProject.select("id", "theme", "title")
+			.where({ deletedAt: null, userId: user.id })
+			.all(),
 		listRecentPostsForModeration(),
 		listRecentCommentsForModeration(),
 		listRecentPublicReels(),
