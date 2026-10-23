@@ -4,7 +4,7 @@ import { useId, useState } from "react"
 import { IconPencil } from "@/components/platform/icons"
 import { Button, Field, inputClass } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
-import { displayRepo, normalizeRepo } from "@/lib/repo"
+import { displayRepo, validateRepoField } from "@/lib/repo"
 import { README_GUIDE_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
@@ -18,7 +18,7 @@ import type { Project } from "@/lib/types"
  */
 export function RepoInput({ value, onChange, id }: { value: string; onChange(value: string): void; id: string }) {
 	const [touched, setTouched] = useState(false)
-	const { error } = normalizeRepo(value)
+	const { error } = validateRepoField(value)
 	return (
 		<Field
 			hint="Where the code, schematics and CAD live. Optional, and you can add or change it later on the project page."
@@ -63,7 +63,7 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange(val
 
 /** Whether a creation form may submit with this in its repo field. */
 export function repoIsValid(value: string) {
-	return normalizeRepo(value).error === null
+	return validateRepoField(value).error === null
 }
 
 /**
@@ -82,7 +82,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 	const current = project.githubRepo ?? null
 
 	async function save() {
-		const { url, error: invalid } = normalizeRepo(draft)
+		const { url, error: invalid } = validateRepoField(draft)
 		if (invalid) {
 			setError(invalid)
 			return

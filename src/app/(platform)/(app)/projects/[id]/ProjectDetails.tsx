@@ -12,7 +12,7 @@ import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
-import { normalizeRepo } from "@/lib/repo"
+import { validateRepoField } from "@/lib/repo"
 import { README_GUIDE_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
@@ -192,7 +192,7 @@ function DetailsForm({
 
 	async function save() {
 		if (!name.trim()) return setError({ field: "name", message: "A project needs a name." })
-		const { url, error: repoError } = normalizeRepo(repo)
+		const { url, error: repoError } = validateRepoField(repo)
 		if (repoError) return setError({ field: "repo", message: repoError })
 
 		// Only what changed, so an untouched tier is never re-sent against a server rule it does not need to meet. Taking a starter always carries tier 1 with it when the project is not already there – the server refuses a starter at any other tier.

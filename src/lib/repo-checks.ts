@@ -9,6 +9,7 @@ import {
 } from "@/lib/config/repo-checks"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
 import { ForgeUnavailableError, forgeGet } from "@/lib/github"
+import { containsOnshapeLink, isOnshapeLink } from "@/lib/repo"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 import { README_GUIDE_URL } from "@/lib/routes"
 
@@ -346,6 +347,62 @@ function sample(found: readonly string[]): string {
 	return found.length > 3 ? `${shown} and ${found.length - 3} more` : shown
 }
 
+/** The neutral CAD exchange formats. Accepted as a source, but not the editable original. */
+const STEP_EXTENSIONS = [".step", ".stp"] as const
+
+/** The native Fusion formats, which a reviewer can actually open and edit. */
+const NATIVE_CAD_EXTENSIONS = [".f3d", ".f3z"] as const
+
+/** The URLs in a project's `artifactLinks` JSON, or none when the column is empty or malformed. */
+function artifactLinkUrls(links: unknown): string[] {
+	if (!Array.isArray(links)) return []
+	const urls: string[] = []
+	for (const link of links) {
+		if (!link || typeof link !== "object") continue
+		const url = (link as { url?: unknown }).url
+		if (typeof url === "string") urls.push(url)
+	}
+	return urls
+}
+
+/**
+ * The recommendation a repo with a STEP file earns.
+ *
+ * `.step` is accepted as CAD source, but it is a neutral export rather than the editable original: a reviewer cannot open it in Fusion and change the model. A repo that carries one should also carry the native file or a link to the Onshape document, so the check passes when any of those is present and warns when STEP is all there is. Null for a repo with no STEP file, which is most of them.
+ */
+export function stepSourceCheck(input: {
+	artifactLinks?: unknown
+	description?: string | null
+	paths: readonly string[]
+}): RepoCheck | null {
+	const stepFiles = input.paths.filter(p => STEP_EXTENSIONS.some(ext => p.endsWith(ext)))
+	if (stepFiles.length === 0) return null
+
+	const nativeFiles = input.paths.filter(p => NATIVE_CAD_EXTENSIONS.some(ext => p.endsWith(ext)))
+	const inDescription = input.description ? containsOnshapeLink(input.description) : false
+	const inDemoLinks = artifactLinkUrls(input.artifactLinks).some(url => isOnshapeLink(url))
+	const alternatives = [
+		...(nativeFiles.length > 0 ? [sample(nativeFiles)] : []),
+		...(inDescription ? ["a link in the description"] : []),
+		...(inDemoLinks ? ["a link in the demo URL"] : []),
+	]
+
+	return alternatives.length > 0
+		? {
+				detail: `Editable source alongside ${sample(stepFiles)}: ${alternatives.join(", ")}`,
+				key: "cad_editable",
+				label: "Editable CAD source alongside STEP",
+				status: "pass",
+			}
+		: {
+				detail:
+					"A .step file is a neutral export, not the editable original. Add at least one of: a Fusion .f3d, a .f3z, an Onshape link in your project description, or an Onshape link in your demo URL. Do not put the Onshape link in the repo URL.",
+				key: "cad_editable",
+				label: "STEP needs the editable source",
+				status: "warn",
+			}
+}
+
 function result(repo: string | null, checks: RepoCheck[], unavailable = false): RepoCheckResult {
 	return {
 		canSubmit: !checks.some(c => c.blocking && c.status === "fail"),
@@ -356,7 +413,11 @@ function result(repo: string | null, checks: RepoCheck[], unavailable = false): 
 	}
 }
 
-export async function checkRepo(repoLink: string | null, theme: Theme): Promise<RepoCheckResult> {
+export async function checkRepo(
+	repoLink: string | null,
+	theme: Theme,
+	project: { artifactLinks?: unknown; description?: string | null } = {},
+): Promise<RepoCheckResult> {
 	if (!repoLink)
 		return result(null, [
 			{
@@ -526,6 +587,14 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					},
 		)
 	}
+
+	// A STEP export passes the CAD source check, but it is not the file a reviewer can edit, so a repo that carries one is offered the native or Onshape alternative as a recommendation rather than a refusal.
+	const step = stepSourceCheck({
+		artifactLinks: project.artifactLinks,
+		description: project.description,
+		paths: snap.paths,
+	})
+	if (step) checks.push(step)
 
 	return result(repoLink, checks)
 }

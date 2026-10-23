@@ -301,6 +301,23 @@ async function bodies() {
 		"body · repoSync accepts a GitLab nested-group URL",
 		repoSyncSettingsSchema.safeParse({ enabled: true, repo: "https://gitlab.com/group/sub/repo" }).success,
 	)
+	// A repo field wants a repository. An Onshape document is one CAD file opened in a browser, so in the repo column it is read as the project's source and is found out at submission.
+	// Refused where it is typed, and pointed at the demo links.
+	const onshapeDoc = "https://cad.onshape.com/documents/abc123/w/def456/e/ghi789"
+	check(
+		"body · a project repo refuses an Onshape document",
+		!projectUpdateSchema.safeParse({ githubRepo: onshapeDoc }).success,
+	)
+	check(
+		"body · a project repo still accepts another forge",
+		projectUpdateSchema.safeParse({ githubRepo: "https://codeberg.org/maker/hackpad" }).success,
+	)
+	const { validateRepoField } = await import("../src/lib/repo")
+	check("repo field · an Onshape link is refused", validateRepoField("cad.onshape.com/documents/abc123").error !== null)
+	check(
+		"repo field · a lookalike host is not Onshape",
+		validateRepoField("https://onshape.example.com/me/repo").error === null,
+	)
 	// An empty body is a preview, not a write: the defaults have to be false on both axes or a stray POST would replace the list.
 	const importDefaults = bomImportSchema.safeParse({})
 	check(
@@ -1241,6 +1258,43 @@ async function bodies() {
 		check(
 			"repo-checks · the missing-source message names the rejected tools",
 			REPO_FILE_KINDS.cadSource.missing.includes("not accepted as the source"),
+		)
+
+		// A STEP file passes the CAD source check, but it is not the editable original. The recommendation is a warning, and only when STEP is all there is: a native Fusion file or an Onshape link in the description or demo links answers it.
+		const { stepSourceCheck } = await import("../src/lib/repo-checks")
+		const stepRepo = { paths: ["cad/enclosure.step", "README.md"] }
+		const stepOnly = stepSourceCheck(stepRepo)
+		check(
+			"repo-checks · a STEP-only repo is warned, not blocked",
+			stepOnly !== null && stepOnly.status === "warn" && !stepOnly.blocking,
+		)
+		check(
+			"repo-checks · a repo without STEP gets no STEP recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.f3d"] }) === null,
+		)
+		check(
+			"repo-checks · an f3d beside STEP satisfies the recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.step", "cad/enclosure.f3d"] })?.status === "pass",
+		)
+		check(
+			"repo-checks · an f3z beside STEP satisfies the recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.stp", "cad/enclosure.f3z"] })?.status === "pass",
+		)
+		check(
+			"repo-checks · an Onshape link in the description satisfies the recommendation",
+			stepSourceCheck({ ...stepRepo, description: "Model: https://cad.onshape.com/documents/abc/w/def" })?.status
+				=== "pass",
+		)
+		check(
+			"repo-checks · an Onshape link in the demo links satisfies the recommendation",
+			stepSourceCheck({
+				...stepRepo,
+				artifactLinks: [{ label: "Demo", url: "https://cad.onshape.com/documents/abc" }],
+			})?.status === "pass",
+		)
+		check(
+			"repo-checks · a lookalike host does not satisfy the recommendation",
+			stepSourceCheck({ ...stepRepo, description: "https://notonshape.com/cad" })?.status === "warn",
 		)
 
 		// The README BOM table is a hint a reviewer prices the week from, so it is checked by shape: a part-like header, a price/cost/link/supplier column, and enough data rows. These pin the shapes that actually turn up, including the ones that must not count: a pinout, a screenshot, a link to a CSV, and a one-row board BOM.
