@@ -1,6 +1,6 @@
 import { getTier, isTierId } from "@/lib/config/tiers"
 import "server-only"
-import { or } from "@prisma/orm-postgres/orm-client"
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import type { LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
@@ -124,42 +124,27 @@ export interface ProjectFilters {
 	unstarted?: boolean
 }
 
-/** One row of the admin project directory, with its owner's directory fields. */
-export type ProjectDirectoryRow = Prisma.ThemeProjectGetPayload<{ select: typeof projectDirectorySelect }>
-
-const projectDirectorySelect = {
-	buildStatus: true,
-	designStatus: true,
-	githubRepo: true,
-	id: true,
-	requestedTier: true,
-	submissionExtensionUntil: true,
-	theme: true,
-	tier: true,
-	title: true,
-	updatedAt: true,
+/** One row of the admin project directory, with its owner's directory fields. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface ProjectDirectoryRow {
+	buildStatus: Models.public_ThemeProject["buildStatus"]
+	designStatus: Models.public_ThemeProject["designStatus"]
+	githubRepo: string | null
+	id: string
+	requestedTier: number | null
+	submissionExtensionUntil: Date | null
+	theme: Models.public_ThemeProject["theme"]
+	tier: number | null
+	title: string
+	updatedAt: Date
 	user: {
-		select: {
-			displayName: true,
-			email: true,
-			id: true,
-			name: true,
-			slackId: true,
-			submissionExtensionUntil: true,
-		},
-	},
-} satisfies Prisma.ThemeProjectSelect
-
-/**
- * The project directory's order: most recently touched first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops a project or hands one out twice.
- */
-const PROJECTS_ORDER = {
-	at: (row: ProjectDirectoryRow) => row.updatedAt,
-	column: "updatedAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<ProjectDirectoryRow, Prisma.ThemeProjectOrderByWithRelationInput>
+		displayName: string | null
+		email: string
+		id: string
+		name: string | null
+		slackId: string | null
+		submissionExtensionUntil: Date | null
+	}
+}
 
 export async function listProjects(
 	opts: ProjectFilters & { cursor?: string; limit: number },
@@ -167,57 +152,106 @@ export async function listProjects(
 ): Promise<{ items: ProjectDirectoryRow[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
 	const now = new Date()
+	const nowText = formatDbTimestamp(now)
 	const q = opts.q?.trim()
-	// The owner's email and Slack id are contact details, so they are matched only for a caller who may see them. A REVIEWER searching for an address gets the same answer whether or not it is registered here.
-	//
-	// Every filter that is itself an OR lives in the AND array, never at the top level: the cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying.
-	const where: Prisma.ThemeProjectWhereInput = {
-		deletedAt: null,
-		...(opts.unstarted ? {} : { namedAt: { not: null } }),
-		...(opts.theme ? { theme: opts.theme } : {}),
-		...(opts.designStatus ? { designStatus: opts.designStatus } : {}),
-		...(opts.buildStatus ? { buildStatus: opts.buildStatus } : {}),
-		AND: [
-			q
-				? {
-						OR: [
-							{ id: q },
-							{ title: { contains: q, mode: "insensitive" } },
-							{ description: { contains: q, mode: "insensitive" } },
-							{ githubRepo: { contains: q, mode: "insensitive" } },
-							{ user: { name: { contains: q, mode: "insensitive" } } },
-							{ user: { displayName: { contains: q, mode: "insensitive" } } },
-							...(includePii
-								? ([
-										{ user: { email: { contains: q, mode: "insensitive" } } },
-										{ user: { slackId: { contains: q, mode: "insensitive" } } },
-									] satisfies Prisma.ThemeProjectWhereInput[])
-								: []),
-						],
-					}
-				: {},
-			opts.extended
-				? {
-						OR: [{ submissionExtensionUntil: { gt: now } }, { user: { submissionExtensionUntil: { gt: now } } }],
-					}
-				: {},
-			opts.tier ? { OR: [{ tier: opts.tier }, { requestedTier: opts.tier, tier: null }] } : {},
-		],
-	}
-
-	const rows = await prisma.themeProject.findMany({
-		orderBy: orderByFor(PROJECTS_ORDER),
-		select: projectDirectorySelect,
-		take: opts.limit + 1,
-		// The directory is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.ThemeProjectWhereInput>(readCursor(opts.cursor), PROJECTS_ORDER, where),
+	const pattern = q === undefined || q === "" ? null : containsPattern(q)
+	const tier = opts.tier
+	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
+	let filtered = db.orm.public.ThemeProject.where({ deletedAt: null }).orderBy([
+		project => project.updatedAt.desc(),
+		project => project.id.desc(),
+	])
+	if (!opts.unstarted) filtered = filtered.where(project => project.namedAt.isNotNull())
+	if (opts.theme) filtered = filtered.where({ theme: opts.theme })
+	if (opts.designStatus) filtered = filtered.where({ designStatus: opts.designStatus })
+	if (opts.buildStatus) filtered = filtered.where({ buildStatus: opts.buildStatus })
+	if (pattern !== null)
+		filtered = filtered.where(project =>
+			or(
+				project.id.eq(q as string),
+				project.title.ilike(pattern),
+				project.description.ilike(pattern),
+				project.githubRepo.ilike(pattern),
+				// The owner's email and Slack id are contact details, so they are matched only for a caller who may see them. A REVIEWER searching for an address gets the same answer whether or not it is registered here.
+				project.user.some(user =>
+					includePii
+						? or(
+								user.name.ilike(pattern),
+								user.displayName.ilike(pattern),
+								user.email.ilike(pattern),
+								user.slackId.ilike(pattern),
+							)
+						: or(user.name.ilike(pattern), user.displayName.ilike(pattern)),
+				),
+			),
+		)
+	if (opts.extended)
+		filtered = filtered.where(project =>
+			or(
+				project.submissionExtensionUntil.gt(nowText),
+				project.user.some(user => user.submissionExtensionUntil.gt(nowText)),
+			),
+		)
+	if (tier !== undefined)
+		filtered = filtered.where(project =>
+			or(project.tier.eq(tier), and(project.requestedTier.eq(tier), project.tier.isNull())),
+		)
+	const position = readCursor(opts.cursor)
+	// The directory is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged =
+		position?.at === undefined || position?.at === null
+			? filtered
+			: filtered.cursor({ id: position.id, updatedAt: formatDbTimestamp(position.at) })
+	const rows = await paged
+		.limit(opts.limit + 1)
+		.select(
+			"buildStatus",
+			"designStatus",
+			"githubRepo",
+			"id",
+			"requestedTier",
+			"submissionExtensionUntil",
+			"theme",
+			"tier",
+			"title",
+			"updatedAt",
+		)
+		.include("user", user => user.select("displayName", "email", "id", "name", "slackId", "submissionExtensionUntil"))
+		.all()
+	const items = rows.slice(0, opts.limit).map(row => {
+		// The foreign key is required, so a missing owner is a data-integrity error rather than a row to render without one.
+		if (!row.user) throw new Error(`project ${row.id} has no owner`)
+		return {
+			buildStatus: row.buildStatus,
+			designStatus: row.designStatus,
+			githubRepo: row.githubRepo,
+			id: row.id,
+			requestedTier: row.requestedTier,
+			submissionExtensionUntil:
+				row.submissionExtensionUntil === null ? null : parseDbTimestamp(row.submissionExtensionUntil),
+			theme: row.theme,
+			tier: row.tier,
+			title: row.title,
+			updatedAt: parseDbTimestamp(row.updatedAt),
+			user: {
+				displayName: row.user.displayName,
+				email: row.user.email,
+				id: row.user.id,
+				name: row.user.name,
+				slackId: row.user.slackId,
+				submissionExtensionUntil:
+					row.user.submissionExtensionUntil === null ? null : parseDbTimestamp(row.user.submissionExtensionUntil),
+			},
+		}
 	})
-	const page = pageResult(rows, opts.limit, PROJECTS_ORDER)
+	const last = items.at(-1)
 	// The same rule as the user directory: the owner's contact details leave the server for ADMIN/AUDITOR only. A REVIEWER/FULFILLER gets names and roles, with no email or Slack id to scrape.
-	const items = page.items.map(row =>
-		includePii ? row : Object.assign({}, row, { user: Object.assign({}, row.user, { email: "", slackId: null }) }),
-	)
-	return { items, nextCursor: page.nextCursor }
+	return {
+		items: includePii
+			? items
+			: items.map(row => Object.assign(row, { user: Object.assign(row.user, { email: "", slackId: null }) })),
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.updatedAt, id: last.id }) : null,
+	}
 }
 
 const userDetailSelect = {

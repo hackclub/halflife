@@ -5,6 +5,7 @@ import {
 	countContentReports,
 	listAuditLog,
 	listContentReports,
+	listProjects,
 	listRecentCommentsForModeration,
 	listRecentPostsForModeration,
 	listRecentPublicReels,
@@ -87,6 +88,20 @@ const reportCounts = await countContentReports()
 console.log("reports:", reports.items.length, typeof reports.items[0]?.createdAt, reportCounts)
 
 const directory = await listUsers({ limit: 2 })
+const projects = await listProjects({ limit: 2 })
+const projectsQ = await listProjects({ limit: 2, q: "pcb" }, { includePii: true })
+const projectsNext = projects.nextCursor ? await listProjects({ cursor: projects.nextCursor, limit: 2 }) : null
+console.log(
+	"projects:",
+	projects.items.length,
+	projects.items[0]?.updatedAt instanceof Date,
+	"search:",
+	projectsQ.items.length,
+	"next:",
+	projectsNext?.items.length ?? 0,
+	projectsNext?.items[0]?.id !== projects.items[0]?.id,
+)
+
 const directoryQ = await listUsers({ limit: 2, q: directory.items[0]?.name?.slice(0, 3) ?? "a" }, { includePii: true })
 console.log(
 	"users:",
