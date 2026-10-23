@@ -172,6 +172,14 @@ and it refuses an already-resolved submission.
   than trusting them blind. Makers are not notified by a bulk replay by default
   (`--announce` opts in) – mirror the row afterwards with
   `airtable:backfill-review`.
+- **The phases before a decision are silent, so they are polled.** Ari sends no
+  webhook when a first-pass decision is held for a second pass, nor when a second
+  pass returns it to the queue. The same status pass stores `phase` on
+  `PhaseSubmission.ariStatus` / `ariStatusAt` and mirrors it to `Ari - Review
+  phase`, `Ari - Review phase at` and `Ari - Second pass since` on the Airtable
+  row. `secondPass` and `secondPassReturned` in the job summary count what the
+  poll saw. The confirming organizer is still not exposed: the status response
+  names the phase, not who confirmed or returned the held decision.
 - **A pulled decision gets its reviewer's words back from the webhook.**
   The note an Ari decision carries travels only in the outbound delivery, so a
   status pass cannot show it. A decision resent from Ari's review screen arrives

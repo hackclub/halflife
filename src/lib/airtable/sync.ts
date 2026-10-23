@@ -422,6 +422,61 @@ export async function mirrorReviewDecision(
 		)
 }
 
+/**
+ * Ari's phase names as an operator reads them on the row.
+ *
+ * Unknown values fall through unchanged rather than being dropped: a phase Ari adds later should still show up in the base, even if this map has not learned a nicer word for it.
+ */
+const ARI_PHASE_LABEL: { [_: string]: string } = {
+	fraud_review: "Fraud review",
+	processing: "Processing",
+	reverted: "Reverted",
+	review: "In review",
+	reviewed: "Reviewed",
+	second_pass: "Second pass",
+	under_review: "Under review",
+	withdrawn: "Withdrawn",
+}
+
+/** Mirror a ship's current Ari phase onto its Airtable row, where an operator can see a hold or a return that Ari never pushes. */
+export async function mirrorAriPhaseToYsws(
+	themeProjectId: string,
+	phase: Phase,
+	ariPhase: string,
+	at: Date,
+): Promise<void> {
+	try {
+		const settings = await getProgramSettings()
+		if (!settings.airtableSyncEnabled) return
+		const config = getAirtableConfig()
+		if (!config) return
+		const recordId = await lastRecordId(themeProjectId, phase)
+		if (!recordId) return
+
+		const { ariReviewPhase, ariReviewPhaseAt, ariSecondPassSince } = YSWS_SUBMISSION.fields
+		const { tableId } = YSWS_SUBMISSION
+		const columns = [ariReviewPhase, ariReviewPhaseAt, ariSecondPassSince]
+		const writable = await existingColumns(
+			config,
+			tableId,
+			columns.map(column => column.name),
+		)
+		const values: { [_: string]: unknown } = {}
+		if (writable.has(ariReviewPhase.name)) values[fieldKey(ariReviewPhase)] = ARI_PHASE_LABEL[ariPhase] ?? ariPhase
+		if (writable.has(ariReviewPhaseAt.name)) values[fieldKey(ariReviewPhaseAt)] = at.toISOString()
+		if (writable.has(ariSecondPassSince.name))
+			values[fieldKey(ariSecondPassSince)] = ariPhase === "second_pass" ? at.toISOString() : null
+		if (Object.keys(values).length === 0) return
+
+		const written = await updateYswsRecord(recordId, values)
+		if (!written.ok && written.reason !== "row_gone" && written.reason !== "not_configured")
+			console.error(`[airtable] could not write the Ari phase for ${themeProjectId} (${phase}): ${written.reason}`)
+	} catch (err) {
+		// The poll must keep going for every other ship; the next run retries this one.
+		console.error(`[airtable] could not mirror the Ari phase for ${themeProjectId} (${phase}):`, err)
+	}
+}
+
 /** Remove a submission's row, and its unified-base twin, when it is taken back. */
 export async function removeSubmissionFromYsws(
 	themeProjectId: string,
