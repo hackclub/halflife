@@ -357,6 +357,30 @@ Loops email), and clears the address on a phase whose current state no longer
 matches the review that was standing. Run it where `DATABASE_URL` points at the
 real database.
 
+### Ari phase columns
+
+Ari sends no webhook when a first-pass decision is held for a second pass, nor
+when a second pass returns it to the queue. `ari-retry` reads
+`ari.ships.status` for every open ship, stores a changed phase on
+`PhaseSubmission.ariStatus` / `ariStatusAt`, and mirrors it to three columns on
+`YSWS Project Submission`:
+
+- `Ari - Review phase` – single-line text. One of `Processing`, `Fraud review`,
+  `In review`, `Under review`, `Second pass`, `Reviewed`, `Reverted` or
+  `Withdrawn`; a phase Ari adds later passes through under Ari's own name.
+- `Ari - Review phase at` – date field with time enabled. When the phase last
+  changed.
+- `Ari - Second pass since` – date field with time enabled. Set only while the
+  phase is `Second pass`, cleared when it leaves.
+
+The app probes for each column and skips it when absent, so a base without them
+keeps working. A row already carrying the phase is not rewritten, so a poll of
+unchanged ships costs no Airtable writes.
+
+The retry job's summary reports `reconciledSecondPass` (currently held) and
+`reconciledSecondPassReturned` (left a second pass for the queue this run), which
+is the fastest way to see that returns are being observed.
+
 ### Cloudflare kills anything over ~100 seconds
 
 `halflife.hackclub.com` sits behind Cloudflare, which caps the proxy read timeout
