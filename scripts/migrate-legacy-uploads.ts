@@ -84,13 +84,18 @@ async function listObjects(s3: S3Client, prefix: string): Promise<BucketObject[]
 	return objects
 }
 
+/** Percent-encode one ASCII character that `encodeURIComponent` leaves alone. */
+function percentEncode(char: string): string {
+	const code = char.codePointAt(0)
+	if (code === undefined) return char
+	return `%${code.toString(16).toUpperCase()}`
+}
+
 /** RFC 3986 encoding, per path segment, which is what SigV4 canonicalises. */
 function encodeKey(key: string): string {
 	return key
 		.split("/")
-		.map(segment =>
-			encodeURIComponent(segment).replaceAll(/[!'()*]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`),
-		)
+		.map(segment => encodeURIComponent(segment).replaceAll(/[!'()*]/g, percentEncode))
 		.join("/")
 }
 
