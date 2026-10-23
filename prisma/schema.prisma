@@ -892,7 +892,10 @@ model PhaseSubmission {
   ///
   /// `external_id` is derived as `<themeProjectId>:<design|build>`, so these are recovery breadcrumbs rather than a lookup key - a submission is found by (project, phase).
   ariSubmissionId String?
+  /// The last phase Ari reported for this ship (`review`, `under_review`, `second_pass`, `reviewed`, `reverted`, …). The retry job polls every open ship, so this is what makes a first-pass hold or a second-pass return visible here even though Ari sends no webhook for either.
   ariStatus       String?
+  /// When `ariStatus` last changed. Set by the webhook paths and by the status poll, and mirrored to the row's `Ari - Review phase at` and `Ari - Second pass since` columns.
+  ariStatusAt     DateTime?
   ariDecision     String?
   ariSyncedAt     DateTime?
 

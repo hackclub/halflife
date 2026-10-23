@@ -131,11 +131,17 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	let reconciled = 0
 	let reconciledApplied = 0
 	let reconciledReverted = 0
+	let reconciledPhaseUpdated = 0
+	let reconciledSecondPass = 0
+	let reconciledSecondPassReturned = 0
 	if (isAriConfigured()) {
 		const result = await reconcileAriDecisions({ commit: true, limit: 150 })
 		reconciled = result.checked
 		reconciledApplied = result.applied
 		reconciledReverted = result.reverted
+		reconciledPhaseUpdated = result.phaseUpdated
+		reconciledSecondPass = result.secondPass
+		reconciledSecondPassReturned = result.secondPassReturned
 	}
 
 	const summary = {
@@ -145,7 +151,10 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		failed,
 		reconciled,
 		reconciledApplied,
+		reconciledPhaseUpdated,
 		reconciledReverted,
+		reconciledSecondPass,
+		reconciledSecondPassReturned,
 		skipped,
 		synced,
 		withdrawFailed,

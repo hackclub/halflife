@@ -42,6 +42,12 @@ export const YSWS_SUBMISSION = {
 	fields: {
 		addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
 		addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
+		// What Ari says the ship is doing right now. Filled by the `ari-retry` status poll because Ari sends no webhook when a decision is held for its second pass or returned from one. A single-line text field, not a select: a new phase on Ari's side must not need an option created here before the write lands.
+		ariReviewPhase: f<string>("fldYswsAriReviewPhase", "Ari - Review phase"),
+		// When the phase last changed, ISO with time. A date field with time enabled, so an operator can see how long a ship has been held.
+		ariReviewPhaseAt: f<string>("fldYswsAriReviewPhaseAt", "Ari - Review phase at"),
+		// Only set while the phase is `second_pass`; cleared when it leaves. The same instant as the phase timestamp, kept separately so “in second pass since” is a filter rather than a comparison.
+		ariSecondPassSince: f<string>("fldYswsAriSecondPassSince", "Ari - Second pass since"),
 		birthday: f<string>("fldYswsBirthday", "Birthday"),
 		city: f<string>("fldYswsCity", "City"),
 		codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),

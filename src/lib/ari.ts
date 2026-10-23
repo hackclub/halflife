@@ -10,7 +10,7 @@ import {
 } from "@hackclub/ari"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
-import { mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
+import { mirrorAriPhaseToYsws, mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
 import { type StandingDecision, standingDecision } from "@/lib/ari-standing"
@@ -490,6 +490,38 @@ async function ignored(event: { event: string }, reason: string, externalId: str
 	})
 }
 
+/** A row whose last Ari phase is known, for `recordAriPhase`. */
+interface AriPhaseRow {
+	ariStatus: string | null
+	id: string
+	phase: Phase
+	themeProjectId: string
+}
+
+/**
+ * Record the phase Ari reports for a ship, and mirror it to the row when it changed.
+ *
+ * Ari pushes a decision but not the states before it: a first-pass decision held for second pass, and a second pass returned to the queue, are both silent. The retry job reads `ari.ships.status` for every open ship, so this is where those states become visible here and in Airtable. A row already carrying the phase is left alone, which keeps a poll of a hundred unchanged ships to zero writes.
+ *
+ * Returns whether anything changed.
+ */
+async function recordAriPhase(row: AriPhaseRow, ariPhase: string): Promise<boolean> {
+	if (row.ariStatus === ariPhase) return false
+	const at = new Date()
+	try {
+		await prisma.phaseSubmission.update({
+			data: { ariStatus: ariPhase, ariStatusAt: at },
+			where: { id: row.id },
+		})
+	} catch (err) {
+		// Bookkeeping after a committed decision must not turn that decision into an Ari redelivery. The next poll retries the phase.
+		console.error(`[ari] could not record the phase ${ariPhase} for ${row.themeProjectId}:${row.phase}:`, err)
+		return false
+	}
+	await mirrorAriPhaseToYsws(row.themeProjectId, row.phase, ariPhase, at)
+	return true
+}
+
 async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } = {}): Promise<void> {
 	const parsed = parseAriExternalId(event.external_id)
 	if (!parsed) {
@@ -500,14 +532,14 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 
 	// Prefer the row this ship was actually sent for. A withdraw-and-resubmit reuses the same external id, so a decision for the withdrawn ship must not be applied to the newer hand-in that now holds the open slot.
 	const byShip = await prisma.phaseSubmission.findFirst({
-		select: { ariSubmissionId: true, id: true, resolvedAt: true },
+		select: { ariStatus: true, ariSubmissionId: true, id: true, resolvedAt: true },
 		where: { ariSubmissionId: event.id, phase, themeProjectId },
 	})
 	const open =
 		byShip
 		?? (await prisma.phaseSubmission.findFirst({
 			orderBy: { createdAt: "desc" },
-			select: { ariSubmissionId: true, id: true, resolvedAt: true },
+			select: { ariStatus: true, ariSubmissionId: true, id: true, resolvedAt: true },
 			where: { phase, resolvedAt: null, themeProjectId },
 		}))
 	if (!open) {
@@ -628,6 +660,9 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 		where: { id: submission.id },
 	})
 
+	// The status poll writes this too when it is the one that found the decision. The helper reads the phase from before the update, so only the path that has not recorded it yet does the work.
+	await recordAriPhase({ ...submission, phase, themeProjectId }, "reviewed")
+
 	await logAudit({
 		action: AuditAction.ARI_WEBHOOK_APPLIED,
 		metadata: {
@@ -697,7 +732,7 @@ async function applyReset(event: ResetInput): Promise<void> {
 
 	const latest = await prisma.phaseSubmission.findFirst({
 		orderBy: { createdAt: "desc" },
-		select: { ariSubmissionId: true, id: true },
+		select: { ariStatus: true, ariSubmissionId: true, id: true },
 		where: { phase, themeProjectId },
 	})
 	if (!latest) {
@@ -716,6 +751,7 @@ async function applyReset(event: ResetInput): Promise<void> {
 	else if (status === PhaseStatus.rejected) await reopenPhase(themeProjectId, phase, null, null, reason)
 
 	const nextStatus = event.event === "review.reverted" ? PhaseStatus.update_requested : PhaseStatus.in_review
+	const ariStatus = event.event === "review.reverted" ? "reverted" : "review"
 	await prisma.$transaction(async tx => {
 		await tx.submissionReview.updateMany({
 			data: { invalidated: true, invalidatedAt: new Date() },
@@ -724,7 +760,7 @@ async function applyReset(event: ResetInput): Promise<void> {
 		await tx.phaseSubmission.update({
 			data: {
 				ariDecision: null,
-				ariStatus: event.event === "review.reverted" ? "reverted" : "review",
+				ariStatus,
 				resolvedAt: null,
 				resolvedResult: null,
 			},
@@ -742,6 +778,8 @@ async function applyReset(event: ResetInput): Promise<void> {
 		targetId: themeProjectId,
 		targetType: "ThemeProject",
 	})
+
+	await recordAriPhase({ ...latest, phase, themeProjectId }, ariStatus)
 
 	// The row follows the phase rather than being reset to "Pending Review" regardless: a requeue is back in the queue, a revert is back with the maker. The note goes with the decision it belonged to – it is cleared, so an email for whatever comes next cannot quote words that no longer stand.
 	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(nextStatus), null, null)
@@ -891,8 +929,14 @@ export interface ReconcileSummary {
 	failed: number
 	/** Hand-ins Ari still holds open. */
 	pending: number
+	/** Open hand-ins whose stored phase changed this pass. */
+	phaseUpdated: number
 	/** Open-hand-ins Ari reports as reverted – terminal ships the local reset would otherwise leave in the queue. */
 	reverted: number
+	/** Open ships Ari currently holds for a second pass. */
+	secondPass: number
+	/** Ships that were in a second pass last pass and are now back in the queue – the organizer returned the held decision. */
+	secondPassReturned: number
 	/** Decided ships whose newest ship is not this hand-in (withdrawn and resubmitted). */
 	skipped: number
 }
@@ -981,13 +1025,16 @@ export async function reconcileAriDecisions(
 		deferred: 0,
 		failed: 0,
 		pending: 0,
+		phaseUpdated: 0,
 		reverted: 0,
+		secondPass: 0,
+		secondPassReturned: 0,
 		skipped: 0,
 	}
 	if (!isAriConfigured()) return summary
 
 	const candidates = await prisma.phaseSubmission.findMany({
-		select: { ariSubmissionId: true, phase: true, themeProjectId: true },
+		select: { ariStatus: true, ariSubmissionId: true, id: true, phase: true, themeProjectId: true },
 		where: {
 			ariSubmissionId: { not: null },
 			OR: [
@@ -1015,6 +1062,15 @@ export async function reconcileAriDecisions(
 			summary.failed += 1
 			console.error(`[ari] reconcile: status failed for ${submission.themeProjectId}:${submission.phase}`, err)
 			continue
+		}
+
+		// Only the ship this hand-in was sent as can say anything about its phase. A newer ship for the same project and phase is a withdraw-and-resubmit, and its `second_pass` must not be written onto the older local row.
+		if (submission.ariSubmissionId === status.id) {
+			const wasSecondPass = submission.ariStatus === "second_pass"
+			const returnedFromSecondPass = wasSecondPass && (status.phase === "review" || status.phase === "under_review")
+			if (status.phase === "second_pass") summary.secondPass += 1
+			if (returnedFromSecondPass) summary.secondPassReturned += 1
+			if (opts.commit && (await recordAriPhase(submission, status.phase))) summary.phaseUpdated += 1
 		}
 
 		const standing = standingDecision(status)
