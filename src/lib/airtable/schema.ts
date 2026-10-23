@@ -6,7 +6,7 @@
  * - Reads and writes use field IDs, which survive an ops person renaming a column. Siege does this and says why: "robust to column renames". Stasis writes by name, so a rename silently 422s inside a fire-and-forget side effect and nobody notices until payout.
  * - filterByFormula can only reference fields by NAME, so the name has to be here too. `formulaRef()` is the only sanctioned way to build one.
  *
- * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `yarn tsx scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
+ * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `bun scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
  */
 
 export interface FieldDef<T = unknown> {
@@ -59,6 +59,8 @@ export const YSWS_SUBMISSION = {
 		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
 		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
 		lastName: f<string>("fldYswsLastName", "Last Name"),
+		// The reviewer whose decision the webhook carries as `review.reviewer.email`. Half Life stores that address on the review (`SubmissionReview.reviewerEmail`), and the same mirror that moves the status fills this column from it. Ari names no one for its second pass – the organizer who confirms a held decision exists only in Ari's internal activity log – so this is the only reviewer column.
+		pass1Reviewer: f<string>("fldYswsPass1Reviewer", "Pass 1 reviewer"),
 		playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
 		projectName: f<string>("fldYswsProjectName", "Project name"),
 		// Which program week this submission is for, as the single select Loops triggers off (`Week 1` … `Week 10`). Derived from the theme and phase's own scheduled week (see `projectWeekLabel` in lib/airtable/sync); a warm-up has no scheduled week and leaves it blank.

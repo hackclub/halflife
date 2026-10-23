@@ -87,7 +87,11 @@ Coolify.
 5. **Create the R2 bucket**, an API token scoped to it, and a public custom
    domain. Put that hostname in `NEXT_PUBLIC_UPLOAD_HOST` – `next/image` refuses
    any host not in `next.config.ts`'s `remotePatterns`, and the failure is a
-   broken image with no console error.
+   broken image with no console error. A bucket that already holds uploads from
+   before the S3 endpoint lost its bucket segment has objects under
+   `<bucket>/<key>`; `bun scripts/migrate-legacy-uploads.ts --commit` copies them
+   to the root keys the app stores, and `uploads:backfill-urls` then normalises
+   journal URLs that still name the legacy layout.
 
 6. **Deploy.**
 
@@ -329,6 +333,29 @@ full resync and write a blank project name to every contact:
 
 The app skips the columns when they are absent, so a base without them keeps
 working as before.
+
+### Reviewer columns on the review rows
+
+`Pass 1 reviewer` is a single-line text field on `YSWS Project Submission`. The
+live mirror fills it from the address Ari puts in the decision
+(`review.reviewer.email`, stored on the review as `reviewerEmail`).
+
+Only that pass is available: Ari's second pass is an organizer confirming a
+held decision, and no payload Half Life receives names them. The confirmation
+re-sends the decision under the first-pass reviewer, and the organizer exists
+only in Ari's internal activity log.
+
+Rows written before the live mirror wrote `Pass 1 reviewer` are filled by:
+
+```
+bun --conditions=react-server scripts/backfill-airtable-reviewers.ts
+bun --conditions=react-server scripts/backfill-airtable-reviewers.ts --commit
+```
+
+It only writes that one column, leaves status and notes alone (so it triggers no
+Loops email), and clears the address on a phase whose current state no longer
+matches the review that was standing. Run it where `DATABASE_URL` points at the
+real database.
 
 ### Cloudflare kills anything over ~100 seconds
 

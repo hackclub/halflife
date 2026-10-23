@@ -101,8 +101,13 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 
 	return (
 		<div className="grid gap-2.5 rounded-xl border-2 border-line bg-cream/60 p-3.5">
+			<p className="rounded-lg bg-gold-pale/70 px-3 py-2 text-[0.82rem] leading-snug text-navy-soft">
+				Use this only if something is wrong with the previous review: if it judged older work, misread what you
+				submitted, or applied a rule that does not fit. It is not for asking to be approved, or for saying what you
+				changed: if you have made the changes and can hand in again, resubmit instead.
+			</p>
 			<label className="label text-violet-deep" htmlFor={`dispute-${phase}`}>
-				What looks wrong?{" "}
+				What is wrong with the review?{" "}
 				<span className="hand font-normal normal-case text-navy-soft">(a sentence is enough, 10+ characters)</span>
 			</label>
 			<textarea
@@ -113,7 +118,7 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 					setNote(e.target.value)
 					if (error) setError(null)
 				}}
-				placeholder="The build works – the video runs at 1:20."
+				placeholder="The review says the case is missing, but it is in the photos from 2:10."
 				rows={3}
 				value={note}
 			/>
@@ -134,7 +139,8 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 				</Button>
 			</div>
 			<p className="hand text-[0.8rem] text-navy-soft">
-				this does not change the decision – it asks a reviewer to read it again.
+				a dispute does not approve the phase or count as a resubmission – it only asks a reviewer to read the review
+				again.
 			</p>
 		</div>
 	)

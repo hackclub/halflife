@@ -3,7 +3,7 @@
  *
  * The source (Stasis/Siege lineage) is read-only; the target is whatever Half Life's DATABASE_URL points at. Run it against a scratch database, not production:
  *
- * pnpm exec tsx import/stasis.ts                 # everything pnpm exec tsx import/stasis.ts --limit=50      # first 50 users (quick pass) pnpm exec tsx import/stasis.ts --dry-run       # count, write nothing pnpm exec tsx import/stasis.ts --keep-emails   # keep real addresses
+ * bun import/stasis.ts                 # everything bun import/stasis.ts --limit=50      # first 50 users (quick pass) bun import/stasis.ts --dry-run       # count, write nothing bun import/stasis.ts --keep-emails   # keep real addresses
  *
  * Shape differences this bridges:
  * - Half Life is theme-based (one project per user per theme, five themes). The source is unthemed, so each user's projects are assigned themes in creation order and anything past the fifth is dropped.

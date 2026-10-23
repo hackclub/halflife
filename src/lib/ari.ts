@@ -647,7 +647,13 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	//
 	// A reconciliation that replays a backlog skips both this and the notice below: the maker is told once, by the live webhook, and a run that decided hundreds of old hand-ins at once must not turn into hundreds of late messages. The Airtable backfill mirrors the state afterwards instead.
 	if (opts.announce !== false)
-		await mirrorReviewDecision(themeProjectId, phase, reviewStatusForResult(result), makerNote)
+		await mirrorReviewDecision(
+			themeProjectId,
+			phase,
+			reviewStatusForResult(result),
+			makerNote,
+			event.review.reviewer?.email ?? null,
+		)
 
 	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
 	if (opts.announce !== false)
@@ -739,7 +745,7 @@ async function applyReset(event: ResetInput): Promise<void> {
 	})
 
 	// The row follows the phase rather than being reset to "Pending Review" regardless: a requeue is back in the queue, a revert is back with the maker. The note goes with the decision it belonged to – it is cleared, so an email for whatever comes next cannot quote words that no longer stand.
-	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(nextStatus), null)
+	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(nextStatus), null, null)
 }
 
 /** An optional post-approval fraud check. A failure flags the maker. */

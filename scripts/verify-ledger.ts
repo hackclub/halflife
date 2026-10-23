@@ -9,7 +9,7 @@ import { Phase, PhaseStatus, ReviewResult, ShopItemCategory, Theme } from "../sr
  * The property that matters: approving a build, un-approving it, and approving it again must land on exactly the same balance as approving it once. That is what `reconcileGrant` buys, and it is the failure mode that costs real money
  * if it regresses.
  *
- * Run with `yarn tsx scripts/verify-ledger.ts` against a scratch database.
+ * Run with `bun scripts/verify-ledger.ts` against a scratch database.
  */
 const prisma = new PrismaClient({
 	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
