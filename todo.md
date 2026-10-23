@@ -58,7 +58,7 @@ that remain before launch.
 3. **HCB (only if the manual fallback is wanted):** register the OAuth app,
    invite it to the org as a manager, run a $1 top-up on a test org, and decide
    where the rotated refresh token is persisted.
-4. **Slack:** set `SLACK_REVIEW_CHANNEL_ID` if dispute notices should be posted.
+4. **Slack:** set `SLACK_DISPUTES_CHANNEL_ID` if dispute notices should be posted.
 
 ## Original notes
 

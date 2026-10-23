@@ -611,7 +611,7 @@ Unchanged from `PRELAUNCH_AUDIT.md` §6 and `todo.md`, all operator work:
 - **Rotate** the credentials that lived in `.env.old` (and `import/.env`, see
   finding 7); delete `.env` before the directory is shared or archived.
 - **Ari**: program id + signing/webhook secrets, register the callback, run the
-  `ari-retry` job; `SLACK_REVIEW_CHANNEL_ID` if dispute notices are wanted.
+  `ari-retry` job; `SLACK_DISPUTES_CHANNEL_ID` if dispute notices are wanted.
 - **Email**: `RESEND_API_KEY` + a verified `EMAIL_FROM`.
 - **HCB** (only if the manual fallback is wanted): OAuth app with
   `card_grants:read`, manager invite, rotated refresh-token persistence — and

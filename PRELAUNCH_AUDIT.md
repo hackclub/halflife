@@ -406,7 +406,7 @@ The external checklist in §6 is unchanged and still operator work.
       secrets; set `RESEND_API_KEY` + `EMAIL_FROM` (unconfigured now records a
       `NOTIFICATION_FAILURE` rather than no-oping); HCB OAuth app and rotated
       refresh-token persistence;
-      `SLACK_REVIEW_CHANNEL_ID` if dispute notices are wanted.
+      `SLACK_DISPUTES_CHANNEL_ID` if dispute notices are wanted.
 
 ---
 
