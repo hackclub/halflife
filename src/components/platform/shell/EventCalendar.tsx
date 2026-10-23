@@ -17,6 +17,7 @@ import {
 	eventsOnDay,
 	HUDDLE_URL,
 	minutesInDay,
+	nextEvent,
 	shiftWeek,
 	weekDays,
 	weekLabel,
@@ -71,19 +72,32 @@ export function EventCalendar({
 	timeZone: string
 }) {
 	const today = useMemo(() => calendarDay(new Date(), timeZone), [timeZone])
+	// The week to open on. The header this dialog hangs off counts down to the next
+	// event, so opening the calendar on *its* week is what makes the thing the button
+	// just advertised visible: a call on Friday the 30th used to land in an empty
+	// Monday-to-Sunday grid because "today" is still in the week before. An event
+	// already under way keeps today's week, since its start may be the previous day.
+	const openingDay = useMemo(() => {
+		const next = nextEvent(events, new Date())
+		if (!next) return today
+		const nextDay = calendarDay(next.startsAt, timeZone)
+		// A live event that began yesterday still belongs to today's view, not last week's.
+		if (nextDay < today) return today
+		return nextDay
+	}, [events, timeZone, today])
 	// Any day in the viewed week; the grid always shows its Monday-to-Sunday.
-	const [anchor, setAnchor] = useState(today)
+	const [anchor, setAnchor] = useState(openingDay)
 	const [selected, setSelected] = useState<string | null>(null)
 
 	const days = useMemo(() => weekDays(anchor), [anchor])
 
-	// Reopening starts on the current week with nothing selected. Adjusting during
-	// render rather than in an effect: an effect would paint a frame of the old
-	// week after the dialog opened.
+	// Reopening starts on the next event's week with nothing selected. Adjusting
+	// during render rather than in an effect: an effect would paint a frame of the
+	// old week after the dialog opened.
 	const [seen, setSeen] = useState({ open, today })
 	if (seen.open !== open || seen.today !== today) {
 		setSeen({ open, today })
-		setAnchor(today)
+		setAnchor(openingDay)
 		setSelected(null)
 	}
 
