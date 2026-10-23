@@ -59,6 +59,10 @@ export const YSWS_SUBMISSION = {
 		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
 		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
 		lastName: f<string>("fldYswsLastName", "Last Name"),
+		// The first of Ari's two review passes: the reviewer whose decision the webhook carries as `review.reviewer.email`. Half Life stores that address on the review (`SubmissionReview.reviewerEmail`), and the same mirror that moves the status fills this column from it.
+		pass1Reviewer: f<string>("fldYswsPass1Reviewer", "Pass 1 reviewer"),
+		// The second pass is the organizer who confirms a held decision. Ari does not put them in any payload it sends here – the confirmation re-sends the decision under the first-pass reviewer, and the confirmer lives only in Ari's internal activity log – so nothing in this app can fill this column. It is declared here so a reader looking for both passes finds the reason the second one stays blank.
+		pass2Reviewer: f<string>("fldYswsPass2Reviewer", "Pass 2 reviewer"),
 		playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
 		projectName: f<string>("fldYswsProjectName", "Project name"),
 		// Which program week this submission is for, as the single select Loops triggers off (`Week 1` … `Week 10`). Derived from the theme and phase's own scheduled week (see `projectWeekLabel` in lib/airtable/sync); a warm-up has no scheduled week and leaves it blank.

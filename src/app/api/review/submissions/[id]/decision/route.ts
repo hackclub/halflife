@@ -54,6 +54,7 @@ export const POST = withPermission(
 				outcome.phase,
 				reviewStatusForResult(outcome.result),
 				feedback || null,
+				gate.user.email,
 			)
 			await notifyReviewOutcome({
 				decidedBy: "console",

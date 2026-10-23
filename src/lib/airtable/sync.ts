@@ -303,32 +303,45 @@ export async function syncSubmissionToYsws(
  * failure either – a submission written before this sync existed has no record
  * id, and one taken back has none any more.
  *
- * The status and note are written together with the overrides in the ordinary
- * case. If that request is refused, the fallback keeps the status load-bearing:
- * status + overrides, then status alone, then the note. Each failure is named.
+ * The status, note, first-pass reviewer and overrides are written together in
+ * the ordinary case. If that request is refused, the fallback keeps the status
+ * load-bearing: status + overrides, then status alone, then the note and the
+ * reviewer. Each failure is named.
+ *
+ * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the
+ * decision (the first of Ari's two passes). Omitting it leaves the column
+ * alone; passing null clears it for a decision that no longer stands.
  */
 export async function syncReviewDecisionToYsws(
 	themeProjectId: string,
 	phase: Phase,
 	status: string,
 	note: string | null,
-): Promise<{ updated: boolean; reason?: string; noteFailed?: string }> {
+	reviewerEmail?: string | null,
+): Promise<{ updated: boolean; reason?: string; noteFailed?: string; reviewerFailed?: string }> {
 	const settings = await getProgramSettings()
 	if (!settings.airtableSyncEnabled) return { reason: "sync_disabled", updated: false }
 	// The id lives in the audit row each successful write left (see lastRecordId), not in a column of ours.
 	const recordId = await lastRecordId(themeProjectId, phase)
 	if (!recordId) return { reason: "no_row", updated: false }
 
-	const { reviewStatus, reviewerNotes } = YSWS_SUBMISSION.fields
+	const { pass1Reviewer, reviewStatus, reviewerNotes } = YSWS_SUBMISSION.fields
 	const statusField = { [fieldKey(reviewStatus)]: status }
 	const noteField = { [fieldKey(reviewerNotes)]: note ?? "" }
+	// Undefined leaves the column alone, for a caller that only knows about the status (the older review backfill). Null clears it, for a decision that no longer stands.
+	const reviewerField = reviewerEmail === undefined ? null : { [fieldKey(pass1Reviewer)]: reviewerEmail ?? "" }
 
-	// The override columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
+	// The override and reviewer columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
 	const overrides: { [_: string]: unknown } = {}
+	let reviewerWritable = false
 	const config = getAirtableConfig()
 	if (config)
 		try {
-			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, Object.values(LOOPS_REVIEW_OVERRIDE))
+			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, [
+				...Object.values(LOOPS_REVIEW_OVERRIDE),
+				pass1Reviewer.name,
+			])
+			reviewerWritable = writable.has(pass1Reviewer.name)
 			if (writable.size > 0) {
 				const [project, submission] = await Promise.all([
 					prisma.themeProject.findUnique({
@@ -349,10 +362,18 @@ export async function syncReviewDecisionToYsws(
 			}
 		} catch (err) {
 			// A probe failure is not a reason to lose the status; the next decision retries it.
-			console.error("[airtable] could not probe the Loops override columns; writing the decision without them:", err)
+			console.error(
+				"[airtable] could not probe the Loops override and reviewer columns; writing the decision without them:",
+				err,
+			)
 		}
 
-	const complete = { ...statusField, ...noteField, ...overrides }
+	const complete = {
+		...statusField,
+		...noteField,
+		...(reviewerWritable && reviewerField ? reviewerField : {}),
+		...overrides,
+	}
 	const moved = await updateYswsRecord(recordId, complete)
 	if (moved.ok) return { updated: true }
 
@@ -363,13 +384,18 @@ export async function syncReviewDecisionToYsws(
 		if (!statusOnly.ok) return { reason: statusOnly.reason, updated: false }
 	}
 	const noted = await updateYswsRecord(recordId, noteField)
-	return noted.ok ? { updated: true } : { noteFailed: noted.reason, updated: true }
+	const reviewed = reviewerWritable && reviewerField ? await updateYswsRecord(recordId, reviewerField) : null
+	return {
+		updated: true,
+		...(noted.ok ? {} : { noteFailed: noted.reason }),
+		...(reviewed && !reviewed.ok ? { reviewerFailed: reviewed.reason } : {}),
+	}
 }
 
 /**
  * Put a decision on the submission's Airtable row, for Loops, and log whatever did not land.
  *
- * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in and `note` is the reviewer's own words, or null to clear the column.
+ * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column.
  *
  * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. On the Ari path that is load-bearing – a throw becomes a 5xx and a redelivery of a decision that has already been applied.
  */
@@ -378,8 +404,9 @@ export async function mirrorReviewDecision(
 	phase: Phase,
 	status: string,
 	note: string | null,
+	reviewerEmail?: string | null,
 ): Promise<void> {
-	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note)
+	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note, reviewerEmail)
 	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
 	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
 		console.error(
@@ -388,6 +415,10 @@ export async function mirrorReviewDecision(
 	else if (mirrored.noteFailed)
 		console.error(
 			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the reviewer's note: ${mirrored.noteFailed}`,
+		)
+	else if (mirrored.reviewerFailed)
+		console.error(
+			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the pass 1 reviewer: ${mirrored.reviewerFailed}`,
 		)
 }
 

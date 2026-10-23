@@ -156,7 +156,13 @@ async function repair(candidate: Candidate): Promise<void> {
 	})
 
 	// The row follows the phase, exactly as an Ari requeue's does (see `applyReset` in lib/ari.ts). Left on "Changes Requested", the next return writes the value the row already holds, and email-tools forwards only changed values – so the maker would never hear that decision. The note goes with the return it belonged to.
-	await mirrorReviewDecision(candidate.themeProjectId, candidate.phase, reviewStatusFor(PhaseStatus.in_review), null)
+	await mirrorReviewDecision(
+		candidate.themeProjectId,
+		candidate.phase,
+		reviewStatusFor(PhaseStatus.in_review),
+		null,
+		null,
+	)
 }
 
 /** The phases this script reopened that are still in review, with the row each one was last written to. */
@@ -256,7 +262,7 @@ async function heal(): Promise<void> {
 	let gone = 0
 	let failed = 0
 	for (const target of stale) {
-		const mirrored = await syncReviewDecisionToYsws(target.themeProjectId, target.phase, pending, null)
+		const mirrored = await syncReviewDecisionToYsws(target.themeProjectId, target.phase, pending, null, null)
 		if (mirrored.updated) {
 			healed++
 			if (mirrored.noteFailed)

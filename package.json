@@ -6,6 +6,7 @@
 		"airtable:backfill-justification": "bun --conditions=react-server scripts/backfill-airtable-justification.ts",
 		"airtable:backfill-project-week": "bun --conditions=react-server scripts/backfill-airtable-project-week.ts",
 		"airtable:backfill-review": "bun --conditions=react-server scripts/backfill-airtable-review.ts",
+		"airtable:backfill-reviewers": "bun --conditions=react-server scripts/backfill-airtable-reviewers.ts",
 		"airtable:backfill-starters": "bun --conditions=react-server scripts/backfill-airtable-starters.ts",
 		"analytics:backfill": "bun --conditions=react-server scripts/backfill-analytics.ts",
 		"ari:backfill-empty-journals": "bun --conditions=react-server scripts/backfill-ari-empty-journals.ts",
