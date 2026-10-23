@@ -32,7 +32,11 @@ export const POST = withPermission(Permission.MANAGE_PROGRAM, async (req: Reques
 	// makes "these ten are the weekly call" answerable later.
 	const seriesId = repeatWeeks > 1 ? crypto.randomUUID() : null
 
-	const events = await Promise.all(
+	// One transaction, not `Promise.all`: a ten-week series half-written because the
+	// fifth insert failed is worse than one that was not written at all. The admin
+	// sees a refusal and tries again; the audit row below then always describes the
+	// same rows the calendar holds.
+	const events = await prisma.$transaction(
 		Array.from({ length: repeatWeeks }, (_, week) =>
 			prisma.programEvent.create({
 				data: {
