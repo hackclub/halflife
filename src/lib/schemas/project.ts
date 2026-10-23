@@ -1,5 +1,11 @@
 import { z } from "zod"
+import { isOnshapeLink, ONSHAPE_REPO_ERROR } from "@/lib/repo"
 import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
+
+/**
+ * A project's repo link. Any http(s) host is a repo – Codeberg and a self-hosted forge are repos too – except Onshape, which is a single CAD document: that belongs in the project's demo links, where a reviewer opens it, not in the field the repo checks read as source.
+ */
+export const projectRepoUrl = httpsUrl.refine(v => !isOnshapeLink(v), ONSHAPE_REPO_ERROR)
 
 export const projectUpdateSchema = z
 	.object({
@@ -12,7 +18,7 @@ export const projectUpdateSchema = z
 		 * Not blankable. A project with no description is a project a reviewer has nothing to read, and the submit gate already refuses one below its floor – so the blank has to be refused here too, where the details are written.
 		 */
 		description: boundedText(4000, 1).optional(),
-		githubRepo: httpsUrl.nullable().optional(),
+		githubRepo: projectRepoUrl.nullable().optional(),
 		/**
 		 * The tier the participant is ASKING for. Never the assigned one: that is a reviewer's decision at design approval, because it is parts money.
 		 */

@@ -301,6 +301,23 @@ async function bodies() {
 		"body · repoSync accepts a GitLab nested-group URL",
 		repoSyncSettingsSchema.safeParse({ enabled: true, repo: "https://gitlab.com/group/sub/repo" }).success,
 	)
+	// A repo field wants a repository. An Onshape document is one CAD file opened in a browser, so in the repo column it is read as the project's source and is found out at submission.
+	// Refused where it is typed, and pointed at the demo links.
+	const onshapeDoc = "https://cad.onshape.com/documents/abc123/w/def456/e/ghi789"
+	check(
+		"body · a project repo refuses an Onshape document",
+		!projectUpdateSchema.safeParse({ githubRepo: onshapeDoc }).success,
+	)
+	check(
+		"body · a project repo still accepts another forge",
+		projectUpdateSchema.safeParse({ githubRepo: "https://codeberg.org/maker/hackpad" }).success,
+	)
+	const { validateRepoField } = await import("../src/lib/repo")
+	check("repo field · an Onshape link is refused", validateRepoField("cad.onshape.com/documents/abc123").error !== null)
+	check(
+		"repo field · a lookalike host is not Onshape",
+		validateRepoField("https://onshape.example.com/me/repo").error === null,
+	)
 	// An empty body is a preview, not a write: the defaults have to be false on both axes or a stray POST would replace the list.
 	const importDefaults = bomImportSchema.safeParse({})
 	check(

@@ -49,7 +49,7 @@ import {
 	type PublicReelPlatform,
 	readPublicReelLink,
 } from "@/lib/public-reels"
-import { normalizeRepo } from "@/lib/repo"
+import { validateRepoField } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
@@ -1720,7 +1720,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									buildStatus: "draft",
 									description: desc.trim(),
 									designStatus: "draft",
-									githubRepo: normalizeRepo(repo).url,
+									githubRepo: validateRepoField(repo).url,
 									name: name.trim(),
 									starter: starterId !== null,
 									starterProjectId: starterId,
