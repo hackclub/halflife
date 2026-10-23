@@ -81,8 +81,8 @@ async function main() {
 
 try {
 	await main()
-} catch (e) {
-	console.error(e)
+} catch (err) {
+	console.error(err)
 	process.exitCode = 1
 } finally {
 	await db.$disconnect()

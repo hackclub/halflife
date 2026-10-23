@@ -57,8 +57,8 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 	if (isUploadConfigured())
 		try {
 			listing = await listUploadedObjects({ cursor: search.cursor, limit: 100, prefix })
-		} catch (error) {
-			console.error("[admin] failed to list uploads:", error)
+		} catch (err) {
+			console.error("[admin] failed to list uploads:", err)
 			listError = "The upload bucket could not be listed. Check its S3 configuration and credentials."
 		}
 

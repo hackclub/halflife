@@ -114,7 +114,7 @@
 		"typescript/strict-boolean-expressions": "off",
 		"typescript/strict-void-return": "off",
 		"typescript/unbound-method": "off",
-		"unicorn/catch-error-name": "off",
+		"unicorn/catch-error-name": ["error", { "name": "err" }],
 		"unicorn/consistent-function-scoping": "off",
 		"unicorn/empty-brace-spaces": "error",
 		"unicorn/filename-case": "off",

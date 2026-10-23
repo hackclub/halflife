@@ -32,8 +32,8 @@ export function FirstCheckpoint() {
 				if (!response.ok || !payload?.onboarding)
 					throw new Error(payload?.error?.message ?? "The onboarding state could not be loaded")
 				if (!cancelled) setView(payload.onboarding)
-			} catch (cause) {
-				if (!cancelled) setError(cause instanceof Error ? cause.message : "The onboarding state could not be loaded")
+			} catch (err) {
+				if (!cancelled) setError(err instanceof Error ? err.message : "The onboarding state could not be loaded")
 			}
 		}
 
