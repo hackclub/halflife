@@ -6,7 +6,7 @@
  * - Reads and writes use field IDs, which survive an ops person renaming a column. Siege does this and says why: "robust to column renames". Stasis writes by name, so a rename silently 422s inside a fire-and-forget side effect and nobody notices until payout.
  * - filterByFormula can only reference fields by NAME, so the name has to be here too. `formulaRef()` is the only sanctioned way to build one.
  *
- * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `yarn tsx scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
+ * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `bun scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
  */
 
 export interface FieldDef<T = unknown> {

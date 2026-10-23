@@ -9,7 +9,7 @@ if (!url) throw new Error("DB_URL missing from import/.env")
 const source = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) })
 
 const TABLES = process.argv.slice(2)
-if (TABLES.length === 0) throw new Error("usage: tsx import/dump.ts <table> [table...]")
+if (TABLES.length === 0) throw new Error("usage: bun import/dump.ts <table> [table...]")
 
 async function main() {
 	for (const table of TABLES) {

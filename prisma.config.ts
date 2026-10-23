@@ -17,6 +17,6 @@ export default defineConfig({
 		url: process.env.DATABASE_URL ?? PLACEHOLDER,
 		...(shadowDatabaseUrl ? { shadowDatabaseUrl } : {}),
 	},
-	migrations: { path: "prisma/migrations", seed: "tsx prisma/seed.ts" },
+	migrations: { path: "prisma/migrations", seed: "bun prisma/seed.ts" },
 	schema: "prisma/schema.prisma",
 })
