@@ -1260,6 +1260,43 @@ async function bodies() {
 			REPO_FILE_KINDS.cadSource.missing.includes("not accepted as the source"),
 		)
 
+		// A STEP file passes the CAD source check, but it is not the editable original. The recommendation is a warning, and only when STEP is all there is: a native Fusion file or an Onshape link in the description or demo links answers it.
+		const { stepSourceCheck } = await import("../src/lib/repo-checks")
+		const stepRepo = { paths: ["cad/enclosure.step", "README.md"] }
+		const stepOnly = stepSourceCheck(stepRepo)
+		check(
+			"repo-checks · a STEP-only repo is warned, not blocked",
+			stepOnly !== null && stepOnly.status === "warn" && !stepOnly.blocking,
+		)
+		check(
+			"repo-checks · a repo without STEP gets no STEP recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.f3d"] }) === null,
+		)
+		check(
+			"repo-checks · an f3d beside STEP satisfies the recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.step", "cad/enclosure.f3d"] })?.status === "pass",
+		)
+		check(
+			"repo-checks · an f3z beside STEP satisfies the recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.stp", "cad/enclosure.f3z"] })?.status === "pass",
+		)
+		check(
+			"repo-checks · an Onshape link in the description satisfies the recommendation",
+			stepSourceCheck({ ...stepRepo, description: "Model: https://cad.onshape.com/documents/abc/w/def" })?.status
+				=== "pass",
+		)
+		check(
+			"repo-checks · an Onshape link in the demo links satisfies the recommendation",
+			stepSourceCheck({
+				...stepRepo,
+				artifactLinks: [{ label: "Demo", url: "https://cad.onshape.com/documents/abc" }],
+			})?.status === "pass",
+		)
+		check(
+			"repo-checks · a lookalike host does not satisfy the recommendation",
+			stepSourceCheck({ ...stepRepo, description: "https://notonshape.com/cad" })?.status === "warn",
+		)
+
 		// The README BOM table is a hint a reviewer prices the week from, so it is checked by shape: a part-like header, a price/cost/link/supplier column, and enough data rows. These pin the shapes that actually turn up, including the ones that must not count: a pinout, a screenshot, a link to a CSV, and a one-row board BOM.
 		const markdownBom =
 			"| Part | Qty | Unit price | Link |\n| --- | --- | --- | --- |\n| PCB | 5 | $2 | https://example.com/pcb |\n| XIAO | 1 | $5 | https://example.com/xiao |"

@@ -166,7 +166,10 @@ export async function submitPhase(
 	if (user?.fraudFlagged) throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
 
 	// The repo checks, run here rather than trusted from the sheet: what the maker was shown a minute ago is not an authorisation. They exist so a maker fixes what would get the week rejected before it is handed in, so a blocking failure refuses with its own reason. GitHub being unreachable never blocks.
-	const repoChecks = await checkRepo(project.githubRepo, project.theme)
+	const repoChecks = await checkRepo(project.githubRepo, project.theme, {
+		artifactLinks: project.artifactLinks,
+		description: project.description,
+	})
 	if (!repoChecks.canSubmit) {
 		const first = repoChecks.checks.find(c => c.blocking && c.status === "fail")
 		throw new HttpError(

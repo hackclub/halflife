@@ -23,6 +23,14 @@ export function isOnshapeLink(input: string): boolean {
 	}
 }
 
+/** A URL or bare host in prose: a description or a journal entry is not a URL field. */
+const LINK_IN_TEXT = /https?:\/\/[^\s<>"'`)\]]+|(?:[a-z\d-]+\.)+[a-z]{2,}(?:\/[^\s<>"'`)\]]*)?/gi
+
+/** Whether prose mentions an Onshape document – the description check, where the link arrives in a sentence rather than a URL field. */
+export function containsOnshapeLink(text: string): boolean {
+	return [...text.matchAll(LINK_IN_TEXT)].some(([url]) => isOnshapeLink(url ?? ""))
+}
+
 /**
  * A project's repo link, as typed and as shown.
  *
