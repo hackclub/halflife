@@ -181,12 +181,13 @@ export function getSlackUserName(userId: string): Promise<string> {
 	const pending = slackUserNamePending.get(userId)
 	if (pending) return pending
 
-	const lookup = resolveSlackUserName(userId).then(name => {
+	const lookup = (async () => {
+		const name = await resolveSlackUserName(userId)
 		slackUserNamePending.delete(userId)
 		if (!name) return `<@${userId}>`
 		slackUserNameCache.set(userId, name)
 		return name
-	})
+	})()
 	slackUserNamePending.set(userId, lookup)
 	return lookup
 }

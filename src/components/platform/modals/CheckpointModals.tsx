@@ -1415,7 +1415,13 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (!video) return
 		// The `muted` attribute only sets the initial state – React re-renders do not move the property after mount – so the toggle writes it here.
 		video.muted = muted
-		video.play().catch(() => undefined)
+		void (async () => {
+			try {
+				await video.play()
+			} catch {
+				// Autoplay refuses before a gesture; the play button below is the fallback.
+			}
+		})()
 	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.
@@ -2086,13 +2092,16 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	useEffect(() => {
 		if (isBuild || !project) return
 		let live = true
-		fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
-			.then(async res => {
+		void (async () => {
+			try {
+				const res = await fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
 				const body = (await res.json().catch(() => null)) as BomResponse | null
 				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
 				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })
-			})
-			.catch((err: Error) => live && setBomError(err.message))
+			} catch (err) {
+				if (live) setBomError(err instanceof Error ? err.message : String(err))
+			}
+		})()
 		return () => {
 			live = false
 		}

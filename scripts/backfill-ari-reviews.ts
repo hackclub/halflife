@@ -54,9 +54,11 @@ async function main() {
 		console.log("Some decided hand-ins were not applied; run again to pick up the rest.")
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

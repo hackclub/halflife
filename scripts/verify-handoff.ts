@@ -151,8 +151,10 @@ async function main() {
 	process.exit(failures === 0 ? 0 : 1)
 }
 
-main().catch(async err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
 	await prisma.$disconnect()
 	process.exit(1)
-})
+}

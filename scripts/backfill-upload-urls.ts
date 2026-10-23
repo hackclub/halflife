@@ -210,9 +210,11 @@ function printMissing(urls: string[]) {
 	if (urls.length > 10) console.warn(`  and ${urls.length - 10} more`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exit(1)
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exit(1)
+} finally {
+	await prisma.$disconnect()
+}

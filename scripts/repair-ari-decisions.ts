@@ -50,9 +50,11 @@ async function main() {
 	console.log(`repaired ${summary.repaired} decision(s)`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

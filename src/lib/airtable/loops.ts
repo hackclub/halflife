@@ -440,10 +440,15 @@ export async function syncLoopsWeekSubmitted(
 		where: { userId },
 	})
 	const fieldsQs = `fields%5B%5D=${encodeURIComponent(column)}`
-	const getById = (id: string) =>
-		withRateLimitRetry("readSignup", () =>
-			airtableFetch<AirtableRecord>(config, `${encodeURIComponent(TABLE)}/${encodeURIComponent(id)}?${fieldsQs}`),
-		).catch(() => null)
+	const getById = async (id: string) => {
+		try {
+			return await withRateLimitRetry("readSignup", () =>
+				airtableFetch<AirtableRecord>(config, `${encodeURIComponent(TABLE)}/${encodeURIComponent(id)}?${fieldsQs}`),
+			)
+		} catch {
+			return null
+		}
+	}
 	const findByFormula = (formula: string) =>
 		withRateLimitRetry("findSignup", () =>
 			airtableFetch<{ records: AirtableRecord[] }>(

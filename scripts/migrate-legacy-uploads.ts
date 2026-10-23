@@ -243,7 +243,9 @@ async function main() {
 	if (copied > 0) console.log("Run `uploads:backfill-urls` to repoint journal URLs that still name the legacy layout.")
 }
 
-main().catch(err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
 	process.exit(1)
-})
+}

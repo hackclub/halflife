@@ -277,7 +277,11 @@ async function main(): Promise<void> {
 	if (totals.refused + totals.failed > 0) process.exitCode = 1
 }
 
-main().catch(error => {
-	console.error(error instanceof Error ? error.message : error)
-	process.exit(1)
-})
+void (async () => {
+	try {
+		await main()
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : error)
+		process.exit(1)
+	}
+})()

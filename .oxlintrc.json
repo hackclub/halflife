@@ -81,7 +81,6 @@
 		"promise/avoid-new": "off",
 		"promise/no-nesting": "off",
 		"promise/prefer-await-to-callbacks": "off",
-		"promise/prefer-await-to-then": "off",
 		"react/exhaustive-deps": "off",
 		"react/exhaustive-effect-dependencies": "off",
 		"react/function-component-definition": "off",

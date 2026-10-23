@@ -1725,12 +1725,11 @@ async function bodies() {
 	}
 }
 
-bodies()
-	.then(() => {
-		console.log(failures === 0 ? "\nAll contract checks passed." : `\n${failures} check(s) failed.`)
-		process.exitCode = failures === 0 ? 0 : 1
-	})
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
+try {
+	await bodies()
+	console.log(failures === 0 ? "\nAll contract checks passed." : `\n${failures} check(s) failed.`)
+	process.exitCode = failures === 0 ? 0 : 1
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+}

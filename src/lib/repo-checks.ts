@@ -101,16 +101,21 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 	}
 
 	// Never rejects. The promise is what the cache holds, so a rejected one would be handed to every check of this repo for the next minute – each of them a 500 – instead of the short-lived "could not check" it should be.
-	const value = fetchSnapshot(ref).catch((err): Snapshot => {
-		console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
-		return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
-	})
+	const value = (async (): Promise<Snapshot> => {
+		try {
+			return await fetchSnapshot(ref)
+		} catch (err) {
+			console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
+			return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
+		}
+	})()
 	const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
 	snapshots.set(key, entry)
 	// Settled, a failure is only kept briefly. Checked against the entry itself, so a newer fetch that has replaced it is left alone.
-	void value.then(snap => {
+	void (async () => {
+		const snap = await value
 		if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
-	})
+	})()
 	return value
 }
 

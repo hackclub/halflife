@@ -586,26 +586,30 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const addProject = useCallback(
 		(p: Omit<Project, "id">) => {
 			void (async () => {
-				// Normally made when the checkpoint opened; made here if that request had not landed yet, so a quick "Create project" still has a row.
-				const id = await ensureProject(p.weekId)
-				if (!id) return
-				setFacts(f =>
-					f.projects.some(existing => existing.weekId === p.weekId)
-						? f
-						: { ...f, projects: [...f.projects, { ...p, id }] },
-				)
-				await send(
-					`/api/projects/${id}`,
-					{
-						description: p.description,
-						requestedTier: p.tier,
-						title: p.name,
-						...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
-						...(p.starterProjectId !== undefined ? { starterProjectId: p.starterProjectId } : {}),
-					},
-					"PATCH",
-				)
-			})().finally(() => router.refresh())
+				try {
+					// Normally made when the checkpoint opened; made here if that request had not landed yet, so a quick "Create project" still has a row.
+					const id = await ensureProject(p.weekId)
+					if (!id) return
+					setFacts(f =>
+						f.projects.some(existing => existing.weekId === p.weekId)
+							? f
+							: { ...f, projects: [...f.projects, { ...p, id }] },
+					)
+					await send(
+						`/api/projects/${id}`,
+						{
+							description: p.description,
+							requestedTier: p.tier,
+							title: p.name,
+							...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
+							...(p.starterProjectId !== undefined ? { starterProjectId: p.starterProjectId } : {}),
+						},
+						"PATCH",
+					)
+				} finally {
+					router.refresh()
+				}
+			})()
 		},
 		[ensureProject, router],
 	)
@@ -718,7 +722,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				...f,
 				projects: f.projects.map(p => (p.id === id ? { ...p, tier } : p)),
 			}))
-			void send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH").finally(() => router.refresh())
+			void (async () => {
+				try {
+					await send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH")
+				} finally {
+					router.refresh()
+				}
+			})()
 		},
 		[router],
 	)
@@ -769,7 +779,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 			const route = routeOf(id)
 			if (route && id.endsWith("-submit")) {
-				void send(`/api/projects/${route.projectId}/submit`, { phase: route.phase }).finally(() => router.refresh())
+				void (async () => {
+					try {
+						await send(`/api/projects/${route.projectId}/submit`, { phase: route.phase })
+					} finally {
+						router.refresh()
+					}
+				})()
 				return
 			}
 

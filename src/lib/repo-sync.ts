@@ -65,9 +65,13 @@ export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
 	})
 	if (inFlight.has(themeProjectId)) return
 
-	runProjectSync(themeProjectId, false).catch(err =>
-		console.error(`[repo-sync] unhandled failure for ${themeProjectId}:`, err),
-	)
+	void (async () => {
+		try {
+			await runProjectSync(themeProjectId, false)
+		} catch (err) {
+			console.error(`[repo-sync] unhandled failure for ${themeProjectId}:`, err)
+		}
+	})()
 }
 
 /**
@@ -105,9 +109,13 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
 
 	// A write can land between the last queue read and the delete above: it stamps the flag, finds the project still in flight, and returns, so nobody would ever claim it. Claiming here closes that window – and if this run loses the claim to another process, that process is doing the work instead.
 	if (await claimQueued(themeProjectId))
-		runProjectSync(themeProjectId, false).catch(err =>
-			console.error(`[repo-sync] straggler sync failed for ${themeProjectId}:`, err),
-		)
+		void (async () => {
+			try {
+				await runProjectSync(themeProjectId, false)
+			} catch (err) {
+				console.error(`[repo-sync] straggler sync failed for ${themeProjectId}:`, err)
+			}
+		})()
 
 	return written
 }
