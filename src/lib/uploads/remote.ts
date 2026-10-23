@@ -74,8 +74,11 @@ function safeLookup(
 		if (!first || list.some(a => isBlocked(a.address, a.family)))
 			return callback(Object.assign(new Error(`Refused to connect to ${hostname}`), { code: "EBLOCKED" }), "")
 
-		if (options.all) callback(null, list)
-		else callback(null, first.address, first.family)
+		if (options.all) {
+			callback(null, list)
+			return
+		}
+		callback(null, first.address, first.family)
 	})
 }
 
