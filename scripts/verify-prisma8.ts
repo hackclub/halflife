@@ -5,6 +5,9 @@ import {
 	countContentReports,
 	listAuditLog,
 	listContentReports,
+	listFulfillmentOrders,
+	listOrders,
+	listPrinterAwards,
 	listProjects,
 	listRecentCommentsForModeration,
 	listRecentPostsForModeration,
@@ -90,6 +93,29 @@ console.log("reports:", reports.items.length, typeof reports.items[0]?.createdAt
 const directory = await listUsers({ limit: 2 })
 const projects = await listProjects({ limit: 2 })
 const projectsQ = await listProjects({ limit: 2, q: "pcb" }, { includePii: true })
+const orders = await listOrders({ limit: 2 })
+const ordersNext = orders.nextCursor ? await listOrders({ cursor: orders.nextCursor, limit: 2 }) : null
+console.log(
+	"orders:",
+	orders.items.length,
+	orders.items[0]?.placedAt instanceof Date,
+	typeof orders.items[0]?.notes[0]?.createdAt,
+	"next:",
+	ordersNext?.items.length ?? 0,
+	ordersNext?.items[0]?.id !== orders.items[0]?.id,
+)
+
+const fulfillment = await listFulfillmentOrders({}, { limit: 2 })
+const awards = await listPrinterAwards(2)
+console.log(
+	"fulfillment:",
+	fulfillment.items.length,
+	fulfillment.items[0]?.placedAt instanceof Date,
+	"awards:",
+	awards.length,
+	awards[0]?.qualifiedAt instanceof Date,
+)
+
 const projectsNext = projects.nextCursor ? await listProjects({ cursor: projects.nextCursor, limit: 2 }) : null
 console.log(
 	"projects:",

@@ -29,23 +29,14 @@ import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
-import {
-	type CursorOrderOf,
-	cursorWhere,
-	encodeCursor,
-	orderByFor,
-	pageResult,
-	positionWhere,
-	readCursor,
-} from "@/lib/pagination"
+import { decodeCursor, encodeCursor, readCursor } from "@/lib/pagination"
 import { safeDecrypt } from "@/lib/pii"
-import { getPrinterQualification, type PrinterQualification, printerAwardSelect } from "@/lib/printer"
+import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { projectReviewState } from "@/lib/review-state"
-import { shopOrderStaffSelect } from "@/lib/shop"
 import { containsPattern } from "@/lib/text"
 import { eachDayBetween, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
@@ -374,44 +365,115 @@ export async function getUserDetail(
 	return { balances, ledger, orders, printer, user }
 }
 
-/** One row of the admin order directory: the staff-safe columns plus buyer and item names. */
-export type OrderDirectoryRow = Prisma.ShopOrderGetPayload<{ select: typeof orderDirectorySelect }>
-
-const orderDirectorySelect = {
-	...shopOrderStaffSelect,
-	shopItem: { select: { id: true, name: true } },
-	user: { select: { displayName: true, id: true, name: true } },
-} satisfies Prisma.ShopOrderSelect
-
-/**
- * The order directory's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an order or hands one out twice.
- */
-const ORDERS_ORDER = {
-	at: (row: OrderDirectoryRow) => row.placedAt,
-	column: "placedAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<OrderDirectoryRow, Prisma.ShopOrderOrderByWithRelationInput>
+/** One row of the admin order directory: the staff-safe columns plus buyer and item names. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns, so the API's JSON keeps its ISO shapes. */
+export interface OrderDirectoryRow {
+	fulfilledAt: Date | null
+	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
+	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
+	fulfillmentUpdatedAt: Date | null
+	heldAt: Date | null
+	holdReason: string | null
+	id: string
+	itemNameSnapshot: string
+	notes: { authorId: string; body: string; createdAt: Date }[]
+	orderNumber: number
+	placedAt: Date
+	quantity: number
+	rejectedAt: Date | null
+	rejectionReason: string | null
+	shopItem: { id: string; name: string }
+	shopItemId: string
+	status: Models.public_ShopOrder["status"]
+	totalCredits: number
+	trackingCarrier: string | null
+	trackingNumber: string | null
+	unitCostUsd: number | null
+	unitCredits: number
+	user: { displayName: string | null; id: string; name: string | null }
+	userId: string
+}
 
 export async function listOrders(opts: {
 	status?: ShopOrderStatus
 	cursor?: string
 	limit: number
 }): Promise<{ items: OrderDirectoryRow[]; nextCursor: string | null }> {
-	const rows = await prisma.shopOrder.findMany({
-		orderBy: orderByFor(ORDERS_ORDER),
-		// Explicit select, not `include`: a whole-row response carries the encrypted address/phone and `lastActorId` this API has no use for.
-		select: orderDirectorySelect,
-		take: opts.limit + 1,
-		// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
-		where: cursorWhere<Prisma.ShopOrderWhereInput>(
-			opts.cursor,
-			ORDERS_ORDER,
-			opts.status ? { status: opts.status } : {},
-		),
+	const filtered = db.orm.public.ShopOrder.where(opts.status ? { status: opts.status } : {}).orderBy([
+		order => order.placedAt.desc(),
+		order => order.id.desc(),
+	])
+	// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+	const position = opts.cursor === undefined ? null : decodeCursor(opts.cursor)
+	// Explicit select, not a whole row: a whole-row response would carry the encrypted address/phone and `lastActorId` this API has no use for.
+	const paged = position?.at ? filtered.cursor({ id: position.id, placedAt: formatDbTimestamp(position.at) }) : filtered
+	const rows = await paged
+		.limit(opts.limit + 1)
+		.select(
+			"fulfilledAt",
+			"fulfillmentMethod",
+			"fulfillmentStage",
+			"fulfillmentUpdatedAt",
+			"heldAt",
+			"holdReason",
+			"id",
+			"itemNameSnapshot",
+			"orderNumber",
+			"placedAt",
+			"quantity",
+			"rejectedAt",
+			"rejectionReason",
+			"shopItemId",
+			"status",
+			"totalCredits",
+			"trackingCarrier",
+			"trackingNumber",
+			"unitCostUsd",
+			"unitCredits",
+			"userId",
+		)
+		.include("notes", notes => notes.select("authorId", "body", "createdAt"))
+		.include("shopItem", item => item.select("id", "name"))
+		.include("user", user => user.select("displayName", "id", "name"))
+		.all()
+	const items = rows.slice(0, opts.limit).map(row => {
+		if (!row.shopItem) throw new Error(`order ${row.id} has no item`)
+		if (!row.user) throw new Error(`order ${row.id} has no buyer`)
+		return {
+			fulfilledAt: row.fulfilledAt === null ? null : parseDbTimestamp(row.fulfilledAt),
+			fulfillmentMethod: row.fulfillmentMethod,
+			fulfillmentStage: row.fulfillmentStage,
+			fulfillmentUpdatedAt: row.fulfillmentUpdatedAt === null ? null : parseDbTimestamp(row.fulfillmentUpdatedAt),
+			heldAt: row.heldAt === null ? null : parseDbTimestamp(row.heldAt),
+			holdReason: row.holdReason,
+			id: row.id,
+			itemNameSnapshot: row.itemNameSnapshot,
+			notes: row.notes.map(note => ({
+				authorId: note.authorId,
+				body: note.body,
+				createdAt: parseDbTimestamp(note.createdAt),
+			})),
+			orderNumber: row.orderNumber,
+			placedAt: parseDbTimestamp(row.placedAt),
+			quantity: row.quantity,
+			rejectedAt: row.rejectedAt === null ? null : parseDbTimestamp(row.rejectedAt),
+			rejectionReason: row.rejectionReason,
+			shopItem: row.shopItem,
+			shopItemId: row.shopItemId,
+			status: row.status,
+			totalCredits: row.totalCredits,
+			trackingCarrier: row.trackingCarrier,
+			trackingNumber: row.trackingNumber,
+			unitCostUsd: row.unitCostUsd,
+			unitCredits: row.unitCredits,
+			user: row.user,
+			userId: row.userId,
+		}
 	})
-	return pageResult(rows, opts.limit, ORDERS_ORDER)
+	const last = items.at(-1)
+	return {
+		items,
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.placedAt, id: last.id }) : null,
+	}
 }
 
 /**
@@ -461,84 +523,92 @@ export interface FulfillmentOrderRow {
 	user: { id: string; name: string | null }
 }
 
-/** The columns the fulfilment sheet reads, and the order they are read in. */
-const fulfillmentOrderSelect = {
-	fulfillmentMethod: true,
-	fulfillmentStage: true,
-	id: true,
-	itemNameSnapshot: true,
-	orderNumber: true,
-	placedAt: true,
-	quantity: true,
-	shopItem: { select: { costUsd: true } },
-	status: true,
-	unitCostUsd: true,
-	user: {
-		select: { displayName: true, encryptedAddressCountry: true, id: true, name: true },
-	},
-} satisfies Prisma.ShopOrderSelect
-
-/** One row as it comes out of the database, before the sheet's own arithmetic. */
-type FulfillmentOrderModel = Prisma.ShopOrderGetPayload<{ select: typeof fulfillmentOrderSelect }>
-
-/**
- * The fulfilment sheet's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an order or hands one out twice.
- */
-const FULFILLMENT_ORDERS_ORDER = {
-	at: (row: FulfillmentOrderModel) => row.placedAt,
-	column: "placedAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<FulfillmentOrderModel, Prisma.ShopOrderOrderByWithRelationInput>
+/** One row as it comes out of the database, before the sheet's own arithmetic. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface FulfillmentOrderModel {
+	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
+	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
+	id: string
+	itemNameSnapshot: string
+	orderNumber: number
+	placedAt: Date
+	quantity: number
+	shopItem: { costUsd: number | null }
+	status: Models.public_ShopOrder["status"]
+	unitCostUsd: number | null
+	user: { displayName: string | null; encryptedAddressCountry: string | null; id: string; name: string | null }
+}
 
 export async function listFulfillmentOrders(
 	filters: FulfillmentFilters,
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
-	// The stage filter lives in the AND array rather than at the top level: the cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying.
-	const where: Prisma.ShopOrderWhereInput = {
-		status: { in: FULFILLMENT_ORDER_STATUSES },
-		...(filters.placedFrom || filters.placedBefore
-			? {
-					placedAt: {
-						...(filters.placedFrom ? { gte: filters.placedFrom } : {}),
-						...(filters.placedBefore ? { lt: filters.placedBefore } : {}),
-					},
-				}
-			: {}),
-		...(filters.method === "NONE"
-			? { fulfillmentMethod: null }
-			: filters.method
-				? { fulfillmentMethod: filters.method }
-				: {}),
-		...(filters.stage
-			? {
-					AND: [
-						filters.stage === ShopFulfillmentStage.CANCELLED
-							? {
-									OR: [{ status: ShopOrderStatus.CANCELLED }, { fulfillmentStage: ShopFulfillmentStage.CANCELLED }],
-								}
-							: {
-									// A cancelled order shows as cancelled, so it matches no other stage.
-									fulfillmentStage: filters.stage,
-									status: { not: ShopOrderStatus.CANCELLED },
-								},
-					],
-				}
-			: {}),
-	}
-
-	const rows = await prisma.shopOrder.findMany({
-		orderBy: orderByFor(FULFILLMENT_ORDERS_ORDER),
-		select: fulfillmentOrderSelect,
-		take: opts.limit + 1,
-		// The sheet is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.ShopOrderWhereInput>(readCursor(opts.cursor), FULFILLMENT_ORDERS_ORDER, where),
+	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
+	const placedFrom = filters.placedFrom
+	const placedBefore = filters.placedBefore
+	const method = filters.method
+	const stage = filters.stage
+	let filtered = db.orm.public.ShopOrder.where(order => order.status.in(FULFILLMENT_ORDER_STATUSES)).orderBy([
+		order => order.placedAt.desc(),
+		order => order.id.desc(),
+	])
+	if (placedFrom || placedBefore)
+		filtered = filtered.where(order =>
+			and(
+				...(placedFrom ? [order.placedAt.gte(formatDbTimestamp(placedFrom))] : []),
+				...(placedBefore ? [order.placedAt.lt(formatDbTimestamp(placedBefore))] : []),
+			),
+		)
+	if (method === "NONE") filtered = filtered.where(order => order.fulfillmentMethod.isNull())
+	else if (method) filtered = filtered.where({ fulfillmentMethod: method })
+	if (stage)
+		filtered = filtered.where(order =>
+			// A cancelled order shows as cancelled, so it matches no other stage.
+			stage === ShopFulfillmentStage.CANCELLED
+				? or(order.status.eq(ShopOrderStatus.CANCELLED), order.fulfillmentStage.eq(ShopFulfillmentStage.CANCELLED))
+				: and(order.fulfillmentStage.eq(stage), order.status.neq(ShopOrderStatus.CANCELLED)),
+		)
+	const position = readCursor(opts.cursor)
+	// The sheet is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged =
+		position?.at === undefined || position?.at === null
+			? filtered
+			: filtered.cursor({ id: position.id, placedAt: formatDbTimestamp(position.at) })
+	const rows = await paged
+		.limit(opts.limit + 1)
+		.select(
+			"fulfillmentMethod",
+			"fulfillmentStage",
+			"id",
+			"itemNameSnapshot",
+			"orderNumber",
+			"placedAt",
+			"quantity",
+			"status",
+			"unitCostUsd",
+		)
+		.include("shopItem", item => item.select("costUsd"))
+		.include("user", user => user.select("displayName", "encryptedAddressCountry", "id", "name"))
+		.all()
+	const models = rows.slice(0, opts.limit).map(row => {
+		if (!row.shopItem) throw new Error(`order ${row.id} has no item`)
+		if (!row.user) throw new Error(`order ${row.id} has no buyer`)
+		return {
+			fulfillmentMethod: row.fulfillmentMethod,
+			fulfillmentStage: row.fulfillmentStage,
+			id: row.id,
+			itemNameSnapshot: row.itemNameSnapshot,
+			orderNumber: row.orderNumber,
+			placedAt: parseDbTimestamp(row.placedAt),
+			quantity: row.quantity,
+			shopItem: row.shopItem,
+			status: row.status,
+			unitCostUsd: row.unitCostUsd,
+			user: row.user,
+		}
 	})
-	const page = pageResult(rows, opts.limit, FULFILLMENT_ORDERS_ORDER)
+	const last = models.at(-1)
 
-	const items = page.items.map(({ shopItem, user, unitCostUsd, ...order }) => {
+	const items = models.map(({ shopItem, user, unitCostUsd, ...order }) => {
 		// Orders from before the item had a cost fall back to today's.
 		const unit = unitCostUsd ?? shopItem.costUsd
 		return Object.assign(order, {
@@ -548,7 +618,10 @@ export async function listFulfillmentOrders(
 			user: { id: user.id, name: displayName(user) },
 		})
 	})
-	return { items, nextCursor: page.nextCursor }
+	return {
+		items,
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.placedAt, id: last.id }) : null,
+	}
 }
 
 /** True for one of the recorded action names. Guards the audit-log filter. */
@@ -590,19 +663,52 @@ export async function listAuditLog(opts: {
 /**
  * Awards to ship, newest qualification first. `encryptedAddress` is read only to answer "is an address locked on file"; the ciphertext never leaves the server.
  */
-/** Printer awards with the ciphertext folded into an on-file flag. */
-export interface PrinterAwardRow
-	extends Omit<Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>, "encryptedAddress"> {
+/** Printer awards with the ciphertext folded into an on-file flag. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface PrinterAwardRow {
+	addressLockedAt: Date | null
 	addressOnFile: boolean
+	deliveredAt: Date | null
+	id: string
+	qualifiedAt: Date
+	revokedAt: Date | null
+	revokedReason: string | null
+	shippedAt: Date | null
+	status: Models.public_PrinterAward["status"]
+	trackingCarrier: string | null
+	trackingNumber: string | null
+	user: { displayName: string | null; id: string; name: string | null }
 }
 
 export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
-	const rows = await prisma.printerAward.findMany({
-		orderBy: [{ qualifiedAt: "desc" }],
-		select: printerAwardSelect,
-		take: limit,
+	const rows = await db.orm.public.PrinterAward.orderBy(award => award.qualifiedAt.desc())
+		.limit(limit)
+		.select(
+			"addressLockedAt",
+			"deliveredAt",
+			"encryptedAddress",
+			"id",
+			"qualifiedAt",
+			"revokedAt",
+			"revokedReason",
+			"shippedAt",
+			"status",
+			"trackingCarrier",
+			"trackingNumber",
+		)
+		.include("user", user => user.select("displayName", "id", "name"))
+		.all()
+	return rows.map(({ encryptedAddress, user, ...award }) => {
+		if (!user) throw new Error(`printer award ${award.id} has no user`)
+		return Object.assign(award, {
+			addressLockedAt: award.addressLockedAt === null ? null : parseDbTimestamp(award.addressLockedAt),
+			addressOnFile: encryptedAddress !== "",
+			deliveredAt: award.deliveredAt === null ? null : parseDbTimestamp(award.deliveredAt),
+			qualifiedAt: parseDbTimestamp(award.qualifiedAt),
+			revokedAt: award.revokedAt === null ? null : parseDbTimestamp(award.revokedAt),
+			shippedAt: award.shippedAt === null ? null : parseDbTimestamp(award.shippedAt),
+			user,
+		})
 	})
-	return rows.map(({ encryptedAddress, ...award }) => Object.assign(award, { addressOnFile: encryptedAddress !== "" }))
 }
 
 /** Recent live reels, newest first, for the moderation panel. */
