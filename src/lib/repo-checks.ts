@@ -359,7 +359,7 @@ function artifactLinkUrls(links: unknown): string[] {
 	const urls: string[] = []
 	for (const link of links) {
 		if (!link || typeof link !== "object") continue
-		const {url} = (link as { url?: unknown })
+		const { url } = link as { url?: unknown }
 		if (typeof url === "string") urls.push(url)
 	}
 	return urls
