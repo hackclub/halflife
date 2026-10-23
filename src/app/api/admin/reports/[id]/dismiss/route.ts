@@ -2,8 +2,6 @@ import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { decideReport } from "@/lib/report-decisions"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -17,3 +15,5 @@ export const POST = withPermission(
 		return decideReport(gate, id, "DISMISSED")
 	},
 )
+
+export const dynamic = "force-dynamic"

@@ -9,7 +9,7 @@ import { Button } from "@/app/components/ui"
 import type { Theme } from "@/app/generated/prisma/enums"
 
 /** One project row, with the controls folded into a panel under it. */
-export interface ProjectRowData {
+interface ProjectRowData {
 	buildStatus: string
 	designStatus: string
 	/** ISO string, so the extension form edits the same instant the server holds. */
@@ -125,3 +125,5 @@ export function ProjectRow({
 		</>
 	)
 }
+
+export type { ProjectRowData }

@@ -9,8 +9,6 @@ import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
 import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 import { ProjectRow } from "./ProjectRow"
 
-export const dynamic = "force-dynamic"
-
 interface Search {
 	build?: SearchParamValue
 	cursor?: SearchParamValue
@@ -192,3 +190,5 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

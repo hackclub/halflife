@@ -521,7 +521,7 @@ function StarterGuide({ project }: { project: Project }) {
 	)
 }
 
-export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
+function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
 	const {
 		projects,
 		weekOf,
@@ -758,3 +758,5 @@ function Dot() {
 		</span>
 	)
 }
+
+export { ProjectDetail }

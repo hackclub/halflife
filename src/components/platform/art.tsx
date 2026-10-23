@@ -29,7 +29,7 @@ import gatoSchematic from "../../../public/brand/gato/schematic.png"
 /* ------------------------------------------------------------------ *
  * Filters. Mounted once, referenced by .sketch / .torn in globals.css
  * ------------------------------------------------------------------ */
-export function SketchDefs() {
+function SketchDefs() {
 	return (
 		<svg aria-hidden="true" focusable="false" style={{ height: 0, overflow: "hidden", position: "absolute", width: 0 }}>
 			<defs>
@@ -74,7 +74,7 @@ const GATO: Record<"head" | "box" | "confused" | "schematic", StaticImageData> =
  *
  * The caller sizes it, and names both axes: `w-… h-auto` to size by width, `h-… w-auto` by height. `object-contain` keeps a box of any shape from stretching it. Neither axis defaults here, because two heights in one class list are settled by whichever Tailwind emits last. Silent by default: every place it sits is beside words that already say what it would.
  */
-export function Gato({
+function Gato({
 	pose = "head",
 	className,
 	sizes,
@@ -106,7 +106,7 @@ const WEEK_PAINTINGS: Partial<{ [_: string]: StaticImageData }> = {
 	"Warm Up": gatoSchematic,
 }
 
-export function WeekPainting({
+function WeekPainting({
 	theme,
 	className,
 	sizes,
@@ -152,7 +152,7 @@ const PRINTER_PHOTOS: Partial<{ [_: string]: StaticImageData }> = {
  *
  * `alt` is empty by default: everywhere this sits, the printer's name is already written beside it, and reading it out twice helps nobody.
  */
-export function PrinterPhoto({
+function PrinterPhoto({
 	id,
 	className,
 	sizes,
@@ -205,3 +205,5 @@ export function StarterRender({
 		</span>
 	)
 }
+
+export { Gato, PrinterPhoto, SketchDefs, WeekPainting }

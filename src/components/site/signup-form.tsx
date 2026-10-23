@@ -17,7 +17,7 @@ type Status = "idle" | "pending" | "error"
  *
  * The address is still recorded as a sign-up on the way, because the referral code and campaign in this page's own URL exist nowhere else.
  */
-export default function SignupForm({
+function SignupForm({
 	className = "",
 	fontSize,
 	style,
@@ -317,3 +317,5 @@ function Spinner({ className }: { className?: string }) {
 		</svg>
 	)
 }
+
+export { SignupForm as default }

@@ -29,7 +29,7 @@ import {
  */
 
 /** Debounce: the shortest gap between a write and its commit being started. */
-export const SYNC_DEBOUNCE_MS = 2_000
+const SYNC_DEBOUNCE_MS = 2_000
 
 /** How long a scheduled run waits for the in-flight one to finish. */
 const QUEUE_POLL_MS = 1_500
@@ -47,7 +47,7 @@ const inFlight = new Set<string>()
 /**
  * Ask for this project's repo to be brought up to date, after the current response has gone out. Safe to call from anywhere, including a route's `after()` hook: it never throws and never waits on GitHub.
  */
-export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
+async function scheduleRepoSync(themeProjectId: string): Promise<void> {
 	// The read is cheap and decides everything: a project with the sync off is the common case, and there is no reason to schedule anything for it. The global switch is checked here too, so a staff kill switch stops new work without waiting for each project row.
 	const [project, program] = await Promise.all([
 		prisma.themeProject.findUnique({
@@ -75,7 +75,7 @@ export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
  *
  * `force` is the first write of an enable: it ignores the "is the sync on" gate, because at that instant it is not on yet – it is the commit that decides whether it can be. Everything else cooperates with the gate.
  */
-export async function runProjectSync(themeProjectId: string, manual: boolean, force = false): Promise<WrittenFile[]> {
+async function runProjectSync(themeProjectId: string, manual: boolean, force = false): Promise<WrittenFile[]> {
 	// Wait out another run on the same project rather than racing it for the ref.
 	if (inFlight.has(themeProjectId)) await waitForFree(themeProjectId)
 
@@ -434,3 +434,5 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 		syncRepoDiffers: differs,
 	}
 }
+
+export { runProjectSync, SYNC_DEBOUNCE_MS, scheduleRepoSync }

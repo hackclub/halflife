@@ -5,7 +5,7 @@ import { type ApiErrorBody, fail, withRoute } from "@/lib/api"
 import { auth } from "@/lib/auth"
 import { getUserRolesIfExists, hasPermission, hasRole, type Permission, type Role } from "@/lib/permissions"
 
-export interface SessionUser {
+interface SessionUser {
 	email: string
 	id: string
 	image: string | null
@@ -14,7 +14,7 @@ export interface SessionUser {
 	timezone: string | null
 }
 
-export type Guard =
+type Guard =
 	| { error: NextResponse<ApiErrorBody>; user?: never; roles?: never }
 	| { error?: never; user: SessionUser; roles: Role[] }
 
@@ -31,13 +31,13 @@ async function resolve(): Promise<{ user: SessionUser; roles: Role[] } | null> {
 	}
 }
 
-export async function requireSession(): Promise<Guard> {
+async function requireSession(): Promise<Guard> {
 	const ctx = await resolve()
 	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
 	return ctx
 }
 
-export async function requirePermission(permission: Permission): Promise<Guard> {
+async function requirePermission(permission: Permission): Promise<Guard> {
 	const ctx = await resolve()
 	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
 	if (!hasPermission(ctx.roles, permission))
@@ -46,7 +46,7 @@ export async function requirePermission(permission: Permission): Promise<Guard> 
 	return ctx
 }
 
-export async function requireRole(role: Role): Promise<Guard> {
+async function requireRole(role: Role): Promise<Guard> {
 	const ctx = await resolve()
 	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
 	if (!hasRole(ctx.roles, role)) return { error: fail("FORBIDDEN", `Requires the ${role} role`) }
@@ -61,7 +61,7 @@ export async function requireRole(role: Role): Promise<Guard> {
  *
  * The request context keeps its Next shape, with `gate` added: a dynamic route destructures `{ params, gate }`, a static one `{ gate }`.
  */
-export interface AuthedContext {
+interface AuthedContext {
 	gate: Extract<Guard, { user: SessionUser }>
 }
 
@@ -101,3 +101,6 @@ export function withRole<C extends object = object>(
 ): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
 	return guardedRoute(() => requireRole(role), handler)
 }
+
+export type { AuthedContext, Guard, SessionUser }
+export { requirePermission, requireRole, requireSession }

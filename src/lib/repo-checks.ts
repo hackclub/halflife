@@ -20,7 +20,7 @@ import { README_GUIDE_URL } from "@/lib/routes"
  * A forge we do not speak is still a repo a maker may hand in: `checkRepo` warns rather than blocks, exactly as it did for a GitLab link before GitLab was understood. That path stays, because Codeberg and a self-hosted Gitea are still real answers to "where is your project".
  */
 
-export interface RepoCheck {
+interface RepoCheck {
 	/** A failed blocking check stops the hand-in. */
 	blocking?: boolean
 	detail?: string
@@ -31,7 +31,7 @@ export interface RepoCheck {
 	status: "pass" | "fail" | "warn"
 }
 
-export interface RepoCheckResult {
+interface RepoCheckResult {
 	canSubmit: boolean
 	checkedAt: string
 	checks: RepoCheck[]
@@ -356,7 +356,7 @@ function result(repo: string | null, checks: RepoCheck[], unavailable = false): 
 	}
 }
 
-export async function checkRepo(repoLink: string | null, theme: Theme): Promise<RepoCheckResult> {
+async function checkRepo(repoLink: string | null, theme: Theme): Promise<RepoCheckResult> {
 	if (!repoLink)
 		return result(null, [
 			{
@@ -565,7 +565,7 @@ function nonForgeWarn(host: string): RepoCheck {
  *
  * Reads the same cached file list the checks use, so asking costs nothing extra when a check has just run – which, at submit, it always has. Shallowest match wins, so a root JOURNAL.md beats one in a subfolder.
  */
-export async function findRepoFile(repoLink: string | null, test: RegExp): Promise<string | null> {
+async function findRepoFile(repoLink: string | null, test: RegExp): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) return null
 	const path = await findRepoFilePath(repoLink, test)
@@ -579,7 +579,7 @@ export async function findRepoFile(repoLink: string | null, test: RegExp): Promi
  *
  * The same search `findRepoFile` runs, but returning the path rather than a web link – for callers that mean to read the file's bytes rather than point at it, such as the BOM import. Reads the same cached file list, so calling both for one project costs one fetch.
  */
-export async function findRepoFilePath(repoLink: string | null, test: RegExp): Promise<string | null> {
+async function findRepoFilePath(repoLink: string | null, test: RegExp): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) return null
 	const snap = await snapshot(ref)
@@ -593,7 +593,7 @@ export async function findRepoFilePath(repoLink: string | null, test: RegExp): P
  *
  * The two forges speak differently here – GitHub's contents API answers with base64, GitLab's raw endpoint with the bytes – so this is the one place that difference lives. It reads the file at HEAD, the default branch, and treats a missing, binary or oversized file as simply unreadable: the caller has picked a path it matched in the same file list, so "not there" is a race, not an error worth a different message.
  */
-export function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
+function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) return Promise.resolve(null)
 	return readRepoFileAt(ref, path)
@@ -619,3 +619,6 @@ async function readRepoFileAt(ref: RepoRef, path: string): Promise<string | null
 	if (!body?.content || body.encoding !== "base64") return null
 	return Buffer.from(body.content, "base64").toString("utf-8")
 }
+
+export type { RepoCheck, RepoCheckResult }
+export { checkRepo, findRepoFile, findRepoFilePath, readRepoFile }

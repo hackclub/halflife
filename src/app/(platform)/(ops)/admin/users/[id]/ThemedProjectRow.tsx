@@ -12,7 +12,7 @@ import type { Theme } from "@/app/generated/prisma/enums"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
 
 /** One themed project on a participant's admin page. */
-export interface ThemedProjectRowData {
+interface ThemedProjectRowData {
 	approvedHours: number | null
 	buildStatus: string
 	designStatus: string
@@ -150,3 +150,5 @@ export function ThemedProjectRow({
 		</>
 	)
 }
+
+export type { ThemedProjectRowData }

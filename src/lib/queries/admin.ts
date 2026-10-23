@@ -38,7 +38,7 @@ import { shopOrderStaffSelect } from "@/lib/shop"
 import { eachDayBetween } from "@/lib/time"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
-export interface DirectoryUser {
+interface DirectoryUser {
 	createdAt: Date
 	displayName: string | null
 	email: string
@@ -61,7 +61,7 @@ const USERS_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<DirectoryUser, Prisma.UserOrderByWithRelationInput>
 
-export async function listUsers(
+async function listUsers(
 	opts: { q?: string; cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
@@ -114,7 +114,7 @@ export async function listUsers(
 	return { items, nextCursor: page.nextCursor }
 }
 
-export interface ProjectFilters {
+interface ProjectFilters {
 	buildStatus?: PhaseStatus
 	designStatus?: PhaseStatus
 	/** Only projects, or owners, with an extension still running. */
@@ -130,7 +130,7 @@ export interface ProjectFilters {
 }
 
 /** One row of the admin project directory, with its owner's directory fields. */
-export type ProjectDirectoryRow = Prisma.ThemeProjectGetPayload<{ select: typeof projectDirectorySelect }>
+type ProjectDirectoryRow = Prisma.ThemeProjectGetPayload<{ select: typeof projectDirectorySelect }>
 
 const projectDirectorySelect = {
 	buildStatus: true,
@@ -166,7 +166,7 @@ const PROJECTS_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<ProjectDirectoryRow, Prisma.ThemeProjectOrderByWithRelationInput>
 
-export async function listProjects(
+async function listProjects(
 	opts: ProjectFilters & { cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
 ): Promise<{ items: ProjectDirectoryRow[]; nextCursor: string | null }> {
@@ -275,7 +275,7 @@ const userDetailSelect = {
 } satisfies Prisma.UserSelect
 
 /** The admin user profile: the selected columns plus money sections both branches fill. */
-export type UserDetail = Prisma.UserGetPayload<{ select: typeof userDetailSelect }>
+type UserDetail = Prisma.UserGetPayload<{ select: typeof userDetailSelect }>
 
 const userDetailOrderSelect = {
 	id: true,
@@ -286,9 +286,9 @@ const userDetailOrderSelect = {
 } satisfies Prisma.ShopOrderSelect
 
 /** The 25 most recent orders on the user page: number, item, credit total and status only. */
-export type UserDetailOrder = Prisma.ShopOrderGetPayload<{ select: typeof userDetailOrderSelect }>
+type UserDetailOrder = Prisma.ShopOrderGetPayload<{ select: typeof userDetailOrderSelect }>
 
-export async function getUserDetail(
+async function getUserDetail(
 	userId: string,
 	flags?: { includeSensitive?: boolean },
 ): Promise<{
@@ -346,7 +346,7 @@ export async function getUserDetail(
 }
 
 /** One row of the admin order directory: the staff-safe columns plus buyer and item names. */
-export type OrderDirectoryRow = Prisma.ShopOrderGetPayload<{ select: typeof orderDirectorySelect }>
+type OrderDirectoryRow = Prisma.ShopOrderGetPayload<{ select: typeof orderDirectorySelect }>
 
 const orderDirectorySelect = {
 	...shopOrderStaffSelect,
@@ -365,7 +365,7 @@ const ORDERS_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<OrderDirectoryRow, Prisma.ShopOrderOrderByWithRelationInput>
 
-export async function listOrders(opts: {
+async function listOrders(opts: {
 	status?: ShopOrderStatus
 	cursor?: string
 	limit: number
@@ -388,7 +388,7 @@ export async function listOrders(opts: {
 /**
  * What the fulfilment sheet lists. Rejected orders were refunded and never ship; cancelled ones stay, since one may already be on its way to HQ.
  */
-export const FULFILLMENT_ORDER_STATUSES: ShopOrderStatus[] = [
+const FULFILLMENT_ORDER_STATUSES: ShopOrderStatus[] = [
 	ShopOrderStatus.PENDING,
 	ShopOrderStatus.ON_HOLD,
 	ShopOrderStatus.FULFILLED,
@@ -396,13 +396,13 @@ export const FULFILLMENT_ORDER_STATUSES: ShopOrderStatus[] = [
 ]
 
 /** A participant's cancellation wins over whatever stage was marked before it. */
-export const fulfillmentStageOf = (order: {
+const fulfillmentStageOf = (order: {
 	status: ShopOrderStatus
 	fulfillmentStage: ShopFulfillmentStage
 }): ShopFulfillmentStage =>
 	order.status === ShopOrderStatus.CANCELLED ? ShopFulfillmentStage.CANCELLED : order.fulfillmentStage
 
-export interface FulfillmentFilters {
+interface FulfillmentFilters {
 	/** `"NONE"` is an order nobody has chosen a method for yet. */
 	method?: ShopFulfillmentMethod | "NONE"
 	/** Exclusive. */
@@ -418,7 +418,7 @@ export interface FulfillmentFilters {
  * The country is the one on their HCA profile now, not at order time: it is what the parcel will actually be addressed to. It is decrypted here and only the plain country leaves this function – never the ciphertext.
  */
 /** One row of the fulfilment sheet: the order with its resolved stage, dollar total and buyer. */
-export interface FulfillmentOrderRow {
+interface FulfillmentOrderRow {
 	country: string | null
 	fulfillmentMethod: ShopFulfillmentMethod | null
 	fulfillmentStage: ShopFulfillmentStage
@@ -463,7 +463,7 @@ const FULFILLMENT_ORDERS_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<FulfillmentOrderModel, Prisma.ShopOrderOrderByWithRelationInput>
 
-export async function listFulfillmentOrders(
+async function listFulfillmentOrders(
 	filters: FulfillmentFilters,
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
@@ -523,7 +523,7 @@ export async function listFulfillmentOrders(
 }
 
 /** True for one of the recorded action names. Guards the audit-log filter. */
-export function isAuditAction(value: string): value is AuditAction {
+function isAuditAction(value: string): value is AuditAction {
 	return (Object.values(AuditAction) as string[]).includes(value)
 }
 
@@ -538,7 +538,7 @@ const AUDIT_LOG_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<AuditLog, Prisma.AuditLogOrderByWithRelationInput>
 
-export async function listAuditLog(opts: {
+async function listAuditLog(opts: {
 	action?: string
 	targetId?: string
 	cursor?: string
@@ -562,12 +562,12 @@ export async function listAuditLog(opts: {
  * Awards to ship, newest qualification first. `encryptedAddress` is read only to answer "is an address locked on file"; the ciphertext never leaves the server.
  */
 /** Printer awards with the ciphertext folded into an on-file flag. */
-export interface PrinterAwardRow
+interface PrinterAwardRow
 	extends Omit<Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>, "encryptedAddress"> {
 	addressOnFile: boolean
 }
 
-export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
+async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
 	const rows = await prisma.printerAward.findMany({
 		orderBy: [{ qualifiedAt: "desc" }],
 		select: printerAwardSelect,
@@ -578,7 +578,7 @@ export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]>
 
 /** Recent live reels, newest first, for the moderation panel. */
 /** One row of the listRecentPostsForModeration list. */
-export type ModeratedPost = Prisma.PostGetPayload<{ select: typeof moderatedPostSelect }>
+type ModeratedPost = Prisma.PostGetPayload<{ select: typeof moderatedPostSelect }>
 
 const moderatedPostSelect = {
 	caption: true,
@@ -592,7 +592,7 @@ const moderatedPostSelect = {
 	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostSelect
 
-export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
+function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
 	return prisma.post.findMany({
 		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
 		select: moderatedPostSelect,
@@ -605,7 +605,7 @@ export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[
  * Recent live comments, newest first. A comment on a soft-deleted post is not shown – nobody can reach it to report it – but a hidden comment stays in the list so staff can see it was handled.
  */
 /** One row of the listRecentCommentsForModeration list. */
-export type ModeratedComment = Prisma.PostCommentGetPayload<{ select: typeof moderatedCommentSelect }>
+type ModeratedComment = Prisma.PostCommentGetPayload<{ select: typeof moderatedCommentSelect }>
 
 const moderatedCommentSelect = {
 	body: true,
@@ -617,7 +617,7 @@ const moderatedCommentSelect = {
 	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostCommentSelect
 
-export function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
+function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
 	return prisma.postComment.findMany({
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		select: moderatedCommentSelect,
@@ -628,7 +628,7 @@ export function listRecentCommentsForModeration(limit = 25): Promise<ModeratedCo
 
 /** Public reel links, newest first, so staff can find a post that went viral. */
 /** One row of the public-reel directory. */
-export type PublicReelRow = Prisma.PublicReelGetPayload<{ select: typeof publicReelSelect }>
+type PublicReelRow = Prisma.PublicReelGetPayload<{ select: typeof publicReelSelect }>
 
 const publicReelSelect = {
 	email: true,
@@ -641,7 +641,7 @@ const publicReelSelect = {
 	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.PublicReelSelect
 
-export function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
+function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
 	return prisma.publicReel.findMany({
 		orderBy: [{ postedAt: "desc" }, { id: "desc" }],
 		select: publicReelSelect,
@@ -649,7 +649,7 @@ export function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
 	})
 }
 
-export async function getAdminCounters(): Promise<{
+async function getAdminCounters(): Promise<{
 	pendingReviews: number
 	pendingReviewsUnsent: number
 	pendingOrders: number
@@ -694,7 +694,7 @@ export async function getAdminCounters(): Promise<{
 	return { participants, pendingOrders, pendingReviews, pendingReviewsUnsent, shipped }
 }
 
-export interface FlowStep {
+interface FlowStep {
 	count: number
 	/** Share of the previous step that stopped here. */
 	dropOffPct: number
@@ -718,7 +718,7 @@ export interface FlowStep {
  *
  * The tracked-time rows that used to end this funnel ("Hackatimed", "Lapsed", "Devlogged") are gone, and two queries with them. Counted on a cumulative spine they asked a question the spine cannot answer: "of the people who got this far, how many have a Hackatime link" reads a maker who journals competently and never links Hackatime as a drop-off, when they did not drop out of anything – they took a different route through the same week. Activity is a set of branches rather than rungs, and branches are what the Sankey view draws: there they sit in one activity stage as ribbons of whatever width they really are, in any order, which is the only shape that can show a maker who both journalled and linked Hackatime. One fact, drawn once, rather than drawn twice in two shapes that disagree.
  */
-export async function getUserFlowFunnel(): Promise<FlowStep[]> {
+async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers] = await Promise.all([
 		prisma.user.findMany({
 			select: {
@@ -860,7 +860,7 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	return steps
 }
 
-export interface WeekFlowStep {
+interface WeekFlowStep {
 	/** Distinct people who handed in a project for this week. */
 	count: number
 	/** What the week's project is, e.g. "PCBs · design week". */
@@ -880,7 +880,7 @@ export interface WeekFlowStep {
  *
  * The count is people, not hand-ins: a maker who handed in both the design and the build for a week is one person on that week's row.
  */
-export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
+async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
 	const settings = await getProgramSettings()
 	const openWeeks = Math.min(
 		TOTAL_WEEKS,
@@ -929,7 +929,7 @@ export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
 	})
 }
 
-export type ReportStatusFilter = ReportStatus | "ALL"
+type ReportStatusFilter = ReportStatus | "ALL"
 
 /**
  * The moderation queue for user reports: who flagged what, why, and what staff did about it. Newest first, with the reported row's own preview and author alongside, so a report reads without opening five tabs. Cursor- paged like the audit log, so a busy queue never silently drops its tail.
@@ -990,7 +990,7 @@ const contentReportSelect = {
 } satisfies Prisma.ContentReportSelect
 
 /** One row of the content-report directory, with every reportable target attached. */
-export type ContentReportRow = Prisma.ContentReportGetPayload<{ select: typeof contentReportSelect }>
+type ContentReportRow = Prisma.ContentReportGetPayload<{ select: typeof contentReportSelect }>
 
 /**
  * The reports' order: newest first, with the id as the tiebreaker.
@@ -1003,7 +1003,7 @@ const CONTENT_REPORTS_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<ContentReportRow, Prisma.ContentReportOrderByWithRelationInput>
 
-export async function listContentReports(
+async function listContentReports(
 	status: ReportStatusFilter = "OPEN",
 	opts: { cursor?: string; limit?: number } = {},
 ): Promise<{ items: ContentReportRow[]; nextCursor: string | null }> {
@@ -1022,14 +1022,14 @@ export async function listContentReports(
 	return pageResult(rows, limit, CONTENT_REPORTS_ORDER)
 }
 
-export async function countContentReports(): Promise<Record<ReportStatus, number>> {
+async function countContentReports(): Promise<Record<ReportStatus, number>> {
 	const groups = await prisma.contentReport.groupBy({ _count: { _all: true }, by: ["status"] })
 	const counts: Record<ReportStatus, number> = { DISMISSED: 0, OPEN: 0, RESOLVED: 0 }
 	for (const group of groups) counts[group.status] = group._count._all
 	return counts
 }
 
-export interface AreaStat {
+interface AreaStat {
 	/**
 	 * Hours logged by those accounts: journal sessions (reviewer-adjusted where set) plus linked Hackatime time, with a sitting that was both journalled and tracked counted once rather than twice. A HACKATIME_TRACKED session contributes nothing on its own, exactly as the ledger reads it.
 	 */
@@ -1040,7 +1040,7 @@ export interface AreaStat {
 	users: number
 }
 
-export interface CountryStat {
+interface CountryStat {
 	country: string
 	/** Hours logged by those accounts, as above. */
 	hours: number
@@ -1095,7 +1095,7 @@ interface HoursByPhase {
 	userId: string
 }
 
-export interface HoursByUser {
+interface HoursByUser {
 	/** Total hours per account. An account with nothing logged is absent rather than present at zero. */
 	hours: Map<string, number>
 	/**
@@ -1180,7 +1180,7 @@ function aggregateByKey(inputs: RegionInputs, byUser: HoursByUser, keyOf: (timez
 const rankLast = (key: string, users: number) => (key === "Unknown" ? -1 : users)
 
 /** Users and hours per continent/area bucket. Ranked by users. */
-export async function getAreaStats(): Promise<AreaStat[]> {
+async function getAreaStats(): Promise<AreaStat[]> {
 	const inputs = await loadRegionInputs()
 	const totals = aggregateByKey(inputs, hoursByUser(inputs), tz => regionOfTimezone(tz))
 	return REGIONS.map(({ id, label }) => ({
@@ -1192,7 +1192,7 @@ export async function getAreaStats(): Promise<AreaStat[]> {
 }
 
 /** Users and hours per country, from each account's timezone. Ranked by users. */
-export async function getCountryStats(): Promise<CountryStat[]> {
+async function getCountryStats(): Promise<CountryStat[]> {
 	const inputs = await loadRegionInputs()
 	const totals = aggregateByKey(inputs, hoursByUser(inputs), countryOfTimezone)
 	return [...totals]
@@ -1201,7 +1201,7 @@ export async function getCountryStats(): Promise<CountryStat[]> {
 		.toSorted((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
 }
 
-export interface DayActivity {
+interface DayActivity {
 	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
 	day: string
 	devlogs: number
@@ -1218,7 +1218,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
  *
  * The distinct people behind each day come along too, because the totals and the per-user reading are the same rows and re-reading them for a second chart would be the same query twice. A person is counted once however many devlogs they wrote, so it is people rather than entries.
  */
-export async function getDailyActivity(): Promise<DayActivity[]> {
+async function getDailyActivity(): Promise<DayActivity[]> {
 	const sessions = await prisma.workSession.findMany({
 		select: {
 			effectiveDate: true,
@@ -1261,7 +1261,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 	return out
 }
 
-export interface ActiveDay {
+interface ActiveDay {
 	/** YYYY-MM-DD in the program timezone. */
 	day: string
 	/** People whose tracked time that day reached 15 minutes. */
@@ -1277,7 +1277,7 @@ export interface ActiveDay {
  *
  * Gap-filled from the first active day through today, so a quiet day is a zero on the line rather than a missing point and the last point is today – the same day the counter beside the chart reports.
  */
-export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today: number }> {
+async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today: number }> {
 	const { programTimezone } = await getProgramSettings()
 	const today = effectiveDateFor(new Date(), programTimezone)
 
@@ -1322,7 +1322,7 @@ export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today:
 	return { days, today: activeToday }
 }
 
-export interface GoalDayActivity {
+interface GoalDayActivity {
 	/** Journal hours and the people behind them, one entry per answer to the goal prompt, in `GOAL_OPTIONS` order. */
 	byGoal: { goal: ParticipantGoal; hours: number; users: number }[]
 	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
@@ -1336,7 +1336,7 @@ export interface GoalDayActivity {
  *
  * A maker who has not answered the prompt yet belongs to no line. The question is held open until it is answered, but it is asked after the first checkpoint, so the earliest days are largely people who had not been asked; reading an empty start as "nobody was working towards anything" would be reading the prompt's timing rather than the work.
  */
-export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
+async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 	const sessions = await prisma.workSession.findMany({
 		select: {
 			effectiveDate: true,
@@ -1387,7 +1387,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 	return out
 }
 
-export interface HoursBucket {
+interface HoursBucket {
 	/** Hours summed across the bucket. */
 	hours: number
 	/** The bucket as it reads on the axis, e.g. "10-20". */
@@ -1396,7 +1396,7 @@ export interface HoursBucket {
 	participants: number
 }
 
-export interface HoursDistribution {
+interface HoursDistribution {
 	buckets: HoursBucket[]
 	median: number | null
 	/**
@@ -1420,7 +1420,7 @@ export interface HoursDistribution {
  * has at least some hours – the zero case is counted and reported rather than binned. The trailing Infinity edge
  * is the overflow band rather than a bound, so the tail has somewhere to land.
  */
-export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 240, Number.POSITIVE_INFINITY]
+const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 240, Number.POSITIVE_INFINITY]
 
 /**
  * Hours per account, bucketed, for the overview's distribution.
@@ -1432,7 +1432,7 @@ export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 
  * Accounts with no hours are a count and not a bar. At three quarters of all accounts, a zero bar would be four
  * times every other and answer a question nobody asked.
  */
-export async function getHoursDistribution(): Promise<HoursDistribution> {
+async function getHoursDistribution(): Promise<HoursDistribution> {
 	const inputs = await loadRegionInputs()
 	const byUser = hoursByUser(inputs)
 	const perUser = [...byUser.hours.values()].filter(h => h > 0).toSorted((a, b) => a - b)
@@ -1472,7 +1472,7 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 	}
 }
 
-export interface FirstProjectStat {
+interface FirstProjectStat {
 	/** Starter title, or "Custom project" for a self-named idea. */
 	label: string
 	starter: boolean
@@ -1484,7 +1484,7 @@ export interface FirstProjectStat {
  *
  * Setup edits one row – the week-one (PCB) project – so its final `starterProjectId` is the choice: a starter id, or null for custom. Only users who finished setup and still have that project count; accounts with no week-one row made no choice in this system.
  */
-export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
+async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 	const rows = await prisma.themeProject.findMany({
 		select: { starterProjectId: true },
 		where: { deletedAt: null, theme: Theme.PCB, user: { onboardingCompletedAt: { not: null } } },
@@ -1512,7 +1512,7 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 }
 
 /** The four columns each week's cluster is split into. */
-export interface WeekProjectCluster {
+interface WeekProjectCluster {
 	/** What the axis prints: the theme, or the warm-up track. */
 	label: string
 	/** Which half of the season this week is, or null for the warm-up import, which is not scheduled at all. */
@@ -1575,7 +1575,7 @@ function weekSlots(): WeekSlot[] {
  *
  * The warm-up track needs no special case: it is one phase on one of the two statuses, and `scheduledWeekFor` sends both to the single warm-up column.
  */
-export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
+async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	const projects = await prisma.themeProject.findMany({
 		select: {
 			buildStatus: true,
@@ -1607,7 +1607,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	return [...clusters.values()].toSorted((a, b) => a.week - b.week)
 }
 
-export interface WeekHoursCluster {
+interface WeekHoursCluster {
 	/** What the axis prints: the theme, or the warm-up track. */
 	label: string
 	/** Which half of the season this week is, or null for the warm-up import, which is not scheduled at all. */
@@ -1630,7 +1630,7 @@ export interface WeekHoursCluster {
  *
  * The hours are the ledger's, through `rollUpHours` on each (project, phase) – the same call the project page and the reviewer's numbers use, so a sitting that was both journalled and tracked is not counted twice here either. A project named but never logged against contributes nothing, which is why a week can be busy on the projects chart and flat on this one.
  */
-export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
+async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	const projects = await prisma.themeProject.findMany({
 		select: {
 			hackatimeLinks: {
@@ -1707,7 +1707,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	return [...clusters.values()].toSorted((a, b) => a.week - b.week)
 }
 
-export interface VerificationStat {
+interface VerificationStat {
 	label: string
 	users: number
 }
@@ -1719,7 +1719,7 @@ export interface VerificationStat {
  *
  * The status is HCA's own word, stored at each sign-in and submit by lib/hca-profile; a null is an account HCA has never answered for (a staff import nobody has signed in as, or an HCA that could not be reached).
  */
-export async function getVerificationStats(): Promise<VerificationStat[]> {
+async function getVerificationStats(): Promise<VerificationStat[]> {
 	const rows = await prisma.user.groupBy({ _count: { _all: true }, by: ["verificationStatus"] })
 	return rows
 		.filter(row => row._count._all > 0)
@@ -1743,7 +1743,7 @@ const VERIFICATION_STATUS_LABELS: { [_: string]: string } = {
 	verified: "Verified",
 }
 
-export interface ReviewerResultStat {
+interface ReviewerResultStat {
 	result: ReviewResult
 	/** Distinct projects whose most recent live review is this one, written today. */
 	today: number
@@ -1751,7 +1751,7 @@ export interface ReviewerResultStat {
 	total: number
 }
 
-export interface ReviewerStats {
+interface ReviewerStats {
 	/** One row per outcome, so the rows add up to the two figures above them. */
 	byResult: ReviewerResultStat[]
 	/** Distinct projects with a live review written today, program-timezone day. */
@@ -1771,7 +1771,7 @@ export interface ReviewerStats {
  *
  * Ari's decisions are included – they reach this table through the same `finalizeReview` a console reviewer calls, and leaving them out is exactly the gap this closes.
  */
-export async function getReviewerStats(): Promise<ReviewerStats> {
+async function getReviewerStats(): Promise<ReviewerStats> {
 	const [{ programTimezone }, reviews] = await Promise.all([
 		getProgramSettings(),
 		prisma.submissionReview.findMany({
@@ -1803,7 +1803,7 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 	}
 }
 
-export interface ProjectReviewStatusStat {
+interface ProjectReviewStatusStat {
 	label: string
 	value: number
 }
@@ -1815,7 +1815,7 @@ export interface ProjectReviewStatusStat {
  *
  * The state is `projectReviewState`, the same function the projects grid uses to colour a card, so the ring and the cards cannot disagree about which state a project is in. Deleted projects are left out, as they are on the grid.
  */
-export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
+async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
 	const projects = await prisma.themeProject.findMany({
 		select: { buildStatus: true, designStatus: true },
 		where: { deletedAt: null },
@@ -1835,7 +1835,7 @@ export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusSta
 // ─── User-flow Sankey ─────────────────────────────────────────────────────────
 
 /** One box in the Sankey: a group of users at one stage, with the people who will leave or join it. */
-export interface SankeyNode {
+interface SankeyNode {
 	id: string
 	label: string
 	/** Users in this box. The sum over a stage is that stage's headcount, not the program total. */
@@ -1843,7 +1843,7 @@ export interface SankeyNode {
 }
 
 /** A ribbon: the users who go from one box to the next box they reach. */
-export interface SankeyLink {
+interface SankeyLink {
 	/**
 	 * Which edge fans: "out" nests at the source (one person repeated across every activity they reached), "in" nests at the target (the same people arriving through several activities). Chain ribbons carry disjoint users and stack on both edges.
 	 *
@@ -1855,14 +1855,14 @@ export interface SankeyLink {
 	value: number
 }
 
-export interface SankeyStage {
+interface SankeyStage {
 	/** Column heading. */
 	label: string
 	/** Node ids in this column, top to bottom. The order is deliberate, not by size. */
 	nodes: string[]
 }
 
-export interface SankeyDiagram {
+interface SankeyDiagram {
 	links: SankeyLink[]
 	nodes: SankeyNode[]
 	stages: SankeyStage[]
@@ -1871,7 +1871,7 @@ export interface SankeyDiagram {
 }
 
 /** What share of onboarded finishers did each tracked activity: one maker counts in every column they reached. */
-export interface ActivityShare {
+interface ActivityShare {
 	activities: { key: string; label: string; base: string; users: number; share: number }[]
 	/** Makers who finished onboarding: the denominator every column reads against. */
 	total: number
@@ -2285,4 +2285,76 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			total: users.length,
 		},
 	}
+}
+
+export type {
+	ActiveDay,
+	ActivityShare,
+	AreaStat,
+	ContentReportRow,
+	CountryStat,
+	DayActivity,
+	DirectoryUser,
+	FirstProjectStat,
+	FlowStep,
+	FulfillmentFilters,
+	FulfillmentOrderRow,
+	GoalDayActivity,
+	HoursBucket,
+	HoursByUser,
+	HoursDistribution,
+	ModeratedComment,
+	ModeratedPost,
+	OrderDirectoryRow,
+	PrinterAwardRow,
+	ProjectDirectoryRow,
+	ProjectFilters,
+	ProjectReviewStatusStat,
+	PublicReelRow,
+	ReportStatusFilter,
+	ReviewerResultStat,
+	ReviewerStats,
+	SankeyDiagram,
+	SankeyLink,
+	SankeyNode,
+	SankeyStage,
+	UserDetail,
+	UserDetailOrder,
+	VerificationStat,
+	WeekFlowStep,
+	WeekHoursCluster,
+	WeekProjectCluster,
+}
+export {
+	countContentReports,
+	FULFILLMENT_ORDER_STATUSES,
+	fulfillmentStageOf,
+	getAdminCounters,
+	getAreaStats,
+	getCountryStats,
+	getDailyActiveUsers,
+	getDailyActivity,
+	getDailyActivityByGoal,
+	getFirstProjectStats,
+	getHoursByWeek,
+	getHoursDistribution,
+	getProjectReviewStatuses,
+	getProjectsByWeek,
+	getReviewerStats,
+	getUserDetail,
+	getUserFlowFunnel,
+	getUserFlowWeekly,
+	getVerificationStats,
+	HOUR_EDGES,
+	isAuditAction,
+	listAuditLog,
+	listContentReports,
+	listFulfillmentOrders,
+	listOrders,
+	listPrinterAwards,
+	listProjects,
+	listRecentCommentsForModeration,
+	listRecentPostsForModeration,
+	listRecentPublicReels,
+	listUsers,
 }

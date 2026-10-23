@@ -4,8 +4,6 @@ import prisma from "@/lib/prisma"
 import { PLATFORM_INFO, readPublicReelLink } from "@/lib/public-reels"
 import { publicReelLinksSchema } from "@/lib/schemas/feed"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -65,3 +63,5 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	return ok({ saved: links.length }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"

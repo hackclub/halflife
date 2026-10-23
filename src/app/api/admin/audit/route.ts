@@ -7,8 +7,6 @@ import { paginationQuery } from "@/lib/pagination"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
 
-export const dynamic = "force-dynamic"
-
 const query = paginationQuery.extend({
 	// An enum, not a free string: anything else used to reach Prisma and answer a 500 instead of naming the bad parameter.
 	action: z.enum(AuditAction).optional(),
@@ -21,3 +19,5 @@ export const GET = withPermission(Permission.VIEW_AUDIT_LOG, async (req: NextReq
 
 	return ok(await listAuditLog(parsed.data))
 })
+
+export const dynamic = "force-dynamic"

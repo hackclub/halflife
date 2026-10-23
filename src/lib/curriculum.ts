@@ -1,13 +1,6 @@
 import type { Checkpoint, Phase, WeekMeta } from "./types"
 
 /**
- * Tiers and the build-week ask are program configuration, not curriculum, and the ledger reads them too. They are re-exported here because every component on the trail already reaches for them through this module, and one of the two copies that used to exist would eventually have drifted from the other.
- */
-export { BUILD_BLOCKS, BUILD_HOURS } from "./config/program"
-export type { Tier } from "./config/tiers"
-export { TIERS } from "./config/tiers"
-
-/**
  * Ten weeks: five design weeks, then the same five themes built for real. A design week opens by settling what is being made – the yellow onboarding checkpoint in week 1, the project form after that – and then pitches it in the idea reel before a single hour is logged against it. Week 1 is the exception: the reel is optional there, offered side by side with the first devlog entry instead of gating it. Build weeks skip both and end on a working-demo video.
  */
 
@@ -312,3 +305,12 @@ export function checkpointsFor(
 
 	return out
 }
+
+/**
+ * Tiers and the build-week ask are program configuration, not curriculum, and the ledger reads them too. They are re-exported here because every component on the trail already reaches for them through this module, and one of the two copies that used to exist would eventually have drifted from the other.
+ */
+export { BUILD_BLOCKS, BUILD_HOURS } from "./config/program"
+
+export type { Tier } from "./config/tiers"
+
+export { TIERS } from "./config/tiers"

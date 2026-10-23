@@ -6,8 +6,6 @@ import prisma from "@/lib/prisma"
 import { getProgramSettings, startOfDay } from "@/lib/program"
 import { programEventCreateSchema } from "@/lib/schemas/admin"
 
-export const dynamic = "force-dynamic"
-
 /**
  * Put something on the programme calendar.
  *
@@ -22,7 +20,7 @@ export const dynamic = "force-dynamic"
  * after the clocks change instead of quietly becoming a 6pm call for the rest of
  * the season.
  */
-export const POST = withPermission(Permission.MANAGE_PROGRAM, async (req: Request, { gate }) => {
+const POST = withPermission(Permission.MANAGE_PROGRAM, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, programEventCreateSchema)
 	if (parsed.error) return parsed.error
 	const { repeatWeeks, ...fields } = parsed.data
@@ -132,3 +130,7 @@ export const DELETE = withPermission(Permission.MANAGE_PROGRAM, async (_req: Req
 
 	return ok({ deleted: count })
 })
+
+export { POST }
+
+export const dynamic = "force-dynamic"

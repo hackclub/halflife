@@ -27,8 +27,6 @@ import {
 	ticketSection,
 } from "@/lib/site/tickets"
 
-export const runtime = "nodejs"
-
 interface BlockAction {
 	action_id: string
 	value?: string
@@ -497,3 +495,5 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	return NextResponse.json({ ok: true })
 }
+
+export const runtime = "nodejs"

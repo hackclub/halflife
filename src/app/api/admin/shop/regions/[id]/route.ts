@@ -5,8 +5,6 @@ import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { shopRegionUpdateSchema } from "@/lib/schemas/admin"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -40,3 +38,5 @@ export const PATCH = withPermission(
 		return ok({ region })
 	},
 )
+
+export const dynamic = "force-dynamic"

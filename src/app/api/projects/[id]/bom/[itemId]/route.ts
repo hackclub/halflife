@@ -8,8 +8,6 @@ import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { scheduleRepoSync } from "@/lib/repo-sync"
 import { bomItemUpdateSchema } from "@/lib/schemas/project"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string; itemId: string }>
 }
@@ -88,3 +86,5 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 	after(() => scheduleRepoSync(id))
 	return ok({ items: await listBom(id) })
 })
+
+export const dynamic = "force-dynamic"

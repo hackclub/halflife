@@ -3,8 +3,6 @@ import { withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
-export const dynamic = "force-dynamic"
-
 /**
  * The closing reels a maker has already posted for one hand-in, newest first.
  *
@@ -44,3 +42,5 @@ export const GET = withSession(async (req: Request, { gate }) => {
 		})),
 	})
 })
+
+export const dynamic = "force-dynamic"

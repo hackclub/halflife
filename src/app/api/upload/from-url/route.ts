@@ -11,9 +11,6 @@ import {
 } from "@/lib/uploads/r2"
 import { fetchRemoteImage } from "@/lib/uploads/remote"
 
-export const dynamic = "force-dynamic"
-export const maxDuration = 60
-
 const bodySchema = z.object({ url: z.url().max(2048) }).strict()
 
 /**
@@ -34,3 +31,7 @@ export const POST = withSession(async (req: Request, { gate }) => {
 
 	return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"
+
+export const maxDuration = 60

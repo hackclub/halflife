@@ -29,9 +29,9 @@ import { sanitize, sanitizeHtml } from "@/lib/sanitize"
  */
 
 /** Week one's theme, and the fallback for anything that cannot resolve the participant's join week. The comp: "This is PCB week!" */
-export const ONBOARDING_THEME: Theme = Theme.PCB
+const ONBOARDING_THEME: Theme = Theme.PCB
 
-export interface OnboardingState {
+interface OnboardingState {
 	completed: boolean
 	/** The step to show now. */
 	current: OnboardingStep | null
@@ -55,7 +55,7 @@ export interface OnboardingState {
 	trackingDismissed: boolean
 }
 
-export async function getOnboardingState(userId: string): Promise<OnboardingState> {
+async function getOnboardingState(userId: string): Promise<OnboardingState> {
 	// One round trip for both reads. Onboarding edits the participant's first project, which exists once they have one; the theme is that project's, not a fixed week one. A late joiner who starts in week 3 is onboarded into Music and offered the MIDI keyboard, rather than being shown week one's PCB starter.
 	//
 	// An existing project is the anchor: once the flow has made one, the theme cannot move under someone who finishes the questions the next day. With no project yet, the fallback is the theme of the current program week, so an onboarding started today is for the week it is actually happening in.
@@ -432,3 +432,5 @@ export async function needsOnboarding(userId: string): Promise<boolean> {
 
 export type { OnboardingStepId } from "@/lib/config/onboarding"
 export { ONBOARDING_STEPS } from "@/lib/config/onboarding"
+export type { OnboardingState }
+export { getOnboardingState, ONBOARDING_THEME }

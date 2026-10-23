@@ -5,8 +5,6 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { getReviewQueue } from "@/lib/queries/review"
 
-export const dynamic = "force-dynamic"
-
 interface Props {
 	searchParams: Promise<{ phase?: string; cursor?: string }>
 }
@@ -89,3 +87,5 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

@@ -7,7 +7,7 @@ import prisma from "@/lib/prisma"
 import { currentWeekNumber } from "@/lib/program"
 import { tallyBoard } from "./leaderboard"
 
-export interface ProjectReviewStats {
+interface ProjectReviewStats {
 	/**
 	 * Review progress per started design week, oldest first: how many of the week's submitted projects have at least one live review. Weeks that have not started yet are omitted, so the section grows with the programme.
 	 */
@@ -27,19 +27,19 @@ export interface ProjectReviewStats {
 }
 
 /** One row of either board: who (by email), how many, and the name recorded beside the address for display when no account matches it. */
-export interface BoardEntry {
+interface BoardEntry {
 	email: string
 	name: string | null
 	reviewed: number
 }
 
 /** The board key for Ari's anonymous decisions: no address, so no email to group by. Named on the board rather than dropped. */
-export const ANONYMOUS_ARI = "ari"
+const ANONYMOUS_ARI = "ari"
 
 /**
  * Ari attributes its automated decisions to this address. It is not a person, so it never takes a place on a board: ranked under its own email it outranked every human reviewer with work nobody did, which is what pushed `system@ari` to the top of the all-time leaderboard.
  */
-export const SYSTEM_ARI = "system@ari"
+const SYSTEM_ARI = "system@ari"
 
 /** Lower-cased and trimmed, so `Name@X.com` and `name@x.com` are one reviewer. Null when there is nothing to key on. */
 function emailKey(email: string | null | undefined): string | null {
@@ -72,7 +72,7 @@ function reviewerBoard(
 }
 
 /** One design week's review progress: named projects, and how many have at least one live review. */
-export interface WeekReviewProgress {
+interface WeekReviewProgress {
 	/** The theme's own label, e.g. PCBs. */
 	label: string
 	/** Distinct named projects with at least one live FINAL review, on either phase. */
@@ -179,3 +179,6 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 		submitted,
 	}
 }
+
+export type { BoardEntry, ProjectReviewStats, WeekReviewProgress }
+export { ANONYMOUS_ARI, SYSTEM_ARI }

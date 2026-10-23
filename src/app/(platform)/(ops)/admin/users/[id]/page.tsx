@@ -14,8 +14,6 @@ import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePe
 import { getUserDetail } from "@/lib/queries/admin"
 import { ThemedProjectRow } from "./ThemedProjectRow"
 
-export const dynamic = "force-dynamic"
-
 interface Props {
 	params: Promise<{ id: string }>
 }
@@ -197,3 +195,5 @@ export default async function AdminUserPage({ params }: Props) {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

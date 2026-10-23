@@ -7,8 +7,6 @@ import { paginationQuery } from "@/lib/pagination"
 import { Permission } from "@/lib/permissions"
 import { listOrders } from "@/lib/queries/admin"
 
-export const dynamic = "force-dynamic"
-
 const query = paginationQuery.extend({ status: z.enum(ShopOrderStatus).optional() })
 
 export const GET = withPermission(Permission.FULFILL_ORDERS, async (req: NextRequest) => {
@@ -17,3 +15,5 @@ export const GET = withPermission(Permission.FULFILL_ORDERS, async (req: NextReq
 
 	return ok(await listOrders(parsed.data))
 })
+
+export const dynamic = "force-dynamic"

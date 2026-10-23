@@ -12,7 +12,7 @@ const variantClass: Record<Variant, string> = {
 	primary: "hl-btn hl-btn--primary",
 }
 
-export function Button({
+function Button({
 	variant = "default",
 	className,
 	...props
@@ -20,7 +20,7 @@ export function Button({
 	return <button {...props} className={`${variantClass[variant]} ${className ?? ""}`} />
 }
 
-export function Panel({
+function Panel({
 	title,
 	actions,
 	wide,
@@ -54,7 +54,7 @@ export function Panel({
  *
  * `actions` sit below the board rather than beside it: the sign is centred, and a button floated next to it would pull the composition off axis.
  */
-export function PageHeader({
+function PageHeader({
 	title,
 	subtitle,
 	actions,
@@ -173,3 +173,5 @@ export function statusTone(status: string): BadgeTone {
 export function statusLabel(status: string): string {
 	return status.replaceAll("_", " ")
 }
+
+export { Button, PageHeader, Panel }

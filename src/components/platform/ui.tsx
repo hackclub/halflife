@@ -3,12 +3,10 @@
 import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react"
 import { cx } from "@/lib/cx"
 
-export { cx } from "@/lib/cx"
-
 /* ------------------------------------------------------------------ *
  * Panel – the cream card with a wobbling marker outline
  * ------------------------------------------------------------------ */
-export function Panel({
+function Panel({
 	children,
 	className,
 	tone = "line",
@@ -66,7 +64,7 @@ const ACCENT_TEXT: { [_: string]: string } = {
 /**
  * An accent, as text on cream. The accents are fills first – sky as a label on cream is 2.37:1 – so a label drawn "in the week's colour" takes that colour's ink instead. Magenta and the deep tones already read, and pass through unchanged.
  */
-export function accentText(accent: string): string {
+function accentText(accent: string): string {
 	return ACCENT_TEXT[accent] ?? accent
 }
 
@@ -75,7 +73,7 @@ export function accentText(accent: string): string {
  * for white. White on sky, teal, orange and violet is 1.98-3.37:1; navy on
  * them is 4.64-7.90. The pill is the counter's ground on the same banner.
  */
-export function onAccent(accent: string): { text: string; pill: string } {
+function onAccent(accent: string): { text: string; pill: string } {
 	return accent === "var(--color-magenta)"
 		? { pill: "rgb(0 0 0 / 0.15)", text: "#ffffff" }
 		: { pill: "rgb(255 255 255 / 0.25)", text: "var(--color-navy)" }
@@ -90,7 +88,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	variant?: "solid" | "outline" | "ghost" | "gold" | "teal" | "coral"
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 	({ variant = "solid", size = "md", full, className, children, ...rest }, ref) => {
 		const sizes = {
 			lg: "h-13 px-7 text-[0.95rem]",
@@ -302,3 +300,6 @@ export const borderedInputClass =
 
 /** The same field, under the name every caller already imports. */
 export const inputClass = borderedInputClass
+
+export { cx } from "@/lib/cx"
+export { accentText, Button, onAccent, Panel }

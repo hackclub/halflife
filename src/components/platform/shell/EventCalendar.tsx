@@ -59,7 +59,7 @@ function hourLabel(hour: number): string {
  * what someone opening it from the header countdown actually wants, since they
  * are usually looking for what is on *tonight*.
  */
-export function EventCalendar({
+function EventCalendar({
 	open,
 	onClose,
 	events,
@@ -456,3 +456,5 @@ function GridButton({ label, onClick, children }: { label: string; onClick(): vo
 		</button>
 	)
 }
+
+export { EventCalendar }

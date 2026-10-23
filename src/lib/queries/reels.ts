@@ -13,14 +13,14 @@ import { warmupPhaseOf } from "@/lib/warmup"
  * Their own reels only, and including ones a moderator took out of the feed – the author still sees those, as the feed's own rule has it. A removed reel is gone for them too.
  */
 
-export interface MyPublicLink {
+interface MyPublicLink {
 	id: string
 	platform: PublicReelPlatform
 	postedAt: number
 	url: string
 }
 
-export interface MyReel {
+interface MyReel {
 	at: number
 	caption: string
 	/** Why this reel cannot be deleted – its week is in review, decided or over. Null when it can. */
@@ -38,7 +38,7 @@ export interface MyReel {
 	videoUrl: string | null
 }
 
-export interface MyReelGroup {
+interface MyReelGroup {
 	/** Null for reels posted outside any project. */
 	project: { id: string; title: string; theme: string } | null
 	reels: MyReel[]
@@ -145,3 +145,5 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 	}
 	return [...groups.values()].toSorted((a, b) => order(a) - order(b))
 }
+
+export type { MyPublicLink, MyReel, MyReelGroup }

@@ -72,7 +72,7 @@ function scrollsItself(from: Element): boolean {
  *
  * Touch keeps the browser's own swipe: mandatory snap with `scroll-snap-stop` already moves one reel per flick with the platform's momentum, and nothing scripted feels as right under a thumb. Everything without a thumb – wheel, trackpad, arrow keys, the arrows on screen – goes through `step`, which glides exactly one reel and cannot be made to skip.
  */
-export function ReelViewer() {
+function ReelViewer() {
 	const { viewer } = useStore()
 	const stage = useRef<HTMLElement>(null)
 	const scroller = useRef<HTMLDivElement>(null)
@@ -723,3 +723,5 @@ function Action({
 		</span>
 	)
 }
+
+export { ReelViewer }

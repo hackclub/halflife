@@ -17,7 +17,7 @@ import { type CalendarEvent, calendarDay, dayLabel, eventColour, eventRangeLabel
  * One row is one occurrence. A ten-week series is ten rows, because that is what
  * lets one week's call be moved without touching the other nine.
  */
-export function EventScheduleManager({ events, timeZone }: { events: CalendarEvent[]; timeZone: string }) {
+function EventScheduleManager({ events, timeZone }: { events: CalendarEvent[]; timeZone: string }) {
 	const [editing, setEditing] = useState<CalendarEvent | null>(null)
 	const today = calendarDay(new Date(), timeZone)
 
@@ -171,3 +171,5 @@ export function EventScheduleNote() {
 		</Callout>
 	)
 }
+
+export { EventScheduleManager }

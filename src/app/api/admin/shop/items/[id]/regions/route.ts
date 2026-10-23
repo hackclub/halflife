@@ -5,8 +5,6 @@ import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { itemRegionPriceSchema } from "@/lib/schemas/admin"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -59,3 +57,5 @@ export const PUT = withPermission(
 		return ok({ priceCredits })
 	},
 )
+
+export const dynamic = "force-dynamic"

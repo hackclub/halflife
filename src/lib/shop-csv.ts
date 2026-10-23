@@ -10,12 +10,12 @@ import { shopItemSchema } from "@/lib/schemas/admin"
  */
 
 /** Header, in the order the template lists it. */
-export const SHOP_CSV_COLUMNS = ["slug", "name", "description", "price", "category", "cost", "image", "gated"] as const
+const SHOP_CSV_COLUMNS = ["slug", "name", "description", "price", "category", "cost", "image", "gated"] as const
 
-export const SHOP_CSV_TEMPLATE = `${SHOP_CSV_COLUMNS.join(",")}\nsoldering-kit,Soldering kit,"A starter iron, stand and solder.",40,consumable,18.50,,no\n`
+const SHOP_CSV_TEMPLATE = `${SHOP_CSV_COLUMNS.join(",")}\nsoldering-kit,Soldering kit,"A starter iron, stand and solder.",40,consumable,18.50,,no\n`
 
 /** A row cap, so one paste cannot become one enormous transaction. */
-export const SHOP_CSV_MAX_ROWS = 500
+const SHOP_CSV_MAX_ROWS = 500
 
 type Column = (typeof SHOP_CSV_COLUMNS)[number]
 
@@ -48,9 +48,9 @@ const CATEGORY_ALIASES: { [_: string]: ShopItemCategory } = {
 	UPGRADE: ShopItemCategory.PRINTER_UPGRADE,
 }
 
-export type ShopCsvItem = z.output<typeof shopItemSchema>
+type ShopCsvItem = z.output<typeof shopItemSchema>
 
-export interface ShopCsvProblem {
+interface ShopCsvProblem {
 	/** 1-based line in the file, the header being line 1. 0 for the file as a whole. */
 	line: number
 	message: string
@@ -168,3 +168,6 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 
 	return problems.length > 0 ? { items: [], problems } : { items, problems }
 }
+
+export type { ShopCsvItem, ShopCsvProblem }
+export { SHOP_CSV_COLUMNS, SHOP_CSV_MAX_ROWS, SHOP_CSV_TEMPLATE }

@@ -5,8 +5,6 @@ import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 
-export const dynamic = "force-dynamic"
-
 interface Props {
 	searchParams: Promise<{ action?: SearchParamValue; cursor?: SearchParamValue; targetId?: SearchParamValue }>
 }
@@ -78,3 +76,5 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

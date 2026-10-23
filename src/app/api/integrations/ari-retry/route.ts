@@ -19,8 +19,6 @@ import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
 import { DAY_MS } from "@/lib/time"
 
-export const maxDuration = 300
-
 /** A failed withdraw is replayed for a week, then left to a human. */
 const WITHDRAW_REPLAY_WINDOW_MS = 7 * DAY_MS
 
@@ -154,3 +152,5 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	await recordSyncRun("ari_ship", summary)
 	return ok(summary)
 })
+
+export const maxDuration = 300

@@ -9,8 +9,6 @@ import { repoRefFromLink } from "@/lib/repo-ref"
 import { disableRepoSync, enableRepoSync, getRepoSyncState, runProjectSync } from "@/lib/repo-sync"
 import { repoSyncSettingsSchema } from "@/lib/schemas/project"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -113,3 +111,5 @@ export const PUT = withSession(async (_req: Request, { params, gate }: Params & 
 
 	return ok({ ...after, synced: files.length > 0 })
 })
+
+export const dynamic = "force-dynamic"

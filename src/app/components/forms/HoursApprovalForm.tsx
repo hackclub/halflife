@@ -11,9 +11,7 @@ type Kind = "session" | "hackatime"
  *
  * Only rendered while the reviewer holds the claim, because the route refuses a batch another reviewer's live claim covers – showing the field without a claim would be an input that always errors.
  */
-export function HoursApprovalForm(
-	props: Readonly<{ kind: Kind; id: string; claimed: boolean; approved: number | null }>,
-) {
+function HoursApprovalForm(props: Readonly<{ kind: Kind; id: string; claimed: boolean; approved: number | null }>) {
 	if (!props.claimed) return null
 	return <HoursApprovalFormInner {...props} />
 }
@@ -58,3 +56,5 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 		</form>
 	)
 }
+
+export { HoursApprovalForm }

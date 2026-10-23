@@ -29,14 +29,14 @@ import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from
  * Every mutation posts to the API and then asks Next to re-render the layout, which reloads the snapshot. Each one also patches local state first, because a round trip to Postgres between clicking a node and seeing it fill is long enough to feel broken – and if the request fails the refresh puts the truth back.
  */
 
-export type IntroPhase =
+type IntroPhase =
 	| "cinematic" // the fly-through
 	| "aim" // spotlight on the first checkpoint
 	| "checkpoint" // the six-step onboarding modal is open
 	| "tour" // spotlight each tab in turn
 	| "done"
 
-export interface CheckpointState {
+interface CheckpointState {
 	/** Reel / submit checkpoints record how many artefacts were attached. */
 	artefacts: number
 	/** When it was completed, epoch ms. Undefined on saves written before this. */
@@ -81,12 +81,12 @@ const BYPASS_KEY = "halflife.bypass-locks"
 const EMPTY: CheckpointState = { artefacts: 0, done: false, log: [], minutes: 0 }
 
 /** What a checkpoint on a passed week says when it is hovered. */
-export const PASSED_REASON = "This week has passed!"
+const PASSED_REASON = "This week has passed!"
 
 /**
  * Week 1's idea reel is optional: it sits beside the first devlog entry as a choice rather than gating it. The trail still lists it, and it stays postable, but nothing past the fork ever waits on it – so every gate below reads predecessors with this id filtered out.
  */
-export const WEEK1_IDEA_REEL_ID = "w1-reel-idea"
+const WEEK1_IDEA_REEL_ID = "w1-reel-idea"
 const withoutOptionalIdea = (list: Checkpoint[]) => list.filter(c => c.id !== WEEK1_IDEA_REEL_ID)
 
 /**
@@ -144,7 +144,7 @@ function seededCeremony(): Ceremony {
 }
 
 /** The details a maker can change on their own project, all optional. */
-export interface ProjectPatch {
+interface ProjectPatch {
 	coverImageKey?: string | null
 	description?: string
 	githubRepo?: string | null
@@ -157,7 +157,7 @@ export interface ProjectPatch {
 /**
  * The closing reel's share prompt after a hand-in: what to celebrate, and how. Kept in the store rather than in the submit sheet's own state because the hand-in's refresh flips the week to in_review underneath – a local flag renders the celebration for one frame and then the unsubmit sheet takes the modal.
  */
-export interface SharePost {
+interface SharePost {
 	celebration?: { extraHours: number }
 	checkpointId: string
 	eyebrow: string
@@ -166,7 +166,7 @@ export interface SharePost {
 }
 
 /** What posting a reel produced: the post's id, or the sentence to show the maker. */
-export type PostReelResult = { postId: string; error?: undefined } | { postId?: undefined; error: string }
+type PostReelResult = { postId: string; error?: undefined } | { postId?: undefined; error: string }
 
 interface Ctx {
 	addProject(p: Omit<Project, "id">): void
@@ -1637,3 +1637,6 @@ export function recommendedTier(e: Experience | null): 1 | 2 | 3 {
 	if (e === "some") return 2
 	return 1
 }
+
+export type { CheckpointState, IntroPhase, PostReelResult, ProjectPatch, SharePost }
+export { PASSED_REASON, WEEK1_IDEA_REEL_ID }

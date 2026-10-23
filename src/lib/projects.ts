@@ -7,7 +7,7 @@ import type { Project, SessionLog, Week } from "./types"
  */
 
 /** What the timeline needs to read out of a checkpoint. Structural on purpose: * the store owns this shape, and this file has no business importing it. */
-export interface CheckpointRead {
+interface CheckpointRead {
 	at?: number
 	caption?: string
 	done: boolean
@@ -15,7 +15,7 @@ export interface CheckpointRead {
 	minutes: number
 }
 
-export type ProjectEvent =
+type ProjectEvent =
 	| {
 			kind: "session"
 			id: string
@@ -36,7 +36,7 @@ export type ProjectEvent =
 	  }
 
 /** The design week that owns a project, and the build week that finishes it. */
-export function projectWeeks(project: Project, weeks: Week[]): Week[] {
+function projectWeeks(project: Project, weeks: Week[]): Week[] {
 	// A warm-up project has no curriculum week. Empty rather than "week 0 plus its build week": week 0 + DESIGN_WEEKS is week 5, the breadboard design week, and gathering its checkpoints would put a stranger's trail events on the warm-up card.
 	const ids = project.weekId === WARMUP_WEEK_ID ? [] : [project.weekId, project.weekId + DESIGN_WEEKS]
 	return weeks.filter(w => ids.includes(w.id))
@@ -47,7 +47,7 @@ export function projectWeeks(project: Project, weeks: Week[]): Week[] {
  *
  * Sessions and reels are one stream rather than two lists: they happened in one order, and splitting them would hide that a reel was posted in the middle of a week's work rather than at the end of it. Ties break on the id so the order is stable when two land in the same millisecond.
  */
-export function projectEvents(project: Project, weeks: Week[], read: (id: string) => CheckpointRead): ProjectEvent[] {
+function projectEvents(project: Project, weeks: Week[], read: (id: string) => CheckpointRead): ProjectEvent[] {
 	const out: ProjectEvent[] = []
 
 	for (const week of projectWeeks(project, weeks))
@@ -83,7 +83,7 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 }
 
 /** The running totals a project card and its header both want. */
-export function projectStats(events: ProjectEvent[]): {
+function projectStats(events: ProjectEvent[]): {
 	sessions: number
 	reels: number
 	hours: number
@@ -123,3 +123,5 @@ export function fmtDay(day: string): string {
 }
 
 export { fmtHours } from "@/lib/numbers"
+export type { CheckpointRead, ProjectEvent }
+export { projectEvents, projectStats, projectWeeks }

@@ -33,8 +33,6 @@ import {
 } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
-export const dynamic = "force-dynamic"
-
 const fmtHours = (h: number) => `${h.toLocaleString("en-US", { maximumFractionDigits: 1 })}h`
 
 /** A share of a whole. One decimal, because the small bands are where the comparison is worth making. */
@@ -47,7 +45,7 @@ const RESULT_LABEL: Record<ReviewResult, string> = {
 	RETURNED: "Changes requested",
 }
 
-export default async function AdminOverviewPage() {
+async function AdminOverviewPage() {
 	await requireAnyPermissionPage(
 		Permission.VIEW_USERS,
 		Permission.MANAGE_SHOP,
@@ -1890,3 +1888,7 @@ function ShareDonut({
 		</div>
 	)
 }
+
+export { AdminOverviewPage as default }
+
+export const dynamic = "force-dynamic"

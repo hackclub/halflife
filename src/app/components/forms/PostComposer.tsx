@@ -10,7 +10,7 @@ interface ApiError {
 	error?: { message?: string }
 }
 
-export interface ComposerProject {
+interface ComposerProject {
 	id: string
 	label: string
 }
@@ -179,3 +179,5 @@ export function PostComposer({
 		</form>
 	)
 }
+
+export type { ComposerProject }

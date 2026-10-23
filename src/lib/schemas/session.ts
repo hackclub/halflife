@@ -14,7 +14,7 @@ const mediaSchema = z.object({
  *
  * A ref is one of two things, and the longer one is the reason this is not a small number. A Lapse timelapse id is short. A legacy clip is an R2 object key, and a journal picture is named after its bytes, so `sessions/<cuid>/<64 hex chars>.<ext>` runs to 104 – over the 100 this used to allow. Editing an entry holding one of those sent the key straight back, was refused by the cap, and surfaced as "Invalid request" with nothing to act on. The longest key an upload can mint is `mediaSchema`'s object key, so both bounds are the same 500.
  */
-export const MAX_CLIP_REF_LENGTH = 500
+const MAX_CLIP_REF_LENGTH = 500
 
 /**
  * A timelapse is a Lapse timelapse, named by its id, or a legacy R2 clip named by its key – editing an entry sends back whatever it was saved with, and the route tells the two apart. Everything else about it – owner, runtime, playback URL – is read back from Lapse by the route rather than taken from the request, because those are the facts a reviewer relies on and the client is the one party with a reason to overstate them.
@@ -77,3 +77,5 @@ export const sessionCreateSchema = z
  * Editing an entry does not touch its images: the PATCH route writes the title, the content, the claimed hours and the source, and nothing else. `media` is left out so the shape says what the route does, rather than accepting a field and dropping it.
  */
 export const sessionUpdateSchema = sessionCreateSchema.omit({ media: true }).partial().strict()
+
+export { MAX_CLIP_REF_LENGTH }

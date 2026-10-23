@@ -5,8 +5,6 @@ import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { moderatePostSchema } from "@/lib/schemas/feed"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -36,3 +34,5 @@ export const POST = withPermission(
 		return ok({ hidden: true })
 	},
 )
+
+export const dynamic = "force-dynamic"

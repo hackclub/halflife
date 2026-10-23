@@ -10,8 +10,6 @@ import { createWarmupProject } from "@/lib/provisioning"
 import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
 import { warmupCreationWindow } from "@/lib/warmup"
 
-export const dynamic = "force-dynamic"
-
 const createSchema = z
 	.object({
 		description: boundedText(4000).optional(),
@@ -61,3 +59,5 @@ export const POST = withSession(async (req: Request, { gate }) => {
 
 	return ok({ id: project.id }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"

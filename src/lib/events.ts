@@ -1,8 +1,6 @@
 import type { EventColour } from "@/app/generated/prisma/client"
 import { calendarDay, DAY_MS } from "@/lib/time"
 
-export { calendarDay } from "@/lib/time"
-
 /**
  * What a calendar surface needs, and nothing more.
  *
@@ -11,7 +9,7 @@ export { calendarDay } from "@/lib/time"
  * and the participant's calendar render the same shape from the same projection,
  * so a field cannot be present on one and missing on the other.
  */
-export interface CalendarEvent {
+interface CalendarEvent {
 	colour: EventColour
 	description: string | null
 	endsAt: Date | null
@@ -24,7 +22,7 @@ export interface CalendarEvent {
 }
 
 /** Every event joins the same huddle, so the link is a constant rather than a per-event field. */
-export const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
+const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
 
 /**
  * The programme calendar: what colour a row is, and how to say when one happens.
@@ -43,8 +41,6 @@ export const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
  *   elapsed milliseconds puts the late evening of a Sunday in the next column.
  */
 
-export type { EventColour } from "@/app/generated/prisma/client"
-
 /**
  * The display name and swatch for every colour.
  *
@@ -60,7 +56,7 @@ const SLATE_COLOUR = {
 	label: "Slate",
 } as const satisfies EventColourDef
 
-export const EVENT_COLOURS = [
+const EVENT_COLOURS = [
 	{ accent: "var(--color-coral)", id: "CORAL", label: "Coral" },
 	{ accent: "var(--color-sky)", id: "SKY", label: "Sky" },
 	{ accent: "var(--color-violet)", id: "VIOLET", label: "Violet" },
@@ -69,7 +65,7 @@ export const EVENT_COLOURS = [
 	SLATE_COLOUR,
 ] as const satisfies readonly EventColourDef[]
 
-export interface EventColourDef {
+interface EventColourDef {
 	readonly accent: string
 	readonly id: EventColour
 	readonly label: string
@@ -81,7 +77,7 @@ export interface EventColourDef {
  * The fallback is the point: a colour added to the enum and not to the table above
  * renders as "Slate" rather than crashing a participant's header on a Monday.
  */
-export function eventColour(colour: EventColour): EventColourDef {
+function eventColour(colour: EventColour): EventColourDef {
 	return EVENT_COLOURS.find(c => c.id === colour) ?? SLATE_COLOUR
 }
 
@@ -90,7 +86,7 @@ export function eventColour(colour: EventColour): EventColourDef {
  * end stays "on" until the next tick after its start, which is the honest reading
  * of an open call with no published end time.
  */
-export function eventIsLive(event: Pick<CalendarEvent, "startsAt" | "endsAt">, now: Date): boolean {
+function eventIsLive(event: Pick<CalendarEvent, "startsAt" | "endsAt">, now: Date): boolean {
 	if (now < event.startsAt) return false
 	return event.endsAt === null || now < event.endsAt
 }
@@ -100,23 +96,23 @@ export function eventIsLive(event: Pick<CalendarEvent, "startsAt" | "endsAt">, n
  * starts, and past once it has – never indefinitely live, or a forgotten end
  * date would pin the header countdown at zero forever.
  */
-export function eventIsUpcoming(event: Pick<CalendarEvent, "startsAt" | "endsAt">, now: Date): boolean {
+function eventIsUpcoming(event: Pick<CalendarEvent, "startsAt" | "endsAt">, now: Date): boolean {
 	return now < (event.endsAt ?? event.startsAt)
 }
 
 /** Milliseconds until the event starts, floored at zero. */
-export function msUntilStart(event: Pick<CalendarEvent, "startsAt">, now: Date): number {
+function msUntilStart(event: Pick<CalendarEvent, "startsAt">, now: Date): number {
 	return Math.max(0, event.startsAt.getTime() - now.getTime())
 }
 
 /** `YYYY-MM-DD` for a year/month/day, zero-padded. */
-export function dayKey(year: number, month: number, day: number): string {
+function dayKey(year: number, month: number, day: number): string {
 	const pad = (n: number) => n.toString().padStart(2, "0")
 	return `${year}-${pad(month)}-${pad(day)}`
 }
 
 /** The month a day string belongs to, for opening the grid on the right one. */
-export function monthOf(day: string): { year: number; month: number } {
+function monthOf(day: string): { year: number; month: number } {
 	const [year, month] = day.split("-").map(Number)
 	return { month: month ?? 1, year: year ?? 1970 }
 }
@@ -135,18 +131,18 @@ function weekdayIndex(day: string): number {
 }
 
 /** The Monday-to-Sunday week holding `day`, as `YYYY-MM-DD` strings. */
-export function weekDays(day: string): string[] {
+function weekDays(day: string): string[] {
 	const monday = addDays(day, -weekdayIndex(day))
 	return Array.from({ length: 7 }, (_, i) => addDays(monday, i))
 }
 
 /** `day`'s week moved by `offset` weeks. */
-export function shiftWeek(day: string, offset: number): string {
+function shiftWeek(day: string, offset: number): string {
 	return addDays(day, offset * 7)
 }
 
 /** "March 2 – 8, 2026", widening to months and years when the week straddles them. */
-export function weekLabel(days: readonly string[]): string {
+function weekLabel(days: readonly string[]): string {
 	const [first = "", last = ""] = [days[0], days[6]]
 	const [fy = 1970, fm = 1, fd = 1] = first.split("-").map(Number)
 	const [ly = 1970, lm = 1, ld = 1] = last.split("-").map(Number)
@@ -158,7 +154,7 @@ export function weekLabel(days: readonly string[]): string {
 }
 
 /** Minutes from local midnight to `at` in `timeZone`. */
-export function minutesInDay(at: Date, timeZone: string): number {
+function minutesInDay(at: Date, timeZone: string): number {
 	const parts = new Intl.DateTimeFormat("en-US", {
 		hour: "numeric",
 		hour12: false,
@@ -176,7 +172,7 @@ export function minutesInDay(at: Date, timeZone: string): number {
  * the day. Open-ended events get a nominal half hour so they still take a
  * block rather than vanishing.
  */
-export function daySegment(
+function daySegment(
 	event: Pick<CalendarEvent, "startsAt" | "endsAt">,
 	day: string,
 	timeZone: string,
@@ -198,7 +194,7 @@ export function daySegment(
 }
 
 /** "Thursday, March 5" – a day's own heading, with no time attached. */
-export function dayLabel(day: string): string {
+function dayLabel(day: string): string {
 	const { year, month } = monthOf(day)
 	const dayOfMonth = Number(day.split("-")[2] ?? 1)
 	return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long", timeZone: "UTC", weekday: "long" }).format(
@@ -207,7 +203,7 @@ export function dayLabel(day: string): string {
 }
 
 /** "Thu Mar 5" – the short form, for a grid cell's accessible name. */
-export function dayShort(day: string): string {
+function dayShort(day: string): string {
 	const { year, month } = monthOf(day)
 	const dayOfMonth = Number(day.split("-")[2] ?? 1)
 	return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" }).format(
@@ -248,4 +244,25 @@ export function nextEvent<T extends CalendarEvent>(events: readonly T[], now: Da
 			.toSorted((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
 			.find(event => eventIsUpcoming(event, now)) ?? null
 	)
+}
+
+export type { EventColour } from "@/app/generated/prisma/client"
+export { calendarDay } from "@/lib/time"
+export type { CalendarEvent, EventColourDef }
+export {
+	dayKey,
+	dayLabel,
+	daySegment,
+	dayShort,
+	EVENT_COLOURS,
+	eventColour,
+	eventIsLive,
+	eventIsUpcoming,
+	HUDDLE_URL,
+	minutesInDay,
+	monthOf,
+	msUntilStart,
+	shiftWeek,
+	weekDays,
+	weekLabel,
 }

@@ -6,7 +6,7 @@ import prisma from "@/lib/prisma"
 const BASE = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
 const TIMEOUT_MS = 10_000
 
-export interface HackatimeFetch {
+interface HackatimeFetch {
 	error?: string
 	/**
 	 * True when Hackatime answered and the named project is not in its list – the project was renamed or deleted. The approval path must treat this as "we don't know", never as a fresh zero.
@@ -173,3 +173,5 @@ export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> 
 	})
 	return result
 }
+
+export type { HackatimeFetch }

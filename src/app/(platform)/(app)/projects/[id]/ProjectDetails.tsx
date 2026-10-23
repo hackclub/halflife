@@ -24,7 +24,7 @@ import type { Project } from "@/lib/types"
  *
  * The tier has two rules the form keeps. A starter project is scoped to tier 1, so its tier is never offered. And once the design week is handed in the tier is the claim a reviewer is deciding on, so it is shown but not editable. Every other tier stays pickable, including ones the hours do not cover yet: until you submit, a tier is a plan, and the line under each one says what it costs. The refusal stays in the submit sheet, where the claim is made.
  */
-export function ProjectDetails({
+function ProjectDetails({
 	project,
 	hours,
 	tierLocked,
@@ -461,3 +461,5 @@ function DetailsForm({
 		</form>
 	)
 }
+
+export { ProjectDetails }

@@ -35,7 +35,7 @@ const MAX_BACKOFF_MS = 15 * 60_000
 const RETRY_DELAYS_MS = [300, 1000]
 
 /** How a forge being unreachable reads to whoever asked. */
-export class ForgeUnavailableError extends Error {
+class ForgeUnavailableError extends Error {
 	constructor(message: string) {
 		super(message)
 		this.name = "ForgeUnavailableError"
@@ -169,3 +169,5 @@ export async function forgeGet(forge: Forge, path: string): Promise<Response> {
 		return via(forge, "github-direct", path)
 	}
 }
+
+export { ForgeUnavailableError }

@@ -3,8 +3,6 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { deleteOwnComment } from "@/lib/feed"
 import { type AuthedContext, withSession } from "@/lib/guards"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -24,3 +22,5 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 
 	return ok({ deleted: true })
 })
+
+export const dynamic = "force-dynamic"

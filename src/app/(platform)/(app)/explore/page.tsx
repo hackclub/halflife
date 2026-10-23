@@ -12,13 +12,6 @@ import { fmtDay } from "@/lib/projects"
 import { getJournalFeed, type JournalRow } from "@/lib/queries/community"
 import { DAY_MS } from "@/lib/time"
 
-export const metadata: Metadata = {
-	description: "Journal entries from everyone building hardware this week.",
-	title: "Half Life Explore",
-}
-
-export const dynamic = "force-dynamic"
-
 const GROUPS = ["Today", "Yesterday", "Earlier"] as const
 type Group = (typeof GROUPS)[number]
 
@@ -164,3 +157,10 @@ export default async function ExplorePage() {
 		</div>
 	)
 }
+
+export const metadata: Metadata = {
+	description: "Journal entries from everyone building hardware this week.",
+	title: "Half Life Explore",
+}
+
+export const dynamic = "force-dynamic"

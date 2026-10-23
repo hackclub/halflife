@@ -112,7 +112,7 @@ function onPlateU(px: number) {
  *
  * The hero is the fold, and only the fold. The painting's own box is unchanged – it takes bg.png's ratio and clamps to the section – so losing the 218 units of block below it only closes the bare ground that used to sit between the dissolve and the header.
  */
-export default function Hero() {
+function Hero() {
 	return (
 		<section className="relative z-10 isolate" id="signup">
 			<HeroArt />
@@ -459,3 +459,5 @@ function HeroArt() {
 		</div>
 	)
 }
+
+export { Hero as default }

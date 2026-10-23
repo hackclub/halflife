@@ -5,7 +5,7 @@ import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/c
 import { Button, Chip } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export interface LapseTimelapse {
+interface LapseTimelapse {
 	attached: boolean
 	createdAt: number
 	durationSeconds: number
@@ -32,7 +32,7 @@ interface LapsePageResponse {
 const LAPSE_URL = "https://lapse.hackclub.com"
 
 /** Recorded time, the way a person says it: 45m, 1h 20m, 2h. */
-export function fmtDuration(seconds: number) {
+function fmtDuration(seconds: number) {
 	const m = Math.round(seconds / 60)
 	if (m < 60) return `${m}m`
 	const h = Math.floor(m / 60)
@@ -282,3 +282,6 @@ export function LapsePicker({
 		</div>
 	)
 }
+
+export type { LapseTimelapse }
+export { fmtDuration }

@@ -2,8 +2,6 @@ import { fail, ok } from "@/lib/api"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -18,3 +16,5 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 	if (count === 0) return fail("NOT_FOUND", "Link not found")
 	return ok({ deleted: true })
 })
+
+export const dynamic = "force-dynamic"

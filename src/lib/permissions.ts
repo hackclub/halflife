@@ -2,9 +2,7 @@ import "server-only"
 import { Role } from "@/app/generated/prisma/enums"
 import prisma from "@/lib/prisma"
 
-export { Role } from "@/app/generated/prisma/enums"
-
-export enum Permission {
+enum Permission {
 	FULFILL_ORDERS = "FULFILL_ORDERS",
 	MANAGE_CREDIT = "MANAGE_CREDIT",
 	/**
@@ -41,7 +39,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 	[Role.AUDITOR]: [Permission.VIEW_AUDIT_LOG, Permission.VIEW_USERS, Permission.VIEW_UPLOADS],
 }
 
-export function permissionsFor(roles: Role[]): Permission[] {
+function permissionsFor(roles: Role[]): Permission[] {
 	const set = new Set<Permission>()
 	for (const role of roles) for (const p of ROLE_PERMISSIONS[role] ?? []) set.add(p)
 	return [...set]
@@ -52,10 +50,10 @@ export function permissionsFor(roles: Role[]): Permission[] {
  *
  * This is reach, not trust. The roles are deliberately not a ladder – a REVIEWER and a FULFILLER are different kinds of seat, and `lib/review.ts` says so – but the permissions behind them are comparable, because they are the same thing the guards check. So the level is read off the union of the permissions those roles grant, which is also why somebody holding two roles is described by what the two together allow rather than by either one alone.
  */
-export type PermissionLevel = "full" | "write" | "read" | "none"
+type PermissionLevel = "full" | "write" | "read" | "none"
 
 /** How many permissions there are to have, for saying "3 of 13" rather than "3". */
-export const PERMISSION_COUNT = Object.values(Permission).length
+const PERMISSION_COUNT = Object.values(Permission).length
 
 /**
  * The permissions that only look.
@@ -147,3 +145,8 @@ export async function getUserRolesIfExists(userId: string): Promise<Role[] | nul
 	})
 	return user ? user.roles.map(r => r.role) : null
 }
+
+export { Role } from "@/app/generated/prisma/enums"
+
+export type { PermissionLevel }
+export { PERMISSION_COUNT, Permission, permissionsFor }

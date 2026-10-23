@@ -3,9 +3,9 @@
  *
  * This is the only per-user geography with real coverage (shop regions are pricing prefs almost nobody picks; the HCA address country is encrypted PII held for one account). Buckets follow IANA areas rather than a curated country list, so there is nothing to maintain as signups spread – and nothing to mislabel. `other` is valid-but-placeless zones (Etc, GMT, the POSIX-style ones); `unknown` is no timezone on file.
  */
-export type RegionId = "americas" | "europe" | "asia" | "africa" | "oceania" | "other" | "unknown"
+type RegionId = "americas" | "europe" | "asia" | "africa" | "oceania" | "other" | "unknown"
 
-export const REGIONS: { id: RegionId; label: string }[] = [
+const REGIONS: { id: RegionId; label: string }[] = [
 	{ id: "americas", label: "Americas" },
 	{ id: "europe", label: "Europe" },
 	{ id: "asia", label: "Asia" },
@@ -15,7 +15,7 @@ export const REGIONS: { id: RegionId; label: string }[] = [
 	{ id: "unknown", label: "Unknown" },
 ]
 
-export function regionOfTimezone(timezone: string | null | undefined): RegionId {
+function regionOfTimezone(timezone: string | null | undefined): RegionId {
 	if (!timezone) return "unknown"
 	switch (timezone.split("/")[0]) {
 		case "America":
@@ -217,3 +217,6 @@ export function countryOfTimezone(timezone: string | null | undefined): string {
 	if (!timezone) return "Unknown"
 	return ZONE_COUNTRY[timezone] ?? "Unknown"
 }
+
+export type { RegionId }
+export { REGIONS, regionOfTimezone }

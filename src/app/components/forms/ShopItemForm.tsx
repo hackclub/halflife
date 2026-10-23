@@ -14,7 +14,7 @@ const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
 ]
 
 /** The fields an existing item is edited from. */
-export interface ShopItemInitial {
+interface ShopItemInitial {
 	category: ShopItemCategory
 	costUsd: number | null
 	description: string
@@ -240,3 +240,5 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 		</form>
 	)
 }
+
+export type { ShopItemInitial }

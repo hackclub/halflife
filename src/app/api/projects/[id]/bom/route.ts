@@ -9,8 +9,6 @@ import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { scheduleRepoSync } from "@/lib/repo-sync"
 import { bomExtrasSchema, bomItemSchema } from "@/lib/schemas/project"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -22,7 +20,7 @@ function ownProject(userId: string, id: string) {
 	})
 }
 
-export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const project = await ownProject(gate.user.id, id)
@@ -36,7 +34,7 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 })
 
 /** Add a line to the end of the list. */
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, bomItemSchema)
@@ -129,3 +127,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 
 	return ok({ taxShippingUsd: updated.bomTaxShippingUsd ?? 0 })
 })
+
+export { GET, POST }
+
+export const dynamic = "force-dynamic"

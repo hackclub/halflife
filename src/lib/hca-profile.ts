@@ -13,14 +13,14 @@ import prisma from "@/lib/prisma"
  * It runs at every sign-in, and again at submit, so a status that changed since (most often "pending" becoming "verified") and the address a grant ships to are always current.
  */
 
-export const PULL_PII = process.env.PULL_HCA_PII === "true" && isPiiConfigured()
+const PULL_PII = process.env.PULL_HCA_PII === "true" && isPiiConfigured()
 
 const DISCOVERY_URL = process.env.HCA_DISCOVERY_URL ?? "https://auth.hackclub.com/.well-known/openid-configuration"
 const ME_URL = process.env.HCA_ME_URL ?? "https://auth.hackclub.com/api/v1/me"
 
 const TIMEOUT_MS = 10_000
 
-export interface HcaAddress {
+interface HcaAddress {
 	city: string | null
 	country: string | null
 	line1: string | null
@@ -30,7 +30,7 @@ export interface HcaAddress {
 }
 
 /** One HCA identity, whichever endpoint each field came from. */
-export interface HcaIdentity {
+interface HcaIdentity {
 	address: HcaAddress | null
 	birthdate: string | null
 	email: string | null
@@ -55,7 +55,7 @@ export interface HcaIdentity {
  *
  * So the document is wanted but never depended on. When it answers, it is used; when it does not, the endpoints fall back to HCA's published, stable routes – the same paths its `auth` app mounts (`/oauth/authorize`, `/oauth/token` from Doorkeeper, `/oauth/userinfo` and `/oauth/discovery/keys` from doorkeeper-openid_connect). These are what the discovery document returns, so the fallback is not a guess about a different service; it is the same answer with the network taken out of the path. `userinfo_endpoint` and `issuer` default to the base, and `HCA_*` env overrides win if a deployment needs a different host.
  */
-export interface HcaEndpoints {
+interface HcaEndpoints {
 	authorizationUrl: string
 	/** Whether discovery answered; false means the static fallback was used. */
 	discovered: boolean
@@ -67,7 +67,7 @@ export interface HcaEndpoints {
 
 let endpointsPromise: Promise<HcaEndpoints> | null = null
 
-export function hcaEndpoints(): Promise<HcaEndpoints> {
+function hcaEndpoints(): Promise<HcaEndpoints> {
 	endpointsPromise ??= resolveHcaEndpoints()
 	return endpointsPromise
 }
@@ -291,3 +291,6 @@ export async function isIdentityVerified(userId: string): Promise<boolean> {
 	if (user?.verificationStatus === "verified") return true
 	return (await syncHcaProfile(userId)) === "verified"
 }
+
+export type { HcaAddress, HcaEndpoints, HcaIdentity }
+export { hcaEndpoints, PULL_PII }

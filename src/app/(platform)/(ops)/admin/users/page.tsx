@@ -14,8 +14,6 @@ import {
 import { listUsers } from "@/lib/queries/admin"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 
-export const dynamic = "force-dynamic"
-
 interface Props {
 	searchParams: Promise<{ cursor?: SearchParamValue; q?: SearchParamValue }>
 }
@@ -126,3 +124,5 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

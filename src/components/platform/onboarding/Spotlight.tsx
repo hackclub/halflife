@@ -5,7 +5,7 @@ import { IconArrowRight } from "@/components/platform/icons"
 import { Button } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export interface Rect {
+interface Rect {
 	height: number
 	left: number
 	top: number
@@ -386,3 +386,5 @@ export function Spotlight({
 		</div>
 	)
 }
+
+export type { Rect }

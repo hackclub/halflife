@@ -4,11 +4,11 @@ import { createAuthClient } from "better-auth/react"
 /**
  * Generic OAuth providers register as first-class social providers in better-auth 1.7, so they go through the standard `signIn.social` endpoint and the `callback/:providerId` route. There is no client plugin to add – and the registered redirect URI is `/api/auth/callback/hca`, not an oauth2-prefixed one.
  */
-export const authClient = createAuthClient({
+const authClient = createAuthClient({
 	baseURL: process.env.NEXT_PUBLIC_APP_URL,
 })
 
-export const { signOut, useSession } = authClient
+const { signOut, useSession } = authClient
 
 /** The result better-auth reports for a redirect that did not start; it resolves rather than throwing. */
 interface AuthRedirectResult {
@@ -45,3 +45,5 @@ export function linkLapse(callbackURL = "/dashboard"): Promise<AuthRedirectResul
 export function linkForge(forge: "github" | "gitlab", callbackURL = "/dashboard"): Promise<AuthRedirectResult> {
 	return authClient.linkSocial({ callbackURL, provider: forge }) as Promise<AuthRedirectResult>
 }
+
+export { authClient, signOut, useSession }

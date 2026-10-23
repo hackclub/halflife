@@ -37,8 +37,6 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const dynamic = "force-dynamic"
-
 /**
  * The entries' order: newest first, with the id as the tiebreaker.
  *
@@ -232,3 +230,5 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	return ok({ session }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"

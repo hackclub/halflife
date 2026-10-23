@@ -2,8 +2,6 @@ import { ok } from "@/lib/api"
 import { recordView } from "@/lib/feed"
 import { type AuthedContext, withSession } from "@/lib/guards"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -16,3 +14,5 @@ export const POST = withSession(async (_req: Request, { params, gate }: Params &
 
 	return ok({ viewCount: await recordView(id, gate.user.id) })
 })
+
+export const dynamic = "force-dynamic"

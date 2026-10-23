@@ -8,14 +8,14 @@ import { decryptUserPII, encryptPII, isPiiConfigured } from "@/lib/pii"
 import { canMovePrinterAward, PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import prisma from "@/lib/prisma"
 
-export interface ThemeProgress {
+interface ThemeProgress {
 	build: boolean
 	design: boolean
 	shipped: boolean
 	theme: Theme
 }
 
-export interface PrinterQualification {
+interface PrinterQualification {
 	progress: ThemeProgress[]
 	qualified: boolean
 	required: number
@@ -27,7 +27,7 @@ export interface PrinterQualification {
  *
  * Keeping eligibility and fulfilment separate means an un-approval after the award surfaces as a mismatch an admin resolves, rather than silently revoking a printer that is already in a box.
  */
-export async function getPrinterQualification(userId: string): Promise<PrinterQualification> {
+async function getPrinterQualification(userId: string): Promise<PrinterQualification> {
 	const projects = await prisma.themeProject.findMany({
 		select: { buildReviewedAt: true, buildStatus: true, designStatus: true, theme: true },
 		where: { deletedAt: null, userId },
@@ -53,7 +53,7 @@ export async function getPrinterQualification(userId: string): Promise<PrinterQu
 /**
  * Create the award row the first time someone qualifies. Idempotent, and safe to call inside the review transaction.
  */
-export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: string): Promise<PrinterAward | null> {
+async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: string): Promise<PrinterAward | null> {
 	const projects = await tx.themeProject.findMany({
 		select: { buildReviewedAt: true, theme: true },
 		where: {
@@ -84,7 +84,7 @@ export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: s
 /**
  * Awards whose holder no longer qualifies. Reports only – never auto-revokes, because the printer may already have shipped.
  */
-export async function findPrinterAwardMismatches(): Promise<{ userId: string; email: string; shippedCount: number }[]> {
+async function findPrinterAwardMismatches(): Promise<{ userId: string; email: string; shippedCount: number }[]> {
 	const awards = await prisma.printerAward.findMany({
 		select: { user: { select: { email: true } }, userId: true },
 		where: { revokedAt: null },
@@ -102,7 +102,7 @@ export async function findPrinterAwardMismatches(): Promise<{ userId: string; em
 	return mismatches
 }
 
-export interface PrinterAwardUpdate {
+interface PrinterAwardUpdate {
 	/** Recorded on the audit row; mandatory for a revoke. */
 	note: string
 	status: PrinterAwardStatus
@@ -116,7 +116,7 @@ export interface PrinterAwardUpdate {
  * The ciphertext is read on the server and never returned: it is what an address is locked from, and the fulfilment sheet needs the flag rather than the address.
  */
 /** The award row both the API and the staff list return: fulfilment fields plus the ciphertext, which is folded into a flag before it leaves. */
-export const printerAwardSelect = {
+const printerAwardSelect = {
 	addressLockedAt: true,
 	deliveredAt: true,
 	encryptedAddress: true,
@@ -242,3 +242,6 @@ export async function updatePrinterAwardStatus(
 	})
 	return Object.assign(updated, { addressOnFile: encryptedAddress !== "" })
 }
+
+export type { PrinterAwardUpdate, PrinterQualification, ThemeProgress }
+export { ensurePrinterAward, findPrinterAwardMismatches, getPrinterQualification, printerAwardSelect }

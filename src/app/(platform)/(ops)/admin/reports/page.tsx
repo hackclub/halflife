@@ -16,8 +16,6 @@ import { REPORT_REASONS, REPORT_STATUS_LABELS, REPORT_TARGET_LABELS } from "@/li
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { preview } from "@/lib/text"
 
-export const dynamic = "force-dynamic"
-
 const REASON_LABELS = Object.fromEntries(REPORT_REASONS.map(r => [r.id, r.label])) as Record<ReportReason, string>
 
 function reasonTone(reason: ReportReason): "success" | "warning" | "danger" | "muted" {
@@ -40,7 +38,7 @@ const FILTERS: { id: Filter; label: string; status: ReportStatusFilter }[] = [
 /**
  * Where user reports land. A report changes nothing by itself – it puts a reel, comment, project, user or devlog in front of staff. Deciding one closes it as resolved or dismissed; taking the thing down stays the existing hide action next to it, so a report is never a silent takedown.
  */
-export default async function AdminReportsPage({
+async function AdminReportsPage({
 	searchParams,
 }: {
 	searchParams: Promise<{ cursor?: SearchParamValue; status?: SearchParamValue }>
@@ -279,3 +277,7 @@ function subjectOf(report: ContentReportRow): Subject {
 	}
 	return none
 }
+
+export { AdminReportsPage as default }
+
+export const dynamic = "force-dynamic"

@@ -18,7 +18,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  * The store knows a session happened and how long it was, which is all the trail needs. The project page is the full record – the timelapses behind each entry, the reels themselves, when each week was handed in and what the reviewer said – so it reads the rows directly rather than widening a snapshot every other page has to download.
  */
 
-export interface TimelineLapse {
+interface TimelineLapse {
 	coveredSeconds: number | null
 	/** Where to watch it: Lapse's own page, or the uploaded file. */
 	href: string | null
@@ -26,7 +26,7 @@ export interface TimelineLapse {
 	thumbnailUrl: string | null
 }
 
-export type TimelineItem =
+type TimelineItem =
 	| {
 			kind: "session"
 			id: string
@@ -64,7 +64,7 @@ export type TimelineItem =
 	  }
 
 /** One message in a dispute thread, from the maker who raised it or a reviewer answering. */
-export interface DisputeMessage {
+interface DisputeMessage {
 	/** Epoch ms. */
 	at: number
 	body: string
@@ -74,7 +74,7 @@ export interface DisputeMessage {
 }
 
 /** A maker's dispute on a phase's latest decision, with the thread under it. */
-export interface PhaseDispute {
+interface PhaseDispute {
 	/** Epoch ms. */
 	at: number
 	id: string
@@ -88,7 +88,7 @@ export interface PhaseDispute {
 }
 
 /** One phase's review state, for the block above the repo checks. */
-export interface PhaseReview {
+interface PhaseReview {
 	/** The reviewer's note on the latest decision, if any. */
 	comments: string | null
 	/** The maker's dispute on the latest decision, with its thread, if they raised one. */
@@ -103,7 +103,7 @@ export interface PhaseReview {
 	submittedAt: number | null
 }
 
-export interface ProjectPageData {
+interface ProjectPageData {
 	bom: BomLine[]
 	/** Why the parts list cannot change, or null when it can. */
 	bomLocked: string | null
@@ -422,3 +422,5 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		weekId: themeIndex === -1 ? WARMUP_WEEK_ID : themeIndex + 1,
 	}
 }
+
+export type { DisputeMessage, PhaseDispute, PhaseReview, ProjectPageData, TimelineItem, TimelineLapse }

@@ -38,7 +38,7 @@ import { fetchRemoteImage } from "@/lib/uploads/remote"
 
 const IMPORT_ACTION = AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT
 
-export interface WarmupImportOutcome {
+interface WarmupImportOutcome {
 	/** What the Ari send did, when the row got as far as one. */
 	ari: "sent" | "failed" | "not_configured" | "not_attempted"
 	email: string | null
@@ -50,7 +50,7 @@ export interface WarmupImportOutcome {
 	userId: string | null
 }
 
-export interface WarmupImportSummary {
+interface WarmupImportSummary {
 	alreadyImported: number
 	ariSent: number
 	failed: number
@@ -257,7 +257,7 @@ async function halfLifeWrittenRecordIds(): Promise<Set<string>> {
  *
  * The URL is whatever the imported row held, so it is fetched through the guarded remote-image path (SSRF blocklist, redirect cap, DNS pinning) and its bytes sniffed, rather than a bare fetch that trusts the remote Content-Type.
  */
-export async function rehostScreenshot(userId: string, url: string): Promise<string | null> {
+async function rehostScreenshot(userId: string, url: string): Promise<string | null> {
 	if (!isUploadConfigured()) return null
 	try {
 		const { bytes, ext, contentType } = await fetchRemoteImage(url, MAX_UPLOAD_BYTES)
@@ -540,3 +540,6 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 		table: YSWS_SUBMISSION.tableId,
 	}
 }
+
+export type { WarmupImportOutcome, WarmupImportSummary }
+export { rehostScreenshot }

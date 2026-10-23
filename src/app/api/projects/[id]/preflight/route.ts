@@ -3,8 +3,6 @@ import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { checkRepo } from "@/lib/repo-checks"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -28,3 +26,5 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	const checks = await checkRepo(project.githubRepo, project.theme)
 	return ok(checks)
 })
+
+export const dynamic = "force-dynamic"

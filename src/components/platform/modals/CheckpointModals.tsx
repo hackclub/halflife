@@ -260,7 +260,7 @@ function withoutPlaceholder(body: string, placeholder: string): string {
 	return body
 }
 
-export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
+function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const {
 		setOpenCheckpoint,
 		logSession,
@@ -2807,3 +2807,5 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		</Modal>
 	)
 }
+
+export { JournalModal }

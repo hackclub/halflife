@@ -9,7 +9,7 @@
  * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `bun scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
  */
 
-export interface FieldDef<T = unknown> {
+interface FieldDef<T = unknown> {
 	readonly __type?: T
 	readonly id: string
 	readonly name: string
@@ -20,14 +20,14 @@ const f = <T>(id: string, name: string): FieldDef<T> => ({ id, name })
 /**
  * Writing by id requires the ids to actually be filled in. Until someone runs the schema dump against the real base, fall back to names so the integration works out of the box rather than 422-ing on every field.
  */
-export const FIELD_MODE: "id" | "name" = process.env.AIRTABLE_USE_FIELD_IDS === "true" ? "id" : "name"
+const FIELD_MODE: "id" | "name" = process.env.AIRTABLE_USE_FIELD_IDS === "true" ? "id" : "name"
 
-export function fieldKey(field: FieldDef): string {
+function fieldKey(field: FieldDef): string {
 	return FIELD_MODE === "id" ? field.id : field.name
 }
 
 /** filterByFormula cannot use field ids. */
-export function formulaRef(field: FieldDef): string {
+function formulaRef(field: FieldDef): string {
 	return `{${field.name}}`
 }
 
@@ -38,7 +38,7 @@ export function formulaRef(field: FieldDef): string {
  *
  * Every row is written by Half Life at submit time, as "Pending Review"; review itself happens on ari.hackclub.com, which moves the row on from there. The `Automation - …` columns belong to the pipeline and are never written here – `Automation - Submit to Unified YSWS` in particular is what sends a row onward, and that is a reviewer's call, not a submitter's.
  */
-export const YSWS_SUBMISSION = {
+const YSWS_SUBMISSION = {
 	fields: {
 		addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
 		addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
@@ -89,7 +89,7 @@ export const YSWS_SUBMISSION = {
 } as const
 
 /** What a row says while its phase is in review; a decision moves it on (see YSWS_REVIEW_STATUS). */
-export const YSWS_PENDING_REVIEW = "Pending Review"
+const YSWS_PENDING_REVIEW = "Pending Review"
 
 /**
  * The rest of what `Loops - halfLifeReviewStatus` can say, one per decision Ari reaches.
@@ -98,7 +98,7 @@ export const YSWS_PENDING_REVIEW = "Pending Review"
  *
  * Written with `typecast: false`, so each string has to already be an option in the base: a new word here is a 422 the update reports, not an option invented in the base (see the note on typecast in lib/airtable/ysws).
  */
-export const YSWS_REVIEW_STATUS = {
+const YSWS_REVIEW_STATUS = {
 	approved: "Approved",
 	changesRequested: "Changes Requested",
 	pending: YSWS_PENDING_REVIEW,
@@ -121,7 +121,7 @@ export const YSWS_REVIEW_STATUS = {
  * They are plain single-line text fields, because the app does not know their
  * Airtable field ids and writes them by name (see `syncReviewDecisionToYsws`).
  */
-export const LOOPS_REVIEW_OVERRIDE = {
+const LOOPS_REVIEW_OVERRIDE = {
 	projectName: "Loops - Override - halfLifeProjectName",
 	projectWeek: "Loops - Override - halfLifeProjectWeek",
 } as const
@@ -129,9 +129,9 @@ export const LOOPS_REVIEW_OVERRIDE = {
 /**
  * The landing page's sign-up list, in its own base. The RSVP buffer drains into it and the Loops sync reads/writes its Loops columns, so both name it from here – the two modules used to default to different tables ("RSVPs" vs "Signups"), which silently split the funnel from the emails.
  */
-export const RSVP_TABLE_ID = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"
+const RSVP_TABLE_ID = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"
 
-export const RSVP = {
+const RSVP = {
 	fields: {
 		// Lowercase in the live table. Airtable field names are case-sensitive, and `fields[]=Email` is a 422 that kills the whole list request – which is how the Loops sync never ran (see lib/airtable/loops).
 		email: f<string>("fldRsvpEmail", "email"),
@@ -169,4 +169,17 @@ export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): {
 		out[fieldKey(field)] = value
 	}
 	return out
+}
+
+export type { FieldDef }
+export {
+	FIELD_MODE,
+	fieldKey,
+	formulaRef,
+	LOOPS_REVIEW_OVERRIDE,
+	RSVP,
+	RSVP_TABLE_ID,
+	YSWS_PENDING_REVIEW,
+	YSWS_REVIEW_STATUS,
+	YSWS_SUBMISSION,
 }

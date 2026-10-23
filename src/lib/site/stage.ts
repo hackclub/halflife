@@ -4,15 +4,15 @@
  * The approved comp is the Figma frame "landing page (claude)" (275:8), 1728px wide. Everything inside a `.stage` is expressed as a fraction of that width in `cqw` units, so a value written here is literally the number of pixels it measures in Figma.
  */
 
-export const COMP_WIDTH = 1728
+const COMP_WIDTH = 1728
 
 /** One comp pixel, as a container-relative length. */
-export function u(px: number): string {
+function u(px: number): string {
 	return `${((px / COMP_WIDTH) * 100).toFixed(5)}cqw`
 }
 
 /** Absolute box, in comp pixels. */
-export function box(
+function box(
 	x: number,
 	y: number,
 	w: number,
@@ -22,12 +22,12 @@ export function box(
 }
 
 /** Absolute origin only – lets content size itself. */
-export function at(x: number, y: number): { readonly left: string; readonly top: string } {
+function at(x: number, y: number): { readonly left: string; readonly top: string } {
 	return { left: u(x), top: u(y) } as const
 }
 
 /** Type set in comp pixels. */
-export function type(size: number, lineHeight = 1.05): { readonly fontSize: string; readonly lineHeight: number } {
+function type(size: number, lineHeight = 1.05): { readonly fontSize: string; readonly lineHeight: number } {
 	return { fontSize: u(size), lineHeight } as const
 }
 
@@ -36,7 +36,7 @@ export function type(size: number, lineHeight = 1.05): { readonly fontSize: stri
  *
  * The comp's four bands came in at 1.07, 1.09, 1.19 and 1.20, and two of them tapered one way while two tapered the other. Under about 1.3 the eye reads a taper as a drawing error rather than a decision, so all four were flat and inconsistently flat. At 1.6 the wide end is half again the narrow one, which is unmistakable, and every band now runs the same way: thin where it leaves the plate above, thick where it lands on the one below. A band that gathers as it descends makes each arrival a weld rather than a dwindle, which is the industrial read this page is after.
  */
-export const BAND_TAPER = 1.6
+const BAND_TAPER = 1.6
 
 /**
  * A connector band, built from its centreline instead of exported path data.
@@ -45,7 +45,7 @@ export const BAND_TAPER = 1.6
  *
  * The ends are horizontal cuts, not perpendicular ones, because that is how they meet the plates. So an end's thickness is its edge foreshortened by the axis's own slope, and the edge that delivers a wanted thickness is that thickness divided back out – which is why the paths carry no round numbers.
  */
-export function band(
+function band(
 	from: readonly [number, number],
 	to: readonly [number, number],
 	mean: number,
@@ -78,7 +78,7 @@ export function band(
 }
 
 /** A plate on the comp grid, in comp pixels. */
-export interface Plate {
+interface Plate {
 	h: number
 	w: number
 	x: number
@@ -86,7 +86,7 @@ export interface Plate {
 }
 
 /** Declare a plate. `box(...spread)` draws it; `weld` joins it to another. */
-export function plate(x: number, y: number, w: number, h: number): Plate {
+function plate(x: number, y: number, w: number, h: number): Plate {
 	return { h, w, x, y }
 }
 
@@ -97,7 +97,7 @@ export function plate(x: number, y: number, w: number, h: number): Plate {
  *
  * A weld is named against the plates instead. `at` is how far along the edge the end sits, as a fraction of that plate's own width, so a plate that is resized keeps its band near the same corner. `rise` and `drop` are how far the end reaches *inside* the plate it meets, which is the overlap that makes the joint a weld and not two shapes touching. Move a plate – or grow one, the way step 1 grew to hold its heading – and both its bands follow.
  */
-export function weld(
+function weld(
 	exit: { plate: Plate; at: number; rise: number },
 	entry: { plate: Plate; at: number; drop: number },
 	mean: number,
@@ -165,3 +165,6 @@ export const SWASH_INSET_Y = "1.8em"
 export function swashBoxWidth(lineRun: number): number {
 	return lineRun / (1 - 2 * SWASH_INSET_X)
 }
+
+export type { Plate }
+export { at, BAND_TAPER, band, box, COMP_WIDTH, plate, type, u, weld }

@@ -28,7 +28,7 @@ const DEFAULT_PUBLIC_HOSTS = ["halflife.hackclub.com", "half-life.k.hackclub.dev
  * pattern, so one list can drive both the redirect resolver and better-auth's
  * allowed hosts.
  */
-export function publicHosts(): string[] {
+function publicHosts(): string[] {
 	const configured = (process.env.APP_PUBLIC_HOSTS ?? "")
 		.split(",")
 		.map(host => host.trim().toLowerCase())
@@ -37,7 +37,7 @@ export function publicHosts(): string[] {
 }
 
 /** Does this hostname name a host we serve? */
-export function isPublicHost(hostname: string): boolean {
+function isPublicHost(hostname: string): boolean {
 	const host = hostname.trim().toLowerCase()
 	return publicHosts().some(pattern => matchesHostPattern(host, pattern))
 }
@@ -61,7 +61,7 @@ function matchesHostPattern(host: string, pattern: string): boolean {
  * staging deployment's links at the live site, and the request's own host is
  * whatever the caller put in the `Host` header.
  */
-export function configuredOrigin(): string | null {
+function configuredOrigin(): string | null {
 	for (const value of [process.env.NEXT_PUBLIC_APP_URL, process.env.BETTER_AUTH_URL]) {
 		const origin = parseOrigin(value)
 		if (origin) return origin
@@ -93,7 +93,7 @@ function parseOrigin(value: string | undefined): string | null {
  * Parsed rather than split on the colon: `[::1]:3000` splits to `[`, and a value
  * carrying a path or a userinfo is not a host header at all.
  */
-export function hostName(host: string): string | null {
+function hostName(host: string): string | null {
 	try {
 		const url = new URL(`http://${host}`)
 		if (url.pathname !== "/" || url.search || url.hash) return null
@@ -110,7 +110,7 @@ export function hostName(host: string): string | null {
  * The names, and the whole of `127.0.0.0/8` – which a prefix test gets wrong:
  * `127.0.0.1.attacker.example` starts with `127.` but is a domain somebody else owns.
  */
-export function isLoopbackHostname(hostname: string): boolean {
+function isLoopbackHostname(hostname: string): boolean {
 	const bare = hostname
 		.trim()
 		.toLowerCase()
@@ -121,10 +121,12 @@ export function isLoopbackHostname(hostname: string): boolean {
 }
 
 /** Is this `Host` header the machine's own? */
-export function isLoopbackHost(host: string): boolean {
+function isLoopbackHost(host: string): boolean {
 	const name = hostName(host)
 	return name !== null && isLoopbackHostname(name)
 }
 
 /** The whole of `127.0.0.0/8`, and nothing that merely starts with `127.`. */
 const LOOPBACK_IPV4 = /^127(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/
+
+export { configuredOrigin, hostName, isLoopbackHost, isLoopbackHostname, isPublicHost, publicHosts }

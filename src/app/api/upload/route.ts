@@ -13,9 +13,6 @@ import {
 } from "@/lib/uploads/r2"
 import { sniffImage } from "@/lib/uploads/remote"
 
-export const dynamic = "force-dynamic"
-export const maxDuration = 60
-
 const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts", "shop"])
 
 export const POST = withSession(async (req: Request, { gate }) => {
@@ -67,3 +64,7 @@ export const POST = withSession(async (req: Request, { gate }) => {
 
 	return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"
+
+export const maxDuration = 60

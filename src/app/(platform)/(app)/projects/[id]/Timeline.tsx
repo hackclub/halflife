@@ -14,7 +14,7 @@ import type { TimelineItem, TimelineLapse } from "@/lib/queries/project-page"
  *
  * One rule down the left and one marker per moment, so it reads as a single chronology rather than a feed of cards. The marker says what kind of moment it was; the body is only as big as what was put on the record, so a submission is a line and a journal entry is the entry.
  */
-export function Timeline({
+function Timeline({
 	items,
 	weekFor,
 	allowReport = false,
@@ -303,3 +303,5 @@ function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
 		</ul>
 	)
 }
+
+export { Timeline }

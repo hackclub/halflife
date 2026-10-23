@@ -8,8 +8,6 @@ import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
 import { parseShopCsv } from "@/lib/shop-csv"
 
-export const dynamic = "force-dynamic"
-
 /** Half a megabyte is thousands of rows; the row cap in shop-csv bites first. */
 const importSchema = z.object({ csv: z.string().min(1).max(500_000) }).strict()
 
@@ -61,3 +59,5 @@ export const POST = withPermission(Permission.MANAGE_SHOP, async (req: Request, 
 
 	return ok({ created: data.length, ids: data.map(i => i.id) }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"

@@ -28,7 +28,7 @@ import prisma from "@/lib/prisma"
 
 const TABLE = RSVP_TABLE_ID
 
-export const LOOPS_FIELDS = {
+const LOOPS_FIELDS = {
 	// The same column the RSVP drain writes. See RSVP.fields.email: the live column is lowercase, and Airtable field names are case-sensitive – naming it `Email` made the list request a 422 that stopped this sync ever running.
 	email: fieldKey(RSVP.fields.email),
 	lastEntryAt: "Loops - halfLifeLastEntryAt",
@@ -157,7 +157,7 @@ function unchanged(row: AirtableRecord, fields: { [_: string]: unknown }): boole
  * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at all: it is the row this app itself created for this person, read back out of `RsvpBuffer`. It is here because key 1 is only stamped by the drain, and rows the landing form wrote straight to Airtable never went through the drain – going forward `recordDirectSignup` remembers those rows, but rows from before that fix are only reachable this way if a buffer entry already names them.
  * 3. **Email.** The last resort, and the one that mostly fails: the Signups row holds whatever address was typed on the landing page.
  */
-export function resolveSignupRow(
+function resolveSignupRow(
 	value: Pick<LoopsValues, "id" | "email">,
 	rows: {
 		byEmail: Map<string, AirtableRecord>
@@ -486,3 +486,5 @@ export async function syncLoopsWeekSubmitted(
 	)
 	return { updated: true }
 }
+
+export { LOOPS_FIELDS, resolveSignupRow }

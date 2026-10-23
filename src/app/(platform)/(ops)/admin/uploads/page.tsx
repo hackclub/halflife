@@ -5,8 +5,6 @@ import { Permission } from "@/lib/permissions"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { isUploadConfigured, listUploadedObjects, UPLOAD_FOLDERS, type UploadFolder } from "@/lib/uploads/r2"
 
-export const dynamic = "force-dynamic"
-
 interface Search {
 	cursor?: SearchParamValue
 	folder?: SearchParamValue
@@ -142,3 +140,5 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

@@ -9,9 +9,7 @@ import prisma from "@/lib/prisma"
 import { assertWeekStarted } from "@/lib/program"
 import { ensureThemeProject } from "@/lib/provisioning"
 
-export const dynamic = "force-dynamic"
-
-export const GET = withSession(async (_req: Request, { gate }) => {
+const GET = withSession(async (_req: Request, { gate }) => {
 	// The rows behind every project's hours, loaded once for the whole list.
 	//
 	// This used to ask `getHoursBreakdown` for each project and phase, which is three queries each – six per project, on a page that shows every project the maker has. `rollUpHours` is the summation half of that breakdown, separated so a caller holding the rows in bulk can apply the same rules without the extra round trips.
@@ -115,3 +113,7 @@ export const POST = withSession(async (req: Request, { gate }) => {
 	const project = await ensureThemeProject(gate.user.id, theme)
 	return ok({ id: project.id }, { status: 201 })
 })
+
+export { GET }
+
+export const dynamic = "force-dynamic"

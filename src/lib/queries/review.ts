@@ -8,7 +8,7 @@ import { type CursorOrderOf, orderByFor, pageResult, positionWhere, readCursor }
 import prisma from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
-export interface QueueItem {
+interface QueueItem {
 	claimExpiresAt: Date | null
 	claimedBy: { id: string; name: string | null } | null
 	/** Whether the claim is still in force. Computed here rather than in a
@@ -53,7 +53,7 @@ const QUEUE_ORDER = {
 	direction: "asc",
 } as const satisfies CursorOrderOf<QueueSubmission, Prisma.PhaseSubmissionOrderByWithRelationInput>
 
-export async function getReviewQueue(opts: {
+async function getReviewQueue(opts: {
 	/** The signed-in reviewer. Their own submissions are excluded from the queue. */
 	reviewerId: string
 	phase?: Phase
@@ -105,21 +105,21 @@ export async function getReviewQueue(opts: {
 }
 
 /** The submission row with everything its review page renders: project, maker, claim, dispute and reviews. */
-export type SubmissionDetail = Prisma.PhaseSubmissionGetPayload<{ include: typeof submissionDetailInclude }>
+type SubmissionDetail = Prisma.PhaseSubmissionGetPayload<{ include: typeof submissionDetailInclude }>
 
 /** A devlog session with its evidence resolved to URLs for the review page. */
-export interface ReviewSession
+interface ReviewSession
 	extends Omit<Prisma.WorkSessionGetPayload<{ include: { media: true; timelapses: true } }>, "media"> {
 	media: (SessionMedia & { url: string | null })[]
 }
 
 /** A prior decision on any of the project's submissions: who wrote it and which phase it decided. */
-export type PriorReview = Prisma.SubmissionReviewGetPayload<{
+type PriorReview = Prisma.SubmissionReviewGetPayload<{
 	include: { reviewer: { select: { name: true; displayName: true } }; submission: { select: { phase: true } } }
 }>
 
 /** Everything the review page renders for one submission. */
-export interface SubmissionDetailView {
+interface SubmissionDetailView {
 	breakdown: HoursBreakdown
 	claimLive: boolean
 	coverImageUrl: string | null
@@ -293,3 +293,6 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 		themeProjectId: d.submission.themeProject.id,
 	}))
 }
+
+export type { PriorReview, QueueItem, ReviewSession, SubmissionDetail, SubmissionDetailView }
+export { getReviewQueue }

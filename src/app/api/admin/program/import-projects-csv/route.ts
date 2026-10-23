@@ -4,8 +4,6 @@ import { withPermission } from "@/lib/guards"
 import { importMacondoProjects } from "@/lib/macondo-projects-csv"
 import { Permission } from "@/lib/permissions"
 
-export const dynamic = "force-dynamic"
-
 /** A few thousand rows at a time, with every devlog parsed inline; multi-megabyte files round a touch slower than the default. */
 const importSchema = z.object({ csv: z.string().min(1).max(10_000_000) }).strict()
 
@@ -18,3 +16,5 @@ export const POST = withPermission(Permission.MANAGE_PROGRAM, async (req: Reques
 
 	return ok(await importMacondoProjects({ email: gate.user.email, id: gate.user.id }, parsed.data.csv))
 })
+
+export const dynamic = "force-dynamic"

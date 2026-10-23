@@ -3,7 +3,7 @@ import { z } from "zod"
 import { API_ERROR_STATUS, type ApiErrorCode, HttpError } from "@/lib/errors"
 import { rateLimited } from "@/lib/rate-limit"
 
-export interface ApiErrorBody {
+interface ApiErrorBody {
 	error: { code: ApiErrorCode; message: string; details?: unknown }
 }
 
@@ -14,14 +14,14 @@ export interface ApiErrorBody {
  *
  * If this ever grows an envelope, it has to grow one everywhere in the same commit; half the callers reading `payload.data` is the state that hides.
  */
-export function ok<T>(data: T, init?: ResponseInit): NextResponse<T> {
+function ok<T>(data: T, init?: ResponseInit): NextResponse<T> {
 	return NextResponse.json(data, init)
 }
 
 /**
  * The only way to build an error response. The status comes from the code, so the two can never disagree.
  */
-export function fail(code: ApiErrorCode, message: string, details?: unknown): NextResponse<ApiErrorBody> {
+function fail(code: ApiErrorCode, message: string, details?: unknown): NextResponse<ApiErrorBody> {
 	return NextResponse.json(
 		{ error: { code, message, ...(details === undefined ? {} : { details }) } },
 		{ status: API_ERROR_STATUS[code] },
@@ -33,7 +33,7 @@ type Parsed<T> = { data: T; error?: never } | { data?: never; error: NextRespons
 /**
  * Parse and validate a JSON body. Handlers must never read a field off an unvalidated object – that is how `undefined` reaches Prisma and becomes a confusing runtime error three layers down.
  */
-export async function parseBody<S extends z.ZodType>(request: Request, schema: S): Promise<Parsed<z.output<S>>> {
+async function parseBody<S extends z.ZodType>(request: Request, schema: S): Promise<Parsed<z.output<S>>> {
 	let raw: unknown
 	try {
 		raw = await request.json()
@@ -50,7 +50,7 @@ export async function parseBody<S extends z.ZodType>(request: Request, schema: S
 	return { data: result.data }
 }
 
-export function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S): Parsed<z.output<S>> {
+function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S): Parsed<z.output<S>> {
 	const raw = Object.fromEntries(request.nextUrl.searchParams.entries())
 	const result = schema.safeParse(raw)
 	if (!result.success)
@@ -146,7 +146,7 @@ function releaseUploadBytes(bytes: number): void {
  *
  * `request.formData()` materialises the whole body first, and both upload routes check their size limits afterwards – fine for a small staff form, but a denial of service for an upload. The handoff path is deliberately unauthenticated and reads its token out of the form, so a limit checked after parsing arrives too late. Content-Length is checked first (cheap, and what a normal client sends), then the stream is counted as it is read, so a chunked request cannot skip the check by omitting the header.
  */
-export async function parseUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
+async function parseUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
 	const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
 	const declared = Number(request.headers.get("content-length") ?? "")
 	const reservation = Number.isFinite(declared) && declared > 0 ? Math.min(declared, cap) : cap
@@ -232,3 +232,6 @@ export function withRoute<A extends unknown[]>(
 		}
 	}
 }
+
+export type { ApiErrorBody }
+export { fail, ok, parseBody, parseQuery, parseUploadForm }

@@ -15,7 +15,7 @@ import type { Project } from "@/lib/types"
  *
  * Failures that block are coral and say how to fix them; recommendations are amber and never block; GitHub being unreachable is amber too, because that is ours to absorb. The repo being checked sits under the heading with its editor, so a wrong or missing link is fixed without leaving the sheet, and a new link re-runs the checks. Otherwise the fix is a push, and "Check again" is how the sheet finds out.
  */
-export function RepoChecks({
+function RepoChecks({
 	project,
 	onResult,
 	editable = true,
@@ -202,3 +202,5 @@ function CheckRow({ check }: { check: RepoCheck }) {
 		</li>
 	)
 }
+
+export { RepoChecks }

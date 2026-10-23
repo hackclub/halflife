@@ -8,17 +8,11 @@ import prisma from "@/lib/prisma"
 import { calendarDayNumber, DAY_MS, effectiveDateFor, utcCalendarDay } from "@/lib/time"
 
 /**
- * Re-exported rather than kept here: the check itself belongs next to the other shape helpers, because a zone is validated where it is typed and this module is server-only.
- */
-export { isTimeZone } from "@/lib/schemas/common"
-export { effectiveDateFor } from "@/lib/time"
-
-/**
  * The settings row is created on demand so a fresh database is usable without a seed step having run first.
  *
  * Read once per server render: the layout's snapshot, the page, the week number and the access gates all ask for it, and each asking was a round trip. Nothing writes the row and then reads it back in the same render.
  */
-export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
+const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
 	const existing = await prisma.programSettings.findUnique({ where: { id: "singleton" } })
 	if (existing) return existing
 	return prisma.programSettings.create({
@@ -39,7 +33,7 @@ export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
  *
  * The start is anchored to its UTC calendar date, which is what `eventStartDate` stores (see `weekClosesAt`), while the moment being placed is read in the program's timezone.
  */
-export function weekNumberForDate(start: Date, date: Date, timeZone: string): number {
+function weekNumberForDate(start: Date, date: Date, timeZone: string): number {
 	const elapsed = calendarDayNumber(date, timeZone) - utcCalendarDay(start)
 	if (elapsed < 0) return 0
 	return Math.floor(elapsed / 7) + 1
@@ -50,7 +44,7 @@ export function weekNumberForDate(start: Date, date: Date, timeZone: string): nu
  *
  * Derived from `weekOpensAt` and `weekClosesAt` rather than counted in elapsed milliseconds from the start date, because those are the instants the server enforces. A range that ended hours before the deadline it describes would tell a client the week closed early, and counting UTC instants drifts by an hour across a daylight-saving change.
  */
-export function weekDateRange(
+function weekDateRange(
 	settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
 	week: number,
 ): { start: Date; end: Date } | null {
@@ -71,7 +65,7 @@ function midnightAfterWeek(settings: Pick<ProgramSettings, "eventStartDate" | "p
 }
 
 /** Midnight at the start of the day `at` falls on in `timeZone`. */
-export function startOfDay(at: Date, timeZone: string): Date {
+function startOfDay(at: Date, timeZone: string): Date {
 	const [year, month, day] = effectiveDateFor(at, timeZone).split("-")
 	return zonedWallTime(Date.UTC(Number(year), Number(month) - 1, Number(day)), timeZone)
 }
@@ -90,17 +84,14 @@ const CLOSE_BEFORE_MIDNIGHT_MS = 60 * 1000
 /**
  * The moment a program week stops taking work: 11:59 PM on its last day, in the program's timezone. Anything at 11:59 or later is refused; the minute to midnight belongs to no week.
  */
-export function weekClosesAt(
-	settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
-	week: number,
-): Date {
+function weekClosesAt(settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">, week: number): Date {
 	return new Date(midnightAfterWeek(settings, week).getTime() - CLOSE_BEFORE_MIDNIGHT_MS)
 }
 
 /**
  * The moment a program week starts taking work: midnight at the start of its Monday in the program's timezone, a minute after the week before it closes. Week 1's is the program's first midnight.
  */
-export function weekOpensAt(settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">, week: number): Date {
+function weekOpensAt(settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">, week: number): Date {
 	return midnightAfterWeek(settings, week - 1)
 }
 
@@ -109,7 +100,7 @@ export function weekOpensAt(settings: Pick<ProgramSettings, "eventStartDate" | "
  *
  * Week 0 is the warm-up, which is not scheduled and never waits.
  */
-export async function assertWeekStarted(week: number): Promise<void> {
+async function assertWeekStarted(week: number): Promise<void> {
 	if (week < 1) return
 	const settings = await getProgramSettings()
 	const opensAt = weekOpensAt(settings, week)
@@ -365,4 +356,19 @@ export function projectEditLockReason(project: { buildStatus: PhaseStatus; desig
 	if (isPhaseDecided(project.designStatus) || isPhaseDecided(project.buildStatus))
 		return "A phase of this project has been decided, so its details are final"
 	return null
+}
+
+/**
+ * Re-exported rather than kept here: the check itself belongs next to the other shape helpers, because a zone is validated where it is typed and this module is server-only.
+ */
+export { isTimeZone } from "@/lib/schemas/common"
+export { effectiveDateFor } from "@/lib/time"
+export {
+	assertWeekStarted,
+	getProgramSettings,
+	startOfDay,
+	weekClosesAt,
+	weekDateRange,
+	weekNumberForDate,
+	weekOpensAt,
 }

@@ -6,8 +6,6 @@ import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 import prisma from "@/lib/prisma"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
-export const maxDuration = 300
-
 /**
  * At most this many links refreshed per run. The job runs every 15 minutes, and each link can sit on a 10-second Hackatime timeout, so an unbounded run over a real cohort exceeds `maxDuration` and is killed before it records anything.
  */
@@ -72,3 +70,5 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	await recordSyncRun("hackatime", summary)
 	return ok(summary)
 })
+
+export const maxDuration = 300

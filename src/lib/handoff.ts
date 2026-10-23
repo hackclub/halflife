@@ -22,7 +22,7 @@ import {
  */
 
 /** Minutes a QR code stays good for. Long enough to find your phone. */
-export const HANDOFF_TTL_MINUTES = 10
+const HANDOFF_TTL_MINUTES = 10
 
 /** Only video: this path exists to receive a recording. */
 const ALLOWED_PREFIX = "video/"
@@ -175,3 +175,5 @@ export async function claimHandoff(id: string, userId: string): Promise<boolean>
 	})
 	return result.count === 1
 }
+
+export { HANDOFF_TTL_MINUTES }

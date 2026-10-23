@@ -20,7 +20,7 @@ import { postMessage, sendDM } from "@/lib/slack"
  * Called after the decision transaction has committed, from both decision paths (the console route and the Ari webhook), so the two cannot drift.
  */
 
-export interface ReviewOutcomeNotice {
+interface ReviewOutcomeNotice {
 	/** Which surface decided it, so the message can say who is asking. */
 	decidedBy: "ari" | "console"
 	/**
@@ -70,7 +70,7 @@ function headline(
 	}
 }
 
-export interface ReviewOutcomeMessage {
+interface ReviewOutcomeMessage {
 	/**
 	 * The reviewer's own words, or null.
 	 *
@@ -86,7 +86,7 @@ export interface ReviewOutcomeMessage {
  *
  * Separated from the sending so that what a maker is actually told can be read, and checked, without a Slack call: the words are the part that is easy to get wrong and the part nobody notices until a participant is confused by one.
  */
-export function reviewOutcomeMessage(
+function reviewOutcomeMessage(
 	notice: Pick<ReviewOutcomeNotice, "result" | "decidedBy" | "note">,
 	context: { phase: Phase; title: string; resubmitBy?: string | null },
 ): ReviewOutcomeMessage {
@@ -109,7 +109,7 @@ export function reviewOutcomeMessage(
  *
  * The reason is the send's own refusal rather than a person's note, so it reads as one of our paragraphs instead of the set-apart quote a reviewer's words get. That also means it can change between attempts as the maker edits - only the project page follows it, because the notice itself is owed once.
  */
-export function shipFailedMessage(source: { title: string; phase: Phase; reason: string }): {
+function shipFailedMessage(source: { title: string; phase: Phase; reason: string }): {
 	prose: string[]
 } {
 	const phase = source.phase === Phase.DESIGN ? "design" : "build"
@@ -173,7 +173,7 @@ async function deliverToMaker(input: {
  *
  * Nothing in here may reach the caller, and on the Ari path that is load-bearing rather than tidiness. This runs inside the webhook handler, so a throw becomes a 5xx, Ari redelivers, and the redelivery finds the decision already committed – recorded as "already resolved" and swallowed. The maker would then be told nothing at all, with no record that a notification was owed, which is the single outcome this module exists to prevent. So a failure here is caught and written down, where an admin can see that somebody needs chasing.
  */
-export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> {
+async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> {
 	try {
 		await deliverReviewOutcome(notice)
 	} catch (err) {
@@ -232,7 +232,7 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
  *
  * Owed once per stuck hand-in, and the caller decides that: this is the message, and `sendSubmissionToAri` only reaches for it on the transition into a stuck state. Best-effort like every other notice – the caller is the hourly retry job, and a Slack outage must not turn one stuck hand-in into a failing job.
  */
-export async function notifyShipFailed(input: { themeProjectId: string; phase: Phase; reason: string }): Promise<void> {
+async function notifyShipFailed(input: { themeProjectId: string; phase: Phase; reason: string }): Promise<void> {
 	try {
 		const project = await prisma.themeProject.findUnique({
 			select: {
@@ -397,3 +397,6 @@ export async function notifyDisputeReply(input: { body: string; phase: Phase; th
 		}).catch(() => undefined)
 	}
 }
+
+export type { ReviewOutcomeMessage, ReviewOutcomeNotice }
+export { notifyReviewOutcome, notifyShipFailed, reviewOutcomeMessage, shipFailedMessage }

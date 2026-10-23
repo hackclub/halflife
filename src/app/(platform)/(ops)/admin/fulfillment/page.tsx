@@ -15,8 +15,6 @@ import { type FulfillmentFilters, listFulfillmentOrders, listPrinterAwards } fro
 import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 import { DAY_MS } from "@/lib/time"
 
-export const dynamic = "force-dynamic"
-
 interface Search {
 	cursor?: SearchParamValue
 	from?: SearchParamValue
@@ -219,3 +217,5 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

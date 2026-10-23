@@ -45,14 +45,14 @@ const MAX_RATE_LIMIT_WAIT_MS = 30_000
 /**
  * The caller's forge identity and a token, or null when they have not linked that forge. A revoked or expired token reads the same as never having linked: the UI offers the forge again rather than showing an error nobody can act on.
  */
-export interface ForgeCredentials {
+interface ForgeCredentials {
 	accessToken: string
 	forge: Forge
 	/** The account's login on that forge, from the account row. */
 	login: string
 }
 
-export class ForgeWriteUnavailableError extends Error {
+class ForgeWriteUnavailableError extends Error {
 	constructor(message: string) {
 		super(message)
 		this.name = "ForgeWriteUnavailableError"
@@ -92,7 +92,7 @@ function refreshAccessToken(accountId: string, userId: string): Promise<string |
  *
  * Resolves null when the user has not linked this forge. A refresh that fails keeps the stored token: a concurrent request may have just written a new one, which the re-read below picks up, and the call the caller makes next is what decides whether the old one is dead.
  */
-export async function forgeCredentials(userId: string, forge: Forge): Promise<ForgeCredentials | null> {
+async function forgeCredentials(userId: string, forge: Forge): Promise<ForgeCredentials | null> {
 	const account = await prisma.account.findFirst({
 		orderBy: { updatedAt: "desc" },
 		select: { accessToken: true, accessTokenExpiresAt: true, accountId: true, id: true, refreshToken: true },
@@ -295,7 +295,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 }
 
 /** A repo the caller can push to, as the picker shows it. */
-export interface WritableRepo {
+interface WritableRepo {
 	defaultBranch: string
 	/** `owner/name`, or `group/subgroup/name` on GitLab. */
 	fullName: string
@@ -335,7 +335,7 @@ function nextPagePath(linkHeader: string | null, apiRoot: string): string | null
  *
  * Every page is followed, so the count is the account's, not the first hundred's. Filtered to what they can actually push to: offering a repo the token cannot write to would let someone turn the sync on and then watch every entry fail with a 403 they cannot fix from here.
  */
-export async function listWritableRepos(userId: string, forge: Forge): Promise<WritableRepo[]> {
+async function listWritableRepos(userId: string, forge: Forge): Promise<WritableRepo[]> {
 	const creds = await forgeCredentials(userId, forge)
 	if (!creds) return []
 	return forge.id === "gitlab" ? listGitLabRepos(creds) : listGitHubRepos(creds)
@@ -443,7 +443,7 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
  */
 const MAX_TREE_PAGES = 100
 
-export interface FileUpdate {
+interface FileUpdate {
 	/**
 	 * The file's new bytes, or null to delete the path.
 	 *
@@ -453,7 +453,7 @@ export interface FileUpdate {
 	path: string
 }
 
-export interface WrittenFile {
+interface WrittenFile {
 	bytes: number
 	path: string
 	/** The blob sha the forge answered with, for the run history. */
@@ -467,7 +467,7 @@ export interface WrittenFile {
  *
  * A file whose contents already match is left alone rather than rewritten, so the common case – a journal entry that changed nothing about BOM.csv, or a retried sync – produces no commit at all. Both implementations honour that, and both make the whole set land atomically or not at all.
  */
-export function commitFiles(
+function commitFiles(
 	creds: ForgeCredentials,
 	ref: RepoRef,
 	branch: string,
@@ -483,7 +483,7 @@ export function commitFiles(
  *
  * Deliberately not a configured branch. A maker's repo is theirs, and guessing a `devlog` branch that may not exist would fail every write with a 404; the default branch is the one that always exists, and a maker who wants the files elsewhere can merge them or point the sync at a repo that has it.
  */
-export async function defaultBranchOf(creds: ForgeCredentials, ref: RepoRef): Promise<string> {
+async function defaultBranchOf(creds: ForgeCredentials, ref: RepoRef): Promise<string> {
 	if (creds.forge.id === "gitlab") {
 		const res = await call(creds, `projects/${encodeURIComponent(ref.fullName)}`, { method: "GET" })
 		if (res.status === 404) throw new HttpError("NOT_FOUND", `${ref.fullName} does not exist or is not visible.`)
@@ -771,3 +771,6 @@ async function commitGitLab(
 		.map(w => Object.assign({}, w, { sha: w.unchanged ? w.sha : commit.id }))
 		.toSorted((a, b) => a.path.localeCompare(b.path))
 }
+
+export type { FileUpdate, ForgeCredentials, WritableRepo, WrittenFile }
+export { commitFiles, defaultBranchOf, ForgeWriteUnavailableError, forgeCredentials, listWritableRepos }

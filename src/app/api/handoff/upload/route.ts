@@ -4,9 +4,6 @@ import { clientIp } from "@/lib/client-ip"
 import { completeHandoff, resolveHandoff } from "@/lib/handoff"
 import { isUploadConfigured } from "@/lib/uploads/r2"
 
-export const dynamic = "force-dynamic"
-export const maxDuration = 60
-
 /**
  * This route's own budget, rather than the shared one.
  *
@@ -67,3 +64,7 @@ export const POST = withRoute(async (req: Request) => {
 
 	return ok({ uploaded: true }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"
+
+export const maxDuration = 60

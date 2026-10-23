@@ -16,7 +16,7 @@ import { configuredOrigin, hostName, isLoopbackHost, isPublicHost } from "@/lib/
  *
  * Edge-safe on purpose: the proxy imports this, so no `server-only`, no node imports.
  */
-export function publicOrigin(request: { headers: Headers; url: string }): string | null {
+function publicOrigin(request: { headers: Headers; url: string }): string | null {
 	const configured = configuredOrigin()
 	if (configured) return configured
 
@@ -72,3 +72,5 @@ export function publicRedirect(
 	}
 	return NextResponse.redirect(new URL(path, origin), status)
 }
+
+export { publicOrigin }

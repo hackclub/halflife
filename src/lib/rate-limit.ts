@@ -11,7 +11,7 @@ interface Bucket {
 	lastSeen: number
 }
 
-export interface RateLimitOptions {
+interface RateLimitOptions {
 	/**
 	 * Whether a refused request counts against the caller's budget.
 	 *
@@ -68,3 +68,5 @@ export function rateLimited(
 
 	return limited
 }
+
+export type { RateLimitOptions }

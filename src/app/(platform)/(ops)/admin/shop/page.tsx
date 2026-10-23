@@ -10,8 +10,6 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 
-export const dynamic = "force-dynamic"
-
 const CATEGORY_LABEL: Record<ShopItemCategory, string> = {
 	CONSUMABLE: "consumable",
 	MISC: "misc",
@@ -125,3 +123,5 @@ export default async function AdminShopPage() {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

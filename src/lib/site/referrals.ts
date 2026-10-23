@@ -23,14 +23,14 @@ const REFERRAL_NUMBER_FIELD = "Loops - halfLifeReferralNumber"
 /** Airtable's page size, and the walk's memory bound. */
 const PAGE_SIZE = 100
 
-export interface ReferralLeaderRow {
+interface ReferralLeaderRow {
 	code: string
 	/** The code owner's address, when their own sign-up row is still present. */
 	email: string | null
 	signups: number
 }
 
-export interface ReferralLeaderboard {
+interface ReferralLeaderboard {
 	/** Codes that brought at least one person in. */
 	activeCodes: number
 	/** Distinct people attributed to any referral link. */
@@ -42,7 +42,7 @@ export interface ReferralLeaderboard {
 /**
  * The referral leaderboard, or null when Airtable is not configured or does not answer.
  */
-export const getReferralLeaderboard = cachedAirtableWalk(walkReferrals)
+const getReferralLeaderboard = cachedAirtableWalk(walkReferrals)
 
 /** Airtable cells come back as strings here, but the number column can be typed. */
 function asText(value: unknown): string | null {
@@ -100,3 +100,6 @@ async function walkReferrals(config: AirtableConfig): Promise<ReferralLeaderboar
 
 	return { activeCodes: rows.length, referred: attributed.size, rows }
 }
+
+export type { ReferralLeaderboard, ReferralLeaderRow }
+export { getReferralLeaderboard }

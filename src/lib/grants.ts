@@ -34,7 +34,7 @@ import prisma from "@/lib/prisma"
  */
 
 /** How long a row with no error is trusted as a live request rather than a crash. */
-export const ABANDONED_ATTEMPT_MS = 10 * 60_000
+const ABANDONED_ATTEMPT_MS = 10 * 60_000
 
 /**
  * Whether a Prisma error is the unique index on the grant hashid, rather than the one-per-project key.
@@ -136,7 +136,7 @@ async function markSentWithAudit(input: {
 	})
 }
 
-export interface SendGrantInput {
+interface SendGrantInput {
 	adminEmail: string | null
 	adminId: string
 	/** The HCB grant link (or bare hashid) an admin pasted. */
@@ -145,14 +145,14 @@ export interface SendGrantInput {
 	themeProjectId: string
 }
 
-export interface SendGrantResult {
+interface SendGrantResult {
 	/** True when a grant had already been sent for this project and phase. */
 	alreadySent: boolean
 	amountCents: number
 	transactionId: string | null
 }
 
-export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult> {
+async function sendGrant(input: SendGrantInput): Promise<SendGrantResult> {
 	if (!isHcbConfigured()) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
 
 	// The design approval is the funding decision, and the idempotency key includes the phase – accepting BUILD would send the same frozen grant a second time under a key of its own.
@@ -376,3 +376,6 @@ async function reclaimRow(
 		throw err
 	}
 }
+
+export type { SendGrantInput, SendGrantResult }
+export { ABANDONED_ATTEMPT_MS, sendGrant }

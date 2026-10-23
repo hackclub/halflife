@@ -14,7 +14,7 @@ import { type Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/en
  *
  * Pure and order-independent, so `verify:contracts` can pin the rules without a database. This is the figure behind the admin page's pending count and the `ari-review-counts` comparison with Ari's own board – the failure it exists to prevent is a page that quietly disagrees with the queue.
  */
-export interface AriShipRow {
+interface AriShipRow {
 	ariSubmissionId: string | null
 	createdAt: Date
 	id: string
@@ -27,7 +27,7 @@ export interface AriShipRow {
 	themeProjectId: string
 }
 
-export interface AriShipCounts {
+interface AriShipCounts {
 	approved: number
 	changes: number
 	/** Open ships Ari holds, one per phase at most. */
@@ -75,3 +75,5 @@ export function countAriShips(rows: readonly AriShipRow[]): AriShipCounts {
 
 	return counts
 }
+
+export type { AriShipCounts, AriShipRow }

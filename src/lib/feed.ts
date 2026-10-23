@@ -21,16 +21,16 @@ import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
  */
 
 /** Where reel uploads live in the bucket. Keys are validated against this. */
-export const POST_UPLOAD_FOLDER = "posts"
+const POST_UPLOAD_FOLDER = "posts"
 
-export interface FeedAuthor {
+interface FeedAuthor {
 	id: string
 	image: string | null
 	name: string | null
 	streak: number
 }
 
-export interface FeedItem {
+interface FeedItem {
 	author: FeedAuthor
 	caption: string
 	commentCount: number
@@ -132,7 +132,7 @@ const visible: Prisma.PostWhereInput = {
 	status: PostStatus.PUBLISHED,
 }
 
-export interface FeedPage {
+interface FeedPage {
 	items: FeedItem[]
 	/**
 	 * What goes above the paged rows, on the first page only: any reel an admin posted today in the viewer's timezone, newest first.
@@ -148,7 +148,7 @@ export interface FeedPage {
  *
  * The leading reels are returned as their own list rather than spliced into the paged rows. Paginating a cursor across two different orderings is how a feed starts skipping or repeating items – the set is small, bounded, and only needed on the first page.
  */
-export async function getFeed(
+async function getFeed(
 	viewerId: string,
 	opts: { cursor?: string; limit: number; timeZone?: string },
 ): Promise<FeedPage> {
@@ -203,7 +203,7 @@ export async function getFeed(
  *
  * The same `visible` filter and the same mapper as the feed, on purpose: a reel a moderator hid, or the author deleted, is not on their profile either, and whether the viewer has liked it is answered the way the feed answers it.
  */
-export async function getCreatorReels(creatorId: string, viewerId: string, limit = 24): Promise<FeedItem[]> {
+async function getCreatorReels(creatorId: string, viewerId: string, limit = 24): Promise<FeedItem[]> {
 	const rows = await prisma.post.findMany({
 		include: feedInclude,
 		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
@@ -221,7 +221,7 @@ export async function getCreatorReels(creatorId: string, viewerId: string, limit
 	return rows.map(p => toFeedItem(p, likedIds))
 }
 
-export interface CreatePostInput {
+interface CreatePostInput {
 	byteSize?: number | null
 	/** True when the author holds MANAGE_FEED. Only they may announce. */
 	canManageFeed: boolean
@@ -510,3 +510,5 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 }
 
 export { PostKind, PostStatus } from "@/app/generated/prisma/enums"
+export type { CreatePostInput, FeedAuthor, FeedItem, FeedPage }
+export { getCreatorReels, getFeed, POST_UPLOAD_FOLDER }

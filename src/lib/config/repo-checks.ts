@@ -18,7 +18,7 @@ import { Theme } from "@/app/generated/prisma/enums"
  *
  * Strict on purpose, as Stasis has it: "parts.csv" matching would tell a reviewer there is a BOM when there may not be one. Shared here so the check and the import find the same file.
  */
-export const BOM_CSV_PATTERN = /(^|\/)[^/]*bom[^/]*\.csv$/i
+const BOM_CSV_PATTERN = /(^|\/)[^/]*bom[^/]*\.csv$/i
 
 /**
  * How a `.json` in the repo can stand in for a board or a schematic.
@@ -31,7 +31,7 @@ export const BOM_CSV_PATTERN = /(^|\/)[^/]*bom[^/]*\.csv$/i
  *
  * Library types are deliberately absent – a footprint, symbol or device library is not a design of anything – and Standard's bare numbers, which could belong to anything, are only accepted alongside `editorVersion` or `canvas`, which nothing else writes there.
  */
-export const DESIGN_JSON = Object.freeze({
+const DESIGN_JSON = Object.freeze({
 	/** The document type, as either format spells it, wherever in the opening it sits. */
 	docType: /"docType"\s*:\s*"([^"]{1,24})"/i,
 	/** The extension to look for. Far too common to accept unread. */
@@ -46,7 +46,7 @@ export const DESIGN_JSON = Object.freeze({
 	numeric: new Set(["1", "3", "5"]),
 })
 
-export type RepoFileKind =
+type RepoFileKind =
 	| "pcbSource" // board and schematic sources
 	| "pcbFab" // gerbers and drill files
 	| "cadSource" // editable 3D sources
@@ -55,7 +55,7 @@ export type RepoFileKind =
 	| "logicSchematic" // schematics, plus logic-simulator files
 	| "bom"
 
-export const REPO_FILE_KINDS: Record<
+const REPO_FILE_KINDS: Record<
 	RepoFileKind,
 	{
 		label: string
@@ -144,7 +144,7 @@ export const REPO_FILE_KINDS: Record<
 	},
 }
 
-export const THEME_REPO_REQUIREMENTS: Record<
+const THEME_REPO_REQUIREMENTS: Record<
 	Theme,
 	{
 		/** The README BOM table the check suggests, when the week's funding is priced from it. */
@@ -201,7 +201,7 @@ function isBomHeader(cells: readonly string[]): boolean {
  *
  * Both Markdown and HTML tables are accepted, because the README may be written either way.
  */
-export function readmeBomTable(readme: string, minimumRows = 1): { rows: number } | null {
+function readmeBomTable(readme: string, minimumRows = 1): { rows: number } | null {
 	return markdownBomTable(readme, minimumRows) ?? htmlBomTable(readme, minimumRows)
 }
 
@@ -239,3 +239,6 @@ function htmlBomTable(readme: string, minimumRows: number): { rows: number } | n
 	}
 	return null
 }
+
+export type { RepoFileKind }
+export { BOM_CSV_PATTERN, DESIGN_JSON, REPO_FILE_KINDS, readmeBomTable, THEME_REPO_REQUIREMENTS }

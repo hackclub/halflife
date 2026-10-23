@@ -18,7 +18,7 @@ function base(): string {
 	return (process.env.HCB_BASE_URL ?? DEFAULT_BASE).replace(/\/$/, "")
 }
 
-export function isHcbConfigured(): boolean {
+function isHcbConfigured(): boolean {
 	const staticToken = Boolean(process.env.HCB_ACCESS_TOKEN)
 	const refreshable = Boolean(
 		process.env.HCB_CLIENT_ID && process.env.HCB_CLIENT_SECRET && process.env.HCB_REFRESH_TOKEN,
@@ -89,7 +89,7 @@ async function hcbFetch(path: string, init: RequestInit & { timeoutMs?: number }
 }
 
 /** A bare hashid, or a grant link on HCB (or the configured base). */
-export function parseGrantHashid(input: string): string | null {
+function parseGrantHashid(input: string): string | null {
 	const value = input.trim()
 	if (!value) return null
 	if (/^[A-Za-z0-9]{4,32}$/.test(value)) return value
@@ -112,11 +112,11 @@ export function parseGrantHashid(input: string): string | null {
  *
  * HCB only renders another account's email to a token that may read it, so a deployment whose token cannot would refuse every grant. `HCB_VERIFY_GRANT_OWNER=false` is the escape hatch for such a deployment - and the trail records that nobody checked.
  */
-export function verifiesGrantOwner(): boolean {
+function verifiesGrantOwner(): boolean {
 	return (process.env.HCB_VERIFY_GRANT_OWNER ?? "true").trim().toLowerCase() !== "false"
 }
 
-export interface TopUpResult {
+interface TopUpResult {
 	/**
 	 * The email of the account that owns the card grant, as HCB reported it. Null when HCB did not render one.
 	 */
@@ -271,3 +271,6 @@ export async function memoTransaction(transactionId: string, memo: string): Prom
 	)
 	if (!res.ok) throw new HttpError("INTERNAL", `HCB memo update failed (${res.status})`)
 }
+
+export type { TopUpResult }
+export { isHcbConfigured, parseGrantHashid, verifiesGrantOwner }

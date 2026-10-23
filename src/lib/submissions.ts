@@ -31,7 +31,7 @@ import { warmupPhaseOf } from "@/lib/warmup"
  *
  * Build may be submitted once design has been submitted at least once – not once design has been *approved*. With five concurrent themes sharing one review queue, gating on approval turns a reviewer-capacity problem into a participant-blocked problem: someone would sit idle through their build week waiting on a queue. The finalize path does require design approved before a build can be approved, so the ordering invariant holds where money is involved and not where it only costs people time.
  */
-export function canSubmitPhase(
+function canSubmitPhase(
 	project: ThemeProject,
 	phase: Phase,
 ): { ok: true } | { ok: false; code: "ALREADY_SUBMITTED" | "PHASE_LOCKED"; message: string } {
@@ -313,3 +313,5 @@ export async function stampSessionTiming(date: Date): Promise<{ effectiveDate: s
 		weekNumber: weekNumberForDate(settings.eventStartDate, date, settings.programTimezone),
 	}
 }
+
+export { canSubmitPhase }

@@ -36,7 +36,7 @@ function claim(el: HTMLVideoElement) {
 /**
  * Play `el` as the only reel making noise, for players with their own controls (the full-page stage). Resolves to whether it is playing – false when the browser refused, which is the caller's cue to retry muted.
  */
-export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
+function playExclusive(el: HTMLVideoElement): Promise<boolean> {
 	claim(el)
 	return el.play().then(
 		() => true,
@@ -45,16 +45,16 @@ export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
 }
 
 /** For a video that started some other way – the element's own play event. */
-export function notePlaying(el: HTMLVideoElement) {
+function notePlaying(el: HTMLVideoElement) {
 	claim(el)
 }
 
-export function noteStopped(el: HTMLVideoElement) {
+function noteStopped(el: HTMLVideoElement) {
 	if (playingNow === el) playingNow = null
 }
 
 /** Silence whichever reel is playing, for a feed that is being put away. */
-export function pauseReels() {
+function pauseReels() {
 	playingNow?.pause()
 }
 
@@ -63,7 +63,7 @@ export function pauseReels() {
  *
  * PUT, not POST: a like is idempotent – the body says which state you want, not "add one" – and the route is declared that way. Sending POST got a silent 405 and left the optimistic count standing until the next refresh.
  */
-export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, patch: Partial<FeedItem>) => void) {
+function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, patch: Partial<FeedItem>) => void) {
 	if (reel.likedByMe === next) return
 	onPatch?.(reel.id, { likeCount: reel.likeCount + (next ? 1 : -1), likedByMe: next })
 	fetch(`/api/posts/${reel.id}/like`, {
@@ -341,3 +341,5 @@ export function ReelCard({
 		</article>
 	)
 }
+
+export { notePlaying, noteStopped, pauseReels, playExclusive, sendLike }

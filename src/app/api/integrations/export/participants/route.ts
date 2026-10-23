@@ -7,8 +7,6 @@ import { withExportRoute } from "@/lib/integration-route"
 import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 
-export const dynamic = "force-dynamic"
-
 const query = paginationQuery.extend({ updatedSince: z.coerce.date().optional() })
 
 /**
@@ -82,3 +80,5 @@ export const GET = withExportRoute(async (req: NextRequest, gate) => {
 		nextCursor: page.nextCursor,
 	})
 })
+
+export const dynamic = "force-dynamic"

@@ -4,7 +4,7 @@
  * The parser existed three times – the shop import, the Macondo import and the BOM import – and the writer a fourth. The shop and Macondo copies were byte-identical; the BOM copy was the same algorithm without the line bookkeeping. Each import's error messages point at a line, so the line-aware shape is the canonical one.
  */
 
-export interface CsvRecord {
+interface CsvRecord {
 	fields: string[]
 	/** 1-based line in the file where this record started, the header being line 1. */
 	line: number
@@ -87,3 +87,5 @@ export function csvCell(value: string | number): string {
 export function csvRow(cells: (string | number)[]): string {
 	return cells.map(csvCell).join(",")
 }
+
+export type { CsvRecord }

@@ -57,7 +57,7 @@ const DECALS = {
 	}
 }
 
-export type DecalName = keyof typeof DECALS
+type DecalName = keyof typeof DECALS
 
 /**
  * How far the ink runs along the plate's edge, as a fraction of the plate's own width.
@@ -144,3 +144,5 @@ export default function CornerDecal({
 		/>
 	)
 }
+
+export type { DecalName }

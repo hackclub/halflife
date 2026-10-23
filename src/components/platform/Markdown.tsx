@@ -38,7 +38,7 @@ function imageIdentity(src: string): string {
 /**
  * How many images an entry carries. The session's evidence rule counts these rather than a separate attachment list: the picture belongs in the sentence that explains it, so the entry is the only place it can live.
  */
-export function countImages(source: string): number {
+function countImages(source: string): number {
 	// Only ones that will actually render: counting by syntax alone would let `![x](javascript:)` three times clear the bar with nothing to show. And only once each – the same picture pasted again is the same picture, so a maker cannot clear the evidence bar by repeating one image down the entry.
 	const seen = new Set<string>()
 	for (const match of source.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
@@ -53,7 +53,7 @@ export function countImages(source: string): number {
 /**
  * The images an entry shows, in the order it shows them. Pasted data URIs are left out: they render inline, but as a thumbnail URL they would ship a whole picture inside every payload that lists the project.
  */
-export function imageSources(source: string): string[] {
+function imageSources(source: string): string[] {
 	const out: string[] = []
 	for (const m of source.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
 		const src = m[1] !== undefined ? safeSrc(m[1]) : undefined
@@ -67,7 +67,7 @@ export function imageSources(source: string): string[] {
  *
  * Cut as Markdown rather than as a string: slicing through `![a](url)` or `**bold**` would leave a half-token that renders as literal syntax, so tokens are kept whole and the cut falls on a word boundary between them. Images cost nothing against the limit, but only the first one is kept – an excerpt that is mostly photographs is not an excerpt.
  */
-export function excerpt(source: string, limit: number): { text: string; cut: boolean } {
+function excerpt(source: string, limit: number): { text: string; cut: boolean } {
 	const text = source.replaceAll("\r\n", "\n")
 	let used = 0
 	let images = 0
@@ -122,7 +122,7 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
  *
  * Images are the evidence half of an entry and are counted by `countImages`; counting their markdown here too would let a pasted CDN URL – often a hundred characters on its own – write most of the minimum. So every image, alt text included, comes out before the length is taken: alt text is not prose, and leaving it in would only move the padding into the brackets.
  */
-export function proseLength(source: string): number {
+function proseLength(source: string): number {
 	return source.replaceAll(/!\[[^\]]*\]\([^)]*\)/g, "").trim().length
 }
 
@@ -315,3 +315,5 @@ export function Markdown({ source, className }: { source: string; className?: st
 	// Callers lay entries out as a grid, and a grid item will not shrink below its longest unbroken run – a pasted image URL, a long link, a code line – so one of those used to widen the whole entry and set every paragraph scrolling sideways with it. `min-w-0` on each block lets them shrink back to the column (a `<pre>` then scrolls inside itself, as it is built to), and `overflow-wrap: anywhere` breaks a word that is wider than the line.
 	return <div className={`min-w-0 [overflow-wrap:anywhere] *:min-w-0 ${className ?? ""}`}>{out}</div>
 }
+
+export { countImages, excerpt, imageSources, proseLength }

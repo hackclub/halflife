@@ -3,7 +3,7 @@
  *
  * Pure, so the server's messages and the client's trail print it the same way.
  */
-export function formatDeadline(at: Date | number, timeZone: string, style: "long" | "short" = "long"): string {
+function formatDeadline(at: Date | number, timeZone: string, style: "long" | "short" = "long"): string {
 	const shown = new Date(at)
 	const day = shown.toLocaleDateString("en-US", { day: "numeric", month: style, timeZone, weekday: style })
 	const time = shown.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone })
@@ -13,7 +13,7 @@ export function formatDeadline(at: Date | number, timeZone: string, style: "long
 /**
  * A calendar date the short way – "Oct 5". For incidental dates (a submitted stamp, a series range), where the weekday and year the deadline formatter carries would be noise.
  */
-export function formatShortDate(at: Date | number | string): string {
+function formatShortDate(at: Date | number | string): string {
 	return new Date(at).toLocaleDateString("en-US", { day: "numeric", month: "short" })
 }
 
@@ -22,7 +22,7 @@ export function formatShortDate(at: Date | number | string): string {
  *
  * The subtraction is what makes it local: `toISOString` would print UTC and the input would show a time offset from the one the reader picked.
  */
-export function toLocalInput(date: Date): string {
+function toLocalInput(date: Date): string {
 	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
 	return local.toISOString().slice(0, 16)
 }
@@ -37,3 +37,5 @@ const UTC_DATE_TIME = new Intl.DateTimeFormat("en-US", {
 export function formatUtcDateTime(at: Date | number): string {
 	return UTC_DATE_TIME.format(at)
 }
+
+export { formatDeadline, formatShortDate, toLocalInput }

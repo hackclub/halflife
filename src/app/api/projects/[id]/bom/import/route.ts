@@ -14,8 +14,6 @@ import { scheduleRepoSync } from "@/lib/repo-sync"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { bomImportSchema } from "@/lib/schemas/project"
 
-export const dynamic = "force-dynamic"
-
 /**
  * Import a project's parts list from the `bom*.csv` already in its repo.
  *
@@ -147,3 +145,5 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 		skipped: result.skipped,
 	})
 })
+
+export const dynamic = "force-dynamic"

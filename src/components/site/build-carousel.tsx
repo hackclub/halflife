@@ -69,7 +69,7 @@ function norm(x: number, cycle: number) {
 	return m < 0 ? m + cycle : m
 }
 
-export default function BuildCarousel() {
+function BuildCarousel() {
 	const sectionRef = useRef<HTMLElement>(null)
 	const railRef = useRef<HTMLUListElement>(null)
 
@@ -339,3 +339,5 @@ function GithubMark({ className }: { className?: string }) {
 		</svg>
 	)
 }
+
+export { BuildCarousel as default }

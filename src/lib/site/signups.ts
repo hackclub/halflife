@@ -19,11 +19,11 @@ const STORE_FILE = path.join(STORE_DIR, "signups.jsonl")
 
 const EMAIL = /^[^\s@,;:<>()[\]\\"]+@[^\s@.,;:<>()[\]\\"]+(\.[^\s@.,;:<>()[\]\\"]+)+$/
 
-export type SignupResult =
+type SignupResult =
 	| { ok: true; duplicate: boolean; referralCode: string }
 	| { ok: false; error: string; status: number }
 
-export interface SignupMeta {
+interface SignupMeta {
 	ref?: string | null
 	source?: string
 	/** When the caller knows whose address this is (the signed-in referral path), link the buffer row so the drain stamps it. */
@@ -33,7 +33,7 @@ export interface SignupMeta {
 	utmSource?: string | null
 }
 
-export function normalizeEmail(raw: unknown): string | null {
+function normalizeEmail(raw: unknown): string | null {
 	if (typeof raw !== "string") return null
 	const email = raw.trim().toLowerCase()
 	if (email.length < 6 || email.length > 254) return null
@@ -265,3 +265,6 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 export function signupRateLimited(key: string): boolean {
 	return rateLimited(key, { countThrottled: true, max: 8 })
 }
+
+export type { SignupMeta, SignupResult }
+export { normalizeEmail }

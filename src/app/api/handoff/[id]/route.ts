@@ -2,8 +2,6 @@ import { fail, ok } from "@/lib/api"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { claimHandoff, getHandoffStatus } from "@/lib/handoff"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -26,3 +24,5 @@ export const POST = withSession(async (_req: Request, { params, gate }: Params &
 	if (!claimed) return fail("NOT_FOUND", "No such handoff")
 	return ok({ claimed: true })
 })
+
+export const dynamic = "force-dynamic"

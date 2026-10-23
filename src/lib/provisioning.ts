@@ -13,7 +13,7 @@ import prisma from "@/lib/prisma"
  *
  * Idempotent: the `(userId, theme)` unique constraint plus `skipDuplicates` means opening the checkpoint twice, or two tabs racing, is still one row. Resolves to the row either way.
  */
-export async function ensureThemeProject(userId: string, theme: Theme): Promise<ThemeProject> {
+async function ensureThemeProject(userId: string, theme: Theme): Promise<ThemeProject> {
 	const def = THEMES.find(t => t.id === theme)
 	if (!def) throw new Error(`Unknown theme ${theme}`)
 
@@ -84,3 +84,5 @@ export function createWarmupProject(input: WarmupProjectInput): Promise<ThemePro
 		})
 	})
 }
+
+export { ensureThemeProject }

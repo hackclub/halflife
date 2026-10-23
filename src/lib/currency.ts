@@ -12,7 +12,7 @@ type Tx = Prisma.TransactionClient
  *
  * MUST be the first statement inside any `$transaction` that reads a balance and then writes against it; see `lockKey`.
  */
-export function lockUserCredit(tx: Tx, userId: string): Promise<void> {
+function lockUserCredit(tx: Tx, userId: string): Promise<void> {
 	return lockKey(tx, `credit:${userId}`)
 }
 
@@ -34,7 +34,7 @@ async function sumFor(tx: Tx, where: Prisma.LedgerEntryWhereInput): Promise<numb
 }
 
 /** A single spendable pot, plus its legacy split. Every balance read should go through this. */
-export interface Balances {
+interface Balances {
 	/**
 	 * The legacy locked printer fund. New mints never land here – everything is spendable now – but old rows keep their bucket until they are converted, so this drains to zero rather than vanishing.
 	 */
@@ -50,7 +50,7 @@ export interface Balances {
  *
  * The two sums are read one after the other, never together. An interactive transaction is a single connection, so two queries issued at once on the same `tx` are interleaved on that one connection rather than run in parallel: the second aggregate is evaluated against a snapshot the first one already moved past, and the transaction's timeout is spent on both at once. Sequential reads keep the two halves of a balance describing the same moment, which is the only thing a balance is for.
  */
-export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
+async function getBalances(tx: Tx, userId: string): Promise<Balances> {
 	const spendable = await sumFor(tx, { bucket: CoinBucket.SPENDABLE, userId })
 	const banked = await sumFor(tx, { bucket: CoinBucket.BANKED, userId })
 	return { banked, spendable, total: spendable + banked }
@@ -59,16 +59,16 @@ export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
 /**
  * What this user can spend right now: the whole balance, whatever it was minted as. The locked printer fund is gone – every coin is spendable on anything – so there is nothing left for the category to decide. The parameter stays so the two call sites do not have to learn about the merge; it is ignored.
  */
-export function spendableFor(balances: Balances, _category: ShopItemCategory): number {
+function spendableFor(balances: Balances, _category: ShopItemCategory): number {
 	return balances.total
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
-export function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
+function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
 	return sumFor(tx, { kind: { in: EARNING_KINDS }, userId })
 }
 
-export interface LedgerEntryParams {
+interface LedgerEntryParams {
 	amount: number
 	/** Which pot to move. Defaults to SPENDABLE; only the forced savings differ. */
 	bucket?: CoinBucket
@@ -85,7 +85,7 @@ export interface LedgerEntryParams {
  *
  * MUST be called inside `prisma.$transaction` so the balance aggregate and the insert cannot interleave with a concurrent write and record a balanceBefore/balanceAfter pair that was never true.
  */
-export async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Promise<LedgerEntry> {
+async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Promise<LedgerEntry> {
 	const bucket = params.bucket ?? CoinBucket.SPENDABLE
 	// Scoped to the bucket: a combined figure here would make the audit columns disagree with the balance the participant was actually shown and spent against, which is the one question these columns exist to answer.
 	const balanceBefore = await sumFor(tx, { bucket, userId: params.userId })
@@ -105,7 +105,7 @@ export async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Prom
 	})
 }
 
-export interface ReconcileParams {
+interface ReconcileParams {
 	/**
 	 * The pot this kind pays into. New mints always land in SPENDABLE; the BANKED kinds below only ever reconcile the legacy locked rows toward zero, so passing anything else here would split one grant across two pots and make the reconcile sum converge on a target it can never reach.
 	 */
@@ -122,7 +122,7 @@ export interface ReconcileParams {
 /**
  * What a reconcile did.
  */
-export interface ReconcileResult {
+interface ReconcileResult {
 	/** The row it wrote, or null when the total was already where it had to be. */
 	entry: LedgerEntry | null
 	/**
@@ -142,7 +142,7 @@ export interface ReconcileResult {
  *
  * Must run inside a transaction, for the same reason as appendLedgerEntry.
  */
-export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<ReconcileResult> {
+async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<ReconcileResult> {
 	const current = await sumFor(tx, {
 		kind: params.kind,
 		themeProjectId: params.themeProjectId,
@@ -207,3 +207,5 @@ export async function getLedgerPage(
 }
 
 export { CoinBucket, LedgerKind } from "@/app/generated/prisma/enums"
+export type { Balances, LedgerEntryParams, ReconcileParams, ReconcileResult }
+export { appendLedgerEntry, getBalances, getEarnedCredit, lockUserCredit, reconcileGrant, spendableFor }

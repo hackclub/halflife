@@ -39,11 +39,11 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  * Everything here no-ops when the three ARI_* secrets are unset, so local dev and any deployment that has not been onboarded to Ari behave as before.
  */
 
-export function isAriConfigured(): boolean {
+function isAriConfigured(): boolean {
 	return Boolean(process.env.ARI_PROGRAM_ID && process.env.ARI_SIGNING_SECRET)
 }
 
-export function isAriWebhookConfigured(): boolean {
+function isAriWebhookConfigured(): boolean {
 	return Boolean(process.env.ARI_WEBHOOK_SECRET)
 }
 
@@ -53,7 +53,7 @@ export function isAriWebhookConfigured(): boolean {
  * Configured origin first: behind an ingress the request's own host is the internal one, and a webhook URL the Ari service cannot reach is one that silently never fires. The caller may pass the request origin as a fallback
  * for local development.
  */
-export function ariWebhookUrl(originFallback = ""): string {
+function ariWebhookUrl(originFallback = ""): string {
 	const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? originFallback).replace(/\/$/, "")
 	return `${base}/api/integrations/ari/webhook`
 }
@@ -72,9 +72,6 @@ function ari(): Ari {
 	})
 	return client
 }
-
-// Re-exported so callers can treat the Ari integration as one module.
-export { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 
 // ─── Building the ship ───────────────────────────────────────────────────────
 
@@ -114,7 +111,7 @@ const emptyTimelapseSession = (timelapses: number): string =>
  *
  * Exported for the backfill that replaces ships already in Ari: a ship cannot be updated in place, so the script finds the entries whose text this rule rewrites.
  */
-export function isWordlessJournal(content: string | null, title: string): boolean {
+function isWordlessJournal(content: string | null, title: string): boolean {
 	const storedTitle = sanitize(title)
 	return !sanitize(content ?? "") && (!storedTitle || storedTitle === DEFAULT_SESSION_TITLE)
 }
@@ -322,7 +319,7 @@ function alreadyQueuedShipId(err: unknown): string | null {
  *
  * A 409 `already_queued` is not a failure to send: it is Ari telling us the ship is already there. The id in that response is recorded as this hand-in's ship, exactly as a duplicate create's id is, so a response the network dropped on the way back stops being an hourly retry that can never succeed and the ship stops being invisible to every local count. It is only adopted when no other hand-in already claims it – two rows pointing at one ship would count it twice and let either decision resolve both.
  */
-export async function sendSubmissionToAri(
+async function sendSubmissionToAri(
 	themeProjectId: string,
 	phase: Phase,
 ): Promise<{ skipped: "not_configured" } | { id: string; status: "accepted" | "duplicate" }> {
@@ -371,7 +368,7 @@ export async function sendSubmissionToAri(
 }
 
 /** Withdraw an open hand-in from Ari (the participant took it back). */
-export async function withdrawSubmissionFromAri(
+async function withdrawSubmissionFromAri(
 	themeProjectId: string,
 	phase: Phase,
 ): Promise<{ skipped: "not_configured" } | { status: "withdrawn" | "not_queued" }> {
@@ -389,7 +386,7 @@ export async function withdrawSubmissionFromAri(
 /** Hand-ins awaiting review that never reached Ari – for the retry job and the
  * admin panel. Three queries total rather than several per project, because the
  * admin page renders this on every load. */
-export async function findUnsyncedAriSubmissions(): Promise<
+async function findUnsyncedAriSubmissions(): Promise<
 	{ themeProjectId: string; phase: Phase; reason: string | null }[]
 > {
 	if (!isAriConfigured()) return []
@@ -475,7 +472,7 @@ function approvedHoursFrom(review: AriReview): number | null {
  *
  * `finalizeReview` needs something to show, so the stored review and the project page carry this; the maker's notice and the row's `Loops - halfLifeReviewerNotes` column deliberately carry nothing instead (see the callers). Exported because the review-status backfill has to recognise this fallback to reconstruct that empty note rather than quote the sentence the maker already read as the headline.
  */
-export function defaultFeedback(result: ReviewResult): string {
+function defaultFeedback(result: ReviewResult): string {
 	if (result === ReviewResult.APPROVED) return "Approved by Ari."
 	if (result === ReviewResult.RETURNED) return "Ari asked for changes before this can be approved."
 	return "Ari rejected this submission."
@@ -827,7 +824,7 @@ async function applyEvent(event: AriWebhookEvent): Promise<void> {
 /**
  * Apply an event that was stored because the state was not ready for it – a build approval that arrived before its design. Called by the `ari-retry` job; the caller marks the delivery applied once this resolves.
  */
-export async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
+async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
 	await applyEvent(event)
 }
 
@@ -838,7 +835,7 @@ export async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
  *
  * Errors are rethrown so the route answers non-2xx.
  */
-export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string): Promise<void> {
+async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string): Promise<void> {
 	const seen = await prisma.ariWebhookDelivery.findUnique({ select: { id: true }, where: { deliveryId } })
 	if (seen) return
 
@@ -878,7 +875,7 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
 // ─── Reconciliation ──────────────────────────────────────────────────────────
 
 /** What a reconciliation pass did. The job and the manual backfill report the same shape. */
-export interface ReconcileSummary {
+interface ReconcileSummary {
 	/** Hand-ins whose standing decision was applied. */
 	applied: number
 	/** Open hand-ins examined at Ari. */
@@ -971,7 +968,7 @@ function decisionEventFromStatus(status: AriShipStatusWithReview, standing: Stan
  *
  * `commit` false reports what it would apply and writes nothing, which is what the backfill script defaults to. `announce` is off by default: a backlog replay can decide hundreds of hand-ins at once, and the maker is told by the live webhook in the normal case – turning a recovery run into hundreds of late Slack DMs and Loops emails is not the intent. Read `docs/RUNBOOK.md` before announcing a bulk run.
  */
-export async function reconcileAriDecisions(
+async function reconcileAriDecisions(
 	opts: { announce?: boolean; commit?: boolean; limit?: number } = {},
 ): Promise<ReconcileSummary> {
 	const summary: ReconcileSummary = {
@@ -1075,7 +1072,7 @@ export async function reconcileAriDecisions(
 // ─── Repairing a decision the status pass rebuilt ────────────────────────────
 
 /** What a repair pass did. */
-export interface RepairSummary {
+interface RepairSummary {
 	/** Placeholder reviews examined. */
 	checked: number
 	/** Status reads that errored; retried on a later run. */
@@ -1257,4 +1254,22 @@ export async function repairStatusDecisions(opts: { commit?: boolean; limit?: nu
 	}
 
 	return summary
+}
+
+// Re-exported so callers can treat the Ari integration as one module.
+export { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
+
+export type { ReconcileSummary, RepairSummary }
+export {
+	applyAriWebhook,
+	applyStoredEvent,
+	ariWebhookUrl,
+	defaultFeedback,
+	findUnsyncedAriSubmissions,
+	isAriConfigured,
+	isAriWebhookConfigured,
+	isWordlessJournal,
+	reconcileAriDecisions,
+	sendSubmissionToAri,
+	withdrawSubmissionFromAri,
 }

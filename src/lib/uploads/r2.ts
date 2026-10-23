@@ -15,7 +15,7 @@ function parseMaxBytes(raw: string | undefined): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_UPLOAD_BYTES
 }
 
-export const MAX_UPLOAD_BYTES = parseMaxBytes(process.env.UPLOAD_MAX_BYTES)
+const MAX_UPLOAD_BYTES = parseMaxBytes(process.env.UPLOAD_MAX_BYTES)
 
 const EXTENSION_MIME: { [_: string]: string[] } = {
 	gif: ["image/gif"],
@@ -96,7 +96,7 @@ function hasWebmVideoTrack(bytes: Uint8Array): boolean {
  * for the video formats the app accepts, so a renamed image or text file cannot
  * become a reel by lying about its extension.
  */
-export function isVideoBytes(bytes: Uint8Array): boolean {
+function isVideoBytes(bytes: Uint8Array): boolean {
 	if (bytes.length < 12) return false
 
 	// ISO base media (MP4/MOV): `....ftyp` at byte 4, then a brand that must be a video one – `heic`, `avif` and `jxl ` share the box and are not video.
@@ -106,10 +106,10 @@ export function isVideoBytes(bytes: Uint8Array): boolean {
 	return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3 && hasWebmVideoTrack(bytes)
 }
 
-export const UPLOAD_FOLDERS = ["sessions", "covers", "timelapses", "posts", "shop"] as const
-export type UploadFolder = (typeof UPLOAD_FOLDERS)[number]
+const UPLOAD_FOLDERS = ["sessions", "covers", "timelapses", "posts", "shop"] as const
+type UploadFolder = (typeof UPLOAD_FOLDERS)[number]
 
-export interface UploadedObjectSummary {
+interface UploadedObjectSummary {
 	key: string
 	lastModified: Date | null
 	size: number
@@ -117,13 +117,13 @@ export interface UploadedObjectSummary {
 	url: string | null
 }
 
-export interface UploadedObjectPage {
+interface UploadedObjectPage {
 	nextCursor: string | null
 	objects: UploadedObjectSummary[]
 	prefix: string
 }
 
-export function isUploadConfigured(): boolean {
+function isUploadConfigured(): boolean {
 	return Boolean(
 		process.env.S3_ACCESS_KEY_ID
 			&& process.env.S3_SECRET_ACCESS_KEY
@@ -181,7 +181,7 @@ async function client(): Promise<BunS3Client> {
 	return cachedClient
 }
 
-export async function listUploadedObjects(
+async function listUploadedObjects(
 	opts: { prefix?: string; cursor?: string; limit?: number } = {},
 ): Promise<UploadedObjectPage> {
 	if (!isUploadConfigured()) throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
@@ -217,7 +217,7 @@ export async function listUploadedObjects(
 }
 
 /** Both extension and MIME type must be on the allowlist and must agree. */
-export function validateUpload(
+function validateUpload(
 	filename: string,
 	contentType: string,
 	size: number,
@@ -237,7 +237,7 @@ export function validateUpload(
  *
  * Pictures are named after this rather than a random id, so the same screenshot picked twice – in one sitting, or later from another device – is one object and one URL. The journal counts its evidence by URL, so a random name per upload let one picture count as many.
  */
-export function contentHash(body: Buffer): string {
+function contentHash(body: Buffer): string {
 	return createHash("sha256").update(body).digest("hex")
 }
 
@@ -246,7 +246,7 @@ export function contentHash(body: Buffer): string {
  *
  * `name` is the object's name inside the user's folder. It defaults to a random UUID; images pass their content hash instead (see `contentHash`), so re-uploading one picture lands on the key it already has rather than on a second copy.
  */
-export function buildObjectKey(userId: string, folder: string, ext: string, name: string = randomUUID()): string {
+function buildObjectKey(userId: string, folder: string, ext: string, name: string = randomUUID()): string {
 	return `${folder}/${userId}/${name}.${ext}`
 }
 
@@ -259,12 +259,12 @@ export function buildObjectKey(userId: string, folder: string, ext: string, name
  *
  * `..` is refused separately, and so is `%`. Neither can appear in a minted key, and a key containing either is trying to be a path rather than a name: the browser resolves `covers/me/../../sessions/other/x` before it fetches, and the URL parser treats a `%2e%2e` segment as a double-dot too – so a check for a literal `..` alone would let both escape the user's own prefix.
  */
-export function isOwnedKey(userId: string, key: string): boolean {
+function isOwnedKey(userId: string, key: string): boolean {
 	if (key.includes("..") || key.includes("%")) return false
 	return key.split("/")[1] === userId
 }
 
-export async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
+async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
 	try {
 		const s3 = await client()
 		await s3.write(key, body, { type: contentType })
@@ -322,4 +322,18 @@ export function publicUrlFor(key: string | null | undefined): string | null {
 	const base = process.env.S3_PUBLIC_URL
 	if (!base) return null
 	return `${base.replace(/\/$/, "")}/${key}`
+}
+
+export type { UploadedObjectPage, UploadedObjectSummary, UploadFolder }
+export {
+	buildObjectKey,
+	contentHash,
+	isOwnedKey,
+	isUploadConfigured,
+	isVideoBytes,
+	listUploadedObjects,
+	MAX_UPLOAD_BYTES,
+	putObject,
+	UPLOAD_FOLDERS,
+	validateUpload,
 }

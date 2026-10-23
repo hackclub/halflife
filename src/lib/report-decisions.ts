@@ -12,7 +12,7 @@ import prisma from "@/lib/prisma"
  *
  * Kept as one function rather than one route with a parameter so the two reply shapes stay distinct. A caller that asked for `dismissed` must not be handed `{ resolved: true }`: the client renders that key as the confirmation, and a mismatch would show a success message for an outcome that did not happen.
  */
-export type Outcome = "RESOLVED" | "DISMISSED"
+type Outcome = "RESOLVED" | "DISMISSED"
 
 /** The reply key each outcome reports itself under. */
 const replyKey: Record<Outcome, "resolved" | "dismissed"> = {
@@ -51,3 +51,5 @@ export async function decideReport(
 
 	return ok({ [replyKey[outcome]]: true })
 }
+
+export type { Outcome }

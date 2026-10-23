@@ -85,7 +85,7 @@ function draftOf(line: BomLine): Draft {
  *
  * Tax and shipping close the table as one fixed line for the whole order. It has an amount and nothing else – no edit form and no remove – because every order has it, even at zero.
  */
-export function BomEditor({
+function BomEditor({
 	projectId,
 	items: initial,
 	taxShippingUsd: initialExtra,
@@ -717,3 +717,5 @@ function ExtraRow({
 		</tr>
 	)
 }
+
+export { BomEditor }

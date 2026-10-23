@@ -19,7 +19,7 @@ import {
 import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 
-export interface HoursBreakdown {
+interface HoursBreakdown {
 	/** journalHours + hackatimeHours. The reviewer's default. */
 	computedTotal: number
 	/** frozenTotal ?? computedTotal. The number every caller should use. */
@@ -59,7 +59,7 @@ export interface HoursBreakdown {
  *
  * `client` runs the reads on a transaction instead of the shared pool, which is how the decision path reads the total it freezes under the maker's credit lock: the number that ends up frozen has to be the one read while nothing else can be rewriting the rows behind it. The live Hackatime fetch stays outside any transaction – it is network I/O with a ten second timeout and retries, and holding a connection (and a lock) open for it would be far worse than the race it closes.
  */
-export async function getHoursBreakdown(
+async function getHoursBreakdown(
 	themeProjectId: string,
 	phase: Phase,
 	opts: { client?: Prisma.TransactionClient; live?: boolean } = {},
@@ -280,7 +280,7 @@ async function elsewhereRecordings(
  *
  * Failures are swallowed on purpose: every failure mode of this already degrades to "the overlap could not be checked", which the approval path reports. Throwing would fail a journal entry over a problem that does not affect it.
  */
-export async function refreshOverlapSpans(themeProjectId: string, phase: Phase): Promise<void> {
+async function refreshOverlapSpans(themeProjectId: string, phase: Phase): Promise<void> {
 	try {
 		const [project, sessions, links] = await Promise.all([
 			prisma.themeProject.findUnique({
@@ -329,7 +329,7 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 }
 
 /** One link's identity for warming: enough to ask Hackatime again and to decide whether it needs asking. */
-export interface SpansWarmTarget {
+interface SpansWarmTarget {
 	cachedSpans?: unknown
 	hackatimeProject: string
 	id: string
@@ -346,7 +346,7 @@ export interface SpansWarmTarget {
  *
  * Batched, because the sync walks every link every fifteen minutes and cannot afford a query each. The recording windows come back in one read per maker rather than one per phase, because a recording attached in one week can be the window a link in another is measured against – so the query is by owner, not by (project, phase). A Hackatime request is made only for a link that would otherwise answer from a cold cache or from one fetched for a narrower window than the one now being asked about.
  */
-export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promise<{ warmed: number; failed: number }> {
+async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promise<{ warmed: number; failed: number }> {
 	if (targets.length === 0) return { failed: 0, warmed: 0 }
 	const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
 	const projectIds = [...new Set(targets.map(t => t.themeProjectId))]
@@ -437,7 +437,7 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
  *
  * Extracted rather than reimplemented: these rules decide what people are paid, and a second copy that drifts is a second answer to "how many hours is this".
  */
-export interface SessionRow {
+interface SessionRow {
 	hoursApproved: number | null
 	hoursClaimed: number
 	hoursSource: HoursSource
@@ -447,7 +447,7 @@ export interface SessionRow {
 	timelapses?: { hackatimeProject?: string | null; recordedAt: Date | null; coveredSeconds: number | null }[]
 }
 
-export interface LinkRow {
+interface LinkRow {
 	cachedSeconds: number | null
 	/** The link's tracked intervals, as cached on the row. See parseCachedSpans. */
 	cachedSpans?: unknown
@@ -470,7 +470,7 @@ function isOverride(value: number | null | undefined): value is number {
 	return typeof value === "number" && Number.isFinite(value)
 }
 
-export function rollUpHours(
+function rollUpHours(
 	sessions: readonly SessionRow[],
 	links: readonly LinkRow[],
 	frozenTotal: number | null,
@@ -546,7 +546,7 @@ export function rollUpHours(
  * A type alias rather than an interface on purpose: this gets written into the audit row's JSON payload, and Prisma's `InputJsonValue` only accepts types with an implicit index signature, which interfaces do not have.
  */
 // oxlint-disable-next-line typescript/consistent-type-definitions
-export type CoinSplit = {
+type CoinSplit = {
 	/** Legacy locked half. Always zero on new mints. */
 	banked: number
 	/** Every coin earned. Spendable on anything. */
@@ -567,7 +567,7 @@ export type CoinSplit = {
  *
  * Minted coins are capped, because `approvedHours` can come from a reviewer typing into a box and a fat-fingered 1000 should not mint five thousand coins.
  */
-export function designCoinsFor(tierId: number, approvedHours: number): CoinSplit {
+function designCoinsFor(tierId: number, approvedHours: number): CoinSplit {
 	const tier = getTierOrThrow(tierId)
 	const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
 	const spendable = earnCoins(beyondFunding)
@@ -581,7 +581,7 @@ export function designCoinsFor(tierId: number, approvedHours: number): CoinSplit
  *
  * This half of the economy is what carries someone from what five design weeks earn to an actual printer: five build weeks at five hours is 125 coins, which is more than half the cheapest machine.
  */
-export function buildCoinsFor(approvedHours: number): CoinSplit {
+function buildCoinsFor(approvedHours: number): CoinSplit {
 	const spendable = earnCoins(Math.max(0, approvedHours))
 	return { banked: 0, spendable, total: spendable }
 }
@@ -596,3 +596,6 @@ export function buildCoinsFor(approvedHours: number): CoinSplit {
 function earnCoins(hours: number): number {
 	return Math.min(Math.ceil(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
 }
+
+export type { CoinSplit, HoursBreakdown, LinkRow, SessionRow, SpansWarmTarget }
+export { buildCoinsFor, designCoinsFor, getHoursBreakdown, refreshOverlapSpans, rollUpHours, warmLinkSpans }

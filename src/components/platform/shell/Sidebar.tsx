@@ -15,7 +15,7 @@ import { useStore } from "@/lib/store"
 import logoArt from "../../../../public/art/logo.png"
 import { GoalTracker } from "./GoalTracker"
 
-export const NAV = [
+const NAV = [
 	{ href: PLATFORM_HOME, label: "Home", tourId: "nav-home" },
 	{ href: "/doomscroller", label: "Doomscroller", tourId: "nav-doomscroller" },
 	{ href: "/projects", label: "Projects", tourId: "nav-projects" },
@@ -28,9 +28,9 @@ export const NAV = [
 /**
  * The phone tab bar divides into equal cells, six at most: six 60px cells is what a 360px screen holds with the uppercase labels still readable. The Doomscroller gets in through the header link below lg instead of taking one.
  */
-export const TAB_NAV = NAV.filter(item => item.href !== "/doomscroller")
+const TAB_NAV = NAV.filter(item => item.href !== "/doomscroller")
 
-export function Sidebar({ className }: { className?: string }) {
+function Sidebar({ className }: { className?: string }) {
 	const pathname = usePathname()
 	const { reset, viewer } = useStore()
 	const router = useRouter()
@@ -249,3 +249,5 @@ function RedoOnboarding() {
 		</div>
 	)
 }
+
+export { NAV, Sidebar, TAB_NAV }

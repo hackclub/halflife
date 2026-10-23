@@ -43,7 +43,7 @@ const roundHours = (hours: number): number => Math.round(hours * 1e6) / 1e6
  *
  * The one expression of the rule, shared by the per-person rebuild below and the admin overview's DAU chart: two copies would be two answers to "how many people were active" that could drift apart, which is the whole reason `UserDay` exists to hold one.
  */
-export function isActiveDay(hours: number): boolean {
+function isActiveDay(hours: number): boolean {
 	return roundHours(hours) >= ACTIVE_DAY_MIN_HOURS
 }
 
@@ -56,7 +56,7 @@ async function quietly(label: string, fn: () => Promise<unknown>): Promise<void>
 }
 
 /** A new sign-in. */
-export function markLogin(userId: string, at = new Date()): Promise<void> {
+function markLogin(userId: string, at = new Date()): Promise<void> {
 	return quietly("markLogin", () => prisma.user.update({ data: { lastLoginAt: at }, where: { id: userId } }))
 }
 
@@ -66,7 +66,7 @@ const lastTouched = new Map<string, number>()
 /**
  * A page view: moves `lastActiveAt` forward, which is what Loops reads as last site access. Not an active day – those come from time entries. Throttled to one write per person per few minutes, not one every click.
  */
-export function touchActivity(userId: string, at = new Date()): Promise<void> {
+function touchActivity(userId: string, at = new Date()): Promise<void> {
 	const prev = lastTouched.get(userId)
 	if (prev !== undefined && at.getTime() - prev < ACTIVITY_THROTTLE_MS) return Promise.resolve()
 	lastTouched.set(userId, at.getTime())
@@ -123,7 +123,7 @@ function rebuildActiveDays(userId: string, programTimezone: string): Promise<num
 }
 
 /** Recount active days. Called after a time entry is written, edited or deleted. */
-export function recomputeActiveDays(userId: string): Promise<void> {
+function recomputeActiveDays(userId: string): Promise<void> {
 	return quietly("recomputeActiveDays", async () => {
 		const { programTimezone } = await getProgramSettings()
 		await rebuildActiveDays(userId, programTimezone)
@@ -506,3 +506,5 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 		weeklyMilestones: [...byWeek.values()].toSorted((a, b) => a.week - b.week),
 	}
 }
+
+export { isActiveDay, markLogin, recomputeActiveDays, touchActivity }

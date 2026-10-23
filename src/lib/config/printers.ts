@@ -12,9 +12,9 @@
 import { BUILD_HOURS, COINS_PER_HOUR, DESIGN_WEEKS, TOTAL_WEEKS } from "./program"
 import { ENTRY_TIER } from "./tiers"
 
-export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc"
+type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc"
 
-export interface PrinterGoal {
+interface PrinterGoal {
 	/** How the maker describes it on the product page `link` points at. */
 	blurb: string
 	/** What it costs in the shop. One coin is one dollar. */
@@ -42,7 +42,7 @@ export interface PrinterGoal {
 /**
  * Nobody is asked for less than ten hours a week on tier 1. The cheapest machine works out at exactly ten on the budget sheet, so the floor holds it at that; every other goal already clears it on its own.
  */
-export const TIER1_MIN_HOURS = 10
+const TIER1_MIN_HOURS = 10
 
 /** The sheet as typed, minus the one column that is derived from another. */
 type SheetRow = Omit<PrinterGoal, "coinsPerWeek">
@@ -254,3 +254,6 @@ export function weeksToGo(goal: PrinterGoal, coins: number): number {
 export function submitFloorFor(fundingHours: number): number {
 	return fundingHours
 }
+
+export type { PrinterGoal, PrinterKind }
+export { TIER1_MIN_HOURS }

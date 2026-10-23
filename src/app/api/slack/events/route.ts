@@ -24,9 +24,6 @@ import {
 	ticketSection,
 } from "@/lib/site/tickets"
 
-// Signature verification needs Node's crypto, not the edge runtime.
-export const runtime = "nodejs"
-
 interface SlackEvent {
 	bot_id?: string
 	channel?: string
@@ -252,3 +249,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	return NextResponse.json({ ok: true })
 }
+
+// Signature verification needs Node's crypto, not the edge runtime.
+export const runtime = "nodejs"

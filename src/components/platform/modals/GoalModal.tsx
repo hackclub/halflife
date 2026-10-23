@@ -23,7 +23,7 @@ type Step = "goal" | "printer"
  *
  * The same modal does both jobs. The rail's tracker and the phone's "Change printer" open it to change an answer; the prompt after the first checkpoint opens it uncloseable, and is driven by `participantGoal` still being null rather than by anything in this file.
  */
-export function GoalModal({
+function GoalModal({
 	open,
 	onClose,
 	/** False for the mandatory prompt, which has nowhere to go until answered. */
@@ -365,3 +365,5 @@ function GoalCard({
 		</button>
 	)
 }
+
+export { GoalModal }

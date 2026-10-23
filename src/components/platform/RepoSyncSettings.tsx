@@ -54,7 +54,7 @@ const FORGES = [
 // The reels' relative-time wording, reused rather than re-spelled: "3h ago" reads the same everywhere, and this file had its own copy that said "3 hours ago" and rendered a bare locale date past a day.
 const when = (ms: number) => ago(new Date(ms))
 
-export function RepoSyncSettings({
+function RepoSyncSettings({
 	projectId,
 	/**
 	 * Called after a successful enable/sync so a host page (the onboarding step, say) can move on. The project page passes nothing.
@@ -355,3 +355,5 @@ function LinkProjectButton({
 		</p>
 	)
 }
+
+export { RepoSyncSettings }

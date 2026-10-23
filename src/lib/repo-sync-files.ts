@@ -16,17 +16,17 @@ import type { FileUpdate } from "@/lib/forge-write"
  */
 
 /** The two paths the sync owns, relative to the repo root. */
-export const JOURNAL_PATH = "JOURNAL.md"
-export const BOM_PATH = "BOM.csv"
+const JOURNAL_PATH = "JOURNAL.md"
+const BOM_PATH = "BOM.csv"
 /**
  * Where the BOM lived before it became a CSV.
  *
  * Kept as a deletion in every sync rather than a one-off migration: a delete for a path that is not there is a no-op, so there is no state to track and no window in which a repo ends up with two BOMs. Removed once no synced repo can still carry it.
  */
-export const LEGACY_BOM_PATH = "BOM.md"
+const LEGACY_BOM_PATH = "BOM.md"
 
 /** The standing deletion of the old BOM path, for the sync's file set. */
-export function legacyBomDeletion(): FileUpdate {
+function legacyBomDeletion(): FileUpdate {
 	return { content: null, path: LEGACY_BOM_PATH }
 }
 
@@ -37,7 +37,7 @@ const BANNER = (what: string, projectId: string, generatedAt: Date, link: string
 	+ `> [!NOTE]\n> This ${what} is mirrored from [Half Life](https://halflife.hackclub.com) – [open the project](${link}). `
 	+ `Editing it here will not change the platform's copy, and the next sync overwrites this file.\n`
 
-export interface JournalEntry {
+interface JournalEntry {
 	/** Rich text off a journal entry; tags are stripped before it lands here. */
 	content: string | null
 	createdAt: Date
@@ -263,3 +263,6 @@ export function renderBom(items: BomLineForFile[], taxShippingUsd: number): Rend
 	csv.push(csvRow(["Estimated total shipping", 1, "", "", usd(taxShippingUsd), ""]))
 	return { content: `${csv.join("\n")}\n`, path: BOM_PATH }
 }
+
+export type { JournalEntry }
+export { BOM_PATH, JOURNAL_PATH, LEGACY_BOM_PATH, legacyBomDeletion }

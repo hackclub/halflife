@@ -6,8 +6,6 @@ import { type AuthedContext, withSession } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import { commentSchema } from "@/lib/schemas/feed"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -40,3 +38,5 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	return ok({ comment }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"

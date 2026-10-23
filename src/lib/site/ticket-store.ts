@@ -9,7 +9,7 @@ import { listChannelHistory, type SlackHistoryMessage } from "./slack"
  *
  * The Slack flow keeps no state of its own, so this table is what lets the tickets-channel mirror tell a first-time asker from a repeat one.
  */
-export function countPriorHelpTickets(authorSlackId: string): Promise<number> {
+function countPriorHelpTickets(authorSlackId: string): Promise<number> {
 	return prisma.helpTicket.count({ where: { authorSlackId } })
 }
 
@@ -18,7 +18,7 @@ export function countPriorHelpTickets(authorSlackId: string): Promise<number> {
  *
  * Called only on a successful post, so a fail-to-mirror doesn't leave a phantom row that would count toward the next ask. Upsert rather than create because Slack can redeliver an event, and the unique [helpChannel, helpTs] must not turn that into an error.
  */
-export async function rememberHelpTicket(input: {
+async function rememberHelpTicket(input: {
 	authorSlackId: string
 	helpChannel: string
 	helpTs: string
@@ -35,11 +35,7 @@ export async function rememberHelpTicket(input: {
  *
  * `updateMany` rather than `update`: a ticket asked before the table existed, or one whose mirror post failed, has no row – resolving it is still a success, not an error. The `resolvedAt: null` guard makes a second resolution a no-op, so two people clicking at once (or a Slack redelivery) cannot move the closer or double-count the ticket in a summary.
  */
-export async function resolveHelpTicket(input: {
-	helpChannel: string
-	helpTs: string
-	resolvedBy: string
-}): Promise<void> {
+async function resolveHelpTicket(input: { helpChannel: string; helpTs: string; resolvedBy: string }): Promise<void> {
 	await prisma.helpTicket.updateMany({
 		data: { resolvedAt: new Date(), resolvedBy: input.resolvedBy },
 		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: null },
@@ -51,7 +47,7 @@ export async function resolveHelpTicket(input: {
  *
  * Returns whether anything actually reopened. A double-clicked button (or a Slack redelivery) arrives twice with the same stale blocks: the first delivery clears the row and the second must change nothing, so the caller only rewrites messages when this is true. The `resolvedAt: not-null` guard is the mirror of resolve's own, for the same race.
  */
-export async function reopenHelpTicket(input: { helpChannel: string; helpTs: string }): Promise<boolean> {
+async function reopenHelpTicket(input: { helpChannel: string; helpTs: string }): Promise<boolean> {
 	const { count } = await prisma.helpTicket.updateMany({
 		data: { resolvedAt: null, resolvedBy: null },
 		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: { not: null } },
@@ -59,7 +55,7 @@ export async function reopenHelpTicket(input: { helpChannel: string; helpTs: str
 	return count > 0
 }
 
-export interface HelpTicketStats {
+interface HelpTicketStats {
 	/** Tickets resolved since `since`, by `resolvedAt`, whoever resolved them. */
 	closed: number
 	/**
@@ -84,7 +80,7 @@ function closerBoard(rows: { resolvedBy: string | null; authorSlackId: string }[
 }
 
 /** The counts behind the daily summary. `since` is normally 24 hours ago. */
-export async function getHelpTicketStats(since: Date): Promise<HelpTicketStats> {
+async function getHelpTicketStats(since: Date): Promise<HelpTicketStats> {
 	const [opened, closedRows, allClosedRows] = await Promise.all([
 		prisma.helpTicket.count({ where: { createdAt: { gte: since } } }),
 		prisma.helpTicket.findMany({
@@ -154,3 +150,6 @@ export async function backfillHelpTickets(channel: string): Promise<{
 
 	return { created, exhausted, scanned: messages.length }
 }
+
+export type { HelpTicketStats }
+export { countPriorHelpTickets, getHelpTicketStats, rememberHelpTicket, reopenHelpTicket, resolveHelpTicket }

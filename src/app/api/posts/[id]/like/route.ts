@@ -3,8 +3,6 @@ import { setLike } from "@/lib/feed"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { likeSchema } from "@/lib/schemas/feed"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -17,3 +15,5 @@ export const PUT = withSession(async (req: Request, { params, gate }: Params & A
 
 	return ok(await setLike(id, gate.user.id, parsed.data.liked))
 })
+
+export const dynamic = "force-dynamic"

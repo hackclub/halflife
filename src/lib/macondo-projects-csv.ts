@@ -77,14 +77,14 @@ const HEADER_ALIASES: { [_: string]: Column } = {
 	transferredat: "transferred_at",
 }
 
-export interface MacondoJournal {
+interface MacondoJournal {
 	content: string | null
 	createdAt: Date | null
 	hours: number
 	title: string | null
 }
 
-export interface MacondoRow {
+interface MacondoRow {
 	createdAt: Date | null
 	demoUrl: string | null
 	description: string | null
@@ -100,7 +100,7 @@ export interface MacondoRow {
 	title: string
 }
 
-export interface CsvProblem {
+interface CsvProblem {
 	line: number
 	message: string
 }
@@ -141,7 +141,7 @@ function date(raw: string): Date | null {
 	return Number.isFinite(t) ? new Date(t) : null
 }
 
-export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: CsvProblem[] } {
+function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: CsvProblem[] } {
 	const lines = parseCsvRecords(text)
 	const head = lines.shift()
 	if (!head) return { problems: [{ line: 0, message: "The file is empty." }], rows: [] }
@@ -223,7 +223,7 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 	return problems.length > 0 ? { problems, rows: [] } : { problems, rows }
 }
 
-export interface CsvImportOutcome {
+interface CsvImportOutcome {
 	email: string
 	projectId: string
 	reason: string | null
@@ -247,7 +247,7 @@ async function importedProjectIds(): Promise<Set<string>> {
 	return out
 }
 
-export interface CsvImportSummary {
+interface CsvImportSummary {
 	alreadyImported: number
 	failed: number
 	imported: number
@@ -399,3 +399,6 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 
 	return { alreadyImported, failed, imported, outcomes, read: parsed.rows.length }
 }
+
+export type { CsvImportOutcome, CsvImportSummary, CsvProblem, MacondoJournal, MacondoRow }
+export { parseProjectsCsv }

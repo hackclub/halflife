@@ -5,8 +5,6 @@ import { getFeed } from "@/lib/feed"
 import { withSession } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 
-export const dynamic = "force-dynamic"
-
 // Clamped rather than validated: a zone only has to be a string short enough to be worth passing on, and an unusable one falls back inside getFeed rather than failing the whole feed.
 const feedQuery = paginationQuery.extend({ tz: z.string().max(64).optional() })
 
@@ -19,3 +17,5 @@ export const GET = withSession(async (req: NextRequest, { gate }) => {
 		await getFeed(gate.user.id, { cursor: parsed.data.cursor, limit: parsed.data.limit, timeZone: parsed.data.tz }),
 	)
 })
+
+export const dynamic = "force-dynamic"

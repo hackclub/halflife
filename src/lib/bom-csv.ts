@@ -1,4 +1,5 @@
 import { parseCsvRows } from "@/lib/csv"
+
 /**
  * A BOM CSV from a maker's own repo, read into the platform's parts list.
  *
@@ -8,7 +9,7 @@ import { parseCsvRows } from "@/lib/csv"
  */
 
 /** One line read out of a CSV, in the shape the parts table stores. */
-export interface ImportedBomLine {
+interface ImportedBomLine {
 	link: string | null
 	name: string
 	/** Never mapped from a CSV unless the file names a purpose column. */
@@ -20,7 +21,7 @@ export interface ImportedBomLine {
 }
 
 /** A data row the parser chose not to import, and why. */
-export interface SkippedRow {
+interface SkippedRow {
 	/** The part name as the file spelled it, for saying it back. */
 	name: string
 	reason: string
@@ -28,7 +29,7 @@ export interface SkippedRow {
 	row: number
 }
 
-export interface ParsedBom {
+interface ParsedBom {
 	/** The header cells, or null when no header row could be found. */
 	header: string[] | null
 	lines: ImportedBomLine[]
@@ -36,10 +37,10 @@ export interface ParsedBom {
 }
 
 /** The platform's own caps, mirrored here so a file cannot exceed them. */
-export const MAX_IMPORT_NAME = 120
-export const MAX_IMPORT_VENDOR = 80
-export const MAX_IMPORT_PRICE = 10_000
-export const MAX_IMPORT_QTY = 10_000
+const MAX_IMPORT_NAME = 120
+const MAX_IMPORT_VENDOR = 80
+const MAX_IMPORT_PRICE = 10_000
+const MAX_IMPORT_QTY = 10_000
 
 /** How many leading rows are searched for the header, before giving up. */
 const HEADER_SEARCH_ROWS = 20
@@ -299,3 +300,6 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 
 	return { header: rows[index] ?? null, lines, skipped }
 }
+
+export type { ImportedBomLine, ParsedBom, SkippedRow }
+export { MAX_IMPORT_NAME, MAX_IMPORT_PRICE, MAX_IMPORT_QTY, MAX_IMPORT_VENDOR }

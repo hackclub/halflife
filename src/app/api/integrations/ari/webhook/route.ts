@@ -2,11 +2,6 @@ import { createWebhookHandler } from "@hackclub/ari"
 import { NextResponse } from "next/server"
 import { applyAriWebhook, isAriWebhookConfigured } from "@/lib/ari"
 
-// Signature checks need Node's Web Crypto, not the edge runtime.
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
-export const maxDuration = 60
-
 /**
  * Ari's review webhook.
  *
@@ -31,3 +26,10 @@ export function POST(request: Request): Promise<Response> {
 	})
 	return handler(request)
 }
+
+// Signature checks need Node's Web Crypto, not the edge runtime.
+export const runtime = "nodejs"
+
+export const dynamic = "force-dynamic"
+
+export const maxDuration = 60

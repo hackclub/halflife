@@ -16,12 +16,12 @@ import { sanitize } from "@/lib/sanitize"
  *
  * `costUsd` is deliberately absent: it is what Hack Club pays for the item, not what it costs the buyer. The old `...item` spread shipped it to the browser in the RSC payload even though nothing rendered it.
  */
-export type ShopItemPublic = Omit<ShopItem, "costUsd">
+type ShopItemPublic = Omit<ShopItem, "costUsd">
 
 /**
  * The buyer's own view of an order, shared by the purchase response and the order list so the two cannot drift. `unitCostUsd` (what Hack Club pays), the encrypted address/phone and `lastActorId` are staff-side and never selected.
  */
-export const shopOrderPublicSelect = {
+const shopOrderPublicSelect = {
 	fulfilledAt: true,
 	fulfillmentMethod: true,
 	fulfillmentStage: true,
@@ -43,12 +43,12 @@ export const shopOrderPublicSelect = {
 	unitCredits: true,
 } satisfies Prisma.ShopOrderSelect
 
-export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderPublicSelect }>
+type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderPublicSelect }>
 
 /**
  * What a FULFILL_ORDERS surface may see. `unitCostUsd` (what Hack Club pays) is needed to price a shipment, but the encrypted address/phone and `lastActorId` are not, and a route that returns a whole row ships them by accident.
  */
-export const shopOrderStaffSelect = {
+const shopOrderStaffSelect = {
 	fulfilledAt: true,
 	fulfillmentMethod: true,
 	fulfillmentStage: true,
@@ -77,7 +77,7 @@ export const shopOrderStaffSelect = {
 	userId: true,
 } satisfies Prisma.ShopOrderSelect
 
-export interface ShopItemView extends ShopItemPublic {
+interface ShopItemView extends ShopItemPublic {
 	/** Against the pot this item may be paid from, not against the total. */
 	affordable: boolean
 	locked: boolean
@@ -86,12 +86,12 @@ export interface ShopItemView extends ShopItemPublic {
 }
 
 /** Regions staff sell to, for the shop's price picker. Active only. */
-export interface ShopRegionOption {
+interface ShopRegionOption {
 	id: string
 	name: string
 }
 
-export function listActiveShopRegions(): Promise<ShopRegionOption[]> {
+function listActiveShopRegions(): Promise<ShopRegionOption[]> {
 	return prisma.shopRegion.findMany({
 		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 		select: { id: true, name: true },
@@ -507,3 +507,6 @@ export async function fulfillOrder(
 		return tx.shopOrder.findUniqueOrThrow({ where: { id: orderId } })
 	})
 }
+
+export type { ShopItemPublic, ShopItemView, ShopOrderPublic, ShopRegionOption }
+export { listActiveShopRegions, shopOrderPublicSelect, shopOrderStaffSelect }

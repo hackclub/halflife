@@ -23,8 +23,6 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { getSubmissionDetail } from "@/lib/queries/review"
 
-export const dynamic = "force-dynamic"
-
 interface Props {
 	params: Promise<{ id: string }>
 }
@@ -318,3 +316,5 @@ export default async function ReviewDetailPage({ params }: Props) {
 		</div>
 	)
 }
+
+export const dynamic = "force-dynamic"

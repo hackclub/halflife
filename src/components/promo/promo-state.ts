@@ -11,9 +11,9 @@
  * landing can stay static: nothing here is server-rendered per visitor.
  */
 
-export type PromoMode = "banner" | "card" | "hidden"
+type PromoMode = "banner" | "card" | "hidden"
 
-export const STICKER_SHEET_PROMO_KEY = "half-life:promo:sticker-sheet"
+const STICKER_SHEET_PROMO_KEY = "half-life:promo:sticker-sheet"
 
 const listeners = new Set<() => void>()
 
@@ -77,3 +77,6 @@ export function setPromoMode(mode: PromoMode): void {
 	document.documentElement.dataset.promo = mode
 	emit()
 }
+
+export type { PromoMode }
+export { STICKER_SHEET_PROMO_KEY }

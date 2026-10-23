@@ -57,7 +57,7 @@ import { warmupPhaseOf } from "@/lib/warmup"
  */
 
 /** One checkpoint's state, in the shape the client store keeps them. */
-export interface CheckpointSnapshot {
+interface CheckpointSnapshot {
 	artefacts: number
 	at?: number
 	caption?: string
@@ -66,7 +66,7 @@ export interface CheckpointSnapshot {
 	minutes: number
 }
 
-export interface StoreSnapshot {
+interface StoreSnapshot {
 	/** The printer fund. Spendable on a printer and nothing else. */
 	bankedCoins: number
 	/** Ordinary coins. */
@@ -148,7 +148,7 @@ function weekOf(themeIndex: number, phase: Phase): number {
 	return phase === Phase.DESIGN ? themeIndex + 1 : themeIndex + 1 + DESIGN_WEEKS
 }
 
-export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
+async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	const [user, projects, sessions, links, posts, submissions, balances, settings, owedReels, roles] = await Promise.all(
 		[
 			prisma.user.findUniqueOrThrow({
@@ -495,3 +495,6 @@ function minutesOf(session: SessionRow): number {
 function clampTier(tier: number): 1 | 2 | 3 {
 	return tier === 2 || tier === 3 ? tier : 1
 }
+
+export type { CheckpointSnapshot, StoreSnapshot }
+export { getStoreSnapshot }

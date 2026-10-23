@@ -24,7 +24,7 @@ const PAGE_SIZE = 100
 /**
  * The number of distinct addresses on the list, or null if Airtable is not configured or does not answer.
  */
-export const countSignups = cachedAirtableWalk(walkSignups)
+const countSignups = cachedAirtableWalk(walkSignups)
 
 /**
  * Walk every page and count distinct addresses, lowercased.
@@ -58,3 +58,5 @@ async function walkSignups(config: AirtableConfig): Promise<number | null> {
 	}
 	return seen.size
 }
+
+export { countSignups }

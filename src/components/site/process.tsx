@@ -238,7 +238,7 @@ function WeekList() {
 	)
 }
 
-export default function Process() {
+function Process() {
 	const [design, funding, build, printer] = STEPS
 	const [viral, community] = ASIDES
 
@@ -696,3 +696,5 @@ function Aside(props: AsideProps) {
 		</div>
 	)
 }
+
+export { Process as default }

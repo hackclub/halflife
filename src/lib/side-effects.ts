@@ -2,7 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { AuditAction, logAudit } from "@/lib/audit"
 
-export interface SideEffectContext {
+interface SideEffectContext {
 	actorEmail?: string | null
 	actorId: string | null
 	metadata?: Prisma.InputJsonValue
@@ -90,3 +90,5 @@ export async function trackSideEffect<T>(
 		return null
 	}
 }
+
+export type { SideEffectContext }

@@ -10,18 +10,18 @@ import prisma from "@/lib/prisma"
  * Auth is the user's own OAuth token, stored on their `lapse` Account row by better-auth when they link it. Lapse issues 30-day tokens and no refresh tokens yet, so an expired token is the same answer as never having linked: sign in with Lapse again.
  */
 
-export const LAPSE_API_BASE = (process.env.LAPSE_API_BASE ?? "https://api.lapse.hackclub.com/api").replace(/\/$/, "")
+const LAPSE_API_BASE = (process.env.LAPSE_API_BASE ?? "https://api.lapse.hackclub.com/api").replace(/\/$/, "")
 
 /** Where people watch a timelapse – Lapse's own page, not the raw stream. */
 const LAPSE_WEB_BASE = (process.env.LAPSE_WEB_BASE ?? "https://lapse.hackclub.com").replace(/\/$/, "")
 
-export function lapseTimelapseUrl(id: string): string {
+function lapseTimelapseUrl(id: string): string {
 	return `${LAPSE_WEB_BASE}/timelapse/${encodeURIComponent(id)}`
 }
 
 const TIMEOUT_MS = 10_000
 
-export interface LapseTimelapse {
+interface LapseTimelapse {
 	createdAt: number
 	/** Wall-clock seconds recorded – Lapse derives it from the snapshots. */
 	durationSeconds: number
@@ -64,7 +64,7 @@ function toTimelapse(t: RawTimelapse): LapseTimelapse {
 const NOT_LINKED = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse to pick your timelapses")
 
 /** The user's Lapse identity and a token that is still good, or a refusal. */
-export async function lapseCredentials(userId: string): Promise<{ lapseUserId: string; accessToken: string }> {
+async function lapseCredentials(userId: string): Promise<{ lapseUserId: string; accessToken: string }> {
 	const account = await prisma.account.findFirst({
 		orderBy: { updatedAt: "desc" },
 		select: { accessToken: true, accessTokenExpiresAt: true, accountId: true },
@@ -109,7 +109,7 @@ async function call<T>(accessToken: string, path: string, query?: { [_: string]:
 }
 
 /** A page of the user's published timelapses, newest first. */
-export async function listMyTimelapses(
+async function listMyTimelapses(
 	userId: string,
 	cursor?: string,
 ): Promise<{ timelapses: LapseTimelapse[]; nextCursor: string | null }> {
@@ -159,3 +159,6 @@ export async function verifyOwnTimelapses(userId: string, ids: readonly string[]
 	}
 	return found
 }
+
+export type { LapseTimelapse }
+export { LAPSE_API_BASE, lapseCredentials, lapseTimelapseUrl, listMyTimelapses }

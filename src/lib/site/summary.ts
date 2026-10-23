@@ -1,4 +1,5 @@
 import { DAY_MS } from "@/lib/time"
+
 /**
  * How a daily summary post is put together.
  *
@@ -8,17 +9,17 @@ import { DAY_MS } from "@/lib/time"
  */
 
 /** How many rows a board prints before it collapses into an overflow note. */
-export const LEADERBOARD_LIMIT = 10
+const LEADERBOARD_LIMIT = 10
 
 /**
  * The window every daily summary covers.
  *
  * Kept next to the `":mc-clock: in the last 24 hours..."` line that promises it, so the two cannot drift – the constant used to live in each route and the line here, and nothing stopped someone changing one without the other.
  */
-export const SUMMARY_WINDOW_MS = DAY_MS
+const SUMMARY_WINDOW_MS = DAY_MS
 
 /** The start of the window, for a caller that wants to pass the `since` down to a query. */
-export const summarySince = (now: Date = new Date()): Date => new Date(now.getTime() - SUMMARY_WINDOW_MS)
+const summarySince = (now: Date = new Date()): Date => new Date(now.getTime() - SUMMARY_WINDOW_MS)
 
 const OPENING =
 	"um, um, hi there! hope i'm not disturbing you, but i just wanted to let you know that i've got some stats for you! :yay:"
@@ -100,3 +101,5 @@ export function renderSummary(input: { headline: string; boards: readonly Summar
 	const sections = input.boards.flatMap(board => ["", ...boardSection(board.title, board.total, board.lines)])
 	return [OPENING, "", CLOCK_LINE, `:yay-love: ${input.headline}`, ...sections].join("\n")
 }
+
+export { LEADERBOARD_LIMIT, SUMMARY_WINDOW_MS, summarySince }

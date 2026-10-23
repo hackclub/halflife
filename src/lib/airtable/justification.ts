@@ -15,7 +15,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  */
 
 /** One journal entry, as far as a justification cares. */
-export interface JustificationSession {
+interface JustificationSession {
 	/** The maker's own write-up of the sitting. Null when they claimed hours without saying anything. */
 	content: string | null
 	createdAt: Date
@@ -26,7 +26,7 @@ export interface JustificationSession {
 }
 
 /** One line of the parts list. */
-export interface JustificationPart {
+interface JustificationPart {
 	name: string
 	/** What the part is for on the board, in the maker's words. */
 	purpose: string | null
@@ -34,7 +34,7 @@ export interface JustificationPart {
 }
 
 /** One timelapse, as far as a justification cares: where it is watched. */
-export interface JustificationTimelapse {
+interface JustificationTimelapse {
 	externalId: string | null
 	objectKey: string | null
 	playbackUrl: string | null
@@ -42,7 +42,7 @@ export interface JustificationTimelapse {
 }
 
 /** Everything a justification is built from. */
-export interface JustificationSource {
+interface JustificationSource {
 	bomItems: JustificationPart[]
 	description: string | null
 	/** The Hackatime project names linked to this phase, without the week they were tracked in. */
@@ -59,7 +59,7 @@ export interface JustificationSource {
  *
  * A justification column is written with what we hold and left alone when we hold nothing. A blank written over one erases the only record of it, and for the pre-season rows Half Life imported, the Lapse links came from the form and were never handed to Postgres as timelapses – so a blank there would destroy evidence the base is the only place to find.
  */
-export interface JustificationValues {
+interface JustificationValues {
 	hackatimeId?: string
 	hackatimeProjects?: string
 	lapseLinks?: string
@@ -94,7 +94,7 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10)
  *
  * A recording made on Lapse is watched on Lapse, by its own id. Anything older was uploaded and is watched where it was put: the playback URL the row already carries, or R2 by its object key.
  */
-export function timelapseLinks(timelapses: readonly JustificationTimelapse[]): string[] {
+function timelapseLinks(timelapses: readonly JustificationTimelapse[]): string[] {
 	return timelapses
 		.map(t =>
 			t.provider === "lapse" && t.externalId
@@ -109,7 +109,7 @@ export function timelapseLinks(timelapses: readonly JustificationTimelapse[]): s
  *
  * The description is the maker's own account and the parts are the concrete build, so together they answer "what is this, technically". The log adds what was actually done and how long it took, which is the part a reviewer cannot get from the repo.
  */
-export function specificTechnicalFeatures(source: JustificationSource, phase: Phase): string {
+function specificTechnicalFeatures(source: JustificationSource, phase: Phase): string {
 	const description = source.description?.trim() ?? ""
 	const parts = source.bomItems.map(partLine).filter((line): line is string => line !== null)
 	const entries = source.workSessions
@@ -141,7 +141,7 @@ export function specificTechnicalFeatures(source: JustificationSource, phase: Ph
  *
  * The Hackatime projects carry the week they were tracked in, because a project name on its own does not say which of the ten weeks it belonged to – and the reviewer's own reading of the hours depends on that.
  */
-export function justificationValues(
+function justificationValues(
 	source: JustificationSource,
 	opts: { eventStart: Date; phase: Phase; theme: Theme },
 ): JustificationValues {
@@ -198,3 +198,12 @@ function sessionExcerpt(content: string | null, description: string): string | n
 	if (opening.length >= OPENING_CHARS && kept.startsWith(opening)) return null
 	return kept.length > EXCERPT_CHARS ? `${kept.slice(0, EXCERPT_CHARS).trimEnd()}…` : kept
 }
+
+export type {
+	JustificationPart,
+	JustificationSession,
+	JustificationSource,
+	JustificationTimelapse,
+	JustificationValues,
+}
+export { justificationValues, specificTechnicalFeatures, timelapseLinks }

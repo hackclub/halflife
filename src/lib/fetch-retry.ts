@@ -14,12 +14,12 @@ import "server-only"
  */
 
 /** Waits before each retry. A request gets at most `length` retries. */
-export const RETRY_DELAYS_MS = [300, 1000]
+const RETRY_DELAYS_MS = [300, 1000]
 
 /** The most a response body may be, in characters, before it is refused. */
 const MAX_BODY_CHARS = 4 * 1024 * 1024
 
-export interface FetchRetryOptions extends RequestInit {
+interface FetchRetryOptions extends RequestInit {
 	/** Attempts after the first. Defaults to `RETRY_DELAYS_MS.length`. */
 	retries?: number
 }
@@ -86,3 +86,6 @@ export async function fetchWithRetry(url: string | URL, options: FetchRetryOptio
 
 	throw new Error(`No answer from ${url}: ${lastError instanceof Error ? lastError.message : String(lastError)}`)
 }
+
+export type { FetchRetryOptions }
+export { RETRY_DELAYS_MS }

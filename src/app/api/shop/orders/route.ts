@@ -8,8 +8,6 @@ import prisma from "@/lib/prisma"
 import { purchaseSchema } from "@/lib/schemas/shop"
 import { purchase, shopOrderPublicSelect } from "@/lib/shop"
 
-export const dynamic = "force-dynamic"
-
 /**
  * The orders' order: newest first, with the id as the tiebreaker.
  *
@@ -65,3 +63,5 @@ export const POST = withSession(async (req: Request, { gate }) => {
 
 	return ok({ order }, { status: 201 })
 })
+
+export const dynamic = "force-dynamic"

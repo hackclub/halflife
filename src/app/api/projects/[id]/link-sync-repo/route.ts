@@ -6,8 +6,6 @@ import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { getRepoSyncState, scheduleRepoSync } from "@/lib/repo-sync"
 
-export const dynamic = "force-dynamic"
-
 interface Params {
 	params: Promise<{ id: string }>
 }
@@ -72,3 +70,5 @@ export const POST = withSession(async (_req: Request, { params, gate }: Params &
 
 	return ok({ githubRepo: syncRepo })
 })
+
+export const dynamic = "force-dynamic"

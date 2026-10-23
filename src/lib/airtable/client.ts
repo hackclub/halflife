@@ -2,7 +2,7 @@ import "server-only"
 
 const API_BASE = "https://api.airtable.com/v0"
 
-export interface AirtableConfig {
+interface AirtableConfig {
 	apiKey: string
 	baseId: string
 }
@@ -10,7 +10,7 @@ export interface AirtableConfig {
 /**
  * Returns null when credentials are absent, and every write path no-ops with a warning. Local development works with no Airtable at all, and a rotated key never 500s a participant's request.
  */
-export function getAirtableConfig(): AirtableConfig | null {
+function getAirtableConfig(): AirtableConfig | null {
 	const apiKey = process.env.AIRTABLE_API_KEY
 	const baseId = process.env.AIRTABLE_BASE_ID
 	if (!apiKey || !baseId) return null
@@ -22,7 +22,7 @@ export function getAirtableConfig(): AirtableConfig | null {
  *
  * Strip control characters, then escape backslashes, then quotes – in that order. Escaping quotes first would double-escape the backslashes you just inserted. Every formula interpolation goes through this: siege's duplicate check interpolates a URL raw, which is a formula-injection hole, and stasis has one call site that hand-rolls the replace and misses the control characters.
  */
-export function escapeAirtableValue(value: string): string {
+function escapeAirtableValue(value: string): string {
 	// Strip control characters by code point rather than with a regex: the rule that reads patterns cannot see that removing them is the job.
 	const clean = Array.from(value).filter(char => {
 		const code = char.codePointAt(0) ?? 0
@@ -31,7 +31,7 @@ export function escapeAirtableValue(value: string): string {
 	return clean.join("").replaceAll("\\", String.raw`\\`).replaceAll("'", String.raw`\'`)
 }
 
-export class AirtableError extends Error {
+class AirtableError extends Error {
 	constructor(
 		message: string,
 		readonly status: number,
@@ -125,3 +125,6 @@ export function chunk<T>(items: T[], size = 10): T[][] {
 	for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
 	return out
 }
+
+export type { AirtableConfig }
+export { AirtableError, escapeAirtableValue, getAirtableConfig }

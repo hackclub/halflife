@@ -16,7 +16,7 @@ import { PLATFORM_HOME } from "@/lib/routes"
  *
  * Adding a link opens the same sheet a reel offers right after it is posted, started on the links – pressing "Add where you posted it" has already said yes. Everything here changes on the server, so every change ends in a refresh rather than a local patch.
  */
-export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
+function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 	const router = useRouter()
 	const [adding, setAdding] = useState<MyReel | null>(null)
 
@@ -251,3 +251,5 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd(): void; onCh
 		</Panel>
 	)
 }
+
+export { ReelsList }
