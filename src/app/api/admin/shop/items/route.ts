@@ -18,7 +18,7 @@ export const GET = withPermission(Permission.MANAGE_SHOP, async () =>
 export const POST = withPermission(Permission.MANAGE_SHOP, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, shopItemSchema)
 	if (parsed.error) return parsed.error
-	const data = parsed.data
+	const { data } = parsed
 
 	const existing = await prisma.shopItem.findUnique({ where: { id: data.id } })
 	if (existing) return fail("CONFLICT", "An item with that id already exists")

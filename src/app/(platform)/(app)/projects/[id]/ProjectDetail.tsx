@@ -569,7 +569,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	const tierLocked = statusOf(week) === "approved"
 	const grantUsd = getTier(project.tier)?.grantUsd ?? 0
 	// Kept in a local so the phase survives into the unsubmit handler below.
-	const inReview = data.inReview
+	const { inReview } = data
 	// The overlap between a recording and a Hackatime link could not be checked for a phase of this project, so the total on this page may still be counting the same sitting once through each. A season project spans its design and build weeks, five apart, so either of them is enough.
 	const overlapUnchecked = overlapUncheckedWeek(project.weekId) || overlapUncheckedWeek(buildWeekId)
 

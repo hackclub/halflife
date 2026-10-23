@@ -46,7 +46,7 @@ async function signupRows(
 			const userId = r.fields[userIdKey]
 			if (typeof userId === "string" && !byUserId.has(userId.trim())) byUserId.set(userId.trim(), r)
 		}
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return { byEmail, byUserId }
 }

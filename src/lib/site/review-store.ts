@@ -118,7 +118,7 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 	for (const project of projects) totals.set(project.theme, (totals.get(project.theme) ?? 0) + 1)
 	const reviewed = new Map<Theme, Set<string>>()
 	for (const review of reviews) {
-		const theme = review.submission.themeProject.theme
+		const { theme } = review.submission.themeProject
 		let set = reviewed.get(theme)
 		if (!set) {
 			set = new Set()

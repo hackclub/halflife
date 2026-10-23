@@ -54,7 +54,7 @@ async function countAirtableRecords(url: string, headers: { [_: string]: string 
 		if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
 		const data = (await res.json()) as { records?: unknown[]; offset?: string }
 		count += data.records?.length ?? 0
-		offset = data.offset
+		;({ offset } = data)
 	} while (offset)
 	return count
 }

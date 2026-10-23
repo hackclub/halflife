@@ -93,7 +93,7 @@ export function Modal({
 			const items = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
 				el => el.offsetParent !== null || el === document.activeElement,
 			)
-			const firstEl = items[0]
+			const [firstEl] = items
 			const lastEl = items.at(-1)
 			if (!firstEl || !lastEl) return
 			if (e.shiftKey && document.activeElement === firstEl) {

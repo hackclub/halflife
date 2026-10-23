@@ -54,8 +54,7 @@ export function parseRepoRef(value: string, opts: { forge?: Forge } = {}): RepoR
 	let pathname: string
 	try {
 		const u = new URL(withScheme ? raw : `https://${raw}`)
-		hostname = u.hostname
-		pathname = u.pathname
+		;({ hostname, pathname } = u)
 	} catch {
 		return null
 	}

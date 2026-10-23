@@ -33,7 +33,7 @@ const createSchema = z
 export const POST = withSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, createSchema)
 	if (parsed.error) return parsed.error
-	const data = parsed.data
+	const { data } = parsed
 
 	const window = await warmupCreationWindow()
 	if (!window.open) return fail("CONFLICT", `Warm-up projects closed ${window.closesOn}.`)

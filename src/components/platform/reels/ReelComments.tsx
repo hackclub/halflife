@@ -154,7 +154,7 @@ export function ReelComments({
 
 	async function remove(c: Comment) {
 		if (!reel) return
-		const id = reel.id
+		const { id } = reel
 		const count = reel.commentCount
 		// Gone at once; put back where it was if the server says no.
 		let at = -1

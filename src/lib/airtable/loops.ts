@@ -283,7 +283,7 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 			const userId = r.fields[LOOPS_FIELDS.userId]
 			if (typeof userId === "string" && !byUserId.has(userId.trim())) byUserId.set(userId.trim(), r)
 		}
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return { byEmail, byUserId, writable }
 }
@@ -469,12 +469,12 @@ export async function syncLoopsWeekSubmitted(
 
 	// filterByFormula names columns by name, never by id – so these use the schema names, not the probed keys.
 	const byUserId = await findByFormula(`{${RSVP.fields.userId.name}}='${escapeAirtableValue(userId)}'`)
-	let row = byUserId.records[0]
+	let [row] = byUserId.records
 	if (!row) {
 		const byEmail = await findByFormula(
 			`LOWER({${RSVP.fields.email.name}})='${escapeAirtableValue(user.email.trim().toLowerCase())}'`,
 		)
-		row = byEmail.records[0]
+		;[row] = byEmail.records
 	}
 	if (!row) return { skipped: "no_row" }
 	if ((row.fields[column] === true) === want) return { skipped: "already_set" }

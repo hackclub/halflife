@@ -276,7 +276,7 @@ export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 
 		if (posts[0]) await markReel(userId, posts[0].createdAt)
 		// The first and last of the list, named rather than indexed twice: the narrowing is what keeps the write off `undefined` without an assertion.
-		const firstSubmission = submissions[0]
+		const [firstSubmission] = submissions
 		const lastSubmission = submissions.at(-1)
 		if (firstSubmission && lastSubmission)
 			await prisma.user.update({

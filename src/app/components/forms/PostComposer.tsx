@@ -69,7 +69,7 @@ export function PostComposer({
 			if (!objectKey && file) {
 				setStage("uploading")
 				setProgress(0)
-				objectKey = (await uploadFile(file, "posts", setProgress)).objectKey
+				;({ objectKey } = await uploadFile(file, "posts", setProgress))
 			}
 
 			if (!objectKey) {

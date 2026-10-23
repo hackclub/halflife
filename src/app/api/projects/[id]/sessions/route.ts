@@ -87,7 +87,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	const parsed = await parseBody(req, sessionCreateSchema)
 	if (parsed.error) return parsed.error
-	const data = parsed.data
+	const { data } = parsed
 
 	const project = await prisma.themeProject.findFirst({
 		where: { deletedAt: null, id, userId: gate.user.id },

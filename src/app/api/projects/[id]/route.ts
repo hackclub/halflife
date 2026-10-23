@@ -68,7 +68,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 
 	const parsed = await parseBody(req, projectUpdateSchema)
 	if (parsed.error) return parsed.error
-	const data = parsed.data
+	const { data } = parsed
 
 	// A patch with no fields in it has nothing to write, and an update with nothing in it is not something the database can apply.
 	if (Object.keys(data).length === 0) return fail("VALIDATION_FAILED", "Nothing to change")

@@ -165,7 +165,7 @@ async function main() {
 	check("a returned week unticks the submit node", returned.progress["w1-submit"], undefined)
 	check("while keeping its existing entries", returned.progress["w1-entry-3"]?.done, true)
 	const { checkpointsFor, WEEK_META } = await import("../src/lib/curriculum")
-	const firstWeek = WEEK_META[0]
+	const [firstWeek] = WEEK_META
 	if (!firstWeek) throw new Error("the curriculum has no week 1")
 	const returnedNodes = checkpointsFor(firstWeek, [90, 120, 180], id => returned.progress[id]?.done ?? false, 0, false)
 	check(

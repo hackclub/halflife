@@ -283,9 +283,9 @@ export function shopGraceAccess(
 	if (state.awaitingReview > 0) return { graceUntil: null, open: true }
 
 	// The last review is a max over every project's two review dates, not the most recently *updated* row: editing a title or granting an extension bumps `updatedAt` without touching a review, which would mask a review that just landed and close the grace window early.
-	const reviewedAt = [state.designReviewedAt, state.buildReviewedAt]
+	const [reviewedAt] = [state.designReviewedAt, state.buildReviewedAt]
 		.filter((d): d is Date => Boolean(d))
-		.toSorted((a, b) => b.getTime() - a.getTime())[0]
+		.toSorted((a, b) => b.getTime() - a.getTime())
 	if (!reviewedAt) return { graceUntil: null, open: false }
 
 	const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)

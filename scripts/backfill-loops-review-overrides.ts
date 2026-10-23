@@ -67,7 +67,7 @@ async function main() {
 			),
 		)
 		rows.push(...page.records)
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 
 	const updates: { fields: { [_: string]: unknown }; id: string }[] = []

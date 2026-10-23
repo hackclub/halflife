@@ -232,7 +232,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 	if (request.headers.get("x-slack-retry-num")) return NextResponse.json({ ok: true })
 
 	if (body.type === "event_callback" && body.event) {
-		const event = body.event
+		const { event } = body
 		const eventId = body.event_id
 		const teamId = body.team_id
 		// Ack first, work second. Slack abandons a delivery it hasn't seen a 200 for within 3s and retries, and the guard above drops every retry – so if a slow Slack call held the response open past that window, the retry carrying the same work would be discarded and the invite lost with nothing in the logs. `after` keeps the response instant so the retry path stays a genuine safety net rather than a silent failure.

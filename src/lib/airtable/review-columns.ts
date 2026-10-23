@@ -36,7 +36,7 @@ export async function currentReviewColumns(
 				pass1Reviewer: hasPass1 && typeof record.fields[pass1Key] === "string" ? record.fields[pass1Key] : "",
 				status: typeof record.fields[statusKey] === "string" ? record.fields[statusKey] : "",
 			})
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return byId
 }

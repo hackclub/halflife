@@ -78,7 +78,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		const attempted = new Set<string>()
 		for (const failure of failures) {
 			const phase = phaseOf(failure.metadata)
-			const targetId = failure.targetId
+			const { targetId } = failure
 			if (!phase || !targetId) continue
 			const key = `${targetId}:${phase}`
 			if (attempted.has(key)) continue

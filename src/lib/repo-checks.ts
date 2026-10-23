@@ -182,7 +182,7 @@ function isDesignJson(text: string): boolean {
  * Two requests, side by side. The file list is read at HEAD – the default branch, whatever it is called – so there is no need to ask for the repo first just to learn the branch name, which is what used to make this three. The file list also answers whether the repo exists: 404 there means it does not, or is private, which to a reviewer is the same thing.
  */
 async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
-	const forge = ref.forge
+	const { forge } = ref
 	const base = `repos/${ref.fullName}`
 	let treeRes: Response
 	let readmeRes: Response
@@ -230,7 +230,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
  * actually found. Both lists are paginated at 100, and a project with more files than one page would silently look emptier than it is – which, for a required-file check, means failing a maker who did the work. So the tree is walked until GitLab stops offering a next page.
  */
 async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
-	const forge = ref.forge
+	const { forge } = ref
 	const project = encodeURIComponent(ref.fullName)
 
 	let first: Response
@@ -283,7 +283,7 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 	const candidates = files
 		.filter(f => README_NAMES.has((f.split("/").pop() ?? "").toLowerCase()))
 		.toSorted((a, b) => a.split("/").length - b.split("/").length)
-	const name = candidates[0]
+	const [name] = candidates
 	if (!name) return null
 
 	const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`)
@@ -322,7 +322,7 @@ function readmeLineCount(readme: string): number {
 /** The paths in the repo that satisfy a file kind by name. */
 function namedMatches(kind: RepoFileKind, snap: RepoSnapshot): string[] {
 	const def = REPO_FILE_KINDS[kind]
-	const pattern = def.pattern
+	const { pattern } = def
 	if (pattern) return snap.paths.filter(p => pattern.test(p))
 	return snap.paths.filter(p => (def.extensions ?? []).some(ext => p.endsWith(ext)))
 }
@@ -385,7 +385,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 	}
 
 	const name = ref.fullName
-	const forge = ref.forge
+	const { forge } = ref
 
 	const unavailable = (why: string) =>
 		result(
@@ -543,7 +543,7 @@ function foreignRepoHost(link: string): string | null {
 	if (forgeByHostname(host)) return null
 	const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(link) ? link : `https://${link}`
 	try {
-		const pathname = new URL(withScheme).pathname
+		const { pathname } = new URL(withScheme)
 		return pathname.split("/").filter(Boolean).length >= 2 ? host : null
 	} catch {
 		return null

@@ -41,7 +41,7 @@ async function currentColumns(
 			),
 		)
 		for (const r of page.records) byId.set(r.id, text(r.fields[weekKey]))
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return byId
 }

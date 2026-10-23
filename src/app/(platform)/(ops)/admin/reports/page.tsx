@@ -208,7 +208,7 @@ function subjectOf(report: ContentReportRow): Subject {
 		restoreUrl: null,
 	}
 	if (report.target === "REEL" && report.post) {
-		const post = report.post
+		const { post } = report
 		return {
 			author: displayName(post.user) ?? "a maker",
 			gone: post.deletedAt !== null,
@@ -222,7 +222,7 @@ function subjectOf(report: ContentReportRow): Subject {
 		}
 	}
 	if (report.target === "REEL_COMMENT" && report.comment) {
-		const comment = report.comment
+		const { comment } = report
 		return {
 			author: displayName(comment.user) ?? "a maker",
 			gone: comment.deletedAt !== null,

@@ -376,13 +376,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	// A trail left open over midnight greys a closing week out, and opens a starting one, on the stroke of it rather than on the next navigation. Timers top out at about 24.8 days, so a moment further off than that just re-arms when this one fires.
 	useEffect(() => {
-		const next = [
+		const [next] = [
 			...Object.values(facts.weekClosesAt),
 			...Object.values(facts.weekOpensAt),
 			...Object.values(facts.warmups).map(w => w.closesAt),
 		]
 			.filter(at => at > now)
-			.toSorted((a, b) => a - b)[0]
+			.toSorted((a, b) => a - b)
 		if (next === undefined) return
 		const t = window.setTimeout(() => setNow(Date.now()), Math.min(next - now, 2 ** 31 - 1))
 		return () => window.clearTimeout(t)
@@ -1396,7 +1396,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (isUnlocked(id)) return null
 			if (isPassed(id)) return PASSED_REASON
 			if (isHeld(id)) {
-				const owedId = facts.owedReels[0]
+				const [owedId] = facts.owedReels
 				const owed = weeks.flatMap(w => w.checkpoints).find(c => c.id === owedId)
 				return owed ? `Re-record ${owed.title} first. You deleted it.` : "Re-record the reel you deleted first."
 			}

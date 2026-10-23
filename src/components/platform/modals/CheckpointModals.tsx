@@ -1396,7 +1396,7 @@ export function PublicReelModal({
 export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
-	const done = stateOf(checkpoint.id).done
+	const { done } = stateOf(checkpoint.id)
 	// A reel draft is restored once, when the sheet opens, and never changes while it is open – so it is a value to read, not one to set.
 	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => readReelDraft(checkpoint.id))

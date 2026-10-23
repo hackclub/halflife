@@ -117,14 +117,14 @@ export async function writeYswsRecord(
 			throw new Error("More than one Airtable row matches this submission; resolve the duplicate before syncing")
 		if (existing) {
 			console.warn(`[airtable] adopting existing YSWS row ${existing.id}; the previous write left no record id`)
-			id = existing.id
+			;({ id } = existing)
 		}
 	}
 	const dropped: string[] = []
 	for (;;)
 		try {
 			const result = await send(current, id)
-			const record = result.records[0]
+			const [record] = result.records
 			if (!record) throw new Error("Airtable write returned no record")
 			return { dropped, recordId: record.id }
 		} catch (err) {

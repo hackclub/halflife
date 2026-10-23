@@ -25,7 +25,7 @@ export const GET = withPermission(Permission.MANAGE_SHOP, async () =>
 export const POST = withPermission(Permission.MANAGE_SHOP, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, shopRegionSchema)
 	if (parsed.error) return parsed.error
-	const data = parsed.data
+	const { data } = parsed
 
 	const existing = await prisma.shopRegion.findUnique({ where: { id: data.id } })
 	if (existing) return fail("CONFLICT", "A region with that id already exists")

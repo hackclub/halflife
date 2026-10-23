@@ -104,7 +104,7 @@ async function copyObject(endpoint: string, bucket: string, source: string, dest
 	const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY ?? ""
 	if (!accessKeyId || !secretAccessKey) throw new Error("Set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY first")
 
-	const host = new URL(endpoint).host
+	const { host } = new URL(endpoint)
 	const destinationPath = `/${bucket}/${encodeKey(destination)}`
 	const copySource = `/${bucket}/${encodeKey(source)}`
 	const now = new Date()

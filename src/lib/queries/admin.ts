@@ -1785,7 +1785,7 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 	const since = startOfDay(new Date(), programTimezone)
 	const latest = new Map<string, { result: ReviewResult; today: boolean }>()
 	for (const review of reviews) {
-		const themeProjectId = review.submission.themeProjectId
+		const { themeProjectId } = review.submission
 		if (latest.has(themeProjectId)) continue
 		latest.set(themeProjectId, { result: review.result, today: review.createdAt >= since })
 	}

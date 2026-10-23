@@ -80,7 +80,7 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 	let theme: Theme
 	if (found) {
 		project = pickProject(found)
-		theme = found.theme
+		;({ theme } = found)
 	} else {
 		const settings = await getProgramSettings()
 		theme = themeForCurrentWeek(settings.eventStartDate, settings.programTimezone)

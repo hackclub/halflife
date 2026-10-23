@@ -60,7 +60,7 @@ async function currentColumns(
 			for (const [key, field] of keys) row.set(key, text(record.fields[field]))
 			byId.set(record.id, row)
 		}
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return byId
 }

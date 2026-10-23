@@ -45,7 +45,7 @@ async function main() {
 			),
 		)
 		for (const r of page.records) if (r.fields[LOOPS_FIELDS.lastEntryAt]) withTimestamp.push(r)
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	console.log(`Signups rows with a lastEntryAt: ${withTimestamp.length}`)
 

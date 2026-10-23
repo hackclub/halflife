@@ -123,7 +123,7 @@ export type TierId = (typeof TIERS)[number]["id"]
 export const TIER_IDS: readonly TierId[] = TIERS.map(t => t.id)
 
 /** The tier everyone starts on, and the floor the week's ask is measured from. */
-export const ENTRY_TIER = TIERS[0]
+export const [ENTRY_TIER] = TIERS
 
 export function getTier(id: number): Tier | undefined {
 	return TIERS.find(t => t.id === id)

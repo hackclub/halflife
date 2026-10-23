@@ -154,7 +154,7 @@ async function main() {
 				id: submission.id,
 			})
 		}
-		const first = firstPass[0]
+		const [first] = firstPass
 		if (!first) continue
 		rows.push({ firstPass, project, waitingSince: first.createdAt })
 	}

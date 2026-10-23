@@ -182,7 +182,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 		return []
 	}
 	const repo = parsed.fullName
-	const forge = parsed.forge
+	const { forge } = parsed
 
 	const creds = await forgeCredentials(project.userId, forge)
 	if (!creds) {

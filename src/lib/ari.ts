@@ -163,7 +163,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	if (phaseStatus !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is no longer awaiting review, so there is no ship to send")
 
-	const user = project.user
+	const { user } = project
 	if (!project.title.trim()) throw new HttpError("UNPROCESSABLE", "This project has no title to send to Ari")
 	if (!project.githubRepo) throw new HttpError("UNPROCESSABLE", "This project has no repository link to send to Ari")
 	if (!user.slackId)
@@ -311,9 +311,9 @@ async function noteShipFailure(themeProjectId: string, phase: Phase, reason: str
  */
 function alreadyQueuedShipId(err: unknown): string | null {
 	if (!(err instanceof AriApiError) || err.code !== "already_queued") return null
-	const details = err.details
+	const { details } = err
 	if (typeof details !== "object" || details === null) return null
-	const id = (details as { id?: unknown }).id
+	const { id } = details as { id?: unknown }
 	return typeof id === "string" && id.length > 0 ? id : null
 }
 
@@ -335,8 +335,7 @@ export async function sendSubmissionToAri(
 		let status: "accepted" | "duplicate"
 		try {
 			const result = await ari().ships.create(input)
-			id = result.id
-			status = result.status
+			;({ id, status } = result)
 		} catch (err) {
 			const queuedId = alreadyQueuedShipId(err)
 			if (!queuedId || !submissionId) throw err
