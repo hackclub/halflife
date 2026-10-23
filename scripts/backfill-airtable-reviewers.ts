@@ -13,7 +13,7 @@ import prisma from "../src/lib/prisma"
  *
  * Ari reviews in two passes: a reviewer decides, then an organizer confirms. Half Life only hears about the decision once it is final, but the payload names the person who made it as `review.reviewer.email`, and every decision has stored that address on its review (`SubmissionReview.reviewerEmail`) since the column landed. This replays the standing decision's address onto each row.
  *
- * Only the first pass can be filled. Ari never sends the confirming organizer: a second-pass confirmation re-sends the decision under the first-pass reviewer's identity, and the organizer exists only in Ari's internal activity log, which no API here reaches. `Pass 2 reviewer` is therefore left exactly as it is, including anything a person has typed into it.
+ * Only that pass can be filled. Ari never sends the confirming organizer: a second-pass confirmation re-sends the decision under the first-pass reviewer's identity, and the organizer exists only in Ari's internal activity log, which no API here reaches.
  *
  * The address is only written when the phase's current state agrees with the standing review's result. A phase back in review, reversed by an admin, or reopened from a rejection has no review that still accounts for its status, so its column is cleared rather than left naming someone whose decision no longer stands. A standing review that predates the address column offers nothing to write, so the row is left alone rather than cleared – `reviews:backfill-identities` is what fills that review first.
  *

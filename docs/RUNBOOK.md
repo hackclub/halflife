@@ -332,16 +332,14 @@ working as before.
 
 ### Reviewer columns on the review rows
 
-`Pass 1 reviewer` and `Pass 2 reviewer` are single-line text fields on
-`YSWS Project Submission`. The live mirror fills `Pass 1 reviewer` from the
-address Ari puts in the decision (`review.reviewer.email`, stored on the review
-as `reviewerEmail`).
+`Pass 1 reviewer` is a single-line text field on `YSWS Project Submission`. The
+live mirror fills it from the address Ari puts in the decision
+(`review.reviewer.email`, stored on the review as `reviewerEmail`).
 
-`Pass 2 reviewer` stays blank: Ari's second pass is an organizer confirming a
+Only that pass is available: Ari's second pass is an organizer confirming a
 held decision, and no payload Half Life receives names them. The confirmation
 re-sends the decision under the first-pass reviewer, and the organizer exists
-only in Ari's internal activity log. The column is left untouched rather than
-guessed at, so anything typed into it by hand survives.
+only in Ari's internal activity log.
 
 Rows written before the live mirror wrote `Pass 1 reviewer` are filled by:
 
