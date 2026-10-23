@@ -57,24 +57,22 @@ export function ImageUploads({
 		const batch = taken.map(file => ({ file, id: crypto.randomUUID() }))
 		setPending(p => [...p, ...batch.map(({ file, id }) => ({ id, name: file.name, progress: null }))])
 
-		await Promise.all(
-			batch.map(async ({ file, id }) => {
-				try {
-					const { objectKey } = await uploadFile(file, folder, progress =>
-						setPending(p => p.map(row => (row.id === id ? { ...row, progress } : row))),
-					)
-					// Uploads are named after their bytes, so re-picking a picture already on the list hands back the key it already has. Adding it again would put two thumbnails on one object and make removing either remove both.
-					if (latest.current.some(img => img.objectKey === objectKey)) return
-					const next = [...latest.current, { objectKey, previewUrl: URL.createObjectURL(file) }]
-					latest.current = next
-					onChange(next)
-				} catch (err) {
-					setErrors(e => [...e, `${file.name}: ${err instanceof Error ? err.message : "did not upload"}`])
-				} finally {
-					setPending(p => p.filter(row => row.id !== id))
-				}
-			}),
-		)
+		// One at a time, not `Promise.all`: ten pictures in parallel share one uplink, and on a school connection each request then stretches past the edge's timeout even though every picture is small. Serialising keeps each one's own window short and still shows progress per row.
+		for (const { file, id } of batch)
+			try {
+				const { objectKey } = await uploadFile(file, folder, progress =>
+					setPending(p => p.map(row => (row.id === id ? { ...row, progress } : row))),
+				)
+				// Uploads are named after their bytes, so re-picking a picture already on the list hands back the key it already has. Adding it again would put two thumbnails on one object and make removing either remove both.
+				if (latest.current.some(img => img.objectKey === objectKey)) continue
+				const next = [...latest.current, { objectKey, previewUrl: URL.createObjectURL(file) }]
+				latest.current = next
+				onChange(next)
+			} catch (err) {
+				setErrors(e => [...e, `${file.name}: ${err instanceof Error ? err.message : "did not upload"}`])
+			} finally {
+				setPending(p => p.filter(row => row.id !== id))
+			}
 		if (input.current) input.current.value = ""
 	}
 

@@ -263,8 +263,8 @@ production.**
 | `verify:pii` | nothing private reaches a browser; staff surfaces refuse participants |
 | `verify:onboarding` | the first checkpoint cannot be skipped |
 | `verify:feed` | moderation actually removes things |
-| `verify:handoff` | the QR upload token is single-use |
-| `verify:uploads` | R2 round-trip smoke test |
+| `verify:handoff` | the QR upload token is single-use, through both the direct and form paths |
+| `verify:uploads` | R2 round trip, public read, and the direct-upload CORS rule |
 | `verify:forge-write` | the forge write path's retries and status classification (no DB) |
 | `verify:loops` | the Loops Signups-row join (no network, no DB) |
 | `verify:loops-entries` | audit `Loops - halfLifeLastEntryAt` against the devlog rule (read-only unless `--clear`) |

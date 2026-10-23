@@ -25,7 +25,7 @@ const KIND_OPTIONS = [
 /**
  * Post a reel.
  *
- * Two requests, deliberately: the file goes to /api/upload and comes back as an object key, then /api/posts records the reel. Keeping them apart means a failed post does not have to re-send the video, and the upload route stays the one place that talks to R2.
+ * Two requests, deliberately: the file goes straight to the bucket with a presigned URL and comes back as an object key, then /api/posts records the reel. Keeping them apart means a failed post does not have to re-send the video, and the upload path stays the one place that talks to R2.
  *
  * The key is not trusted on the way back through: the server checks it belongs to the poster before it will attach it to anything.
  */

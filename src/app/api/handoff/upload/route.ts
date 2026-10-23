@@ -1,28 +1,16 @@
 import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { clientIp } from "@/lib/client-ip"
-import { completeHandoff, resolveHandoff } from "@/lib/handoff"
+import { completeHandoff, HANDOFF_MAX_PER_MINUTE, HANDOFF_MAX_UPLOAD_BYTES, resolveHandoff } from "@/lib/handoff"
 import { isUploadConfigured } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
 /**
- * This route's own budget, rather than the shared one.
- *
- * Every other upload is behind a session, so the size of a body is a decision the signed-in user made about their own storage. This one is not: the token inside the form is the only credential and it is not read until the body has been buffered, so the body size is the attacker's choice. A phone video is tens of megabytes, so 64 MiB is generous for the thing this route is for, and it is a quarter of what the authenticated upload route allows.
- */
-const HANDOFF_MAX_UPLOAD_BYTES = 64 * 1024 * 1024
-
-/**
- * How many uploads one address may start in a minute.
- *
- * The shared limiter allows ten; this is the same idea with less room, because the requests it counts are the ones that cost the most memory to refuse.
- */
-const HANDOFF_MAX_PER_MINUTE = 5
-
-/**
  * The phone's upload. DELIBERATELY UNAUTHENTICATED.
+ *
+ * This is the fallback for a browser that cannot PUT straight to the bucket. The direct path is `app/api/handoff/presign` + `app/api/handoff/confirm`, which keeps the bytes off this origin and therefore out of Cloudflare's ~100 second timeout – the thing that made a large reel a 524.
  *
  * The whole feature is "record on your phone without signing in on it", so the handoff token is the only credential. Everything that limits it lives in lib/handoff.ts: single use, minutes-long expiry, and an object key built from the handoff's OWNER rather than from anything in this request.
  */

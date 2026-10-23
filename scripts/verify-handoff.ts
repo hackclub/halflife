@@ -57,7 +57,14 @@ function fakeVideo() {
 }
 
 async function main() {
-	const { createHandoff, resolveHandoff, completeHandoff, getHandoffStatus } = await import("../src/lib/handoff")
+	const {
+		createHandoff,
+		resolveHandoff,
+		completeHandoff,
+		completeHandoffObject,
+		getHandoffStatus,
+		prepareHandoffUpload,
+	} = await import("../src/lib/handoff")
 	const { isUploadConfigured, deleteObject } = await import("../src/lib/uploads/r2")
 
 	const stamp = Date.now()
@@ -144,6 +151,52 @@ async function main() {
 
 	await deleteObject(result.objectKey)
 	console.log(`      (cleaned up ${result.objectKey})`)
+
+	// ── The direct path ────────────────────────────────────────────────────────
+	// This is the path the phone actually uses: presign, PUT straight to the bucket, confirm.
+	const direct = await createHandoff(owner.id)
+	const clip = fakeVideo()
+	const presigned = await prepareHandoffUpload(direct.token, {
+		contentType: clip.type,
+		filename: clip.name,
+		size: clip.size,
+	})
+	const put = await fetch(presigned.uploadUrl, {
+		body: await clip.bytes(),
+		headers: { "content-type": clip.type },
+		method: "PUT",
+	})
+	check("the presigned PUT is accepted", put.ok, true)
+	check("the presigned key is under the OWNER's prefix", presigned.objectKey.startsWith(`posts/${owner.id}/`), true)
+
+	const directResult = await completeHandoffObject(direct.token, {
+		contentType: clip.type,
+		filename: clip.name,
+		objectKey: presigned.objectKey,
+		size: clip.size,
+	})
+	check("the direct upload is recorded", directResult.objectKey, presigned.objectKey)
+	const directRow = await prisma.uploadHandoff.findUniqueOrThrow({
+		select: { objectKey: true, usedAt: true },
+		where: { id: direct.id },
+	})
+	check("the direct token is spent", Boolean(directRow.usedAt), true)
+	check("the direct row names the same object", directRow.objectKey, directResult.objectKey)
+
+	// A direct confirm names its own object key, so it has to be checked against the token's owner as carefully as the form path's key is minted.
+	const foreign = await createHandoff(owner.id)
+	await refused("a direct confirm cannot name another user's object", () =>
+		completeHandoffObject(foreign.token, {
+			contentType: clip.type,
+			filename: clip.name,
+			objectKey: `posts/${stranger.id}/stolen.mp4`,
+			size: clip.size,
+		}),
+	)
+	check("a refused direct confirm does not spend the code", (await resolveHandoff(foreign.token))?.id, foreign.id)
+
+	await deleteObject(directResult.objectKey)
+	console.log(`      (cleaned up ${directResult.objectKey})`)
 
 	await prisma.user.deleteMany({ where: { id: { in: [owner.id, stranger.id] } } })
 

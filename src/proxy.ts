@@ -127,15 +127,17 @@ export const config = {
 		// deploy does not take every scheduled job red at once. `api/health` is
 		// excluded so the container healthcheck keeps working either way.
 		//
-		// `r/` and `api/handoff/upload` are the phone-handoff pair. They are
+		// `r/` and `api/handoff` are the phone-handoff pair. They are
 		// reached by scanning a QR code on a phone that has no session and no
 		// basic-auth credentials, so gating them would break the feature on
 		// exactly the deployments it is most useful on. They carry their own
-		// credential: a single-use token that expires in minutes.
+		// credential: a single-use token that expires in minutes. That covers the
+		// presign and confirm routes the direct upload uses as well as the older
+		// form route; the desktop half still requires a session.
 		//
 		// `api/slack` verifies Slack's HMAC itself and has to answer the Request
 		// URL verification while the pre-launch gate is still on, or the app
 		// cannot be set up.
-		"/((?!_next/static|_next/image|favicon.ico|api/upload|api/integrations|api/slack|api/health|api/handoff/upload|r/).*)",
+		"/((?!_next/static|_next/image|favicon.ico|api/upload|api/integrations|api/slack|api/health|api/handoff|r/).*)",
 	],
 }

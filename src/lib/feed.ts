@@ -242,7 +242,7 @@ export interface CreatePostInput {
 /**
  * An object key must live under this user's own prefix.
  *
- * `/api/upload` builds keys as `posts/<userId>/<uuid>.<ext>`, but the key travels through the browser between the upload and this call, so the server has to check it rather than trust it. Without this, a post can be created pointing at somebody else's object – or at a key outside the posts folder entirely.
+ * `/api/upload/presign` builds keys as `posts/<userId>/<uuid>.<ext>`, but the key travels through the browser between the upload and this call, so the server has to check it rather than trust it. Without this, a post can be created pointing at somebody else's object – or at a key outside the posts folder entirely.
  */
 function assertOwnedKey(userId: string, key: string, field: string): void {
 	// Ownership plus the folder: a reel's video has to be in the posts folder, so a key that is genuinely yours but was uploaded as session evidence cannot be re-filed as a reel.

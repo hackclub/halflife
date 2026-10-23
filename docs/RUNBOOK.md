@@ -93,6 +93,28 @@ Coolify.
    to the root keys the app stores, and `uploads:backfill-urls` then normalises
    journal URLs that still name the legacy layout.
 
+   The browser also PUTs uploads straight to this bucket with a short-lived
+   presigned URL, so the bucket needs a CORS policy naming the app's origin.
+   Without it every upload quietly falls back to the old path through the
+   origin, where a large reel still 524s:
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://halflife.hackclub.com"],
+       "AllowedMethods": ["PUT"],
+       "AllowedHeaders": ["content-type"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
+   Add it under R2 → the bucket → Settings → CORS Policy, with the production
+   origin (not a wildcard – an empty response to the preflight is what a browser
+   reports as a failed upload). `pnpm verify:uploads` preflights a presigned URL
+   from `NEXT_PUBLIC_APP_URL` and says so if the rule is missing or names another
+   origin.
+
 6. **Deploy.**
 
    ```
@@ -381,7 +403,8 @@ real – those two carry `1800` with `--max-time 1740`, and the runbook's origin
 these two routes get faster, they can go back to the ingress like the rest.
 
 The same limit applies to anything else slow behind the vanity domain, including
-real users on a slow page – these jobs dodged it, the app did not.
+real users on a slow page – these jobs dodged it, and uploads now do too by
+going straight to R2 (see **Create the R2 bucket** above).
 
 `src/proxy.ts` runs for these too and already excludes `/api/integrations` from
 basic auth, so `REQUIRE_BASICAUTH` does not block either path – verify that
