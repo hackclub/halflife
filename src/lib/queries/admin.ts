@@ -832,41 +832,45 @@ export async function getAdminCounters(): Promise<{
 	shipped: number
 }> {
 	// The open hand-ins, each phase's newest only: an older unresolved row is a ship Ari no longer holds, and counting it would put a hand-in in the queue that no reviewer can open. The same rule as the reviewer-activity ring, so the two figures on the page cannot disagree.
-	const open = await prisma.phaseSubmission.findMany({
-		select: {
-			ariSubmissionId: true,
-			createdAt: true,
-			id: true,
-			phase: true,
-			themeProject: { select: { buildStatus: true, designStatus: true } },
-			themeProjectId: true,
-		},
-		where: { resolvedAt: null },
-	})
+	const open = await db.orm.public.PhaseSubmission.where({ resolvedAt: null })
+		.select("ariSubmissionId", "createdAt", "id", "phase", "themeProjectId")
+		.include("themeProject", project => project.select("buildStatus", "designStatus"))
+		.all()
 	const ships = countAriShips(
-		open.map(submission => ({
-			ariSubmissionId: submission.ariSubmissionId,
-			createdAt: submission.createdAt,
-			id: submission.id,
-			phase: submission.phase,
-			phaseStatus:
-				submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
-			resolvedAt: null,
-			result: null,
-			themeProjectId: submission.themeProjectId,
-		})),
+		open.map(submission => {
+			if (!submission.themeProject) throw new Error(`submission ${submission.id} has no project`)
+			return {
+				ariSubmissionId: submission.ariSubmissionId,
+				createdAt: parseDbTimestamp(submission.createdAt),
+				id: submission.id,
+				phase: submission.phase,
+				phaseStatus:
+					submission.phase === Phase.DESIGN
+						? submission.themeProject.designStatus
+						: submission.themeProject.buildStatus,
+				resolvedAt: null,
+				result: null,
+				themeProjectId: submission.themeProjectId,
+			}
+		}),
 	)
 
 	const [pendingOrders, participants, shipped] = await Promise.all([
-		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
-		prisma.user.count(),
-		prisma.printerAward.count({ where: { revokedAt: null } }),
+		db.orm.public.ShopOrder.where({ status: ShopOrderStatus.PENDING }).aggregate(a => ({ count: a.count() })),
+		db.orm.public.User.aggregate(a => ({ count: a.count() })),
+		db.orm.public.PrinterAward.where(award => award.revokedAt.isNull()).aggregate(a => ({ count: a.count() })),
 	])
 	// Sent, and Ari holds it: the figure comparable to Ari's own pending count. `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
 	const pendingReviews = ships.pending
 	// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
 	const pendingReviewsUnsent = ships.unreached
-	return { participants, pendingOrders, pendingReviews, pendingReviewsUnsent, shipped }
+	return {
+		participants: participants.count,
+		pendingOrders: pendingOrders.count,
+		pendingReviews,
+		pendingReviewsUnsent,
+		shipped: shipped.count,
+	}
 }
 
 export interface FlowStep {
@@ -895,53 +899,51 @@ export interface FlowStep {
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers] = await Promise.all([
-		prisma.user.findMany({
-			select: {
-				firstChecksPassedAt: true,
-				firstProjectAt: true,
-				firstReelAt: true,
-				firstSubmissionAt: true,
-				hardwareExperience: true,
-				id: true,
-				onboardingCompletedAt: true,
-				onboardingStep: true,
-				participantGoal: true,
-			},
-		}),
+		db.orm.public.User.select(
+			"firstChecksPassedAt",
+			"firstProjectAt",
+			"firstReelAt",
+			"firstSubmissionAt",
+			"hardwareExperience",
+			"id",
+			"onboardingCompletedAt",
+			"onboardingStep",
+			"participantGoal",
+		).all(),
 		// People who logged in: a sign-in is what issues a session. Derived from the table rather than the lastLoginAt marker, so the funnel does not depend on the analytics backfill having run.
-		prisma.session.findMany({ distinct: ["userId"], select: { userId: true } }),
+		db.orm.public.Session.distinct("userId").select("userId").all(),
 		// The onboarding paper trail, per person, read off their live projects: a description means they named something, a starter means they took one of the catalogue's, and a requested tier means they answered the tier question. One read for all three because the funnel needs them together.
-		prisma.themeProject.findMany({
-			select: { description: true, requestedTier: true, starterProjectId: true, userId: true },
-			where: { deletedAt: null },
-		}),
+		db.orm.public.ThemeProject.where({ deletedAt: null })
+			.select("description", "requestedTier", "starterProjectId", "userId")
+			.all(),
 		// People who added a devlog: a project with a real work session on it.
-		prisma.user.findMany({
-			select: { id: true },
-			where: {
-				themeProjects: {
-					some: {
-						deletedAt: null,
-						// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
-						workSessions: {
-							some: {
-								deletedAt: null,
-								OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-							},
-						},
-					},
-				},
-			},
-		}),
+		db.orm.public.User.where(user =>
+			user.themeProjects.some(project =>
+				and(
+					project.deletedAt.isNull(),
+					project.workSessions.some(session =>
+						and(
+							session.deletedAt.isNull(),
+							or(
+								session.hoursSource.neq(HoursSource.HACKATIME_TRACKED),
+								// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
+								session.timelapses.some(),
+							),
+						),
+					),
+				),
+			),
+		)
+			.select("id")
+			.all(),
 		// People who connected a repository to a project.
-		prisma.themeProject.findMany({
-			distinct: ["userId"],
-			select: { userId: true },
-			where: {
-				deletedAt: null,
-				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
-			},
-		}),
+		db.orm.public.ThemeProject.where({ deletedAt: null })
+			.where(project =>
+				or(project.githubRepo.isNotNull(), project.repoSyncRepo.isNotNull(), project.repoSyncEnabled.eq(true)),
+			)
+			.distinct("userId")
+			.select("userId")
+			.all(),
 	])
 
 	const sessions = new Set(sessionUsers.map(s => s.userId))
@@ -1064,23 +1066,23 @@ export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
 	if (openWeeks < 1) return []
 
 	const [signups, submissions] = await Promise.all([
-		prisma.user.count(),
-		prisma.phaseSubmission.findMany({
-			select: {
-				phase: true,
-				scheduledWeek: true,
-				themeProject: { select: { theme: true, userId: true } },
-			},
+		db.orm.public.User.aggregate(a => ({ count: a.count() })),
+		db.orm.public.PhaseSubmission.where(submission =>
+			or(
+				and(submission.scheduledWeek.gte(1), submission.scheduledWeek.lte(openWeeks)),
+				submission.scheduledWeek.isNull(),
+			),
+		)
 			// Null rows are kept because a hand-in from before `scheduledWeek` was recorded only finds its week through its theme and phase below.
-			where: {
-				OR: [{ scheduledWeek: { gte: 1, lte: openWeeks } }, { scheduledWeek: null }],
-				themeProject: { deletedAt: null },
-			},
-		}),
+			.where(submission => submission.themeProject.some(project => project.deletedAt.isNull()))
+			.select("id", "phase", "scheduledWeek")
+			.include("themeProject", project => project.select("theme", "userId"))
+			.all(),
 	])
 
 	const submitters = new Map<number, Set<string>>()
 	for (const submission of submissions) {
+		if (!submission.themeProject) throw new Error(`submission ${submission.id} has no project`)
 		const week = submission.scheduledWeek ?? scheduledWeekFor(submission.themeProject.theme, submission.phase)
 		if (week < 1 || week > openWeeks) continue
 		const seen = submitters.get(week) ?? new Set<string>()
@@ -1098,7 +1100,7 @@ export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
 				? `${scheduled.theme.label} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
 				: "No theme scheduled",
 			label: `Week ${week}`,
-			ofSignupsPct: pctOf(count, signups),
+			ofSignupsPct: pctOf(count, signups.count),
 			week,
 		}
 	})
@@ -1194,33 +1196,38 @@ export interface CountryStat {
  */
 async function loadRegionInputs() {
 	const [users, sessions, links] = await Promise.all([
-		prisma.user.findMany({ select: { id: true, timezone: true } }),
-		prisma.workSession.findMany({
-			select: {
-				hoursApproved: true,
-				hoursClaimed: true,
-				hoursSource: true,
-				phase: true,
-				themeProject: { select: { userId: true } },
-				themeProjectId: true,
-				timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
-			},
-			where: { deletedAt: null, themeProject: { deletedAt: null } },
-		}),
-		prisma.hackatimeLink.findMany({
-			select: {
-				cachedSeconds: true,
-				cachedSpans: true,
-				hackatimeProject: true,
-				hoursApproved: true,
-				phase: true,
-				themeProject: { select: { userId: true } },
-				themeProjectId: true,
-			},
-			where: { themeProject: { deletedAt: null } },
-		}),
+		db.orm.public.User.select("id", "timezone").all(),
+		db.orm.public.WorkSession.where({ deletedAt: null })
+			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			.select("hoursApproved", "hoursClaimed", "hoursSource", "id", "phase", "themeProjectId")
+			.include("themeProject", project => project.select("userId"))
+			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
+			.all(),
+		db.orm.public.HackatimeLink.where(link => link.themeProject.some(project => project.deletedAt.isNull()))
+			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "id", "phase", "themeProjectId")
+			.include("themeProject", project => project.select("userId"))
+			.all(),
 	])
-	return { links, sessions, users }
+	return {
+		links: links.map(link => {
+			const { themeProject } = link
+			if (!themeProject) throw new Error(`hackatime link ${link.id} has no project`)
+			return { ...link, themeProject }
+		}),
+		sessions: sessions.map(session => {
+			const { themeProject } = session
+			if (!themeProject) throw new Error(`session ${session.id} has no project`)
+			return {
+				...session,
+				themeProject,
+				timelapses: session.timelapses.map(timelapse => ({
+					...timelapse,
+					recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+				})),
+			}
+		}),
+		users,
+	}
 }
 
 type RegionInputs = Awaited<ReturnType<typeof loadRegionInputs>>
@@ -1356,20 +1363,16 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
  * The distinct people behind each day come along too, because the totals and the per-user reading are the same rows and re-reading them for a second chart would be the same query twice. A person is counted once however many devlogs they wrote, so it is people rather than entries.
  */
 export async function getDailyActivity(): Promise<DayActivity[]> {
-	const sessions = await prisma.workSession.findMany({
-		select: {
-			effectiveDate: true,
-			hoursApproved: true,
-			hoursClaimed: true,
-			hoursSource: true,
-			// A session belongs to the project, not the person, so the user is reached through it.
-			themeProject: { select: { userId: true } },
-		},
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
-	})
+	const sessions = await db.orm.public.WorkSession.where({ deletedAt: null })
+		.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+		.select("effectiveDate", "hoursApproved", "hoursClaimed", "hoursSource", "id")
+		// A session belongs to the project, not the person, so the user is reached through it.
+		.include("themeProject", project => project.select("userId"))
+		.all()
 
 	const byDay = new Map<string, { devlogs: number; hours: number; users: Set<string> }>()
 	for (const s of sessions) {
+		if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
 		const day = s.effectiveDate
 		if (!day || !DAY.test(day)) continue
 		let row = byDay.get(day)
@@ -1418,21 +1421,18 @@ export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today:
 	const { programTimezone } = await getProgramSettings()
 	const today = effectiveDateFor(new Date(), programTimezone)
 
-	const sessions = await prisma.workSession.findMany({
-		select: {
-			createdAt: true,
-			effectiveDate: true,
-			hoursClaimed: true,
-			// A session belongs to the project, not the person, so the user is reached through it.
-			themeProject: { select: { userId: true } },
-		},
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
-	})
+	const sessions = await db.orm.public.WorkSession.where({ deletedAt: null })
+		.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+		.select("createdAt", "effectiveDate", "hoursClaimed", "id")
+		// A session belongs to the project, not the person, so the user is reached through it.
+		.include("themeProject", project => project.select("userId"))
+		.all()
 
 	// day → (user → that person's hours that day), so the threshold is applied to a whole day rather than one entry.
 	const totals = new Map<string, Map<string, number>>()
 	for (const s of sessions) {
-		const day = s.effectiveDate ?? effectiveDateFor(s.createdAt, programTimezone)
+		if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
+		const day = s.effectiveDate ?? effectiveDateFor(parseDbTimestamp(s.createdAt), programTimezone)
 		let users = totals.get(day)
 		if (!users) {
 			users = new Map()
@@ -1474,19 +1474,18 @@ export interface GoalDayActivity {
  * A maker who has not answered the prompt yet belongs to no line. The question is held open until it is answered, but it is asked after the first checkpoint, so the earliest days are largely people who had not been asked; reading an empty start as "nobody was working towards anything" would be reading the prompt's timing rather than the work.
  */
 export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
-	const sessions = await prisma.workSession.findMany({
-		select: {
-			effectiveDate: true,
-			hoursApproved: true,
-			hoursClaimed: true,
-			hoursSource: true,
-			themeProject: { select: { user: { select: { participantGoal: true } }, userId: true } },
-		},
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
-	})
+	const sessions = await db.orm.public.WorkSession.where({ deletedAt: null })
+		.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+		.select("effectiveDate", "hoursApproved", "hoursClaimed", "hoursSource", "id")
+		.include("themeProject", project =>
+			project.select("userId").include("user", user => user.select("participantGoal")),
+		)
+		.all()
 
 	const byDay = new Map<string, Map<ParticipantGoal, { hours: number; users: Set<string> }>>()
 	for (const s of sessions) {
+		if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
+		if (!s.themeProject.user) throw new Error(`session ${s.id} has no author`)
 		const day = s.effectiveDate
 		const goal = s.themeProject.user.participantGoal
 		if (!day || !DAY.test(day) || !goal) continue
@@ -1622,10 +1621,10 @@ export interface FirstProjectStat {
  * Setup edits one row – the week-one (PCB) project – so its final `starterProjectId` is the choice: a starter id, or null for custom. Only users who finished setup and still have that project count; accounts with no week-one row made no choice in this system.
  */
 export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
-	const rows = await prisma.themeProject.findMany({
-		select: { starterProjectId: true },
-		where: { deletedAt: null, theme: Theme.PCB, user: { onboardingCompletedAt: { not: null } } },
-	})
+	const rows = await db.orm.public.ThemeProject.where({ deletedAt: null, theme: Theme.PCB })
+		.where(project => project.user.some(user => user.onboardingCompletedAt.isNotNull()))
+		.select("starterProjectId")
+		.all()
 
 	const counts = new Map<string | null, number>()
 	for (const r of rows) counts.set(r.starterProjectId, (counts.get(r.starterProjectId) ?? 0) + 1)
@@ -1713,17 +1712,9 @@ function weekSlots(): WeekSlot[] {
  * The warm-up track needs no special case: it is one phase on one of the two statuses, and `scheduledWeekFor` sends both to the single warm-up column.
  */
 export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			buildStatus: true,
-			designStatus: true,
-			requestedTier: true,
-			starterProjectId: true,
-			theme: true,
-			tier: true,
-		},
-		where: { deletedAt: null },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.select("buildStatus", "designStatus", "requestedTier", "starterProjectId", "theme", "tier")
+		.all()
 
 	const clusters = new Map<number, WeekProjectCluster>()
 	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
@@ -1768,35 +1759,19 @@ export interface WeekHoursCluster {
  * The hours are the ledger's, through `rollUpHours` on each (project, phase) – the same call the project page and the reviewer's numbers use, so a sitting that was both journalled and tracked is not counted twice here either. A project named but never logged against contributes nothing, which is why a week can be busy on the projects chart and flat on this one.
  */
 export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			hackatimeLinks: {
-				select: {
-					cachedSeconds: true,
-					cachedSpans: true,
-					hackatimeProject: true,
-					hoursApproved: true,
-					phase: true,
-				},
-			},
-			requestedTier: true,
-			starterProjectId: true,
-			theme: true,
-			tier: true,
-			userId: true,
-			workSessions: {
-				select: {
-					hoursApproved: true,
-					hoursClaimed: true,
-					hoursSource: true,
-					phase: true,
-					timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
-				},
-				where: { deletedAt: null },
-			},
-		},
-		where: { deletedAt: null, namedAt: { not: null } },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => project.namedAt.isNotNull())
+		.select("requestedTier", "starterProjectId", "theme", "tier", "userId")
+		.include("hackatimeLinks", links =>
+			links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
+		)
+		.include("workSessions", sessions =>
+			sessions
+				.select("hoursApproved", "hoursClaimed", "hoursSource", "phase")
+				.where({ deletedAt: null })
+				.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt")),
+		)
+		.all()
 
 	const clusters = new Map<number, WeekHoursCluster>()
 	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
@@ -1808,7 +1783,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		for (const s of project.workSessions) {
 			if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 			for (const t of s.timelapses) {
-				const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+				const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
 				if (window) made.push({ hackatimeProject: t.hackatimeProject, window })
 			}
 		}
@@ -1821,7 +1796,15 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 
 		// Grouped by phase for the journal/link arithmetic, but the recordings a link is deduplicated against cross phases and projects by project name (see `windowsForLink`).
 		for (const phase of [Phase.DESIGN, Phase.BUILD]) {
-			const sessions = project.workSessions.filter(s => s.phase === phase)
+			const sessions = project.workSessions
+				.filter(s => s.phase === phase)
+				.map(session => ({
+					...session,
+					timelapses: session.timelapses.map(timelapse => ({
+						...timelapse,
+						recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+					})),
+				}))
 			const links = project.hackatimeLinks.filter(l => l.phase === phase)
 			if (sessions.length === 0 && links.length === 0) continue
 
@@ -1857,15 +1840,17 @@ export interface VerificationStat {
  * The status is HCA's own word, stored at each sign-in and submit by lib/hca-profile; a null is an account HCA has never answered for (a staff import nobody has signed in as, or an HCA that could not be reached).
  */
 export async function getVerificationStats(): Promise<VerificationStat[]> {
-	const rows = await prisma.user.groupBy({ _count: { _all: true }, by: ["verificationStatus"] })
+	const rows = await db.orm.public.User.groupBy("verificationStatus").aggregate(group => ({
+		count: group.count(),
+	}))
 	return rows
-		.filter(row => row._count._all > 0)
+		.filter(row => row.count > 0)
 		.map(row => ({
 			label:
 				row.verificationStatus === null
 					? "Not asked"
 					: (VERIFICATION_STATUS_LABELS[row.verificationStatus] ?? row.verificationStatus),
-			users: row._count._all,
+			users: row.count,
 		}))
 		.toSorted((a, b) => b.users - a.users)
 }
@@ -1911,20 +1896,27 @@ export interface ReviewerStats {
 export async function getReviewerStats(): Promise<ReviewerStats> {
 	const [{ programTimezone }, reviews] = await Promise.all([
 		getProgramSettings(),
-		prisma.submissionReview.findMany({
+		db.orm.public.SubmissionReview.where({ invalidated: false, pass: ReviewPass.FINAL })
+			.where(review =>
+				review.submission.some(submission => submission.themeProject.some(project => project.deletedAt.isNull())),
+			)
 			// Newest first, so the first row seen for a project is that project's most recent live review.
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			select: { createdAt: true, result: true, submission: { select: { themeProjectId: true } } },
-			where: { invalidated: false, pass: ReviewPass.FINAL, submission: { themeProject: { deletedAt: null } } },
-		}),
+			.orderBy([review => review.createdAt.desc(), review => review.id.desc()])
+			.select("createdAt", "id", "result")
+			.include("submission", submission => submission.select("themeProjectId"))
+			.all(),
 	])
 
 	const since = startOfDay(new Date(), programTimezone)
 	const latest = new Map<string, { result: ReviewResult; today: boolean }>()
 	for (const review of reviews) {
+		if (!review.submission) throw new Error(`review ${review.id} has no submission`)
 		const { themeProjectId } = review.submission
 		if (latest.has(themeProjectId)) continue
-		latest.set(themeProjectId, { result: review.result, today: review.createdAt >= since })
+		latest.set(themeProjectId, {
+			result: review.result,
+			today: parseDbTimestamp(review.createdAt) >= since,
+		})
 	}
 
 	const projects = [...latest.values()]
@@ -1953,10 +1945,9 @@ export interface ProjectReviewStatusStat {
  * The state is `projectReviewState`, the same function the projects grid uses to colour a card, so the ring and the cards cannot disagree about which state a project is in. Deleted projects are left out, as they are on the grid.
  */
 export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
-	const projects = await prisma.themeProject.findMany({
-		select: { buildStatus: true, designStatus: true },
-		where: { deletedAt: null },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.select("buildStatus", "designStatus")
+		.all()
 
 	const counts = { approved: 0, changes: 0, not_started: 0, pending: 0, rejected: 0 }
 	for (const project of projects) counts[projectReviewState(project.designStatus, project.buildStatus)] += 1
@@ -2077,81 +2068,73 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		designHours,
 		designHackatime,
 	] = await Promise.all([
-		prisma.user.findMany({
-			select: {
-				firstChecksPassedAt: true,
-				firstProjectAt: true,
-				hardwareExperience: true,
-				id: true,
-				onboardingCompletedAt: true,
-				onboardingStep: true,
-				participantGoal: true,
-			},
-		}),
+		db.orm.public.User.select(
+			"firstChecksPassedAt",
+			"firstProjectAt",
+			"hardwareExperience",
+			"id",
+			"onboardingCompletedAt",
+			"onboardingStep",
+			"participantGoal",
+		).all(),
 		// A sign-in is what issues a session. Read off the table rather than the `lastLoginAt` marker, so a backfill that never ran cannot read as "nobody logged in".
-		prisma.session.findMany({ distinct: ["userId"], select: { userId: true } }),
+		db.orm.public.Session.distinct("userId").select("userId").all(),
 		// The onboarding paper trail, per person, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it. One read for all three, because the journey stages need them together.
-		prisma.themeProject.findMany({
-			select: {
-				createdAt: true,
-				description: true,
-				id: true,
-				requestedTier: true,
-				starterProjectId: true,
-				userId: true,
-			},
-			where: { deletedAt: null },
-		}),
+		db.orm.public.ThemeProject.where({ deletedAt: null })
+			.select("createdAt", "description", "id", "requestedTier", "starterProjectId", "userId")
+			.all(),
 		// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
-		prisma.workSession.findMany({
-			select: { createdAt: true, themeProject: { select: { userId: true } } },
-			where: {
-				deletedAt: null,
-				OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-				themeProject: { deletedAt: null },
-			},
-		}),
+		db.orm.public.WorkSession.where({ deletedAt: null })
+			.where(session => or(session.hoursSource.neq(HoursSource.HACKATIME_TRACKED), session.timelapses.some()))
+			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			.select("createdAt", "id")
+			.include("themeProject", project => project.select("userId"))
+			.all(),
 		// A maker's own post, not a staff announcement: an announcement in their feed is not something they did.
-		prisma.post.findMany({
-			select: { createdAt: true, publishedAt: true, userId: true },
-			where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
-		}),
-		prisma.themeProject.findMany({
-			select: { createdAt: true, userId: true },
-			where: {
-				deletedAt: null,
-				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
-			},
-		}),
-		prisma.hackatimeLink.findMany({
-			select: { createdAt: true, themeProject: { select: { userId: true } } },
-			where: { themeProject: { deletedAt: null } },
-		}),
-		prisma.sessionTimelapse.findMany({
-			select: { createdAt: true, workSession: { select: { themeProject: { select: { userId: true } } } } },
-			where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
-		}),
+		db.orm.public.Post.where({ deletedAt: null })
+			.where(post => post.kind.neq(PostKind.ANNOUNCEMENT))
+			.select("createdAt", "publishedAt", "userId")
+			.all(),
+		db.orm.public.ThemeProject.where({ deletedAt: null })
+			.where(project =>
+				or(project.githubRepo.isNotNull(), project.repoSyncRepo.isNotNull(), project.repoSyncEnabled.eq(true)),
+			)
+			.select("createdAt", "userId")
+			.all(),
+		db.orm.public.HackatimeLink.where(link => link.themeProject.some(project => project.deletedAt.isNull()))
+			.select("createdAt", "id")
+			.include("themeProject", project => project.select("userId"))
+			.all(),
+		db.orm.public.SessionTimelapse.where(timelapse =>
+			timelapse.workSession.some(session =>
+				and(
+					session.deletedAt.isNull(),
+					session.themeProject.some(project => project.deletedAt.isNull()),
+				),
+			),
+		)
+			.select("createdAt", "id")
+			.include("workSession", session =>
+				session.select("id").include("themeProject", project => project.select("userId")),
+			)
+			.all(),
 		// The decision on each hand-in, to end the journey in an outcome rather than at "submitted".
-		prisma.phaseSubmission.findMany({
-			select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
-			where: { themeProject: { deletedAt: null } },
-		}),
+		db.orm.public.PhaseSubmission.where(submission =>
+			submission.themeProject.some(project => project.deletedAt.isNull()),
+		)
+			.select("resolvedAt", "resolvedResult")
+			.include("themeProject", project => project.select("userId"))
+			.all(),
 		// Design hours per project, for the tier-requirements stage: journal claims outside the tracked-link stream, plus the Hackatime cache, so one wall hour is not counted twice in the common case. An approximation of the sheet's own arithmetic – reviewer adjustments and overlap edge cases stay server-side – but the right shape for "has this tier's floor been worked".
-		prisma.workSession.groupBy({
-			_sum: { hoursClaimed: true },
-			by: ["themeProjectId"],
-			where: {
-				deletedAt: null,
-				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
-				phase: Phase.DESIGN,
-				themeProject: { deletedAt: null },
-			},
-		}),
-		prisma.hackatimeLink.groupBy({
-			_sum: { cachedSeconds: true },
-			by: ["themeProjectId"],
-			where: { phase: Phase.DESIGN, themeProject: { deletedAt: null } },
-		}),
+		db.orm.public.WorkSession.where({ deletedAt: null, phase: Phase.DESIGN })
+			.where(session => session.hoursSource.neq(HoursSource.HACKATIME_TRACKED))
+			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			.groupBy("themeProjectId")
+			.aggregate(group => ({ hours: group.sum("hoursClaimed") })),
+		db.orm.public.HackatimeLink.where({ phase: Phase.DESIGN })
+			.where(link => link.themeProject.some(project => project.deletedAt.isNull()))
+			.groupBy("themeProjectId")
+			.aggregate(group => ({ seconds: group.sum("cachedSeconds") })),
 	])
 
 	// Earliest occurrence of each activity per person. One Map of Maps, built from rows already tagged with their kind, so a kind needs no second pass.
@@ -2170,15 +2153,28 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 
 	const activity = earliest([
-		...devlogs.map(s => ({ at: s.createdAt, key: "devlog" as const, userId: s.themeProject.userId })),
-		...reels.map(p => ({ at: p.publishedAt ?? p.createdAt, key: "reel" as const, userId: p.userId })),
-		...repoLinks.map(p => ({ at: p.createdAt, key: "repo" as const, userId: p.userId })),
-		...hackatimeLinks.map(l => ({ at: l.createdAt, key: "hackatime" as const, userId: l.themeProject.userId })),
-		...timelapses.map(t => ({
-			at: t.createdAt,
-			key: "timelapse" as const,
-			userId: t.workSession.themeProject.userId,
+		...devlogs.map(s => {
+			if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
+			return { at: parseDbTimestamp(s.createdAt), key: "devlog" as const, userId: s.themeProject.userId }
+		}),
+		...reels.map(p => ({
+			at: parseDbTimestamp(p.publishedAt ?? p.createdAt),
+			key: "reel" as const,
+			userId: p.userId,
 		})),
+		...repoLinks.map(p => ({ at: parseDbTimestamp(p.createdAt), key: "repo" as const, userId: p.userId })),
+		...hackatimeLinks.map(l => {
+			if (!l.themeProject) throw new Error(`hackatime link ${l.id} has no project`)
+			return { at: parseDbTimestamp(l.createdAt), key: "hackatime" as const, userId: l.themeProject.userId }
+		}),
+		...timelapses.map(t => {
+			if (!t.workSession?.themeProject) throw new Error(`timelapse ${t.id} has no project`)
+			return {
+				at: parseDbTimestamp(t.createdAt),
+				key: "timelapse" as const,
+				userId: t.workSession.themeProject.userId,
+			}
+		}),
 	])
 
 	const described = new Set(
@@ -2203,7 +2199,8 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const OPEN = Number.NEGATIVE_INFINITY
 	const handIns = new Map<string, { at: number; node: (typeof SANKEY_OUTCOME)[number]["node"] }>()
 	for (const row of submissions) {
-		const at = row.resolvedAt?.getTime() ?? OPEN
+		if (!row.themeProject) throw new Error("submission has no project")
+		const at = row.resolvedAt === null ? OPEN : parseDbTimestamp(row.resolvedAt).getTime()
 		const node = !row.resolvedResult
 			? "awaiting"
 			: row.resolvedResult === ReviewResult.APPROVED
@@ -2222,16 +2219,15 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const userTier = new Map<string, 1 | 2 | 3>()
 	const tierMet = new Map<string, boolean>()
 	{
-		const journalByProject = new Map(designHours.map(row => [row.themeProjectId, row._sum.hoursClaimed ?? 0]))
-		const hackByProject = new Map(
-			designHackatime.map(row => [row.themeProjectId, (row._sum.cachedSeconds ?? 0) / 3600]),
-		)
-		const latest = new Map<string, { project: (typeof projects)[number]; tier: 1 | 2 | 3 }>()
+		const journalByProject = new Map(designHours.map(row => [row.themeProjectId, row.hours ?? 0]))
+		const hackByProject = new Map(designHackatime.map(row => [row.themeProjectId, (row.seconds ?? 0) / 3600]))
+		const latest = new Map<string, { createdAt: Date; project: (typeof projects)[number]; tier: 1 | 2 | 3 }>()
 		for (const project of projects) {
 			const raw = project.requestedTier ?? (project.starterProjectId !== null ? STARTER_PROJECT_TIER : null)
 			if (!isTierId(raw)) continue
+			const createdAt = parseDbTimestamp(project.createdAt)
 			const held = latest.get(project.userId)
-			if (!held || project.createdAt > held.project.createdAt) latest.set(project.userId, { project, tier: raw })
+			if (!held || createdAt > held.createdAt) latest.set(project.userId, { createdAt, project, tier: raw })
 		}
 		for (const [userId, { project, tier }] of latest) {
 			userTier.set(userId, tier)

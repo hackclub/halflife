@@ -3,6 +3,22 @@ import prisma from "@/lib/prisma"
 import db from "@/lib/prisma8"
 import {
 	countContentReports,
+	getAdminCounters,
+	getAreaStats,
+	getCountryStats,
+	getDailyActiveUsers,
+	getDailyActivity,
+	getDailyActivityByGoal,
+	getFirstProjectStats,
+	getHoursByWeek,
+	getHoursDistribution,
+	getProjectReviewStatuses,
+	getProjectsByWeek,
+	getReviewerStats,
+	getUserFlowFunnel,
+	getUserFlowSankey,
+	getUserFlowWeekly,
+	getVerificationStats,
 	listAuditLog,
 	listContentReports,
 	listFulfillmentOrders,
@@ -126,6 +142,44 @@ console.log(
 	"next:",
 	projectsNext?.items.length ?? 0,
 	projectsNext?.items[0]?.id !== projects.items[0]?.id,
+)
+
+const counters = await getAdminCounters()
+console.log("counters:", counters)
+const funnel = await getUserFlowFunnel()
+console.log("funnel steps:", funnel.length, funnel[0]?.count)
+const weekly = await getUserFlowWeekly()
+console.log("weekly:", weekly.length, weekly[0]?.count)
+const activity = await getDailyActivity()
+console.log("activity days:", activity.length)
+const dau = await getDailyActiveUsers()
+console.log("dau days:", dau.days.length, "today:", dau.today)
+const byGoal = await getDailyActivityByGoal()
+console.log("byGoal days:", byGoal.length)
+const first = await getFirstProjectStats()
+console.log("first projects:", first.length)
+const byWeek = await getProjectsByWeek()
+console.log("projects by week:", byWeek.length, byWeek[0]?.tier1)
+const hoursByWeek = await getHoursByWeek()
+console.log("hours by week:", hoursByWeek.length)
+const dist = await getHoursDistribution()
+console.log("distribution:", dist.withHours, dist.withoutHours)
+const areas = await getAreaStats()
+console.log("areas:", areas.length)
+const countries = await getCountryStats()
+console.log("countries:", countries.length)
+const verification = await getVerificationStats()
+console.log("verification:", verification.length)
+const reviewer = await getReviewerStats()
+console.log("reviewer:", reviewer.reviewedTotal, reviewer.byResult.length)
+const statuses = await getProjectReviewStatuses()
+console.log("statuses:", statuses.length)
+const sankey = await getUserFlowSankey()
+console.log(
+	"sankey nodes:",
+	sankey.diagram.nodes.length,
+	"activity:",
+	JSON.stringify(sankey.activityShare).slice(0, 80),
 )
 
 const directoryQ = await listUsers({ limit: 2, q: directory.items[0]?.name?.slice(0, 3) ?? "a" }, { includePii: true })
