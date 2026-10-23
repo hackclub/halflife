@@ -283,9 +283,9 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				.filter(s => s.phase === phase && s.dispute)
 				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.dispute
 			// Only an open hand-in can be stuck: one that was decided had its marker cleared by the send that succeeded, and one that was withdrawn was deleted outright.
-			const openShip = project.submissions
+			const [openShip] = project.submissions
 				.filter(s => s.phase === phase && s.resolvedAt === null)
-				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 			return {
 				comments: isDesign ? project.designReviewComments : project.buildReviewComments,
 				dispute: disputed

@@ -153,7 +153,7 @@ export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> 
 	})
 	if (!link) return { error: "link not found", seconds: 0, stale: true }
 
-	const hackatimeUserId = link.themeProject.user.hackatimeUserId
+	const { hackatimeUserId } = link.themeProject.user
 	if (!hackatimeUserId)
 		return { error: "user has no linked Hackatime account", seconds: link.cachedSeconds ?? 0, stale: true }
 

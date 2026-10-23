@@ -12,7 +12,11 @@ export default async function AdminEventsPage() {
 	await requirePermissionPage(Permission.MANAGE_PROGRAM)
 
 	const [events, settings] = await Promise.all([listAllEvents(), getProgramSettings()])
-	const upcoming = nextEvent(events, new Date())
+	// The header is about what participants will see next, so a draft must not be announced here. The list below still shows drafts, marked as such.
+	const upcoming = nextEvent(
+		events.filter(event => event.published),
+		new Date(),
+	)
 
 	return (
 		<div className="hl-stack">
@@ -21,7 +25,7 @@ export default async function AdminEventsPage() {
 					upcoming
 						? `Next: ${upcoming.title}. ${events.length} on the calendar.`
 						: events.length > 0
-							? "Nothing upcoming. Everything on the calendar has finished."
+							? "Nothing published is upcoming."
 							: "Nothing scheduled yet."
 				}
 				title="Events"

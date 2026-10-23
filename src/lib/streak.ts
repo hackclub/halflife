@@ -40,7 +40,7 @@ export interface StreakState {
  * `STREAK_GRACE_DAYS` is the largest gap that does NOT break a run, so with a grace of 1 a Monday and a Wednesday are still one streak and a Monday and a Thursday are two.
  */
 export function streakFromDays(daysDesc: readonly string[]): StreakState {
-	const first = daysDesc[0]
+	const [first] = daysDesc
 	if (!first) return { current: 0, lastDate: null, longest: 0 }
 
 	let current = 1

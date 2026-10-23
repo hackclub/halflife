@@ -79,9 +79,11 @@ async function main() {
 	)
 }
 
-main()
-	.catch(e => {
-		console.error(e)
-		process.exitCode = 1
-	})
-	.finally(() => db.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await db.$disconnect()
+}

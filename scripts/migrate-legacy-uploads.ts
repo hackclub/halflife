@@ -84,13 +84,18 @@ async function listObjects(s3: S3Client, prefix: string): Promise<BucketObject[]
 	return objects
 }
 
+/** Percent-encode one ASCII character that `encodeURIComponent` leaves alone. */
+function percentEncode(char: string): string {
+	const code = char.codePointAt(0)
+	if (code === undefined) return char
+	return `%${code.toString(16).toUpperCase()}`
+}
+
 /** RFC 3986 encoding, per path segment, which is what SigV4 canonicalises. */
 function encodeKey(key: string): string {
 	return key
 		.split("/")
-		.map(segment =>
-			encodeURIComponent(segment).replaceAll(/[!'()*]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`),
-		)
+		.map(segment => encodeURIComponent(segment).replaceAll(/[!'()*]/g, percentEncode))
 		.join("/")
 }
 
@@ -99,7 +104,7 @@ async function copyObject(endpoint: string, bucket: string, source: string, dest
 	const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY ?? ""
 	if (!accessKeyId || !secretAccessKey) throw new Error("Set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY first")
 
-	const host = new URL(endpoint).host
+	const { host } = new URL(endpoint)
 	const destinationPath = `/${bucket}/${encodeKey(destination)}`
 	const copySource = `/${bucket}/${encodeKey(source)}`
 	const now = new Date()
@@ -238,7 +243,9 @@ async function main() {
 	if (copied > 0) console.log("Run `uploads:backfill-urls` to repoint journal URLs that still name the legacy layout.")
 }
 
-main().catch(err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
 	process.exit(1)
-})
+}

@@ -202,13 +202,13 @@ async function main() {
 	process.exitCode = failures === 0 ? 0 : 1
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(async () => {
-		await prisma.$disconnect()
-		// Importing the auth module opens its own Prisma pool, so the process would otherwise stay alive after the checks finish.
-		process.exit(process.exitCode ?? 0)
-	})
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+	// Importing the auth module opens its own Prisma pool, so the process would otherwise stay alive after the checks finish.
+	process.exit(process.exitCode ?? 0)
+}

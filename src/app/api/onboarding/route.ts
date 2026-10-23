@@ -30,7 +30,7 @@ export const POST = withSession(async (req: Request, { gate }) => {
 	// A repo chosen on the last step is written to GitHub after the response. Its failure is recorded on the project (and shown on its page), not thrown back at someone who has just finished setup.
 	if (result.repoRequest) {
 		// Read the repo out here: the narrowing above does not survive into the deferred closure, so the `!` that used to bridge it is not needed.
-		const repo = result.repoRequest.repo
+		const { repo } = result.repoRequest
 		after(async () => {
 			try {
 				await enableRepoSync(result.state.project.id, gate.user.id, repo)

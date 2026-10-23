@@ -154,7 +154,7 @@ async function main() {
 				id: submission.id,
 			})
 		}
-		const first = firstPass[0]
+		const [first] = firstPass
 		if (!first) continue
 		rows.push({ firstPass, project, waitingSince: first.createdAt })
 	}
@@ -198,9 +198,11 @@ async function main() {
 	}
 }
 
-main()
-	.catch(err => {
-		console.error(err instanceof Error ? err.message : err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err instanceof Error ? err.message : err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

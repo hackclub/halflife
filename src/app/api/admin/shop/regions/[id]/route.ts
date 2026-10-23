@@ -18,7 +18,7 @@ export const PATCH = withPermission(
 
 		const parsed = await parseBody(req, shopRegionUpdateSchema)
 		if (parsed.error) return parsed.error
-		const data = parsed.data
+		const { data } = parsed
 
 		const before = await prisma.shopRegion.findUnique({ where: { id } })
 		if (!before) return fail("NOT_FOUND", "Region not found")

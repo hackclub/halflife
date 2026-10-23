@@ -235,7 +235,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		}
 
 		// Lift the run only if it would fall off the bottom of the plot. Re-centring it unconditionally is worse than doing nothing: a stage whose boxes are unevenly weighted has its label run centred well below them, so every label gets dragged off a box it was already sitting on, and every one grows a leader line.
-		const first = rows[0]
+		const [first] = rows
 		if (!first) continue
 		const lift = Math.min(lastBottom - H, first.y - labelSlot / 2)
 		if (lift > 0) for (const row of rows) row.y -= lift

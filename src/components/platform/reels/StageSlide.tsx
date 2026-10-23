@@ -94,13 +94,14 @@ export function StageSlide({
 		if (prefersStill()) return
 		el.currentTime = 0
 		let cancelled = false
-		void playExclusive(el).then(async ok => {
+		void (async () => {
+			const ok = await playExclusive(el)
 			if (ok || cancelled || el.muted) return
 			// Sound before the reader has touched the page is the browser's to refuse, and it does. Muted playback it always allows, so the reel plays silently and the page offers the sound back.
 			el.muted = true
 			onAutoMuted()
 			await playExclusive(el)
-		})
+		})()
 		return () => {
 			cancelled = true
 		}
@@ -172,19 +173,24 @@ export function StageSlide({
 		host.append(heart)
 		const at = (lift: number, scale: number) =>
 			`translate(-50%, calc(-50% - ${lift}px)) rotate(${tilt}deg) scale(${scale})`
-		heart
-			.animate(
-				[
-					{ opacity: 0, transform: at(0, 0.3) },
-					{ offset: 0.16, opacity: 1, transform: at(0, 1.18) },
-					{ offset: 0.3, opacity: 1, transform: at(0, 0.94) },
-					{ offset: 0.55, opacity: 1, transform: at(0, 1) },
-					{ opacity: 0, transform: at(80, 1.3) },
-				],
-				{ duration: 900, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-			)
-			.finished.catch(() => undefined)
-			.finally(() => heart.remove())
+		void (async () => {
+			try {
+				await heart
+					.animate(
+						[
+							{ opacity: 0, transform: at(0, 0.3) },
+							{ offset: 0.16, opacity: 1, transform: at(0, 1.18) },
+							{ offset: 0.3, opacity: 1, transform: at(0, 0.94) },
+							{ offset: 0.55, opacity: 1, transform: at(0, 1) },
+							{ opacity: 0, transform: at(80, 1.3) },
+						],
+						{ duration: 900, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+					)
+					.finished.catch(() => undefined)
+			} finally {
+				heart.remove()
+			}
+		})()
 	}
 
 	// One tap pauses, two like – the same surface does both. The single tap waits out the double-tap window before acting, or every like would also pause the reel. Keyboard presses (detail 0) are never a double tap, so they toggle at once.

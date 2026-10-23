@@ -79,20 +79,24 @@ export default function SignupForm({
 
 		// Whoever sent this visitor here – a referral link or a campaign URL – is only present in this page's own address bar, so it's read fresh at submit time and sent before the page leaves. `keepalive` lets it finish even if the sign-in navigates away first, and its answer is not needed, so it is deliberately NOT awaited: awaiting a slow or rate-limited signup would put the list provider between the visitor and the way in. (This used to await with an AbortController that fired after 2.5s – but aborting cancels the request, so a slow signup was silently dropped rather than "left to finish on its own".)
 		const params = new URLSearchParams(window.location.search)
-		fetch("/api/subscribe", {
-			body: JSON.stringify({
-				email,
-				ref: params.get("ref") || undefined,
-				utmCampaign: params.get("utm_campaign") || undefined,
-				utmMedium: params.get("utm_medium") || undefined,
-				utmSource: params.get("utm_source") || undefined,
-			}),
-			headers: { "content-type": "application/json" },
-			keepalive: true,
-			method: "POST",
-		}).catch(() => {
-			// Slow, offline or refused: none of it should stand between someone and signing in. The sign-in below says so if the network is really gone.
-		})
+		void (async () => {
+			try {
+				await fetch("/api/subscribe", {
+					body: JSON.stringify({
+						email,
+						ref: params.get("ref") || undefined,
+						utmCampaign: params.get("utm_campaign") || undefined,
+						utmMedium: params.get("utm_medium") || undefined,
+						utmSource: params.get("utm_source") || undefined,
+					}),
+					headers: { "content-type": "application/json" },
+					keepalive: true,
+					method: "POST",
+				})
+			} catch {
+				// Slow, offline or refused: none of it should stand between someone and signing in. The sign-in below says so if the network is really gone.
+			}
+		})()
 
 		if (session) {
 			router.push("/dashboard")

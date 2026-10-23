@@ -41,7 +41,7 @@ async function currentColumns(
 			),
 		)
 		for (const r of page.records) byId.set(r.id, text(r.fields[weekKey]))
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return byId
 }
@@ -142,9 +142,11 @@ async function main() {
 	console.log(`updated: ${updated}, row gone: ${rowGone}, failed: ${failed}`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

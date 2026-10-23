@@ -49,7 +49,7 @@ async function listSignupEmails(
 			if (typeof email === "string" && !byEmail.has(email.trim().toLowerCase()))
 				byEmail.set(email.trim().toLowerCase(), r.id)
 		}
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return { byEmail, total }
 }
@@ -142,9 +142,11 @@ async function main() {
 	}
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

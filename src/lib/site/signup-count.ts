@@ -50,7 +50,7 @@ async function walkSignups(config: AirtableConfig): Promise<number | null> {
 				const email = record.fields[emailField]
 				if (typeof email === "string" && email.trim()) seen.add(email.trim().toLowerCase())
 			}
-			offset = page.offset
+			;({ offset } = page)
 		} while (offset)
 	} catch (err) {
 		console.warn("[signup-count] could not count the sign-up list:", err)

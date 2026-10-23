@@ -272,7 +272,7 @@ Overall: authz hygiene, SSRF guards, ledger locking, and PII containment are str
 - SQL: only parameterized `$queryRaw` (`SELECT 1`, `pg_advisory_xact_lock(hashtextextended(...))`); no string-concat SQL.
 - Command: no `child_process.exec/spawn/eval`; `exec(` hits are `RegExp.exec`.
 - SSRF `from-url`: `src/lib/uploads/remote.ts:32-104` — scheme/port allowlist, IP `BlockList`, DNS-rebinding-safe `safeLookup`, redirect caps, `sniffImage` (SVG refused).
-- No presigned-URL trust boundary — all uploads server-side `putObject` (`r2.ts:303`).
+- Uploads now use presigned PUTs (`src/app/api/upload/presign`, `src/app/api/handoff/presign`): the key is minted server-side inside the caller's own prefix, the URL expires in five minutes, and `/confirm` re-checks the bucket's real size, video/image signature and (for pictures) the content hash the key is named after, deleting anything that fails. The old server-side `putObject` fallback is still present for browsers that cannot reach the bucket directly. Residual: a presigned PUT cannot bound the object size, so a minted URL can write up to R2's single-PUT limit before confirm deletes it; the window and the per-user/per-IP rate limits are what keep that small.
 - Ownership IDOR spot-checks pass: `projects/[id]`, `sessions/[sessionId]`, `bom`, `hackatime`, `repo-sync`, `posts DELETE` (`updateMany where {id,userId}`), self-review refused (`review.ts:44,150`).
 - ARI/Slack webhooks: HMAC + idempotency (`ari.ts:622-660`, `slack/events|interactions`).
 - Public `GET /api/program`, `GET /api/signup-count`, `POST /api/subscribe`: no PII, rate-limited, no oracle.

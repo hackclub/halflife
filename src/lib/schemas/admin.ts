@@ -170,6 +170,16 @@ export const orderFulfillmentSchema = z
  * occurrences land on the same weekday; the route owns the arithmetic and the
  * audit row records how many were made.
  */
+/**
+ * A required instant from the ISO string a JSON body carries.
+ *
+ * `z.coerce.date()` on its own turns `null` into 1970-01-01, which is a valid date
+ * and so passes validation: an event could be created in 1970, or moved there, by
+ * a client that cleared the field without disabling its submit button. A missing
+ * start is a missing field, not a moment.
+ */
+const requiredInstant = z.preprocess(value => (value === null ? undefined : value), z.coerce.date())
+
 export const programEventCreateSchema = z
 	.object({
 		colour: z.enum(EventColour).default(EventColour.SLATE),
@@ -178,7 +188,7 @@ export const programEventCreateSchema = z
 		published: z.boolean().default(true),
 		/** 1 is a one-off. Capped at a year of weeks so a stray keypress cannot ask for ten thousand rows. */
 		repeatWeeks: z.number().int().min(1).max(52).default(1),
-		startsAt: z.coerce.date(),
+		startsAt: requiredInstant,
 		title: boundedText(120, 1),
 	})
 	.strict()
@@ -200,7 +210,7 @@ export const programEventUpdateSchema = z
 		description: boundedText(2000).nullable().optional(),
 		endsAt: z.coerce.date().nullable().optional(),
 		published: z.boolean().optional(),
-		startsAt: z.coerce.date().optional(),
+		startsAt: requiredInstant.optional(),
 		title: boundedText(120, 1).optional(),
 	})
 	.strict()

@@ -70,12 +70,15 @@ function safeLookup(
 	dnsLookup(hostname, { ...options, all: true }, (err, addresses) => {
 		if (err) return callback(err, "")
 		const list = addresses
-		const first = list[0]
+		const [first] = list
 		if (!first || list.some(a => isBlocked(a.address, a.family)))
 			return callback(Object.assign(new Error(`Refused to connect to ${hostname}`), { code: "EBLOCKED" }), "")
 
-		if (options.all) callback(null, list)
-		else callback(null, first.address, first.family)
+		if (options.all) {
+			callback(null, list)
+			return
+		}
+		callback(null, first.address, first.family)
 	})
 }
 
@@ -159,7 +162,7 @@ export async function fetchRemoteImage(
 			const status = res.statusCode ?? 0
 
 			if ([301, 302, 303, 307, 308].includes(status)) {
-				const location = res.headers.location
+				const { location } = res.headers
 				res.resume()
 				if (!location) throw refused()
 				url = new URL(location, url)

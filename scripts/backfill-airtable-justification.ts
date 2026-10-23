@@ -60,7 +60,7 @@ async function currentColumns(
 			for (const [key, field] of keys) row.set(key, text(record.fields[field]))
 			byId.set(record.id, row)
 		}
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return byId
 }
@@ -207,9 +207,11 @@ async function main() {
 	console.log(`updated: ${updated}, row gone: ${rowGone}, failed: ${failed}`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

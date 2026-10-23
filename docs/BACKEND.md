@@ -172,6 +172,14 @@ and it refuses an already-resolved submission.
   than trusting them blind. Makers are not notified by a bulk replay by default
   (`--announce` opts in) – mirror the row afterwards with
   `airtable:backfill-review`.
+- **The phases before a decision are silent, so they are polled.** Ari sends no
+  webhook when a first-pass decision is held for a second pass, nor when a second
+  pass returns it to the queue. The same status pass stores `phase` on
+  `PhaseSubmission.ariStatus` / `ariStatusAt` and mirrors it to `Ari - Review
+  phase`, `Ari - Review phase at` and `Ari - Second pass since` on the Airtable
+  row. `secondPass` and `secondPassReturned` in the job summary count what the
+  poll saw. The confirming organizer is still not exposed: the status response
+  names the phase, not who confirmed or returned the held decision.
 - **A pulled decision gets its reviewer's words back from the webhook.**
   The note an Ari decision carries travels only in the outbound delivery, so a
   status pass cannot show it. A decision resent from Ari's review screen arrives
@@ -263,8 +271,8 @@ production.**
 | `verify:pii` | nothing private reaches a browser; staff surfaces refuse participants |
 | `verify:onboarding` | the first checkpoint cannot be skipped |
 | `verify:feed` | moderation actually removes things |
-| `verify:handoff` | the QR upload token is single-use |
-| `verify:uploads` | R2 round-trip smoke test |
+| `verify:handoff` | the QR upload token is single-use, through both the direct and form paths |
+| `verify:uploads` | R2 round trip, public read, and the direct-upload CORS rule |
 | `verify:forge-write` | the forge write path's retries and status classification (no DB) |
 | `verify:loops` | the Loops Signups-row join (no network, no DB) |
 | `verify:loops-entries` | audit `Loops - halfLifeLastEntryAt` against the devlog rule (read-only unless `--clear`) |

@@ -7,7 +7,8 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { WARMUP_THEME } from "@/lib/config/program"
 import { withSession } from "@/lib/guards"
 import { createWarmupProject } from "@/lib/provisioning"
-import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
+import { boundedText, phaseSchema } from "@/lib/schemas/common"
+import { projectRepoUrl } from "@/lib/schemas/project"
 import { warmupCreationWindow } from "@/lib/warmup"
 
 export const dynamic = "force-dynamic"
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic"
 const createSchema = z
 	.object({
 		description: boundedText(4000).optional(),
-		githubRepo: httpsUrl.nullable().optional(),
+		githubRepo: projectRepoUrl.nullable().optional(),
 		/** DESIGN asks for parts funding; BUILD hands in something already built. */
 		phase: phaseSchema,
 		requestedTier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
@@ -33,7 +34,7 @@ const createSchema = z
 export const POST = withSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, createSchema)
 	if (parsed.error) return parsed.error
-	const data = parsed.data
+	const { data } = parsed
 
 	const window = await warmupCreationWindow()
 	if (!window.open) return fail("CONFLICT", `Warm-up projects closed ${window.closesOn}.`)

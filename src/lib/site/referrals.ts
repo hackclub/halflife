@@ -84,7 +84,7 @@ async function walkReferrals(config: AirtableConfig): Promise<ReferralLeaderboar
 				const referredBy = asText(fields[REFERRED_BY_FIELD])
 				if (email && referredBy && !attributed.has(email)) attributed.set(email, referredBy)
 			}
-			offset = page.offset
+			;({ offset } = page)
 		} while (offset)
 	} catch (err) {
 		console.warn("[referrals] could not read the sign-up list:", err)

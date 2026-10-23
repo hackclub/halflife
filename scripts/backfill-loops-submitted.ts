@@ -46,7 +46,7 @@ async function signupRows(
 			const userId = r.fields[userIdKey]
 			if (typeof userId === "string" && !byUserId.has(userId.trim())) byUserId.set(userId.trim(), r)
 		}
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return { byEmail, byUserId }
 }
@@ -169,9 +169,11 @@ async function main() {
 	console.log(`updated: ${updated}, failed: ${failed}`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

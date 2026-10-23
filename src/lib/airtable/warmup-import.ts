@@ -215,7 +215,7 @@ async function listWarmupRecords(config: AirtableConfig): Promise<AirtableRecord
 			),
 		)
 		records.push(...(page.records ?? []))
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return records
 }
@@ -302,8 +302,7 @@ function importRow(
 	actor: ImportActor,
 	programTimezone: string,
 ): Promise<ImportedRecord> {
-	const createdAt = row.createdAt
-	const phase = row.phase
+	const { createdAt, phase } = row
 
 	const journalParts = [
 		row.description,

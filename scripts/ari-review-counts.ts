@@ -211,9 +211,11 @@ async function main(): Promise<void> {
 	}
 }
 
-main()
-	.catch(err => {
-		console.error(err instanceof Error ? err.message : err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err instanceof Error ? err.message : err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

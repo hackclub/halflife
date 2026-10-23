@@ -706,12 +706,12 @@ async function main() {
 	console.log(`\nDone in ${((Date.now() - started) / 1000).toFixed(1)}s`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(async () => {
-		await source.$disconnect()
-		await target.$disconnect()
-	})
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await source.$disconnect()
+	await target.$disconnect()
+}

@@ -93,6 +93,28 @@ Coolify.
    to the root keys the app stores, and `uploads:backfill-urls` then normalises
    journal URLs that still name the legacy layout.
 
+   The browser also PUTs uploads straight to this bucket with a short-lived
+   presigned URL, so the bucket needs a CORS policy naming the app's origin.
+   Without it every upload quietly falls back to the old path through the
+   origin, where a large reel still 524s:
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://halflife.hackclub.com"],
+       "AllowedMethods": ["PUT"],
+       "AllowedHeaders": ["content-type"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
+   Add it under R2 → the bucket → Settings → CORS Policy, with the production
+   origin (not a wildcard – an empty response to the preflight is what a browser
+   reports as a failed upload). `pnpm verify:uploads` preflights a presigned URL
+   from `NEXT_PUBLIC_APP_URL` and says so if the rule is missing or names another
+   origin.
+
 6. **Deploy.**
 
    ```
@@ -357,6 +379,30 @@ Loops email), and clears the address on a phase whose current state no longer
 matches the review that was standing. Run it where `DATABASE_URL` points at the
 real database.
 
+### Ari phase columns
+
+Ari sends no webhook when a first-pass decision is held for a second pass, nor
+when a second pass returns it to the queue. `ari-retry` reads
+`ari.ships.status` for every open ship, stores a changed phase on
+`PhaseSubmission.ariStatus` / `ariStatusAt`, and mirrors it to three columns on
+`YSWS Project Submission`:
+
+- `Ari - Review phase` – single-line text. One of `Processing`, `Fraud review`,
+  `In review`, `Under review`, `Second pass`, `Reviewed`, `Reverted` or
+  `Withdrawn`; a phase Ari adds later passes through under Ari's own name.
+- `Ari - Review phase at` – date field with time enabled. When the phase last
+  changed.
+- `Ari - Second pass since` – date field with time enabled. Set only while the
+  phase is `Second pass`, cleared when it leaves.
+
+The app probes for each column and skips it when absent, so a base without them
+keeps working. A row already carrying the phase is not rewritten, so a poll of
+unchanged ships costs no Airtable writes.
+
+The retry job's summary reports `reconciledSecondPass` (currently held) and
+`reconciledSecondPassReturned` (left a second pass for the queue this run), which
+is the fastest way to see that returns are being observed.
+
 ### Cloudflare kills anything over ~100 seconds
 
 `halflife.hackclub.com` sits behind Cloudflare, which caps the proxy read timeout
@@ -381,7 +427,8 @@ real – those two carry `1800` with `--max-time 1740`, and the runbook's origin
 these two routes get faster, they can go back to the ingress like the rest.
 
 The same limit applies to anything else slow behind the vanity domain, including
-real users on a slow page – these jobs dodged it, the app did not.
+real users on a slow page – these jobs dodged it, and uploads now do too by
+going straight to R2 (see **Create the R2 bucket** above).
 
 `src/proxy.ts` runs for these too and already excludes `/api/integrations` from
 basic auth, so `REQUIRE_BASICAUTH` does not block either path – verify that

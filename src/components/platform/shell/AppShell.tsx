@@ -131,11 +131,17 @@ export function AppShell({
 	useEffect(() => {
 		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
 		if (!zone || zone === timezone) return
-		fetch("/api/me/timezone", {
-			body: JSON.stringify({ timezone: zone }),
-			headers: { "content-type": "application/json" },
-			method: "PUT",
-		}).catch(() => {})
+		void (async () => {
+			try {
+				await fetch("/api/me/timezone", {
+					body: JSON.stringify({ timezone: zone }),
+					headers: { "content-type": "application/json" },
+					method: "PUT",
+				})
+			} catch {
+				// Silent: nothing on the page depends on it, and the next load tries again.
+			}
+		})()
 	}, [timezone])
 
 	return (

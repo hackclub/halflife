@@ -45,7 +45,7 @@ async function main() {
 			),
 		)
 		for (const r of page.records) if (r.fields[LOOPS_FIELDS.lastEntryAt]) withTimestamp.push(r)
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	console.log(`Signups rows with a lastEntryAt: ${withTimestamp.length}`)
 
@@ -143,9 +143,11 @@ async function main() {
 	console.log(`Cleared lastEntryAt on ${matchedStale.length} matched stale rows.`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}

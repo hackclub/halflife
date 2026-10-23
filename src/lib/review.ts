@@ -159,7 +159,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
 
 	const project = submission.themeProject
-	const phase = submission.phase
+	const { phase } = submission
 	const approving = input.result === ReviewResult.APPROVED
 
 	// A build cannot be approved before its design is. Submitting out of order is fine – see canSubmitPhase – but paying out of order is not. A warm-up project has no design to wait for: its one phase is whatever the form collected.
@@ -171,7 +171,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	)
 		throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
 
-	let tier = project.tier
+	let { tier } = project
 	if (approving && phase === Phase.DESIGN) {
 		// The tier's dollars are parts money, so the decision lands here – before the participant starts building – not at build approval.
 		const chosen = input.tier ?? project.tier

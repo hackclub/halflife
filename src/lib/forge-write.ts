@@ -100,7 +100,7 @@ export async function forgeCredentials(userId: string, forge: Forge): Promise<Fo
 	})
 	if (!account?.accessToken) return null
 
-	let accessToken = account.accessToken
+	let { accessToken } = account
 	// Matches better-auth's own five-second margin, so a token is refreshed exactly when `getAccessToken` would refresh it.
 	const expiring = account.accessTokenExpiresAt !== null && account.accessTokenExpiresAt.getTime() - Date.now() < 5_000
 	if (account.refreshToken && expiring)
@@ -109,7 +109,7 @@ export async function forgeCredentials(userId: string, forge: Forge): Promise<Fo
 		} catch (err) {
 			// The losing half of a refresh race is not a broken link: if another request refreshed and persisted while this one failed, its token is the good one.
 			const latest = await prisma.account.findUnique({ select: { accessToken: true }, where: { id: account.id } })
-			if (latest?.accessToken) accessToken = latest.accessToken
+			if (latest?.accessToken) ({ accessToken } = latest)
 			console.warn(
 				`[forge-write] token refresh for ${forge.id} failed for account ${account.id}; using the stored token:`,
 				err,
@@ -219,7 +219,7 @@ async function throwForgeError(forge: Forge, res: Response): Promise<never> {
  * Retrying is safe because GitHub's Git Data API is written for it: a blob, tree or commit created twice leaves an unreferenced object that is garbage-collected, and the one ref update is guarded on the tip it read, so a lost race is a refused fast-forward rather than a lost commit.
  */
 async function call(creds: ForgeCredentials, path: string, init: RequestInit): Promise<Response> {
-	const forge = creds.forge
+	const { forge } = creds
 	const url = forge.id === "gitlab" ? `https://gitlab.com/api/v4/${path}` : `https://api.github.com/${path}`
 
 	const headers: { [_: string]: string } =
@@ -322,7 +322,7 @@ const MAX_REPO_LIST_PAGES = 100
  */
 function nextPagePath(linkHeader: string | null, apiRoot: string): string | null {
 	for (const match of (linkHeader ?? "").matchAll(/<([^<>]+)>\s*;\s*rel="?next"?/g)) {
-		const url = match[1]
+		const [, url] = match
 		if (!url) continue
 		if (url.startsWith(apiRoot)) return url.slice(apiRoot.length)
 		if (url.startsWith("http")) console.warn(`[forge-write] next page outside ${apiRoot}: ${url}`)

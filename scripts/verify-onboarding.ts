@@ -85,7 +85,7 @@ async function main() {
 
 	// ── 2. Week intro: a beginner's fork, taking the starter ───────────────────
 	const starters = starterProjectsFor(afterExperience.state.theme)
-	const starter = starters[0]
+	const [starter] = starters
 	if (!starter) throw new Error("no starter projects configured for the onboarding theme")
 	check("a first-timer is offered the starter", afterExperience.state.starterProjects[0]?.id, starter.id)
 
@@ -236,8 +236,10 @@ async function main() {
 	process.exit(failures === 0 ? 0 : 1)
 }
 
-main().catch(async err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
 	await prisma.$disconnect()
 	process.exit(1)
-})
+}

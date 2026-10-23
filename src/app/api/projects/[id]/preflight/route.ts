@@ -20,11 +20,14 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({
-		select: { githubRepo: true, theme: true },
+		select: { artifactLinks: true, description: true, githubRepo: true, theme: true },
 		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
-	const checks = await checkRepo(project.githubRepo, project.theme)
+	const checks = await checkRepo(project.githubRepo, project.theme, {
+		artifactLinks: project.artifactLinks,
+		description: project.description,
+	})
 	return ok(checks)
 })

@@ -49,7 +49,7 @@ async function unreadableReason(res: Response, url: string, key: string, body: B
 }
 
 async function main() {
-	const { isUploadConfigured, putObject, publicUrlFor, deleteObject, MAX_UPLOAD_BYTES } = await import(
+	const { isUploadConfigured, putObject, presignUpload, publicUrlFor, deleteObject, MAX_UPLOAD_BYTES } = await import(
 		"../src/lib/uploads/r2"
 	)
 
@@ -109,6 +109,44 @@ async function main() {
 		process.exit(1)
 	}
 
+	// ── The direct-upload path ─────────────────────────────────────────────────
+	// Media now goes browser → bucket, so a browser needs the bucket to answer a
+	// CORS preflight for this origin. Without the rule the app still works, but
+	// every upload quietly takes the slow path through the origin, which is where
+	// Cloudflare's ~100 s limit turns a large reel into a 524.
+	let appOrigin = ""
+	try {
+		appOrigin = new URL(process.env.NEXT_PUBLIC_APP_URL ?? "").origin
+	} catch {
+		/* reported below */
+	}
+	check(
+		"NEXT_PUBLIC_APP_URL parses as an origin (needed for the CORS check)",
+		Boolean(appOrigin),
+		appOrigin ? "" : "set it to the public origin people use, e.g. https://halflife.hackclub.com",
+	)
+
+	if (appOrigin) {
+		const presigned = await presignUpload(`posts/_smoketest/${crypto.randomUUID()}.png`, "image/png")
+		const preflight = await fetch(presigned.uploadUrl, {
+			headers: {
+				"access-control-request-headers": "content-type",
+				"access-control-request-method": "PUT",
+				origin: appOrigin,
+			},
+			method: "OPTIONS",
+		})
+		const allowed = preflight.headers.get("access-control-allow-origin")
+		const allowsOrigin = allowed === "*" || allowed === appOrigin
+		check(
+			"the bucket allows a browser PUT from the app origin",
+			preflight.ok && allowsOrigin,
+			preflight.ok
+				? `the preflight allowed "${allowed ?? "(nothing)"}", expected "${appOrigin}". See docs/RUNBOOK.md for the CORS policy to add.`
+				: `the preflight answered ${preflight.status}. Add a CORS policy allowing PUT from ${appOrigin} with the content-type header – see docs/RUNBOOK.md.`,
+		)
+	}
+
 	// ── Round trip ─────────────────────────────────────────────────────────────
 	const body = Buffer.from(PNG_BASE64, "base64")
 	const key = `posts/_smoketest/${crypto.randomUUID()}.png`
@@ -160,7 +198,9 @@ async function main() {
 	process.exit(failures === 0 ? 0 : 1)
 }
 
-main().catch(err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
 	process.exit(1)
-})
+}

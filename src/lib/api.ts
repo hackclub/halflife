@@ -174,7 +174,7 @@ async function bufferUploadForm(request: Request, maxFileBytes: number): Promise
 	const declared = Number(request.headers.get("content-length") ?? "")
 	if (Number.isFinite(declared) && declared > cap) return { error: tooLarge() }
 
-	const body = request.body
+	const { body } = request
 	if (!body) return { error: invalid() }
 
 	const reader = body.getReader()

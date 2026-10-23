@@ -267,3 +267,21 @@ cleanup possible.
 Airtable attachment URLs are never handed to a browser: they are signed and
 expire in about two hours. Images live in R2, and Airtable is given a URL it
 fetches once.
+
+## Uploads go straight to the bucket
+
+Media does not travel through the app. The browser asks `/api/upload/presign`
+(or `/api/handoff/presign` for a phone) for a short-lived PUT URL, sends the
+bytes to R2 itself, and then calls `/confirm`, which checks what actually landed
+– real size, container or image signature, and for pictures the content hash the
+key is named after – before anything can point at it. The key is minted
+server-side from the session's own user id, so a URL can only write inside that
+user's prefix. R2 does not enforce the Content-Type a presigned PUT was signed
+with, so `/confirm` checks the type and size it actually stored.
+
+The old form path through the origin still exists, and the client falls back to
+it when a direct PUT cannot reach the bucket (a browser on a network that blocks
+it, or a deployment whose bucket has no CORS rule yet). It is the slow path:
+the origin cannot answer until the whole body has arrived, and Cloudflare gives
+an origin about 100 seconds, so that is where uploads become 524. See
+`docs/RUNBOOK.md` → **Create the R2 bucket** for the CORS rule.

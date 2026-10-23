@@ -52,7 +52,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 
 	const parsed = await parseBody(req, sessionUpdateSchema)
 	if (parsed.error) return parsed.error
-	const data = parsed.data
+	const { data } = parsed
 
 	const session = await loadOwned(gate.user.id, id, sessionId)
 	if (!session) return fail("NOT_FOUND", "Session not found")

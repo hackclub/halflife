@@ -32,7 +32,7 @@ function formatBytes(bytes: number): string {
 	if (bytes < 1024) return `${bytes} B`
 	const units = ["KB", "MB", "GB", "TB"]
 	let value = bytes / 1024
-	let unit = units[0]
+	let [unit] = units
 	for (let i = 1; i < units.length && value >= 1024; i++) {
 		value /= 1024
 		unit = units[i]
@@ -57,8 +57,8 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 	if (isUploadConfigured())
 		try {
 			listing = await listUploadedObjects({ cursor: search.cursor, limit: 100, prefix })
-		} catch (error) {
-			console.error("[admin] failed to list uploads:", error)
+		} catch (err) {
+			console.error("[admin] failed to list uploads:", err)
 			listError = "The upload bucket could not be listed. Check its S3 configuration and credentials."
 		}
 

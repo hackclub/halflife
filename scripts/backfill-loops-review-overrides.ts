@@ -67,7 +67,7 @@ async function main() {
 			),
 		)
 		rows.push(...page.records)
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 
 	const updates: { fields: { [_: string]: unknown }; id: string }[] = []
@@ -108,7 +108,9 @@ async function main() {
 	console.log(`updated: ${written}`)
 }
 
-main().catch(err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
 	process.exitCode = 1
-})
+}

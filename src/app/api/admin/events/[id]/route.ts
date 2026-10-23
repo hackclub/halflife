@@ -24,7 +24,7 @@ export const PATCH = withPermission(
 
 		const parsed = await parseBody(req, programEventUpdateSchema)
 		if (parsed.error) return parsed.error
-		const data = parsed.data
+		const { data } = parsed
 
 		const before = await prisma.programEvent.findUnique({ where: { id } })
 		if (!before) return fail("NOT_FOUND", "Event not found")

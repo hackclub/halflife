@@ -79,7 +79,7 @@ export const REPO_FILE_KINDS: Record<
 	},
 	cadSource: {
 		// The editable source from a CAD tool the program accepts. OpenSCAD and Blender are deliberately absent: reviewers return them, and Tinkercad has no source file at all – it exports a mesh. A .stl/.obj/.3mf is a printable model, not a source.
-		extensions: [".f3d", ".step", ".stp", ".fcstd", ".sldprt", ".sldasm", ".iges", ".igs"],
+		extensions: [".f3d", ".f3z", ".step", ".stp", ".fcstd", ".sldprt", ".sldasm", ".iges", ".igs"],
 		label: "CAD source files",
 		missing:
 			"No editable CAD source found. Tinkercad, OpenSCAD, Blender and STL-only exports are not accepted as the source. Export an editable file from Fusion, Onshape, FreeCAD or SolidWorks (.step, .f3d, .fcstd, .sldprt…).",

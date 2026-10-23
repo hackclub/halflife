@@ -9,6 +9,7 @@ import {
 } from "@/lib/config/repo-checks"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
 import { ForgeUnavailableError, forgeGet } from "@/lib/github"
+import { containsOnshapeLink, isOnshapeLink } from "@/lib/repo"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 import { README_GUIDE_URL } from "@/lib/routes"
 
@@ -100,16 +101,21 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 	}
 
 	// Never rejects. The promise is what the cache holds, so a rejected one would be handed to every check of this repo for the next minute – each of them a 500 – instead of the short-lived "could not check" it should be.
-	const value = fetchSnapshot(ref).catch((err): Snapshot => {
-		console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
-		return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
-	})
+	const value = (async (): Promise<Snapshot> => {
+		try {
+			return await fetchSnapshot(ref)
+		} catch (err) {
+			console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
+			return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
+		}
+	})()
 	const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
 	snapshots.set(key, entry)
 	// Settled, a failure is only kept briefly. Checked against the entry itself, so a newer fetch that has replaced it is left alone.
-	void value.then(snap => {
+	void (async () => {
+		const snap = await value
 		if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
-	})
+	})()
 	return value
 }
 
@@ -182,7 +188,7 @@ function isDesignJson(text: string): boolean {
  * Two requests, side by side. The file list is read at HEAD – the default branch, whatever it is called – so there is no need to ask for the repo first just to learn the branch name, which is what used to make this three. The file list also answers whether the repo exists: 404 there means it does not, or is private, which to a reviewer is the same thing.
  */
 async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
-	const forge = ref.forge
+	const { forge } = ref
 	const base = `repos/${ref.fullName}`
 	let treeRes: Response
 	let readmeRes: Response
@@ -230,7 +236,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
  * actually found. Both lists are paginated at 100, and a project with more files than one page would silently look emptier than it is – which, for a required-file check, means failing a maker who did the work. So the tree is walked until GitLab stops offering a next page.
  */
 async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
-	const forge = ref.forge
+	const { forge } = ref
 	const project = encodeURIComponent(ref.fullName)
 
 	let first: Response
@@ -283,7 +289,7 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 	const candidates = files
 		.filter(f => README_NAMES.has((f.split("/").pop() ?? "").toLowerCase()))
 		.toSorted((a, b) => a.split("/").length - b.split("/").length)
-	const name = candidates[0]
+	const [name] = candidates
 	if (!name) return null
 
 	const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`)
@@ -322,7 +328,7 @@ function readmeLineCount(readme: string): number {
 /** The paths in the repo that satisfy a file kind by name. */
 function namedMatches(kind: RepoFileKind, snap: RepoSnapshot): string[] {
 	const def = REPO_FILE_KINDS[kind]
-	const pattern = def.pattern
+	const { pattern } = def
 	if (pattern) return snap.paths.filter(p => pattern.test(p))
 	return snap.paths.filter(p => (def.extensions ?? []).some(ext => p.endsWith(ext)))
 }
@@ -346,6 +352,62 @@ function sample(found: readonly string[]): string {
 	return found.length > 3 ? `${shown} and ${found.length - 3} more` : shown
 }
 
+/** The neutral CAD exchange formats. Accepted as a source, but not the editable original. */
+const STEP_EXTENSIONS = [".step", ".stp"] as const
+
+/** The native Fusion formats, which a reviewer can actually open and edit. */
+const NATIVE_CAD_EXTENSIONS = [".f3d", ".f3z"] as const
+
+/** The URLs in a project's `artifactLinks` JSON, or none when the column is empty or malformed. */
+function artifactLinkUrls(links: unknown): string[] {
+	if (!Array.isArray(links)) return []
+	const urls: string[] = []
+	for (const link of links) {
+		if (!link || typeof link !== "object") continue
+		const { url } = link as { url?: unknown }
+		if (typeof url === "string") urls.push(url)
+	}
+	return urls
+}
+
+/**
+ * The recommendation a repo with a STEP file earns.
+ *
+ * `.step` is accepted as CAD source, but it is a neutral export rather than the editable original: a reviewer cannot open it in Fusion and change the model. A repo that carries one should also carry the native file or a link to the Onshape document, so the check passes when any of those is present and warns when STEP is all there is. Null for a repo with no STEP file, which is most of them.
+ */
+export function stepSourceCheck(input: {
+	artifactLinks?: unknown
+	description?: string | null
+	paths: readonly string[]
+}): RepoCheck | null {
+	const stepFiles = input.paths.filter(p => STEP_EXTENSIONS.some(ext => p.endsWith(ext)))
+	if (stepFiles.length === 0) return null
+
+	const nativeFiles = input.paths.filter(p => NATIVE_CAD_EXTENSIONS.some(ext => p.endsWith(ext)))
+	const inDescription = input.description ? containsOnshapeLink(input.description) : false
+	const inDemoLinks = artifactLinkUrls(input.artifactLinks).some(url => isOnshapeLink(url))
+	const alternatives = [
+		...(nativeFiles.length > 0 ? [sample(nativeFiles)] : []),
+		...(inDescription ? ["a link in the description"] : []),
+		...(inDemoLinks ? ["a link in the demo URL"] : []),
+	]
+
+	return alternatives.length > 0
+		? {
+				detail: `Editable source alongside ${sample(stepFiles)}: ${alternatives.join(", ")}`,
+				key: "cad_editable",
+				label: "Editable CAD source alongside STEP",
+				status: "pass",
+			}
+		: {
+				detail:
+					"A .step file is a neutral export, not the editable original. Add at least one of: a Fusion .f3d, a .f3z, an Onshape link in your project description, or an Onshape link in your demo URL. Do not put the Onshape link in the repo URL.",
+				key: "cad_editable",
+				label: "STEP needs the editable source",
+				status: "warn",
+			}
+}
+
 function result(repo: string | null, checks: RepoCheck[], unavailable = false): RepoCheckResult {
 	return {
 		canSubmit: !checks.some(c => c.blocking && c.status === "fail"),
@@ -356,7 +418,11 @@ function result(repo: string | null, checks: RepoCheck[], unavailable = false): 
 	}
 }
 
-export async function checkRepo(repoLink: string | null, theme: Theme): Promise<RepoCheckResult> {
+export async function checkRepo(
+	repoLink: string | null,
+	theme: Theme,
+	project: { artifactLinks?: unknown; description?: string | null } = {},
+): Promise<RepoCheckResult> {
 	if (!repoLink)
 		return result(null, [
 			{
@@ -385,7 +451,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 	}
 
 	const name = ref.fullName
-	const forge = ref.forge
+	const { forge } = ref
 
 	const unavailable = (why: string) =>
 		result(
@@ -527,6 +593,14 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		)
 	}
 
+	// A STEP export passes the CAD source check, but it is not the file a reviewer can edit, so a repo that carries one is offered the native or Onshape alternative as a recommendation rather than a refusal.
+	const step = stepSourceCheck({
+		artifactLinks: project.artifactLinks,
+		description: project.description,
+		paths: snap.paths,
+	})
+	if (step) checks.push(step)
+
 	return result(repoLink, checks)
 }
 
@@ -543,7 +617,7 @@ function foreignRepoHost(link: string): string | null {
 	if (forgeByHostname(host)) return null
 	const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(link) ? link : `https://${link}`
 	try {
-		const pathname = new URL(withScheme).pathname
+		const { pathname } = new URL(withScheme)
 		return pathname.split("/").filter(Boolean).length >= 2 ? host : null
 	} catch {
 		return null

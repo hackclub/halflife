@@ -39,10 +39,11 @@ export function cachedAirtableWalk<T>(walk: (config: AirtableConfig) => Promise<
 		const value = walk(config)
 		const entry: Cached<T> = { at: now, ttl: CACHE_TTL_MS, value }
 		cached = entry
-		void value.then(result => {
+		void (async () => {
+			const result = await value
 			// Checked against the entry itself, so a newer walk that has since replaced it is left alone.
 			if (result === null && cached === entry) entry.ttl = FAILED_TTL_MS
-		})
+		})()
 		return value
 	}
 }

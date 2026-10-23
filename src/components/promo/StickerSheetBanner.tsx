@@ -110,7 +110,11 @@ export function StickerSheetBanner({
 				{card ? (
 					<button className={styles.copyButton} onClick={expand} ref={cardCopyRef} type="button">
 						<span className={styles.eyebrow}>Weeks 3 &amp; 4</span>
-						<span className={styles.headline}>Ship a project both weeks,<br />win a sticker sheet</span>
+						<span className={styles.headline}>
+							Ship a project both weeks,
+							<br />
+							win a sticker sheet
+						</span>
 						<span className={styles.detail}>Requires an approved project for both weeks 3 and 4. Click to reopen.</span>
 					</button>
 				) : (

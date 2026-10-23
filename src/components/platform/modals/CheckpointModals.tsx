@@ -49,7 +49,7 @@ import {
 	type PublicReelPlatform,
 	readPublicReelLink,
 } from "@/lib/public-reels"
-import { normalizeRepo } from "@/lib/repo"
+import { validateRepoField } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
@@ -1396,7 +1396,7 @@ export function PublicReelModal({
 export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
-	const done = stateOf(checkpoint.id).done
+	const { done } = stateOf(checkpoint.id)
 	// A reel draft is restored once, when the sheet opens, and never changes while it is open – so it is a value to read, not one to set.
 	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => readReelDraft(checkpoint.id))
@@ -1415,7 +1415,13 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (!video) return
 		// The `muted` attribute only sets the initial state – React re-renders do not move the property after mount – so the toggle writes it here.
 		video.muted = muted
-		video.play().catch(() => undefined)
+		void (async () => {
+			try {
+				await video.play()
+			} catch {
+				// Autoplay refuses before a gesture; the play button below is the fallback.
+			}
+		})()
 	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.
@@ -1720,7 +1726,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									buildStatus: "draft",
 									description: desc.trim(),
 									designStatus: "draft",
-									githubRepo: normalizeRepo(repo).url,
+									githubRepo: validateRepoField(repo).url,
 									name: name.trim(),
 									starter: starterId !== null,
 									starterProjectId: starterId,
@@ -2086,13 +2092,16 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	useEffect(() => {
 		if (isBuild || !project) return
 		let live = true
-		fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
-			.then(async res => {
+		void (async () => {
+			try {
+				const res = await fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
 				const body = (await res.json().catch(() => null)) as BomResponse | null
 				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
 				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })
-			})
-			.catch((err: Error) => live && setBomError(err.message))
+			} catch (err) {
+				if (live) setBomError(err instanceof Error ? err.message : String(err))
+			}
+		})()
 		return () => {
 			live = false
 		}

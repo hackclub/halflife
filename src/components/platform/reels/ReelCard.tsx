@@ -66,12 +66,13 @@ export function pauseReels() {
 export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, patch: Partial<FeedItem>) => void) {
 	if (reel.likedByMe === next) return
 	onPatch?.(reel.id, { likeCount: reel.likeCount + (next ? 1 : -1), likedByMe: next })
-	fetch(`/api/posts/${reel.id}/like`, {
-		body: JSON.stringify({ liked: next }),
-		headers: { "content-type": "application/json" },
-		method: "PUT",
-	})
-		.then(async res => {
+	void (async () => {
+		try {
+			const res = await fetch(`/api/posts/${reel.id}/like`, {
+				body: JSON.stringify({ liked: next }),
+				headers: { "content-type": "application/json" },
+				method: "PUT",
+			})
 			if (!res.ok) {
 				// Refused: put it back as it was.
 				onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe })
@@ -79,8 +80,10 @@ export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, p
 			}
 			const payload = (await res.json()) as { likeCount?: number }
 			if (typeof payload.likeCount === "number") onPatch?.(reel.id, { likeCount: payload.likeCount })
-		})
-		.catch(() => onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe }))
+		} catch {
+			onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe })
+		}
+	})()
 }
 
 /**

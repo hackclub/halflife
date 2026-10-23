@@ -1,12 +1,8 @@
 "use client"
 import { useRef, useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
-import { postForm } from "@/lib/upload-progress"
 import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
-
-interface ApiError {
-	error?: { message?: string }
-}
+import { uploadHandoffFile } from "@/lib/use-handoff"
 
 /**
  * The phone half of the handoff.
@@ -40,17 +36,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 		setState("uploading")
 		setProgress(0)
 		try {
-			const form = new FormData()
-			form.append("token", token)
-			form.append("file", file)
-
-			const res = await postForm("/api/handoff/upload", form, setProgress)
-			if (!res.ok) {
-				const payload = (res.json ?? {}) as ApiError
-				setError(payload.error?.message ?? `Upload failed (${res.status})`)
-				setState("idle")
-				return
-			}
+			await uploadHandoffFile(token, file, setProgress)
 			setState("done")
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Upload failed")

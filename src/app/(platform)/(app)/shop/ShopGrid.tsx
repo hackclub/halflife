@@ -117,12 +117,13 @@ export function ShopGrid({
 							const next = e.target.value === "" ? null : e.target.value
 							setSavingRegion(true)
 							setError(null)
-							fetch("/api/shop/region", {
-								body: JSON.stringify({ regionId: next }),
-								headers: { "content-type": "application/json" },
-								method: "PUT",
-							})
-								.then(async res => {
+							void (async () => {
+								try {
+									const res = await fetch("/api/shop/region", {
+										body: JSON.stringify({ regionId: next }),
+										headers: { "content-type": "application/json" },
+										method: "PUT",
+									})
 									if (!res.ok) {
 										const payload = (await res.json().catch(() => ({}))) as {
 											error?: { message?: string }
@@ -131,9 +132,12 @@ export function ShopGrid({
 										return
 									}
 									router.refresh()
-								})
-								.catch(() => setError("That region did not save"))
-								.finally(() => setSavingRegion(false))
+								} catch {
+									setError("That region did not save")
+								} finally {
+									setSavingRegion(false)
+								}
+							})()
 						}}
 						value={regionId ?? ""}
 					>

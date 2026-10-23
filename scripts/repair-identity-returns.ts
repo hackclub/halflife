@@ -308,9 +308,11 @@ async function main() {
 	console.log(`reopened ${chosen.length} phase(s). ari-retry sends a fresh ship for each within the hour.`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await prisma.$disconnect()
+}
