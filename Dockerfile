@@ -16,8 +16,8 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
 COPY prisma ./prisma
-COPY prisma.config.ts ./
-RUN bunx prisma generate
+COPY prisma7.config.ts ./
+RUN bunx prisma7 generate
 
 # ── prod-deps ────────────────────────────────────────────────────────────────
 # Runtime-only node_modules: the runner ships no build toolchain (typescript, eslint, tailwind, …). `prisma` itself is a production dependency, so `migrate deploy` at boot keeps working, as do the seed and backfill scripts (their only non-runtime import was `dotenv`, which is a dependency for exactly this reason). Rebuilt only when the lockfile or schema changes, like `deps` above.
@@ -29,8 +29,8 @@ COPY package.json bun.lock ./
 RUN bun install --production --frozen-lockfile
 
 COPY prisma ./prisma
-COPY prisma.config.ts ./
-RUN bunx prisma generate
+COPY prisma7.config.ts ./
+RUN bunx prisma7 generate
 
 # ── next-cache ───────────────────────────────────────────────────────────────
 # The Turbopack cache as an image, so a build can start warm.
@@ -140,7 +140,7 @@ COPY --from=builder-live --chown=nextjs:nodejs /app/.next/static ./.next/static
 # smaller than a full install.
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder-live /app/prisma ./prisma
-COPY --from=builder-live /app/prisma.config.ts ./
+COPY --from=builder-live /app/prisma7.config.ts ./
 
 # `bun prisma/seed.ts` (RUNBOOK step 9) imports the printer catalogue from src/lib/config, and that config reaches the Prisma enums through the `@/` path alias. Neither is in the standalone trace — Next bundles the app's own imports rather than shipping the source — so the config module and the tsconfig whose `paths` resolves the alias have to ship as well, or a fresh deploy seeds no shop items.
 #
