@@ -12,7 +12,7 @@ const objectKey = z
 	.max(500)
 	.regex(/^[A-Za-z0-9/_.-]+$/, "Not a valid object key")
 
-export const createPostSchema = z
+const createPostSchema = z
 	.object({
 		byteSize: z.number().int().min(0).nullish(),
 		caption: boundedText(2000),
@@ -42,12 +42,12 @@ export const createPostSchema = z
 	})
 	.strict()
 
-export const likeSchema = z.object({ liked: z.boolean() }).strict()
+const likeSchema = z.object({ liked: z.boolean() }).strict()
 
 /**
  * The public links for one reel, one per platform at most. The URL is only length-checked here; whether it is really a link to that platform, and its tidy stored form, is lib/public-reels.ts's call, shared with the dialog.
  */
-export const publicReelLinksSchema = z
+const publicReelLinksSchema = z
 	.object({
 		links: z
 			.array(
@@ -66,6 +66,8 @@ export const publicReelLinksSchema = z
 	})
 	.strict()
 
-export const commentSchema = z.object({ body: boundedText(1000, 1) }).strict()
+const commentSchema = z.object({ body: boundedText(1000, 1) }).strict()
 
-export const moderatePostSchema = z.object({ reason: boundedText(1000, 1) }).strict()
+const moderatePostSchema = z.object({ reason: boundedText(1000, 1) }).strict()
+
+export { commentSchema, createPostSchema, likeSchema, moderatePostSchema, publicReelLinksSchema }

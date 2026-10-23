@@ -160,7 +160,7 @@ type ValuesFor<S extends FieldMap> = Partial<{
 }>
 
 /** Build an Airtable `fields` payload, keyed however FIELD_MODE says. */
-export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): { [_: string]: unknown } {
+function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): { [_: string]: unknown } {
 	const out: { [_: string]: unknown } = {}
 	for (const [key, value] of Object.entries(values)) {
 		if (value === undefined) continue
@@ -171,14 +171,15 @@ export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): {
 	return out
 }
 
-export type { FieldDef }
 export {
 	FIELD_MODE,
+	type FieldDef,
 	fieldKey,
 	formulaRef,
 	LOOPS_REVIEW_OVERRIDE,
 	RSVP,
 	RSVP_TABLE_ID,
+	toFields,
 	YSWS_PENDING_REVIEW,
 	YSWS_REVIEW_STATUS,
 	YSWS_SUBMISSION,

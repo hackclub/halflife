@@ -217,7 +217,7 @@ function eventTimeLabel(at: Date, timeZone: string): string {
 }
 
 /** "7:00 – 8:00 PM", collapsing the meridiem when both ends share one. */
-export function eventRangeLabel(startsAt: Date, endsAt: Date | null, timeZone: string): string {
+function eventRangeLabel(startsAt: Date, endsAt: Date | null, timeZone: string): string {
 	if (!endsAt) return eventTimeLabel(startsAt, timeZone)
 	const from = eventTimeLabel(startsAt, timeZone)
 	const to = eventTimeLabel(endsAt, timeZone)
@@ -233,12 +233,12 @@ export function eventRangeLabel(startsAt: Date, endsAt: Date | null, timeZone: s
  * that ends at 11:30pm is tonight's, and a list that lost it overnight would be
  * wrong in the direction that matters.
  */
-export function eventsOnDay<T extends CalendarEvent>(events: readonly T[], day: string, timeZone: string): T[] {
+function eventsOnDay<T extends CalendarEvent>(events: readonly T[], day: string, timeZone: string): T[] {
 	return events.filter(event => calendarDay(event.startsAt, timeZone) === day)
 }
 
 /** The soonest event that has not finished, or null when the programme is clear. */
-export function nextEvent<T extends CalendarEvent>(events: readonly T[], now: Date): T | null {
+function nextEvent<T extends CalendarEvent>(events: readonly T[], now: Date): T | null {
 	return (
 		[...events]
 			.toSorted((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
@@ -248,20 +248,25 @@ export function nextEvent<T extends CalendarEvent>(events: readonly T[], now: Da
 
 export type { EventColour } from "@/app/generated/prisma/client"
 export { calendarDay } from "@/lib/time"
-export type { CalendarEvent, EventColourDef }
+
 export {
+	type CalendarEvent,
 	dayKey,
 	dayLabel,
 	daySegment,
 	dayShort,
 	EVENT_COLOURS,
+	type EventColourDef,
 	eventColour,
 	eventIsLive,
 	eventIsUpcoming,
+	eventRangeLabel,
+	eventsOnDay,
 	HUDDLE_URL,
 	minutesInDay,
 	monthOf,
 	msUntilStart,
+	nextEvent,
 	shiftWeek,
 	weekDays,
 	weekLabel,

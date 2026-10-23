@@ -13,9 +13,9 @@ import type { BomItemInput } from "@/lib/schemas/project"
  */
 
 /** Plenty for a hand-built board, and a ceiling on a runaway script. */
-export const MAX_BOM_ITEMS = 80
+const MAX_BOM_ITEMS = 80
 
-export interface BomLine {
+interface BomLine {
 	id: string
 	link: string | null
 	name: string
@@ -33,7 +33,7 @@ export interface BomLine {
  *
  * `requestedTier` is the maker's ask and `tier` the reviewer's decision, so a project whose design is already approved is priced against what was actually paid out. A build never asks for parts money, so its total is nothing and it can never need agreeing to anything.
  */
-export async function partsFundingFor(
+async function partsFundingFor(
 	project: Pick<ThemeProject, "id" | "tier" | "requestedTier" | "bomTaxShippingUsd">,
 	phase: Phase,
 ): Promise<PartsFunding> {
@@ -46,7 +46,7 @@ export async function partsFundingFor(
 	return partsFunding(bomTotalUsd(items, project.bomTaxShippingUsd), capUsd)
 }
 
-export function listBom(themeProjectId: string): Promise<BomLine[]> {
+function listBom(themeProjectId: string): Promise<BomLine[]> {
 	return prisma.bomItem.findMany({
 		orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
 		select: {
@@ -68,7 +68,7 @@ export function listBom(themeProjectId: string): Promise<BomLine[]> {
  *
  * In review for the same reason the project itself is: editing what a reviewer is reading changes the thing being decided halfway through. And final once the design is approved, because that approval is what paid the tier out against this list.
  */
-export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus: PhaseStatus }): string | null {
+function bomLockReason(project: { designStatus: PhaseStatus; buildStatus: PhaseStatus }): string | null {
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return "Unsubmit before editing – a phase is in review"
 	if (project.designStatus === PhaseStatus.approved) return "The design week is approved, so the parts list is final"
@@ -76,7 +76,7 @@ export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus:
 }
 
 /** The fields a write may set, cleaned the way every other maker text is. */
-export function bomData(input: Partial<BomItemInput>): {
+function bomData(input: Partial<BomItemInput>): {
 	name?: string
 	purpose?: string | null
 	quantity?: number
@@ -93,3 +93,5 @@ export function bomData(input: Partial<BomItemInput>): {
 		...(input.link !== undefined ? { link: input.link || null } : {}),
 	}
 }
+
+export { type BomLine, bomData, bomLockReason, listBom, MAX_BOM_ITEMS, partsFundingFor }

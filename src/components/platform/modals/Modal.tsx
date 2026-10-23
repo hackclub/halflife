@@ -32,7 +32,7 @@ const useIsClient = () =>
 		() => false,
 	)
 
-export function Modal({
+function Modal({
 	open,
 	onClose,
 	eyebrow,
@@ -177,7 +177,7 @@ export function Modal({
 	)
 }
 
-export function ModalTitle({
+function ModalTitle({
 	children,
 	id,
 	sub,
@@ -207,3 +207,5 @@ export function ModalTitle({
 		</div>
 	)
 }
+
+export { Modal, ModalTitle }

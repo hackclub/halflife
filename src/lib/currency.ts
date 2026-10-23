@@ -192,7 +192,7 @@ const LEDGER_ORDER = {
 	direction: "desc",
 } as const satisfies CursorOrderOf<LedgerEntry, Prisma.LedgerEntryOrderByWithRelationInput>
 
-export async function getLedgerPage(
+async function getLedgerPage(
 	userId: string,
 	cursor: string | undefined,
 	limit: number,
@@ -207,5 +207,17 @@ export async function getLedgerPage(
 }
 
 export { CoinBucket, LedgerKind } from "@/app/generated/prisma/enums"
-export type { Balances, LedgerEntryParams, ReconcileParams, ReconcileResult }
-export { appendLedgerEntry, getBalances, getEarnedCredit, lockUserCredit, reconcileGrant, spendableFor }
+
+export {
+	appendLedgerEntry,
+	type Balances,
+	getBalances,
+	getEarnedCredit,
+	getLedgerPage,
+	type LedgerEntryParams,
+	lockUserCredit,
+	type ReconcileParams,
+	type ReconcileResult,
+	reconcileGrant,
+	spendableFor,
+}

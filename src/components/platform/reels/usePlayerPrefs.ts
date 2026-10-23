@@ -16,9 +16,9 @@ interface PlayerPrefs {
 const KEY = "halflife.player.v1"
 const DEFAULTS: PlayerPrefs = { autoScroll: false, comments: true, muted: false, rate: 1 }
 
-export const RATES = [1, 1.5, 2, 0.5] as const
+const RATES = [1, 1.5, 2, 0.5] as const
 
-export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerPrefs>) => void] {
+function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerPrefs>) => void] {
 	const [prefs, setPrefs] = useState<PlayerPrefs>(DEFAULTS)
 
 	// After mount, because the server has no storage and must render the defaults; reading it during render would tear hydration.
@@ -54,4 +54,4 @@ export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerP
 	return [prefs, update] as const
 }
 
-export type { PlayerPrefs }
+export { type PlayerPrefs, RATES, usePlayerPrefs }

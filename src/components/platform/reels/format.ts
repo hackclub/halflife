@@ -1,12 +1,12 @@
 /** 1234 → "1.2k". Counts on a reel are glanced at, not read. */
-export function compact(n: number): string {
+function compact(n: number): string {
 	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`
 	if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`
 	return `${n}`
 }
 
 /** Seconds as the player's clock: 00:07, 01:29, 1:02:10. */
-export function clock(seconds: number): string {
+function clock(seconds: number): string {
 	const s = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0
 	const h = Math.floor(s / 3600)
 	const m = Math.floor((s % 3600) / 60)
@@ -17,7 +17,7 @@ export function clock(seconds: number): string {
 /**
  * How long ago, the way a feed says it: "now", "5m ago", "3h ago", "6d ago", "2w ago", and past a month the date itself – "ago" stops meaning anything once it has to be worked out.
  */
-export function ago(when: Date | string | null | undefined, now = Date.now()): string {
+function ago(when: Date | string | null | undefined, now = Date.now()): string {
 	if (!when) return ""
 	const t = new Date(when).getTime()
 	if (Number.isNaN(t)) return ""
@@ -38,3 +38,5 @@ export function ago(when: Date | string | null | undefined, now = Date.now()): s
 		...(sameYear ? {} : { year: "numeric" }),
 	})
 }
+
+export { ago, clock, compact }

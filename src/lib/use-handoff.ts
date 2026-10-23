@@ -28,7 +28,7 @@ type HandoffStatus = "idle" | "minting" | "waiting" | "ready" | "expired"
 
 const POLL_MS = 2500
 
-export function useHandoff(onReady: (objectKey: string, url: string | null) => void): {
+function useHandoff(onReady: (objectKey: string, url: string | null) => void): {
 	minted: MintedHandoff | null
 	status: HandoffStatus
 	error: string | null
@@ -122,7 +122,7 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
  *
  * Returns the R2 object key. Keys rather than URLs everywhere: the bucket or the CDN in front of it can move without rewriting a single stored row.
  */
-export async function uploadFile(
+async function uploadFile(
 	file: File,
 	folder: string,
 	/** The fraction sent, 0 to 1. 1 means sent, not yet stored. */
@@ -140,4 +140,4 @@ export async function uploadFile(
 	return { objectKey: payload.objectKey, url: payload.url ?? null }
 }
 
-export type { HandoffStatus, MintedHandoff }
+export { type HandoffStatus, type MintedHandoff, uploadFile, useHandoff }

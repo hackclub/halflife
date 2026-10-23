@@ -91,7 +91,7 @@ function fromSegments(forge: Forge, segments: string[]): RepoRef | null {
  *
  * The sync pins its target as a full URL rather than a slug now, precisely so the forge stays inferable from the stored value alone.
  */
-export function repoRefToUrl(ref: RepoRef): string {
+function repoRefToUrl(ref: RepoRef): string {
 	return `https://${ref.forge.hostname}/${ref.fullName}`
 }
 
@@ -100,10 +100,9 @@ export function repoRefToUrl(ref: RepoRef): string {
  *
  * A project's `githubRepo` is allowed to be any repo link – a maker may keep their work somewhere we do not speak, and the link is still theirs to show. Only the read and write paths need this to resolve, and they refuse when it does not.
  */
-export function repoRefFromLink(link: string | null | undefined): RepoRef | null {
+function repoRefFromLink(link: string | null | undefined): RepoRef | null {
 	if (!link) return null
 	return parseRepoRef(link)
 }
 
-export type { RepoRef }
-export { parseRepoRef }
+export { parseRepoRef, type RepoRef, repoRefFromLink, repoRefToUrl }

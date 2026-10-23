@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { after } from "next/server"
 import { Role } from "@/app/generated/prisma/enums"
 import { ok } from "@/lib/api"

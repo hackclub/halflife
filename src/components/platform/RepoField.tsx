@@ -16,7 +16,7 @@ import type { Project } from "@/lib/types"
  * while it is still being typed. The form reads the same check back through
  * `repoIsValid` to hold its own submit button.
  */
-export function RepoInput({ value, onChange, id }: { value: string; onChange(value: string): void; id: string }) {
+function RepoInput({ value, onChange, id }: { value: string; onChange(value: string): void; id: string }) {
 	const [touched, setTouched] = useState(false)
 	const { error } = normalizeRepo(value)
 	return (
@@ -62,7 +62,7 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange(val
 }
 
 /** Whether a creation form may submit with this in its repo field. */
-export function repoIsValid(value: string) {
+function repoIsValid(value: string) {
 	return normalizeRepo(value).error === null
 }
 
@@ -71,7 +71,7 @@ export function repoIsValid(value: string) {
  *
  * One line when it is set – the link itself, shortened to what anyone reads – and one quiet prompt when it is not, so an empty repo does not take up the room of a form on every card. Editing swaps the line for an input and two buttons without moving what is around it much, and the server's refusal (a phase in review is locked) is said right there rather than lost.
  */
-export function RepoEditor({ project, className }: { project: Project; className?: string }) {
+function RepoEditor({ project, className }: { project: Project; className?: string }) {
 	const { setProjectRepo } = useStore()
 	const id = useId()
 	const [editing, setEditing] = useState(false)
@@ -208,3 +208,5 @@ export function RepoEditor({ project, className }: { project: Project; className
 		</form>
 	)
 }
+
+export { RepoEditor, RepoInput, repoIsValid }

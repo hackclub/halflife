@@ -9,17 +9,19 @@
 import { round2 } from "@/lib/money"
 
 /** One decimal place. */
-export const round1 = (n: number): number => Math.round(n * 10) / 10
+const round1 = (n: number): number => Math.round(n * 10) / 10
 
 /**
  * A share as a percentage to one decimal place – 0.4 of something reads as 40, not 40.00000000000001.
  *
  * `whole === 0` is 0 rather than NaN or Infinity: every caller is a ratio of two headcounts, and an empty stage is a real state rather than an error.
  */
-export const pctOf = (part: number, whole: number): number => (whole === 0 ? 0 : round1((part / whole) * 100))
+const pctOf = (part: number, whole: number): number => (whole === 0 ? 0 : round1((part / whole) * 100))
 
 /** Whole people and counts with thousands separators: 1234 -> "1,234". The admin charts each defined this inline until a change to the locale had to be found in four files. */
-export const fmtInt = (n: number): string => n.toLocaleString("en-US")
+const fmtInt = (n: number): string => n.toLocaleString("en-US")
 
 /** Hours, two decimals at most and never a trailing zero: 7.5h, 9h, 9.55h. The programme's one reading of an hours figure. */
-export const fmtHours = (h: number): string => `${round2(h)}h`
+const fmtHours = (h: number): string => `${round2(h)}h`
+
+export { fmtHours, fmtInt, pctOf, round1 }

@@ -47,7 +47,7 @@ function weekOpenFor(userId: string, projectId: string, session: { phase: Phase;
 	return isWeekOpen(userId, projectId, scheduledWeekFor(session.themeProject.theme, session.phase))
 }
 
-export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const parsed = await parseBody(req, sessionUpdateSchema)
@@ -144,7 +144,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	return ok({ session: updated })
 })
 
-export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const session = await loadOwned(gate.user.id, id, sessionId)
@@ -200,3 +200,5 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 
 	return ok({ ok: true })
 })
+
+export { DELETE, PATCH }

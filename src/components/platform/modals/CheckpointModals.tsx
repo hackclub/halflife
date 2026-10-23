@@ -1082,7 +1082,7 @@ function writeReelDraft(checkpointId: string, draft: ReelDraft | null) {
  *
  * Asked once, as a yes-or-no, so saying no costs one click. Yes opens the links – one field per platform, all optional but at least one – with the reminder that makes the post count at the top, because it has to be in the caption *before* they post it: their referral link and the programme's hashtag. Each link is saved as its own Public Reels row against this reel.
  */
-export function PublicReelModal({
+function PublicReelModal({
 	postId,
 	eyebrow,
 	videoUrl,
@@ -1393,7 +1393,7 @@ export function PublicReelModal({
 	)
 }
 
-export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
+function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
 	const { done } = stateOf(checkpoint.id)
@@ -1655,7 +1655,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Project creation (weeks 2-5, and week 1 once its project is deleted)
  * ================================================================== */
-export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
+function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
 	const pace = usePrinterPace()
@@ -1955,7 +1955,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
  *
  * Opening it again is almost always "I need to change something", so it says where the week stands and offers the one thing that allows a change: taking it back out of review. Nothing is lost by it – the entries, parts list and details stay as they are, and this same checkpoint hands it in again.
  */
-export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
+function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, unsubmitPhase, weekOfCheckpoint, stateOf } = useStore()
 	const week = weekOfCheckpoint(checkpoint)
 	const handedIn = stateOf(checkpoint.id).at
@@ -2006,7 +2006,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	)
 }
 
-export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
+function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const {
 		setOpenCheckpoint,
 		submitPhase,
@@ -2808,4 +2808,4 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	)
 }
 
-export { JournalModal }
+export { JournalModal, ProjectModal, PublicReelModal, ReelModal, SubmitModal, UnsubmitModal }

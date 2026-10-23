@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth"
 import type { SessionUser } from "@/lib/guards"
 import { getUserRolesIfExists, hasAnyPermission, hasPermission, type Permission, type Role } from "@/lib/permissions"
 
-export interface PageContext {
+interface PageContext {
 	roles: Role[]
 	user: SessionUser
 }
@@ -16,7 +16,7 @@ export interface PageContext {
  */
 //
 // Once per request: the layout and the page both ask, and each asking was three serial queries against a remote database. React's `cache` scopes the answer to one server render, so a sign-out still takes effect on the next.
-export const requireSessionPage = cache(async (): Promise<PageContext> => {
+const requireSessionPage = cache(async (): Promise<PageContext> => {
 	const session = await auth.api.getSession({ headers: await headers() })
 	// Via /signed-out, which clears a dead session cookie on the way to the landing page; see that route for why it cannot be `/` directly.
 	if (!session) redirect("/signed-out")
@@ -33,14 +33,16 @@ export const requireSessionPage = cache(async (): Promise<PageContext> => {
 /**
  * 404 rather than 403: don't confirm that /admin exists to someone guessing at URLs.
  */
-export async function requirePermissionPage(permission: Permission): Promise<PageContext> {
+async function requirePermissionPage(permission: Permission): Promise<PageContext> {
 	const ctx = await requireSessionPage()
 	if (!hasPermission(ctx.roles, permission)) notFound()
 	return ctx
 }
 
-export async function requireAnyPermissionPage(...permissions: Permission[]): Promise<PageContext> {
+async function requireAnyPermissionPage(...permissions: Permission[]): Promise<PageContext> {
 	const ctx = await requireSessionPage()
 	if (!hasAnyPermission(ctx.roles, permissions)) notFound()
 	return ctx
 }
+
+export { type PageContext, requireAnyPermissionPage, requirePermissionPage, requireSessionPage }

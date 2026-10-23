@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import type { Metadata } from "next"
 import { PageSign } from "@/components/platform/PageSign"
 import { PRINTER_GRANT_NOTICE, printerComesAsGrant } from "@/lib/config/printers"

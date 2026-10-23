@@ -105,7 +105,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 /**
  * Dates are written out by hand rather than handed to toLocaleDateString, which resolves against whatever ICU data the runtime happens to carry and so can disagree between the server render and the browser's.
  */
-export function fmtDate(at: number): string {
+function fmtDate(at: number): string {
 	if (!at) return "undated"
 	const d = new Date(at)
 	return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
@@ -116,12 +116,12 @@ export function fmtDate(at: number): string {
  *
  * The day is read as parts, not handed to `new Date`, because the string is a calendar day in the PROGRAM's timezone: parsed as an instant it is UTC midnight, and a reader west of UTC would be shown the day before.
  */
-export function fmtDay(day: string): string {
+function fmtDay(day: string): string {
 	const [year, month, date] = day.split("-").map(Number)
 	if (!year || !month || !date || month < 1 || month > 12) return day
 	return `${date} ${MONTHS[month - 1]} ${year}`
 }
 
 export { fmtHours } from "@/lib/numbers"
-export type { CheckpointRead, ProjectEvent }
-export { projectEvents, projectStats, projectWeeks }
+
+export { type CheckpointRead, fmtDate, fmtDay, type ProjectEvent, projectEvents, projectStats, projectWeeks }

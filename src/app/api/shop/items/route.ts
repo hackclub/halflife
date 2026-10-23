@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { ok } from "@/lib/api"
 import { withSession } from "@/lib/guards"
 import { getShopAccess } from "@/lib/program"

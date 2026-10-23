@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
 import { bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"

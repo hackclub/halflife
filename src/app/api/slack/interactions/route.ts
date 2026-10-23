@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { after, NextResponse } from "next/server"
 import {
 	addReaction,

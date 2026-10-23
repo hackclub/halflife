@@ -4,7 +4,7 @@ import prisma from "../src/lib/prisma"
 import { trackSideEffect } from "../src/lib/side-effects"
 
 /** The hand-in a refresh replaces and the id Ari holds for its current ship, if any. */
-export interface AriRefreshTarget {
+interface AriRefreshTarget {
 	ariSubmissionId: string | null
 	phase: Phase
 	submissionId: string
@@ -12,10 +12,10 @@ export interface AriRefreshTarget {
 }
 
 /** The state a hand-in was left in, so a summary can tell a fresh send from a replaced ship. */
-export type AriRefreshOutcome = "not-queued" | "replaced" | "sent"
+type AriRefreshOutcome = "not-queued" | "replaced" | "sent"
 
 /** The value of a `--name value` or `--name=value` flag, or null when it is absent. */
-export function flag(name: string): string | null {
+function flag(name: string): string | null {
 	const args = process.argv.slice(2)
 	for (const [index, arg] of args.entries()) {
 		if (arg === `--${name}`) return args[index + 1] ?? null
@@ -25,7 +25,7 @@ export function flag(name: string): string | null {
 }
 
 /** The `--phase` flag as a phase, or null when it was not given. */
-export function phaseArg(): Phase | null {
+function phaseArg(): Phase | null {
 	const raw = flag("phase")
 	if (raw === null) return null
 	const phase = raw.toUpperCase()
@@ -34,7 +34,7 @@ export function phaseArg(): Phase | null {
 }
 
 /** The `--limit` flag as a positive integer, or null when it was not given. */
-export function limitArg(): number | null {
+function limitArg(): number | null {
 	const raw = flag("limit")
 	if (raw === null) return null
 	const value = Number(raw)
@@ -47,7 +47,7 @@ export function limitArg(): number | null {
  *
  * Ari has no update-in-place API: a ship's journals and project keys are fixed at ingestion. A ship already in Ari is therefore withdrawn and created again under the same external id, which becomes the next version. `not_queued` means Ari holds no open ship under that id – usually because it has already decided it – and re-sending would put a decided hand-in back in the queue, so it is reported and left alone.
  */
-export async function refreshAriShip(target: AriRefreshTarget): Promise<AriRefreshOutcome> {
+async function refreshAriShip(target: AriRefreshTarget): Promise<AriRefreshOutcome> {
 	let replaced = false
 	if (target.ariSubmissionId) {
 		const withdrawn = await trackSideEffect(
@@ -86,3 +86,5 @@ export async function refreshAriShip(target: AriRefreshTarget): Promise<AriRefre
 	if (!sent || "skipped" in sent) throw new Error("Ari is not configured, or the hand-in is no longer awaiting review")
 	return replaced ? "replaced" : "sent"
 }
+
+export { type AriRefreshOutcome, type AriRefreshTarget, flag, limitArg, phaseArg, refreshAriShip }

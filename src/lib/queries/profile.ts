@@ -20,7 +20,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  * It is not the trail's store: that only holds the viewer's own projects, so everything on a profile comes from this one read.
  */
 
-export interface ProfileProject {
+interface ProfileProject {
 	/** The scene colour behind a project that has no picture of its own. */
 	accent: string
 	entries: number
@@ -37,7 +37,7 @@ export interface ProfileProject {
 	warmup: boolean
 }
 
-export interface ProfileData {
+interface ProfileData {
 	id: string
 	image: string | null
 	/** Whether the viewer is looking at their own profile. */
@@ -54,9 +54,9 @@ export interface ProfileData {
 }
 
 /** How many reels a profile shows. Enough to be a body of work, not the whole archive. */
-export const PROFILE_REELS = 24
+const PROFILE_REELS = 24
 
-export async function getProfile(userId: string, viewerId: string): Promise<ProfileData | null> {
+async function getProfile(userId: string, viewerId: string): Promise<ProfileData | null> {
 	const [user, projects, reels, reelCount, settings] = await Promise.all([
 		prisma.user.findUnique({
 			select: {
@@ -151,3 +151,5 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		streak: streakAsOf(user, today),
 	}
 }
+
+export { getProfile, PROFILE_REELS, type ProfileData, type ProfileProject }

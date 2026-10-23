@@ -8,7 +8,7 @@ import localFont from "next/font/local"
  *
  * Licence: free, per `public/fonts/Read me.txt`, with the author asking for a donation to charity for commercial use.
  */
-export const masterpiece = localFont({
+const masterpiece = localFont({
 	display: "swap",
 	src: "../../../public/fonts/Masterpiece.ttf",
 	style: "normal",
@@ -16,7 +16,7 @@ export const masterpiece = localFont({
 	weight: "400",
 })
 
-export const openSans = Open_Sans({
+const openSans = Open_Sans({
 	display: "swap",
 	subsets: ["latin"],
 	variable: "--font-open-sans",
@@ -31,7 +31,7 @@ export const openSans = Open_Sans({
  * for, and they are exactly the two the page sets: 400 for the tagline and
  * the email field, 700 for the sixteen `font-bold` headings. Nothing here asks for 600 or 800, so nothing is synthesised and nothing is fetched to sit unused – every `font-semibold` on the page is on a body-face element, and Open Sans is variable and covers it.
  */
-export const ubuntu = Ubuntu({
+const ubuntu = Ubuntu({
 	display: "swap",
 	subsets: ["latin"],
 	variable: "--font-ubuntu",
@@ -39,4 +39,6 @@ export const ubuntu = Ubuntu({
 })
 
 /** All three variables, for the element a landing-world document hangs them on. */
-export const siteFontVariables = `${openSans.variable} ${ubuntu.variable} ${masterpiece.variable}`
+const siteFontVariables = `${openSans.variable} ${ubuntu.variable} ${masterpiece.variable}`
+
+export { masterpiece, openSans, siteFontVariables, ubuntu }

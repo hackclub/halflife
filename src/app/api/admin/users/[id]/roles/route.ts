@@ -11,40 +11,37 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withPermission(
-	Permission.MANAGE_ROLES,
-	async (req: Request, { params, gate }: Params & AuthedContext) => {
-		const { id } = await params
+const POST = withPermission(Permission.MANAGE_ROLES, async (req: Request, { params, gate }: Params & AuthedContext) => {
+	const { id } = await params
 
-		const parsed = await parseBody(req, roleChangeSchema)
-		if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, roleChangeSchema)
+	if (parsed.error) return parsed.error
 
-		const user = await prisma.user.findUnique({ select: { id: true }, where: { id } })
-		if (!user) return fail("NOT_FOUND", "User not found")
+	const user = await prisma.user.findUnique({ select: { id: true }, where: { id } })
+	if (!user) return fail("NOT_FOUND", "User not found")
 
-		const existing = await prisma.userRole.findUnique({
-			where: { userId_role: { role: parsed.data.role, userId: id } },
-		})
-		if (existing) return fail("CONFLICT", "That user already holds this role")
+	const existing = await prisma.userRole.findUnique({
+		where: { userId_role: { role: parsed.data.role, userId: id } },
+	})
+	if (existing) return fail("CONFLICT", "That user already holds this role")
 
-		await prisma.userRole.create({
-			data: { grantedBy: gate.user.id, role: parsed.data.role, userId: id },
-		})
+	await prisma.userRole.create({
+		data: { grantedBy: gate.user.id, role: parsed.data.role, userId: id },
+	})
 
-		await logAudit({
-			action: AuditAction.ADMIN_GRANT_ROLE,
-			actorEmail: gate.user.email,
-			actorId: gate.user.id,
-			metadata: { role: parsed.data.role },
-			targetId: id,
-			targetType: "User",
-		})
+	await logAudit({
+		action: AuditAction.ADMIN_GRANT_ROLE,
+		actorEmail: gate.user.email,
+		actorId: gate.user.id,
+		metadata: { role: parsed.data.role },
+		targetId: id,
+		targetType: "User",
+	})
 
-		return ok({ ok: true }, { status: 201 })
-	},
-)
+	return ok({ ok: true }, { status: 201 })
+})
 
-export const DELETE = withPermission(
+const DELETE = withPermission(
 	Permission.MANAGE_ROLES,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -80,3 +77,5 @@ export const DELETE = withPermission(
 		return ok({ ok: true })
 	},
 )
+
+export { DELETE, POST }

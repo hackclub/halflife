@@ -6,17 +6,17 @@ import type { PhaseStatus } from "@/app/generated/prisma/enums"
  * The projects grid and the project page both read it, so a card and the page it opens can never disagree about what "needs changes" looks like. Pure, so both server and client components can name it.
  */
 
-export type ReviewTone = "line" | "sky" | "teal" | "orange" | "coral"
+type ReviewTone = "line" | "sky" | "teal" | "orange" | "coral"
 
 /** The one state a project is in, for the single status its card shows and the one slice it occupies in a project count. */
-export type ProjectReviewState = "approved" | "changes" | "not_started" | "pending" | "rejected"
+type ProjectReviewState = "approved" | "changes" | "not_started" | "pending" | "rejected"
 
 /**
  * Where a project stands, as one state rather than one per phase.
  *
  * Attention wins: something rejected or sent back is what the maker needs to see first, then a phase under review. Otherwise it follows the current phase – the build once it has started, the design until then – so a design that passed while the build has not begun still reads as approved. The projects grid colours a card from this, and the admin overview counts each project in exactly one slice of it, so a project can never appear in two states at once.
  */
-export function projectReviewState(design: PhaseStatus, build: PhaseStatus): ProjectReviewState {
+function projectReviewState(design: PhaseStatus, build: PhaseStatus): ProjectReviewState {
 	const phases = new Set([design, build])
 	if (phases.has("rejected")) return "rejected"
 	if (phases.has("update_requested")) return "changes"
@@ -30,7 +30,7 @@ export function projectReviewState(design: PhaseStatus, build: PhaseStatus): Pro
  *
  * The tone is `projectReviewState`'s state, so a card and any count built on the same state cannot disagree about which slice the project is in.
  */
-export function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone {
+function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone {
 	switch (projectReviewState(design, build)) {
 		case "rejected":
 			return "coral"
@@ -46,7 +46,7 @@ export function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone 
 }
 
 /** Plain words, not the enum. */
-export const REVIEW_STATUS_TEXT: Record<PhaseStatus, string> = {
+const REVIEW_STATUS_TEXT: Record<PhaseStatus, string> = {
 	approved: "approved",
 	draft: "not started",
 	in_review: "in review",
@@ -55,7 +55,7 @@ export const REVIEW_STATUS_TEXT: Record<PhaseStatus, string> = {
 }
 
 /** Tailwind background for a state's dot, in the platform's own state colours. */
-export const REVIEW_STATUS_DOT: Record<PhaseStatus, string> = {
+const REVIEW_STATUS_DOT: Record<PhaseStatus, string> = {
 	approved: "bg-teal",
 	draft: "bg-line-strong",
 	in_review: "bg-sky",
@@ -64,7 +64,7 @@ export const REVIEW_STATUS_DOT: Record<PhaseStatus, string> = {
 }
 
 /** The platform `Chip` tone for a state. */
-export function reviewChipTone(status: PhaseStatus): "sky" | "teal" | "gold" | "coral" | "muted" {
+function reviewChipTone(status: PhaseStatus): "sky" | "teal" | "gold" | "coral" | "muted" {
 	switch (status) {
 		case "approved":
 			return "teal"
@@ -79,4 +79,14 @@ export function reviewChipTone(status: PhaseStatus): "sky" | "teal" | "gold" | "
 		default:
 			return "muted"
 	}
+}
+
+export {
+	type ProjectReviewState,
+	projectReviewState,
+	REVIEW_STATUS_DOT,
+	REVIEW_STATUS_TEXT,
+	type ReviewTone,
+	reviewChipTone,
+	reviewTone,
 }

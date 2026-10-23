@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { decideReport } from "@/lib/report-decisions"

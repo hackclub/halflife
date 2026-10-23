@@ -14,11 +14,11 @@ function deriveKey(): Buffer {
 	return Buffer.from(hkdfSync("sha256", secret, "", INFO, 32))
 }
 
-export function isPiiConfigured(): boolean {
+function isPiiConfigured(): boolean {
 	return Boolean(process.env.PII_ENCRYPTION_KEY)
 }
 
-export function encryptPII(plaintext: string): string {
+function encryptPII(plaintext: string): string {
 	const key = deriveKey()
 	const iv = randomBytes(12)
 	const cipher = createCipheriv("aes-256-gcm", key, iv)
@@ -27,7 +27,7 @@ export function encryptPII(plaintext: string): string {
 	return [iv.toString("base64"), authTag.toString("base64"), encrypted.toString("base64")].join(":")
 }
 
-export function decryptPII(payload: string): string {
+function decryptPII(payload: string): string {
 	const [ivB64, tagB64, dataB64] = payload.split(":")
 	if (!ivB64 || !tagB64 || !dataB64) throw new Error("Malformed PII payload")
 	const decipher = createDecipheriv("aes-256-gcm", deriveKey(), Buffer.from(ivB64, "base64"))
@@ -38,7 +38,7 @@ export function decryptPII(payload: string): string {
 /**
  * Decrypt without throwing. One corrupt column must not take down the whole record – the grant sync would rather ship a missing address line than fail outright and leave someone unpaid.
  */
-export function safeDecrypt(payload: string | null | undefined): string | null {
+function safeDecrypt(payload: string | null | undefined): string | null {
 	if (!payload) return null
 	try {
 		return decryptPII(payload)
@@ -48,7 +48,7 @@ export function safeDecrypt(payload: string | null | undefined): string | null {
 	}
 }
 
-export interface DecryptedAddress {
+interface DecryptedAddress {
 	birthday: string | null
 	city: string | null
 	country: string | null
@@ -59,7 +59,7 @@ export interface DecryptedAddress {
 	zip: string | null
 }
 
-export function decryptUserPII(user: {
+function decryptUserPII(user: {
 	encryptedAddressStreet?: string | null
 	encryptedAddressLine2?: string | null
 	encryptedAddressCity?: string | null
@@ -80,3 +80,5 @@ export function decryptUserPII(user: {
 		zip: safeDecrypt(user.encryptedAddressZip),
 	}
 }
+
+export { type DecryptedAddress, decryptPII, decryptUserPII, encryptPII, isPiiConfigured, safeDecrypt }

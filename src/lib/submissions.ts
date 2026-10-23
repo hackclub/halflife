@@ -87,7 +87,7 @@ function accessOpenOnClient(
 	return false
 }
 
-export async function submitPhase(
+async function submitPhase(
 	userId: string,
 	themeProjectId: string,
 	phase: Phase,
@@ -249,7 +249,7 @@ export async function submitPhase(
 	})
 }
 
-export async function unsubmitPhase(userId: string, themeProjectId: string, phase: Phase): Promise<void> {
+async function unsubmitPhase(userId: string, themeProjectId: string, phase: Phase): Promise<void> {
 	const project = await prisma.themeProject.findFirst({
 		where: { deletedAt: null, id: themeProjectId, userId },
 	})
@@ -306,7 +306,7 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 }
 
 /** Stamp a session with the day and program week it belongs to. */
-export async function stampSessionTiming(date: Date): Promise<{ effectiveDate: string; weekNumber: number }> {
+async function stampSessionTiming(date: Date): Promise<{ effectiveDate: string; weekNumber: number }> {
 	const settings = await getProgramSettings()
 	return {
 		effectiveDate: effectiveDateFor(date, settings.programTimezone),
@@ -314,4 +314,4 @@ export async function stampSessionTiming(date: Date): Promise<{ effectiveDate: s
 	}
 }
 
-export { canSubmitPhase }
+export { canSubmitPhase, stampSessionTiming, submitPhase, unsubmitPhase }

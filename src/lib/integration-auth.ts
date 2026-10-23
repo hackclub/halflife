@@ -15,7 +15,7 @@ function matches(presented: string, expected: string): boolean {
  *
  * An unset env var yields 503, never an open route: a machine endpoint that silently stops checking its key is worse than one that stops working.
  */
-export function requireBearerAuth(request: NextRequest, envVars: string[]): NextResponse<ApiErrorBody> | null {
+function requireBearerAuth(request: NextRequest, envVars: string[]): NextResponse<ApiErrorBody> | null {
 	const expected = envVars.map(v => process.env[v]).filter((v): v is string => Boolean(v))
 	if (expected.length === 0) return fail("NOT_CONFIGURED", `Set one of ${envVars.join(", ")} to enable this endpoint`)
 
@@ -28,19 +28,17 @@ export function requireBearerAuth(request: NextRequest, envVars: string[]): Next
 	return null
 }
 
-export function requireIntegrationAuth(request: NextRequest): NextResponse<ApiErrorBody> | null {
+function requireIntegrationAuth(request: NextRequest): NextResponse<ApiErrorBody> | null {
 	return requireBearerAuth(request, ["INTEGRATION_API_KEY"])
 }
 
 /** The read-only export accepts a narrower per-partner key as well. */
-export type ExportScope = "internal" | "partner"
+type ExportScope = "internal" | "partner"
 
 /**
  * Authorise the participant export and say which key matched, because the fields a partner may see are narrower than the internal key's: only `INTEGRATION_API_KEY` holders get the contact identifiers.
  */
-export function requireExportAuth(
-	request: NextRequest,
-): { denied: NextResponse<ApiErrorBody> } | { scope: ExportScope } {
+function requireExportAuth(request: NextRequest): { denied: NextResponse<ApiErrorBody> } | { scope: ExportScope } {
 	const internal = process.env.INTEGRATION_API_KEY
 	const partner = process.env.EXPORT_API_KEY
 	if (!internal && !partner)
@@ -55,3 +53,5 @@ export function requireExportAuth(
 	if (partner && matches(presented, partner)) return { scope: "partner" }
 	return { denied: fail("UNAUTHENTICATED", "Invalid bearer token") }
 }
+
+export { type ExportScope, requireBearerAuth, requireExportAuth, requireIntegrationAuth }

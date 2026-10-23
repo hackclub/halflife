@@ -5,7 +5,7 @@ import { TIERS } from "@/lib/config/tiers"
 import { WEEK_META } from "@/lib/curriculum"
 
 /** A starter project as the client shows it: everything but which weeks it belongs to. */
-export interface StarterProjectView {
+interface StarterProjectView {
 	description: string
 	guideUrl: string
 	id: string
@@ -14,7 +14,7 @@ export interface StarterProjectView {
 	title: string
 }
 
-export interface OnboardingStateData {
+interface OnboardingStateData {
 	completed: boolean
 	experience: HardwareExperience | null
 	project: {
@@ -34,7 +34,7 @@ export interface OnboardingStateData {
 	trackingDismissed: boolean
 }
 
-export interface OnboardingView {
+interface OnboardingView {
 	beginner: boolean
 	completed: boolean
 	experience: HardwareExperience | null
@@ -73,7 +73,7 @@ export interface OnboardingView {
 /**
  * The API and the dashboard modal deliberately share this view model. The server remains authoritative for progress; the client only chooses which answered step to display.
  */
-export function toOnboardingView(state: OnboardingStateData): OnboardingView {
+function toOnboardingView(state: OnboardingStateData): OnboardingView {
 	const themeIndex = THEMES.findIndex(t => t.id === state.theme)
 	const meta = WEEK_META[themeIndex]
 	const custom = weekIntroFor(state.theme)
@@ -123,3 +123,5 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 		weekIntro: intro ? { ...intro, examples: [...intro.examples] } : null,
 	}
 }
+
+export { type OnboardingStateData, type OnboardingView, type StarterProjectView, toOnboardingView }

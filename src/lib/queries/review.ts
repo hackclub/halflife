@@ -161,7 +161,7 @@ const submissionDetailInclude = {
 	},
 } as const satisfies Prisma.PhaseSubmissionInclude
 
-export async function getSubmissionDetail(
+async function getSubmissionDetail(
 	submissionId: string,
 	reviewerId?: string,
 	flags?: { includeContact?: boolean; includeRiskFlags?: boolean },
@@ -235,7 +235,7 @@ export async function getSubmissionDetail(
 	}
 }
 
-export interface OpenDispute {
+interface OpenDispute {
 	createdAt: Date
 	id: string
 	/** Replies so far, so the panel can say whether a reviewer has answered. */
@@ -254,7 +254,7 @@ export interface OpenDispute {
  *
  * Surfaced on the program page so a maker asking for a second look is not left waiting on a queue nobody is watching.
  */
-export async function getOpenDisputes(): Promise<OpenDispute[]> {
+async function getOpenDisputes(): Promise<OpenDispute[]> {
 	const rows = await prisma.reviewDispute.findMany({
 		orderBy: { createdAt: "asc" },
 		select: {
@@ -294,5 +294,14 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 	}))
 }
 
-export type { PriorReview, QueueItem, ReviewSession, SubmissionDetail, SubmissionDetailView }
-export { getReviewQueue }
+export {
+	getOpenDisputes,
+	getReviewQueue,
+	getSubmissionDetail,
+	type OpenDispute,
+	type PriorReview,
+	type QueueItem,
+	type ReviewSession,
+	type SubmissionDetail,
+	type SubmissionDetailView,
+}

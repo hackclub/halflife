@@ -12,6 +12,6 @@ const dollars = (n: number | null) => (n === null ? null : round2(n))
 
 const usdFormat = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" })
 
-export const formatUsd = (n: number) => usdFormat.format(n)
+const formatUsd = (n: number) => usdFormat.format(n)
 
-export { dollars, round2 }
+export { dollars, formatUsd, round2 }

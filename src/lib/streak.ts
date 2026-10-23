@@ -101,7 +101,7 @@ async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
  *
  * Safe to call inside the transaction that wrote the devlog or reel – pass its `tx` – so a rolled-back write cannot leave an inflated streak behind.
  */
-export async function recomputeStreak(tx: Tx, userId: string): Promise<StreakState> {
+async function recomputeStreak(tx: Tx, userId: string): Promise<StreakState> {
 	const state = streakFromDays(await activeDaysDesc(tx, userId))
 
 	await tx.user.update({
@@ -121,7 +121,7 @@ export async function recomputeStreak(tx: Tx, userId: string): Promise<StreakSta
  *
  * The stored `currentStreak` is only correct as of the last devlog or reel write: a participant who journalled for ten days and then stopped still has a 10 in the column a week later. Displays must go through this, which expires a stale run against today's date.
  */
-export function streakAsOf(stored: { currentStreak: number; lastStreakDate: string | null }, today: string): number {
+function streakAsOf(stored: { currentStreak: number; lastStreakDate: string | null }, today: string): number {
 	if (!stored.lastStreakDate) return 0
 	const gap = daysBetween(stored.lastStreakDate, today)
 	if (gap < 0) return stored.currentStreak
@@ -129,11 +129,10 @@ export function streakAsOf(stored: { currentStreak: number; lastStreakDate: stri
 }
 
 /** Rebuild every user's streak. For a backfill or after editing the rules. */
-export async function recomputeAllStreaks(): Promise<number> {
+async function recomputeAllStreaks(): Promise<number> {
 	const users = await prisma.user.findMany({ select: { id: true } })
 	for (const user of users) await prisma.$transaction(tx => recomputeStreak(tx, user.id))
 	return users.length
 }
 
-export type { StreakState }
-export { streakFromDays }
+export { recomputeAllStreaks, recomputeStreak, type StreakState, streakAsOf, streakFromDays }

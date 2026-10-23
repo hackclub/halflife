@@ -80,14 +80,14 @@ function guardedRoute<C extends object = object>(
 }
 
 /** A route any signed-in participant may call. */
-export function withSession<C extends object = object>(
+function withSession<C extends object = object>(
 	handler: GuardedHandler<C>,
 ): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
 	return guardedRoute(requireSession, handler)
 }
 
 /** A route that needs the named staff permission. */
-export function withPermission<C extends object = object>(
+function withPermission<C extends object = object>(
 	permission: Permission,
 	handler: GuardedHandler<C>,
 ): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
@@ -95,12 +95,21 @@ export function withPermission<C extends object = object>(
 }
 
 /** A route that needs one of the named roles. */
-export function withRole<C extends object = object>(
+function withRole<C extends object = object>(
 	role: Role,
 	handler: GuardedHandler<C>,
 ): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
 	return guardedRoute(() => requireRole(role), handler)
 }
 
-export type { AuthedContext, Guard, SessionUser }
-export { requirePermission, requireRole, requireSession }
+export {
+	type AuthedContext,
+	type Guard,
+	requirePermission,
+	requireRole,
+	requireSession,
+	type SessionUser,
+	withPermission,
+	withRole,
+	withSession,
+}

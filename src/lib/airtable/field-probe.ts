@@ -19,7 +19,7 @@ const probed = new Map<string, boolean>()
 const ABSENT_TTL_MS = 10 * 60_000
 const absentSince = new Map<string, number>()
 
-export async function columnExists(config: AirtableConfig, tableId: string, column: string): Promise<boolean> {
+async function columnExists(config: AirtableConfig, tableId: string, column: string): Promise<boolean> {
 	const key = `${config.baseId}:${tableId}:${column}`
 	const cached = probed.get(key)
 	if (cached !== undefined) {
@@ -58,7 +58,7 @@ export async function columnExists(config: AirtableConfig, tableId: string, colu
  *
  * The point is that a payload is built out of what exists rather than out of what the schema hopes for. A base set up with three of the columns a payload names otherwise has every write refused wholesale – not the missing column left blank, every other column in the same record lost too – and the only symptom is a `failed` count nobody reads. Measured on the live Signups base: three of the ten columns the drain sends exist, so every drain of every row was rejected.
  */
-export async function existingColumns(
+async function existingColumns(
 	config: AirtableConfig,
 	tableId: string,
 	columns: readonly string[],
@@ -67,3 +67,5 @@ export async function existingColumns(
 	for (const column of columns) if (await columnExists(config, tableId, column)) known.add(column)
 	return known
 }
+
+export { columnExists, existingColumns }

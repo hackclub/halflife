@@ -31,7 +31,7 @@ function hashToken(token: string): string {
 	return createHash("sha256").update(token).digest("hex")
 }
 
-export interface NewHandoff {
+interface NewHandoff {
 	expiresAt: Date
 	id: string
 	/** The only time the plaintext token exists. Never stored, never logged. */
@@ -43,7 +43,7 @@ export interface NewHandoff {
  *
  * Retiring the old ones matters: without it, every QR a participant ever generated stays live until its own expiry, so a code someone photographed off a screen ten minutes ago still works. One live code per person at a time is the behaviour people already expect from a pairing screen.
  */
-export async function createHandoff(userId: string): Promise<NewHandoff> {
+async function createHandoff(userId: string): Promise<NewHandoff> {
 	if (!isUploadConfigured()) throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 
 	const token = randomBytes(32).toString("base64url")
@@ -63,7 +63,7 @@ export async function createHandoff(userId: string): Promise<NewHandoff> {
 	return { expiresAt: handoff.expiresAt, id: handoff.id, token }
 }
 
-export interface HandoffTarget {
+interface HandoffTarget {
 	expiresAt: Date
 	id: string
 	userId: string
@@ -74,7 +74,7 @@ export interface HandoffTarget {
  *
  * The comparison is timing-safe even though the lookup is by hash: an attacker who can measure it learns nothing useful about a 32-byte random token, but the cost of doing it properly is one function call.
  */
-export async function resolveHandoff(token: string): Promise<HandoffTarget | null> {
+async function resolveHandoff(token: string): Promise<HandoffTarget | null> {
 	if (!token) return null
 	const tokenHash = hashToken(token)
 
@@ -94,7 +94,7 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	return { expiresAt: row.expiresAt, id: row.id, userId: row.userId }
 }
 
-export interface HandoffUploadResult {
+interface HandoffUploadResult {
 	objectKey: string
 }
 
@@ -103,7 +103,7 @@ export interface HandoffUploadResult {
  *
  * The claim is a guarded `updateMany` rather than a read-then-write: two phones pointed at the same QR code both pass a read check, and only one can win an `UPDATE ... WHERE usedAt IS NULL`. The row is claimed BEFORE the bytes go to R2, so a slow upload cannot be raced by a second one.
  */
-export async function completeHandoff(
+async function completeHandoff(
 	token: string,
 	file: { name: string; type: string; size: number; bytes(): Promise<Buffer> },
 ): Promise<HandoffUploadResult> {
@@ -140,13 +140,13 @@ export async function completeHandoff(
 	return { objectKey: key }
 }
 
-export type HandoffStatus =
+type HandoffStatus =
 	| { state: "waiting"; expiresAt: Date }
 	| { state: "expired" }
 	| { state: "ready"; objectKey: string; contentType: string | null; url: string | null }
 
 /** What the desktop polls. Scoped to the owner, so ids are not guessable keys. */
-export async function getHandoffStatus(id: string, userId: string): Promise<HandoffStatus | null> {
+async function getHandoffStatus(id: string, userId: string): Promise<HandoffStatus | null> {
 	const row = await prisma.uploadHandoff.findFirst({
 		select: { contentType: true, expiresAt: true, objectKey: true, usedAt: true },
 		where: { id, userId },
@@ -168,7 +168,7 @@ export async function getHandoffStatus(id: string, userId: string): Promise<Hand
 }
 
 /** Mark a handoff as picked up, so the desktop stops polling it. Returns whether a row was actually claimed. */
-export async function claimHandoff(id: string, userId: string): Promise<boolean> {
+async function claimHandoff(id: string, userId: string): Promise<boolean> {
 	const result = await prisma.uploadHandoff.updateMany({
 		data: { claimedAt: new Date() },
 		where: { id, userId },
@@ -176,4 +176,15 @@ export async function claimHandoff(id: string, userId: string): Promise<boolean>
 	return result.count === 1
 }
 
-export { HANDOFF_TTL_MINUTES }
+export {
+	claimHandoff,
+	completeHandoff,
+	createHandoff,
+	getHandoffStatus,
+	HANDOFF_TTL_MINUTES,
+	type HandoffStatus,
+	type HandoffTarget,
+	type HandoffUploadResult,
+	type NewHandoff,
+	resolveHandoff,
+}

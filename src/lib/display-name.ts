@@ -13,10 +13,12 @@ interface Person {
 	name?: string | null
 }
 
-export function displayName(person: Person | null | undefined, fallback: string): string
-export function displayName(person: Person | null | undefined, fallback?: null): string | null
-export function displayName(person: Person | null | undefined, fallback: string | null = null): string | null {
+function displayName(person: Person | null | undefined, fallback: string): string
+function displayName(person: Person | null | undefined, fallback?: null): string | null
+function displayName(person: Person | null | undefined, fallback: string | null = null): string | null {
 	const nickname = person?.displayName?.trim()
 	if (nickname) return nickname
 	return person?.name?.trim() || fallback
 }
+
+export { displayName }

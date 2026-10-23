@@ -265,7 +265,7 @@ function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Pr
 /**
  * Write this submission's row: a new one the first time, the same one on a re-submission, so a phase handed in twice is never two rows. The lookup and the write are one critical section, because a create that loses its response and a concurrent create are indistinguishable without it.
  */
-export async function syncSubmissionToYsws(
+async function syncSubmissionToYsws(
 	themeProjectId: string,
 	phase: Phase,
 ): Promise<{ recordId: string; dropped: string[] } | { skipped: string }> {
@@ -312,7 +312,7 @@ export async function syncSubmissionToYsws(
  * decision (the first of Ari's two passes). Omitting it leaves the column
  * alone; passing null clears it for a decision that no longer stands.
  */
-export async function syncReviewDecisionToYsws(
+async function syncReviewDecisionToYsws(
 	themeProjectId: string,
 	phase: Phase,
 	status: string,
@@ -399,7 +399,7 @@ export async function syncReviewDecisionToYsws(
  *
  * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. On the Ari path that is load-bearing – a throw becomes a 5xx and a redelivery of a decision that has already been applied.
  */
-export async function mirrorReviewDecision(
+async function mirrorReviewDecision(
 	themeProjectId: string,
 	phase: Phase,
 	status: string,
@@ -423,7 +423,7 @@ export async function mirrorReviewDecision(
 }
 
 /** Remove a submission's row, and its unified-base twin, when it is taken back. */
-export async function removeSubmissionFromYsws(
+async function removeSubmissionFromYsws(
 	themeProjectId: string,
 	phase: Phase,
 ): Promise<{ deleted: boolean; unifiedDeleted: string[]; skipped?: string }> {
@@ -438,7 +438,7 @@ export async function removeSubmissionFromYsws(
 /**
  * Submissions awaiting review whose row never made it to the table – a write that failed, or one made before this sync existed. Replayed by the retry job and listed on /admin/program.
  */
-export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
+async function findUnsyncedSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
 	const pending = await prisma.themeProject.findMany({
 		select: {
 			buildStatus: true,
@@ -480,4 +480,15 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 	return out
 }
 
-export { projectWeekLabel, recordIdsFromSyncEvents, reviewOverrideValues, reviewStatusFor, reviewStatusForResult }
+export {
+	findUnsyncedSubmissions,
+	mirrorReviewDecision,
+	projectWeekLabel,
+	recordIdsFromSyncEvents,
+	removeSubmissionFromYsws,
+	reviewOverrideValues,
+	reviewStatusFor,
+	reviewStatusForResult,
+	syncReviewDecisionToYsws,
+	syncSubmissionToYsws,
+}

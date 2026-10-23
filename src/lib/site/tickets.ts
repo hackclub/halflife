@@ -3,7 +3,7 @@ import { deleteMessage, type SlackBlock } from "./slack"
 /**
  * Everything either button (the staff-facing one in the tickets channel, or the self-resolve one in the #half-life-help thread) needs to act – carried in the button's own `value` since there's no ticket database to look it up from.
  */
-export interface TicketRef {
+interface TicketRef {
 	authorId: string
 	helpChannel: string
 	helpTs: string
@@ -12,12 +12,12 @@ export interface TicketRef {
 	permalink: string | null
 }
 
-export const TICKET_ACTIONS_BLOCK_ID = "ticket_actions"
-export const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions"
+const TICKET_ACTIONS_BLOCK_ID = "ticket_actions"
+const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions"
 /** Carries the reopen button on a resolved thread message. Its own id so resolving again strips it like the other action blocks. */
-export const REOPEN_ACTIONS_BLOCK_ID = "reopen_actions"
+const REOPEN_ACTIONS_BLOCK_ID = "reopen_actions"
 /** Identifies the "✅ helped by" note, so reopening can take it back off. */
-export const RESOLVED_CONTEXT_BLOCK_ID = "ticket_resolved"
+const RESOLVED_CONTEXT_BLOCK_ID = "ticket_resolved"
 
 /**
  * Everything the bot says to a participant, in one place so the voice stays one voice.
@@ -26,51 +26,51 @@ export const RESOLVED_CONTEXT_BLOCK_ID = "ticket_resolved"
  *
  * Two things are deliberately *not* here: the tickets channel's own strings, which are read by staff rather than participants, and anything the FAQ card already says.
  */
-export const HELP_THREAD_REMINDERS = `:yay-wave: hi there! i'm keeping an eye on this thread while you wait. a few things in the meantime:
+const HELP_THREAD_REMINDERS = `:yay-wave: hi there! i'm keeping an eye on this thread while you wait. a few things in the meantime:
 • have a read of the faq below – there's a fair chance your question's already answered in there!
 • if it's about your own build, like wiring something up or picking a part, just say so and one of the hardware experts will dig in with you.
 • once your question's been answered, hit a button below and i'll head off :D`
 
-export const FAQ_CARD_TITLE = "the faq, just in case"
+const FAQ_CARD_TITLE = "the faq, just in case"
 
-export const FAQ_CARD_BUTTON = "read the faq"
+const FAQ_CARD_BUTTON = "read the faq"
 
-export const SELF_RESOLVE_BUTTON = "i've got it, thanks"
+const SELF_RESOLVE_BUTTON = "i've got it, thanks"
 
-export const MARK_HELPED_BUTTON = "mark as helped"
+const MARK_HELPED_BUTTON = "mark as helped"
 
-export const REOPEN_BUTTON = "reopen ticket"
+const REOPEN_BUTTON = "reopen ticket"
 
 /** The workspace's custom "loading" emoji, dropped on the original question
  * the moment its ticket is opened, so a question in #half-life-help reads as still waiting from the channel list. Same caveat as below: it's the custom emoji's exact name, and it only resolves if an emoji by that name exists in
  * the Hack Club workspace. */
-export const PENDING_REACTION = "safari-loading"
+const PENDING_REACTION = "safari-loading"
 
 /** The workspace's custom "done" emoji, dropped on the original question once
  * its ticket is resolved from any of the three buttons, in place of the pending one above. Note this is the hyphenated custom-emoji name, not `:white_check_mark:` – it only resolves if an emoji by this exact name
  * exists in the Hack Club workspace. */
-export const RESOLVED_REACTION = "white-checkbox-checkbox-checkbox"
+const RESOLVED_REACTION = "white-checkbox-checkbox-checkbox"
 
 /** Posted to the thread once a helper has answered. Mentions the helper on
  * purpose: for them the participant hasn't had an answer yet, so this is the
  * ping that tells them it's arrived. */
-export function helpedAck(helperId: string): string {
+function helpedAck(helperId: string): string {
 	return `oh! <@${helperId}> has this one sorted – you're all set! if anything else comes up, just send another message in #half-life-help and someone'll pick it up :D`
 }
 
 /** The same beat for the author resolving their own ticket, with no mention –
  * they'd be pinging themselves over their own click. */
-export function selfResolvedAck(): string {
+function selfResolvedAck(): string {
 	return "oh! you've marked this as resolved – thanks for letting us know! if you need anything else, just send another message in #half-life-help and someone'll be happy to help :D"
 }
 
 /** Posted when a solved ticket is opened back up. The queue wording is deliberate: reopening puts it back in front of staff, so the message says so rather than pretending nothing changed. */
-export function reopenedAck(): string {
+function reopenedAck(): string {
 	return "oh! this one's open again – i've put it back in the helpers' queue, someone'll pick it up :D"
 }
 
 /** The thread's two resolution buttons, with values carrying where the tickets-channel mirror lives. Shared by ticket creation and reopening: a reopened ticket goes back to exactly the state a new one starts in, so the two cannot drift apart. The mirror ts is optional because a failed repost still reopens the thread – resolving from it then just skips the dead mirror. */
-export function threadResolveActions(ref: TicketRef & { ticketsChannel: string; ticketsTs?: string }): SlackBlock {
+function threadResolveActions(ref: TicketRef & { ticketsChannel: string; ticketsTs?: string }): SlackBlock {
 	return {
 		block_id: SELF_RESOLVE_ACTIONS_BLOCK_ID,
 		elements: [
@@ -93,7 +93,7 @@ export function threadResolveActions(ref: TicketRef & { ticketsChannel: string; 
 }
 
 /** The single reopen button for a resolved thread message. The value carries the full ticket ref so reopening needs no database read to rebuild the buttons. */
-export function reopenActions(ref: TicketRef & { ticketsChannel: string }): SlackBlock {
+function reopenActions(ref: TicketRef & { ticketsChannel: string }): SlackBlock {
 	return {
 		block_id: REOPEN_ACTIONS_BLOCK_ID,
 		elements: [
@@ -111,7 +111,7 @@ export function reopenActions(ref: TicketRef & { ticketsChannel: string }): Slac
 /** Links to the original rather than copying it: a quoted copy can't be
  * replied to, so the useful thing to hand a helper is a jump link into the thread. The permalink also rides in the message's top-level `text` (Slack only unfurls links there, never inside blocks) so it previews the original
  * message where unfurling is available. */
-export function ticketSection(ref: TicketRef): SlackBlock {
+function ticketSection(ref: TicketRef): SlackBlock {
 	return {
 		text: {
 			text: ref.permalink
@@ -126,7 +126,7 @@ export function ticketSection(ref: TicketRef): SlackBlock {
 /** A quiet line under a new ticket saying whether the asker has been here
  * before, and how often. Read by staff in the tickets channel, so it stays
  * plain rather than in the cat's voice. */
-export function ticketHistory(authorId: string, priorTickets: number): SlackBlock {
+function ticketHistory(authorId: string, priorTickets: number): SlackBlock {
 	const prior =
 		priorTickets === 0 ? "first ticket" : `${priorTickets} previous ${priorTickets === 1 ? "ticket" : "tickets"}`
 	return {
@@ -135,7 +135,7 @@ export function ticketHistory(authorId: string, priorTickets: number): SlackBloc
 	}
 }
 
-export function resolvedContext(byUserId: string, note?: string): SlackBlock {
+function resolvedContext(byUserId: string, note?: string): SlackBlock {
 	return {
 		block_id: RESOLVED_CONTEXT_BLOCK_ID,
 		elements: [
@@ -149,7 +149,7 @@ export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 }
 
 /** Whether a thread message is the bot's reminder carrying the resolution buttons – the one both "Mark as helped" buttons rewrite. Matches the open buttons or the reopen button a resolved thread carries, so the tickets-channel handler still finds the message when a second resolution races the first. */
-export function carriesResolveActions(blocks: SlackBlock[] | undefined): boolean {
+function carriesResolveActions(blocks: SlackBlock[] | undefined): boolean {
 	return Boolean(
 		blocks?.some(
 			block => block.block_id === SELF_RESOLVE_ACTIONS_BLOCK_ID || block.block_id === REOPEN_ACTIONS_BLOCK_ID,
@@ -158,7 +158,7 @@ export function carriesResolveActions(blocks: SlackBlock[] | undefined): boolean
 }
 
 /** Strips whichever action blocks are present and appends a resolved note plus a reopen button – shared by all three resolution buttons since a message only ever carries one action block. The reopen button rides the same ref the resolution just consumed, so reopening rebuilds from it. */
-export function resolveBlocks(
+function resolveBlocks(
 	blocks: SlackBlock[] | undefined,
 	byUserId: string,
 	note?: string,
@@ -177,7 +177,7 @@ export function resolveBlocks(
 }
 
 /** Reopens a resolved thread message: the reopen button and the resolved note come off, the two resolution buttons go back on with the fresh mirror reference. Anything else on the message – reminders, FAQ card – stays exactly where it was. */
-export function reopenBlocks(
+function reopenBlocks(
 	blocks: SlackBlock[] | undefined,
 	ref: TicketRef & { ticketsChannel: string; ticketsTs?: string },
 ): SlackBlock[] {
@@ -195,7 +195,35 @@ export function reopenBlocks(
  *
  * False means the removal didn't land, and is the caller's cue to fall back to editing the message into its resolved state. A ticket must never be left sitting in the queue with a live button just because the delete failed, so the fallback is a floor on reliability, not a nicety. `message_not_found` counts as gone – a ticket can be resolved from either the tickets channel or the help thread, so the second arrival is told the message is already gone, which is the outcome we wanted.
  */
-export async function deleteTicketMessage(channel: string, ts: string): Promise<boolean> {
+async function deleteTicketMessage(channel: string, ts: string): Promise<boolean> {
 	const result = await deleteMessage(channel, ts)
 	return result.ok || result.error === "message_not_found"
+}
+
+export {
+	carriesResolveActions,
+	deleteTicketMessage,
+	FAQ_CARD_BUTTON,
+	FAQ_CARD_TITLE,
+	HELP_THREAD_REMINDERS,
+	helpedAck,
+	MARK_HELPED_BUTTON,
+	PENDING_REACTION,
+	REOPEN_ACTIONS_BLOCK_ID,
+	REOPEN_BUTTON,
+	RESOLVED_CONTEXT_BLOCK_ID,
+	RESOLVED_REACTION,
+	reopenActions,
+	reopenBlocks,
+	reopenedAck,
+	resolveBlocks,
+	resolvedContext,
+	SELF_RESOLVE_ACTIONS_BLOCK_ID,
+	SELF_RESOLVE_BUTTON,
+	selfResolvedAck,
+	TICKET_ACTIONS_BLOCK_ID,
+	type TicketRef,
+	threadResolveActions,
+	ticketHistory,
+	ticketSection,
 }

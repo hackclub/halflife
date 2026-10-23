@@ -140,7 +140,7 @@ function isCreated(p: { description: string | null; tier: number | null; request
 /**
  * Stamp a project as created, if it now is and was not before. Called after anything that writes a project's description or tier.
  */
-export function markProjectCreated(themeProjectId: string, userId: string, at = new Date()): Promise<void> {
+function markProjectCreated(themeProjectId: string, userId: string, at = new Date()): Promise<void> {
 	return quietly("markProjectCreated", async () => {
 		const p = await prisma.themeProject.findUnique({
 			select: { description: true, namedAt: true, requestedTier: true, tier: true },
@@ -153,14 +153,14 @@ export function markProjectCreated(themeProjectId: string, userId: string, at = 
 }
 
 /** A reel was posted. */
-export function markReel(userId: string, at = new Date()): Promise<void> {
+function markReel(userId: string, at = new Date()): Promise<void> {
 	return quietly("markReel", () =>
 		prisma.user.updateMany({ data: { firstReelAt: at }, where: { firstReelAt: null, id: userId } }),
 	)
 }
 
 /** A phase was handed in. */
-export function markSubmission(userId: string, at = new Date()): Promise<void> {
+function markSubmission(userId: string, at = new Date()): Promise<void> {
 	return quietly("markSubmission", async () => {
 		await prisma.user.updateMany({ data: { firstSubmissionAt: at }, where: { firstSubmissionAt: null, id: userId } })
 		await prisma.user.update({ data: { lastSubmissionAt: at }, where: { id: userId } })
@@ -172,7 +172,7 @@ export function markSubmission(userId: string, at = new Date()): Promise<void> {
  *
  * Stamped on the submit path (lib/submissions.ts), where the checks are actually enforced. It used to be stamped by the advisory preflight GET, which made a GET write to the database – and a cross-site navigation reaches a GET with the session cookie attached.
  */
-export function markChecksPassed(userId: string, at = new Date()): Promise<void> {
+function markChecksPassed(userId: string, at = new Date()): Promise<void> {
 	return quietly("markChecksPassed", () =>
 		prisma.user.updateMany({ data: { firstChecksPassedAt: at }, where: { firstChecksPassedAt: null, id: userId } }),
 	)
@@ -181,7 +181,7 @@ export function markChecksPassed(userId: string, at = new Date()): Promise<void>
 /**
  * Recount one person's hours for one program week, and stamp any milestone crossed for the first time. Called after a session is written, edited or deleted; `at` is when the crossing is recorded as having happened.
  */
-export function recomputeWeek(userId: string, week: number | null, at = new Date()): Promise<void> {
+function recomputeWeek(userId: string, week: number | null, at = new Date()): Promise<void> {
 	if (!week || week < 1) return Promise.resolve()
 	return quietly("recomputeWeek", async () => {
 		const sum = await prisma.workSession.aggregate({
@@ -215,7 +215,7 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
  *
  * Approximations, said plainly: a project's naming time is taken from the first audit entry that touched it, else when it was last updated; a week's milestones are stamped at the time of the session that crossed them, in order. Past page views were never recorded, so `lastActiveAt` is filled from the last sign-in, session, post or submission.
  */
-export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
+async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 	const { programTimezone } = await getProgramSettings()
 	const users = await prisma.user.findMany({ select: { id: true } })
 	const counts = { days: 0, projects: 0, users: users.length, weeks: 0 }
@@ -330,7 +330,7 @@ export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 }
 
 /** Everything tracked about one person, flattened for an export row. */
-export interface UserAnalyticsRow {
+interface UserAnalyticsRow {
 	activeDays: number
 	bankedCoins: number
 	coins: number
@@ -359,7 +359,7 @@ export interface UserAnalyticsRow {
 }
 
 /** Per-person rows, for the Loops/Airtable sync and for export. */
-export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
+async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 	const { programTimezone } = await getProgramSettings()
 	const today = effectiveDateFor(new Date(), programTimezone)
 	const [users, ledger] = await Promise.all([
@@ -439,7 +439,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 /**
  * The program-wide numbers: DAU per day, the funnel with drop-off at each step, and how many people crossed each hour milestone in each week.
  */
-export async function getAnalyticsSummary(days = 30): Promise<{
+async function getAnalyticsSummary(days = 30): Promise<{
 	dau: { day: string; users: number }[]
 	funnel: { step: string; count: number; dropOffPct: number; ofSignUpsPct: number }[]
 	weeklyMilestones: { week: number; over1h: number; over5h: number; over10h: number; over20h: number }[]
@@ -507,4 +507,18 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 	}
 }
 
-export { isActiveDay, markLogin, recomputeActiveDays, touchActivity }
+export {
+	backfillAnalytics,
+	getAnalyticsSummary,
+	getUserAnalytics,
+	isActiveDay,
+	markChecksPassed,
+	markLogin,
+	markProjectCreated,
+	markReel,
+	markSubmission,
+	recomputeActiveDays,
+	recomputeWeek,
+	touchActivity,
+	type UserAnalyticsRow,
+}

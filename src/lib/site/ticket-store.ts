@@ -123,7 +123,7 @@ function isTicketOpeningMessage(
  *
  * The live flow only records tickets from the moment it ships, so without this staff would see everyone as a first-timer until they ask again. Each top-level, non-bot question in the channel is one ticket. Idempotent: rows are keyed by [helpChannel, helpTs] and duplicates are skipped, so it is safe to run again after a partial sweep.
  */
-export async function backfillHelpTickets(channel: string): Promise<{
+async function backfillHelpTickets(channel: string): Promise<{
 	scanned: number
 	created: number
 	exhausted: boolean
@@ -151,5 +151,12 @@ export async function backfillHelpTickets(channel: string): Promise<{
 	return { created, exhausted, scanned: messages.length }
 }
 
-export type { HelpTicketStats }
-export { countPriorHelpTickets, getHelpTicketStats, rememberHelpTicket, reopenHelpTicket, resolveHelpTicket }
+export {
+	backfillHelpTickets,
+	countPriorHelpTickets,
+	getHelpTicketStats,
+	type HelpTicketStats,
+	rememberHelpTicket,
+	reopenHelpTicket,
+	resolveHelpTicket,
+}

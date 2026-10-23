@@ -191,7 +191,7 @@ function reelItem(p: Prisma.PostGetPayload<{ select: typeof POST_SELECT }>): Tim
 	}
 }
 
-export async function getProjectPage(userId: string, id: string): Promise<ProjectPageData | null> {
+async function getProjectPage(userId: string, id: string): Promise<ProjectPageData | null> {
 	const project = await prisma.themeProject.findFirst({
 		select: {
 			bomTaxShippingUsd: true,
@@ -340,7 +340,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
  *
  * Only what is already public elsewhere: the entries Explore shows, the reels the Doomscroller shows (published ones – a hidden or processing reel is nobody's business but its author's), and the project's name, picture and repo link. No parts list, no repo checks, no review comments, no submissions: those are between the maker and their reviewer. Author by display name only, as lib/queries/community has it.
  */
-export interface PublicProjectData {
+interface PublicProjectData {
 	author: string
 	/** The author's user id, so their name can open their profile. */
 	authorId: string
@@ -356,7 +356,7 @@ export interface PublicProjectData {
 }
 
 /** A dispute still waiting on a reviewer, as the public project page offers the way back to it. */
-export interface ProjectOpenDispute {
+interface ProjectOpenDispute {
 	phase: Phase
 	/** The review console page that carries the thread. */
 	submissionId: string
@@ -367,7 +367,7 @@ export interface ProjectOpenDispute {
  *
  * Read only for a reviewer looking at someone else's project: the review console is where a dispute is answered, so the project page needs each submission id to open it. The maker's own page already carries the threads themselves and never calls this.
  */
-export async function getOpenDisputesForProject(projectId: string): Promise<ProjectOpenDispute[]> {
+async function getOpenDisputesForProject(projectId: string): Promise<ProjectOpenDispute[]> {
 	const submissions = await prisma.phaseSubmission.findMany({
 		orderBy: { createdAt: "asc" },
 		select: { id: true, phase: true },
@@ -376,7 +376,7 @@ export async function getOpenDisputesForProject(projectId: string): Promise<Proj
 	return submissions.map(submission => ({ phase: submission.phase, submissionId: submission.id }))
 }
 
-export async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {
+async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {
 	const project = await prisma.themeProject.findFirst({
 		select: {
 			coverImageKey: true,
@@ -423,4 +423,16 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 	}
 }
 
-export type { DisputeMessage, PhaseDispute, PhaseReview, ProjectPageData, TimelineItem, TimelineLapse }
+export {
+	type DisputeMessage,
+	getOpenDisputesForProject,
+	getProjectPage,
+	getPublicProjectPage,
+	type PhaseDispute,
+	type PhaseReview,
+	type ProjectOpenDispute,
+	type ProjectPageData,
+	type PublicProjectData,
+	type TimelineItem,
+	type TimelineLapse,
+}

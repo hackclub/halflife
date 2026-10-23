@@ -84,7 +84,7 @@ function PageHeader({
 
 type BadgeTone = "success" | "warning" | "danger" | "muted" | "access"
 
-export function Badge({
+function Badge({
 	tone = "muted",
 	title,
 	children,
@@ -96,7 +96,7 @@ export function Badge({
 	)
 }
 
-export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warning" | "info"; children: ReactNode }>) {
+function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warning" | "info"; children: ReactNode }>) {
 	return <div className={`hl-callout ${tone ? `hl-callout--${tone}` : ""}`}>{children}</div>
 }
 
@@ -105,7 +105,7 @@ export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warnin
  *
  * Drawn rather than the Unicode ✕: that glyph's weight, size and baseline come from whatever font happens to render it, so it never matches the stroke of anything around it.
  */
-export function Stat({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
+function Stat({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
 	return (
 		<div className="hl-stat">
 			<div className="hl-stat-value">{value}</div>
@@ -114,7 +114,7 @@ export function Stat({ label, value }: Readonly<{ label: string; value: ReactNod
 	)
 }
 
-export function EmptyState({ children }: Readonly<{ children: ReactNode }>) {
+function EmptyState({ children }: Readonly<{ children: ReactNode }>) {
 	return (
 		<p className="hl-muted" style={{ margin: 0 }}>
 			{children}
@@ -122,7 +122,7 @@ export function EmptyState({ children }: Readonly<{ children: ReactNode }>) {
 	)
 }
 
-export function Field({ label, hint, children }: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
+function Field({ label, hint, children }: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
 	return (
 		// biome-ignore lint/a11y/noLabelWithoutControl: the control is the children prop, which the rule cannot see through. Every call site passes a labelled input, select or textarea.
 		<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
@@ -133,7 +133,7 @@ export function Field({ label, hint, children }: Readonly<{ label: string; hint?
 	)
 }
 
-export function Table({
+function Table({
 	head,
 	children,
 	className,
@@ -155,7 +155,7 @@ export function Table({
 }
 
 /** Status → tone, in one place so every surface agrees. */
-export function statusTone(status: string): BadgeTone {
+function statusTone(status: string): BadgeTone {
 	switch (status) {
 		case "approved":
 			return "success"
@@ -170,8 +170,8 @@ export function statusTone(status: string): BadgeTone {
 	}
 }
 
-export function statusLabel(status: string): string {
+function statusLabel(status: string): string {
 	return status.replaceAll("_", " ")
 }
 
-export { Button, PageHeader, Panel }
+export { Badge, Button, Callout, EmptyState, Field, PageHeader, Panel, Stat, statusLabel, statusTone, Table }

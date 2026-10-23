@@ -41,7 +41,7 @@ function lockWarmupProjects(tx: Prisma.TransactionClient, userId: string): Promi
 	return lockKey(tx, `warmup:${userId}`)
 }
 
-export interface WarmupProjectInput {
+interface WarmupProjectInput {
 	description: string | null
 	githubRepo: string | null
 	requestedTier: number
@@ -57,7 +57,7 @@ export interface WarmupProjectInput {
  *
  * The count and the create are one transaction under a per-maker lock, so two requests at once cannot both slip past the cap.
  */
-export function createWarmupProject(input: WarmupProjectInput): Promise<ThemeProject> {
+function createWarmupProject(input: WarmupProjectInput): Promise<ThemeProject> {
 	return prisma.$transaction(async tx => {
 		await lockWarmupProjects(tx, input.userId)
 
@@ -85,4 +85,4 @@ export function createWarmupProject(input: WarmupProjectInput): Promise<ThemePro
 	})
 }
 
-export { ensureThemeProject }
+export { createWarmupProject, ensureThemeProject, type WarmupProjectInput }

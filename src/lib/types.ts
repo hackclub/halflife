@@ -1,9 +1,9 @@
 import type { PhaseStatus } from "@/app/generated/prisma/enums"
 import type { ProjectThumbnail } from "@/lib/thumbnail"
 
-export type Phase = "design" | "build"
+type Phase = "design" | "build"
 
-export type CheckpointKind =
+type CheckpointKind =
 	| "onboarding" // the yellow first-run checkpoint
 	| "project" // project creation / tier selection
 	| "journal" // journal + timelapse until the hour target
@@ -11,7 +11,7 @@ export type CheckpointKind =
 	| "submit" // the week gate
 	| "demo" // build-week working-project video
 
-export interface Checkpoint {
+interface Checkpoint {
 	/** A milestone opens on the week's clock, not on the node before it. */
 	atHours?: number
 	/** One line of plain guidance shown in the start bubble. */
@@ -36,7 +36,7 @@ export interface Checkpoint {
 }
 
 /** One saved journal session: the entry, the time claimed, and the evidence. */
-export interface SessionLog {
+interface SessionLog {
 	/** When it was saved, epoch ms. The project timeline is ordered on this. */
 	at: number
 	body: string
@@ -49,7 +49,7 @@ export interface SessionLog {
 }
 
 /** Everything about a week that does not depend on the maker's tier. */
-export interface WeekMeta {
+interface WeekMeta {
 	accent: string
 	accentDeep: string
 	/** Example projects shown to experienced makers instead of the primer. */
@@ -68,7 +68,7 @@ export interface WeekMeta {
 	theme: string
 }
 
-export interface Week extends WeekMeta {
+interface Week extends WeekMeta {
 	checkpoints: Checkpoint[]
 	/** Hours that pay for the project rather than earning. Build weeks: none. */
 	earnFrom: number
@@ -88,7 +88,7 @@ export interface Week extends WeekMeta {
 	tier: 1 | 2 | 3
 }
 
-export interface Tier {
+interface Tier {
 	detail: string
 	funding: number
 	/** Hours that fund the project – the floor that opens the closing reel. */
@@ -98,7 +98,7 @@ export interface Tier {
 	toBank: string
 }
 
-export interface Project {
+interface Project {
 	buildStatus: PhaseStatus
 	/** The R2 object key for the chosen cover image. Required before submitting. */
 	coverImageKey?: string | null
@@ -120,9 +120,9 @@ export interface Project {
 	weekId: number
 }
 
-export type Experience = "first" | "little" | "some" | "lots"
+type Experience = "first" | "little" | "some" | "lots"
 
-export interface JournalEntry {
+interface JournalEntry {
 	author: string
 	avatar: string
 	body: string
@@ -135,7 +135,7 @@ export interface JournalEntry {
 	when: string
 }
 
-export interface Reel {
+interface Reel {
 	author: string
 	caption: string
 	comments: number
@@ -148,7 +148,7 @@ export interface Reel {
 	week: string
 }
 
-export interface ShopItem {
+interface ShopItem {
 	art: "grant" | "printer" | "iron" | "scope" | "kit" | "shirt" | "sticker" | "meter"
 	blurb: string
 	category: "Grants" | "Parts" | "Tools" | "Swag"
@@ -158,10 +158,26 @@ export interface ShopItem {
 	stock: "in" | "low" | "out"
 }
 
-export interface DocArticle {
+interface DocArticle {
 	body: { heading: string; paragraphs: string[]; list?: string[]; link?: { href: string; label: string } }[]
 	section: string
 	slug: string
 	summary: string
 	title: string
+}
+
+export type {
+	Checkpoint,
+	CheckpointKind,
+	DocArticle,
+	Experience,
+	JournalEntry,
+	Phase,
+	Project,
+	Reel,
+	SessionLog,
+	ShopItem,
+	Tier,
+	Week,
+	WeekMeta,
 }

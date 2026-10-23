@@ -10,7 +10,7 @@ import { existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, formulaRef, RSVP } from "@/lib/airtable/schema"
 import prisma from "@/lib/prisma"
 
-export interface RsvpInput {
+interface RsvpInput {
 	email: string
 	firstName?: string | null
 	ip?: string | null
@@ -26,7 +26,7 @@ export interface RsvpInput {
  *
  * Airtable is the funnel's source of truth but it rate-limits and it goes down. Every RSVP lands in Postgres first and is drained by a job, so a marketing-page signup never fails because a third party is having a bad day. Stasis calls Airtable synchronously here and only falls back to Postgres when someone flips an env var by hand.
  */
-export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> {
+async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> {
 	const email = input.email.trim().toLowerCase()
 	await prisma.rsvpBuffer.upsert({
 		create: {
@@ -53,7 +53,7 @@ export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> 
 }
 
 /** Called from the signup hook once a real account exists. */
-export async function bufferRsvpForUser(userId: string, email: string, name: string | null): Promise<void> {
+async function bufferRsvpForUser(userId: string, email: string, name: string | null): Promise<void> {
 	const [firstName, ...rest] = (name ?? "").trim().split(/\s+/)
 	await prisma.rsvpBuffer.upsert({
 		create: {
@@ -75,7 +75,7 @@ export async function bufferRsvpForUser(userId: string, email: string, name: str
  *
  * Safe to call from the request path: never throws, never touches the Airtable row, and never flips a pending user-id stamp back to synced. When the address already has a buffer row (e.g. account creation already linked a user id whose drain stamp is still pending), only the missing record id is filled in.
  */
-export async function recordDirectSignup(input: {
+async function recordDirectSignup(input: {
 	email: string
 	recordId: string
 	ip?: string | null
@@ -118,7 +118,7 @@ export async function recordDirectSignup(input: {
 	}
 }
 
-export interface DrainResult {
+interface DrainResult {
 	attempted: number
 	created: number
 	failed: number
@@ -133,7 +133,7 @@ export interface DrainResult {
  *
  * The user id is the one field asked about rather than assumed. Airtable refuses a request whose `fields` names a column the table does not have, and it refuses the WHOLE record – so on a base without that column, sending it did not leave the id blank, it stopped the email, the name, the referral number and the rest of that row from landing, and after the attempt cap the row was abandoned for good. Probing once and omitting the field means the rest of the payload is written on a base that has not been set up yet, and the id starts filling itself the moment somebody adds the column.
  */
-export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {}): Promise<DrainResult> {
+async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {}): Promise<DrainResult> {
 	const config = getAirtableConfig()
 	if (!config) return { attempted: 0, created: 0, failed: 0, skipped: "not_configured", skippedUserId: 0, updated: 0 }
 
@@ -237,12 +237,12 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 }
 
 /** Total RSVPs, for the landing page counter. */
-export function getRsvpCount(): Promise<number> {
+function getRsvpCount(): Promise<number> {
 	return prisma.rsvpBuffer.count()
 }
 
 /** Look one up upstream. Used by ops tooling, not by request paths. */
-export async function findRsvpByEmail(email: string): Promise<AirtableRecord | null> {
+async function findRsvpByEmail(email: string): Promise<AirtableRecord | null> {
 	const config = getAirtableConfig()
 	if (!config) return null
 	const formula = `${formulaRef(RSVP.fields.email)} = '${escapeAirtableValue(email)}'`
@@ -253,4 +253,15 @@ export async function findRsvpByEmail(email: string): Promise<AirtableRecord | n
 		),
 	)
 	return result.records[0] ?? null
+}
+
+export {
+	bufferRsvp,
+	bufferRsvpForUser,
+	type DrainResult,
+	drainRsvpBuffer,
+	findRsvpByEmail,
+	getRsvpCount,
+	type RsvpInput,
+	recordDirectSignup,
 }

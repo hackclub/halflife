@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import type { NextRequest } from "next/server"
 import { fail, ok, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { clientIp } from "@/lib/client-ip"

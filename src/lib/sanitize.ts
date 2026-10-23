@@ -5,12 +5,12 @@ import { sanitize as domPurifySanitize } from "isomorphic-dompurify"
  */
 
 /** Strips all markup. For anything stored and rendered as plain text. */
-export function sanitize(input: string): string {
+function sanitize(input: string): string {
 	return domPurifySanitize(input, { ALLOWED_ATTR: [], ALLOWED_TAGS: [] }).trim()
 }
 
 /** Allows safe markup. Only for journal content, which renders as rich text. */
-export function sanitizeHtml(input: string): string {
+function sanitizeHtml(input: string): string {
 	return domPurifySanitize(input, {
 		ALLOW_DATA_ATTR: false,
 		ALLOWED_ATTR: ["href", "title", "target", "rel"],
@@ -19,8 +19,10 @@ export function sanitizeHtml(input: string): string {
 	})
 }
 
-export function sanitizeOptional(input: string | null | undefined): string | null {
+function sanitizeOptional(input: string | null | undefined): string | null {
 	if (input === null || input === undefined) return null
 	const cleaned = sanitize(input)
 	return cleaned.length > 0 ? cleaned : null
 }
+
+export { sanitize, sanitizeHtml, sanitizeOptional }

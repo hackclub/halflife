@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody } from "@/lib/api"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"

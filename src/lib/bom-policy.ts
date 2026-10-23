@@ -9,7 +9,7 @@
 import { round2 } from "@/lib/money"
 
 /** A BOM line as far as the money is concerned – what both the database rows and the API's own type satisfy. */
-export interface PricedLine {
+interface PricedLine {
 	quantity: number
 	unitCostUsd: number
 }
@@ -19,16 +19,16 @@ export interface PricedLine {
  *
  * Rounded to the cent here, because this is the number shown to the maker, frozen as what they agreed to, and compared against the tier – and a sum of unit costs lands somewhere like $0.999999, which each of those three would then have to round again to agree.
  */
-export function bomTotalUsd(items: readonly PricedLine[], taxShippingUsd: number | null | undefined): number {
+function bomTotalUsd(items: readonly PricedLine[], taxShippingUsd: number | null | undefined): number {
 	return round2(items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0) + (taxShippingUsd ?? 0))
 }
 
 /**
  * How far past a tier's funding a cart may run before handing it in means partial funding and has to be agreed to. Within it, an over-budget cart is a warning and nothing more.
  */
-export const BOM_MARGIN_USD = 3
+const BOM_MARGIN_USD = 3
 
-export interface PartsFunding {
+interface PartsFunding {
 	/** What the tier funds. This is the whole grant, not a share of one. */
 	capUsd: number
 	/**
@@ -42,7 +42,9 @@ export interface PartsFunding {
 }
 
 /** The rule, in one place: a cart against a tier's grant. */
-export function partsFunding(totalUsd: number, capUsd: number): PartsFunding {
+function partsFunding(totalUsd: number, capUsd: number): PartsFunding {
 	const shortfallUsd = Math.max(0, round2(totalUsd - capUsd))
 	return { capUsd, needsAgreement: shortfallUsd > BOM_MARGIN_USD, shortfallUsd, totalUsd }
 }
+
+export { BOM_MARGIN_USD, bomTotalUsd, type PartsFunding, type PricedLine, partsFunding }

@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import Link from "next/link"
 import { ActivityShareChart } from "@/app/components/admin/ActivityShareChart"
 import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"

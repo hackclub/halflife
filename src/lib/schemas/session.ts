@@ -28,30 +28,30 @@ const timelapseSchema = z
 /**
  * One devlog covers a single sitting. The sheet refuses above it rather than failing opaquely on save, and the reviewer cannot approve above it either.
  */
-export const MAX_SESSION_HOURS = 15
+const MAX_SESSION_HOURS = 15
 
 /**
  * How much an entry may hold, in characters.
  *
  * Exported because the sheet needs the same number: it puts `maxLength` on the entry box, so the ceiling is reached by running out of room rather than by a save that is refused after the writing is done.
  */
-export const MAX_SESSION_CONTENT = 20_000
+const MAX_SESSION_CONTENT = 20_000
 
 /**
  * What an entry is called when it has no opening line.
  *
  * The journal asks for one piece of writing and fills the title column from its first line, so this stands in when there is none. It is also how an entry with nothing written is recognised: Explore drops the ones carrying it alongside empty content, which are cards with no words on them.
  */
-export const DEFAULT_SESSION_TITLE = "Work session"
+const DEFAULT_SESSION_TITLE = "Work session"
 
 /**
  * How many timelapses one entry may hold.
  *
  * Capped because every id is checked with its own request to Lapse, so a body carrying a few thousand ids would otherwise fire a few thousand concurrent requests at a third party. The same cap the resolve route reads.
  */
-export const MAX_SESSION_TIMELAPSES = 25
+const MAX_SESSION_TIMELAPSES = 25
 
-export const sessionCreateSchema = z
+const sessionCreateSchema = z
 	.object({
 		content: boundedText(MAX_SESSION_CONTENT).optional(),
 		// A sanity bound, not a policy.
@@ -76,6 +76,14 @@ export const sessionCreateSchema = z
 /**
  * Editing an entry does not touch its images: the PATCH route writes the title, the content, the claimed hours and the source, and nothing else. `media` is left out so the shape says what the route does, rather than accepting a field and dropping it.
  */
-export const sessionUpdateSchema = sessionCreateSchema.omit({ media: true }).partial().strict()
+const sessionUpdateSchema = sessionCreateSchema.omit({ media: true }).partial().strict()
 
-export { MAX_CLIP_REF_LENGTH }
+export {
+	DEFAULT_SESSION_TITLE,
+	MAX_CLIP_REF_LENGTH,
+	MAX_SESSION_CONTENT,
+	MAX_SESSION_HOURS,
+	MAX_SESSION_TIMELAPSES,
+	sessionCreateSchema,
+	sessionUpdateSchema,
+}

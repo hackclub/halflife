@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { importWarmupProjects } from "@/lib/airtable/warmup-import"
 import { ok } from "@/lib/api"
 import { withPermission } from "@/lib/guards"

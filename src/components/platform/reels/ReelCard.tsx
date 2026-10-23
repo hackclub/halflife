@@ -102,7 +102,7 @@ const ARRIVE_TIMING: KeyframeAnimationOptions = {
  *
  * Only the current reel plays. A card pauses the moment it scrolls out of the current slot, and with `autoplay` the card that takes the slot starts on its own – one video at a time, never a column of them burning a phone's battery and a hotel's wifi. Anyone who has asked for less motion gets the pausing but not the starting.
  */
-export function ReelCard({
+function ReelCard({
 	reel,
 	className,
 	onPatch,
@@ -342,4 +342,4 @@ export function ReelCard({
 	)
 }
 
-export { notePlaying, noteStopped, pauseReels, playExclusive, sendLike }
+export { notePlaying, noteStopped, pauseReels, playExclusive, ReelCard, sendLike }

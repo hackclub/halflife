@@ -201,7 +201,7 @@ function inline(text: string, key: string): ReactNode[] {
 
 const HEADING = ["text-[1.15rem]", "text-[1.05rem]", "text-[0.98rem]"]
 
-export function Markdown({ source, className }: { source: string; className?: string }) {
+function Markdown({ source, className }: { source: string; className?: string }) {
 	const lines = source.replaceAll("\r\n", "\n").split("\n")
 	// Every loop below is already bounded by `lines.length`; this states that invariant in a form the compiler can use rather than asserting past it.
 	const at = (n: number): string => lines[n] ?? ""
@@ -316,4 +316,4 @@ export function Markdown({ source, className }: { source: string; className?: st
 	return <div className={`min-w-0 [overflow-wrap:anywhere] *:min-w-0 ${className ?? ""}`}>{out}</div>
 }
 
-export { countImages, excerpt, imageSources, proseLength }
+export { countImages, excerpt, imageSources, Markdown, proseLength }

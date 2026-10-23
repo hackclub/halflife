@@ -4,10 +4,10 @@
  * Shared by the dialog that collects the links and the route that stores them, so the field says "that isn't a TikTok link" for exactly the links the server would refuse. Pure: no server imports, safe in the browser.
  */
 
-export const PUBLIC_REEL_PLATFORMS = ["INSTAGRAM", "TIKTOK", "X", "YOUTUBE"] as const
-export type PublicReelPlatform = (typeof PUBLIC_REEL_PLATFORMS)[number]
+const PUBLIC_REEL_PLATFORMS = ["INSTAGRAM", "TIKTOK", "X", "YOUTUBE"] as const
+type PublicReelPlatform = (typeof PUBLIC_REEL_PLATFORMS)[number]
 
-export const PLATFORM_INFO: Record<PublicReelPlatform, { label: string; example: string; hosts: string[] }> = {
+const PLATFORM_INFO: Record<PublicReelPlatform, { label: string; example: string; hosts: string[] }> = {
 	INSTAGRAM: {
 		example: "instagram.com/reel/…",
 		hosts: ["instagram.com"],
@@ -31,14 +31,14 @@ export const PLATFORM_INFO: Record<PublicReelPlatform, { label: string; example:
 }
 
 /** The hashtag every public post carries, so the programme can find them all. */
-export const PUBLIC_REEL_HASHTAG = "#hackclubhalflife"
+const PUBLIC_REEL_HASHTAG = "#hackclubhalflife"
 
 /**
  * A pasted link, checked against its platform and tidied into the one form it is stored and de-duplicated in: https, lower-case host without `www.` or `m.`, no trailing slash, and no query or fragment – share links carry per-share tracking (`?igsh=`, `?t=`, `?si=`) that would let the same post be claimed twice. YouTube keeps `v`, the one query that names the video.
  *
  * Returns the tidy URL, or why it cannot be used.
  */
-export function readPublicReelLink(platform: PublicReelPlatform, raw: string): { url: string } | { error: string } {
+function readPublicReelLink(platform: PublicReelPlatform, raw: string): { url: string } | { error: string } {
 	const info = PLATFORM_INFO[platform]
 	const text = raw.trim()
 	if (!text) return { error: `Paste the link to your ${info.label} post.` }
@@ -59,3 +59,5 @@ export function readPublicReelLink(platform: PublicReelPlatform, raw: string): {
 	const v = platform === "YOUTUBE" ? url.searchParams.get("v") : null
 	return { url: `https://${host}${path}${v ? `?v=${encodeURIComponent(v)}` : ""}` }
 }
+
+export { PLATFORM_INFO, PUBLIC_REEL_HASHTAG, PUBLIC_REEL_PLATFORMS, type PublicReelPlatform, readPublicReelLink }

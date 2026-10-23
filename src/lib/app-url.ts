@@ -16,7 +16,7 @@ import { configuredOrigin } from "@/lib/origin"
  *
  * No fallback to the real site. There is one Half Life, and an omitted variable is the likeliest reason for a deployment not to have an origin of its own – but a staging deployment that fell back to production would put production links in a maker's journal and in a reviewer's notification, which is worse than a link that is not there at all. An empty origin is the honest answer, and every deployment that configures one gets it.
  */
-export function appBaseUrl(): string {
+function appBaseUrl(): string {
 	return configuredOrigin() ?? ""
 }
 
@@ -25,7 +25,7 @@ export function appBaseUrl(): string {
  *
  * For routes whose whole output is a link – a referral URL, a hand-off QR – an empty origin is not a lesser answer, it is a broken one. They fail closed with `NOT_CONFIGURED` so a deployment that names no origin says so plainly instead of handing out URLs that start at `/`.
  */
-export function requireAppBaseUrl(): string {
+function requireAppBaseUrl(): string {
 	const base = appBaseUrl()
 	if (!base) throw new HttpError("NOT_CONFIGURED", "The public app URL is not configured on this deployment")
 	return base
@@ -36,7 +36,7 @@ export function requireAppBaseUrl(): string {
  *
  * The one place that knows the shape of a project URL, so a link written into an email, a repository or an audit row cannot disagree with the route the app actually serves.
  */
-export function projectUrl(id: string): string {
+function projectUrl(id: string): string {
 	const base = appBaseUrl()
 	return base ? `${base}/projects/${id}` : ""
 }
@@ -46,7 +46,9 @@ export function projectUrl(id: string): string {
  *
  * The id is the submission's, not the project's: one project has a design and a build hand-in, each reviewed on its own page, and that page is also where a dispute thread is answered.
  */
-export function reviewUrl(id: string): string {
+function reviewUrl(id: string): string {
 	const base = appBaseUrl()
 	return base ? `${base}/review/${id}` : ""
 }
+
+export { appBaseUrl, projectUrl, requireAppBaseUrl, reviewUrl }

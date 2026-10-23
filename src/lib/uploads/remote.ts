@@ -120,7 +120,7 @@ async function readCapped(res: IncomingMessage, maxBytes: number): Promise<Buffe
 }
 
 /** What the bytes are, from their first few, or null if not an image we take. */
-export function sniffImage(bytes: Buffer): { ext: string; contentType: string } | null {
+function sniffImage(bytes: Buffer): { ext: string; contentType: string } | null {
 	if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
 		return { contentType: "image/png", ext: "png" }
 
@@ -140,7 +140,7 @@ export function sniffImage(bytes: Buffer): { ext: string; contentType: string } 
 	return null
 }
 
-export async function fetchRemoteImage(
+async function fetchRemoteImage(
 	raw: string,
 	maxBytes: number,
 ): Promise<{ bytes: Buffer; ext: string; contentType: string }> {
@@ -188,3 +188,5 @@ export async function fetchRemoteImage(
 		throw new HttpError("VALIDATION_FAILED", "That image could not be fetched. Save it and drop the file in instead.")
 	}
 }
+
+export { fetchRemoteImage, sniffImage }

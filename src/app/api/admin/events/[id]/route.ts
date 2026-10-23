@@ -17,7 +17,7 @@ interface Params {
  * gets made. `endsAt: null` clears a published end time rather than leaving it,
  * because an admin removing an end time means to remove it.
  */
-export const PATCH = withPermission(
+const PATCH = withPermission(
 	Permission.MANAGE_PROGRAM,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -74,7 +74,7 @@ export const PATCH = withPermission(
  * series is undone. The audit row keeps the before, so what was removed is still
  * answerable afterwards.
  */
-export const DELETE = withPermission(
+const DELETE = withPermission(
 	Permission.MANAGE_PROGRAM,
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -104,3 +104,5 @@ export const DELETE = withPermission(
 		return ok({ id })
 	},
 )
+
+export { DELETE, PATCH }

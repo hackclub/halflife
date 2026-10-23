@@ -459,7 +459,7 @@ async function sendToAri(
  *
  * Sequential on purpose: each row can download a screenshot and call Ari, and the Airtable client already rate-limits at the base's 5 req/s. `getProgramSettings` runs up front because the singleton row may need creating, which a transaction must not do while it holds a lock.
  */
-export async function importWarmupProjects(actor: ImportActor): Promise<WarmupImportSummary> {
+async function importWarmupProjects(actor: ImportActor): Promise<WarmupImportSummary> {
 	const config = getAirtableConfig()
 	if (!config) throw new HttpError("NOT_CONFIGURED", "Airtable is not configured on this deployment")
 
@@ -541,5 +541,4 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 	}
 }
 
-export type { WarmupImportOutcome, WarmupImportSummary }
-export { rehostScreenshot }
+export { importWarmupProjects, rehostScreenshot, type WarmupImportOutcome, type WarmupImportSummary }

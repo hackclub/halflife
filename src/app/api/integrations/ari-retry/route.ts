@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import type { AriWebhookEvent } from "@hackclub/ari"
 import type { NextRequest } from "next/server"
 import { Prisma } from "@/app/generated/prisma/client"

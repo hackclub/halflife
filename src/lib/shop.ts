@@ -117,7 +117,7 @@ async function shopContextFor(userId: string): Promise<{ regionId: string | null
 	}
 }
 
-export async function getShopItemsFor(userId: string): Promise<{
+async function getShopItemsFor(userId: string): Promise<{
 	items: ShopItemView[]
 	balances: Balances
 	regions: ShopRegionOption[]
@@ -213,7 +213,7 @@ export async function getShopItemsFor(userId: string): Promise<{
  *
  * `note` is the buyer's own words for the staff who fulfil the order. It is written inside the transaction, against the order, with the buyer as its author – so a note that is accepted is a note that is kept, rather than one that is silently dropped on the floor.
  */
-export async function purchase(
+async function purchase(
 	userId: string,
 	shopItemId: string,
 	quantity: number,
@@ -407,7 +407,7 @@ export async function purchase(
  *
  * The refund is a new positive row, never an edit to the original debit: the ledger is append-only, and the history of a rejected order is part of the record.
  */
-export async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrder> {
+async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrder> {
 	const target = await prisma.shopOrder.findUnique({
 		select: { userId: true },
 		where: { id: orderId },
@@ -472,7 +472,7 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
  *
  * Serialized against `rejectOrder` on the same per-user credit lock, because a fulfill only reads the order and `rejectOrder` only mutates credit: without a shared lock the two interleave, the refund lands and the goods still ship. The conditional `updateMany` is the second guard, for a decision that landed between the lock being taken and the write.
  */
-export async function fulfillOrder(
+async function fulfillOrder(
 	orderId: string,
 	adminId: string,
 	tracking: { number?: string | null; carrier?: string | null },
@@ -508,5 +508,16 @@ export async function fulfillOrder(
 	})
 }
 
-export type { ShopItemPublic, ShopItemView, ShopOrderPublic, ShopRegionOption }
-export { listActiveShopRegions, shopOrderPublicSelect, shopOrderStaffSelect }
+export {
+	fulfillOrder,
+	getShopItemsFor,
+	listActiveShopRegions,
+	purchase,
+	rejectOrder,
+	type ShopItemPublic,
+	type ShopItemView,
+	type ShopOrderPublic,
+	type ShopRegionOption,
+	shopOrderPublicSelect,
+	shopOrderStaffSelect,
+}

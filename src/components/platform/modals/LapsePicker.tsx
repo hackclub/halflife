@@ -59,7 +59,7 @@ async function fetchPage(cursor?: string, forSession?: string) {
  *
  * Timelapses are recorded on Lapse, not here. This lists what the maker has published there and lets them tick the ones for this session. A timelapse is offered only once it is finished and not already claimed by another entry – one recording backs one session, and the server holds to both rules whatever this shows.
  */
-export function LapsePicker({
+function LapsePicker({
 	picked,
 	onToggle,
 	onSignIn,
@@ -283,5 +283,4 @@ export function LapsePicker({
 	)
 }
 
-export type { LapseTimelapse }
-export { fmtDuration }
+export { fmtDuration, LapsePicker, type LapseTimelapse }

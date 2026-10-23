@@ -11,14 +11,16 @@ import type { CSSProperties } from "react"
 const weightOf = (lossPct: number): number => Math.min(100, Math.max(0, lossPct))
 
 /** A stage's background fill. */
-export const flowHeat = (lossPct: number): CSSProperties => ({
+const flowHeat = (lossPct: number): CSSProperties => ({
 	backgroundColor: `color-mix(in oklch, var(--color-danger) ${weightOf(lossPct)}%, var(--color-accent))`,
 })
 
 /** The same heat for text: muted where nothing was lost, danger-ink where everything was. An unsupported color-mix just inherits body text, which still reads. */
-export const flowHeatInk = (lossPct: number): CSSProperties => ({
+const flowHeatInk = (lossPct: number): CSSProperties => ({
 	color: `color-mix(in oklch, var(--color-danger-ink) ${weightOf(lossPct)}%, var(--color-ink-muted))`,
 })
 
 /** 400 where nothing was lost, 800 where everything was. */
-export const flowHeatWeight = (lossPct: number): number => 400 + Math.round(weightOf(lossPct) / 25) * 100
+const flowHeatWeight = (lossPct: number): number => 400 + Math.round(weightOf(lossPct) / 25) * 100
+
+export { flowHeat, flowHeatInk, flowHeatWeight }

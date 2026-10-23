@@ -260,7 +260,7 @@ interface ImportActor {
 	id: string
 }
 
-export async function importMacondoProjects(actor: ImportActor, csv: string): Promise<CsvImportSummary> {
+async function importMacondoProjects(actor: ImportActor, csv: string): Promise<CsvImportSummary> {
 	const parsed = parseProjectsCsv(csv)
 	if (parsed.problems.length > 0)
 		throw new HttpError("VALIDATION_FAILED", "Nothing was imported. Fix these and try again.", {
@@ -400,5 +400,12 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 	return { alreadyImported, failed, imported, outcomes, read: parsed.rows.length }
 }
 
-export type { CsvImportOutcome, CsvImportSummary, CsvProblem, MacondoJournal, MacondoRow }
-export { parseProjectsCsv }
+export {
+	type CsvImportOutcome,
+	type CsvImportSummary,
+	type CsvProblem,
+	importMacondoProjects,
+	type MacondoJournal,
+	type MacondoRow,
+	parseProjectsCsv,
+}

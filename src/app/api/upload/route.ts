@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { fail, ok, parseUploadForm, rateLimitedInMemory } from "@/lib/api"
 import { withSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"

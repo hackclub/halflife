@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
 import { ok } from "@/lib/api"
 import { withPermission } from "@/lib/guards"

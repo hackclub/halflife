@@ -239,7 +239,7 @@ function clean(value: string | undefined, max: number): string | null {
  *
  * `limit` bounds what a single import may add – the route passes what is left of the parts-list cap, and the overflow is reported as skipped rather than silently dropped.
  */
-export function parseBomCsv(text: string, opts: { limit?: number } = {}): ParsedBom {
+function parseBomCsv(text: string, opts: { limit?: number } = {}): ParsedBom {
 	const limit = opts.limit ?? Number.POSITIVE_INFINITY
 	const rows = parseCsvRows(text)
 	const head = findHeader(rows)
@@ -301,5 +301,13 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 	return { header: rows[index] ?? null, lines, skipped }
 }
 
-export type { ImportedBomLine, ParsedBom, SkippedRow }
-export { MAX_IMPORT_NAME, MAX_IMPORT_PRICE, MAX_IMPORT_QTY, MAX_IMPORT_VENDOR }
+export {
+	type ImportedBomLine,
+	MAX_IMPORT_NAME,
+	MAX_IMPORT_PRICE,
+	MAX_IMPORT_QTY,
+	MAX_IMPORT_VENDOR,
+	type ParsedBom,
+	parseBomCsv,
+	type SkippedRow,
+}

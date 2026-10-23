@@ -157,7 +157,7 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
  *
  * Resolves to the response for any status the forge answered with, including 404 – that is a finding, not a failure. Throws ForgeUnavailableError when there is no answer to be had on any route.
  */
-export async function forgeGet(forge: Forge, path: string): Promise<Response> {
+async function forgeGet(forge: Forge, path: string): Promise<Response> {
 	if (forge.id === "gitlab") return via(forge, "gitlab-direct", path)
 
 	if (!process.env.GH_PROXY_API_KEY) return via(forge, "github-direct", path)
@@ -170,4 +170,4 @@ export async function forgeGet(forge: Forge, path: string): Promise<Response> {
 	}
 }
 
-export { ForgeUnavailableError }
+export { ForgeUnavailableError, forgeGet }

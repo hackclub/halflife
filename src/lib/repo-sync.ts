@@ -326,7 +326,7 @@ async function recordFailure(
  *
  * `repoUrl` is the full URL of the chosen repo, which is what gets pinned. A URL rather than a slug because the forge then stays inferable from the stored value on its own – the sync later reads the pin without having to remember which service the picker was listing.
  */
-export async function enableRepoSync(
+async function enableRepoSync(
 	themeProjectId: string,
 	userId: string,
 	repoUrl: string,
@@ -370,7 +370,7 @@ export async function enableRepoSync(
 }
 
 /** Switch the sync off. The files already in the repo are left where they are. */
-export async function disableRepoSync(themeProjectId: string, userId: string): Promise<void> {
+async function disableRepoSync(themeProjectId: string, userId: string): Promise<void> {
 	const updated = await prisma.themeProject.updateMany({
 		data: { repoSyncEnabled: false, repoSyncError: null, repoSyncQueuedAt: null },
 		where: { deletedAt: null, id: themeProjectId, userId },
@@ -379,7 +379,7 @@ export async function disableRepoSync(themeProjectId: string, userId: string): P
 }
 
 /** What the project page and settings need to render the control. */
-export interface RepoSyncState {
+interface RepoSyncState {
 	enabled: boolean
 	/** Why the last attempt failed, or null. */
 	error: string | null
@@ -401,7 +401,7 @@ export interface RepoSyncState {
 	syncRepoDiffers: boolean
 }
 
-export async function getRepoSyncState(themeProjectId: string, userId: string): Promise<RepoSyncState> {
+async function getRepoSyncState(themeProjectId: string, userId: string): Promise<RepoSyncState> {
 	const [project, accounts] = await Promise.all([
 		prisma.themeProject.findFirst({
 			select: { githubRepo: true, repoSyncEnabled: true, repoSyncError: true, repoSyncedAt: true, repoSyncRepo: true },
@@ -435,4 +435,12 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 	}
 }
 
-export { runProjectSync, SYNC_DEBOUNCE_MS, scheduleRepoSync }
+export {
+	disableRepoSync,
+	enableRepoSync,
+	getRepoSyncState,
+	type RepoSyncState,
+	runProjectSync,
+	SYNC_DEBOUNCE_MS,
+	scheduleRepoSync,
+}

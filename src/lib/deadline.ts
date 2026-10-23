@@ -34,8 +34,8 @@ const UTC_DATE_TIME = new Intl.DateTimeFormat("en-US", {
 })
 
 /** An audit or moderation timestamp, pinned to UTC so the console does not disagree with itself between server and browser. */
-export function formatUtcDateTime(at: Date | number): string {
+function formatUtcDateTime(at: Date | number): string {
 	return UTC_DATE_TIME.format(at)
 }
 
-export { formatDeadline, formatShortDate, toLocalInput }
+export { formatDeadline, formatShortDate, formatUtcDateTime, toLocalInput }

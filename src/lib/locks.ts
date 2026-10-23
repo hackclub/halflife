@@ -8,7 +8,7 @@ import type { Prisma } from "@/app/generated/prisma/client"
  *
  * `$executeRaw` rather than `$queryRaw`: `pg_advisory_xact_lock` returns void, and the driver adapter cannot deserialize that as a result row.
  */
-export async function lockKey(tx: Prisma.TransactionClient, key: string): Promise<void> {
+async function lockKey(tx: Prisma.TransactionClient, key: string): Promise<void> {
 	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
 }
 
@@ -17,6 +17,8 @@ export async function lockKey(tx: Prisma.TransactionClient, key: string): Promis
  *
  * The balance is `SUM(amount)` over an append-only table, so there is no row to lock and READ COMMITTED lets two concurrent transactions both read the same pre-existing balance and both commit – a double-spend, not a theoretical race: the window spans several round trips, and the goods on the other side are physical.
  */
-export function lockUserCredit(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+function lockUserCredit(tx: Prisma.TransactionClient, userId: string): Promise<void> {
 	return lockKey(tx, `credit:${userId}`)
 }
+
+export { lockKey, lockUserCredit }

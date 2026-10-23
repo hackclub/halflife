@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { ok } from "@/lib/api"
 import { recordView } from "@/lib/feed"
 import { type AuthedContext, withSession } from "@/lib/guards"

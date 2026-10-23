@@ -8,7 +8,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withPermission(
+const POST = withPermission(
 	Permission.REVIEW_SUBMISSIONS,
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -34,7 +34,7 @@ export const POST = withPermission(
 	},
 )
 
-export const DELETE = withPermission(
+const DELETE = withPermission(
 	Permission.REVIEW_SUBMISSIONS,
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -52,3 +52,5 @@ export const DELETE = withPermission(
 		return ok({ ok: true })
 	},
 )
+
+export { DELETE, POST }

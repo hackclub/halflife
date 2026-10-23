@@ -14,9 +14,9 @@ import "server-only"
  */
 
 /** The two forges configured today. A Codeberg/Gitea entry would join them. */
-export type ForgeId = "github" | "gitlab"
+type ForgeId = "github" | "gitlab"
 
-export interface Forge {
+interface Forge {
 	/** Hosts that mean the same forge, e.g. GitHub's `www.` prefix. */
 	aliases: readonly string[]
 	/** One extra web path segment between the repo and `blob`, e.g. GitLab's `-`. */
@@ -38,7 +38,7 @@ export interface Forge {
 	scopes: readonly string[]
 }
 
-export const FORGES: Record<ForgeId, Forge> = {
+const FORGES: Record<ForgeId, Forge> = {
 	github: {
 		aliases: ["www.github.com"],
 		blobSegment: "blob",
@@ -66,10 +66,10 @@ export const FORGES: Record<ForgeId, Forge> = {
 }
 
 /** Every configured forge, in a stable order. */
-export const ALL_FORGES: readonly Forge[] = [FORGES.github, FORGES.gitlab]
+const ALL_FORGES: readonly Forge[] = [FORGES.github, FORGES.gitlab]
 
 /** The forge a hostname belongs to, or null when it is not one we speak. */
-export function forgeByHostname(hostname: string): Forge | null {
+function forgeByHostname(hostname: string): Forge | null {
 	const host = hostname
 		.trim()
 		.toLowerCase()
@@ -82,7 +82,7 @@ export function forgeByHostname(hostname: string): Forge | null {
 }
 
 /** The forge with this id, or null. Narrowing helper for stored values. */
-export function forgeById(id: string): Forge | null {
+function forgeById(id: string): Forge | null {
 	return (FORGES as { [_: string]: Forge | undefined })[id] ?? null
 }
 
@@ -91,13 +91,13 @@ export function forgeById(id: string): Forge | null {
  *
  * Callers that must accept any link (a project's `githubRepo` is allowed to be a Codeberg URL, and is worth keeping) use `forgeFromRepoUrlOrNull`; callers that need to *do* something with the repo (read it, write to it) have to refuse anything this returns null for.
  */
-export function forgeFromRepoUrlOrNull(url: string | null | undefined): Forge | null {
+function forgeFromRepoUrlOrNull(url: string | null | undefined): Forge | null {
 	if (!url) return null
 	return forgeByHostname(hostnameOf(url) ?? "")
 }
 
 /** `https://github.com/a/b` → `github.com`. Null when the value will not parse. */
-export function hostnameOf(url: string): string | null {
+function hostnameOf(url: string): string | null {
 	try {
 		return new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(url) ? url : `https://${url}`).hostname.toLowerCase()
 	} catch {
@@ -110,11 +110,24 @@ export function hostnameOf(url: string): string | null {
  *
  * Uses the forge's own path shape, because GitLab puts a `-` between the repo and `blob` and a link built the GitHub way lands on GitLab's 404.
  */
-export function fileUrl(forge: Forge, ownerPath: string, repo: string, path: string): string {
+function fileUrl(forge: Forge, ownerPath: string, repo: string, path: string): string {
 	return `https://${forge.hostname}/${ownerPath}/${repo}/${forge.blobSegment}/HEAD/${path}`
 }
 
 /** The web URL of the repo itself. */
-export function repoUrl(forge: Forge, ownerPath: string, repo: string): string {
+function repoUrl(forge: Forge, ownerPath: string, repo: string): string {
 	return `https://${forge.hostname}/${ownerPath}/${repo}`
+}
+
+export {
+	ALL_FORGES,
+	FORGES,
+	type Forge,
+	type ForgeId,
+	fileUrl,
+	forgeByHostname,
+	forgeById,
+	forgeFromRepoUrlOrNull,
+	hostnameOf,
+	repoUrl,
 }

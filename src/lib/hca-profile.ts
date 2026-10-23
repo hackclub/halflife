@@ -168,7 +168,7 @@ function addressFrom(
 }
 
 /** Read one person's identity from HCA with their access token. */
-export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity> {
+async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity> {
 	const [userinfo, meBody] = await Promise.all([
 		getJson(await userinfoUrl(), accessToken),
 		getJson(ME_URL, accessToken),
@@ -196,7 +196,7 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 }
 
 /** The PII fields, encrypted, when this deployment is set up to keep them. */
-export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: string } {
+function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: string } {
 	if (!PULL_PII) return {}
 	const out: { [_: string]: string } = {}
 	const a = identity.address
@@ -224,7 +224,7 @@ export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: strin
  *
  * Returns whether a row was changed, so the caller can say so in the log.
  */
-export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolean): Promise<boolean> {
+async function adoptHcaVerifiedEmail(email: string, emailVerified: boolean): Promise<boolean> {
 	if (!emailVerified) return false
 	const user = await prisma.user.findFirst({
 		select: { emailVerified: true, id: true },
@@ -243,7 +243,7 @@ export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolea
  *
  * Resolves to the verification status HCA reported, or null if HCA could not be asked (no linked account, a token that will not refresh, HCA down). Never throws: a sign-in or a submit must not fail because this could not run.
  */
-export async function syncHcaProfile(userId: string): Promise<string | null> {
+async function syncHcaProfile(userId: string): Promise<string | null> {
 	try {
 		// Imported here, not at the top: lib/auth calls this from its own hooks.
 		const { auth } = await import("@/lib/auth")
@@ -285,12 +285,22 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
  *
  * The stored status is from the last sign-in, so someone who verified since is verified now rather than turned away for a stale `pending`. HCA is only asked when the answer would otherwise be a refusal, so a verified account costs no extra call. `syncHcaProfile` never throws and resolves to null when HCA cannot be asked, so an outage degrades to the last known status rather than failing the action that asked.
  */
-export async function isIdentityVerified(userId: string): Promise<boolean> {
+async function isIdentityVerified(userId: string): Promise<boolean> {
 	if (process.env.SKIP_YSWS_VERIFICATION_CHECK === "true") return true
 	const user = await prisma.user.findUnique({ select: { verificationStatus: true }, where: { id: userId } })
 	if (user?.verificationStatus === "verified") return true
 	return (await syncHcaProfile(userId)) === "verified"
 }
 
-export type { HcaAddress, HcaEndpoints, HcaIdentity }
-export { hcaEndpoints, PULL_PII }
+export {
+	adoptHcaVerifiedEmail,
+	encryptedFieldsFrom,
+	fetchHcaIdentity,
+	type HcaAddress,
+	type HcaEndpoints,
+	type HcaIdentity,
+	hcaEndpoints,
+	isIdentityVerified,
+	PULL_PII,
+	syncHcaProfile,
+}

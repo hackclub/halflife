@@ -288,7 +288,7 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 	return { byEmail, byUserId, writable }
 }
 
-export interface LoopsSyncResult {
+interface LoopsSyncResult {
 	/**
 	 * True when the join matched so little that this run should not be believed. Set rather than merely logged, because the way this failed for months was a run that reported success having written nothing.
 	 */
@@ -315,9 +315,7 @@ export interface LoopsSyncResult {
 /**
  * Bring the Loops columns up to date for everyone. Sends only rows whose values changed, ten per request (Airtable's limit), so an hourly run costs a listing and a handful of writes.
  */
-export async function syncLoopsProperties(
-	opts: { dryRun?: boolean } = {},
-): Promise<LoopsSyncResult | { skipped: string }> {
+async function syncLoopsProperties(opts: { dryRun?: boolean } = {}): Promise<LoopsSyncResult | { skipped: string }> {
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
 
@@ -405,7 +403,7 @@ export async function syncLoopsProperties(
  *
  * Best-effort by design: a missing column, a missing row, or no Airtable config is a skip, not a throw, so a slow or half-built base never fails a hand-in. A real Airtable fault throws, and the caller logs it – the hourly sync replays the same value later.
  */
-export async function syncLoopsWeekSubmitted(
+async function syncLoopsWeekSubmitted(
 	userId: string,
 	week: number,
 ): Promise<{ updated: boolean } | { skipped: string }> {
@@ -487,4 +485,4 @@ export async function syncLoopsWeekSubmitted(
 	return { updated: true }
 }
 
-export { LOOPS_FIELDS, resolveSignupRow }
+export { LOOPS_FIELDS, type LoopsSyncResult, resolveSignupRow, syncLoopsProperties, syncLoopsWeekSubmitted }

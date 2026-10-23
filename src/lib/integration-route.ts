@@ -14,7 +14,7 @@ import { postMessage } from "@/lib/site/slack"
  *
  * `withRoute` turns a thrown `HttpError` into its response and anything else into a logged 500; this puts the key check in front of it, so a handler body can assume it is already authorised and start with its actual work.
  */
-export function withIntegrationRoute<A extends unknown[]>(
+function withIntegrationRoute<A extends unknown[]>(
 	handler: (...args: A) => Promise<NextResponse>,
 ): (...args: A) => Promise<NextResponse> {
 	const routed = withRoute(handler)
@@ -30,7 +30,7 @@ export function withIntegrationRoute<A extends unknown[]>(
  *
  * Same shape as `withIntegrationRoute`: authorise first, then run the handler with a context it can trust, so the route body cannot accidentally read the request before the check.
  */
-export function withExportRoute<A extends unknown[]>(
+function withExportRoute<A extends unknown[]>(
 	handler: (req: NextRequest, gate: { scope: ExportScope }, ...args: A) => Promise<NextResponse>,
 ): (req: NextRequest, ...args: A) => Promise<NextResponse> {
 	const run = withRoute(handler)
@@ -46,14 +46,16 @@ export function withExportRoute<A extends unknown[]>(
  *
  * Every integration route honours it, and it is the single thing that makes scheduled work debuggable in production – a run can be repeated by hand and show exactly what it would have written, without writing it.
  */
-export const wantsDryRun = (req: NextRequest): boolean => req.nextUrl.searchParams.get("dryRun") === "true"
+const wantsDryRun = (req: NextRequest): boolean => req.nextUrl.searchParams.get("dryRun") === "true"
 
 /**
  * Posts to Slack, failing the run rather than the message.
  *
  * `postMessage` answers `ok: false` rather than throwing, which is the right shape for a notification a human may not be waiting on. A scheduled job is different: its step is `curl -f`, so a post that quietly did not happen would leave the run green having done nothing. Throwing is what turns it red.
  */
-export async function postSlackOrThrow(channel: string, text: string): Promise<void> {
+async function postSlackOrThrow(channel: string, text: string): Promise<void> {
 	const result = await postMessage(channel, text)
 	if (!result.ok) throw new Error(`Slack chat.postMessage failed: ${result.error ?? "unknown error"}`)
 }
+
+export { postSlackOrThrow, wantsDryRun, withExportRoute, withIntegrationRoute }

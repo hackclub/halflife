@@ -107,7 +107,7 @@ const THEMES: ThemeSeed[] = [
 const cp = (c: Checkpoint): Checkpoint => c
 
 /** Every week's fixed half – everything that does not depend on the tier. */
-export const WEEK_META: WeekMeta[] = [
+const WEEK_META: WeekMeta[] = [
 	...THEMES.map((seed, i) => ({
 		accent: seed.accent,
 		accentDeep: seed.accentDeep,
@@ -145,7 +145,7 @@ export const WEEK_META: WeekMeta[] = [
  *
  * Keys stay `w<week>-reel-<k>`, numbered rather than timed, so this can change without touching a stored reel; the reels page names them from it too.
  */
-export function progressReelHours(phase: Phase, k: number): number {
+function progressReelHours(phase: Phase, k: number): number {
 	if (phase === "build") return k === 1 ? 2.5 : (k - 1) * 5
 	// 5h, 15h, 25h… – the first under the cheapest tier's floor, then every ten.
 	if (k <= 1) return 5
@@ -155,8 +155,8 @@ export function progressReelHours(phase: Phase, k: number): number {
 /**
  * A session has to be backed by photographs. Two is the floor whatever the claim, and past two hours it is one an hour – a long session has to show more of itself than a short one, which is the only thing standing between a self-reported number and a made-up one.
  */
-export const MIN_PHOTOS = 2
-export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(hours))
+const MIN_PHOTOS = 2
+const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(hours))
 
 /**
  * The week's checkpoints.
@@ -171,7 +171,7 @@ export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(
  *
  * A submitted week has no live entry and no pending reel: the choice was made, and what is left on the trail is the road actually taken.
  */
-export function checkpointsFor(
+function checkpointsFor(
 	meta: WeekMeta,
 	entryMinutes: number[],
 	isDone: (id: string) => boolean,
@@ -314,3 +314,5 @@ export { BUILD_BLOCKS, BUILD_HOURS } from "./config/program"
 export type { Tier } from "./config/tiers"
 
 export { TIERS } from "./config/tiers"
+
+export { checkpointsFor, MIN_PHOTOS, photosRequired, progressReelHours, WEEK_META }

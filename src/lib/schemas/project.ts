@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
 
-export const projectUpdateSchema = z
+const projectUpdateSchema = z
 	.object({
 		artifactLinks: z
 			.array(z.object({ label: boundedText(80, 1), url: httpsUrl }))
@@ -25,7 +25,7 @@ export const projectUpdateSchema = z
 	})
 	.strict()
 
-export const submitSchema = z
+const submitSchema = z
 	.object({
 		/** R2 keys for evidence handed in with the submission. */
 		attachmentKeys: z.array(z.string().max(500)).max(10).default([]),
@@ -44,21 +44,21 @@ export const submitSchema = z
 	})
 	.strict()
 
-export const unsubmitSchema = z.object({ phase: phaseSchema }).strict()
+const unsubmitSchema = z.object({ phase: phaseSchema }).strict()
 
 /**
  * A maker asking for a second look at a decided review.
  *
  * The note is required: a dispute that does not say what is wrong is one no one can act on.
  */
-export const disputeSchema = z
+const disputeSchema = z
 	.object({
 		note: boundedText(2000, 10),
 		phase: phaseSchema,
 	})
 	.strict()
 
-export const hackatimeLinkSchema = z
+const hackatimeLinkSchema = z
 	.object({
 		hackatimeProject: boundedText(200, 1),
 		phase: phaseSchema.default("BUILD"),
@@ -66,7 +66,7 @@ export const hackatimeLinkSchema = z
 	.strict()
 
 /** One line of a bill of materials, as the maker writes it. */
-export const bomItemSchema = z
+const bomItemSchema = z
 	.object({
 		link: httpsUrl,
 		name: boundedText(120, 1),
@@ -78,19 +78,19 @@ export const bomItemSchema = z
 	})
 	.strict()
 
-export const bomItemUpdateSchema = bomItemSchema.partial().strict()
+const bomItemUpdateSchema = bomItemSchema.partial().strict()
 
-export type BomItemInput = z.infer<typeof bomItemSchema>
+type BomItemInput = z.infer<typeof bomItemSchema>
 
 /** A bill of materials' tax and shipping total. Null clears it back to zero. */
-export const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() }).strict()
+const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() }).strict()
 
 /**
  * Reading a project's BOM CSV into its parts list.
  *
  * `apply` false is a preview: read the repo and report what would land. `apply` true writes, and `replace` says whether that means the whole list or an addition to it – the caller is shown the count first and chooses. Both default false, so an empty body is the harmless preview.
  */
-export const bomImportSchema = z
+const bomImportSchema = z
 	.object({
 		apply: z.boolean().default(false),
 		replace: z.boolean().default(false),
@@ -102,17 +102,32 @@ export const bomImportSchema = z
  *
  * This is the outer bound only. `parseRepoRef` narrows it further (known host, safe segments, no traversal) and `enableRepoSync` resolves it against the forge it names, so a string that slips past this still cannot point the sync at a repo the caller never picked without the token having to be able to push there.
  */
-export const REPO_URL_RE = /^(https?:\/\/)?[A-Za-z0-9.-]+\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+){1,3}\/?$/
+const REPO_URL_RE = /^(https?:\/\/)?[A-Za-z0-9.-]+\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+){1,3}\/?$/
 
 /**
  * Repo sync, switched per project.
  *
  * `repo` is the full URL of a repo the picker offered, not a bare slug: the forge it lives on has to stay inferable from the stored value, and a host-less slug cannot say which service it means.
  */
-export const repoSyncSettingsSchema = z
+const repoSyncSettingsSchema = z
 	.object({
 		enabled: z.boolean(),
 		/** Required when turning it on, ignored when turning it off. */
 		repo: z.string().trim().regex(REPO_URL_RE, "Pick a repository to sync to").max(300).optional(),
 	})
 	.strict()
+
+export {
+	type BomItemInput,
+	bomExtrasSchema,
+	bomImportSchema,
+	bomItemSchema,
+	bomItemUpdateSchema,
+	disputeSchema,
+	hackatimeLinkSchema,
+	projectUpdateSchema,
+	REPO_URL_RE,
+	repoSyncSettingsSchema,
+	submitSchema,
+	unsubmitSchema,
+}

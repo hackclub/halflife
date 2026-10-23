@@ -210,7 +210,7 @@ async function bufferUploadForm(request: Request, maxFileBytes: number): Promise
  *
  * Kept as a thin wrapper over `lib/rate-limit` so existing call sites keep their budget while the implementation lives in one place.
  */
-export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
+function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
 	return rateLimited(key, { max, windowMs })
 }
 
@@ -219,7 +219,7 @@ export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): b
  *
  * Authenticated routes should use `withSession`, `withPermission` or `withRole` from `lib/guards` instead: those put the guard in front of the handler and pass the session in as `ctx.gate`, so a route cannot forget the check. This is the transport wrapper they, and the unauthenticated routes, are built on.
  */
-export function withRoute<A extends unknown[]>(
+function withRoute<A extends unknown[]>(
 	handler: (...args: A) => Promise<NextResponse>,
 ): (...args: A) => Promise<NextResponse> {
 	return async (...args: A) => {
@@ -233,5 +233,4 @@ export function withRoute<A extends unknown[]>(
 	}
 }
 
-export type { ApiErrorBody }
-export { fail, ok, parseBody, parseQuery, parseUploadForm }
+export { type ApiErrorBody, fail, ok, parseBody, parseQuery, parseUploadForm, rateLimitedInMemory, withRoute }

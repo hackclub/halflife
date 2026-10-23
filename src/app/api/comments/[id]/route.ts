@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { deleteOwnComment } from "@/lib/feed"

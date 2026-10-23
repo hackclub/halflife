@@ -225,12 +225,12 @@ let botUserId: string | null = null
  *
  * `error` is set when the member list itself was unreadable – `missing_scope` because the manifest's `groups:read` was added but never re-imported and reinstalled, or `channel_not_found`/`not_in_channel` because the bot was never invited into the private channel. Callers use it to tell "you're not on the team" apart from "the check itself is broken, tell an admin", since only the first is the clicker's problem.
  */
-export interface ChannelMembership {
+interface ChannelMembership {
 	error?: string
 	member: boolean
 }
 
-export async function checkChannelMembership(channel: string, user: string): Promise<ChannelMembership> {
+async function checkChannelMembership(channel: string, user: string): Promise<ChannelMembership> {
 	let cursor: string | undefined
 	for (let page = 0; page < 10; page += 1) {
 		const result = await callSlackApiGet<{ members?: string[]; response_metadata?: { next_cursor?: string } }>(
@@ -251,14 +251,14 @@ export async function checkChannelMembership(channel: string, user: string): Pro
 	return { member: false }
 }
 
-export async function isChannelMember(channel: string, user: string): Promise<boolean> {
+async function isChannelMember(channel: string, user: string): Promise<boolean> {
 	const membership = await checkChannelMembership(channel, user)
 	return membership.member
 }
 
 /** A message as `conversations.history` returns it, trimmed to the fields that
  * decide whether it opened a ticket. */
-export interface SlackHistoryMessage {
+interface SlackHistoryMessage {
 	bot_id?: string
 	subtype?: string
 	thread_ts?: string
@@ -269,7 +269,7 @@ export interface SlackHistoryMessage {
 
 /** A message as `conversations.replies` returns it, carrying the blocks a
  * caller needs to rewrite one. */
-export interface SlackThreadMessage extends SlackHistoryMessage {
+interface SlackThreadMessage extends SlackHistoryMessage {
 	blocks?: SlackBlock[]
 }
 
@@ -280,7 +280,7 @@ export interface SlackThreadMessage extends SlackHistoryMessage {
  *
  * Throws on a Slack error rather than returning a short list, like `listChannelHistory`, so a failed read surfaces in the caller's guard instead of silently leaving the thread unresolved. The reminder is the thread's first reply, so one page of Slack's default `limit` always covers it – a help thread never runs long enough to page.
  */
-export async function getThreadReplies(channel: string, ts: string): Promise<SlackThreadMessage[]> {
+async function getThreadReplies(channel: string, ts: string): Promise<SlackThreadMessage[]> {
 	const result = await callSlackApiGet<{ messages?: SlackThreadMessage[] }>("conversations.replies", {
 		channel,
 		limit: "200",
@@ -297,7 +297,7 @@ export async function getThreadReplies(channel: string, ts: string): Promise<Sla
  *
  * Throws on a Slack error rather than returning a short list: the backfill that uses this is idempotent, so a `ratelimited` should fail loudly and be re-run, not silently leave the table half-filled.
  */
-export async function listChannelHistory(
+async function listChannelHistory(
 	channel: string,
 	opts: { maxPages?: number } = {},
 ): Promise<{ messages: SlackHistoryMessage[]; exhausted: boolean }> {
@@ -320,7 +320,7 @@ export async function listChannelHistory(
 /** Cached for the life of the instance – this never changes for a given
  * bot token, and calling auth.test on every event would be wasted latency
  * inside Slack's 3-second Events API window. */
-export async function getBotUserId(): Promise<string | null> {
+async function getBotUserId(): Promise<string | null> {
 	if (botUserId) return botUserId
 	const result = await callSlackApi<{ user_id?: string }>("auth.test", {})
 	botUserId = result.user_id ?? null
@@ -330,7 +330,7 @@ export async function getBotUserId(): Promise<string | null> {
 /**
  * HMAC verification per Slack's signing secret scheme: reject anything older than 5 minutes (replay window) and anything whose signature doesn't match, using a timing-safe comparison so the check itself can't leak information via response time.
  */
-export function verifySlackRequest(rawBody: string, timestamp: string | null, signature: string | null): boolean {
+function verifySlackRequest(rawBody: string, timestamp: string | null, signature: string | null): boolean {
 	const signingSecret = process.env.SLACK_SIGNING_SECRET
 	if (!signingSecret || !timestamp || !signature) return false
 
@@ -345,15 +345,25 @@ export function verifySlackRequest(rawBody: string, timestamp: string | null, si
 	return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
 
-export type { SlackBlock, SlackResult }
 export {
 	addReaction,
+	type ChannelMembership,
+	checkChannelMembership,
 	deleteMessage,
+	getBotUserId,
 	getPermalink,
 	getSlackUserName,
 	getSlackUserNames,
+	getThreadReplies,
 	inviteToChannel,
+	isChannelMember,
+	listChannelHistory,
 	postMessage,
 	removeReaction,
+	type SlackBlock,
+	type SlackHistoryMessage,
+	type SlackResult,
+	type SlackThreadMessage,
 	updateMessage,
+	verifySlackRequest,
 }

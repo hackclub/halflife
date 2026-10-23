@@ -250,7 +250,7 @@ function assertOwnedKey(userId: string, key: string, field: string): void {
 		throw new HttpError("VALIDATION_FAILED", `That ${field} is not one of your uploads`)
 }
 
-export async function createPost(input: CreatePostInput): Promise<FeedItem> {
+async function createPost(input: CreatePostInput): Promise<FeedItem> {
 	if (input.kind === PostKind.ANNOUNCEMENT && !input.canManageFeed)
 		throw new HttpError("FORBIDDEN", "Only the Half Life team can post announcements")
 
@@ -310,7 +310,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
  *
  * The unique key does the work: a repeat view is a failed insert, so the count only moves when a genuinely new viewer arrives. This matters because the program pays prizes on virality – a number anyone can inflate by refreshing is a number that decides who gets a drawing tablet.
  */
-export function recordView(postId: string, userId: string): Promise<number> {
+function recordView(postId: string, userId: string): Promise<number> {
 	return prisma.$transaction(async tx => {
 		// Only a live, published reel counts. Without this, views keep accruing on a hidden or deleted post, and the virality number those prizes rest on could be moved for a reel that is out of the feed.
 		const post = await tx.post.findFirst({ select: { id: true }, where: { id: postId, ...visible } })
@@ -339,11 +339,7 @@ export function recordView(postId: string, userId: string): Promise<number> {
 /**
  * Like or unlike. Explicitly stated rather than toggled: a toggle sent twice by an impatient double-tap ends in whichever state the race landed on, and the client always knows which one it means.
  */
-export function setLike(
-	postId: string,
-	userId: string,
-	liked: boolean,
-): Promise<{ likeCount: number; likedByMe: boolean }> {
+function setLike(postId: string, userId: string, liked: boolean): Promise<{ likeCount: number; likedByMe: boolean }> {
 	return prisma.$transaction(async tx => {
 		const post = await tx.post.findFirst({ select: { id: true }, where: { id: postId, ...visible } })
 		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
@@ -369,7 +365,7 @@ export function setLike(
 	})
 }
 
-export interface CommentView {
+interface CommentView {
 	author: { id: string; name: string | null; image: string | null }
 	body: string
 	createdAt: Date
@@ -377,7 +373,7 @@ export interface CommentView {
 	mine: boolean
 }
 
-export async function getComments(
+async function getComments(
 	postId: string,
 	viewerId: string,
 	opts: { cursor?: string; limit: number },
@@ -410,7 +406,7 @@ export async function getComments(
 	}
 }
 
-export function addComment(postId: string, userId: string, body: string): Promise<CommentView> {
+function addComment(postId: string, userId: string, body: string): Promise<CommentView> {
 	const clean = sanitize(body)
 	if (!clean) throw new HttpError("VALIDATION_FAILED", "Say something")
 
@@ -435,7 +431,7 @@ export function addComment(postId: string, userId: string, body: string): Promis
 }
 
 /** Delete your own comment. Moderators use `hideComment` instead. */
-export async function deleteOwnComment(commentId: string, userId: string): Promise<void> {
+async function deleteOwnComment(commentId: string, userId: string): Promise<void> {
 	await prisma.$transaction(async tx => {
 		// `hiddenAt: null` too: a moderator-hidden comment already had its decrement when it was hidden, so letting the owner delete it as well would take the count down a second time and could drive it negative.
 		const { count } = await tx.postComment.updateMany({
@@ -455,7 +451,7 @@ export async function deleteOwnComment(commentId: string, userId: string): Promi
 }
 
 /** Soft-delete your own reel. */
-export async function deleteOwnPost(postId: string, userId: string): Promise<void> {
+async function deleteOwnPost(postId: string, userId: string): Promise<void> {
 	await prisma.$transaction(async tx => {
 		const { count } = await tx.post.updateMany({
 			data: { deletedAt: new Date(), status: PostStatus.REMOVED },
@@ -469,7 +465,7 @@ export async function deleteOwnPost(postId: string, userId: string): Promise<voi
 
 // ─── Moderation ──────────────────────────────────────────────────────────────
 
-export async function hidePost(postId: string, moderatorId: string, reason: string): Promise<void> {
+async function hidePost(postId: string, moderatorId: string, reason: string): Promise<void> {
 	const { count } = await prisma.post.updateMany({
 		data: {
 			hiddenAt: new Date(),
@@ -482,7 +478,7 @@ export async function hidePost(postId: string, moderatorId: string, reason: stri
 	if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 }
 
-export async function restorePost(postId: string): Promise<void> {
+async function restorePost(postId: string): Promise<void> {
 	const { count } = await prisma.post.updateMany({
 		data: { hiddenAt: null, hiddenById: null, hiddenReason: null, status: PostStatus.PUBLISHED },
 		where: { deletedAt: null, id: postId, status: PostStatus.HIDDEN },
@@ -490,7 +486,7 @@ export async function restorePost(postId: string): Promise<void> {
 	if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 }
 
-export async function hideComment(commentId: string, moderatorId: string, reason: string): Promise<void> {
+async function hideComment(commentId: string, moderatorId: string, reason: string): Promise<void> {
 	await prisma.$transaction(async tx => {
 		const { count } = await tx.postComment.updateMany({
 			data: { hiddenAt: new Date(), hiddenById: moderatorId, hiddenReason: sanitize(reason) },
@@ -510,5 +506,24 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 }
 
 export { PostKind, PostStatus } from "@/app/generated/prisma/enums"
-export type { CreatePostInput, FeedAuthor, FeedItem, FeedPage }
-export { getCreatorReels, getFeed, POST_UPLOAD_FOLDER }
+
+export {
+	addComment,
+	type CommentView,
+	type CreatePostInput,
+	createPost,
+	deleteOwnComment,
+	deleteOwnPost,
+	type FeedAuthor,
+	type FeedItem,
+	type FeedPage,
+	getComments,
+	getCreatorReels,
+	getFeed,
+	hideComment,
+	hidePost,
+	POST_UPLOAD_FOLDER,
+	recordView,
+	restorePost,
+	setLike,
+}

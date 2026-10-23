@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { clientIp } from "@/lib/client-ip"

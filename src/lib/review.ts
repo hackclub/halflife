@@ -26,7 +26,7 @@ import { DAY_MS } from "@/lib/time"
 
 // ─── Claim locks ─────────────────────────────────────────────────────────────
 
-export type ClaimResult =
+type ClaimResult =
 	| { ok: true; expiresAt: Date }
 	| { ok: false; heldBy: string; heldByName: string | null; expiresAt: Date }
 
@@ -35,7 +35,7 @@ export type ClaimResult =
  *
  * `submissionId` is unique, so this is a single insert that either succeeds or collides. Never implement claiming as read-then-write: two reviewers opening the queue at the same moment both read "unclaimed" and both proceed.
  */
-export async function claimSubmission(submissionId: string, reviewerId: string): Promise<ClaimResult> {
+async function claimSubmission(submissionId: string, reviewerId: string): Promise<ClaimResult> {
 	const owner = await prisma.phaseSubmission.findUnique({
 		select: { themeProject: { select: { userId: true } } },
 		where: { id: submissionId },
@@ -71,14 +71,14 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 	}
 }
 
-export async function releaseClaim(submissionId: string, reviewerId: string): Promise<void> {
+async function releaseClaim(submissionId: string, reviewerId: string): Promise<void> {
 	const claim = await prisma.reviewClaim.findUnique({ where: { submissionId } })
 	if (!claim) return
 	if (claim.reviewerId !== reviewerId) throw new HttpError("FORBIDDEN", "That claim belongs to another reviewer")
 	await prisma.reviewClaim.delete({ where: { submissionId } })
 }
 
-export async function sweepExpiredClaims(): Promise<number> {
+async function sweepExpiredClaims(): Promise<number> {
 	const { count } = await prisma.reviewClaim.deleteMany({
 		where: { expiresAt: { lt: new Date() } },
 	})
@@ -92,14 +92,14 @@ export async function sweepExpiredClaims(): Promise<number> {
  *
  * A returned phase is a request for changes, so its maker has to open the project again, fix it and hand it in – and by the time a review lands late in a week that work may no longer fit before the close. The window is measured from the return rather than the week's own close, so an extension only bites when the scheduled close is sooner, and it never shortens a longer extension an admin already put on record.
  */
-export const RETURN_EXTENSION_MS = 7 * DAY_MS
+const RETURN_EXTENSION_MS = 7 * DAY_MS
 
 /** A returned phase's extension: at least a week from now, kept at whichever is later than what is already on record. */
-export function returnExtensionUntil(current: Date | null | undefined, now: Date = new Date()): Date {
+function returnExtensionUntil(current: Date | null | undefined, now: Date = new Date()): Date {
 	return new Date(Math.max(now.getTime() + RETURN_EXTENSION_MS, current?.getTime() ?? 0))
 }
 
-export interface FinalizeInput {
+interface FinalizeInput {
 	/** Shown to the participant. */
 	feedback: string
 	/**
@@ -121,7 +121,7 @@ export interface FinalizeInput {
 	tier?: number | null
 }
 
-export interface FinalizeOutcome {
+interface FinalizeOutcome {
 	approvedHours: number | null
 	/** Coins this decision minted, by pot. Null when not approving. */
 	coins: CoinSplit | null
@@ -138,7 +138,7 @@ export interface FinalizeOutcome {
  *
  * The whole thing is one transaction because a partial application – status moved but credit not written, or credit written twice – is the failure that costs real money.
  */
-export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutcome> {
+async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutcome> {
 	const submission = await prisma.phaseSubmission.findUnique({
 		include: {
 			claim: true,
@@ -481,7 +481,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
  *
  * `grantExtension` is opt-in because the admin reversal it serves asks the maker to act (the override route notifies them), whereas Ari's own revert calls this on its way back to `in_review` – a state the maker never holds, and one where re-opening their week would be time nobody asked for.
  */
-export async function unapprovePhase(
+async function unapprovePhase(
 	themeProjectId: string,
 	phase: Phase,
 	adminId: string | null,
@@ -644,7 +644,7 @@ export async function unapprovePhase(
 }
 
 /** Bring a rejected phase back into play. Rejection is not terminal forever. `grantExtension` is opt-in for the same reason as `unapprovePhase`: Ari's revert is transient and does not ask the maker for anything. */
-export async function reopenPhase(
+async function reopenPhase(
 	themeProjectId: string,
 	phase: Phase,
 	adminId: string | null,
@@ -683,4 +683,18 @@ export async function reopenPhase(
 		targetId: themeProjectId,
 		targetType: "ThemeProject",
 	})
+}
+
+export {
+	type ClaimResult,
+	claimSubmission,
+	type FinalizeInput,
+	type FinalizeOutcome,
+	finalizeReview,
+	RETURN_EXTENSION_MS,
+	releaseClaim,
+	reopenPhase,
+	returnExtensionUntil,
+	sweepExpiredClaims,
+	unapprovePhase,
 }

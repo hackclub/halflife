@@ -30,7 +30,7 @@ function weekOfKey(key: string): number | null {
  *
  * A warm-up's reel has no week to read a phase from, so it is named without one rather than guessed at – "your progress reel" is true; "your 15h progress reel" might not be.
  */
-export function reelNameForKey(key: string): string {
+function reelNameForKey(key: string): string {
 	const week = weekOfKey(key)
 	const slot = /-reel-(.+)$/.exec(key)?.[1]
 	const progress = slot && /^\d+$/.test(slot)
@@ -49,7 +49,7 @@ export function reelNameForKey(key: string): string {
 /**
  * Whether a checkpoint reel's week still lets its reels change. Null when it does; otherwise the reason, phrased for the maker.
  */
-export async function reelLockReason(
+async function reelLockReason(
 	userId: string,
 	themeProjectId: string | null,
 	checkpointKey: string,
@@ -71,7 +71,7 @@ export async function reelLockReason(
 }
 
 /** The reel checkpoints this maker deleted and has not re-recorded yet. */
-export async function getOwedReelKeys(userId: string): Promise<string[]> {
+async function getOwedReelKeys(userId: string): Promise<string[]> {
 	const deleted = await prisma.post.findMany({
 		select: { checkpointKey: true, themeProjectId: true },
 		where: { checkpointKey: { not: null }, deletedAt: { not: null }, status: PostStatus.REMOVED, userId },
@@ -98,7 +98,7 @@ export async function getOwedReelKeys(userId: string): Promise<string[]> {
 /**
  * Refuse work while a deleted reel is owed. `checkpointKey` is the reel being posted, if this is a reel: re-recording an owed one is the way out, so that one – and only that one – goes through.
  */
-export async function assertNoOwedReel(userId: string, checkpointKey?: string | null): Promise<void> {
+async function assertNoOwedReel(userId: string, checkpointKey?: string | null): Promise<void> {
 	const owed = await getOwedReelKeys(userId)
 	if (owed.length === 0) return
 	if (checkpointKey && owed.includes(checkpointKey)) return
@@ -108,3 +108,5 @@ export async function assertNoOwedReel(userId: string, checkpointKey?: string | 
 		`Re-record ${reelNameForKey(first)} first. You deleted it, and the rest of the map waits until it is back.`,
 	)
 }
+
+export { assertNoOwedReel, getOwedReelKeys, reelLockReason, reelNameForKey }

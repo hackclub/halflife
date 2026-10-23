@@ -14,7 +14,7 @@ import { trackSideEffect } from "@/lib/side-effects"
  */
 
 /** Close a dispute with the decision left standing. Changes no state beyond the dispute. */
-export async function closeDispute(disputeId: string, reviewerId: string, reviewerEmail: string | null): Promise<void> {
+async function closeDispute(disputeId: string, reviewerId: string, reviewerEmail: string | null): Promise<void> {
 	const closed = await prisma.reviewDispute.updateMany({
 		data: { outcome: ReviewDisputeOutcome.stood, resolvedAt: new Date(), resolvedById: reviewerId },
 		where: { id: disputeId, resolvedAt: null },
@@ -38,7 +38,7 @@ export async function closeDispute(disputeId: string, reviewerId: string, review
  *
  * Refused once the phase has moved on: a decision that has since been re-reviewed or a maker who has resubmitted leaves nothing coherent to send back.
  */
-export async function sendDisputedPhaseBack(
+async function sendDisputedPhaseBack(
 	disputeId: string,
 	reviewerId: string,
 	reviewerEmail: string | null,
@@ -126,3 +126,5 @@ export async function sendDisputedPhaseBack(
 		() => sendSubmissionToAri(themeProjectId, phase),
 	)
 }
+
+export { closeDispute, sendDisputedPhaseBack }

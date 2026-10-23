@@ -15,7 +15,7 @@ import icepiPhoto from "../../../public/projects/icepi.png"
 import jukeboxPhoto from "../../../public/projects/jukebox.png"
 import macropadPhoto from "../../../public/projects/macropad.png"
 
-export const BRAND = {
+const BRAND = {
 	/**
 	 * Under the email field. The one line here that is not the comp's: it was asked for directly, and it is the two things someone hesitating over the field wants settled before they type. Lowercase to match the tagline above it; en dash because 13-18 is a range.
 	 */
@@ -24,7 +24,7 @@ export const BRAND = {
 	tagline: "become a hardware expert in 10 weeks, get a 3D printer",
 } as const
 
-export interface DesignWeek {
+interface DesignWeek {
 	/**
 	 * The artwork behind this pairing, as a path under `public/`. Optional on the same terms as a `BuildCard`'s photo: a week without one falls back to the drawn slot, so the five fill in one week at a time. Both layouts read it from here, so a new picture lands on the stage and in the stacked column from one edit.
 	 *
@@ -36,7 +36,7 @@ export interface DesignWeek {
 }
 
 /** Week 1 leads at display scale; weeks 2-5 sit beneath it. */
-export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
+const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
 	lead: { art: "/art/weeks/PCB.png", subject: "PCBs", week: "week 1" },
 	rest: [
 		{ art: "/art/weeks/cad.png", subject: "CAD", week: "week 2" },
@@ -50,7 +50,7 @@ export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
 	],
 }
 
-export interface Step {
+interface Step {
 	/**
 	 * The step's artwork, on the same terms as a `DesignWeek`'s `art` and a `BuildCard`'s `photo`: an optional path, with `slot` drawn as the fallback
 	 * while a step is still waiting for its picture. `slot` stays on a step that
@@ -67,7 +67,7 @@ export interface Step {
 /** Exactly four, in comp order: design, funding, build, printer. The
  * arity is load-bearing – `process.tsx` destructures these positionally
  *  and gives each one its own plate. */
-export const STEPS: [Step, Step, Step, Step] = [
+const STEPS: [Step, Step, Step, Step] = [
 	{
 		art: allWeeksArt,
 		id: "design",
@@ -94,14 +94,14 @@ export const STEPS: [Step, Step, Step, Step] = [
 	},
 ]
 
-export interface Aside {
+interface Aside {
 	body: string
 	id: string
 	title: string
 }
 
 /** Exactly two; each is placed at its own offset on the process band. */
-export const ASIDES: [Aside, Aside] = [
+const ASIDES: [Aside, Aside] = [
 	{
 		body: "Make videos, posts, and blogs about your Half Life projects! If they hit our virality threshold, you'll earn extra prizes like plushies, drawing tablets, and iPads!",
 		id: "viral",
@@ -114,7 +114,7 @@ export const ASIDES: [Aside, Aside] = [
 	},
 ]
 
-export interface BuildCard {
+interface BuildCard {
 	credit: string
 	id: string
 	/** Names the project. Not drawn -- it is the photograph's alt text. */
@@ -131,7 +131,7 @@ export interface BuildCard {
 	slot: { label: string; ratio: string }
 }
 
-export const BUILD_CARDS: BuildCard[] = [
+const BUILD_CARDS: BuildCard[] = [
 	{
 		credit: "by Joshua, 18, from Quebec",
 		id: "hexapod",
@@ -174,12 +174,12 @@ export const BUILD_CARDS: BuildCard[] = [
 	},
 ]
 
-export interface Faq {
+interface Faq {
 	a: string
 	q: string
 }
 
-export const FAQS: Faq[] = [
+const FAQS: Faq[] = [
 	{
 		a: "Half Life is for teenagers 13-18 (inclusive)! Whether you've never touched hardware before or you're a multiplexing master, Half Life is your place to become a well-rounded hardware expert.",
 		q: "Who is this for?",
@@ -209,7 +209,7 @@ export const FAQS: Faq[] = [
 /**
  * The one group shot under "here's what you'll make!" – every project in a single frame, where the comp scattered five separate prints. The art is not shipped; the hero shows its themed stand-ins instead.
  */
-export const FOOTER_COLUMNS = [
+const FOOTER_COLUMNS = [
 	{
 		heading: "Half Life",
 		links: [
@@ -237,3 +237,18 @@ export const FOOTER_COLUMNS = [
 		],
 	},
 ] as const
+
+export {
+	ASIDES,
+	type Aside,
+	BRAND,
+	BUILD_CARDS,
+	type BuildCard,
+	DESIGN_WEEKS,
+	type DesignWeek,
+	FAQS,
+	type Faq,
+	FOOTER_COLUMNS,
+	STEPS,
+	type Step,
+}

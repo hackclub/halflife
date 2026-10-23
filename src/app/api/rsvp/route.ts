@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { headers } from "next/headers"
 import { bufferRsvp, getRsvpCount } from "@/lib/airtable/rsvp"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"

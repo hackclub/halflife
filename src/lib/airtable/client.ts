@@ -67,7 +67,7 @@ async function throttle(): Promise<void> {
  *
  * `retryServerErrors` is for non-idempotent calls: a 5xx or a timeout can arrive after Airtable committed the write, so retrying a create duplicates the row. A 429 is always safe – the request was never processed.
  */
-export async function withRateLimitRetry<T>(
+async function withRateLimitRetry<T>(
 	operation: string,
 	fn: () => Promise<T>,
 	opts: { maxAttempts?: number; baseSleepMs?: number; retryServerErrors?: boolean } = {},
@@ -93,7 +93,7 @@ export async function withRateLimitRetry<T>(
 		}
 }
 
-export async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {
+async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {
 	const headers = new Headers({
 		Authorization: `Bearer ${config.apiKey}`,
 		"Content-Type": "application/json",
@@ -113,18 +113,26 @@ export async function airtableFetch<T>(config: AirtableConfig, path: string, ini
 	return (await res.json()) as T
 }
 
-export interface AirtableRecord {
+interface AirtableRecord {
 	createdTime?: string
 	fields: { [_: string]: unknown }
 	id: string
 }
 
 /** Chunk into batches of 10, Airtable's per-request record limit. */
-export function chunk<T>(items: T[], size = 10): T[][] {
+function chunk<T>(items: T[], size = 10): T[][] {
 	const out: T[][] = []
 	for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
 	return out
 }
 
-export type { AirtableConfig }
-export { AirtableError, escapeAirtableValue, getAirtableConfig }
+export {
+	type AirtableConfig,
+	AirtableError,
+	type AirtableRecord,
+	airtableFetch,
+	chunk,
+	escapeAirtableValue,
+	getAirtableConfig,
+	withRateLimitRetry,
+}

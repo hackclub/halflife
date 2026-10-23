@@ -1186,7 +1186,7 @@ async function writeStatusReviewNote(input: {
  *
  * Read-only unless `commit`, so a run reports what it would repair. This is a one-off for the decisions applied before the status response carried a review; `reconcileAriDecisions` keeps new ones correct on its own.
  */
-export async function repairStatusDecisions(opts: { commit?: boolean; limit?: number } = {}): Promise<RepairSummary> {
+async function repairStatusDecisions(opts: { commit?: boolean; limit?: number } = {}): Promise<RepairSummary> {
 	const summary: RepairSummary = { checked: 0, failed: 0, quiet: 0, repaired: 0, skipped: 0, standing: 0 }
 	if (!isAriConfigured()) return summary
 
@@ -1259,7 +1259,6 @@ export async function repairStatusDecisions(opts: { commit?: boolean; limit?: nu
 // Re-exported so callers can treat the Ari integration as one module.
 export { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 
-export type { ReconcileSummary, RepairSummary }
 export {
 	applyAriWebhook,
 	applyStoredEvent,
@@ -1269,7 +1268,10 @@ export {
 	isAriConfigured,
 	isAriWebhookConfigured,
 	isWordlessJournal,
+	type ReconcileSummary,
+	type RepairSummary,
 	reconcileAriDecisions,
+	repairStatusDecisions,
 	sendSubmissionToAri,
 	withdrawSubmissionFromAri,
 }

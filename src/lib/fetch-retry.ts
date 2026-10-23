@@ -55,7 +55,7 @@ async function boundedBody(res: Response): Promise<ArrayBuffer | null> {
  *
  * Resolves to the final `Response` for any status the server chose, including a 4xx and a 5xx that survived every retry – a non-2xx is a finding the caller decides about, not an exception. Throws when there is genuinely no answer to be had, with a message naming the endpoint.
  */
-export async function fetchWithRetry(url: string | URL, options: FetchRetryOptions = {}): Promise<Response> {
+async function fetchWithRetry(url: string | URL, options: FetchRetryOptions = {}): Promise<Response> {
 	const retries = options.retries ?? RETRY_DELAYS_MS.length
 	// `retries` is not a RequestInit field; strip it before handing the rest to fetch, which would otherwise be told about an option it does not know.
 	const init: RequestInit = { ...options }
@@ -87,5 +87,4 @@ export async function fetchWithRetry(url: string | URL, options: FetchRetryOptio
 	throw new Error(`No answer from ${url}: ${lastError instanceof Error ? lastError.message : String(lastError)}`)
 }
 
-export type { FetchRetryOptions }
-export { RETRY_DELAYS_MS }
+export { type FetchRetryOptions, fetchWithRetry, RETRY_DELAYS_MS }

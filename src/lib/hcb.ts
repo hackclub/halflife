@@ -136,7 +136,7 @@ function readOwnerEmail(user: { email?: string | null } | null | undefined): str
 	return trimmed.length > 0 ? trimmed : null
 }
 
-export async function topUpCardGrant(grantHashid: string, amountCents: number): Promise<TopUpResult> {
+async function topUpCardGrant(grantHashid: string, amountCents: number): Promise<TopUpResult> {
 	const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}/topup?expand=disbursements,user`, {
 		body: JSON.stringify({ amount_cents: amountCents }),
 		headers: { "content-type": "application/json" },
@@ -162,12 +162,12 @@ export async function topUpCardGrant(grantHashid: string, amountCents: number): 
  *
  * Read before a payment rather than after: the top-up moves the money as it answers, so a grant that belongs to somebody else has to be caught before it is paid, not noticed once it has been.
  */
-export interface CardGrantOwner {
+interface CardGrantOwner {
 	/** The owner's email, or null when HCB would not render one. */
 	email: string | null
 }
 
-export async function readCardGrantOwner(grantHashid: string): Promise<CardGrantOwner> {
+async function readCardGrantOwner(grantHashid: string): Promise<CardGrantOwner> {
 	const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=user`)
 	if (!res.ok) {
 		const body = await res.text().catch(() => "")
@@ -177,7 +177,7 @@ export async function readCardGrantOwner(grantHashid: string): Promise<CardGrant
 	return { email: readOwnerEmail(data?.user) }
 }
 
-export interface GrantDisbursement {
+interface GrantDisbursement {
 	/** Every HCB disbursement carries an amount; a row without one is not trusted. */
 	amountCents: number
 	/** ISO timestamp HCB recorded the disbursement at. */
@@ -191,14 +191,14 @@ export interface GrantDisbursement {
  *
  * `unreadable` is not the same as an empty list: an unexpected payload shape (an envelope, a renamed field, a string amount) must never be mistaken for "the previous attempt paid nothing", because that is the state in which a retry sends the money again.
  */
-export type GrantDisbursementList = { kind: "listed"; rows: GrantDisbursement[] } | { kind: "unreadable" }
+type GrantDisbursementList = { kind: "listed"; rows: GrantDisbursement[] } | { kind: "unreadable" }
 
 /**
  * Every disbursement on a card grant, newest first: top-ups land as positive amounts, withdrawals as negative.
  *
  * No pagination: a grant only accumulates one row per top-up/withdrawal, and this exists to spot a top-up whose response was lost before deciding whether to send another. Fails closed on any shape it does not recognise – see `GrantDisbursementList`.
  */
-export async function listCardGrantDisbursements(grantHashid: string): Promise<GrantDisbursementList> {
+async function listCardGrantDisbursements(grantHashid: string): Promise<GrantDisbursementList> {
 	const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=disbursements`)
 	if (!res.ok) {
 		const body = await res.text().catch(() => "")
@@ -225,14 +225,14 @@ export async function listCardGrantDisbursements(grantHashid: string): Promise<G
 }
 
 /** Allowance for clock skew between our attempt time and HCB's record. */
-export const TOPUP_SKEW_MS = 5 * 60_000
+const TOPUP_SKEW_MS = 5 * 60_000
 
 /**
  * Decide whether a top-up whose response was lost actually landed.
  *
  * A single disbursement matching the amount at or after the attempt is evidence it did. Several in the window, a candidate with no usable timestamp, or a payload that could not be read at all is not something to guess about: an unnecessary retry pays twice, and a skipped one underpays, so ambiguity goes back to a human.
  */
-export function reconcileDisbursement(
+function reconcileDisbursement(
 	list: GrantDisbursementList,
 	amountCents: number,
 	attemptedAt: Date,
@@ -258,7 +258,7 @@ export function reconcileDisbursement(
 }
 
 /** Name the resulting transaction, so the org's books say why the money moved. */
-export async function memoTransaction(transactionId: string, memo: string): Promise<void> {
+async function memoTransaction(transactionId: string, memo: string): Promise<void> {
 	const slug = process.env.HCB_ORG_SLUG
 	if (!slug) throw new HttpError("NOT_CONFIGURED", "HCB_ORG_SLUG is not set")
 	const res = await hcbFetch(
@@ -272,5 +272,18 @@ export async function memoTransaction(transactionId: string, memo: string): Prom
 	if (!res.ok) throw new HttpError("INTERNAL", `HCB memo update failed (${res.status})`)
 }
 
-export type { TopUpResult }
-export { isHcbConfigured, parseGrantHashid, verifiesGrantOwner }
+export {
+	type CardGrantOwner,
+	type GrantDisbursement,
+	type GrantDisbursementList,
+	isHcbConfigured,
+	listCardGrantDisbursements,
+	memoTransaction,
+	parseGrantHashid,
+	readCardGrantOwner,
+	reconcileDisbursement,
+	TOPUP_SKEW_MS,
+	type TopUpResult,
+	topUpCardGrant,
+	verifiesGrantOwner,
+}

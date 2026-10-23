@@ -131,17 +131,17 @@ function zoneOffsetMs(at: number, timeZone: string): number {
 /**
  * When a week closes for one participant's project: its scheduled close, or later if either extension column says so. The same two overrides that reopen submissions reopen a passed week, so an admin granting more time has one lever to pull rather than two.
  */
-export function effectiveWeekClose(closesAt: Date, ...extensions: (Date | null | undefined)[]): Date {
+function effectiveWeekClose(closesAt: Date, ...extensions: (Date | null | undefined)[]): Date {
 	return extensions.reduce<Date>((latest, ext) => (ext && ext > latest ? ext : latest), closesAt)
 }
 
-export const WEEK_CLOSED_MESSAGE =
+const WEEK_CLOSED_MESSAGE =
 	"This week has passed! Submit what you have. If you need more time, ask in the Slack channel."
 
 /**
  * Whether work can still be logged against a project's week. Passed weeks can still be submitted – that is the whole point of closing them – but not added to, edited or trimmed.
  */
-export async function isWeekOpen(userId: string, themeProjectId: string, week: number): Promise<boolean> {
+async function isWeekOpen(userId: string, themeProjectId: string, week: number): Promise<boolean> {
 	const [settings, user, project] = await Promise.all([
 		getProgramSettings(),
 		prisma.user.findUnique({
@@ -161,12 +161,12 @@ export async function isWeekOpen(userId: string, themeProjectId: string, week: n
 	return new Date() < closesAt
 }
 
-export async function currentWeekNumber(): Promise<number> {
+async function currentWeekNumber(): Promise<number> {
 	const settings = await getProgramSettings()
 	return weekNumberForDate(settings.eventStartDate, new Date(), settings.programTimezone)
 }
 
-export function formatProgramDate(date: Date, timeZone: string): string {
+function formatProgramDate(date: Date, timeZone: string): string {
 	return date.toLocaleDateString("en-US", {
 		day: "numeric",
 		month: "long",
@@ -177,9 +177,9 @@ export function formatProgramDate(date: Date, timeZone: string): string {
 
 // ─── Access gates ────────────────────────────────────────────────────────────
 
-export type SubmissionAccessReason = "OPEN" | "USER_EXTENSION" | "PROJECT_EXTENSION" | "CLOSED" | "NOT_STARTED"
+type SubmissionAccessReason = "OPEN" | "USER_EXTENSION" | "PROJECT_EXTENSION" | "CLOSED" | "NOT_STARTED"
 
-export interface SubmissionAccess {
+interface SubmissionAccess {
 	closesAt: Date | null
 	extensionUntil: Date | null
 	open: boolean
@@ -191,7 +191,7 @@ export interface SubmissionAccess {
  *
  * Two levels of override, both as columns rather than manual database surgery: a per-user one covering everything they do, and a per-project one. Either being in the future opens the gate.
  */
-export async function getSubmissionAccess(userId: string, themeProjectId?: string): Promise<SubmissionAccess> {
+async function getSubmissionAccess(userId: string, themeProjectId?: string): Promise<SubmissionAccess> {
 	const now = new Date()
 	const [settings, user, project] = await Promise.all([
 		getProgramSettings(),
@@ -244,11 +244,11 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 	}
 }
 
-export const SUBMISSIONS_CLOSED_MESSAGE = "Submissions are closed. If you need an extension, ask in the Slack channel."
+const SUBMISSIONS_CLOSED_MESSAGE = "Submissions are closed. If you need an extension, ask in the Slack channel."
 
-export type ShopAccessReason = "OPEN" | "PENDING_REVIEW" | "GRACE_PERIOD" | "CLOSED"
+type ShopAccessReason = "OPEN" | "PENDING_REVIEW" | "GRACE_PERIOD" | "CLOSED"
 
-export interface ShopAccess {
+interface ShopAccess {
 	closesAt: Date | null
 	graceUntil: Date | null
 	open: boolean
@@ -260,13 +260,13 @@ export interface ShopAccess {
  *
  * The shop stays open while anything is awaiting review, and for a grace window after the latest review. Pure, so the purchase transaction can ask the same question of the rows it just read instead of re-deriving the rule next to the money.
  */
-export interface ShopGraceState {
+interface ShopGraceState {
 	awaitingReview: number
 	buildReviewedAt: Date | null
 	designReviewedAt: Date | null
 }
 
-export function shopGraceAccess(
+function shopGraceAccess(
 	settings: { shopGraceDays: number },
 	state: ShopGraceState,
 	now: Date = new Date(),
@@ -286,7 +286,7 @@ export function shopGraceAccess(
 /**
  * The shop stays open past its close date for anyone with work still in the queue, and for a grace window after their last review – otherwise credit awarded at the buzzer is unspendable through no fault of the participant.
  */
-export async function getShopAccess(userId: string): Promise<ShopAccess> {
+async function getShopAccess(userId: string): Promise<ShopAccess> {
 	const now = new Date()
 	const settings = await getProgramSettings()
 
@@ -326,7 +326,7 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 	}
 }
 
-export const SHOP_CLOSED_MESSAGE =
+const SHOP_CLOSED_MESSAGE =
 	"The shop is closed. It stays open while you have work awaiting review, and for a short window after your last review."
 
 /**
@@ -334,7 +334,7 @@ export const SHOP_CLOSED_MESSAGE =
  *
  * `in_review` is a separate, softer lock: that one is released by the participant unsubmitting, so it is checked apart from this.
  */
-export function isPhaseDecided(status: PhaseStatus): boolean {
+function isPhaseDecided(status: PhaseStatus): boolean {
 	return status === PhaseStatus.approved || status === PhaseStatus.rejected
 }
 
@@ -343,14 +343,14 @@ export function isPhaseDecided(status: PhaseStatus): boolean {
  *
  * A decided phase is frozen everywhere else too – its entries, its parts list and its tier are the record the decision was made against – so the title, description, repo link, cover and artifact links cannot change under it either.
  */
-export const FROZEN_PHASE_STATUSES: PhaseStatus[] = [PhaseStatus.in_review, PhaseStatus.approved, PhaseStatus.rejected]
+const FROZEN_PHASE_STATUSES: PhaseStatus[] = [PhaseStatus.in_review, PhaseStatus.approved, PhaseStatus.rejected]
 
 /**
  * Why a project's own details cannot change right now, or null when they can.
  *
  * One place, so the route that refuses the edit and the page that says so cannot disagree about which phases are frozen.
  */
-export function projectEditLockReason(project: { buildStatus: PhaseStatus; designStatus: PhaseStatus }): string | null {
+function projectEditLockReason(project: { buildStatus: PhaseStatus; designStatus: PhaseStatus }): string | null {
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return "In review, so it can't be edited. Unsubmit to change it"
 	if (isPhaseDecided(project.designStatus) || isPhaseDecided(project.buildStatus))
@@ -363,10 +363,29 @@ export function projectEditLockReason(project: { buildStatus: PhaseStatus; desig
  */
 export { isTimeZone } from "@/lib/schemas/common"
 export { effectiveDateFor } from "@/lib/time"
+
 export {
 	assertWeekStarted,
+	currentWeekNumber,
+	effectiveWeekClose,
+	FROZEN_PHASE_STATUSES,
+	formatProgramDate,
 	getProgramSettings,
+	getShopAccess,
+	getSubmissionAccess,
+	isPhaseDecided,
+	isWeekOpen,
+	projectEditLockReason,
+	SHOP_CLOSED_MESSAGE,
+	type ShopAccess,
+	type ShopAccessReason,
+	type ShopGraceState,
+	SUBMISSIONS_CLOSED_MESSAGE,
+	type SubmissionAccess,
+	type SubmissionAccessReason,
+	shopGraceAccess,
 	startOfDay,
+	WEEK_CLOSED_MESSAGE,
 	weekClosesAt,
 	weekDateRange,
 	weekNumberForDate,

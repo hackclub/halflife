@@ -5,9 +5,7 @@ import type { AuditAction } from "@/app/generated/prisma/enums"
 import { clientIp } from "@/lib/client-ip"
 import prisma from "@/lib/prisma"
 
-export { AuditAction } from "@/app/generated/prisma/enums"
-
-export interface AuditInput {
+interface AuditInput {
 	action: AuditAction
 	actorEmail?: string | null
 	actorId?: string | null
@@ -25,7 +23,7 @@ export interface AuditInput {
  * Exported because `logAuditTx` cannot read them itself: it joins a transaction, and `headers()` is
  * request-scoped, so the caller has to resolve them here and pass them in.
  */
-export async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
+async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
 	try {
 		const h = await headers()
 		const ip = clientIp(h)
@@ -39,7 +37,7 @@ export async function requestInfo(): Promise<{ ip: string | null; userAgent: str
 /**
  * Best-effort by design: an audit write must never fail the user's request. It logs loudly instead, so a broken audit trail is discoverable rather than silent.
  */
-export async function logAudit(input: AuditInput): Promise<void> {
+async function logAudit(input: AuditInput): Promise<void> {
 	try {
 		const { ip, userAgent } = await requestInfo()
 		await prisma.auditLog.create({
@@ -62,7 +60,7 @@ export async function logAudit(input: AuditInput): Promise<void> {
 /**
  * Audit write that participates in a transaction. Use this only when correctness depends on the log landing with the mutation (credit grants, role changes); everything else should use logAudit so a slow insert doesn't hold a row lock.
  */
-export async function logAuditTx(
+async function logAuditTx(
 	tx: Prisma.TransactionClient,
 	input: AuditInput & { ip?: string | null; userAgent?: string | null },
 ): Promise<void> {
@@ -79,3 +77,6 @@ export async function logAuditTx(
 		},
 	})
 }
+
+export { AuditAction } from "@/app/generated/prisma/enums"
+export { type AuditInput, logAudit, logAuditTx, requestInfo }

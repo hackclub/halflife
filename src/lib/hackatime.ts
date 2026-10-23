@@ -26,7 +26,7 @@ interface StatsBody {
  *
  * Pure so the contract can be pinned without a network: a project that is present with zero seconds is the ONLY live zero. A name missing from a successfully fetched list means the project was renamed or deleted, and reporting zero for it would silently underpay the hand-in the number is about. A response with no usable project list is stale too – a shape change must not look like "nothing logged".
  */
-export function projectSecondsFrom(body: unknown, project: string): HackatimeFetch {
+function projectSecondsFrom(body: unknown, project: string): HackatimeFetch {
 	const projects = (body as StatsBody | null)?.data?.projects
 	if (!Array.isArray(projects)) return { error: "Hackatime returned no project list", seconds: 0, stale: true }
 
@@ -49,7 +49,7 @@ export function projectSecondsFrom(body: unknown, project: string): HackatimeFet
  *
  * Stasis's client returns 0 on any error including a timeout, and that zero flows straight into the hours field on the grant row with no signal. A blip during an approval silently underpays someone. Here the caller can tell the difference between "genuinely zero" and "we don't know", and the approval path refuses to finalise on "we don't know".
  */
-export async function fetchProjectSeconds(hackatimeUserId: string, project: string): Promise<HackatimeFetch> {
+async function fetchProjectSeconds(hackatimeUserId: string, project: string): Promise<HackatimeFetch> {
 	try {
 		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
 		url.searchParams.set("features", "projects")
@@ -72,7 +72,7 @@ export async function fetchProjectSeconds(hackatimeUserId: string, project: stri
  *
  * Malformed rows are dropped rather than failing the whole read: one bad span should cost that span, not the participant's hours. Times are seconds.
  */
-export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boolean; error?: string } {
+function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boolean; error?: string } {
 	const raw = (body as { spans?: unknown } | null)?.spans
 	if (!Array.isArray(raw)) return { error: "Hackatime returned no spans", spans: [], stale: true }
 
@@ -103,7 +103,7 @@ export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boole
  *
  * Unauthenticated on purpose, like `fetchProjectSeconds`: Hackatime serves these public-stats lookups to anyone while a participant has public stats enabled (the default), and the alternative is asking every maker to hand us a token we would then have to store and refresh.
  */
-export async function fetchProjectSpans(
+async function fetchProjectSpans(
 	hackatimeUserId: string,
 	project: string,
 	window: { fromSeconds: number; toSeconds: number },
@@ -127,7 +127,7 @@ export async function fetchProjectSpans(
 	}
 }
 
-export async function listUserProjects(hackatimeUserId: string): Promise<{ name: string; totalSeconds: number }[]> {
+async function listUserProjects(hackatimeUserId: string): Promise<{ name: string; totalSeconds: number }[]> {
 	try {
 		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
 		url.searchParams.set("features", "projects")
@@ -146,7 +146,7 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 }
 
 /** Refresh one link's cached total. Used by the sync job and on demand. */
-export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> {
+async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> {
 	const link = await prisma.hackatimeLink.findUnique({
 		include: { themeProject: { select: { user: { select: { hackatimeUserId: true } } } } },
 		where: { id: linkId },
@@ -174,4 +174,12 @@ export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> 
 	return result
 }
 
-export type { HackatimeFetch }
+export {
+	fetchProjectSeconds,
+	fetchProjectSpans,
+	type HackatimeFetch,
+	listUserProjects,
+	projectSecondsFrom,
+	refreshLinkCache,
+	spansFrom,
+}

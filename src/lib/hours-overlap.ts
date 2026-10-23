@@ -19,7 +19,7 @@
  * A type alias rather than an interface on purpose, for the same reason `CoinSplit` is one in hours.ts: these get written into Prisma's JSON columns, and `InputJsonValue` only accepts types with an implicit index signature, which interfaces do not have.
  */
 // oxlint-disable-next-line typescript/consistent-type-definitions
-export type Interval = {
+type Interval = {
 	start: number
 	end: number
 }
@@ -27,14 +27,14 @@ export type Interval = {
 /**
  * A Hackatime span is one of these. Named so call sites say what they hold – a cached `HackatimeSpan[]` on a link reads as tracked intervals, where an `Interval[]` reads as arithmetic.
  */
-export type HackatimeSpan = Interval
+type HackatimeSpan = Interval
 
 /**
  * Collapse a set of intervals into the smallest equivalent set of disjoint, ascending intervals.
  *
  * Timelapses and Hackatime spans both arrive as lists that can touch or overlap each other – two recordings made back to back, a span straddling a break. The union is taken first so an overlap is never counted twice merely because two windows described the same minute, and so the intersection below can walk both sides in one pass. Zero-length and backwards intervals are dropped: they are not time anybody spent.
  */
-export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
+function mergeIntervals(intervals: readonly Interval[]): Interval[] {
 	const clean: Interval[] = intervals
 		.filter(i => Number.isFinite(i?.start) && Number.isFinite(i?.end) && (i?.end ?? 0) > (i?.start ?? 0))
 		.map(i => ({ end: i.end, start: i.start }))
@@ -58,7 +58,7 @@ export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
  *
  * Both sides are merged first, so the answer is the size of the intersection of the two unions, counted once however many windows happened to describe it. Zero is the honest answer for "these two sets never touch", which is the common case: most people track with one tool or the other.
  */
-export function overlapSeconds(first: readonly Interval[], second: readonly Interval[]): number {
+function overlapSeconds(first: readonly Interval[], second: readonly Interval[]): number {
 	const left = mergeIntervals(first)
 	const right = mergeIntervals(second)
 	if (left.length === 0 || right.length === 0) return 0
@@ -87,7 +87,7 @@ export function overlapSeconds(first: readonly Interval[], second: readonly Inte
  *
  * Hackatime's spans carry up to two minutes of padding after a gap that ends a span, so the spans of a project can add up to more than the project total the stats endpoint reports. Subtracting the overlap uncapped would drive a link's hours negative, and a negative hour is worse than a duplicated one: it is a number nobody can explain on a review.
  */
-export function capSubtraction(availableSeconds: number, overlap: number): number {
+function capSubtraction(availableSeconds: number, overlap: number): number {
 	const available = Number.isFinite(availableSeconds) ? Math.max(0, availableSeconds) : 0
 	const wanted = Number.isFinite(overlap) ? Math.max(0, overlap) : 0
 	return Math.min(available, wanted)
@@ -98,7 +98,7 @@ export function capSubtraction(availableSeconds: number, overlap: number): numbe
  *
  * Lapse's `createdAt` is epoch MILLIseconds and its duration is wall-clock seconds, so the start is scaled and the two added. Null when the start was never stored: without it there is no window to intersect, and inventing one from the row's own createdAt (when the clip was ATTACHED, which can be days later) would subtract somebody's Hackatime time for a sitting in the wrong week.
  */
-export function timelapseWindow(recordedAtMs: number | Date | null, coveredSeconds: number | null): Interval | null {
+function timelapseWindow(recordedAtMs: number | Date | null, coveredSeconds: number | null): Interval | null {
 	if (recordedAtMs === null || recordedAtMs === undefined) return null
 	const start = recordedAtMs instanceof Date ? recordedAtMs.getTime() : recordedAtMs
 	if (!Number.isFinite(start) || start < 0) return null
@@ -114,7 +114,7 @@ export function timelapseWindow(recordedAtMs: number | Date | null, coveredSecon
  *
  * The bounds are stored with the data because a bare list of spans cannot say what period it covers – and a cached answer to a NARROWER question than the one being asked is not an answer at all. Asked to check an overlap outside the window it was fetched for, the caller must refetch rather than conclude "no overlap" from spans that simply never covered those minutes.
  */
-export interface CachedSpans {
+interface CachedSpans {
 	from: number
 	spans: Interval[]
 	to: number
@@ -125,7 +125,7 @@ export interface CachedSpans {
  *
  * Strict on purpose. A shape this does not recognise is treated as no cache, which costs one refetch, rather than parsed leniently into spans that might overlap the wrong hours.
  */
-export function parseCachedSpans(value: unknown): CachedSpans | null {
+function parseCachedSpans(value: unknown): CachedSpans | null {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return null
 	const raw = value as { from?: unknown; to?: unknown; spans?: unknown }
 	if (typeof raw.from !== "number" || typeof raw.to !== "number" || !Array.isArray(raw.spans)) return null
@@ -142,7 +142,7 @@ export function parseCachedSpans(value: unknown): CachedSpans | null {
 }
 
 /** Whether a cached answer covers the window it is being used for. */
-export function cachedSpansCover(cached: CachedSpans, from: number, to: number): boolean {
+function cachedSpansCover(cached: CachedSpans, from: number, to: number): boolean {
 	return cached.from <= from && cached.to >= to
 }
 
@@ -151,7 +151,7 @@ export function cachedSpansCover(cached: CachedSpans, from: number, to: number):
  *
  * The window alone cannot say which link it belongs to. A clip attached to a journal entry in one week can carry tracked time that was linked on another week's project, and the projection that pairs the two is the recording's own `hackatimeProject` – stored at attach time for exactly this.
  */
-export interface RecordedWindow {
+interface RecordedWindow {
 	hackatimeProject: string | null
 	window: Interval
 }
@@ -166,7 +166,7 @@ export interface RecordedWindow {
  *
  * A recording that names a different project is deliberately left out of the second set. It may still intersect this link's spans by coincidence, but the maker told us which project was being tracked while it ran, and subtracting against the wrong one is an underpayment dressed up as deduplication.
  */
-export function windowsForLink(
+function windowsForLink(
 	ownPhase: readonly Interval[],
 	elsewhere: readonly RecordedWindow[],
 	hackatimeProject: string,
@@ -180,7 +180,7 @@ export function windowsForLink(
 /**
  * The window worth asking Hackatime about: the span of every recording window, with an hour of slack either side for clock disagreement between a laptop and Hackatime's servers. Anything outside this cannot overlap anything the journal claims, so it is not worth the response.
  */
-export function spanWindowFor(windows: readonly Interval[]): { fromSeconds: number; toSeconds: number } | null {
+function spanWindowFor(windows: readonly Interval[]): { fromSeconds: number; toSeconds: number } | null {
 	if (windows.length === 0) return null
 	let from = Number.POSITIVE_INFINITY
 	let to = Number.NEGATIVE_INFINITY
@@ -191,4 +191,19 @@ export function spanWindowFor(windows: readonly Interval[]): { fromSeconds: numb
 	if (!Number.isFinite(from) || !Number.isFinite(to)) return null
 	const slack = 3600
 	return { fromSeconds: Math.floor(from - slack), toSeconds: Math.ceil(to + slack) }
+}
+
+export {
+	type CachedSpans,
+	cachedSpansCover,
+	capSubtraction,
+	type HackatimeSpan,
+	type Interval,
+	mergeIntervals,
+	overlapSeconds,
+	parseCachedSpans,
+	type RecordedWindow,
+	spanWindowFor,
+	timelapseWindow,
+	windowsForLink,
 }

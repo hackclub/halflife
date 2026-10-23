@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"

@@ -6,15 +6,17 @@ import { Phase } from "@/app/generated/prisma/enums"
  * Leadership decided one Ari ship per (project, phase), so the id carries both: `<themeProjectId>:design` / `:build`. This is deliberately a pure module with no server imports, so `verify:contracts` can pin the format without loading the database layer.
  */
 
-export function ariExternalId(themeProjectId: string, phase: Phase): string {
+function ariExternalId(themeProjectId: string, phase: Phase): string {
 	return `${themeProjectId}:${phase === Phase.DESIGN ? "design" : "build"}`
 }
 
 /** The inverse of `ariExternalId`, or null for anything else. */
-export function parseAriExternalId(externalId: string): { themeProjectId: string; phase: Phase } | null {
+function parseAriExternalId(externalId: string): { themeProjectId: string; phase: Phase } | null {
 	const at = externalId.lastIndexOf(":")
 	if (at <= 0) return null
 	const suffix = externalId.slice(at + 1)
 	if (suffix !== "design" && suffix !== "build") return null
 	return { phase: suffix === "design" ? Phase.DESIGN : Phase.BUILD, themeProjectId: externalId.slice(0, at) }
 }
+
+export { ariExternalId, parseAriExternalId }

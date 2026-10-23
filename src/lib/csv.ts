@@ -20,7 +20,7 @@ function stripBom(text: string): string {
  *
  * Blank rows are dropped: spreadsheets pad the end with them, and they are never data.
  */
-export function parseCsvRecords(input: string): CsvRecord[] {
+function parseCsvRecords(input: string): CsvRecord[] {
 	const text = stripBom(input)
 	const out: CsvRecord[] = []
 	let fields: string[] = []
@@ -68,7 +68,7 @@ export function parseCsvRecords(input: string): CsvRecord[] {
 }
 
 /** The same records without the line bookkeeping, for a caller that only walks the cells. */
-export function parseCsvRows(input: string): string[][] {
+function parseCsvRows(input: string): string[][] {
 	return parseCsvRecords(input).map(record => record.fields)
 }
 
@@ -77,15 +77,15 @@ export function parseCsvRows(input: string): string[][] {
  *
  * A parts link is a query string, and those are full of commas – unquoted, a link lets a seventh cell into the row and every spreadsheet mis-parses it.
  */
-export function csvCell(value: string | number): string {
+function csvCell(value: string | number): string {
 	const text = String(value)
 	if (/[",\r\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`
 	return text
 }
 
 /** One row, cells quoted individually. */
-export function csvRow(cells: (string | number)[]): string {
+function csvRow(cells: (string | number)[]): string {
 	return cells.map(csvCell).join(",")
 }
 
-export type { CsvRecord }
+export { type CsvRecord, csvCell, csvRow, parseCsvRecords, parseCsvRows }

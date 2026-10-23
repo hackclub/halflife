@@ -60,7 +60,6 @@
 		"eslint/sort-imports": "off",
 		"eslint/sort-keys": "off",
 		"import/consistent-type-specifier-style": "off",
-		"import/group-exports": "off",
 		"import/max-dependencies": "off",
 		"import/no-duplicates": "error",
 		"import/no-named-as-default-member": "off",

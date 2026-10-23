@@ -27,11 +27,11 @@ function highlightCoins(text: string): string | React.ReactNode[] {
 	)
 }
 
-export function generateStaticParams() {
+function generateStaticParams() {
 	return DOCS.map(d => ({ slug: d.slug }))
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
 	const { slug } = await params
 	const doc = DOCS.find(d => d.slug === slug)
 	return { title: doc ? `${doc.title} – Half Life docs` : "Docs – Half Life" }
@@ -139,3 +139,5 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 		</div>
 	)
 }
+
+export { generateMetadata, generateStaticParams }

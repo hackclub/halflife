@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { ok, withRoute } from "@/lib/api"
 import { submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, THEMES, TOTAL_WEEKS } from "@/lib/config/program"

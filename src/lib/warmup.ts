@@ -13,13 +13,13 @@ import { getProgramSettings, weekClosesAt } from "@/lib/program"
  *
  * Made on the platform, that is the choice recorded at creation. Imported from Airtable there is no choice on the row, so it is whichever phase the import put in review – the build if that one has left draft, the design otherwise.
  */
-export function warmupPhaseOf(project: { warmupPhase: Phase | null; buildStatus: PhaseStatus }): Phase {
+function warmupPhaseOf(project: { warmupPhase: Phase | null; buildStatus: PhaseStatus }): Phase {
 	if (project.warmupPhase) return project.warmupPhase
 	return project.buildStatus !== PhaseStatus.draft ? Phase.BUILD : Phase.DESIGN
 }
 
 /** Whether a warm-up project can still be started, and when that stops. */
-export async function warmupCreationWindow(): Promise<{ open: boolean; closesAt: Date; closesOn: string }> {
+async function warmupCreationWindow(): Promise<{ open: boolean; closesAt: Date; closesOn: string }> {
 	const settings = await getProgramSettings()
 	const closesAt = weekClosesAt(settings, WARMUP_WEEK_ID)
 	return {
@@ -28,3 +28,5 @@ export async function warmupCreationWindow(): Promise<{ open: boolean; closesAt:
 		open: new Date() < closesAt,
 	}
 }
+
+export { warmupCreationWindow, warmupPhaseOf }

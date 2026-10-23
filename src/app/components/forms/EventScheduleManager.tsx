@@ -163,7 +163,7 @@ function RowTable({
 }
 
 /** Kept next to the tables it explains, so the note cannot describe the old one. */
-export function EventScheduleNote() {
+function EventScheduleNote() {
 	return (
 		<Callout tone="info">
 			Times are entered in your own timezone and shown to participants in theirs. A repeating event is written as
@@ -172,4 +172,4 @@ export function EventScheduleNote() {
 	)
 }
 
-export { EventScheduleManager }
+export { EventScheduleManager, EventScheduleNote }

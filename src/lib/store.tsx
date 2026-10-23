@@ -360,7 +360,7 @@ async function send(path: string, body: unknown, method: "DELETE" | "PATCH" | "P
 	}
 }
 
-export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot; children: ReactNode }) {
+function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot; children: ReactNode }) {
 	const router = useRouter()
 
 	// Server state as the starting point, patched locally while a write is in flight. Re-seeded from props during render rather than in an effect: an effect would paint one frame of stale data every time a refresh lands.
@@ -1586,13 +1586,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
 
-export function useStore(): Ctx {
+function useStore(): Ctx {
 	const ctx = useContext(StoreContext)
 	if (!ctx) throw new Error("useStore must be used inside StoreProvider")
 	return ctx
 }
 
-export interface PrinterPace {
+interface PrinterPace {
 	/**
 	 * Weeks before this one that closed without an approval, most recent first. Coins only come from an approved week, so these are coins nobody can earn back – which is the whole of the printer's fine print, and what both surfaces below need to say.
 	 */
@@ -1610,7 +1610,7 @@ export interface PrinterPace {
  *
  * Only a printer has a pace. A funding-only answer returns a null printer rather than a default machine, so a caller that has not checked falls back to its own wording instead of warning someone about a goal they never set.
  */
-export function usePrinterPace(): PrinterPace {
+function usePrinterPace(): PrinterPace {
 	const { goalId, participantGoal, weeks, weekPassed, statusOf } = useStore()
 	const printer = participantGoal === null || participantGoal === ParticipantGoal.PRINTER ? printerById(goalId) : null
 	// A week that closed while still a draft holds nothing reviewable, and a rejected one was decided against; neither will pay now. A week in review, or one sent back for changes, is deliberately not counted: it can still be decided and still pay, and telling someone they are behind on a week a reviewer has not opened yet is a nag with no action behind it.
@@ -1624,7 +1624,7 @@ export function usePrinterPace(): PrinterPace {
 /**
  * The weeks a maker has behind them, as they would say it: "Week 2", "Weeks 2 and 4", "Weeks 1, 2 and 4". Newest first, because the most recent miss is the one they remember.
  */
-export function weekListPhrase(weeks: readonly number[]): string {
+function weekListPhrase(weeks: readonly number[]): string {
 	const parts = weeks.map(String)
 	if (parts.length === 0) return "No weeks"
 	if (parts.length === 1) return `Week ${parts[0]}`
@@ -1632,11 +1632,24 @@ export function weekListPhrase(weeks: readonly number[]): string {
 }
 
 /** Recommended tier from the onboarding experience answer. */
-export function recommendedTier(e: Experience | null): 1 | 2 | 3 {
+function recommendedTier(e: Experience | null): 1 | 2 | 3 {
 	if (e === "lots") return 3
 	if (e === "some") return 2
 	return 1
 }
 
-export type { CheckpointState, IntroPhase, PostReelResult, ProjectPatch, SharePost }
-export { PASSED_REASON, WEEK1_IDEA_REEL_ID }
+export {
+	type CheckpointState,
+	type IntroPhase,
+	PASSED_REASON,
+	type PostReelResult,
+	type PrinterPace,
+	type ProjectPatch,
+	recommendedTier,
+	type SharePost,
+	StoreProvider,
+	usePrinterPace,
+	useStore,
+	WEEK1_IDEA_REEL_ID,
+	weekListPhrase,
+}

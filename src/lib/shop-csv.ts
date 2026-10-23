@@ -72,7 +72,7 @@ function num(raw: string): number {
 /**
  * Parse and validate a whole file. Either every row is good and `items` holds them all, or `problems` says what to fix, line by line. Nothing in between: a half-imported catalogue is harder to fix than a refused one.
  */
-export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: ShopCsvProblem[] } {
+function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: ShopCsvProblem[] } {
 	const rows = parseCsvRecords(text)
 	const head = rows.shift()
 	if (!head) return { items: [], problems: [{ line: 0, message: "The file is empty." }] }
@@ -169,5 +169,4 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 	return problems.length > 0 ? { items: [], problems } : { items, problems }
 }
 
-export type { ShopCsvItem, ShopCsvProblem }
-export { SHOP_CSV_COLUMNS, SHOP_CSV_MAX_ROWS, SHOP_CSV_TEMPLATE }
+export { parseShopCsv, SHOP_CSV_COLUMNS, SHOP_CSV_MAX_ROWS, SHOP_CSV_TEMPLATE, type ShopCsvItem, type ShopCsvProblem }

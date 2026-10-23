@@ -20,10 +20,12 @@ const BEARER = /(Bearer\s+)[A-Za-z0-9\-._~+/=]{8,}/gi
 const MAX_SCRUBBED_CHARS = 4_096
 
 /** Mask emails and bearer-like tokens in free text. Non-strings pass through. */
-export function redactForLog(value: string): string
-export function redactForLog(value: unknown): unknown
-export function redactForLog(value: unknown): unknown {
+function redactForLog(value: string): string
+function redactForLog(value: unknown): unknown
+function redactForLog(value: unknown): unknown {
 	if (typeof value !== "string") return value
 	const line = value.length > MAX_SCRUBBED_CHARS ? `${value.slice(0, MAX_SCRUBBED_CHARS)}…` : value
 	return line.replaceAll(EMAIL, "[email]").replaceAll(BEARER, "$1[redacted]")
 }
+
+export { redactForLog }

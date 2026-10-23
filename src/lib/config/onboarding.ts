@@ -11,9 +11,9 @@ import type { TierId } from "@/lib/config/tiers"
  * It is the first of a larger per-week checkpoint system in the same note (idea reel, progress reel, submission checks). Only this one is built; the rest needs the feed first, since every later checkpoint is a reel.
  */
 
-export type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking" | "repo"
+type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking" | "repo"
 
-export interface OnboardingStep {
+interface OnboardingStep {
 	readonly heading: string
 	readonly id: OnboardingStepId
 	/** 1-based, and what renders as the "n/6" counter. */
@@ -22,7 +22,7 @@ export interface OnboardingStep {
 	readonly skippable: boolean
 }
 
-export const ONBOARDING_STEPS = [
+const ONBOARDING_STEPS = [
 	{ heading: "Have you built hardware before?", id: "experience", number: 1, skippable: false },
 	{ heading: "Each week has a theme, this week it's...", id: "week", number: 2, skippable: false },
 	{ heading: "Make your first project!", id: "project", number: 3, skippable: false },
@@ -33,14 +33,14 @@ export const ONBOARDING_STEPS = [
 	{ heading: "Keep it in your repo?", id: "repo", number: 7, skippable: true },
 ] as const satisfies readonly OnboardingStep[]
 
-export const ONBOARDING_STEP_COUNT = ONBOARDING_STEPS.length
+const ONBOARDING_STEP_COUNT = ONBOARDING_STEPS.length
 
 /** The step a participant is on, given how far they have got. */
-export function stepAt(index: number): OnboardingStep | undefined {
+function stepAt(index: number): OnboardingStep | undefined {
 	return ONBOARDING_STEPS[index]
 }
 
-export function stepIndexOf(id: OnboardingStepId): number {
+function stepIndexOf(id: OnboardingStepId): number {
 	return ONBOARDING_STEPS.findIndex(s => s.id === id)
 }
 
@@ -49,7 +49,7 @@ export function stepIndexOf(id: OnboardingStepId): number {
  *
  * A suggestion in the UI and nothing more – the participant can pick any tier, and the reviewer decides the real one at design approval. Someone who has never touched hardware being shown Tier 3 first is the thing this avoids.
  */
-export function suggestedTierFor(experience: HardwareExperience | null): TierId {
+function suggestedTierFor(experience: HardwareExperience | null): TierId {
 	switch (experience) {
 		case HardwareExperience.ITS_LIFE:
 			return 3
@@ -62,7 +62,7 @@ export function suggestedTierFor(experience: HardwareExperience | null): TierId 
 	}
 }
 
-export const EXPERIENCE_OPTIONS = [
+const EXPERIENCE_OPTIONS = [
 	{
 		hint: "Day 1 or 1 Day, you know?",
 		label: "this is my first time!",
@@ -90,7 +90,7 @@ export const EXPERIENCE_OPTIONS = [
  *
  * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own; until those repos exist, Starbie, week one's, stands in for every theme without one.
  */
-export interface StarterProject {
+interface StarterProject {
 	readonly description: string
 	readonly guideUrl: string
 	readonly id: string
@@ -106,7 +106,7 @@ export interface StarterProject {
 	readonly title: string
 }
 
-export const STARTER_PROJECTS = [
+const STARTER_PROJECTS = [
 	{
 		// The project's own README, trimmed.
 		description: "A tiny motion-controlled digital pet, basically a desktop Tamagotchi. Totally not a Starboy.",
@@ -143,18 +143,18 @@ export const STARTER_PROJECTS = [
 	},
 ] as const satisfies readonly StarterProject[]
 
-export function starterProjectsFor(theme: Theme): readonly StarterProject[] {
+function starterProjectsFor(theme: Theme): readonly StarterProject[] {
 	return STARTER_PROJECTS.filter(p => (p.themes as readonly Theme[]).includes(theme))
 }
 
 /**
  * Who is shown starter projects: the two answers that mean new to hardware. Unlike `isBeginner`, no answer is not a yes; someone who never answered did not say they were new.
  */
-export function seesStarterProjects(experience: HardwareExperience | null): boolean {
+function seesStarterProjects(experience: HardwareExperience | null): boolean {
 	return experience === HardwareExperience.FIRST_TIME || experience === HardwareExperience.A_LITTLE
 }
 
-export function getStarterProject(id: string): StarterProject | undefined {
+function getStarterProject(id: string): StarterProject | undefined {
 	return STARTER_PROJECTS.find(p => p.id === id)
 }
 
@@ -163,7 +163,7 @@ export function getStarterProject(id: string): StarterProject | undefined {
  *
  * Taking a starter writes its description into the project, so a maker who never replaces it has handed in the guide's words rather than their own. The comparison ignores case, whitespace, zero-width characters and typographic quote/dash variants, because those are not a change; it does not ignore an added sentence, which is a real edit the reviewer can judge.
  */
-export function usesStarterDefaultDescription(starterProjectId: string | null, description: string | null): boolean {
+function usesStarterDefaultDescription(starterProjectId: string | null, description: string | null): boolean {
 	if (!starterProjectId) return false
 	const starter = getStarterProject(starterProjectId)
 	if (!starter) return false
@@ -180,7 +180,7 @@ export function usesStarterDefaultDescription(starterProjectId: string | null, d
 }
 
 /** The tier a starter project is scoped to. Not configurable – see above. */
-export const STARTER_PROJECT_TIER: TierId = 1
+const STARTER_PROJECT_TIER: TierId = 1
 
 /**
  * What a starter has to become before it can be handed in.
@@ -188,7 +188,7 @@ export const STARTER_PROJECT_TIER: TierId = 1
  * The guide is a starting point, not a submission, and "how much do I have to change?" comes up every cohort. Said
  * once here so the two onboarding steps that offer a starter cannot drift apart in how they answer it.
  */
-export const STARTER_MODIFICATION_NOTE =
+const STARTER_MODIFICATION_NOTE =
 	"A starter is a starting point, not the finished project. Make it yours – it needs enough of your own changes, to the design or the code, that the result is clearly unique to you. Handing in the guide's build with only small tweaks is not enough. Write your own project description too: the starter's default description blocks the hand-in."
 
 /**
@@ -196,7 +196,7 @@ export const STARTER_MODIFICATION_NOTE =
  *
  * The comp branches this on the answer to question one – "If beginner: information about PCBs, else: example projects" – so both halves are here and the step picks one.
  */
-export interface WeekIntro {
+interface WeekIntro {
 	/** Shown to everyone else, in place of the primer. */
 	readonly examples: readonly string[]
 	readonly headline: string
@@ -206,7 +206,7 @@ export interface WeekIntro {
 	readonly theme: Theme
 }
 
-export const WEEK_INTROS = [
+const WEEK_INTROS = [
 	{
 		examples: ["A PCB keychain!", "A flight controller!", "A devboard from your favorite microcontroller!"],
 		headline: "DESIGN YOUR PCB",
@@ -217,13 +217,36 @@ export const WEEK_INTROS = [
 	},
 ] as const satisfies readonly WeekIntro[]
 
-export function weekIntroFor(theme: Theme): WeekIntro | undefined {
+function weekIntroFor(theme: Theme): WeekIntro | undefined {
 	return WEEK_INTROS.find(w => w.theme === theme)
 }
 
 /** Whether step two should show the primer rather than the examples. */
-export function isBeginner(experience: HardwareExperience | null): boolean {
+function isBeginner(experience: HardwareExperience | null): boolean {
 	return (
 		experience === HardwareExperience.FIRST_TIME || experience === HardwareExperience.A_LITTLE || experience === null
 	)
+}
+
+export {
+	EXPERIENCE_OPTIONS,
+	getStarterProject,
+	isBeginner,
+	ONBOARDING_STEP_COUNT,
+	ONBOARDING_STEPS,
+	type OnboardingStep,
+	type OnboardingStepId,
+	STARTER_MODIFICATION_NOTE,
+	STARTER_PROJECT_TIER,
+	STARTER_PROJECTS,
+	type StarterProject,
+	seesStarterProjects,
+	starterProjectsFor,
+	stepAt,
+	stepIndexOf,
+	suggestedTierFor,
+	usesStarterDefaultDescription,
+	WEEK_INTROS,
+	type WeekIntro,
+	weekIntroFor,
 }

@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { fail, ok, parseBody } from "@/lib/api"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"

@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { timingSafeEqual } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
 import { publicRedirect } from "@/lib/public-origin"

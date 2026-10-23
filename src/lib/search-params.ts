@@ -7,17 +7,17 @@
  */
 
 /** A search parameter's value, as the framework hands it over. */
-export type SearchParamValue = string | string[] | undefined
+type SearchParamValue = string | string[] | undefined
 
 /** The shape a page's search parameters have once each one has been reduced to a single value. */
-export type FirstValues<T extends { [K in keyof T]: SearchParamValue }> = { [K in keyof T]: string | undefined }
+type FirstValues<T extends { [K in keyof T]: SearchParamValue }> = { [K in keyof T]: string | undefined }
 
 /**
  * One parameter's value, when the URL named it once.
  *
  * A parameter named several times keeps its first value; one named once is itself.
  */
-export function firstValue(value: SearchParamValue): string | undefined {
+function firstValue(value: SearchParamValue): string | undefined {
 	if (Array.isArray(value)) return value[0]
 	return value
 }
@@ -27,9 +27,11 @@ export function firstValue(value: SearchParamValue): string | undefined {
  *
  * The keys the page asked for are the keys it gets back, and every value is a string or nothing – so the page reads the same names it always did, and reads them as strings.
  */
-export function firstValues<T extends { [K in keyof T]: SearchParamValue }>(params: T): FirstValues<T> {
+function firstValues<T extends { [K in keyof T]: SearchParamValue }>(params: T): FirstValues<T> {
 	const record = params as { [_: string]: SearchParamValue }
 	const out: { [_: string]: string | undefined } = {}
 	for (const key of Object.keys(record)) out[key] = firstValue(record[key])
 	return out as FirstValues<T>
 }
+
+export { type FirstValues, firstValue, firstValues, type SearchParamValue }

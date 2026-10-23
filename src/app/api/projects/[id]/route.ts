@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { markProjectCreated, recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody } from "@/lib/api"

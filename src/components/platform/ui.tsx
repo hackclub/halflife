@@ -134,7 +134,7 @@ Button.displayName = "Button"
 /* ------------------------------------------------------------------ *
  * Option row – the big pick-one buttons used across every modal
  * ------------------------------------------------------------------ */
-export function OptionRow({
+function OptionRow({
 	children,
 	selected,
 	onClick,
@@ -199,7 +199,7 @@ export function OptionRow({
 /* ------------------------------------------------------------------ *
  * Progress bar
  * ------------------------------------------------------------------ */
-export function Meter({
+function Meter({
 	value,
 	max,
 	label,
@@ -241,7 +241,7 @@ export function Meter({
 /* ------------------------------------------------------------------ *
  * Small marker-drawn pill
  * ------------------------------------------------------------------ */
-export function Chip({
+function Chip({
 	children,
 	tone = "sky",
 	className,
@@ -268,17 +268,7 @@ export function Chip({
 /* ------------------------------------------------------------------ *
  * Field
  * ------------------------------------------------------------------ */
-export function Field({
-	label,
-	hint,
-	children,
-	id,
-}: {
-	label: string
-	hint?: string
-	children: ReactNode
-	id?: string
-}) {
+function Field({ label, hint, children, id }: { label: string; hint?: string; children: ReactNode; id?: string }) {
 	return (
 		<div>
 			<label className="label block text-violet-deep" htmlFor={id}>
@@ -295,11 +285,12 @@ export function Field({
  *
  * This used to lean on `.sketch`, which draws on a pseudo-element an `<input>` cannot hold, so the outline never rendered and a field showed no edge at all until the focus ring arrived. It is DESIGN.md's bordered field now: a real 2px border in `field` (3.68:1 on white – `line` was 1.72, under the 3:1 a control's boundary needs), `navy-soft` on hover, violet on focus.
  */
-export const borderedInputClass =
+const borderedInputClass =
 	"block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-3 text-[0.95rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-navy-soft focus:border-violet focus:bg-white"
 
 /** The same field, under the name every caller already imports. */
-export const inputClass = borderedInputClass
+const inputClass = borderedInputClass
 
 export { cx } from "@/lib/cx"
-export { accentText, Button, onAccent, Panel }
+
+export { accentText, Button, borderedInputClass, Chip, Field, inputClass, Meter, OptionRow, onAccent, Panel }

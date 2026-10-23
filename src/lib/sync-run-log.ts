@@ -3,7 +3,7 @@ import type { Prisma } from "@/app/generated/prisma/client"
 import prisma from "@/lib/prisma"
 
 /** Keep these literals stable – admin surfaces match them by string. */
-export type SyncKey =
+type SyncKey =
 	| "hackatime"
 	| "airtable_ysws"
 	| "airtable_rsvp"
@@ -17,7 +17,7 @@ export type SyncKey =
 /**
  * One row per successful run. Failures go to the audit log instead, so a timestamp in this table always means a real round trip completed.
  */
-export async function recordSyncRun(
+async function recordSyncRun(
 	syncKey: SyncKey,
 	result: Prisma.InputJsonValue | null,
 	actorId: string | null = null,
@@ -32,14 +32,14 @@ export async function recordSyncRun(
 	}
 }
 
-export interface LatestSyncRun {
+interface LatestSyncRun {
 	actor: { id: string; name: string | null; email: string } | null
 	lastRunAt: Date
 	result: unknown
 	syncKey: string
 }
 
-export async function getLatestSyncRuns(keys: SyncKey[]): Promise<LatestSyncRun[]> {
+async function getLatestSyncRuns(keys: SyncKey[]): Promise<LatestSyncRun[]> {
 	const rows = await Promise.all(
 		keys.map(syncKey =>
 			prisma.syncRunLog.findFirst({
@@ -58,3 +58,5 @@ export async function getLatestSyncRuns(keys: SyncKey[]): Promise<LatestSyncRun[
 			syncKey: r.syncKey,
 		}))
 }
+
+export { getLatestSyncRuns, type LatestSyncRun, recordSyncRun, type SyncKey }

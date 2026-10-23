@@ -303,7 +303,7 @@ function asConfigError(err: unknown): unknown {
  *
  * Deleting a post row does not delete its bytes – a soft-deleted reel can be restored by a moderator, and its video has to still be there when it is. So this is for the orphan sweep and for the smoke test, not for the delete path.
  */
-export async function deleteObject(key: string): Promise<void> {
+async function deleteObject(key: string): Promise<void> {
 	try {
 		const s3 = await client()
 		await s3.delete(key)
@@ -315,7 +315,7 @@ export async function deleteObject(key: string): Promise<void> {
 /**
  * Mint a public URL from a stored key. Keys are stored rather than URLs so the bucket or CDN can move without rewriting every row.
  */
-export function publicUrlFor(key: string | null | undefined): string | null {
+function publicUrlFor(key: string | null | undefined): string | null {
 	if (!key) return null
 	// Rows imported from a sibling programme carry their old asset host rather than a key of ours, and there is nothing to mint; pass an absolute URL through untouched. A key this app minted never starts with a scheme.
 	if (/^https?:\/\//i.test(key)) return key
@@ -324,16 +324,20 @@ export function publicUrlFor(key: string | null | undefined): string | null {
 	return `${base.replace(/\/$/, "")}/${key}`
 }
 
-export type { UploadedObjectPage, UploadedObjectSummary, UploadFolder }
 export {
 	buildObjectKey,
 	contentHash,
+	deleteObject,
 	isOwnedKey,
 	isUploadConfigured,
 	isVideoBytes,
 	listUploadedObjects,
 	MAX_UPLOAD_BYTES,
+	publicUrlFor,
 	putObject,
 	UPLOAD_FOLDERS,
+	type UploadedObjectPage,
+	type UploadedObjectSummary,
+	type UploadFolder,
 	validateUpload,
 }

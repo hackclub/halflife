@@ -151,7 +151,7 @@ function clampStep(step: number): number {
 }
 
 /** Answers, one shape per step. The route validates before this is reached. */
-export type OnboardingAnswer =
+type OnboardingAnswer =
 	| { step: "experience"; experience: HardwareExperience }
 	| { step: "week"; starterProjectId?: string | null }
 	| { step: "project"; title: string; description: string }
@@ -160,7 +160,7 @@ export type OnboardingAnswer =
 	| { step: "tracking"; dismissed: boolean }
 	| { step: "repo"; enabled: boolean; repo?: string | null }
 
-export interface AdvanceResult {
+interface AdvanceResult {
 	completed: boolean
 	/**
 	 * A request to mirror the project into a repo, made on the setup flow's repo step. The route runs this after the response has gone, because it is a GitHub round trip that can fail and the flow finishing must not depend on it. Null when the step was skipped or the sync was declined.
@@ -183,7 +183,7 @@ export interface AdvanceResult {
  * - A beginner forks on the week step. Building the starter answers the project, idea and tier steps at once (its name, its pick, Tier 1) and moves them straight to time tracking. Their own project goes on to naming it.
  * - The idea step ("Stuck? Pick one") is stepped over after naming a project. The starter is offered on the week step now, and anyone naming their own project has already said no to it.
  */
-export async function submitStep(userId: string, answer: OnboardingAnswer): Promise<AdvanceResult> {
+async function submitStep(userId: string, answer: OnboardingAnswer): Promise<AdvanceResult> {
 	const before = await getOnboardingState(userId)
 
 	if (before.completed) throw new HttpError("ALREADY_RESOLVED", "You have already finished getting started")
@@ -377,7 +377,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
  *
  * Only the progress and the answers the flow owns are cleared. The onboarding project keeps its row, name and entries, and the flow edits it in place as the questions are answered again; its starter pick is dropped so the tier is not left locked by an answer that no longer stands.
  */
-export async function resetOnboarding(userId: string): Promise<void> {
+async function resetOnboarding(userId: string): Promise<void> {
 	const project = await prisma.themeProject.findFirst({
 		orderBy: { createdAt: "asc" },
 		select: { theme: true },
@@ -409,7 +409,7 @@ export async function resetOnboarding(userId: string): Promise<void> {
  *
  * Anyone who has already started working is past it whatever the column says: the flow was added after the platform, and walking an existing participant through "make your first project" when they have three approved designs would be absurd. The check is deliberately generous for that reason.
  */
-export async function needsOnboarding(userId: string): Promise<boolean> {
+async function needsOnboarding(userId: string): Promise<boolean> {
 	const user = await prisma.user.findUnique({
 		select: { onboardingCompletedAt: true },
 		where: { id: userId },
@@ -432,5 +432,14 @@ export async function needsOnboarding(userId: string): Promise<boolean> {
 
 export type { OnboardingStepId } from "@/lib/config/onboarding"
 export { ONBOARDING_STEPS } from "@/lib/config/onboarding"
-export type { OnboardingState }
-export { getOnboardingState, ONBOARDING_THEME }
+
+export {
+	type AdvanceResult,
+	getOnboardingState,
+	needsOnboarding,
+	ONBOARDING_THEME,
+	type OnboardingAnswer,
+	type OnboardingState,
+	resetOnboarding,
+	submitStep,
+}

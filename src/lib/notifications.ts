@@ -325,7 +325,7 @@ async function disputeContext(
  *
  * The reviewer who made the disputed decision is pinged and given links straight to the hand-in: the review console thread, where the dispute can be answered, and Ari, where the decision can be re-read and made again. Both are additions to the same channel post rather than a DM: the point is that whoever picks it up has the reviewer named and the conversation a click away. A reviewer with no account on this deployment, or a hand-in that never reached Ari, simply drops its half.
  */
-export async function notifyStaffDispute(input: {
+async function notifyStaffDispute(input: {
 	/** The decided submission the dispute is against, so the reviewer and links can be found. */
 	submissionId: string
 	themeProjectId: string
@@ -368,7 +368,7 @@ export async function notifyStaffDispute(input: {
  *
  * Slack only, and best-effort: the thread on the project page is the record, the DM is the nudge, and there is no Airtable column for a dispute (Loops carries decisions, not conversations). Quiet in the same way as a review notice: a failure becomes a `NOTIFICATION_FAILURE` row rather than an error, because a reply that has already been written must not fail over a Slack outage.
  */
-export async function notifyDisputeReply(input: { body: string; phase: Phase; themeProjectId: string }): Promise<void> {
+async function notifyDisputeReply(input: { body: string; phase: Phase; themeProjectId: string }): Promise<void> {
 	try {
 		const project = await prisma.themeProject.findUnique({
 			select: { theme: true, title: true, user: { select: { slackId: true } } },
@@ -398,5 +398,13 @@ export async function notifyDisputeReply(input: { body: string; phase: Phase; th
 	}
 }
 
-export type { ReviewOutcomeMessage, ReviewOutcomeNotice }
-export { notifyReviewOutcome, notifyShipFailed, reviewOutcomeMessage, shipFailedMessage }
+export {
+	notifyDisputeReply,
+	notifyReviewOutcome,
+	notifyShipFailed,
+	notifyStaffDispute,
+	type ReviewOutcomeMessage,
+	type ReviewOutcomeNotice,
+	reviewOutcomeMessage,
+	shipFailedMessage,
+}

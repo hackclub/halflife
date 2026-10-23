@@ -11,9 +11,9 @@ import {
 } from "@/app/generated/prisma/enums"
 import { boundedText, cuid, httpsUrl, isTimeZone } from "@/lib/schemas/common"
 
-export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
+const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
 
-export const userFlagsSchema = z
+const userFlagsSchema = z
 	.object({
 		/**
 		 * Trimmed, but NOT lowercased: the local part of an address is case-sensitive per RFC 5321, and folding it is a silent edit to someone's data that nobody asked for.
@@ -28,7 +28,7 @@ export const userFlagsSchema = z
 	})
 	.strict()
 
-export const projectExtensionSchema = z
+const projectExtensionSchema = z
 	.object({
 		submissionExtensionUntil: z.coerce.date().nullable().optional(),
 		theme: z.enum(Theme).optional(),
@@ -37,10 +37,10 @@ export const projectExtensionSchema = z
 	.refine(b => b.submissionExtensionUntil !== undefined || b.theme !== undefined, "Nothing to change")
 
 /** A reply in a dispute thread. Required and non-empty: a blank reply answers nothing. */
-export const disputeMessageSchema = z.object({ body: boundedText(2000, 1) }).strict()
+const disputeMessageSchema = z.object({ body: boundedText(2000, 1) }).strict()
 
 /** Sending a design's parts grant to a maker's HCB card grant. */
-export const grantSchema = z
+const grantSchema = z
 	.object({
 		grantUrl: boundedText(500, 4),
 		// The design phase is the funding decision; a build grant does not exist, and accepting BUILD here sent the design's grant a second time.
@@ -48,7 +48,7 @@ export const grantSchema = z
 	})
 	.strict()
 
-export const creditAdjustSchema = z
+const creditAdjustSchema = z
 	.object({
 		amount: z
 			.number()
@@ -66,7 +66,7 @@ export const creditAdjustSchema = z
 	.strict()
 
 /** Moving a printer award along its fulfilment path (or revoking it). */
-export const printerAwardUpdateSchema = z
+const printerAwardUpdateSchema = z
 	.object({
 		/** Recorded on the audit row; the server requires one to revoke. */
 		note: boundedText(2000).optional().default(""),
@@ -76,7 +76,7 @@ export const printerAwardUpdateSchema = z
 	})
 	.strict()
 
-export const shopItemSchema = z
+const shopItemSchema = z
 	.object({
 		active: z.boolean().default(true),
 		category: z.enum(ShopItemCategory).default("PRINTER_UPGRADE"),
@@ -99,12 +99,12 @@ export const shopItemSchema = z
 	})
 	.strict()
 
-export const shopItemUpdateSchema = shopItemSchema.partial().omit({ id: true }).strict()
+const shopItemUpdateSchema = shopItemSchema.partial().omit({ id: true }).strict()
 
 /**
  * A sales region: a hand-assigned slug (it appears in analytics and has to survive a rename) and a display name.
  */
-export const shopRegionSchema = z
+const shopRegionSchema = z
 	.object({
 		id: z
 			.string()
@@ -117,7 +117,7 @@ export const shopRegionSchema = z
 	})
 	.strict()
 
-export const shopRegionUpdateSchema = z
+const shopRegionUpdateSchema = z
 	.object({
 		active: z.boolean().optional(),
 		name: boundedText(80, 1).optional(),
@@ -129,14 +129,14 @@ export const shopRegionUpdateSchema = z
 /**
  * One region's coin price for one shop item. Null clears the override back to base pricing.
  */
-export const itemRegionPriceSchema = z
+const itemRegionPriceSchema = z
 	.object({
 		priceCredits: z.number().int().min(0).max(1_000_000).nullable(),
 		regionId: boundedText(64, 1),
 	})
 	.strict()
 
-export const orderDecisionSchema = z.discriminatedUnion("action", [
+const orderDecisionSchema = z.discriminatedUnion("action", [
 	z
 		.object({
 			action: z.literal("FULFILL"),
@@ -149,7 +149,7 @@ export const orderDecisionSchema = z.discriminatedUnion("action", [
 ])
 
 /** Either or both; `method: null` clears a choice made by mistake. */
-export const orderFulfillmentSchema = z
+const orderFulfillmentSchema = z
 	.object({
 		method: z.enum(ShopFulfillmentMethod).nullable().optional(),
 		stage: z.enum(ShopFulfillmentStage).optional(),
@@ -170,7 +170,7 @@ export const orderFulfillmentSchema = z
  * occurrences land on the same weekday; the route owns the arithmetic and the
  * audit row records how many were made.
  */
-export const programEventCreateSchema = z
+const programEventCreateSchema = z
 	.object({
 		colour: z.enum(EventColour).default(EventColour.SLATE),
 		description: boundedText(2000).nullable().optional(),
@@ -194,7 +194,7 @@ export const programEventCreateSchema = z
  * that is the edit that actually gets made. `null` is the clear for a nullable
  * field, so a half-finished draft can be emptied rather than only set.
  */
-export const programEventUpdateSchema = z
+const programEventUpdateSchema = z
 	.object({
 		colour: z.enum(EventColour).optional(),
 		description: boundedText(2000).nullable().optional(),
@@ -206,7 +206,7 @@ export const programEventUpdateSchema = z
 	.strict()
 	.refine(b => Object.keys(b).length > 0, "Nothing to change")
 
-export const programSettingsSchema = z
+const programSettingsSchema = z
 	.object({
 		airtableSyncEnabled: z.boolean().optional(),
 		eventStartDate: z.coerce.date().optional(),
@@ -228,7 +228,7 @@ export const programSettingsSchema = z
 	})
 	.strict()
 
-export const rsvpSchema = z
+const rsvpSchema = z
 	.object({
 		email: z.email().max(320),
 		firstName: boundedText(120).optional(),
@@ -241,7 +241,7 @@ export const rsvpSchema = z
 	.strict()
 
 /** Unauthenticated landing-page signup. Freeform referral/UTM input is capped, never validated for shape. */
-export const subscribeSchema = z
+const subscribeSchema = z
 	.object({
 		email: z.email().max(320),
 		ref: boundedText(128).optional(),
@@ -250,3 +250,25 @@ export const subscribeSchema = z
 		utmSource: boundedText(128).optional(),
 	})
 	.strict()
+
+export {
+	creditAdjustSchema,
+	disputeMessageSchema,
+	grantSchema,
+	itemRegionPriceSchema,
+	orderDecisionSchema,
+	orderFulfillmentSchema,
+	printerAwardUpdateSchema,
+	programEventCreateSchema,
+	programEventUpdateSchema,
+	programSettingsSchema,
+	projectExtensionSchema,
+	roleChangeSchema,
+	rsvpSchema,
+	shopItemSchema,
+	shopItemUpdateSchema,
+	shopRegionSchema,
+	shopRegionUpdateSchema,
+	subscribeSchema,
+	userFlagsSchema,
+}

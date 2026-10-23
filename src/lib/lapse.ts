@@ -136,7 +136,7 @@ const VERIFY_CHUNK_SIZE = 5
  *
  * Checked in chunks rather than in one fan-out: the ids are verified a few at a time, so the number of requests in flight is bounded by the chunk rather than by the length of the list.
  */
-export async function verifyOwnTimelapses(userId: string, ids: readonly string[]): Promise<LapseTimelapse[]> {
+async function verifyOwnTimelapses(userId: string, ids: readonly string[]): Promise<LapseTimelapse[]> {
 	if (ids.length === 0) return []
 	const { lapseUserId, accessToken } = await lapseCredentials(userId)
 
@@ -160,5 +160,11 @@ export async function verifyOwnTimelapses(userId: string, ids: readonly string[]
 	return found
 }
 
-export type { LapseTimelapse }
-export { LAPSE_API_BASE, lapseCredentials, lapseTimelapseUrl, listMyTimelapses }
+export {
+	LAPSE_API_BASE,
+	type LapseTimelapse,
+	lapseCredentials,
+	lapseTimelapseUrl,
+	listMyTimelapses,
+	verifyOwnTimelapses,
+}

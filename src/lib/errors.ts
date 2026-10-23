@@ -1,7 +1,7 @@
 /**
  * Closed set of API error codes, each bound to the status it always returns. Pairing them here means a handler cannot accidentally send CONFLICT with a 400, and clients can branch on the code rather than parsing prose.
  */
-export const API_ERROR_STATUS = {
+const API_ERROR_STATUS = {
 	ALREADY_RESOLVED: 409,
 	ALREADY_SUBMITTED: 409,
 	CLAIMED_BY_OTHER: 409,
@@ -51,9 +51,9 @@ export const API_ERROR_STATUS = {
 	WEEK_NOT_STARTED: 409,
 } as const
 
-export type ApiErrorCode = keyof typeof API_ERROR_STATUS
+type ApiErrorCode = keyof typeof API_ERROR_STATUS
 
-export class HttpError extends Error {
+class HttpError extends Error {
 	constructor(
 		readonly code: ApiErrorCode,
 		message: string,
@@ -67,3 +67,5 @@ export class HttpError extends Error {
 		return API_ERROR_STATUS[this.code]
 	}
 }
+
+export { API_ERROR_STATUS, type ApiErrorCode, HttpError }

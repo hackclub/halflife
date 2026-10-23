@@ -71,7 +71,7 @@ const READ_ONLY_PERMISSIONS = new Set<Permission>([
  *
  * `full` is the top because MANAGE_ROLES hands out every other permission, including to oneself: it is the only level from which the rest can be reached. `write` is anything that changes the programme without changing who has access to it, `read` is looking without touching, and `none` is a participant, who holds no staff permissions at all – which says nothing about the platform itself, since a participant runs their own projects.
  */
-export interface PermissionSummary {
+interface PermissionSummary {
 	/** How far those permissions reach. */
 	level: PermissionLevel
 	/** The permissions the roles grant, in the order the roles list them. */
@@ -83,7 +83,7 @@ export interface PermissionSummary {
  *
  * The audit log shows its own enum names raw, but that is a log being looked up; this is somebody being told what an account may do.
  */
-export function readablePermission(permission: Permission): string {
+function readablePermission(permission: Permission): string {
 	return permission.toLowerCase().replaceAll("_", " ")
 }
 
@@ -92,7 +92,7 @@ export function readablePermission(permission: Permission): string {
  *
  * The union of the roles' permissions is the thing `hasPermission` asks about, so it is the thing summarised here: a person with REVIEWER and AUDITOR together is described by what the two together allow.
  */
-export function permissionSummary(roles: Role[]): PermissionSummary {
+function permissionSummary(roles: Role[]): PermissionSummary {
 	const permissions = permissionsFor(roles)
 	const level: PermissionLevel =
 		permissions.length === 0
@@ -106,26 +106,26 @@ export function permissionSummary(roles: Role[]): PermissionSummary {
 }
 
 /** The words the console shows for each level. */
-export const PERMISSION_LEVEL_LABELS: Record<PermissionLevel, string> = {
+const PERMISSION_LEVEL_LABELS: Record<PermissionLevel, string> = {
 	full: "full access",
 	none: "no staff access",
 	read: "read only",
 	write: "write access",
 }
 
-export function hasPermission(roles: Role[], permission: Permission): boolean {
+function hasPermission(roles: Role[], permission: Permission): boolean {
 	return roles.some(role => ROLE_PERMISSIONS[role]?.includes(permission))
 }
 
-export function hasAnyPermission(roles: Role[], permissions: Permission[]): boolean {
+function hasAnyPermission(roles: Role[], permissions: Permission[]): boolean {
 	return permissions.some(p => hasPermission(roles, p))
 }
 
-export function hasRole(roles: Role[], role: Role): boolean {
+function hasRole(roles: Role[], role: Role): boolean {
 	return roles.includes(role)
 }
 
-export async function getUserRoles(userId: string): Promise<Role[]> {
+async function getUserRoles(userId: string): Promise<Role[]> {
 	const rows = await prisma.userRole.findMany({
 		select: { role: true },
 		where: { userId },
@@ -138,7 +138,7 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
  *
  * A session can outlive its user. The session cookie cache answers `getSession` without touching the database for up to five minutes, so a user deleted inside that window – by hand, or wholesale by a database reset – still looks signed in, and every page then loads that user by id. One query answers both "who are they" and "are they still here", so the guards can turn a ghost session into a sign-out rather than let the first `findUniqueOrThrow` discover it as a 500.
  */
-export async function getUserRolesIfExists(userId: string): Promise<Role[] | null> {
+async function getUserRolesIfExists(userId: string): Promise<Role[] | null> {
 	const user = await prisma.user.findUnique({
 		select: { roles: { select: { role: true } } },
 		where: { id: userId },
@@ -148,5 +148,18 @@ export async function getUserRolesIfExists(userId: string): Promise<Role[] | nul
 
 export { Role } from "@/app/generated/prisma/enums"
 
-export type { PermissionLevel }
-export { PERMISSION_COUNT, Permission, permissionsFor }
+export {
+	getUserRoles,
+	getUserRolesIfExists,
+	hasAnyPermission,
+	hasPermission,
+	hasRole,
+	PERMISSION_COUNT,
+	PERMISSION_LEVEL_LABELS,
+	Permission,
+	type PermissionLevel,
+	type PermissionSummary,
+	permissionSummary,
+	permissionsFor,
+	readablePermission,
+}

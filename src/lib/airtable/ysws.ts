@@ -87,7 +87,7 @@ async function findExistingRow(
  *
  * If Airtable refuses a column, the row is written without it and the column is logged: a submission reaching the table with one blank field is recoverable, and one that never arrives is not. Resolves to the record id, and the columns that had to be left out.
  */
-export async function writeYswsRecord(
+async function writeYswsRecord(
 	fields: { [_: string]: unknown },
 	recordId: string | null,
 ): Promise<{ recordId: string; dropped: string[] } | { skipped: "not_configured" }> {
@@ -152,7 +152,7 @@ export async function writeYswsRecord(
  *
  * Deliberately a straight PATCH rather than a copy of the drop-and-retry above: shedding a field there keeps a submission arriving, but a field Airtable refuses is one it did not write, and retrying without it would report an update that never happened. The error body names the column and value Airtable refused, which is the whole diagnosis for a status that is not an option on the column, say.
  */
-export async function updateYswsRecord(
+async function updateYswsRecord(
 	recordId: string,
 	fields: { [_: string]: unknown },
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
@@ -179,7 +179,7 @@ export async function updateYswsRecord(
 /**
  * Delete one row by record id, reporting its unified-base twin (if the pipeline has made one) so that can be removed by exact id too.
  */
-export async function deleteYswsRecord(
+async function deleteYswsRecord(
 	recordId: string,
 ): Promise<{ deleted: boolean; unifiedRecordId: string | null; skipped?: string }> {
 	const config = getAirtableConfig()
@@ -208,7 +208,7 @@ export async function deleteYswsRecord(
 }
 
 /** Remove rows in the shared unified base by exact record id. */
-export async function deleteUnifiedRecords(
+async function deleteUnifiedRecords(
 	recordIds: string[],
 ): Promise<{ deleted: string[]; skipped?: string; error?: string }> {
 	if (recordIds.length === 0) return { deleted: [] }
@@ -230,3 +230,5 @@ export async function deleteUnifiedRecords(
 		throw err
 	}
 }
+
+export { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord }

@@ -59,11 +59,7 @@ function requestProtocol(request: { url: string }): string {
  *
  * With no origin to name – a deployment that configures none and is not a laptop – the Location is the path itself. The browser resolves that against the host it is already on, so the redirect still works and still cannot be pointed anywhere else.
  */
-export function publicRedirect(
-	request: { headers: Headers; url: string },
-	path: string,
-	status?: number,
-): NextResponse {
+function publicRedirect(request: { headers: Headers; url: string }, path: string, status?: number): NextResponse {
 	const origin = publicOrigin(request)
 	if (!origin) {
 		const response = new NextResponse(null, { status: status ?? 307 })
@@ -73,4 +69,4 @@ export function publicRedirect(
 	return NextResponse.redirect(new URL(path, origin), status)
 }
 
-export { publicOrigin }
+export { publicOrigin, publicRedirect }

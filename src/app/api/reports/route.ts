@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { Prisma } from "@/app/generated/prisma/client"
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"

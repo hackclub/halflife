@@ -17,7 +17,7 @@ function today(): string {
 	return new Date().toLocaleDateString("en-CA")
 }
 
-export function readPosition(): FeedPosition | null {
+function readPosition(): FeedPosition | null {
 	try {
 		const raw = window.localStorage.getItem(KEY)
 		if (!raw) return null
@@ -30,7 +30,7 @@ export function readPosition(): FeedPosition | null {
 	}
 }
 
-export function savePosition(position: FeedPosition): void {
+function savePosition(position: FeedPosition): void {
 	try {
 		window.localStorage.setItem(KEY, JSON.stringify({ ...position, day: today() }))
 	} catch {
@@ -38,4 +38,4 @@ export function savePosition(position: FeedPosition): void {
 	}
 }
 
-export type { FeedPosition }
+export { type FeedPosition, readPosition, savePosition }

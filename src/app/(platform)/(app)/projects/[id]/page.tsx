@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import type { Metadata } from "next"
 import { requireSessionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"

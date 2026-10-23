@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { fail, ok } from "@/lib/api"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { claimHandoff, getHandoffStatus } from "@/lib/handoff"

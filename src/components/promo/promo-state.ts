@@ -31,7 +31,7 @@ function emit(): void {
 /**
  * The mode as it is now. A string, so React can compare it by value.
  */
-export function getPromoMode(): PromoMode {
+function getPromoMode(): PromoMode {
 	if (memory) return memory
 	try {
 		const stored = window.localStorage.getItem(STICKER_SHEET_PROMO_KEY)
@@ -42,11 +42,11 @@ export function getPromoMode(): PromoMode {
 }
 
 /** The server has no storage to read, so every page starts with the banner in its markup. */
-export function getServerPromoMode(): PromoMode {
+function getServerPromoMode(): PromoMode {
 	return "banner"
 }
 
-export function subscribePromo(listener: () => void): () => void {
+function subscribePromo(listener: () => void): () => void {
 	listeners.add(listener)
 
 	// Another tab closing the promo should close this one too. `storage` only
@@ -64,7 +64,7 @@ export function subscribePromo(listener: () => void): () => void {
 	}
 }
 
-export function setPromoMode(mode: PromoMode): void {
+function setPromoMode(mode: PromoMode): void {
 	memory = mode
 	try {
 		window.localStorage.setItem(STICKER_SHEET_PROMO_KEY, mode)
@@ -78,5 +78,4 @@ export function setPromoMode(mode: PromoMode): void {
 	emit()
 }
 
-export type { PromoMode }
-export { STICKER_SHEET_PROMO_KEY }
+export { getPromoMode, getServerPromoMode, type PromoMode, STICKER_SHEET_PROMO_KEY, setPromoMode, subscribePromo }

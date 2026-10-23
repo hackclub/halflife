@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import type { NextRequest } from "next/server"
 import { ok, parseQuery } from "@/lib/api"
 import { getBalances, getEarnedCredit, getLedgerPage } from "@/lib/currency"

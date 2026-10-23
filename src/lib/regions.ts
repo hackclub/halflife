@@ -213,10 +213,9 @@ const ZONE_COUNTRY: { [_: string]: string } = {
 }
 
 /** A timezone's country, or Unknown when there is nothing to place. */
-export function countryOfTimezone(timezone: string | null | undefined): string {
+function countryOfTimezone(timezone: string | null | undefined): string {
 	if (!timezone) return "Unknown"
 	return ZONE_COUNTRY[timezone] ?? "Unknown"
 }
 
-export type { RegionId }
-export { REGIONS, regionOfTimezone }
+export { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone }

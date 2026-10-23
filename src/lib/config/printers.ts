@@ -149,11 +149,6 @@ const SHEET: SheetRow[] = [
 ]
 
 /**
- * The coins one paced hour is worth – the sheet's $5, at a coin to the dollar. Re-exported rather than restated so the catalogue and the ledger cannot disagree about what an hour is worth.
- */
-export { COINS_PER_HOUR } from "./program"
-
-/**
  * Where a printer is paid out as a grant instead of being shipped.
  *
  * Egypt is the one so far: a 3D printer is notoriously expensive to buy there and worse to send, so the award becomes
@@ -164,10 +159,10 @@ export { COINS_PER_HOUR } from "./program"
  * per-user geography with real coverage – it is what the admin overview's country breakdown reads too. Adding a
  * country here is the whole change: the shop's notice follows from it.
  */
-export const PRINTER_GRANT_COUNTRIES: readonly string[] = ["Egypt"]
+const PRINTER_GRANT_COUNTRIES: readonly string[] = ["Egypt"]
 
 /** Whether a printer reaches this country as a grant rather than a delivery. */
-export function printerComesAsGrant(country: string): boolean {
+function printerComesAsGrant(country: string): boolean {
 	return PRINTER_GRANT_COUNTRIES.includes(country)
 }
 
@@ -177,35 +172,33 @@ export function printerComesAsGrant(country: string): boolean {
  * Answers all three things the notice has to: why (printers are expensive there), what changes (a grant, not a
  * delivery), and the consequence they need to plan around (it may not buy the exact model).
  */
-export const PRINTER_GRANT_NOTICE =
+const PRINTER_GRANT_NOTICE =
 	"3D printers are notoriously expensive in Egypt, so if you earn one we'll give you its value as a grant instead of delivering it. The grant may not stretch to the exact printer we'd have shipped, so you may not be able to get that specific model for the money."
 
 /** The season, counted off the program schedule rather than restated here. */
-export { TOTAL_WEEKS as SEASON_WEEKS } from "./program"
-export const BUILD_WEEKS = TOTAL_WEEKS - DESIGN_WEEKS
-export { DESIGN_WEEKS } from "./program"
+const BUILD_WEEKS = TOTAL_WEEKS - DESIGN_WEEKS
 
 /**
  * What the build half earns for everyone, whichever machine is on the wall: BUILD_HOURS a week, none of it funded, at COINS_PER_HOUR. This is the `5 hours * 5 build weeks * $5` term the sheet subtracts before it works out column 4, so it is money the projection may count on rather than ask for.
  */
-export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS
+const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS
 
 /**
  * Column 4 is the economy and is left exactly as the sheet has it – every tier earns the same hours for the same machine. The ten-hour floor only touches the tier-1 hours figure the goal picker shows; it must never reach the pace hours, or the sheet's arithmetic stops landing on the price.
  */
-export const PRINTERS: PrinterGoal[] = SHEET.map(p =>
+const PRINTERS: PrinterGoal[] = SHEET.map(p =>
 	Object.assign({}, p, {
 		coinsPerWeek: p.paceHours * COINS_PER_HOUR,
 		hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
 	}),
 )
 
-export const DEFAULT_GOAL_ID = "ender-3-v3-se"
+const DEFAULT_GOAL_ID = "ender-3-v3-se"
 
 /**
  * The gentlest, which is the cheapest machine's pace. It used to gate submission; now the submit floor is the funded hours and this is only the threshold for "that starter will not fill your week" style warnings. It is read off the board rather than restated so that repricing the catalogue moves it with it.
  */
-export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map(p => p.hoursPerWeek))
+const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map(p => p.hoursPerWeek))
 
 /**
  * What a design week asks of you, for a weekly earning pace and a tier.
@@ -214,20 +207,20 @@ export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map(p => p.hoursPerWeek))
  *
  * Trail targets are this function at the goal's own pace. One formula, so a tier cannot mean one thing on the trail and another in the submit sheet.
  */
-export function weekAsk(pace: number, fundingHours: number): number {
+function weekAsk(pace: number, fundingHours: number): number {
 	return pace + (fundingHours - ENTRY_TIER.fundingHours)
 }
 
 /**
  * Coins that should be earned once `weekId` is behind you, to still land the goal on time. Design weeks carry the goal's own rate; build weeks carry the flat hours everyone logs. At SEASON_WEEKS this lands exactly on the price, which is what makes it a pace rather than a guess – and what lets a big early week pay for a thin later one without anybody being warned twice.
  */
-export function paceTarget(goal: PrinterGoal, weekId: number): number {
+function paceTarget(goal: PrinterGoal, weekId: number): number {
 	const design = Math.min(weekId, DESIGN_WEEKS)
 	const build = Math.max(0, weekId - DESIGN_WEEKS)
 	return design * goal.coinsPerWeek + build * BUILD_HOURS * COINS_PER_HOUR
 }
 
-export function printerById(id: string): PrinterGoal {
+function printerById(id: string): PrinterGoal {
 	const found = PRINTERS.find(p => p.id === id) ?? PRINTERS.find(p => p.id === DEFAULT_GOAL_ID)
 	if (!found) throw new Error(`no printer goal for ${id}, and ${DEFAULT_GOAL_ID} is missing from the catalogue`)
 	return found
@@ -241,7 +234,7 @@ export function printerById(id: string): PrinterGoal {
  * for and pacing it against the design rate would invent weeks – enough of
  * them to run past the end of a season that is only SEASON_WEEKS long.
  */
-export function weeksToGo(goal: PrinterGoal, coins: number): number {
+function weeksToGo(goal: PrinterGoal, coins: number): number {
 	const fromDesign = Math.max(0, goal.coins - coins - BUILD_WEEK_COINS)
 	return Math.min(DESIGN_WEEKS, Math.ceil(fromDesign / goal.coinsPerWeek))
 }
@@ -251,9 +244,30 @@ export function weeksToGo(goal: PrinterGoal, coins: number): number {
  *
  * That used to be funded block plus a cheapest-machine earning pace; the floor is now simply what the grant buys. This is that gate: the submit node opens here, and the submit sheet refuses a tier below it. Every screen that names a tier's requirement reads it from here, so the number you pick against is the number you are held to.
  */
-export function submitFloorFor(fundingHours: number): number {
+function submitFloorFor(fundingHours: number): number {
 	return fundingHours
 }
 
-export type { PrinterGoal, PrinterKind }
-export { TIER1_MIN_HOURS }
+/**
+ * The coins one paced hour is worth – the sheet's $5, at a coin to the dollar. Re-exported rather than restated so the catalogue and the ledger cannot disagree about what an hour is worth.
+ */
+/** The season, counted off the program schedule rather than restated here. */
+export { COINS_PER_HOUR, DESIGN_WEEKS, TOTAL_WEEKS as SEASON_WEEKS } from "./program"
+export {
+	BUILD_WEEK_COINS,
+	BUILD_WEEKS,
+	DEFAULT_GOAL_ID,
+	MIN_HOURS_PER_WEEK,
+	PRINTER_GRANT_COUNTRIES,
+	PRINTER_GRANT_NOTICE,
+	PRINTERS,
+	type PrinterGoal,
+	type PrinterKind,
+	paceTarget,
+	printerById,
+	printerComesAsGrant,
+	submitFloorFor,
+	TIER1_MIN_HOURS,
+	weekAsk,
+	weeksToGo,
+}

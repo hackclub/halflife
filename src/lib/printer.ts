@@ -134,7 +134,7 @@ const printerAwardSelect = {
 type PrinterAwardPayload = Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>
 
 /** The award row the API returns: the fulfilment fields, and whether an address is locked on file. */
-export interface PrinterAwardResponse extends Omit<PrinterAwardPayload, "encryptedAddress"> {
+interface PrinterAwardResponse extends Omit<PrinterAwardPayload, "encryptedAddress"> {
 	addressOnFile: boolean
 }
 
@@ -143,7 +143,7 @@ export interface PrinterAwardResponse extends Omit<PrinterAwardPayload, "encrypt
  *
  * Conditional on the status that was read, so two admins saving at once cannot skip a step or overwrite a revoke. Locking the address snapshots the participant's HCA address onto the award, encrypted, so an update there afterwards cannot move a package that is already being packed; a lock with no address to snapshot is refused rather than looking ready while shipping nowhere.
  */
-export async function updatePrinterAwardStatus(
+async function updatePrinterAwardStatus(
 	awardId: string,
 	input: PrinterAwardUpdate,
 	adminId: string | null,
@@ -243,5 +243,14 @@ export async function updatePrinterAwardStatus(
 	return Object.assign(updated, { addressOnFile: encryptedAddress !== "" })
 }
 
-export type { PrinterAwardUpdate, PrinterQualification, ThemeProgress }
-export { ensurePrinterAward, findPrinterAwardMismatches, getPrinterQualification, printerAwardSelect }
+export {
+	ensurePrinterAward,
+	findPrinterAwardMismatches,
+	getPrinterQualification,
+	type PrinterAwardResponse,
+	type PrinterAwardUpdate,
+	type PrinterQualification,
+	printerAwardSelect,
+	type ThemeProgress,
+	updatePrinterAwardStatus,
+}

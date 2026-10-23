@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import type { NextRequest } from "next/server"
 import { drainRsvpBuffer } from "@/lib/airtable/rsvp"
 import { ok } from "@/lib/api"

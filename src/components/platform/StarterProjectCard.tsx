@@ -21,7 +21,7 @@ const LINK =
  *
  * Sized by its container, not the window, because it sits in places of very different widths. Narrow, the picture leads on top; given room, it stands beside the words. `stacked` keeps it on top whatever the width, for cards laid side by side as a choice, where every card has to share one shape and keep its button on the same line as its neighbour's.
  */
-export function ProjectChoiceCard({
+function ProjectChoiceCard({
 	art,
 	tileClassName,
 	flush = false,
@@ -85,7 +85,7 @@ export function ProjectChoiceCard({
  *
  * `action` is the caller's: onboarding's "Build Starbie", the checkpoint's "Build Starbie", or nothing where the card is only there to be read.
  */
-export function StarterProjectCard({
+function StarterProjectCard({
 	starter,
 	action,
 	chosen = false,
@@ -140,4 +140,4 @@ export function StarterProjectCard({
 	)
 }
 
-export type { StarterProjectCardData }
+export { ProjectChoiceCard, StarterProjectCard, type StarterProjectCardData }

@@ -116,9 +116,9 @@ function weld(
  */
 const STACK_MEAN_EDGE = 85
 const STACK_ANCHORS = [70, 135] as const
-export const STACK_VIEW = { h: 120, w: 200 } as const
+const STACK_VIEW = { h: 120, w: 200 } as const
 
-export function stackWeld(lean: "left" | "right"): string {
+function stackWeld(lean: "left" | "right"): string {
 	const [near, far] = lean === "right" ? STACK_ANCHORS : [STACK_ANCHORS[1], STACK_ANCHORS[0]]
 	const thin = (2 * STACK_MEAN_EDGE) / (1 + BAND_TAPER)
 	const thick = thin * BAND_TAPER
@@ -128,7 +128,7 @@ export function stackWeld(lean: "left" | "right"): string {
 }
 
 /** A plate's absolute box, for `style`. */
-export function plateBox(p: Plate): {
+function plateBox(p: Plate): {
 	readonly left: string
 	readonly top: string
 	readonly width: string
@@ -152,8 +152,8 @@ export function plateBox(p: Plate): {
  *
  * The rounded corner went with the ink. The stroke's own alpha is 0.000 at all four corners of the box, so the radius had nothing left to round.
  */
-export const SWASH_INSET_X = 0.125
-export const SWASH_INSET_Y = "1.8em"
+const SWASH_INSET_X = 0.125
+const SWASH_INSET_Y = "1.8em"
 
 /**
  * How wide the box has to be for a line of `n` to sit inside that inset.
@@ -162,9 +162,25 @@ export const SWASH_INSET_Y = "1.8em"
  *
  * So in the stage the box is given its width instead of finding it, and this is the arithmetic: the line is the middle 75%, so the box is the line over 0.75. The stacked layout needs none of this – its tagline wraps inside a column that is already explicit.
  */
-export function swashBoxWidth(lineRun: number): number {
+function swashBoxWidth(lineRun: number): number {
 	return lineRun / (1 - 2 * SWASH_INSET_X)
 }
 
-export type { Plate }
-export { at, BAND_TAPER, band, box, COMP_WIDTH, plate, type, u, weld }
+export {
+	at,
+	BAND_TAPER,
+	band,
+	box,
+	COMP_WIDTH,
+	type Plate,
+	plate,
+	plateBox,
+	STACK_VIEW,
+	SWASH_INSET_X,
+	SWASH_INSET_Y,
+	stackWeld,
+	swashBoxWidth,
+	type,
+	u,
+	weld,
+}

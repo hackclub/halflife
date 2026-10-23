@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import { createWebhookHandler } from "@hackclub/ari"
 import { NextResponse } from "next/server"
 import { applyAriWebhook, isAriWebhookConfigured } from "@/lib/ari"

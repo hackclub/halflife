@@ -1,7 +1,7 @@
 import { Badge, statusLabel, statusTone } from "@/app/components/ui"
 
 /** Design is drawn as a pencil and build as a hammer: the stage survives a colour-blind read and a monochrome print. */
-export function DesignStageIcon() {
+function DesignStageIcon() {
 	return (
 		<svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
 			<path
@@ -16,7 +16,7 @@ export function DesignStageIcon() {
 	)
 }
 
-export function BuildStageIcon() {
+function BuildStageIcon() {
 	return (
 		<svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
 			<path
@@ -38,7 +38,7 @@ export function BuildStageIcon() {
 }
 
 /** Both review stages together, each with its icon and name so the colour is never the only signal. */
-export function ReviewStages({ buildStatus, designStatus }: Readonly<{ buildStatus: string; designStatus: string }>) {
+function ReviewStages({ buildStatus, designStatus }: Readonly<{ buildStatus: string; designStatus: string }>) {
 	return (
 		<ul className="hl-review-stages">
 			<li>
@@ -54,3 +54,5 @@ export function ReviewStages({ buildStatus, designStatus }: Readonly<{ buildStat
 		</ul>
 	)
 }
+
+export { BuildStageIcon, DesignStageIcon, ReviewStages }

@@ -21,14 +21,14 @@ interface SendOptions {
 	method?: "POST" | "PATCH" | "PUT" | "DELETE"
 }
 
-export type SendResult<T> = { ok: true; data: T } | { ok: false; message: string }
+type SendResult<T> = { ok: true; data: T } | { ok: false; message: string }
 
 /**
  * Send a JSON request and reduce the response to either its payload or a sentence fit to show a person.
  *
  * The status is only used when the body carried no message of its own, so an API that explains itself is never overwritten by a generic one.
  */
-export async function sendJson<T = unknown>(url: string, options: SendOptions = {}): Promise<SendResult<T>> {
+async function sendJson<T = unknown>(url: string, options: SendOptions = {}): Promise<SendResult<T>> {
 	const { method = "POST", body } = options
 	let res: Response
 	try {
@@ -56,7 +56,7 @@ export async function sendJson<T = unknown>(url: string, options: SendOptions = 
  *
  * `after` runs on success and before the refresh, for the local state a successful save implies – clearing the fields, or recording what the server said.
  */
-export function useAction(): {
+function useAction(): {
 	busy: string | null
 	error: string | null
 	run<T = unknown>(key: string, send: () => Promise<SendResult<T>>, after?: (data: T) => void): Promise<void>
@@ -92,3 +92,5 @@ export function useAction(): {
 
 	return { busy, error, refuse, run, setError }
 }
+
+export { type SendResult, sendJson, useAction }

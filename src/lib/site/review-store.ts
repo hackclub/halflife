@@ -137,7 +137,7 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 		.toSorted((a, b) => a.week - b.week)
 }
 /** The counts behind the daily project review summary. `since` is normally 24 hours ago. */
-export async function getProjectReviewStats(since: Date): Promise<ProjectReviewStats> {
+async function getProjectReviewStats(since: Date): Promise<ProjectReviewStats> {
 	const live: Prisma.SubmissionReviewWhereInput = {
 		invalidated: false,
 		pass: ReviewPass.FINAL,
@@ -180,5 +180,11 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 	}
 }
 
-export type { BoardEntry, ProjectReviewStats, WeekReviewProgress }
-export { ANONYMOUS_ARI, SYSTEM_ARI }
+export {
+	ANONYMOUS_ARI,
+	type BoardEntry,
+	getProjectReviewStats,
+	type ProjectReviewStats,
+	SYSTEM_ARI,
+	type WeekReviewProgress,
+}

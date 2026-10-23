@@ -13,7 +13,7 @@ import { Theme } from "@/app/generated/prisma/enums"
  *
  * This is why there is no `bankHours` here any more. It used to be a tier property (2/5/10), which quietly made the expensive machines unreachable from Tier 1 and the cheap ones over-funded from Tier 3.
  */
-export interface Tier {
+interface Tier {
 	readonly blurb: string
 	readonly detail: string
 	/** The time a tier's build takes, as onboarding shows it beside the grant. */
@@ -31,7 +31,7 @@ export interface Tier {
 	readonly showcase: Partial<Record<Theme, readonly TierShowcaseProject[]>>
 }
 
-export interface TierShowcaseProject {
+interface TierShowcaseProject {
 	/** The project's repo. */
 	readonly href: string
 	/** A picture of the finished board. Remote hosts must be in next.config's remotePatterns. */
@@ -40,7 +40,7 @@ export interface TierShowcaseProject {
 }
 
 // Numbers are the program designer's, and match the tier cards in the platform comp. Changing them is this file and nothing else – every review freezes the numbers it actually used onto SubmissionReview, so editing these does not rewrite anyone's history.
-export const TIERS = [
+const TIERS = [
 	{
 		blurb: "A focused build you can finish over a couple of weekends.",
 		detail:
@@ -118,24 +118,24 @@ export const TIERS = [
 	},
 ] as const satisfies readonly Tier[]
 
-export type TierId = (typeof TIERS)[number]["id"]
+type TierId = (typeof TIERS)[number]["id"]
 
-export const TIER_IDS: readonly TierId[] = TIERS.map(t => t.id)
+const TIER_IDS: readonly TierId[] = TIERS.map(t => t.id)
 
 /** The tier everyone starts on, and the floor the week's ask is measured from. */
-export const [ENTRY_TIER] = TIERS
+const [ENTRY_TIER] = TIERS
 
-export function getTier(id: number): Tier | undefined {
+function getTier(id: number): Tier | undefined {
 	return TIERS.find(t => t.id === id)
 }
 
-export function getTierOrThrow(id: number): Tier {
+function getTierOrThrow(id: number): Tier {
 	const tier = getTier(id)
 	if (!tier) throw new Error(`Unknown tier: ${id}`)
 	return tier
 }
 
-export function isTierId(id: unknown): id is TierId {
+function isTierId(id: unknown): id is TierId {
 	return typeof id === "number" && TIER_IDS.includes(id as TierId)
 }
 
@@ -147,7 +147,20 @@ export function isTierId(id: unknown): id is TierId {
  * time than was logged: the tier then steps down to the one the approved hours earned, rather than the grant staying
  * at a level the hours do not cover. Null when even Tier 1 is out of reach, which is a design with no parts grant.
  */
-export function tierForHours(hours: number): Tier | null {
+function tierForHours(hours: number): Tier | null {
 	const affordable = TIERS.filter(t => hours >= t.fundingHours)
 	return affordable.at(-1) ?? null
+}
+
+export {
+	ENTRY_TIER,
+	getTier,
+	getTierOrThrow,
+	isTierId,
+	TIER_IDS,
+	TIERS,
+	type Tier,
+	type TierId,
+	type TierShowcaseProject,
+	tierForHours,
 }

@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { boundedText } from "@/lib/schemas/common"
 
-export const purchaseSchema = z
+const purchaseSchema = z
 	.object({
 		/**
 		 * One per purchase intent, reused across retries so a retried request resolves to the order it already made instead of charging twice.
@@ -19,8 +19,10 @@ export const purchaseSchema = z
 /**
  * A participant picking which region's prices their shop shows. Null is base pricing. The region has to exist and be active – checked in the route, so a deactivated region falls back to base rather than stranding anyone.
  */
-export const shopRegionPreferenceSchema = z
+const shopRegionPreferenceSchema = z
 	.object({
 		regionId: boundedText(64, 1).nullable(),
 	})
 	.strict()
+
+export { purchaseSchema, shopRegionPreferenceSchema }

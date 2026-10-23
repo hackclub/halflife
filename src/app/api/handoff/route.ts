@@ -1,3 +1,5 @@
+/* oxlint-disable import/group-exports -- Next.js reads segment config exports statically */
+
 import QRCode from "qrcode"
 import { fail, ok, rateLimitedInMemory } from "@/lib/api"
 import { requireAppBaseUrl } from "@/lib/app-url"

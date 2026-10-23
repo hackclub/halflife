@@ -16,7 +16,7 @@ const tierSchema = z
 /**
  * A discriminated union rather than one flat object with an `if`: it makes "comments are mandatory unless you are approving" a type-level fact, and it makes the tier required exactly where it is meaningful.
  */
-export const decisionSchema = z.discriminatedUnion("result", [
+const decisionSchema = z.discriminatedUnion("result", [
 	z
 		.object({
 			feedback: boundedText(8000).default(""),
@@ -44,7 +44,7 @@ export const decisionSchema = z.discriminatedUnion("result", [
 		.strict(),
 ])
 
-export const hoursDecisionSchema = z
+const hoursDecisionSchema = z
 	.object({
 		decisions: z
 			.array(
@@ -74,9 +74,11 @@ export const hoursDecisionSchema = z
 	.strict()
 
 // Extends rather than restates: this route used to spell its own cursor and limit, and its cursor lacked the `.min(1)` every other paged route has – an empty-string cursor parsed here and nowhere else.
-export const reviewQueueQuery = paginationQuery.extend({
+const reviewQueueQuery = paginationQuery.extend({
 	phase: phaseSchema.optional(),
 	theme: z.string().optional(),
 })
 
-export const overrideSchema = z.object({ phase: phaseSchema, reason: boundedText(2000, 1) }).strict()
+const overrideSchema = z.object({ phase: phaseSchema, reason: boundedText(2000, 1) }).strict()
+
+export { decisionSchema, hoursDecisionSchema, overrideSchema, reviewQueueQuery }

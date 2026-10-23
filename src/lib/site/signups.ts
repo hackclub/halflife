@@ -64,7 +64,7 @@ async function countAirtableRecords(url: string, headers: { [_: string]: string 
  */
 let webhookSequence = 0
 
-export async function recordSignup(email: string, ip = "unknown", meta: SignupMeta = {}): Promise<SignupResult> {
+async function recordSignup(email: string, ip = "unknown", meta: SignupMeta = {}): Promise<SignupResult> {
 	const { source = "landing", ref = null, utmSource = null, utmMedium = null, utmCampaign = null, userId = null } = meta
 
 	const airtableToken = process.env.AIRTABLE_API_KEY
@@ -262,9 +262,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 /**
  * The landing page's budget: eight attempts a minute, and a refused attempt still counts, so a caller hammering the endpoint does not get a fresh window by continuing.
  */
-export function signupRateLimited(key: string): boolean {
+function signupRateLimited(key: string): boolean {
 	return rateLimited(key, { countThrottled: true, max: 8 })
 }
 
-export type { SignupMeta, SignupResult }
-export { normalizeEmail }
+export { normalizeEmail, recordSignup, type SignupMeta, type SignupResult, signupRateLimited }

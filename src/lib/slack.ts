@@ -30,11 +30,11 @@ async function slackCall<T>(method: string, body: { [_: string]: unknown }): Pro
 	return data as T
 }
 
-export async function postMessage(channel: string, text: string): Promise<void> {
+async function postMessage(channel: string, text: string): Promise<void> {
 	await slackCall("chat.postMessage", { channel, text })
 }
 
-export async function sendDM(slackId: string, text: string): Promise<void> {
+async function sendDM(slackId: string, text: string): Promise<void> {
 	const opened = await slackCall<{ channel?: { id: string } }>("conversations.open", {
 		users: slackId,
 	})
@@ -42,3 +42,5 @@ export async function sendDM(slackId: string, text: string): Promise<void> {
 	if (!channel) throw new Error(`Slack conversations.open returned no channel for ${slackId}`)
 	await postMessage(channel, text)
 }
+
+export { postMessage, sendDM }

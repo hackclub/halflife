@@ -185,7 +185,7 @@ const STARTER_RENDERS: Partial<{ [_: string]: StaticImageData }> = {
 	starbie: starbieRender,
 }
 
-export function StarterRender({
+function StarterRender({
 	id,
 	className,
 	sizes,
@@ -206,4 +206,4 @@ export function StarterRender({
 	)
 }
 
-export { Gato, PrinterPhoto, SketchDefs, WeekPainting }
+export { Gato, PrinterPhoto, SketchDefs, StarterRender, WeekPainting }
