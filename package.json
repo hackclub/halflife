@@ -47,6 +47,8 @@
 		"start": "next start",
 		"starters:backfill-week-3": "bun --conditions=react-server scripts/backfill-week-3-starters.ts",
 		"streaks:recompute": "bun --conditions=react-server scripts/recompute-streaks.ts",
+		"test": "bun test --conditions=react-server",
+		"test:coverage": "bun test --conditions=react-server --coverage",
 		"typecheck": "tsc --noEmit",
 		"uploads:backfill-urls": "bun --conditions=react-server scripts/backfill-upload-urls.ts",
 		"uploads:migrate-legacy": "bun scripts/migrate-legacy-uploads.ts",
