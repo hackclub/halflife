@@ -14,7 +14,7 @@
 		"builtin": true,
 		"node": true
 	},
-	"ignorePatterns": [".next/**", "node_modules/**", "public/**", "src/app/generated/**", "migrations/snapshots/**"],
+	"ignorePatterns": [".next/**", "node_modules/**", "public/**", "src/app/generated/**", "migrations/**"],
 	"options": {
 		"denyWarnings": true,
 		"reportUnusedDisableDirectives": "warn",
