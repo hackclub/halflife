@@ -62,6 +62,10 @@ jobs:
                   bun run verify:contracts
                   bun run verify:forge-write
 
+            # Hermetic like the checks above: the unit tests cover pure libs only, so no database, no network, no secrets.
+            - name: Unit tests
+              run: bun run test
+
             - name: Build
               env:
                   CI: "true"
