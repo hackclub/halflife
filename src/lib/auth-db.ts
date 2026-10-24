@@ -49,7 +49,7 @@ const createPool = () => {
 }
 
 /**
- * Untyped on purpose: better-auth addresses tables and columns by name from its own schema, and typing them would mean hand-writing four table interfaces that only mirror `prisma8/contract.prisma`.
+ * Untyped on purpose: better-auth addresses tables and columns by name from its own schema, and typing them would mean hand-writing four table interfaces that only mirror `prisma/contract.prisma`.
  */
 const createClient = () =>
 	new Kysely<Record<string, Record<string, unknown>>>({ dialect: new PostgresDialect({ pool: createPool() }) })
