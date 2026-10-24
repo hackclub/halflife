@@ -321,7 +321,7 @@ async function disputeContext(
 /**
  * Ask staff to look again at a decision a maker has disputed.
  *
- * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
+ * Posted to `SLACK_DISPUTES_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
  *
  * The reviewer who made the disputed decision is pinged and given links straight to the hand-in: the review console thread, where the dispute can be answered, and Ari, where the decision can be re-read and made again. Both are additions to the same channel post rather than a DM: the point is that whoever picks it up has the reviewer named and the conversation a click away. A reviewer with no account on this deployment, or a hand-in that never reached Ari, simply drops its half.
  */
@@ -334,7 +334,7 @@ export async function notifyStaffDispute(input: {
 	note: string
 	participant: string
 }): Promise<void> {
-	const channel = process.env.SLACK_REVIEW_CHANNEL_ID
+	const channel = process.env.SLACK_DISPUTES_CHANNEL_ID
 	if (!channel) return
 	const phase = input.phase === Phase.DESIGN ? "design" : "build"
 

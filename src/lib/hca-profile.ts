@@ -2,6 +2,7 @@ import "server-only"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import prisma from "@/lib/prisma"
+import { redactForLog } from "@/lib/redact"
 
 /**
  * Everything this app learns from Hack Club Auth, and the one way it is read.
@@ -239,11 +240,26 @@ export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolea
 }
 
 /**
+ * The id of another row that already holds this address, compared the way better-auth compares it when it looks someone up.
+ *
+ * `User.email` is unique exactly as stored, not case-insensitively, so the same address in another spelling is a second legal row until something tries to write the lowercased form over it.
+ */
+async function emailHeldByAnother(email: string, userId: string): Promise<string | null> {
+	const other = await prisma.user.findFirst({
+		select: { id: true },
+		where: { email: { equals: email, mode: "insensitive" }, id: { not: userId } },
+	})
+	return other?.id ?? null
+}
+
+/**
  * Read this user's profile from HCA and store what we keep of it.
  *
  * Resolves to the verification status HCA reported, or null if HCA could not be asked (no linked account, a token that will not refresh, HCA down). Never throws: a sign-in or a submit must not fail because this could not run.
+ *
+ * `profile: true` is the sign-in sync: it also writes the fields better-auth's `overrideUserInfo` used to copy from the provider (name, image and email), because that copy runs before there is a user id to compare against and an address HCA moved to one another local row already holds made the whole callback fail on `user_email_key`. Here the collision is something we can see and step around.
  */
-export async function syncHcaProfile(userId: string): Promise<string | null> {
+export async function syncHcaProfile(userId: string, { profile = false } = {}): Promise<string | null> {
 	try {
 		// Imported here, not at the top: lib/auth calls this from its own hooks.
 		const { auth } = await import("@/lib/auth")
@@ -257,12 +273,33 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
 		if (!accessToken) return null
 
 		const identity = await fetchHcaIdentity(accessToken)
+
+		const current = profile
+			? await prisma.user.findUnique({ select: { email: true, emailVerified: true }, where: { id: userId } })
+			: null
+		const email = profile ? (identity.email?.toLowerCase() ?? null) : null
+		const emailChanged = email !== null && email !== current?.email.toLowerCase()
+		const emailHolder = email !== null && emailChanged ? await emailHeldByAnother(email, userId) : null
+		if (email !== null && emailHolder)
+			console.warn(`[hca] ${redactForLog(email)} for ${userId} not stored: account ${emailHolder} already holds it`)
+
+		let emailData: { email?: string; emailVerified?: boolean } = {}
+		if (email !== null && !emailHolder)
+			emailData = emailChanged
+				? { email, emailVerified: identity.emailVerified }
+				: identity.emailVerified && !current?.emailVerified
+					? { emailVerified: true }
+					: {}
+
 		await prisma.user.update({
 			data: {
 				// Only what HCA actually said: a missing field leaves the stored value.
 				...(identity.verificationStatus ? { verificationStatus: identity.verificationStatus } : {}),
 				// The name the site shows, alongside `name` rather than instead of it: better-auth's own mapping cannot carry this (see the header), and the Airtable rows, Ari and the export still need the full name they split into first and last. See lib/display-name.
 				...(identity.nickname ? { displayName: identity.nickname } : {}),
+				...(profile && identity.name ? { name: identity.name } : {}),
+				...(profile && identity.image ? { image: identity.image } : {}),
+				...emailData,
 				...encryptedFieldsFrom(identity),
 			},
 			where: { id: userId },

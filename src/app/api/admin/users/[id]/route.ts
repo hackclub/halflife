@@ -1,5 +1,7 @@
+import { Prisma } from "@/app/generated/prisma/client"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { hasRole, Permission, Role } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
@@ -50,19 +52,26 @@ export const PATCH = withPermission(
 			if (taken) return fail("CONFLICT", "Another user already has that email address")
 		}
 
-		const updated = await prisma.user.update({
-			data: {
-				...(parsed.data.fraudFlagged !== undefined ? { fraudFlagged: parsed.data.fraudFlagged } : {}),
-				...(parsed.data.submissionExtensionUntil !== undefined
-					? { submissionExtensionUntil: parsed.data.submissionExtensionUntil }
-					: {}),
-				...(parsed.data.email !== undefined ? { email: parsed.data.email } : {}),
-				// Provenance is withdrawn with the address. Until now `email` was only ever written by an identity provider, so `findUserByEmail` matching it meant the address genuinely belonged to the HCA identity signing in - and better-auth's implicit account linking (lib/auth.ts trusts the hca provider, and `requireLocalEmailVerified` defaults true) will attach an incoming HCA identity to ANY row whose address matches when that row is `emailVerified`. An address a human typed into the admin panel has no such proof, so the flag must not stay set for a linked account. Clearing it is the main guard; adoptHcaVerifiedEmail (lib/hca-profile) reinforces it by refusing to re-verify any row that already has a linked Account, though it still repairs account-less staff-import rows - so the flag (not the address) is what separates a typed address from a verified one. The next sign-in still works, because it resolves on the HCA account row (providerId + sub) rather than on the address.
-				...(emailChanged ? { emailVerified: false } : {}),
-			},
-			select: { email: true, emailVerified: true, fraudFlagged: true, id: true, submissionExtensionUntil: true },
-			where: { id },
-		})
+		const updated = await prisma.user
+			.update({
+				data: {
+					...(parsed.data.fraudFlagged !== undefined ? { fraudFlagged: parsed.data.fraudFlagged } : {}),
+					...(parsed.data.submissionExtensionUntil !== undefined
+						? { submissionExtensionUntil: parsed.data.submissionExtensionUntil }
+						: {}),
+					...(parsed.data.email !== undefined ? { email: parsed.data.email } : {}),
+					// Provenance is withdrawn with the address. Until now `email` was only ever written by an identity provider, so `findUserByEmail` matching it meant the address genuinely belonged to the HCA identity signing in - and better-auth's implicit account linking (lib/auth.ts trusts the hca provider, and `requireLocalEmailVerified` defaults true) will attach an incoming HCA identity to ANY row whose address matches when that row is `emailVerified`. An address a human typed into the admin panel has no such proof, so the flag must not stay set for a linked account. Clearing it is the main guard; adoptHcaVerifiedEmail (lib/hca-profile) reinforces it by refusing to re-verify any row that already has a linked Account, though it still repairs account-less staff-import rows - so the flag (not the address) is what separates a typed address from a verified one. The next sign-in still works, because it resolves on the HCA account row (providerId + sub) rather than on the address.
+					...(emailChanged ? { emailVerified: false } : {}),
+				},
+				select: { email: true, emailVerified: true, fraudFlagged: true, id: true, submissionExtensionUntil: true },
+				where: { id },
+			})
+			.catch(err => {
+				// The check above is a read followed by a write, so a sign-in or another admin can take the address in between. Answer with the same conflict the check would have, rather than a 500.
+				if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
+					throw new HttpError("CONFLICT", "Another user already has that email address")
+				throw err
+			})
 
 		if (parsed.data.fraudFlagged !== undefined && parsed.data.fraudFlagged !== before.fraudFlagged)
 			await logAudit({
