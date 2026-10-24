@@ -57,26 +57,29 @@ describe("orderByFor", () => {
 
 describe("positionWhere", () => {
 	test("returns the base filter when there is no position", () => {
-		const base = { userId: "u" }
+		const base: { [_: string]: unknown } = { userId: "u" }
 		expect(positionWhere(null, { column: "createdAt", direction: "desc" }, base)).toEqual(base)
 	})
 
 	test("selects rows strictly after a dated position", () => {
 		const at = new Date("2026-01-01T00:00:00.000Z")
-		expect(positionWhere({ at, id: "a" }, { column: "createdAt", direction: "desc" }, { userId: "u" })).toEqual({
+		const base: { [_: string]: unknown } = { userId: "u" }
+		const empty: { [_: string]: unknown } = {}
+		expect(positionWhere({ at, id: "a" }, { column: "createdAt", direction: "desc" }, base)).toEqual({
 			OR: [{ createdAt: { lt: at } }, { createdAt: at, id: { lt: "a" } }],
 			userId: "u",
 		})
-		expect(positionWhere({ at, id: "a" }, { column: "createdAt", direction: "asc" }, {})).toEqual({
+		expect(positionWhere({ at, id: "a" }, { column: "createdAt", direction: "asc" }, empty)).toEqual({
 			OR: [{ createdAt: { gt: at } }, { createdAt: at, id: { gt: "a" } }],
 		})
 	})
 
 	test("handles null leading values per direction", () => {
-		expect(positionWhere({ at: null, id: "a" }, { column: "createdAt", direction: "desc" }, {})).toEqual({
+		const base: { [_: string]: unknown } = {}
+		expect(positionWhere({ at: null, id: "a" }, { column: "createdAt", direction: "desc" }, base)).toEqual({
 			OR: [{ createdAt: null, id: { lt: "a" } }, { createdAt: { not: null } }],
 		})
-		expect(positionWhere({ at: null, id: "a" }, { column: "createdAt", direction: "asc" }, {})).toEqual({
+		expect(positionWhere({ at: null, id: "a" }, { column: "createdAt", direction: "asc" }, base)).toEqual({
 			OR: [{ createdAt: null, id: { gt: "a" } }],
 		})
 	})
@@ -91,7 +94,8 @@ describe("cursorWhere", () => {
 	test("decodes a cursor into a position filter", () => {
 		const at = new Date("2026-01-01T00:00:00.000Z")
 		const cursor = encodeCursor({ at, id: "a" })
-		expect(cursorWhere(cursor, { column: "createdAt", direction: "desc" }, {})).toEqual({
+		const base: { [_: string]: unknown } = {}
+		expect(cursorWhere(cursor, { column: "createdAt", direction: "desc" }, base)).toEqual({
 			OR: [{ createdAt: { lt: at } }, { createdAt: at, id: { lt: "a" } }],
 		})
 	})

@@ -25,7 +25,7 @@ describe("preview", () => {
 
 describe("escapeLikePattern", () => {
 	test("escapes LIKE wildcards and the escape itself", () => {
-		expect(escapeLikePattern("100%_\\test")).toBe(String.raw`100\%\_\\test`)
+		expect(escapeLikePattern(String.raw`100%_\test`)).toBe(String.raw`100\%\_\\test`)
 	})
 
 	test("leaves plain text alone", () => {
@@ -37,6 +37,6 @@ describe("escapeLikePattern", () => {
 describe("containsPattern", () => {
 	test("wraps the escaped value in wildcards", () => {
 		expect(containsPattern("hello")).toBe("%hello%")
-		expect(containsPattern("a%b_c\\d")).toBe("%a\\%b\\_c\\\\d%")
+		expect(containsPattern(String.raw`a%b_c\d`)).toBe(String.raw`%a\%b\_c\\d%`)
 	})
 })
