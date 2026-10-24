@@ -26,5 +26,8 @@ describe("readPublicReelLink", () => {
 			error: "That's X (Twitter) itself, not a post. Open your post and copy its link.",
 		})
 		expect(readPublicReelLink("X", "   ")).toEqual({ error: "Paste the link to your X (Twitter) post." })
+		expect(readPublicReelLink("X", "https://exa mple.com/x")).toEqual({
+			error: "That isn't a link. Copy it from the post's Share button on X (Twitter).",
+		})
 	})
 })
