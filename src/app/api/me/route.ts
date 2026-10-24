@@ -4,7 +4,8 @@ import { getBalances, getEarnedCredit } from "@/lib/currency"
 import { withSession } from "@/lib/guards"
 import { permissionsFor } from "@/lib/permissions"
 import { getPrinterQualification } from "@/lib/printer"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -18,22 +19,21 @@ export const dynamic = "force-dynamic"
 
 export const GET = withSession(async (_req: Request, { gate }) => {
 	const [user, balances, earned, printer] = await Promise.all([
-		prisma.user.findUnique({
-			select: {
-				email: true,
-				fraudFlagged: true,
-				hackatimeUserId: true,
-				id: true,
-				image: true,
-				name: true,
-				slackId: true,
-				submissionExtensionUntil: true,
-				verificationStatus: true,
-			},
-			where: { id: gate.user.id },
-		}),
-		prisma.$transaction(tx => getBalances(tx, gate.user.id)),
-		prisma.$transaction(tx => getEarnedCredit(tx, gate.user.id)),
+		db.orm.public.User.whereUnique({ id: gate.user.id })
+			.select(
+				"email",
+				"fraudFlagged",
+				"hackatimeUserId",
+				"id",
+				"image",
+				"name",
+				"slackId",
+				"submissionExtensionUntil",
+				"verificationStatus",
+			)
+			.first(),
+		db.transaction(tx => getBalances(tx, gate.user.id)),
+		db.transaction(tx => getEarnedCredit(tx, gate.user.id)),
 		getPrinterQualification(gate.user.id),
 	])
 
@@ -42,6 +42,14 @@ export const GET = withSession(async (_req: Request, { gate }) => {
 		permissions: permissionsFor(gate.roles),
 		printer,
 		roles: gate.roles,
-		user: { ...user, hackatimeLinked: Boolean(user?.hackatimeUserId), image: avatarUrl(user) },
+		user: user
+			? {
+					...user,
+					hackatimeLinked: Boolean(user.hackatimeUserId),
+					image: avatarUrl(user),
+					submissionExtensionUntil:
+						user.submissionExtensionUntil === null ? null : parseDbTimestamp(user.submissionExtensionUntil),
+				}
+			: user,
 	})
 })

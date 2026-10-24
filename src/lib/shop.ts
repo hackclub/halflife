@@ -123,6 +123,40 @@ export type ShopOrderStaffRow = Pick<
 	| "userId"
 > & { notes: { authorId: string; body: string; createdAt: string }[] }
 
+export interface ShopOrderStaffView extends Omit<
+	ShopOrderStaffRow,
+	"fulfilledAt" | "fulfillmentUpdatedAt" | "heldAt" | "placedAt" | "rejectedAt" | "notes"
+> {
+	fulfilledAt: Date | null
+	fulfillmentUpdatedAt: Date | null
+	heldAt: Date | null
+	notes: { authorId: string; body: string; createdAt: Date }[]
+	placedAt: Date
+	rejectedAt: Date | null
+}
+
+export function toShopOrderStaffView(row: ShopOrderStaffRow): ShopOrderStaffView {
+	const parse = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	return {
+		...row,
+		fulfilledAt: parse(row.fulfilledAt),
+		fulfillmentUpdatedAt: parse(row.fulfillmentUpdatedAt),
+		heldAt: parse(row.heldAt),
+		notes: row.notes.map(note => ({ ...note, createdAt: parseDbTimestamp(note.createdAt) })),
+		placedAt: parseDbTimestamp(row.placedAt),
+		rejectedAt: parse(row.rejectedAt),
+	}
+}
+
+/** One staff-view row, for the fulfilment console and the decision response. */
+export async function getStaffOrder(id: string): Promise<ShopOrderStaffView | null> {
+	const row = await db.orm.public.ShopOrder.whereUnique({ id })
+		.select(...shopOrderStaffFields)
+		.include("notes", notes => notes.select("authorId", "body", "createdAt").orderBy(note => note.createdAt.asc()))
+		.first()
+	return row ? toShopOrderStaffView(row) : null
+}
+
 export interface ShopItemView extends ShopItemPublic {
 	/** Against the pot this item may be paid from, not against the total. */
 	affordable: boolean
@@ -253,7 +287,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 /** Parse a public-view order row's timestamps. Prisma 8 reads them as PostgreSQL text. */
 type ShopOrderPublicRow = Pick<Models.public_ShopOrder, (typeof shopOrderPublicFields)[number]>
 
-function toShopOrderPublic(row: ShopOrderPublicRow): ShopOrderPublic {
+export function toShopOrderPublic(row: ShopOrderPublicRow): ShopOrderPublic {
 	const parse = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	return {
 		...row,

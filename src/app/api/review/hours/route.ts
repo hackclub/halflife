@@ -1,3 +1,4 @@
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
@@ -6,9 +7,10 @@ import { HttpError } from "@/lib/errors"
 import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { hoursDecisionSchema } from "@/lib/schemas/review"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
  * Batched, because a reviewer approves a whole project's hours in one pass and one request per entry would be a dozen round trips per review.
@@ -23,29 +25,21 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 	const linkIds = parsed.data.decisions.filter(d => d.kind === "hackatime").map(d => d.id)
 	const now = new Date()
 
-	const applied = await prisma.$transaction(async tx => {
+	const nowText = formatDbTimestamp(now)
+	const applied = await db.transaction(async tx => {
 		const [sessions, links] = await Promise.all([
 			sessionIds.length > 0
-				? tx.workSession.findMany({
-						select: {
-							id: true,
-							phase: true,
-							themeProject: { select: { buildStatus: true, designStatus: true, userId: true } },
-							themeProjectId: true,
-						},
-						where: { deletedAt: null, id: { in: sessionIds } },
-					})
+				? tx.orm.public.WorkSession.where({ deletedAt: null })
+						.where(session => session.id.in(sessionIds))
+						.select("id", "phase", "themeProjectId")
+						.include("themeProject", project => project.select("buildStatus", "designStatus", "userId"))
+						.all()
 				: [],
 			linkIds.length > 0
-				? tx.hackatimeLink.findMany({
-						select: {
-							id: true,
-							phase: true,
-							themeProject: { select: { buildStatus: true, designStatus: true, userId: true } },
-							themeProjectId: true,
-						},
-						where: { id: { in: linkIds } },
-					})
+				? tx.orm.public.HackatimeLink.where(link => link.id.in(linkIds))
+						.select("id", "phase", "themeProjectId")
+						.include("themeProject", project => project.select("buildStatus", "designStatus", "userId"))
+						.all()
 				: [],
 		])
 
@@ -54,7 +48,10 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 			throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
 
 		// Approving hours is the other half of the money path, so it needs the same rule the decision route has: nobody rules on their own work.
-		const all = [...sessions, ...links]
+		const all = [...sessions, ...links].map(row => {
+			if (!row.themeProject) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
+			return { ...row, themeProject: row.themeProject }
+		})
 		if (all.some(row => row.themeProject.userId === gate.user.id))
 			throw new HttpError("FORBIDDEN", "You cannot approve hours on your own work")
 
@@ -74,16 +71,21 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 
 		// Ari owns its own decisions, but a claim another Half Life reviewer holds is theirs until it expires.
 		const pairs = [...new Map(all.map(row => [`${row.themeProjectId}:${row.phase}`, row])).values()]
-		const openSubmissions = await tx.phaseSubmission.findMany({
-			select: { claim: { select: { expiresAt: true, reviewerId: true } } },
-			where: {
-				OR: pairs.map(row => ({ phase: row.phase, themeProjectId: row.themeProjectId })),
-				resolvedAt: null,
-			},
-		})
+		const openSubmissions = await tx.orm.public.PhaseSubmission.where({ resolvedAt: null })
+			.where(submission =>
+				or(
+					...pairs.map(row =>
+						and(submission.phase.eq(row.phase), submission.themeProjectId.eq(row.themeProjectId)),
+					),
+				),
+			)
+			.include("claim", claim => claim.select("expiresAt", "reviewerId"))
+			.all()
 		const blocked = openSubmissions.some(
 			submission =>
-				submission.claim && submission.claim.reviewerId !== gate.user.id && submission.claim.expiresAt > now,
+				submission.claim &&
+				submission.claim.reviewerId !== gate.user.id &&
+				parseDbTimestamp(submission.claim.expiresAt) > now,
 		)
 		if (blocked) throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer is deciding this phase right now")
 
@@ -91,28 +93,31 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 
 		for (const decision of parsed.data.decisions)
 			if (decision.kind === "session") {
-				const before = await tx.workSession.findUnique({
-					select: { hoursApproved: true },
-					where: { id: decision.id },
-				})
+				const before = await tx.orm.public.WorkSession.whereUnique({ id: decision.id })
+					.select("hoursApproved")
+					.first()
 				if (!before) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
 				// Conditional on the phase still being in review: a decision or a withdrawal that commits between the checks above and this write makes it match nothing, and the batch rolls back.
-				const updated = await tx.workSession.updateMany({
-					data: {
+				const updated = await tx.orm.public.WorkSession.where({ id: decision.id })
+					.where(session =>
+						or(
+							and(
+								session.phase.eq(Phase.DESIGN),
+								session.themeProject.some(project => project.designStatus.eq(PhaseStatus.in_review)),
+							),
+							and(
+								session.phase.eq(Phase.BUILD),
+								session.themeProject.some(project => project.buildStatus.eq(PhaseStatus.in_review)),
+							),
+						),
+					)
+					.updateAndCount({
 						hoursApproved: decision.hoursApproved,
 						reviewComments: sanitizeOptional(decision.comments),
-						reviewedAt: now,
+						reviewedAt: nowText,
 						reviewedById: gate.user.id,
-					},
-					where: {
-						id: decision.id,
-						OR: [
-							{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-							{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-						],
-					},
-				})
-				if (updated.count !== 1) throw new HttpError("PHASE_LOCKED", "The phase moved while its hours were approved")
+					})
+				if (updated !== 1) throw new HttpError("PHASE_LOCKED", "The phase moved while its hours were approved")
 				changes.push({
 					after: decision.hoursApproved,
 					before: before.hoursApproved,
@@ -120,26 +125,29 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 					kind: "session",
 				})
 			} else {
-				const before = await tx.hackatimeLink.findUnique({
-					select: { hoursApproved: true },
-					where: { id: decision.id },
-				})
+				const before = await tx.orm.public.HackatimeLink.whereUnique({ id: decision.id })
+					.select("hoursApproved")
+					.first()
 				if (!before) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
-				const updated = await tx.hackatimeLink.updateMany({
-					data: {
+				const updated = await tx.orm.public.HackatimeLink.where({ id: decision.id })
+					.where(link =>
+						or(
+							and(
+								link.phase.eq(Phase.DESIGN),
+								link.themeProject.some(project => project.designStatus.eq(PhaseStatus.in_review)),
+							),
+							and(
+								link.phase.eq(Phase.BUILD),
+								link.themeProject.some(project => project.buildStatus.eq(PhaseStatus.in_review)),
+							),
+						),
+					)
+					.updateAndCount({
 						hoursApproved: decision.hoursApproved,
-						reviewedAt: now,
+						reviewedAt: nowText,
 						reviewedById: gate.user.id,
-					},
-					where: {
-						id: decision.id,
-						OR: [
-							{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-							{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-						],
-					},
-				})
-				if (updated.count !== 1) throw new HttpError("PHASE_LOCKED", "The phase moved while its hours were approved")
+					})
+				if (updated !== 1) throw new HttpError("PHASE_LOCKED", "The phase moved while its hours were approved")
 				changes.push({
 					after: decision.hoursApproved,
 					before: before.hoursApproved,

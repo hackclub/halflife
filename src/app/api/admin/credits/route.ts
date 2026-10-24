@@ -4,7 +4,7 @@ import { appendLedgerEntry, CoinBucket, getBalances, LedgerKind, lockUserCredit 
 import { withPermission } from "@/lib/guards"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { creditAdjustSchema } from "@/lib/schemas/admin"
 
@@ -13,7 +13,7 @@ export const POST = withPermission(Permission.MANAGE_CREDIT, async (req: Request
 	if (parsed.error) return parsed.error
 	const { userId, amount, reason, bucket } = parsed.data
 
-	const target = await prisma.user.findUnique({ select: { id: true }, where: { id: userId } })
+	const target = await db.orm.public.User.whereUnique({ id: userId }).select("id").first()
 	if (!target) return fail("NOT_FOUND", "User not found")
 
 	// Issuing coins is a reward, so the maker has to have cleared HCA's identity check first. A clawback is not a reward and is still allowed: taking credit back must not be blocked by the state of the account it is taken from. Asked before the transaction, because `isIdentityVerified` may call HCA and that must not hold a lock.
@@ -27,8 +27,8 @@ export const POST = withPermission(Permission.MANAGE_CREDIT, async (req: Request
 	// has to carry the address and browser of the admin who made the adjustment.
 	const { ip, userAgent } = await requestInfo()
 
-	const entry = await prisma
-		.$transaction(async tx => {
+	const entry = await db
+		.transaction(async tx => {
 			await lockUserCredit(tx, userId)
 			const balances = await getBalances(tx, userId)
 			// Guard the pot being moved, not the combined total: a clawback that the total can absorb may still take the spendable pot negative, and banked coins are not available to cover it.

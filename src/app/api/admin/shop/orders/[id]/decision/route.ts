@@ -3,10 +3,11 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { orderDecisionSchema } from "@/lib/schemas/admin"
-import { fulfillOrder, rejectOrder, shopOrderStaffSelect } from "@/lib/shop"
+import { fulfillOrder, getStaffOrder, rejectOrder } from "@/lib/shop"
+import { formatDbTimestamp } from "@/lib/time"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -21,7 +22,7 @@ export const POST = withPermission(
 		if (parsed.error) return parsed.error
 		const body = parsed.data
 
-		const before = await prisma.shopOrder.findUnique({ where: { id } })
+		const before = await db.orm.public.ShopOrder.whereUnique({ id }).select("status").first()
 		if (!before) return fail("NOT_FOUND", "Order not found")
 
 		if (body.action === "FULFILL") {
@@ -37,7 +38,7 @@ export const POST = withPermission(
 				targetId: id,
 				targetType: "ShopOrder",
 			})
-			return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ select: shopOrderStaffSelect, where: { id } }) })
+			return ok({ order: await getStaffOrder(id) })
 		}
 
 		if (body.action === "REJECT") {
@@ -56,22 +57,18 @@ export const POST = withPermission(
 				targetId: id,
 				targetType: "ShopOrder",
 			})
-			return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ select: shopOrderStaffSelect, where: { id } }) })
+			return ok({ order: await getStaffOrder(id) })
 		}
 
 		if (before.status !== ShopOrderStatus.PENDING) return fail("CONFLICT", "Only a pending order can be put on hold")
 		// Conditional on the status just read: a concurrent fulfil or reject landing between the read and the write must not be overwritten back to ON_HOLD.
-		const held = await prisma.shopOrder.updateMany({
-			data: {
-				heldAt: new Date(),
-				holdReason: sanitize(body.reason),
-				lastActorId: gate.user.id,
-				status: ShopOrderStatus.ON_HOLD,
-			},
-			where: { id, status: ShopOrderStatus.PENDING },
+		const held = await db.orm.public.ShopOrder.where({ id, status: ShopOrderStatus.PENDING }).updateAndCount({
+			heldAt: formatDbTimestamp(new Date()),
+			holdReason: sanitize(body.reason),
+			lastActorId: gate.user.id,
+			status: ShopOrderStatus.ON_HOLD,
 		})
-		if (held.count !== 1) return fail("CONFLICT", "This order was decided by someone else")
-		const order = await prisma.shopOrder.findUniqueOrThrow({ select: shopOrderStaffSelect, where: { id } })
-		return ok({ order })
+		if (held !== 1) return fail("CONFLICT", "This order was decided by someone else")
+		return ok({ order: await getStaffOrder(id) })
 	},
 )
