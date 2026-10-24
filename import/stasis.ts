@@ -14,6 +14,8 @@
 
 import { config } from "dotenv"
 import { Pool } from "pg"
+import { DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor } from "@/lib/config/program"
+import { getTierOrThrow } from "@/lib/config/tiers"
 import {
 	CoinBucket,
 	HoursSource,
@@ -27,9 +29,7 @@ import {
 	ShopItemCategory,
 	type ShopOrderStatus,
 	Theme,
-} from "@/app/generated/prisma/enums"
-import { DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor } from "@/lib/config/program"
-import { getTierOrThrow } from "@/lib/config/tiers"
+} from "@/lib/enums"
 import db from "@/lib/prisma8"
 import { formatDbTimestamp } from "@/lib/time"
 
