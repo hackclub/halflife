@@ -54,11 +54,14 @@ The contract was rewritten from the Prisma 7 schema rather than inferred, so eve
 
 ## Production cutover
 
-`prisma db sign` has been run against the local database only. The production database has the same schema but has **not** been signed. Cutover order:
+`prisma db sign` has been run against the local database only. The production database has the same schema but has **not** been signed. No data migration is needed at any point: Prisma 8 reads the same tables, rows and enums as Prisma 7 did. The only write outside the app is the marker row in `prisma_contract.marker`, which records that the database matches the contract.
+
+Cutover order matters because the entrypoint runs `prisma db migrate` at boot, and migrate is replay-only: with no marker it replays the baseline package (slow and precheck-heavy against a live database), and it only no-ops once the marker matches. So sign first, deploy second:
 
 1. Back up production and take a maintenance window.
-2. Deploy this branch (the entrypoint runs `prisma db migrate`, which is a no-op while the marker is absent – it does not write schema).
-3. `prisma db sign --db <production-url>` (or `bun run db:sign` with `DATABASE_URL` pointed at production). If it reports drift, stop: the drift output names the exact object.
-4. `prisma db verify` to confirm, then re-enable traffic.
+2. From any machine with this branch checked out: `DATABASE_URL=<production-url> bunx prisma db verify` (read-only). If it reports drift, stop: the drift output names the exact object.
+3. `DATABASE_URL=<production-url> bunx prisma db sign` – writes the marker, and only if verification passes.
+4. Deploy this branch. Boot is `db migrate`, which reports "Already up to date".
+5. `GET https://<host>/api/health` must return `{"ok":true}`.
 
-Do not delete the `prisma_contract` schema or marker rows by hand; `db sign` owns them.
+The old `_prisma_migrations` table stays where it is; it is Prisma 7's history and nothing reads it anymore. Its rows remain in git history under `prisma/migrations/`.
