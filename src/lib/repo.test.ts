@@ -51,6 +51,7 @@ describe("normalizeRepo", () => {
 		expect(normalizeRepo("https://gitlab.com/me/repo").error).toBeNull()
 		expect(normalizeRepo("ftp://example.com/repo").error).toBe("That needs to be a web link.")
 		expect(normalizeRepo("notaurl").error).toBe("That does not look like a repo link.")
+		expect(normalizeRepo("https://exa mple.com").error).toBe("That does not look like a repo link.")
 		expect(normalizeRepo("").url).toBeNull()
 	})
 })
