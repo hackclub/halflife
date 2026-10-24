@@ -37,6 +37,16 @@ export type Prisma8Client = ReturnType<typeof createClient>
  */
 export type DbOrTx = PostgresQueryMembers<Contract>
 
+/** Whether an error is a unique-constraint violation (an insert raced another insert). Prisma 8 surfaces the SQLSTATE on the error; 23505 is unique_violation on every Postgres driver. */
+export function isUniqueViolation(error: unknown): boolean {
+	return (
+		typeof error === "object"
+		&& error !== null
+		&& "sqlState" in error
+		&& (error as { sqlState: unknown }).sqlState === "23505"
+	)
+}
+
 // Cached on globalThis so Next's dev-mode module reloading doesn't open a new connection pool on every edit until Postgres refuses connections.
 const globalForPrisma8 = globalThis as unknown as { prisma8?: Prisma8Client }
 

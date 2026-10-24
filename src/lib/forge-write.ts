@@ -3,8 +3,9 @@ import { createHash } from "node:crypto"
 import { createSlot, sleep } from "@/lib/concurrency"
 import { HttpError } from "@/lib/errors"
 import { type Forge, repoUrl } from "@/lib/forge"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import type { RepoRef } from "@/lib/repo-ref"
+import { parseDbTimestamp } from "@/lib/time"
 
 /**
  * Writing a participant's work back into their own repo, on whichever forge they linked.
@@ -93,22 +94,23 @@ function refreshAccessToken(accountId: string, userId: string): Promise<string |
  * Resolves null when the user has not linked this forge. A refresh that fails keeps the stored token: a concurrent request may have just written a new one, which the re-read below picks up, and the call the caller makes next is what decides whether the old one is dead.
  */
 export async function forgeCredentials(userId: string, forge: Forge): Promise<ForgeCredentials | null> {
-	const account = await prisma.account.findFirst({
-		orderBy: { updatedAt: "desc" },
-		select: { accessToken: true, accessTokenExpiresAt: true, accountId: true, id: true, refreshToken: true },
-		where: { providerId: forge.id, userId },
-	})
+	const account = await db.orm.public.Account.where({ providerId: forge.id, userId })
+		.orderBy(account => account.updatedAt.desc())
+		.select("accessToken", "accessTokenExpiresAt", "accountId", "id", "refreshToken")
+		.first()
 	if (!account?.accessToken) return null
 
 	let { accessToken } = account
 	// Matches better-auth's own five-second margin, so a token is refreshed exactly when `getAccessToken` would refresh it.
-	const expiring = account.accessTokenExpiresAt !== null && account.accessTokenExpiresAt.getTime() - Date.now() < 5_000
+	const expiring =
+		account.accessTokenExpiresAt !== null
+		&& parseDbTimestamp(account.accessTokenExpiresAt).getTime() - Date.now() < 5_000
 	if (account.refreshToken && expiring)
 		try {
 			accessToken = (await refreshAccessToken(account.id, userId)) ?? accessToken
 		} catch (err) {
 			// The losing half of a refresh race is not a broken link: if another request refreshed and persisted while this one failed, its token is the good one.
-			const latest = await prisma.account.findUnique({ select: { accessToken: true }, where: { id: account.id } })
+			const latest = await db.orm.public.Account.whereUnique({ id: account.id }).select("accessToken").first()
 			if (latest?.accessToken) ({ accessToken } = latest)
 			console.warn(
 				`[forge-write] token refresh for ${forge.id} failed for account ${account.id}; using the stored token:`,

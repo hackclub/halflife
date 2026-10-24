@@ -13,7 +13,7 @@ import {
 	topUpCardGrant,
 	verifiesGrantOwner,
 } from "@/lib/hcb"
-import db from "@/lib/prisma8"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
@@ -42,10 +42,10 @@ export const ABANDONED_ATTEMPT_MS = 10 * 60_000
  * The two say very different things, and the admin needs to be told which one happened: the project key means this grant has already been claimed for this project, and the hashid index means the card has already been paid for somebody else.
  */
 function isDuplicateGrantHashid(err: unknown): boolean {
-	if (typeof err !== "object" || err === null) return false
+	if (!isUniqueViolation(err)) return false
 	// A unique violation carries the constraint that fired, which names the index.
-	const { sqlState, constraint } = err as { sqlState?: unknown; constraint?: unknown }
-	return sqlState === "23505" && typeof constraint === "string" && constraint.includes("grantHashid")
+	const { constraint } = err as { constraint?: unknown }
+	return typeof constraint === "string" && constraint.includes("grantHashid")
 }
 
 /**
