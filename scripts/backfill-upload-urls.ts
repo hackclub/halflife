@@ -1,5 +1,6 @@
 import "dotenv/config"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
+import { containsPattern } from "../src/lib/text"
 import { listUploadedObjects } from "../src/lib/uploads/r2"
 
 /**
@@ -113,15 +114,10 @@ async function main() {
 	console.log(`${existing.size} objects in the bucket`)
 
 	console.log("reading journal entries…")
-	const rows = await prisma.workSession.findMany({
-		orderBy: { createdAt: "asc" },
-		select: {
-			content: true,
-			id: true,
-			themeProjectId: true,
-		},
-		where: { content: { contains: base.origin } },
-	})
+	const rows = await db.orm.public.WorkSession.where(session => session.content.ilike(containsPattern(base.origin)))
+		.orderBy(session => session.createdAt.asc())
+		.select("content", "id", "themeProjectId")
+		.all()
 	console.log(`${rows.length} journal entries mention ${base.origin}`)
 
 	const resolved = new Map<string, Resolution>()
@@ -144,10 +140,9 @@ async function main() {
 	const projects = new Map<string, { repoSyncEnabled: boolean; title: string }>()
 	if (plan.length > 0) {
 		const ids = [...new Set(plan.map(row => row.projectId))]
-		const found = await prisma.themeProject.findMany({
-			select: { id: true, repoSyncEnabled: true, title: true },
-			where: { id: { in: ids } },
-		})
+		const found = await db.orm.public.ThemeProject.where(project => project.id.in(ids))
+			.select("id", "repoSyncEnabled", "title")
+			.all()
 		for (const project of found) projects.set(project.id, project)
 	}
 	const titleFor = (projectId: string): string => projects.get(projectId)?.title || "(untitled)"
@@ -186,7 +181,7 @@ async function main() {
 
 	let written = 0
 	for (const row of plan) {
-		await prisma.workSession.update({ data: { content: row.content }, where: { id: row.id } })
+		await db.orm.public.WorkSession.where({ id: row.id }).update({ content: row.content })
 		written += 1
 	}
 	console.log(`updated ${plural(written, "journal entry", "journal entries")}`)
@@ -216,5 +211,5 @@ try {
 	console.error(err)
 	process.exit(1)
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

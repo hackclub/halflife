@@ -7,7 +7,7 @@ import { recordIdsFromSyncEvents, reviewStatusFor } from "../src/lib/airtable/sy
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
 import { defaultFeedback } from "../src/lib/ari"
 import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/lib/enums"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Fill `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes` on the submission rows written before the mirror existed.
@@ -71,45 +71,38 @@ async function main() {
 	const statusKey = fieldKey(statusField)
 	const notesKey = fieldKey(notesField)
 
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			buildReviewComments: true,
-			buildStatus: true,
-			designReviewComments: true,
-			designStatus: true,
-			id: true,
-			title: true,
-		},
-	})
+	const projects = await db.orm.public.ThemeProject.select(
+		"buildReviewComments",
+		"buildStatus",
+		"designReviewComments",
+		"designStatus",
+		"id",
+		"title",
+	).all()
 	if (projects.length === 0) {
 		console.log("No themed projects; nothing to backfill.")
 		return
 	}
 
-	const events = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
-	})
+	const events = await db.orm.public.AuditLog.where({ action: AuditAction.AIRTABLE_SYNC_SUCCESS })
+		.where(entry => entry.targetId.in(projects.map(p => p.id)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
 	const records = recordIdsFromSyncEvents(events)
 
 	// The decision that still holds per phase – the one case the comment alone cannot answer.
-	const reviews = await prisma.submissionReview.findMany({
-		orderBy: { createdAt: "desc" },
-		select: {
-			feedback: true,
-			result: true,
-			reviewerId: true,
-			submission: { select: { phase: true, themeProjectId: true } },
-		},
-		where: {
-			invalidated: false,
-			submission: { themeProjectId: { in: projects.map(p => p.id) } },
-		},
-	})
+	const reviews = await db.orm.public.SubmissionReview.where({ invalidated: false })
+		.where(review => review.submission.some(submission => submission.themeProjectId.in(projects.map(p => p.id))))
+		.orderBy(review => review.createdAt.desc())
+		.select("feedback", "result", "reviewerId")
+		.include("submission", submission => submission.select("phase", "themeProjectId"))
+		.all()
 	const standing = new Map<string, StandingReview>()
 	for (const review of reviews) {
-		const key = `${review.submission.themeProjectId}:${review.submission.phase}`
+		const { submission } = review
+		if (!submission) continue
+		const key = `${submission.themeProjectId}:${submission.phase}`
 		// Newest first, so the first review seen for a phase is the decision that stands.
 		if (!standing.has(key)) standing.set(key, review)
 	}
@@ -200,5 +193,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

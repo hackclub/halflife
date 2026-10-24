@@ -1,6 +1,6 @@
 import "dotenv/config"
 import { isAriConfigured, repairStatusDecisions } from "../src/lib/ari"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Give decisions the status pass rebuilt the reviewer's words they should have had.
@@ -56,5 +56,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

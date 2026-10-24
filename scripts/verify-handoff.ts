@@ -1,7 +1,7 @@
 import "dotenv/config"
 import { createHash } from "node:crypto"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
  * End-to-end check of the phone handoff.
@@ -21,10 +21,6 @@ import { PrismaClient } from "../src/app/generated/prisma/client"
  *
  * Run with `pnpm verify:handoff` against a scratch database.
  */
-
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
-})
 
 let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {
@@ -73,28 +69,26 @@ async function main() {
 	// instead of half-running into that refusal below.
 	if (!isUploadConfigured()) {
 		console.error("FAIL  uploads are not configured (S3_ACCESS_KEY_ID/SECRET, S3_BUCKET_NAME, S3_ENDPOINT required)")
-		await prisma.$disconnect()
+		await db.close()
 		process.exit(1)
 	}
 
-	const owner = await prisma.user.create({
-		data: { email: `handoff-owner-${stamp}@example.test`, name: "Owner" },
-	})
-	const stranger = await prisma.user.create({
-		data: { email: `handoff-stranger-${stamp}@example.test`, name: "Stranger" },
+	const owner = await db.orm.public.User.create({ email: `handoff-owner-${stamp}@example.test`, name: "Owner" })
+	const stranger = await db.orm.public.User.create({
+		email: `handoff-stranger-${stamp}@example.test`,
+		name: "Stranger",
 	})
 
 	// ── The token is never stored ──────────────────────────────────────────────
 	const handoff = await createHandoff(owner.id)
-	const row = await prisma.uploadHandoff.findUniqueOrThrow({
-		select: { objectKey: true, tokenHash: true, usedAt: true, userId: true },
-		where: { id: handoff.id },
-	})
+	const row = await db.orm.public.UploadHandoff.whereUnique({ id: handoff.id })
+		.select("objectKey", "tokenHash", "usedAt", "userId")
+		.firstOrThrow()
 	check("token is not stored in plaintext", row.tokenHash === handoff.token, false)
 	check("what is stored is its SHA-256", row.tokenHash, createHash("sha256").update(handoff.token).digest("hex"))
-	const anywhere = await prisma.uploadHandoff.count({
-		where: { tokenHash: handoff.token },
-	})
+	const { anywhere } = await db.orm.public.UploadHandoff.where({ tokenHash: handoff.token }).aggregate(a => ({
+		anywhere: a.count(),
+	}))
 	check("the plaintext token matches no row", anywhere, 0)
 
 	// ── Resolution ─────────────────────────────────────────────────────────────
@@ -110,9 +104,8 @@ async function main() {
 
 	// ── Expiry is enforced server-side ─────────────────────────────────────────
 	const expiring = await createHandoff(owner.id)
-	await prisma.uploadHandoff.update({
-		data: { expiresAt: new Date(Date.now() - 1000) },
-		where: { id: expiring.id },
+	await db.orm.public.UploadHandoff.where({ id: expiring.id }).update({
+		expiresAt: formatDbTimestamp(new Date(Date.now() - 1000)),
 	})
 	check("an expired token does not resolve", await resolveHandoff(expiring.token), null)
 	await refused("an expired token cannot upload", () => completeHandoff(expiring.token, fakeVideo()))
@@ -176,10 +169,9 @@ async function main() {
 		size: clip.size,
 	})
 	check("the direct upload is recorded", directResult.objectKey, presigned.objectKey)
-	const directRow = await prisma.uploadHandoff.findUniqueOrThrow({
-		select: { objectKey: true, usedAt: true },
-		where: { id: direct.id },
-	})
+	const directRow = await db.orm.public.UploadHandoff.whereUnique({ id: direct.id })
+		.select("objectKey", "usedAt")
+		.firstOrThrow()
 	check("the direct token is spent", Boolean(directRow.usedAt), true)
 	check("the direct row names the same object", directRow.objectKey, directResult.objectKey)
 
@@ -198,7 +190,7 @@ async function main() {
 	await deleteObject(directResult.objectKey)
 	console.log(`      (cleaned up ${directResult.objectKey})`)
 
-	await prisma.user.deleteMany({ where: { id: { in: [owner.id, stranger.id] } } })
+	await db.orm.public.User.where(user => user.id.in([owner.id, stranger.id])).deleteAndCount()
 
 	console.log(failures === 0 ? "\nAll handoff checks passed." : `\n${failures} check(s) failed.`)
 	process.exit(failures === 0 ? 0 : 1)
@@ -208,6 +200,6 @@ try {
 	await main()
 } catch (err) {
 	console.error(err)
-	await prisma.$disconnect()
+	await db.close()
 	process.exit(1)
 }

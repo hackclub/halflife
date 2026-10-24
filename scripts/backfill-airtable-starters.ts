@@ -5,7 +5,7 @@ import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
 import { AuditAction, Phase } from "../src/lib/enums"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Tick the `Starter project` checkbox on the Airtable rows written before the column existed.
@@ -36,20 +36,20 @@ async function main() {
 		process.exit(1)
 	}
 
-	const projects = await prisma.themeProject.findMany({
-		select: { id: true, title: true },
-		where: { starterProjectId: { not: null } },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => project.starterProjectId.isNotNull())
+		.select("id", "title")
+		.all()
 	if (projects.length === 0) {
 		console.log("No starter projects; nothing to backfill.")
 		return
 	}
 
-	const events = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
-	})
+	const events = await db.orm.public.AuditLog.where({ action: AuditAction.AIRTABLE_SYNC_SUCCESS })
+		.where(entry => entry.targetId.in(projects.map(p => p.id)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
 	const records = recordIdsFromSyncEvents(events)
 
 	const targets: { title: string; phase: Phase; recordId: string }[] = []
@@ -94,5 +94,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

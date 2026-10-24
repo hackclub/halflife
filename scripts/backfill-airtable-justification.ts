@@ -6,8 +6,10 @@ import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
 import { AuditAction, Phase } from "../src/lib/enums"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 import { getProgramSettings } from "../src/lib/program"
+import { withFields } from "../src/lib/rows"
+import { parseDbTimestamp } from "../src/lib/time"
 
 /**
  * Fill the `Justification - …` columns on the submission rows that are missing them.
@@ -84,40 +86,28 @@ async function main() {
 	const keys = new Map<string, string>()
 	for (const [key, field] of Object.entries(COLUMNS)) keys.set(key, fieldKey(field))
 
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			bomItems: { select: { name: true, purpose: true, quantity: true } },
-			description: true,
-			hackatimeLinks: { select: { hackatimeProject: true, phase: true } },
-			id: true,
-			theme: true,
-			title: true,
-			user: { select: { hackatimeUserId: true } },
-			workSessions: {
-				orderBy: { createdAt: "asc" },
-				select: {
-					content: true,
-					createdAt: true,
-					effectiveDate: true,
-					hoursClaimed: true,
-					phase: true,
-					timelapses: { select: { externalId: true, objectKey: true, playbackUrl: true, provider: true } },
-					title: true,
-				},
-				where: { deletedAt: null },
-			},
-		},
-	})
+	const projects = await db.orm.public.ThemeProject.select("description", "id", "theme", "title")
+		.include("bomItems", items => items.select("name", "purpose", "quantity"))
+		.include("hackatimeLinks", links => links.select("hackatimeProject", "phase"))
+		.include("user", user => user.select("hackatimeUserId"))
+		.include("workSessions", sessions =>
+			sessions
+				.where({ deletedAt: null })
+				.orderBy(session => session.createdAt.asc())
+				.select("content", "createdAt", "effectiveDate", "hoursClaimed", "phase", "title")
+				.include("timelapses", timelapses => timelapses.select("externalId", "objectKey", "playbackUrl", "provider")),
+		)
+		.all()
 	if (projects.length === 0) {
 		console.log("No themed projects; nothing to backfill.")
 		return
 	}
 
-	const events = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
-	})
+	const events = await db.orm.public.AuditLog.where({ action: AuditAction.AIRTABLE_SYNC_SUCCESS })
+		.where(entry => entry.targetId.in(projects.map(p => p.id)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
 	const records = recordIdsFromSyncEvents(events)
 	const settings = await getProgramSettings()
 
@@ -130,13 +120,15 @@ async function main() {
 				withoutRow++
 				continue
 			}
-			const sessions = project.workSessions.filter(s => s.phase === phase)
+			const sessions = project.workSessions
+				.filter(s => s.phase === phase)
+				.map(s => withFields(s, { createdAt: parseDbTimestamp(s.createdAt) }))
 			const values = justificationValues(
 				{
 					bomItems: project.bomItems,
 					description: project.description,
 					hackatimeProjects: project.hackatimeLinks.filter(l => l.phase === phase).map(l => l.hackatimeProject),
-					hackatimeUserId: project.user.hackatimeUserId,
+					hackatimeUserId: project.user?.hackatimeUserId ?? null,
 					lapseLinks: timelapseLinks(sessions.flatMap(s => s.timelapses)),
 					workSessions: sessions,
 				},
@@ -213,5 +205,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

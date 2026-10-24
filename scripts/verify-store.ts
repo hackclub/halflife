@@ -1,7 +1,7 @@
 import "dotenv/config"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
 import { Phase, PhaseStatus, PostKind, PostStatus, Theme } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
  * End-to-end check of the seam between the database and the trail.
@@ -15,10 +15,6 @@ import { Phase, PhaseStatus, PostKind, PostStatus, Theme } from "../src/lib/enum
  *
  * Run with `pnpm verify:store` against a scratch database.
  */
-
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
-})
 
 let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {
@@ -35,24 +31,20 @@ async function main() {
 	const { THEMES } = await import("../src/lib/config/program")
 
 	const stamp = Date.now()
-	const user = await prisma.user.create({
-		data: {
-			email: `store-check-${stamp}@example.test`,
-			joinedProgramAt: new Date(),
-			name: "Store Check",
-			verificationStatus: "verified",
-		},
+	const user = await db.orm.public.User.create({
+		email: `store-check-${stamp}@example.test`,
+		joinedProgramAt: formatDbTimestamp(new Date()),
+		name: "Store Check",
+		verificationStatus: "verified",
 	})
 
 	// Projects are created one at a time as their checkpoints are opened; opening one twice must still leave one row.
 	for (const t of THEMES) await ensureThemeProject(user.id, t.id)
 	for (const t of THEMES) await ensureThemeProject(user.id, t.id)
-	const made = await prisma.themeProject.count({ where: { userId: user.id } })
+	const { made } = await db.orm.public.ThemeProject.where({ userId: user.id }).aggregate(a => ({ made: a.count() }))
 	check("creating a project is idempotent", made, 5)
 
-	const pcb = await prisma.themeProject.findFirstOrThrow({
-		where: { theme: Theme.PCB, userId: user.id },
-	})
+	const pcb = await db.orm.public.ThemeProject.where({ theme: Theme.PCB, userId: user.id }).firstOrThrow()
 
 	// Nothing named yet: the row exists, but the trail must not claim it.
 	const blank = await getStoreSnapshot(user.id)
@@ -60,47 +52,42 @@ async function main() {
 	check("but its id is available to write to", blank.projectIdByWeek[1], pcb.id)
 	check("no checkpoints are done", Object.keys(blank.progress).length, 0)
 
-	await prisma.themeProject.update({
-		data: { description: "Three keys.", requestedTier: 2, title: "Macropad" },
-		where: { id: pcb.id },
+	await db.orm.public.ThemeProject.where({ id: pcb.id }).update({
+		description: "Three keys.",
+		requestedTier: 2,
+		title: "Macropad",
 	})
 
 	// Three sessions, written in order. Their order IS the node order.
 	for (const [index, hours] of [1.5, 2, 3].entries())
-		await prisma.workSession.create({
-			data: {
-				content: `Body ${index + 1}`,
-				createdAt: new Date(stamp + index * 1000),
-				effectiveDate: "2026-09-10",
-				hoursClaimed: hours,
-				phase: Phase.DESIGN,
-				themeProjectId: pcb.id,
-				title: `Session ${index + 1}`,
-			},
+		await db.orm.public.WorkSession.create({
+			content: `Body ${index + 1}`,
+			createdAt: formatDbTimestamp(new Date(stamp + index * 1000)),
+			effectiveDate: "2026-09-10",
+			hoursClaimed: hours,
+			phase: Phase.DESIGN,
+			themeProjectId: pcb.id,
+			title: `Session ${index + 1}`,
 		})
 
 	// Two reels, on nodes that are ten hours apart. Only one has been earned, and counting by kind would tick both.
-	await prisma.post.create({
-		data: {
-			caption: "Ten hours in.",
-			checkpointKey: "w1-reel-1",
-			kind: PostKind.PROGRESS,
-			objectKey: `posts/${user.id}/a.mp4`,
-			publishedAt: new Date(),
-			status: PostStatus.PUBLISHED,
-			themeProjectId: pcb.id,
-			userId: user.id,
-		},
+	await db.orm.public.Post.create({
+		caption: "Ten hours in.",
+		checkpointKey: "w1-reel-1",
+		kind: PostKind.PROGRESS,
+		objectKey: `posts/${user.id}/a.mp4`,
+		publishedAt: formatDbTimestamp(new Date()),
+		status: PostStatus.PUBLISHED,
+		themeProjectId: pcb.id,
+		userId: user.id,
 	})
 
 	// Time that never passed through a journal entry.
-	await prisma.hackatimeLink.create({
-		data: {
-			cachedSeconds: 7200,
-			hackatimeProject: "macropad",
-			phase: Phase.DESIGN,
-			themeProjectId: pcb.id,
-		},
+	await db.orm.public.HackatimeLink.create({
+		cachedSeconds: 7200,
+		hackatimeProject: "macropad",
+		phase: Phase.DESIGN,
+		themeProjectId: pcb.id,
 	})
 
 	const snap = await getStoreSnapshot(user.id)
@@ -110,18 +97,16 @@ async function main() {
 	check("with the tier they asked for", snap.projects[0]?.tier, 2)
 
 	// A project can be handed in and rejected before a requested tier is ever recorded – the submit path falls back to Tier 1. It still has to appear, or the rejection has no surface on either the grid or its own page.
-	const rejectedUser = await prisma.user.create({
-		data: {
-			email: `store-rejected-${stamp}@example.test`,
-			joinedProgramAt: new Date(),
-			name: "Rejected Check",
-			verificationStatus: "verified",
-		},
+	const rejectedUser = await db.orm.public.User.create({
+		email: `store-rejected-${stamp}@example.test`,
+		joinedProgramAt: formatDbTimestamp(new Date()),
+		name: "Rejected Check",
+		verificationStatus: "verified",
 	})
 	const rejectedProject = await ensureThemeProject(rejectedUser.id, Theme.PCB)
-	await prisma.themeProject.update({
-		data: { designStatus: PhaseStatus.rejected, title: "Rejected project" },
-		where: { id: rejectedProject.id },
+	await db.orm.public.ThemeProject.where({ id: rejectedProject.id }).update({
+		designStatus: PhaseStatus.rejected,
+		title: "Rejected project",
 	})
 	const rejected = await getStoreSnapshot(rejectedUser.id)
 	check("a rejected project with no requested tier is listed", rejected.projects.length, 1)
@@ -143,13 +128,8 @@ async function main() {
 
 	check("the week is not submitted", snap.progress["w1-submit"], undefined)
 
-	await prisma.phaseSubmission.create({
-		data: { phase: Phase.DESIGN, themeProjectId: pcb.id },
-	})
-	await prisma.themeProject.update({
-		data: { designStatus: PhaseStatus.in_review },
-		where: { id: pcb.id },
-	})
+	await db.orm.public.PhaseSubmission.create({ phase: Phase.DESIGN, themeProjectId: pcb.id })
+	await db.orm.public.ThemeProject.where({ id: pcb.id }).update({ designStatus: PhaseStatus.in_review })
 
 	const submitted = await getStoreSnapshot(user.id)
 	check("submitting ticks the submit node", submitted.progress["w1-submit"]?.done, true)
@@ -157,10 +137,7 @@ async function main() {
 	check("but not the build week's", submitted.progress["w6-submit"], undefined)
 
 	// A phase sent back for changes is open again: the maker has to be able to log the work the reviewer asked for, and the trail cannot keep calling the week handed in.
-	await prisma.themeProject.update({
-		data: { designStatus: PhaseStatus.update_requested },
-		where: { id: pcb.id },
-	})
+	await db.orm.public.ThemeProject.where({ id: pcb.id }).update({ designStatus: PhaseStatus.update_requested })
 	const returned = await getStoreSnapshot(user.id)
 	check("a returned week unticks the submit node", returned.progress["w1-submit"], undefined)
 	check("while keeping its existing entries", returned.progress["w1-entry-3"]?.done, true)
@@ -179,13 +156,11 @@ async function main() {
 	// The store replays the modal's seven answers through the onboarding state machine one request at a time, because the machine refuses a step ahead of the furthest one reached. That refusal is what stops anyone arriving at a funded project without being asked what they are building – and it also means the store's sequence has to be exactly right, or onboarding never completes and the modal reappears forever with nothing in the log to say why. This replays that sequence in the order the store sends it.
 	const { submitStep } = await import("../src/lib/onboarding")
 
-	const fresh = await prisma.user.create({
-		data: {
-			email: `store-onboard-${stamp}@example.test`,
-			joinedProgramAt: new Date(),
-			name: "Onboard Check",
-			verificationStatus: "verified",
-		},
+	const fresh = await db.orm.public.User.create({
+		email: `store-onboard-${stamp}@example.test`,
+		joinedProgramAt: formatDbTimestamp(new Date()),
+		name: "Onboard Check",
+		verificationStatus: "verified",
 	})
 	// No project yet: onboarding is week one's "create a project" checkpoint and makes the PCB row itself.
 
@@ -212,36 +187,28 @@ async function main() {
 	//
 	// A maker can journal and record a sitting in one week and link the tracked time on another. The recording and the link live on different rows, so nothing used to compare them and the sitting was paid for on both sides. The recording's own Hackatime project is what pairs them.
 	const crossT = 1_700_000_000_000
-	await prisma.hackatimeLink.updateMany({
-		data: {
-			cachedSpans: {
-				from: crossT / 1000 - 3600,
-				spans: [{ end: crossT / 1000 + 7200, start: crossT / 1000 }],
-				to: crossT / 1000 + 7200 + 3600,
-			},
+	await db.orm.public.HackatimeLink.where({ themeProjectId: pcb.id }).updateAll({
+		cachedSpans: {
+			from: crossT / 1000 - 3600,
+			spans: [{ end: crossT / 1000 + 7200, start: crossT / 1000 }],
+			to: crossT / 1000 + 7200 + 3600,
 		},
-		where: { themeProjectId: pcb.id },
 	})
-	const cad = await prisma.themeProject.findFirstOrThrow({ where: { theme: Theme.CAD, userId: user.id } })
-	await prisma.workSession.create({
-		data: {
-			content: "Another week's sitting.",
-			effectiveDate: "2026-09-11",
-			hoursClaimed: 2,
-			phase: Phase.BUILD,
-			themeProjectId: cad.id,
-			timelapses: {
-				create: [
-					{
-						coveredSeconds: 7200,
-						hackatimeProject: "macropad",
-						provider: "lapse",
-						recordedAt: new Date(crossT),
-					},
-				],
-			},
-			title: "Sitting",
-		},
+	const cad = await db.orm.public.ThemeProject.where({ theme: Theme.CAD, userId: user.id }).firstOrThrow()
+	const sitting = await db.orm.public.WorkSession.create({
+		content: "Another week's sitting.",
+		effectiveDate: "2026-09-11",
+		hoursClaimed: 2,
+		phase: Phase.BUILD,
+		themeProjectId: cad.id,
+		title: "Sitting",
+	})
+	await db.orm.public.SessionTimelapse.create({
+		coveredSeconds: 7200,
+		hackatimeProject: "macropad",
+		provider: "lapse",
+		recordedAt: formatDbTimestamp(new Date(crossT)),
+		workSessionId: sitting.id,
 	})
 
 	const crossSnap = await getStoreSnapshot(user.id)
@@ -253,11 +220,11 @@ async function main() {
 	check("the ledger agrees: the link's overlap comes off", crossBreakdown.hackatimeHours, 0)
 	check("and the subtracted overlap is reported", crossBreakdown.hackatimeOverlapSeconds, 7200)
 
-	await prisma.user.delete({ where: { id: fresh.id } })
-	await prisma.user.delete({ where: { id: user.id } })
+	await db.orm.public.User.where({ id: fresh.id }).delete()
+	await db.orm.public.User.where({ id: user.id }).delete()
 
 	console.log(failures === 0 ? "\nAll store checks passed." : `\n${failures} check(s) failed.`)
-	await prisma.$disconnect()
+	await db.close()
 	process.exit(failures === 0 ? 0 : 1)
 }
 
@@ -265,6 +232,6 @@ try {
 	await main()
 } catch (err) {
 	console.error(err)
-	await prisma.$disconnect()
+	await db.close()
 	process.exit(1)
 }

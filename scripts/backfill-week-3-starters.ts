@@ -1,7 +1,8 @@
 import "dotenv/config"
 import { getStarterProject } from "../src/lib/config/onboarding"
 import { PhaseStatus, Theme } from "../src/lib/enums"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
+import { parseDbTimestamp } from "../src/lib/time"
 
 /**
  * Move the Music projects that were handed Starbie as week 3's starter onto the MIDI keyboard.
@@ -27,26 +28,23 @@ async function main() {
 		process.exit(1)
 	}
 
-	const projects = await prisma.themeProject.findMany({
-		orderBy: { createdAt: "asc" },
-		select: {
-			_count: { select: { submissions: true, workSessions: true } },
-			buildStatus: true,
-			createdAt: true,
-			description: true,
-			designStatus: true,
-			id: true,
-			title: true,
-		},
-		where: { deletedAt: null, starterProjectId: starbie.id, theme: Theme.SYNTH },
+	const projects = await db.orm.public.ThemeProject.where({
+		deletedAt: null,
+		starterProjectId: starbie.id,
+		theme: Theme.SYNTH,
 	})
+		.orderBy(project => project.createdAt.asc())
+		.select("buildStatus", "createdAt", "description", "designStatus", "id", "title")
+		.include("submissions", submissions => submissions.count())
+		.include("workSessions", sessions => sessions.count())
+		.all()
 
 	console.log(`Music projects still on Starbie: ${projects.length}`)
 
 	const untouched = projects.filter(
 		p =>
-			p._count.submissions === 0
-			&& p._count.workSessions === 0
+			p.submissions === 0
+			&& p.workSessions === 0
 			&& p.designStatus === PhaseStatus.draft
 			&& p.buildStatus === PhaseStatus.draft,
 	)
@@ -54,11 +52,13 @@ async function main() {
 
 	for (const p of projects) {
 		const work =
-			p._count.submissions === 0 && p._count.workSessions === 0
+			p.submissions === 0 && p.workSessions === 0
 				? "no work"
-				: `${p._count.workSessions} session(s), ${p._count.submissions} hand-in(s)`
+				: `${p.workSessions} session(s), ${p.submissions} hand-in(s)`
 		const stock = p.title === starbie.title && p.description === starbie.description
-		console.log(`  ${p.createdAt.toISOString()}  ${p.title || "(untitled)"}  ${work}${stock ? "" : " (custom words)"}`)
+		console.log(
+			`  ${parseDbTimestamp(p.createdAt).toISOString()}  ${p.title || "(untitled)"}  ${work}${stock ? "" : " (custom words)"}`,
+		)
 	}
 	if (started > 0) console.log(`${started} project(s) have work and are left alone.`)
 
@@ -69,14 +69,11 @@ async function main() {
 
 	let updated = 0
 	for (const p of untouched) {
-		await prisma.themeProject.update({
-			data: {
-				// Only replace the words the starter filled in. A maker who renamed the project or wrote their own description keeps both.
-				...(p.title === starbie.title ? { title: midi.title } : {}),
-				...(p.description === starbie.description ? { description: midi.description } : {}),
-				starterProjectId: midi.id,
-			},
-			where: { id: p.id },
+		await db.orm.public.ThemeProject.where({ id: p.id }).update({
+			// Only replace the words the starter filled in. A maker who renamed the project or wrote their own description keeps both.
+			...(p.title === starbie.title ? { title: midi.title } : {}),
+			...(p.description === starbie.description ? { description: midi.description } : {}),
+			starterProjectId: midi.id,
 		})
 		updated++
 	}
@@ -89,5 +86,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

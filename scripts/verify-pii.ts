@@ -1,9 +1,9 @@
 import "dotenv/config"
 import { createHmac, randomBytes } from "node:crypto"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
 import { auth } from "../src/lib/auth"
 import { Phase, PostKind, PostStatus, Role, Theme } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
  * Does anything private reach a browser that should not have it?
@@ -20,10 +20,6 @@ import { Phase, PostKind, PostStatus, Role, Theme } from "../src/lib/enums"
  */
 
 const BASE = process.env.VERIFY_BASE_URL ?? "http://localhost:3000"
-
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
-})
 
 let failures = 0
 function check(label: string, ok: boolean, detail = "") {
@@ -43,31 +39,27 @@ const S = {
 }
 
 function makeUser(email: string, name: string, slackId: string) {
-	return prisma.user.create({
-		data: {
-			email,
-			encryptedAddressCity: S.address,
-			encryptedAddressStreet: S.address,
-			encryptedBirthday: S.birthday,
-			encryptedPhone: S.phone,
-			joinedProgramAt: new Date(),
-			name,
-			onboardingCompletedAt: new Date(),
-			slackId,
-			verificationStatus: "verified",
-		},
+	return db.orm.public.User.create({
+		email,
+		encryptedAddressCity: S.address,
+		encryptedAddressStreet: S.address,
+		encryptedBirthday: S.birthday,
+		encryptedPhone: S.phone,
+		joinedProgramAt: formatDbTimestamp(new Date()),
+		name,
+		onboardingCompletedAt: formatDbTimestamp(new Date()),
+		slackId,
+		verificationStatus: "verified",
 	})
 }
 
 async function cookieFor(userId: string): Promise<string> {
 	const token = randomBytes(32).toString("hex")
-	await prisma.session.create({
-		data: {
-			expiresAt: new Date(Date.now() + 864e5),
-			id: randomBytes(16).toString("hex"),
-			token,
-			userId,
-		},
+	await db.orm.public.Session.create({
+		expiresAt: formatDbTimestamp(new Date(Date.now() + 864e5)),
+		id: randomBytes(16).toString("hex"),
+		token,
+		userId,
 	})
 	const sig = createHmac("sha256", process.env.BETTER_AUTH_SECRET ?? "")
 		.update(token)
@@ -101,7 +93,8 @@ async function main() {
 	const { ensureThemeProject } = await import("../src/lib/provisioning")
 	const { THEMES } = await import("../src/lib/config/program")
 
-	for (const email of [S.viewerEmail, S.otherEmail, S.probeEmail]) await prisma.user.deleteMany({ where: { email } })
+	for (const email of [S.viewerEmail, S.otherEmail, S.probeEmail])
+		await db.orm.public.User.where({ email }).deleteAndCount()
 
 	const viewer = await makeUser(S.viewerEmail, "Viewer Person", S.viewerSlack)
 	const other = await makeUser(S.otherEmail, "Other Person", S.otherSlack)
@@ -109,34 +102,29 @@ async function main() {
 	for (const u of [viewer, other]) for (const t of THEMES) await ensureThemeProject(u.id, t.id)
 
 	// The other participant needs work, or they appear on none of these pages and the whole exercise passes by having nothing to leak.
-	const project = await prisma.themeProject.findFirstOrThrow({
-		where: { theme: Theme.PCB, userId: other.id },
+	const project = await db.orm.public.ThemeProject.where({ theme: Theme.PCB, userId: other.id }).firstOrThrow()
+	await db.orm.public.ThemeProject.where({ id: project.id }).update({
+		description: "Theirs.",
+		requestedTier: 1,
+		title: "Other's board",
 	})
-	await prisma.themeProject.update({
-		data: { description: "Theirs.", requestedTier: 1, title: "Other's board" },
-		where: { id: project.id },
+	await db.orm.public.WorkSession.create({
+		content: "Their journal entry, long enough to render.",
+		effectiveDate: new Date().toISOString().slice(0, 10),
+		hoursClaimed: 4,
+		phase: Phase.DESIGN,
+		themeProjectId: project.id,
+		title: "Their session",
 	})
-	await prisma.workSession.create({
-		data: {
-			content: "Their journal entry, long enough to render.",
-			effectiveDate: new Date().toISOString().slice(0, 10),
-			hoursClaimed: 4,
-			phase: Phase.DESIGN,
-			themeProjectId: project.id,
-			title: "Their session",
-		},
-	})
-	await prisma.post.create({
-		data: {
-			caption: "their reel",
-			checkpointKey: "w1-reel-1",
-			kind: PostKind.PROGRESS,
-			objectKey: `posts/${other.id}/x.mp4`,
-			publishedAt: new Date(),
-			status: PostStatus.PUBLISHED,
-			themeProjectId: project.id,
-			userId: other.id,
-		},
+	await db.orm.public.Post.create({
+		caption: "their reel",
+		checkpointKey: "w1-reel-1",
+		kind: PostKind.PROGRESS,
+		objectKey: `posts/${other.id}/x.mp4`,
+		publishedAt: formatDbTimestamp(new Date()),
+		status: PostStatus.PUBLISHED,
+		themeProjectId: project.id,
+		userId: other.id,
 	})
 
 	const cookie = await cookieFor(viewer.id)
@@ -166,13 +154,11 @@ async function main() {
 	}
 
 	// ── Staff surfaces, as somebody with no role at all ──────────────────────
-	const nobody = await prisma.user.create({
-		data: {
-			email: S.probeEmail,
-			joinedProgramAt: new Date(),
-			name: "Ordinary",
-			verificationStatus: "verified",
-		},
+	const nobody = await db.orm.public.User.create({
+		email: S.probeEmail,
+		joinedProgramAt: formatDbTimestamp(new Date()),
+		name: "Ordinary",
+		verificationStatus: "verified",
 	})
 	const theirCookie = await cookieFor(nobody.id)
 
@@ -190,13 +176,13 @@ async function main() {
 	}
 
 	// A sanity check on the checker: ADMIN must actually get in, or every line above passes for the boring reason that nothing works.
-	await prisma.userRole.create({ data: { role: Role.ADMIN, userId: nobody.id } })
+	await db.orm.public.UserRole.create({ role: Role.ADMIN, userId: nobody.id })
 	const asAdmin = await fetch(`${BASE}/api/admin/users`, { headers: { cookie: theirCookie } })
 	check("and lets an ADMIN through", asAdmin.status === 200, `got ${asAdmin.status}`)
 
-	await prisma.user.delete({ where: { id: viewer.id } })
-	await prisma.user.delete({ where: { id: other.id } })
-	await prisma.user.delete({ where: { id: nobody.id } })
+	await db.orm.public.User.where({ id: viewer.id }).delete()
+	await db.orm.public.User.where({ id: other.id }).delete()
+	await db.orm.public.User.where({ id: nobody.id }).delete()
 
 	console.log(failures === 0 ? "\nAll PII checks passed." : `\n${failures} check(s) failed.`)
 	process.exitCode = failures === 0 ? 0 : 1
@@ -208,7 +194,7 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 	// Importing the auth module opens its own Prisma pool, so the process would otherwise stay alive after the checks finish.
 	process.exit(process.exitCode ?? 0)
 }

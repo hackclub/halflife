@@ -1,6 +1,6 @@
 import "dotenv/config"
 import { isAriConfigured, reconcileAriDecisions } from "../src/lib/ari"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Pull the decisions Ari holds onto the open hand-ins the webhook never delivered.
@@ -60,5 +60,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

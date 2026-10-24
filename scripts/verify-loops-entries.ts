@@ -1,9 +1,10 @@
 import "dotenv/config"
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { LOOPS_FIELDS } from "../src/lib/airtable/loops"
 import { RSVP_TABLE_ID } from "../src/lib/airtable/schema"
 import { HoursSource } from "../src/lib/enums"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Audit the `Loops - halfLifeLastEntryAt` column against the devlog rule.
@@ -50,30 +51,27 @@ async function main() {
 	console.log(`Signups rows with a lastEntryAt: ${withTimestamp.length}`)
 
 	// The people who genuinely have an entry: a written devlog or a timelapse.
-	const qualifiers = await prisma.user.findMany({
-		select: { email: true, id: true },
-		where: {
-			themeProjects: {
-				some: {
-					deletedAt: null,
-					workSessions: {
-						some: {
-							deletedAt: null,
-							OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-						},
-					},
-				},
-			},
-		},
-	})
+	const qualifiers = await db.orm.public.User.select("email", "id")
+		.where(user =>
+			user.themeProjects.some(project =>
+				and(
+					project.deletedAt.isNull(),
+					project.workSessions.some(session =>
+						and(
+							session.deletedAt.isNull(),
+							or(session.hoursSource.neq(HoursSource.HACKATIME_TRACKED), session.timelapses.some()),
+						),
+					),
+				),
+			),
+		)
+		.all()
 	const qualifiedIds = new Set(qualifiers.map(u => u.id))
 	const qualifiedEmails = new Map(qualifiers.map(u => [u.email.trim().toLowerCase(), u.id]))
 
 	// The join keys the sync would use: the row's own user id column, the RSVP
 	// drain's record id, and email.
-	const buffers = await prisma.rsvpBuffer.findMany({
-		select: { airtableRecordId: true, email: true, userId: true },
-	})
+	const buffers = await db.orm.public.RsvpBuffer.select("airtableRecordId", "email", "userId").all()
 	const bufferByRecord = new Map<string, string>()
 	const bufferByEmail = new Map<string, string>()
 	for (const b of buffers) {
@@ -83,7 +81,7 @@ async function main() {
 			bufferByEmail.set(b.email.trim().toLowerCase(), b.userId)
 	}
 	const usersByEmail = new Map<string, string>()
-	for (const u of await prisma.user.findMany({ select: { email: true, id: true } }))
+	for (const u of await db.orm.public.User.select("email", "id").all())
 		usersByEmail.set(u.email.trim().toLowerCase(), u.id)
 
 	const matchedStale: AirtableRecord[] = []
@@ -149,5 +147,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

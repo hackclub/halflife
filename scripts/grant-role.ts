@@ -1,11 +1,6 @@
 import "dotenv/config"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
 import { Role } from "../src/lib/enums"
-
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
-})
+import db from "../src/lib/prisma8"
 
 /** `yarn grant-role you@example.com ADMIN` – the local bootstrap path. */
 async function main() {
@@ -20,17 +15,13 @@ async function main() {
 		process.exit(1)
 	}
 
-	const user = await prisma.user.findUnique({ where: { email } })
+	const user = await db.orm.public.User.where({ email }).select("id").first()
 	if (!user) {
 		console.error(`no user with email ${email}, sign in once first`)
 		process.exit(1)
 	}
 
-	await prisma.userRole.upsert({
-		create: { grantedBy: "cli", role, userId: user.id },
-		update: {},
-		where: { userId_role: { role, userId: user.id } },
-	})
+	await db.orm.public.UserRole.createAll([{ grantedBy: "cli", role, userId: user.id }], { onConflict: "skip" })
 	console.log(`granted ${role} to ${email}`)
 }
 
@@ -40,5 +31,5 @@ try {
 	console.error(err)
 	process.exit(1)
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

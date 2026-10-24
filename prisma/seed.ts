@@ -1,12 +1,8 @@
 import "dotenv/config"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
-import { ShopItemCategory } from "../src/app/generated/prisma/enums"
 import { PRINTERS } from "../src/lib/config/printers"
-
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
-})
+import { ShopItemCategory } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
  * Idempotent: `./dev.sh` runs it on every start, and it is safe to run against
@@ -15,17 +11,16 @@ const prisma = new PrismaClient({
 async function main() {
 	const startDate = process.env.PROGRAM_START_DATE ?? "2026-10-05"
 
-	const settings = await prisma.programSettings.upsert({
+	const settings = await db.orm.public.ProgramSettings.upsert({
 		create: {
-			eventStartDate: new Date(`${startDate}T00:00:00.000Z`),
+			eventStartDate: formatDbTimestamp(new Date(`${startDate}T00:00:00.000Z`)),
 			id: "singleton",
 			programTimezone: process.env.PROGRAM_TIMEZONE ?? "America/New_York",
 		},
 		// Never clobber settings an admin has already changed.
 		update: {},
-		where: { id: "singleton" },
 	})
-	console.log(`program settings: start ${settings.eventStartDate.toISOString().slice(0, 10)}`)
+	console.log(`program settings: start ${settings.eventStartDate.slice(0, 10)}`)
 
 	const items = [
 		// ── Printers ─────────────────────────────────────────────────────────────
@@ -85,11 +80,10 @@ async function main() {
 	]
 
 	for (const item of items)
-		await prisma.shopItem.upsert({
+		await db.orm.public.ShopItem.upsert({
 			create: item,
 			// Price and stock are edited from the admin UI; do not overwrite them.
 			update: { description: item.description, name: item.name, sortOrder: item.sortOrder },
-			where: { id: item.id },
 		})
 
 	/**
@@ -105,17 +99,12 @@ async function main() {
 	 * order history must not stop making sense because a machine was re-priced.
 	 */
 	const live = new Set(items.map(item => item.id))
-	const retired = await prisma.shopItem.updateMany({
-		data: { active: false },
-		where: {
-			active: true,
-			category: ShopItemCategory.PRINTER,
-			id: { notIn: [...live] },
-		},
-	})
+	const retired = await db.orm.public.ShopItem.where({ active: true, category: ShopItemCategory.PRINTER })
+		.where(item => item.id.notIn([...live]))
+		.updateAndCount({ active: false })
 
 	console.log(
-		`shop items: ${items.length} present${retired.count > 0 ? `, ${retired.count} off-catalogue printer(s) retired` : ""}`,
+		`shop items: ${items.length} present${retired > 0 ? `, ${retired} off-catalogue printer(s) retired` : ""}`,
 	)
 }
 
@@ -125,5 +114,5 @@ try {
 	console.error(err)
 	process.exit(1)
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

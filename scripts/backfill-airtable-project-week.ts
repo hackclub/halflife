@@ -6,7 +6,7 @@ import { projectWeekLabel, recordIdsFromSyncEvents } from "../src/lib/airtable/s
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
 import { scheduledWeekFor } from "../src/lib/config/program"
 import { AuditAction, Phase } from "../src/lib/enums"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Fill `Loops - halfLifeProjectWeek` on the submission rows written before the column was synced.
@@ -63,19 +63,17 @@ async function main() {
 	}
 	const weekKey = fieldKey(weekField)
 
-	const projects = await prisma.themeProject.findMany({
-		select: { id: true, theme: true, title: true },
-	})
+	const projects = await db.orm.public.ThemeProject.select("id", "theme", "title").all()
 	if (projects.length === 0) {
 		console.log("No themed projects; nothing to backfill.")
 		return
 	}
 
-	const events = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
-	})
+	const events = await db.orm.public.AuditLog.where({ action: AuditAction.AIRTABLE_SYNC_SUCCESS })
+		.where(entry => entry.targetId.in(projects.map(p => p.id)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
 	const records = recordIdsFromSyncEvents(events)
 
 	const targets: { phase: Phase; recordId: string; title: string; week: string }[] = []
@@ -148,5 +146,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

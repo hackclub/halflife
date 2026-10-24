@@ -1,7 +1,7 @@
 import "dotenv/config"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
 import { PostKind, PostStatus, Role, Theme } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
  * End-to-end check of the Doomscroller.
@@ -14,10 +14,6 @@ import { PostKind, PostStatus, Role, Theme } from "../src/lib/enums"
  *
  * Run with `pnpm verify:feed` against a scratch database.
  */
-
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
-})
 
 let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {
@@ -44,17 +40,23 @@ async function main() {
 	const { deleteOwnComment, hidePost, restorePost, hideComment, deleteOwnPost } = feed
 
 	const stamp = Date.now()
-	const author = await prisma.user.create({
-		data: { email: `reel-author-${stamp}@example.test`, name: "Author" },
+	const author = await db.orm.public.User.create({
+		email: `reel-author-${stamp}@example.test`,
+		name: "Author",
 	})
-	const viewer = await prisma.user.create({
-		data: { email: `reel-viewer-${stamp}@example.test`, name: "Viewer" },
+	const viewer = await db.orm.public.User.create({
+		email: `reel-viewer-${stamp}@example.test`,
+		name: "Viewer",
 	})
-	const project = await prisma.themeProject.create({
-		data: { theme: Theme.PCB, title: "Reel project", userId: author.id },
+	const project = await db.orm.public.ThemeProject.create({
+		theme: Theme.PCB,
+		title: "Reel project",
+		userId: author.id,
 	})
-	const otherProject = await prisma.themeProject.create({
-		data: { theme: Theme.PCB, title: "Not yours", userId: viewer.id },
+	const otherProject = await db.orm.public.ThemeProject.create({
+		theme: Theme.PCB,
+		title: "Not yours",
+		userId: viewer.id,
 	})
 
 	const key = (userId: string) => `posts/${userId}/${crypto.randomUUID()}.mp4`
@@ -128,7 +130,9 @@ async function main() {
 	check("the same viewer again does not", await recordView(post.id, viewer.id), 1)
 	check("a third refresh still does not", await recordView(post.id, viewer.id), 1)
 	check("a different viewer does", await recordView(post.id, author.id), 2)
-	const viewRows = await prisma.postView.count({ where: { postId: post.id } })
+	const { viewRows } = await db.orm.public.PostView.where({ postId: post.id }).aggregate(a => ({
+		viewRows: a.count(),
+	}))
 	check("view rows match the count", viewRows, 2)
 
 	// ── Likes ──────────────────────────────────────────────────────────────────
@@ -141,16 +145,15 @@ async function main() {
 	const unlikedAgain = await setLike(post.id, viewer.id, false)
 	check("unliking twice does not go negative", unlikedAgain.likeCount, 0)
 	await setLike(post.id, viewer.id, true)
-	const likeRows = await prisma.postLike.count({ where: { postId: post.id } })
+	const { likeRows } = await db.orm.public.PostLike.where({ postId: post.id }).aggregate(a => ({
+		likeRows: a.count(),
+	}))
 	check("like rows match the count", likeRows, 1)
 
 	// ── Comments ───────────────────────────────────────────────────────────────
 	const commentA = await addComment(post.id, viewer.id, "This rules")
 	const commentB = await addComment(post.id, author.id, "thanks!")
-	const afterComments = await prisma.post.findUniqueOrThrow({
-		select: { commentCount: true },
-		where: { id: post.id },
-	})
+	const afterComments = await db.orm.public.Post.whereUnique({ id: post.id }).select("commentCount").firstOrThrow()
 	check("comment count tracks comments", afterComments.commentCount, 2)
 
 	const visibleComments = await getComments(post.id, viewer.id, { limit: 25 })
@@ -160,27 +163,19 @@ async function main() {
 	check("authorship is marked for the viewer", visibleComments.items[1]?.mine, true)
 
 	await deleteOwnComment(commentB.id, author.id)
-	const afterDelete = await prisma.post.findUniqueOrThrow({
-		select: { commentCount: true },
-		where: { id: post.id },
-	})
+	const afterDelete = await db.orm.public.Post.whereUnique({ id: post.id }).select("commentCount").firstOrThrow()
 	check("deleting a comment decrements", afterDelete.commentCount, 1)
 
 	await refused("cannot delete someone else's comment", () => deleteOwnComment(commentA.id, author.id))
 
 	await hideComment(commentA.id, author.id, "off topic")
-	const afterHide = await prisma.post.findUniqueOrThrow({
-		select: { commentCount: true },
-		where: { id: post.id },
-	})
+	const afterHide = await db.orm.public.Post.whereUnique({ id: post.id }).select("commentCount").firstOrThrow()
 	check("hiding a comment decrements too", afterHide.commentCount, 0)
 	const afterHideList = await getComments(post.id, viewer.id, { limit: 25 })
 	check("a hidden comment leaves the thread", afterHideList.items.length, 0)
 
 	// ── The feed itself ────────────────────────────────────────────────────────
-	const staff = await prisma.user.create({
-		data: { email: `hq-${stamp}@example.test`, name: "HQ" },
-	})
+	const staff = await db.orm.public.User.create({ email: `hq-${stamp}@example.test`, name: "HQ" })
 	const announcement = await createPost({
 		canManageFeed: true,
 		caption: "Week 1 starts now",
@@ -193,7 +188,7 @@ async function main() {
 	check("a non-admin's post does not lead", notAdmin.leading.length, 0)
 	check("so it is paged with the rest", notAdmin.items.length, 2)
 
-	await prisma.userRole.create({ data: { role: Role.ADMIN, userId: staff.id } })
+	await db.orm.public.UserRole.create({ role: Role.ADMIN, userId: staff.id })
 	const page = await getFeed(viewer.id, { limit: 25, timeZone: "Asia/Kolkata" })
 	check("an admin's reel from today leads", page.leading.length, 1)
 	check("the leading one is the announcement", page.leading[0]?.kind, PostKind.ANNOUNCEMENT)
@@ -203,14 +198,15 @@ async function main() {
 
 	// From the next day it goes back to its place by date.
 	const posted = new Date()
-	await prisma.post.update({
-		data: { publishedAt: new Date(posted.getTime() - 3 * 24 * 60 * 60 * 1000) },
-		where: { id: announcement.id },
+	await db.orm.public.Post.where({ id: announcement.id }).update({
+		publishedAt: formatDbTimestamp(new Date(posted.getTime() - 3 * 24 * 60 * 60 * 1000)),
 	})
 	const later = await getFeed(viewer.id, { limit: 25 })
 	check("an older admin reel no longer leads", later.leading.length, 0)
 	check("it is paged by date, after the newer reel", later.items.at(-1)?.id, announcement.id)
-	await prisma.post.update({ data: { publishedAt: posted }, where: { id: announcement.id } })
+	await db.orm.public.Post.where({ id: announcement.id }).update({
+		publishedAt: formatDbTimestamp(posted),
+	})
 
 	// ── Moderation ─────────────────────────────────────────────────────────────
 	await hidePost(post.id, staff.id, "not related to the program")
@@ -224,16 +220,11 @@ async function main() {
 	await deleteOwnPost(post.id, author.id)
 	const deletedFeed = await getFeed(viewer.id, { limit: 25 })
 	check("a deleted reel leaves the feed", deletedFeed.items.length, 0)
-	const stillThere = await prisma.post.findUniqueOrThrow({
-		select: { deletedAt: true, status: true },
-		where: { id: post.id },
-	})
+	const stillThere = await db.orm.public.Post.whereUnique({ id: post.id }).select("deletedAt", "status").firstOrThrow()
 	check("deletion is soft", stillThere.status, PostStatus.REMOVED)
 	check("and stamped", stillThere.deletedAt !== null, true)
 
-	await prisma.user.deleteMany({
-		where: { id: { in: [author.id, viewer.id, staff.id] } },
-	})
+	await db.orm.public.User.where(user => user.id.in([author.id, viewer.id, staff.id])).deleteAndCount()
 
 	console.log(failures === 0 ? "\nAll feed checks passed." : `\n${failures} check(s) failed.`)
 	process.exit(failures === 0 ? 0 : 1)
@@ -243,6 +234,6 @@ try {
 	await main()
 } catch (err) {
 	console.error(err)
-	await prisma.$disconnect()
+	await db.close()
 	process.exit(1)
 }

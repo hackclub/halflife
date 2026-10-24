@@ -2,7 +2,7 @@ import "dotenv/config"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { LOOPS_FIELDS, syncLoopsProperties } from "../src/lib/airtable/loops"
 import { RSVP_TABLE_ID } from "../src/lib/airtable/schema"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Backfill the Loops columns for all existing users.
@@ -64,10 +64,8 @@ async function main() {
 	const { byEmail: recordByEmail, total } = await listSignupEmails(config)
 	console.log(`Signups rows: ${total} (${recordByEmail.size} with an email)`)
 
-	const users = await prisma.user.findMany({ select: { email: true, id: true } })
-	const buffers = await prisma.rsvpBuffer.findMany({
-		select: { airtableRecordId: true, email: true, syncedToAirtable: true, userId: true },
-	})
+	const users = await db.orm.public.User.select("email", "id").all()
+	const buffers = await db.orm.public.RsvpBuffer.select("airtableRecordId", "email", "syncedToAirtable", "userId").all()
 	const bufferByEmail = new Map(buffers.map(b => [b.email.trim().toLowerCase(), b]))
 	console.log(`Users: ${users.length}, buffer rows: ${buffers.length}`)
 
@@ -97,25 +95,20 @@ async function main() {
 	else {
 		for (const p of pending) {
 			if (p.hasRow)
-				await prisma.rsvpBuffer.update({
-					data: {
-						airtableRecordId: p.recordId,
-						finishedAccountCreation: true,
-						syncAttempts: 0,
-						syncedToAirtable: false,
-						userId: p.userId,
-					},
-					where: { email: p.email },
+				await db.orm.public.RsvpBuffer.where({ email: p.email }).update({
+					airtableRecordId: p.recordId,
+					finishedAccountCreation: true,
+					syncAttempts: 0,
+					syncedToAirtable: false,
+					userId: p.userId,
 				})
 			else
-				await prisma.rsvpBuffer.create({
-					data: {
-						airtableRecordId: p.recordId,
-						email: p.email,
-						finishedAccountCreation: true,
-						syncedToAirtable: false,
-						userId: p.userId,
-					},
+				await db.orm.public.RsvpBuffer.create({
+					airtableRecordId: p.recordId,
+					email: p.email,
+					finishedAccountCreation: true,
+					syncedToAirtable: false,
+					userId: p.userId,
 				})
 
 			linked++
@@ -148,5 +141,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

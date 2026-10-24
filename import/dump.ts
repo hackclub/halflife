@@ -1,33 +1,35 @@
-import { PrismaPg } from "@prisma/adapter-pg"
 import { config } from "dotenv"
-import { PrismaClient } from "@/app/generated/prisma/client"
+import { Pool } from "pg"
 
 config({ path: "import/.env" })
 
 const url = process.env.DB_URL
 if (!url) throw new Error("DB_URL missing from import/.env")
-const source = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) })
+const source = new Pool({ connectionString: url })
 
 const TABLES = process.argv.slice(2)
 if (TABLES.length === 0) throw new Error("usage: bun import/dump.ts <table> [table...]")
 
 async function main() {
 	for (const table of TABLES) {
-		const columns = await source.$queryRawUnsafe<
-			{ column_name: string; data_type: string; is_nullable: string; column_default: string | null }[]
-		>(
+		const { rows: columns } = await source.query<{
+			column_name: string
+			data_type: string
+			is_nullable: string
+			column_default: string | null
+		}>(
 			`SELECT column_name, data_type, is_nullable, column_default
        FROM information_schema.columns
        WHERE table_schema = 'public' AND table_name = $1
        ORDER BY ordinal_position`,
-			table,
+			[table],
 		)
 		console.log(`\n=== ${table} (${columns.length} columns) ===`)
 		for (const c of columns) {
 			const def = c.column_default ? ` default=${c.column_default.replaceAll(/\s+/g, " ").slice(0, 40)}` : ""
 			console.log(`  ${c.column_name.padEnd(34)} ${c.data_type}${c.is_nullable === "NO" ? " NOT NULL" : ""}${def}`)
 		}
-		const rows = await source.$queryRawUnsafe<{ [_: string]: unknown }[]>(`SELECT * FROM "${table}" LIMIT 1`)
+		const { rows } = await source.query<{ [_: string]: unknown }>(`SELECT * FROM "${table}" LIMIT 1`)
 		if (rows[0]) {
 			const sample: { [_: string]: unknown } = {}
 			for (const [k, v] of Object.entries(rows[0])) sample[k] = v instanceof Date ? v.toISOString() : v
@@ -43,5 +45,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await source.$disconnect()
+	await source.end()
 }

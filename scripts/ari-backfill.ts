@@ -1,6 +1,6 @@
 import { sendSubmissionToAri, withdrawSubmissionFromAri } from "../src/lib/ari"
 import { Phase } from "../src/lib/enums"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 import { trackSideEffect } from "../src/lib/side-effects"
 
 /** The hand-in a refresh replaces and the id Ari holds for its current ship, if any. */
@@ -66,9 +66,8 @@ export async function refreshAriShip(target: AriRefreshTarget): Promise<AriRefre
 			replaced = true
 		}
 		// The old ship is gone, so its id must go too: if the send below fails, `ari-retry` has to see this hand-in as unsent rather than skip it because a stale id says it already reached Ari.
-		await prisma.phaseSubmission.updateMany({
-			data: { ariSubmissionId: null },
-			where: { id: target.submissionId, resolvedAt: null },
+		await db.orm.public.PhaseSubmission.where({ id: target.submissionId, resolvedAt: null }).updateAll({
+			ariSubmissionId: null,
 		})
 	}
 

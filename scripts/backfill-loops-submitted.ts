@@ -4,7 +4,7 @@ import { existingColumns } from "../src/lib/airtable/field-probe"
 import { LOOPS_FIELDS, resolveSignupRow } from "../src/lib/airtable/loops"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "../src/lib/airtable/schema"
 import { scheduledWeekFor } from "../src/lib/config/program"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Backfill the `Loops - halfLifeWeek{n}ProjectSubmitted` checkboxes on the Signups table.
@@ -70,16 +70,14 @@ async function main() {
 	if (columns.length < wanted.length)
 		console.log(`Only ${columns.length}/10 submitted columns exist; backfilling those and skipping the rest.`)
 
-	const users = await prisma.user.findMany({
-		select: {
-			email: true,
-			id: true,
-			themeProjects: {
-				select: { submissions: { select: { phase: true, scheduledWeek: true } }, theme: true },
-				where: { deletedAt: null },
-			},
-		},
-	})
+	const users = await db.orm.public.User.select("email", "id")
+		.include("themeProjects", projects =>
+			projects
+				.where({ deletedAt: null })
+				.select("theme")
+				.include("submissions", submissions => submissions.select("phase", "scheduledWeek")),
+		)
+		.all()
 	// Week n is ticked when any hand-in exists for that scheduled week, in any state. Rows from before `scheduledWeek` was recorded fall back to the theme and phase's own week; the warm-up's week 0 is not a program week.
 	const wantByUser = new Map<string, Set<number>>()
 	for (const u of users) {
@@ -96,10 +94,10 @@ async function main() {
 	console.log(`Users: ${users.length} (${submitters.length} with at least one hand-in)`)
 
 	const listed = await signupRows(config, [LOOPS_FIELDS.email, fieldKey(RSVP.fields.userId), ...columns])
-	const drained = await prisma.rsvpBuffer.findMany({
-		select: { airtableRecordId: true, userId: true },
-		where: { airtableRecordId: { not: null }, userId: { not: null } },
-	})
+	const drained = await db.orm.public.RsvpBuffer.where(user => user.airtableRecordId.isNotNull())
+		.where(row => row.userId.isNotNull())
+		.select("airtableRecordId", "userId")
+		.all()
 	const byRecordId = new Map<string, AirtableRecord>()
 	for (const row of drained)
 		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId))
@@ -175,5 +173,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }
