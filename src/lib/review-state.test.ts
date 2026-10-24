@@ -37,6 +37,7 @@ describe("reviewTone / reviewChipTone / labels", () => {
 		expect(reviewChipTone("update_requested")).toBe("gold")
 		expect(reviewChipTone("rejected")).toBe("coral")
 		expect(reviewChipTone("draft")).toBe("muted")
+		expect(reviewChipTone("BOGUS" as "draft")).toBe("muted")
 	})
 
 	test("says each status in plain words", () => {
