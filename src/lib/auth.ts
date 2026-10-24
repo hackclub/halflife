@@ -113,9 +113,9 @@ export const auth = betterAuth({
 		},
 		session: {
 			create: {
-				// Every sign-in re-reads the HCA profile, so a status that changed since the last one – most often "pending" becoming "verified" – is current. Not awaited: signing in must not wait on, or fail with, HCA.
+				// Every sign-in re-reads the HCA profile, so a status that changed since the last one – most often "pending" becoming "verified" – is current, and so the name, image and address better-auth no longer overrides are kept up to date. Not awaited: signing in must not wait on, or fail with, HCA.
 				after: session => {
-					void syncHcaProfile(session.userId)
+					void syncHcaProfile(session.userId, { profile: true })
 					void markLogin(session.userId)
 					return Promise.resolve()
 				},
@@ -217,7 +217,8 @@ export const auth = betterAuth({
 						image: profile.image as string | undefined,
 						name: profile.name as string | undefined,
 					}),
-					overrideUserInfo: true,
+					// Off, because this rewrites the stored address to whatever HCA reports in the same update as name and image. When HCA moves a person to an address another local row already holds, that update fails on the unique `user_email_key`: the whole callback 500s and the person cannot sign in at all. syncHcaProfile (lib/hca-profile) writes the same fields after the session exists, where it has a user id to check the address against and can keep the old one while still storing everything else HCA sent.
+					overrideUserInfo: false,
 					providerId: "hca",
 					scopes: hcaScopes,
 					tokenUrl: process.env.HCA_TOKEN_URL ?? "https://auth.hackclub.com/oauth/token",
