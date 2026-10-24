@@ -5,8 +5,7 @@ import db from "../src/lib/prisma8"
 /**
  * End-to-end check of the money path.
  *
- * The property that matters: approving a build, un-approving it, and approving it again must land on exactly the same balance as approving it once. That is what `reconcileGrant` buys, and it is the failure mode that costs real money
- * if it regresses.
+ * The property that matters: approving a build, un-approving it, and approving it again must land on exactly the same balance as approving it once. That is what `reconcileGrant` buys, and it is the failure mode that costs real money if it regresses.
  *
  * Run with `bun scripts/verify-ledger.ts` against a scratch database.
  */
@@ -248,11 +247,7 @@ async function main() {
 	check("spendable coins buy an upgrade", await saverSpendable(), expectedDesign.spendable - 10)
 	check("the purchase moved nothing locked", await saverBanked(), 0)
 
-	// A second upgrade-category item priced at everything left must succeed too,
-	// and empty the pot. Printers themselves are no longer shop-buyable – the
-	// shop hides the PRINTER category and purchase() refuses it, since machines
-	// leave through the goal flow – so the pot-emptying purchase is exercised
-	// with the same buyable category as the upgrade above.
+	// A second upgrade-category item priced at everything left must succeed too, and empty the pot. Printers themselves are no longer shop-buyable – the shop hides the PRINTER category and purchase() refuses it, since machines leave through the goal flow – so the pot-emptying purchase is exercised with the same buyable category as the upgrade above.
 	const printerItem = await db.orm.public.ShopItem.create({
 		category: ShopItemCategory.PRINTER_UPGRADE,
 		description: "Priced at the rest of the design mint.",

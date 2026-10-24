@@ -483,23 +483,16 @@ function MetricPie({
 /**
  * The grid every activity chart draws on, shared so a change to one is a change to all.
  *
- * The top inset is a caption band: a tick at the maximum lands exactly on the plot's top edge, and the axis caption
- * sits above it, so without the band "38" prints over "h". The height carries that band rather than the plot losing
- * it, so the data area and the gridline spacing are the size they were.
+ * The top inset is a caption band: a tick at the maximum lands exactly on the plot's top edge, and the axis caption sits above it, so without the band "38" prints over "h". The height carries that band rather than the plot losing it, so the data area and the gridline spacing are the size they were.
  */
 const CHART_H = 214
 const PAD_T = 24
 const PAD_B = 8
 
 /**
- * The x axis is a share of the chart's own width and the y axis is in pixels, which is what lets a chart fill whatever
- * panel it lands in without being measured. A percentage resolves against the SVG's viewport, so there is no viewBox
- * and no scale factor for the HTML scale labels to fall out of step with, and the dots stay round because nothing is
- * being stretched.
+ * The x axis is a share of the chart's own width and the y axis is in pixels, which is what lets a chart fill whatever panel it lands in without being measured. A percentage resolves against the SVG's viewport, so there is no viewBox and no scale factor for the HTML scale labels to fall out of step with, and the dots stay round because nothing is being stretched.
  *
- * The cost of that choice is that x can never ride in a `d` attribute – path data takes user units only – so the lines
- * are drawn one segment per pair of points. It replaced a fixed pixel width per chart, which left most of a wide panel
- * empty; `EDGE` is what keeps the first and last marks off the sides.
+ * The cost of that choice is that x can never ride in a `d` attribute – path data takes user units only – so the lines are drawn one segment per pair of points. It replaced a fixed pixel width per chart, which left most of a wide panel empty; `EDGE` is what keeps the first and last marks off the sides.
  */
 const EDGE = 0.012
 const pct = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
@@ -507,27 +500,16 @@ const pct = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 /**
  * Hours and devlogs per day, as two lines over one shared day axis and two scales.
  *
- * One chart rather than two stacked ones because the two move together, and that is the thing worth seeing: a day
- * where the hours line jumps and the devlogs line does not is a long sitting, and a day where both jump is a busy
- * one. Stacked, that comparison needed the eye to travel between panels and hold one scale in mind.
+ * One chart rather than two stacked ones because the two move together, and that is the thing worth seeing: a day where the hours line jumps and the devlogs line does not is a long sitting, and a day where both jump is a busy one. Stacked, that comparison needed the eye to travel between panels and hold one scale in mind.
  *
- * Two axes because the magnitudes are unrelated and either could outgrow the other as the season runs. Sharing one
- * scale would pin the smaller series to the baseline and read as a flat line, which is worse than no line at all.
- * Each line is therefore drawn against its own maximum, and each axis is labelled with its series, so neither is
- * read off the other's numbers.
+ * Two axes because the magnitudes are unrelated and either could outgrow the other as the season runs. Sharing one scale would pin the smaller series to the baseline and read as a flat line, which is worse than no line at all. Each line is therefore drawn against its own maximum, and each axis is labelled with its series, so neither is read off the other's numbers.
  *
- * `perUser` divides each day by the people who logged something that day rather than plotting the totals. It is the
- * same chart otherwise, deliberately: the shapes are meant to be laid side by side, and a second component that drew
- * a slightly different grid would defeat that. It answers a different question – not how much the programme did, but
- * how much one person's working day held – so the two are read together, the totals for volume and these for whether
- * that volume is spread thin. A day with a single contributor reads tall here, because that is what an average over
- * one person is, and nothing in the data can say otherwise.
+ * `perUser` divides each day by the people who logged something that day rather than plotting the totals. It is the same chart otherwise, deliberately: the shapes are meant to be laid side by side, and a second component that drew a slightly different grid would defeat that. It answers a different question – not how much the programme did, but how much one person's working day held – so the two are read together, the totals for volume and these for whether that volume is spread thin. A day with a single contributor reads tall here, because that is what an average over one person is, and nothing in the data can say otherwise.
  */
 function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser?: boolean }) {
 	if (days.length === 0) return <EmptyState>No devlogs yet.</EmptyState>
 
-	// A gap-filled day with no contributors has no average to take and no activity to take it from, so it reads as
-	// zero. Left as `value / users` it would divide by zero into NaN and put a hole in the path.
+	// A gap-filled day with no contributors has no average to take and no activity to take it from, so it reads as zero. Left as `value / users` it would divide by zero into NaN and put a hole in the path.
 	const perActiveUser = (value: number, users: number) => (users > 0 ? value / users : 0)
 	const hoursOf = (d: DayActivity) => (perUser ? perActiveUser(d.hours, d.users) : d.hours)
 	const devlogsOf = (d: DayActivity) => (perUser ? perActiveUser(d.devlogs, d.users) : d.devlogs)
@@ -536,8 +518,7 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 
 	const maxHours = Math.max(1, ...days.map(hoursOf))
 	const maxDevlogs = Math.max(1, ...days.map(devlogsOf))
-	// The span's own figure, for the legend. On the per-user chart this is the mean of what is drawn rather than a
-	// total, so it is divided by the days on the axis – including the quiet ones, since those are plotted too.
+	// The span's own figure, for the legend. On the per-user chart this is the mean of what is drawn rather than a total, so it is divided by the days on the axis – including the quiet ones, since those are plotted too.
 	const sumHours = days.reduce((n, d) => n + hoursOf(d), 0)
 	const sumDevlogs = days.reduce((n, d) => n + devlogsOf(d), 0)
 	const meanHours = sumHours / days.length
@@ -571,8 +552,7 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 		y: yFor(hoursOf(d), maxHours),
 	}))
 
-	// Five per axis, so both scales are readable. Rounded to something a person would say rather than to the raw
-	// maximum, which on a spiky series lands on an unreadable 574.3h.
+	// Five per axis, so both scales are readable. Rounded to something a person would say rather than to the raw maximum, which on a spiky series lands on an unreadable 574.3h.
 	const steps = (max: number) => Array.from({ length: 5 }, (_, i) => (max / 4) * i)
 	const hoursTicks = steps(maxHours)
 	const devlogTicks = steps(maxDevlogs)
@@ -615,8 +595,7 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 				/>
 				{legendDevlogs}
 			</p>
-			{/* The two scale columns are grid siblings of the chart, so they share its row. Each label is placed at the
-			    exact pixel its gridline sits on, so the two scales read off one row rather than eyeballed. */}
+			{/* The two scale columns are grid siblings of the chart, so they share its row. Each label is placed at the exact pixel its gridline sits on, so the two scales read off one row rather than eyeballed. */}
 			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto" }}>
 				<div style={{ height: `${CHART_H}px`, position: "relative", width: "3.1rem" }}>
 					{hoursTicks.map((t, i) => (
@@ -641,8 +620,7 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 						style={{
 							color: "var(--color-ink-muted)",
 							fontSize: "0.6rem",
-							// Pinned so the caption's box is its own height rather than an inherited line-height's: the
-							// band below it is what keeps it clear of the top tick label, and that budget has to be knowable.
+							// Pinned so the caption's box is its own height rather than an inherited line-height's: the band below it is what keeps it clear of the top tick label, and that budget has to be knowable.
 							lineHeight: 1,
 							position: "absolute",
 							right: 6,
@@ -1309,12 +1287,9 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 	if (totals.every(t => t === 0)) return <EmptyState>No project has been started yet.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
-	// Four bars to a cluster, sized as shares of the stride so the labels – one grid cell per cluster – still land
-	// under their own bars at any panel width.
+	// Four bars to a cluster, sized as shares of the stride so the labels – one grid cell per cluster – still land under their own bars at any panel width.
 	const stride = (1 - 2 * EDGE) / weeks.length
-	// The four bars take most of a cluster and the rest is the gutter between clusters. The gaps inside a cluster are
-	// shares of the cluster rather than of the whole width: eleven clusters leave a stride under a tenth of the width,
-	// so a gap sized against the width would be wider than the bars it is meant to separate.
+	// The four bars take most of a cluster and the rest is the gutter between clusters. The gaps inside a cluster are shares of the cluster rather than of the whole width: eleven clusters leave a stride under a tenth of the width, so a gap sized against the width would be wider than the bars it is meant to separate.
 	const CLUSTER_FILL = 0.62
 	const BAR_GAP_SHARE = 0.12
 	const clusterW = CLUSTER_FILL * stride
@@ -1570,21 +1545,14 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 /**
  * How the cohort's hours are spread, as two measures over each band of hours.
  *
- * The solid bar is the band's share of the accounts, the pale one its share of the hours. Both are drawn against
- * one scale – the largest share either series has – so the pair can be compared directly: where the pale bar tops
- * the solid one, that band holds more of the programme's hours than of its people, and the other way round where it
- * does not. Scaling each series to its own maximum would look tidier and mean nothing, because a band would look
- * hours-heavy purely because hours happen to be spread more evenly than people.
+ * The solid bar is the band's share of the accounts, the pale one its share of the hours. Both are drawn against one scale – the largest share either series has – so the pair can be compared directly: where the pale bar tops the solid one, that band holds more of the programme's hours than of its people, and the other way round where it does not. Scaling each series to its own maximum would look tidier and mean nothing, because a band would look hours-heavy purely because hours happen to be spread more evenly than people.
  *
- * The shares, not the counts, are the thing drawn: buckets are unequal by design, so a count bar would say as much
- * about the bucket's width as about the band. The counts are still what is written above each column, because that
- * is the number an operator actually reads off this chart.
+ * The shares, not the counts, are the thing drawn: buckets are unequal by design, so a count bar would say as much about the bucket's width as about the band. The counts are still what is written above each column, because that is the number an operator actually reads off this chart.
  */
 function HoursHistogram({ data }: { data: HoursDistribution }) {
 	if (data.withHours === 0) return <EmptyState>No hours logged yet.</EmptyState>
 
-	// Guarded because both shares divide by them: a cohort or a total that somehow came to zero would otherwise put
-	// NaN% in every tooltip and a NaN height on every bar, which is worse than a slightly wrong number.
+	// Guarded because both shares divide by them: a cohort or a total that somehow came to zero would otherwise put NaN% in every tooltip and a NaN height on every bar, which is worse than a slightly wrong number.
 	const accounts = Math.max(data.withHours, 1)
 	const totalHours = Math.max(data.totalHours, 0.0001)
 
@@ -1636,9 +1604,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 				share of hours
 			</p>
 			<figure style={{ margin: 0 }}>
-				{/* The plot carries its own height and its columns stretch to fill it. Both are load-bearing: a
-				    percentage bar has nothing to resolve against inside an auto-height parent, and `align-items: end`
-				    would stop the column growing into one – which is how this chart rendered no bars at all. */}
+				{/* The plot carries its own height and its columns stretch to fill it. Both are load-bearing: a percentage bar has nothing to resolve against inside an auto-height parent, and `align-items: end` would stop the column growing into one – which is how this chart rendered no bars at all. */}
 				<div
 					aria-label={`Participants and hours by hours logged: ${summary}`}
 					role="img"
@@ -1652,11 +1618,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 					{data.buckets.map((b, i) => {
 						const share = shares[i] ?? { byAccounts: 0, byHours: 0 }
 						return (
-							// The tooltip hangs on the whole column rather than on a bar. Both bars are absolutely
-							// positioned and the hours one is painted last, so a title on the solid bar would be covered
-							// by the translucent one wherever the hours bar is the taller – exactly the half of the chart
-							// the tooltip is most worth reading. The column is the common ancestor, so hovering anywhere
-							// in it, bars included, reaches the one tooltip.
+							// The tooltip hangs on the whole column rather than on a bar. Both bars are absolutely positioned and the hours one is painted last, so a title on the solid bar would be covered by the translucent one wherever the hours bar is the taller – exactly the half of the chart the tooltip is most worth reading. The column is the common ancestor, so hovering anywhere in it, bars included, reaches the one tooltip.
 							<div
 								key={b.label}
 								style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
@@ -1677,10 +1639,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 								>
 									{b.participants > 0 ? fmtInt(b.participants) : ""}
 								</span>
-								{/* flex: 1 so the bars take the space the count label does not. Both bars are pinned to
-								    the floor and drawn full-width so they overlap; the hours bar sits on top, translucent,
-								    so a band that is hours-heavy reads as a pale cap over the solid bar and one that is
-								    people-heavy reads as a solid cap over the pale. */}
+								{/* flex: 1 so the bars take the space the count label does not. Both bars are pinned to the floor and drawn full-width so they overlap; the hours bar sits on top, translucent, so a band that is hours-heavy reads as a pale cap over the solid bar and one that is people-heavy reads as a solid cap over the pale. */}
 								<div style={{ flex: 1, minHeight: 0, position: "relative" }}>
 									<div
 										style={{

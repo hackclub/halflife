@@ -12,8 +12,11 @@ import type { Forge } from "@/lib/forge"
  * What keeps a check answering, and the budget intact, is shared by both forges:
  *
  * - Retries. gh-proxy has transient failures of its own – a 503 with "Could not verify the API key" and a hint to retry with backoff, or a dropped connection – that clear within a second. Those are retried twice, briefly, before anything gives up.
+ *
  * - A fallback, GitHub only. If the proxy still fails, the request goes to GitHub directly, so a proxy outage costs direct budget rather than every maker's check.
+ *
  * - Backoff. When a route says slow down, every call on that route stops until the time it named, rather than each one finding out for itself. A rate-limited answer is the moment retries cost most. Routes back off separately: the proxy being limited says nothing about GitHub, and neither says anything about GitLab.
+ *
  * - A concurrency cap. A burst of hand-ins becomes a short queue instead of a spike against a forge's per-second limit.
  */
 

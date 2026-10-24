@@ -12,11 +12,10 @@ import db from "../src/lib/prisma8"
  * Two limits to know before committing:
  *
  * - `ari.ships.status` carries the decision and the review's note and reviewer, so a replayed decision reaches the maker with Ari's own words rather than its generic sentence. It does not carry the approved hours, though, so a replayed approval is paid on Half Life's own hours roll-up rather than Ari's figure. Check the handful of approvals (`--commit` reports them) rather than trusting them blind.
+ *
  * - Makers are not told by default. A backlog replay can decide hundreds of hand-ins at once and the live webhook already told the maker weeks ago; announcing a bulk run would be a flood. The Airtable mirror the notice depends on is `airtable:backfill-review`'s job. Pass `--announce` only for a small, deliberate run.
  *
- * Read-only unless `--commit`. Run with
- * `bun --conditions=react-server scripts/backfill-ari-reviews.ts [--commit] [--announce] [--limit=N]`.
- * In production run it where `DATABASE_URL` and the `ARI_*` secrets both point at the live program, not from a dev machine against a local Postgres.
+ * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/backfill-ari-reviews.ts [--commit] [--announce] [--limit=N]`. In production run it where `DATABASE_URL` and the `ARI_*` secrets both point at the live program, not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")

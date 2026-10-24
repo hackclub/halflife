@@ -231,9 +231,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 /**
  * GitLab's tree API, walked page by page.
  *
- * GitLab has no `truncated` flag and no README endpoint that finds the README
- * for you, so this asks for the tree and then reads the README by the name it
- * actually found. Both lists are paginated at 100, and a project with more files than one page would silently look emptier than it is – which, for a required-file check, means failing a maker who did the work. So the tree is walked until GitLab stops offering a next page.
+ * GitLab has no `truncated` flag and no README endpoint that finds the README for you, so this asks for the tree and then reads the README by the name it actually found. Both lists are paginated at 100, and a project with more files than one page would silently look emptier than it is – which, for a required-file check, means failing a maker who did the work. So the tree is walked until GitLab stops offering a next page.
  */
 async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	const { forge } = ref

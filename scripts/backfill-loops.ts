@@ -7,24 +7,12 @@ import db from "../src/lib/prisma8"
 /**
  * Backfill the Loops columns for all existing users.
  *
- * Two phases, both mapped-rows-only – no Airtable row is ever created, so an
- * address that never signed up on the landing page stays out of the list:
+ * Two phases, both mapped-rows-only – no Airtable row is ever created, so an address that never signed up on the landing page stays out of the list:
  *
- * 1. Relink. The landing form used to write straight to Airtable without
- *    leaving an `RsvpBuffer` entry, so the Loops sync's record-id join cannot
- *    reach those rows. Wherever a `User.email` still matches a Signups row,
- *    record that row's id (and the user id) on the buffer row, so the drain
- *    stamps `Half-Life User ID` and the sync matches by record id from then
- *    on. Users whose address no longer matches any row are reported, not
- *    guessed at – there is no other signal linking them to a landing row.
- * 2. Sync. Run the normal `loops-sync` over everyone, which PATCHes the Loops
- *    columns onto every matched row.
+ * 1. Relink. The landing form used to write straight to Airtable without leaving an `RsvpBuffer` entry, so the Loops sync's record-id join cannot reach those rows. Wherever a `User.email` still matches a Signups row, record that row's id (and the user id) on the buffer row, so the drain stamps `Half-Life User ID` and the sync matches by record id from then on. Users whose address no longer matches any row are reported, not guessed at – there is no other signal linking them to a landing row.
+ * 2. Sync. Run the normal `loops-sync` over everyone, which PATCHes the Loops columns onto every matched row.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-loops.ts [--commit]`.
- * In production run it where
- * `DATABASE_URL` points at the real database (the Orchard pod), not from a
- * dev machine against a local Postgres.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-loops.ts [--commit]`. In production run it where `DATABASE_URL` points at the real database (the Orchard pod), not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")

@@ -172,10 +172,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	// Frozen before the snapshot read, so sessions created after it are not stamped as reviewed below.
 	const snapshotAt = new Date()
 
-	// The live Hackatime read is the one part of this that cannot happen inside the transaction: it is
-	// network I/O with a ten second timeout and two retries, so an interactive transaction would sit on a
-	// connection – and hold this maker's credit lock – for all of it. What it does is refresh the cache the
-	// decision then reads under the lock, so the number that ends up frozen is the fresh one.
+	// The live Hackatime read is the one part of this that cannot happen inside the transaction: it is network I/O with a ten second timeout and two retries, so an interactive transaction would sit on a connection – and hold this maker's credit lock – for all of it. What it does is refresh the cache the decision then reads under the lock, so the number that ends up frozen is the fresh one.
 	const live = await getHoursBreakdown(project.id, phase, { live: approving })
 	// A reviewer (human or Ari) who supplied the hours explicitly has already covered the underpayment risk that a stale Hackatime reading creates, so staleness must not block a decision that does not depend on the live value.
 	if (approving && input.hoursOverride == null && live.hackatimeStale)
@@ -228,18 +225,11 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
 		}
 
-		// The hours, read under the lock rather than before it. The hours-approval route takes this same
-		// lock before it rewrites a session or a link, so a batch that rewrote them while this decision was
-		// waiting for Hackatime is already in this read, and one still waiting cannot commit until this
-		// decision has. The total the decision freezes is the total the rows hold at the moment it is made.
+		// The hours, read under the lock rather than before it. The hours-approval route takes this same lock before it rewrites a session or a link, so a batch that rewrote them while this decision was waiting for Hackatime is already in this read, and one still waiting cannot commit until this decision has. The total the decision freezes is the total the rows hold at the moment it is made.
 		const breakdown = await getHoursBreakdown(project.id, phase, { client: tx })
 		const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
-		// A tier's grant buys that tier's funded block of hours, so it is not paid on fewer hours than it funds. The
-		// submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when the decision approves
-		// less time than was logged. Then the tier is what has to move, not the grant: a hundred dollars of parts for a
-		// five-hour week is money for work that was not done. An explicit grant override is an admin decision about the
-		// amount, so it is left alone.
+		// A tier's grant buys that tier's funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when the decision approves less time than was logged. Then the tier is what has to move, not the grant: a hundred dollars of parts for a five-hour week is money for work that was not done. An explicit grant override is an admin decision about the amount, so it is left alone.
 		if (approving && phase === Phase.DESIGN && tier && (grantUsd ?? 0) > 0 && input.grantUsdOverride == null) {
 			const funded = getTierOrThrow(tier).fundingHours
 			const approved = approvedHours ?? 0
@@ -265,8 +255,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				: null
 
 		if (approving)
-			// Accept every unreviewed session at its claimed hours, so the per-session numbers stay consistent with the frozen total.
-			// Only sessions in the snapshot: one created after it was never counted in the frozen total.
+			// Accept every unreviewed session at its claimed hours, so the per-session numbers stay consistent with the frozen total. Only sessions in the snapshot: one created after it was never counted in the frozen total.
 			await tx.orm.public.WorkSession.where({
 				deletedAt: null,
 				phase,
@@ -574,8 +563,7 @@ export async function unapprovePhase(
 				: {}),
 		})
 
-		// Each reversal reports what it could not take back, so the audit row can say how much of the grant
-		// the maker had already spent. The number is in the ledger row's own note as well.
+		// Each reversal reports what it could not take back, so the audit row can say how much of the grant the maker had already spent. The number is in the ledger row's own note as well.
 		let unrecoveredCoins = 0
 
 		if (phase === Phase.DESIGN) {
@@ -649,8 +637,7 @@ export async function unapprovePhase(
 			before: { status: PhaseStatus.approved },
 			phase,
 			reason,
-			// What the reversal could not take back, because the maker had already spent it. Zero in the
-			// ordinary case; a number here is the programme carrying a grant that was withdrawn too late.
+			// What the reversal could not take back, because the maker had already spent it. Zero in the ordinary case; a number here is the programme carrying a grant that was withdrawn too late.
 			unrecoveredCoins: unrecovered,
 		},
 		targetId: themeProjectId,

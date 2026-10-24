@@ -58,8 +58,7 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 								</td>
 								<td>
 									{item.phase.toLowerCase()}
-									{/* A warm-up submission was recorded before the season, so
-                      its "week" is 0 and saying so would only confuse. */}
+									{/* A warm-up submission was recorded before the season, so its "week" is 0 and saying so would only confuse. */}
 									{!item.onTime && item.submittedInWeek !== null && item.submittedInWeek > 0 ? (
 										<div className="hl-hint">submitted week {item.submittedInWeek}</div>
 									) : null}

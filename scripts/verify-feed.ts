@@ -9,7 +9,9 @@ import { formatDbTimestamp } from "../src/lib/time"
  * The properties worth asserting:
  *
  * 1. Counts cannot be inflated. The program pays prizes on virality, so a view or like count anyone can move by refreshing is a number that decides who gets a drawing tablet.
+ *
  * 2. A reel cannot point at someone else's upload, or at a key outside the posts folder. The object key travels through the browser between the upload and the post, so the server cannot trust it.
+ *
  * 3. Denormalised counts agree with the rows they summarise, including after a moderator hides something.
  *
  * Run with `pnpm verify:feed` against a scratch database.

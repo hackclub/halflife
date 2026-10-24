@@ -23,11 +23,7 @@ export function PageSign({
 				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11 lg:h-[7rem]" />
 			</div>
 
-			{/* `min-w` so the plaque is never narrower than the straps pinned to it:
-          a short title would otherwise leave them hanging in mid-air beside it,
-          which is what "Shop" and "Docs" did. The same floor the ops sign
-          (`.hl-sign-board`) carries, and `text-center` goes with it because the
-          heading now stretches into a box wider than its own text. */}
+			{/* `min-w` so the plaque is never narrower than the straps pinned to it: a short title would otherwise leave them hanging in mid-air beside it, which is what "Shop" and "Docs" did. The same floor the ops sign (`.hl-sign-board`) carries, and `text-center` goes with it because the heading now stretches into a box wider than its own text. */}
 			<div className="relative -mt-1 min-w-[min(340px,100%)] text-center">
 				<div
 					aria-hidden="true"

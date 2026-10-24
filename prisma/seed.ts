@@ -5,8 +5,7 @@ import db from "../src/lib/prisma8"
 import { formatDbTimestamp } from "../src/lib/time"
 
 /**
- * Idempotent: `./dev.sh` runs it on every start, and it is safe to run against
- * production to add newly defined shop items.
+ * Idempotent: `./dev.sh` runs it on every start, and it is safe to run against production to add newly defined shop items.
  */
 async function main() {
 	const startDate = process.env.PROGRAM_START_DATE ?? "2026-10-05"
@@ -24,15 +23,9 @@ async function main() {
 
 	const items = [
 		// ── Printers ─────────────────────────────────────────────────────────────
-		// Generated from the goal catalogue rather than typed out here, because the
-		// catalogue IS the budget spreadsheet: a machine's price, the hours a design
-		// week has to bank to reach it, and what the shop charges for it all have to
-		// be the same number. Typing them separately is how someone ends up saving
-		// for 219 coins against a shelf tag that says 250.
+		// Generated from the goal catalogue rather than typed out here, because the catalogue IS the budget spreadsheet: a machine's price, the hours a design week has to bank to reach it, and what the shop charges for it all have to be the same number. Typing them separately is how someone ends up saving for 219 coins against a shelf tag that says 250.
 		//
-		// `requiresPrinterQualified` is false: you buy a printer with coins you
-		// earned, and every week's submit floor is sized so the cheapest one stays
-		// reachable. Upgrades are the things gated on finishing.
+		// `requiresPrinterQualified` is false: you buy a printer with coins you earned, and every week's submit floor is sized so the cheapest one stays reachable. Upgrades are the things gated on finishing.
 		...PRINTERS.map((printer, index) => ({
 			category: ShopItemCategory.PRINTER,
 			description: printer.blurb,
@@ -89,14 +82,9 @@ async function main() {
 	/**
 	 * Retire printers that have left the catalogue.
 	 *
-	 * This seed only ever added rows, which was fine while the printers were
-	 * typed out here and never changed. Now that they are generated from the
-	 * budget sheet, re-pricing one changes its id — and without this the shop
-	 * ends up selling a Bambu A1 Mini at 250 coins next to a Bambu A1 Mini at
-	 * 241, with the participant's goal tracker pointed at neither.
+	 * This seed only ever added rows, which was fine while the printers were typed out here and never changed. Now that they are generated from the budget sheet, re-pricing one changes its id — and without this the shop ends up selling a Bambu A1 Mini at 250 coins next to a Bambu A1 Mini at 241, with the participant's goal tracker pointed at neither.
 	 *
-	 * Deactivated, never deleted: a ShopOrder points at its item, and someone's
-	 * order history must not stop making sense because a machine was re-priced.
+	 * Deactivated, never deleted: a ShopOrder points at its item, and someone's order history must not stop making sense because a machine was re-priced.
 	 */
 	const live = new Set(items.map(item => item.id))
 	const retired = await db.orm.public.ShopItem.where({ active: true, category: ShopItemCategory.PRINTER })

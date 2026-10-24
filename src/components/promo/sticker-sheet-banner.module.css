@@ -1,23 +1,11 @@
 /*
  * The weeks 3 + 4 sticker-sheet promotion, in the landing's world.
  *
- * It is mounted under both root layouts, so every colour reads the landing
- * token first and falls back to the same literal: on the site's stylesheet
- * there is one source of truth, and on the platform's — which has its own
- * palette and none of these names — it still lands on the right ink, paper and
- * cyan rather than on `transparent` or the browser's blue.
+ * It is mounted under both root layouts, so every colour reads the landing token first and falls back to the same literal: on the site's stylesheet there is one source of truth, and on the platform's — which has its own palette and none of these names — it still lands on the right ink, paper and cyan rather than on `transparent` or the browser's blue.
  *
- * The promo is a deliberate visitor from the landing: the painting, the
- * wordmark and the cyan eyebrow are the landing's branding, and that is what
- * makes a strip across the top of the platform read as an announcement from
- * the programme rather than as another platform panel.
+ * The promo is a deliberate visitor from the landing: the painting, the wordmark and the cyan eyebrow are the landing's branding, and that is what makes a strip across the top of the platform read as an announcement from the programme rather than as another platform panel.
  *
- * Its controls are the exception. On the platform the banner sits directly
- * above the dashboard and is used far more often there, so its buttons and
- * edges wear that side's chrome: the drawn 12px control radius, a two-pixel
- * rim, the hand label face, and the platform's own `line` stroke and panel
- * radius. The site keeps the landing's bevel-cut cyan plate. Keep the
- * fallbacks in step with both globals.css files by hand.
+ * Its controls are the exception. On the platform the banner sits directly above the dashboard and is used far more often there, so its buttons and edges wear that side's chrome: the drawn 12px control radius, a two-pixel rim, the hand label face, and the platform's own `line` stroke and panel radius. The site keeps the landing's bevel-cut cyan plate. Keep the fallbacks in step with both globals.css files by hand.
  */
 
 .root {
@@ -26,8 +14,7 @@
 	--cyan: var(--color-hl-cyan, #8ed3dc);
 	--paper-soft: color-mix(in srgb, var(--paper) 78%, var(--ink));
 	--font-promo: var(--font-ubuntu, var(--font-jakarta, ui-sans-serif)), system-ui, sans-serif;
-	/* The platform's chrome, for the skin at the end of the file. The same
-	   fallbacks as its own tokens, so the platform rules stay readable here. */
+	/* The platform's chrome, for the skin at the end of the file. The same fallbacks as its own tokens, so the platform rules stay readable here. */
 	--line: var(--color-line, #c8c3d6);
 	--navy: var(--color-navy, #1c1a59);
 	--sky: var(--color-sky, #52b4d5);
@@ -113,9 +100,7 @@
 	filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
 }
 
-/* The sign-up button's own material: a cyan plate, ink type, a bevel corner.
-   The landing's global `corner-shape` is not set on the platform, so it is
-   asked for here and degrades to a soft radius where it is unsupported. */
+/* The sign-up button's own material: a cyan plate, ink type, a bevel corner. The landing's global `corner-shape` is not set on the platform, so it is asked for here and degrades to a soft radius where it is unsupported. */
 .cta {
 	flex: 0 0 auto;
 	display: inline-flex;
@@ -159,9 +144,7 @@
 
 .image {
 	object-fit: cover;
-	/* The painting's lower half: the open blue, the branches and, on a wide
-	   screen, a corner of the fox. The top third is mostly empty sky at this
-	   crop, which reads as dead space in a 5.5rem strip. */
+	/* The painting's lower half: the open blue, the branches and, on a wide screen, a corner of the fox. The top third is mostly empty sky at this crop, which reads as dead space in a 5.5rem strip. */
 	object-position: 50% 78%;
 }
 
@@ -222,8 +205,7 @@
 	border-radius: 2px;
 }
 
-/* The reopened banner takes focus so assistive tech announces the region, but
-   it is not a control: a ring around the whole strip would read as one. */
+/* The reopened banner takes focus so assistive tech announces the region, but it is not a control: a ring around the whole strip would read as one. */
 .banner:focus-visible {
 	outline: none;
 }
@@ -252,8 +234,7 @@
 	animation: promo-card-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* The platform's phone tab bar owns the bottom of the screen; the card sits
-   above it. From `lg` the tab bar is gone and the card can take the corner. */
+/* The platform's phone tab bar owns the bottom of the screen; the card sits above it. From `lg` the tab bar is gone and the card can take the corner. */
 .card[data-platform="true"] {
 	bottom: calc(env(safe-area-inset-bottom, 0px) + 5.4rem);
 }
@@ -280,8 +261,7 @@
 	width: 4.5rem;
 }
 
-/* The copy is the way back to the banner. A button rather than a card-wide
-   click target so the CTA and the close stay their own controls. */
+/* The copy is the way back to the banner. A button rather than a card-wide click target so the CTA and the close stay their own controls. */
 .copyButton {
 	display: block;
 	width: 100%;
@@ -320,12 +300,7 @@
 
 /* ── The platform skin ─────────────────────────────────────────────────── */
 
-/* On the dashboard the strip is the first row of the app, so its controls
-   and edges borrow the dashboard's material rather than the landing's: the
-   primary action is a sky plate on a sky-deep two-pixel rim with navy type,
-   as the platform sets any label on an accent fill, the close is one of the
-   chrome's round outlined icon controls, and every edge is the platform's
-   `line` at the panel weight and radius. */
+/* On the dashboard the strip is the first row of the app, so its controls and edges borrow the dashboard's material rather than the landing's: the primary action is a sky plate on a sky-deep two-pixel rim with navy type, as the platform sets any label on an accent fill, the close is one of the chrome's round outlined icon controls, and every edge is the platform's `line` at the panel weight and radius. */
 .root[data-platform="true"].banner {
 	border-bottom: 2px solid color-mix(in srgb, var(--line) 62%, transparent);
 }
@@ -368,8 +343,7 @@
 	border-color: var(--violet);
 }
 
-/* The floating card is a panel on the platform, not a sticker: the same
-   line stroke, the 16px panel radius, and the tape shadow it already had. */
+/* The floating card is a panel on the platform, not a sticker: the same line stroke, the 16px panel radius, and the tape shadow it already had. */
 .root[data-platform="true"].card {
 	border: 2px solid color-mix(in srgb, var(--line) 62%, transparent);
 	border-radius: 1rem;
@@ -378,9 +352,7 @@
 
 /* ── Before React remembers ────────────────────────────────────────────── */
 
-/* `PromoBootScript` writes the stored mode onto <html> before paint. A banner
-   that is really a card would otherwise fill the top of the page and then be
-   yanked out; this keeps it out of the first paint instead. */
+/* `PromoBootScript` writes the stored mode onto <html> before paint. A banner that is really a card would otherwise fill the top of the page and then be yanked out; this keeps it out of the first paint instead. */
 html[data-promo="card"] .banner,
 html[data-promo="hidden"] .root {
 	display: none;

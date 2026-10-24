@@ -19,18 +19,11 @@ function seriesLabel(events: CalendarEvent[], event: CalendarEvent): string | nu
 /**
  * Add an event to the programme calendar, or edit the one that is open.
  *
- * `repeatWeeks` writes the whole series in one request rather than making an admin
- * press the button once per week. It disappears when editing, because a series is
- * edited an occurrence at a time on purpose – that is the edit that gets made when
- * one week's call lands on a holiday.
+ * `repeatWeeks` writes the whole series in one request rather than making an admin press the button once per week. It disappears when editing, because a series is edited an occurrence at a time on purpose – that is the edit that gets made when one week's call lands on a holiday.
  *
- * The colour is a row of swatches rather than a text select, because the colour is
- * the only thing a participant actually sees: the field used to be a "kind" with
- * labels nobody read, and picking the label to pick the colour was a step that
- * asked an admin to translate in their head.
+ * The colour is a row of swatches rather than a text select, because the colour is the only thing a participant actually sees: the field used to be a "kind" with labels nobody read, and picking the label to pick the colour was a step that asked an admin to translate in their head.
  *
- * There is no link field: every event is the Slack huddle, so the URL is a constant
- * in `lib/events.ts` rather than a column nobody would ever vary.
+ * There is no link field: every event is the Slack huddle, so the URL is a constant in `lib/events.ts` rather than a column nobody would ever vary.
  */
 export function EventForm({
 	events,
@@ -66,8 +59,7 @@ export function EventForm({
 			published,
 			startsAt: startsAt ? new Date(startsAt).toISOString() : null,
 			title,
-			// Only meaningful on a create; the update schema has no such field and
-			// `.strict()` would refuse the whole body for carrying one.
+			// Only meaningful on a create; the update schema has no such field and `.strict()` would refuse the whole body for carrying one.
 			...(editing ? {} : { repeatWeeks }),
 		}
 
@@ -109,8 +101,7 @@ export function EventForm({
 						value={title}
 					/>
 				</Field>
-				{/* Outside `Field`, which renders a `<label>`: a radio group is not its
-            control, and nesting the two would make the label's own name ambiguous. */}
+				{/* Outside `Field`, which renders a `<label>`: a radio group is not its control, and nesting the two would make the label's own name ambiguous. */}
 				<div className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 					<span className="hl-label-text">Colour</span>
 					<span aria-label="Colour" className="hl-row" role="radiogroup" style={{ gap: "0.4rem", minHeight: "2.5rem" }}>
@@ -204,8 +195,7 @@ export function EventForm({
 				</span>
 			</div>
 
-			{/* The first few of a long series, so an admin can see the run they are
-              about to write before writing it. */}
+			{/* The first few of a long series, so an admin can see the run they are about to write before writing it. */}
 			{!editing && repeatWeeks > 1 && startsAt ? (
 				<p className="hl-hint" style={{ margin: 0 }}>
 					{repeatWeeks} occurrences, every {WEEK_MS / 86_400_000} days from {formatShortDate(startsAt)} to{" "}

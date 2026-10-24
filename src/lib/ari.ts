@@ -53,8 +53,7 @@ export function isAriWebhookConfigured(): boolean {
 /**
  * The absolute webhook URL to paste into the Ari program settings.
  *
- * Configured origin first: behind an ingress the request's own host is the internal one, and a webhook URL the Ari service cannot reach is one that silently never fires. The caller may pass the request origin as a fallback
- * for local development.
+ * Configured origin first: behind an ingress the request's own host is the internal one, and a webhook URL the Ari service cannot reach is one that silently never fires. The caller may pass the request origin as a fallback for local development.
  */
 export function ariWebhookUrl(originFallback = ""): string {
 	const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? originFallback).replace(/\/$/, "")
@@ -374,9 +373,10 @@ export async function withdrawSubmissionFromAri(
 	}
 }
 
-/** Hand-ins awaiting review that never reached Ari – for the retry job and the
- * admin panel. Three queries total rather than several per project, because the
- * admin page renders this on every load. */
+/** Hand-ins awaiting review that never reached Ari – for the retry job and the admin panel. Three queries total rather than several per project, because the
+ *
+ * * admin page renders this on every load.
+ */
 export async function findUnsyncedAriSubmissions(): Promise<
 	{ themeProjectId: string; phase: Phase; reason: string | null }[]
 > {
@@ -557,11 +557,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 		}
 		tier = chosen
 
-		// A tier's grant buys its funded block of hours, so it is not paid on fewer hours than it funds. The submit
-		// gate refuses a hand-in below the floor, so this only bites when the reviewer approves less time than was
-		// logged: the tier then steps down to the one the approved hours earned, rather than the grant staying at a
-		// level the hours do not cover. Under every tier there is no parts grant at all. Clamped here rather than
-		// refused in finalizeReview, so an automatic decision never lands as an error Ari would keep redelivering.
+		// A tier's grant buys its funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor, so this only bites when the reviewer approves less time than was logged: the tier then steps down to the one the approved hours earned, rather than the grant staying at a level the hours do not cover. Under every tier there is no parts grant at all. Clamped here rather than refused in finalizeReview, so an automatic decision never lands as an error Ari would keep redelivering.
 		const approved = approvedHoursFrom(event.review)
 		if (approved !== null) {
 			const affordable = tierForHours(approved)

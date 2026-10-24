@@ -30,8 +30,11 @@ import { fetchRemoteImage } from "@/lib/uploads/remote"
  * Before the program opened, projects were handed in through a Fillout form that writes rows into the `YSWS Project Submission` table – the same table Half Life's own submissions land in. This reads those rows, files each one on the Warm Up track, creates the submitter's account if they have not signed up yet, and sends the project to Ari so it enters the same review queue as everything submitted through the site.
  *
  * Ownership and idempotency:
+ *
  * - A row Half Life itself wrote (an AIRTABLE_SYNC_SUCCESS audit row carries its record id) is never imported; it is already a local submission.
+ *
  * - A row that was imported is recorded in an ADMIN_IMPORT_AIRTABLE_PROJECT audit row keyed by its Airtable record id, so re-running the import only picks up rows that arrived since.
+ *
  * - Warm-up projects are `Theme.WARMUP`, which is not one of the five season themes, so they do not occupy a maker's season slots. Unlike a season theme, `WARMUP` is not unique per maker: the form may have been filled in more than once, and every row is a different project. Each row therefore becomes its own project – the `(userId, theme)` unique index is partial and skips warm-up rows (see prisma/contract.prisma), so a second one does not collide with the first.
  *
  * Reads go through field NAMES: the Airtable REST API keys `fields` by column name unless `returnFieldsByFieldId` is requested, which nothing here does. The schema's `fld…` ids are for writes (`fieldKey`).

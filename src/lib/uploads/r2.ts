@@ -92,9 +92,7 @@ function hasWebmVideoTrack(bytes: Uint8Array): boolean {
 }
 
 /**
- * A MIME type and filename are only claims. These are the container signatures
- * for the video formats the app accepts, so a renamed image or text file cannot
- * become a reel by lying about its extension.
+ * A MIME type and filename are only claims. These are the container signatures for the video formats the app accepts, so a renamed image or text file cannot become a reel by lying about its extension.
  */
 export function isVideoBytes(bytes: Uint8Array): boolean {
 	if (bytes.length < 12) return false

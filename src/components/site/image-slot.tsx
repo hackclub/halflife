@@ -41,9 +41,7 @@ const TONES = {
 /**
  * Reserved artwork slot.
  *
- * Drawn in the page's own silkscreen grammar – plate, registration ticks, a measured grid – so an unfilled slot reads as a deliberate footprint waiting
- * for its part, not as a broken image. Swap it for `next/image` when the real
- * photograph exists; the wrapper's box is already the comp's box.
+ * Drawn in the page's own silkscreen grammar – plate, registration ticks, a measured grid – so an unfilled slot reads as a deliberate footprint waiting for its part, not as a broken image. Swap it for `next/image` when the real photograph exists; the wrapper's box is already the comp's box.
  */
 export default function ImageSlot({
 	label,

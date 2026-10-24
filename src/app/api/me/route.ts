@@ -12,9 +12,7 @@ export const dynamic = "force-dynamic"
 /**
  * Read-only about the viewer: their own profile, roles, credit and printer standing.
  *
- * Nothing here is writable. The one field a participant used to change on this route – which printer they are saving for – moved to `PATCH /api/goal`, because it is only meaningful alongside the answer to "what are you here
- * for", and a route that set one without the other could leave a participant
- * paced against a machine they never asked for.
+ * Nothing here is writable. The one field a participant used to change on this route – which printer they are saving for – moved to `PATCH /api/goal`, because it is only meaningful alongside the answer to "what are you here for", and a route that set one without the other could leave a participant paced against a machine they never asked for.
  */
 
 export const GET = withSession(async (_req: Request, { gate }) => {

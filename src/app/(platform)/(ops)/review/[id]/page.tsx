@@ -126,10 +126,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 				<Stat label="Timelapse coverage" value={`${Math.round(breakdown.timelapseCoverage * 100)}%`} />
 			</div>
 
-			{/* A Hackatime total smaller than the one Hackatime reports has to say
-			    why, or it reads as a broken number. The overlap is wall-clock time
-			    a journal entry with a recording already claimed, so it is counted
-			    once, through the entry. */}
+			{/* A Hackatime total smaller than the one Hackatime reports has to say why, or it reads as a broken number. The overlap is wall-clock time a journal entry with a recording already claimed, so it is counted once, through the entry. */}
 			{breakdown.hackatimeOverlapSeconds > 0 && (
 				<Callout tone="info">
 					<strong>{(breakdown.hackatimeOverlapSeconds / 3600).toFixed(1)}h counted once.</strong> That time is tracked

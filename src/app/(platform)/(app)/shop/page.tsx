@@ -37,9 +37,7 @@ export default async function ShopPage() {
 					</>
 				}
 			/>
-			{/* Where a printer is paid out as a grant rather than shipped, said here because the shop is where a maker
-			    comes to spend coins and asks what happened to the machine. Rendered on the server so it costs the page
-			    no client work, and keyed off the same country the notice names. */}
+			{/* Where a printer is paid out as a grant rather than shipped, said here because the shop is where a maker comes to spend coins and asks what happened to the machine. Rendered on the server so it costs the page no client work, and keyed off the same country the notice names. */}
 			{printerComesAsGrant(country) ? (
 				<div className="mb-5 rounded-2xl border-2 border-dashed border-gold-deep/40 bg-gold-pale/50 px-4 py-3">
 					<p className="label mb-1 text-gold-ink">Printers in {country}</p>

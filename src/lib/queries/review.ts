@@ -13,7 +13,9 @@ export interface QueueItem {
 	claimExpiresAt: Date | null
 	claimedBy: { id: string; name: string | null } | null
 	/** Whether the claim is still in force. Computed here rather than in a
-	 *  component, so rendering stays a pure function of its inputs. */
+	 *
+	 * *  component, so rendering stays a pure function of its inputs.
+	 */
 	claimLive: boolean
 	id: string
 	onTime: boolean

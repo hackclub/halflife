@@ -70,9 +70,7 @@ export function ProjectDetails({
 				<h1 className="min-w-0 flex-1 text-[1.5rem] leading-tight font-extrabold tracking-[-0.03em] text-balance [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
 					{project.name}
 				</h1>
-				{/* Always where it lives, even while it cannot be used: a control that
-            disappears sends the reader looking for it. Shut, it says why
-            right underneath, instead of at the foot of the block. */}
+				{/* Always where it lives, even while it cannot be used: a control that disappears sends the reader looking for it. Shut, it says why right underneath, instead of at the foot of the block. */}
 				<div className="mt-1 flex shrink-0 flex-col items-end gap-1">
 					<Button
 						aria-describedby={locked ? lockedId : undefined}
@@ -352,9 +350,7 @@ function DetailsForm({
 							/>
 						)
 					})}
-					{/* Your own idea is the default: picked explicitly here so a
-					    project that already has a starter can leave it even when
-					    no starters are offered anymore. */}
+					{/* Your own idea is the default: picked explicitly here so a project that already has a starter can leave it even when no starters are offered anymore. */}
 					{starters.length > 0 ? (
 						<OptionRow
 							onClick={() => {

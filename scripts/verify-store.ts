@@ -9,8 +9,11 @@ import { formatDbTimestamp } from "../src/lib/time"
  * The platform derives its whole shape from one map of checkpoint states. If that map is built wrong, nothing throws and nothing fails to compile – the trail just quietly tells someone they have not done work they have done, or the reverse. So the mapping is asserted rather than trusted:
  *
  * 1. The Nth journal entry on the trail is the Nth session written, in order.
+ *
  * 2. A reel ticks the node it was posted for and NOT the others – the 5h and the 15h reel are both PROGRESS, so anything that counts by kind marks the 15h node done the moment the 5h one lands.
+ *
  * 3. Hours that never passed through a journal entry (Hackatime, reviewer adjustments) reach the week's total without moving an entry node, because progress reels are placed where the JOURNAL crossed their mark.
+ *
  * 4. A project nobody has named is not listed as one, but its id is still available to write to – the five rows exist from signup.
  *
  * Run with `pnpm verify:store` against a scratch database.

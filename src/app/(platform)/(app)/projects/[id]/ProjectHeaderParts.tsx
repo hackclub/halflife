@@ -98,8 +98,7 @@ export function CoverImage({
 						</p>
 					</div>
 				)}
-				{/* The bar sits on the picture it is replacing, where the eye already
-            is, on a veil dark enough to read over any thumbnail. */}
+				{/* The bar sits on the picture it is replacing, where the eye already is, on a veil dark enough to read over any thumbnail. */}
 				{uploading && (
 					<div className="absolute inset-0 grid items-end bg-navy/45 p-3">
 						<div className="rounded-xl bg-white/95 px-3 py-2">

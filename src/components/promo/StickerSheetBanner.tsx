@@ -12,19 +12,11 @@ import styles from "./sticker-sheet-banner.module.css"
 /**
  * The weeks 3 + 4 challenge, as a strip across the top of the site.
  *
- * The banner is in flow rather than fixed: it is the first thing on the page,
- * the platform header's own sticky behaviour still works underneath it, and it
- * scrolls away like the announcement it is. Closing it collapses it to the
- * floating card in the bottom-right, which is also the way back — the card's
- * copy is a button that reopens the banner and scrolls to it.
+ * The banner is in flow rather than fixed: it is the first thing on the page, the platform header's own sticky behaviour still works underneath it, and it scrolls away like the announcement it is. Closing it collapses it to the floating card in the bottom-right, which is also the way back — the card's copy is a button that reopens the banner and scrolls to it.
  *
- * The two root layouts mount it. The site's is static and the platform's is
- * session-gated, so the choice lives in localStorage and the boot script in
- * that layout hides the server-rendered banner before paint when it should not
- * be there. See `promo-state.ts` and `PromoBootScript.tsx`.
+ * The two root layouts mount it. The site's is static and the platform's is session-gated, so the choice lives in localStorage and the boot script in that layout hides the server-rendered banner before paint when it should not be there. See `promo-state.ts` and `PromoBootScript.tsx`.
  *
- * The copy is the challenge itself, not a slogan: a participant should be able
- * to read the whole offer without following the CTA.
+ * The copy is the challenge itself, not a slogan: a participant should be able to read the whole offer without following the CTA.
  */
 export function StickerSheetBanner({
 	platform = false,
@@ -54,9 +46,7 @@ export function StickerSheetBanner({
 		if (pendingFocus.current === "banner" && mode === "banner") {
 			pendingFocus.current = null
 			bannerRef.current?.focus({ preventScroll: true })
-			// The banner is at the top of the document; bringing it back while
-			// the reader is halfway down the trail is not an offer, it is a
-			// teleport. Move the page to where the reopened banner is.
+			// The banner is at the top of the document; bringing it back while the reader is halfway down the trail is not an offer, it is a teleport. Move the page to where the reopened banner is.
 			const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
 			window.scrollTo({ behavior: reduce ? "auto" : "smooth", top: 0 })
 		}

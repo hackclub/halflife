@@ -1564,8 +1564,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 			row = { hours: 0, users: new Set<string>() }
 			goals.set(goal, row)
 		}
-		// The person counts as active for their goal whatever the entry's source, but only a journal entry carries
-		// journal hours – a HACKATIME_TRACKED one arrives through the link, the same exclusion `getDailyActivity` makes.
+		// The person counts as active for their goal whatever the entry's source, but only a journal entry carries journal hours – a HACKATIME_TRACKED one arrives through the link, the same exclusion `getDailyActivity` makes.
 		row.users.add(s.themeProject.userId)
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
@@ -1616,22 +1615,16 @@ export interface HoursDistribution {
 /**
  * The upper bound of each bucket, in hours.
  *
- * Uneven, and drawn as a set of bands rather than as a continuous scale: the distribution is long-tailed, so even
- * spacing would pile almost everyone into the first bucket. The first is open at zero because every account here
- * has at least some hours – the zero case is counted and reported rather than binned. The trailing Infinity edge
- * is the overflow band rather than a bound, so the tail has somewhere to land.
+ * Uneven, and drawn as a set of bands rather than as a continuous scale: the distribution is long-tailed, so even spacing would pile almost everyone into the first bucket. The first is open at zero because every account here has at least some hours – the zero case is counted and reported rather than binned. The trailing Infinity edge is the overflow band rather than a bound, so the tail has somewhere to land.
  */
 export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 240, Number.POSITIVE_INFINITY]
 
 /**
  * Hours per account, bucketed, for the overview's distribution.
  *
- * Reads the same ledger as the geography panels (`hoursByUser`, which runs every one of these hours through `rollUpHours`), so this
- * and the continent and country pies are the same hours counted two ways rather than two definitions that could drift apart – which is
- * what they used to be, and they had: this panel added both sides of a timelapse overlap the ledger subtracts.
+ * Reads the same ledger as the geography panels (`hoursByUser`, which runs every one of these hours through `rollUpHours`), so this and the continent and country pies are the same hours counted two ways rather than two definitions that could drift apart – which is what they used to be, and they had: this panel added both sides of a timelapse overlap the ledger subtracts.
  *
- * Accounts with no hours are a count and not a bar. At three quarters of all accounts, a zero bar would be four
- * times every other and answer a question nobody asked.
+ * Accounts with no hours are a count and not a bar. At three quarters of all accounts, a zero bar would be four times every other and answer a question nobody asked.
  */
 export async function getHoursDistribution(): Promise<HoursDistribution> {
 	const inputs = await loadRegionInputs()

@@ -23,7 +23,9 @@ import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
  * Three things this module is careful about:
  *
  * 1. **It never blocks the write that asked for it.** A journal entry is saved by the person waiting on it; the commit is scheduled with `after()`, so a slow GitHub never shows up as a slow Save button. `scheduleRepoSync` is the only entry point the writers call.
+ *
  * 2. **A burst of writes becomes one commit.** `repoSyncQueuedAt` is stamped by any write that lands while a run is in flight, and the run picks it up and goes again rather than each write starting its own commit. `syncProject` loops until the flag stops moving.
+ *
  * 3. **Failure is recorded where a person will see it.** The project's `repoSyncError` is what its page renders; the run row and the audit entry are what staff read.
  *
  * Which forge a repo lives on is read from the repo link, never chosen per project or per user: `repoRefFromLink` resolves the host to a forge, and everything below it – credentials, the branch read, the commit – takes that forge rather than assuming GitHub. The forge side is lib/forge-write; the file contents are lib/repo-sync-files.

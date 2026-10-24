@@ -9,19 +9,12 @@ import db from "../src/lib/prisma8"
 /**
  * Audit the `Loops - halfLifeLastEntryAt` column against the devlog rule.
  *
- * The sync only writes rows it can join to a Half Life user, so two kinds of
- * row can carry a stale (or never-should-have-existed) timestamp:
+ * The sync only writes rows it can join to a Half Life user, so two kinds of row can carry a stale (or never-should-have-existed) timestamp:
  *
- * 1. Matched stale rows – the row joins to a user who now has no real entry
- *    (only Hackatime-linked sessions). The next `loops-sync` run clears these.
- * 2. Unmatched rows – the row has no join to any user, so nothing will ever
- *    rewrite or clear it. These need a manual clear in Airtable (or a fixed
- *    join), which is why they are listed separately.
+ * 1. Matched stale rows – the row joins to a user who now has no real entry (only Hackatime-linked sessions). The next `loops-sync` run clears these.
+ * 2. Unmatched rows – the row has no join to any user, so nothing will ever rewrite or clear it. These need a manual clear in Airtable (or a fixed join), which is why they are listed separately.
  *
- * Read-only by default. With `--clear`, type 1 rows are PATCHed to null; type
- * 2 rows are only reported, since clearing what we cannot match risks
- * deleting a value that is actually correct. Run with
- * `pnpm verify:loops-entries [--clear]`.
+ * Read-only by default. With `--clear`, type 1 rows are PATCHed to null; type 2 rows are only reported, since clearing what we cannot match risks deleting a value that is actually correct. Run with `pnpm verify:loops-entries [--clear]`.
  */
 
 const clear = process.argv.includes("--clear")
@@ -69,8 +62,7 @@ async function main() {
 	const qualifiedIds = new Set(qualifiers.map(u => u.id))
 	const qualifiedEmails = new Map(qualifiers.map(u => [u.email.trim().toLowerCase(), u.id]))
 
-	// The join keys the sync would use: the row's own user id column, the RSVP
-	// drain's record id, and email.
+	// The join keys the sync would use: the row's own user id column, the RSVP drain's record id, and email.
 	const buffers = await db.orm.public.RsvpBuffer.select("airtableRecordId", "email", "userId").all()
 	const bufferByRecord = new Map<string, string>()
 	const bufferByEmail = new Map<string, string>()

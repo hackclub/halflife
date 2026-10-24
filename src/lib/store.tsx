@@ -63,9 +63,7 @@ interface Ceremony {
 	 */
 	replaying?: boolean
 	/**
-	 * Set once the tab tour has been finished or skipped. Before week 1 opens a
-	 * new account gets the intro and the tour but not the Get started
-	 * checkpoint, so it meets that checkpoint later, and finishing it must not walk the tour a second time. Optional so older saves read as not toured.
+	 * Set once the tab tour has been finished or skipped. Before week 1 opens a new account gets the intro and the tour but not the Get started checkpoint, so it meets that checkpoint later, and finishing it must not walk the tour a second time. Optional so older saves read as not toured.
 	 */
 	toured?: boolean
 	version: 4
@@ -1353,7 +1351,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * It used to be otherwise: an unhanded-in week kept the next shut until it was submitted. That dead-ended anyone who could not reach that week's floor – the tier is the maker's own choice, and a week below its floor cannot be handed in at all – and it also punished asking for an extension, which is granted precisely when a maker is behind. Nothing is lost by not waiting: a passed week's Submit stays open for anyone who does reach the floor, so late work can still go in.
 	 *
 	 * What does still break the sequence:
+	 *
 	 * - a week that has passed is shut, all but the Submit it still owes – which opens whatever the hours say, since no more can be logged;
+	 *
 	 * - anything on the clock (the milestone reels, and Submit itself) opens on the week's hours, so a half-written entry never traps you and the choice to wrap up is always live. Everything else unlocks in order, as it always has – except week 1's idea reel, which is the optional arm of the opening fork and never holds anything shut (see WEEK1_IDEA_REEL_ID).
 	 */
 	const isUnlocked = useCallback(

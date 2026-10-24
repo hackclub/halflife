@@ -52,8 +52,7 @@ export const POST = withSession(async (req, { gate }) => {
 	const isImage = contentType.startsWith("image/")
 	if (isImage && !sha256) return fail("VALIDATION_FAILED", "Image uploads must send a sha256 of their bytes")
 
-	// Keys are namespaced by user so abuse is traceable and orphans are findable. Pictures are named after their bytes rather than a fresh uuid, so re-picking the same image mints the same URL; videos keep a random name because a reel is identified by its post.
-	// `.jpeg` is normalised to `.jpg` because the old server-side path sniffed the bytes and always named a JPEG `.jpg`; keeping both spellings would give one picture two keys and count it twice.
+	// Keys are namespaced by user so abuse is traceable and orphans are findable. Pictures are named after their bytes rather than a fresh uuid, so re-picking the same image mints the same URL; videos keep a random name because a reel is identified by its post. `.jpeg` is normalised to `.jpg` because the old server-side path sniffed the bytes and always named a JPEG `.jpg`; keeping both spellings would give one picture two keys and count it twice.
 	const ext = check.ext === "jpeg" ? "jpg" : check.ext
 	const key = buildObjectKey(gate.user.id, folder, ext, isImage ? sha256 : undefined)
 	const presigned = await presignUpload(key, contentType)

@@ -9,9 +9,7 @@ import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 /**
  * Journalling streaks.
  *
- * A day counts when the participant did one of the two things the program asks
- * for: wrote a devlog – a `WorkSession` stamped with that calendar day as its
- * `effectiveDate` – or posted a reel, a `Post` that is not a staff ANNOUNCEMENT. The two live in separate tables for good reason (a devlog is evidence a reviewer reads, a reel is something made to be watched), but for the one question a streak answers – did you do the work today – they are the same signal, so both feed the run.
+ * A day counts when the participant did one of the two things the program asks for: wrote a devlog – a `WorkSession` stamped with that calendar day as its `effectiveDate` – or posted a reel, a `Post` that is not a staff ANNOUNCEMENT. The two live in separate tables for good reason (a devlog is evidence a reviewer reads, a reel is something made to be watched), but for the one question a streak answers – did you do the work today – they are the same signal, so both feed the run.
  *
  * Recomputed from those rows rather than incremented on write. An incremented counter has to be right on every path that can create, edit, back-date or soft-delete a devlog or a reel, and is wrong forever the first time one of them is missed – there is no way to notice, and no way to repair it without the recompute this module would have needed anyway. Deriving it means `User.currentStreak` is a cache that any write can rebuild and `scripts/` can backfill.
  *

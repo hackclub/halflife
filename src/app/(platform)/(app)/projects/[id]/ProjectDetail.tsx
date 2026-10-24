@@ -581,11 +581,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 			<DecisionNotice phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
 
 			{/* ---------- the project itself ---------- */}
-			{/* Sized by its own width, not the viewport's: the rails either side of
-          the page take a different share at every breakpoint, and the header
-          only has room for two columns once it is wide enough for both. Below
-          that the thumbnail leads as a banner, and it is first in the DOM so
-          focus order agrees with what is seen. */}
+			{/* Sized by its own width, not the viewport's: the rails either side of the page take a different share at every breakpoint, and the header only has room for two columns once it is wide enough for both. Below that the thumbnail leads as a banner, and it is first in the DOM so focus order agrees with what is seen. */}
 			<Panel className="@container mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6" radius={22} tone="line">
 				<div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">
 					<CoverImage

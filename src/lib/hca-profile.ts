@@ -221,8 +221,8 @@ export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: strin
  *
  * Two conditions keep this from becoming a way to re-verify an address a human typed into the admin panel onto somebody else's account:
  *
- *   (a) The address is matched case-insensitively (like better-auth's own `findUserByEmail`), so the repaired row is the one it will look up next.
- *   (b) A row that already has a linked `Account` is left alone: a typed address only ever sits on a staff-import row that has not signed in yet. Adoption only ever repairs those account-less rows.
+ * (a) The address is matched case-insensitively (like better-auth's own `findUserByEmail`), so the repaired row is the one it will look up next.
+ * (b) A row that already has a linked `Account` is left alone: a typed address only ever sits on a staff-import row that has not signed in yet. Adoption only ever repairs those account-less rows.
  *
  * Returns whether a row was changed, so the caller can say so in the log.
  */

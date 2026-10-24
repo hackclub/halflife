@@ -10,6 +10,7 @@ import { formatDbTimestamp } from "../src/lib/time"
  * Two properties matter enough to assert rather than trust:
  *
  * 1. The flow cannot be skipped. Posting a later step than you have reached is refused, so nobody arrives at a funded project without having been asked what they are building.
+ *
  * 2. Onboarding never writes `ThemeProject.tier`. That column is the reviewer's decision and the number the grant is paid against; the participant's answer belongs in `requestedTier`. If these two ever merge, a participant is choosing their own funding.
  *
  * Run with `pnpm verify:onboarding` against a scratch database.
@@ -128,8 +129,7 @@ async function main() {
 	check("the request is recorded separately", project.requestedTier, 3)
 
 	// ── 6. Tracking, then the repo step, and completion ─────────────────────────
-	// Tracking is second-to-last: answering it moves on to the repo step, and
-	// only the repo answer stamps the checkpoint complete.
+	// Tracking is second-to-last: answering it moves on to the repo step, and only the repo answer stamps the checkpoint complete.
 	const afterTracking = await submitStep(user.id, { dismissed: true, step: "tracking" })
 	check("tracking moves on to the repo step", afterTracking.state.current?.id, "repo")
 	check("not complete before the last step", afterTracking.completed, false)

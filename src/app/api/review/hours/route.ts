@@ -56,11 +56,7 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 		if (all.some(row => row.themeProject.userId === gate.user.id))
 			throw new HttpError("FORBIDDEN", "You cannot approve hours on your own work")
 
-		// The same per-user credit lock the decision path takes. A decision freezes a total computed from
-		// these very rows, so a batch that rewrote them without the lock could change the number a decision
-		// is about to freeze. One lock per distinct user, because a batch can span several projects and
-		// several people, taken in a fixed order so two batches covering the same people queue behind each
-		// other instead of deadlocking.
+		// The same per-user credit lock the decision path takes. A decision freezes a total computed from these very rows, so a batch that rewrote them without the lock could change the number a decision is about to freeze. One lock per distinct user, because a batch can span several projects and several people, taken in a fixed order so two batches covering the same people queue behind each other instead of deadlocking.
 		const userIds = [...new Set(all.map(row => row.themeProject.userId))].toSorted()
 		for (const userId of userIds) await lockUserCredit(tx, userId)
 

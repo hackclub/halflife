@@ -61,8 +61,11 @@ interface LoopsValues {
  * Each person's values, from Postgres.
  *
  * A week's box is ticked when its first checkpoint is complete, which differs by kind of week:
+ *
  * - week 1's is "Get started", the onboarding;
+ *
  * - weeks 2-5 open with "New project", complete once the project has its description and tier (`namedAt`, see lib/analytics);
+ *
  * - weeks 6-10 are the builds of those same projects and open straight into logging, so their first checkpoint is the first build journal entry.
  */
 async function loopsValues(): Promise<LoopsValues[]> {
@@ -170,7 +173,9 @@ function unchanged(row: AirtableRecord, fields: { [_: string]: unknown }): boole
  * Three keys, strongest first:
  *
  * 1. **The `Half-Life User ID` column.** The designed join, and the one that survives somebody typing one address on the landing page and being issued a different one at sign-in.
+ *
  * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at all: it is the row this app itself created for this person, read back out of `RsvpBuffer`. It is here because key 1 is only stamped by the drain, and rows the landing form wrote straight to Airtable never went through the drain – going forward `recordDirectSignup` remembers those rows, but rows from before that fix are only reachable this way if a buffer entry already names them.
+ *
  * 3. **Email.** The last resort, and the one that mostly fails: the Signups row holds whatever address was typed on the landing page.
  */
 export function resolveSignupRow(
@@ -211,20 +216,9 @@ async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 /**
  * Remember the row for every user whose email still matches one.
  *
- * The landing form wrote straight to Airtable without leaving an
- * `RsvpBuffer` entry (now fixed at the source by `recordDirectSignup`), so
- * for rows from before that fix the email match is the only key that reaches
- * them – and it stops working the moment the address changes. Persisting the
- * (user id, record id) pair upgrades those users to the record-id join and
- * queues the drain to stamp `Half-Life User ID` onto their row, so the match
- * survives an email change. Only fills in what is missing and never moves a
- * row onto a different user: a buffer row already pointing at someone else is
- * left alone.
+ * The landing form wrote straight to Airtable without leaving an `RsvpBuffer` entry (now fixed at the source by `recordDirectSignup`), so for rows from before that fix the email match is the only key that reaches them – and it stops working the moment the address changes. Persisting the (user id, record id) pair upgrades those users to the record-id join and queues the drain to stamp `Half-Life User ID` onto their row, so the match survives an email change. Only fills in what is missing and never moves a row onto a different user: a buffer row already pointing at someone else is left alone.
  *
- * Runs inside the sync rather than only in the one-shot backfill script so
- * the hourly job heals itself – the way this stayed broken for months was a
- * job that needed a manual step nobody ran. Steady-state cost is zero: users
- * already in `known` short-circuit before any query.
+ * Runs inside the sync rather than only in the one-shot backfill script so the hourly job heals itself – the way this stayed broken for months was a job that needed a manual step nobody ran. Steady-state cost is zero: users already in `known` short-circuit before any query.
  */
 async function persistRecordLinks(
 	values: Pick<LoopsValues, "id" | "email">[],

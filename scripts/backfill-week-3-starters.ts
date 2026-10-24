@@ -13,9 +13,7 @@ import { parseDbTimestamp } from "../src/lib/time"
  *
  * A project that already has work in it is reported and left alone: its maker may have started building Starbie under the old copy, and swapping the guide out from under them would be worse than leaving the one they began with. Only untouched rows are switched, and their title and description move too only while they are still the starter's stock words.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-week-3-starters.ts [--commit]`.
- * In production run it where `DATABASE_URL` points at the live database.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-week-3-starters.ts [--commit]`. In production run it where `DATABASE_URL` points at the live database.
  */
 
 const commit = process.argv.includes("--commit")

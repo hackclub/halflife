@@ -314,12 +314,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 						width: 760,
 					}}
 				>
-					{/* The tear belongs to the plaque, never to the type. `.torn` is a
-              displacement filter, so on a container it drags the glyphs about
-              with the edges – and this one is re-scaled every frame by the
-              camera, which rasterises the filtered result at one size and
-              stretches it to another. The real trail's banner separates them
-              the same way. */}
+					{/* The tear belongs to the plaque, never to the type. `.torn` is a displacement filter, so on a container it drags the glyphs about with the edges – and this one is re-scaled every frame by the camera, which rasterises the filtered result at one size and stretches it to another. The real trail's banner separates them the same way. */}
 					<span aria-hidden="true" className="torn absolute inset-0 rounded" style={{ background: week.accent }} />
 					<div className="relative flex h-full items-center gap-4 px-6" style={{ color: onAccent(week.accent).text }}>
 						<div className="min-w-0 flex-1">
@@ -490,9 +485,7 @@ export function Cinematic() {
 
 			<WeekBanners refs={banners} />
 
-			{/* The title is part of the scene: it sits at the head of the trail and
-			    leaves the frame the way the weeks do, by the camera falling away
-			    from it. */}
+			{/* The title is part of the scene: it sits at the head of the trail and leaves the frame the way the weeks do, by the camera falling away from it. */}
 			<div
 				className="pointer-events-none absolute inset-x-0 top-0 z-20 px-6 text-center"
 				ref={title}

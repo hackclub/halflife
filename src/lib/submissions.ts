@@ -146,11 +146,7 @@ export async function submitPhase(
 	if (breakdown.journalHours <= 0 && breakdown.hackatimeHours <= 0)
 		throw new HttpError("UNPROCESSABLE", "Log at least one work session with hours on it before submitting this phase")
 
-	// A tier's funded block is the floor a design week is handed in on, and until now that floor lived only in the
-	// submit sheet. It is the gate the tier promises: a tier-3 request funds twenty hours and a hundred dollars of
-	// parts, so it cannot be handed in on an hour of work. The client refuses a tier below its floor; this is the
-	// same rule held by the server, so a request that bypasses the sheet cannot buy a grant with less work than the
-	// grant is for.
+	// A tier's funded block is the floor a design week is handed in on, and until now that floor lived only in the submit sheet. It is the gate the tier promises: a tier-3 request funds twenty hours and a hundred dollars of parts, so it cannot be handed in on an hour of work. The client refuses a tier below its floor; this is the same rule held by the server, so a request that bypasses the sheet cannot buy a grant with less work than the grant is for.
 	if (phase === Phase.DESIGN) {
 		const tierId = project.tier ?? project.requestedTier ?? ENTRY_TIER.id
 		const floor = submitFloorFor(getTierOrThrow(tierId).fundingHours)

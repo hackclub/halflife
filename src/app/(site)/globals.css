@@ -5,19 +5,12 @@
    Palette is the Figma "color scheme" frame (node 275:222), verbatim.
    ───────────────────────────────────────────────────────────── */
 @theme {
-	/* Ubuntu, the same face the tagline sets. Two role tokens, one family: the
-     roles are still worth naming separately – a heading and a tagline are
-     different jobs and may yet want different treatment – but the page is down
-     to two families and this is one of them. It was Urbanist, which is no
-     longer loaded. */
+	/* Ubuntu, the same face the tagline sets. Two role tokens, one family: the roles are still worth naming separately – a heading and a tagline are different jobs and may yet want different treatment – but the page is down to two families and this is one of them. It was Urbanist, which is no longer loaded. */
 	--font-display: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
-	/* The comp's brush face. Now the wordmark and the footer's column labels
-     only: "how does it work?" moved to the display face with the other
-     headers, so the brush is the page's signature rather than its voice. */
+	/* The comp's brush face. Now the wordmark and the footer's column labels only: "how does it work?" moved to the display face with the other headers, so the brush is the page's signature rather than its voice. */
 	--font-hand: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
 	--font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
-	/* The hero tagline alone. Named for its role rather than its face, like the
-     three above it – the utility is `font-tagline`, not `font-ubuntu`. */
+	/* The hero tagline alone. Named for its role rather than its face, like the three above it – the utility is `font-tagline`, not `font-ubuntu`. */
 	--font-tagline: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
 
 	--color-hl-ink: #31222c;
@@ -30,57 +23,32 @@
 	/**
 	 * The page's ground from the hero through "how does it work?".
 	 *
-	 * A deep steel blue – H 203.5, S 43%, L 31% – and the one colour on the page
-	 * that is shared by two sections rather than owned by one. The process band
-	 * was recoloured to it, and the hero was brought with it: the painting
-	 * dissolves at its own lower edge, and that edge is nowhere near the bottom
-	 * of the hero section, so a different colour under the rest of the hero
-	 * would draw the art layer's box as a full-width band edge.
+	 * A deep steel blue – H 203.5, S 43%, L 31% – and the one colour on the page that is shared by two sections rather than owned by one. The process band was recoloured to it, and the hero was brought with it: the painting dissolves at its own lower edge, and that edge is nowhere near the bottom of the hero section, so a different colour under the rest of the hero would draw the art layer's box as a full-width band edge.
 	 *
-	 * It is set once, on the element in `page.tsx` that wraps both sections,
-	 * which is also where the raked-arc pattern is drawn. Neither section paints
-	 * a ground of its own any more.
+	 * It is set once, on the element in `page.tsx` that wraps both sections, which is also where the raked-arc pattern is drawn. Neither section paints a ground of its own any more.
 	 *
-	 * It is not `hl-ink` renamed. Ink is still the page's ground below the
-	 * carousel and behind the footer, and still the interior of an image slot.
+	 * It is not `hl-ink` renamed. Ink is still the page's ground below the carousel and behind the footer, and still the interior of an image slot.
 	 */
 	--color-hl-teal: #2e96a3;
 	--color-hl-teal-deep: #11616b;
-	/* The carousel's own pair, from the reworked "what can I build" frames
-     (301:56). Yellow is the ground the project photographs sit on; pale
-     yellow is the card's border and its caption band. */
+	/* The carousel's own pair, from the reworked "what can I build" frames (301:56). Yellow is the ground the project photographs sit on; pale yellow is the card's border and its caption band. */
 	--color-hl-yellow: #a2c4da;
 	--color-hl-yellow-pale: #ebf7ff;
 	--color-hl-lavender: #c9c7ec;
-	/* The asides' own text colour. A deep indigo out of the same family as the
-     lavender it sits on, so the two plates read as one material rather than
-     ink borrowed from the page: 7.14:1 on #c9c7ec, still AAA. */
+	/* The asides' own text colour. A deep indigo out of the same family as the lavender it sits on, so the two plates read as one material rather than ink borrowed from the page: 7.14:1 on #c9c7ec, still AAA. */
 	--color-hl-indigo: #34316c;
 	/**
 	 * The step plates in "how does it work?", and the bands that weld them.
 	 *
-	 * The section's own #232231 ground, lifted to a surface: OKLCH H 287.3 kept
-	 * exactly, lightness taken from 0.26 to 0.93. Same shade, so the plates read
-	 * as lit panels cut from the ground rather than a second material laid on it.
+	 * The section's own #232231 ground, lifted to a surface: OKLCH H 287.3 kept exactly, lightness taken from 0.26 to 0.93. Same shade, so the plates read as lit panels cut from the ground rather than a second material laid on it.
 	 *
-	 * This replaced a complement – H 107, the true opposite of a blue-violet,
-	 * which is a yellow-green and looked like it. The lesson is kept here rather
-	 * than relearned: the arithmetic was right and the result was acid, because
-	 * a complement is a statement about maximum separation and these plates are
-	 * the page's reading surface, which wants agreement with its ground.
+	 * This replaced a complement – H 107, the true opposite of a blue-violet, which is a yellow-green and looked like it. The lesson is kept here rather than relearned: the arithmetic was right and the result was acid, because a complement is a statement about maximum separation and these plates are the page's reading surface, which wants agreement with its ground.
 	 *
-	 * C is 0.030 and not higher because sRGB runs out first. At L 0.93 the blue
-	 * channel pins at 255 by C 0.035, and past that extra chroma only darkens
-	 * red and green – the value stops describing the colour. 0.030 lands at
-	 * B 252, just inside, so the violet cast is real: R230 G229 B252.
+	 * C is 0.030 and not higher because sRGB runs out first. At L 0.93 the blue channel pins at 255 by C 0.035, and past that extra chroma only darkens red and green – the value stops describing the colour. 0.030 lands at B 252, just inside, so the violet cast is real: R230 G229 B252.
 	 *
-	 * Three tokens already share this hue, so it has to be distinct from all of
-	 * them: lighter than `hl-lavender` (L 0.843) by a clear perceptual step, and
-	 * far above `hl-periwinkle` (0.718) and `hl-indigo` (0.350).
+	 * Three tokens already share this hue, so it has to be distinct from all of them: lighter than `hl-lavender` (L 0.843) by a clear perceptual step, and far above `hl-periwinkle` (0.718) and `hl-indigo` (0.350).
 	 *
-	 * Plate text lands at 12.16:1 and the soft week labels at 6.69:1, against
-	 * paper's 12.85 and 7.07 – so nothing set on a plate needed revisiting.
-	 * 12.63:1 against the ground behind it.
+	 * Plate text lands at 12.16:1 and the soft week labels at 6.69:1, against paper's 12.85 and 7.07 – so nothing set on a plate needed revisiting. 12.63:1 against the ground behind it.
 	 */
 	--color-hl-lavender-pale: #e6e5fc;
 
@@ -95,9 +63,7 @@ html {
 }
 
 /*
- * Tailwind v4's preflight leaves a button on the browser's own cursor
- * (`default`), so it has to ask for a pointer itself. The platform stylesheet
- * carries the same rule; this page has its own.
+ * Tailwind v4's preflight leaves a button on the browser's own cursor (`default`), so it has to ask for a pointer itself. The platform stylesheet carries the same rule; this page has its own.
  */
 @layer base {
 	button:not(:disabled),
@@ -135,9 +101,7 @@ body {
 	background-color: var(--color-hl-cyan);
 }
 
-/* Masterpiece is a single 400 brush weight, already heavy, with strokes that
-   overhang their advances. Synthesised bold smears them into each other, so
-   the browser is not allowed to invent one. */
+/* Masterpiece is a single 400 brush weight, already heavy, with strokes that overhang their advances. Synthesised bold smears them into each other, so the browser is not allowed to invent one. */
 .font-hand {
 	font-synthesis-weight: none;
 }
@@ -149,11 +113,7 @@ body {
 
 /* ─────────────────────────────────────────────────────────────
    Comp stage
-   The Figma frame is 1728px wide. Inside `.stage`, every offset,
-   size and type step is expressed in `cqw` derived from that
-   1728 grid, so the composition reproduces the comp exactly and
-   scales fluidly with the container instead of snapping between
-   breakpoints. Below 1180px the sections switch to flow layout.
+   The Figma frame is 1728px wide. Inside `.stage`, every offset, size and type step is expressed in `cqw` derived from that 1728 grid, so the composition reproduces the comp exactly and scales fluidly with the container instead of snapping between breakpoints. Below 1180px the sections switch to flow layout.
    ───────────────────────────────────────────────────────────── */
 .stage {
 	position: relative;
@@ -166,21 +126,13 @@ body {
 /* ─────────────────────────────────────────────────────────────
    Motion – one authored moment.
 
-   Nothing on this page enters. The production line is drawn in
-   full from the first paint: every connector band is complete
-   whether you have scrolled to it or not, because the line is a
-   diagram of the programme, not a reward for scrolling. The one
-   authored moment lives in the carousel belt.
+   Nothing on this page enters. The production line is drawn in full from the first paint: every connector band is complete whether you have scrolled to it or not, because the line is a diagram of the programme, not a reward for scrolling. The one authored moment lives in the carousel belt.
    ───────────────────────────────────────────────────────────── */
 
 /* The email field, drawn as one of the page's own reserved slots.
 
-   The input inside it carries no surface: the slot is the control, so the
-   slot is what takes the focus ring. A text input always matches
-   `:focus-visible` whenever it is focused, pointer or keyboard, so
-   `:focus-within` here is that same moment – the page's own 3px cyan ring at
-   3px offset, moved out to the frame it belongs to. The edge goes to full
-   cyan underneath it, so the slot reads as live even at a glance. */
+  The input inside it carries no surface: the slot is the control, so the slot is what takes the focus ring. A text input always matches `:focus-visible` whenever it is focused, pointer or keyboard, so `:focus-within` here is that same moment – the page's own 3px cyan ring at 3px offset, moved out to the frame it belongs to. The edge goes to full cyan underneath it, so the slot reads as live even at a glance.
+ */
 .hl-field:focus-within {
 	outline: 3px solid var(--color-hl-cyan);
 	outline-offset: 3px;
@@ -195,12 +147,7 @@ body {
 	background-color: var(--color-hl-cyan);
 }
 
-/* The scroll cue. The belt says there is more sideways; this says there is
-   more downward, and it is the one element on the page whose entire meaning is
-   a direction of travel – so it is the one place a loop earns its keep. Slow
-   and small: a 16% nudge over 2.6s reads as a beckon rather than a bouncing
-   toy. On the glyph, never the link box, whose transform is doing the
-   centring. */
+/* The scroll cue. The belt says there is more sideways; this says there is more downward, and it is the one element on the page whose entire meaning is a direction of travel – so it is the one place a loop earns its keep. Slow and small: a 16% nudge over 2.6s reads as a beckon rather than a bouncing toy. On the glyph, never the link box, whose transform is doing the centring. */
 @keyframes hl-scroll-cue {
 	0%,
 	100% {
@@ -224,10 +171,7 @@ body {
 /* ─────────────────────────────────────────────────────────────
    Section grounds
 
-   One pattern per room, so a reader scrolling knows which one
-   they are in without being told. They are drafting marks from
-   the same silkscreen vocabulary, at an opacity where they
-   register as texture rather than as content:
+   One pattern per room, so a reader scrolling knows which one they are in without being told. They are drafting marks from the same silkscreen vocabulary, at an opacity where they register as texture rather than as content:
 
      tile   the hero and how-it-works, which are one room –
             `tile.png` repeated, and the ground the painting's
@@ -239,159 +183,77 @@ body {
      hatch  the FAQ – section hatching, the drawing convention
             for a cut surface
 
-   Three of the four dilute their colour into the pattern itself,
-   so they are a `background-image` on the element and cost no
-   extra node and no stacking context. `tile` is the exception:
-   it is a photograph rather than a drawn lattice, and the two
-   things asked of it – `grayscale` and a low `opacity` – apply
-   to an element and never to a `background-image`, so it needs
-   a pseudo-element to land on and a stacking context to hold
-   that pseudo-element's negative index.
+   Three of the four dilute their colour into the pattern itself, so they are a `background-image` on the element and cost no extra node and no stacking context. `tile` is the exception: it is a photograph rather than a drawn lattice, and the two things asked of it – `grayscale` and a low `opacity` – apply to an element and never to a `background-image`, so it needs a pseudo-element to land on and a stacking context to hold that pseudo-element's negative index.
    ───────────────────────────────────────────────────────────── */
 .hl-ground-tile {
 	/* The hero and how-it-works ground: `public/art/tile.png`, tiled.
 
-     Applied to the one box in `page.tsx` that spans both sections, not to
-     either section – the painting's dissolve hands off to this, so it has to
-     be under the painting, and a `repeat` restarts its lattice at each box's
-     own top edge, so two of them would seam. `page.tsx` carries the argument.
+	  Applied to the one box in `page.tsx` that spans both sections, not to either section – the painting's dissolve hands off to this, so it has to be under the painting, and a `repeat` restarts its lattice at each box's own top edge, so two of them would seam. `page.tsx` carries the argument.
 
-     Both of the things asked of the artwork happen here rather than to the
-     file. It used to be the other way round – a script desaturated the source
-     and multiplied its alpha, and the page loaded the result – which meant the
-     served image was a derived file that could fall out of step with the one
-     being edited, and twice did: once when it was deleted alongside its source
-     and the ground vanished, once when a hardcoded aspect squashed a
-     replacement to 73% of its height.
+	  Both of the things asked of the artwork happen here rather than to the file. It used to be the other way round – a script desaturated the source and multiplied its alpha, and the page loaded the result – which meant the served image was a derived file that could fall out of step with the one being edited, and twice did: once when it was deleted alongside its source and the ground vanished, once when a hardcoded aspect squashed a replacement to 73% of its height.
 
-     There is no derived file now. Drop any tile in at that path, in whatever
-     colours it was drawn, and the two declarations below do the rest – so both
-     values are live, tunable in this file, and the picture on disk is the
-     picture the browser fetches. */
+	  There is no derived file now. Drop any tile in at that path, in whatever colours it was drawn, and the two declarations below do the rest – so both values are live, tunable in this file, and the picture on disk is the picture the browser fetches.
+	 */
 	position: relative;
 }
 
 .hl-ground-tile::before {
 	position: absolute;
 	inset: 0;
-	/* Behind the box's own content, in front of its background. `isolate` on
-     the box keeps this contained, so a negative index cannot escape it – and
-     so the painting, the hero and the process stage all paint over it. */
+	/* Behind the box's own content, in front of its background. `isolate` on the box keeps this contained, so a negative index cannot escape it – and so the painting, the hero and the process stage all paint over it. */
 	z-index: -1;
 	pointer-events: none;
 	content: "";
 
 	background-image: url("/art/tile.png?v=1");
 	background-repeat: repeat;
-	/* Width only; the height follows the file's own proportions, so a
-     replacement of any shape tiles undistorted.
+	/* Width only; the height follows the file's own proportions, so a replacement of any shape tiles undistorted.
 
-     It scales, which a flat `500px` did not. A tile fixed in pixels is a
-     different thing at every screen size: 500px is two across a laptop and
-     more than a whole phone, so on mobile you got one cropped tile that never
-     repeated and read as a stray shape rather than as a ground. `42vw` holds
-     it at roughly two and a half across at any width. The 500px ceiling keeps
-     the desktop tile exactly the size it already was, and the 200px floor
-     stops it dissolving into noise on the narrowest phones. */
+	  It scales, which a flat `500px` did not. A tile fixed in pixels is a different thing at every screen size: 500px is two across a laptop and more than a whole phone, so on mobile you got one cropped tile that never repeated and read as a stray shape rather than as a ground. `42vw` holds it at roughly two and a half across at any width. The 500px ceiling keeps the desktop tile exactly the size it already was, and the 200px floor stops it dissolving into noise on the narrowest phones.
+	 */
 	background-size: 1000px auto;
 	opacity: 0.1;
 
-	/* Black and white, and quiet. A pseudo-element is what buys these: `filter`
-     and `opacity` apply to an element, never to a `background-image`, so on
-     the section itself they would have desaturated and faded its text along
-     with the ground. Nothing else lives in here, so both land on the tile
-     alone. It costs no DOM node and nothing in the accessibility tree. */
+	/* Black and white, and quiet. A pseudo-element is what buys these: `filter` and `opacity` apply to an element, never to a `background-image`, so on the section itself they would have desaturated and faded its text along with the ground. Nothing else lives in here, so both land on the tile alone. It costs no DOM node and nothing in the accessibility tree. */
 	filter: grayscale(1);
 }
 
 .hl-ground-hex {
-	/* The supplied pattern, in the band's own colour: a hexagonal lattice on a
-     40x59.428 tile, turned 20 degrees. Two changes to what came in, the same
-     two the process band's arcs needed. The stroke was #ecc94b; it is the
-     card yellow, because this band has no cyan left anywhere in it – the belt
-     gave up its blue, the cards are yellow on ink – so cyan would be importing
-     an accent the section does not use, where yellow is already its own. And
-     the pattern's opaque #2b2b31 ground rect is dropped so the section's ink
-     shows through and stays the one place that colour is set.
+	/* The supplied pattern, in the band's own colour: a hexagonal lattice on a 40x59.428 tile, turned 20 degrees. Two changes to what came in, the same two the process band's arcs needed. The stroke was #ecc94b; it is the card yellow, because this band has no cyan left anywhere in it – the belt gave up its blue, the cards are yellow on ink – so cyan would be importing an accent the section does not use, where yellow is already its own. And the pattern's opaque #2b2b31 ground rect is dropped so the section's ink shows through and stays the one place that colour is set.
 
-     The hex is written out because a data URI is a separate document that no
-     custom property reaches into; this copy has to be kept in step with
-     `--color-hl-yellow` by hand.
+	  The hex is written out because a data URI is a separate document that no custom property reaches into; this copy has to be kept in step with `--color-hl-yellow` by hand.
 
-     Size and repeat are pinned for the same reason as the arcs: the rule that
-     an image with no intrinsic dimensions is drawn at the size of its box is
-     what makes this work, and a browser falling back to 300x150 instead would
-     tile a rotated lattice and seam it. */
+	  Size and repeat are pinned for the same reason as the arcs: the rule that an image with no intrinsic dimensions is drawn at the size of its box is what makes this work, and a browser falling back to 300x150 instead would tile a rotated lattice and seam it.
+	 */
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='40' height='59.428' patternTransform='rotate(20)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23A2C4DA' stroke-opacity='.12' stroke-linecap='square' d='M0 70.975V47.881m20-1.692L8.535 52.808v13.239L20 72.667l11.465-6.62V52.808zm0-32.95 11.465-6.62V-6.619L20-13.24 8.535-6.619V6.619L20 13.24m8.535 4.927v13.238L40 38.024l11.465-6.62V18.166L40 11.546zM20 36.333 0 47.88m0 0v23.094m0 0 20 11.548 20-11.548V47.88m0 0L20 36.333m0 0 20 11.549M0 11.547l-11.465 6.619v13.239L0 38.025l11.465-6.62v-13.24L0 11.548v-23.094l20-11.547 20 11.547v23.094M20 36.333V13.24'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
-	/* The supplied pattern, in the band's own colour: a hexagonal lattice on a
-     40x59.428 tile, turned 20 degrees. Two changes to what came in, the same
-     two the process band's arcs needed. The stroke was #ecc94b; it is the
-     card yellow, because this band has no cyan left anywhere in it – the belt
-     gave up its blue, the cards are yellow on ink – so cyan would be importing
-     an accent the section does not use, where yellow is already its own. And
-     the pattern's opaque #2b2b31 ground rect is dropped so the section's ink
-     shows through and stays the one place that colour is set.
+	/* The supplied pattern, in the band's own colour: a hexagonal lattice on a 40x59.428 tile, turned 20 degrees. Two changes to what came in, the same two the process band's arcs needed. The stroke was #ecc94b; it is the card yellow, because this band has no cyan left anywhere in it – the belt gave up its blue, the cards are yellow on ink – so cyan would be importing an accent the section does not use, where yellow is already its own. And the pattern's opaque #2b2b31 ground rect is dropped so the section's ink shows through and stays the one place that colour is set.
 
-     The hex is written out because a data URI is a separate document that no
-     custom property reaches into; this copy has to be kept in step with
-     `--color-hl-yellow` by hand.
+	  The hex is written out because a data URI is a separate document that no custom property reaches into; this copy has to be kept in step with `--color-hl-yellow` by hand.
 
-     Size and repeat are pinned for the same reason as the arcs: the rule that
-     an image with no intrinsic dimensions is drawn at the size of its box is
-     what makes this work, and a browser falling back to 300x150 instead would
-     tile a rotated lattice and seam it. */
+	  Size and repeat are pinned for the same reason as the arcs: the rule that an image with no intrinsic dimensions is drawn at the size of its box is what makes this work, and a browser falling back to 300x150 instead would tile a rotated lattice and seam it.
+	 */
 	background-repeat: no-repeat;
 	background-size: 100% 100%;
 }
 
 .hl-ground-mesh {
-	/* The supplied pattern, on the carousel card's own field: a triangulated
-     lattice on a 69.283x40 tile, turned 5 degrees. The same two changes the
-     other two bands needed. Its stroke was #ecc94b, the yellow this page does
-     not have; it is `--color-hl-yellow-pale`, which is already the card's
-     border and its caption band – so the lattice reads as the card's frame
-     material carried across its field rather than a fourth colour. And the
-     pattern's opaque #2b2b31 ground rect is gone, so the card's blue shows
-     through and stays the one place that colour is set.
+	/* The supplied pattern, on the carousel card's own field: a triangulated lattice on a 69.283x40 tile, turned 5 degrees. The same two changes the other two bands needed. Its stroke was #ecc94b, the yellow this page does not have; it is `--color-hl-yellow-pale`, which is already the card's border and its caption band – so the lattice reads as the card's frame material carried across its field rather than a fourth colour. And the pattern's opaque #2b2b31 ground rect is gone, so the card's blue shows through and stays the one place that colour is set.
 
-     Opacity is .18 where the section bands run .12. Those sit on ink and have
-     the full luminance range to be quiet in; this sits on a mid-tone blue,
-     where .12 composites to within 19 of the ground and disappears.
+	  Opacity is .18 where the section bands run .12. Those sit on ink and have the full luminance range to be quiet in; this sits on a mid-tone blue, where .12 composites to within 19 of the ground and disappears.
 
-     The supplied `scale(3)` is dropped. Rotation and geometry are the
-     pattern's identity, but scale is a fit to the surface, and this is the one
-     of these that grounds a card rather than a section: at 3 the tile is
-     208x120 against a 346x223 photo field – 1.7 tiles across, which reads as
-     three stray diagonals. At 1 it is five tiles across and reads as the
-     lattice it is.
+	  The supplied `scale(3)` is dropped. Rotation and geometry are the pattern's identity, but scale is a fit to the surface, and this is the one of these that grounds a card rather than a section: at 3 the tile is 208x120 against a 346x223 photo field – 1.7 tiles across, which reads as three stray diagonals. At 1 it is five tiles across and reads as the lattice it is.
 
-     The hex is written out because a data URI is a separate document that no
-     custom property reaches into; this copy has to be kept in step with
-     `--color-hl-yellow-pale` by hand. */
+	  The hex is written out because a data URI is a separate document that no custom property reaches into; this copy has to be kept in step with `--color-hl-yellow-pale` by hand.
+	 */
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='69.283' height='40' patternTransform='rotate(5)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23fffcd8' stroke-opacity='.08' d='M46.189-20 57.736 0M46.189 20l11.547 20m-46.189 0 11.547 20M11.547 0l11.547 20m40.415 30H40.415M28.868 30H5.774m23.094-40H5.774m57.735 20H40.415m0 20L28.868 50m11.547-60L28.868 10m46.188 0L63.509 30M5.774 10-5.773 30m75.056 10H46.189L34.64 20 46.19 0h23.094q5.77 10 11.546 20zM57.736 60H34.64L23.094 40l11.547-20h23.095l11.547 20zm0-40H34.64L23.094 0l11.547-20h23.095L69.283 0c-3.87 6.7-8.118 14.06-11.547 20zM34.64 60H11.547L0 40l11.547-20h23.094L46.19 40zm0-40H11.547L0 0l11.547-20h23.094L46.19 0zM23.094 40H0l-5.773-10-5.774-10L0 0h23.094l11.547 20z'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
-	/* The supplied pattern, on the carousel card's own field: a triangulated
-     lattice on a 69.283x40 tile, turned 5 degrees. The same two changes the
-     other two bands needed. Its stroke was #ecc94b, the yellow this page does
-     not have; it is `--color-hl-yellow-pale`, which is already the card's
-     border and its caption band – so the lattice reads as the card's frame
-     material carried across its field rather than a fourth colour. And the
-     pattern's opaque #2b2b31 ground rect is gone, so the card's blue shows
-     through and stays the one place that colour is set.
+	/* The supplied pattern, on the carousel card's own field: a triangulated lattice on a 69.283x40 tile, turned 5 degrees. The same two changes the other two bands needed. Its stroke was #ecc94b, the yellow this page does not have; it is `--color-hl-yellow-pale`, which is already the card's border and its caption band – so the lattice reads as the card's frame material carried across its field rather than a fourth colour. And the pattern's opaque #2b2b31 ground rect is gone, so the card's blue shows through and stays the one place that colour is set.
 
-     Opacity is .18 where the section bands run .12. Those sit on ink and have
-     the full luminance range to be quiet in; this sits on a mid-tone blue,
-     where .12 composites to within 19 of the ground and disappears.
+	  Opacity is .18 where the section bands run .12. Those sit on ink and have the full luminance range to be quiet in; this sits on a mid-tone blue, where .12 composites to within 19 of the ground and disappears.
 
-     The supplied `scale(3)` is dropped. Rotation and geometry are the
-     pattern's identity, but scale is a fit to the surface, and this is the one
-     of these that grounds a card rather than a section: at 3 the tile is
-     208x120 against a 346x223 photo field – 1.7 tiles across, which reads as
-     three stray diagonals. At 1 it is five tiles across and reads as the
-     lattice it is.
+	  The supplied `scale(3)` is dropped. Rotation and geometry are the pattern's identity, but scale is a fit to the surface, and this is the one of these that grounds a card rather than a section: at 3 the tile is 208x120 against a 346x223 photo field – 1.7 tiles across, which reads as three stray diagonals. At 1 it is five tiles across and reads as the lattice it is.
 
-     The hex is written out because a data URI is a separate document that no
-     custom property reaches into; this copy has to be kept in step with
-     `--color-hl-yellow-pale` by hand. */
+	  The hex is written out because a data URI is a separate document that no custom property reaches into; this copy has to be kept in step with `--color-hl-yellow-pale` by hand.
+	 */
 	background-repeat: no-repeat;
 	background-size: 100% 100%;
 }
@@ -404,10 +266,7 @@ body {
 	);
 }
 
-/* Carousel: a native scroll container, so touch, trackpad, keyboard and
-   momentum all come for free – which is what lets the belt carry no controls
-   of its own. It is driven by writing scrollLeft every frame, so
-   scroll-behavior stays instant here. */
+/* Carousel: a native scroll container, so touch, trackpad, keyboard and momentum all come for free – which is what lets the belt carry no controls of its own. It is driven by writing scrollLeft every frame, so scroll-behavior stays instant here. */
 .rail {
 	scroll-behavior: auto;
 	overscroll-behavior-x: contain;
@@ -415,9 +274,7 @@ body {
 	-ms-overflow-style: none;
 }
 
-/* The belt is the only focus stop in its band, and the page's cyan ring falls
-   to 1.77:1 on --color-hl-blue. Ink reads at 5.05:1, and an inset ring keeps a
-   full-bleed scroller's outline from being clipped at the viewport edge. */
+/* The belt is the only focus stop in its band, and the page's cyan ring falls to 1.77:1 on --color-hl-blue. Ink reads at 5.05:1, and an inset ring keeps a full-bleed scroller's outline from being clipped at the viewport edge. */
 .rail:focus-visible {
 	outline-color: var(--color-hl-ink);
 	outline-offset: -3px;

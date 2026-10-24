@@ -44,25 +44,18 @@
 	--color-line: #c8c3d6;
 	--color-line-strong: #9a94b4;
 
-	/* Text-only inks. The brand's deep tones are rims and borders first, and on
-     cream several of them are too light to read (sky-deep 3.61:1, gold-deep
-     2.58, orange-deep 2.94, teal-deep 4.40, line-strong 2.72). Each of these
-     clears 4.5:1 on cream, white and every pale fill a chip sits on, so a
-     `text-` utility reaches for these and the fills and rims keep their hue. */
+	/* Text-only inks. The brand's deep tones are rims and borders first, and on cream several of them are too light to read (sky-deep 3.61:1, gold-deep 2.58, orange-deep 2.94, teal-deep 4.40, line-strong 2.72). Each of these clears 4.5:1 on cream, white and every pale fill a chip sits on, so a `text-` utility reaches for these and the fills and rims keep their hue. */
 	--color-sky-ink: #236b85;
 	--color-teal-ink: #037365;
 	--color-gold-ink: #7f5c07;
 	--color-orange-ink: #8c5507;
 	/* A padlock on a locked puck: 3:1 against sand, where sand-deep is 1.62. */
 	--color-sand-ink: #8a6c4b;
-	/* The quiet third voice line-strong was used for – timestamps, hints, rail
-     titles – at a value someone can actually read: 5.34:1 on cream. */
+	/* The quiet third voice line-strong was used for – timestamps, hints, rail titles – at a value someone can actually read: 5.34:1 on cream. */
 	--color-navy-faint: #676386;
-	/* A field's edge. WCAG asks 3:1 of the boundary that tells you a control is
-     there; `line` is 1.72 on white. This is 3.68 on white, 3.47 on cream. */
+	/* A field's edge. WCAG asks 3:1 of the boundary that tells you a control is there; `line` is 1.72 on white. This is 3.68 on white, 3.47 on cream. */
 	--color-field: #86829f;
-	/* Solid-button fills one step darker, so a white label reads: white on
-     violet was 3.37, on teal 2.80, on coral 3.33. */
+	/* Solid-button fills one step darker, so a white label reads: white on violet was 3.37, on teal 2.80, on coral 3.33. */
 	--color-violet-dark: #613f7b;
 	--color-teal-dark: #025a4f;
 	--color-coral-dark: #a53131;
@@ -93,13 +86,9 @@
 	}
 
 	/*
-	 * Tailwind v4's preflight leaves a button on the browser's own cursor
-	 * (`default`), so every button had to ask for a pointer itself and most never
-	 * did. One rule here instead, so a new one cannot forget. `[role="button"]`
-	 * covers the handful of controls that are a link or a div by design.
+	 * Tailwind v4's preflight leaves a button on the browser's own cursor (`default`), so every button had to ask for a pointer itself and most never did. One rule here instead, so a new one cannot forget. `[role="button"]` covers the handful of controls that are a link or a div by design.
 	 *
-	 * A control that wants something else – the settled checkpoint puck sets
-	 * `cursor-default` – still wins, because a utility is a later layer than this.
+	 * A control that wants something else – the settled checkpoint puck sets `cursor-default` – still wins, because a utility is a later layer than this.
 	 */
 	button:not(:disabled),
 	[role="button"]:not([aria-disabled="true"]) {
@@ -112,10 +101,7 @@
 	}
 
 	/*
-	 * The press every button shares, so a control that never declared an active
-	 * state still answers a tap. Anything with one of its own – the pucks sink,
-	 * Button's `active:translate-y-px`, the ops `.hl-btn` – is a later layer and
-	 * wins, so nothing moves twice.
+	 * The press every button shares, so a control that never declared an active state still answers a tap. Anything with one of its own – the pucks sink, Button's `active:translate-y-px`, the ops `.hl-btn` – is a later layer and wins, so nothing moves twice.
 	 */
 	button:not(:disabled):active,
 	[role="button"]:not([aria-disabled="true"]):active {
@@ -138,12 +124,7 @@ body {
 	background-color: var(--color-cream);
 }
 
-/* Faint scattered doodles so the cream reads as paper, not as white dimmed.
-   The sheet is a seamless tile of the platform's hand-drawn symbols, baked at
-   build time from the drawings in `background assets/`. It lives on the app
-   shell only – the pages with the left sidebar – so login, admin and the
-   one-shot pages keep a plain cream ground instead of the tooth. No vertical
-   mask: the doodles stay as present at the bottom of the page as at the top. */
+/* Faint scattered doodles so the cream reads as paper, not as white dimmed. The sheet is a seamless tile of the platform's hand-drawn symbols, baked at build time from the drawings in `background assets/`. It lives on the app shell only – the pages with the left sidebar – so login, admin and the one-shot pages keep a plain cream ground instead of the tooth. No vertical mask: the doodles stay as present at the bottom of the page as at the top. */
 .shell-backdrop::before {
 	position: fixed;
 	inset: 0;
@@ -151,17 +132,11 @@ body {
 	pointer-events: none;
 	content: "";
 	background-image: url("/platform/doodle-sheet.png");
-	/* Parallax: the backdrop drifts at a fraction of the page scroll, written to
-	   --shell-parallax by AppShell. Offset via background-position rather than a
-	   transform so the seamless tile can never run out of vertical room on a
-	   long trail (a transformed viewport-sized box would leave a bare strip at
-	   the foot once the offset passed its own height). Defaults to 0 – the old
-	   static backdrop – with JS disabled or under prefers-reduced-motion. */
+	/* Parallax: the backdrop drifts at a fraction of the page scroll, written to --shell-parallax by AppShell. Offset via background-position rather than a transform so the seamless tile can never run out of vertical room on a long trail (a transformed viewport-sized box would leave a bare strip at the foot once the offset passed its own height). Defaults to 0 – the old static backdrop – with JS disabled or under prefers-reduced-motion. */
 	background-position: 0 var(--shell-parallax, 0px);
 	background-size: 768px 768px;
 	opacity: 0.06;
-	/* A soft vertical fade – full at the top, 45% at the bottom – so the page
-	   still reads top-lit without the old mask swallowing the lower half. */
+	/* A soft vertical fade – full at the top, 45% at the bottom – so the page still reads top-lit without the old mask swallowing the lower half. */
 	mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.45) 100%);
 }
 
@@ -195,8 +170,7 @@ body {
 
 	/* ============================================================
      SKETCH BORDERS
-     A displaced stroke on a pseudo-element: the line wobbles like
-     marker on paper without touching the content it frames.
+     A displaced stroke on a pseudo-element: the line wobbles like marker on paper without touching the content it frames.
      ============================================================ */
 	.sketch {
 		position: relative;
@@ -234,8 +208,7 @@ body {
 @layer components {
 	/* ============================================================
      PUCKS – the checkpoint tokens
-     Physical discs: a rim disc behind, the face on top, a real
-     ambient shadow beneath. Pressing sinks the face onto the rim.
+     Physical discs: a rim disc behind, the face on top, a real ambient shadow beneath. Pressing sinks the face onto the rim.
      ============================================================ */
 	.puck {
 		--puck-face: var(--color-sky);
@@ -274,17 +247,14 @@ body {
 		transition: transform 0.16s var(--ease-out-expo);
 	}
 
-	/* The torn face is a layer under the icon – the same split the headers use –
-	   so the tear crinkles the sticker, never the glyph on top of it. */
+	/* The torn face is a layer under the icon – the same split the headers use – so the tear crinkles the sticker, never the glyph on top of it. */
 	.puck-face::before {
 		position: absolute;
 		inset: 0;
 		z-index: -1;
 		content: "";
 		background: var(--puck-face);
-		/* A real outline around the puck's circle: thicker than the light fringe
-		   the tear used to leave, and coloured halfway between the rim and the
-		   face. */
+		/* A real outline around the puck's circle: thicker than the light fringe the tear used to leave, and coloured halfway between the rim and the face. */
 		border: 5px solid color-mix(in oklab, var(--puck-face) 50%, var(--puck-rim) 50%);
 		border-radius: 50%;
 		box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.2);
@@ -318,9 +288,7 @@ body {
 		--puck-rim: var(--color-teal-deep);
 	}
 
-	/* Its week has passed. Sits lower than a live puck, like a locked one, but
-     keeps the trail's teal underneath: this is time that ran out, not a step
-     still waiting its turn. */
+	/* Its week has passed. Sits lower than a live puck, like a locked one, but keeps the trail's teal underneath: this is time that ran out, not a step still waiting its turn. */
 	.puck-passed {
 		--puck-face: var(--color-teal-grey);
 		--puck-rim: var(--color-teal-grey-deep);
@@ -356,9 +324,7 @@ body {
 	}
 }
 
-/* The next checkpoint presses itself: the face drops into its rim the way it
-   does under a finger, then springs back a hair past rest. Mostly still, so
-   the trail stays calm and the press reads as a tap, not a throb. */
+/* The next checkpoint presses itself: the face drops into its rim the way it does under a finger, then springs back a hair past rest. Mostly still, so the trail stays calm and the press reads as a tap, not a throb. */
 @keyframes hl-press {
 	0%,
 	72% {
@@ -409,8 +375,7 @@ body {
 		animation: none;
 	}
 
-	/* A file that has finished sending and is being stored: the full bar keeps
-   moving, so a wait with no size to measure still reads as work. */
+	/* A file that has finished sending and is being stored: the full bar keeps moving, so a wait with no size to measure still reads as work. */
 	.upload-storing {
 		background-image: linear-gradient(
 			110deg,
@@ -437,9 +402,9 @@ body {
 	*::before,
 	*::after {
 		/* biome-ignore-start lint/complexity/noImportantStyles: a blanket reset of every
-		   animated thing on the page, which is the entire point of the media query.
-		   Without the override the site's own keyframes and the .puck press win on
-		   specificity, and a reader who asked for reduced motion still gets motion. */
+
+		  animated thing on the page, which is the entire point of the media query. Without the override the site's own keyframes and the .puck press win on specificity, and a reader who asked for reduced motion still gets motion.
+		 */
 		transition-duration: 0.001ms !important;
 		animation-duration: 0.001ms !important;
 		animation-iteration-count: 1 !important;
@@ -487,15 +452,12 @@ body {
 	filter: drop-shadow(0 3px 2px rgba(28, 26, 89, 0.16)) drop-shadow(0 9px 13px rgba(28, 26, 89, 0.13));
 }
 
-/* The Doomscroller's reel column measures its own height, so the arrows
-   beside it can step aside when it is too short to hold them above the
-   actions – which depends on the frame, not on the window. */
+/* The Doomscroller's reel column measures its own height, so the arrows beside it can step aside when it is too short to hold them above the actions – which depends on the frame, not on the window. */
 .doom-stage {
 	container: doom-stage / size;
 }
 @container doom-stage (max-height: 30.5rem) {
-	/* Two classes rather than `!important`: the element carries Tailwind's `md:flex`,
-	   and a second class outranks a single utility without a blanket override. */
+	/* Two classes rather than `!important`: the element carries Tailwind's `md:flex`, and a second class outranks a single utility without a blanket override. */
 	.doom-stage .doom-arrows {
 		display: none;
 	}

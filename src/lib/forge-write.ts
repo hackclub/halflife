@@ -22,8 +22,7 @@ import { parseDbTimestamp } from "@/lib/time"
  * The two forges commit a set of files in genuinely different ways, and pretending otherwise would mean one implementation wearing the other's shape:
  *
  * - **GitHub** has no "commit these files" endpoint. Its contents API is per-file, so n files would be n commits and n "Update JOURNAL.md" entries in the maker's history. The Git Data API is used instead – blobs, one tree, one commit, one ref update – which is four round trips and a manual fast-forward guard, but lands atomically and detects a concurrent push.
- * - **GitLab** has `POST /projects/:id/repository/commits` with an `actions[]` array: one request, one commit, create/update/delete decided per action. That is simpler, and takes GitLab's own optional guard (`last_commit_id`)
- *   for the same concurrency protection.
+ * - **GitLab** has `POST /projects/:id/repository/commits` with an `actions[]` array: one request, one commit, create/update/delete decided per action. That is simpler, and takes GitLab's own optional guard (`last_commit_id`) for the same concurrency protection.
  *
  * Each is written the way its API wants to be used, and the shared parts – the no-op-when-unchanged check, the result shape – are hoisted above them.
  */

@@ -13,10 +13,7 @@ interface Params {
 /**
  * Move, retitle or cancel one occurrence.
  *
- * The path is a single occurrence even when the row is one of ten, and that is
- * the intent: a series is edited a week at a time, since that is the edit that
- * gets made. `endsAt: null` clears a published end time rather than leaving it,
- * because an admin removing an end time means to remove it.
+ * The path is a single occurrence even when the row is one of ten, and that is the intent: a series is edited a week at a time, since that is the edit that gets made. `endsAt: null` clears a published end time rather than leaving it, because an admin removing an end time means to remove it.
  */
 export const PATCH = withPermission(
 	Permission.MANAGE_PROGRAM,
@@ -30,9 +27,7 @@ export const PATCH = withPermission(
 		const before = await db.orm.public.ProgramEvent.whereUnique({ id }).first()
 		if (!before) return fail("NOT_FOUND", "Event not found")
 
-		// The end is checked against the row's *other* field, which a partial update
-		// may not carry: changing the start past a published end has to be refused
-		// here rather than silently storing an event that ends before it begins.
+		// The end is checked against the row's *other* field, which a partial update may not carry: changing the start past a published end has to be refused here rather than silently storing an event that ends before it begins.
 		const startsAt = data.startsAt ?? parseDbTimestamp(before.startsAt)
 		const endsAt = data.endsAt === undefined ? (before.endsAt ? parseDbTimestamp(before.endsAt) : null) : data.endsAt
 		if (endsAt && endsAt <= startsAt) return fail("VALIDATION_FAILED", "An event has to end after it starts")
@@ -82,10 +77,7 @@ export const PATCH = withPermission(
 /**
  * Remove one occurrence, for good.
  *
- * Delete rather than unpublish, because the two mean different things: unpublish
- * hides an event that is still true, while this is the way a mistakenly-created
- * series is undone. The audit row keeps the before, so what was removed is still
- * answerable afterwards.
+ * Delete rather than unpublish, because the two mean different things: unpublish hides an event that is still true, while this is the way a mistakenly-created series is undone. The audit row keeps the before, so what was removed is still answerable afterwards.
  */
 export const DELETE = withPermission(
 	Permission.MANAGE_PROGRAM,

@@ -13,9 +13,7 @@ import db from "../src/lib/prisma8"
  *
  * Only the ten submitted boxes are ever written – the rest of the Loops columns are left alone, so this is safe to run even while the hourly sync owns them. Rows whose boxes already agree are left untouched, so a second run writes nothing.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-loops-submitted.ts [--commit]`.
- * In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-loops-submitted.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")

@@ -17,15 +17,14 @@ import db from "../src/lib/prisma8"
  * The status is `reviewStatusFor` of the phase – the same mapping every write uses, so the column cannot disagree with the state it mirrors. The note is the project's standing review comment (`designReviewComments`/`buildReviewComments`), which is the string the live mirror writes for a console decision and for a reversal alike. Two cases need more than the comment:
  *
  * - An Ari decision that carried no note is stored as Ari's generic fallback (`defaultFeedback`), because the review row and the project page always need something to show, but the raw note was never kept. The mirror deliberately writes an empty column rather than that fallback, so the standing decision is read too and the note cleared instead of quoting a sentence the maker already read as the headline.
+ *
  * - A phase still in review has no decision to quote, so its note is cleared whichever comment last touched the row.
  *
  * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. Rows whose columns already agree are left alone, so a second run writes nothing.
  *
  * Loops triggers off this column, so restoring a decided row can email the maker the same way a fresh decision does. Run this before the Loops workflow is switched on if nobody is to be told about a decision already made.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-airtable-review.ts [--commit]`.
- * In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-review.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")

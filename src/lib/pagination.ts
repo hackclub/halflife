@@ -130,11 +130,7 @@ export function positionWhere<TWhere extends object>(
 ): TWhere {
 	if (!position) return base
 	const after = order.direction === "asc" ? "gt" : "lt"
-	// A row whose leading value is null. Where those sit in the order depends on the
-	// direction, because Postgres puts nulls last for an ascending order and first for
-	// a descending one. A descending page therefore reaches a null row before every
-	// dated row, so the rows after it are the rest of the nulls AND every dated row;
-	// an ascending page reaches it after them all, so only the rest of the nulls follow.
+	// A row whose leading value is null. Where those sit in the order depends on the direction, because Postgres puts nulls last for an ascending order and first for a descending one. A descending page therefore reaches a null row before every dated row, so the rows after it are the rest of the nulls AND every dated row; an ascending page reaches it after them all, so only the rest of the nulls follow.
 	if (position.at === null) {
 		const dated = order.direction === "desc" ? { [order.column]: { not: null } } : null
 		return {

@@ -342,8 +342,7 @@ export async function notifyStaffDispute(input: {
 		.join("\n")
 	const links = [
 		disputeUrl ? `<${disputeUrl}|Open the project>` : null,
-		// Empty when the deployment names no origin (lib/app-url), so the link is left
-		// out rather than sent with no URL in it.
+		// Empty when the deployment names no origin (lib/app-url), so the link is left out rather than sent with no URL in it.
 		reviewPageUrl ? `<${reviewPageUrl}|Open the review thread>` : null,
 		ariUrl ? `<${ariUrl}|Open the review on Ari>` : null,
 	].filter(link => link !== null)

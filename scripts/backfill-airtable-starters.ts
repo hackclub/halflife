@@ -14,9 +14,7 @@ import db from "../src/lib/prisma8"
  *
  * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` in lib/airtable/sync reads), so each (project, phase) is ticked at its newest id that has not since been `removed` – a row taken back on unsubmit is reported as gone rather than quietly recreated.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-airtable-starters.ts [--commit]`.
- * In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-starters.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")

@@ -55,8 +55,7 @@ export default function SignupCounter({ className = "", style }: { className?: s
 				//
 				// Centred on each other, not sat on one baseline: at half the figure's size, baseline-aligned words hung off the bottom of the number. So both are `align-middle` – their midpoints land on the same line of the one inline run – which is the flex `items-center` look without becoming flex items and losing the space again.
 				<>
-					{/* `tabular-nums` so the box does not shift width as the count gains
-              a digit. */}
+					{/* `tabular-nums` so the box does not shift width as the count gains a digit. */}
 					<span
 						className="align-middle font-display font-bold tabular-nums"
 						style={{ fontSize: "1.5em", lineHeight: 1 }}

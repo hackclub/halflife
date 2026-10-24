@@ -17,7 +17,9 @@ import type { Week } from "@/lib/types"
  * Two things it has to get right, both about the seam the platform's client components live on:
  *
  * - **No hydration mismatch.** The server render and the browser's first paint have to agree, and the server's clock is not the browser's, so the figures are placeholders until an effect has run. `--` holds the width a real figure takes, so nothing on the trail jumps when the count lands.
+ *
  * - **Ends cleanly.** At zero the store's own week timer flips `weekPassed` (store.tsx re-arms its clock for the next boundary), the gate above closes and the plate goes away – rather than counting up into negative days, which is what a tab left open overnight would otherwise show.
+ *
  * - **Says whose deadline it is.** A week can be open past its own Sunday because of an extension, and the extension's target week is not always the week the plate sits under: an account-wide extension reaches every week, so a later week's plate would otherwise name a day that is not its own Sunday. When the deadline is an extension the plate says so – the week's own project's by name, the account's as "your extension" – rather than claiming the week closes then.
  *
  * The figures are split into units rather than printed as one string so each is its own column with its label beneath, the figure-leads/words-follow shape the site's countdown uses. They are hidden from a screen reader, which gets the same count in words plus the deadline itself rather than four numbers changing every second.
@@ -55,12 +57,9 @@ export function WeekCountdown({ week }: { week: Week }) {
 
 	return (
 		<div className="mt-8 flex justify-center px-1">
-			{/* `px-4` on the narrowest trail: the four unit columns and their gaps
-            come to about 280px, which has to clear a 320px phone. */}
+			{/* `px-4` on the narrowest trail: the four unit columns and their gaps come to about 280px, which has to clear a 320px phone. */}
 			<div className="relative px-4 py-4 text-center sm:px-8" style={{ color: text }}>
-				{/* The tear belongs on the fill, not on the type: the same split the
-            week banner uses, so the plate's edge is torn tape and the figures
-            inside it stay crisp. */}
+				{/* The tear belongs on the fill, not on the type: the same split the week banner uses, so the plate's edge is torn tape and the figures inside it stay crisp. */}
 				<div
 					aria-hidden="true"
 					className="torn absolute inset-0 rounded"
@@ -83,17 +82,14 @@ export function WeekCountdown({ week }: { week: Week }) {
 								<span className="text-[1.9rem] leading-none tracking-[-0.03em] sm:text-[2.7rem]">
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}
 								</span>
-								{/* The labels, not the figures, are what the four columns cannot
-                  go below – "MINUTES" is the widest word here – so they are the
-                  ones that shrink on a phone. */}
+								{/* The labels, not the figures, are what the four columns cannot go below – "MINUTES" is the widest word here – so they are the ones that shrink on a phone. */}
 								<span className="label mt-1.5 text-[0.62rem] sm:text-[0.78rem]" style={{ opacity: 0.7 }}>
 									{unit.label}
 								</span>
 							</span>
 						))}
 					</div>
-					{/* The count in words, and the moment it is counting to: a screen
-              reader gets both, and neither is four changing figures. */}
+					{/* The count in words, and the moment it is counting to: a screen reader gets both, and neither is four changing figures. */}
 					<p className="sr-only">
 						{extension === null
 							? parts === null

@@ -396,11 +396,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 								if you&rsquo;d like.
 							</Note>
 						) : null}
-						{/* Each tier is one choice: the grant, the rough time, and real
-                projects built at it. The examples link to their repos, so the
-                card cannot be a button; a click anywhere on it picks the tier
-                for the mouse, and the radio in its header is the control for
-                keyboards and screen readers. */}
+						{/* Each tier is one choice: the grant, the rough time, and real projects built at it. The examples link to their repos, so the card cannot be a button; a click anywhere on it picks the tier for the mouse, and the radio in its header is the control for keyboards and screen readers. */}
 						<fieldset className="grid gap-3">
 							<legend className="sr-only">Tier</legend>
 							{view.tiers.map(tier => {
@@ -458,9 +454,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 																rel="noopener noreferrer"
 																target="_blank"
 															>
-																{/* Cropped to one frame: at this size a uniform
-                                    row reads better than slivers and posts, and
-                                    the repo has the whole board. */}
+																{/* Cropped to one frame: at this size a uniform row reads better than slivers and posts, and the repo has the whole board. */}
 																<span className="relative block h-11 w-14 shrink-0 overflow-hidden rounded-md bg-white shadow-[0_1px_2px_rgb(28_26_89/0.12)] ring-1 ring-line/70">
 																	<Image
 																		alt=""

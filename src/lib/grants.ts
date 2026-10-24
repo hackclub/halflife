@@ -27,8 +27,7 @@ import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
  * - the maker's Hack Club identity is verified before anything is sent, because a grant is a reward and an unverified account is not eligible for one;
  * - the row is written before HCB is called and marked `sentAt` after, so a crash or a failed call is recoverable rather than silently retried;
  * - a retry asks HCB what the previous attempt left behind before sending again: a timeout can lose the response after the money moved, and a blind resend pays twice;
- * - a failed attempt records its error and may be retried; one still in flight may not, and a row stranded by a crash is treated as in flight
- *     for a while before it may be.
+ * - a failed attempt records its error and may be retried; one still in flight may not, and a row stranded by a crash is treated as in flight for a while before it may be.
  *
  * Enabling this alongside the Airtable/YSWS payout pipeline would pay twice – that ownership question is a decision, not something this code can settle.
  */
@@ -122,8 +121,7 @@ async function markSentWithAudit(input: {
 				grantHashid: input.grantHashid,
 				// Who HCB says owns the card this went to, so a mismatch is visible in the trail afterwards.
 				ownerEmail: input.ownerEmail,
-				// Whether the card was checked against the maker BEFORE the money moved. False means the
-				// check was turned off for this deployment, not that it passed.
+				// Whether the card was checked against the maker BEFORE the money moved. False means the check was turned off for this deployment, not that it passed.
 				ownerVerified: input.ownerVerified,
 				phase: input.phase,
 				transactionId: input.transactionId,
@@ -179,13 +177,9 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	const amountCents = Math.round(project.grantUsd * 100)
 	const memo = `[grant] ${project.title || "Half Life project"} – Half Life tier ${project.tier ?? "?"}`
 
-	// Who owns the card is settled before it is paid. The top-up moves the money as it answers, so a grant
-	// that belongs to somebody else cannot be caught afterwards, and the maker's email is the one identity
-	// Half Life and HCB both hold. An owner HCB will not name is not an owner Half Life will pay on trust.
+	// Who owns the card is settled before it is paid. The top-up moves the money as it answers, so a grant that belongs to somebody else cannot be caught afterwards, and the maker's email is the one identity Half Life and HCB both hold. An owner HCB will not name is not an owner Half Life will pay on trust.
 	//
-	// HCB only renders another account's email to a token that may read it, so a deployment whose token cannot
-	// would refuse every grant. `HCB_VERIFY_GRANT_OWNER=false` turns the check off for such a deployment, and
-	// says so in the trail: the payment still happens, and the row records that nobody checked whose card it was.
+	// HCB only renders another account's email to a token that may read it, so a deployment whose token cannot would refuse every grant. `HCB_VERIFY_GRANT_OWNER=false` turns the check off for such a deployment, and says so in the trail: the payment still happens, and the row records that nobody checked whose card it was.
 	const maker = project.user.email.trim().toLowerCase()
 	let ownerVerified = false
 	if (verifiesGrantOwner()) {
@@ -213,8 +207,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		})
 		rowId = created.id
 	} catch (err) {
-		// The card is already paid for another project. That is a different thing from this grant having been
-		// claimed already, and the admin needs to hear which one it is.
+		// The card is already paid for another project. That is a different thing from this grant having been claimed already, and the admin needs to hear which one it is.
 		if (isDuplicateGrantHashid(err))
 			throw new HttpError("CONFLICT", "That HCB card has already been paid for another project")
 
@@ -239,9 +232,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 			)
 
 		if (reconciled.kind === "landed") {
-			// The money went to the card the previous attempt used, which is the one the row names – not
-			// necessarily the link that was pasted this time. That card's owner is what the trail has to
-			// carry, so it is the one that is read here.
+			// The money went to the card the previous attempt used, which is the one the row names – not necessarily the link that was pasted this time. That card's owner is what the trail has to carry, so it is the one that is read here.
 			const paidOwner = await readCardGrantOwner(existing.grantHashid)
 			await markSentWithAudit({
 				adminEmail: input.adminEmail,
@@ -260,8 +251,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 				adminId: input.adminId,
 				projectId: project.id,
 			})
-			// The money has already moved, so this cannot stop it. It says so, loudly, rather than letting a
-			// payment to somebody else's card settle quietly into the trail.
+			// The money has already moved, so this cannot stop it. It says so, loudly, rather than letting a payment to somebody else's card settle quietly into the trail.
 			if (paidOwner.email && paidOwner.email !== maker)
 				throw new HttpError(
 					"CONFLICT",
@@ -305,8 +295,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 			adminId: input.adminId,
 			projectId: project.id,
 		})
-		// The trail lands with the record of the payment: one transaction writes the top-up row and the audit
-		// row, so a crash between the two cannot leave a real HCB money movement with nothing to show for it.
+		// The trail lands with the record of the payment: one transaction writes the top-up row and the audit row, so a crash between the two cannot leave a real HCB money movement with nothing to show for it.
 		await markSentWithAudit({
 			adminEmail: input.adminEmail,
 			adminId: input.adminId,
@@ -319,9 +308,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 			rowId,
 			transactionId,
 		})
-		// The card was checked against the maker before the payment, so this should not happen. It is checked
-		// again because the answer came from HCB as well, and if the two disagree the money went somewhere the
-		// audit row records. Thrown after the trail was written, so the row is not left saying it failed.
+		// The card was checked against the maker before the payment, so this should not happen. It is checked again because the answer came from HCB as well, and if the two disagree the money went somewhere the audit row records. Thrown after the trail was written, so the row is not left saying it failed.
 		if (ownerEmail && ownerEmail !== maker)
 			throw new HttpError(
 				"CONFLICT",
@@ -330,8 +317,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		return { alreadySent: false, amountCents, transactionId }
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
-		// Only a row that has not been sent yet is a failure. A row that was marked sent says the money moved,
-		// and saying otherwise on top of that would send the next attempt looking for a payment that is there.
+		// Only a row that has not been sent yet is a failure. A row that was marked sent says the money moved, and saying otherwise on top of that would send the next attempt looking for a payment that is there.
 		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
 			.where(row => row.sentAt.isNull())
 			.updateAndCount({ error: message })

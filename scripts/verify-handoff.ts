@@ -9,15 +9,16 @@ import { formatDbTimestamp } from "../src/lib/time"
  * This feature deliberately accepts an unauthenticated upload, so the token is the only thing standing between a QR code and someone's account. Every property that keeps that narrow is asserted here:
  *
  * 1. The plaintext token is never stored – a database leak must not yield working upload links.
+ *
  * 2. One use, ever, claimed atomically so two phones racing the same code cannot both win.
+ *
  * 3. Expiry is enforced on the way in, not just in the UI.
+ *
  * 4. The object key is built from the handoff's OWNER, so a token can only ever write into the prefix of the person who generated it.
+ *
  * 5. Minting a new code retires the previous one, so a code photographed off a screen does not stay live.
  *
- * Requires uploads to be configured (S3_ACCESS_KEY_ID/SECRET, S3_BUCKET_NAME,
- * S3_ENDPOINT): minting itself refuses when R2 is absent, so the check fails
- * closed without credentials rather than passing vacuously. The uploaded round
- * trip object is deleted afterwards.
+ * Requires uploads to be configured (S3_ACCESS_KEY_ID/SECRET, S3_BUCKET_NAME, S3_ENDPOINT): minting itself refuses when R2 is absent, so the check fails closed without credentials rather than passing vacuously. The uploaded round trip object is deleted afterwards.
  *
  * Run with `pnpm verify:handoff` against a scratch database.
  */
@@ -65,8 +66,7 @@ async function main() {
 
 	const stamp = Date.now()
 
-	// Minting refuses when R2 is absent, so fail closed here with a reason
-	// instead of half-running into that refusal below.
+	// Minting refuses when R2 is absent, so fail closed here with a reason instead of half-running into that refusal below.
 	if (!isUploadConfigured()) {
 		console.error("FAIL  uploads are not configured (S3_ACCESS_KEY_ID/SECRET, S3_BUCKET_NAME, S3_ENDPOINT required)")
 		await db.close()

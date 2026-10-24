@@ -27,6 +27,7 @@ import { formatDbTimestamp } from "@/lib/time"
  * Two rules hold everything together:
  *
  * 1. `onboardingStep` is the furthest step REACHED, never the step being displayed. Answering step 3 again after reaching step 5 edits the answer and leaves the progress alone, so a participant can go back and change their project name without being walked through the tier question again.
+ *
  * 2. Nothing here writes `ThemeProject.tier`. The participant's choice lands in `requestedTier`; the reviewer's decision at design approval is a different column, and money is paid against theirs.
  */
 
@@ -168,6 +169,7 @@ export interface AdvanceResult {
  * Where the flow goes next is decided here, not only in the browser, so the server never has someone "on" a step the page skipped:
  *
  * - A beginner forks on the week step. Building the starter answers the project, idea and tier steps at once (its name, its pick, Tier 1) and moves them straight to time tracking. Their own project goes on to naming it.
+ *
  * - The idea step ("Stuck? Pick one") is stepped over after naming a project. The starter is offered on the week step now, and anyone naming their own project has already said no to it.
  */
 export async function submitStep(userId: string, answer: OnboardingAnswer): Promise<AdvanceResult> {
@@ -269,8 +271,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 	// The step this answer lands on: normally the next one, further when the answer settles the steps in between (see above).
 	const tookStarter = answer.step === "week" && typeof answer.starterProjectId === "string"
 	const next = tookStarter ? stepIndexOf("tracking") : answer.step === "project" ? stepIndexOf("idea") + 1 : index + 1
-	// Only ever forward: re-answering step 3 from step 5 must not rewind anyone. The transaction re-reads the marker and takes the max against its own fresh value.
-	// The guarded update below owns the progress marker; this write carries only the answer's own fields.
+	// Only ever forward: re-answering step 3 from step 5 must not rewind anyone. The transaction re-reads the marker and takes the max against its own fresh value. The guarded update below owns the progress marker; this write carries only the answer's own fields.
 	const userWrite: { hardwareExperience?: HardwareExperience; trackingTutorialDismissedAt?: string } = {}
 	if (userData.hardwareExperience !== undefined) userWrite.hardwareExperience = userData.hardwareExperience
 	if (userData.trackingTutorialDismissedAt !== undefined)

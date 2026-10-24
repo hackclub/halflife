@@ -185,8 +185,7 @@ export const STARTER_PROJECT_TIER: TierId = 1
 /**
  * What a starter has to become before it can be handed in.
  *
- * The guide is a starting point, not a submission, and "how much do I have to change?" comes up every cohort. Said
- * once here so the two onboarding steps that offer a starter cannot drift apart in how they answer it.
+ * The guide is a starting point, not a submission, and "how much do I have to change?" comes up every cohort. Said once here so the two onboarding steps that offer a starter cannot drift apart in how they answer it.
  */
 export const STARTER_MODIFICATION_NOTE =
 	"A starter is a starting point, not the finished project. Make it yours – it needs enough of your own changes, to the design or the code, that the result is clearly unique to you. Handing in the guide's build with only small tweaks is not enough. Write your own project description too: the starter's default description blocks the hand-in."

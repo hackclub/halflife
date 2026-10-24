@@ -19,8 +19,7 @@ export const onboardingStepSchema = z.discriminatedUnion("step", [
 	z
 		.object({
 			/**
-			 * The beginner's fork on the week step. A starter id means "build this one" and skips straight to time tracking; null means "my own project" and goes on to naming it. Left out by anyone not offered a starter,
-			 * for whom the step is only an explainer.
+			 * The beginner's fork on the week step. A starter id means "build this one" and skips straight to time tracking; null means "my own project" and goes on to naming it. Left out by anyone not offered a starter, for whom the step is only an explainer.
 			 */
 			starterProjectId: z.string().trim().min(1).max(64).nullable().optional(),
 			step: z.literal("week"),

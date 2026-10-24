@@ -23,8 +23,7 @@ export const POST = withPermission(Permission.MANAGE_CREDIT, async (req: Request
 			"Coins can only be granted to a maker whose identity is verified. Ask them to verify at identity.hackclub.com, or make a negative adjustment to claw credit back.",
 		)
 
-	// Read here rather than inside the transaction: `headers()` is request-scoped, and the audit row
-	// has to carry the address and browser of the admin who made the adjustment.
+	// Read here rather than inside the transaction: `headers()` is request-scoped, and the audit row has to carry the address and browser of the admin who made the adjustment.
 	const { ip, userAgent } = await requestInfo()
 
 	const entry = await db
@@ -49,9 +48,7 @@ export const POST = withPermission(Permission.MANAGE_CREDIT, async (req: Request
 				userId,
 			})
 
-			// The trail joins the transaction, because a credit that outlives its audit row is the failure
-			// this route exists to prevent: `logAudit` swallows failures, so a row written after the commit
-			// can be missing entirely and nothing would notice. `logAuditTx` is the variant that refuses.
+			// The trail joins the transaction, because a credit that outlives its audit row is the failure this route exists to prevent: `logAudit` swallows failures, so a row written after the commit can be missing entirely and nothing would notice. `logAuditTx` is the variant that refuses.
 			await logAuditTx(tx, {
 				action: AuditAction.ADMIN_ADJUST_CREDIT,
 				actorEmail: gate.user.email,

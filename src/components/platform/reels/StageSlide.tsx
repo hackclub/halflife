@@ -320,9 +320,7 @@ export function StageSlide({
 				{/* ---------- who, and what they said ---------- */}
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-[4] bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3.5 pt-12 pb-4 pr-[4.25rem] md:pr-3.5">
 					<p className="flex min-w-0 items-baseline gap-1.5 leading-tight text-white">
-						{/* The name is the way to the poster's profile, so it takes clicks
-                back from the surface that pauses and likes; the timestamp and the
-                caption stay inert over the picture. */}
+						{/* The name is the way to the poster's profile, so it takes clicks back from the surface that pauses and likes; the timestamp and the caption stay inert over the picture. */}
 						<Link
 							className="pointer-events-auto min-w-0 truncate text-[0.9rem] font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)] hover:underline hover:decoration-dashed hover:underline-offset-4"
 							href={`/u/${reel.author.id}`}
@@ -391,9 +389,7 @@ export function StageSlide({
 			</article>
 
 			{/* ---------- the player ---------- */}
-			{/* Sized by the reel column, not the window: as the column narrows,
-          auto-scroll goes first and speed second; play, the clock and the
-          sound always stay. */}
+			{/* Sized by the reel column, not the window: as the column narrows, auto-scroll goes first and speed second; play, the clock and the sound always stay. */}
 			<div className="@container mt-2.5 hidden h-10 shrink-0 items-center gap-2.5 text-navy md:flex">
 				<RoundControl disabled={!reel.videoUrl} label={playing ? "Pause" : "Play"} onClick={toggle}>
 					{playing ? <IconPause className="text-[1rem]" /> : <IconPlay className="ml-0.5 text-[1.05rem]" />}

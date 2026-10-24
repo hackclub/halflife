@@ -9,10 +9,7 @@ import { S3Client } from "bun"
  *
  * Does not delete the legacy copy unless `--delete-legacy` is passed. That is best run after `uploads:backfill-urls` has repointed any journal URL that names the legacy layout, and after mirrored projects have synced their `JOURNAL.md`, which keeps the old links until its next sync. A dry run lists what would move and writes nothing.
  *
- * Run against the live bucket with production credentials:
- * `bun scripts/migrate-legacy-uploads.ts` (dry run)
- * `bun scripts/migrate-legacy-uploads.ts --commit`
- * `bun scripts/migrate-legacy-uploads.ts --commit --delete-legacy`
+ * Run against the live bucket with production credentials: `bun scripts/migrate-legacy-uploads.ts` (dry run) `bun scripts/migrate-legacy-uploads.ts --commit` `bun scripts/migrate-legacy-uploads.ts --commit --delete-legacy`
  *
  * Narrow a run with `--prefix=covers/`, cap it with `--limit=10`, and tune the copy parallelism with `--concurrency=16`.
  */

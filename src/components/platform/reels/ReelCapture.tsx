@@ -88,8 +88,7 @@ export function ReelCapture({
 				</p>
 			)}
 
-			{/* A reel is the biggest thing anyone uploads here, often over school
-          wifi – without a bar, a minute of sending looks like a hang. */}
+			{/* A reel is the biggest thing anyone uploads here, often over school wifi – without a bar, a minute of sending looks like a hang. */}
 			{busy && <UploadProgress className="max-w-[420px]" name="Your video" progress={progress} />}
 
 			<div className="flex flex-wrap gap-2">
@@ -143,11 +142,7 @@ export function ReelCapture({
 
 			{showQr && handoff.minted && handoff.status === "waiting" && (
 				<Panel className="grid justify-items-center gap-3 bg-paper p-5" radius={16} tone="line">
-					{/* Server-rendered SVG from our own origin – the token is never sent
-              to a third-party QR service.
-              The SVG carries its own width, so it is forced to the box rather
-              than trusted to fit: at its natural 200px it overflowed and sat on
-              top of the caption. */}
+					{/* Server-rendered SVG from our own origin – the token is never sent to a third-party QR service. The SVG carries its own width, so it is forced to the box rather than trusted to fit: at its natural 200px it overflowed and sat on top of the caption. */}
 					<div
 						aria-label="QR code linking to the upload page"
 						className="w-[180px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"

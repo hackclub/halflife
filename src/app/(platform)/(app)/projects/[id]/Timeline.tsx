@@ -33,8 +33,7 @@ export function Timeline({
 	let running: "DESIGN" | "BUILD" | null = null
 	const rows: React.ReactNode[] = []
 	for (const [i, item] of items.entries()) {
-		// Annotated because `running` is assigned from this on the next pass, so
-		// left to inference it is its own initializer.
+		// Annotated because `running` is assigned from this on the next pass, so left to inference it is its own initializer.
 		const phase: "DESIGN" | "BUILD" | null =
 			phaseOf(item) ?? running ?? items.slice(i).map(phaseOf).find(Boolean) ?? null
 		if (split && phase && phase !== running) {

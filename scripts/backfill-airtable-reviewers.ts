@@ -17,9 +17,7 @@ import db from "../src/lib/prisma8"
  *
  * The address is only written when the phase's current state agrees with the standing review's result. A phase back in review, reversed by an admin, or reopened from a rejection has no review that still accounts for its status, so its column is cleared rather than left naming someone whose decision no longer stands. A standing review that predates the address column offers nothing to write, so the row is left alone rather than cleared – `reviews:backfill-identities` is what fills that review first.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-airtable-reviewers.ts [--commit]`.
- * Run it where `DATABASE_URL` points at the real database, not from a dev machine against a local one.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-reviewers.ts [--commit]`. Run it where `DATABASE_URL` points at the real database, not from a dev machine against a local one.
  */
 
 const commit = process.argv.includes("--commit")

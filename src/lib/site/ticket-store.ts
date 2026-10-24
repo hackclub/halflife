@@ -110,9 +110,10 @@ export async function getHelpTicketStats(since: Date): Promise<HelpTicketStats> 
 	}
 }
 
-/** A history message that opened a ticket, under the same guards
- * `handleHelpMessage` applies to a live event. A parent message carries `thread_ts` equal to its own `ts` once it has replies, so it only counts as
- * a reply when the two differ. A message sharing a file (e.g. a photo) carries subtype `file_share`, so that subtype still opens a ticket. */
+/** A history message that opened a ticket, under the same guards `handleHelpMessage` applies to a live event. A parent message carries `thread_ts` equal to its own `ts` once it has replies, so it only counts as
+ *
+ * * a reply when the two differ. A message sharing a file (e.g. a photo) carries subtype `file_share`, so that subtype still opens a ticket.
+ */
 function isTicketOpeningMessage(
 	message: SlackHistoryMessage,
 ): message is SlackHistoryMessage & { user: string; ts: string } {

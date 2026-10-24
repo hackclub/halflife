@@ -153,9 +153,7 @@ export function AppShell({
 				Skip to content
 			</a>
 
-			{/* The promo joins the shell's inert/aria-hidden state, so the intro's
-          fixed stage cannot be tabbed out of. The skip link stays outside
-          both. */}
+			{/* The promo joins the shell's inert/aria-hidden state, so the intro's fixed stage cannot be tabbed out of. The skip link stays outside both. */}
 			{!onDoomscroller && (
 				<div aria-hidden={cinematic || undefined} inert={cinematic || undefined}>
 					<StickerSheetBanner cta="Submit a project" href="/projects" platform />
@@ -179,10 +177,7 @@ export function AppShell({
 				{/* ---------- centre + feed ---------- */}
 				<div className="flex min-w-0 flex-1 flex-col">
 					<header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-1.5 border-b border-dashed border-line/70 bg-cream/85 px-2 backdrop-blur-md sm:gap-3 sm:px-6 lg:border-b-0 lg:bg-transparent lg:backdrop-blur-none">
-						{/* Only from sm: on a phone the wordmark is a smudge at any size that
-                fits, and the row has a countdown, two shortcuts and two counters
-                to hold. The bottom tab bar's Home is the brand anchor down there,
-                and the left rail carries the full-size mark from lg. */}
+						{/* Only from sm: on a phone the wordmark is a smudge at any size that fits, and the row has a countdown, two shortcuts and two counters to hold. The bottom tab bar's Home is the brand anchor down there, and the left rail carries the full-size mark from lg. */}
 						<Link
 							aria-label="Half Life home"
 							className="hidden w-[64px] shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px sm:block lg:hidden"
@@ -192,9 +187,7 @@ export function AppShell({
 						</Link>
 						<div className="min-w-0 flex-1" />
 
-						{/* Puts the rail back, under the product's own name for it. A
-                second control labelled "Reels" would compete with the nav
-                item while doing something different. */}
+						{/* Puts the rail back, under the product's own name for it. A second control labelled "Reels" would compete with the nav item while doing something different. */}
 						{railOpen && !rail && !onDoomscroller && (
 							<button
 								className="label hidden items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy xl:inline-flex"
@@ -205,10 +198,7 @@ export function AppShell({
 							</button>
 						)}
 
-						{/* Folds the whole status rail, goal and feed together. Named in
-                full while it is folded, because then it is the only sign the
-                goal exists on this page; an arrow once it is open, because the
-                rail itself is showing what it hides. */}
+						{/* Folds the whole status rail, goal and feed together. Named in full while it is folded, because then it is the only sign the goal exists on this page; an arrow once it is open, because the rail itself is showing what it hides. */}
 						{railOpen ? (
 							<button
 								aria-controls="status-rail"
@@ -236,12 +226,7 @@ export function AppShell({
 							</button>
 						)}
 
-						{/* Below lg there is no sidebar, so this is the way to the page.
-                The rail's goal tracker is out of reach there too, so this opens
-                that picker here beside it – which asks what you're here for
-                first, so it is named after the goal rather than the printer. Both
-                fold to their icons on a phone: the logo, two full-width pills and
-                the counters cannot share a 360px row. */}
+						{/* Below lg there is no sidebar, so this is the way to the page. The rail's goal tracker is out of reach there too, so this opens that picker here beside it – which asks what you're here for first, so it is named after the goal rather than the printer. Both fold to their icons on a phone: the logo, two full-width pills and the counters cannot share a 360px row. */}
 						{!onDoomscroller && (
 							<>
 								<button
@@ -266,11 +251,7 @@ export function AppShell({
 							</>
 						)}
 
-						{/* The countdown to whatever is on the calendar next. Sits beside
-                the counters rather than in the status rail, because it is the one
-                header control that answers "what do I do next" rather than "what
-                have I done" – and it is worth a glance on every page, not only on
-                the trail. */}
+						{/* The countdown to whatever is on the calendar next. Sits beside the counters rather than in the status rail, because it is the one header control that answers "what do I do next" rather than "what have I done" – and it is worth a glance on every page, not only on the trail. */}
 						<EventScheduleButton events={events} timeZone={programTimezone} />
 
 						<StatCluster />
@@ -281,11 +262,7 @@ export function AppShell({
 							{children}
 						</main>
 
-						{/* The status rail. Open, its width is fixed so the trail down the
-                middle never reflows underneath the reader while the feed inside
-                opens and closes. Folded, it slides to nothing and the page takes
-                the room; the content keeps its full width while it goes, so it
-                is clipped away rather than squashed. */}
+						{/* The status rail. Open, its width is fixed so the trail down the middle never reflows underneath the reader while the feed inside opens and closes. Folded, it slides to nothing and the page takes the room; the content keeps its full width while it goes, so it is clipped away rather than squashed. */}
 						<aside
 							className={cx(
 								"sticky top-16 hidden h-[calc(100dvh-4rem)] shrink-0 justify-end overflow-hidden xl:flex",
@@ -298,9 +275,7 @@ export function AppShell({
 							<div className="flex h-full w-full min-w-0 flex-col py-4 pr-5 pl-1 2xl:pr-7">
 								<GoalTracker className="shrink-0" />
 
-								{/* Stays mounted through the close so the feed slides shut
-                    rather than vanishing – closing is often something the page
-                    did, not something the reader asked for. */}
+								{/* Stays mounted through the close so the feed slides shut rather than vanishing – closing is often something the page did, not something the reader asked for. */}
 								<div
 									className={cx(
 										"flex min-h-0 overflow-hidden",
@@ -310,9 +285,7 @@ export function AppShell({
 									data-tour={rail ? "doomscroller" : undefined}
 									inert={!rail}
 								>
-									{/* Not even mounted under the full-page player: hidden, its
-                      cards would still fetch every reel's opening seconds a
-                      second time for nobody to see. */}
+									{/* Not even mounted under the full-page player: hidden, its cards would still fetch every reel's opening seconds a second time for nobody to see. */}
 									{!onDoomscroller && (
 										<DoomscrollerFeed className="min-h-0 w-full" onClose={() => setDoomscroller(false)} />
 									)}

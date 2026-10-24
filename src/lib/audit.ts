@@ -22,8 +22,7 @@ export interface AuditInput {
 /**
  * The caller's address and browser, as the audit trail records them.
  *
- * Exported because `logAuditTx` cannot read them itself: it joins a transaction, and `headers()` is
- * request-scoped, so the caller has to resolve them here and pass them in.
+ * Exported because `logAuditTx` cannot read them itself: it joins a transaction, and `headers()` is request-scoped, so the caller has to resolve them here and pass them in.
  */
 export async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {
 	try {

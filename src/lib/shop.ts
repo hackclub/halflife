@@ -183,9 +183,7 @@ export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
 /**
  * The region whose prices a participant sees and pays, and the country their timezone places them in.
  *
- * One read of the user row for both: the shop needs the region for pricing and the country for the printer notice,
- * and asking twice for the same row is a query the page does not need to spend. A region deactivated after being
- * picked reads as base, so flipping one off never strands anyone on prices that no longer exist.
+ * One read of the user row for both: the shop needs the region for pricing and the country for the printer notice, and asking twice for the same row is a query the page does not need to spend. A region deactivated after being picked reads as base, so flipping one off never strands anyone on prices that no longer exist.
  */
 async function shopContextFor(userId: string): Promise<{ regionId: string | null; country: string }> {
 	const user = await db.orm.public.User.whereUnique({ id: userId })
@@ -328,8 +326,7 @@ export async function purchase(
 	const item = await db.orm.public.ShopItem.whereUnique({ id: shopItemId }).first()
 	if (!item?.active) throw new HttpError("NOT_FOUND", "Item not found")
 
-	// The note is read as plain text, so its markup is stripped before anything is stored – outside the
-	// transaction, because it is work that has nothing to do with the rows.
+	// The note is read as plain text, so its markup is stripped before anything is stored – outside the transaction, because it is work that has nothing to do with the rows.
 	const body = note ? sanitize(note) : null
 
 	if (item.requiresPrinterQualified) {
@@ -389,9 +386,7 @@ export async function purchase(
 				.select(...shopOrderPublicFields)
 				.first()
 			if (existing) {
-				// A key whose order was refused afterwards is not a success to hand back. The order was
-				// rejected and refunded, this request creates nothing, and returning it as a fresh purchase
-				// would tell the caller it owns a thing it never received.
+				// A key whose order was refused afterwards is not a success to hand back. The order was rejected and refunded, this request creates nothing, and returning it as a fresh purchase would tell the caller it owns a thing it never received.
 				if (existing.status === ShopOrderStatus.REJECTED || existing.status === ShopOrderStatus.CANCELLED)
 					throw new HttpError("CONFLICT", "That order has already been rejected or cancelled")
 				return toShopOrderPublic(existing)
@@ -425,9 +420,7 @@ export async function purchase(
 			itemNameSnapshot: fresh.name,
 			quantity,
 			shopItemId,
-			// Whether this order takes stock off the shelf. The catalogue can change after the order is
-			// placed – an item that was unlimited can be given a stock figure – so the reject path cannot
-			// work it out from the item's stock later, and has to be told.
+			// Whether this order takes stock off the shelf. The catalogue can change after the order is placed – an item that was unlimited can be given a stock figure – so the reject path cannot work it out from the item's stock later, and has to be told.
 			stockDebited: fresh.stock !== null,
 			totalCredits,
 			unitCostUsd: fresh.costUsd,
@@ -437,17 +430,10 @@ export async function purchase(
 		// Only the buyer's fields come back; `unitCostUsd` is stored for fulfillment but must not leave the server.
 		const order = toShopOrderPublic(created)
 
-		// The buyer's note, kept against the order with the buyer as its author. Written here, inside the
-		// transaction, so it lands with the order it belongs to: a note that is accepted but not kept is
-		// worse than no note at all, because the staff reading the order would have no way to know one was sent.
+		// The buyer's note, kept against the order with the buyer as its author. Written here, inside the transaction, so it lands with the order it belongs to: a note that is accepted but not kept is worse than no note at all, because the staff reading the order would have no way to know one was sent.
 		if (body) await tx.orm.public.ShopOrderNote.create({ authorId: userId, body, orderId: order.id })
 
-		// Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole
-		// balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy
-		// banked pot for whatever is left. Writing the whole debit against SPENDABLE would drive that pot
-		// negative whenever the coins happen to sit in BANKED, and a negative pot is a state nothing else in
-		// the app is willing to create. The refund path reads these rows back, so each pot is given back
-		// exactly what it paid.
+		// Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy banked pot for whatever is left. Writing the whole debit against SPENDABLE would drive that pot negative whenever the coins happen to sit in BANKED, and a negative pot is a state nothing else in the app is willing to create. The refund path reads these rows back, so each pot is given back exactly what it paid.
 		let remaining = totalCredits
 		for (const bucket of [CoinBucket.SPENDABLE, CoinBucket.BANKED]) {
 			if (remaining <= 0) break
@@ -465,8 +451,7 @@ export async function purchase(
 			})
 			remaining -= amount
 		}
-		// Only reachable when a pot is already negative, which the combined check above cannot see. The
-		// purchase is refused rather than deepening the hole.
+		// Only reachable when a pot is already negative, which the combined check above cannot see. The purchase is refused rather than deepening the hole.
 		if (remaining > 0) throw new HttpError("INSUFFICIENT_CREDIT", `You need ${remaining} more to buy this`)
 
 		if (fresh.stock !== null) {
@@ -523,10 +508,7 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 			})
 		}
 
-		// The stock goes back only if it was taken. The catalogue's stock figure can change after the
-		// order was placed – an item that was unlimited can be given a figure – so the order carries the
-		// answer rather than the item's stock now. Orders placed before that column existed do not carry
-		// it, and are treated as having taken stock, which is what this path always did.
+		// The stock goes back only if it was taken. The catalogue's stock figure can change after the order was placed – an item that was unlimited can be given a figure – so the order carries the answer rather than the item's stock now. Orders placed before that column existed do not carry it, and are treated as having taken stock, which is what this path always did.
 		const stockDebited = order.stockDebited ?? true
 		if (stockDebited && order.shopItemId) {
 			const restockPlan = tx.raw
