@@ -11,9 +11,8 @@ describe("canMovePrinterAward", () => {
 	})
 
 	test("agrees with the transition table", () => {
-		for (const [from, next] of Object.entries(PRINTER_AWARD_NEXT)) {
+		for (const [from, next] of Object.entries(PRINTER_AWARD_NEXT))
 			for (const to of next) expect(canMovePrinterAward(from as "QUALIFIED", to)).toBe(true)
-		}
 		expect(PRINTER_AWARD_LABELS.QUALIFIED).toBe("qualified")
 	})
 })

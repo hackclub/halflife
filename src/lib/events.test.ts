@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+	type CalendarEvent,
 	dayKey,
 	dayLabel,
 	daySegment,
@@ -148,15 +149,30 @@ describe("dayLabel / dayShort / eventRangeLabel", () => {
 })
 
 describe("eventsOnDay / nextEvent", () => {
-	const make = (id: string, start: string, end: string) => ({ endsAt: new Date(end), id, startsAt: new Date(start) })
+	const make = (id: string, start: string, end: string): CalendarEvent => ({
+		colour: "CORAL",
+		description: null,
+		endsAt: new Date(end),
+		id,
+		published: true,
+		seriesId: null,
+		startsAt: new Date(start),
+		title: id,
+	})
 
 	test("belongs to the day it started", () => {
-		const events = [make("b", "2026-03-06T10:00:00Z", "2026-03-06T11:00:00Z"), make("a", "2026-03-05T10:00:00Z", "2026-03-05T11:00:00Z")]
+		const events = [
+			make("b", "2026-03-06T10:00:00Z", "2026-03-06T11:00:00Z"),
+			make("a", "2026-03-05T10:00:00Z", "2026-03-05T11:00:00Z"),
+		]
 		expect(eventsOnDay(events, "2026-03-05", "UTC").map(e => e.id)).toEqual(["a"])
 	})
 
 	test("finds the soonest unfinished event", () => {
-		const events = [make("b", "2026-03-06T10:00:00Z", "2026-03-06T11:00:00Z"), make("a", "2026-03-05T10:00:00Z", "2026-03-05T11:00:00Z")]
+		const events = [
+			make("b", "2026-03-06T10:00:00Z", "2026-03-06T11:00:00Z"),
+			make("a", "2026-03-05T10:00:00Z", "2026-03-05T11:00:00Z"),
+		]
 		expect(nextEvent(events, new Date("2026-03-05T09:00:00Z"))?.id).toBe("a")
 		expect(nextEvent(events, new Date("2027-01-01T00:00:00Z"))).toBeNull()
 	})

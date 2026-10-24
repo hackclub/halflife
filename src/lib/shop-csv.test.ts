@@ -25,12 +25,16 @@ describe("parseShopCsv", () => {
 	test("rejects stray commas, bad categories and duplicate slugs", () => {
 		const header = "slug,name,description,price,category,cost,image,gated"
 		const { problems } = parseShopCsv(
-			[header, "k,Kit,Desc,40,consumable,1.5,,yes,EXTRA", "k2,Kit2,Desc,40,bogus,,,no", "k,Kit3,Desc,5,,,,no"].join("\n"),
+			[header, "k,Kit,Desc,40,consumable,1.5,,yes,EXTRA", "k2,Kit2,Desc,40,bogus,,,no", "k,Kit3,Desc,5,,,,no"].join(
+				"\n",
+			),
 		)
 		expect(problems.map(p => p.message)).toContain(
 			"Has 9 cells but the header has 8. Quote any cell that holds a comma.",
 		)
-		expect(problems.map(p => p.message)).toContain('Category "bogus" is not one of: upgrade, consumable, misc, printer.')
+		expect(problems.map(p => p.message)).toContain(
+			'Category "bogus" is not one of: upgrade, consumable, misc, printer.',
+		)
 	})
 
 	test("duplicate slugs are reported against the first use", () => {
@@ -46,6 +50,32 @@ describe("parseShopCsv", () => {
 		expect(items).toEqual([])
 		expect(problems).toEqual([
 			{ line: 0, message: `At most ${SHOP_CSV_MAX_ROWS} items per import; this file has ${SHOP_CSV_MAX_ROWS + 1}.` },
+		])
+	})
+
+	test("reads prices the way spreadsheets write them", () => {
+		const header = "slug,name,description,price"
+		const { items } = parseShopCsv([header, 'k,Kit,Desc,"$1,250.00"'].join("\n"))
+		expect(items[0]?.priceCredits).toBe(1250)
+	})
+
+	test("refuses blank and non-numeric prices", () => {
+		const header = "slug,name,description,price"
+		expect(parseShopCsv([header, "k,Kit,Desc,"].join("\n")).problems).toEqual([
+			{ line: 2, message: "price: Price is required." },
+		])
+		expect(parseShopCsv([header, "k,Kit,Desc,abc"].join("\n")).problems).toEqual([
+			{ line: 2, message: "price: Invalid input: expected number, received NaN" },
+		])
+	})
+
+	test("names bad gates and unmapped schema fields", () => {
+		const header = "slug,name,description,price,gated"
+		expect(parseShopCsv([header, "k,Kit,Desc,40,maybe"].join("\n")).problems).toEqual([
+			{ line: 2, message: 'Gated "maybe" should be yes or no.' },
+		])
+		expect(parseShopCsv([header, "k,Kit,,40,no"].join("\n")).problems).toEqual([
+			{ line: 2, message: "description: Too small: expected string to have >=1 characters" },
 		])
 	})
 })

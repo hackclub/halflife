@@ -10,8 +10,8 @@ describe("parseCsvRecords", () => {
 	})
 
 	test("handles quoted commas, quotes and line breaks", () => {
-		expect(parseCsvRecords("\"a,b\",\"c\"\"d\"\n\"e\nf\",g")).toEqual([
-			{ fields: ["a,b", "c\"d"], line: 1 },
+		expect(parseCsvRecords('"a,b","c""d"\n"e\nf",g')).toEqual([
+			{ fields: ["a,b", 'c"d'], line: 1 },
 			{ fields: ["e\nf", "g"], line: 2 },
 		])
 	})
@@ -47,8 +47,8 @@ describe("csvCell / csvRow", () => {
 	})
 
 	test("quotes cells with commas, quotes or line breaks", () => {
-		expect(csvCell("a,b")).toBe("\"a,b\"")
-		expect(csvCell("say \"hi\"")).toBe("\"say \"\"hi\"\"\"")
-		expect(csvRow(["a", "b,c", 3])).toBe("a,\"b,c\",3")
+		expect(csvCell("a,b")).toBe('"a,b"')
+		expect(csvCell('say "hi"')).toBe('"say ""hi"""')
+		expect(csvRow(["a", "b,c", 3])).toBe('a,"b,c",3')
 	})
 })

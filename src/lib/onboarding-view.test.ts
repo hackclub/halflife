@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Theme } from "@/lib/enums"
-import type { OnboardingStateData } from "@/lib/onboarding-view"
-import { toOnboardingView } from "@/lib/onboarding-view"
+import { type OnboardingStateData, toOnboardingView } from "@/lib/onboarding-view"
 
 function state(overrides: Partial<OnboardingStateData> = {}): OnboardingStateData {
 	return {
@@ -16,7 +15,16 @@ function state(overrides: Partial<OnboardingStateData> = {}): OnboardingStateDat
 			title: "My board",
 		},
 		reached: 0,
-		starterProjects: [],
+		starterProjects: [
+			{
+				description: "A starter",
+				guideUrl: "https://example.com/guide",
+				id: "s1",
+				parts: ["a", "b"],
+				repoUrl: "https://example.com/repo",
+				title: "Starter",
+			},
+		],
 		stepCount: 5,
 		suggestedTier: 1,
 		theme: Theme.PCB,
@@ -30,6 +38,8 @@ describe("toOnboardingView", () => {
 		const view = toOnboardingView(state())
 		expect(view.projectId).toBe("proj_1")
 		expect(view.project.description).toBe("")
+		expect(view.starterProjects).toHaveLength(1)
+		expect(view.starterProjects[0]).toMatchObject({ id: "s1", parts: ["a", "b"] })
 		expect(view.suggestedTier).toBe(1)
 		expect(view.stepCount).toBe(5)
 		expect(view.steps.length).toBeGreaterThan(0)

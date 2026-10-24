@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import {
-	ONSHAPE_REPO_ERROR,
 	containsOnshapeLink,
 	displayRepo,
 	isOnshapeHost,
 	isOnshapeLink,
 	normalizeRepo,
+	ONSHAPE_REPO_ERROR,
 	validateRepoField,
 } from "@/lib/repo"
 

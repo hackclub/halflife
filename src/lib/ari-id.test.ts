@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { Phase } from "@/lib/enums"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
+import { Phase } from "@/lib/enums"
 
 describe("ariExternalId / parseAriExternalId", () => {
 	test("round-trips both phases", () => {

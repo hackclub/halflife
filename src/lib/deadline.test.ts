@@ -3,15 +3,11 @@ import { formatDeadline, formatShortDate, formatUtcDateTime, toLocalInput } from
 
 describe("formatDeadline", () => {
 	test("reads the deadline in the program timezone", () => {
-		expect(formatDeadline(new Date("2026-10-05T23:59:00Z"), "America/New_York")).toBe(
-			"Monday, October 5 at 7:59 PM",
-		)
+		expect(formatDeadline(new Date("2026-10-05T23:59:00Z"), "America/New_York")).toBe("Monday, October 5 at 7:59 PM")
 	})
 
 	test("short style drops the weekday and full month", () => {
-		expect(formatDeadline(new Date("2026-10-05T23:59:00Z"), "America/New_York", "short")).toBe(
-			"Mon, Oct 5 at 7:59 PM",
-		)
+		expect(formatDeadline(new Date("2026-10-05T23:59:00Z"), "America/New_York", "short")).toBe("Mon, Oct 5 at 7:59 PM")
 	})
 
 	test("accepts epoch millis", () => {

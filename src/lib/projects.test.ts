@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { Project, Week } from "@/lib/types"
 import { fmtDate, fmtDay, projectEvents, projectStats, projectWeeks } from "@/lib/projects"
+import type { Project, Week } from "@/lib/types"
 
 function week(id: number, checkpoints: Week["checkpoints"] = []): Week {
 	return { checkpoints, id } as Week

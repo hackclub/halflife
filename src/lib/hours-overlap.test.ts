@@ -49,9 +49,7 @@ describe("overlapSeconds", () => {
 	})
 
 	test("is zero when the sets never touch", () => {
-		expect(
-			overlapSeconds([{ end: 5, start: 0 }], [{ end: 10, start: 5 }]),
-		).toBe(0)
+		expect(overlapSeconds([{ end: 5, start: 0 }], [{ end: 10, start: 5 }])).toBe(0)
 		expect(overlapSeconds([], [{ end: 10, start: 0 }])).toBe(0)
 	})
 })
@@ -94,7 +92,16 @@ describe("parseCachedSpans / cachedSpansCover", () => {
 		expect(parseCachedSpans(null)).toBeNull()
 		expect(parseCachedSpans([])).toBeNull()
 		expect(parseCachedSpans({ from: 0, spans: [], to: "x" })).toBeNull()
-		expect(parseCachedSpans({ from: 0, spans: [{ end: 1, start: 5 }, { end: 10, start: 0 }], to: 100 })).toEqual({
+		expect(
+			parseCachedSpans({
+				from: 0,
+				spans: [
+					{ end: 1, start: 5 },
+					{ end: 10, start: 0 },
+				],
+				to: 100,
+			}),
+		).toEqual({
 			from: 0,
 			spans: [{ end: 10, start: 0 }],
 			to: 100,
@@ -111,11 +118,14 @@ describe("parseCachedSpans / cachedSpansCover", () => {
 describe("windowsForLink / spanWindowFor", () => {
 	test("keeps own-phase windows and matching elsewhere recordings", () => {
 		const own = [{ end: 10, start: 0 }]
+		const matching = { end: 30, start: 20 }
 		const elsewhere = [
-			{ hackatimeProject: "a", window: { end: 30, start: 20 } },
+			{ hackatimeProject: "a", window: matching },
 			{ hackatimeProject: "b", window: { end: 50, start: 40 } },
 		]
-		expect(windowsForLink(own, elsewhere, "a")).toEqual([own[0], elsewhere[0]?.window])
+		const [first] = own
+		if (!first) throw new Error("fixture is empty")
+		expect(windowsForLink(own, elsewhere, "a")).toEqual([first, matching])
 	})
 
 	test("spans every window with an hour of slack either side", () => {
