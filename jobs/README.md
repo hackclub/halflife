@@ -32,7 +32,7 @@ Repeat per job with the cron from the table below. To change an existing job's s
 
 **`type: "app"`, never `type: "script"`.** A `script` step runs in Orchard's own sandbox image, which has no `curl`:
 
-```
+```text
 /orchard/scripts/step-1.sh: line 1: curl: command not found
 ```
 

@@ -16,7 +16,7 @@ New here? [docs/BACKEND.md](./docs/BACKEND.md) is the handoff — the shape, the
 
 ## What's where
 
-```
+```text
 src/app/(site)/               the landing page
 src/app/(platform)/(app)/     the trail, projects, shop, explore
 src/app/(platform)/(ops)/     admin, review, login — earlier design system

@@ -6,7 +6,7 @@ Half-Life deploys to **Orchard**, org **YSWS** (`ysws`). Not Vercel, not Coolify
 
 1. **Register the OAuth apps before the first deploy.** At `auth.hackclub.com`, redirect URI:
 
-   ```
+   ```text
    https://<host>/api/auth/callback/hca
    ```
 
@@ -26,7 +26,7 @@ Half-Life deploys to **Orchard**, org **YSWS** (`ysws`). Not Vercel, not Coolify
 
 3. **Create the project and database.**
 
-   ```
+   ```text
    create_project   name: half-life, organizationId: <ysws org uuid>
    create_database  projectId: <id>, name: half-life-db, storageSize: 10Gi,
                     cpuRequestMilli: 500, memoryRequestBytes: 1073741824
@@ -57,7 +57,7 @@ Half-Life deploys to **Orchard**, org **YSWS** (`ysws`). Not Vercel, not Coolify
 
 6. **Deploy.**
 
-   ```
+   ```text
    deploy_from_github  projectId: <id>, name: half-life-web,
                        githubRepo: hackclub/halflife, branch: main,
                        buildType: dockerfile, port: 3000,
@@ -192,7 +192,7 @@ Only that pass is available: Ari's second pass is an organizer confirming a held
 
 Rows written before the live mirror wrote `Pass 1 reviewer` are filled by:
 
-```
+```bash
 bun --conditions=react-server scripts/backfill-airtable-reviewers.ts
 bun --conditions=react-server scripts/backfill-airtable-reviewers.ts --commit
 ```
@@ -217,7 +217,7 @@ The retry job's summary reports `reconciledSecondPass` (currently held) and `rec
 
 Those two point at the ClusterIP instead, which resolves in-cluster and skips Cloudflare entirely:
 
-```
+```text
 http://half-life.ysws-half-life.svc.cluster.local:3000/api/integrations/<name>
 ```
 

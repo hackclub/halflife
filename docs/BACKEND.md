@@ -21,7 +21,7 @@ Next.js 16 App Router, Postgres via Prisma 7, Cloudflare R2 for media, better-au
 
 **There are no server actions.** Every write goes through `src/app/api/**`, which means every write has one auditable entry point with a Zod schema on it.
 
-```
+```text
 src/lib/config/     every tunable number – tiers, printers, themes, weeks
 src/lib/queries/    read paths (one per surface)
 src/lib/*.ts        domain: currency, hours, review, shop, feed, handoff, streak
