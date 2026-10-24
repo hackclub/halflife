@@ -1,4 +1,4 @@
-import type { EventColour } from "@/app/generated/prisma/client"
+import type { EventColour } from "@/lib/enums"
 import { calendarDay, DAY_MS } from "@/lib/time"
 
 export { calendarDay } from "@/lib/time"
@@ -43,7 +43,7 @@ export const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
  *   elapsed milliseconds puts the late evening of a Sunday in the next column.
  */
 
-export type { EventColour } from "@/app/generated/prisma/client"
+export type { EventColour } from "@/lib/enums"
 
 /**
  * The display name and swatch for every colour.

@@ -1,17 +1,19 @@
 import "server-only"
+import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { betterAuth } from "better-auth"
-import { prismaAdapter } from "better-auth/adapters/prisma"
 import { genericOAuth } from "better-auth/plugins"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
+import authDb from "@/lib/auth-db"
 import { Role } from "@/lib/enums"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import { FORGES } from "@/lib/forge"
 import { adoptHcaVerifiedEmail, fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { LAPSE_API_BASE } from "@/lib/lapse"
 import { isLoopbackHostname, publicHosts as publicHostList } from "@/lib/origin"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { redactForLog } from "@/lib/redact"
+import { formatDbTimestamp } from "@/lib/time"
 
 // Exactly the scopes enabled on Half Life's HCA app. HCA refuses the whole sign-in ("The requested scope is invalid") if any one is not, so this list has to match the app's settings, not HCA's docs. `basic_info` carries name and verification_status; `email` is asked for on its own so the standard `email_verified` claim comes with it, which the superadmin bootstrap below trusts. Asking for `verification_status` by name is refused.
 const hcaScopes = ["openid", "profile", "email", "basic_info", "slack_id"]
@@ -94,7 +96,7 @@ export const auth = betterAuth({
 		protocol: "https",
 	},
 
-	database: prismaAdapter(prisma, { provider: "postgresql" }),
+	database: kyselyAdapter(authDb, { type: "postgres" }),
 
 	databaseHooks: {
 		account: {
@@ -102,11 +104,8 @@ export const auth = betterAuth({
 				after: async account => {
 					// Denormalise the Hackatime id onto User so hour lookups are one query.
 					if (account.providerId === "hackatime")
-						await prisma.user
-							.update({
-								data: { hackatimeUserId: account.accountId },
-								where: { id: account.userId },
-							})
+						await db.orm.public.User.where({ id: account.userId })
+							.update({ hackatimeUserId: account.accountId })
 							.catch(err => console.error("[auth] hackatime id copy failed:", err))
 				},
 			},
@@ -126,7 +125,9 @@ export const auth = betterAuth({
 				after: async user => {
 					// No project rows here: each is created when its week's "create a project" checkpoint is opened (lib/provisioning).
 
-					await prisma.user.update({ data: { joinedProgramAt: new Date() }, where: { id: user.id } }).catch(() => {})
+					await db.orm.public.User.where({ id: user.id })
+						.update({ joinedProgramAt: formatDbTimestamp(new Date()) })
+						.catch(() => {})
 
 					// Buffered, never a synchronous Airtable call: a signup must not fail because a third party is rate-limiting us.
 					if (user.email)
@@ -142,13 +143,14 @@ export const auth = betterAuth({
 						.map(s => s.trim().toLowerCase())
 						.filter(Boolean)
 					if (user.emailVerified && user.email && superadmins.includes(user.email.toLowerCase()))
-						await prisma.userRole
-							.upsert({
-								create: { grantedBy: "SUPERADMIN_EMAILS", role: Role.ADMIN, userId: user.id },
-								update: {},
-								where: { userId_role: { role: Role.ADMIN, userId: user.id } },
-							})
-							.catch(err => console.error("[auth] superadmin grant failed:", err))
+						try {
+							await db.orm.public.UserRole.createAll(
+								[{ grantedBy: "SUPERADMIN_EMAILS", role: Role.ADMIN, userId: user.id }],
+								{ onConflict: "skip" },
+							)
+						} catch (err) {
+							console.error("[auth] superadmin grant failed:", err)
+						}
 				},
 			},
 		},
