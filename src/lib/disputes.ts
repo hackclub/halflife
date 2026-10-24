@@ -1,11 +1,13 @@
 import "server-only"
+import { and } from "@prisma/orm-postgres/orm-client"
 import { Phase, PhaseStatus, ReviewDisputeOutcome } from "@/app/generated/prisma/enums"
 import { mirrorReviewDecision, reviewStatusFor } from "@/lib/airtable/sync"
 import { sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { trackSideEffect } from "@/lib/side-effects"
+import { formatDbTimestamp } from "@/lib/time"
 
 /**
  * A maker's second look, resolved by a reviewer.
@@ -15,11 +17,14 @@ import { trackSideEffect } from "@/lib/side-effects"
 
 /** Close a dispute with the decision left standing. Changes no state beyond the dispute. */
 export async function closeDispute(disputeId: string, reviewerId: string, reviewerEmail: string | null): Promise<void> {
-	const closed = await prisma.reviewDispute.updateMany({
-		data: { outcome: ReviewDisputeOutcome.stood, resolvedAt: new Date(), resolvedById: reviewerId },
-		where: { id: disputeId, resolvedAt: null },
-	})
-	if (closed.count === 0) throw new HttpError("CONFLICT", "That dispute is already resolved")
+	const closed = await db.orm.public.ReviewDispute.where({ id: disputeId })
+		.where(dispute => dispute.resolvedAt.isNull())
+		.updateAndCount({
+			outcome: ReviewDisputeOutcome.stood,
+			resolvedAt: formatDbTimestamp(new Date()),
+			resolvedById: reviewerId,
+		})
+	if (closed === 0) throw new HttpError("CONFLICT", "That dispute is already resolved")
 
 	await logAudit({
 		action: AuditAction.ADMIN_RESOLVE_DISPUTE,
@@ -43,24 +48,20 @@ export async function sendDisputedPhaseBack(
 	reviewerId: string,
 	reviewerEmail: string | null,
 ): Promise<void> {
-	const dispute = await prisma.reviewDispute.findUnique({
-		select: {
-			id: true,
-			resolvedAt: true,
-			submission: { select: { id: true, phase: true, themeProjectId: true } },
-		},
-		where: { id: disputeId },
-	})
-	if (!dispute) throw new HttpError("NOT_FOUND", "Dispute not found")
+	const dispute = await db.orm.public.ReviewDispute.whereUnique({ id: disputeId })
+		.select("id", "resolvedAt")
+		.include("submission", submission => submission.select("id", "phase", "themeProjectId"))
+		.first()
+	if (!dispute?.submission) throw new HttpError("NOT_FOUND", "Dispute not found")
 	if (dispute.resolvedAt) throw new HttpError("CONFLICT", "That dispute is already resolved")
 
-	const { phase, themeProjectId } = dispute.submission
+	const submission = dispute.submission
+	const { phase, themeProjectId } = submission
 
-	await prisma.$transaction(async tx => {
-		const project = await tx.themeProject.findUnique({
-			select: { buildStatus: true, designStatus: true },
-			where: { id: themeProjectId },
-		})
+	await db.transaction(async tx => {
+		const project = await tx.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+			.select("buildStatus", "designStatus")
+			.first()
 		if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
 		const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
@@ -68,39 +69,37 @@ export async function sendDisputedPhaseBack(
 			throw new HttpError("CONFLICT", "This phase has moved on since the decision that was disputed")
 
 		// The disputed decision must still be the one standing on the phase: once the maker resubmits, this dispute is about history and has nothing to send back.
-		const latest = await tx.phaseSubmission.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { id: true },
-			where: { phase, themeProjectId },
-		})
-		if (!latest || latest.id !== dispute.submission.id)
+		const latest = await tx.orm.public.PhaseSubmission.where({ phase, themeProjectId })
+			.orderBy(submission => submission.createdAt.desc())
+			.select("id")
+			.first()
+		if (!latest || latest.id !== submission.id)
 			throw new HttpError("CONFLICT", "The maker has resubmitted since, so there is nothing to send back")
 
-		await tx.submissionReview.updateMany({
-			data: { invalidated: true, invalidatedAt: new Date() },
-			where: { invalidated: false, submission: { phase, themeProjectId } },
+		await tx.orm.public.SubmissionReview.where({ invalidated: false })
+			.where(review =>
+				review.submission.some(submission =>
+					and(submission.phase.eq(phase), submission.themeProjectId.eq(themeProjectId)),
+				),
+			)
+			.updateAll({ invalidated: true, invalidatedAt: formatDbTimestamp(new Date()) })
+		await tx.orm.public.PhaseSubmission.where({ id: submission.id }).update({
+			ariDecision: null,
+			ariShipError: null,
+			ariStatus: "review",
+			ariSubmissionId: null,
+			resolvedAt: null,
+			resolvedResult: null,
 		})
-		await tx.phaseSubmission.update({
-			data: {
-				ariDecision: null,
-				ariShipError: null,
-				ariStatus: "review",
-				ariSubmissionId: null,
-				resolvedAt: null,
-				resolvedResult: null,
-			},
-			where: { id: dispute.submission.id },
-		})
-		await tx.themeProject.update({
-			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
-			where: { id: themeProjectId },
-		})
+		await tx.orm.public.ThemeProject.where({ id: themeProjectId }).update(
+			phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
+		)
 
-		const closed = await tx.reviewDispute.updateMany({
-			data: { outcome: ReviewDisputeOutcome.upheld, resolvedAt: new Date(), resolvedById: reviewerId },
-			where: { id: disputeId, resolvedAt: null },
-		})
-		if (closed.count === 0) throw new HttpError("CONFLICT", "That dispute is already resolved")
+		const nowText = formatDbTimestamp(new Date())
+		const closed = await tx.orm.public.ReviewDispute.where({ id: disputeId })
+			.where(d => d.resolvedAt.isNull())
+			.updateAndCount({ outcome: ReviewDisputeOutcome.upheld, resolvedAt: nowText, resolvedById: reviewerId })
+		if (closed === 0) throw new HttpError("CONFLICT", "That dispute is already resolved")
 	})
 
 	await logAudit({

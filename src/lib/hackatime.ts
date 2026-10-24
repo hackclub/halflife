@@ -1,7 +1,8 @@
 import "server-only"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import type { HackatimeSpan } from "@/lib/hours-overlap"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { formatDbTimestamp } from "@/lib/time"
 
 const BASE = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
 const TIMEOUT_MS = 10_000
@@ -147,11 +148,10 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 
 /** Refresh one link's cached total. Used by the sync job and on demand. */
 export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> {
-	const link = await prisma.hackatimeLink.findUnique({
-		include: { themeProject: { select: { user: { select: { hackatimeUserId: true } } } } },
-		where: { id: linkId },
-	})
-	if (!link) return { error: "link not found", seconds: 0, stale: true }
+	const link = await db.orm.public.HackatimeLink.whereUnique({ id: linkId })
+		.include("themeProject", project => project.include("user", user => user.select("hackatimeUserId")))
+		.first()
+	if (!link?.themeProject?.user) return { error: "link not found", seconds: 0, stale: true }
 
 	const { hackatimeUserId } = link.themeProject.user
 	if (!hackatimeUserId)
@@ -159,17 +159,17 @@ export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> 
 
 	const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
 	if (result.stale) {
-		await prisma.hackatimeLink.update({
-			data: { lastFetchError: result.error ?? "unknown error" },
-			where: { id: linkId },
+		await db.orm.public.HackatimeLink.where({ id: linkId }).update({
+			lastFetchError: result.error ?? "unknown error",
 		})
 		// Fall back to the last good value rather than reporting zero.
 		return { error: result.error, seconds: link.cachedSeconds ?? 0, stale: true }
 	}
 
-	await prisma.hackatimeLink.update({
-		data: { cachedAt: new Date(), cachedSeconds: result.seconds, lastFetchError: null },
-		where: { id: linkId },
+	await db.orm.public.HackatimeLink.where({ id: linkId }).update({
+		cachedAt: formatDbTimestamp(new Date()),
+		cachedSeconds: result.seconds,
+		lastFetchError: null,
 	})
 	return result
 }
