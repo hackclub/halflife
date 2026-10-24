@@ -5,7 +5,7 @@ import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { phaseBodySchema } from "@/lib/schemas/common"
 import { trackSideEffect } from "@/lib/side-effects"
 
@@ -31,21 +31,23 @@ export const POST = withPermission(
 		if (!isAriConfigured()) return fail("NOT_CONFIGURED", "Ari is not configured on this deployment")
 
 		// A ship is a hand-in, so only a phase awaiting review has one to send: a draft was never submitted, and a decided phase is already Ari's record.
-		const project = await prisma.themeProject.findFirst({
-			select: { buildStatus: true, designStatus: true },
-			where: { deletedAt: null, id },
-		})
+		const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id })
+			.select("buildStatus", "designStatus")
+			.first()
 		if (!project) return fail("NOT_FOUND", "Project not found")
 		const status = statusFor(project, parsed.data.phase)
 		if (status !== PhaseStatus.in_review)
 			return fail("CONFLICT", "That phase is not awaiting review, so there is no ship to send")
 
 		// A hand-in that already reached Ari has nothing to retry; resending is harmless there (Ari dedupes by external id) but the button should say so rather than perform a no-op round trip.
-		const open = await prisma.phaseSubmission.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { ariSubmissionId: true },
-			where: { phase: parsed.data.phase, resolvedAt: null, themeProjectId: id },
+		const open = await db.orm.public.PhaseSubmission.where({
+			phase: parsed.data.phase,
+			resolvedAt: null,
+			themeProjectId: id,
 		})
+			.orderBy(submission => submission.createdAt.desc())
+			.select("ariSubmissionId")
+			.first()
 		if (open?.ariSubmissionId)
 			return fail("CONFLICT", "That submission already reached Ari – there is nothing to retry")
 

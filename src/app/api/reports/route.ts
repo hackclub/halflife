@@ -1,8 +1,7 @@
-import { Prisma } from "@/app/generated/prisma/client"
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import { REPORT_TARGET_LABELS, type ReportTarget } from "@/lib/reports"
 import { createReportSchema } from "@/lib/schemas/report"
 
@@ -26,38 +25,33 @@ export const POST = withSession(async (req: Request, { gate }) => {
 	// The row has to exist, be live, and be someone else's. Each target reads its own table; the author id is what the self-report and duplicate guards below compare against.
 	let authorId: string | null = null
 	if (target === "REEL") {
-		const post = await prisma.post.findUnique({
-			select: { deletedAt: true, hiddenAt: true, userId: true },
-			where: { id: targetId },
-		})
+		const post = await db.orm.public.Post.whereUnique({ id: targetId })
+			.select("deletedAt", "hiddenAt", "userId")
+			.first()
 		if (!post || post.deletedAt) return fail("NOT_FOUND", "That reel no longer exists")
 		if (post.hiddenAt) return fail("CONFLICT", "That reel was already taken down")
 		authorId = post.userId
 	} else if (target === "REEL_COMMENT") {
-		const comment = await prisma.postComment.findUnique({
-			select: { deletedAt: true, hiddenAt: true, userId: true },
-			where: { id: targetId },
-		})
+		const comment = await db.orm.public.PostComment.whereUnique({ id: targetId })
+			.select("deletedAt", "hiddenAt", "userId")
+			.first()
 		if (!comment || comment.deletedAt) return fail("NOT_FOUND", "That comment no longer exists")
 		if (comment.hiddenAt) return fail("CONFLICT", "That comment was already taken down")
 		authorId = comment.userId
 	} else if (target === "PROJECT") {
-		const project = await prisma.themeProject.findFirst({
-			select: { userId: true },
-			where: { deletedAt: null, id: targetId },
-		})
+		const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: targetId }).select("userId").first()
 		if (!project) return fail("NOT_FOUND", "That project no longer exists")
 		authorId = project.userId
 	} else if (target === "USER") {
-		const user = await prisma.user.findUnique({ select: { id: true }, where: { id: targetId } })
+		const user = await db.orm.public.User.whereUnique({ id: targetId }).select("id").first()
 		if (!user) return fail("NOT_FOUND", "That user no longer exists")
 		authorId = user.id
 	} else {
-		const session = await prisma.workSession.findFirst({
-			select: { themeProject: { select: { userId: true } } },
-			where: { deletedAt: null, id: targetId, themeProject: { deletedAt: null } },
-		})
-		if (!session) return fail("NOT_FOUND", "That entry no longer exists")
+		const session = await db.orm.public.WorkSession.where({ deletedAt: null, id: targetId })
+			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			.include("themeProject", project => project.select("userId"))
+			.first()
+		if (!session?.themeProject) return fail("NOT_FOUND", "That entry no longer exists")
 		authorId = session.themeProject.userId
 	}
 
@@ -74,27 +68,23 @@ export const POST = withSession(async (req: Request, { gate }) => {
 					: target === "USER"
 						? { targetUserId: targetId }
 						: { workSessionId: targetId }
-	const dupe = await prisma.contentReport.findFirst({
-		select: { id: true },
-		where: { reporterId: gate.user.id, status: "OPEN", target, ...field },
-	})
+	const dupe = await db.orm.public.ContentReport.where({ reporterId: gate.user.id, status: "OPEN", target, ...field })
+		.select("id")
+		.first()
 	if (dupe) return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
 
 	// The friendly check above races a second press in flight: the partial unique indexes are the real guard, and their violation reads as the same conflict rather than a 500.
 	let report: { id: string }
 	try {
-		report = await prisma.contentReport.create({
-			data: {
-				details: details?.trim() ? details.trim() : null,
-				reason,
-				reporterId: gate.user.id,
-				target,
-				...field,
-			},
-			select: { id: true },
+		report = await db.orm.public.ContentReport.create({
+			details: details?.trim() ? details.trim() : null,
+			reason,
+			reporterId: gate.user.id,
+			target,
+			...field,
 		})
 	} catch (err) {
-		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
+		if (isUniqueViolation(err))
 			return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
 		throw err
 	}

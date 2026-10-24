@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { isTimeZone } from "@/lib/program"
 import { timezonePreferenceSchema } from "@/lib/schemas/timezone"
 
@@ -19,7 +19,7 @@ export const PUT = withSession(async (req: Request, { gate }) => {
 	const { timezone } = parsed.data
 	if (!isTimeZone(timezone)) return fail("VALIDATION_FAILED", "That is not a timezone this server knows")
 
-	await prisma.user.update({ data: { timezone }, where: { id: gate.user.id } })
+	await db.orm.public.User.where({ id: gate.user.id }).update({ timezone })
 
 	return ok({ timezone })
 })

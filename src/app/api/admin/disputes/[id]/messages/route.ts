@@ -3,7 +3,7 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { notifyDisputeReply } from "@/lib/notifications"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { disputeMessageSchema } from "@/lib/schemas/admin"
 
@@ -24,22 +24,26 @@ export const POST = withPermission(
 		const parsed = await parseBody(req, disputeMessageSchema)
 		if (parsed.error) return parsed.error
 
-		const dispute = await prisma.reviewDispute.findUnique({
-			select: { resolvedAt: true, submission: { select: { phase: true, themeProjectId: true } } },
-			where: { id },
-		})
-		if (!dispute) return fail("NOT_FOUND", "Dispute not found")
+		const dispute = await db.orm.public.ReviewDispute.whereUnique({ id })
+			.select("resolvedAt")
+			.include("submission", submission => submission.select("phase", "themeProjectId"))
+			.first()
+		if (!dispute?.submission) return fail("NOT_FOUND", "Dispute not found")
 		if (dispute.resolvedAt) return fail("CONFLICT", "That dispute is already resolved")
+		const submission = dispute.submission
 
-		const message = await prisma.reviewDisputeMessage.create({
-			data: { authorId: gate.user.id, body: sanitize(parsed.data.body), disputeId: id, fromReviewer: true },
+		const message = await db.orm.public.ReviewDisputeMessage.create({
+			authorId: gate.user.id,
+			body: sanitize(parsed.data.body),
+			disputeId: id,
+			fromReviewer: true,
 		})
 
 		after(() =>
 			notifyDisputeReply({
 				body: message.body,
-				phase: dispute.submission.phase,
-				themeProjectId: dispute.submission.themeProjectId,
+				phase: submission.phase,
+				themeProjectId: submission.themeProjectId,
 			}),
 		)
 

@@ -2,9 +2,10 @@ import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getProgramSettings, startOfDay } from "@/lib/program"
 import { programEventCreateSchema } from "@/lib/schemas/admin"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -36,21 +37,25 @@ export const POST = withPermission(Permission.MANAGE_PROGRAM, async (req: Reques
 	// fifth insert failed is worse than one that was not written at all. The admin
 	// sees a refusal and tries again; the audit row below then always describes the
 	// same rows the calendar holds.
-	const events = await prisma.$transaction(
-		Array.from({ length: repeatWeeks }, (_, week) =>
-			prisma.programEvent.create({
-				data: {
-					...fields,
-					createdById: gate.user.id,
-					description: fields.description ?? null,
-					endsAt: fields.endsAt ? addWeeks(fields.endsAt, week, programTimezone) : null,
-					seriesId,
-					startsAt: addWeeks(fields.startsAt, week, programTimezone),
-				},
-				select: { id: true, startsAt: true },
-			}),
-		),
-	)
+	// Sequential creates inside one transaction: a ten-week series half-written because the fifth insert failed is worse than one that was not written at all.
+	const events = await db.transaction(async tx => {
+		const rows: { id: string; startsAt: Date }[] = []
+		for (let week = 0; week < repeatWeeks; week++) {
+			const created = await tx.orm.public.ProgramEvent.create({
+				...fields,
+				colour: fields.colour,
+				createdById: gate.user.id,
+				description: fields.description ?? null,
+				endsAt: fields.endsAt ? formatDbTimestamp(addWeeks(fields.endsAt, week, programTimezone)) : null,
+				published: fields.published,
+				seriesId,
+				startsAt: formatDbTimestamp(addWeeks(fields.startsAt, week, programTimezone)),
+				title: fields.title,
+			})
+			rows.push({ id: created.id, startsAt: parseDbTimestamp(created.startsAt) })
+		}
+		return rows
+	})
 
 	await logAudit({
 		action: AuditAction.ADMIN_CREATE_PROGRAM_EVENT,
@@ -123,7 +128,9 @@ export const DELETE = withPermission(Permission.MANAGE_PROGRAM, async (_req: Req
 	const { programTimezone } = await getProgramSettings()
 	const threshold = startOfDay(new Date(), programTimezone)
 
-	const { count } = await prisma.programEvent.deleteMany({ where: { startsAt: { gte: threshold } } })
+	const count = await db.orm.public.ProgramEvent.where(event =>
+		event.startsAt.gte(formatDbTimestamp(threshold)),
+	).deleteAndCount()
 
 	await logAudit({
 		action: AuditAction.ADMIN_DELETE_PROGRAM_EVENT,

@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/api"
 import { withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
@@ -19,23 +20,15 @@ export const GET = withSession(async (req: Request, { gate }) => {
 	if (!checkpointKey || !SUBMISSION_KEY.test(checkpointKey))
 		return fail("VALIDATION_FAILED", "Not a submission checkpoint")
 
-	const reels = await prisma.post.findMany({
-		orderBy: { createdAt: "desc" },
-		select: {
-			caption: true,
-			createdAt: true,
-			durationSeconds: true,
-			id: true,
-			objectKey: true,
-			thumbnailKey: true,
-		},
-		where: { checkpointKey, deletedAt: null, userId: gate.user.id },
-	})
+	const reels = await db.orm.public.Post.where({ checkpointKey, deletedAt: null, userId: gate.user.id })
+		.orderBy(post => post.createdAt.desc())
+		.select("caption", "createdAt", "durationSeconds", "id", "objectKey", "thumbnailKey")
+		.all()
 
 	return ok({
 		reels: reels.map(reel => ({
 			caption: reel.caption,
-			createdAt: reel.createdAt.toISOString(),
+			createdAt: parseDbTimestamp(reel.createdAt).toISOString(),
 			durationSeconds: reel.durationSeconds,
 			id: reel.id,
 			objectKey: reel.objectKey,
