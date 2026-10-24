@@ -57,8 +57,15 @@ None of this should conflict with the formatting or linting rules of Biome.
 	- Replace with padding or gaps where spacing is needed
 	- Replace with flex or grid for centreing
 	- If needing negative margins for funky tricks, OK
-- Use canonical Tailwind classes, like `w-36` instead of `w-[9rem]`
+- Use canonical Tailwind classes like `w-36` instead of `w-[9rem]`
 - In the rare case where something is more concise in standard CSS than in Tailwind, write it in standard CSS
+
+## Markdown
+
+- Single * for italics, double ** for bold
+- Use `#` for headings, not `=` or `-` underlines
+- Use fenced code blocks with language identifiers instead of indented code blocks
+- Do not hard-wrap. Never split a sentence or a paragraph over multiple lines
 
 ## Comments
 
