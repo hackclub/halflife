@@ -343,7 +343,7 @@ function importRow(
 				userId: null,
 			}
 
-		let user = await tx.orm.public.User.where(user => user.email.ilike(escapeLikePattern(row.email)))
+		let user = await tx.orm.public.User.where(candidate => candidate.email.ilike(escapeLikePattern(row.email)))
 			.select("id")
 			.first()
 		let createdUser = false

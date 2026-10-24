@@ -1,6 +1,6 @@
 import "server-only"
-import type { Models } from "@/app/generated/prisma8/contract.d"
 import { type Phase, Theme } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { MAX_WARMUP_PROJECTS, THEMES } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
 import { lockKey } from "@/lib/locks"

@@ -322,7 +322,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 	// The reel and the streak day it earns land together: a rolled-back post must not leave a day behind, exactly as a rolled-back devlog must not.
 	const created = await db.transaction(async tx => {
 		const now = formatDbTimestamp(new Date())
-		const created = await tx.orm.public.Post.create({
+		const post = await tx.orm.public.Post.create({
 			byteSize: input.byteSize ?? null,
 			caption,
 			checkpointKey: input.checkpointKey ?? null,
@@ -345,7 +345,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 		// A participant's own reel, not a staff announcement.
 		if (input.kind !== PostKind.ANNOUNCEMENT) await recomputeStreak(tx, input.userId)
 
-		return created
+		return post
 	})
 
 	if (input.kind !== PostKind.ANNOUNCEMENT) await markReel(input.userId, parseDbTimestamp(created.createdAt))

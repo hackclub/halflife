@@ -231,12 +231,12 @@ async function resolveSpans(
  * These are the windows that let a link find a recording made somewhere other than beside it. The exclusion is only an optimisation – `windowsForLink` would ignore the own-phase ones anyway once they are already in its own set – but it keeps this query to the rows that can actually add a window.
  */
 async function elsewhereRecordings(
-	db: DbOrTx,
+	client: DbOrTx,
 	userId: string,
 	notThemeProjectId: string,
 	notPhase: Phase,
 ): Promise<RecordedWindow[]> {
-	const rows = await db.orm.public.SessionTimelapse.where(timelapse =>
+	const rows = await client.orm.public.SessionTimelapse.where(timelapse =>
 		timelapse.workSession.some(session =>
 			and(
 				session.deletedAt.isNull(),

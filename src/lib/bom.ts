@@ -5,6 +5,7 @@ import { bomTotalUsd, type PartsFunding, partsFunding } from "@/lib/bom-policy"
 import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
+import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import type { BomItemInput } from "@/lib/schemas/project"
 import { parseDbTimestamp } from "@/lib/time"
@@ -51,7 +52,7 @@ export async function listBom(themeProjectId: string): Promise<BomLine[]> {
 		.orderBy([item => item.sortOrder.asc(), item => item.createdAt.asc()])
 		.select("id", "link", "name", "purpose", "quantity", "unitCostUsd", "updatedAt", "vendor")
 		.all()
-	return rows.map(row => ({ ...row, updatedAt: parseDbTimestamp(row.updatedAt) }))
+	return rows.map(row => withFields(row, { updatedAt: parseDbTimestamp(row.updatedAt) }))
 }
 
 /**

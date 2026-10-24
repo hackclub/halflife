@@ -97,16 +97,16 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a decision that commits between the checks above and this write makes it match nothing, and the edit is refused rather than landing on a frozen week.
 		const changed = await tx.orm.public.WorkSession.where({ deletedAt: null, id: sessionId, themeProjectId: id })
-			.where(session => session.hoursApproved.isNull())
-			.where(session =>
+			.where(row => row.hoursApproved.isNull())
+			.where(row =>
 				or(
 					and(
-						session.phase.eq(Phase.DESIGN),
-						session.themeProject.some(project => project.designStatus.in(EDITABLE_PHASE_STATUSES)),
+						row.phase.eq(Phase.DESIGN),
+						row.themeProject.some(project => project.designStatus.in(EDITABLE_PHASE_STATUSES)),
 					),
 					and(
-						session.phase.eq(Phase.BUILD),
-						session.themeProject.some(project => project.buildStatus.in(EDITABLE_PHASE_STATUSES)),
+						row.phase.eq(Phase.BUILD),
+						row.themeProject.some(project => project.buildStatus.in(EDITABLE_PHASE_STATUSES)),
 					),
 				),
 			)
@@ -176,16 +176,16 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 	await db.transaction(async tx => {
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a review that commits between the checks above and this write makes it match nothing, and the entry stays.
 		const deleted = await tx.orm.public.WorkSession.where({ deletedAt: null, id: sessionId, themeProjectId: id })
-			.where(session => session.hoursApproved.isNull())
-			.where(session =>
+			.where(row => row.hoursApproved.isNull())
+			.where(row =>
 				or(
 					and(
-						session.phase.eq(Phase.DESIGN),
-						session.themeProject.some(project => project.designStatus.in(EDITABLE_PHASE_STATUSES)),
+						row.phase.eq(Phase.DESIGN),
+						row.themeProject.some(project => project.designStatus.in(EDITABLE_PHASE_STATUSES)),
 					),
 					and(
-						session.phase.eq(Phase.BUILD),
-						session.themeProject.some(project => project.buildStatus.in(EDITABLE_PHASE_STATUSES)),
+						row.phase.eq(Phase.BUILD),
+						row.themeProject.some(project => project.buildStatus.in(EDITABLE_PHASE_STATUSES)),
 					),
 				),
 			)

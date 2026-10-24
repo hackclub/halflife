@@ -6,6 +6,7 @@ import { withPermission } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
+import { withFields } from "@/lib/rows"
 import { parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
@@ -22,5 +23,8 @@ export const GET = withPermission(Permission.VIEW_AUDIT_LOG, async (req: NextReq
 
 	const { items, nextCursor } = await listAuditLog(parsed.data)
 	// Prisma 8 returns the column as PostgreSQL text; keep the API's dates in the ISO form JSON had before.
-	return ok({ items: items.map(entry => ({ ...entry, createdAt: parseDbTimestamp(entry.createdAt).toISOString() })), nextCursor })
+	return ok({
+		items: items.map(entry => withFields(entry, { createdAt: parseDbTimestamp(entry.createdAt).toISOString() })),
+		nextCursor,
+	})
 })

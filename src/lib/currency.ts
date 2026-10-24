@@ -4,6 +4,7 @@ import type { Models } from "@/app/generated/prisma8/contract.d"
 import { lockKey } from "@/lib/locks"
 import { decodeCursor, encodeCursor } from "@/lib/pagination"
 import db, { type DbOrTx } from "@/lib/prisma8"
+import { withFields } from "@/lib/rows"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
@@ -237,7 +238,7 @@ export async function getLedgerPage(
 			"userId",
 		)
 		.all()
-	const items = rows.slice(0, limit).map(row => ({ ...row, createdAt: parseDbTimestamp(row.createdAt) }))
+	const items = rows.slice(0, limit).map(row => withFields(row, { createdAt: parseDbTimestamp(row.createdAt) }))
 	const last = items.at(-1)
 	return {
 		items,

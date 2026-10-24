@@ -9,7 +9,6 @@ import {
 	type AriWebhookEvent,
 } from "@hackclub/ari"
 import { and, or } from "@prisma/orm-postgres/orm-client"
-import type { JsonValue } from "@/lib/json"
 import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
 import { mirrorAriPhaseToYsws, mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
@@ -19,16 +18,18 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { getThemeDef, MAX_APPROVED_HOURS, WARMUP_THEME } from "@/lib/config/program"
 import { isTierId, tierForHours } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
+import type { JsonValue } from "@/lib/json"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import { notifyReviewOutcome, notifyShipFailed } from "@/lib/notifications"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { normalizeRepo } from "@/lib/repo"
 import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
+import { withFields } from "@/lib/rows"
 import { sanitize } from "@/lib/sanitize"
 import { DEFAULT_SESSION_TITLE } from "@/lib/schemas/session"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -278,7 +279,7 @@ function terminalShipFailure(err: unknown): string | null {
 async function noteShipFailure(themeProjectId: string, phase: Phase, reason: string): Promise<void> {
 	try {
 		const submission = await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
-			.orderBy(submission => submission.createdAt.desc())
+			.orderBy(row => row.createdAt.desc())
 			.select("ariShipError", "id")
 			.first()
 		if (!submission) return
@@ -329,9 +330,7 @@ export async function sendSubmissionToAri(
 			const queuedId = alreadyQueuedShipId(err)
 			if (!queuedId || !submissionId) throw err
 
-			const owner = await db.orm.public.PhaseSubmission.where({ ariSubmissionId: queuedId })
-				.select("id")
-				.first()
+			const owner = await db.orm.public.PhaseSubmission.where({ ariSubmissionId: queuedId }).select("id").first()
 			if (owner && owner.id !== submissionId) {
 				// Bound elsewhere already: adopting it would give one ship two local rows. Leave the retry to a human, who can see which hand-in really owns it.
 				console.error(
@@ -384,9 +383,7 @@ export async function findUnsyncedAriSubmissions(): Promise<
 	if (!isAriConfigured()) return []
 
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
-		.where(project =>
-			or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)),
-		)
+		.where(project => or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)))
 		.select("buildStatus", "designStatus", "id")
 		.all()
 	if (projects.length === 0) return []
@@ -397,7 +394,7 @@ export async function findUnsyncedAriSubmissions(): Promise<
 		.orderBy(submission => submission.createdAt.asc())
 		.select("ariSubmissionId", "createdAt", "phase", "themeProjectId")
 		.all()
-	const open = openRows.map(row => ({ ...row, createdAt: parseDbTimestamp(row.createdAt) }))
+	const open = openRows.map(row => withFields(row, { createdAt: parseDbTimestamp(row.createdAt) }))
 	const pending = selectPendingShips(projects, open)
 	if (pending.length === 0) return []
 
@@ -420,7 +417,7 @@ export async function findUnsyncedAriSubmissions(): Promise<
 		})?.metadata as { error?: unknown } | null
 		return typeof meta?.error === "string" ? meta.error : null
 	}
-	return pending.map(item => Object.assign({}, item, { reason: reasonOf(item.themeProjectId, item.phase) }))
+	return pending.map(item => withFields(item, { reason: reasonOf(item.themeProjectId, item.phase) }))
 }
 
 // ─── Inbound ─────────────────────────────────────────────────────────────────
@@ -526,9 +523,9 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	const open =
 		byShip
 		?? (await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
-				.orderBy(submission => submission.createdAt.desc())
-				.select("ariStatus", "ariSubmissionId", "id", "resolvedAt")
-				.first())
+			.orderBy(submission => submission.createdAt.desc())
+			.select("ariStatus", "ariSubmissionId", "id", "resolvedAt")
+			.first())
 	if (!open) {
 		await ignored(event, "no open submission for this phase", event.external_id)
 		return
@@ -740,7 +737,9 @@ async function applyReset(event: ResetInput): Promise<void> {
 	await db.transaction(async tx => {
 		await tx.orm.public.SubmissionReview.where({ invalidated: false })
 			.where(review =>
-				review.submission.some(submission => and(submission.phase.eq(phase), submission.themeProjectId.eq(themeProjectId))),
+				review.submission.some(submission =>
+					and(submission.phase.eq(phase), submission.themeProjectId.eq(themeProjectId)),
+				),
 			)
 			.updateAndCount({ invalidated: true, invalidatedAt: nowText })
 		await tx.orm.public.PhaseSubmission.where({ id: latest.id }).update({
@@ -770,9 +769,7 @@ async function applyFraud(event: FraudEvent): Promise<void> {
 	const parsed = parseAriExternalId(event.external_id)
 	let userId: string | null = null
 	if (parsed) {
-		const project = await db.orm.public.ThemeProject.whereUnique({ id: parsed.themeProjectId })
-			.select("userId")
-			.first()
+		const project = await db.orm.public.ThemeProject.whereUnique({ id: parsed.themeProjectId }).select("userId").first()
 		userId = project?.userId ?? null
 	}
 
@@ -1165,7 +1162,7 @@ async function adoptStatusPlaceholder(input: {
 		result: input.result,
 		submissionId: input.submissionId,
 	})
-		.orderBy(review => review.createdAt.desc())
+		.orderBy(row => row.createdAt.desc())
 		.select("feedback", "id", "reviewerEmail", "reviewerId")
 		.first()
 	if (!review || !isStatusPlaceholder(review, input.result)) return false
@@ -1234,9 +1231,7 @@ export async function repairStatusDecisions(opts: { commit?: boolean; limit?: nu
 
 	const placeholders = (
 		await db.orm.public.SubmissionReview.where({ invalidated: false, reviewerEmail: null, reviewerId: null })
-			.where(review =>
-				review.submission.some(submission => submission.ariSubmissionId.isNotNull()),
-			)
+			.where(review => review.submission.some(submission => submission.ariSubmissionId.isNotNull()))
 			.orderBy(review => review.createdAt.asc())
 			.select("feedback", "id", "result", "reviewerEmail", "reviewerId")
 			.include("submission", submission => submission.select("ariSubmissionId", "phase", "themeProjectId"))

@@ -8,6 +8,7 @@ import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
+import { withFields } from "@/lib/rows"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { hoursDecisionSchema } from "@/lib/schemas/review"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
@@ -50,7 +51,7 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 		// Approving hours is the other half of the money path, so it needs the same rule the decision route has: nobody rules on their own work.
 		const all = [...sessions, ...links].map(row => {
 			if (!row.themeProject) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
-			return { ...row, themeProject: row.themeProject }
+			return withFields(row, { themeProject: row.themeProject })
 		})
 		if (all.some(row => row.themeProject.userId === gate.user.id))
 			throw new HttpError("FORBIDDEN", "You cannot approve hours on your own work")
@@ -73,19 +74,15 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 		const pairs = [...new Map(all.map(row => [`${row.themeProjectId}:${row.phase}`, row])).values()]
 		const openSubmissions = await tx.orm.public.PhaseSubmission.where({ resolvedAt: null })
 			.where(submission =>
-				or(
-					...pairs.map(row =>
-						and(submission.phase.eq(row.phase), submission.themeProjectId.eq(row.themeProjectId)),
-					),
-				),
+				or(...pairs.map(row => and(submission.phase.eq(row.phase), submission.themeProjectId.eq(row.themeProjectId)))),
 			)
 			.include("claim", claim => claim.select("expiresAt", "reviewerId"))
 			.all()
 		const blocked = openSubmissions.some(
 			submission =>
-				submission.claim &&
-				submission.claim.reviewerId !== gate.user.id &&
-				parseDbTimestamp(submission.claim.expiresAt) > now,
+				submission.claim
+				&& submission.claim.reviewerId !== gate.user.id
+				&& parseDbTimestamp(submission.claim.expiresAt) > now,
 		)
 		if (blocked) throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer is deciding this phase right now")
 
@@ -93,9 +90,7 @@ export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request,
 
 		for (const decision of parsed.data.decisions)
 			if (decision.kind === "session") {
-				const before = await tx.orm.public.WorkSession.whereUnique({ id: decision.id })
-					.select("hoursApproved")
-					.first()
+				const before = await tx.orm.public.WorkSession.whereUnique({ id: decision.id }).select("hoursApproved").first()
 				if (!before) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
 				// Conditional on the phase still being in review: a decision or a withdrawal that commits between the checks above and this write makes it match nothing, and the batch rolls back.
 				const updated = await tx.orm.public.WorkSession.where({ id: decision.id })

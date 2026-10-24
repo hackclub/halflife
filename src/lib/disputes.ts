@@ -55,7 +55,7 @@ export async function sendDisputedPhaseBack(
 	if (!dispute?.submission) throw new HttpError("NOT_FOUND", "Dispute not found")
 	if (dispute.resolvedAt) throw new HttpError("CONFLICT", "That dispute is already resolved")
 
-	const submission = dispute.submission
+	const { submission } = dispute
 	const { phase, themeProjectId } = submission
 
 	await db.transaction(async tx => {
@@ -70,7 +70,7 @@ export async function sendDisputedPhaseBack(
 
 		// The disputed decision must still be the one standing on the phase: once the maker resubmits, this dispute is about history and has nothing to send back.
 		const latest = await tx.orm.public.PhaseSubmission.where({ phase, themeProjectId })
-			.orderBy(submission => submission.createdAt.desc())
+			.orderBy(row => row.createdAt.desc())
 			.select("id")
 			.first()
 		if (!latest || latest.id !== submission.id)
@@ -78,8 +78,8 @@ export async function sendDisputedPhaseBack(
 
 		await tx.orm.public.SubmissionReview.where({ invalidated: false })
 			.where(review =>
-				review.submission.some(submission =>
-					and(submission.phase.eq(phase), submission.themeProjectId.eq(themeProjectId)),
+				review.submission.some(candidate =>
+					and(candidate.phase.eq(phase), candidate.themeProjectId.eq(themeProjectId)),
 				),
 			)
 			.updateAll({ invalidated: true, invalidatedAt: formatDbTimestamp(new Date()) })

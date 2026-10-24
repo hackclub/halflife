@@ -35,6 +35,7 @@ import {
 	weekOpensAt,
 } from "@/lib/program"
 import { getOwedReelKeys } from "@/lib/reel-gate"
+import { withFields } from "@/lib/rows"
 import { streakAsOf } from "@/lib/streak"
 import { projectThumbnail } from "@/lib/thumbnail"
 import { parseDbTimestamp } from "@/lib/time"
@@ -236,28 +237,25 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		])
 
 	// Prisma 8 reads timestamps as PostgreSQL text; everything below works in Dates.
-	const user = {
-		...userRow,
+	const user = withFields(userRow, {
 		onboardingCompletedAt: parseNullable(userRow.onboardingCompletedAt),
 		submissionExtensionUntil: parseNullable(userRow.submissionExtensionUntil),
-	}
-	const projects = projectRows.map(project => ({
-		...project,
-		submissionExtensionUntil: parseNullable(project.submissionExtensionUntil),
-	}))
-	const sessions = sessionRows.map(session => ({
-		...session,
-		createdAt: parseDbTimestamp(session.createdAt),
-		timelapses: session.timelapses.map(timelapse => ({
-			...timelapse,
-			recordedAt: parseNullable(timelapse.recordedAt),
-		})),
-	}))
-	const posts = postRows.map(post => ({ ...post, createdAt: parseDbTimestamp(post.createdAt) }))
-	const submissions = submissionRows.map(submission => ({
-		...submission,
-		createdAt: parseDbTimestamp(submission.createdAt),
-	}))
+	})
+	const projects = projectRows.map(project =>
+		withFields(project, { submissionExtensionUntil: parseNullable(project.submissionExtensionUntil) }),
+	)
+	const sessions = sessionRows.map(session =>
+		withFields(session, {
+			createdAt: parseDbTimestamp(session.createdAt),
+			timelapses: session.timelapses.map(timelapse =>
+				withFields(timelapse, { recordedAt: parseNullable(timelapse.recordedAt) }),
+			),
+		}),
+	)
+	const posts = postRows.map(post => withFields(post, { createdAt: parseDbTimestamp(post.createdAt) }))
+	const submissions = submissionRows.map(submission =>
+		withFields(submission, { createdAt: parseDbTimestamp(submission.createdAt) }),
+	)
 
 	// Every recording this maker has, whatever project or phase it was attached to, each with the Hackatime project it named. A link finds the ones made under its own project by that name (`windowsForLink`), which is how a clip journalled in one week is deduplicated against a link in another.
 	const recordings: RecordedWindow[] = sessions.flatMap(s =>

@@ -90,9 +90,9 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 
 	// Later weeks first, warm-ups after them: a warm-up is not one of the season's weeks, and it comes before week 1.
 	const ordered = projects.toSorted((a, b) => {
-		const da = a.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(a.theme).designWeek
-		const db = b.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(b.theme).designWeek
-		return db - da
+		const designWeekA = a.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(a.theme).designWeek
+		const designWeekB = b.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(b.theme).designWeek
+		return designWeekB - designWeekA
 	})
 
 	const shaped: ProfileProject[] = ordered.map(p => {

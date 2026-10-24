@@ -53,7 +53,13 @@ export const PATCH = withPermission(
 			if (taken) return fail("CONFLICT", "Another user already has that email address")
 		}
 
-		let updated
+		let updated: {
+			email: string
+			emailVerified: boolean
+			fraudFlagged: boolean
+			id: string
+			submissionExtensionUntil: string | null
+		}
 		try {
 			const row = await db.orm.public.User.where({ id })
 				.select("email", "emailVerified", "fraudFlagged", "id", "submissionExtensionUntil")

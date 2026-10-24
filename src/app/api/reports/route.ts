@@ -48,7 +48,7 @@ export const POST = withSession(async (req: Request, { gate }) => {
 		authorId = user.id
 	} else {
 		const session = await db.orm.public.WorkSession.where({ deletedAt: null, id: targetId })
-			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			.where(entry => entry.themeProject.some(owner => owner.deletedAt.isNull()))
 			.include("themeProject", project => project.select("userId"))
 			.first()
 		if (!session?.themeProject) return fail("NOT_FOUND", "That entry no longer exists")

@@ -95,7 +95,7 @@ function refreshAccessToken(accountId: string, userId: string): Promise<string |
  */
 export async function forgeCredentials(userId: string, forge: Forge): Promise<ForgeCredentials | null> {
 	const account = await db.orm.public.Account.where({ providerId: forge.id, userId })
-		.orderBy(account => account.updatedAt.desc())
+		.orderBy(row => row.updatedAt.desc())
 		.select("accessToken", "accessTokenExpiresAt", "accountId", "id", "refreshToken")
 		.first()
 	if (!account?.accessToken) return null

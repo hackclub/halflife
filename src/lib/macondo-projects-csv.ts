@@ -293,7 +293,7 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 			const createdAt = row.createdAt ?? new Date()
 
 			const user =
-				(await db.orm.public.User.where(user => user.email.ilike(escapeLikePattern(row.email)))
+				(await db.orm.public.User.where(candidate => candidate.email.ilike(escapeLikePattern(row.email)))
 					.select("id")
 					.first())
 				?? (await db.orm.public.User.create({

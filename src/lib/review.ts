@@ -78,7 +78,7 @@ export async function releaseClaim(submissionId: string, reviewerId: string): Pr
 	await db.orm.public.ReviewClaim.where({ submissionId }).deleteAndCount()
 }
 
-export async function sweepExpiredClaims(): Promise<number> {
+export function sweepExpiredClaims(): Promise<number> {
 	return db.orm.public.ReviewClaim.where(claim => claim.expiresAt.lt(formatDbTimestamp(new Date()))).deleteAndCount()
 }
 
@@ -683,10 +683,8 @@ export async function reopenPhase(
 
 	// Conditional on the status that was read: an admin double-click, or a reopen racing a resubmission, must not overwrite a newer state.
 	const reopened = await db.orm.public.ThemeProject.where({ id: themeProjectId })
-		.where(project =>
-			phase === Phase.DESIGN
-				? project.designStatus.eq(PhaseStatus.rejected)
-				: project.buildStatus.eq(PhaseStatus.rejected),
+		.where(row =>
+			phase === Phase.DESIGN ? row.designStatus.eq(PhaseStatus.rejected) : row.buildStatus.eq(PhaseStatus.rejected),
 		)
 		.updateAndCount({
 			...(phase === Phase.DESIGN

@@ -46,9 +46,7 @@ export async function getReviewQueue(opts: {
 	// Oldest first: a review queue that surfaces the newest work leaves the people who submitted first waiting longest.
 	const ordered = filtered.orderBy([submission => submission.createdAt.asc(), submission => submission.id.asc()])
 	// The queue is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-	const paged = position?.at
-		? ordered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
-		: ordered
+	const paged = position?.at ? ordered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id }) : ordered
 	const [rows, design, build] = await Promise.all([
 		paged
 			.limit(opts.limit + 1)
@@ -74,7 +72,7 @@ export async function getReviewQueue(opts: {
 		items: items.map(row => {
 			const project = row.themeProject
 			if (!project) throw new Error(`submission ${row.id} has no project`)
-			const user = project.user
+			const { user } = project
 			if (!user) throw new Error(`submission ${row.id} has no author`)
 			const reviewer = row.claim?.reviewer ?? null
 			if (row.claim && !reviewer) throw new Error(`submission ${row.id} has a claim with no reviewer`)

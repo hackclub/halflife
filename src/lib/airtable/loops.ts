@@ -11,6 +11,7 @@ import { columnExists, existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 import { scheduledWeekFor, THEMES } from "@/lib/config/program"
 import db, { isUniqueViolation } from "@/lib/prisma8"
+import { withFields } from "@/lib/rows"
 import { parseDbTimestamp } from "@/lib/time"
 
 /**
@@ -87,19 +88,20 @@ async function loopsValues(): Promise<LoopsValues[]> {
 		)
 		.all()
 	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
-	const users = userRows.map(user => ({
-		...user,
-		lastActiveAt: parseNullable(user.lastActiveAt),
-		lastLoginAt: parseNullable(user.lastLoginAt),
-		onboardingCompletedAt: parseNullable(user.onboardingCompletedAt),
-		themeProjects: user.themeProjects.map(project => ({
-			...project,
-			workSessions: project.workSessions.map(session => ({
-				...session,
-				createdAt: parseDbTimestamp(session.createdAt),
-			})),
-		})),
-	}))
+	const users = userRows.map(user =>
+		withFields(user, {
+			lastActiveAt: parseNullable(user.lastActiveAt),
+			lastLoginAt: parseNullable(user.lastLoginAt),
+			onboardingCompletedAt: parseNullable(user.onboardingCompletedAt),
+			themeProjects: user.themeProjects.map(project =>
+				withFields(project, {
+					workSessions: project.workSessions.map(session =>
+						withFields(session, { createdAt: parseDbTimestamp(session.createdAt) }),
+					),
+				}),
+			),
+		}),
+	)
 
 	return users.map(u => {
 		const weeks: { [_: number]: boolean } = {}

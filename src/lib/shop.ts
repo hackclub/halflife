@@ -1,7 +1,7 @@
 import "server-only"
-import { and, not, or } from "@prisma/orm-postgres/orm-client"
-import type { Models } from "@/app/generated/prisma8/contract.d"
+import { or } from "@prisma/orm-postgres/orm-client"
 import { CoinBucket, LedgerKind, PhaseStatus, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
@@ -123,10 +123,11 @@ export type ShopOrderStaffRow = Pick<
 	| "userId"
 > & { notes: { authorId: string; body: string; createdAt: string }[] }
 
-export interface ShopOrderStaffView extends Omit<
-	ShopOrderStaffRow,
-	"fulfilledAt" | "fulfillmentUpdatedAt" | "heldAt" | "placedAt" | "rejectedAt" | "notes"
-> {
+export interface ShopOrderStaffView
+	extends Omit<
+		ShopOrderStaffRow,
+		"fulfilledAt" | "fulfillmentUpdatedAt" | "heldAt" | "placedAt" | "rejectedAt" | "notes"
+	> {
 	fulfilledAt: Date | null
 	fulfillmentUpdatedAt: Date | null
 	heldAt: Date | null
@@ -172,10 +173,11 @@ export interface ShopRegionOption {
 }
 
 export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
-	return db.orm.public.ShopRegion.where({ active: true })
+	const rows = await db.orm.public.ShopRegion.where({ active: true })
 		.orderBy([region => region.sortOrder.asc(), region => region.name.asc()])
 		.select("id", "name")
 		.all()
+	return rows
 }
 
 /**
@@ -345,9 +347,7 @@ export async function purchase(
 		if (settings.shopClosesAt && parseDbTimestamp(settings.shopClosesAt) <= new Date()) {
 			const [awaitingReview, lastReview] = await Promise.all([
 				tx.orm.public.ThemeProject.where({ deletedAt: null, userId })
-					.where(project =>
-						or(project.designStatus.eq("in_review"), project.buildStatus.eq("in_review")),
-					)
+					.where(project => or(project.designStatus.eq("in_review"), project.buildStatus.eq("in_review")))
 					.aggregate(a => ({ count: a.count() })),
 				tx.orm.public.ThemeProject.where({ deletedAt: null, userId }).aggregate(a => ({
 					buildReviewedAt: a.max("buildReviewedAt"),
@@ -356,10 +356,8 @@ export async function purchase(
 			])
 			const grace = shopGraceAccess(settings, {
 				awaitingReview: awaitingReview.count,
-				buildReviewedAt:
-					lastReview.buildReviewedAt === null ? null : parseDbTimestamp(lastReview.buildReviewedAt),
-				designReviewedAt:
-					lastReview.designReviewedAt === null ? null : parseDbTimestamp(lastReview.designReviewedAt),
+				buildReviewedAt: lastReview.buildReviewedAt === null ? null : parseDbTimestamp(lastReview.buildReviewedAt),
+				designReviewedAt: lastReview.designReviewedAt === null ? null : parseDbTimestamp(lastReview.designReviewedAt),
 			})
 			if (!grace.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		}
@@ -442,8 +440,7 @@ export async function purchase(
 		// The buyer's note, kept against the order with the buyer as its author. Written here, inside the
 		// transaction, so it lands with the order it belongs to: a note that is accepted but not kept is
 		// worse than no note at all, because the staff reading the order would have no way to know one was sent.
-		if (body)
-			await tx.orm.public.ShopOrderNote.create({ authorId: userId, body, orderId: order.id })
+		if (body) await tx.orm.public.ShopOrderNote.create({ authorId: userId, body, orderId: order.id })
 
 		// Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole
 		// balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy
@@ -474,7 +471,10 @@ export async function purchase(
 
 		if (fresh.stock !== null) {
 			// Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser matches no row and rolls back.
-			const stockPlan = tx.raw.sql`UPDATE "shop_item" SET "stock" = "stock" - ${quantity} WHERE "id" = ${shopItemId} AND "stock" >= ${quantity}`.affectedCount().build()
+			const stockPlan = tx.raw
+				.sql`UPDATE "shop_item" SET "stock" = "stock" - ${quantity} WHERE "id" = ${shopItemId} AND "stock" >= ${quantity}`
+				.affectedCount()
+				.build()
 			const { affectedRows } = await tx.execute(stockPlan)
 			if (affectedRows !== 1) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
 		}
@@ -529,7 +529,10 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 		// it, and are treated as having taken stock, which is what this path always did.
 		const stockDebited = order.stockDebited ?? true
 		if (stockDebited && order.shopItemId) {
-			const restockPlan = tx.raw.sql`UPDATE "shop_item" SET "stock" = "stock" + ${order.quantity} WHERE "id" = ${order.shopItemId} AND "stock" IS NOT NULL`.affectedCount().build()
+			const restockPlan = tx.raw
+				.sql`UPDATE "shop_item" SET "stock" = "stock" + ${order.quantity} WHERE "id" = ${order.shopItemId} AND "stock" IS NOT NULL`
+				.affectedCount()
+				.build()
 			await tx.execute(restockPlan)
 		}
 

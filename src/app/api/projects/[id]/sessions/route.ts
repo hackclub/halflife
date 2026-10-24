@@ -26,6 +26,7 @@ import {
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { scheduleRepoSync } from "@/lib/repo-sync"
+import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
@@ -82,19 +83,22 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 	const items = rows.slice(0, query.data.limit)
 	const last = items.at(-1)
 	return ok({
-		items: items.map(s => ({
-			...parseSessionDates(s),
-			media: s.media.map(m => ({
-				...m,
-				createdAt: parseDbTimestamp(m.createdAt),
-				url: publicUrlFor(m.objectKey),
-			})),
-			timelapses: s.timelapses.map(t => ({
-				...t,
-				createdAt: parseDbTimestamp(t.createdAt),
-				recordedAt: t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt),
-			})),
-		})),
+		items: items.map(s =>
+			withFields(parseSessionDates(s), {
+				media: s.media.map(m =>
+					withFields(m, {
+						createdAt: parseDbTimestamp(m.createdAt),
+						url: publicUrlFor(m.objectKey),
+					}),
+				),
+				timelapses: s.timelapses.map(t =>
+					withFields(t, {
+						createdAt: parseDbTimestamp(t.createdAt),
+						recordedAt: t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt),
+					}),
+				),
+			}),
+		),
 		nextCursor:
 			rows.length > query.data.limit && last
 				? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id })
@@ -153,10 +157,10 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 			const taken = await tx.orm.public.SessionTimelapse.where({ provider: "lapse" })
 				.where(timelapse => timelapse.externalId.in(lapseIds))
 				.where(timelapse =>
-					timelapse.workSession.some(session =>
+					timelapse.workSession.some(entry =>
 						and(
-							session.deletedAt.isNull(),
-							session.themeProject.some(project => project.deletedAt.isNull()),
+							entry.deletedAt.isNull(),
+							entry.themeProject.some(owner => owner.deletedAt.isNull()),
 						),
 					),
 				)

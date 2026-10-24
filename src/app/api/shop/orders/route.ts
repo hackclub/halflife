@@ -6,7 +6,7 @@ import { decodeCursor, encodeCursor, paginationQuery } from "@/lib/pagination"
 import db from "@/lib/prisma8"
 import { purchaseSchema } from "@/lib/schemas/shop"
 import { purchase, shopOrderPublicFields, toShopOrderPublic } from "@/lib/shop"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 

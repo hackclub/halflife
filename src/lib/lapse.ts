@@ -67,7 +67,7 @@ const NOT_LINKED = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse t
 /** The user's Lapse identity and a token that is still good, or a refusal. */
 export async function lapseCredentials(userId: string): Promise<{ lapseUserId: string; accessToken: string }> {
 	const account = await db.orm.public.Account.where({ providerId: "lapse", userId })
-		.orderBy(account => account.updatedAt.desc())
+		.orderBy(row => row.updatedAt.desc())
 		.select("accessToken", "accessTokenExpiresAt", "accountId")
 		.first()
 	if (!account?.accessToken) throw NOT_LINKED()

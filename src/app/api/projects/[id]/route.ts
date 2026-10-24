@@ -16,6 +16,7 @@ import {
 	SUBMISSIONS_CLOSED_MESSAGE,
 } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
+import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { projectUpdateSchema } from "@/lib/schemas/project"
 import { recomputeStreak } from "@/lib/streak"
@@ -55,9 +56,8 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	const parseList = <T extends { createdAt: string }>(
 		rows: readonly T[],
 	): (Omit<T, "createdAt"> & { createdAt: Date })[] =>
-		rows.map(r => ({ ...r, createdAt: parseDbTimestamp(r.createdAt) }))
-	const project = {
-		...row,
+		rows.map(r => withFields(r, { createdAt: parseDbTimestamp(r.createdAt) }))
+	const project = withFields(row, {
 		approvedHoursAt: parseNullable(row.approvedHoursAt),
 		buildReviewedAt: parseNullable(row.buildReviewedAt),
 		createdAt: parseDbTimestamp(row.createdAt),
@@ -65,32 +65,34 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 		designApprovedHoursAt: parseNullable(row.designApprovedHoursAt),
 		designReviewedAt: parseNullable(row.designReviewedAt),
 		grantEmittedAt: parseNullable(row.grantEmittedAt),
-		hackatimeLinks: row.hackatimeLinks.map(link => ({
-			...link,
-			cachedAt: parseNullable(link.cachedAt),
-			createdAt: parseDbTimestamp(link.createdAt),
-			reviewedAt: parseNullable(link.reviewedAt),
-			spansFetchedAt: parseNullable(link.spansFetchedAt),
-		})),
+		hackatimeLinks: row.hackatimeLinks.map(link =>
+			withFields(link, {
+				cachedAt: parseNullable(link.cachedAt),
+				createdAt: parseDbTimestamp(link.createdAt),
+				reviewedAt: parseNullable(link.reviewedAt),
+				spansFetchedAt: parseNullable(link.spansFetchedAt),
+			}),
+		),
 		namedAt: parseNullable(row.namedAt),
 		submissionExtensionUntil: parseNullable(row.submissionExtensionUntil),
-		submissions: parseList(row.submissions).map(submission => ({
-			...submission,
-			resolvedAt: parseNullable(submission.resolvedAt),
-		})),
+		submissions: parseList(row.submissions).map(submission =>
+			withFields(submission, { resolvedAt: parseNullable(submission.resolvedAt) }),
+		),
 		updatedAt: parseDbTimestamp(row.updatedAt),
-		workSessions: parseList(row.workSessions).map(session => ({
-			...session,
-			deletedAt: parseNullable(session.deletedAt),
-			media: parseList(session.media).map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
-			reviewedAt: parseNullable(session.reviewedAt),
-			timelapses: session.timelapses.map(timelapse => ({
-				...timelapse,
-				createdAt: parseDbTimestamp(timelapse.createdAt),
-				recordedAt: parseNullable(timelapse.recordedAt),
-			})),
-		})),
-	}
+		workSessions: parseList(row.workSessions).map(session =>
+			withFields(session, {
+				deletedAt: parseNullable(session.deletedAt),
+				media: parseList(session.media).map(m => withFields(m, { url: publicUrlFor(m.objectKey) })),
+				reviewedAt: parseNullable(session.reviewedAt),
+				timelapses: session.timelapses.map(timelapse =>
+					withFields(timelapse, {
+						createdAt: parseDbTimestamp(timelapse.createdAt),
+						recordedAt: parseNullable(timelapse.recordedAt),
+					}),
+				),
+			}),
+		),
+	})
 
 	return ok({
 		hours: { build, design },
@@ -157,9 +159,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	// Conditional on the state just checked, so a submit or a decision that lands between the read above and this write is not edited out from under the reviewer reading it. It carries the ownership check and the live-row check with it, so a project that was deleted or handed to somebody else in the meantime is not written either.
 	const updated = await db.transaction(async tx => {
 		const claimed = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
-			.where(project =>
-				and(project.buildStatus.notIn(FROZEN_PHASE_STATUSES), project.designStatus.notIn(FROZEN_PHASE_STATUSES)),
-			)
+			.where(row => and(row.buildStatus.notIn(FROZEN_PHASE_STATUSES), row.designStatus.notIn(FROZEN_PHASE_STATUSES)))
 			.updateAndCount({
 				...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
 				...(data.description !== undefined ? { description: sanitizeOptional(data.description) } : {}),
@@ -241,10 +241,10 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 		// Conditional on the statuses just checked, so a submit that lands between the check and here is not deleted out from under its reviewer.
 		const nowText = formatDbTimestamp(new Date())
 		const count = await tx.orm.public.ThemeProject.where({ deletedAt: null, id })
-			.where(project =>
+			.where(row =>
 				and(
-					project.buildStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
-					project.designStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
+					row.buildStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
+					row.designStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
 				),
 			)
 			.updateAndCount({ deletedAt: nowText, deletedById: gate.user.id })

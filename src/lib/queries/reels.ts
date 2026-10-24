@@ -71,17 +71,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 	const posts = await db.orm.public.Post.where({ deletedAt: null, userId })
 		.where(post => post.status.neq(PostStatus.REMOVED))
 		.orderBy([post => post.createdAt.desc(), post => post.id.desc()])
-		.select(
-			"caption",
-			"checkpointKey",
-			"createdAt",
-			"id",
-			"kind",
-			"objectKey",
-			"publishedAt",
-			"status",
-			"thumbnailKey",
-		)
+		.select("caption", "checkpointKey", "createdAt", "id", "kind", "objectKey", "publishedAt", "status", "thumbnailKey")
 		.include("publicReels", reels =>
 			reels.select("id", "platform", "postedAt", "url").orderBy(link => link.postedAt.asc()),
 		)

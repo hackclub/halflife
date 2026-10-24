@@ -30,7 +30,7 @@ export const POST = withPermission(
 			.first()
 		if (!dispute?.submission) return fail("NOT_FOUND", "Dispute not found")
 		if (dispute.resolvedAt) return fail("CONFLICT", "That dispute is already resolved")
-		const submission = dispute.submission
+		const { submission } = dispute
 
 		const message = await db.orm.public.ReviewDisputeMessage.create({
 			authorId: gate.user.id,

@@ -228,7 +228,7 @@ export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: strin
  */
 export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolean): Promise<boolean> {
 	if (!emailVerified) return false
-	const user = await db.orm.public.User.where(user => user.email.ilike(escapeLikePattern(email)))
+	const user = await db.orm.public.User.where(candidate => candidate.email.ilike(escapeLikePattern(email)))
 		.select("emailVerified", "id")
 		.first()
 	if (!user || user.emailVerified) return false

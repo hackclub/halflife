@@ -14,7 +14,7 @@ export function preview(text: string, max = 90): string {
  * Backslash is PostgreSQL's default LIKE escape.
  */
 export function escapeLikePattern(value: string): string {
-	return value.replace(/[\\%_]/g, "\\$&")
+	return value.replaceAll(/[\\%_]/g, String.raw`\$&`)
 }
 
 /**

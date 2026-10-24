@@ -5,7 +5,7 @@
  */
 export type InputJsonArray = readonly (InputJsonValue | null)[]
 
-export type InputJsonObject = {
+export interface InputJsonObject {
 	readonly [_: string]: InputJsonValue | null | undefined
 }
 
@@ -14,7 +14,9 @@ export type InputJsonValue = string | number | boolean | InputJsonObject | Input
 /**
  * A JSON value exactly as Prisma 8 stores it: no `undefined`, no readonly wrappers. Use this for anything written to a `Jsonb` column; `InputJsonValue` stays for looser boundaries that P7 code still feeds.
  */
-export type JsonObject = { [_: string]: JsonValue }
+export interface JsonObject {
+	[_: string]: JsonValue
+}
 
 export type JsonArray = JsonValue[]
 

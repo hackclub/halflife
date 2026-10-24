@@ -9,6 +9,7 @@ import db from "@/lib/prisma8"
 import { projectEditLockReason } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
 import { getRepoSyncState, type RepoSyncState } from "@/lib/repo-sync"
+import { withFields } from "@/lib/rows"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
@@ -244,11 +245,11 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		designReviewedAt: parseNullable(fetched.designReviewedAt),
 		grantEmittedAt: parseNullable(fetched.grantEmittedAt),
 		posts: fetched.posts.map(
-			(post): ProjectPostRow => ({
-				...post,
-				createdAt: parseDbTimestamp(post.createdAt),
-				publishedAt: parseNullable(post.publishedAt),
-			}),
+			(post): ProjectPostRow =>
+				withFields(post, {
+					createdAt: parseDbTimestamp(post.createdAt),
+					publishedAt: parseNullable(post.publishedAt),
+				}),
 		),
 		submissions: fetched.submissions.map(submission => ({
 			...submission,
@@ -267,10 +268,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 			resolvedAt: parseNullable(submission.resolvedAt),
 		})),
 		workSessions: fetched.workSessions.map(
-			(session): ProjectSessionRow => ({
-				...session,
-				createdAt: parseDbTimestamp(session.createdAt),
-			}),
+			(session): ProjectSessionRow => withFields(session, { createdAt: parseDbTimestamp(session.createdAt) }),
 		),
 	}
 
@@ -440,18 +438,15 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 	const project = {
 		...rest,
 		posts: fetched.posts.map(
-			(post): ProjectPostRow => ({
-				...post,
-				createdAt: parseDbTimestamp(post.createdAt),
-				publishedAt: parseNullable(post.publishedAt),
-			}),
+			(post): ProjectPostRow =>
+				withFields(post, {
+					createdAt: parseDbTimestamp(post.createdAt),
+					publishedAt: parseNullable(post.publishedAt),
+				}),
 		),
 		user,
 		workSessions: fetched.workSessions.map(
-			(session): ProjectSessionRow => ({
-				...session,
-				createdAt: parseDbTimestamp(session.createdAt),
-			}),
+			(session): ProjectSessionRow => withFields(session, { createdAt: parseDbTimestamp(session.createdAt) }),
 		),
 	}
 

@@ -14,18 +14,18 @@ import { getHoursBreakdown } from "@/lib/hours"
 import { round2 } from "@/lib/money"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
-import type { ProgramSettings } from "@/lib/program"
 import {
 	assertWeekStarted,
 	effectiveDateFor,
 	getProgramSettings,
 	getSubmissionAccess,
+	type ProgramSettings,
 	SUBMISSIONS_CLOSED_MESSAGE,
 	weekNumberForDate,
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { checkRepo } from "@/lib/repo-checks"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { parseDbTimestamp } from "@/lib/time"
 import { isOwnedKey } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
@@ -228,10 +228,10 @@ export async function submitPhase(
 
 		// Claim the phase first, conditionally on it still being one that can be submitted. Two concurrent submits both read the same outside state, so without this both would create an open submission and both flip the status; the row lock makes the loser's update match nothing.
 		const claimed = await tx.orm.public.ThemeProject.where({ deletedAt: null, id: themeProjectId, userId })
-			.where(project =>
+			.where(row =>
 				phase === Phase.DESIGN
-					? project.designStatus.in([PhaseStatus.draft, PhaseStatus.update_requested])
-					: project.buildStatus.in([PhaseStatus.draft, PhaseStatus.update_requested]),
+					? row.designStatus.in([PhaseStatus.draft, PhaseStatus.update_requested])
+					: row.buildStatus.in([PhaseStatus.draft, PhaseStatus.update_requested]),
 			)
 			.updateAndCount(phaseStatusUpdate(phase, PhaseStatus.in_review))
 		if (claimed !== 1) throw new HttpError("ALREADY_SUBMITTED", "This phase is already in review")
@@ -297,10 +297,8 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 		if (withdrawn !== 1) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
 
 		const flipped = await tx.orm.public.ThemeProject.where({ id: themeProjectId })
-			.where(project =>
-				phase === Phase.DESIGN
-					? project.designStatus.eq(PhaseStatus.in_review)
-					: project.buildStatus.eq(PhaseStatus.in_review),
+			.where(row =>
+				phase === Phase.DESIGN ? row.designStatus.eq(PhaseStatus.in_review) : row.buildStatus.eq(PhaseStatus.in_review),
 			)
 			.updateAndCount(phaseStatusUpdate(phase, restored))
 		if (flipped !== 1) throw new HttpError("CONFLICT", "This project moved while it was being withdrawn")

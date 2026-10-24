@@ -37,13 +37,9 @@ export const PUT = withPermission(
 		if (priceCredits === null)
 			await db.orm.public.ShopItemRegionPrice.where({ regionId, shopItemId: id }).deleteAndCount()
 		else {
-			const existing = await db.orm.public.ShopItemRegionPrice.where({ regionId, shopItemId: id })
-				.select("id")
-				.first()
-			if (existing)
-				await db.orm.public.ShopItemRegionPrice.where({ id: existing.id }).update({ priceCredits })
-			else
-				await db.orm.public.ShopItemRegionPrice.create({ priceCredits, regionId, shopItemId: id })
+			const existing = await db.orm.public.ShopItemRegionPrice.where({ regionId, shopItemId: id }).select("id").first()
+			if (existing) await db.orm.public.ShopItemRegionPrice.where({ id: existing.id }).update({ priceCredits })
+			else await db.orm.public.ShopItemRegionPrice.create({ priceCredits, regionId, shopItemId: id })
 		}
 
 		await logAudit({

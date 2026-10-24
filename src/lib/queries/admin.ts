@@ -1,4 +1,3 @@
-import { getTier, isTierId } from "@/lib/config/tiers"
 import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
 import {
@@ -23,6 +22,7 @@ import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
 import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { getTier, isTierId } from "@/lib/config/tiers"
 import { type Balances, getBalances, type LedgerEntryRow } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
@@ -35,6 +35,7 @@ import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { projectReviewState } from "@/lib/review-state"
+import { withFields } from "@/lib/rows"
 import { containsPattern } from "@/lib/text"
 import { eachDayBetween, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
@@ -82,10 +83,7 @@ export async function listUsers(
 		.select("createdAt", "displayName", "email", "fraudFlagged", "id", "name", "slackId", "verificationStatus")
 		.include("roles", roles => roles.select("role"))
 		.all()
-	const items = rows.slice(0, opts.limit).map(row => ({
-		...row,
-		createdAt: parseDbTimestamp(row.createdAt),
-	}))
+	const items = rows.slice(0, opts.limit).map(row => withFields(row, { createdAt: parseDbTimestamp(row.createdAt) }))
 	const last = items.at(-1)
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
 	return {
@@ -144,7 +142,7 @@ export async function listProjects(
 	const nowText = formatDbTimestamp(now)
 	const q = opts.q?.trim()
 	const pattern = q === undefined || q === "" ? null : containsPattern(q)
-	const tier = opts.tier
+	const { tier } = opts
 	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
 	let filtered = db.orm.public.ThemeProject.where({ deletedAt: null }).orderBy([
 		project => project.updatedAt.desc(),
@@ -429,10 +427,9 @@ export async function getUserDetail(
 		getPrinterQualification(userId),
 	])
 
-	const ledger: LedgerEntryRow[] = ledgerRows.map(entry => ({
-		...entry,
-		createdAt: parseDbTimestamp(entry.createdAt),
-	}))
+	const ledger: LedgerEntryRow[] = ledgerRows.map(entry =>
+		withFields(entry, { createdAt: parseDbTimestamp(entry.createdAt) }),
+	)
 	return { balances, ledger, orders, printer, user }
 }
 
@@ -614,10 +611,7 @@ export async function listFulfillmentOrders(
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
 	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
-	const placedFrom = filters.placedFrom
-	const placedBefore = filters.placedBefore
-	const method = filters.method
-	const stage = filters.stage
+	const { method, placedBefore, placedFrom, stage } = filters
 	let filtered = db.orm.public.ShopOrder.where(order => order.status.in(FULFILLMENT_ORDER_STATUSES)).orderBy([
 		order => order.placedAt.desc(),
 		order => order.id.desc(),
@@ -1283,19 +1277,19 @@ async function loadRegionInputs() {
 		links: links.map(link => {
 			const { themeProject } = link
 			if (!themeProject) throw new Error(`hackatime link ${link.id} has no project`)
-			return { ...link, themeProject }
+			return withFields(link, { themeProject })
 		}),
 		sessions: sessions.map(session => {
 			const { themeProject } = session
 			if (!themeProject) throw new Error(`session ${session.id} has no project`)
-			return {
-				...session,
+			return withFields(session, {
 				themeProject,
-				timelapses: session.timelapses.map(timelapse => ({
-					...timelapse,
-					recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
-				})),
-			}
+				timelapses: session.timelapses.map(timelapse =>
+					withFields(timelapse, {
+						recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+					}),
+				),
+			})
 		}),
 		users,
 	}
@@ -1869,13 +1863,15 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		for (const phase of [Phase.DESIGN, Phase.BUILD]) {
 			const sessions = project.workSessions
 				.filter(s => s.phase === phase)
-				.map(session => ({
-					...session,
-					timelapses: session.timelapses.map(timelapse => ({
-						...timelapse,
-						recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
-					})),
-				}))
+				.map(session =>
+					withFields(session, {
+						timelapses: session.timelapses.map(timelapse =>
+							withFields(timelapse, {
+								recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+							}),
+						),
+					}),
+				)
 			const links = project.hackatimeLinks.filter(l => l.phase === phase)
 			if (sessions.length === 0 && links.length === 0) continue
 

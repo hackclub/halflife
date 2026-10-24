@@ -26,9 +26,7 @@ export default async function AdminFeedPage() {
 	const { user, roles } = await requirePermissionPage(Permission.MANAGE_FEED)
 
 	const [projects, posts, comments, publicReels] = await Promise.all([
-		db.orm.public.ThemeProject.select("id", "theme", "title")
-			.where({ deletedAt: null, userId: user.id })
-			.all(),
+		db.orm.public.ThemeProject.select("id", "theme", "title").where({ deletedAt: null, userId: user.id }).all(),
 		listRecentPostsForModeration(),
 		listRecentCommentsForModeration(),
 		listRecentPublicReels(),

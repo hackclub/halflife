@@ -235,7 +235,10 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 		} catch (err) {
 			result.failed++
 			// Prisma 8 has no increment: one raw statement rather than read-modify-write, so concurrent drains cannot lose an attempt.
-			const bump = db.raw.sql`UPDATE "rsvp_buffer" SET "syncAttempts" = "syncAttempts" + 1, "lastSyncError" = ${err instanceof Error ? err.message : String(err)} WHERE "id" = ${row.id}`.affectedCount().build()
+			const bump = db.raw
+				.sql`UPDATE "rsvp_buffer" SET "syncAttempts" = "syncAttempts" + 1, "lastSyncError" = ${err instanceof Error ? err.message : String(err)} WHERE "id" = ${row.id}`
+				.affectedCount()
+				.build()
 			await db.execute(bump)
 		}
 

@@ -339,7 +339,7 @@ export async function syncReviewDecisionToYsws(
 				const [project, submission] = await Promise.all([
 					db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).select("theme", "title").first(),
 					db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
-						.orderBy(submission => submission.createdAt.desc())
+						.orderBy(row => row.createdAt.desc())
 						.select("scheduledWeek")
 						.first(),
 				])

@@ -57,9 +57,7 @@ export const DELETE = withPermission(
 		await db.transaction(async tx => {
 			if (parsed.data.role === Role.ADMIN) {
 				await lockKey(tx, "admin-roles")
-				const target = await tx.orm.public.UserRole.where({ role: Role.ADMIN, userId: id })
-					.select("id")
-					.first()
+				const target = await tx.orm.public.UserRole.where({ role: Role.ADMIN, userId: id }).select("id").first()
 				if (target) {
 					const { count: admins } = await tx.orm.public.UserRole.where({ role: Role.ADMIN }).aggregate(a => ({
 						count: a.count(),
