@@ -1,7 +1,6 @@
 import { getTier, isTierId } from "@/lib/config/tiers"
 import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
-import type { LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
 	HoursSource,
@@ -24,7 +23,7 @@ import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
 import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { type Balances, getBalances } from "@/lib/currency"
+import { type Balances, getBalances, type LedgerEntryRow } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
@@ -32,7 +31,6 @@ import { pctOf, round1 } from "@/lib/numbers"
 import { decodeCursor, encodeCursor, readCursor } from "@/lib/pagination"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
-import prisma from "@/lib/prisma"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
@@ -245,68 +243,58 @@ export async function listProjects(
 	}
 }
 
-const userDetailSelect = {
-	createdAt: true,
-	displayName: true,
-	email: true,
-	fraudFlagged: true,
-	hackatimeUserId: true,
-	id: true,
-	joinedProgramAt: true,
-	name: true,
-	// The award's fulfilment fields only. The locked address and phone are ciphertext and the snapshot is write-only, so none of them are part of a profile that anybody with VIEW_USERS may read.
+/** The admin user profile: the selected columns plus money sections both branches fill. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface UserDetail {
+	createdAt: Date
+	displayName: string | null
+	email: string
+	fraudFlagged: boolean
+	hackatimeUserId: string | null
+	id: string
+	joinedProgramAt: Date | null
+	name: string | null
 	printerAward: {
-		select: {
-			addressLockedAt: true,
-			deliveredAt: true,
-			id: true,
-			qualifiedAt: true,
-			revokedAt: true,
-			revokedReason: true,
-			shippedAt: true,
-			status: true,
-			trackingCarrier: true,
-			trackingNumber: true,
-		},
-	},
-	roles: { select: { grantedAt: true, grantedBy: true, role: true } },
-	slackDisplayName: true,
-	slackId: true,
-	submissionExtensionUntil: true,
+		addressLockedAt: Date | null
+		deliveredAt: Date | null
+		id: string
+		qualifiedAt: Date
+		revokedAt: Date | null
+		revokedReason: string | null
+		shippedAt: Date | null
+		status: Models.public_PrinterAward["status"]
+		trackingCarrier: string | null
+		trackingNumber: string | null
+	} | null
+	roles: { grantedAt: string; grantedBy: string | null; role: Models.public_UserRole["role"] }[]
+	slackDisplayName: string | null
+	slackId: string | null
+	submissionExtensionUntil: Date | null
 	themeProjects: {
-		select: {
-			approvedHours: true,
-			buildCoins: true,
-			buildStatus: true,
-			designBankedCoins: true,
-			designSpendableCoins: true,
-			designStatus: true,
-			grantUsd: true,
-			hcbGrantTopUps: { select: { id: true }, where: { phase: "DESIGN", sentAt: { not: null } } },
-			id: true,
-			submissionExtensionUntil: true,
-			theme: true,
-			tier: true,
-			title: true,
-		},
-		where: { deletedAt: null },
-	},
-	verificationStatus: true,
-} satisfies Prisma.UserSelect
-
-/** The admin user profile: the selected columns plus money sections both branches fill. */
-export type UserDetail = Prisma.UserGetPayload<{ select: typeof userDetailSelect }>
-
-const userDetailOrderSelect = {
-	id: true,
-	itemNameSnapshot: true,
-	orderNumber: true,
-	status: true,
-	totalCredits: true,
-} satisfies Prisma.ShopOrderSelect
+		approvedHours: number | null
+		buildCoins: number | null
+		buildStatus: Models.public_ThemeProject["buildStatus"]
+		designBankedCoins: number | null
+		designSpendableCoins: number | null
+		designStatus: Models.public_ThemeProject["designStatus"]
+		grantUsd: number | null
+		hcbGrantTopUps: { id: string }[]
+		id: string
+		submissionExtensionUntil: Date | null
+		theme: Models.public_ThemeProject["theme"]
+		tier: number | null
+		title: string
+	}[]
+	verificationStatus: string | null
+}
 
 /** The 25 most recent orders on the user page: number, item, credit total and status only. */
-export type UserDetailOrder = Prisma.ShopOrderGetPayload<{ select: typeof userDetailOrderSelect }>
+export interface UserDetailOrder {
+	id: string
+	itemNameSnapshot: string
+	orderNumber: number
+	status: Models.public_ShopOrder["status"]
+	totalCredits: number
+}
 
 export async function getUserDetail(
 	userId: string,
@@ -314,16 +302,94 @@ export async function getUserDetail(
 ): Promise<{
 	user: UserDetail
 	balances: Balances
-	ledger: LedgerEntry[]
+	ledger: LedgerEntryRow[]
 	orders: UserDetailOrder[]
 	printer: PrinterQualification
 } | null> {
 	const includeSensitive = flags?.includeSensitive ?? false
-	const user = await prisma.user.findUnique({
-		select: userDetailSelect,
-		where: { id: userId },
-	})
-	if (!user) return null
+	const row = await db.orm.public.User.whereUnique({ id: userId })
+		.select(
+			"createdAt",
+			"displayName",
+			"email",
+			"fraudFlagged",
+			"hackatimeUserId",
+			"id",
+			"joinedProgramAt",
+			"name",
+			"slackDisplayName",
+			"slackId",
+			"submissionExtensionUntil",
+			"verificationStatus",
+		)
+		.include("printerAward", award =>
+			award.select(
+				"addressLockedAt",
+				"deliveredAt",
+				"id",
+				"qualifiedAt",
+				"revokedAt",
+				"revokedReason",
+				"shippedAt",
+				"status",
+				"trackingCarrier",
+				"trackingNumber",
+			),
+		)
+		.include("roles", roles => roles.select("grantedAt", "grantedBy", "role"))
+		.include("themeProjects", projects =>
+			projects
+				.select(
+					"approvedHours",
+					"buildCoins",
+					"buildStatus",
+					"designBankedCoins",
+					"designSpendableCoins",
+					"designStatus",
+					"grantUsd",
+					"id",
+					"submissionExtensionUntil",
+					"theme",
+					"tier",
+					"title",
+				)
+				.where({ deletedAt: null })
+				.include("hcbGrantTopUps", topUps =>
+					topUps.select("id").where({ phase: "DESIGN" }).where(topUp => topUp.sentAt.isNotNull()),
+				),
+		)
+		.first()
+	if (!row) return null
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	const user: UserDetail = {
+		createdAt: parseDbTimestamp(row.createdAt),
+		displayName: row.displayName,
+		email: row.email,
+		fraudFlagged: row.fraudFlagged,
+		hackatimeUserId: row.hackatimeUserId,
+		id: row.id,
+		joinedProgramAt: parseNullable(row.joinedProgramAt),
+		name: row.name,
+		printerAward: row.printerAward
+			? {
+					...row.printerAward,
+					addressLockedAt: parseNullable(row.printerAward.addressLockedAt),
+					deliveredAt: parseNullable(row.printerAward.deliveredAt),
+					qualifiedAt: parseDbTimestamp(row.printerAward.qualifiedAt),
+					revokedAt: parseNullable(row.printerAward.revokedAt),
+					shippedAt: parseNullable(row.printerAward.shippedAt),
+				}
+			: null,
+		roles: row.roles,
+		slackDisplayName: row.slackDisplayName,
+		slackId: row.slackId,
+		submissionExtensionUntil: parseNullable(row.submissionExtensionUntil),
+		themeProjects: row.themeProjects.map(project => ({
+			...project,
+			submissionExtensionUntil: parseNullable(project.submissionExtensionUntil),
+		})),
+		verificationStatus: row.verificationStatus,
+	}
 
 	// Ledger, balances and order history only leave the server for ADMIN/AUDITOR – a FULFILLER (shipping role) needs the fulfilment sheet, not someone's full credit history. Stripped callers get the profile with contact/risk fields redacted and empty money sections.
 	if (!includeSensitive) {
@@ -345,23 +411,25 @@ export async function getUserDetail(
 		}
 	}
 
-	const [balances, ledger, orders, printer] = await Promise.all([
-		prisma.$transaction(tx => getBalances(tx, userId)),
-		prisma.ledgerEntry.findMany({
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			take: 50,
-			where: { userId },
-		}),
-		prisma.shopOrder.findMany({
-			orderBy: { placedAt: "desc" },
+	const [balances, ledgerRows, orders, printer] = await Promise.all([
+		db.transaction(tx => getBalances(tx, userId)),
+		db.orm.public.LedgerEntry.where({ userId })
+			.orderBy([entry => entry.createdAt.desc(), entry => entry.id.desc()])
+			.limit(50)
+			.all(),
+		db.orm.public.ShopOrder.where({ userId })
+			.orderBy(order => order.placedAt.desc())
 			// The user page lists the number, item, credit total and status only; internal cost and encrypted columns are not part of VIEW_USERS.
-			select: userDetailOrderSelect,
-			take: 25,
-			where: { userId },
-		}),
+			.select("id", "itemNameSnapshot", "orderNumber", "status", "totalCredits")
+			.limit(25)
+			.all(),
 		getPrinterQualification(userId),
 	])
 
+	const ledger: LedgerEntryRow[] = ledgerRows.map(entry => ({
+		...entry,
+		createdAt: parseDbTimestamp(entry.createdAt),
+	}))
 	return { balances, ledger, orders, printer, user }
 }
 

@@ -1,5 +1,4 @@
 import "server-only"
-import { Prisma } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit, logAuditTx, requestInfo } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
@@ -14,7 +13,8 @@ import {
 	topUpCardGrant,
 	verifiesGrantOwner,
 } from "@/lib/hcb"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
  * Send a participant's parts grant to their HCB card grant.
@@ -42,12 +42,10 @@ export const ABANDONED_ATTEMPT_MS = 10 * 60_000
  * The two say very different things, and the admin needs to be told which one happened: the project key means this grant has already been claimed for this project, and the hashid index means the card has already been paid for somebody else.
  */
 function isDuplicateGrantHashid(err: unknown): boolean {
-	if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false
-	if (err.code !== "P2002") return false
-	const target = err.meta?.target
-	if (typeof target === "string") return target.includes("grantHashid")
-	if (Array.isArray(target)) return target.some(field => typeof field === "string" && field.includes("grantHashid"))
-	return false
+	if (typeof err !== "object" || err === null) return false
+	// A unique violation carries the constraint that fired, which names the index.
+	const { sqlState, constraint } = err as { sqlState?: unknown; constraint?: unknown }
+	return sqlState === "23505" && typeof constraint === "string" && constraint.includes("grantHashid")
 }
 
 /**
@@ -108,10 +106,11 @@ async function markSentWithAudit(input: {
 	// Read here rather than inside the transaction: `headers()` is request-scoped, and the audit row has to carry the address and browser of the admin who made the payment.
 	const { ip, userAgent } = await requestInfo()
 
-	await prisma.$transaction(async tx => {
-		await tx.hcbGrantTopUp.update({
-			data: { sentAt: new Date(), transactionId: input.transactionId },
-			where: { id: input.rowId },
+	await db.transaction(async tx => {
+		const nowText = formatDbTimestamp(new Date())
+		await tx.orm.public.HcbGrantTopUp.where({ id: input.rowId }).update({
+			sentAt: nowText,
+			transactionId: input.transactionId,
 		})
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_SEND_GRANT,
@@ -162,20 +161,11 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	const hashid = parseGrantHashid(input.grantUrl)
 	if (!hashid) throw new HttpError("VALIDATION_FAILED", "That is not an HCB grant link")
 
-	const project = await prisma.themeProject.findFirst({
-		select: {
-			designStatus: true,
-			grantUsd: true,
-			id: true,
-			theme: true,
-			tier: true,
-			title: true,
-			user: { select: { email: true } },
-			userId: true,
-		},
-		where: { deletedAt: null, id: input.themeProjectId },
-	})
-	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: input.themeProjectId })
+		.select("designStatus", "grantUsd", "id", "theme", "tier", "title", "userId")
+		.include("user", user => user.select("email"))
+		.first()
+	if (!project?.user) throw new HttpError("NOT_FOUND", "Project not found")
 	if (project.designStatus !== PhaseStatus.approved || !project.grantUsd)
 		throw new HttpError("CONFLICT", "A grant is only due on an approved design")
 
@@ -215,9 +205,11 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	// Claim the slot before HCB is called, so two clicks cannot both send.
 	let rowId: string
 	try {
-		const created = await prisma.hcbGrantTopUp.create({
-			data: { ...key, amountCents, createdById: input.adminId, grantHashid: hashid },
-			select: { id: true },
+		const created = await db.orm.public.HcbGrantTopUp.create({
+			...key,
+			amountCents,
+			createdById: input.adminId,
+			grantHashid: hashid,
 		})
 		rowId = created.id
 	} catch (err) {
@@ -226,19 +218,19 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		if (isDuplicateGrantHashid(err))
 			throw new HttpError("CONFLICT", "That HCB card has already been paid for another project")
 
-		const existing = await prisma.hcbGrantTopUp.findUnique({ where: { userId_themeProjectId_phase: key } })
+		const existing = await db.orm.public.HcbGrantTopUp.where(key).first()
 		if (!existing) throw new HttpError("CONFLICT", "Could not start the grant")
 		if (existing.sentAt)
 			return { alreadySent: true, amountCents: existing.amountCents, transactionId: existing.transactionId }
 
 		// A row with no error normally means a request is running right now, and two of those must not both send. A crash strands a row the same way, so only a row old enough to be abandoned gets past this.
-		const ageMs = Date.now() - existing.createdAt.getTime()
+		const ageMs = Date.now() - parseDbTimestamp(existing.createdAt).getTime()
 		if (existing.error === null && ageMs < ABANDONED_ATTEMPT_MS)
 			throw new HttpError("CONFLICT", "A grant for this project is already being sent")
 
 		// Before re-sending, ask HCB what the last attempt left behind. A timeout can lose the response after the top-up applied, and a resend would pay twice; a grant that cannot be read fails closed rather than guessing.
 		const disbursements = await listCardGrantDisbursements(existing.grantHashid)
-		const reconciled = reconcileDisbursement(disbursements, existing.amountCents, existing.createdAt)
+		const reconciled = reconcileDisbursement(disbursements, existing.amountCents, parseDbTimestamp(existing.createdAt))
 
 		if (reconciled.kind === "ambiguous")
 			throw new HttpError(
@@ -279,7 +271,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		}
 
 		// Nothing landed, so the retry may claim the row. Comparing `createdAt` makes that a CAS: a concurrent retry bumps it and the loser matches nothing. Refreshing it also restarts the abandoned-attempt window.
-		const reclaimed = await reclaimRow(existing.id, existing.createdAt, {
+		const reclaimed = await reclaimRow(existing.id, parseDbTimestamp(existing.createdAt), {
 			amountCents,
 			createdById: input.adminId,
 			grantHashid: hashid,
@@ -289,20 +281,19 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	}
 
 	// The approval this grant is for can be reversed while HCB is being called. Un-approve refuses while a row like this is in flight (see review.unapprovePhase), so this last read closes the rest of the window.
-	const current = await prisma.themeProject.findUnique({
-		select: { designStatus: true, grantUsd: true },
-		where: { id: project.id },
-	})
+	const current = await db.orm.public.ThemeProject.whereUnique({ id: project.id })
+		.select("designStatus", "grantUsd")
+		.first()
 	if (current?.designStatus !== PhaseStatus.approved || !current.grantUsd) {
-		await prisma.hcbGrantTopUp
-			.update({ data: { error: "The design was un-approved before the grant was sent" }, where: { id: rowId } })
+		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
+			.update({ error: "The design was un-approved before the grant was sent" })
 			.catch(() => undefined)
 		throw new HttpError("CONFLICT", "The design is no longer approved, so no grant is due")
 	}
 	// The amount was captured before HCB was called; if the grant was edited since – including by a retry reclaiming the row above – paying the stale figure sends the wrong money. Fail closed instead.
 	if (Math.round(current.grantUsd * 100) !== amountCents) {
-		await prisma.hcbGrantTopUp
-			.update({ data: { error: "The grant amount changed before the top-up was sent" }, where: { id: rowId } })
+		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
+			.update({ error: "The grant amount changed before the top-up was sent" })
 			.catch(() => undefined)
 		throw new HttpError("CONFLICT", "The grant amount changed – reload and try again")
 	}
@@ -341,8 +332,9 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		const message = err instanceof Error ? err.message : String(err)
 		// Only a row that has not been sent yet is a failure. A row that was marked sent says the money moved,
 		// and saying otherwise on top of that would send the next attempt looking for a payment that is there.
-		await prisma.hcbGrantTopUp
-			.updateMany({ data: { error: message }, where: { id: rowId, sentAt: null } })
+		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
+			.where(row => row.sentAt.isNull())
+			.updateAndCount({ error: message })
 			.catch(() => undefined)
 		throw err
 	}
@@ -359,17 +351,17 @@ async function reclaimRow(
 	data: { amountCents: number; createdById: string; grantHashid: string },
 ): Promise<number> {
 	try {
-		const reclaimed = await prisma.hcbGrantTopUp.updateMany({
-			data: {
+		const reclaimed = await db.orm.public.HcbGrantTopUp.where({ id: rowId })
+			.where(row => row.sentAt.isNull())
+			.where(row => row.createdAt.eq(formatDbTimestamp(createdAt)))
+			.updateAndCount({
 				amountCents: data.amountCents,
-				createdAt: new Date(),
+				createdAt: formatDbTimestamp(new Date()),
 				createdById: data.createdById,
 				error: null,
 				grantHashid: data.grantHashid,
-			},
-			where: { createdAt, id: rowId, sentAt: null },
-		})
-		return reclaimed.count
+			})
+		return reclaimed
 	} catch (err) {
 		if (isDuplicateGrantHashid(err))
 			throw new HttpError("CONFLICT", "That HCB card has already been paid for another project")

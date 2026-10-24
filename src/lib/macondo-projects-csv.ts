@@ -3,9 +3,11 @@ import { rehostScreenshot } from "@/lib/airtable/warmup-import"
 import { AuditAction, logAuditTx } from "@/lib/audit"
 import { parseCsvRecords } from "@/lib/csv"
 import { HttpError } from "@/lib/errors"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
+import { escapeLikePattern } from "@/lib/text"
+import { formatDbTimestamp } from "@/lib/time"
 
 /**
  * Projects submitted through Macondo (macondo.hackclub.com), taken out as a CSV and brought in as warm-up projects.
@@ -235,10 +237,9 @@ export interface CsvImportOutcome {
  * Which projects a previous run already filed. Keyed on the CSV's project_id rather than a local id, so re-running a file neither duplicates nor touches a project.
  */
 async function importedProjectIds(): Promise<Set<string>> {
-	const rows = await prisma.auditLog.findMany({
-		select: { metadata: true },
-		where: { action: AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT },
-	})
+	const rows = await db.orm.public.AuditLog.where({ action: AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT })
+		.select("metadata")
+		.all()
 	const out = new Set<string>()
 	for (const row of rows) {
 		const meta = row.metadata as { macondoProjectId?: unknown } | null
@@ -292,79 +293,71 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 			const createdAt = row.createdAt ?? new Date()
 
 			const user =
-				(await prisma.user.findFirst({
-					select: { id: true },
-					where: { email: { equals: row.email, mode: "insensitive" } },
-				}))
-				?? (await prisma.user.create({
-					data: {
-						email: row.email,
-						emailVerified: false,
-						joinedProgramAt: createdAt,
-					},
-					select: { id: true },
+				(await db.orm.public.User.where(user => user.email.ilike(escapeLikePattern(row.email)))
+					.select("id")
+					.first())
+				?? (await db.orm.public.User.create({
+					email: row.email,
+					emailVerified: false,
+					joinedProgramAt: formatDbTimestamp(createdAt),
 				}))
 
-			const project = await prisma.themeProject.create({
-				data: {
-					artifactLinks:
-						row.demoUrl || row.macondoUrl
-							? [
-									...(row.demoUrl ? [{ label: "Demo", url: row.demoUrl }] : []),
-									...(row.macondoUrl ? [{ label: "Macondo", url: row.macondoUrl }] : []),
-								]
-							: undefined,
-					buildStatus: PhaseStatus.in_review,
-					createdAt,
-					description: row.description,
-					// The cell is free text from a sheet, so it is run through the same rule the repo field uses; an address that will not parse becomes null rather than a link nothing can open.
-					githubRepo: normalizeRepo(row.repoUrl ?? "").url,
-					namedAt: createdAt,
-					requestedTier: row.tier ?? 1,
-					theme: Theme.WARMUP,
-					title: row.title,
-					userId: user.id,
-					warmupPhase: Phase.BUILD,
-				},
-				select: { id: true },
+			const createdAtText = formatDbTimestamp(createdAt)
+			const project = await db.orm.public.ThemeProject.create({
+				artifactLinks:
+					row.demoUrl || row.macondoUrl
+						? [
+								...(row.demoUrl ? [{ label: "Demo", url: row.demoUrl }] : []),
+								...(row.macondoUrl ? [{ label: "Macondo", url: row.macondoUrl }] : []),
+							]
+						: undefined,
+				buildStatus: PhaseStatus.in_review,
+				createdAt: createdAtText,
+				description: row.description,
+				// The cell is free text from a sheet, so it is run through the same rule the repo field uses; an address that will not parse becomes null rather than a link nothing can open.
+				githubRepo: normalizeRepo(row.repoUrl ?? "").url,
+				namedAt: createdAtText,
+				requestedTier: row.tier ?? 1,
+				theme: Theme.WARMUP,
+				title: row.title,
+				userId: user.id,
+				warmupPhase: Phase.BUILD,
 			})
 
-			for (const journal of row.journals)
-				await prisma.workSession.create({
-					data: {
-						content: journal.content,
-						createdAt: journal.createdAt ?? createdAt,
-						effectiveDate: effectiveDateFor(journal.createdAt ?? createdAt, settings.programTimezone),
-						hoursClaimed: journal.hours,
-						hoursSource: HoursSource.MANUAL,
-						phase: Phase.BUILD,
-						themeProjectId: project.id,
-						title: journal.title ?? "Devlog",
-						weekNumber: 0,
-					},
-				})
-
-			await prisma.phaseSubmission.create({
-				data: {
-					createdAt: row.submittedAt ?? createdAt,
-					onTime: false,
+			for (const journal of row.journals) {
+				const journalAt = journal.createdAt ?? createdAt
+				await db.orm.public.WorkSession.create({
+					content: journal.content,
+					createdAt: formatDbTimestamp(journalAt),
+					effectiveDate: effectiveDateFor(journalAt, settings.programTimezone),
+					hoursClaimed: journal.hours,
+					hoursSource: HoursSource.MANUAL,
 					phase: Phase.BUILD,
-					scheduledWeek: 0,
-					submittedInWeek: 0,
 					themeProjectId: project.id,
-				},
+					title: journal.title ?? "Devlog",
+					weekNumber: 0,
+				})
+			}
+
+			await db.orm.public.PhaseSubmission.create({
+				createdAt: formatDbTimestamp(row.submittedAt ?? createdAt),
+				onTime: false,
+				phase: Phase.BUILD,
+				scheduledWeek: 0,
+				submittedInWeek: 0,
+				themeProjectId: project.id,
 			})
 
 			let coverImported = false
 			if (row.thumbnailUrl) {
 				const key = await rehostScreenshot(user.id, row.thumbnailUrl)
 				if (key) {
-					await prisma.themeProject.update({ data: { coverImageKey: key }, where: { id: project.id } })
+					await db.orm.public.ThemeProject.where({ id: project.id }).update({ coverImageKey: key })
 					coverImported = true
 				}
 			}
 
-			await prisma.$transaction(async tx => {
+			await db.transaction(async tx => {
 				await logAuditTx(tx, {
 					action: AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT,
 					actorEmail: actor.email,

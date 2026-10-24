@@ -1,7 +1,6 @@
 import "dotenv/config"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
 import { Phase, PhaseStatus, ReviewResult, ShopItemCategory, Theme } from "../src/app/generated/prisma/enums"
+import db from "../src/lib/prisma8"
 
 /**
  * End-to-end check of the money path.
@@ -11,10 +10,6 @@ import { Phase, PhaseStatus, ReviewResult, ShopItemCategory, Theme } from "../sr
  *
  * Run with `bun scripts/verify-ledger.ts` against a scratch database.
  */
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
-})
-
 let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {
 	const pass = JSON.stringify(actual) === JSON.stringify(expected)
@@ -32,39 +27,34 @@ async function main() {
 	const { THEME_COMPLETION_BONUS } = await import("../src/lib/config/program")
 
 	const stamp = Date.now()
-	const participant = await prisma.user.create({
-		data: {
-			email: `ledger-check-${stamp}@example.test`,
-			name: "Ledger Check",
-			verificationStatus: "verified",
-		},
+	const participant = await db.orm.public.User.create({
+		email: `ledger-check-${stamp}@example.test`,
+		name: "Ledger Check",
+		verificationStatus: "verified",
 	})
-	const reviewer = await prisma.user.create({
-		data: { email: `reviewer-${stamp}@example.test`, name: "Reviewer" },
+	const reviewer = await db.orm.public.User.create({
+		email: `reviewer-${stamp}@example.test`,
+		name: "Reviewer",
 	})
 
-	const project = await prisma.themeProject.create({
-		data: {
-			buildStatus: PhaseStatus.in_review,
-			description: "A board for checking the ledger.",
-			designStatus: PhaseStatus.approved,
-			grantUsd: 30,
-			theme: Theme.PCB,
-			tier: 1,
-			title: "Ledger check board",
-			userId: participant.id,
-		},
+	const project = await db.orm.public.ThemeProject.create({
+		buildStatus: PhaseStatus.in_review,
+		description: "A board for checking the ledger.",
+		designStatus: PhaseStatus.approved,
+		grantUsd: 30,
+		theme: Theme.PCB,
+		tier: 1,
+		title: "Ledger check board",
+		userId: participant.id,
 	})
 
 	// 18 hours of journal work. A build has no funding floor, so all of it pays, spendable on anything.
-	await prisma.workSession.create({
-		data: {
-			effectiveDate: "2026-10-01",
-			hoursClaimed: 18,
-			phase: Phase.BUILD,
-			themeProjectId: project.id,
-			title: "Assembly",
-		},
+	await db.orm.public.WorkSession.create({
+		effectiveDate: "2026-10-01",
+		hoursClaimed: 18,
+		phase: Phase.BUILD,
+		themeProjectId: project.id,
+		title: "Assembly",
 	})
 
 	// This exercise approves an 18h BUILD. Every hour earns, 5 coins each, spendable on anything.
@@ -72,12 +62,12 @@ async function main() {
 	const expectedTotal = buildSplit.spendable + THEME_COMPLETION_BONUS
 
 	async function approve() {
-		const submission = await prisma.phaseSubmission.create({
-			data: { phase: Phase.BUILD, themeProjectId: project.id },
+		const submission = await db.orm.public.PhaseSubmission.create({
+			phase: Phase.BUILD,
+			themeProjectId: project.id,
 		})
-		await prisma.themeProject.update({
-			data: { buildStatus: PhaseStatus.in_review },
-			where: { id: project.id },
+		await db.orm.public.ThemeProject.where({ id: project.id }).update({
+			buildStatus: PhaseStatus.in_review,
 		})
 		return finalizeReview({
 			feedback: "Looks good.",
@@ -90,8 +80,8 @@ async function main() {
 		})
 	}
 
-	const spendable = async () => (await prisma.$transaction(tx => getBalances(tx, participant.id))).spendable
-	const banked = async () => (await prisma.$transaction(tx => getBalances(tx, participant.id))).banked
+	const spendable = async () => (await db.transaction(tx => getBalances(tx, participant.id))).spendable
+	const banked = async () => (await db.transaction(tx => getBalances(tx, participant.id))).banked
 
 	check("starting balance", await spendable(), 0)
 
@@ -108,7 +98,9 @@ async function main() {
 	await approve()
 	check("balance after re-approval does not double", await spendable(), expectedTotal)
 
-	const entries = await prisma.ledgerEntry.count({ where: { userId: participant.id } })
+	const { count: entries } = await db.orm.public.LedgerEntry.where({ userId: participant.id }).aggregate(a => ({
+		count: a.count(),
+	}))
 	// A build approval writes two lines – the spendable mint and the completion bonus. The legacy locked half reconciles to a zero target against a zero sum, which writes nothing. This exercise approves, un-approves and re-approves. Six rows for three states: history is appended, never edited, and the running total still converges to the same place it started.
 	const LINES_PER_BUILD_APPROVAL = 2
 	check("ledger rows appended, never edited", entries, LINES_PER_BUILD_APPROVAL * 3)
@@ -116,16 +108,14 @@ async function main() {
 	// Approving the remaining four themes should mint the printer award.
 	const others = [Theme.CAD, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER]
 	for (const theme of others)
-		await prisma.themeProject.create({
-			data: {
-				buildStatus: PhaseStatus.approved,
-				designStatus: PhaseStatus.approved,
-				grantUsd: 30,
-				theme,
-				tier: 1,
-				title: `${theme} check`,
-				userId: participant.id,
-			},
+		await db.orm.public.ThemeProject.create({
+			buildStatus: PhaseStatus.approved,
+			designStatus: PhaseStatus.approved,
+			grantUsd: 30,
+			theme,
+			tier: 1,
+			title: `${theme} check`,
+			userId: participant.id,
 		})
 
 	const qualification = await getPrinterQualification(participant.id)
@@ -133,8 +123,9 @@ async function main() {
 	check("themes shipped", qualification.shippedCount, 5)
 
 	// Nobody reviews their own work. Every account owns five themed projects, so without this a REVIEWER could approve their own design, set their own tier and mint their own credit.
-	const selfSubmission = await prisma.phaseSubmission.create({
-		data: { phase: Phase.DESIGN, themeProjectId: project.id },
+	const selfSubmission = await db.orm.public.PhaseSubmission.create({
+		phase: Phase.DESIGN,
+		themeProjectId: project.id,
 	})
 	let selfReviewRejected = false
 	try {
@@ -157,19 +148,17 @@ async function main() {
 
 	// Concurrent purchases must not double-spend. The balance is a SUM over an append-only table, so without a per-user lock ten parallel requests all read the same balance and all succeed.
 	const { purchase } = await import("../src/lib/shop")
-	await prisma.programSettings.update({
-		data: { shopClosesAt: null, shopOpen: true },
-		where: { id: "singleton" },
+	await db.orm.public.ProgramSettings.where({ id: "singleton" }).update({
+		shopClosesAt: null,
+		shopOpen: true,
 	})
-	const item = await prisma.shopItem.create({
-		data: {
-			description: "Costs exactly the participant's whole balance.",
-			id: `ledger-check-item-${stamp}`,
-			maxPerUser: 0,
-			name: "Ledger check widget",
-			priceCredits: expectedTotal,
-			requiresPrinterQualified: false,
-		},
+	const item = await db.orm.public.ShopItem.create({
+		description: "Costs exactly the participant's whole balance.",
+		id: `ledger-check-item-${stamp}`,
+		maxPerUser: 0,
+		name: "Ledger check widget",
+		priceCredits: expectedTotal,
+		requiresPrinterQualified: false,
 	})
 
 	const attempts = await Promise.allSettled(Array.from({ length: 8 }, () => purchase(participant.id, item.id, 1)))
@@ -203,36 +192,31 @@ async function main() {
 		check(`a season at pace buys the ${goal.name}`, earned >= goal.coins, true)
 	}
 
-	const saver = await prisma.user.create({
-		data: {
-			email: `saver-${stamp}@example.test`,
-			name: "Printer Fund Saver",
-			verificationStatus: "verified",
-		},
+	const saver = await db.orm.public.User.create({
+		email: `saver-${stamp}@example.test`,
+		name: "Printer Fund Saver",
+		verificationStatus: "verified",
 	})
-	const saverSpendable = async () => (await prisma.$transaction(tx => getBalances(tx, saver.id))).spendable
-	const saverBanked = async () => (await prisma.$transaction(tx => getBalances(tx, saver.id))).banked
+	const saverSpendable = async () => (await db.transaction(tx => getBalances(tx, saver.id))).spendable
+	const saverBanked = async () => (await db.transaction(tx => getBalances(tx, saver.id))).banked
 
-	const designProject = await prisma.themeProject.create({
-		data: {
-			description: "A bracket for checking the printer fund.",
-			designStatus: PhaseStatus.in_review,
-			theme: Theme.CAD,
-			title: "Ledger check bracket",
-			userId: saver.id,
-		},
+	const designProject = await db.orm.public.ThemeProject.create({
+		description: "A bracket for checking the printer fund.",
+		designStatus: PhaseStatus.in_review,
+		theme: Theme.CAD,
+		title: "Ledger check bracket",
+		userId: saver.id,
 	})
-	await prisma.workSession.create({
-		data: {
-			effectiveDate: "2026-09-10",
-			hoursClaimed: 11,
-			phase: Phase.DESIGN,
-			themeProjectId: designProject.id,
-			title: "Modelling",
-		},
+	await db.orm.public.WorkSession.create({
+		effectiveDate: "2026-09-10",
+		hoursClaimed: 11,
+		phase: Phase.DESIGN,
+		themeProjectId: designProject.id,
+		title: "Modelling",
 	})
-	const designSubmission = await prisma.phaseSubmission.create({
-		data: { phase: Phase.DESIGN, themeProjectId: designProject.id },
+	const designSubmission = await db.orm.public.PhaseSubmission.create({
+		phase: Phase.DESIGN,
+		themeProjectId: designProject.id,
 	})
 	const designOutcome = await finalizeReview({
 		feedback: "Approved at Tier 1.",
@@ -251,16 +235,14 @@ async function main() {
 	check("the legacy locked pot stays empty", await saverBanked(), 0)
 
 	// An upgrade costs part of the design mint. It must succeed: every coin is spendable on anything now, goal or no goal.
-	const upgrade = await prisma.shopItem.create({
-		data: {
-			category: ShopItemCategory.PRINTER_UPGRADE,
-			description: "Priced at part of the design mint.",
-			id: `ledger-check-upgrade-${stamp}`,
-			maxPerUser: 0,
-			name: "Ledger check upgrade",
-			priceCredits: 10,
-			requiresPrinterQualified: false,
-		},
+	const upgrade = await db.orm.public.ShopItem.create({
+		category: ShopItemCategory.PRINTER_UPGRADE,
+		description: "Priced at part of the design mint.",
+		id: `ledger-check-upgrade-${stamp}`,
+		maxPerUser: 0,
+		name: "Ledger check upgrade",
+		priceCredits: 10,
+		requiresPrinterQualified: false,
 	})
 	await purchase(saver.id, upgrade.id, 1)
 	check("spendable coins buy an upgrade", await saverSpendable(), expectedDesign.spendable - 10)
@@ -271,33 +253,28 @@ async function main() {
 	// shop hides the PRINTER category and purchase() refuses it, since machines
 	// leave through the goal flow – so the pot-emptying purchase is exercised
 	// with the same buyable category as the upgrade above.
-	const printerItem = await prisma.shopItem.create({
-		data: {
-			category: ShopItemCategory.PRINTER_UPGRADE,
-			description: "Priced at the rest of the design mint.",
-			id: `ledger-check-printer-${stamp}`,
-			maxPerUser: 0,
-			name: "Ledger check printer",
-			priceCredits: expectedDesign.spendable - 10,
-			requiresPrinterQualified: false,
-		},
+	const printerItem = await db.orm.public.ShopItem.create({
+		category: ShopItemCategory.PRINTER_UPGRADE,
+		description: "Priced at the rest of the design mint.",
+		id: `ledger-check-printer-${stamp}`,
+		maxPerUser: 0,
+		name: "Ledger check printer",
+		priceCredits: expectedDesign.spendable - 10,
+		requiresPrinterQualified: false,
 	})
 	await purchase(saver.id, printerItem.id, 1)
 	check("a printer purchase empties the balance", await saverSpendable(), 0)
 	check("and leaves nothing locked either", await saverBanked(), 0)
 
 	// Clean up so the script is re-runnable. Order matters: SubmissionReview restricts deleting its reviewer, so the participant (whose projects cascade down to those reviews) has to go first.
-	await prisma.user.delete({ where: { id: participant.id } })
-	await prisma.user.delete({ where: { id: saver.id } })
-	await prisma.user.delete({ where: { id: reviewer.id } })
+	await db.orm.public.User.where({ id: participant.id }).delete()
+	await db.orm.public.User.where({ id: saver.id }).delete()
+	await db.orm.public.User.where({ id: reviewer.id }).delete()
 	// The item can only go once the orders referencing it are gone with the user.
-	await prisma.shopItem.delete({ where: { id: item.id } })
-	await prisma.shopItem.delete({ where: { id: upgrade.id } })
-	await prisma.shopItem.delete({ where: { id: printerItem.id } })
-	await prisma.programSettings.update({
-		data: { shopOpen: false },
-		where: { id: "singleton" },
-	})
+	await db.orm.public.ShopItem.where({ id: item.id }).delete()
+	await db.orm.public.ShopItem.where({ id: upgrade.id }).delete()
+	await db.orm.public.ShopItem.where({ id: printerItem.id }).delete()
+	await db.orm.public.ProgramSettings.where({ id: "singleton" }).update({ shopOpen: false })
 
 	console.log(failures === 0 ? "\nAll ledger checks passed." : `\n${failures} check(s) failed.`)
 	process.exit(failures === 0 ? 0 : 1)
@@ -307,6 +284,8 @@ try {
 	await main()
 } catch (err) {
 	console.error(err)
-	await prisma.$disconnect()
+	await db.close()
 	process.exit(1)
 }
+
+await db.close()

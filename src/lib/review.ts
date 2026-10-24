@@ -1,5 +1,5 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import {
 	CoinBucket,
 	LedgerKind,
@@ -20,9 +20,9 @@ import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
 import { statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
-import { DAY_MS } from "@/lib/time"
+import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 // ─── Claim locks ─────────────────────────────────────────────────────────────
 
@@ -36,33 +36,33 @@ export type ClaimResult =
  * `submissionId` is unique, so this is a single insert that either succeeds or collides. Never implement claiming as read-then-write: two reviewers opening the queue at the same moment both read "unclaimed" and both proceed.
  */
 export async function claimSubmission(submissionId: string, reviewerId: string): Promise<ClaimResult> {
-	const owner = await prisma.phaseSubmission.findUnique({
-		select: { themeProject: { select: { userId: true } } },
-		where: { id: submissionId },
-	})
-	if (!owner) throw new HttpError("NOT_FOUND", "Submission not found")
+	const owner = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
+		.include("themeProject", project => project.select("userId"))
+		.first()
+	if (!owner?.themeProject) throw new HttpError("NOT_FOUND", "Submission not found")
 	if (owner.themeProject.userId === reviewerId)
 		throw new HttpError("FORBIDDEN", "You cannot review your own submission")
 
 	const settings = await getProgramSettings()
 	const expiresAt = new Date(Date.now() + settings.reviewClaimTtlMinutes * 60_000)
+	const expiresAtText = formatDbTimestamp(expiresAt)
+	const nowText = formatDbTimestamp(new Date())
 
 	// Opportunistically clear a dead reviewer's lock so a queue isn't blocked for up to a full sweep interval.
-	await prisma.reviewClaim.deleteMany({
-		where: { OR: [{ expiresAt: { lt: new Date() } }, { reviewerId }], submissionId },
-	})
+	await db.orm.public.ReviewClaim.where({ submissionId })
+		.where(claim => or(claim.expiresAt.lt(nowText), claim.reviewerId.eq(reviewerId)))
+		.deleteAndCount()
 
 	try {
-		await prisma.reviewClaim.create({ data: { expiresAt, reviewerId, submissionId } })
+		await db.orm.public.ReviewClaim.create({ expiresAt: expiresAtText, reviewerId, submissionId })
 		return { expiresAt, ok: true }
 	} catch {
-		const held = await prisma.reviewClaim.findUnique({
-			include: { reviewer: { select: { displayName: true, name: true } } },
-			where: { submissionId },
-		})
-		if (!held) throw new HttpError("CONFLICT", "Could not claim this submission")
+		const held = await db.orm.public.ReviewClaim.where({ submissionId })
+			.include("reviewer", reviewer => reviewer.select("displayName", "name"))
+			.first()
+		if (!held?.reviewer) throw new HttpError("CONFLICT", "Could not claim this submission")
 		return {
-			expiresAt: held.expiresAt,
+			expiresAt: parseDbTimestamp(held.expiresAt),
 			heldBy: held.reviewerId,
 			// The claim conflict is shown on the queue, so it names them the way the queue does.
 			heldByName: displayName(held.reviewer),
@@ -72,17 +72,14 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 }
 
 export async function releaseClaim(submissionId: string, reviewerId: string): Promise<void> {
-	const claim = await prisma.reviewClaim.findUnique({ where: { submissionId } })
+	const claim = await db.orm.public.ReviewClaim.where({ submissionId }).select("reviewerId").first()
 	if (!claim) return
 	if (claim.reviewerId !== reviewerId) throw new HttpError("FORBIDDEN", "That claim belongs to another reviewer")
-	await prisma.reviewClaim.delete({ where: { submissionId } })
+	await db.orm.public.ReviewClaim.where({ submissionId }).deleteAndCount()
 }
 
 export async function sweepExpiredClaims(): Promise<number> {
-	const { count } = await prisma.reviewClaim.deleteMany({
-		where: { expiresAt: { lt: new Date() } },
-	})
-	return count
+	return db.orm.public.ReviewClaim.where(claim => claim.expiresAt.lt(formatDbTimestamp(new Date()))).deleteAndCount()
 }
 
 // ─── Decisions ───────────────────────────────────────────────────────────────
@@ -139,26 +136,27 @@ export interface FinalizeOutcome {
  * The whole thing is one transaction because a partial application – status moved but credit not written, or credit written twice – is the failure that costs real money.
  */
 export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutcome> {
-	const submission = await prisma.phaseSubmission.findUnique({
-		include: {
-			claim: true,
-			themeProject: {
-				include: { user: { select: { id: true, printerGoalId: true } } },
-			},
-		},
-		where: { id: input.submissionId },
-	})
-	if (!submission) throw new HttpError("NOT_FOUND", "Submission not found")
+	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })
+		.include("claim")
+		.include("themeProject", project => project.include("user", user => user.select("id", "printerGoalId")))
+		.first()
+	if (!submission?.themeProject?.user) throw new HttpError("NOT_FOUND", "Submission not found")
 
 	// Nobody reviews their own work. Every account gets its own five themed projects at signup, reviewers included, so without this a REVIEWER could approve their own design, set their own tier, and mint their own credit – which is exactly what the role is not supposed to be able to do. Admins are not exempt: the point is a second pair of eyes, not a trust level.
 	if (submission.themeProject.userId === input.reviewerId)
 		throw new HttpError("FORBIDDEN", "You cannot review your own submission")
 
 	if (submission.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
-	if (submission.claim && submission.claim.reviewerId !== input.reviewerId && submission.claim.expiresAt > new Date())
+	if (
+		submission.claim
+		&& submission.claim.reviewerId !== input.reviewerId
+		&& parseDbTimestamp(submission.claim.expiresAt) > new Date()
+	)
 		throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
 
 	const project = submission.themeProject
+	const projectUser = project.user
+	if (!projectUser) throw new HttpError("NOT_FOUND", "Submission not found")
 	const { phase } = submission
 	const approving = input.result === ReviewResult.APPROVED
 
@@ -202,7 +200,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			: project.grantUsd
 
 	// The machine this participant is saving for is frozen alongside the tier for the pacing displays: it no longer sizes the payout, but the goal tracker still reads it to say what this week's work means for the goal. Someone who never chose one is paced against the default.
-	const goal = printerById(project.user.printerGoalId ?? DEFAULT_GOAL_ID)
+	const goal = printerById(projectUser.printerGoalId ?? DEFAULT_GOAL_ID)
 
 	const tierDef = tier ? getTierOrThrow(tier) : null
 
@@ -213,29 +211,27 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				? PhaseStatus.update_requested
 				: PhaseStatus.rejected
 
-	const outcome = await prisma.$transaction(async tx => {
+	const outcome = await db.transaction(async tx => {
 		// reconcileGrant reads a running sum and writes a delta against it, so it needs the same serialization the shop does.
 		await lockUserCredit(tx, project.userId)
 
 		// Re-read inside the transaction: the review page may have been open for a while, and the participant may have withdrawn in the meantime.
-		const fresh = await tx.phaseSubmission.findUnique({
-			select: { resolvedAt: true },
-			where: { id: input.submissionId },
-		})
+		const fresh = await tx.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })
+			.select("resolvedAt")
+			.first()
 		if (!fresh) throw new HttpError("NOT_SUBMITTED", "This submission has been withdrawn")
 		if (fresh.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "Already decided")
 
 		// Re-check the claim under the transaction too. The check before it ran against a read taken when the page opened, so another reviewer can have claimed the submission since; without this the decision would proceed and delete their live claim on the way out.
-		const claim = await tx.reviewClaim.findUnique({ where: { submissionId: input.submissionId } })
-		if (claim && claim.reviewerId !== input.reviewerId && claim.expiresAt > new Date())
+		const claim = await tx.orm.public.ReviewClaim.where({ submissionId: input.submissionId }).first()
+		if (claim && claim.reviewerId !== input.reviewerId && parseDbTimestamp(claim.expiresAt) > new Date())
 			throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
 
 		// Re-check the design ordering under the same per-user lock the un-approve path takes. The check before the transaction ran against a read taken before the live Hackatime fetch; an admin can un-approve the design in that window, and a build approval must not pay out of order. Taking the lock first means this read sees either the un-approval (and refuses) or blocks it until this decision has committed.
 		if (approving && phase === Phase.BUILD) {
-			const design = await tx.themeProject.findUnique({
-				select: { designStatus: true, theme: true },
-				where: { id: project.id },
-			})
+			const design = await tx.orm.public.ThemeProject.whereUnique({ id: project.id })
+				.select("designStatus", "theme")
+				.first()
 			if (design?.theme !== Theme.WARMUP && design?.designStatus !== PhaseStatus.approved)
 				throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
 		}
@@ -279,66 +275,83 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		if (approving)
 			// Accept every unreviewed session at its claimed hours, so the per-session numbers stay consistent with the frozen total.
 			// Only sessions in the snapshot: one created after it was never counted in the frozen total.
-			await tx.workSession.updateMany({
-				data: { reviewedAt: new Date(), reviewedById: input.reviewerId },
-				where: {
-					createdAt: { lt: snapshotAt },
-					deletedAt: null,
-					hoursApproved: null,
-					phase,
-					themeProjectId: project.id,
-				},
+			await tx.orm.public.WorkSession.where({
+				deletedAt: null,
+				phase,
+				themeProjectId: project.id,
 			})
+				.where(session => session.hoursApproved.isNull())
+				.where(session => session.createdAt.lt(formatDbTimestamp(snapshotAt)))
+				.updateAll({ reviewedAt: formatDbTimestamp(new Date()), reviewedById: input.reviewerId })
 
-		await tx.submissionReview.create({
-			data: {
-				feedback: input.feedback,
-				frozenApprovedHours: approvedHours,
-				frozenBankedCoins: coins?.banked ?? null,
-				frozenBankHours: goal.paceHours,
-				frozenEntryCount: breakdown.journalEntryCount,
-				frozenFundingHours: tierDef?.fundingHours ?? null,
-				frozenGrantUsd: grantUsd,
-				frozenHackatimeHours: breakdown.hackatimeHours,
-				// Freeze what the reviewer was looking at. The tier table is expected to change mid-program, so without these there is no way to reconstruct why anyone was paid what they were paid.
-				frozenJournalHours: breakdown.journalHours,
-				frozenPrinterGoalId: goal.id,
-				frozenSpendableCoins: coins?.spendable ?? null,
-				frozenTier: tier,
-				frozenTimelapseSeconds: breakdown.timelapseSeconds,
-				grantUsdOverride: input.grantUsdOverride ?? null,
-				hoursOverride: input.hoursOverride ?? null,
-				pass: ReviewPass.FINAL,
-				reason: input.reason ?? null,
-				result: input.result,
-				// Who decided, as contact details rather than only an account link: Ari's reviewers hold no Half Life account, so `reviewerId` is null for every Ari decision and the email is the only attribution the leaderboard has. Console reviewers carry both.
-				reviewerEmail: input.reviewerEmail,
-				reviewerId: input.reviewerId,
-				reviewerName: input.reviewerName,
-				submissionId: input.submissionId,
-				tierOverride: input.tier ?? null,
-			},
+		await tx.orm.public.SubmissionReview.create({
+			feedback: input.feedback,
+			frozenApprovedHours: approvedHours,
+			frozenBankedCoins: coins?.banked ?? null,
+			frozenBankHours: goal.paceHours,
+			frozenEntryCount: breakdown.journalEntryCount,
+			frozenFundingHours: tierDef?.fundingHours ?? null,
+			frozenGrantUsd: grantUsd,
+			frozenHackatimeHours: breakdown.hackatimeHours,
+			// Freeze what the reviewer was looking at. The tier table is expected to change mid-program, so without these there is no way to reconstruct why anyone was paid what they were paid.
+			frozenJournalHours: breakdown.journalHours,
+			frozenPrinterGoalId: goal.id,
+			frozenSpendableCoins: coins?.spendable ?? null,
+			frozenTier: tier,
+			frozenTimelapseSeconds: breakdown.timelapseSeconds,
+			grantUsdOverride: input.grantUsdOverride ?? null,
+			hoursOverride: input.hoursOverride ?? null,
+			pass: ReviewPass.FINAL,
+			reason: input.reason ?? null,
+			result: input.result,
+			// Who decided, as contact details rather than only an account link: Ari's reviewers hold no Half Life account, so `reviewerId` is null for every Ari decision and the email is the only attribution the leaderboard has. Console reviewers carry both.
+			reviewerEmail: input.reviewerEmail,
+			reviewerId: input.reviewerId,
+			reviewerName: input.reviewerName,
+			submissionId: input.submissionId,
+			tierOverride: input.tier ?? null,
 		})
 
-		await tx.phaseSubmission.update({
-			data: { resolvedAt: new Date(), resolvedResult: input.result },
-			where: { id: input.submissionId },
+		await tx.orm.public.PhaseSubmission.where({ id: input.submissionId }).update({
+			resolvedAt: formatDbTimestamp(new Date()),
+			resolvedResult: input.result,
 		})
 
-		const projectUpdate: Prisma.ThemeProjectUpdateInput = {
+		const nowText = formatDbTimestamp(new Date())
+		const projectUpdate: {
+			designReviewComments?: string
+			designReviewedAt?: string
+			designReviewedById?: string | null
+			designStatus?: PhaseStatus
+			designApprovedHours?: number | null
+			designApprovedHoursAt?: string
+			designBankedCoins?: number | null
+			designSpendableCoins?: number | null
+			grantEmittedAt?: string
+			grantUsd?: number | null
+			tier?: number | null
+			buildReviewComments?: string
+			buildReviewedAt?: string
+			buildReviewedById?: string | null
+			buildStatus?: PhaseStatus
+			approvedHours?: number | null
+			approvedHoursAt?: string
+			buildCoins?: number | null
+			submissionExtensionUntil?: string
+		} = {
 			...(phase === Phase.DESIGN
 				? {
 						designReviewComments: input.feedback,
-						designReviewedAt: new Date(),
+						designReviewedAt: nowText,
 						designReviewedById: input.reviewerId,
 						designStatus: nextStatus,
 						...(approving
 							? {
 									designApprovedHours: approvedHours,
-									designApprovedHoursAt: new Date(),
+									designApprovedHoursAt: nowText,
 									designBankedCoins: coins?.banked ?? null,
 									designSpendableCoins: coins?.spendable ?? null,
-									grantEmittedAt: new Date(),
+									grantEmittedAt: nowText,
 									grantUsd,
 									tier,
 								}
@@ -346,13 +359,13 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 					}
 				: {
 						buildReviewComments: input.feedback,
-						buildReviewedAt: new Date(),
+						buildReviewedAt: nowText,
 						buildReviewedById: input.reviewerId,
 						buildStatus: nextStatus,
 						...(approving
 							? {
 									approvedHours,
-									approvedHoursAt: new Date(),
+									approvedHoursAt: nowText,
 									// Spendable only: the banked half is reconciled through the ledger's BUILD_BANKED_HOURS rows, not this display field.
 									buildCoins: coins?.spendable ?? null,
 								}
@@ -360,11 +373,17 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 					}),
 			// A return is the one state a maker is expected to act on, so it carries the time to act: a week from the return, on the project rather than the account, so only this project's week reopens. A backlog replay turns this off with the notice it also skips.
 			...(input.result === ReviewResult.RETURNED && input.grantExtension !== false
-				? { submissionExtensionUntil: returnExtensionUntil(project.submissionExtensionUntil) }
+				? {
+						submissionExtensionUntil: formatDbTimestamp(
+							returnExtensionUntil(
+								project.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null,
+							),
+						),
+					}
 				: {}),
 		}
 
-		await tx.themeProject.update({ data: projectUpdate, where: { id: project.id } })
+		await tx.orm.public.ThemeProject.where({ id: project.id }).update(projectUpdate)
 
 		// Credit is reconciled to a target rather than appended, so approving the same build five times converges instead of compounding.
 		if (phase === Phase.DESIGN) {
@@ -423,7 +442,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			})
 		}
 
-		await tx.reviewClaim.deleteMany({ where: { submissionId: input.submissionId } })
+		await tx.orm.public.ReviewClaim.where({ submissionId: input.submissionId }).deleteAndCount()
 
 		const award = approving ? await ensurePrinterAward(tx, project.userId) : null
 
@@ -489,36 +508,34 @@ export async function unapprovePhase(
 	reason: string,
 	options: { grantExtension?: boolean } = {},
 ): Promise<void> {
-	const project = await prisma.themeProject.findUnique({ where: { id: themeProjectId } })
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).first()
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
 	const status = statusFor(project, phase)
 	if (status !== PhaseStatus.approved) throw new HttpError("CONFLICT", "That phase is not approved")
 
-	const { unrecovered } = await prisma.$transaction(async tx => {
+	const { unrecovered } = await db.transaction(async tx => {
 		await lockUserCredit(tx, project.userId)
 
 		// Re-read under the lock: the fast check above ran against a read taken before it, and a decision or re-approval can have committed since.
-		const fresh = await tx.themeProject.findUnique({
-			select: { buildStatus: true, designStatus: true },
-			where: { id: themeProjectId },
-		})
+		const fresh = await tx.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+			.select("buildStatus", "designStatus")
+			.first()
 		if (!fresh || statusFor(fresh, phase) !== PhaseStatus.approved)
 			throw new HttpError("CONFLICT", "That phase is no longer approved")
 
 		// A grant send holds no credit lock while HCB is called, so a design un-approval must not race it: the money would be sent for an approval that no longer stands, and the sent row would block a later send. `sendGrant` marks the row errored before it throws, which is what lets this same check pass on the retry after the window.
 		if (phase === Phase.DESIGN) {
-			const inFlight = await tx.hcbGrantTopUp.findFirst({
-				select: { id: true },
-				where: {
-					createdAt: { gt: new Date(Date.now() - ABANDONED_ATTEMPT_MS) },
-					error: null,
-					phase: Phase.DESIGN,
-					sentAt: null,
-					themeProjectId,
-					userId: project.userId,
-				},
+			const inFlight = await tx.orm.public.HcbGrantTopUp.where({
+				error: null,
+				phase: Phase.DESIGN,
+				sentAt: null,
+				themeProjectId,
+				userId: project.userId,
 			})
+				.where(topUp => topUp.createdAt.gt(formatDbTimestamp(new Date(Date.now() - ABANDONED_ATTEMPT_MS))))
+				.select("id")
+				.first()
 			if (inFlight)
 				throw new HttpError(
 					"CONFLICT",
@@ -526,37 +543,43 @@ export async function unapprovePhase(
 				)
 		}
 
-		await tx.submissionReview.updateMany({
-			data: { invalidated: true, invalidatedAt: new Date() },
-			where: { invalidated: false, submission: { phase, themeProjectId } },
-		})
+		await tx.orm.public.SubmissionReview.where({ invalidated: false })
+			.where(review =>
+				review.submission.some(submission =>
+					and(submission.phase.eq(phase), submission.themeProjectId.eq(themeProjectId)),
+				),
+			)
+			.updateAll({ invalidated: true, invalidatedAt: formatDbTimestamp(new Date()) })
 
-		await tx.themeProject.update({
-			data: {
-				...(phase === Phase.DESIGN
-					? {
-							designApprovedHours: null,
-							designApprovedHoursAt: null,
-							designBankedCoins: null,
-							designReviewComments: reason,
-							designSpendableCoins: null,
-							designStatus: PhaseStatus.update_requested,
-							grantEmittedAt: null,
-							grantUsd: null,
-							tier: null,
-						}
-					: {
-							approvedHours: null,
-							approvedHoursAt: null,
-							buildCoins: null,
-							buildReviewComments: reason,
-							buildStatus: PhaseStatus.update_requested,
-						}),
-				...(options.grantExtension
-					? { submissionExtensionUntil: returnExtensionUntil(project.submissionExtensionUntil) }
-					: {}),
-			},
-			where: { id: themeProjectId },
+		await tx.orm.public.ThemeProject.where({ id: themeProjectId }).update({
+			...(phase === Phase.DESIGN
+				? {
+						designApprovedHours: null,
+						designApprovedHoursAt: null,
+						designBankedCoins: null,
+						designReviewComments: reason,
+						designSpendableCoins: null,
+						designStatus: PhaseStatus.update_requested,
+						grantEmittedAt: null,
+						grantUsd: null,
+						tier: null,
+					}
+				: {
+						approvedHours: null,
+						approvedHoursAt: null,
+						buildCoins: null,
+						buildReviewComments: reason,
+						buildStatus: PhaseStatus.update_requested,
+					}),
+			...(options.grantExtension
+				? {
+						submissionExtensionUntil: formatDbTimestamp(
+							returnExtensionUntil(
+								project.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null,
+							),
+						),
+					}
+				: {}),
 		})
 
 		// Each reversal reports what it could not take back, so the audit row can say how much of the grant
@@ -652,28 +675,34 @@ export async function reopenPhase(
 	reason: string,
 	options: { grantExtension?: boolean } = {},
 ): Promise<void> {
-	const project = await prisma.themeProject.findUnique({ where: { id: themeProjectId } })
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).first()
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
 	const status = statusFor(project, phase)
 	if (status !== PhaseStatus.rejected) throw new HttpError("CONFLICT", "That phase is not rejected")
 
 	// Conditional on the status that was read: an admin double-click, or a reopen racing a resubmission, must not overwrite a newer state.
-	const reopened = await prisma.themeProject.updateMany({
-		data: {
+	const reopened = await db.orm.public.ThemeProject.where({ id: themeProjectId })
+		.where(project =>
+			phase === Phase.DESIGN
+				? project.designStatus.eq(PhaseStatus.rejected)
+				: project.buildStatus.eq(PhaseStatus.rejected),
+		)
+		.updateAndCount({
 			...(phase === Phase.DESIGN
 				? { designReviewComments: reason, designStatus: PhaseStatus.update_requested }
 				: { buildReviewComments: reason, buildStatus: PhaseStatus.update_requested }),
 			...(options.grantExtension
-				? { submissionExtensionUntil: returnExtensionUntil(project.submissionExtensionUntil) }
+				? {
+						submissionExtensionUntil: formatDbTimestamp(
+							returnExtensionUntil(
+								project.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null,
+							),
+						),
+					}
 				: {}),
-		},
-		where: {
-			id: themeProjectId,
-			...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.rejected } : { buildStatus: PhaseStatus.rejected }),
-		},
-	})
-	if (reopened.count !== 1) throw new HttpError("CONFLICT", "That phase moved while it was being reopened")
+		})
+	if (reopened !== 1) throw new HttpError("CONFLICT", "That phase moved while it was being reopened")
 
 	await logAudit({
 		action: AuditAction.ADMIN_REOPEN_PHASE,

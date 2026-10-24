@@ -1,3 +1,4 @@
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
 import { Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
@@ -9,7 +10,7 @@ import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import {
 	getSubmissionAccess,
 	isPhaseDecided,
@@ -22,6 +23,7 @@ import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionUpdateSchema } from "@/lib/schemas/session"
 import { reconcileSessionTimelapses } from "@/lib/session-timelapses"
 import { recomputeStreak } from "@/lib/streak"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 interface Params {
 	params: Promise<{ id: string; sessionId: string }>
@@ -31,15 +33,10 @@ interface Params {
 const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
 function loadOwned(userId: string, projectId: string, sessionId: string) {
-	return prisma.workSession.findFirst({
-		include: { themeProject: { select: { buildStatus: true, designStatus: true, theme: true } } },
-		where: {
-			deletedAt: null,
-			id: sessionId,
-			themeProject: { deletedAt: null, userId },
-			themeProjectId: projectId,
-		},
-	})
+	return db.orm.public.WorkSession.where({ deletedAt: null, id: sessionId, themeProjectId: projectId })
+		.where(session => session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))))
+		.include("themeProject", project => project.select("buildStatus", "designStatus", "theme"))
+		.first()
 }
 
 /** A passed week's entries are the record it is judged on, so they stay put. */
@@ -54,8 +51,10 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	if (parsed.error) return parsed.error
 	const { data } = parsed
 
-	const session = await loadOwned(gate.user.id, id, sessionId)
-	if (!session) return fail("NOT_FOUND", "Session not found")
+	const loaded = await loadOwned(gate.user.id, id, sessionId)
+	if (!loaded?.themeProject) return fail("NOT_FOUND", "Session not found")
+	const session = { ...loaded, themeProject: loaded.themeProject }
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
@@ -73,10 +72,9 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 		return fail("PHASE_LOCKED", "This entry has been reviewed and can no longer be edited")
 
 	// Timelapse re-attachment. `timelapses`, when present, is the full desired set of LAPSE clips: rows for ids already on this session are kept without re-verification, so a clip that went private since does not fail an unrelated words edit; brand-new ids go through the same ownership and single-use checks as creation; lapse rows for anything else come off. Ids naming this session's own older R2 uploads are kept silently – those rows predate Lapse and are never touched here.
-	const rows = await prisma.sessionTimelapse.findMany({
-		select: { externalId: true, id: true, objectKey: true, provider: true },
-		where: { workSessionId: sessionId },
-	})
+	const rows = await db.orm.public.SessionTimelapse.where({ workSessionId: sessionId })
+		.select("externalId", "id", "objectKey", "provider")
+		.all()
 	const r2Keys = new Set(rows.flatMap(r => (r.objectKey ? [r.objectKey] : [])))
 	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
 	const want =
@@ -95,29 +93,31 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 		title: t.title,
 	}))
 
-	const updated = await prisma.$transaction(async tx => {
+	const updated = await db.transaction(async tx => {
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a decision that commits between the checks above and this write makes it match nothing, and the edit is refused rather than landing on a frozen week.
-		const changed = await tx.workSession.updateMany({
-			data: {
+		const changed = await tx.orm.public.WorkSession.where({ deletedAt: null, id: sessionId, themeProjectId: id })
+			.where(session => session.hoursApproved.isNull())
+			.where(session =>
+				or(
+					and(
+						session.phase.eq(Phase.DESIGN),
+						session.themeProject.some(project => project.designStatus.in(EDITABLE_PHASE_STATUSES)),
+					),
+					and(
+						session.phase.eq(Phase.BUILD),
+						session.themeProject.some(project => project.buildStatus.in(EDITABLE_PHASE_STATUSES)),
+					),
+				),
+			)
+			.updateAndCount({
 				...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
 				...(data.content !== undefined ? { content: data.content ? sanitizeHtml(data.content) : null } : {}),
 				...(data.hoursClaimed !== undefined ? { hoursClaimed: data.hoursClaimed } : {}),
 				...(data.hoursSource !== undefined ? { hoursSource: data.hoursSource } : {}),
-			},
-			where: {
-				deletedAt: null,
-				hoursApproved: null,
-				id: sessionId,
-				OR: [
-					{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
-					{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
-				],
-				themeProjectId: id,
-			},
-		})
-		if (changed.count !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being edited")
-		return tx.workSession.findUniqueOrThrow({ where: { id: sessionId } })
+			})
+		if (changed !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being edited")
+		return tx.orm.public.WorkSession.whereUnique({ id: sessionId }).firstOrThrow()
 	})
 
 	await logAudit({
@@ -141,14 +141,22 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 
 	after(() => scheduleRepoSync(id))
 
-	return ok({ session: updated })
+	return ok({
+		session: {
+			...updated,
+			createdAt: parseDbTimestamp(updated.createdAt),
+			deletedAt: parseNullable(updated.deletedAt),
+			reviewedAt: parseNullable(updated.reviewedAt),
+		},
+	})
 })
 
 export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
-	const session = await loadOwned(gate.user.id, id, sessionId)
-	if (!session) return fail("NOT_FOUND", "Session not found")
+	const loadedDelete = await loadOwned(gate.user.id, id, sessionId)
+	if (!loadedDelete?.themeProject) return fail("NOT_FOUND", "Session not found")
+	const session = { ...loadedDelete, themeProject: loadedDelete.themeProject }
 
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
@@ -165,22 +173,24 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 	if (!(await weekOpenFor(gate.user.id, id, session))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 	// Deleting the only session on a day removes that day from the run, so the streak has to be recomputed with it. PATCH does not, because it cannot change `effectiveDate` – the set of journalled days is the same after it.
-	await prisma.$transaction(async tx => {
+	await db.transaction(async tx => {
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a review that commits between the checks above and this write makes it match nothing, and the entry stays.
-		const deleted = await tx.workSession.updateMany({
-			data: { deletedAt: new Date() },
-			where: {
-				deletedAt: null,
-				hoursApproved: null,
-				id: sessionId,
-				OR: [
-					{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
-					{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
-				],
-				themeProjectId: id,
-			},
-		})
-		if (deleted.count !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being deleted")
+		const deleted = await tx.orm.public.WorkSession.where({ deletedAt: null, id: sessionId, themeProjectId: id })
+			.where(session => session.hoursApproved.isNull())
+			.where(session =>
+				or(
+					and(
+						session.phase.eq(Phase.DESIGN),
+						session.themeProject.some(project => project.designStatus.in(EDITABLE_PHASE_STATUSES)),
+					),
+					and(
+						session.phase.eq(Phase.BUILD),
+						session.themeProject.some(project => project.buildStatus.in(EDITABLE_PHASE_STATUSES)),
+					),
+				),
+			)
+			.updateAndCount({ deletedAt: formatDbTimestamp(new Date()) })
+		if (deleted !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being deleted")
 		await recomputeStreak(tx, gate.user.id)
 	})
 
