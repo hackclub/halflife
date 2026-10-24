@@ -79,7 +79,7 @@ export const PATCH = withPermission(
 				action: AuditAction.ADMIN_CHANGE_EMAIL,
 				actorEmail: gate.user.email,
 				actorId: gate.user.id,
-				metadata: { after: parsed.data.email, before: before.email, emailVerified: false },
+				metadata: { after: parsed.data.email ?? null, before: before.email, emailVerified: false },
 				targetId: id,
 				targetType: "User",
 			})

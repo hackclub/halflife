@@ -1,6 +1,6 @@
 import "server-only"
 import { Role } from "@/app/generated/prisma/enums"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 
 export { Role } from "@/app/generated/prisma/enums"
 
@@ -128,10 +128,7 @@ export function hasRole(roles: Role[], role: Role): boolean {
 }
 
 export async function getUserRoles(userId: string): Promise<Role[]> {
-	const rows = await prisma.userRole.findMany({
-		select: { role: true },
-		where: { userId },
-	})
+	const rows = await db.orm.public.UserRole.where({ userId }).select("role").all()
 	return rows.map(r => r.role)
 }
 
@@ -141,9 +138,8 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
  * A session can outlive its user. The session cookie cache answers `getSession` without touching the database for up to five minutes, so a user deleted inside that window – by hand, or wholesale by a database reset – still looks signed in, and every page then loads that user by id. One query answers both "who are they" and "are they still here", so the guards can turn a ghost session into a sign-out rather than let the first `findUniqueOrThrow` discover it as a 500.
  */
 export async function getUserRolesIfExists(userId: string): Promise<Role[] | null> {
-	const user = await prisma.user.findUnique({
-		select: { roles: { select: { role: true } } },
-		where: { id: userId },
-	})
-	return user ? user.roles.map(r => r.role) : null
+	const user = await db.orm.public.User.whereUnique({ id: userId })
+		.include("roles", roles => roles.select("role"))
+		.first()
+	return user?.roles.map(r => r.role) ?? null
 }

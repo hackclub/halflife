@@ -1,5 +1,5 @@
 import "server-only"
-import postgres from "@prisma/orm-postgres/runtime"
+import postgres, { type PostgresQueryMembers } from "@prisma/orm-postgres/runtime"
 import { contractFromJson } from "@prisma/orm-postgres/static"
 import type { Contract } from "@/app/generated/prisma8/contract.d"
 import contractJson from "@/app/generated/prisma8/contract.json" with { type: "json" }
@@ -29,6 +29,13 @@ const createClient = () => {
 }
 
 export type Prisma8Client = ReturnType<typeof createClient>
+
+/**
+ * A Prisma 8 database handle: the client or a transaction.
+ *
+ * Both the client and `db.transaction`'s `tx` carry `orm`, `sql` and `raw`, so helpers that take this run unchanged inside and outside a transaction. Replaces `Prisma.TransactionClient` parameters (which only fit transactions, never the plain client).
+ */
+export type DbOrTx = PostgresQueryMembers<Contract>
 
 // Cached on globalThis so Next's dev-mode module reloading doesn't open a new connection pool on every edit until Postgres refuses connections.
 const globalForPrisma8 = globalThis as unknown as { prisma8?: Prisma8Client }

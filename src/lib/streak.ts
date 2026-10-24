@@ -1,12 +1,10 @@
-import { DAY_MS } from "@/lib/time"
+import { and } from "@prisma/orm-postgres/orm-client"
+import { DAY_MS, parseDbTimestamp } from "@/lib/time"
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
 import { PostKind } from "@/app/generated/prisma/enums"
 import { STREAK_GRACE_DAYS } from "@/lib/config/program"
-import prisma from "@/lib/prisma"
+import db, { type DbOrTx } from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
-
-type Tx = Prisma.TransactionClient
 
 /**
  * Journalling streaks.
@@ -68,29 +66,28 @@ export function streakFromDays(daysDesc: readonly string[]): StreakState {
  *
  * A reel counts from the day it was published, in the program timezone. Posts are published the moment they are created (there is no transcode step yet), so `publishedAt` is normally just `createdAt` seconds later; the fallback covers a row whose status was flipped by hand.
  */
-async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
+async function activeDaysDesc(tx: DbOrTx, userId: string): Promise<string[]> {
 	const { programTimezone } = await getProgramSettings()
 
 	const [sessions, posts] = await Promise.all([
-		tx.workSession.findMany({
-			distinct: ["effectiveDate"],
-			select: { effectiveDate: true },
-			where: {
-				deletedAt: null,
-				effectiveDate: { not: null },
-				themeProject: { deletedAt: null, userId },
-			},
-		}),
+		tx.orm.public.WorkSession.where({ deletedAt: null })
+			.where(session => session.effectiveDate.isNotNull())
+			.where(session =>
+				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+			)
+			.distinct("effectiveDate")
+			.select("effectiveDate")
+			.all(),
 		// Soft-deleted reels are gone, so the day they carried goes with them. Hidden ones still count: the day was worked whatever a moderator later did with the post. ANNOUNCEMENTs are HQ's, never a participant's.
-		tx.post.findMany({
-			select: { createdAt: true, publishedAt: true },
-			where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT }, userId },
-		}),
+		tx.orm.public.Post.where({ deletedAt: null, userId })
+			.where(post => post.kind.neq(PostKind.ANNOUNCEMENT))
+			.select("createdAt", "publishedAt")
+			.all(),
 	])
 
 	const days = new Set<string>()
 	for (const s of sessions) if (s.effectiveDate) days.add(s.effectiveDate)
-	for (const p of posts) days.add(effectiveDateFor(p.publishedAt ?? p.createdAt, programTimezone))
+	for (const p of posts) days.add(effectiveDateFor(parseDbTimestamp(p.publishedAt ?? p.createdAt), programTimezone))
 
 	// YYYY-MM-DD sorts lexicographically, so sort-then-reverse is newest-first without parsing a single date.
 	return [...days].toSorted().toReversed()
@@ -101,16 +98,13 @@ async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
  *
  * Safe to call inside the transaction that wrote the devlog or reel – pass its `tx` – so a rolled-back write cannot leave an inflated streak behind.
  */
-export async function recomputeStreak(tx: Tx, userId: string): Promise<StreakState> {
+export async function recomputeStreak(tx: DbOrTx, userId: string): Promise<StreakState> {
 	const state = streakFromDays(await activeDaysDesc(tx, userId))
 
-	await tx.user.update({
-		data: {
-			currentStreak: state.current,
-			lastStreakDate: state.lastDate,
-			longestStreak: state.longest,
-		},
-		where: { id: userId },
+	await tx.orm.public.User.where({ id: userId }).update({
+		currentStreak: state.current,
+		lastStreakDate: state.lastDate,
+		longestStreak: state.longest,
 	})
 
 	return state
@@ -130,7 +124,7 @@ export function streakAsOf(stored: { currentStreak: number; lastStreakDate: stri
 
 /** Rebuild every user's streak. For a backfill or after editing the rules. */
 export async function recomputeAllStreaks(): Promise<number> {
-	const users = await prisma.user.findMany({ select: { id: true } })
-	for (const user of users) await prisma.$transaction(tx => recomputeStreak(tx, user.id))
+	const users = await db.orm.public.User.select("id").all()
+	for (const user of users) await db.transaction(tx => recomputeStreak(tx, user.id))
 	return users.length
 }

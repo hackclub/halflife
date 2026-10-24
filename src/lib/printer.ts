@@ -1,12 +1,13 @@
 import "server-only"
-import type { PrinterAward, Prisma } from "@/app/generated/prisma/client"
 import { PhaseStatus, type PrinterAwardStatus, type Theme } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { THEMES, THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
 import { decryptUserPII, encryptPII, isPiiConfigured } from "@/lib/pii"
 import { canMovePrinterAward, PRINTER_AWARD_LABELS } from "@/lib/printer-award"
-import prisma from "@/lib/prisma"
+import db, { type DbOrTx } from "@/lib/prisma8"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 export interface ThemeProgress {
 	build: boolean
@@ -28,10 +29,9 @@ export interface PrinterQualification {
  * Keeping eligibility and fulfilment separate means an un-approval after the award surfaces as a mismatch an admin resolves, rather than silently revoking a printer that is already in a box.
  */
 export async function getPrinterQualification(userId: string): Promise<PrinterQualification> {
-	const projects = await prisma.themeProject.findMany({
-		select: { buildReviewedAt: true, buildStatus: true, designStatus: true, theme: true },
-		where: { deletedAt: null, userId },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null, userId })
+		.select("buildReviewedAt", "buildStatus", "designStatus", "theme")
+		.all()
 	const byTheme = new Map(projects.map(p => [p.theme, p]))
 
 	const progress: ThemeProgress[] = THEMES.map(def => {
@@ -53,31 +53,31 @@ export async function getPrinterQualification(userId: string): Promise<PrinterQu
 /**
  * Create the award row the first time someone qualifies. Idempotent, and safe to call inside the review transaction.
  */
-export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: string): Promise<PrinterAward | null> {
-	const projects = await tx.themeProject.findMany({
-		select: { buildReviewedAt: true, theme: true },
-		where: {
-			buildStatus: PhaseStatus.approved,
-			deletedAt: null,
-			designStatus: PhaseStatus.approved,
-			userId,
-		},
+export async function ensurePrinterAward(
+	tx: DbOrTx,
+	userId: string,
+): Promise<Omit<Models.public_PrinterAward, "user"> | null> {
+	const projects = await tx.orm.public.ThemeProject.where({
+		buildStatus: PhaseStatus.approved,
+		deletedAt: null,
+		designStatus: PhaseStatus.approved,
+		userId,
 	})
+		.select("buildReviewedAt", "theme")
+		.all()
 	if (projects.length < THEMES_REQUIRED_FOR_PRINTER) return null
 
-	const existing = await tx.printerAward.findUnique({ where: { userId } })
+	const existing = await tx.orm.public.PrinterAward.where({ userId }).first()
 	if (existing) return existing
 
-	return tx.printerAward.create({
-		data: {
-			qualifiedAt: new Date(),
-			// Snapshot the evidence so a later un-approval doesn't erase why this award exists.
-			qualifyingSnapshot: projects.map(p => ({
-				buildReviewedAt: p.buildReviewedAt?.toISOString() ?? null,
-				theme: p.theme,
-			})),
-			userId,
-		},
+	return tx.orm.public.PrinterAward.create({
+		qualifiedAt: formatDbTimestamp(new Date()),
+		// Snapshot the evidence so a later un-approval doesn't erase why this award exists.
+		qualifyingSnapshot: projects.map(p => ({
+			buildReviewedAt: p.buildReviewedAt,
+			theme: p.theme,
+		})),
+		userId,
 	})
 }
 
@@ -85,12 +85,13 @@ export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: s
  * Awards whose holder no longer qualifies. Reports only – never auto-revokes, because the printer may already have shipped.
  */
 export async function findPrinterAwardMismatches(): Promise<{ userId: string; email: string; shippedCount: number }[]> {
-	const awards = await prisma.printerAward.findMany({
-		select: { user: { select: { email: true } }, userId: true },
-		where: { revokedAt: null },
-	})
+	const awards = await db.orm.public.PrinterAward.where(award => award.revokedAt.isNull())
+		.select("id", "userId")
+		.include("user", user => user.select("email"))
+		.all()
 	const mismatches: { userId: string; email: string; shippedCount: number }[] = []
 	for (const award of awards) {
+		if (!award.user) throw new Error(`printer award ${award.id} has no holder`)
 		const q = await getPrinterQualification(award.userId)
 		if (!q.qualified)
 			mismatches.push({
@@ -115,27 +116,20 @@ export interface PrinterAwardUpdate {
  *
  * The ciphertext is read on the server and never returned: it is what an address is locked from, and the fulfilment sheet needs the flag rather than the address.
  */
-/** The award row both the API and the staff list return: fulfilment fields plus the ciphertext, which is folded into a flag before it leaves. */
-export const printerAwardSelect = {
-	addressLockedAt: true,
-	deliveredAt: true,
-	encryptedAddress: true,
-	id: true,
-	qualifiedAt: true,
-	revokedAt: true,
-	revokedReason: true,
-	shippedAt: true,
-	status: true,
-	trackingCarrier: true,
-	trackingNumber: true,
-	user: { select: { displayName: true, id: true, name: true } },
-} satisfies Prisma.PrinterAwardSelect
-
-type PrinterAwardPayload = Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>
-
-/** The award row the API returns: the fulfilment fields, and whether an address is locked on file. */
-export interface PrinterAwardResponse extends Omit<PrinterAwardPayload, "encryptedAddress"> {
+/** The award row the API returns: the fulfilment fields, and whether an address is locked on file. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface PrinterAwardResponse {
+	addressLockedAt: Date | null
 	addressOnFile: boolean
+	deliveredAt: Date | null
+	id: string
+	qualifiedAt: Date
+	revokedAt: Date | null
+	revokedReason: string | null
+	shippedAt: Date | null
+	status: Models.public_PrinterAward["status"]
+	trackingCarrier: string | null
+	trackingNumber: string | null
+	user: { displayName: string | null; id: string; name: string | null }
 }
 
 /**
@@ -149,23 +143,20 @@ export async function updatePrinterAwardStatus(
 	adminId: string | null,
 	adminEmail: string | null,
 ): Promise<PrinterAwardResponse> {
-	const award = await prisma.printerAward.findUnique({
-		include: {
-			user: {
-				select: {
-					encryptedAddressCity: true,
-					encryptedAddressCountry: true,
-					encryptedAddressLine2: true,
-					encryptedAddressState: true,
-					encryptedAddressStreet: true,
-					encryptedAddressZip: true,
-					encryptedPhone: true,
-				},
-			},
-		},
-		where: { id: awardId },
-	})
-	if (!award) throw new HttpError("NOT_FOUND", "Printer award not found")
+	const award = await db.orm.public.PrinterAward.whereUnique({ id: awardId })
+		.include("user", user =>
+			user.select(
+				"encryptedAddressCity",
+				"encryptedAddressCountry",
+				"encryptedAddressLine2",
+				"encryptedAddressState",
+				"encryptedAddressStreet",
+				"encryptedAddressZip",
+				"encryptedPhone",
+			),
+		)
+		.first()
+	if (!award?.user) throw new HttpError("NOT_FOUND", "Printer award not found")
 
 	if (!canMovePrinterAward(award.status, input.status))
 		throw new HttpError(
@@ -179,13 +170,24 @@ export async function updatePrinterAwardStatus(
 	const trackingNumber = input.trackingNumber?.trim() || null
 	const trackingCarrier = input.trackingCarrier?.trim() || null
 
-	const data: Prisma.PrinterAwardUpdateManyMutationInput = { status: input.status }
+	const data: {
+		status: Models.public_PrinterAward["status"]
+		trackingNumber?: string | null
+		trackingCarrier?: string | null
+		shippedAt?: string
+		deliveredAt?: string
+		revokedAt?: string
+		revokedReason?: string
+		encryptedAddress?: string
+		encryptedPhone?: string
+		addressLockedAt?: string
+	} = { status: input.status }
 	if (input.trackingNumber !== undefined) data.trackingNumber = trackingNumber
 	if (input.trackingCarrier !== undefined) data.trackingCarrier = trackingCarrier
-	if (input.status === "SHIPPED") data.shippedAt = new Date()
-	if (input.status === "DELIVERED") data.deliveredAt = new Date()
+	if (input.status === "SHIPPED") data.shippedAt = formatDbTimestamp(new Date())
+	if (input.status === "DELIVERED") data.deliveredAt = formatDbTimestamp(new Date())
 	if (input.status === "REVOKED") {
-		data.revokedAt = new Date()
+		data.revokedAt = formatDbTimestamp(new Date())
 		data.revokedReason = input.note.trim()
 	}
 
@@ -210,15 +212,14 @@ export async function updatePrinterAwardStatus(
 
 		data.encryptedAddress = encryptPII(address)
 		if (pii?.phone?.trim()) data.encryptedPhone = encryptPII(pii.phone.trim())
-		data.addressLockedAt = new Date()
+		data.addressLockedAt = formatDbTimestamp(new Date())
 	}
 
-	const moved = await prisma.printerAward.updateMany({
-		data,
-		where: { id: awardId, revokedAt: null, status: award.status },
-	})
-	if (moved.count !== 1)
-		throw new HttpError("CONFLICT", "The award moved while this was being saved – reload and try again")
+	const moved = await db.orm.public.PrinterAward.where({ id: awardId })
+		.where(aw => aw.revokedAt.isNull())
+		.where({ status: award.status })
+		.updateAndCount(data)
+	if (moved !== 1) throw new HttpError("CONFLICT", "The award moved while this was being saved – reload and try again")
 
 	await logAudit({
 		action: input.status === "REVOKED" ? AuditAction.PRINTER_REVOKED : AuditAction.PRINTER_STATUS_CHANGE,
@@ -236,9 +237,32 @@ export async function updatePrinterAwardStatus(
 	})
 
 	// The row that goes back to the caller carries the fulfilment fields only: the locked address and the phone are ciphertext and stay on the server.
-	const { encryptedAddress, ...updated } = await prisma.printerAward.findUniqueOrThrow({
-		select: printerAwardSelect,
-		where: { id: awardId },
+	const updated = await db.orm.public.PrinterAward.whereUnique({ id: awardId })
+		.select(
+			"addressLockedAt",
+			"deliveredAt",
+			"encryptedAddress",
+			"id",
+			"qualifiedAt",
+			"revokedAt",
+			"revokedReason",
+			"shippedAt",
+			"status",
+			"trackingCarrier",
+			"trackingNumber",
+		)
+		.include("user", user => user.select("displayName", "id", "name"))
+		.firstOrThrow()
+	if (!updated.user) throw new HttpError("NOT_FOUND", "Printer award not found")
+	const { encryptedAddress, user, ...rest } = updated
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	return Object.assign(rest, {
+		addressLockedAt: parseNullable(rest.addressLockedAt),
+		addressOnFile: encryptedAddress !== "",
+		deliveredAt: parseNullable(rest.deliveredAt),
+		qualifiedAt: parseDbTimestamp(rest.qualifiedAt),
+		revokedAt: parseNullable(rest.revokedAt),
+		shippedAt: parseNullable(rest.shippedAt),
+		user,
 	})
-	return Object.assign(updated, { addressOnFile: encryptedAddress !== "" })
 }
