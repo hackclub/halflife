@@ -1,7 +1,7 @@
 import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
-import { PostKind, PostStatus, Role, Theme } from "../src/app/generated/prisma/enums"
+import { PostKind, PostStatus, Role, Theme } from "../src/lib/enums"
 
 /**
  * End-to-end check of the Doomscroller.

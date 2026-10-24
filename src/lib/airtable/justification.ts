@@ -1,8 +1,8 @@
 import { fmtHours } from "@/lib/numbers"
 import { DAY_MS } from "@/lib/time"
 import "server-only"
-import { Phase, type Theme } from "@/app/generated/prisma/enums"
 import { scheduledWeekFor } from "@/lib/config/program"
+import { Phase, type Theme } from "@/lib/enums"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { publicUrlFor } from "@/lib/uploads/r2"
 

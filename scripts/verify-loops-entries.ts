@@ -1,8 +1,8 @@
 import "dotenv/config"
-import { HoursSource } from "../src/app/generated/prisma/enums"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { LOOPS_FIELDS } from "../src/lib/airtable/loops"
 import { RSVP_TABLE_ID } from "../src/lib/airtable/schema"
+import { HoursSource } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 
 /**

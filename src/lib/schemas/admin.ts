@@ -8,7 +8,7 @@ import {
 	ShopFulfillmentStage,
 	ShopItemCategory,
 	Theme,
-} from "@/app/generated/prisma/enums"
+} from "@/lib/enums"
 import { boundedText, cuid, httpsUrl, isTimeZone } from "@/lib/schemas/common"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()

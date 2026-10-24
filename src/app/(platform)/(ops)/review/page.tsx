@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
-import { Phase } from "@/app/generated/prisma/enums"
+import { Phase } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { getReviewQueue } from "@/lib/queries/review"

@@ -1,7 +1,7 @@
 import { after } from "next/server"
-import { Role } from "@/app/generated/prisma/enums"
 import { ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { Role } from "@/lib/enums"
 import { withRole } from "@/lib/guards"
 import { getOnboardingState, resetOnboarding } from "@/lib/onboarding"
 import { toOnboardingView } from "@/lib/onboarding-view"

@@ -1,5 +1,5 @@
 import "dotenv/config"
-import { AuditAction } from "../src/app/generated/prisma/enums"
+import { AuditAction } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 
 /**

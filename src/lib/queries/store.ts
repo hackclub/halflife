@@ -1,14 +1,5 @@
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
-import {
-	HardwareExperience,
-	HoursSource,
-	type ParticipantGoal,
-	Phase,
-	PhaseStatus,
-	Role,
-	Theme,
-} from "@/app/generated/prisma/enums"
 import { avatarUrl } from "@/lib/avatar"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
 import {
@@ -21,6 +12,7 @@ import {
 } from "@/lib/config/program"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
+import { HardwareExperience, HoursSource, type ParticipantGoal, Phase, PhaseStatus, Role, Theme } from "@/lib/enums"
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"

@@ -1,4 +1,4 @@
-import { Theme } from "@/app/generated/prisma/enums"
+import { Theme } from "@/lib/enums"
 
 /**
  * Funding tiers.

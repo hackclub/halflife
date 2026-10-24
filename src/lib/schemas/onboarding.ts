@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { HardwareExperience } from "@/app/generated/prisma/enums"
+import { HardwareExperience } from "@/lib/enums"
 import { boundedText } from "@/lib/schemas/common"
 import { REPO_URL_RE } from "@/lib/schemas/project"
 

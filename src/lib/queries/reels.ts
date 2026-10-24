@@ -1,7 +1,7 @@
 import "server-only"
-import { Phase, type PhaseStatus, PostStatus, type PublicReelPlatform } from "@/app/generated/prisma/enums"
 import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
 import { progressReelHours } from "@/lib/curriculum"
+import { Phase, type PhaseStatus, PostStatus, type PublicReelPlatform } from "@/lib/enums"
 import db from "@/lib/prisma8"
 import { reelLockReason } from "@/lib/reel-gate"
 import { parseDbTimestamp } from "@/lib/time"

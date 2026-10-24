@@ -1,6 +1,6 @@
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
-import { CoinBucket, HoursSource } from "@/app/generated/prisma/enums"
+import { CoinBucket, HoursSource } from "@/lib/enums"
 import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"
 import { pctOf } from "@/lib/numbers"

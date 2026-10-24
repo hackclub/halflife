@@ -1,5 +1,5 @@
 import "dotenv/config"
-import type { Phase } from "../src/app/generated/prisma/enums"
+import type { Phase } from "../src/lib/enums"
 import { refreshOverlapSpans } from "../src/lib/hours"
 import { lapseCredentials, verifyOwnTimelapses } from "../src/lib/lapse"
 import prisma from "../src/lib/prisma"

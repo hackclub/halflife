@@ -6,7 +6,7 @@ import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
 import { Button } from "@/app/components/ui"
-import type { Theme } from "@/app/generated/prisma/enums"
+import type { Theme } from "@/lib/enums"
 
 /** One project row, with the controls folded into a panel under it. */
 export interface ProjectRowData {

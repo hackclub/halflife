@@ -1,7 +1,7 @@
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { PRINTERS } from "@/lib/config/printers"
+import { ParticipantGoal } from "@/lib/enums"
 import { withSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
 import { setGoalSchema } from "@/lib/schemas/goal"

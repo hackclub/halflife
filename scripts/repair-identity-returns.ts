@@ -1,5 +1,4 @@
 import "dotenv/config"
-import { Phase, PhaseStatus, ReviewResult, type Theme } from "../src/app/generated/prisma/enums"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { currentReviewColumns } from "../src/lib/airtable/review-columns"
 import {
@@ -9,6 +8,7 @@ import {
 	syncReviewDecisionToYsws,
 } from "../src/lib/airtable/sync"
 import { AuditAction, logAudit } from "../src/lib/audit"
+import { Phase, PhaseStatus, ReviewResult, type Theme } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 
 /**

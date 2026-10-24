@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { PostKind } from "@/app/generated/prisma/enums"
+import { PostKind } from "@/lib/enums"
 import { boundedText, cuid } from "@/lib/schemas/common"
 
 /**

@@ -2,7 +2,7 @@ import "dotenv/config"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import type { z } from "zod"
-import type { ReviewResult as AriReviewResult } from "../src/app/generated/prisma/enums"
+import type { ReviewResult as AriReviewResult } from "../src/lib/enums"
 import type { JournalEntry } from "../src/lib/repo-sync-files"
 
 /**
@@ -489,7 +489,7 @@ async function bodies() {
 	//
 	// One Ari ship per (project, phase), so the external id has to survive a round trip for a webhook to find the right submission.
 	const { ariExternalId, parseAriExternalId } = await import("../src/lib/ari-id")
-	const { Phase } = await import("../src/app/generated/prisma/enums")
+	const { Phase } = await import("../src/lib/enums")
 	const ariDesign = ariExternalId(me, Phase.DESIGN)
 	const ariBuild = ariExternalId(me, Phase.BUILD)
 	check("ari · design external id", ariDesign === `${me}:design`, ariDesign)
@@ -504,7 +504,7 @@ async function bodies() {
 	//
 	// What the hourly retry job replays and what the admin Retry button offers: in-review phases whose NEWEST open submission has no ariSubmissionId.
 	const { selectPendingShips } = await import("../src/lib/ari-pending")
-	const { PhaseStatus } = await import("../src/app/generated/prisma/enums")
+	const { PhaseStatus } = await import("../src/lib/enums")
 	const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
 	const projects = [
 		{ buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" },
@@ -549,7 +549,7 @@ async function bodies() {
 	//
 	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
 	const { countAriShips } = await import("../src/lib/ari-counts")
-	const { ReviewResult } = await import("../src/app/generated/prisma/enums")
+	const { ReviewResult } = await import("../src/lib/enums")
 	const ship = (over: Partial<Parameters<typeof countAriShips>[0][number]> = {}) => ({
 		ariSubmissionId: "ship_1",
 		createdAt: at(0),
@@ -775,7 +775,7 @@ async function bodies() {
 
 	// The subtraction as the ledger applies it: a journal entry claiming two hours with a two-hour recording, beside a link reporting two hours tracked over the same period. Five hours claimed, three hours of actual work.
 	const { rollUpHours } = await import("../src/lib/hours")
-	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/app/generated/prisma/enums")
+	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/lib/enums")
 	const oneEntry = [
 		{
 			hoursApproved: null,
@@ -1226,7 +1226,7 @@ async function bodies() {
 		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN, readmeBomTable, REPO_FILE_KINDS } = await import(
 			"../src/lib/config/repo-checks"
 		)
-		const { Theme } = await import("../src/app/generated/prisma/enums")
+		const { Theme } = await import("../src/lib/enums")
 		check("repo-checks · a PCB repo must carry a BOM", THEME_REPO_REQUIREMENTS[Theme.PCB].required.includes("bom"))
 		check(
 			"repo-checks · the BOM is no longer merely recommended",
@@ -1588,7 +1588,7 @@ async function bodies() {
 	const { justificationValues, specificTechnicalFeatures, timelapseLinks } = await import(
 		"../src/lib/airtable/justification"
 	)
-	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/app/generated/prisma/enums")
+	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/lib/enums")
 	{
 		const description = "A moonboard case, 3D printed in PLA."
 		const source = {

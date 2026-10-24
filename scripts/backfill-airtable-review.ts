@@ -1,5 +1,4 @@
 import "dotenv/config"
-import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/app/generated/prisma/enums"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { currentReviewColumns } from "../src/lib/airtable/review-columns"
@@ -7,6 +6,7 @@ import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents, reviewStatusFor } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
 import { defaultFeedback } from "../src/lib/ari"
+import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 
 /**

@@ -32,7 +32,7 @@
 		"loops:backfill": "bun --conditions=react-server scripts/backfill-loops.ts",
 		"loops:backfill-review-overrides": "bun --conditions=react-server scripts/backfill-loops-review-overrides.ts",
 		"loops:backfill-submitted": "bun --conditions=react-server scripts/backfill-loops-submitted.ts",
-		"p8:contract:emit": "prisma contract emit",
+		"p8:contract:emit": "prisma contract emit && bun scripts/generate-enums.ts && biome check --write src/lib/enums.ts",
 		"p8:verify": "bun --conditions=react-server scripts/verify-prisma8.ts",
 		"reviews:backfill-ari": "bun --conditions=react-server scripts/backfill-ari-reviews.ts",
 		"reviews:backfill-identities": "bun --conditions=react-server scripts/backfill-review-identities.ts",

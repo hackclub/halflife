@@ -1,9 +1,9 @@
 import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
 import { cache } from "react"
-import { PhaseStatus } from "@/app/generated/prisma/enums"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
+import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import db from "@/lib/prisma8"
 import {

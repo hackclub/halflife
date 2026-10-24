@@ -1,9 +1,9 @@
 import "dotenv/config"
 import { Ari, type AriShipPhase } from "@hackclub/ari"
-import type { Phase } from "../src/app/generated/prisma/enums"
 import { appBaseUrl, projectUrl, reviewUrl } from "../src/lib/app-url"
 import { ariReviewUrl } from "../src/lib/ari-url"
 import { displayName } from "../src/lib/display-name"
+import type { Phase } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 
 /**

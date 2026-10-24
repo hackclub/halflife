@@ -2,8 +2,8 @@ import "dotenv/config"
 import { createHmac, randomBytes } from "node:crypto"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
-import { Phase, PostKind, PostStatus, Role, Theme } from "../src/app/generated/prisma/enums"
 import { auth } from "../src/lib/auth"
+import { Phase, PostKind, PostStatus, Role, Theme } from "../src/lib/enums"
 
 /**
  * Does anything private reach a browser that should not have it?

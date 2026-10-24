@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { z } from "zod"
-import { AuditAction } from "@/app/generated/prisma/enums"
 import { ok, parseQuery } from "@/lib/api"
+import { AuditAction } from "@/lib/enums"
 import { withPermission } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import { Permission } from "@/lib/permissions"

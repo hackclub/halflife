@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
-import type { ReportReason, ReportStatus } from "@/app/generated/prisma/enums"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
+import type { ReportReason, ReportStatus } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {

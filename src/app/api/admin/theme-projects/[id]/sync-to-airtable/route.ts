@@ -1,6 +1,6 @@
-import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { fail, ok, parseBody } from "@/lib/api"
+import { PhaseStatus } from "@/lib/enums"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"

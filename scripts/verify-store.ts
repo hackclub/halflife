@@ -1,7 +1,7 @@
 import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
-import { Phase, PhaseStatus, PostKind, PostStatus, Theme } from "../src/app/generated/prisma/enums"
+import { Phase, PhaseStatus, PostKind, PostStatus, Theme } from "../src/lib/enums"
 
 /**
  * End-to-end check of the seam between the database and the trail.

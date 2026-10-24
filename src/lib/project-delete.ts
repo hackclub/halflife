@@ -1,5 +1,5 @@
 import "server-only"
-import { PhaseStatus } from "@/app/generated/prisma/enums"
+import { PhaseStatus } from "@/lib/enums"
 import db, { type DbOrTx } from "@/lib/prisma8"
 
 /**

@@ -1,6 +1,5 @@
 import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
-import { type HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import {
 	ONBOARDING_STEP_COUNT,
 	type OnboardingStep,
@@ -14,6 +13,7 @@ import {
 } from "@/lib/config/onboarding"
 import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
 import { isTierId, type TierId } from "@/lib/config/tiers"
+import { type HardwareExperience, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import db from "@/lib/prisma8"
 import { getProgramSettings, weekNumberForDate } from "@/lib/program"

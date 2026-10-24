@@ -1,6 +1,6 @@
 import "dotenv/config"
-import { Phase, PhaseStatus } from "../src/app/generated/prisma/enums"
 import { isAriConfigured } from "../src/lib/ari"
+import { Phase, PhaseStatus } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 import { type AriRefreshTarget, flag, limitArg, phaseArg, refreshAriShip } from "./ari-backfill"
 

@@ -1,5 +1,5 @@
 import "dotenv/config"
-import { PhaseStatus } from "../src/app/generated/prisma/enums"
+import { PhaseStatus } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 import { returnExtensionUntil } from "../src/lib/review"
 

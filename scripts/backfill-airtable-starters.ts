@@ -1,10 +1,10 @@
 import "dotenv/config"
-import { AuditAction, Phase } from "../src/app/generated/prisma/enums"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
+import { AuditAction, Phase } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 
 /**

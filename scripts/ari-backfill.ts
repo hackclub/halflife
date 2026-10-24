@@ -1,5 +1,5 @@
-import { Phase } from "../src/app/generated/prisma/enums"
 import { sendSubmissionToAri, withdrawSubmissionFromAri } from "../src/lib/ari"
+import { Phase } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 import { trackSideEffect } from "../src/lib/side-effects"
 

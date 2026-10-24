@@ -1,9 +1,9 @@
 import "server-only"
-import { PostKind, PostStatus, Role } from "@/app/generated/prisma/enums"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { markReel } from "@/lib/analytics"
 import { avatarUrl } from "@/lib/avatar"
 import { displayName } from "@/lib/display-name"
+import { PostKind, PostStatus, Role } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { decodeCursor, encodeCursor } from "@/lib/pagination"
 import db, { type DbOrTx } from "@/lib/prisma8"
@@ -549,4 +549,4 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 	})
 }
 
-export { PostKind, PostStatus } from "@/app/generated/prisma/enums"
+export { PostKind, PostStatus } from "@/lib/enums"

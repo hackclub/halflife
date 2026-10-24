@@ -1,11 +1,11 @@
 import "server-only"
 import { headers } from "next/headers"
-import type { AuditAction } from "@/app/generated/prisma/enums"
 import { clientIp } from "@/lib/client-ip"
+import type { AuditAction } from "@/lib/enums"
 import type { JsonValue } from "@/lib/json"
 import db, { type DbOrTx } from "@/lib/prisma8"
 
-export { AuditAction } from "@/app/generated/prisma/enums"
+export { AuditAction } from "@/lib/enums"
 
 export interface AuditInput {
 	action: AuditAction

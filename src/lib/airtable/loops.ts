@@ -1,5 +1,4 @@
 import "server-only"
-import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import {
 	type AirtableRecord,
 	airtableFetch,
@@ -10,6 +9,7 @@ import {
 import { columnExists, existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 import { scheduledWeekFor, THEMES } from "@/lib/config/program"
+import { HoursSource, Phase } from "@/lib/enums"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { withFields } from "@/lib/rows"
 import { parseDbTimestamp } from "@/lib/time"

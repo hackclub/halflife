@@ -1,7 +1,6 @@
 "use client"
 
 import { useId, useState } from "react"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { IconCheck, IconPencil } from "@/components/platform/icons"
 import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, OptionRow } from "@/components/platform/ui"
@@ -11,6 +10,7 @@ import { DESIGN_WEEKS, MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } f
 import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
+import { ParticipantGoal } from "@/lib/enums"
 import { fmtHours } from "@/lib/projects"
 import { validateRepoField } from "@/lib/repo"
 import { README_GUIDE_URL } from "@/lib/routes"

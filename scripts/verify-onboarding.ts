@@ -1,8 +1,8 @@
 import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
-import { HardwareExperience, Theme } from "../src/app/generated/prisma/enums"
 import { scheduleForWeek } from "../src/lib/config/program"
+import { HardwareExperience, Theme } from "../src/lib/enums"
 
 /**
  * End-to-end check of the first checkpoint.

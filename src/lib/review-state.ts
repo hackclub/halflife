@@ -1,4 +1,4 @@
-import type { PhaseStatus } from "@/app/generated/prisma/enums"
+import type { PhaseStatus } from "@/lib/enums"
 
 /**
  * How a review state is said and shown, in one place.

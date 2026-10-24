@@ -1,8 +1,8 @@
 import { and } from "@prisma/orm-postgres/orm-client"
 import { DAY_MS, parseDbTimestamp } from "@/lib/time"
 import "server-only"
-import { PostKind } from "@/app/generated/prisma/enums"
 import { STREAK_GRACE_DAYS } from "@/lib/config/program"
+import { PostKind } from "@/lib/enums"
 import db, { type DbOrTx } from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 

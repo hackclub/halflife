@@ -1,6 +1,6 @@
 import "dotenv/config"
-import { PhaseStatus, Theme } from "../src/app/generated/prisma/enums"
 import { getStarterProject } from "../src/lib/config/onboarding"
+import { PhaseStatus, Theme } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 
 /**

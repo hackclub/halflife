@@ -1,6 +1,6 @@
 import "server-only"
-import { CoinBucket, LedgerKind, type ShopItemCategory } from "@/app/generated/prisma/enums"
 import type { Models } from "@/app/generated/prisma8/contract.d"
+import { CoinBucket, LedgerKind, type ShopItemCategory } from "@/lib/enums"
 import { lockKey } from "@/lib/locks"
 import { decodeCursor, encodeCursor } from "@/lib/pagination"
 import db, { type DbOrTx } from "@/lib/prisma8"
@@ -246,4 +246,4 @@ export async function getLedgerPage(
 	}
 }
 
-export { CoinBucket, LedgerKind } from "@/app/generated/prisma/enums"
+export { CoinBucket, LedgerKind } from "@/lib/enums"

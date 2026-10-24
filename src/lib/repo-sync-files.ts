@@ -1,8 +1,8 @@
 import { csvRow } from "@/lib/csv"
 import { fmtHours } from "@/lib/numbers"
 import "server-only"
-import { Phase } from "@/app/generated/prisma/enums"
 import { projectUrl } from "@/lib/app-url"
+import { Phase } from "@/lib/enums"
 import type { FileUpdate } from "@/lib/forge-write"
 
 /**

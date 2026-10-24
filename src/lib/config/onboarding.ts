@@ -1,5 +1,5 @@
-import { HardwareExperience, Theme } from "@/app/generated/prisma/enums"
 import type { TierId } from "@/lib/config/tiers"
+import { HardwareExperience, Theme } from "@/lib/enums"
 
 /**
  * The first checkpoint.

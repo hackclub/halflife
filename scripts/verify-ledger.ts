@@ -1,5 +1,5 @@
 import "dotenv/config"
-import { Phase, PhaseStatus, ReviewResult, ShopItemCategory, Theme } from "../src/app/generated/prisma/enums"
+import { Phase, PhaseStatus, ReviewResult, ShopItemCategory, Theme } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 
 /**

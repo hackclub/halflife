@@ -1,4 +1,4 @@
-import { Theme } from "@/app/generated/prisma/enums"
+import { Theme } from "@/lib/enums"
 
 /**
  * What a project's repo has to contain before its week can be handed in.

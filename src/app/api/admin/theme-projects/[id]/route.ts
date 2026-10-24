@@ -1,7 +1,7 @@
-import { Theme } from "@/app/generated/prisma/enums"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { Theme } from "@/lib/enums"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import db, { isUniqueViolation } from "@/lib/prisma8"

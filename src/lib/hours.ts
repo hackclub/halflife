@@ -1,8 +1,8 @@
 import "server-only"
 import { and, not } from "@prisma/orm-postgres/orm-client"
-import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
 import { getTierOrThrow } from "@/lib/config/tiers"
+import { HoursSource, Phase } from "@/lib/enums"
 import { fetchProjectSeconds, fetchProjectSpans } from "@/lib/hackatime"
 import {
 	cachedSpansCover,

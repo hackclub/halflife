@@ -1,7 +1,7 @@
 import "dotenv/config"
 import { Ari } from "@hackclub/ari"
-import { Phase, PhaseStatus, ReviewPass, ReviewResult } from "../src/app/generated/prisma/enums"
 import { countAriShips } from "../src/lib/ari-counts"
+import { Phase, PhaseStatus, ReviewPass, ReviewResult } from "../src/lib/enums"
 import prisma from "../src/lib/prisma"
 
 /**

@@ -1,8 +1,7 @@
 import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
-
-import { PhaseStatus, ReviewPass, type Theme } from "@/app/generated/prisma/enums"
 import { THEMES } from "@/lib/config/program"
+import { PhaseStatus, ReviewPass, type Theme } from "@/lib/enums"
 import db from "@/lib/prisma8"
 import { currentWeekNumber } from "@/lib/program"
 import { formatDbTimestamp } from "@/lib/time"

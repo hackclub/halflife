@@ -1,7 +1,6 @@
 import type { AriWebhookEvent } from "@hackclub/ari"
 import type { NextRequest } from "next/server"
 import { Prisma } from "@/app/generated/prisma/client"
-import { Phase } from "@/app/generated/prisma/enums"
 import { ok } from "@/lib/api"
 import {
 	applyStoredEvent,
@@ -12,6 +11,7 @@ import {
 	withdrawSubmissionFromAri,
 } from "@/lib/ari"
 import { AuditAction } from "@/lib/audit"
+import { Phase } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 import prisma from "@/lib/prisma"

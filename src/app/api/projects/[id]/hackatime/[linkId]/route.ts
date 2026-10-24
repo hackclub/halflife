@@ -1,7 +1,7 @@
 import { and, or } from "@prisma/orm-postgres/orm-client"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"

@@ -1,5 +1,4 @@
 import "server-only"
-import { HoursSource, Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import {
 	type AirtableConfig,
 	type AirtableRecord,
@@ -11,6 +10,7 @@ import { type FieldDef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAuditTx } from "@/lib/audit"
 import { TIERS } from "@/lib/config/tiers"
+import { HoursSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"

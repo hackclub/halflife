@@ -1,6 +1,6 @@
 import "server-only"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit, logAuditTx, requestInfo } from "@/lib/audit"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {

@@ -1,4 +1,4 @@
-import { Phase, type PhaseStatus } from "@/app/generated/prisma/enums"
+import { Phase, type PhaseStatus } from "@/lib/enums"
 
 /**
  * A project's two phase statuses.

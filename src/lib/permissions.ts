@@ -1,8 +1,8 @@
 import "server-only"
-import { Role } from "@/app/generated/prisma/enums"
+import { Role } from "@/lib/enums"
 import db from "@/lib/prisma8"
 
-export { Role } from "@/app/generated/prisma/enums"
+export { Role } from "@/lib/enums"
 
 export enum Permission {
 	FULFILL_ORDERS = "FULFILL_ORDERS",

@@ -1,4 +1,4 @@
-import { type Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
+import { type Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
 
 /**
  * How Ari's review board breaks down, counted the way Ari counts it.

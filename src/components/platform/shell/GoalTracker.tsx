@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { PrinterPhoto } from "@/components/platform/art"
 import { IconCoin } from "@/components/platform/icons"
 import { GoalModal } from "@/components/platform/modals/GoalModal"
 import { Meter, Panel } from "@/components/platform/ui"
 import { printerById } from "@/lib/config/printers"
 import { cx } from "@/lib/cx"
+import { ParticipantGoal } from "@/lib/enums"
 import { useStore } from "@/lib/store"
 
 /**

@@ -1,5 +1,4 @@
 import "server-only"
-import type { Theme } from "@/app/generated/prisma/enums"
 import {
 	DESIGN_JSON,
 	REPO_FILE_KINDS,
@@ -7,6 +6,7 @@ import {
 	readmeBomTable,
 	THEME_REPO_REQUIREMENTS,
 } from "@/lib/config/repo-checks"
+import type { Theme } from "@/lib/enums"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
 import { ForgeUnavailableError, forgeGet } from "@/lib/github"
 import { containsOnshapeLink, isOnshapeLink } from "@/lib/repo"

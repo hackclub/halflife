@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import {
 	IconArrowRight,
@@ -40,6 +39,7 @@ import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { formatShortDate } from "@/lib/deadline"
+import { ParticipantGoal } from "@/lib/enums"
 import { round2 } from "@/lib/money"
 import { fmtHours } from "@/lib/numbers"
 import {

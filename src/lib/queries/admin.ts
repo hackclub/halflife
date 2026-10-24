@@ -1,5 +1,14 @@
 import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
+import type { Models } from "@/app/generated/prisma8/contract.d"
+import { isActiveDay } from "@/lib/analytics"
+import { countAriShips } from "@/lib/ari-counts"
+import { GOAL_OPTIONS } from "@/lib/config/goal"
+import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
+import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { getTier, isTierId } from "@/lib/config/tiers"
+import { type Balances, getBalances, type LedgerEntryRow } from "@/lib/currency"
+import { displayName } from "@/lib/display-name"
 import {
 	AuditAction,
 	HoursSource,
@@ -15,16 +24,7 @@ import {
 	ShopFulfillmentStage,
 	ShopOrderStatus,
 	Theme,
-} from "@/app/generated/prisma/enums"
-import type { Models } from "@/app/generated/prisma8/contract.d"
-import { isActiveDay } from "@/lib/analytics"
-import { countAriShips } from "@/lib/ari-counts"
-import { GOAL_OPTIONS } from "@/lib/config/goal"
-import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
-import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { getTier, isTierId } from "@/lib/config/tiers"
-import { type Balances, getBalances, type LedgerEntryRow } from "@/lib/currency"
-import { displayName } from "@/lib/display-name"
+} from "@/lib/enums"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
