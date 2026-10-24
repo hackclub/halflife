@@ -6,6 +6,7 @@ import {
 	effectiveDateFor,
 	formatDbTimestamp,
 	parseDbTimestamp,
+	parseTimestampFields,
 	utcCalendarDay,
 } from "@/lib/time"
 
@@ -43,6 +44,19 @@ describe("calendarDayNumber / utcCalendarDay", () => {
 	test("agrees with the timezone-aware form for UTC", () => {
 		const at = new Date("2026-01-02T00:00:00Z")
 		expect(calendarDayNumber(at, "UTC")).toBe(utcCalendarDay(at))
+	})
+})
+
+describe("parseTimestampFields", () => {
+	test("parses the listed columns to Dates", () => {
+		const row = parseTimestampFields({ createdAt: "2026-01-01 00:00:00.000", name: "hi" }, ["createdAt"] as const)
+		expect(row.createdAt.toISOString()).toBe("2026-01-01T00:00:00.000Z")
+		expect(row.name).toBe("hi")
+	})
+
+	test("maps non-string values to null, keeping nullability", () => {
+		const row = parseTimestampFields({ at: null as string | null }, ["at"] as const)
+		expect(row.at).toBeNull()
 	})
 })
 
