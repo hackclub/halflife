@@ -235,42 +235,17 @@ components:
 
 ## Overview
 
-Half Life runs **two visual worlds on purpose**, and the split is the first thing
-to understand before writing any screen. The marketing site sells a ten-week
-hardware programme to teenagers who have never soldered anything. The platform
-is where those same teenagers then work, for ten weeks, most days. A world that
-serves the first badly serves the second, so they were never merged.
+Half Life runs **two visual worlds on purpose**, and the split is the first thing to understand before writing any screen. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything. The platform is where those same teenagers then work, for ten weeks, most days. A world that serves the first badly serves the second, so they were never merged.
 
-There is a third, which is not a world so much as a back room: the staff console
-under `(ops)` — admin, review, login — carries the platform's earlier design
-system in `ops.css`, kept whole rather than half-translated when the participant
-platform was rebuilt from the comp. In the CSS its tokens are plain `--color-*`
-names; this document prefixes them `ops-` so they cannot be mistaken for the
-platform's. It redefines names the platform also uses (`ink`, `teal`, `mint`,
-`magenta`), which is exactly why it is scoped to that route group: loaded
-globally it would quietly repaint the trail.
+There is a third, which is not a world so much as a back room: the staff console under `(ops)` — admin, review, login — carries the platform's earlier design system in `ops.css`, kept whole rather than half-translated when the participant platform was rebuilt from the comp. In the CSS its tokens are plain `--color-*` names; this document prefixes them `ops-` so they cannot be mistaken for the platform's. It redefines names the platform also uses (`ink`, `teal`, `mint`, `magenta`), which is exactly why it is scoped to that route group: loaded globally it would quietly repaint the trail.
 
 **Landing page — Creative North Star: "The Production Line"**
 
-A ten-week hardware production line, drawn as the line itself. The page reads
-like control-panel silkscreen laid over a workshop: flat plates, square-cut
-bands, no shadows, and a thick band that physically welds each stage of the
-programme to the next. The ground is ink and the informational plates are paper,
-because this is read on a phone in a bedroom or a school laptop, and the copy
-deserves the highest-contrast surface on the page. Energetic and
-workshop-bright rather than sleek — the promise is a soldering iron, not a SaaS
-trial.
+A ten-week hardware production line, drawn as the line itself. The page reads like control-panel silkscreen laid over a workshop: flat plates, square-cut bands, no shadows, and a thick band that physically welds each stage of the programme to the next. The ground is ink and the informational plates are paper, because this is read on a phone in a bedroom or a school laptop, and the copy deserves the highest-contrast surface on the page. Energetic and workshop-bright rather than sleek — the promise is a soldering iron, not a SaaS trial.
 
 **Platform — Creative North Star: "The Field Notebook"**
 
-Every outline is a drawn ink stroke rather than a rectangle: card borders
-wobble, the week arrives as a band of torn painted paper, and page titles hang
-from straps on torn plates. It reads as something kept by hand alongside the
-hardware, which is what journalling and timelapses actually are. Where the
-landing page is ink-grounded and engineered, the platform is paper-grounded and
-warm, and its structure is a path you walk rather than a page you read. Even
-the one screen that borrows a familiar layout — the Doomscroller's reel player —
-is drawn in the notebook's hand rather than as a dark cinema.
+Every outline is a drawn ink stroke rather than a rectangle: card borders wobble, the week arrives as a band of torn painted paper, and page titles hang from straps on torn plates. It reads as something kept by hand alongside the hardware, which is what journalling and timelapses actually are. Where the landing page is ink-grounded and engineered, the platform is paper-grounded and warm, and its structure is a path you walk rather than a page you read. Even the one screen that borrows a familiar layout — the Doomscroller's reel player — is drawn in the notebook's hand rather than as a dark cinema.
 
 **Key Characteristics:**
 
@@ -284,9 +259,7 @@ is drawn in the notebook's hand rather than as a dark cinema.
 
 ## Colors
 
-Three palettes. Nothing crosses between the landing and the platform; the staff
-console's is the platform's own ancestor and is named apart so the two cannot be
-confused for each other.
+Three palettes. Nothing crosses between the landing and the platform; the staff console's is the platform's own ancestor and is named apart so the two cannot be confused for each other.
 
 ### Primary
 
@@ -319,76 +292,38 @@ confused for each other.
 
 ### Named Rules
 
-**The Two Worlds Rule.** A token from one world never appears in the other. If a
-platform screen needs an accent, it is `sky`, not `hl-cyan`. The two palettes
-do not share a single value, and a screen that mixes them belongs to neither.
+**The Two Worlds Rule.** A token from one world never appears in the other. If a platform screen needs an accent, it is `sky`, not `hl-cyan`. The two palettes do not share a single value, and a screen that mixes them belongs to neither.
 
-**The Tinted Secondary Rule.** Secondary text is tinted from its own surface,
-never neutral grey. The landing derives `hl-ink-soft` as ink at 80% over paper
-and `hl-paper-soft` as paper at 78% over ink. The platform's secondary text is
-`navy-soft`, the navy hue lifted until it reads as a second voice.
+**The Tinted Secondary Rule.** Secondary text is tinted from its own surface, never neutral grey. The landing derives `hl-ink-soft` as ink at 80% over paper and `hl-paper-soft` as paper at 78% over ink. The platform's secondary text is `navy-soft`, the navy hue lifted until it reads as a second voice.
 
-**The State Colour Rule.** On the trail a puck's colour is its state, and each
-state owns one hue: sky open, teal done, magenta hand-in, gold setup, sand
-locked, teal-grey passed. Don't reuse these hues on a puck for anything else.
+**The State Colour Rule.** On the trail a puck's colour is its state, and each state owns one hue: sky open, teal done, magenta hand-in, gold setup, sand locked, teal-grey passed. Don't reuse these hues on a puck for anything else.
 
-**The Misnamed Yellow Rule.** `--color-hl-yellow` (`#A2C4DA`) and
-`--color-hl-yellow-pale` (`#EBF7FF`) are **blue**. The landing was recoloured
-after those variables were named and the names were never updated, so the
-carousel cards read as pale blue while the code says yellow. Trust the value,
-not the name — and rename them before adding anything new that uses them.
+**The Misnamed Yellow Rule.** `--color-hl-yellow` (`#A2C4DA`) and `--color-hl-yellow-pale` (`#EBF7FF`) are **blue**. The landing was recoloured after those variables were named and the names were never updated, so the carousel cards read as pale blue while the code says yellow. Trust the value, not the name — and rename them before adding anything new that uses them.
 
 ### Measured contrast
 
 Recomputed against the current CSS, not inherited from an earlier palette.
 
-Landing: ink on paper 12.85:1 · ink on cyan 8.96:1 · ink on periwinkle 5.89:1 ·
-ink on lavender 9.22:1 · indigo on lavender 7.14:1 · ink on lavender-pale
-12.16:1 · ink on `hl-yellow` 8.20:1 · ink on `hl-yellow-pale` 13.81:1 · white on
-`hl-teal-deep` 7.13:1. White on `hl-blue-deep` is **4.09:1** and paper on it
-**3.50:1**, so that plate takes large text only (≥24px, or ≥18.66px bold).
+Landing: ink on paper 12.85:1 · ink on cyan 8.96:1 · ink on periwinkle 5.89:1 · ink on lavender 9.22:1 · indigo on lavender 7.14:1 · ink on lavender-pale 12.16:1 · ink on `hl-yellow` 8.20:1 · ink on `hl-yellow-pale` 13.81:1 · white on `hl-teal-deep` 7.13:1. White on `hl-blue-deep` is **4.09:1** and paper on it **3.50:1**, so that plate takes large text only (≥24px, or ≥18.66px bold).
 
-Platform, text on cream: navy 14.75:1 · navy-soft 7.82:1 · violet-deep 5.67:1 ·
-magenta 5.62:1 · coral-deep 4.81:1 · teal-deep 4.40:1. Fills with navy text:
-gold 9.74:1 · mint 12.33:1 · sand 12.09:1. White on violet-deep 6.01:1 · magenta
-5.96:1 · coral-deep 5.10:1 · teal-deep 4.67:1 · navy 15.66:1.
+Platform, text on cream: navy 14.75:1 · navy-soft 7.82:1 · violet-deep 5.67:1 · magenta 5.62:1 · coral-deep 4.81:1 · teal-deep 4.40:1. Fills with navy text: gold 9.74:1 · mint 12.33:1 · sand 12.09:1. White on violet-deep 6.01:1 · magenta 5.96:1 · coral-deep 5.10:1 · teal-deep 4.67:1 · navy 15.66:1.
 
-**Resolved by adding text-only tones, not by changing the brand's fills.**
-The deep tones stay rims and borders; anything set as *text* in those hues
-takes an ink that clears 4.5:1 on cream, white and every pale chip fill:
+**Resolved by adding text-only tones, not by changing the brand's fills.** The deep tones stay rims and borders; anything set as *text* in those hues takes an ink that clears 4.5:1 on cream, white and every pale chip fill:
 
-- **Inks:** `sky-ink` (was sky-deep, 3.61), `teal-ink` (teal-deep, 4.40),
-  `gold-ink` (gold-deep, 2.58), `orange-ink` (orange-deep, 2.94). Coral text is
-  `coral-deep`, violet text `violet-deep`, and on a coral tint (`coral/10`,
-  `/15`, where coral-deep falls to 4.06–4.30) it is `coral-dark`.
-- **Quiet text** that used to be `line-strong` (2.72) is `navy-faint`
-  (5.34:1), which is also every placeholder.
-- **Solid buttons** fill with the deep tone and rim and hover one darker
-  (`violet-dark`, `teal-dark`, `coral-dark`): white reads 6.01, 4.67 and 5.10.
-- **On an accent fill** the text is navy — `onAccent()` in `ui.tsx` — except on
-  magenta, the one fill white reads on. A label "in the week's colour" on
-  cream goes through `accentText()`, which swaps each accent for its ink.
-- **Fields** are edged in `field` (3.68:1 on white), the 3:1 a control's
-  boundary needs; `line` (1.72) is for dividers only.
-- **Puck glyphs:** a passed glyph is navy-soft on teal-grey (4.69), a padlock
-  `sand-ink` on sand (3.75).
+- **Inks:** `sky-ink` (was sky-deep, 3.61), `teal-ink` (teal-deep, 4.40), `gold-ink` (gold-deep, 2.58), `orange-ink` (orange-deep, 2.94). Coral text is `coral-deep`, violet text `violet-deep`, and on a coral tint (`coral/10`, `/15`, where coral-deep falls to 4.06–4.30) it is `coral-dark`.
+- **Quiet text** that used to be `line-strong` (2.72) is `navy-faint` (5.34:1), which is also every placeholder.
+- **Solid buttons** fill with the deep tone and rim and hover one darker (`violet-dark`, `teal-dark`, `coral-dark`): white reads 6.01, 4.67 and 5.10.
+- **On an accent fill** the text is navy — `onAccent()` in `ui.tsx` — except on magenta, the one fill white reads on. A label "in the week's colour" on cream goes through `accentText()`, which swaps each accent for its ink.
+- **Fields** are edged in `field` (3.68:1 on white), the 3:1 a control's boundary needs; `line` (1.72) is for dividers only.
+- **Puck glyphs:** a passed glyph is navy-soft on teal-grey (4.69), a padlock `sand-ink` on sand (3.75).
 
-**Still below the line, and why:** the white glyph on a sky, teal or orange
-puck (2.37, 2.80, 1.98 against the 3:1 an icon needs). It is the trail's
-signature and every puck is also labelled, so it is left for a design
-decision rather than repainted. Decorative marks — the dotted connectors, the
-dashed `line` rules, panel outlines — carry no information and are exempt.
+**Still below the line, and why:** the white glyph on a sky, teal or orange puck (2.37, 2.80, 1.98 against the 3:1 an icon needs). It is the trail's signature and every puck is also labelled, so it is left for a design decision rather than repainted. Decorative marks — the dotted connectors, the dashed `line` rules, panel outlines — carry no information and are exempt.
 
 ## Typography
 
-**Landing — Display and Tagline:** Ubuntu · **Body:** Open Sans · **Hand:** Masterpiece (the wordmark).
-**Platform — Display and Body:** Plus Jakarta Sans · **Hand:** Shantell Sans.
+**Landing — Display and Tagline:** Ubuntu · **Body:** Open Sans · **Hand:** Masterpiece (the wordmark). **Platform — Display and Body:** Plus Jakarta Sans · **Hand:** Shantell Sans.
 
-**Character:** The landing pairs a friendly geometric sans for everything that
-shouts with a neutral workhorse body, and keeps its brush face for the wordmark
-alone. The platform runs one humanist sans for everything structural and
-reserves a hand-lettered face for small uppercase labels, margin asides and
-timestamps — the only place its voice gets loose.
+**Character:** The landing pairs a friendly geometric sans for everything that shouts with a neutral workhorse body, and keeps its brush face for the wordmark alone. The platform runs one humanist sans for everything structural and reserves a hand-lettered face for small uppercase labels, margin asides and timestamps — the only place its voice gets loose.
 
 ### Hierarchy
 
@@ -402,35 +337,17 @@ timestamps — the only place its voice gets loose.
 
 ### Named Rules
 
-**The One Size Per Role Rule.** Each role above has one size on a screen. Five
-near-identical hand sizes (12.2, 12.8, 13.1, 13.4, 13.8px) read as untidiness,
-not hierarchy; asides are 0.84rem, body 0.9rem, timeline titles 0.95rem.
+**The One Size Per Role Rule.** Each role above has one size on a screen. Five near-identical hand sizes (12.2, 12.8, 13.1, 13.4, 13.8px) read as untidiness, not hierarchy; asides are 0.84rem, body 0.9rem, timeline titles 0.95rem.
 
-**The Hand Is Not Body Rule.** The platform's hand-lettered face sets labels,
-asides and nothing longer — never a requirement or an instruction someone has
-to read to finish a task. The comp names COMICO, which is not on Google Fonts
-and ships no licensed file here; Shantell Sans stands in, loaded in the platform
-root layout and reached everywhere through `--font-hand`. Swapping it is that
-one variable, because no component names a face directly.
+**The Hand Is Not Body Rule.** The platform's hand-lettered face sets labels, asides and nothing longer — never a requirement or an instruction someone has to read to finish a task. The comp names COMICO, which is not on Google Fonts and ships no licensed file here; Shantell Sans stands in, loaded in the platform root layout and reached everywhere through `--font-hand`. Swapping it is that one variable, because no component names a face directly.
 
-**The Brush Bookends Rule.** On the landing, Masterpiece is identity, never
-voice. It sets the wordmark and nothing else — it ships one 400 weight whose
-strokes overhang their advances (`I` carries 0.52em of ink on a 0.32em advance),
-so it is already heavy and a synthesised bold smears it.
-`font-synthesis-weight: none` is set for that reason.
+**The Brush Bookends Rule.** On the landing, Masterpiece is identity, never voice. It sets the wordmark and nothing else — it ships one 400 weight whose strokes overhang their advances (`I` carries 0.52em of ink on a 0.32em advance), so it is already heavy and a synthesised bold smears it. `font-synthesis-weight: none` is set for that reason.
 
-**The Metric Drift Rule.** Ubuntu is not a drop-in for Open Sans. Against the
-same fallback reference Next scales Open Sans to 105.15% and Ubuntu to 102.06%,
-so Ubuntu sets about 3% smaller at the same `font-size`, and its declared ink
-box is 1.0984em against Open Sans's 1.2951em. Size the two independently.
+**The Metric Drift Rule.** Ubuntu is not a drop-in for Open Sans. Against the same fallback reference Next scales Open Sans to 105.15% and Ubuntu to 102.06%, so Ubuntu sets about 3% smaller at the same `font-size`, and its declared ink box is 1.0984em against Open Sans's 1.2951em. Size the two independently.
 
 ## Layout
 
-**Landing.** Two layouts on purpose. At ≥1180px a `.stage` reproduces the comp's
-1728px grid exactly: every offset is written as its literal Figma pixel and
-resolved in `cqw`, so the composition scales continuously instead of snapping.
-Below 1180px the same content stacks, with the connector bands redrawn as short
-vertical tapers between plates.
+**Landing.** Two layouts on purpose. At ≥1180px a `.stage` reproduces the comp's 1728px grid exactly: every offset is written as its literal Figma pixel and resolved in `cqw`, so the composition scales continuously instead of snapping. Below 1180px the same content stacks, with the connector bands redrawn as short vertical tapers between plates.
 
 **Platform.** A shell up to 1760px wide with three columns:
 
@@ -438,33 +355,19 @@ vertical tapers between plates.
 - **Content well:** each page sets its own measure — the trail 720px, Explore 780px, a project 960px.
 - **Status rail** (316px, 352px from 2xl, xl and up): the goal tracker and the Doomscroller feed. Open by default on the trail only; it folds to nothing with a 420ms width transition, and the content keeps its width while it goes, so it is clipped rather than squashed.
 
-Below lg (1024px) the left rail is gone: a sticky 64px header carries the logo
-and a Doomscroller link, and a fixed bottom tab bar carries the main
-destinations.
+Below lg (1024px) the left rail is gone: a sticky 64px header carries the logo and a Doomscroller link, and a fixed bottom tab bar carries the main destinations.
 
-**The trail** swings its checkpoints along a sine (23% amplitude) down a single
-column. A milestone takes a full stride, and a journal entry a shorter one with
-a smaller puck, so a long week reads as rhythm rather than a queue. A stride is
-sized by the node it leaves, never by the one it arrives at, so a tall label
-never lands on the next puck.
+**The trail** swings its checkpoints along a sine (23% amplitude) down a single column. A milestone takes a full stride, and a journal entry a shorter one with a smaller puck, so a long week reads as rhythm rather than a queue. A stride is sized by the node it leaves, never by the one it arrives at, so a tall label never lands on the next puck.
 
-**The Doomscroller** is a page of the platform, not a takeover. Its reel column
-is exactly as wide as a 9:16 card fits in the frame, less the player strip under
-it. The actions hang off its right side from md up, with that room reserved, and
-the comments stand beside it as a panel from xl or rise as a sheet below.
+**The Doomscroller** is a page of the platform, not a takeover. Its reel column is exactly as wide as a 9:16 card fits in the frame, less the player strip under it. The actions hang off its right side from md up, with that room reserved, and the comments stand beside it as a panel from xl or rise as a sheet below.
 
-Rhythm is a small set of stack gaps: 0.75rem tight, 1.5rem standard, 2.4rem
-between columns. Sections on a page are 2rem apart, headed by a label.
+Rhythm is a small set of stack gaps: 0.75rem tight, 1.5rem standard, 2.4rem between columns. Sections on a page are 2rem apart, headed by a label.
 
 ## Elevation & Depth
 
-**The landing is flat.** No shadows anywhere. Depth is tonal: plates of paper
-and lavender sit on an ink ground, and the bands that weld them are the plates'
-own material. Anything that needs to read as lifted is lifted by hue, not by
-blur.
+**The landing is flat.** No shadows anywhere. Depth is tonal: plates of paper and lavender sit on an ink ground, and the bands that weld them are the plates' own material. Anything that needs to read as lifted is lifted by hue, not by blur.
 
-**The platform is outlined, with a few things lifted off the page.** Panels and
-cards are outlined, never shadowed. What does lift:
+**The platform is outlined, with a few things lifted off the page.** Panels and cards are outlined, never shadowed. What does lift:
 
 - **Pucks.** The rim disc sits 9px below the face (7px when locked or passed, 11px for the gold setup puck), with an ambient shadow beneath both. The comp draws each node as two stacked ellipses, and the offset rim is that second ellipse. Pressing sinks the face onto the rim.
 - **Stickers and torn plates** — the logo, week banners, page signs, the grand prize art — carry a soft drop, because they are paper stuck onto paper.
@@ -482,20 +385,13 @@ All shadows are navy-tinted, never black.
 
 ### Named Rules
 
-**The Outline-Not-Shadow Rule.** A panel, card, button or field is separated by
-a drawn outline and the page ground showing through, never by a shadow. If
-something needs separating, give it a border and a gap.
+**The Outline-Not-Shadow Rule.** A panel, card, button or field is separated by a drawn outline and the page ground showing through, never by a shadow. If something needs separating, give it a border and a gap.
 
-**The Paper-On-Paper Rule.** A shadow means an object sitting on the notebook —
-a puck, a sticker, a strip of tape, a reel. If it isn't something you could
-pick up, it doesn't get one.
+**The Paper-On-Paper Rule.** A shadow means an object sitting on the notebook — a puck, a sticker, a strip of tape, a reel. If it isn't something you could pick up, it doesn't get one.
 
 ## Shapes
 
-**Landing:** square-cut bands and plates. The exceptions are the process step
-and aside plates, and the corner decal (`rounded-xl`), the FAQ rows (`rounded-md`),
-and the build carousel's cards and pill. The form language is plate-and-band:
-slabs joined by thick connectors.
+**Landing:** square-cut bands and plates. The exceptions are the process step and aside plates, and the corner decal (`rounded-xl`), the FAQ rows (`rounded-md`), and the build carousel's cards and pill. The form language is plate-and-band: slabs joined by thick connectors.
 
 **Platform:** soft and drawn.
 
@@ -505,34 +401,17 @@ slabs joined by thick connectors.
 - **Chips, switches and round controls:** fully round.
 - **Pucks:** circles.
 
-The defining move is not the radius but the **stroke**: every border is a
-wobbling ink line generated by an SVG turbulence displacement — on the platform
-a slow wander, roughly 55px between wiggles with about 2px of travel either
-way, in three seeds so neighbours are not identical tracings. Torn shapes (week
-banners, page signs, the nav card's tab) use a stretched, rougher noise that
-tears along their long edge. The staff console's wobble is tighter, about 20px
-between wiggles.
+The defining move is not the radius but the **stroke**: every border is a wobbling ink line generated by an SVG turbulence displacement — on the platform a slow wander, roughly 55px between wiggles with about 2px of travel either way, in three seeds so neighbours are not identical tracings. Torn shapes (week banners, page signs, the nav card's tab) use a stretched, rougher noise that tears along their long edge. The staff console's wobble is tighter, about 20px between wiggles.
 
-Illustration carries its own shape language: every character and theme painting
-is a die-cut sticker with a pale outline baked into the art.
+Illustration carries its own shape language: every character and theme painting is a die-cut sticker with a pale outline baked into the art.
 
 ### Named Rules
 
-**The Drawn Edge Rule.** A platform border is drawn, not stroked. Use `.sketch`
-(or `.sketch-2` / `.sketch-3`, which carry different seeds) rather than a CSS
-border, and vary which one between adjacent cards. Two cards with the same
-wobble read as a repeated texture, which is the opposite of hand-made. In the
-staff console the equivalent is `.hl-wobbly` plus `<WobbleBorder/>` with a
-`seed` prop.
+**The Drawn Edge Rule.** A platform border is drawn, not stroked. Use `.sketch` (or `.sketch-2` / `.sketch-3`, which carry different seeds) rather than a CSS border, and vary which one between adjacent cards. Two cards with the same wobble read as a repeated texture, which is the opposite of hand-made. In the staff console the equivalent is `.hl-wobbly` plus `<WobbleBorder/>` with a `seed` prop.
 
-**The Filter Applies To The Edge Rule.** The displacement filter goes on the
-border element only, never on a container. Filtering an element that holds text
-drags the text through the same displacement and turns it to mush.
+**The Filter Applies To The Edge Rule.** The displacement filter goes on the border element only, never on a container. Filtering an element that holds text drags the text through the same displacement and turns it to mush.
 
-**The No Sketch On Fields Rule.** `.sketch` draws on a pseudo-element, and
-`<input>`, `<select>` and `<textarea>` cannot hold one — the outline silently
-never renders and the field is a white box on a white panel. Fields take a real
-2px border instead (see Inputs).
+**The No Sketch On Fields Rule.** `.sketch` draws on a pseudo-element, and `<input>`, `<select>` and `<textarea>` cannot hold one — the outline silently never renders and the field is a white box on a white panel. Fields take a real 2px border instead (see Inputs).
 
 ## Components
 
@@ -586,18 +465,9 @@ never renders and the field is a white box on a white panel. Fields take a real
 
 ### The checkpoint path (signature)
 
-The platform's primary structure, and the thing the dashboard is. **All ten
-weeks render as one continuous track**, so a participant in week 2 can scroll
-down and see the music week, the displays and the breadboard computer waiting. The
-view lands on the current checkpoint on arrival.
+The platform's primary structure, and the thing the dashboard is. **All ten weeks render as one continuous track**, so a participant in week 2 can scroll down and see the music week, the displays and the breadboard computer waiting. The view lands on the current checkpoint on arrival.
 
-A week opens with its setup (the gold questionnaire in week 1, the project form
-after), then the idea reel, then one node per journal entry with a progress reel
-wherever the logged hours cross each ten, then Submit. Week 1 is the exception:
-the idea reel is optional, so it sits side by side with the first devlog entry
-as a choice instead of gating it. Once the week's hours
-reach the submit floor, the trail forks: "Keep working" and "Submit project" sit
-side by side at 24% and 76% with an "or" between them.
+A week opens with its setup (the gold questionnaire in week 1, the project form after), then the idea reel, then one node per journal entry with a progress reel wherever the logged hours cross each ten, then Submit. Week 1 is the exception: the idea reel is optional, so it sits side by side with the first devlog entry as a choice instead of gating it. Once the week's hours reach the submit floor, the trail forks: "Keep working" and "Submit project" sit side by side at 24% and 76% with an "or" between them.
 
 - **Open:** sky face. The next open node gets a halo and a navy "Start here" callout that bobs above it.
 - **Done:** teal face with a check. Hovering shows a mint bubble ("You've already completed this checkpoint!"), with a hand-text line saying what a click does now — edit the entry, post another reel, unsubmit.
@@ -608,32 +478,19 @@ side by side at 24% and 76% with an "or" between them.
 - **Connectors:** 7px dots in `line-strong` at 45%, sampled along the sine, splitting straight into each arm of a fork.
 - **Halfway:** a mint "Halfway! Now it's time to build" pill divides the design weeks from the build weeks. The trail ends on the printer the participant is saving for.
 
-The three bubbles — navy callout, sand lock and mint done — are one shape: a
-14px-radius drawn bubble with a pointer, hanging where the callout hangs. They
-never appear together on one node.
+The three bubbles — navy callout, sand lock and mint done — are one shape: a 14px-radius drawn bubble with a pointer, hanging where the callout hangs. They never appear together on one node.
 
 ### The hanging sign (signature)
 
-Page titles hang from two navy straps pinned above the content. On the platform
-the board is a torn painted plate in the page's own accent — orange for the
-shop, sky for Explore — so each destination is
-recognisable before a word of it is read. Used on every screen except the
-trail (which has the week banner) and the Doomscroller (where the reel is the
-page). `PageSign` in the platform, the `.hl-sign` pair in the staff console.
+Page titles hang from two navy straps pinned above the content. On the platform the board is a torn painted plate in the page's own accent — orange for the shop, sky for Explore — so each destination is recognisable before a word of it is read. Used on every screen except the trail (which has the week banner) and the Doomscroller (where the reel is the page). `PageSign` in the platform, the `.hl-sign` pair in the staff console.
 
 ### The week banner (signature)
 
-A band of torn painted paper in the week's colour, carrying "WEEK 1/10 · DESIGN"
-in label type and the headline in Plus Jakarta 800. The week's theme painting
-sits at its right, and a pill on the far right counts done over total. It pins
-to the top of the frame while that week's nodes flow beneath it and is then
-shoved off by the next one, which is what makes ten weeks read as a distance
-rather than a list.
+A band of torn painted paper in the week's colour, carrying "WEEK 1/10 · DESIGN" in label type and the headline in Plus Jakarta 800. The week's theme painting sits at its right, and a pill on the far right counts done over total. It pins to the top of the frame while that week's nodes flow beneath it and is then shoved off by the next one, which is what makes ten weeks read as a distance rather than a list.
 
 ### The Doomscroller (signature)
 
-One reel at a time, snapping, laid out after the reel player people already
-know and drawn in the notebook's hand.
+One reel at a time, snapping, laid out after the reel player people already know and drawn in the notebook's hand.
 
 - **The reel** is a 16px card on navy with the lift shadow.
   - Project tag top-left, as on the rail's card.
