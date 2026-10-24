@@ -3,7 +3,7 @@ import { ok } from "@/lib/api"
 import { refreshLinkCache } from "@/lib/hackatime"
 import { warmLinkSpans } from "@/lib/hours"
 import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 export const maxDuration = 300
@@ -20,23 +20,16 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const dryRun = wantsDryRun(req)
 	const started = Date.now()
 
-	const links = await prisma.hackatimeLink.findMany({
+	const links = await db.orm.public.HackatimeLink.where({ hoursApproved: null })
 		// Least-recently refreshed first (never-refreshed before those), so a run that hits the batch bound still advances through the whole set instead of restarting at the same head of the list every 15 minutes.
 		//
 		// NULLS FIRST is not a detail: the partial index on cachedAt over the links waiting for a reviewer is built in that order, so this walks the index and takes the batch it needs rather than sorting the table four times an hour.
-		orderBy: { cachedAt: { nulls: "first", sort: "asc" } },
+		.orderBy(link => link.cachedAt.asc({ nulls: "first" }))
 		// cachedSpans rides along so the warm below can tell a link that already answers from one whose cache was never written or was fetched for a narrower window, and the owner's id so a recording attached under another project can be found and warmed for.
-		select: {
-			cachedSpans: true,
-			hackatimeProject: true,
-			id: true,
-			phase: true,
-			themeProject: { select: { userId: true } },
-			themeProjectId: true,
-		},
-		take: BATCH_SIZE,
-		where: { hoursApproved: null },
-	})
+		.include("themeProject", project => project.select("userId"))
+		.select("cachedSpans", "hackatimeProject", "id", "phase", "themeProjectId")
+		.limit(BATCH_SIZE)
+		.all()
 
 	if (dryRun) return ok({ dryRun: true, failed: 0, scanned: links.length, updated: 0 })
 
@@ -50,14 +43,21 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 
 	// The tracked intervals the deduplication depends on, warmed here rather than only when a recording is attached or a reviewer approves. Without this the seconds above are fresh while the spans stay cold, and every screen that reads the cache in between reports the same sitting twice – which is the complaint this run exists to end.
 	const spans = await warmLinkSpans(
-		links.map(l => ({
-			cachedSpans: l.cachedSpans,
-			hackatimeProject: l.hackatimeProject,
-			id: l.id,
-			phase: l.phase,
-			themeProjectId: l.themeProjectId,
-			userId: l.themeProject.userId,
-		})),
+		// The FK makes themeProject non-null in the database, but the contract types every relation as nullable; an orphan row (which the FK forbids) is skipped rather than warming against an empty id.
+		links.flatMap(l =>
+			l.themeProject
+				? [
+						{
+							cachedSpans: l.cachedSpans,
+							hackatimeProject: l.hackatimeProject,
+							id: l.id,
+							phase: l.phase,
+							themeProjectId: l.themeProjectId,
+							userId: l.themeProject.userId,
+						},
+					]
+				: [],
+		),
 	)
 
 	const summary = {

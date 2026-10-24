@@ -18,6 +18,26 @@ export const parseDbTimestamp = (value: string): Date => new Date(`${value.repla
 /** A Date as the text a Prisma 8 `TimestampString(3)` field accepts. */
 export const formatDbTimestamp = (date: Date): string => date.toISOString().replace("T", " ").replace("Z", "")
 
+/** A timestamp column's runtime type after parsing: `Date` for a required column, `Date | null` for a nullable one. */
+type ParsedTimestamp<T> = T extends string ? Date : T extends string | null ? Date | null : never
+
+/**
+ * The same row with the listed PostgreSQL timestamp columns parsed to Dates.
+ *
+ * The keys are explicit rather than inferred from the values at runtime: a string field can hold text that looks like a timestamp (a caption, a note), and silently rewriting it would corrupt content rather than fix a date. `keyof T` makes a typo a type error, and the return type keeps each column's nullability.
+ */
+export function parseTimestampFields<T extends object, K extends keyof T>(
+	row: T,
+	keys: readonly K[],
+): Omit<T, K> & { [P in K]: ParsedTimestamp<T[P]> } {
+	const out = { ...row } as { [_: string]: unknown }
+	for (const key of keys) {
+		const value = out[key as string]
+		out[key as string] = typeof value === "string" ? parseDbTimestamp(value) : null
+	}
+	return out as Omit<T, K> & { [P in K]: ParsedTimestamp<T[P]> }
+}
+
 /** The `YYYY-MM-DD` a moment falls on in `timeZone`. */
 export function calendarDay(at: Date, timeZone: string): string {
 	return new Intl.DateTimeFormat("en-CA", {

@@ -1,11 +1,12 @@
 import type { NextRequest } from "next/server"
 import { z } from "zod"
-import type { Prisma } from "@/app/generated/prisma/client"
 import { ok, parseQuery } from "@/lib/api"
 import { getThemeDef } from "@/lib/config/program"
 import { withExportRoute } from "@/lib/integration-route"
-import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
-import prisma from "@/lib/prisma"
+import { type CursorOrderOf, pageResult, paginationQuery, readCursor } from "@/lib/pagination"
+import db from "@/lib/prisma8"
+import { withFields } from "@/lib/rows"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -20,7 +21,7 @@ const PARTICIPANTS_ORDER = {
 	at: (row: { createdAt: Date }) => row.createdAt,
 	column: "createdAt",
 	direction: "asc",
-} as const satisfies CursorOrderOf<{ createdAt: Date }, Prisma.UserOrderByWithRelationInput>
+} as const satisfies CursorOrderOf<{ createdAt: Date }>
 
 /**
  * Read-only participant export for the YSWS pipeline and sibling programs.
@@ -32,52 +33,47 @@ export const GET = withExportRoute(async (req: NextRequest, gate) => {
 
 	const parsed = parseQuery(req, query)
 	if (parsed.error) return parsed.error
+	const { data } = parsed
 
-	const rows = await prisma.user.findMany({
-		orderBy: orderByFor(PARTICIPANTS_ORDER),
-		select: {
-			createdAt: true,
-			email: true,
-			id: true,
-			name: true,
-			slackId: true,
-			themeProjects: {
-				select: {
-					approvedHours: true,
-					buildStatus: true,
-					designStatus: true,
-					githubRepo: true,
-					grantUsd: true,
-					theme: true,
-					tier: true,
-					title: true,
-				},
-				where: { deletedAt: null },
-			},
-			updatedAt: true,
-			verificationStatus: true,
-		},
-		take: parsed.data.limit + 1,
-		where: cursorWhere<Prisma.UserWhereInput>(
-			parsed.data.cursor,
-			PARTICIPANTS_ORDER,
-			parsed.data.updatedSince ? { updatedAt: { gte: parsed.data.updatedSince } } : {},
+	const { cursor, updatedSince } = data
+	const position = readCursor(cursor)
+	const ordered = db.orm.public.User.orderBy([user => user.createdAt.asc(), user => user.id.asc()])
+	const filtered = updatedSince ? ordered.where(user => user.updatedAt.gte(formatDbTimestamp(updatedSince))) : ordered
+	const paged =
+		position?.at === undefined || position.at === null
+			? filtered
+			: filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+
+	const rows = await paged
+		.select("createdAt", "email", "id", "name", "slackId", "updatedAt", "verificationStatus")
+		.include("themeProjects", projects =>
+			projects
+				.where({ deletedAt: null })
+				.select("approvedHours", "buildStatus", "designStatus", "githubRepo", "grantUsd", "theme", "tier", "title"),
+		)
+		.limit(data.limit + 1)
+		.all()
+
+	// The cursor is a position, and a Prisma 8 timestamp is text: the cursor needs the text form back and the response keeps the ISO dates JSON always had.
+	const page = pageResult(
+		rows.map(row =>
+			withFields(row, {
+				createdAt: parseDbTimestamp(row.createdAt),
+				updatedAt: parseDbTimestamp(row.updatedAt),
+			}),
 		),
-	})
-
-	const page = pageResult(rows, parsed.data.limit, PARTICIPANTS_ORDER)
+		data.limit,
+		PARTICIPANTS_ORDER,
+	)
 	return ok({
 		items: page.items.map(u => ({
 			createdAt: u.createdAt,
 			id: u.id,
 			name: u.name,
+			themeProjects: u.themeProjects.map(p => withFields(p, { themeLabel: getThemeDef(p.theme).label })),
 			updatedAt: u.updatedAt,
 			verificationStatus: u.verificationStatus,
 			...(internal ? { email: u.email, slackId: u.slackId } : {}),
-			themeProjects: u.themeProjects.map(p => ({
-				...p,
-				themeLabel: getThemeDef(p.theme).label,
-			})),
 		})),
 		nextCursor: page.nextCursor,
 	})

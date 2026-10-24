@@ -1,6 +1,5 @@
 import { after, NextResponse } from "next/server"
-import { Prisma } from "@/app/generated/prisma/client"
-import prisma from "@/lib/prisma"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import {
 	addReaction,
 	getBotUserId,
@@ -199,10 +198,10 @@ async function claimDelivery(
 ): Promise<boolean> {
 	if (!eventId) return true
 	try {
-		await prisma.slackEventDelivery.create({ data: { event: eventType, eventId, teamId: teamId ?? null } })
+		await db.orm.public.SlackEventDelivery.create({ event: eventType, eventId, teamId: teamId ?? null })
 		return true
 	} catch (err) {
-		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return false
+		if (isUniqueViolation(err)) return false
 		// The table is unreachable, so the delivery cannot be recorded and a replay could not be told apart from the original. The work still runs: a member waiting to be invited is worse than the rare duplicate, and the failure is logged.
 		console.error(`[slack] could not record the delivery ${eventId}:`, err)
 		return true

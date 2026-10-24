@@ -1,14 +1,12 @@
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
-import type { HackatimeLink, Prisma, SessionMedia } from "@/app/generated/prisma/client"
 import { getThemeDef, projectDisplayTitle } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { Phase } from "@/lib/enums"
 import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
 import { encodeCursor, readCursor } from "@/lib/pagination"
-import prisma from "@/lib/prisma"
 import db from "@/lib/prisma8"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseTimestampFields } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 export interface QueueItem {
@@ -98,62 +96,143 @@ export async function getReviewQueue(opts: {
 	}
 }
 
-/** The submission row with everything its review page renders: project, maker, claim, dispute and reviews. */
-export type SubmissionDetail = Prisma.PhaseSubmissionGetPayload<{ include: typeof submissionDetailInclude }>
+/** The detail page's submission row, with every timestamp column parsed and the include tree loaded. */
+const loadSubmissionDetail = (submissionId: string) =>
+	db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
+		.include("claim", claim => claim.include("reviewer", reviewer => reviewer.select("displayName", "id", "name")))
+		.include("dispute", dispute =>
+			dispute.include("messages", messages =>
+				messages
+					.include("author", author => author.select("displayName", "id", "name"))
+					.orderBy(message => message.createdAt.asc()),
+			),
+		)
+		.include("reviews", reviews =>
+			reviews
+				.include("reviewer", reviewer => reviewer.select("displayName", "id", "name"))
+				.orderBy(review => review.createdAt.desc()),
+		)
+		.include("themeProject", project =>
+			project.include("user", user =>
+				user.select("displayName", "email", "fraudFlagged", "id", "name", "slackId", "verificationStatus"),
+			),
+		)
+		.first()
 
-/** A devlog session with its evidence resolved to URLs for the review page. */
-export interface ReviewSession
-	extends Omit<Prisma.WorkSessionGetPayload<{ include: { media: true; timelapses: true } }>, "media"> {
-	media: (SessionMedia & { url: string | null })[]
+const loadSessions = (phase: Phase, themeProjectId: string) =>
+	db.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
+		.include("media")
+		.include("timelapses")
+		.orderBy(session => session.createdAt.asc())
+		.all()
+
+const loadLinks = (phase: Phase, themeProjectId: string) =>
+	db.orm.public.HackatimeLink.where({ phase, themeProjectId }).all()
+
+const loadPriorReviews = (themeProjectId: string) =>
+	db.orm.public.SubmissionReview.where(review =>
+		review.submission.some(submission => submission.themeProjectId.eq(themeProjectId)),
+	)
+		.include("reviewer", reviewer => reviewer.select("displayName", "name"))
+		.include("submission", submission => submission.select("phase"))
+		.orderBy(review => review.createdAt.desc())
+		.limit(20)
+		.all()
+
+type SubmissionRow = NonNullable<Awaited<ReturnType<typeof loadSubmissionDetail>>>
+type SessionRow = Awaited<ReturnType<typeof loadSessions>>[number]
+type LinkRow = Awaited<ReturnType<typeof loadLinks>>[number]
+type PriorReviewRow = Awaited<ReturnType<typeof loadPriorReviews>>[number]
+
+const parseSessionRow = (row: SessionRow) => {
+	const parsed = parseTimestampFields(row, ["createdAt", "deletedAt", "reviewedAt", "updatedAt"])
+	return {
+		...parsed,
+		media: row.media.map(media => {
+			const mediaRow = parseTimestampFields(media, ["createdAt"])
+			return { ...mediaRow, url: publicUrlFor(media.objectKey) }
+		}),
+		timelapses: row.timelapses.map(timelapse => parseTimestampFields(timelapse, ["createdAt", "recordedAt"])),
+	}
 }
 
+const parseLinkRow = (row: LinkRow) =>
+	parseTimestampFields(row, ["cachedAt", "createdAt", "reviewedAt", "spansFetchedAt"])
+
+const parsePriorReviewRow = (row: PriorReviewRow) => {
+	const { submission } = row
+	if (!submission) throw new Error(`review ${row.id} has no submission`)
+	return { ...parseTimestampFields(row, ["createdAt", "invalidatedAt"]), submission }
+}
+
+const parseSubmissionRow = (row: SubmissionRow) =>
+	parseTimestampFields(
+		{
+			...row,
+			claim: row.claim ? parseTimestampFields(row.claim, ["createdAt", "expiresAt"]) : null,
+			dispute: row.dispute
+				? parseTimestampFields(
+						{
+							...row.dispute,
+							messages: row.dispute.messages.map(message => parseTimestampFields(message, ["createdAt"])),
+						},
+						["createdAt", "resolvedAt"],
+					)
+				: null,
+			reviews: row.reviews.map(review => parseTimestampFields(review, ["createdAt", "invalidatedAt"])),
+			themeProject: row.themeProject
+				? parseTimestampFields(row.themeProject, [
+						"approvedHoursAt",
+						"buildReviewedAt",
+						"createdAt",
+						"deletedAt",
+						"designApprovedHoursAt",
+						"designReviewedAt",
+						"grantEmittedAt",
+						"namedAt",
+						"repoSyncQueuedAt",
+						"repoSyncedAt",
+						"submissionExtensionUntil",
+						"updatedAt",
+					])
+				: null,
+		},
+		["ariStatusAt", "ariSyncedAt", "createdAt", "preReviewedAt", "resolvedAt"],
+	)
+
+type ParsedSubmission = ReturnType<typeof parseSubmissionRow>
+type ParsedProject = NonNullable<ParsedSubmission["themeProject"]>
+type ParsedMaker = NonNullable<ParsedProject["user"]>
+
+/**
+ * The submission row with everything its review page renders: project, maker, claim, dispute and reviews.
+ *
+ * `themeProject` and its `user` are non-null here: the loader returns null for a submission without either, so a caller that got a detail has both.
+ */
+export type SubmissionDetail = Omit<ParsedSubmission, "themeProject"> & {
+	themeProject: Omit<ParsedProject, "user"> & { user: ParsedMaker }
+}
+
+/** A devlog session with its evidence resolved to URLs for the review page. */
+export type ReviewSession = ReturnType<typeof parseSessionRow>
+
 /** A prior decision on any of the project's submissions: who wrote it and which phase it decided. */
-export type PriorReview = Prisma.SubmissionReviewGetPayload<{
-	include: { reviewer: { select: { name: true; displayName: true } }; submission: { select: { phase: true } } }
-}>
+export type PriorReview = ReturnType<typeof parsePriorReviewRow>
+
+/** A Hackatime link on the submission's project, with its cache timestamps parsed. */
+export type ReviewLink = ReturnType<typeof parseLinkRow>
 
 /** Everything the review page renders for one submission. */
 export interface SubmissionDetailView {
 	breakdown: HoursBreakdown
 	claimLive: boolean
 	coverImageUrl: string | null
-	links: HackatimeLink[]
+	links: ReviewLink[]
 	priorReviews: PriorReview[]
 	sessions: ReviewSession[]
 	submission: SubmissionDetail
 	themeLabel: string
 }
-
-const submissionDetailInclude = {
-	claim: { include: { reviewer: { select: { displayName: true, id: true, name: true } } } },
-	dispute: {
-		include: {
-			messages: {
-				include: { author: { select: { displayName: true, id: true, name: true } } },
-				orderBy: { createdAt: "asc" },
-			},
-		},
-	},
-	reviews: {
-		include: { reviewer: { select: { displayName: true, id: true, name: true } } },
-		orderBy: { createdAt: "desc" },
-	},
-	themeProject: {
-		include: {
-			user: {
-				select: {
-					displayName: true,
-					email: true,
-					fraudFlagged: true,
-					id: true,
-					name: true,
-					slackId: true,
-					verificationStatus: true,
-				},
-			},
-		},
-	},
-} as const satisfies Prisma.PhaseSubmissionInclude
 
 export async function getSubmissionDetail(
 	submissionId: string,
@@ -162,70 +241,42 @@ export async function getSubmissionDetail(
 ): Promise<SubmissionDetailView | null> {
 	const includeContact = flags?.includeContact ?? false
 	const includeRiskFlags = flags?.includeRiskFlags ?? false
-	const submission = await prisma.phaseSubmission.findUnique({
-		include: submissionDetailInclude,
-		where: { id: submissionId },
-	})
-	if (!submission) return null
+	const row = await loadSubmissionDetail(submissionId)
+	if (!row) return null
+	const project = row.themeProject
+	if (!project) return null
 	// Your own work is not reviewable by you, so it is not visible here either. Null rather than a 403: the review surface should not confirm that this is a submission you merely lack rights over.
-	if (reviewerId && submission.themeProject.userId === reviewerId) return null
+	if (reviewerId && project.userId === reviewerId) return null
+	const maker = project.user
+	if (!maker) return null
 
 	// Maker contact + risk flags only for ADMIN/AUDITOR (contact) and REVIEW_HOURS holders (risk flags) – the volume reviewer role gets the work, not the person (M6). Redacted here, before any caller can render or serialize them.
-	if (!includeContact || !includeRiskFlags) {
-		const maker = submission.themeProject.user as {
-			email: string
-			slackId: string | null
-			verificationStatus: string | null
-			fraudFlagged: boolean
-		}
-		if (!includeContact) {
-			maker.email = ""
-			maker.slackId = null
-		}
-		if (!includeRiskFlags) {
-			maker.verificationStatus = null
-			maker.fraudFlagged = false
-		}
+	if (!includeContact) {
+		maker.email = ""
+		maker.slackId = null
+	}
+	if (!includeRiskFlags) {
+		maker.verificationStatus = null
+		maker.fraudFlagged = false
 	}
 
 	const [breakdown, sessions, links, priorReviews] = await Promise.all([
-		getHoursBreakdown(submission.themeProjectId, submission.phase, { live: false }),
-		prisma.workSession.findMany({
-			include: { media: true, timelapses: true },
-			orderBy: { createdAt: "asc" },
-			where: {
-				deletedAt: null,
-				phase: submission.phase,
-				themeProjectId: submission.themeProjectId,
-			},
-		}),
-		prisma.hackatimeLink.findMany({
-			where: { phase: submission.phase, themeProjectId: submission.themeProjectId },
-		}),
-		prisma.submissionReview.findMany({
-			include: {
-				reviewer: { select: { displayName: true, name: true } },
-				submission: { select: { phase: true } },
-			},
-			orderBy: { createdAt: "desc" },
-			take: 20,
-			where: { submission: { themeProjectId: submission.themeProjectId } },
-		}),
+		getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
+		loadSessions(row.phase, row.themeProjectId),
+		loadLinks(row.phase, row.themeProjectId),
+		loadPriorReviews(row.themeProjectId),
 	])
+	const submission = parseSubmissionRow(row) as SubmissionDetail
 
 	return {
 		breakdown,
 		claimLive: submission.claim !== null && submission.claim.expiresAt.getTime() > Date.now(),
-		coverImageUrl: publicUrlFor(submission.themeProject.coverImageKey),
-		links,
-		priorReviews,
-		sessions: sessions.map(s =>
-			Object.assign({}, s, {
-				media: s.media.map(m => Object.assign({}, m, { url: publicUrlFor(m.objectKey) })),
-			}),
-		),
+		coverImageUrl: publicUrlFor(project.coverImageKey),
+		links: links.map(parseLinkRow),
+		priorReviews: priorReviews.map(parsePriorReviewRow),
+		sessions: sessions.map(parseSessionRow),
 		submission,
-		themeLabel: getThemeDef(submission.themeProject.theme).label,
+		themeLabel: getThemeDef(project.theme).label,
 	}
 }
 
@@ -249,41 +300,36 @@ export interface OpenDispute {
  * Surfaced on the program page so a maker asking for a second look is not left waiting on a queue nobody is watching.
  */
 export async function getOpenDisputes(): Promise<OpenDispute[]> {
-	const rows = await prisma.reviewDispute.findMany({
-		orderBy: { createdAt: "asc" },
-		select: {
-			_count: { select: { messages: true } },
-			createdAt: true,
-			id: true,
-			note: true,
-			submission: {
-				select: {
-					id: true,
-					phase: true,
-					themeProject: {
-						select: {
-							id: true,
-							theme: true,
-							title: true,
-							user: { select: { displayName: true, email: true, name: true } },
-						},
-					},
-				},
-			},
-		},
-		where: { resolvedAt: null },
-	})
+	const rows = await db.orm.public.ReviewDispute.where({ resolvedAt: null })
+		.include("messages", messages => messages.count())
+		.include("submission", submission =>
+			submission
+				.select("id", "phase")
+				.include("themeProject", project =>
+					project.select("id", "theme", "title").include("user", user => user.select("displayName", "email", "name")),
+				),
+		)
+		.orderBy(dispute => dispute.createdAt.asc())
+		.all()
 
-	return rows.map(d => ({
-		createdAt: d.createdAt,
-		id: d.id,
-		messageCount: d._count.messages,
-		note: d.note,
-		participant: displayName(d.submission.themeProject.user, d.submission.themeProject.user.email),
-		phase: d.submission.phase,
-		projectTitle: projectDisplayTitle(d.submission.themeProject),
-		submissionId: d.submission.id,
-		themeLabel: getThemeDef(d.submission.themeProject.theme).label,
-		themeProjectId: d.submission.themeProject.id,
-	}))
+	return rows.map(dispute => {
+		const { submission } = dispute
+		if (!submission) throw new Error(`dispute ${dispute.id} has no submission`)
+		const { themeProject: project } = submission
+		if (!project) throw new Error(`dispute ${dispute.id} has no project`)
+		const { user } = project
+		if (!user) throw new Error(`dispute ${dispute.id} has no author`)
+		return {
+			createdAt: parseDbTimestamp(dispute.createdAt),
+			id: dispute.id,
+			messageCount: dispute.messages,
+			note: dispute.note,
+			participant: displayName(user, user.email),
+			phase: submission.phase,
+			projectTitle: projectDisplayTitle(project),
+			submissionId: submission.id,
+			themeLabel: getThemeDef(project.theme).label,
+			themeProjectId: project.id,
+		}
+	})
 }
