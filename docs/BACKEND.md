@@ -37,7 +37,7 @@ src/lib/queries/    read paths (one per surface)
 src/lib/*.ts        domain: currency, hours, review, shop, feed, handoff, streak
 src/lib/schemas/    Zod, one per API area
 src/app/api/        every write
-prisma/schema.prisma
+prisma/contract.prisma
 ```
 
 ---
@@ -248,14 +248,17 @@ Local scripts need `DATABASE_URL` in `.env` – every `package.json` script assu
 it, and without it Prisma silently falls back to a database named after your
 shell user.
 
-Schema changes: edit `prisma/schema.prisma`, then
+Schema changes: edit `prisma/contract.prisma`, then
 
 ```bash
-pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script
+bun run db:generate
+bun run db:plan -- --name <what_changed>
 ```
 
-(needs `SHADOW_DATABASE_URL`). Write the SQL by hand into a dated folder, rehearse
-it against a scratch copy, and re-run the diff to confirm it comes back empty.
+Review the planned operations, fill any data-transform placeholders, and apply
+with `bun run db:migrate`. Verify with `bun run db:verify`. The signed marker
+in `migrations/app/refs/db.json` records which contract hash the database is
+at; `prisma db sign` adopts a database whose schema already matches.
 
 ### The checks
 

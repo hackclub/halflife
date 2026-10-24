@@ -40,7 +40,7 @@ src/lib/config/               every tunable number: tiers, printers, programme
 src/lib/curriculum.ts         the shape of a week, as a pure function
 src/lib/queries/store.ts      the trail's data, read in one pass
 src/lib/store.tsx             that snapshot, plus every write the trail makes
-prisma/schema.prisma          the data model
+prisma/contract.prisma        the data model
 public/art/                   hero painting, scatter photos, comp SVG exports
 ```
 

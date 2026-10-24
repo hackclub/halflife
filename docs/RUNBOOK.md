@@ -150,13 +150,10 @@ Coolify.
    `set_env_vars` replaces the entire set, so anything you leave out is deleted;
    `add_env_vars` merges. Both restart the deployment.
 
-   `DATABASE_URL` is the only database setting. Prisma 7 dropped the `url =`
-   line from `schema.prisma`, so the CLI reads it from `prisma.config.ts` and
-   the runtime reads it from the driver adapter in `lib/prisma.ts` – both off
-   `process.env.DATABASE_URL`. **Never set `SHADOW_DATABASE_URL` in
-   production**: `prisma migrate deploy` refuses to run when the shadow URL
-   equals the main one, and the pod crashloops at boot. It exists for the CI
-   schema-vs-migrations check and nowhere else.
+   `DATABASE_URL` is the only database setting. The Prisma 8 CLI reads it from
+   `prisma.config.ts` and the runtime reads it from the pool in `lib/prisma8.ts`
+   – both off `process.env.DATABASE_URL`. There is no shadow database: Prisma 8
+   plans migrations from the contract, not by diffing against a live database.
 
 7. **Create the ingress** – `create_ingress` for `half-life.k.hackclub.dev`.
    Orchard already terminates TLS for that domain, so no `validate_dns` step is
@@ -501,13 +498,13 @@ project they submitted.
 
 **Scale for a launch spike** – `scale_deployment` to 2-3 replicas; the app is
 stateless and sessions live in Postgres. Stagger the rollout rather than going
-from 0 to 3 at once, so several `prisma migrate deploy` runs are not racing at
+from 0 to 3 at once, so several `prisma db migrate` runs are not racing at
 boot (Prisma's advisory lock handles it, but there is no reason to lean on it).
 
 ## Local development
 
-`./dev.sh` starts Postgres in Docker, waits on its healthcheck, generates the
-Prisma client, migrates, seeds and runs `next dev`. It is safe to re-run.
+`./dev.sh` starts Postgres in Docker, waits on its healthcheck, emits the
+Prisma contract, migrates, seeds and runs `next dev`. It is safe to re-run.
 
 The app works with no Airtable, no R2 and no Slack configured – every one of
 those integrations no-ops with a warning when its credentials are missing.

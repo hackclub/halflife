@@ -2,7 +2,7 @@ import "dotenv/config"
 import { defineConfig as definePostgresConfig } from "@prisma/orm-postgres/config"
 import { definePrismaConfig } from "prisma/config"
 
-// Prisma 8 config. Prisma 7 keeps running on prisma7.config.ts while routes move over.
+// Prisma 8 config: the contract in prisma/contract.prisma is the schema of record.
 export default definePrismaConfig({
 	orm: definePostgresConfig({
 		contract: "prisma/contract.prisma",
