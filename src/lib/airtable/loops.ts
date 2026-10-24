@@ -10,7 +10,8 @@ import {
 import { columnExists, existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 import { scheduledWeekFor, THEMES } from "@/lib/config/program"
-import prisma from "@/lib/prisma"
+import db, { isUniqueViolation } from "@/lib/prisma8"
+import { parseDbTimestamp } from "@/lib/time"
 
 /**
  * The Loops properties on the `Signups` table: what Loops emails people from.
@@ -64,28 +65,41 @@ interface LoopsValues {
  * - weeks 6-10 are the builds of those same projects and open straight into logging, so their first checkpoint is the first build journal entry.
  */
 async function loopsValues(): Promise<LoopsValues[]> {
-	const users = await prisma.user.findMany({
-		select: {
-			email: true,
-			id: true,
-			lastActiveAt: true,
-			lastLoginAt: true,
-			onboardingCompletedAt: true,
-			themeProjects: {
-				select: {
-					namedAt: true,
-					submissions: { select: { phase: true, scheduledWeek: true } },
-					theme: true,
-					workSessions: {
-						orderBy: { createdAt: "desc" },
-						select: { createdAt: true, hoursSource: true, phase: true, timelapses: { select: { id: true }, take: 1 } },
-						where: { deletedAt: null },
-					},
-				},
-				where: { deletedAt: null },
-			},
-		},
-	})
+	const userRows = await db.orm.public.User.select(
+		"email",
+		"id",
+		"lastActiveAt",
+		"lastLoginAt",
+		"onboardingCompletedAt",
+	)
+		.include("themeProjects", projects =>
+			projects
+				.select("namedAt", "theme")
+				.where({ deletedAt: null })
+				.include("submissions", submissions => submissions.select("phase", "scheduledWeek"))
+				.include("workSessions", sessions =>
+					sessions
+						.orderBy(session => session.createdAt.desc())
+						.select("createdAt", "hoursSource", "phase")
+						.where({ deletedAt: null })
+						.include("timelapses", timelapse => timelapse.select("id").limit(1)),
+				),
+		)
+		.all()
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	const users = userRows.map(user => ({
+		...user,
+		lastActiveAt: parseNullable(user.lastActiveAt),
+		lastLoginAt: parseNullable(user.lastLoginAt),
+		onboardingCompletedAt: parseNullable(user.onboardingCompletedAt),
+		themeProjects: user.themeProjects.map(project => ({
+			...project,
+			workSessions: project.workSessions.map(session => ({
+				...session,
+				createdAt: parseDbTimestamp(session.createdAt),
+			})),
+		})),
+	}))
 
 	return users.map(u => {
 		const weeks: { [_: number]: boolean } = {}
@@ -180,10 +194,10 @@ export function resolveSignupRow(
  */
 async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 	const byRecordId = new Map<string, AirtableRecord>()
-	const rows = await prisma.rsvpBuffer.findMany({
-		select: { airtableRecordId: true, userId: true },
-		where: { airtableRecordId: { not: null }, userId: { not: null } },
-	})
+	const rows = await db.orm.public.RsvpBuffer.where(row => row.airtableRecordId.isNotNull())
+		.where(row => row.userId.isNotNull())
+		.select("airtableRecordId", "userId")
+		.all()
 	// The row id in the listing and the one the drain recorded are the same thing, so this needs no second request: a placeholder is enough for the join, and the write below addresses the real record by that id.
 	for (const row of rows)
 		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId))
@@ -221,28 +235,29 @@ async function persistRecordLinks(
 		const row = byEmail.get(v.email.trim().toLowerCase())
 		if (!row) continue
 		const key = v.email.trim().toLowerCase()
-		const existing = await prisma.rsvpBuffer.findUnique({ where: { email: key } })
+		const existing = await db.orm.public.RsvpBuffer.where({ email: key }).select("airtableRecordId", "userId").first()
 		if (existing?.userId && existing.userId !== v.id) continue
 		if (existing?.airtableRecordId === row.id && existing?.userId === v.id) continue
 		try {
-			await prisma.rsvpBuffer.upsert({
-				create: {
+			try {
+				await db.orm.public.RsvpBuffer.create({
 					airtableRecordId: row.id,
 					email: key,
 					finishedAccountCreation: true,
 					syncAttempts: 0,
 					syncedToAirtable: false,
 					userId: v.id,
-				},
-				update: {
+				})
+			} catch (err) {
+				if (!isUniqueViolation(err)) throw err
+				await db.orm.public.RsvpBuffer.where({ email: key }).update({
 					airtableRecordId: row.id,
 					finishedAccountCreation: true,
 					syncAttempts: 0,
 					syncedToAirtable: false,
 					userId: v.id,
-				},
-				where: { email: key },
-			})
+				})
+			}
 			linked++
 		} catch (err) {
 			console.error(`[airtable] loops-sync could not link ${row.id} to ${v.id}:`, err)
@@ -415,14 +430,14 @@ export async function syncLoopsWeekSubmitted(
 	const column = LOOPS_FIELDS.submitted(week)
 	if (!(await columnExists(config, TABLE, column))) return { skipped: "no_column" }
 
-	const user = await prisma.user.findUnique({ select: { email: true }, where: { id: userId } })
+	const user = await db.orm.public.User.whereUnique({ id: userId }).select("email").first()
 	if (!user) return { skipped: "no_user" }
 
 	// Recomputed, not forced: submit lands with the row present (true), unsubmit lands with it deleted (false unless another hand-in for the same week stands).
-	const projects = await prisma.themeProject.findMany({
-		select: { submissions: { select: { phase: true, scheduledWeek: true } }, theme: true },
-		where: { userId },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ userId })
+		.select("theme")
+		.include("submissions", submissions => submissions.select("phase", "scheduledWeek"))
+		.all()
 	let want = false
 	for (const p of projects) {
 		for (const s of p.submissions)
@@ -435,10 +450,7 @@ export async function syncLoopsWeekSubmitted(
 	}
 
 	// The drained record id addresses the row without a table scan. Otherwise fall back to the same filtered lookups the bulk sync resolves with.
-	const buf = await prisma.rsvpBuffer.findFirst({
-		select: { airtableRecordId: true },
-		where: { userId },
-	})
+	const buf = await db.orm.public.RsvpBuffer.where({ userId }).select("airtableRecordId").first()
 	const fieldsQs = `fields%5B%5D=${encodeURIComponent(column)}`
 	const getById = async (id: string) => {
 		try {
