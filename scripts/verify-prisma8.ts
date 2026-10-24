@@ -1,5 +1,4 @@
 import "dotenv/config"
-import prisma from "@/lib/prisma"
 import db from "@/lib/prisma8"
 import {
 	countContentReports,
@@ -207,5 +206,3 @@ console.log(
 )
 
 await db.close()
-// Some migrated helpers still call the Prisma 7 client (for example the reel lock check), so close its pool too.
-await prisma.$disconnect()
