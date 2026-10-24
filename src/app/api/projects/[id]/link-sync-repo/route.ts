@@ -1,8 +1,9 @@
+import { and } from "@prisma/orm-postgres/orm-client"
 import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { getRepoSyncState, scheduleRepoSync } from "@/lib/repo-sync"
 
@@ -24,10 +25,9 @@ interface Params {
 export const POST = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
-	const project = await prisma.themeProject.findFirst({
-		select: { buildStatus: true, designStatus: true, githubRepo: true, id: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("buildStatus", "designStatus", "githubRepo", "id")
+		.first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	// The state resolves both the sync target and whether it differs from the project link, and is the one place that logic lives.
@@ -41,18 +41,16 @@ export const POST = withSession(async (_req: Request, { params, gate }: Params &
 		return fail("PHASE_LOCKED", "Unsubmit before editing – a phase is in review")
 
 	// Conditional on the statuses just checked, so a review that lands between the read and the write is not edited out from under. It also repeats the "still different" test against the current link, in case another tab changed it while this one was deciding to press the button.
-	const claimed = await prisma.themeProject.updateMany({
-		data: { githubRepo: syncRepo },
-		where: {
-			buildStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
-			deletedAt: null,
-			designStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
-			githubRepo: project.githubRepo,
-			id,
-			userId: gate.user.id,
-		},
-	})
-	if (claimed.count === 0) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
+	const claimed = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.where(row =>
+			and(
+				row.buildStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
+				row.designStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
+			),
+		)
+		.where({ githubRepo: project.githubRepo })
+		.updateAndCount({ githubRepo: syncRepo })
+	if (claimed === 0) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
 
 	await logAudit({
 		action: AuditAction.USER_UPDATE_PROJECT,

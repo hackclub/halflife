@@ -1,8 +1,9 @@
+import { and } from "@prisma/orm-postgres/orm-client"
 import type { NextRequest } from "next/server"
 import { fail, ok } from "@/lib/api"
 import { withSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { MAX_CLIP_REF_LENGTH, MAX_SESSION_TIMELAPSES } from "@/lib/schemas/session"
 
 export const dynamic = "force-dynamic"
@@ -29,15 +30,15 @@ export const GET = withSession(async (req: NextRequest, { gate }) => {
 	const forSession = params.get("forSession") ?? undefined
 	let ownExternalIds = new Set<string>()
 	if (forSession) {
-		const session = await prisma.workSession.findFirst({
-			select: { id: true },
-			where: { deletedAt: null, id: forSession, themeProject: { deletedAt: null, userId: gate.user.id } },
-		})
+		const session = await db.orm.public.WorkSession.where({ deletedAt: null, id: forSession })
+			.where(s => s.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(gate.user.id))))
+			.select("id")
+			.first()
 		if (!session) return fail("NOT_FOUND", "Session not found")
-		const rows = await prisma.sessionTimelapse.findMany({
-			select: { externalId: true },
-			where: { externalId: { in: ids }, provider: "lapse", workSessionId: forSession },
-		})
+		const rows = await db.orm.public.SessionTimelapse.where({ provider: "lapse", workSessionId: forSession })
+			.where(timelapse => timelapse.externalId.in(ids))
+			.select("externalId")
+			.all()
 		ownExternalIds = new Set(rows.flatMap(r => (r.externalId ? [r.externalId] : [])))
 	}
 

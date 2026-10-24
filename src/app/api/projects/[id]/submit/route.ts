@@ -7,7 +7,7 @@ import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshLinkCache } from "@/lib/hackatime"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { submitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -94,10 +94,9 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	// Warm the Hackatime cache now so the reviewer opens a page with fresh numbers instead of waiting on the API. The participant does not need to wait for it.
 	after(async () => {
-		const links = await prisma.hackatimeLink.findMany({
-			select: { id: true },
-			where: { phase: parsed.data.phase, themeProjectId: id },
-		})
+		const links = await db.orm.public.HackatimeLink.where({ phase: parsed.data.phase, themeProjectId: id })
+			.select("id")
+			.all()
 		for (const link of links)
 			await refreshLinkCache(link.id).catch(err => console.error("[submit] hackatime refresh failed:", err))
 	})
