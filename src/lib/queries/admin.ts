@@ -355,7 +355,10 @@ export async function getUserDetail(
 				)
 				.where({ deletedAt: null })
 				.include("hcbGrantTopUps", topUps =>
-					topUps.select("id").where({ phase: "DESIGN" }).where(topUp => topUp.sentAt.isNotNull()),
+					topUps
+						.select("id")
+						.where({ phase: "DESIGN" })
+						.where(topUp => topUp.sentAt.isNotNull()),
 				),
 		)
 		.first()
