@@ -62,6 +62,11 @@ const nextConfig: NextConfig = {
 	poweredByHeader: false,
 	reactCompiler: true,
 	reactStrictMode: true,
+
+	/**
+	 * Bundles `pg` instead of leaving it as a server external. Turbopack loads externals through content-hashed aliases (`pg-<hash>`) that it symlinks into `.next/dev/node_modules` during the first compile, and Bun caches the first failed lookup for the life of the process – so the alias is written after Bun has already missed it, and every later import 500s with `Cannot find package 'pg-<hash>'` until the dev server restarts. Node re-resolves and is not affected. Remove this once Bun fixes the negative cache (oven-sh/bun#25370).
+	 */
+	transpilePackages: ["pg"],
 }
 
 export default nextConfig
