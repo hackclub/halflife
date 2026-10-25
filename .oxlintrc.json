@@ -20,6 +20,14 @@
 		"reportUnusedDisableDirectives": "warn",
 		"typeAware": true
 	},
+	"overrides": [
+		{
+			"files": ["e2e/**"],
+			"rules": {
+				"eslint/no-empty-pattern": "off"
+			}
+		}
+	],
 	"plugins": ["eslint", "import", "jsx-a11y", "nextjs", "node", "oxc", "promise", "react", "typescript", "unicorn"],
 	"rules": {
 		"eslint/capitalized-comments": "off",

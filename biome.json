@@ -27,6 +27,7 @@
 			"public/**",
 			"!public/**/*.svg",
 			"scripts/**",
+			"e2e/**",
 			"src/**",
 			"!src/app/generated",
 			".impeccable/**",
@@ -96,6 +97,16 @@
 		}
 	},
 	"overrides": [
+		{
+			"includes": ["e2e/**"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noEmptyPattern": "off"
+					}
+				}
+			}
+		},
 		{
 			"assist": {
 				"actions": {
