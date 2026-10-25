@@ -173,6 +173,21 @@ export async function readProjects(userId: string): Promise<E2eProjectRow[]> {
 	return rows as E2eProjectRow[]
 }
 
+/**
+ * One project on a chosen theme.
+ *
+ * Onboarding anchors to the participant's first project, which is normally the current week's. A test that needs the starter fork has to run in a week that has a starter, so it seeds the week-one PCB row rather than depending on the calendar.
+ */
+export async function seedProject(userId: string, theme = "PCB"): Promise<string> {
+	const id = randomUUID()
+	await pool.query(
+		`insert into theme_project (id, "userId", theme, title, "createdAt", "updatedAt")
+		values ($1, $2, $3::"Theme", $4, now(), now())`,
+		[id, userId, theme, theme],
+	)
+	return id
+}
+
 /** Coins in one bucket. The purchase debit is one row, so a sum is the balance the page shows. */
 export async function readBalance(userId: string, bucket: "BANKED" | "SPENDABLE" = "SPENDABLE"): Promise<number> {
 	const { rows } = await pool.query(

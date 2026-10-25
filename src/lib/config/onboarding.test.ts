@@ -56,6 +56,17 @@ describe("starter projects", () => {
 		expect(getStarterProject("nope")).toBeUndefined()
 	})
 
+	test("lists each starter only for its own week", () => {
+		expect(starterProjectsFor(Theme.PCB).map(p => p.id)).toEqual(["starbie"])
+		expect(starterProjectsFor(Theme.CAD).map(p => p.id)).toEqual(["merbl"])
+		expect(starterProjectsFor(Theme.SYNTH).map(p => p.id)).toEqual(["midi"])
+	})
+
+	test("a week with no starter of its own offers none", () => {
+		expect(starterProjectsFor(Theme.DISPLAYS)).toEqual([])
+		expect(starterProjectsFor(Theme.BREADBOARD_COMPUTER)).toEqual([])
+	})
+
 	test("spots the untouched guide description", () => {
 		const [first] = starterProjectsFor(Theme.PCB)
 		const id = first?.id ?? ""

@@ -1,10 +1,12 @@
 import { skipIntro } from "./ceremony"
-import { readProjects, readUser } from "./db"
+import { readProjects, readUser, seedProject } from "./db"
 import { expect, test } from "./fixtures"
 import { experienceHeading, finishOnboarding, openOnboarding, projectHeading, tierHeading } from "./onboarding-helpers"
 
 test("a participant can finish onboarding with their own project", async ({ openAs }) => {
 	const { page, user } = await openAs({ onboarding: "new" })
+	// Anchor onboarding to PCB, the week with a starter, so the custom-project branch of the fork exists whatever week the suite runs in.
+	await seedProject(user.id)
 	await skipIntro(page)
 	await openOnboarding(page)
 
@@ -47,6 +49,8 @@ test("a participant can finish onboarding with their own project", async ({ open
 
 test("a beginner can take a starter project", async ({ openAs }) => {
 	const { page, user } = await openAs({ onboarding: "new" })
+	// The starter fork only exists in a week that has a starter, so anchor onboarding to PCB rather than to the current week.
+	await seedProject(user.id)
 	await skipIntro(page)
 	await openOnboarding(page)
 

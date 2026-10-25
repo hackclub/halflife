@@ -48,6 +48,18 @@ async function main() {
 		starterProjectsFor(Theme.SYNTH).map(p => p.id),
 		["midi"],
 	)
+	// A week without a starter of its own must offer none. Falling back to another week's starter put the week-one Starbie guide on week-three projects, and weeks four and five have no starter yet either.
+	check("week 4 is Displays", scheduleForWeek(4)?.theme.id, Theme.DISPLAYS)
+	check(
+		"week 4 offers no starter",
+		starterProjectsFor(Theme.DISPLAYS).map(p => p.id),
+		[],
+	)
+	check(
+		"week 5 offers no starter",
+		starterProjectsFor(Theme.BREADBOARD_COMPUTER).map(p => p.id),
+		[],
+	)
 
 	const stamp = Date.now()
 	const user = await db.orm.public.User.create({
@@ -55,6 +67,8 @@ async function main() {
 		name: "Onboarding Check",
 		verificationStatus: "verified",
 	})
+	// Onboarding anchors to the participant's first project, which is normally the current week's. This suite exercises the starter fork, so it anchors to week one's PCB project rather than to whichever week the check happens to run in – weeks without a starter have no fork to test.
+	await db.orm.public.ThemeProject.create({ theme: Theme.PCB, title: "PCB", userId: user.id })
 
 	// ── Starting state ─────────────────────────────────────────────────────────
 	const start = await getOnboardingState(user.id)
@@ -148,6 +162,22 @@ async function main() {
 		submitStep(user.id, { experience: HardwareExperience.ITS_LIFE, step: "experience" }),
 	)
 
+	// ── A week with no starter yet ─────────────────────────────────────────────
+	// Week four is Displays, which has no starter configured. A beginner must be able to name their own project, and must not be able to take another week's starter by posting its id.
+	const displayUser = await db.orm.public.User.create({
+		email: `display-${stamp}@example.test`,
+		name: "Displays Maker",
+	})
+	await db.orm.public.ThemeProject.create({ theme: Theme.DISPLAYS, title: "Displays", userId: displayUser.id })
+	await submitStep(displayUser.id, { experience: HardwareExperience.FIRST_TIME, step: "experience" })
+	const displayWeek = await getOnboardingState(displayUser.id)
+	check("a beginner on a week without a starter is offered none", displayWeek.starterProjects, [])
+	await refused("and cannot take another week's starter", () =>
+		submitStep(displayUser.id, { starterProjectId: starter.id, step: "week" }),
+	)
+	const displayProject = await submitStep(displayUser.id, { step: "week" })
+	check("the week step still moves on", displayProject.state.current?.id, "project")
+
 	// ── Someone experienced: no starter, and naming a project skips "Stuck?" ───
 	const maker = await db.orm.public.User.create({ email: `maker-${stamp}@example.test`, name: "Maker" })
 	const makerStart = await submitStep(maker.id, {
@@ -212,6 +242,7 @@ async function main() {
 	check("their own machine is still theirs after switching back", returned.printerGoalId, "bambu-a1-mini")
 
 	await db.orm.public.User.where({ id: user.id }).delete()
+	await db.orm.public.User.where({ id: displayUser.id }).delete()
 	await db.orm.public.User.where({ id: veteran.id }).delete()
 	await db.orm.public.User.where({ id: asked.id }).delete()
 
