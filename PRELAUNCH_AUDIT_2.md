@@ -83,7 +83,7 @@ Every check passes on the final tree: `pnpm typecheck`, `pnpm lint`, `pnpm verif
   - `PrinterAwardStatus` (`ADDRESS_LOCKED … REVOKED`) and the `PRINTER_QUALIFIED` / `PRINTER_STATUS_CHANGE` / `PRINTER_REVOKED` audit actions exist (`prisma/schema.prisma:200-207, 270-273`), and participants are promised a shipped printer (`src/lib/data.ts:44`), but the only writer is award creation – `ensurePrinterAward`, called from `src/lib/review.ts:383`. No route, admin page or UI writes the status, address, tracking or `revokedAt`; `/admin/fulfillment` covers shop orders only. After week 10 the grand prize needs hand-written SQL.
   - Fix: a printer section on `/admin/fulfillment` (or `/admin/printers`) writing status, address lock, tracking and revoke with the three audit actions; extend `FULFILLER` if that is the operator.
 
-- [x] **9. Reel and comment moderation exists in the library but is unreachable for staff.** **HIGH (safety; audience is 13–18)** · fixed `43bbe52`
+- [x] **9. Reel and comment moderation exists in the library but is unreachable for staff.** **HIGH (safety; audience is 13-18)** · fixed `43bbe52`
   - `hidePost`/`restorePost`/`hideComment` are implemented (`src/lib/feed.ts:433-466`), but nothing calls `src/app/api/admin/posts/[id]/moderate/route.ts` (grep: only the route file), `hideComment` has no route at all, and `/admin/feed` is a composer only (`src/app/(platform)/(ops)/admin/feed/page.tsx`). `MANAGE_FEED` promises "hide reels or comments" (`src/lib/permissions.ts:24-31`). `verify:feed` passes because it calls the library directly.
   - Fix: add a moderation list/action to `/admin/feed` (hide/restore a post, hide a comment) and a `POST/DELETE /api/admin/comments/[id]` route.
 

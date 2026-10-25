@@ -83,9 +83,9 @@ describe("weekDays / shiftWeek / weekLabel", () => {
 	})
 
 	test("labels widen across months and years", () => {
-		expect(weekLabel(weekDays("2026-01-07"))).toBe("January 5 – 11, 2026")
-		expect(weekLabel(weekDays("2026-02-01"))).toBe("January 26 – February 1, 2026")
-		expect(weekLabel(weekDays("2026-12-30"))).toBe("December 28, 2026 – January 3, 2027")
+		expect(weekLabel(weekDays("2026-01-07"))).toBe("January 5 - 11, 2026")
+		expect(weekLabel(weekDays("2026-02-01"))).toBe("January 26 - February 1, 2026")
+		expect(weekLabel(weekDays("2026-12-30"))).toBe("December 28, 2026 - January 3, 2027")
 	})
 })
 
@@ -139,10 +139,10 @@ describe("dayLabel / dayShort / eventRangeLabel", () => {
 
 	test("collapses a shared meridiem", () => {
 		expect(eventRangeLabel(new Date("2026-03-05T19:00:00Z"), new Date("2026-03-05T20:00:00Z"), "UTC")).toBe(
-			"7:00 – 8:00 PM",
+			"7:00 - 8:00 PM",
 		)
 		expect(eventRangeLabel(new Date("2026-03-05T11:00:00Z"), new Date("2026-03-05T13:00:00Z"), "UTC")).toBe(
-			"11:00 AM – 1:00 PM",
+			"11:00 AM - 1:00 PM",
 		)
 		expect(eventRangeLabel(new Date("2026-03-05T19:00:00Z"), null, "UTC")).toBe("7:00 PM")
 	})

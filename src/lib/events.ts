@@ -127,16 +127,16 @@ export function shiftWeek(day: string, offset: number): string {
 	return addDays(day, offset * 7)
 }
 
-/** "March 2 – 8, 2026", widening to months and years when the week straddles them. */
+/** "March 2 - 8, 2026", widening to months and years when the week straddles them. */
 export function weekLabel(days: readonly string[]): string {
 	const [first = "", last = ""] = [days[0], days[6]]
 	const [fy = 1970, fm = 1, fd = 1] = first.split("-").map(Number)
 	const [ly = 1970, lm = 1, ld = 1] = last.split("-").map(Number)
 	const month = (year: number, m: number) =>
 		new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(year, m - 1, 1)))
-	if (fy !== ly) return `${month(fy, fm)} ${fd}, ${fy} – ${month(ly, lm)} ${ld}, ${ly}`
-	if (fm !== lm) return `${month(fy, fm)} ${fd} – ${month(ly, lm)} ${ld}, ${ly}`
-	return `${month(fy, fm)} ${fd} – ${ld}, ${fy}`
+	if (fy !== ly) return `${month(fy, fm)} ${fd}, ${fy} - ${month(ly, lm)} ${ld}, ${ly}`
+	if (fm !== lm) return `${month(fy, fm)} ${fd} - ${month(ly, lm)} ${ld}, ${ly}`
+	return `${month(fy, fm)} ${fd} - ${ld}, ${fy}`
 }
 
 /** Minutes from local midnight to `at` in `timeZone`. */
@@ -199,14 +199,14 @@ function eventTimeLabel(at: Date, timeZone: string): string {
 	return at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone })
 }
 
-/** "7:00 – 8:00 PM", collapsing the meridiem when both ends share one. */
+/** "7:00 - 8:00 PM", collapsing the meridiem when both ends share one. */
 export function eventRangeLabel(startsAt: Date, endsAt: Date | null, timeZone: string): string {
 	if (!endsAt) return eventTimeLabel(startsAt, timeZone)
 	const from = eventTimeLabel(startsAt, timeZone)
 	const to = eventTimeLabel(endsAt, timeZone)
 	const meridiem = /\s(AM|PM)$/.exec(from)?.[1]
 	// Same meridiem: showing it twice reads as a typo. Different: both keep theirs.
-	return meridiem && to.endsWith(meridiem) ? `${from.replace(/\s(AM|PM)$/, "")} – ${to}` : `${from} – ${to}`
+	return meridiem && to.endsWith(meridiem) ? `${from.replace(/\s(AM|PM)$/, "")} - ${to}` : `${from} - ${to}`
 }
 
 /**

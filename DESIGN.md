@@ -310,7 +310,7 @@ Platform, text on cream: navy 14.75:1 · navy-soft 7.82:1 · violet-deep 5.67:1 
 
 **Resolved by adding text-only tones, not by changing the brand's fills.** The deep tones stay rims and borders; anything set as *text* in those hues takes an ink that clears 4.5:1 on cream, white and every pale chip fill:
 
-- **Inks:** `sky-ink` (was sky-deep, 3.61), `teal-ink` (teal-deep, 4.40), `gold-ink` (gold-deep, 2.58), `orange-ink` (orange-deep, 2.94). Coral text is `coral-deep`, violet text `violet-deep`, and on a coral tint (`coral/10`, `/15`, where coral-deep falls to 4.06–4.30) it is `coral-dark`.
+- **Inks:** `sky-ink` (was sky-deep, 3.61), `teal-ink` (teal-deep, 4.40), `gold-ink` (gold-deep, 2.58), `orange-ink` (orange-deep, 2.94). Coral text is `coral-deep`, violet text `violet-deep`, and on a coral tint (`coral/10`, `/15`, where coral-deep falls to 4.06-4.30) it is `coral-dark`.
 - **Quiet text** that used to be `line-strong` (2.72) is `navy-faint` (5.34:1), which is also every placeholder.
 - **Solid buttons** fill with the deep tone and rim and hover one darker (`violet-dark`, `teal-dark`, `coral-dark`): white reads 6.01, 4.67 and 5.10.
 - **On an accent fill** the text is navy – `onAccent()` in `ui.tsx` – except on magenta, the one fill white reads on. A label "in the week's colour" on cream goes through `accentText()`, which swaps each accent for its ink.
@@ -330,7 +330,7 @@ Platform, text on cream: navy 14.75:1 · navy-soft 7.82:1 · violet-deep 5.67:1 
 - **Display** (Plus Jakarta 800, `clamp(1.75rem, 4vw, 3.75rem)`, 1.05): the page title on its hanging sign. One per screen.
 - **Headline** (Plus Jakarta 800, 1.25rem → 1.75rem, 1): the week banner's "DESIGN YOUR PCB"; a project's name on its page (up to 1.9rem, −0.03em).
 - **Title** (Plus Jakarta 800, 0.95rem): timeline headlines ("Journal entry", "Posted a reel"), reel authors, card names.
-- **Body** (Plus Jakarta 400, 0.9–0.95rem, 1.5): descriptions, entries, comments. Journal bodies hold a 68ch measure.
+- **Body** (Plus Jakarta 400, 0.9-0.95rem, 1.5): descriptions, entries, comments. Journal bodies hold a 68ch measure.
 - **Label** (`.label` – Shantell Sans 700, 0.78rem, +0.11em, uppercase): section headings, chips, button text, the week banner's "WEEK 1/10 · DESIGN".
 - **Hand** (`.hand` – Shantell Sans 500, 0.84rem, +0.04em): the asides written in the margin – "that is everything. go build something.", timestamps, hours logged, "click to edit your entry."
 - **Counter**: the coin and streak numerals, set in the display face at label size rather than in the hand, so two digits stay legible at a glance.
@@ -396,7 +396,7 @@ All shadows are navy-tinted, never black.
 **Platform:** soft and drawn.
 
 - **Buttons and fields:** 12px.
-- **Panels:** 16px by default (18–22px for large page panels).
+- **Panels:** 16px by default (18-22px for large page panels).
 - **The reel card:** 16px.
 - **Chips, switches and round controls:** fully round.
 - **Pucks:** circles.
@@ -417,7 +417,7 @@ Illustration carries its own shape language: every character and theme painting 
 
 ### Buttons (platform)
 
-- **Shape:** 12px radius, a 2px border in the fill's own deep tone, label type (Shantell 700, uppercase) at 0.76–0.95rem.
+- **Shape:** 12px radius, a 2px border in the fill's own deep tone, label type (Shantell 700, uppercase) at 0.76-0.95rem.
 - **Sizes:** sm 36px tall, md 44px, lg 52px.
 - **Solid (primary):** violet-deep fill, white text, violet-dark border; hover fills violet-dark. Teal and coral follow the same pattern (deep fill, dark rim) for go and danger; gold keeps its gold fill with navy text for the prize.
 - **Outline:** transparent, navy text, violet border; hover fills violet-pale.
