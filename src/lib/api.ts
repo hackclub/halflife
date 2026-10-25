@@ -215,6 +215,47 @@ export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): b
 }
 
 /**
+ * Largest webhook body accepted before signature verification: 1 MB.
+ *
+ * Webhook deliveries are small JSON, and the signature is verified over the raw bytes – so reading the whole body first is required, but an unsigned caller must not decide how much memory that read may spend. Slack and Ari deliveries beyond this are rejected before verification.
+ */
+export const MAX_WEBHOOK_BODY_BYTES = 1_000_000
+
+/**
+ * Read a request body as text without letting an unsigned caller decide how much memory the read may spend.
+ *
+ * Content-Length is checked first (cheap, and what a normal client sends), then the stream is counted as it is read, so a chunked body cannot skip the check by omitting the header. Null when the body is larger than the cap or cannot be read – the caller answers in its own error dialect.
+ */
+export async function readBoundedText(
+	request: Request,
+	maxBytes: number = MAX_WEBHOOK_BODY_BYTES,
+): Promise<string | null> {
+	const declared = Number(request.headers.get("content-length") ?? "")
+	if (Number.isFinite(declared) && declared > maxBytes) return null
+
+	const { body } = request
+	if (!body) return ""
+	const reader = body.getReader()
+	const chunks: Uint8Array[] = []
+	let total = 0
+	try {
+		for (;;) {
+			const { done, value } = await reader.read()
+			if (done) break
+			total += value.byteLength
+			if (total > maxBytes) {
+				await reader.cancel().catch(() => undefined)
+				return null
+			}
+			chunks.push(value)
+		}
+	} catch {
+		return null
+	}
+	return Buffer.concat(chunks).toString("utf-8")
+}
+
+/**
  * Wraps a handler so a thrown HttpError becomes its proper response and anything else becomes a logged 500 instead of an unhandled rejection.
  *
  * Authenticated routes should use `withSession`, `withPermission` or `withRole` from `lib/guards` instead: those put the guard in front of the handler and pass the session in as `ctx.gate`, so a route cannot forget the check. This is the transport wrapper they, and the unauthenticated routes, are built on.
