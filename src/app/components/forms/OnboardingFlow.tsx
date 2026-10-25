@@ -226,7 +226,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 						<div className="flex items-start gap-4 sm:gap-6">
 							<WeekPainting
 								alt=""
-								className="sticker-shadow size-[84px] shrink-0 sm:size-[120px]"
+								className="sticker-shadow size-21 shrink-0 sm:size-30"
 								sizes="(min-width: 640px) 120px, 84px"
 								theme={view.weekIntro.painting}
 							/>
@@ -283,7 +283,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 													selected={start === null}
 												/>
 											}
-											art={<Gato className="h-[140px] w-auto" pose="schematic" sizes="260px" />}
+											art={<Gato className="h-35 w-auto" pose="schematic" sizes="260px" />}
 											chosen={start === null}
 											label="Custom project"
 											stacked

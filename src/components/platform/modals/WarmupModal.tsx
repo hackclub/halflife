@@ -175,7 +175,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 					<div className="overflow-hidden rounded-2xl bg-violet-pale p-4">
 						<WeekPainting
 							alt=""
-							className="mx-auto aspect-square w-full max-w-[220px]"
+							className="mx-auto aspect-square w-full max-w-55"
 							sizes="(min-width: 1024px) 198px, 220px"
 							theme={WARMUP_THEME.label}
 						/>

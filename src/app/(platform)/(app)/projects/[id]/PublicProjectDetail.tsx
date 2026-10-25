@@ -43,7 +43,7 @@ export function PublicProjectDetail({
 	const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
 
 	return (
-		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
+		<div className="mx-auto w-full max-w-240 px-4 pt-6 pb-10 sm:px-8">
 			<Link
 				className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
 				href="/explore"

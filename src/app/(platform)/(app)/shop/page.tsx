@@ -18,7 +18,7 @@ export default async function ShopPage() {
 	const { items, regions, regionId, country } = await getShopItemsFor(user.id)
 
 	return (
-		<div className="mx-auto w-full max-w-[1040px] px-4 pt-2 sm:px-8">
+		<div className="mx-auto w-full max-w-260 px-4 pt-2 sm:px-8">
 			<PageSign
 				color="var(--color-orange)"
 				label="SHOP"

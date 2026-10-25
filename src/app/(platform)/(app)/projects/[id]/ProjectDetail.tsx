@@ -539,7 +539,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	if (!project || !data) {
 		const missing = hydrated || !data
 		return (
-			<div className="mx-auto w-full max-w-[960px] px-4 pt-6 sm:px-8">
+			<div className="mx-auto w-full max-w-240 px-4 pt-6 sm:px-8">
 				<BackLink />
 				<Panel className="mt-6 bg-paper px-6 py-14 text-center" radius={20} tone="line">
 					<p className="text-[1.05rem] font-extrabold text-navy">{missing ? "No such project" : "Loading…"}</p>
@@ -574,7 +574,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	const overlapUnchecked = overlapUncheckedWeek(project.weekId) || overlapUncheckedWeek(buildWeekId)
 
 	return (
-		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
+		<div className="mx-auto w-full max-w-240 px-4 pt-6 pb-10 sm:px-8">
 			<BackLink />
 
 			{/* ---------- what a decision asks for, first ---------- */}

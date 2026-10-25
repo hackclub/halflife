@@ -171,7 +171,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 	return (
 		<div className="relative" style={{ height: STAGE_H, width: STAGE_W }}>
 			{/* ---- the shell, in frame while the camera is still at the top ---- */}
-			<div className="absolute top-[40px] left-[40px] flex w-[300px] flex-col gap-5">
+			<div className="absolute top-10 left-10 flex w-75 flex-col gap-5">
 				<Gato className="h-auto w-[86px]" sizes="172px" />
 				<MiniPanel className="px-5 py-4">
 					{["Home", "Projects", "Reels", "Explore", "Shop"].map((l, i) => (
@@ -201,7 +201,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 					</div>
 				</MiniPanel>
 				<MiniPanel className="flex items-center gap-3 p-3">
-					<Avatar className="size-[60px] text-[1.5rem]" image={null} name="John Cena" shape="tile" />
+					<Avatar className="size-15 text-[1.5rem]" image={null} name="John Cena" shape="tile" />
 					<div>
 						<p className="text-[1rem] font-extrabold text-navy">John Cena</p>
 						<p className="hand text-[0.82rem] text-navy-soft">@johncena</p>
@@ -209,9 +209,9 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 				</MiniPanel>
 			</div>
 
-			<span className="absolute top-0 left-[380px] h-[880px] w-px border-l border-dashed border-line" />
+			<span className="absolute top-0 left-95 h-220 w-px border-l border-dashed border-line" />
 
-			<div className="absolute top-[40px] left-[1180px] w-[300px]">
+			<div className="absolute top-10 left-295 w-75">
 				<MiniPanel className="p-3.5">
 					<p className="label mb-3 text-navy-faint">The Doomscroller</p>
 					<div className="flex flex-col gap-3">
@@ -285,7 +285,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 				className="absolute flex flex-col items-center rounded-3xl border-[3px] border-gold-deep bg-gold-pale px-12 py-8"
 				style={{ height: PRIZE_H, left: COL_X - 300, top: PRIZE_TOP, width: 600 }}
 			>
-				<PrinterPhoto className="mt-3 size-[280px] rounded-2xl border border-gold-deep/40" id={goal.id} sizes="560px" />
+				<PrinterPhoto className="mt-3 size-70 rounded-2xl border border-gold-deep/40" id={goal.id} sizes="560px" />
 				<p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">{goal.name}</p>
 				<p className="hand mt-2 text-[1rem] text-navy-soft">finish all ten weeks!</p>
 			</div>
@@ -508,7 +508,7 @@ export function Cinematic() {
 			{line && !ended && (
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-5 pb-20 sm:pb-12">
 					<p
-						className="sketch sketch-2 max-w-[40rem] rounded-2xl bg-cream px-6 py-4 text-center text-[clamp(1.05rem,2.4vw,1.35rem)] leading-snug font-extrabold tracking-[-0.02em] text-balance text-navy lift-shadow motion-safe:animate-[hl-rise_.4s_cubic-bezier(.16,1,.3,1)_both]"
+						className="sketch sketch-2 max-w-160 rounded-2xl bg-cream px-6 py-4 text-center text-[clamp(1.05rem,2.4vw,1.35rem)] leading-snug font-extrabold tracking-[-0.02em] text-balance text-navy lift-shadow motion-safe:animate-[hl-rise_.4s_cubic-bezier(.16,1,.3,1)_both]"
 						key={beat}
 						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "18px" } as React.CSSProperties}
 					>

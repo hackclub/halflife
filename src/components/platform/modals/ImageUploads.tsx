@@ -108,7 +108,7 @@ export function ImageUploads({
 			)}
 
 			{pending.length > 0 && (
-				<ul aria-label="Uploading" className="grid max-w-[420px] gap-2.5">
+				<ul aria-label="Uploading" className="grid max-w-105 gap-2.5">
 					{pending.map(row => (
 						<li key={row.id}>
 							<UploadProgress name={row.name} progress={row.progress} />

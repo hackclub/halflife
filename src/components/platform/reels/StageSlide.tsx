@@ -318,7 +318,7 @@ export function StageSlide({
 				</button>
 
 				{/* ---------- who, and what they said ---------- */}
-				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-[4] bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3.5 pt-12 pb-4 pr-[4.25rem] md:pr-3.5">
+				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-[4] bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3.5 pt-12 pb-4 pr-17 md:pr-3.5">
 					<p className="flex min-w-0 items-baseline gap-1.5 leading-tight text-white">
 						{/* The name is the way to the poster's profile, so it takes clicks back from the surface that pauses and likes; the timestamp and the caption stay inert over the picture. */}
 						<Link
@@ -425,7 +425,7 @@ export function StageSlide({
 					</button>
 					<button
 						aria-label={`Playback speed ${rate} times. Change speed.`}
-						className="label hidden min-w-[3rem] rounded-full bg-black/5 px-2.5 py-1.5 text-navy-soft tabular-nums transition-colors hover:bg-sky-pale hover:text-sky-ink @2xs:inline-block"
+						className="label hidden min-w-12 rounded-full bg-black/5 px-2.5 py-1.5 text-navy-soft tabular-nums transition-colors hover:bg-sky-pale hover:text-sky-ink @2xs:inline-block"
 						onClick={onCycleRate}
 						type="button"
 					>

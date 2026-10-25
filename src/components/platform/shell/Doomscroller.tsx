@@ -36,7 +36,7 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?(): void; cla
 				{feed.items.map(r => (
 					<ReelCard
 						autoplay={watching}
-						className="snap-item h-full min-h-[380px] shrink-0"
+						className="snap-item h-full min-h-95 shrink-0"
 						key={r.id}
 						onPatch={feed.handlePatch}
 						onPlayPress={() => setWatching(true)}

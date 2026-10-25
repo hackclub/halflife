@@ -180,7 +180,7 @@ export function AppShell({
 						{/* Only from sm: on a phone the wordmark is a smudge at any size that fits, and the row has a countdown, two shortcuts and two counters to hold. The bottom tab bar's Home is the brand anchor down there, and the left rail carries the full-size mark from lg. */}
 						<Link
 							aria-label="Half Life home"
-							className="hidden w-[64px] shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px sm:block lg:hidden"
+							className="hidden w-16 shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px sm:block lg:hidden"
 							href={PLATFORM_HOME}
 						>
 							<Image alt="" className="h-auto w-full" priority sizes="64px" src={logoArt} />
@@ -267,7 +267,7 @@ export function AppShell({
 							className={cx(
 								"sticky top-16 hidden h-[calc(100dvh-4rem)] shrink-0 justify-end overflow-hidden xl:flex",
 								"transition-[width,opacity] duration-420 ease-out-expo motion-reduce:transition-none",
-								railOpen ? "w-79 opacity-100 2xl:w-[352px]" : "w-0 opacity-0",
+								railOpen ? "w-79 opacity-100 2xl:w-88" : "w-0 opacity-0",
 							)}
 							id="status-rail"
 							inert={!railOpen}

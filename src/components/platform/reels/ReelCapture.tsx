@@ -89,7 +89,7 @@ export function ReelCapture({
 			)}
 
 			{/* A reel is the biggest thing anyone uploads here, often over school wifi – without a bar, a minute of sending looks like a hang. */}
-			{busy && <UploadProgress className="max-w-[420px]" name="Your video" progress={progress} />}
+			{busy && <UploadProgress className="max-w-105" name="Your video" progress={progress} />}
 
 			<div className="flex flex-wrap gap-2">
 				{/* No `capture`, so a phone opens the gallery rather than the recorder: the clip someone filmed earlier is the more common answer. */}
@@ -145,7 +145,7 @@ export function ReelCapture({
 					{/* Server-rendered SVG from our own origin – the token is never sent to a third-party QR service. The SVG carries its own width, so it is forced to the box rather than trusted to fit: at its natural 200px it overflowed and sat on top of the caption. */}
 					<div
 						aria-label="QR code linking to the upload page"
-						className="w-[180px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
+						className="w-45 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
 						dangerouslySetInnerHTML={{ __html: handoff.minted.qrSvg }}
 						role="img"
 					/>

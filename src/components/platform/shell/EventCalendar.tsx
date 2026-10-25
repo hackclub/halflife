@@ -206,7 +206,7 @@ export function EventCalendar({
 			{/* The week grid, scrolling sideways on a phone where seven columns cannot fit. A block's height is its runtime on the shared axis, so durations compare across days as well as within one. */}
 			<div className="mt-4 overflow-x-auto">
 				{/* The bottom hour label centers on the last gridline, so its lower half hangs below the grid: without this padding the wrapper grows a few-pixel vertical scrollbar that clips it. */}
-				<div className="min-w-[620px] pb-4">
+				<div className="min-w-155 pb-4">
 					<div className="grid" style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}>
 						<span aria-hidden="true" />
 						{days.map((day, i) => {
@@ -405,7 +405,7 @@ function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string 
 			className="sketch flex gap-3.5 bg-paper px-4 py-3.5"
 			style={{ "--sk-color": colour.accent, "--sk-radius": "14px" } as React.CSSProperties}
 		>
-			<div className="w-[5.5rem] shrink-0">
+			<div className="w-22 shrink-0">
 				<p className="text-[1.02rem] leading-tight font-extrabold text-navy">
 					{eventRangeLabel(event.startsAt, event.endsAt, timeZone)}
 				</p>

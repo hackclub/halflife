@@ -125,7 +125,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd(): void; onCh
 	return (
 		<Panel as="li" className="flex gap-4 bg-paper p-3.5 sm:gap-5 sm:p-4" radius={18} tone="line">
 			{/* The reel itself, small and playable. Metadata only until played, so a page of reels is not a page of downloads. */}
-			<div className="w-[84px] shrink-0 sm:w-[96px]">
+			<div className="w-21 shrink-0 sm:w-24">
 				<div className="relative overflow-hidden rounded-xl bg-navy" style={{ aspectRatio: "9 / 16" }}>
 					{reel.videoUrl ? (
 						// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.

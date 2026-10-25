@@ -83,13 +83,13 @@ export function ProjectDetails({
 						<IconPencil className="text-sm" /> Edit details
 					</Button>
 					{locked && (
-						<p className="hand max-w-[14rem] text-right text-[0.78rem] leading-snug text-navy-soft" id={lockedId}>
+						<p className="hand max-w-56 text-right text-[0.78rem] leading-snug text-navy-soft" id={lockedId}>
 							{locked}.
 						</p>
 					)}
 					{unsubmit
 						&& (confirming ? (
-							<div className="flex max-w-[16rem] flex-col items-end gap-1.5 text-right">
+							<div className="flex max-w-64 flex-col items-end gap-1.5 text-right">
 								<p className="text-[0.82rem] leading-snug text-navy">
 									Take {unsubmit.label} out of review? You can submit it again when you&apos;re done.
 								</p>
@@ -116,7 +116,7 @@ export function ProjectDetails({
 							</Button>
 						))}
 					{unsubmitError && (
-						<p className="hand max-w-[16rem] text-right text-[0.78rem] leading-snug text-coral-deep" role="alert">
+						<p className="hand max-w-64 text-right text-[0.78rem] leading-snug text-coral-deep" role="alert">
 							{unsubmitError}
 						</p>
 					)}

@@ -124,7 +124,7 @@ export default async function ExplorePage() {
 	const yesterday = effectiveDateFor(new Date(now.getTime() - DAY_MS), settings.programTimezone)
 
 	return (
-		<div className="mx-auto w-full max-w-[780px] px-4 pt-2 sm:px-8">
+		<div className="mx-auto w-full max-w-195 px-4 pt-2 sm:px-8">
 			<PageSign
 				color="var(--color-sky)"
 				label="EXPLORE"

@@ -16,7 +16,7 @@ export default async function ReelsPage() {
 	const groups = await getMyReels(user.id)
 
 	return (
-		<div className="mx-auto w-full max-w-[860px] px-4 pt-2 pb-10 sm:px-8">
+		<div className="mx-auto w-full max-w-215 px-4 pt-2 pb-10 sm:px-8">
 			<PageSign color="var(--color-gold)" label="REELS" />
 			<ReelsList groups={groups} />
 		</div>

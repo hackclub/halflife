@@ -329,7 +329,7 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
 					</div>
 					{/* Square, where the drawn scene was 5:4, and a size up from its 64/74 height: the painting sits inside its own canvas with a margin, so at the old height it read smaller than the scene it replaces. `sticker-shadow` rather than a plain drop, because a die-cut sticker is exactly what that shadow is for. */}
 					<WeekPainting
-						className="sticker-shadow hidden h-[76px] w-[76px] shrink-0 sm:block md:h-[88px] md:w-[88px]"
+						className="sticker-shadow hidden h-19 w-19 shrink-0 sm:block md:h-22 md:w-22"
 						sizes="(min-width: 768px) 88px, 76px"
 						theme={week.theme}
 					/>
@@ -598,7 +598,7 @@ export function CheckpointPath() {
 
 	return (
 		<div
-			className="mx-auto w-full max-w-[720px] px-4 sm:px-8"
+			className="mx-auto w-full max-w-180 px-4 sm:px-8"
 			style={
 				{
 					/* Room between a week banner and its first puck for the callout that hangs above the current checkpoint, bob included. */

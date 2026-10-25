@@ -777,7 +777,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</ModalTitle>
 					)}
 
-					<div className="mb-4 max-w-[220px]">
+					<div className="mb-4 max-w-55">
 						<Field
 							hint={
 								picked.length > 0
@@ -907,7 +907,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 						{preview && (
 							<div
-								className="sketch thin-scroll max-h-[15rem] min-h-[8rem] min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
+								className="sketch thin-scroll max-h-60 min-h-32 min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
 								style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties}
 							>
 								{body.trim() ? (
@@ -1582,7 +1582,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					</Field>
 				</div>
 
-				<div className="mx-auto w-[180px] md:w-full">
+				<div className="mx-auto w-45 md:w-full">
 					<p className="label mb-2 text-navy-soft">Preview</p>
 					<div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "9 / 16" }}>
 						{clip ? (
@@ -1789,7 +1789,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								{pick === null ? <IconCheck className="text-base" /> : null}
 							</Button>
 						}
-						art={<Gato className="h-[140px] w-auto" pose="schematic" sizes="260px" />}
+						art={<Gato className="h-35 w-auto" pose="schematic" sizes="260px" />}
 						chosen={pick === null}
 						label="Custom project"
 						stacked
@@ -1920,7 +1920,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<div className="order-first lg:order-none">
 						<div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
 							<WeekPainting
-								className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
+								className="sticker-shadow mx-auto aspect-square w-full max-w-55"
 								sizes="(min-width: 1024px) 198px, 220px"
 								theme={week.theme}
 							/>
@@ -2430,7 +2430,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									</p>
 								) : (
 									<div className="overflow-x-auto">
-										<table className="w-full min-w-[480px] text-left text-[0.86rem]">
+										<table className="w-full min-w-120 text-left text-[0.86rem]">
 											<thead>
 												<tr className="border-b border-dashed border-line">
 													{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (

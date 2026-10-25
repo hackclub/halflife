@@ -152,7 +152,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 					// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 					<video
 						aria-label={item.caption ? `Reel: ${item.caption}` : "Project reel"}
-						className="mt-3 aspect-[9/16] w-full max-w-[180px] rounded-2xl bg-navy object-cover"
+						className="mt-3 aspect-[9/16] w-full max-w-45 rounded-2xl bg-navy object-cover"
 						controls
 						playsInline
 						poster={item.thumbnailUrl ?? undefined}
@@ -227,7 +227,7 @@ function EntryBody({ source }: { source: string }) {
 			<div
 				className={cx(
 					"relative mt-2 max-w-[68ch]",
-					!open && "max-h-[18rem] overflow-hidden",
+					!open && "max-h-72 overflow-hidden",
 					!open && long && "[mask-image:linear-gradient(to_bottom,#000_70%,transparent)]",
 				)}
 				ref={box}

@@ -120,12 +120,12 @@ export default function SignupForm({
 
 			  Its ground is the painted swash rather than flat ink. The tagline is paper and reads 6.95:1 on it at the worst pixel the painting can put behind it, against the 3.50:1 it had bare on the hero plate, so the box is still the better ground for the line – and the field's own cyan edge reads 7.45:1 here where on ink it had 3.71:1, so the one boundary that had to be argued for is now the easy part.
 
-			  The padding was `pt-[1rem] pb-[1rem] p-[2rem]`, three utilities for one box, and the `p` lost: Tailwind emits it ahead of the two axis rules, so 2rem was only ever the horizontal value and the vertical 1rem was doing the work. It is one declaration now, and both numbers are derived – see `SWASH_INSET_X`.
+			  The padding was `pt-4 pb-4 p-8`, three utilities for one box, and the `p` lost: Tailwind emits it ahead of the two axis rules, so 2rem was only ever the horizontal value and the vertical 1rem was doing the work. It is one declaration now, and both numbers are derived – see `SWASH_INSET_X`.
 
 			  `isolate` keeps the swash's negative index inside this box instead of letting it escape to the nearest stacking context and paint behind the hero plate, which is to say behind nothing.
 			 */}
 			<div
-				className={intro ? "relative isolate mb-[1rem]" : ""}
+				className={intro ? "relative isolate mb-4" : ""}
 				style={
 					intro
 						? {
