@@ -7,9 +7,14 @@ export interface OpenSession {
 	user: SeededUser
 }
 
+export interface OpenAsOptions extends SeedUserOptions {
+	/** The browser's IANA zone, so the shell's timezone capture can be exercised. */
+	timezoneId?: string
+}
+
 interface E2eFixtures {
 	admin: Page
-	openAs(options?: SeedUserOptions): Promise<OpenSession>
+	openAs(options?: OpenAsOptions): Promise<OpenSession>
 	participant: Page
 	reviewer: Page
 }
@@ -56,10 +61,12 @@ export const test = base.extend<E2eFixtures, E2eWorkerFixtures>({
 
 		const contexts: BrowserContext[] = []
 		await provide(async options => {
-			const user = await seedUser(options)
+			const { timezoneId, ...seedOptions } = options ?? {}
+			const user = await seedUser(seedOptions)
 			const context = await browser.newContext({
 				baseURL,
 				storageState: { cookies: [sessionCookie(user.token)], origins: [] },
+				timezoneId,
 			})
 			await guardBrowserNetwork(context)
 			contexts.push(context)

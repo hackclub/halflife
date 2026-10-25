@@ -23,6 +23,8 @@ The suite expects Postgres on `127.0.0.1:5432` with `postgres`/`postgres`, or `E
 
 Stop `next dev` before running locally. The test server uses the ordinary `.next` directory (a custom `distDir` breaks Prisma's external `pg` module under Next 16), so two dev servers cannot share the checkout at once.
 
+Spec files deliberately avoid TypeScript-only syntax. Playwright run through Bun (where `node` is a Bun alias on some machines) does not erase type annotations in test entrypoints, and a typed spec fails to load before any test runs. Typed helpers live in ordinary modules such as `e2e/db.ts` and `e2e/onboarding-helpers.ts`; CI runs Playwright under Node and accepts either style.
+
 ## How auth works
 
 There is no test login route. The fixture inserts a `user`, a `session` and any `user_role` rows directly, then signs the session token the way better-auth does:
@@ -60,3 +62,6 @@ scripts/e2e-db.ts drop, create, migrate, seed
 - A forged session cookie is rejected, and `/signed-out` clears it.
 - Participants get a 404 from `/admin` and `/review`; admins see the admin overview and reviewers see the review queue.
 - Signing out clears the session, and the server guard agrees on the next request.
+- Both onboarding branches: a custom project through the tier step, and a starter project that skips it.
+- The browser timezone is captured into the account.
+- An affordable shop purchase writes an order and debits the ledger; an unaffordable one is refused before any request.

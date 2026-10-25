@@ -48,7 +48,36 @@ async function main(): Promise<void> {
 	console.log("[e2e] seeding")
 	run(["--conditions=react-server", "prisma/seed.ts"], env)
 
+	console.log("[e2e] preparing shop fixtures")
+	await prepareShopFixtures()
+
 	console.log("[e2e] database ready")
+}
+
+/**
+ * The production seed intentionally contains no item a fresh participant may buy: every catalogue item is gated on shipping themes, and printers are not sold in the shop. Phase 2 needs one un-gated, affordable item, so it lives only in the E2E database.
+ */
+async function prepareShopFixtures(): Promise<void> {
+	const pool = new Pool({ connectionString: e2eDatabaseUrl })
+	try {
+		await pool.query(`update program_settings set "shopOpen" = true, "shopClosesAt" = null where id = 'singleton'`)
+		await pool.query(
+			`insert into shop_item (
+				id, name, description, category, "priceCredits", "maxPerUser",
+				"requiresPrinterQualified", active, "sortOrder", "createdAt", "updatedAt"
+			) values (
+				'e2e-item', 'E2E Test Item', 'A fixture item for browser tests.', 'MISC'::"ShopItemCategory",
+				60, 5, false, true, 0, now(), now()
+			)
+			on conflict (id) do update set
+				name = excluded.name,
+				description = excluded.description,
+				"priceCredits" = excluded."priceCredits",
+				active = true`,
+		)
+	} finally {
+		await pool.end()
+	}
 }
 
 try {

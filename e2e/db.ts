@@ -26,6 +26,33 @@ export interface SeededUser {
 	token: string
 }
 
+export interface E2eProjectRow {
+	description: string | null
+	designStatus: string
+	id: string
+	requestedTier: number | null
+	starterProjectId: string | null
+	theme: string
+	title: string
+}
+
+export interface E2eShopOrderRow {
+	id: string
+	quantity: number
+	shopItemId: string
+	status: string
+	totalCredits: number
+	unitCredits: number
+}
+
+export interface E2eUserRow {
+	hardwareExperience: string | null
+	onboardingCompletedAt: Date | null
+	onboardingStep: number
+	timezone: string | null
+	verificationStatus: string | null
+}
+
 const ONBOARDING_COMPLETE_STEP = 7
 
 const pool = new Pool({ connectionString: e2eDatabaseUrl })
@@ -93,6 +120,46 @@ export async function seedUser(options: SeedUserOptions = {}): Promise<SeededUse
 /** Remove a user and everything cascading from it. */
 export async function deleteUser(id: string): Promise<void> {
 	await pool.query(`delete from "user" where id = $1`, [id])
+}
+
+/** The persisted half of the onboarding state, read back rather than inferred from the modal closing. */
+export async function readUser(id: string): Promise<E2eUserRow | null> {
+	const { rows } = await pool.query(
+		`select "hardwareExperience", "onboardingCompletedAt", "onboardingStep", timezone, "verificationStatus"
+		from "user" where id = $1`,
+		[id],
+	)
+	return (rows[0] as E2eUserRow | undefined) ?? null
+}
+
+export async function readProjects(userId: string): Promise<E2eProjectRow[]> {
+	const { rows } = await pool.query(
+		`select id, title, description, "requestedTier", "starterProjectId", theme, "designStatus"
+		from theme_project
+		where "userId" = $1 and "deletedAt" is null
+		order by "createdAt" asc`,
+		[userId],
+	)
+	return rows as E2eProjectRow[]
+}
+
+/** Coins in one bucket. The purchase debit is one row, so a sum is the balance the page shows. */
+export async function readBalance(userId: string, bucket: "BANKED" | "SPENDABLE" = "SPENDABLE"): Promise<number> {
+	const { rows } = await pool.query(
+		`select coalesce(sum(amount), 0)::int as balance from ledger_entry where "userId" = $1 and bucket = $2::"CoinBucket"`,
+		[userId, bucket],
+	)
+	return (rows[0] as { balance: number }).balance
+}
+
+export async function readShopOrders(userId: string): Promise<E2eShopOrderRow[]> {
+	const { rows } = await pool.query(
+		`select id, "shopItemId", quantity, "unitCredits", "totalCredits", status
+		from shop_order where "userId" = $1
+		order by "placedAt" asc`,
+		[userId],
+	)
+	return rows as E2eShopOrderRow[]
 }
 
 export async function closeDb(): Promise<void> {
