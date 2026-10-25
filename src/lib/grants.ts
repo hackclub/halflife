@@ -174,6 +174,11 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 			"This maker's identity is not verified, so no grant can be sent. Ask them to verify at identity.hackclub.com.",
 		)
 
+	// Flagged accounts receive nothing until an admin clears them: their submissions are already blocked, and the grant is the payout those submissions would have earned. Checked before the HCB row is claimed, like the identity check above.
+	const flagged = await db.orm.public.User.whereUnique({ id: project.userId }).select("fraudFlagged").first()
+	if (flagged?.fraudFlagged)
+		throw new HttpError("FORBIDDEN", "This account is under review, so no grant can be sent until it is cleared.")
+
 	const amountCents = Math.round(project.grantUsd * 100)
 	const memo = `[grant] ${project.title || "Half Life project"} – Half Life tier ${project.tier ?? "?"}`
 

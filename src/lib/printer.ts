@@ -4,6 +4,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { THEMES, THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { PhaseStatus, type PrinterAwardStatus, type Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import { isIdentityVerified } from "@/lib/hca-profile"
 import { decryptUserPII, encryptPII, isPiiConfigured } from "@/lib/pii"
 import { canMovePrinterAward, PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import db, { type DbOrTx } from "@/lib/prisma8"
@@ -57,6 +58,10 @@ export async function ensurePrinterAward(
 	tx: DbOrTx,
 	userId: string,
 ): Promise<Omit<Models.public_PrinterAward, "user"> | null> {
+	// Flagged accounts earn no award while under review: their submissions are blocked, and the award is the payout those submissions would have earned. Checked on every approval (this is idempotent), so clearing the flag lets the next approval create it.
+	const holder = await tx.orm.public.User.whereUnique({ id: userId }).select("fraudFlagged").first()
+	if (holder?.fraudFlagged) return null
+
 	const projects = await tx.orm.public.ThemeProject.where({
 		buildStatus: PhaseStatus.approved,
 		deletedAt: null,
@@ -153,10 +158,18 @@ export async function updatePrinterAwardStatus(
 				"encryptedAddressStreet",
 				"encryptedAddressZip",
 				"encryptedPhone",
+				"fraudFlagged",
 			),
 		)
 		.first()
 	if (!award?.user) throw new HttpError("NOT_FOUND", "Printer award not found")
+
+	// A flagged account's award goes nowhere until an admin clears it – the server refuses, so fulfillers never have to spot the flag themselves. Revoking still works: taking an award away is always safe.
+	if (award.user.fraudFlagged && input.status !== "REVOKED")
+		throw new HttpError(
+			"FORBIDDEN",
+			"This account is under review, so its printer award cannot move until it is cleared.",
+		)
 
 	if (!canMovePrinterAward(award.status, input.status))
 		throw new HttpError(
@@ -192,6 +205,12 @@ export async function updatePrinterAwardStatus(
 	}
 
 	if (input.status === "ADDRESS_LOCKED") {
+		// The point of no return before packing: a printer ships to a real, verified person, so the identity check the shop and the grants both require is required here too.
+		if (!(await isIdentityVerified(award.userId)))
+			throw new HttpError(
+				"NOT_VERIFIED",
+				"This maker's identity is not verified, so the address cannot be locked. Ask them to verify at identity.hackclub.com.",
+			)
 		const pii = isPiiConfigured() ? decryptUserPII(award.user) : null
 		const street = [pii?.line1, pii?.line2].filter((part): part is string => Boolean(part?.trim())).join("\n")
 		const cityLine = [
