@@ -2,6 +2,7 @@ import "server-only"
 import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { betterAuth } from "better-auth"
 import { genericOAuth } from "better-auth/plugins"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
 import authDb from "@/lib/auth-db"
@@ -64,6 +65,30 @@ const baseURLFallback =
 	process.env.NODE_ENV === "production" && !isLoopbackURL(configuredUrl) ? canonicalUrl : (configuredUrl ?? devUrl)
 
 export const auth = betterAuth({
+	// Rejects a caller-supplied OIDC idToken on the social sign-in/link paths.
+	//
+	// better-auth's /sign-in/social accepts a Hack Club Auth login token pasted in by the caller (idToken) and verifies it, but then resolves the identity from a separately supplied access token – with nothing checking the two belong to the same person, and replay protection only when the caller opts in. An attacker could send their own valid login token plus a victim's access token and get a session as the victim. The app's HCA flow never sends an idToken (browser redirect/code exchange), so anything carrying one is rejected here.
+	//
+	// The scopes cap is defence in depth for GHSA-mrhx-c7xc-m3w5 (zod 4.6.5, via better-auth): a huge scopes array builds an enormous validation error message (~670 MB from a 2 MB request). Bodies over 1 MB are refused before they are parsed for the same reason.
+	hooks: {
+		before: createAuthMiddleware(async ctx => {
+			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return
+			const body = ctx.body as { idToken?: unknown; scopes?: unknown } | undefined
+			if (body && typeof body === "object" && "idToken" in body && body.idToken)
+				throw new APIError("FORBIDDEN", { message: "idToken is not accepted" })
+			if (body && typeof body === "object" && Array.isArray((body as { scopes?: unknown }).scopes)) {
+				const scopes = (body as { scopes: unknown[] }).scopes
+				if (scopes.length > 50) throw new APIError("BAD_REQUEST", { message: "Too many scopes" })
+			}
+			// Cheap size guard before validation: stringify cost is bounded because the runtime has already buffered the body, and refusing here avoids building the giant zod error that is the OOM vector.
+			try {
+				const size = JSON.stringify(body ?? {}).length
+				if (size > 1_000_000) throw new APIError("PAYLOAD_TOO_LARGE", { message: "Request body too large" })
+			} catch (err) {
+				if (err instanceof APIError) throw err
+			}
+		}),
+	},
 	account: {
 		accountLinking: {
 			// A participant's Hackatime signup email rarely matches their HCA email. Without this, better-auth's link flow aborts with email_doesn't_match and the account is never created – and because the auth handler swallows the error into a dashboard redirect, it looks like the button simply did nothing. This only affects the explicit linkSocial path, where the actor already holds the target session.
