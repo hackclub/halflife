@@ -52,3 +52,11 @@ e2e/fixtures.ts   participant, admin, reviewer and openAs fixtures
 e2e/*.spec.ts     the tests
 scripts/e2e-db.ts drop, create, migrate, seed
 ```
+
+## Covered today
+
+- The landing page, the login page and `/api/health`.
+- A signed-out visitor is redirected from `/dashboard` to the landing page.
+- A forged session cookie is rejected, and `/signed-out` clears it.
+- Participants get a 404 from `/admin` and `/review`; admins see the admin overview and reviewers see the review queue.
+- Signing out clears the session, and the server guard agrees on the next request.
