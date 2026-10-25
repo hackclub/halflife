@@ -1,8 +1,8 @@
 "use client"
 import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
-import type { Theme } from "@/app/generated/prisma/enums"
 import { getThemeDef, THEMES, WARMUP_THEME } from "@/lib/config/program"
+import type { Theme } from "@/lib/enums"
 import { sendJson, useAction } from "@/lib/use-action"
 
 const OPTIONS = [WARMUP_THEME, ...THEMES]

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { HoursSource, MediaType } from "@/app/generated/prisma/enums"
+import { HoursSource, MediaType } from "@/lib/enums"
 import { boundedText, phaseSchema } from "@/lib/schemas/common"
 
 const mediaSchema = z.object({

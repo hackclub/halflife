@@ -1,16 +1,17 @@
 import { after } from "next/server"
-import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
+import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import { warmLinkSpans } from "@/lib/hours"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { assertWeekStarted, getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { hackatimeLinkSchema } from "@/lib/schemas/project"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -21,15 +22,15 @@ export const dynamic = "force-dynamic"
 export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
-	const project = await prisma.themeProject.findFirst({
-		include: { hackatimeLinks: true, user: { select: { hackatimeUserId: true } } },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
-	if (!project) return fail("NOT_FOUND", "Project not found")
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.include("hackatimeLinks")
+		.include("user", user => user.select("hackatimeUserId"))
+		.first()
+	if (!project?.user) return fail("NOT_FOUND", "Project not found")
 
 	return ok({
 		links: project.hackatimeLinks.map(l => ({
-			cachedAt: l.cachedAt,
+			cachedAt: l.cachedAt ? parseDbTimestamp(l.cachedAt).toISOString() : null,
 			hackatimeProject: l.hackatimeProject,
 			hours: l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600,
 			hoursApproved: l.hoursApproved,
@@ -46,11 +47,10 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	const parsed = await parseBody(req, hackatimeLinkSchema)
 	if (parsed.error) return parsed.error
 
-	const project = await prisma.themeProject.findFirst({
-		include: { user: { select: { hackatimeUserId: true } } },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
-	if (!project) return fail("NOT_FOUND", "Project not found")
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.include("user", user => user.select("hackatimeUserId"))
+		.first()
+	if (!project?.user) return fail("NOT_FOUND", "Project not found")
 
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
@@ -68,14 +68,10 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	if (!project.user.hackatimeUserId)
 		return fail("HACKATIME_NOT_LINKED", "Link your Hackatime account before linking a project to it")
 
-	const existing = await prisma.hackatimeLink.findUnique({
-		where: {
-			themeProjectId_hackatimeProject: {
-				hackatimeProject: parsed.data.hackatimeProject,
-				themeProjectId: id,
-			},
-		},
-	})
+	const existing = await db.orm.public.HackatimeLink.where({
+		hackatimeProject: parsed.data.hackatimeProject,
+		themeProjectId: id,
+	}).first()
 	if (existing) {
 		// Cross-phase on purpose: Hackatime reports the project's whole total, so linking it for both phases would count the same tracked time twice.
 		const where =
@@ -98,27 +94,22 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 			`Hackatime has no project named "${parsed.data.hackatimeProject}". Check the name on Hackatime and try again.`,
 		)
 
-	const link = await prisma.$transaction(async tx => {
+	const link = await db.transaction(async tx => {
 		// Re-read the phase on the transaction client immediately before the link lands: a submit that commits between the checks above and this create would otherwise attach hours to a phase the decision has already frozen.
-		const current = await tx.themeProject.findUnique({
-			select: { buildStatus: true, designStatus: true },
-			where: { id },
-		})
+		const current = await tx.orm.public.ThemeProject.whereUnique({ id }).select("buildStatus", "designStatus").first()
 		const currentStatus = current ? statusFor(current, parsed.data.phase) : undefined
 		if (currentStatus === PhaseStatus.in_review)
 			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
 		if (currentStatus && isPhaseDecided(currentStatus))
 			throw new HttpError("PHASE_LOCKED", "This phase has been submitted and decided, so no more hours can be linked")
 
-		return tx.hackatimeLink.create({
-			data: {
-				cachedAt: fetched.stale ? null : new Date(),
-				cachedSeconds: fetched.stale ? null : fetched.seconds,
-				hackatimeProject: parsed.data.hackatimeProject,
-				lastFetchError: fetched.error ?? null,
-				phase: parsed.data.phase,
-				themeProjectId: id,
-			},
+		return tx.orm.public.HackatimeLink.create({
+			cachedAt: fetched.stale ? null : formatDbTimestamp(new Date()),
+			cachedSeconds: fetched.stale ? null : fetched.seconds,
+			hackatimeProject: parsed.data.hackatimeProject,
+			lastFetchError: fetched.error ?? null,
+			phase: parsed.data.phase,
+			themeProjectId: id,
 		})
 	})
 
@@ -132,7 +123,18 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	})
 
 	// The tracked intervals, warmed as the link lands rather than left to the next scheduled run. Linking is the moment a phase starts showing Hackatime hours, and for up to a quarter of an hour after it the phase would show the link's whole total with no recording overlap taken off – the same inflated figure this whole path exists to prevent, arriving at exactly the moment someone is looking at it. Off the response path, and swallowed: a failed warm is the cold cache the sync will retry.
-	after(() => warmLinkSpans([{ ...link, cachedSpans: null, userId: project.userId }]))
+	after(() =>
+		warmLinkSpans([
+			{
+				cachedSpans: null,
+				hackatimeProject: link.hackatimeProject,
+				id: link.id,
+				phase: link.phase,
+				themeProjectId: link.themeProjectId,
+				userId: project.userId,
+			},
+		]),
+	)
 
 	return ok({ link }, { status: 201 })
 })

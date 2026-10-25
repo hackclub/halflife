@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { ReportReason, ReportTarget } from "@/app/generated/prisma/enums"
+import { ReportReason, ReportTarget } from "@/lib/enums"
 import { boundedText, cuid } from "@/lib/schemas/common"
 
 /**

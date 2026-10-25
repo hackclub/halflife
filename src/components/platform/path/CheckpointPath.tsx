@@ -25,8 +25,7 @@ import type { Checkpoint, Week } from "@/lib/types"
 /** Horizontal swing of the trail, as a percentage of the column width. */
 const AMP = 23
 const CURVE = 1.02
-/** Phase room (in rows) added between weeks, so consecutive trails keep the
-    same meander flowing under their separating banner instead of restarting. */
+/** Phase room (in rows) added between weeks, so consecutive trails keep the same meander flowing under their separating banner instead of restarting. */
 const WEEK_GAP = 0.25
 
 /**
@@ -34,10 +33,7 @@ const WEEK_GAP = 0.25
  */
 const offsetAt = (i: number, phase: number) => Number((50 + AMP * Math.sin((phase + i) * CURVE)).toFixed(4))
 
-/** Rows a week's trail occupies, matching WeekTrail's fork grouping (a fork's
-    arms share one row – the keep/submit fork at a week's end, and week 1's
-    idea/skip fork at its start) – plus WeekTrail's ghost rows, so the wave
-    below starts where the rendered trail actually ends. */
+/** Rows a week's trail occupies, matching WeekTrail's fork grouping (a fork's arms share one row – the keep/submit fork at a week's end, and week 1's idea/skip fork at its start) – plus WeekTrail's ghost rows, so the wave below starts where the rendered trail actually ends. */
 const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: string) => boolean): number => {
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
@@ -197,11 +193,7 @@ function CheckpointNode({
 				</div>
 			)}
 
-			{/* Why this one is shut. It hangs where the "Start here" callout hangs,
-          in sand rather than navy – the trail already uses that shape to speak
-          about a node, and a locked node is the other half of the same
-          sentence. The two never appear together: a locked checkpoint is never
-          the current one. */}
+			{/* Why this one is shut. It hangs where the "Start here" callout hangs, in sand rather than navy – the trail already uses that shape to speak about a node, and a locked node is the other half of the same sentence. The two never appear together: a locked checkpoint is never the current one. */}
 			{locked && (
 				<div className="pointer-events-none absolute bottom-[calc(100%_+_10px)] z-20 w-max max-w-[min(13rem,42vw)] opacity-0 transition-opacity duration-150 group-hover:opacity-100">
 					<div
@@ -232,8 +224,7 @@ function CheckpointNode({
 				</div>
 			)}
 
-			{/* The same bubble in the done colours: mint and teal, a check where the
-          lock would be. A finished entry adds what clicking it does now. */}
+			{/* The same bubble in the done colours: mint and teal, a check where the lock would be. A finished entry adds what clicking it does now. */}
 			{doneTip && (
 				<div className="pointer-events-none absolute bottom-[calc(100%_+_10px)] z-20 w-max max-w-[min(13rem,42vw)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
 					<div
@@ -322,9 +313,7 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
 						boxShadow: "0 3px 6px rgba(28,26,89,.12), 0 16px 34px -18px rgba(28,26,89,.5)",
 					}}
 				/>
-				{/* Text takes `onAccent`: navy on every week but music, whose magenta is
-            the only fill white reads on. It was white throughout, 1.98:1 on
-            the orange week and 2.37 on the sky one. */}
+				{/* Text takes `onAccent`: navy on every week but music, whose magenta is the only fill white reads on. It was white throughout, 1.98:1 on the orange week and 2.37 on the sky one. */}
 				<div
 					className="relative flex items-center gap-3 px-5 py-3.5 sm:gap-5 sm:px-7 sm:py-4"
 					style={{ color: onAccent(week.accent).text }}
@@ -338,13 +327,9 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
 						</h2>
 						<p className="mt-1.5 hidden max-w-[52ch] text-[0.82rem] leading-snug sm:block">{week.summary}</p>
 					</div>
-					{/* Square, where the drawn scene was 5:4, and a size up from its 64/74
-              height: the painting sits inside its own canvas with a margin,
-              so at the old height it read smaller than the scene it replaces.
-              `sticker-shadow` rather than a plain drop, because a die-cut
-              sticker is exactly what that shadow is for. */}
+					{/* Square, where the drawn scene was 5:4, and a size up from its 64/74 height: the painting sits inside its own canvas with a margin, so at the old height it read smaller than the scene it replaces. `sticker-shadow` rather than a plain drop, because a die-cut sticker is exactly what that shadow is for. */}
 					<WeekPainting
-						className="sticker-shadow hidden h-[76px] w-[76px] shrink-0 sm:block md:h-[88px] md:w-[88px]"
+						className="sticker-shadow hidden h-19 w-19 shrink-0 sm:block md:h-22 md:w-22"
 						sizes="(min-width: 768px) 88px, 76px"
 						theme={week.theme}
 					/>
@@ -364,8 +349,7 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
 }
 
 /** Where the two halves of a fork sit, as a percentage of the column. */
-/** A fork has exactly two arms: keep working or wrap the week up at a week's
-    end, the idea reel or the first devlog entry at the start of week 1. */
+/** A fork has exactly two arms: keep working or wrap the week up at a week's end, the idea reel or the first devlog entry at the start of week 1. */
 const FORK_AT: [number, number] = [24, 76]
 
 /**
@@ -373,9 +357,7 @@ const FORK_AT: [number, number] = [24, 76]
  *
  * A stride is sized by the node it leaves, never by the one it arrives at. That is the only version that cannot collide: what has to be cleared is the height of the node behind you – its puck, its label, and the hours under a finished entry – and a milestone is half as tall again as a beat. Sizing on arrival instead puts a beat's short stride under a milestone's tall label, and the label lands on the next puck.
  *
- * A week past its tier floor ends in a fork: two checkpoints on one row, pinned left and right instead of taking the swing. The fork is always the last row, which is what lets every row before it keep using its own index
- * for the sine – the trail above a fork is laid out exactly as it was. Week
- * 1 opens with the same treatment one row down from setup: the idea reel and the first devlog entry side by side, the reel optional and the entry the road onward.
+ * A week past its tier floor ends in a fork: two checkpoints on one row, pinned left and right instead of taking the swing. The fork is always the last row, which is what lets every row before it keep using its own index for the sine – the trail above a fork is laid out exactly as it was. Week 1 opens with the same treatment one row down from setup: the idea reel and the first devlog entry side by side, the reel optional and the entry the road onward.
  */
 function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string | null; phase: number }) {
 	const { stateOf, isPassed } = useStore()
@@ -616,15 +598,13 @@ export function CheckpointPath() {
 
 	return (
 		<div
-			className="mx-auto w-full max-w-[720px] px-4 sm:px-8"
+			className="mx-auto w-full max-w-180 px-4 sm:px-8"
 			style={
 				{
-					/* Room between a week banner and its first puck for the callout
-             that hangs above the current checkpoint, bob included. */
+					/* Room between a week banner and its first puck for the callout that hangs above the current checkpoint, bob included. */
 					"--lead": "clamp(70px, 9vw, 80px)",
 					"--node": "clamp(72px, 13.5vw, 98px)",
-					/* An entry is a beat, not a milestone: smaller puck, shorter stride,
-             so a twenty-entry week stays a trail instead of a corridor. */
+					/* An entry is a beat, not a milestone: smaller puck, shorter stride, so a twenty-entry week stays a trail instead of a corridor. */
 					"--node-sm": "clamp(42px, 7.5vw, 54px)",
 					"--step": "clamp(140px, 20vw, 162px)",
 					"--step-sm": "clamp(100px, 13vw, 116px)",

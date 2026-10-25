@@ -5,7 +5,7 @@
 set -eu
 
 echo "[boot] applying migrations"
-bunx prisma migrate deploy
+bunx prisma db migrate
 
 echo "[boot] starting server"
 # A scheduler (Orchard app jobs) can override the image command; honour it

@@ -1,7 +1,8 @@
+import { or } from "@prisma/orm-postgres/orm-client"
 import "dotenv/config"
-import { Phase, PhaseStatus } from "../src/app/generated/prisma/enums"
 import { isAriConfigured } from "../src/lib/ari"
-import prisma from "../src/lib/prisma"
+import { Phase, PhaseStatus } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
 import { type AriRefreshTarget, flag, limitArg, phaseArg, refreshAriShip } from "./ari-backfill"
 
 /**
@@ -25,25 +26,25 @@ const commit = process.argv.includes("--commit")
 
 /** Every in-review phase that has at least one timelapse to carry, with its open submission. */
 async function loadTargets(phase: Phase | null, projectId: string | null): Promise<AriBackfillTarget[]> {
-	const projects = await prisma.themeProject.findMany({
-		orderBy: { id: "asc" },
-		select: {
-			buildStatus: true,
-			designStatus: true,
-			id: true,
-			submissions: {
-				orderBy: { createdAt: "desc" },
-				select: { ariSubmissionId: true, id: true, phase: true, resolvedAt: true },
-			},
-			title: true,
-			workSessions: { select: { phase: true }, where: { deletedAt: null, timelapses: { some: {} } } },
-		},
-		where: {
-			deletedAt: null,
-			...(projectId ? { id: projectId } : {}),
-			OR: [{ designStatus: PhaseStatus.in_review }, { buildStatus: PhaseStatus.in_review }],
-		},
+	const projects = await db.orm.public.ThemeProject.where({
+		deletedAt: null,
+		...(projectId ? { id: projectId } : {}),
 	})
+		.where(project => or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)))
+		.orderBy(project => project.id.asc())
+		.select("buildStatus", "designStatus", "id", "title")
+		.include("submissions", submissions =>
+			submissions
+				.orderBy(submission => submission.createdAt.desc())
+				.select("ariSubmissionId", "id", "phase", "resolvedAt"),
+		)
+		.include("workSessions", sessions =>
+			sessions
+				.where({ deletedAt: null })
+				.select("phase")
+				.include("timelapses", timelapses => timelapses.select("id")),
+		)
+		.all()
 
 	const targets: AriBackfillTarget[] = []
 	for (const project of projects)
@@ -51,7 +52,7 @@ async function loadTargets(phase: Phase | null, projectId: string | null): Promi
 			if (phase && candidate !== phase) continue
 			const status = candidate === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (status !== PhaseStatus.in_review) continue
-			const sessions = project.workSessions.filter(s => s.phase === candidate).length
+			const sessions = project.workSessions.filter(s => s.phase === candidate && s.timelapses.length > 0).length
 			if (sessions === 0) continue
 			const open = project.submissions.find(s => s.phase === candidate && s.resolvedAt === null)
 			if (!open) continue
@@ -120,5 +121,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

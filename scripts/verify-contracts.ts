@@ -2,7 +2,7 @@ import "dotenv/config"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import type { z } from "zod"
-import type { ReviewResult as AriReviewResult } from "../src/app/generated/prisma/enums"
+import type { ReviewResult as AriReviewResult } from "../src/lib/enums"
 import type { JournalEntry } from "../src/lib/repo-sync-files"
 
 /**
@@ -15,6 +15,7 @@ import type { JournalEntry } from "../src/lib/repo-sync-files"
  * Two checks, both static – this needs no database:
  *
  * 1. every method a client fetches with is exported by the route it hits
+ *
  * 2. every request body a client sends parses against that route's schema
  *
  * The bodies below are written out by hand rather than extracted, because the point is to state what the client is believed to send. When one drifts, this fails and names it.
@@ -22,9 +23,7 @@ import type { JournalEntry } from "../src/lib/repo-sync-files"
  * Run with `pnpm verify:contracts`.
  */
 
-// The project link is absolute only when the deployment names an origin, and this
-// script has to name one itself: CI runs it with no environment at all, and the
-// check below is about the rendering rather than about the deployment's config.
+// The project link is absolute only when the deployment names an origin, and this script has to name one itself: CI runs it with no environment at all, and the check below is about the rendering rather than about the deployment's config.
 process.env.NEXT_PUBLIC_APP_URL ??= "https://halflife.hackclub.com"
 
 let failures = 0
@@ -73,10 +72,7 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 			// Group 1 is always there when the regex matched; the fallback keeps the type honest without a non-null assertion.
 			const path = match[1]?.slice(1, -1) ?? ""
 			if (!path.startsWith("/api")) continue
-			// The options object follows the URL. Capturing up to the first `)`
-			// used to end inside `JSON.stringify(...)` whenever a body is
-			// serialised before `method:` is stated, so every such call read as
-			// GET. Scan to the fetch's own closing paren instead.
+			// The options object follows the URL. Capturing up to the first `)` used to end inside `JSON.stringify(...)` whenever a body is serialised before `method:` is stated, so every such call read as GET. Scan to the fetch's own closing paren instead.
 			const options = fetchOptions(source, (match.index ?? 0) + match[0].length)
 			// A method can be a literal or a ternary; collect every literal offered.
 			const methods = [...options.matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
@@ -89,9 +85,7 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 }
 
 /**
- * The text of a `fetch(url, ...)` call from just after the URL literal through
- * its closing paren, tracking depth past nested calls and skipping string
- * literals, so `method:` is read from the whole options object.
+ * The text of a `fetch(url, ...)` call from just after the URL literal through its closing paren, tracking depth past nested calls and skipping string literals, so `method:` is read from the whole options object.
  */
 function fetchOptions(source: string, from: number): string {
 	let depth = 1 // inside fetch's own paren
@@ -301,8 +295,7 @@ async function bodies() {
 		"body · repoSync accepts a GitLab nested-group URL",
 		repoSyncSettingsSchema.safeParse({ enabled: true, repo: "https://gitlab.com/group/sub/repo" }).success,
 	)
-	// A repo field wants a repository. An Onshape document is one CAD file opened in a browser, so in the repo column it is read as the project's source and is found out at submission.
-	// Refused where it is typed, and pointed at the demo links.
+	// A repo field wants a repository. An Onshape document is one CAD file opened in a browser, so in the repo column it is read as the project's source and is found out at submission. Refused where it is typed, and pointed at the demo links.
 	const onshapeDoc = "https://cad.onshape.com/documents/abc123/w/def456/e/ghi789"
 	check(
 		"body · a project repo refuses an Onshape document",
@@ -326,10 +319,7 @@ async function bodies() {
 	)
 	check("body · bomImport rejects an unknown field", !bomImportSchema.safeParse({ write: true }).success)
 
-	// The review email's project identity is a pair of Airtable override
-	// columns. email-tools only forwards a Loops field whose value changed, so
-	// these are separate fields the decision writes; a typo in either name means
-	// the workflow silently ignores it and the email names the wrong project.
+	// The review email's project identity is a pair of Airtable override columns. email-tools only forwards a Loops field whose value changed, so these are separate fields the decision writes; a typo in either name means the workflow silently ignores it and the email names the wrong project.
 	const { reviewOverrideValues } = await import("../src/lib/airtable/sync")
 	const { LOOPS_REVIEW_OVERRIDE } = await import("../src/lib/airtable/schema")
 	const overrides = reviewOverrideValues("Macropad", 3)
@@ -489,7 +479,7 @@ async function bodies() {
 	//
 	// One Ari ship per (project, phase), so the external id has to survive a round trip for a webhook to find the right submission.
 	const { ariExternalId, parseAriExternalId } = await import("../src/lib/ari-id")
-	const { Phase } = await import("../src/app/generated/prisma/enums")
+	const { Phase } = await import("../src/lib/enums")
 	const ariDesign = ariExternalId(me, Phase.DESIGN)
 	const ariBuild = ariExternalId(me, Phase.BUILD)
 	check("ari · design external id", ariDesign === `${me}:design`, ariDesign)
@@ -504,7 +494,7 @@ async function bodies() {
 	//
 	// What the hourly retry job replays and what the admin Retry button offers: in-review phases whose NEWEST open submission has no ariSubmissionId.
 	const { selectPendingShips } = await import("../src/lib/ari-pending")
-	const { PhaseStatus } = await import("../src/app/generated/prisma/enums")
+	const { PhaseStatus } = await import("../src/lib/enums")
 	const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
 	const projects = [
 		{ buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" },
@@ -549,7 +539,7 @@ async function bodies() {
 	//
 	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
 	const { countAriShips } = await import("../src/lib/ari-counts")
-	const { ReviewResult } = await import("../src/app/generated/prisma/enums")
+	const { ReviewResult } = await import("../src/lib/enums")
 	const ship = (over: Partial<Parameters<typeof countAriShips>[0][number]> = {}) => ({
 		ariSubmissionId: "ship_1",
 		createdAt: at(0),
@@ -775,7 +765,7 @@ async function bodies() {
 
 	// The subtraction as the ledger applies it: a journal entry claiming two hours with a two-hour recording, beside a link reporting two hours tracked over the same period. Five hours claimed, three hours of actual work.
 	const { rollUpHours } = await import("../src/lib/hours")
-	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/app/generated/prisma/enums")
+	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/lib/enums")
 	const oneEntry = [
 		{
 			hoursApproved: null,
@@ -1226,7 +1216,7 @@ async function bodies() {
 		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN, readmeBomTable, REPO_FILE_KINDS } = await import(
 			"../src/lib/config/repo-checks"
 		)
-		const { Theme } = await import("../src/app/generated/prisma/enums")
+		const { Theme } = await import("../src/lib/enums")
 		check("repo-checks · a PCB repo must carry a BOM", THEME_REPO_REQUIREMENTS[Theme.PCB].required.includes("bom"))
 		check(
 			"repo-checks · the BOM is no longer merely recommended",
@@ -1588,7 +1578,7 @@ async function bodies() {
 	const { justificationValues, specificTechnicalFeatures, timelapseLinks } = await import(
 		"../src/lib/airtable/justification"
 	)
-	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/app/generated/prisma/enums")
+	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/lib/enums")
 	{
 		const description = "A moonboard case, 3D printed in PLA."
 		const source = {

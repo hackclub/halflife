@@ -1,5 +1,5 @@
 import "dotenv/config"
-import { Phase, PhaseStatus, ReviewResult, type Theme } from "../src/app/generated/prisma/enums"
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { currentReviewColumns } from "../src/lib/airtable/review-columns"
 import {
@@ -9,7 +9,9 @@ import {
 	syncReviewDecisionToYsws,
 } from "../src/lib/airtable/sync"
 import { AuditAction, logAudit } from "../src/lib/audit"
-import prisma from "../src/lib/prisma"
+import { Phase, PhaseStatus, ReviewResult, type Theme } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
  * Undo the projects Ari auto-returned for a maker whose Hack Club identity was not yet verified.
@@ -66,34 +68,22 @@ interface HealTarget {
 
 /** The phases still on `update_requested` whose standing decision is the identity auto-return. */
 async function findCandidates(): Promise<Candidate[]> {
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			buildStatus: true,
-			designStatus: true,
-			id: true,
-			theme: true,
-			title: true,
-			user: { select: { email: true } },
-		},
-		where: {
-			deletedAt: null,
-			OR: [{ designStatus: PhaseStatus.update_requested }, { buildStatus: PhaseStatus.update_requested }],
-		},
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project =>
+			or(project.designStatus.eq(PhaseStatus.update_requested), project.buildStatus.eq(PhaseStatus.update_requested)),
+		)
+		.select("buildStatus", "designStatus", "id", "theme", "title")
+		.include("user", user => user.select("email"))
+		.all()
 	if (projects.length === 0) return []
 
 	// Every live review on those projects, newest first: the head of each (project, phase) is the decision the phase is standing on, which is what has to be the identity return for this to touch it.
-	const reviews = await prisma.submissionReview.findMany({
-		orderBy: { createdAt: "desc" },
-		select: {
-			feedback: true,
-			id: true,
-			result: true,
-			reviewerEmail: true,
-			submission: { select: { id: true, phase: true, themeProjectId: true } },
-		},
-		where: { invalidated: false, submission: { themeProjectId: { in: projects.map(p => p.id) } } },
-	})
+	const reviews = await db.orm.public.SubmissionReview.where({ invalidated: false })
+		.where(review => review.submission.some(submission => submission.themeProjectId.in(projects.map(p => p.id))))
+		.orderBy(review => review.createdAt.desc())
+		.select("feedback", "id", "result", "reviewerEmail")
+		.include("submission", submission => submission.select("id", "phase", "themeProjectId"))
+		.all()
 
 	const candidates: Candidate[] = []
 	for (const project of projects)
@@ -101,13 +91,13 @@ async function findCandidates(): Promise<Candidate[]> {
 			if ((phase === Phase.DESIGN ? project.designStatus : project.buildStatus) !== PhaseStatus.update_requested)
 				continue
 
-			const latest = reviews.find(r => r.submission.themeProjectId === project.id && r.submission.phase === phase)
-			if (!latest) continue
+			const latest = reviews.find(r => r.submission?.themeProjectId === project.id && r.submission.phase === phase)
+			if (!latest?.submission) continue
 			if (latest.result !== ReviewResult.RETURNED || latest.reviewerEmail !== SYSTEM_REVIEWER_EMAIL) continue
 			if (latest.feedback.trim() !== IDENTITY_NOTE) continue
 
 			candidates.push({
-				email: project.user.email,
+				email: project.user?.email ?? "",
 				phase,
 				reviewId: latest.id,
 				submissionId: latest.submission.id,
@@ -122,23 +112,27 @@ async function findCandidates(): Promise<Candidate[]> {
 
 /** Put one phase back in review and unbind its ship, so `ari-retry` sends it again for a real review. */
 async function repair(candidate: Candidate): Promise<void> {
-	await prisma.$transaction(async tx => {
+	await db.transaction(async tx => {
 		// The mistaken return is void, and so is any earlier decision on the phase it superseded: a phase going back to review has no standing decision.
-		await tx.submissionReview.updateMany({
-			data: { invalidated: true, invalidatedAt: new Date() },
-			where: { invalidated: false, submission: { phase: candidate.phase, themeProjectId: candidate.themeProjectId } },
+		await tx.orm.public.SubmissionReview.where({ invalidated: false })
+			.where(review =>
+				review.submission.some(submission =>
+					and(submission.phase.eq(candidate.phase), submission.themeProjectId.eq(candidate.themeProjectId)),
+				),
+			)
+			.updateAll({ invalidated: true, invalidatedAt: formatDbTimestamp(new Date()) })
+		await tx.orm.public.PhaseSubmission.where({ id: candidate.submissionId }).update({
+			ariDecision: null,
+			ariStatus: "review",
+			ariSubmissionId: null,
+			resolvedAt: null,
+			resolvedResult: null,
 		})
-		await tx.phaseSubmission.update({
-			data: { ariDecision: null, ariStatus: "review", ariSubmissionId: null, resolvedAt: null, resolvedResult: null },
-			where: { id: candidate.submissionId },
-		})
-		await tx.themeProject.update({
-			data:
-				candidate.phase === Phase.DESIGN
-					? { designStatus: PhaseStatus.in_review }
-					: { buildStatus: PhaseStatus.in_review },
-			where: { id: candidate.themeProjectId },
-		})
+		await tx.orm.public.ThemeProject.where({ id: candidate.themeProjectId }).update(
+			candidate.phase === Phase.DESIGN
+				? { designStatus: PhaseStatus.in_review }
+				: { buildStatus: PhaseStatus.in_review },
+		)
 	})
 
 	await logAudit({
@@ -167,28 +161,20 @@ async function repair(candidate: Candidate): Promise<void> {
 
 /** The phases this script reopened that are still in review, with the row each one was last written to. */
 async function findHealTargets(): Promise<{ targets: HealTarget[]; withoutRow: number }> {
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			buildStatus: true,
-			designStatus: true,
-			id: true,
-			title: true,
-			user: { select: { email: true } },
-		},
-		where: {
-			deletedAt: null,
-			OR: [{ designStatus: PhaseStatus.in_review }, { buildStatus: PhaseStatus.in_review }],
-		},
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)))
+		.select("buildStatus", "designStatus", "id", "title")
+		.include("user", user => user.select("email"))
+		.all()
 	if (projects.length === 0) return { targets: [], withoutRow: 0 }
 
 	// The audit row each repair left names the project and phase, and is how a run from before the row was mirrored is told apart from any other reopen.
 	const reopened = new Set<string>()
-	const events = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		where: { action: AuditAction.ADMIN_REOPEN_PHASE, targetId: { in: projects.map(p => p.id) } },
-	})
+	const events = await db.orm.public.AuditLog.where({ action: AuditAction.ADMIN_REOPEN_PHASE })
+		.where(entry => entry.targetId.in(projects.map(p => p.id)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
 	for (const event of events) {
 		const meta = event.metadata as { phase?: string; source?: string } | null
 		if (meta?.source !== "repair-identity-returns" || !meta.phase || !event.targetId) continue
@@ -197,11 +183,11 @@ async function findHealTargets(): Promise<{ targets: HealTarget[]; withoutRow: n
 	if (reopened.size === 0) return { targets: [], withoutRow: 0 }
 
 	// The record id is not on the project; it is on the audit row each successful write left (see `lastRecordId` in lib/airtable/sync).
-	const synced = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
-	})
+	const synced = await db.orm.public.AuditLog.where({ action: AuditAction.AIRTABLE_SYNC_SUCCESS })
+		.where(entry => entry.targetId.in(projects.map(p => p.id)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
 	const records = recordIdsFromSyncEvents(synced)
 
 	const targets: HealTarget[] = []
@@ -216,7 +202,13 @@ async function findHealTargets(): Promise<{ targets: HealTarget[]; withoutRow: n
 				withoutRow++
 				continue
 			}
-			targets.push({ email: project.user.email, phase, recordId, themeProjectId: project.id, title: project.title })
+			targets.push({
+				email: project.user?.email ?? "",
+				phase,
+				recordId,
+				themeProjectId: project.id,
+				title: project.title,
+			})
 		}
 	return { targets, withoutRow }
 }
@@ -314,5 +306,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

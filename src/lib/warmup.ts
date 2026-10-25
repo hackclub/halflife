@@ -1,7 +1,7 @@
 import "server-only"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { formatDeadline } from "@/lib/deadline"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import { getProgramSettings, weekClosesAt } from "@/lib/program"
 
 /**

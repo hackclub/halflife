@@ -6,7 +6,7 @@ import { BOM_CSV_PATTERN } from "@/lib/config/repo-checks"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { round2 } from "@/lib/money"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { findRepoFilePath, readRepoFile } from "@/lib/repo-checks"
 import { repoRefFromLink } from "@/lib/repo-ref"
@@ -76,13 +76,14 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	if (parsed.error) return parsed.error
 	const { apply, replace } = parsed.data
 
-	const project = await prisma.themeProject.findFirst({
-		select: { buildStatus: true, designStatus: true, githubRepo: true, id: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("buildStatus", "designStatus", "githubRepo", "id")
+		.first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
-	const existing = await prisma.bomItem.count({ where: { themeProjectId: id } })
+	const { count: existing } = await db.orm.public.BomItem.where({ themeProjectId: id }).aggregate(a => ({
+		count: a.count(),
+	}))
 	// A replace has the whole cap to spend; an addition shares it with the lines already there.
 	const limit = replace ? MAX_BOM_ITEMS : Math.max(0, MAX_BOM_ITEMS - existing)
 
@@ -102,28 +103,29 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	if ("error" in result) return fail("UNPROCESSABLE", result.error)
 	if (result.lines.length === 0) return fail("UNPROCESSABLE", `No parts with a name were found in ${result.path}.`)
 
-	await prisma.$transaction(async tx => {
+	await db.transaction(async tx => {
 		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the create would let lines into a list that is supposed to be final.
-		const fresh = await tx.themeProject.findUnique({
-			select: { buildStatus: true, designStatus: true },
-			where: { id },
-		})
+		const fresh = await tx.orm.public.ThemeProject.whereUnique({ id }).select("buildStatus", "designStatus").first()
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 		const freshLock = bomLockReason(fresh)
 		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
 
 		// The count is what the cap is about, not the sort order – replacing clears the list, adding shares its room.
-		const count = replace ? 0 : await tx.bomItem.count({ where: { themeProjectId: id } })
+		const { count } = replace
+			? { count: 0 }
+			: await tx.orm.public.BomItem.where({ themeProjectId: id }).aggregate(a => ({ count: a.count() }))
 		if (count + result.lines.length > MAX_BOM_ITEMS)
 			throw new HttpError("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
 		const last = replace
 			? null
-			: await tx.bomItem.aggregate({ _max: { sortOrder: true }, where: { themeProjectId: id } })
-		const base = replace ? 0 : (last?._max.sortOrder ?? -1) + 1
+			: await tx.orm.public.BomItem.where({ themeProjectId: id }).aggregate(a => ({
+					sortOrder: a.max("sortOrder"),
+				}))
+		const base = replace ? 0 : (last?.sortOrder ?? -1) + 1
 
-		if (replace) await tx.bomItem.deleteMany({ where: { themeProjectId: id } })
-		await tx.bomItem.createMany({
-			data: result.lines.map((line, i) => ({
+		if (replace) await tx.orm.public.BomItem.where({ themeProjectId: id }).deleteAndCount()
+		await tx.orm.public.BomItem.createAll(
+			result.lines.map((line, i) => ({
 				link: line.link || null,
 				name: sanitize(line.name),
 				// Deliberately not filled in when the file had no column for them: the maker edits the blanks the way the form asks for.
@@ -134,7 +136,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 				unitCostUsd: round2(line.unitCostUsd),
 				vendor: sanitizeOptional(line.vendor),
 			})),
-		})
+		)
 	})
 
 	after(() => scheduleRepoSync(id))

@@ -4,6 +4,7 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
+import { parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -51,7 +52,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 					<Table head={["When", "Action", "Actor", "Target", "Detail"]}>
 						{items.map(entry => (
 							<tr key={entry.id}>
-								<td className="hl-mono">{entry.createdAt.toLocaleString()}</td>
+								<td className="hl-mono">{parseDbTimestamp(entry.createdAt).toLocaleString()}</td>
 								<td className="hl-mono">{entry.action}</td>
 								<td className="hl-hint">{entry.actorEmail ?? entry.actorId ?? "system"}</td>
 								<td className="hl-mono">

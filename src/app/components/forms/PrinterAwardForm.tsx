@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { Callout } from "@/app/components/ui"
-import type { PrinterAwardStatus } from "@/app/generated/prisma/enums"
+import type { PrinterAwardStatus } from "@/lib/enums"
 import { PRINTER_AWARD_LABELS, PRINTER_AWARD_NEXT } from "@/lib/printer-award"
 import { sendJson, useAction } from "@/lib/use-action"
 

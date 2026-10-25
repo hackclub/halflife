@@ -1,13 +1,7 @@
 /*
  * The 404, in the landing's world.
  *
- * A module rather than utilities, because this page renders under two root
- * layouts: `global-not-found` for a URL that matches nothing, and the
- * platform's `not-found` for a page that called `notFound()`. The platform's
- * stylesheet has no landing tokens, so `bg-hl-ink` would silently be nothing
- * there. Every colour reads the landing's own custom property first and falls
- * back to the same value, so on the landing's stylesheet there is one source
- * of truth and on the platform's there is still the right colour.
+ * A module rather than utilities, because this page renders under two root layouts: `global-not-found` for a URL that matches nothing, and the platform's `not-found` for a page that called `notFound()`. The platform's stylesheet has no landing tokens, so `bg-hl-ink` would silently be nothing there. Every colour reads the landing's own custom property first and falls back to the same value, so on the landing's stylesheet there is one source of truth and on the platform's there is still the right colour.
  *
  * Keep the fallbacks in step with `(site)/globals.css` by hand.
  */
@@ -33,8 +27,7 @@
 	isolation: isolate;
 }
 
-/* The landing's ring and selection, in place of whichever document's these
-   would otherwise be – the platform's magenta ring means nothing on ink. */
+/* The landing's ring and selection, in place of whichever document's these would otherwise be – the platform's magenta ring means nothing on ink. */
 .scene :focus-visible {
 	outline: 3px solid var(--cyan);
 	outline-offset: 3px;
@@ -79,8 +72,7 @@
 
 /* ── The header plate, and the weld that leaves it ────────────────────── */
 
-/* As wide as its own line, so the weld is placed by a share of the plate
-   rather than of the column, as the landing's header weld is. */
+/* As wide as its own line, so the weld is placed by a share of the plate rather than of the column, as the landing's header weld is. */
 .head {
 	display: flex;
 	flex-direction: column;
@@ -96,22 +88,16 @@
 	background-color: var(--plate);
 	color: var(--ink);
 	font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
-	/* 3.25rem is the size the line fits the 42rem column on one line at: it
-     measures 11.4em plus the plate's padding. */
+	/* 3.25rem is the size the line fits the 42rem column on one line at: it measures 11.4em plus the plate's padding. */
 	font-size: clamp(2rem, 8vw, 3.25rem);
 	font-weight: 700;
 	letter-spacing: -0.03em;
 	line-height: 1.05;
-	/* Not `balance`. A fit-content box is as wide as the line could have been,
-     not as the lines it ended up with, so balanced lines leave the plate with
-     a blank strip down its right side. `pretty` fills the first line and keeps
-     the plate on the ink. */
+	/* Not `balance`. A fit-content box is as wide as the line could have been, not as the lines it ended up with, so balanced lines leave the plate with a blank strip down its right side. `pretty` fills the first line and keeps the plate on the ink. */
 	text-wrap: pretty;
 }
 
-/* The landing's stacked weld, cut short. It leaves the plate at the same
-   41.78% the landing's header weld does and is sheared before it arrives, so
-   the line visibly runs out above the station it was built to reach. */
+/* The landing's stacked weld, cut short. It leaves the plate at the same 41.78% the landing's header weld does and is sheared before it arrives, so the line visibly runs out above the station it was built to reach. */
 .weld {
 	display: block;
 	width: 10rem;
@@ -122,8 +108,7 @@
 
 /* ── The station that was never built ─────────────────────────────────── */
 
-/* The landing's reserved slot (`image-slot.tsx`, ink tone), full width where
-   a step plate would be: a measured grid, a cyan edge, registration ticks. */
+/* The landing's reserved slot (`image-slot.tsx`, ink tone), full width where a step plate would be: a measured grid, a cyan edge, registration ticks. */
 .slot {
 	position: relative;
 	display: grid;
@@ -205,8 +190,7 @@
 	letter-spacing: 0.14em;
 }
 
-/* The address that was asked for. Data, so it wraps anywhere rather than
-   pushing a long URL out of the slot on a phone. */
+/* The address that was asked for. Data, so it wraps anywhere rather than pushing a long URL out of the slot on a phone. */
 .path {
 	max-width: 100%;
 	margin-top: 0.5rem;

@@ -8,8 +8,8 @@ import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
 import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
 import { Button } from "@/app/components/ui"
-import type { Theme } from "@/app/generated/prisma/enums"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
+import type { Theme } from "@/lib/enums"
 
 /** One themed project on a participant's admin page. */
 export interface ThemedProjectRowData {

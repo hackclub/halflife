@@ -1,9 +1,10 @@
+import { and } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
 import { projectDisplayTitle } from "@/lib/config/program"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { disputeMessageSchema } from "@/lib/schemas/admin"
 
@@ -22,28 +23,38 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	const parsed = await parseBody(req, disputeMessageSchema)
 	if (parsed.error) return parsed.error
 
-	const dispute = await prisma.reviewDispute.findFirst({
-		select: {
-			resolvedAt: true,
-			submission: { select: { id: true, phase: true, themeProject: { select: { theme: true, title: true } } } },
-		},
-		where: { id: disputeId, submission: { themeProject: { deletedAt: null, id, userId: gate.user.id } } },
-	})
-	if (!dispute) return fail("NOT_FOUND", "Dispute not found")
+	const dispute = await db.orm.public.ReviewDispute.where({ id: disputeId })
+		.where(d =>
+			d.submission.some(submission =>
+				submission.themeProject.some(project =>
+					and(project.deletedAt.isNull(), project.id.eq(id), project.userId.eq(gate.user.id)),
+				),
+			),
+		)
+		.select("resolvedAt")
+		.include("submission", submission =>
+			submission.select("id", "phase").include("themeProject", project => project.select("theme", "title")),
+		)
+		.first()
+	if (!dispute?.submission?.themeProject) return fail("NOT_FOUND", "Dispute not found")
 	if (dispute.resolvedAt) return fail("CONFLICT", "That dispute is already resolved")
+	const submission = { ...dispute.submission, themeProject: dispute.submission.themeProject }
 
-	const message = await prisma.reviewDisputeMessage.create({
-		data: { authorId: gate.user.id, body: sanitize(parsed.data.body), disputeId, fromReviewer: false },
+	const message = await db.orm.public.ReviewDisputeMessage.create({
+		authorId: gate.user.id,
+		body: sanitize(parsed.data.body),
+		disputeId,
+		fromReviewer: false,
 	})
 
 	after(() =>
 		notifyStaffDispute({
 			note: message.body,
 			participant: gate.user.name ?? gate.user.email,
-			phase: dispute.submission.phase,
-			submissionId: dispute.submission.id,
+			phase: submission.phase,
+			submissionId: submission.id,
 			themeProjectId: id,
-			title: projectDisplayTitle(dispute.submission.themeProject),
+			title: projectDisplayTitle(submission.themeProject),
 		}),
 	)
 

@@ -16,9 +16,7 @@ import flagArt from "../../../public/art/hackclub-flag.svg"
  *
  * The comp draws it 1256 wide – 73% of the 1728 grid – which read too heavy against the painting behind it: bg.png is framed on both edges and left open through the middle, and a plate that wide spanned frame to frame and closed the opening. At 864 it is half the grid, and since the stage is the viewport up to its 1728 cap, that is literally 50vw at every width the comp layout runs at.
  *
- * Once it is half the grid it is centred on the grid rather than left where the comp's wider plate started, and that is the relationship bg.png was painted
- * for: the picture carries a pipe column down each edge and is left open
- * through the middle, so a centred plate sits in the opening and leaves both columns to read. `.stage` and the art layer both cap at 1728 and centre, so centring on the grid centres the plate over the painting's own centre at every width. Vertically it keeps the comp's y – the caption and group shot hold the lower left, so there is no free height to centre into.
+ * Once it is half the grid it is centred on the grid rather than left where the comp's wider plate started, and that is the relationship bg.png was painted for: the picture carries a pipe column down each edge and is left open through the middle, so a centred plate sits in the opening and leaves both columns to read. `.stage` and the art layer both cap at 1728 and centre, so centring on the grid centres the plate over the painting's own centre at every width. Vertically it keeps the comp's y – the caption and group shot hold the lower left, so there is no free height to centre into.
  *
  * Everything set on the plate scales by the same factor and moves with it, so the comp's internal composition survives intact at a smaller size rather than being re-fitted by hand: offsets are still measured from the comp's own plate origin, and only where that origin lands has changed. Every number below is still the literal Figma pixel DESIGN.md says it is.
  */
@@ -27,8 +25,7 @@ const PLATE_SCALE = 864 / PLATE.w
 const PLATE_W = PLATE.w * PLATE_SCALE
 const PLATE_H = PLATE.h * PLATE_SCALE
 
-/* bg.png is 1920x1080; the art layer's `aspect-[1920/1080]` is that, written
-   out because Tailwind reads class names from the source as literal text. */
+/* bg.png is 1920x1080; the art layer's `aspect-[1920/1080]` is that, written out because Tailwind reads class names from the source as literal text. */
 
 /**
  * The painting's dissolve, as a mask on the picture rather than a scrim over it.
@@ -63,9 +60,7 @@ const ART_FADE = [
  *
  * Worth knowing before this moves again. 532 of ink sits *under* the 585 tagline and the 596 form beneath it, so the mark is no longer the widest thing in the column; it still leads on mass, standing 423 tall against a 22px line, but the three widths are now close enough to read as an near-miss rather than a decision. The two clean stops either side are `u(678)`, where the ink lands on the form's own 596 and the group shares one edge, and `u(PLATE_W)`, where it spans the column outright.
  *
- * The fold has room to spare: 423 for the mark, 172 for the copy and form, 90
- * for the cue – 685 against a 16:9 fold's 972, so anything squarer than 2.5:1
- * fits outright and `min-h` grows the block rather than clipping it.
+ * The fold has room to spare: 423 for the mark, 172 for the copy and form, 90 for the cue – 685 against a 16:9 fold's 972, so anything squarer than 2.5:1 fits outright and `min-h` grows the block rather than clipping it.
  */
 const LOGO_STAGE_W = u(604.8)
 
@@ -119,109 +114,40 @@ export default function Hero() {
 			<HackClubFlag />
 			<LoginMark />
 
-			{/* The wait for week 1, across the top between the flag and the log-in
-          mark. It is the "dateline" slot this page's comments still describe –
-          the middle of the top edge, which the two corner marks leave free –
-          and it is settled here rather than in the plate so it reads as part of
-          the page's header rather than as a fifth thing stacked on the hero.
-          It fetches its own target from `/api/program` so this page stays
-          static and the build never touches the database. */}
+			{/* The wait for week 1, across the top between the flag and the log-in mark. It is the "dateline" slot this page's comments still describe – the middle of the top edge, which the two corner marks leave free – and it is settled here rather than in the plate so it reads as part of the page's header rather than as a fifth thing stacked on the hero. It fetches its own target from `/api/program` so this page stays static and the build never touches the database. */}
 			<WeekCountdown />
 
 			{/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
-			{/* The fold: exactly one viewport, which is what makes "below the fold"
-          mean anything. `min-h` rather than `h`, so a viewport too short to
-          hold the plate grows instead of clipping it -- either way the block
-          is never shorter than the fold, so the header below is never dragged
-          up into view.
+			{/* The fold: exactly one viewport, which is what makes "below the fold" mean anything. `min-h` rather than `h`, so a viewport too short to hold the plate grows instead of clipping it -- either way the block is never shorter than the fold, so the header below is never dragged up into view.
 
-          A plain viewport again, and the dateline is why it can be. Standing
-          above this block in flow it pushed the fold down by its own height
-          and took the scroll cue off the screen with it, so the number here
-          had to subtract it back; laid on the painting it costs the fold
-          nothing and this is the comp's own arithmetic once more.
+          A plain viewport again, and the dateline is why it can be. Standing above this block in flow it pushed the fold down by its own height and took the scroll cue off the screen with it, so the number here had to subtract it back; laid on the painting it costs the fold nothing and this is the comp's own arithmetic once more.
 
-          Three rows, 1fr / auto / 1fr, rather than a centred plate with the
-          cue absolutely positioned: equal outer rows still centre the plate,
-          but the cue is in flow, so on a short wide window the two cannot land
-          on top of each other.
+          Three rows, 1fr / auto / 1fr, rather than a centred plate with the cue absolutely positioned: equal outer rows still centre the plate, but the cue is in flow, so on a short wide window the two cannot land on top of each other.
 
-          The first row carries a floor, which is the same argument run
-          upwards. Centring is a share of the free height, so on a short
-          enough window the plate rises to meet the dateline laid on the
-          painting – at this stage's cap that starts below about 730px of
-          viewport, which is a half-height window rather than a screen, but it
-          is reachable. 4.125rem is the plate's bottom edge at `md` and up
-          (12px of `top-3` plus its own 42) with 12px of clearance. Above that
-          height `1fr` wins in both rows and the centring is untouched; below
-          it the plate stops descending on the dateline and the squeeze goes
-          to the cue's row, which is the row that was already growing. */}
+          The first row carries a floor, which is the same argument run upwards. Centring is a share of the free height, so on a short enough window the plate rises to meet the dateline laid on the painting – at this stage's cap that starts below about 730px of viewport, which is a half-height window rather than a screen, but it is reachable. 4.125rem is the plate's bottom edge at `md` and up (12px of `top-3` plus its own 42) with 12px of clearance. Above that height `1fr` wins in both rows and the centring is untouched; below it the plate stops descending on the dateline and the squeeze goes to the cue's row, which is the row that was already growing.
+			 */}
 			<div className="stage hidden min-h-[100svh] grid-rows-[minmax(4.125rem,1fr)_auto_1fr] justify-items-center min-[1180px]:grid">
-				{/* The hero plate. Its three pieces were hand-placed absolute boxes
-            on the comp grid; centred, that arithmetic was fighting itself, so
-            the plate is a flex column instead and centring is structural. The
-            comp still owns every size and the rhythm between them, scaled –
-            and `justify-center` lands the group within 7 units of where the
-            comp's own 123/109 padding put it, so nothing moved by converting.
-            `text-center` is set here rather than per-child so it reaches the
-            signup form's own status line too, and does not reach the stacked
-            layout, which stays left-aligned in its column. */}
+				{/* The hero plate. Its three pieces were hand-placed absolute boxes on the comp grid; centred, that arithmetic was fighting itself, so the plate is a flex column instead and centring is structural. The comp still owns every size and the rhythm between them, scaled – and `justify-center` lands the group within 7 units of where the comp's own 123/109 padding put it, so nothing moved by converting. `text-center` is set here rather than per-child so it reaches the signup form's own status line too, and does not reach the stacked layout, which stays left-aligned in its column. */}
 				<div className="row-start-2 flex flex-col items-center justify-center text-center" style={PLATE_SIZE}>
-					{/* `cqw` rather than `vw`: the stage caps at 1728 and centres, so a
-              real `vw` would keep growing the mark on a wider monitor while
-              everything around it had stopped. Against the stage it is 35vw up
-              to the cap and 35% of the composition after it. `fontSize` is
-              still here for the live-type branch, which renders if LOGO_SRC is
-              ever cleared again. */}
+					{/* `cqw` rather than `vw`: the stage caps at 1728 and centres, so a real `vw` would keep growing the mark on a wider monitor while everything around it had stopped. Against the stage it is 35vw up to the cap and 35% of the composition after it. `fontSize` is still here for the live-type branch, which renders if LOGO_SRC is ever cleared again. */}
 					<Wordmark art artWidth={LOGO_STAGE_W} as="h1" className="w-full" fontSize={onPlateU(226.768)} />
 
 					{/* One line, and sized so it stays one line.
 
-              The measure is not a guess: set in Ubuntu 400, this sentence is
-              25.301em wide, so its size and its length are the same number and
-              only one of them is free. At `u(32.8)` the line runs 830 units
-              inside the 864 column, leaving 17 either side – enough that the
-              metric-adjusted fallback face can miss Ubuntu's advances by 3.9%
-              before anything touches the edge.
+					  The measure is not a guess: set in Ubuntu 400, this sentence is 25.301em wide, so its size and its length are the same number and only one of them is free. At `u(32.8)` the line runs 830 units inside the 864 column, leaving 17 either side – enough that the metric-adjusted fallback face can miss Ubuntu's advances by 3.9% before anything touches the edge.
 
-              It has to be a stage unit rather than a fixed px, which is what
-              was actually causing the wrap: at a flat 2rem the sentence needed
-              810px of a box that is only 428px at a 1280 window, because the
-              box scaled with the stage and the type did not. In `cqw` the two
-              move together, so the ratio holds at every width this layout runs
-              at – and at the stage's 1728 cap it lands on 32.8px, which is
-              where the 2rem was aiming.
+					  It has to be a stage unit rather than a fixed px, which is what was actually causing the wrap: at a flat 2rem the sentence needed 810px of a box that is only 428px at a 1280 window, because the box scaled with the stage and the type did not. In `cqw` the two move together, so the ratio holds at every width this layout runs at – and at the stage's 1728 cap it lands on 32.8px, which is where the 2rem was aiming.
 
-              No `width`, no `text-balance`: with one line there is nothing to
-              balance, and an explicit measure narrower than the line would only
-              give the text something to overflow. As a centred flex item it
-              takes its own content width. */}
-					{/* The tagline now travels inside the form's own box, so the two
-              things the hero is actually asking of a visitor – read this, then
-              type here – are one object rather than two stacked ones. The
-              27-unit gap the comp put under the wordmark moves to the box; the
-              49 that used to separate the line from the field is gone, since
-              the point of grouping them is that they no longer need it. */}
-					{/* No width. The comp's 866 was the field's own measure, and once
-              the tagline moved inside the box that width became the box's too
-              – 596 comp px of box for a line that needs 830, so a nowrap
-              sentence hung 269 out of both sides of the teal.
+					  No `width`, no `text-balance`: with one line there is nothing to balance, and an explicit measure narrower than the line would only give the text something to overflow. As a centred flex item it takes its own content width.
+					 */}
+					{/* The tagline now travels inside the form's own box, so the two things the hero is actually asking of a visitor – read this, then type here – are one object rather than two stacked ones. The 27-unit gap the comp put under the wordmark moves to the box; the 49 that used to separate the line from the field is gone, since the point of grouping them is that they no longer need it. */}
+					{/* No width. The comp's 866 was the field's own measure, and once the tagline moved inside the box that width became the box's too – 596 comp px of box for a line that needs 830, so a nowrap sentence hung 269 out of both sides of the teal.
 
-              Sized by its content instead: the plate is a flex column with
-              `items-center`, so with no width the box shrinks to its widest
-              child and is centred by the same rule that centres everything
-              else on the plate. That child is the tagline, which lands the box
-              on 865 against the plate's own 864 – the comp's column, arrived
-              at rather than typed. The field spans the box under it.
+					  Sized by its content instead: the plate is a flex column with `items-center`, so with no width the box shrinks to its widest child and is centred by the same rule that centres everything else on the plate. That child is the tagline, which lands the box on 865 against the plate's own 864 – the comp's column, arrived at rather than typed. The field spans the box under it.
 
-              It is also the more robust way round: the box can no longer clip
-              the line, because the line is what sets the box. The 17 units of
-              slack the comp left either side were there to absorb a fallback
-              face missing Ubuntu's advances by up to 3.9%; now a wider face
-              simply takes the box with it. */}
-					{/* The gap under the wordmark is the form's again, now the counter
-              sits below it: the same 48 the counter used to stand off the mark
-              by, so the mark and the ask keep the distance they had. */}
+					  It is also the more robust way round: the box can no longer clip the line, because the line is what sets the box. The 17 units of slack the comp left either side were there to absorb a fallback face missing Ubuntu's advances by up to 3.9%; now a wider face simply takes the box with it.
+					 */}
+					{/* The gap under the wordmark is the form's again, now the counter sits below it: the same 48 the counter used to stand off the mark by, so the mark and the ask keep the distance they had. */}
 					<SignupForm
 						fontSize={onPlateU(30)}
 						intro={
@@ -238,18 +164,10 @@ export default function Hero() {
 						}}
 					/>
 
-					{/* The social proof, under the ask: below the field and below the
-              eligibility line under it, not between the two – that line is the
-              field's own caption and error line, and what the input is
-              described by, so it stays attached to the field. 40 units off the
-              line, more than the line sits off the field and less than the
-              mark sits off the form: its own thing, but the form's.
+					{/* The social proof, under the ask: below the field and below the eligibility line under it, not between the two – that line is the field's own caption and error line, and what the input is described by, so it stays attached to the field. 40 units off the line, more than the line sits off the field and less than the mark sits off the form: its own thing, but the form's.
 
-              Sized at `onPlateU(42)`, deliberately larger than the form's own 30:
-              the number sets at 1.5em of this and lands near 63 units, which
-              puts it in the tagline's company (32.8) rather than the eligibility
-              note's. Social proof that is quieter than the fine print is not
-              doing the job it is here for – least of all directly under it. */}
+					  Sized at `onPlateU(42)`, deliberately larger than the form's own 30: the number sets at 1.5em of this and lands near 63 units, which puts it in the tagline's company (32.8) rather than the eligibility note's. Social proof that is quieter than the fine print is not doing the job it is here for – least of all directly under it.
+					 */}
 					<SignupCounter style={{ fontSize: onPlateU(42), marginTop: onPlateU(40) }} />
 				</div>
 
@@ -258,49 +176,21 @@ export default function Hero() {
 
 			{/* ── Stacked layout, below 1180px ───────────────────────────────── */}
 			<div className="min-[1180px]:hidden">
-				{/* pb leaves the cue its own room; without it `justify-center` centres
-            the plate against the cue and the two crowd each other. */}
-				{/* On a phone the block is as tall as what it holds, not the fold.
-            As a full-height fold with the group centred in it, an 844px
-            screen put ~97px of empty painting under the field, then the cue's
-            112px, then the next section's 80 before "how does it work?" –
-            about 290px of nothing between the thing you type into and the
-            thing that explains it. Content-sized, the group starts at a fixed
-            `pt-32` and the header plate follows the cue.
+				{/* pb leaves the cue its own room; without it `justify-center` centres the plate against the cue and the two crowd each other. */}
+				{/* On a phone the block is as tall as what it holds, not the fold. As a full-height fold with the group centred in it, an 844px screen put ~97px of empty painting under the field, then the cue's 112px, then the next section's 80 before "how does it work?" – about 290px of nothing between the thing you type into and the thing that explains it. Content-sized, the group starts at a fixed `pt-32` and the header plate follows the cue.
 
-            `pt-32` clears the announcement banner rather than the flag: on a
-            phone the banner is two lines hung at 3.25rem, so it ends near
-            111px, and 128 keeps 17px between them.
+				  `pt-32` clears the announcement banner rather than the flag: on a phone the banner is two lines hung at 3.25rem, so it ends near 111px, and 128 keeps 17px between them.
 
-            From `sm` up it is the full fold again, centred, as before. */}
+				  From `sm` up it is the full fold again, centred, as before.
+				 */}
 				<div className="relative flex flex-col px-4 pt-32 pb-20 sm:min-h-[100svh] sm:justify-center sm:px-8 sm:pb-28">
-					{/* On the painting, as the stage's plate is. This used to be a solid
-              `hl-blue-deep` box, which on a phone was the only thing the logo
-              ever stood on: the art layer kept its 16:9 box, so at 390 wide the
-              painting was a 219px strip under the flag and the dateline while
-              this sat centred in the fold well below it. The art layer covers
-              the whole fold below 1180 now, and the tagline and field already
-              carry their own ground in the swash, so the box had nothing left
-              to do but hide the picture.
+					{/* On the painting, as the stage's plate is. This used to be a solid `hl-blue-deep` box, which on a phone was the only thing the logo ever stood on: the art layer kept its 16:9 box, so at 390 wide the painting was a 219px strip under the flag and the dateline while this sat centred in the fold well below it. The art layer covers the whole fold below 1180 now, and the tagline and field already carry their own ground in the swash, so the box had nothing left to do but hide the picture.
 
-              Centred, like the stage's plate: the painting is framed on both
-              edges and open through the middle, and a phone's crop of it is
-              that open middle. `max-w-xl` keeps the group a column on a tablet
-              rather than letting the swash run the width of the screen. */}
+					  Centred, like the stage's plate: the painting is framed on both edges and open through the middle, and a phone's crop of it is that open middle. `max-w-xl` keeps the group a column on a tablet rather than letting the swash run the width of the screen.
+					 */}
 					<div className="mx-auto w-full max-w-xl text-center">
-						{/* 42vw here, with a ceiling. Uncapped it is right on a phone and
-                wrong by 768, where even 42vw is 323 across for a mark sitting
-                above a form – the stacked layout runs to 1180, and 16.8rem
-                holds it at a wordmark's size rather than a splash screen's.
-                Both numbers are the old 60 and 24rem less 30%. */}
-						{/* 95vw on a phone. The column is the screen less 16px a side, so
-                95vw (2.5vw a side) is wider than it: the tag takes the width
-                itself and is centred on the screen with the left/translate
-                pair, which lands on the column's own centre because the
-                column's padding is symmetric. From `sm` the tag is the
-                column again and the art goes back to its capped width. The
-                width is a custom property because `artWidth` is an inline
-                style, which cannot change at a breakpoint. */}
+						{/* 42vw here, with a ceiling. Uncapped it is right on a phone and wrong by 768, where even 42vw is 323 across for a mark sitting above a form – the stacked layout runs to 1180, and 16.8rem holds it at a wordmark's size rather than a splash screen's. Both numbers are the old 60 and 24rem less 30%. */}
+						{/* 95vw on a phone. The column is the screen less 16px a side, so 95vw (2.5vw a side) is wider than it: the tag takes the width itself and is centred on the screen with the left/translate pair, which lands on the column's own centre because the column's padding is symmetric. From `sm` the tag is the column again and the art goes back to its capped width. The width is a custom property because `artWidth` is an inline style, which cannot change at a breakpoint. */}
 						<Wordmark
 							art
 							artWidth="var(--logo-w)"
@@ -325,9 +215,7 @@ export default function Hero() {
 								</p>
 							}
 						/>
-						{/* Under the ask, below the eligibility line, as on the stage.
-                Unscreen-sized: it scales with the column's own `clamp()` rather
-                than the stage's `cqw`, because there is no stage here. */}
+						{/* Under the ask, below the eligibility line, as on the stage. Unscreen-sized: it scales with the column's own `clamp()` rather than the stage's `cqw`, because there is no stage here. */}
 						<SignupCounter className="mt-6" style={{ fontSize: "clamp(1.1rem, 4.2vw, 1.4rem)" }} />
 					</div>
 
@@ -421,23 +309,12 @@ function HackClubFlag() {
 function HeroArt() {
 	return (
 		<div aria-hidden className="absolute inset-0 -z-10 overflow-hidden">
-			{/* The painting's own ratio from 1180 up, where the stage was composed
-          against it. Below that it fills the fold instead: a 16:9 box on a
-          portrait phone is a strip across the top of the screen, and the
-          stacked plate is centred in the fold, so it landed on bare ground
-          under the picture rather than on it. Filling the section, `cover`
-          takes the painting's open middle on a phone and a little off each
-          framed edge on a tablet, and the dissolve still lands on the fold's
-          bottom edge. */}
+			{/* The painting's own ratio from 1180 up, where the stage was composed against it. Below that it fills the fold instead: a 16:9 box on a portrait phone is a strip across the top of the screen, and the stacked plate is centred in the fold, so it landed on bare ground under the picture rather than on it. Filling the section, `cover` takes the painting's open middle on a phone and a little off each framed edge on a tablet, and the dissolve still lands on the fold's bottom edge. */}
 			<div className="relative h-full w-full min-[1180px]:aspect-[1920/1080] min-[1180px]:h-auto min-[1180px]:max-h-full">
-				{/* The scene dissolves at its own lower edge rather than at a fixed
-            distance from the bottom of the section, so the fade scales with
-            the picture instead of eating a third of it on a phone.
+				{/* The scene dissolves at its own lower edge rather than at a fixed distance from the bottom of the section, so the fade scales with the picture instead of eating a third of it on a phone.
 
-            Size and repeat are pinned for the same reason the ground patterns
-            pin theirs: a gradient has no intrinsic dimensions, so it is drawn
-            at the size of its box by a rule worth stating rather than leaning
-            on silently. `-webkit-` alongside, for Safari before 15.4. */}
+				  Size and repeat are pinned for the same reason the ground patterns pin theirs: a gradient has no intrinsic dimensions, so it is drawn at the size of its box by a rule worth stating rather than leaning on silently. `-webkit-` alongside, for Safari before 15.4.
+				 */}
 				<Image
 					alt=""
 					className="object-cover"

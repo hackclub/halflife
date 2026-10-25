@@ -1,6 +1,6 @@
 "use client"
 import { Callout } from "@/app/components/ui"
-import type { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/app/generated/prisma/enums"
+import type { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
 import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { sendJson, useAction } from "@/lib/use-action"
 

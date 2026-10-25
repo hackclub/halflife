@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import {
 	IconArrowRight,
@@ -40,6 +39,7 @@ import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { formatShortDate } from "@/lib/deadline"
+import { ParticipantGoal } from "@/lib/enums"
 import { round2 } from "@/lib/money"
 import { fmtHours } from "@/lib/numbers"
 import {
@@ -304,8 +304,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	)
 
 	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
-	// The Lapse timelapses backing this session (clip state lives above, with the seed it resolves from).
-	// A draft is cut to the box's own ceiling: autosave wrote whatever was typed, including entries past a limit the server refuses, so a draft from before `maxLength` existed restores to something that can be typed on and saved. The saved entry is not cut, because it came from the server and is already within bounds.
+	// The Lapse timelapses backing this session (clip state lives above, with the seed it resolves from). A draft is cut to the box's own ceiling: autosave wrote whatever was typed, including entries past a limit the server refuses, so a draft from before `maxLength` existed restores to something that can be typed on and saved. The saved entry is not cut, because it came from the server and is already within bounds.
 	const [body, setBody] = useState(draft ? clampToContentLimit(draft.body) : (existing?.body ?? ""))
 	const [preview, setPreview] = useState(false)
 	// Free text, not a number: a controlled number input that coerces as you type eats the decimal point the moment you reach for "1.5".
@@ -686,8 +685,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			scrollKey={tab}
 			size="lg"
 		>
-			{/* An edit re-opens both tabs: the picker comes back with this entry's
-			    clips selected, ready to swap. */}
+			{/* An edit re-opens both tabs: the picker comes back with this entry's clips selected, ready to swap. */}
 			<div className="mb-5 flex justify-center">
 				<div
 					className="sketch flex gap-1 rounded-full bg-white p-1"
@@ -710,9 +708,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</div>
 			</div>
 
-			{/* Timelapses are picked on the other tab but belong to this entry too:
-			    say so under the switcher, so combining the two is an offer on screen
-			    rather than something you find by accident. */}
+			{/* Timelapses are picked on the other tab but belong to this entry too: say so under the switcher, so combining the two is an offer on screen rather than something you find by accident. */}
 			{tab === "journal" && (
 				<p className="hand -mt-2 mb-5 text-center text-[0.78rem] text-navy-soft">
 					{attachedCount > 0 ? (
@@ -783,7 +779,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</ModalTitle>
 					)}
 
-					<div className="mb-4 max-w-[220px]">
+					<div className="mb-4 max-w-55">
 						<Field
 							hint={
 								picked.length > 0
@@ -803,8 +799,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								value={hoursText}
 							/>
 						</Field>
-						{/* The claim as the server will log it: what was typed plus what
-						    the timelapses recorded. */}
+						{/* The claim as the server will log it: what was typed plus what the timelapses recorded. */}
 						{lapseHours > 0 && (
 							<p className="hand mt-1.5 text-[0.76rem] tabular-nums text-navy-soft" role="status">
 								{fmtDuration(coveredSeconds)} from timelapses
@@ -840,10 +835,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</span>
 					</div>
 
-					{/* Write and read sit side by side rather than behind a swap, so a
-              long entry can be checked against its own formatting without
-              losing the cursor. Below md there is only room for one, and the
-              toggle picks which. */}
+					{/* Write and read sit side by side rather than behind a swap, so a long entry can be checked against its own formatting without losing the cursor. Below md there is only room for one, and the toggle picks which. */}
 					<div className="mb-2 flex items-center justify-between gap-3">
 						<p className="label text-violet-deep">
 							Your entry{" "}
@@ -880,9 +872,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					</div>
 
 					<div className={cx("grid gap-3", preview && "md:grid-cols-2")}>
-						{/* `min-w-0` on both columns: a grid item is otherwise as wide as
-                its widest unbroken content, so a long URL in the entry widened
-                the column and the preview beside it scrolled sideways. */}
+						{/* `min-w-0` on both columns: a grid item is otherwise as wide as its widest unbroken content, so a long URL in the entry widened the column and the preview beside it scrolled sideways. */}
 						<div className={cx("relative min-w-0", preview && "hidden md:block")}>
 							<Gato
 								className="pointer-events-none absolute top-1/2 left-1/2 h-auto w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
@@ -919,7 +909,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 						{preview && (
 							<div
-								className="sketch thin-scroll max-h-[15rem] min-h-[8rem] min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
+								className="sketch thin-scroll max-h-60 min-h-32 min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
 								style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties}
 							>
 								{body.trim() ? (
@@ -992,8 +982,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 					{editing && (pinned.length > 0 || legacyKept.length > 0) && (
 						<div className="mb-3 grid justify-items-center gap-1.5">
-							{/* Clips Lapse would not re-verify stay by id: listed so they
-							    can still be taken off, rather than stuck on forever. */}
+							{/* Clips Lapse would not re-verify stay by id: listed so they can still be taken off, rather than stuck on forever. */}
 							{pinned.map(id => (
 								<p
 									className="hand flex flex-wrap items-center justify-center gap-x-2 text-center text-[0.78rem] text-navy-soft"
@@ -1538,8 +1527,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						}}
 						variant="outline"
 					>
-						{/* On a finished checkpoint with nothing started there is no
-                draft to keep – it is just the answer to "another one?" */}
+						{/* On a finished checkpoint with nothing started there is no draft to keep – it is just the answer to "another one?" */}
 						{done && !clip && !caption.trim() ? "Not now" : "Save draft"}
 					</Button>
 					<Button disabled={Boolean(postBlocker) || posting} onClick={() => post()} variant="solid">
@@ -1597,15 +1585,12 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					</Field>
 				</div>
 
-				<div className="mx-auto w-[180px] md:w-full">
+				<div className="mx-auto w-45 md:w-full">
 					<p className="label mb-2 text-navy-soft">Preview</p>
 					<div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "9 / 16" }}>
 						{clip ? (
 							<>
-								{/* The clip itself, looping the way the Doomscroller will show
-                    it. Without a URL (a draft on a deployment with no public
-                    bucket URL) it says so rather than standing a stock
-                    illustration in for someone's footage. */}
+								{/* The clip itself, looping the way the Doomscroller will show it. Without a URL (a draft on a deployment with no public bucket URL) it says so rather than standing a stock illustration in for someone's footage. */}
 								{previewUrl ? (
 									<>
 										<video
@@ -1807,7 +1792,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								{pick === null ? <IconCheck className="text-base" /> : null}
 							</Button>
 						}
-						art={<Gato className="h-[140px] w-auto" pose="schematic" sizes="260px" />}
+						art={<Gato className="h-35 w-auto" pose="schematic" sizes="260px" />}
 						chosen={pick === null}
 						label="Custom project"
 						stacked
@@ -1903,9 +1888,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									Starter projects are Tier 1. Switch to your own idea to choose a different tier.
 								</p>
 							)}
-							{/* The hours quoted here are the funded block, which is exactly
-                what the submit gate holds you to. The funded hours buy the
-                parts; every hour past them earns spendable coins. */}
+							{/* The hours quoted here are the funded block, which is exactly what the submit gate holds you to. The funded hours buy the parts; every hour past them earns spendable coins. */}
 							<div className="grid gap-2.5">
 								{TIERS.map(t => (
 									<OptionRow
@@ -1940,7 +1923,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<div className="order-first lg:order-none">
 						<div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
 							<WeekPainting
-								className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
+								className="sticker-shadow mx-auto aspect-square w-full max-w-55"
 								sizes="(min-width: 1024px) 198px, 220px"
 								theme={week.theme}
 							/>
@@ -2306,10 +2289,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			scrollKey={step}
 			size="lg"
 		>
-			{/* On every step, not just the last one: a maker who is short on hours
-          should find that out before working through the checklist, not after.
-          It warns and does not block – the hours needed for a printer at all
-          are the trail's gate, and this is the gap to the one they chose. */}
+			{/* On every step, not just the last one: a maker who is short on hours should find that out before working through the checklist, not after. It warns and does not block – the hours needed for a printer at all are the trail's gate, and this is the gap to the one they chose. */}
 			{!hasCover && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
@@ -2453,7 +2433,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									</p>
 								) : (
 									<div className="overflow-x-auto">
-										<table className="w-full min-w-[480px] text-left text-[0.86rem]">
+										<table className="w-full min-w-120 text-left text-[0.86rem]">
 											<thead>
 												<tr className="border-b border-dashed border-line">
 													{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
@@ -2522,8 +2502,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
 								</div>
 							</Panel>
-							{/* One place to change the list: the project page. The sheet reads
-	              it, so what is handed in is what the maker kept there. */}
+							{/* One place to change the list: the project page. The sheet reads it, so what is handed in is what the maker kept there. */}
 							{project && (
 								<p className="hand mt-2 text-[0.82rem] text-navy-soft">
 									Something wrong?{" "}
@@ -2645,9 +2624,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											${t.grantUsd} for parts
 										</span>
 
-										{/* The hours are the gate, so they lead. The cart only
-                        says whether the money fits inside the tier once the
-                        tier is actually available to you. */}
+										{/* The hours are the gate, so they lead. The cart only says whether the money fits inside the tier once the tier is actually available to you. */}
 										<span
 											className={cx(
 												"mt-1 block text-[0.76rem] leading-snug",

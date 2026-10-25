@@ -1,8 +1,8 @@
-import { type HardwareExperience, Theme } from "@/app/generated/prisma/enums"
 import { EXPERIENCE_OPTIONS, isBeginner, ONBOARDING_STEPS, weekIntroFor } from "@/lib/config/onboarding"
 import { THEMES } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { WEEK_META } from "@/lib/curriculum"
+import { type HardwareExperience, Theme } from "@/lib/enums"
 
 /** A starter project as the client shows it: everything but which weeks it belongs to. */
 export interface StarterProjectView {

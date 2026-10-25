@@ -5,12 +5,14 @@ import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { ShopItemImport } from "@/app/components/forms/ShopItemImport"
 import { ShopRegionForm } from "@/app/components/forms/ShopRegionForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
-import type { ShopItemCategory } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 
 export const dynamic = "force-dynamic"
+
+type ShopItemCategory = Models.public_ShopItem["category"]
 
 const CATEGORY_LABEL: Record<ShopItemCategory, string> = {
 	CONSUMABLE: "consumable",
@@ -22,13 +24,11 @@ const CATEGORY_LABEL: Record<ShopItemCategory, string> = {
 export default async function AdminShopPage() {
 	await requirePermissionPage(Permission.MANAGE_SHOP)
 	const [items, regions] = await Promise.all([
-		prisma.shopItem.findMany({
-			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-		}),
-		prisma.shopRegion.findMany({
-			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-			select: { _count: { select: { prices: true } }, active: true, id: true, name: true },
-		}),
+		db.orm.public.ShopItem.orderBy([item => item.sortOrder.asc(), item => item.name.asc()]).all(),
+		db.orm.public.ShopRegion.select("id", "name", "active")
+			.include("prices", prices => prices.count())
+			.orderBy([region => region.sortOrder.asc(), region => region.name.asc()])
+			.all(),
 	])
 
 	return (
@@ -99,7 +99,7 @@ export default async function AdminShopPage() {
 							<tr key={region.id}>
 								<td className="hl-mono">{region.id}</td>
 								<td>{region.name}</td>
-								<td>{region._count.prices}</td>
+								<td>{region.prices}</td>
 								<td>
 									<Badge tone={region.active ? "success" : "muted"}>{region.active ? "active" : "off"}</Badge>
 								</td>

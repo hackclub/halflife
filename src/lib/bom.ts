@@ -1,12 +1,14 @@
 import "server-only"
-import type { ThemeProject } from "@/app/generated/prisma/client"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { bomTotalUsd, type PartsFunding, partsFunding } from "@/lib/bom-policy"
 import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import { round2 } from "@/lib/money"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import type { BomItemInput } from "@/lib/schemas/project"
+import { parseDbTimestamp } from "@/lib/time"
 
 /**
  * A project's bill of materials – the parts list the tier's funding is asked against, kept on the project page and handed in with the design week.
@@ -34,33 +36,23 @@ export interface BomLine {
  * `requestedTier` is the maker's ask and `tier` the reviewer's decision, so a project whose design is already approved is priced against what was actually paid out. A build never asks for parts money, so its total is nothing and it can never need agreeing to anything.
  */
 export async function partsFundingFor(
-	project: Pick<ThemeProject, "id" | "tier" | "requestedTier" | "bomTaxShippingUsd">,
+	project: Pick<Models.public_ThemeProject, "id" | "tier" | "requestedTier" | "bomTaxShippingUsd">,
 	phase: Phase,
 ): Promise<PartsFunding> {
 	const capUsd = getTier(project.tier ?? project.requestedTier ?? ENTRY_TIER.id)?.grantUsd ?? ENTRY_TIER.grantUsd
 	if (phase !== Phase.DESIGN) return partsFunding(0, capUsd)
-	const items = await prisma.bomItem.findMany({
-		select: { quantity: true, unitCostUsd: true },
-		where: { themeProjectId: project.id },
-	})
+	const items = await db.orm.public.BomItem.where({ themeProjectId: project.id })
+		.select("quantity", "unitCostUsd")
+		.all()
 	return partsFunding(bomTotalUsd(items, project.bomTaxShippingUsd), capUsd)
 }
 
-export function listBom(themeProjectId: string): Promise<BomLine[]> {
-	return prisma.bomItem.findMany({
-		orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-		select: {
-			id: true,
-			link: true,
-			name: true,
-			purpose: true,
-			quantity: true,
-			unitCostUsd: true,
-			updatedAt: true,
-			vendor: true,
-		},
-		where: { themeProjectId },
-	})
+export async function listBom(themeProjectId: string): Promise<BomLine[]> {
+	const rows = await db.orm.public.BomItem.where({ themeProjectId })
+		.orderBy([item => item.sortOrder.asc(), item => item.createdAt.asc()])
+		.select("id", "link", "name", "purpose", "quantity", "unitCostUsd", "updatedAt", "vendor")
+		.all()
+	return rows.map(row => withFields(row, { updatedAt: parseDbTimestamp(row.updatedAt) }))
 }
 
 /**

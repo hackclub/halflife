@@ -31,14 +31,12 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?(): void; cla
 					</button>
 				)}
 			</div>
-			{/* No visible scrollbar: the reels snap one at a time, so the feed reads
-          as a stack of cards, and a bar down its edge only narrowed them. It
-          still scrolls by wheel, trackpad and touch. */}
+			{/* No visible scrollbar: the reels snap one at a time, so the feed reads as a stack of cards, and a bar down its edge only narrowed them. It still scrolls by wheel, trackpad and touch. */}
 			<div className="no-scrollbar snap-y-feed -mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-1">
 				{feed.items.map(r => (
 					<ReelCard
 						autoplay={watching}
-						className="snap-item h-full min-h-[380px] shrink-0"
+						className="snap-item h-full min-h-95 shrink-0"
 						key={r.id}
 						onPatch={feed.handlePatch}
 						onPlayPress={() => setWatching(true)}

@@ -41,8 +41,8 @@ jobs:
 
             - run: bun install --frozen-lockfile
 
-            # The Prisma client is gitignored, so typegen, typecheck and build all fail without this. It has to come first.
-            - run: bunx prisma generate
+            # The Prisma contract is gitignored, so typegen, typecheck and build all fail without this. It has to come first.
+            - run: bun run db:generate
 
             # `next-env.d.ts` and `.next/types` are gitignored but required for typecheck: image imports resolve through next/image-types/global and LayoutProps through the generated route types. `next typegen` creates both without a full build.
             - run: bunx next typegen
@@ -55,12 +55,16 @@ jobs:
             # Static regression checks: no database, no network, no secrets. verify-loops pins the Signups join (id over email, skip-not-throw); verify-contracts pins the client↔API contract (fetch methods vs route exports, request bodies vs zod schemas, plus pure-lib pins); verify-forge-write pins the write path's retry/classification with a scripted fetch. All hermetic: no database, no network, no secrets.
             - name: Static regression checks
               env:
-                  # Never dialed: these are hermetic, but they transitively import `@/lib/prisma`, whose module-level client initialisation requires the variable present (same as the build below).
+                  # Never dialed: these are hermetic, but they transitively import `@/lib/prisma8`, whose module-level client initialisation requires the variable present (same as the build below).
                   DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
               run: |
                   bun run verify:loops
                   bun run verify:contracts
                   bun run verify:forge-write
+
+            # Hermetic like the checks above: the unit tests cover pure libs only, so no database, no network, no secrets.
+            - name: Unit tests
+              run: bun run test
 
             - name: Build
               env:

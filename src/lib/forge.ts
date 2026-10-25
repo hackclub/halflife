@@ -8,6 +8,7 @@ import "server-only"
  * Two things vary between forges and are therefore per-forge data, not conditionals spread through the callers:
  *
  * - **How a repo is named in a URL.** `github.com/owner/repo` and `gitlab.com/owner/repo` agree, but GitLab supports nested groups (`gitlab.com/group/subgroup/repo`), so "owner" is not always one segment.
+ *
  * - **How a file is reached in the web UI.** `…/blob/HEAD/path` on GitHub, `…/-/blob/HEAD/path` on GitLab. A link to a maker's file has to use the right one or it 404s.
  *
  * The API surfaces are different enough that they are NOT modelled here – the read path (lib/github) and the write path (lib/forge-write) each switch on `id` internally, where the API shapes are visible side by side and the differences can be explained. This module is only the identity layer: what a host is called, how a URL maps to a repo, and what the token has to be allowed to do.

@@ -1,6 +1,7 @@
 import "server-only"
 import { HttpError } from "@/lib/errors"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { parseDbTimestamp } from "@/lib/time"
 
 /**
  * Lapse – where every timelapse is recorded.
@@ -65,13 +66,13 @@ const NOT_LINKED = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse t
 
 /** The user's Lapse identity and a token that is still good, or a refusal. */
 export async function lapseCredentials(userId: string): Promise<{ lapseUserId: string; accessToken: string }> {
-	const account = await prisma.account.findFirst({
-		orderBy: { updatedAt: "desc" },
-		select: { accessToken: true, accessTokenExpiresAt: true, accountId: true },
-		where: { providerId: "lapse", userId },
-	})
+	const account = await db.orm.public.Account.where({ providerId: "lapse", userId })
+		.orderBy(row => row.updatedAt.desc())
+		.select("accessToken", "accessTokenExpiresAt", "accountId")
+		.first()
 	if (!account?.accessToken) throw NOT_LINKED()
-	if (account.accessTokenExpiresAt && account.accessTokenExpiresAt.getTime() <= Date.now()) throw NOT_LINKED()
+	if (account.accessTokenExpiresAt && parseDbTimestamp(account.accessTokenExpiresAt).getTime() <= Date.now())
+		throw NOT_LINKED()
 	return { accessToken: account.accessToken, lapseUserId: account.accountId }
 }
 

@@ -8,7 +8,9 @@ export interface TicketRef {
 	helpChannel: string
 	helpTs: string
 	/** null when the permalink lookup failed – the ticket still posts, just
-	 * without a jump link. */
+	 *
+	 * * without a jump link.
+	 */
 	permalink: string | null
 }
 
@@ -41,25 +43,30 @@ export const MARK_HELPED_BUTTON = "mark as helped"
 
 export const REOPEN_BUTTON = "reopen ticket"
 
-/** The workspace's custom "loading" emoji, dropped on the original question
- * the moment its ticket is opened, so a question in #half-life-help reads as still waiting from the channel list. Same caveat as below: it's the custom emoji's exact name, and it only resolves if an emoji by that name exists in
- * the Hack Club workspace. */
+/** The workspace's custom "loading" emoji, dropped on the original question the moment its ticket is opened, so a question in #half-life-help reads as still waiting from the channel list. Same caveat as below: it's the custom emoji's exact name, and it only resolves if an emoji by that name exists in
+ *
+ * * the Hack Club workspace.
+ */
 export const PENDING_REACTION = "safari-loading"
 
-/** The workspace's custom "done" emoji, dropped on the original question once
- * its ticket is resolved from any of the three buttons, in place of the pending one above. Note this is the hyphenated custom-emoji name, not `:white_check_mark:` – it only resolves if an emoji by this exact name
- * exists in the Hack Club workspace. */
+/** The workspace's custom "done" emoji, dropped on the original question once its ticket is resolved from any of the three buttons, in place of the pending one above. Note this is the hyphenated custom-emoji name, not `:white_check_mark:` – it only resolves if an emoji by this exact name
+ *
+ * * exists in the Hack Club workspace.
+ */
 export const RESOLVED_REACTION = "white-checkbox-checkbox-checkbox"
 
-/** Posted to the thread once a helper has answered. Mentions the helper on
- * purpose: for them the participant hasn't had an answer yet, so this is the
- * ping that tells them it's arrived. */
+/** Posted to the thread once a helper has answered. Mentions the helper on purpose: for them the participant hasn't had an answer yet, so this is the
+ *
+ * * ping that tells them it's arrived.
+ */
 export function helpedAck(helperId: string): string {
 	return `oh! <@${helperId}> has this one sorted – you're all set! if anything else comes up, just send another message in #half-life-help and someone'll pick it up :D`
 }
 
 /** The same beat for the author resolving their own ticket, with no mention –
- * they'd be pinging themselves over their own click. */
+ *
+ * * they'd be pinging themselves over their own click.
+ */
 export function selfResolvedAck(): string {
 	return "oh! you've marked this as resolved – thanks for letting us know! if you need anything else, just send another message in #half-life-help and someone'll be happy to help :D"
 }
@@ -108,9 +115,10 @@ export function reopenActions(ref: TicketRef & { ticketsChannel: string }): Slac
 	}
 }
 
-/** Links to the original rather than copying it: a quoted copy can't be
- * replied to, so the useful thing to hand a helper is a jump link into the thread. The permalink also rides in the message's top-level `text` (Slack only unfurls links there, never inside blocks) so it previews the original
- * message where unfurling is available. */
+/** Links to the original rather than copying it: a quoted copy can't be replied to, so the useful thing to hand a helper is a jump link into the thread. The permalink also rides in the message's top-level `text` (Slack only unfurls links there, never inside blocks) so it previews the original
+ *
+ * * message where unfurling is available.
+ */
 export function ticketSection(ref: TicketRef): SlackBlock {
 	return {
 		text: {
@@ -123,9 +131,10 @@ export function ticketSection(ref: TicketRef): SlackBlock {
 	}
 }
 
-/** A quiet line under a new ticket saying whether the asker has been here
- * before, and how often. Read by staff in the tickets channel, so it stays
- * plain rather than in the cat's voice. */
+/** A quiet line under a new ticket saying whether the asker has been here before, and how often. Read by staff in the tickets channel, so it stays
+ *
+ * * plain rather than in the cat's voice.
+ */
 export function ticketHistory(authorId: string, priorTickets: number): SlackBlock {
 	const prior =
 		priorTickets === 0 ? "first ticket" : `${priorTickets} previous ${priorTickets === 1 ? "ticket" : "tickets"}`

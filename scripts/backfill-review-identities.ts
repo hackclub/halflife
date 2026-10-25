@@ -1,6 +1,6 @@
 import "dotenv/config"
-import { AuditAction } from "../src/app/generated/prisma/enums"
-import prisma from "../src/lib/prisma"
+import { AuditAction } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
 
 /**
  * Fill in who decided what on past reviews, so the review leaderboard can credit Ari's reviewers.
@@ -12,10 +12,9 @@ import prisma from "../src/lib/prisma"
 const BATCH = 500
 
 async function main() {
-	const candidates = await prisma.submissionReview.findMany({
-		select: { createdAt: true, id: true, reviewerId: true, submissionId: true },
-		where: { reviewerEmail: null },
-	})
+	const candidates = await db.orm.public.SubmissionReview.where({ reviewerEmail: null })
+		.select("createdAt", "id", "reviewerId", "submissionId")
+		.all()
 	console.log(`reviews without an address: ${candidates.length}`)
 	if (candidates.length === 0) return
 
@@ -23,10 +22,9 @@ async function main() {
 	const reviewerIds = [...new Set(candidates.flatMap(r => (r.reviewerId ? [r.reviewerId] : [])))]
 	const usersById = new Map(
 		(
-			await prisma.user.findMany({
-				select: { email: true, id: true },
-				where: { id: { in: reviewerIds } },
-			})
+			await db.orm.public.User.where(user => user.id.in(reviewerIds))
+				.select("email", "id")
+				.all()
 		).map(u => [u.id, u.email]),
 	)
 
@@ -39,26 +37,28 @@ async function main() {
 				// The account first: a console reviewer's address is their own, whatever the audit rows say.
 				const accountEmail = review.reviewerId ? usersById.get(review.reviewerId) : null
 				if (accountEmail) {
-					await prisma.submissionReview.update({
-						data: { reviewerEmail: accountEmail },
-						where: { id: review.id },
+					await db.orm.public.SubmissionReview.where({ id: review.id }).update({
+						reviewerEmail: accountEmail,
 					})
 					filled += 1
 					return
 				}
-				// Otherwise the latest decision audit for this submission – one row per decision, so a re-decision after an un-approval attributes what stands.
-				const audit = await prisma.auditLog.findFirst({
-					orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-					select: { actorEmail: true },
-					where: {
-						action: { in: [AuditAction.REVIEW_APPROVE, AuditAction.REVIEW_RETURN, AuditAction.REVIEW_REJECT] },
-						metadata: { equals: review.submissionId, path: ["submissionId"] },
-					},
-				})
+				// Otherwise the latest decision audit for this submission – one row per decision, so a re-decision after an un-approval attributes what stands. The audit's JSON carries the submission id, and the ORM has no JSON predicate, so this is one raw read rather than a scan of the whole log.
+				const [audit] = await db.query(
+					db.raw.sql`
+						SELECT "actorEmail"
+						FROM "audit_log"
+						WHERE "action" IN (${AuditAction.REVIEW_APPROVE}, ${AuditAction.REVIEW_RETURN}, ${AuditAction.REVIEW_REJECT})
+							AND "metadata"->>'submissionId' = ${review.submissionId}
+						ORDER BY "createdAt" DESC, "id" DESC
+						LIMIT 1
+					`
+						.returnsRow({ actorEmail: "pg/text@1" })
+						.build(),
+				)
 				if (audit?.actorEmail) {
-					await prisma.submissionReview.update({
-						data: { reviewerEmail: audit.actorEmail },
-						where: { id: review.id },
+					await db.orm.public.SubmissionReview.where({ id: review.id }).update({
+						reviewerEmail: audit.actorEmail,
 					})
 					filled += 1
 				} else stillBlank += 1
@@ -81,5 +81,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

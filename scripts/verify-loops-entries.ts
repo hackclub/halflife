@@ -1,26 +1,20 @@
 import "dotenv/config"
-import { HoursSource } from "../src/app/generated/prisma/enums"
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { LOOPS_FIELDS } from "../src/lib/airtable/loops"
 import { RSVP_TABLE_ID } from "../src/lib/airtable/schema"
-import prisma from "../src/lib/prisma"
+import { HoursSource } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
 
 /**
  * Audit the `Loops - halfLifeLastEntryAt` column against the devlog rule.
  *
- * The sync only writes rows it can join to a Half Life user, so two kinds of
- * row can carry a stale (or never-should-have-existed) timestamp:
+ * The sync only writes rows it can join to a Half Life user, so two kinds of row can carry a stale (or never-should-have-existed) timestamp:
  *
- * 1. Matched stale rows – the row joins to a user who now has no real entry
- *    (only Hackatime-linked sessions). The next `loops-sync` run clears these.
- * 2. Unmatched rows – the row has no join to any user, so nothing will ever
- *    rewrite or clear it. These need a manual clear in Airtable (or a fixed
- *    join), which is why they are listed separately.
+ * 1. Matched stale rows – the row joins to a user who now has no real entry (only Hackatime-linked sessions). The next `loops-sync` run clears these.
+ * 2. Unmatched rows – the row has no join to any user, so nothing will ever rewrite or clear it. These need a manual clear in Airtable (or a fixed join), which is why they are listed separately.
  *
- * Read-only by default. With `--clear`, type 1 rows are PATCHed to null; type
- * 2 rows are only reported, since clearing what we cannot match risks
- * deleting a value that is actually correct. Run with
- * `pnpm verify:loops-entries [--clear]`.
+ * Read-only by default. With `--clear`, type 1 rows are PATCHed to null; type 2 rows are only reported, since clearing what we cannot match risks deleting a value that is actually correct. Run with `pnpm verify:loops-entries [--clear]`.
  */
 
 const clear = process.argv.includes("--clear")
@@ -50,30 +44,26 @@ async function main() {
 	console.log(`Signups rows with a lastEntryAt: ${withTimestamp.length}`)
 
 	// The people who genuinely have an entry: a written devlog or a timelapse.
-	const qualifiers = await prisma.user.findMany({
-		select: { email: true, id: true },
-		where: {
-			themeProjects: {
-				some: {
-					deletedAt: null,
-					workSessions: {
-						some: {
-							deletedAt: null,
-							OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-						},
-					},
-				},
-			},
-		},
-	})
+	const qualifiers = await db.orm.public.User.select("email", "id")
+		.where(user =>
+			user.themeProjects.some(project =>
+				and(
+					project.deletedAt.isNull(),
+					project.workSessions.some(session =>
+						and(
+							session.deletedAt.isNull(),
+							or(session.hoursSource.neq(HoursSource.HACKATIME_TRACKED), session.timelapses.some()),
+						),
+					),
+				),
+			),
+		)
+		.all()
 	const qualifiedIds = new Set(qualifiers.map(u => u.id))
 	const qualifiedEmails = new Map(qualifiers.map(u => [u.email.trim().toLowerCase(), u.id]))
 
-	// The join keys the sync would use: the row's own user id column, the RSVP
-	// drain's record id, and email.
-	const buffers = await prisma.rsvpBuffer.findMany({
-		select: { airtableRecordId: true, email: true, userId: true },
-	})
+	// The join keys the sync would use: the row's own user id column, the RSVP drain's record id, and email.
+	const buffers = await db.orm.public.RsvpBuffer.select("airtableRecordId", "email", "userId").all()
 	const bufferByRecord = new Map<string, string>()
 	const bufferByEmail = new Map<string, string>()
 	for (const b of buffers) {
@@ -83,7 +73,7 @@ async function main() {
 			bufferByEmail.set(b.email.trim().toLowerCase(), b.userId)
 	}
 	const usersByEmail = new Map<string, string>()
-	for (const u of await prisma.user.findMany({ select: { email: true, id: true } }))
+	for (const u of await db.orm.public.User.select("email", "id").all())
 		usersByEmail.set(u.email.trim().toLowerCase(), u.id)
 
 	const matchedStale: AirtableRecord[] = []
@@ -149,5 +139,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

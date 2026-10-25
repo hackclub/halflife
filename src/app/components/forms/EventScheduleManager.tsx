@@ -9,13 +9,9 @@ import { type CalendarEvent, calendarDay, dayLabel, eventColour, eventRangeLabel
 /**
  * The admin half of the calendar: the form, and the list it writes.
  *
- * Split into two components rather than one page because the form and the list are
- * the same object seen twice – editing a row opens it in the form above, so there
- * is one place that decides what an event looks like. A separate edit page would
- * have meant the same field list twice, and the two would drift.
+ * Split into two components rather than one page because the form and the list are the same object seen twice – editing a row opens it in the form above, so there is one place that decides what an event looks like. A separate edit page would have meant the same field list twice, and the two would drift.
  *
- * One row is one occurrence. A ten-week series is ten rows, because that is what
- * lets one week's call be moved without touching the other nine.
+ * One row is one occurrence. A ten-week series is ten rows, because that is what lets one week's call be moved without touching the other nine.
  */
 export function EventScheduleManager({ events, timeZone }: { events: CalendarEvent[]; timeZone: string }) {
 	const [editing, setEditing] = useState<CalendarEvent | null>(null)
@@ -35,9 +31,7 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 		setFormVersion(version => version + 1)
 	}
 
-	// The list reads in the order people ask questions in: what's next, then what
-	// has already happened. Splitting it here rather than sorting twice keeps the
-	// boundary honest – "past" is decided once, by the day.
+	// The list reads in the order people ask questions in: what's next, then what has already happened. Splitting it here rather than sorting twice keeps the boundary honest – "past" is decided once, by the day.
 	const upcoming = events.filter(event => calendarDay(event.startsAt, viewerZone) >= today)
 	const past = events.filter(event => calendarDay(event.startsAt, viewerZone) < today).toReversed()
 
@@ -49,17 +43,12 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 		<div className="hl-stack">
 			<div id="event-form" style={{ scrollMarginTop: "1rem" }}>
 				<Panel title={editing ? "Editing an event" : "Add an event"}>
-					{/* Keyed by the row being edited, so opening a different event remounts the
-            form and its `useState` initialisers run again. Without the key the
-            first render's values stick, and Edit opens a blank form. The version
-            also changes when the form closes, which is what resets it after a save
-            or Clear. */}
+					{/* Keyed by the row being edited, so opening a different event remounts the form and its `useState` initialisers run again. Without the key the first render's values stick, and Edit opens a blank form. The version also changes when the form closes, which is what resets it after a save or Clear. */}
 					<EventForm
 						editing={editing}
 						events={events}
 						key={`${editing?.id ?? "new"}-${formVersion}`}
-						// Closing on save is the whole update path: the data on screen came
-						// from the server, so a refresh is what puts the new row in it.
+						// Closing on save is the whole update path: the data on screen came from the server, so a refresh is what puts the new row in it.
 						onDone={closeForm}
 					/>
 					{editing ? (

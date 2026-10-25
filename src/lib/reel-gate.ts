@@ -1,10 +1,11 @@
 import "server-only"
-import { Phase, PhaseStatus, PostStatus } from "@/app/generated/prisma/enums"
+import { and } from "@prisma/orm-postgres/orm-client"
 import { DESIGN_WEEKS } from "@/lib/config/program"
 import { progressReelHours } from "@/lib/curriculum"
+import { Phase, PhaseStatus, PostStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { isWeekOpen } from "@/lib/program"
 
 /**
@@ -56,10 +57,9 @@ export async function reelLockReason(
 ): Promise<string | null> {
 	const week = weekOfKey(checkpointKey)
 	if (!week || !themeProjectId) return null
-	const project = await prisma.themeProject.findUnique({
-		select: { buildStatus: true, designStatus: true },
-		where: { id: themeProjectId },
-	})
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+		.select("buildStatus", "designStatus")
+		.first()
 	if (!project) return null
 	const phase = week > DESIGN_WEEKS ? Phase.BUILD : Phase.DESIGN
 	const status = statusFor(project, phase)
@@ -72,19 +72,19 @@ export async function reelLockReason(
 
 /** The reel checkpoints this maker deleted and has not re-recorded yet. */
 export async function getOwedReelKeys(userId: string): Promise<string[]> {
-	const deleted = await prisma.post.findMany({
-		select: { checkpointKey: true, themeProjectId: true },
-		where: { checkpointKey: { not: null }, deletedAt: { not: null }, status: PostStatus.REMOVED, userId },
-	})
+	const deleted = await db.orm.public.Post.where({ status: PostStatus.REMOVED, userId })
+		.where(post => and(post.checkpointKey.isNotNull(), post.deletedAt.isNotNull()))
+		.select("checkpointKey", "themeProjectId")
+		.all()
 	const projectByKey = new Map<string, string | null>()
 	for (const p of deleted)
 		if (p.checkpointKey && REDOABLE.test(p.checkpointKey)) projectByKey.set(p.checkpointKey, p.themeProjectId)
 	if (projectByKey.size === 0) return []
 
-	const live = await prisma.post.findMany({
-		select: { checkpointKey: true },
-		where: { checkpointKey: { in: [...projectByKey.keys()] }, deletedAt: null, userId },
-	})
+	const live = await db.orm.public.Post.where({ deletedAt: null, userId })
+		.where(post => post.checkpointKey.in([...projectByKey.keys()]))
+		.select("checkpointKey")
+		.all()
 	for (const p of live) if (p.checkpointKey) projectByKey.delete(p.checkpointKey)
 
 	const owed: string[] = []

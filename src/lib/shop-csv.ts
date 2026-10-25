@@ -1,6 +1,6 @@
 import type { z } from "zod"
-import { ShopItemCategory } from "@/app/generated/prisma/enums"
 import { parseCsvRecords } from "@/lib/csv"
+import { ShopItemCategory } from "@/lib/enums"
 import { shopItemSchema } from "@/lib/schemas/admin"
 
 /**

@@ -1,4 +1,4 @@
-import type { PhaseStatus } from "@/app/generated/prisma/enums"
+import type { PhaseStatus } from "@/lib/enums"
 import type { ProjectThumbnail } from "@/lib/thumbnail"
 
 export type Phase = "design" | "build"

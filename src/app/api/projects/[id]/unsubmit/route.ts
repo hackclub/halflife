@@ -6,7 +6,7 @@ import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { unsubmitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
 import { unsubmitPhase } from "@/lib/submissions"
@@ -50,7 +50,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	// The week's box is recomputed, not just cleared: withdrawing the only hand-in for a week unticks `ProjectSubmitted`, while an older hand-in standing behind it keeps it ticked. Best-effort like the submit tick – the hourly sync heals whatever this misses.
 	after(async () => {
 		try {
-			const project = await prisma.themeProject.findUnique({ select: { theme: true }, where: { id } })
+			const project = await db.orm.public.ThemeProject.whereUnique({ id }).select("theme").first()
 			if (project) await syncLoopsWeekSubmitted(gate.user.id, scheduledWeekFor(project.theme, parsed.data.phase))
 		} catch (err) {
 			console.error("[unsubmit] loops submitted tick failed:", err)

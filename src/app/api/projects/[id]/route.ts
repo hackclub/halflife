@@ -1,13 +1,14 @@
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { and } from "@prisma/orm-postgres/orm-client"
 import { markProjectCreated, recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { starterProjectsFor } from "@/lib/config/onboarding"
 import { getThemeDef } from "@/lib/config/program"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import {
 	FROZEN_PHASE_STATUSES,
 	getSubmissionAccess,
@@ -15,9 +16,11 @@ import {
 	SUBMISSIONS_CLOSED_MESSAGE,
 } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
+import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { projectUpdateSchema } from "@/lib/schemas/project"
 import { recomputeStreak } from "@/lib/streak"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 interface Params {
@@ -29,35 +32,73 @@ export const dynamic = "force-dynamic"
 export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
-	const project = await prisma.themeProject.findFirst({
-		include: {
-			hackatimeLinks: true,
-			submissions: { orderBy: { createdAt: "desc" }, take: 10 },
-			workSessions: {
-				include: { media: true, timelapses: true },
-				orderBy: { createdAt: "desc" },
-				where: { deletedAt: null },
-			},
-		},
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const row = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.include("hackatimeLinks")
+		.include("submissions", submissions => submissions.orderBy(s => s.createdAt.desc()).limit(10))
+		.include("workSessions", sessions =>
+			sessions
+				.where({ deletedAt: null })
+				.orderBy(session => session.createdAt.desc())
+				.include("media")
+				.include("timelapses"),
+		)
+		.first()
 	// 404 rather than 403 for someone else's project: don't leak the ID space.
-	if (!project) return fail("NOT_FOUND", "Project not found")
+	if (!row) return fail("NOT_FOUND", "Project not found")
 
 	const [design, build] = await Promise.all([
-		getHoursBreakdown(project.id, Phase.DESIGN),
-		getHoursBreakdown(project.id, Phase.BUILD),
+		getHoursBreakdown(row.id, Phase.DESIGN),
+		getHoursBreakdown(row.id, Phase.BUILD),
 	])
+
+	// Prisma 8 reads timestamps as PostgreSQL text; the page works in Dates, so parse them at the boundary.
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	const parseList = <T extends { createdAt: string }>(
+		rows: readonly T[],
+	): (Omit<T, "createdAt"> & { createdAt: Date })[] =>
+		rows.map(r => withFields(r, { createdAt: parseDbTimestamp(r.createdAt) }))
+	const project = withFields(row, {
+		approvedHoursAt: parseNullable(row.approvedHoursAt),
+		buildReviewedAt: parseNullable(row.buildReviewedAt),
+		createdAt: parseDbTimestamp(row.createdAt),
+		deletedAt: parseNullable(row.deletedAt),
+		designApprovedHoursAt: parseNullable(row.designApprovedHoursAt),
+		designReviewedAt: parseNullable(row.designReviewedAt),
+		grantEmittedAt: parseNullable(row.grantEmittedAt),
+		hackatimeLinks: row.hackatimeLinks.map(link =>
+			withFields(link, {
+				cachedAt: parseNullable(link.cachedAt),
+				createdAt: parseDbTimestamp(link.createdAt),
+				reviewedAt: parseNullable(link.reviewedAt),
+				spansFetchedAt: parseNullable(link.spansFetchedAt),
+			}),
+		),
+		namedAt: parseNullable(row.namedAt),
+		submissionExtensionUntil: parseNullable(row.submissionExtensionUntil),
+		submissions: parseList(row.submissions).map(submission =>
+			withFields(submission, { resolvedAt: parseNullable(submission.resolvedAt) }),
+		),
+		updatedAt: parseDbTimestamp(row.updatedAt),
+		workSessions: parseList(row.workSessions).map(session =>
+			withFields(session, {
+				deletedAt: parseNullable(session.deletedAt),
+				media: parseList(session.media).map(m => withFields(m, { url: publicUrlFor(m.objectKey) })),
+				reviewedAt: parseNullable(session.reviewedAt),
+				timelapses: session.timelapses.map(timelapse =>
+					withFields(timelapse, {
+						createdAt: parseDbTimestamp(timelapse.createdAt),
+						recordedAt: parseNullable(timelapse.recordedAt),
+					}),
+				),
+			}),
+		),
+	})
 
 	return ok({
 		hours: { build, design },
 		project: {
 			...project,
 			coverImageUrl: publicUrlFor(project.coverImageKey),
-			workSessions: project.workSessions.map(s => ({
-				...s,
-				media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
-			})),
 		},
 		theme: getThemeDef(project.theme),
 	})
@@ -73,9 +114,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	// A patch with no fields in it has nothing to write, and an update with nothing in it is not something the database can apply.
 	if (Object.keys(data).length === 0) return fail("VALIDATION_FAILED", "Nothing to change")
 
-	const project = await prisma.themeProject.findFirst({
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id }).first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	const access = await getSubmissionAccess(gate.user.id, id)
@@ -118,9 +157,10 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 		return fail("VALIDATION_FAILED", "Upload the cover image first")
 
 	// Conditional on the state just checked, so a submit or a decision that lands between the read above and this write is not edited out from under the reviewer reading it. It carries the ownership check and the live-row check with it, so a project that was deleted or handed to somebody else in the meantime is not written either.
-	const updated = await prisma.$transaction(async tx => {
-		const claimed = await tx.themeProject.updateMany({
-			data: {
+	const updated = await db.transaction(async tx => {
+		const claimed = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+			.where(row => and(row.buildStatus.notIn(FROZEN_PHASE_STATUSES), row.designStatus.notIn(FROZEN_PHASE_STATUSES)))
+			.updateAndCount({
 				...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
 				...(data.description !== undefined ? { description: sanitizeOptional(data.description) } : {}),
 				...(data.githubRepo !== undefined ? { githubRepo: data.githubRepo } : {}),
@@ -136,17 +176,9 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 							})),
 						}
 					: {}),
-			},
-			where: {
-				buildStatus: { notIn: FROZEN_PHASE_STATUSES },
-				deletedAt: null,
-				designStatus: { notIn: FROZEN_PHASE_STATUSES },
-				id,
-				userId: gate.user.id,
-			},
-		})
-		if (claimed.count !== 1) return null
-		return tx.themeProject.findUnique({ where: { id } })
+			})
+		if (claimed !== 1) return null
+		return tx.orm.public.ThemeProject.whereUnique({ id }).first()
 	})
 	if (!updated) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
 
@@ -174,48 +206,52 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
-	const project = await prisma.themeProject.findFirst({
-		select: { buildStatus: true, designStatus: true, grantEmittedAt: true, id: true, theme: true, title: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("buildStatus", "designStatus", "grantEmittedAt", "id", "theme", "title")
+		.first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
-	const blocked = await deleteBlockReason(project)
+	const blocked = await deleteBlockReason({
+		...project,
+		grantEmittedAt: project.grantEmittedAt ? parseDbTimestamp(project.grantEmittedAt) : null,
+	})
 	if (blocked) return fail("PHASE_LOCKED", blocked)
 
 	// Its entries stop counting with it, so the weeks they fell in are recounted.
-	const weeks = await prisma.workSession.findMany({
-		distinct: ["weekNumber"],
-		select: { weekNumber: true },
-		where: { deletedAt: null, themeProjectId: id },
-	})
+	const weeks = await db.orm.public.WorkSession.where({ deletedAt: null, themeProjectId: id })
+		.distinct("weekNumber")
+		.select("weekNumber")
+		.all()
 
-	const deleted = await prisma.$transaction(async tx => {
+	const deleted = await db.transaction(async tx => {
 		// Re-read the project and its block status inside the transaction, so a grant, top-up, or dispute committing in the window is caught before the soft delete rather than after.
-		const fresh = await tx.themeProject.findFirst({
-			select: { buildStatus: true, designStatus: true, grantEmittedAt: true, id: true },
-			where: { deletedAt: null, id, userId: gate.user.id },
-		})
+		const fresh = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+			.select("buildStatus", "designStatus", "grantEmittedAt", "id")
+			.first()
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
-		const stillBlocked = await deleteBlockReason(fresh, tx)
+		const stillBlocked = await deleteBlockReason(
+			{
+				...fresh,
+				grantEmittedAt: fresh.grantEmittedAt ? parseDbTimestamp(fresh.grantEmittedAt) : null,
+			},
+			tx,
+		)
 		if (stillBlocked) throw new HttpError("PHASE_LOCKED", stillBlocked)
 
 		// Conditional on the statuses just checked, so a submit that lands between the check and here is not deleted out from under its reviewer.
-		const now = new Date()
-		const { count } = await tx.themeProject.updateMany({
-			data: { deletedAt: now, deletedById: gate.user.id },
-			where: {
-				buildStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
-				deletedAt: null,
-				designStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
-				id,
-			},
-		})
+		const nowText = formatDbTimestamp(new Date())
+		const count = await tx.orm.public.ThemeProject.where({ deletedAt: null, id })
+			.where(row =>
+				and(
+					row.buildStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
+					row.designStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
+				),
+			)
+			.updateAndCount({ deletedAt: nowText, deletedById: gate.user.id })
 		if (count > 0) {
 			// Its sessions go with it, so their timelapses are free to back a new project's entries (the taken-check ignores deleted sessions) and no query that only filters sessions on `deletedAt` keeps counting them.
-			await tx.workSession.updateMany({
-				data: { deletedAt: now },
-				where: { deletedAt: null, themeProjectId: id },
+			await tx.orm.public.WorkSession.where({ deletedAt: null, themeProjectId: id }).updateAll({
+				deletedAt: nowText,
 			})
 			// The streak only counts days journalled on live projects.
 			await recomputeStreak(tx, gate.user.id)

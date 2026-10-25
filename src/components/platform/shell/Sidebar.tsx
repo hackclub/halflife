@@ -38,13 +38,10 @@ export function Sidebar({ className }: { className?: string }) {
 
 	return (
 		<div className={cx("flex flex-col gap-5", className)}>
-			{/* The same artwork the landing page leads with, so the platform reads as
-          the place the site sent you. Sized to the rail, not to its own pixels:
-          the file is drawn large, and priority because it is above the fold on
-          every page. */}
+			{/* The same artwork the landing page leads with, so the platform reads as the place the site sent you. Sized to the rail, not to its own pixels: the file is drawn large, and priority because it is above the fold on every page. */}
 			<Link
 				aria-label="Half Life home"
-				className="block w-[176px] shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px xl:w-[200px]"
+				className="block w-44 shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px xl:w-50"
 				href={PLATFORM_HOME}
 			>
 				<Image
@@ -82,9 +79,7 @@ export function Sidebar({ className }: { className?: string }) {
 				</nav>
 			</Panel>
 
-			{/* From xl up the goal rides the status rail on the right, where the
-          Doomscroller lives. Below that there is no second rail, so it stays
-          here – one instance is on screen at a time either way. */}
+			{/* From xl up the goal rides the status rail on the right, where the Doomscroller lives. Below that there is no second rail, so it stays here – one instance is on screen at a time either way. */}
 			<GoalTracker className="xl:hidden" />
 
 			{/* The one number that only grows, kept above the account card. */}

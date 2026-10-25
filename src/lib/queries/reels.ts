@@ -1,9 +1,10 @@
 import "server-only"
-import { Phase, type PhaseStatus, PostStatus, type PublicReelPlatform } from "@/app/generated/prisma/enums"
 import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
 import { progressReelHours } from "@/lib/curriculum"
-import prisma from "@/lib/prisma"
+import { Phase, type PhaseStatus, PostStatus, type PublicReelPlatform } from "@/lib/enums"
+import db from "@/lib/prisma8"
 import { reelLockReason } from "@/lib/reel-gate"
+import { parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
@@ -67,28 +68,17 @@ function titleFor(
 }
 
 export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
-	const posts = await prisma.post.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		select: {
-			caption: true,
-			checkpointKey: true,
-			createdAt: true,
-			id: true,
-			kind: true,
-			objectKey: true,
-			publicReels: {
-				orderBy: { postedAt: "asc" },
-				select: { id: true, platform: true, postedAt: true, url: true },
-			},
-			publishedAt: true,
-			status: true,
-			themeProject: {
-				select: { buildStatus: true, deletedAt: true, id: true, theme: true, title: true, warmupPhase: true },
-			},
-			thumbnailKey: true,
-		},
-		where: { deletedAt: null, status: { not: PostStatus.REMOVED }, userId },
-	})
+	const posts = await db.orm.public.Post.where({ deletedAt: null, userId })
+		.where(post => post.status.neq(PostStatus.REMOVED))
+		.orderBy([post => post.createdAt.desc(), post => post.id.desc()])
+		.select("caption", "checkpointKey", "createdAt", "id", "kind", "objectKey", "publishedAt", "status", "thumbnailKey")
+		.include("publicReels", reels =>
+			reels.select("id", "platform", "postedAt", "url").orderBy(link => link.postedAt.asc()),
+		)
+		.include("themeProject", project =>
+			project.select("buildStatus", "deletedAt", "id", "theme", "title", "warmupPhase"),
+		)
+		.all()
 
 	// How many live reels each checkpoint has, so a second one can go without reopening anything. And each checkpoint week's lock, asked once per week.
 	const perKey = new Map<string, number>()
@@ -118,14 +108,14 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 			})
 		}
 		groups.get(key)?.reels.push({
-			at: (p.publishedAt ?? p.createdAt).getTime(),
+			at: parseDbTimestamp(p.publishedAt ?? p.createdAt).getTime(),
 			caption: p.caption,
 			deleteLocked: p.checkpointKey ? await lockFor(p.themeProject?.id ?? null, p.checkpointKey) : null,
 			id: p.id,
 			links: p.publicReels.map(l => ({
 				id: l.id,
 				platform: l.platform,
-				postedAt: l.postedAt.getTime(),
+				postedAt: parseDbTimestamp(l.postedAt).getTime(),
 				url: l.url,
 			})),
 			reopensCheckpoint:

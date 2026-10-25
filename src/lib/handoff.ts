@@ -2,7 +2,8 @@ import "server-only"
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 import { HttpError } from "@/lib/errors"
 import { POST_UPLOAD_FOLDER } from "@/lib/feed"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import {
 	buildObjectKey,
 	deleteObject,
@@ -63,18 +64,19 @@ export async function createHandoff(userId: string): Promise<NewHandoff> {
 	const token = randomBytes(32).toString("base64url")
 	const expiresAt = new Date(Date.now() + HANDOFF_TTL_MINUTES * 60_000)
 
-	const handoff = await prisma.$transaction(async tx => {
-		await tx.uploadHandoff.updateMany({
-			data: { expiresAt: new Date() },
-			where: { expiresAt: { gt: new Date() }, usedAt: null, userId },
-		})
-		return tx.uploadHandoff.create({
-			data: { expiresAt, tokenHash: hashToken(token), userId },
-			select: { expiresAt: true, id: true },
+	const nowText = formatDbTimestamp(new Date())
+	const handoff = await db.transaction(async tx => {
+		await tx.orm.public.UploadHandoff.where({ usedAt: null, userId })
+			.where(row => row.expiresAt.gt(nowText))
+			.updateAndCount({ expiresAt: nowText })
+		return tx.orm.public.UploadHandoff.create({
+			expiresAt: formatDbTimestamp(expiresAt),
+			tokenHash: hashToken(token),
+			userId,
 		})
 	})
 
-	return { expiresAt: handoff.expiresAt, id: handoff.id, token }
+	return { expiresAt: parseDbTimestamp(handoff.expiresAt), id: handoff.id, token }
 }
 
 export interface HandoffTarget {
@@ -92,20 +94,20 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	if (!token) return null
 	const tokenHash = hashToken(token)
 
-	const row = await prisma.uploadHandoff.findUnique({
-		select: { expiresAt: true, id: true, tokenHash: true, usedAt: true, userId: true },
-		where: { tokenHash },
-	})
+	const row = await db.orm.public.UploadHandoff.where({ tokenHash })
+		.select("expiresAt", "id", "tokenHash", "usedAt", "userId")
+		.first()
 	if (!row) return null
 
 	const a = Buffer.from(row.tokenHash, "hex")
 	const b = Buffer.from(tokenHash, "hex")
 	if (a.length !== b.length || !timingSafeEqual(a, b)) return null
 
+	const expiresAt = parseDbTimestamp(row.expiresAt)
 	if (row.usedAt) return null
-	if (row.expiresAt <= new Date()) return null
+	if (expiresAt <= new Date()) return null
 
-	return { expiresAt: row.expiresAt, id: row.id, userId: row.userId }
+	return { expiresAt, id: row.id, userId: row.userId }
 }
 
 export interface HandoffUploadResult {
@@ -178,20 +180,20 @@ export async function completeHandoffObject(
 	const verified = await verifyStoredUpload(file.objectKey, "video", file.contentType, HANDOFF_MAX_UPLOAD_BYTES)
 
 	// Claim after the bytes are known good, but before recording them. Two phones on one QR both get this far; only one wins the guarded update, and the loser's own copy is removed.
-	const claimed = await prisma.uploadHandoff.updateMany({
-		data: { usedAt: new Date() },
-		where: { expiresAt: { gt: new Date() }, id: target.id, usedAt: null },
-	})
-	if (claimed.count !== 1) {
+	const claimed = await db.orm.public.UploadHandoff.where({ id: target.id, usedAt: null })
+		.where(row => row.expiresAt.gt(formatDbTimestamp(new Date())))
+		.updateAndCount({ usedAt: formatDbTimestamp(new Date()) })
+	if (claimed !== 1) {
 		await deleteObject(file.objectKey).catch(err =>
 			console.error("[handoff] could not remove a losing upload:", file.objectKey, err),
 		)
 		throw new HttpError("CONFLICT", "This link has already been used")
 	}
 
-	await prisma.uploadHandoff.update({
-		data: { byteSize: verified.size, contentType: file.contentType, objectKey: file.objectKey },
-		where: { id: target.id },
+	await db.orm.public.UploadHandoff.where({ id: target.id }).update({
+		byteSize: verified.size,
+		contentType: file.contentType,
+		objectKey: file.objectKey,
 	})
 
 	return { objectKey: file.objectKey }
@@ -217,11 +219,11 @@ export async function completeHandoff(
 	if (!isVideoBytes(bytes)) throw new HttpError("VALIDATION_FAILED", "That file does not look like a video")
 
 	// Claim first. Losing this race means another phone already used the code.
-	const claimed = await prisma.uploadHandoff.updateMany({
-		data: { usedAt: new Date() },
-		where: { expiresAt: { gt: new Date() }, id: target.id, usedAt: null },
-	})
-	if (claimed.count !== 1) throw new HttpError("CONFLICT", "This link has already been used")
+	const nowText = formatDbTimestamp(new Date())
+	const claimed = await db.orm.public.UploadHandoff.where({ id: target.id, usedAt: null })
+		.where(row => row.expiresAt.gt(nowText))
+		.updateAndCount({ usedAt: nowText })
+	if (claimed !== 1) throw new HttpError("CONFLICT", "This link has already been used")
 
 	// The owner comes from the handoff row, never from the request, so a token can only ever write into the prefix of the person who generated it.
 	const key = buildObjectKey(target.userId, POST_UPLOAD_FOLDER, check.ext)
@@ -229,9 +231,10 @@ export async function completeHandoff(
 	// A failed upload is deliberately not retried, and not re-armed either: letting this re-arm the code gave anyone holding a photo of the QR unlimited attempts past the first claim, since every R2 failure freed the code again. Minting a fresh code is one click on the desktop, so a failed upload asks for a new one.
 	await putObject(key, bytes, file.type)
 
-	await prisma.uploadHandoff.update({
-		data: { byteSize: file.size, contentType: file.type, objectKey: key },
-		where: { id: target.id },
+	await db.orm.public.UploadHandoff.where({ id: target.id }).update({
+		byteSize: file.size,
+		contentType: file.type,
+		objectKey: key,
 	})
 
 	return { objectKey: key }
@@ -244,10 +247,9 @@ export type HandoffStatus =
 
 /** What the desktop polls. Scoped to the owner, so ids are not guessable keys. */
 export async function getHandoffStatus(id: string, userId: string): Promise<HandoffStatus | null> {
-	const row = await prisma.uploadHandoff.findFirst({
-		select: { contentType: true, expiresAt: true, objectKey: true, usedAt: true },
-		where: { id, userId },
-	})
+	const row = await db.orm.public.UploadHandoff.where({ id, userId })
+		.select("contentType", "expiresAt", "objectKey", "usedAt")
+		.first()
 	if (!row) return null
 
 	if (row.objectKey)
@@ -260,15 +262,15 @@ export async function getHandoffStatus(id: string, userId: string): Promise<Hand
 		}
 
 	// Expiry only ends the wait while nothing has been uploaded; a video that landed a second before the deadline is still the user's.
-	if (row.expiresAt <= new Date()) return { state: "expired" }
-	return { expiresAt: row.expiresAt, state: "waiting" }
+	const expiresAt = parseDbTimestamp(row.expiresAt)
+	if (expiresAt <= new Date()) return { state: "expired" }
+	return { expiresAt, state: "waiting" }
 }
 
 /** Mark a handoff as picked up, so the desktop stops polling it. Returns whether a row was actually claimed. */
 export async function claimHandoff(id: string, userId: string): Promise<boolean> {
-	const result = await prisma.uploadHandoff.updateMany({
-		data: { claimedAt: new Date() },
-		where: { id, userId },
+	const claimed = await db.orm.public.UploadHandoff.where({ id, userId }).updateAndCount({
+		claimedAt: formatDbTimestamp(new Date()),
 	})
-	return result.count === 1
+	return claimed === 1
 }

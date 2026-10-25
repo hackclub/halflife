@@ -104,7 +104,7 @@ export function StarterProjectCard({
 			art={
 				<StarterRender
 					// Stacked beside another choice, the tile is a fixed height so the two line up whatever shape each picture is.
-					className={stacked ? "h-[140px] w-full" : "aspect-[720/589] w-full max-w-[220px]"}
+					className={stacked ? "h-35 w-full" : "aspect-[720/589] w-full max-w-55"}
 					id={starter.id}
 					sizes="220px"
 				/>

@@ -4,6 +4,7 @@
  * Two things are true at once, which is why every field carries both an id and a name:
  *
  * - Reads and writes use field IDs, which survive an ops person renaming a column. Siege does this and says why: "robust to column renames". Stasis writes by name, so a rename silently 422s inside a fire-and-forget side effect and nobody notices until payout.
+ *
  * - filterByFormula can only reference fields by NAME, so the name has to be here too. `formulaRef()` is the only sanctioned way to build one.
  *
  * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `bun scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
@@ -112,20 +113,11 @@ export const YSWS_REVIEW_STATUS = {
 } as const
 
 /**
- * The two columns a review decision writes alongside the status, so the Loops
- * workflow that reads the contact has the project this decision is about.
+ * The two columns a review decision writes alongside the status, so the Loops workflow that reads the contact has the project this decision is about.
  *
- * The email-tools poller only forwards a `Loops - …` field when its value
- * changed on that row. The row's normal project name and week were written at
- * submit, so a decision on an older project changes only status and notes – the
- * poller never re-sends the name, and the contact keeps whatever the maker
- * submitted most recently. These `Override` columns are separate fields, so
- * writing them in the decision changes their values and the poller forwards
- * them; email-tools maps the `Loops - Override - ` prefix onto the same Loops
- * property with its `override` strategy.
+ * The email-tools poller only forwards a `Loops - …` field when its value changed on that row. The row's normal project name and week were written at submit, so a decision on an older project changes only status and notes – the poller never re-sends the name, and the contact keeps whatever the maker submitted most recently. These `Override` columns are separate fields, so writing them in the decision changes their values and the poller forwards them; email-tools maps the `Loops - Override - ` prefix onto the same Loops property with its `override` strategy.
  *
- * They are plain single-line text fields, because the app does not know their
- * Airtable field ids and writes them by name (see `syncReviewDecisionToYsws`).
+ * They are plain single-line text fields, because the app does not know their Airtable field ids and writes them by name (see `syncReviewDecisionToYsws`).
  */
 export const LOOPS_REVIEW_OVERRIDE = {
 	projectName: "Loops - Override - halfLifeProjectName",

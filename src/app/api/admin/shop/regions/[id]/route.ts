@@ -2,7 +2,7 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { shopRegionUpdateSchema } from "@/lib/schemas/admin"
 
 export const dynamic = "force-dynamic"
@@ -20,10 +20,11 @@ export const PATCH = withPermission(
 		if (parsed.error) return parsed.error
 		const { data } = parsed
 
-		const before = await prisma.shopRegion.findUnique({ where: { id } })
+		const before = await db.orm.public.ShopRegion.whereUnique({ id }).first()
 		if (!before) return fail("NOT_FOUND", "Region not found")
 
-		const region = await prisma.shopRegion.update({ data, where: { id } })
+		const region = await db.orm.public.ShopRegion.where({ id }).update(data)
+		if (!region) return fail("NOT_FOUND", "Region not found")
 
 		await logAudit({
 			action: AuditAction.ADMIN_UPDATE_SHOP_REGION,

@@ -539,7 +539,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	if (!project || !data) {
 		const missing = hydrated || !data
 		return (
-			<div className="mx-auto w-full max-w-[960px] px-4 pt-6 sm:px-8">
+			<div className="mx-auto w-full max-w-240 px-4 pt-6 sm:px-8">
 				<BackLink />
 				<Panel className="mt-6 bg-paper px-6 py-14 text-center" radius={20} tone="line">
 					<p className="text-[1.05rem] font-extrabold text-navy">{missing ? "No such project" : "Loading…"}</p>
@@ -574,18 +574,14 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	const overlapUnchecked = overlapUncheckedWeek(project.weekId) || overlapUncheckedWeek(buildWeekId)
 
 	return (
-		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
+		<div className="mx-auto w-full max-w-240 px-4 pt-6 pb-10 sm:px-8">
 			<BackLink />
 
 			{/* ---------- what a decision asks for, first ---------- */}
 			<DecisionNotice phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
 
 			{/* ---------- the project itself ---------- */}
-			{/* Sized by its own width, not the viewport's: the rails either side of
-          the page take a different share at every breakpoint, and the header
-          only has room for two columns once it is wide enough for both. Below
-          that the thumbnail leads as a banner, and it is first in the DOM so
-          focus order agrees with what is seen. */}
+			{/* Sized by its own width, not the viewport's: the rails either side of the page take a different share at every breakpoint, and the header only has room for two columns once it is wide enough for both. Below that the thumbnail leads as a banner, and it is first in the DOM so focus order agrees with what is seen. */}
 			<Panel className="@container mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6" radius={22} tone="line">
 				<div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">
 					<CoverImage

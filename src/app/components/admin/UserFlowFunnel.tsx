@@ -88,9 +88,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 						clipPath: `polygon(${(100 - prevWidth) / 2}% 0, ${(100 + prevWidth) / 2}% 0, ${(100 + bottomWidth) / 2}% 100%, ${(100 - bottomWidth) / 2}% 100%)`,
 					}}
 				/>
-				{/* The headcount rides inside the band, white on a dark pill so a
-                        thin tail's number stays legible even where it overflows
-                        the band onto the panel. */}
+				{/* The headcount rides inside the band, white on a dark pill so a thin tail's number stays legible even where it overflows the band onto the panel. */}
 				<span
 					style={{
 						display: "grid",

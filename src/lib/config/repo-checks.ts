@@ -1,4 +1,4 @@
-import { Theme } from "@/app/generated/prisma/enums"
+import { Theme } from "@/lib/enums"
 
 /**
  * What a project's repo has to contain before its week can be handed in.
@@ -6,8 +6,11 @@ import { Theme } from "@/app/generated/prisma/enums"
  * Ported from Hack Club Stasis's pre-submission checks, with one difference: Stasis asks the maker what kind of project it is, and Half Life already knows, because every week has a theme. So the file requirements are keyed by theme here rather than ticked on a form.
  *
  * Every theme needs a public repo with a README that has enough text and photos in it – that is what a reviewer opens first. On top of that, each theme names:
+ *
  * - `required`: file kinds that block submitting when none are found. These are the files the week exists to produce.
+ *
  * - `recommended`: file kinds worth having, reported to the maker and the reviewer but never blocking.
+ *
  * - `bomTable`: the README should carry a BOM table a reviewer can price. `minRows` is 2 for a board plus its parts, 1 for a printed material or part. This is a warning, not a submit gate.
  *
  * Changing what a theme asks for is this table and nothing else.
@@ -26,7 +29,9 @@ export const BOM_CSV_PATTERN = /(^|\/)[^/]*bom[^/]*\.csv$/i
  * EasyEDA – and JLCPCB, which is the same editor – export a design as JSON, and for plenty of makers that export is the only copy of the board in the repo. But `.json` is also every package manifest, lockfile and tsconfig in every firmware repo, so the extension on its own proves nothing: a repo whose "PCB design file" is its `package.json` has not designed a board. The file's name cannot settle it either, since a design may be called `board.json`, `main.json` or anything else. So a `.json` counts only once it has been read and has said what it is.
  *
  * Both formats name the document in the opening, which is all that is read – a design can run to megabytes of compressed shape data:
+ *
  * - Standard edition writes one JSON document whose `head` carries a numeric `docType`: 1 schematic, 3 board, 5 a multi-sheet schematic project.
+ *
  * - Pro edition writes a log of `||`-joined records whose header record carries a named one: `PCB`, `SCH`, `SCH_PAGE`, `BOARD`.
  *
  * Library types are deliberately absent – a footprint, symbol or device library is not a design of anything – and Standard's bare numbers, which could belong to anything, are only accepted alongside `editorVersion` or `canvas`, which nothing else writes there.

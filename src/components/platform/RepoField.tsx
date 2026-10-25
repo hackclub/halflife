@@ -12,9 +12,7 @@ import type { Project } from "@/lib/types"
 /**
  * The repo field in a project-creation form. Optional on purpose: a first board often has no repo until it has a schematic worth pushing, and the link can be added from the project page whenever it exists.
  *
- * Checked on blur rather than per keystroke, so half a URL is not told off
- * while it is still being typed. The form reads the same check back through
- * `repoIsValid` to hold its own submit button.
+ * Checked on blur rather than per keystroke, so half a URL is not told off while it is still being typed. The form reads the same check back through `repoIsValid` to hold its own submit button.
  */
 export function RepoInput({ value, onChange, id }: { value: string; onChange(value: string): void; id: string }) {
 	const [touched, setTouched] = useState(false)

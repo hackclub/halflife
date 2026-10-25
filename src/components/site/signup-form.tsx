@@ -116,27 +116,16 @@ export default function SignupForm({
 
 	return (
 		<div className={className} style={{ ...style, fontSize }}>
-			{/* The box: the promise and the field it is asking you to fill, grouped,
-          with the eligibility note left outside it below.
+			{/* The box: the promise and the field it is asking you to fill, grouped, with the eligibility note left outside it below.
 
-          Its ground is the painted swash rather than flat ink. The tagline is
-          paper and reads 6.95:1 on it at the worst pixel the painting can put
-          behind it, against the 3.50:1 it had bare on the hero plate, so the
-          box is still the better ground for the line – and the field's own
-          cyan edge reads 7.45:1 here where on ink it had 3.71:1, so the one
-          boundary that had to be argued for is now the easy part.
+			  Its ground is the painted swash rather than flat ink. The tagline is paper and reads 6.95:1 on it at the worst pixel the painting can put behind it, against the 3.50:1 it had bare on the hero plate, so the box is still the better ground for the line – and the field's own cyan edge reads 7.45:1 here where on ink it had 3.71:1, so the one boundary that had to be argued for is now the easy part.
 
-          The padding was `pt-[1rem] pb-[1rem] p-[2rem]`, three utilities for one
-          box, and the `p` lost: Tailwind emits it ahead of the two axis rules,
-          so 2rem was only ever the horizontal value and the vertical 1rem was
-          doing the work. It is one declaration now, and both numbers are
-          derived – see `SWASH_INSET_X`.
+			  The padding was `pt-4 pb-4 p-8`, three utilities for one box, and the `p` lost: Tailwind emits it ahead of the two axis rules, so 2rem was only ever the horizontal value and the vertical 1rem was doing the work. It is one declaration now, and both numbers are derived – see `SWASH_INSET_X`.
 
-          `isolate` keeps the swash's negative index inside this box instead of
-          letting it escape to the nearest stacking context and paint behind
-          the hero plate, which is to say behind nothing. */}
+			  `isolate` keeps the swash's negative index inside this box instead of letting it escape to the nearest stacking context and paint behind the hero plate, which is to say behind nothing.
+			 */}
 			<div
-				className={intro ? "relative isolate mb-[1rem]" : ""}
+				className={intro ? "relative isolate mb-4" : ""}
 				style={
 					intro
 						? {
@@ -148,17 +137,10 @@ export default function SignupForm({
 			>
 				{intro ? (
 					<>
-						{/* Decorative: the promise is the sentence over it, and a brush
-                mark carries nothing a reader needs. Through `next/image` rather
-                than as a CSS `background-image` so the 487 KB PNG is served
-                resized and re-encoded on the hero, where it would otherwise
-                land whole in the middle of the largest paint on the page.
+						{/* Decorative: the promise is the sentence over it, and a brush mark carries nothing a reader needs. Through `next/image` rather than as a CSS `background-image` so the 487 KB PNG is served resized and re-encoded on the hero, where it would otherwise land whole in the middle of the largest paint on the page.
 
-                `object-fill` is the deliberate one: `cover` would crop the ends
-                that are the only thing distinguishing this from a rectangle,
-                `contain` would letterbox them, and the interior is flat colour,
-                so stretching it to a box that runs 6.8:1 in the stage and 3:1
-                on a phone costs nothing but the angle of the two tapers. */}
+						  `object-fill` is the deliberate one: `cover` would crop the ends that are the only thing distinguishing this from a rectangle, `contain` would letterbox them, and the interior is flat colour, so stretching it to a box that runs 6.8:1 in the stage and 3:1 on a phone costs nothing but the angle of the two tapers.
+						 */}
 						<Image
 							alt=""
 							aria-hidden
@@ -168,34 +150,21 @@ export default function SignupForm({
 							sizes="(min-width: 1180px) 1110px, 100vw"
 							src={brushstroke}
 						/>
-						{/* The 0.7em that separates the promise from the field. It was
-                `mb-[0.7em]` and generated no rule at all, so the two were flush:
-                the sentence sat directly on the slot it is asking you to
-                fill. */}
+						{/* The 0.7em that separates the promise from the field. It was `mb-[0.7em]` and generated no rule at all, so the two were flush: the sentence sat directly on the slot it is asking you to fill. */}
 						<div style={{ marginBottom: "0.7em" }}>{intro}</div>
 					</>
 				) : null}
 
-				{/* The row is the positioning context for the confirmation plate, so
-            the plate is exactly the field's footprint and nothing below it ever
-            moves. overflow-hidden keeps the wipe's cut edge crisp. */}
+				{/* The row is the positioning context for the confirmation plate, so the plate is exactly the field's footprint and nothing below it ever moves. overflow-hidden keeps the wipe's cut edge crisp. */}
 				<div className="relative overflow-hidden">
 					<form className="flex w-full" noValidate onSubmit={onSubmit}>
 						<label className="sr-only" htmlFor={id}>
 							email address
 						</label>
-						{/* The field is a slot cut into the hero plate, not a control
-                sitting on it: ink ground, one soft cyan edge, and an input that
-                carries no surface of its own – no background, no border, no ring
-                of its own, because the slot is the control. The cyan caret is
-                the only accent, and it is only there while someone is typing.
+						{/* The field is a slot cut into the hero plate, not a control sitting on it: ink ground, one soft cyan edge, and an input that carries no surface of its own – no background, no border, no ring of its own, because the slot is the control. The cyan caret is the only accent, and it is only there while someone is typing.
 
-                It briefly also carried the image slot's registration ticks, its
-                measured grid and an uppercase legend. At 33px tall none of that
-                resolved: the grid ran three cells deep and the ticks were 8px
-                specks, so it read as detail for its own sake rather than as an
-                instrument. One surface, one boundary, one accent does the job
-                the five of them were failing to. */}
+						  It briefly also carried the image slot's registration ticks, its measured grid and an uppercase legend. At 33px tall none of that resolved: the grid ran three cells deep and the ticks were 8px specks, so it read as detail for its own sake rather than as an instrument. One surface, one boundary, one accent does the job the five of them were failing to.
+						 */}
 						<div
 							className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${pending ? "opacity-70" : ""}`}
 							style={{ height: "2.1667em" }}
@@ -223,39 +192,21 @@ export default function SignupForm({
 								type="email"
 							/>
 
-							{/* Edge at 55% rather than the slot component's 45%: on ink that
-                  is 3.71:1 where 45% is 2.96, and this boundary belongs to a
-                  control rather than to a picture. */}
+							{/* Edge at 55% rather than the slot component's 45%: on ink that is 3.71:1 where 45% is 2.96, and this boundary belongs to a control rather than to a picture. */}
 							<span
 								aria-hidden
 								className="hl-field-edge pointer-events-none absolute inset-0 border-2 border-hl-cyan"
 							/>
 						</div>
 
-						{/* The label, not a glyph. A check meant "done" on a control whose
-                job is "start" – the one place on the page where the tick is
-                honest is the confirmation that wipes over the field once the
-                address is in, which is where it still lives.
+						{/* The label, not a glyph. A check meant "done" on a control whose job is "start" – the one place on the page where the tick is honest is the confirmation that wipes over the field once the address is in, which is where it still lives.
 
-                Padding rather than a fixed 2.8em width, so the button is as
-                wide as its word: 5.34em, which the field gives up out of its
-                own flex-1. At the narrowest phone that leaves the field 163px
-                against the 125px its placeholder needs.
+						  Padding rather than a fixed 2.8em width, so the button is as wide as its word: 5.34em, which the field gives up out of its own flex-1. At the narrowest phone that leaves the field 163px against the 125px its placeholder needs.
 
-                Label and spinner share one grid cell, so the label reserves the
-                button's width even while hidden and a submit cannot resize the
-                row under the pointer. `invisible` and not `opacity-0` because
-                visibility:hidden also takes the label out of the accessibility
-                tree, which lets the pending name be the only one there.
+						  Label and spinner share one grid cell, so the label reserves the button's width even while hidden and a submit cannot resize the row under the pointer. `invisible` and not `opacity-0` because visibility:hidden also takes the label out of the accessibility tree, which lets the pending name be the only one there.
 
-                "sign up/log in" is nearly twice the word "sign up!" was, and on
-                a phone the swash's inset leaves the row about 175px at 320: on one
-                line it left the field 58px there and 108 at 390, against the
-                ~120 "email address" needs. Below 520 it stacks at the slash
-                instead, and the button's side padding tightens to match a word half
-                as wide. Two lines at 0.85em and `leading-none`, plus the gap,
-                are 1.82em of the button's 2.1667, so the row keeps its height
-                and the field gets back the second half's width. */}
+						  "sign up/log in" is nearly twice the word "sign up!" was, and on a phone the swash's inset leaves the row about 175px at 320: on one line it left the field 58px there and 108 at 390, against the ~120 "email address" needs. Below 520 it stacks at the slash instead, and the button's side padding tightens to match a word half as wide. Two lines at 0.85em and `leading-none`, plus the gap, are 1.82em of the button's 2.1667, so the row keeps its height and the field gets back the second half's width.
+						 */}
 						<button
 							className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white active:brightness-95 disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em]"
 							disabled={pending}
@@ -282,19 +233,10 @@ export default function SignupForm({
 				</div>
 			</div>
 
-			{/* One line under the field, carrying the eligibility note until there
-          is an error to carry instead. It was already reserving this height
-          with a transparent space so an error could never move the plate
-          above it, so the note costs no layout and the swap costs none
-          either – the error takes a line that is already lit rather than
-          opening a new one, and the note is what the field is described by
-          the rest of the time.
+			{/* One line under the field, carrying the eligibility note until there is an error to carry instead. It was already reserving this height with a transparent space so an error could never move the plate above it, so the note costs no layout and the swap costs none either – the error takes a line that is already lit rather than opening a new one, and the note is what the field is described by the rest of the time.
 
-          Paper, not the soft tint the placeholder uses: this sits on the
-          hero plate rather than in the field's own ink slot, and the plate is
-          only 60% opaque over the painting – soft paper falls to 3.44:1
-          there, where paper holds 5.28:1. Regular weight against the error's
-          semibold, so the two read apart at a glance as well as by colour. */}
+			  Paper, not the soft tint the placeholder uses: this sits on the hero plate rather than in the field's own ink slot, and the plate is only 60% opaque over the painting – soft paper falls to 3.44:1 there, where paper holds 5.28:1. Regular weight against the error's semibold, so the two read apart at a glance as well as by colour.
+			 */}
 			<p
 				className={`mt-[0.45em] ${status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"}`}
 				id={`${id}-msg`}
@@ -303,9 +245,7 @@ export default function SignupForm({
 				{status === "error" ? message : BRAND.eligibility}
 			</p>
 
-			{/* One persistent live region does all the announcing – "taking you to
-          Hack Club", or what went wrong. It is always in the tree, so every
-          status change is a change to it, and it carries no layout. */}
+			{/* One persistent live region does all the announcing – "taking you to Hack Club", or what went wrong. It is always in the tree, so every status change is a change to it, and it carries no layout. */}
 			<p aria-live="polite" className="sr-only" role="status">
 				{message}
 			</p>

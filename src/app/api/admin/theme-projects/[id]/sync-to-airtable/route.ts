@@ -1,10 +1,10 @@
-import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { fail, ok, parseBody } from "@/lib/api"
+import { PhaseStatus } from "@/lib/enums"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { phaseBodySchema } from "@/lib/schemas/common"
 import { trackSideEffect } from "@/lib/side-effects"
 
@@ -28,10 +28,7 @@ export const POST = withPermission(
 		if (parsed.error) return parsed.error
 
 		// A row is a submission, so only a phase that has been handed in gets one – never a draft, which is how an empty 0-hour row would otherwise appear.
-		const project = await prisma.themeProject.findUnique({
-			select: { buildStatus: true, designStatus: true },
-			where: { id },
-		})
+		const project = await db.orm.public.ThemeProject.whereUnique({ id }).select("buildStatus", "designStatus").first()
 		if (!project) return fail("NOT_FOUND", "Project not found")
 		const status = statusFor(project, parsed.data.phase)
 		if (status === PhaseStatus.draft)

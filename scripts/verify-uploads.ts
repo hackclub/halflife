@@ -110,10 +110,7 @@ async function main() {
 	}
 
 	// ── The direct-upload path ─────────────────────────────────────────────────
-	// Media now goes browser → bucket, so a browser needs the bucket to answer a
-	// CORS preflight for this origin. Without the rule the app still works, but
-	// every upload quietly takes the slow path through the origin, which is where
-	// Cloudflare's ~100 s limit turns a large reel into a 524.
+	// Media now goes browser → bucket, so a browser needs the bucket to answer a CORS preflight for this origin. Without the rule the app still works, but every upload quietly takes the slow path through the origin, which is where Cloudflare's ~100 s limit turns a large reel into a 524.
 	let appOrigin = ""
 	try {
 		appOrigin = new URL(process.env.NEXT_PUBLIC_APP_URL ?? "").origin

@@ -1,7 +1,9 @@
 import "dotenv/config"
-import { PhaseStatus } from "../src/app/generated/prisma/enums"
-import prisma from "../src/lib/prisma"
+import { or } from "@prisma/orm-postgres/orm-client"
+import { PhaseStatus } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
 import { returnExtensionUntil } from "../src/lib/review"
+import { formatDbTimestamp, parseDbTimestamp } from "../src/lib/time"
 
 /**
  * Give the projects already sitting on "needs changes" the week a return now grants.
@@ -28,24 +30,18 @@ function waitingPhases(project: { buildStatus: PhaseStatus; designStatus: PhaseS
 
 async function main() {
 	const now = new Date()
-	const candidates = await prisma.themeProject.findMany({
-		select: {
-			buildStatus: true,
-			designStatus: true,
-			id: true,
-			submissionExtensionUntil: true,
-			theme: true,
-			title: true,
-			user: { select: { email: true } },
-		},
-		where: {
-			deletedAt: null,
-			OR: [{ designStatus: PhaseStatus.update_requested }, { buildStatus: PhaseStatus.update_requested }],
-		},
-	})
+	const candidates = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project =>
+			or(project.designStatus.eq(PhaseStatus.update_requested), project.buildStatus.eq(PhaseStatus.update_requested)),
+		)
+		.select("buildStatus", "designStatus", "id", "submissionExtensionUntil", "theme", "title")
+		.include("user", user => user.select("email"))
+		.all()
 
 	// No extension running (none at all, or one that has already lapsed): the only projects with something to give back.
-	const blocked = candidates.filter(p => !p.submissionExtensionUntil || p.submissionExtensionUntil <= now)
+	const blocked = candidates.filter(
+		p => !p.submissionExtensionUntil || parseDbTimestamp(p.submissionExtensionUntil) <= now,
+	)
 	console.log(`projects on "needs changes": ${candidates.length}`)
 	console.log(`already extended, left alone: ${candidates.length - blocked.length}`)
 	console.log(`to extend by a week: ${blocked.length}`)
@@ -53,9 +49,10 @@ async function main() {
 	if (blocked.length === 0) return
 
 	for (const project of blocked) {
-		const until = returnExtensionUntil(project.submissionExtensionUntil, now)
+		const current = project.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null
+		const until = returnExtensionUntil(current, now)
 		console.log(
-			`${commit ? "extend" : "would extend"} ${project.theme}/${project.title ?? project.id} (${project.user.email}): ${waitingPhases(project).join(", ")} until ${until.toISOString()}`,
+			`${commit ? "extend" : "would extend"} ${project.theme}/${project.title ?? project.id} (${project.user?.email ?? "no owner"}): ${waitingPhases(project).join(", ")} until ${until.toISOString()}`,
 		)
 	}
 
@@ -65,18 +62,16 @@ async function main() {
 	}
 
 	// One statement for the set, and the conditions are re-checked inside it: a project that was resubmitted, or handed a longer extension, between the read above and this write falls out of the `where` rather than being overwritten. Every row lands on the same instant, so a single value is enough.
-	const written = await prisma.themeProject.updateMany({
-		data: { submissionExtensionUntil: returnExtensionUntil(null, now) },
-		where: {
-			AND: [
-				{ OR: [{ designStatus: PhaseStatus.update_requested }, { buildStatus: PhaseStatus.update_requested }] },
-				{ OR: [{ submissionExtensionUntil: null }, { submissionExtensionUntil: { lte: now } }] },
-			],
-			deletedAt: null,
-			id: { in: blocked.map(p => p.id) },
-		},
-	})
-	console.log(`extended ${written.count} project(s)`)
+	const written = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => project.id.in(blocked.map(p => p.id)))
+		.where(project =>
+			or(project.designStatus.eq(PhaseStatus.update_requested), project.buildStatus.eq(PhaseStatus.update_requested)),
+		)
+		.where(project =>
+			or(project.submissionExtensionUntil.isNull(), project.submissionExtensionUntil.lte(formatDbTimestamp(now))),
+		)
+		.updateAndCount({ submissionExtensionUntil: formatDbTimestamp(returnExtensionUntil(null, now)) })
+	console.log(`extended ${written} project(s)`)
 }
 
 try {
@@ -85,5 +80,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

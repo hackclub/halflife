@@ -8,6 +8,7 @@ import "server-only"
  * So this does two things the bare `fetch` did not:
  *
  * - **Retries once or twice** on a transport error or a 5xx, with a short back off. Those are the transient kind, and the second attempt usually lands. A 4xx is NOT retried: it is a real answer, and asking again cannot change it.
+ *
  * - **Bounds the total memory.** A response body is read into memory, so the headers alone are not enough – a huge body would blow up after this returned. The length is capped, and a body over it is treated as a failed attempt, which is what a caller's retry-then-give-up wants.
  *
  * The intent is deliberately narrow: this is for the conversational third-party webhooks and OAuth handshakes where "one dropped packet" is the whole story. It is not a substitute for a client library, and it does not touch the repo reads in lib/github, which have their own retry, backoff and rate-limit lanes.

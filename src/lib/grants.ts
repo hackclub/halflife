@@ -1,7 +1,6 @@
 import "server-only"
-import { Prisma } from "@/app/generated/prisma/client"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit, logAuditTx, requestInfo } from "@/lib/audit"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {
@@ -14,7 +13,8 @@ import {
 	topUpCardGrant,
 	verifiesGrantOwner,
 } from "@/lib/hcb"
-import prisma from "@/lib/prisma"
+import db, { isUniqueViolation } from "@/lib/prisma8"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
  * Send a participant's parts grant to their HCB card grant.
@@ -27,8 +27,7 @@ import prisma from "@/lib/prisma"
  * - the maker's Hack Club identity is verified before anything is sent, because a grant is a reward and an unverified account is not eligible for one;
  * - the row is written before HCB is called and marked `sentAt` after, so a crash or a failed call is recoverable rather than silently retried;
  * - a retry asks HCB what the previous attempt left behind before sending again: a timeout can lose the response after the money moved, and a blind resend pays twice;
- * - a failed attempt records its error and may be retried; one still in flight may not, and a row stranded by a crash is treated as in flight
- *     for a while before it may be.
+ * - a failed attempt records its error and may be retried; one still in flight may not, and a row stranded by a crash is treated as in flight for a while before it may be.
  *
  * Enabling this alongside the Airtable/YSWS payout pipeline would pay twice – that ownership question is a decision, not something this code can settle.
  */
@@ -42,12 +41,10 @@ export const ABANDONED_ATTEMPT_MS = 10 * 60_000
  * The two say very different things, and the admin needs to be told which one happened: the project key means this grant has already been claimed for this project, and the hashid index means the card has already been paid for somebody else.
  */
 function isDuplicateGrantHashid(err: unknown): boolean {
-	if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false
-	if (err.code !== "P2002") return false
-	const target = err.meta?.target
-	if (typeof target === "string") return target.includes("grantHashid")
-	if (Array.isArray(target)) return target.some(field => typeof field === "string" && field.includes("grantHashid"))
-	return false
+	if (!isUniqueViolation(err)) return false
+	// A unique violation carries the constraint that fired, which names the index.
+	const { constraint } = err as { constraint?: unknown }
+	return typeof constraint === "string" && constraint.includes("grantHashid")
 }
 
 /**
@@ -108,10 +105,11 @@ async function markSentWithAudit(input: {
 	// Read here rather than inside the transaction: `headers()` is request-scoped, and the audit row has to carry the address and browser of the admin who made the payment.
 	const { ip, userAgent } = await requestInfo()
 
-	await prisma.$transaction(async tx => {
-		await tx.hcbGrantTopUp.update({
-			data: { sentAt: new Date(), transactionId: input.transactionId },
-			where: { id: input.rowId },
+	await db.transaction(async tx => {
+		const nowText = formatDbTimestamp(new Date())
+		await tx.orm.public.HcbGrantTopUp.where({ id: input.rowId }).update({
+			sentAt: nowText,
+			transactionId: input.transactionId,
 		})
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_SEND_GRANT,
@@ -123,8 +121,7 @@ async function markSentWithAudit(input: {
 				grantHashid: input.grantHashid,
 				// Who HCB says owns the card this went to, so a mismatch is visible in the trail afterwards.
 				ownerEmail: input.ownerEmail,
-				// Whether the card was checked against the maker BEFORE the money moved. False means the
-				// check was turned off for this deployment, not that it passed.
+				// Whether the card was checked against the maker BEFORE the money moved. False means the check was turned off for this deployment, not that it passed.
 				ownerVerified: input.ownerVerified,
 				phase: input.phase,
 				transactionId: input.transactionId,
@@ -162,20 +159,11 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	const hashid = parseGrantHashid(input.grantUrl)
 	if (!hashid) throw new HttpError("VALIDATION_FAILED", "That is not an HCB grant link")
 
-	const project = await prisma.themeProject.findFirst({
-		select: {
-			designStatus: true,
-			grantUsd: true,
-			id: true,
-			theme: true,
-			tier: true,
-			title: true,
-			user: { select: { email: true } },
-			userId: true,
-		},
-		where: { deletedAt: null, id: input.themeProjectId },
-	})
-	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: input.themeProjectId })
+		.select("designStatus", "grantUsd", "id", "theme", "tier", "title", "userId")
+		.include("user", user => user.select("email"))
+		.first()
+	if (!project?.user) throw new HttpError("NOT_FOUND", "Project not found")
 	if (project.designStatus !== PhaseStatus.approved || !project.grantUsd)
 		throw new HttpError("CONFLICT", "A grant is only due on an approved design")
 
@@ -189,13 +177,9 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	const amountCents = Math.round(project.grantUsd * 100)
 	const memo = `[grant] ${project.title || "Half Life project"} – Half Life tier ${project.tier ?? "?"}`
 
-	// Who owns the card is settled before it is paid. The top-up moves the money as it answers, so a grant
-	// that belongs to somebody else cannot be caught afterwards, and the maker's email is the one identity
-	// Half Life and HCB both hold. An owner HCB will not name is not an owner Half Life will pay on trust.
+	// Who owns the card is settled before it is paid. The top-up moves the money as it answers, so a grant that belongs to somebody else cannot be caught afterwards, and the maker's email is the one identity Half Life and HCB both hold. An owner HCB will not name is not an owner Half Life will pay on trust.
 	//
-	// HCB only renders another account's email to a token that may read it, so a deployment whose token cannot
-	// would refuse every grant. `HCB_VERIFY_GRANT_OWNER=false` turns the check off for such a deployment, and
-	// says so in the trail: the payment still happens, and the row records that nobody checked whose card it was.
+	// HCB only renders another account's email to a token that may read it, so a deployment whose token cannot would refuse every grant. `HCB_VERIFY_GRANT_OWNER=false` turns the check off for such a deployment, and says so in the trail: the payment still happens, and the row records that nobody checked whose card it was.
 	const maker = project.user.email.trim().toLowerCase()
 	let ownerVerified = false
 	if (verifiesGrantOwner()) {
@@ -215,30 +199,31 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	// Claim the slot before HCB is called, so two clicks cannot both send.
 	let rowId: string
 	try {
-		const created = await prisma.hcbGrantTopUp.create({
-			data: { ...key, amountCents, createdById: input.adminId, grantHashid: hashid },
-			select: { id: true },
+		const created = await db.orm.public.HcbGrantTopUp.create({
+			...key,
+			amountCents,
+			createdById: input.adminId,
+			grantHashid: hashid,
 		})
 		rowId = created.id
 	} catch (err) {
-		// The card is already paid for another project. That is a different thing from this grant having been
-		// claimed already, and the admin needs to hear which one it is.
+		// The card is already paid for another project. That is a different thing from this grant having been claimed already, and the admin needs to hear which one it is.
 		if (isDuplicateGrantHashid(err))
 			throw new HttpError("CONFLICT", "That HCB card has already been paid for another project")
 
-		const existing = await prisma.hcbGrantTopUp.findUnique({ where: { userId_themeProjectId_phase: key } })
+		const existing = await db.orm.public.HcbGrantTopUp.where(key).first()
 		if (!existing) throw new HttpError("CONFLICT", "Could not start the grant")
 		if (existing.sentAt)
 			return { alreadySent: true, amountCents: existing.amountCents, transactionId: existing.transactionId }
 
 		// A row with no error normally means a request is running right now, and two of those must not both send. A crash strands a row the same way, so only a row old enough to be abandoned gets past this.
-		const ageMs = Date.now() - existing.createdAt.getTime()
+		const ageMs = Date.now() - parseDbTimestamp(existing.createdAt).getTime()
 		if (existing.error === null && ageMs < ABANDONED_ATTEMPT_MS)
 			throw new HttpError("CONFLICT", "A grant for this project is already being sent")
 
 		// Before re-sending, ask HCB what the last attempt left behind. A timeout can lose the response after the top-up applied, and a resend would pay twice; a grant that cannot be read fails closed rather than guessing.
 		const disbursements = await listCardGrantDisbursements(existing.grantHashid)
-		const reconciled = reconcileDisbursement(disbursements, existing.amountCents, existing.createdAt)
+		const reconciled = reconcileDisbursement(disbursements, existing.amountCents, parseDbTimestamp(existing.createdAt))
 
 		if (reconciled.kind === "ambiguous")
 			throw new HttpError(
@@ -247,9 +232,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 			)
 
 		if (reconciled.kind === "landed") {
-			// The money went to the card the previous attempt used, which is the one the row names – not
-			// necessarily the link that was pasted this time. That card's owner is what the trail has to
-			// carry, so it is the one that is read here.
+			// The money went to the card the previous attempt used, which is the one the row names – not necessarily the link that was pasted this time. That card's owner is what the trail has to carry, so it is the one that is read here.
 			const paidOwner = await readCardGrantOwner(existing.grantHashid)
 			await markSentWithAudit({
 				adminEmail: input.adminEmail,
@@ -268,8 +251,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 				adminId: input.adminId,
 				projectId: project.id,
 			})
-			// The money has already moved, so this cannot stop it. It says so, loudly, rather than letting a
-			// payment to somebody else's card settle quietly into the trail.
+			// The money has already moved, so this cannot stop it. It says so, loudly, rather than letting a payment to somebody else's card settle quietly into the trail.
 			if (paidOwner.email && paidOwner.email !== maker)
 				throw new HttpError(
 					"CONFLICT",
@@ -279,7 +261,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		}
 
 		// Nothing landed, so the retry may claim the row. Comparing `createdAt` makes that a CAS: a concurrent retry bumps it and the loser matches nothing. Refreshing it also restarts the abandoned-attempt window.
-		const reclaimed = await reclaimRow(existing.id, existing.createdAt, {
+		const reclaimed = await reclaimRow(existing.id, parseDbTimestamp(existing.createdAt), {
 			amountCents,
 			createdById: input.adminId,
 			grantHashid: hashid,
@@ -289,20 +271,19 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	}
 
 	// The approval this grant is for can be reversed while HCB is being called. Un-approve refuses while a row like this is in flight (see review.unapprovePhase), so this last read closes the rest of the window.
-	const current = await prisma.themeProject.findUnique({
-		select: { designStatus: true, grantUsd: true },
-		where: { id: project.id },
-	})
+	const current = await db.orm.public.ThemeProject.whereUnique({ id: project.id })
+		.select("designStatus", "grantUsd")
+		.first()
 	if (current?.designStatus !== PhaseStatus.approved || !current.grantUsd) {
-		await prisma.hcbGrantTopUp
-			.update({ data: { error: "The design was un-approved before the grant was sent" }, where: { id: rowId } })
+		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
+			.update({ error: "The design was un-approved before the grant was sent" })
 			.catch(() => undefined)
 		throw new HttpError("CONFLICT", "The design is no longer approved, so no grant is due")
 	}
 	// The amount was captured before HCB was called; if the grant was edited since – including by a retry reclaiming the row above – paying the stale figure sends the wrong money. Fail closed instead.
 	if (Math.round(current.grantUsd * 100) !== amountCents) {
-		await prisma.hcbGrantTopUp
-			.update({ data: { error: "The grant amount changed before the top-up was sent" }, where: { id: rowId } })
+		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
+			.update({ error: "The grant amount changed before the top-up was sent" })
 			.catch(() => undefined)
 		throw new HttpError("CONFLICT", "The grant amount changed – reload and try again")
 	}
@@ -314,8 +295,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 			adminId: input.adminId,
 			projectId: project.id,
 		})
-		// The trail lands with the record of the payment: one transaction writes the top-up row and the audit
-		// row, so a crash between the two cannot leave a real HCB money movement with nothing to show for it.
+		// The trail lands with the record of the payment: one transaction writes the top-up row and the audit row, so a crash between the two cannot leave a real HCB money movement with nothing to show for it.
 		await markSentWithAudit({
 			adminEmail: input.adminEmail,
 			adminId: input.adminId,
@@ -328,9 +308,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 			rowId,
 			transactionId,
 		})
-		// The card was checked against the maker before the payment, so this should not happen. It is checked
-		// again because the answer came from HCB as well, and if the two disagree the money went somewhere the
-		// audit row records. Thrown after the trail was written, so the row is not left saying it failed.
+		// The card was checked against the maker before the payment, so this should not happen. It is checked again because the answer came from HCB as well, and if the two disagree the money went somewhere the audit row records. Thrown after the trail was written, so the row is not left saying it failed.
 		if (ownerEmail && ownerEmail !== maker)
 			throw new HttpError(
 				"CONFLICT",
@@ -339,10 +317,10 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		return { alreadySent: false, amountCents, transactionId }
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
-		// Only a row that has not been sent yet is a failure. A row that was marked sent says the money moved,
-		// and saying otherwise on top of that would send the next attempt looking for a payment that is there.
-		await prisma.hcbGrantTopUp
-			.updateMany({ data: { error: message }, where: { id: rowId, sentAt: null } })
+		// Only a row that has not been sent yet is a failure. A row that was marked sent says the money moved, and saying otherwise on top of that would send the next attempt looking for a payment that is there.
+		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
+			.where(row => row.sentAt.isNull())
+			.updateAndCount({ error: message })
 			.catch(() => undefined)
 		throw err
 	}
@@ -359,17 +337,17 @@ async function reclaimRow(
 	data: { amountCents: number; createdById: string; grantHashid: string },
 ): Promise<number> {
 	try {
-		const reclaimed = await prisma.hcbGrantTopUp.updateMany({
-			data: {
+		const reclaimed = await db.orm.public.HcbGrantTopUp.where({ id: rowId })
+			.where(row => row.sentAt.isNull())
+			.where(row => row.createdAt.eq(formatDbTimestamp(createdAt)))
+			.updateAndCount({
 				amountCents: data.amountCents,
-				createdAt: new Date(),
+				createdAt: formatDbTimestamp(new Date()),
 				createdById: data.createdById,
 				error: null,
 				grantHashid: data.grantHashid,
-			},
-			where: { createdAt, id: rowId, sentAt: null },
-		})
-		return reclaimed.count
+			})
+		return reclaimed
 	} catch (err) {
 		if (isDuplicateGrantHashid(err))
 			throw new HttpError("CONFLICT", "That HCB card has already been paid for another project")

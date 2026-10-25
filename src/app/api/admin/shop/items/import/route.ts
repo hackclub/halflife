@@ -4,7 +4,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { withPermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { parseShopCsv } from "@/lib/shop-csv"
 
@@ -26,10 +26,9 @@ export const POST = withPermission(Permission.MANAGE_SHOP, async (req: Request, 
 	if (problems.length > 0)
 		return fail("VALIDATION_FAILED", "Nothing was imported. Fix these and try again.", { problems })
 
-	const taken = await prisma.shopItem.findMany({
-		select: { id: true },
-		where: { id: { in: items.map(i => i.id) } },
-	})
+	const taken = await db.orm.public.ShopItem.where(item => item.id.in(items.map(i => i.id)))
+		.select("id")
+		.all()
 	if (taken.length > 0)
 		return fail("CONFLICT", "Nothing was imported. These slugs already exist.", {
 			problems: taken.map(t => ({ line: 0, message: `Slug "${t.id}" already exists. Edit it from its own page.` })),
@@ -43,8 +42,8 @@ export const POST = withPermission(Permission.MANAGE_SHOP, async (req: Request, 
 			name: sanitize(item.name),
 		}),
 	)
-	// createMany is one statement, so a slug added in the meantime fails the whole batch rather than leaving half of it behind.
-	await prisma.shopItem.createMany({ data })
+	// One statement, so a slug added in the meantime fails the whole batch rather than leaving half of it behind.
+	await db.orm.public.ShopItem.createAll(data)
 
 	await Promise.all(
 		data.map(item =>

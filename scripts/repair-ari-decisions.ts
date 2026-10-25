@@ -1,6 +1,6 @@
 import "dotenv/config"
 import { isAriConfigured, repairStatusDecisions } from "../src/lib/ari"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Give decisions the status pass rebuilt the reviewer's words they should have had.
@@ -11,9 +11,7 @@ import prisma from "../src/lib/prisma"
  *
  * Only a decision the status pass rebuilt is touched, matched by the exact placeholder it left behind (see `repairStatusDecisions`). A decision a person or a delivered webhook made is never rewritten, and a placeholder whose ship has since moved on, changed its decision or been superseded by a newer ship is left alone. `reconcileAriDecisions` keeps decisions applied from now on correct on its own.
  *
- * Read-only unless `--commit` is passed, so a run reports what it would repair. Run with
- * `bun --conditions=react-server scripts/repair-ari-decisions.ts [--commit] [--limit=N]`.
- * In production run it where `DATABASE_URL` and the `ARI_*` secrets both point at the live program, not from a dev machine against a local Postgres.
+ * Read-only unless `--commit` is passed, so a run reports what it would repair. Run with `bun --conditions=react-server scripts/repair-ari-decisions.ts [--commit] [--limit=N]`. In production run it where `DATABASE_URL` and the `ARI_*` secrets both point at the live program, not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")
@@ -56,5 +54,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

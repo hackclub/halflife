@@ -3,7 +3,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { shopItemUpdateSchema } from "@/lib/schemas/admin"
 
@@ -20,18 +20,16 @@ export const PATCH = withPermission(
 		if (parsed.error) return parsed.error
 		const { data } = parsed
 
-		const before = await prisma.shopItem.findUnique({ where: { id } })
+		const before = await db.orm.public.ShopItem.whereUnique({ id }).first()
 		if (!before) return fail("NOT_FOUND", "Item not found")
 
-		const item = await prisma.shopItem.update({
-			data: {
-				...data,
-				...(data.name !== undefined ? { name: sanitize(data.name) } : {}),
-				...(data.description !== undefined ? { description: sanitize(data.description) } : {}),
-				...(data.costUsd !== undefined ? { costUsd: dollars(data.costUsd) } : {}),
-			},
-			where: { id },
+		const item = await db.orm.public.ShopItem.where({ id }).update({
+			...data,
+			...(data.name !== undefined ? { name: sanitize(data.name) } : {}),
+			...(data.description !== undefined ? { description: sanitize(data.description) } : {}),
+			...(data.costUsd !== undefined ? { costUsd: dollars(data.costUsd) } : {}),
 		})
+		if (!item) return fail("NOT_FOUND", "Item not found")
 
 		await logAudit({
 			action: AuditAction.ADMIN_UPDATE_SHOP_ITEM,
@@ -80,10 +78,11 @@ export const DELETE = withPermission(
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
 
-		const before = await prisma.shopItem.findUnique({ where: { id } })
+		const before = await db.orm.public.ShopItem.whereUnique({ id }).first()
 		if (!before) return fail("NOT_FOUND", "Item not found")
 
-		const item = await prisma.shopItem.update({ data: { active: false }, where: { id } })
+		const item = await db.orm.public.ShopItem.where({ id }).update({ active: false })
+		if (!item) return fail("NOT_FOUND", "Item not found")
 
 		await logAudit({
 			action: AuditAction.ADMIN_RETIRE_SHOP_ITEM,

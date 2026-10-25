@@ -4,7 +4,7 @@ import { HttpError } from "@/lib/errors"
 import { type Forge, forgeById } from "@/lib/forge"
 import { forgeCredentials, listWritableRepos, type WritableRepo } from "@/lib/forge-write"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { repoRefFromLink } from "@/lib/repo-ref"
 import { disableRepoSync, enableRepoSync, getRepoSyncState, runProjectSync } from "@/lib/repo-sync"
 import { repoSyncSettingsSchema } from "@/lib/schemas/project"
@@ -51,10 +51,9 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	if (parsed.error) return parsed.error
 
 	// A project that is gone, or someone else's, is a 404 either way – same as every other project route.
-	const owned = await prisma.themeProject.findFirst({
-		select: { id: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const owned = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("id")
+		.first()
 	if (!owned) return fail("NOT_FOUND", "Project not found")
 
 	if (!parsed.data.enabled) {
