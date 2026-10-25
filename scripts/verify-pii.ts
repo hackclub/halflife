@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { createHmac, randomBytes } from "node:crypto"
 import { auth } from "../src/lib/auth"
 import { Phase, PostKind, PostStatus, Role, Theme } from "../src/lib/enums"

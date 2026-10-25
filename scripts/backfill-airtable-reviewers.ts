@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { currentReviewColumns } from "../src/lib/airtable/review-columns"

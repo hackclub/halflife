@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { createHash, createHmac } from "node:crypto"
 import { S3Client } from "bun"
 

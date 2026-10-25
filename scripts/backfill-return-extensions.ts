@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { or } from "@prisma/orm-postgres/orm-client"
 import { PhaseStatus } from "../src/lib/enums"
 import db from "../src/lib/prisma8"

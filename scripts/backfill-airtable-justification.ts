@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { type JustificationValues, justificationValues, timelapseLinks } from "../src/lib/airtable/justification"

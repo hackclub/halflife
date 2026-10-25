@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { AuditAction } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 

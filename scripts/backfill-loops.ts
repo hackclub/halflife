@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { LOOPS_FIELDS, syncLoopsProperties } from "../src/lib/airtable/loops"
 import { RSVP_TABLE_ID } from "../src/lib/airtable/schema"

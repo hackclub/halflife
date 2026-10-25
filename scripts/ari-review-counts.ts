@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { Ari } from "@hackclub/ari"
 import { countAriShips } from "../src/lib/ari-counts"
 import { Phase, PhaseStatus, ReviewPass, ReviewResult } from "../src/lib/enums"

@@ -20,7 +20,7 @@ COPY prisma.config.ts ./
 RUN bunx prisma contract emit
 
 # ── prod-deps ────────────────────────────────────────────────────────────────
-# Runtime-only node_modules: the runner ships no build toolchain (typescript, eslint, tailwind, …). `prisma` itself is a production dependency, so `db migrate` at boot keeps working, as do the seed and backfill scripts (their only non-runtime import was `dotenv`, which is a dependency for exactly this reason). Rebuilt only when the lockfile or contract changes, like `deps` above.
+# Runtime-only node_modules: the runner ships no build toolchain (typescript, eslint, tailwind, …). `prisma` itself is a production dependency, so `db migrate` at boot keeps working, as do the seed and backfill scripts. Rebuilt only when the lockfile or contract changes, like `deps` above.
 FROM base AS prod-deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app

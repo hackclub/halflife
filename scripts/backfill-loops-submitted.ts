@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { existingColumns } from "../src/lib/airtable/field-probe"
 import { LOOPS_FIELDS, resolveSignupRow } from "../src/lib/airtable/loops"

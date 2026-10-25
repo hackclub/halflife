@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { and, or } from "@prisma/orm-postgres/orm-client"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { LOOPS_FIELDS } from "../src/lib/airtable/loops"

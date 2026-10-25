@@ -1,5 +1,3 @@
-import "dotenv/config"
-
 /**
  * Print the field ids for the configured Airtable base, ready to paste into lib/airtable/schema.ts.
  *
@@ -38,3 +36,5 @@ try {
 	console.error(err)
 	process.exit(1)
 }
+
+export { main }

@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { getStarterProject } from "../src/lib/config/onboarding"
 import { PhaseStatus, Theme } from "../src/lib/enums"
 import db from "../src/lib/prisma8"

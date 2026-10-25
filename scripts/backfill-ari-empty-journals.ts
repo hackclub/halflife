@@ -1,5 +1,4 @@
 import { or } from "@prisma/orm-postgres/orm-client"
-import "dotenv/config"
 import { isAriConfigured, isWordlessJournal } from "../src/lib/ari"
 import { Phase, PhaseStatus } from "../src/lib/enums"
 import db from "../src/lib/prisma8"

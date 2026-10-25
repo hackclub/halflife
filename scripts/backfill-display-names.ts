@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { syncHcaProfile } from "../src/lib/hca-profile"
 import db from "../src/lib/prisma8"
 

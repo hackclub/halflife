@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { CoinBucket } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 

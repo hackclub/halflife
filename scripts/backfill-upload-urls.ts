@@ -1,4 +1,3 @@
-import "dotenv/config"
 import db from "../src/lib/prisma8"
 import { containsPattern } from "../src/lib/text"
 import { listUploadedObjects } from "../src/lib/uploads/r2"

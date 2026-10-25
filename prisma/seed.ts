@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { PRINTERS } from "../src/lib/config/printers"
 import { ShopItemCategory } from "../src/lib/enums"
 import db from "../src/lib/prisma8"

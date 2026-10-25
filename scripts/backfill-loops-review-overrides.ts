@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { existingColumns } from "../src/lib/airtable/field-probe"
 import { LOOPS_REVIEW_OVERRIDE, YSWS_SUBMISSION } from "../src/lib/airtable/schema"

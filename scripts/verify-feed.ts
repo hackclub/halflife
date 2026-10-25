@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { PostKind, PostStatus, Role, Theme } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 import { formatDbTimestamp } from "../src/lib/time"

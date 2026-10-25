@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { scheduleForWeek } from "../src/lib/config/program"
 import { HardwareExperience, Theme } from "../src/lib/enums"
 import db from "../src/lib/prisma8"

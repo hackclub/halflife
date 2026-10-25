@@ -1,5 +1,3 @@
-import "dotenv/config"
-
 /**
  * Smoke-test the R2 wiring, end to end, with no database involved.
  *
@@ -201,3 +199,5 @@ try {
 	console.error(err)
 	process.exit(1)
 }
+
+export { main }

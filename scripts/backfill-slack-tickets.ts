@@ -1,4 +1,3 @@
-import "dotenv/config"
 import db from "../src/lib/prisma8"
 import { backfillHelpTickets } from "../src/lib/site/ticket-store"
 

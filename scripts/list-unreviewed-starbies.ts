@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { Ari, type AriShipPhase } from "@hackclub/ari"
 import { appBaseUrl, projectUrl, reviewUrl } from "../src/lib/app-url"
 import { ariReviewUrl } from "../src/lib/ari-url"

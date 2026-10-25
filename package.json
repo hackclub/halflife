@@ -31,8 +31,8 @@
 		"hca:backfill-display-names": "bun --conditions=react-server scripts/backfill-display-names.ts",
 		"hours:backfill-overlap": "bun --conditions=react-server scripts/backfill-timelapse-overlap.ts",
 		"import:check": "bun import/check.ts",
-		"import:dump": "bun import/dump.ts",
-		"import:stasis": "bun import/stasis.ts",
+		"import:dump": "bun --env-file=import/.env import/dump.ts",
+		"import:stasis": "bun --env-file=import/.env --env-file=.env import/stasis.ts",
 		"lint": "oxlint; biome check",
 		"lint:fix": "oxlint --fix; biome check --fix",
 		"loops:backfill": "bun --conditions=react-server scripts/backfill-loops.ts",
@@ -71,12 +71,14 @@
 		"verify:store": "bun --conditions=react-server scripts/verify-store.ts",
 		"verify:uploads": "bun --conditions=react-server scripts/verify-uploads.ts"
 	},
+	"overrides": {
+		"zod": "^4.6.7"
+	},
 	"dependencies": {
 		"@better-auth/kysely-adapter": "1.7.13",
 		"@hackclub/ari": "^0.1.1",
 		"@prisma/orm-postgres": "^8.0.0-rc.20",
 		"better-auth": "1.7.13",
-		"dotenv": "^18.0.9",
 		"isomorphic-dompurify": "^4.6.0",
 		"kysely": "^0.29.7",
 		"next": "^16.4.3",
@@ -106,8 +108,5 @@
 		"tailwindcss": "^4.3.3",
 		"typescript": "~6.0.3"
 	},
-	"packageManager": "bun@1.4.4",
-	"overrides": {
-		"zod": "^4.6.7"
-	}
+	"packageManager": "bun@1.4.4"
 }

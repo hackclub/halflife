@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { backfillAnalytics } from "../src/lib/analytics"
 import db from "../src/lib/prisma8"
 

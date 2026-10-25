@@ -1,7 +1,5 @@
-import { config } from "dotenv"
 import { Pool } from "pg"
 
-config()
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error("DATABASE_URL missing")
 const pool = new Pool({ connectionString: databaseUrl })

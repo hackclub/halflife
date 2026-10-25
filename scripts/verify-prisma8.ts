@@ -1,4 +1,3 @@
-import "dotenv/config"
 import db from "@/lib/prisma8"
 import {
 	countContentReports,

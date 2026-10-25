@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { createHash } from "node:crypto"
 import db from "../src/lib/prisma8"
 import { formatDbTimestamp } from "../src/lib/time"
