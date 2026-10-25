@@ -271,6 +271,14 @@ export async function syncHcaProfile(userId: string, { profile = false } = {}): 
 		const { accessToken } = await auth.api.getAccessToken({ body: { accountId: account.id, userId } })
 		if (!accessToken) return null
 
+		// The verification status belongs to the ONE hca account bound at sign-up (see lib/auth's link/unlink guards). A user with two hca rows is a laundering attempt in progress or a legacy double-link: the status from either token proves nothing about the user, so it is never upgraded here. Downgrades still apply – a non-verified answer clears nothing by itself, but it must not mint verified either.
+		const { count: hcaCount } = await db.orm.public.Account.where({ providerId: "hca", userId }).aggregate(a => ({
+			count: a.count(),
+		}))
+		const singleHcaAccount = hcaCount === 1
+		if (!singleHcaAccount)
+			console.warn(`[hca] ${userId} holds ${hcaCount} hca accounts; verification status not upgraded`)
+
 		const identity = await fetchHcaIdentity(accessToken)
 
 		const current = profile
@@ -291,8 +299,12 @@ export async function syncHcaProfile(userId: string, { profile = false } = {}): 
 					: {}
 
 		await db.orm.public.User.where({ id: userId }).update({
-			// Only what HCA actually said: a missing field leaves the stored value.
-			...(identity.verificationStatus ? { verificationStatus: identity.verificationStatus } : {}),
+			// Only what HCA actually said: a missing field leaves the stored value. Verified is only ever written when exactly one hca account is bound – see above.
+			...(identity.verificationStatus === "verified" && !singleHcaAccount
+				? {}
+				: identity.verificationStatus
+					? { verificationStatus: identity.verificationStatus }
+					: {}),
 			// The name the site shows, alongside `name` rather than instead of it: better-auth's own mapping cannot carry this (see the header), and the Airtable rows, Ari and the export still need the full name they split into first and last. See lib/display-name.
 			...(identity.nickname ? { displayName: identity.nickname } : {}),
 			...(profile && identity.name ? { name: identity.name } : {}),

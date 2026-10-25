@@ -126,12 +126,38 @@ export const auth = betterAuth({
 	databaseHooks: {
 		account: {
 			create: {
+				// An HCA identity is the account itself: it is bound at sign-up and never changed after. A signed-in user who links a second, already-verified person's HCA account would inherit their verification status (syncHcaProfile copies it over), then keep it after unlinking – passing one identity check to any number of accounts. So an hca account may only ever be the user's FIRST account (the sign-up itself, including the staff-import adoption path where the row exists but has no accounts yet). Every other provider stays linkable.
+				before: async account => {
+					if (account.providerId !== "hca") return
+					try {
+						const { count } = await db.orm.public.Account.where({ userId: account.userId }).aggregate(a => ({
+							count: a.count(),
+						}))
+						if (count > 0) {
+							console.warn(`[auth] refused second hca link for ${redactForLog(account.userId)}`)
+							return false
+						}
+					} catch (err) {
+						// Fail closed: a link we could not vet is a link refused, while the sign-up path (zero accounts) is unaffected by a transient failure only if the count query itself fails – which also refuses, and the user retries.
+						console.error("[auth] hca link vetting failed:", err)
+						return false
+					}
+				},
 				after: async account => {
 					// Denormalise the Hackatime id onto User so hour lookups are one query.
 					if (account.providerId === "hackatime")
 						await db.orm.public.User.where({ id: account.userId })
 							.update({ hackatimeUserId: account.accountId })
 							.catch(err => console.error("[auth] hackatime id copy failed:", err))
+				},
+			},
+			delete: {
+				// The counterpart: unlinking HCA must not be a way to launder the verification status onto another account. The HCA identity stays bound for the life of the user; nothing legitimate unlinks it (sign-in needs it, and syncHcaProfile no-ops without it).
+				before: async account => {
+					if ((account as { providerId?: string }).providerId === "hca") {
+						console.warn(`[auth] refused hca unlink for ${redactForLog((account as { userId?: string }).userId ?? "?")}`)
+						return false
+					}
 				},
 			},
 		},
