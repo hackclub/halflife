@@ -222,7 +222,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	let readme: string | null = null
 	if (readmeRes.ok) {
 		const r = (await readmeRes.json()) as { content?: string; encoding?: string }
-		if (r.content && r.encoding === "base64") readme = Buffer.from(r.content, "base64").toString("utf-8")
+		if (r.content && r.encoding === "base64") readme = capReadme(Buffer.from(r.content, "base64").toString("utf-8"))
 	}
 
 	return { designs: designFinder(ref, files), files, kind: "ok", paths, readme, truncated: body.truncated === true }
@@ -292,23 +292,45 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 
 	const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`)
 	if (!res.ok) return null
-	return res.text()
+	return capReadme(await res.text())
 }
 
 /** Markdown or HTML images. Global so the README can be counted as well as tested. */
-const README_IMAGE = /!\[[^\]]*\]\([^)]*\)|!\[[^\]]*\]\[[^\]]*\]|<img\b[^>]*>/gi
+const README_IMAGE = /!\[[^\]\n]{0,1000}\]\([^)\n]{0,2000}\)|!\[[^\]\n]{0,1000}\]\[[^\]\n]{0,1000}\]|<img\b[^>\n]{0,5000}>/gi
 const README_MIN_CHARS = 200
 const README_MIN_IMAGES = 2
 const README_MIN_LINES = 3
 
+/**
+ * Longest README kept from a forge: 256 KB.
+ *
+ * Bounds the snapshot cache against a pathological repo. Checks only scan the first 64 KB (see README_SCAN_LIMIT), so nothing they can pass on is lost.
+ */
+const README_KEEP_LIMIT = 256 * 1024
+
+function capReadme(readme: string): string {
+	return readme.length > README_KEEP_LIMIT ? readme.slice(0, README_KEEP_LIMIT) : readme
+}
+
+/**
+ * Longest README slice any check runs a regex over: 64 KB.
+ *
+ * The image regex takes quadratic time on inputs like `![![![…`, and a participant can point their project at any repo – so one /preflight call with such a README would stop that server for minutes. A 64 KB prefix still answers every check (200 chars, 3 lines, 2 images), and anything longer is already a pass on length.
+ */
+const README_SCAN_LIMIT = 64 * 1024
+
+function scannableReadme(readme: string): string {
+	return readme.length > README_SCAN_LIMIT ? readme.slice(0, README_SCAN_LIMIT) : readme
+}
+
 /** How many images the README embeds. */
 function readmeImageCount(readme: string): number {
-	return [...readme.matchAll(README_IMAGE)].length
+	return [...scannableReadme(readme).matchAll(README_IMAGE)].length
 }
 
 /** The README's prose, with images and the whitespace they leave behind removed. */
 function readmeText(readme: string): string {
-	return readme.replaceAll(README_IMAGE, " ").replaceAll(/\s+/g, " ").trim()
+	return scannableReadme(readme).replaceAll(README_IMAGE, " ").replaceAll(/\s+/g, " ").trim()
 }
 
 /**
@@ -317,7 +339,7 @@ function readmeText(readme: string): string {
  * Counted from the text that is left once images come out, so a line holding only a picture is not a line of writing. Blank lines do not count either; the floor is about how the README reads, not how it is spaced.
  */
 function readmeLineCount(readme: string): number {
-	return readme
+	return scannableReadme(readme)
 		.replaceAll(README_IMAGE, "")
 		.split(/\r?\n/)
 		.filter(line => line.trim().length > 0).length
@@ -539,7 +561,7 @@ export async function checkRepo(
 	)
 
 	if (readme !== null && bomTable) {
-		const table = readmeBomTable(readme, bomTable.minRows)
+		const table = readmeBomTable(scannableReadme(readme), bomTable.minRows)
 		checks.push(
 			table
 				? {
