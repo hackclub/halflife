@@ -94,10 +94,25 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 		),
 	})
 
+	// Reviewer anonymity: the IDs below name the (often teen) reviewer who decided a phase or entry. Nothing on the maker's side reads them – the page shows decisions, never deciders – so they are stripped before responding. Keep this list in sync with any new reviewer-attribution column: the default here is "entire row", which is how they leaked.
+	const { buildReviewedById: _buildReviewer, designReviewedById: _designReviewer, ...safeProject } = project
+	void _buildReviewer
+	void _designReviewer
+	const safeSessions = safeProject.workSessions.map(({ reviewedById: _sessionReviewer, ...session }) => {
+		void _sessionReviewer
+		return session
+	})
+	const safeLinks = safeProject.hackatimeLinks.map(({ reviewedById: _linkReviewer, ...link }) => {
+		void _linkReviewer
+		return link
+	})
+
 	return ok({
 		hours: { build, design },
 		project: {
-			...project,
+			...safeProject,
+			hackatimeLinks: safeLinks,
+			workSessions: safeSessions,
 			coverImageUrl: publicUrlFor(project.coverImageKey),
 		},
 		theme: getThemeDef(project.theme),
