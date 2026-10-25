@@ -35,7 +35,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 	- Avoid `var`
 - Use `===` and `!==` over `==` and `!=` except when comparing with null
 - Use Object.freeze() to make objects immutable where possible
-- Omit `void` before function calls, unless this function call is a IIFE
+- Use `void` before function calls that return promises to be discarded, or before IIFEs rather than semicolons
 - Declare only 1 variable per declaration statement, avoid `const x = 1, y = 2, z = 3`
 - When making large functions that return objects with many functions, consider if this would be more natural as a class with methods instead
 
