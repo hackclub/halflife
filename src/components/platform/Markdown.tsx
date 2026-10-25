@@ -18,7 +18,7 @@ function safeSrc(raw: string): string | undefined {
 	const src = raw.trim()
 	if (/^https?:/i.test(src)) return src
 	if (/^data:image\//i.test(src)) return src
-	if (src.startsWith("/")) return src
+	// No site-relative paths: uploaded images are absolute R2 URLs, so a relative `![x](/signed-out)` can only be aimed at our own routes – and loading one as an image fires a credentialed GET at it (which is how one logged out every viewer of Explore).
 	return undefined
 }
 
