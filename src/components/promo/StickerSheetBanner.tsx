@@ -83,7 +83,7 @@ export function StickerSheetBanner({
 					fetchPriority="low"
 					fill
 					loading="eager"
-					quality={60}
+					quality={75}
 					sizes="100vw"
 					src={bgArt}
 				/>
