@@ -3,7 +3,7 @@ import { and, not } from "@prisma/orm-postgres/orm-client"
 import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
 import { getTierOrThrow } from "@/lib/config/tiers"
 import { HoursSource, Phase } from "@/lib/enums"
-import { fetchProjectSeconds, fetchProjectSpans } from "@/lib/hackatime"
+import { fetchProjectSeconds, fetchProjectSpans, phaseWeekWindow } from "@/lib/hackatime"
 import {
 	cachedSpansCover,
 	capSubtraction,
@@ -70,7 +70,7 @@ export async function getHoursBreakdown(
 
 	const [project, sessions, links] = await Promise.all([
 		client.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
-			.select("approvedHours", "designApprovedHours", "userId")
+			.select("approvedHours", "designApprovedHours", "theme", "userId")
 			.include("user", user => user.select("hackatimeUserId"))
 			.first(),
 		client.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
@@ -106,6 +106,8 @@ export async function getHoursBreakdown(
 	let hackatimeOverlapUnknown = false
 	if (project && !project.user) throw new Error(`project ${themeProjectId} has no owner`)
 	const hackatimeUserId = project?.user?.hackatimeUserId ?? null
+	// Week-scoped like the link route: the live re-read must answer the same question the link was created with, or a refresh would silently swap the week's hours for the all-time total. Warm-ups keep the all-time total (no week to scope to).
+	const liveWindow = live && hackatimeUserId && project ? await phaseWeekWindow(project.theme, phase) : null
 	// This maker's recordings on their OTHER projects and phases, fetched only when there is a link to deduplicate against – the only time they can matter. A clip attached in one week carries tracked time that may have been linked on another week's project, and the recording's own `hackatimeProject` is what pairs the two.
 	const elsewhere =
 		links.length === 0 || !project ? [] : await elsewhereRecordings(client, project.userId, themeProjectId, phase)
@@ -118,7 +120,7 @@ export async function getHoursBreakdown(
 		}
 		let linkSeconds = 0
 		if (live && hackatimeUserId) {
-			const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
+			const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject, liveWindow ?? undefined)
 			if (result.stale) {
 				hackatimeStale = true
 				linkSeconds = link.cachedSeconds ?? 0
