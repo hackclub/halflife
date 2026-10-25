@@ -125,6 +125,35 @@ function fetchSnapshot(ref: RepoRef): Promise<Snapshot> {
 }
 
 /**
+ * Whether the forge reports this repo as public.
+ *
+ * A repo the server token can see but the world cannot must read as not-found: otherwise anyone can point a project at someone else's private repo and have the server read its file list and BOM contents back to them (the GitLab token is the likeliest one with such access). True means public, false means private or gone, null means the forge could not be asked.
+ */
+async function isPublicRepo(ref: RepoRef): Promise<boolean | null> {
+	try {
+		if (ref.forge.id === "gitlab") {
+			const res = await forgeGet(
+				ref.forge,
+				`projects/${encodeURIComponent(ref.fullName)}`,
+			)
+			if (res.status === 404) return false
+			if (!res.ok) return null
+			const body = (await res.json()) as { visibility?: string }
+			return body.visibility === "public"
+		}
+		const res = await forgeGet(ref.forge, `repos/${ref.fullName}`)
+		if (res.status === 404) return false
+		if (!res.ok) return null
+		const body = (await res.json()) as { private?: boolean }
+		return body.private === false
+	} catch (err) {
+		if (err instanceof ForgeUnavailableError) return null
+		console.warn(`[repo-checks] visibility check for ${ref.forge.id}/${ref.fullName} failed:`, err)
+		return null
+	}
+}
+
+/**
  * How many `.json` files one repo may have opened to find a design in them.
  *
  * Every one is a request, and a firmware repo carries its share of JSON, so only the plausible candidates are opened and only up to this many – shallowest first, which is where a design usually lands. Missing one is the mild end of this deal: the kind reads as not found and a reviewer opens the repo, rather than a design being wrongly credited.
@@ -213,6 +242,11 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	if (!readmeRes.ok && readmeRes.status !== 404)
 		return { kind: "unavailable", why: `${forge.label} returned an error (${readmeRes.status}).` }
 
+	// A repo the server token can see but the world cannot reads as not-found (see isPublicRepo): the file list and the BOM import below must never return a private repo's contents to whoever linked it.
+	const visible = await isPublicRepo(ref)
+	if (visible === false) return { kind: "not-found" }
+	if (visible === null) return { kind: "unavailable", why: `${forge.label} did not answer.` }
+
 	const body = treeRes.ok
 		? ((await treeRes.json()) as { tree?: { path: string; type: string }[]; truncated?: boolean })
 		: { tree: [], truncated: false }
@@ -248,6 +282,11 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	}
 	if (first.status === 404) return { kind: "not-found" }
 	if (!first.ok) return { kind: "unavailable", why: `${forge.label} returned an error (${first.status}).` }
+
+	// As on GitHub above: a private repo the server token can see reads as not-found, so its file list is never returned to whoever linked it.
+	const visible = await isPublicRepo(ref)
+	if (visible === false) return { kind: "not-found" }
+	if (visible === null) return { kind: "unavailable", why: `${forge.label} did not answer.` }
 
 	const files: string[] = []
 	// A generous ceiling: 100 pages of 100 is 10,000 files, which no hardware project is, and it stops a pathological repo looping here forever.
