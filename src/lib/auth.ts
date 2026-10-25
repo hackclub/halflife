@@ -65,6 +65,11 @@ const baseURLFallback =
 	process.env.NODE_ENV === "production" && !isLoopbackURL(configuredUrl) ? canonicalUrl : (configuredUrl ?? devUrl)
 
 export const auth = betterAuth({
+	// Token-disclosing and profile-writing endpoints the client never needs.
+	//
+	// `/update-user` lets any signed-in user set their own name and avatar to an arbitrary external URL – an IP-logging pixel on a platform for minors, served from our own pages. Names and avatars come from HCA via syncHcaProfile instead, and nothing in the client calls this.
+	// `/get-access-token` and `/refresh-token` hand the caller's own GitHub/GitLab tokens (write access to their repos) to the browser. All forge writes run server-side through `auth.api.getAccessToken`, so nothing browser-side needs them.
+	disabledPaths: ["/get-access-token", "/refresh-token", "/update-user"],
 	// Rejects a caller-supplied OIDC idToken on the social sign-in/link paths.
 	//
 	// better-auth's /sign-in/social accepts a Hack Club Auth login token pasted in by the caller (idToken) and verifies it, but then resolves the identity from a separately supplied access token – with nothing checking the two belong to the same person, and replay protection only when the caller opts in. An attacker could send their own valid login token plus a victim's access token and get a session as the victim. The app's HCA flow never sends an idToken (browser redirect/code exchange), so anything carrying one is rejected here.
@@ -90,6 +95,8 @@ export const auth = betterAuth({
 		}),
 	},
 	account: {
+		// Forge tokens (GitHub `repo`, GitLab `api` – write access to people's repositories) are encrypted at rest with BETTER_AUTH_SECRET. Plaintext rows written before this stay readable (better-auth leaves non-encrypted values alone, and encrypts on the next refresh/write).
+		encryptOAuthTokens: true,
 		accountLinking: {
 			// A participant's Hackatime signup email rarely matches their HCA email. Without this, better-auth's link flow aborts with email_doesn't_match and the account is never created – and because the auth handler swallows the error into a dashboard redirect, it looks like the button simply did nothing. This only affects the explicit linkSocial path, where the actor already holds the target session.
 			allowDifferentEmails: true,
