@@ -53,6 +53,36 @@ export interface E2eUserRow {
 	verificationStatus: string | null
 }
 
+export interface E2eSubmissionRow {
+	createdAt: Date
+	id: string
+	phase: string
+	resolvedAt: Date | null
+	resolvedResult: string | null
+	themeProjectId: string
+}
+
+export interface E2eSubmissionReviewRow {
+	feedback: string
+	id: string
+	reason: string | null
+	result: string
+	reviewerId: string | null
+}
+
+export interface E2eAuditRow {
+	action: string
+	actorEmail: string | null
+	createdAt: Date
+	metadata: unknown
+}
+
+export interface E2eProgramSettingsRow {
+	programTimezone: string
+	shopOpen: boolean
+	submissionsOpen: boolean
+}
+
 const ONBOARDING_COMPLETE_STEP = 7
 
 const pool = new Pool({ connectionString: e2eDatabaseUrl })
@@ -160,6 +190,78 @@ export async function readShopOrders(userId: string): Promise<E2eShopOrderRow[]>
 		[userId],
 	)
 	return rows as E2eShopOrderRow[]
+}
+
+/**
+ * A participant with one design submission waiting for review.
+ *
+ * The row carries only what the queue, detail page and rejection path read: no sessions, links or reels, so the reviewer's computed hours are zero and a rejection needs no tier or hours decision.
+ */
+export async function seedSubmission(): Promise<{
+	projectId: string
+	projectTitle: string
+	submissionId: string
+	user: SeededUser
+}> {
+	const user = await seedUser({ onboarding: "complete" })
+	const projectId = randomUUID()
+	const submissionId = randomUUID()
+	const projectTitle = `E2E Review Project ${projectId.slice(0, 8)}`
+
+	await pool.query(
+		`insert into theme_project (
+			id, "userId", theme, title, description, "designStatus", "buildStatus",
+			"repoSyncEnabled", "createdAt", "updatedAt"
+		) values (
+			$1, $2, 'PCB'::"Theme", $3, 'A project waiting for design review.',
+			'in_review'::"PhaseStatus", 'draft'::"PhaseStatus", false, now(), now()
+		)`,
+		[projectId, user.id, projectTitle],
+	)
+
+	await pool.query(
+		`insert into phase_submission (id, "themeProjectId", phase, "submittedInWeek", "onTime", "createdAt")
+		values ($1, $2, 'DESIGN'::"Phase", 1, true, now())`,
+		[submissionId, projectId],
+	)
+
+	return { projectId, projectTitle, submissionId, user }
+}
+
+export async function readSubmission(id: string): Promise<E2eSubmissionRow | null> {
+	const { rows } = await pool.query(
+		`select id, "themeProjectId", phase, "resolvedAt", "resolvedResult", "createdAt"
+		from phase_submission where id = $1`,
+		[id],
+	)
+	return (rows[0] as E2eSubmissionRow | undefined) ?? null
+}
+
+export async function readSubmissionReviews(submissionId: string): Promise<E2eSubmissionReviewRow[]> {
+	const { rows } = await pool.query(
+		`select id, result, feedback, reason, "reviewerId"
+		from submission_review where "submissionId" = $1
+		order by "createdAt" desc`,
+		[submissionId],
+	)
+	return rows as E2eSubmissionReviewRow[]
+}
+
+export async function readAudit(action: string): Promise<E2eAuditRow | null> {
+	const { rows } = await pool.query(
+		`select action, "actorEmail", metadata, "createdAt"
+		from audit_log where action = $1::"AuditAction"
+		order by "createdAt" desc limit 1`,
+		[action],
+	)
+	return (rows[0] as E2eAuditRow | undefined) ?? null
+}
+
+export async function readProgramSettings(): Promise<E2eProgramSettingsRow | null> {
+	const { rows } = await pool.query(
+		`select "programTimezone", "shopOpen", "submissionsOpen" from program_settings where id = 'singleton'`,
+	)
+	return (rows[0] as E2eProgramSettingsRow | undefined) ?? null
 }
 
 export async function closeDb(): Promise<void> {

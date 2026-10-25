@@ -65,3 +65,5 @@ scripts/e2e-db.ts drop, create, migrate, seed
 - Both onboarding branches: a custom project through the tier step, and a starter project that skips it.
 - The browser timezone is captured into the account.
 - An affordable shop purchase writes an order and debits the ledger; an unaffordable one is refused before any request.
+- An admin changes program settings and finds the change in the audit log.
+- A reviewer claims a design submission, rejects it with feedback, and the project, review row and audit entry agree.
