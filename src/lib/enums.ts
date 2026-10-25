@@ -7,7 +7,8 @@
  */
 import type { Contract } from "@/app/generated/prisma8/contract.d"
 
-// A value and a type of the same name are the whole point of this module: call sites read `Phase.DESIGN` and annotate `: Phase` from one import, as they did with the generated file. Declaration merging is legal TypeScript, so the duplicate-declaration rule is off for the emitted names. oxlint-disable no-redeclare
+// A value and a type of the same name are the whole point of this module: call sites read `Phase.DESIGN` and annotate `: Phase` from one import, as they did with the generated file. Declaration merging is legal TypeScript, so the duplicate-declaration rule is off for the emitted names.
+// oxlint-disable eslint/no-redeclare
 
 type ValueSets = Contract["storage"]["namespaces"]["public"]["entries"]["valueSet"]
 
