@@ -52,10 +52,7 @@ const SIGNUP_COUNT_TTL_MS = 60_000
 /**
  * Fetches every record's `referral_code` isn't an option at scale, but counting record ids is cheap – request just the `email` field (Airtable rejects an empty field name outright) so each page carries almost nothing else. The count is a snapshot, not a lock, so two signups landing in the same instant can in principle claim the same ordinal; acceptable here given the existing rate limit and the low stakes of a referral number colliding.
  */
-async function countAirtableRecords(
-	config: { apiKey: string; baseId: string },
-	table: string,
-): Promise<number> {
+async function countAirtableRecords(config: { apiKey: string; baseId: string }, table: string): Promise<number> {
 	const now = Date.now()
 	if (cachedSignupCount && cachedSignupCount.table === table && now - cachedSignupCount.at < SIGNUP_COUNT_TTL_MS)
 		return cachedSignupCount.value
@@ -64,10 +61,8 @@ async function countAirtableRecords(
 	do {
 		const params = new URLSearchParams({ "fields[]": "email", pageSize: "100" })
 		if (offset) params.set("offset", offset)
-		const data = await withRateLimitRetry(
-			"signup-count",
-			() =>
-				airtableFetch<{ records?: unknown[]; offset?: string }>(config, `${table}?${params.toString()}`),
+		const data = await withRateLimitRetry("signup-count", () =>
+			airtableFetch<{ records?: unknown[]; offset?: string }>(config, `${table}?${params.toString()}`),
 		)
 		count += data.records?.length ?? 0
 		;({ offset } = data)

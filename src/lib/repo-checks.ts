@@ -132,10 +132,7 @@ function fetchSnapshot(ref: RepoRef): Promise<Snapshot> {
 async function isPublicRepo(ref: RepoRef): Promise<boolean | null> {
 	try {
 		if (ref.forge.id === "gitlab") {
-			const res = await forgeGet(
-				ref.forge,
-				`projects/${encodeURIComponent(ref.fullName)}`,
-			)
+			const res = await forgeGet(ref.forge, `projects/${encodeURIComponent(ref.fullName)}`)
 			if (res.status === 404) return false
 			if (!res.ok) return null
 			const body = (await res.json()) as { visibility?: string }
@@ -335,7 +332,8 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 }
 
 /** Markdown or HTML images. Global so the README can be counted as well as tested. */
-const README_IMAGE = /!\[[^\]\n]{0,1000}\]\([^)\n]{0,2000}\)|!\[[^\]\n]{0,1000}\]\[[^\]\n]{0,1000}\]|<img\b[^>\n]{0,5000}>/gi
+const README_IMAGE =
+	/!\[[^\]\n]{0,1000}\]\([^)\n]{0,2000}\)|!\[[^\]\n]{0,1000}\]\[[^\]\n]{0,1000}\]|<img\b[^>\n]{0,5000}>/gi
 const README_MIN_CHARS = 200
 const README_MIN_IMAGES = 2
 const README_MIN_LINES = 3

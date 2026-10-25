@@ -1,6 +1,6 @@
 import "server-only"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { type Phase, type Theme } from "@/lib/enums"
+import type { Phase, Theme } from "@/lib/enums"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import type { HackatimeSpan } from "@/lib/hours-overlap"
 import db from "@/lib/prisma8"

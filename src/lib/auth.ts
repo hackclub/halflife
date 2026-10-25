@@ -1,8 +1,8 @@
 import "server-only"
 import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { betterAuth } from "better-auth"
-import { genericOAuth } from "better-auth/plugins"
 import { APIError, createAuthMiddleware } from "better-auth/api"
+import { genericOAuth } from "better-auth/plugins"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
 import authDb from "@/lib/auth-db"
@@ -65,38 +65,7 @@ const baseURLFallback =
 	process.env.NODE_ENV === "production" && !isLoopbackURL(configuredUrl) ? canonicalUrl : (configuredUrl ?? devUrl)
 
 export const auth = betterAuth({
-	// Token-disclosing and profile-writing endpoints the client never needs.
-	//
-	// `/update-user` lets any signed-in user set their own name and avatar to an arbitrary external URL – an IP-logging pixel on a platform for minors, served from our own pages. Names and avatars come from HCA via syncHcaProfile instead, and nothing in the client calls this.
-	// `/get-access-token` and `/refresh-token` hand the caller's own GitHub/GitLab tokens (write access to their repos) to the browser. All forge writes run server-side through `auth.api.getAccessToken`, so nothing browser-side needs them.
-	disabledPaths: ["/get-access-token", "/refresh-token", "/update-user"],
-	// Rejects a caller-supplied OIDC idToken on the social sign-in/link paths.
-	//
-	// better-auth's /sign-in/social accepts a Hack Club Auth login token pasted in by the caller (idToken) and verifies it, but then resolves the identity from a separately supplied access token – with nothing checking the two belong to the same person, and replay protection only when the caller opts in. An attacker could send their own valid login token plus a victim's access token and get a session as the victim. The app's HCA flow never sends an idToken (browser redirect/code exchange), so anything carrying one is rejected here.
-	//
-	// The scopes cap is defence in depth for GHSA-mrhx-c7xc-m3w5 (zod 4.6.5, via better-auth): a huge scopes array builds an enormous validation error message (~670 MB from a 2 MB request). Bodies over 1 MB are refused before they are parsed for the same reason.
-	hooks: {
-		before: createAuthMiddleware(async ctx => {
-			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return
-			const body = ctx.body as { idToken?: unknown; scopes?: unknown } | undefined
-			if (body && typeof body === "object" && "idToken" in body && body.idToken)
-				throw new APIError("FORBIDDEN", { message: "idToken is not accepted" })
-			if (body && typeof body === "object" && Array.isArray((body as { scopes?: unknown }).scopes)) {
-				const scopes = (body as { scopes: unknown[] }).scopes
-				if (scopes.length > 50) throw new APIError("BAD_REQUEST", { message: "Too many scopes" })
-			}
-			// Cheap size guard before validation: stringify cost is bounded because the runtime has already buffered the body, and refusing here avoids building the giant zod error that is the OOM vector.
-			try {
-				const size = JSON.stringify(body ?? {}).length
-				if (size > 1_000_000) throw new APIError("PAYLOAD_TOO_LARGE", { message: "Request body too large" })
-			} catch (err) {
-				if (err instanceof APIError) throw err
-			}
-		}),
-	},
 	account: {
-		// Forge tokens (GitHub `repo`, GitLab `api` – write access to people's repositories) are encrypted at rest with BETTER_AUTH_SECRET. Plaintext rows written before this stay readable (better-auth leaves non-encrypted values alone, and encrypts on the next refresh/write).
-		encryptOAuthTokens: true,
 		accountLinking: {
 			// A participant's Hackatime signup email rarely matches their HCA email. Without this, better-auth's link flow aborts with email_doesn't_match and the account is never created – and because the auth handler swallows the error into a dashboard redirect, it looks like the button simply did nothing. This only affects the explicit linkSocial path, where the actor already holds the target session.
 			allowDifferentEmails: true,
@@ -109,6 +78,8 @@ export const auth = betterAuth({
 			// Hackatime and Lapse are trusted for (1) and defused for (2): their getUserInfo reports a per-identity address on the reserved .invalid TLD (linkOnlyEmail, above) that no real user can hold, so the email match in (2) can never find anyone. Nothing reads those addresses – a user's email comes from HCA, and Account rows store no email.
 			trustedProviders: ["hca", "hackatime", "lapse", "github", "gitlab"],
 		},
+		// Forge tokens (GitHub `repo`, GitLab `api` – write access to people's repositories) are encrypted at rest with BETTER_AUTH_SECRET. Plaintext rows written before this stay readable (better-auth leaves non-encrypted values alone, and encrypts on the next refresh/write).
+		encryptOAuthTokens: true,
 	},
 
 	// The ingress terminates TLS and forwards the public host in `x-forwarded-host`. Trusting it for base URL resolution is what makes the previous block see `halflife.hackclub.com` rather than the pod's own address; a forged value cannot point anywhere outside `allowedHosts`.
@@ -133,6 +104,13 @@ export const auth = betterAuth({
 	databaseHooks: {
 		account: {
 			create: {
+				after: async account => {
+					// Denormalise the Hackatime id onto User so hour lookups are one query.
+					if (account.providerId === "hackatime")
+						await db.orm.public.User.where({ id: account.userId })
+							.update({ hackatimeUserId: account.accountId })
+							.catch(err => console.error("[auth] hackatime id copy failed:", err))
+				},
 				// An HCA identity is the account itself: it is bound at sign-up and never changed after. A signed-in user who links a second, already-verified person's HCA account would inherit their verification status (syncHcaProfile copies it over), then keep it after unlinking – passing one identity check to any number of accounts. So an hca account may only ever be the user's FIRST account (the sign-up itself, including the staff-import adoption path where the row exists but has no accounts yet). Every other provider stays linkable.
 				before: async account => {
 					if (account.providerId !== "hca") return
@@ -150,19 +128,15 @@ export const auth = betterAuth({
 						return false
 					}
 				},
-				after: async account => {
-					// Denormalise the Hackatime id onto User so hour lookups are one query.
-					if (account.providerId === "hackatime")
-						await db.orm.public.User.where({ id: account.userId })
-							.update({ hackatimeUserId: account.accountId })
-							.catch(err => console.error("[auth] hackatime id copy failed:", err))
-				},
 			},
 			delete: {
 				// The counterpart: unlinking HCA must not be a way to launder the verification status onto another account. The HCA identity stays bound for the life of the user; nothing legitimate unlinks it (sign-in needs it, and syncHcaProfile no-ops without it).
+				// biome-ignore lint/suspicious/useAwait: better-auth requires database hooks to return promises; this one only returns.
 				before: async account => {
 					if ((account as { providerId?: string }).providerId === "hca") {
-						console.warn(`[auth] refused hca unlink for ${redactForLog((account as { userId?: string }).userId ?? "?")}`)
+						console.warn(
+							`[auth] refused hca unlink for ${redactForLog((account as { userId?: string }).userId ?? "?")}`,
+						)
 						return false
 					}
 				},
@@ -212,6 +186,32 @@ export const auth = betterAuth({
 				},
 			},
 		},
+	},
+	// Token-disclosing and profile-writing endpoints the client never needs.
+	//
+	// `/update-user` lets any signed-in user set their own name and avatar to an arbitrary external URL – an IP-logging pixel on a platform for minors, served from our own pages. Names and avatars come from HCA via syncHcaProfile instead, and nothing in the client calls this.
+	// `/get-access-token` and `/refresh-token` hand the caller's own GitHub/GitLab tokens (write access to their repos) to the browser. All forge writes run server-side through `auth.api.getAccessToken`, so nothing browser-side needs them.
+	disabledPaths: ["/get-access-token", "/refresh-token", "/update-user"],
+	// Rejects a caller-supplied OIDC idToken on the social sign-in/link paths.
+	//
+	// better-auth's /sign-in/social accepts a Hack Club Auth login token pasted in by the caller (idToken) and verifies it, but then resolves the identity from a separately supplied access token – with nothing checking the two belong to the same person, and replay protection only when the caller opts in. An attacker could send their own valid login token plus a victim's access token and get a session as the victim. The app's HCA flow never sends an idToken (browser redirect/code exchange), so anything carrying one is rejected here.
+	//
+	// The scopes cap is defence in depth for GHSA-mrhx-c7xc-m3w5 (zod 4.6.5, via better-auth): a huge scopes array builds an enormous validation error message (~670 MB from a 2 MB request). Bodies over 1 MB are refused before they are parsed for the same reason.
+	hooks: {
+		// biome-ignore lint/suspicious/useAwait: better-auth requires the hook to return a promise; this one only throws or returns.
+		before: createAuthMiddleware(async ctx => {
+			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return
+			const { idToken, scopes } = ctx.body as { idToken?: unknown; scopes?: unknown }
+			if (idToken) throw new APIError("FORBIDDEN", { message: "idToken is not accepted" })
+			if (Array.isArray(scopes) && scopes.length > 50) throw new APIError("BAD_REQUEST", { message: "Too many scopes" })
+			// Cheap size guard before validation: stringify cost is bounded because the runtime has already buffered the body, and refusing here avoids building the giant zod error that is the OOM vector.
+			try {
+				const size = JSON.stringify(ctx.body ?? {}).length
+				if (size > 1_000_000) throw new APIError("PAYLOAD_TOO_LARGE", { message: "Request body too large" })
+			} catch (err) {
+				if (err instanceof APIError) throw err
+			}
+		}),
 	},
 
 	// better-auth's OAuth state is single-use, so a callback delivered twice logs "Failed to parse state ... verification not found" on the second delivery even when the first one signed the user in. The callback route already turns that duplicate into a normal redirect (see app/api/auth/[...all]/route.ts), so logging it as an error only buried the failures that matter. Surface it as one info line and pass everything else through unchanged. `state_security_mismatch` is deliberately NOT caught: a state cookie that does not match is a real misconfiguration.
