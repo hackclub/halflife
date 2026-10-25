@@ -1,4 +1,4 @@
-# Half Life — open work
+# Half Life – open work
 
 The six items from the original notes are **done**. This file records the cross-cutting decisions that were settled alongside them and the external steps that remain before launch.
 
@@ -7,18 +7,18 @@ The six items from the original notes are **done**. This file records the cross-
 | # | Item | State |
 | --- | --- | --- |
 | 1 | Register the Ari callback URL | Built; operator panel at `/admin/program` shows the URL + config state. External: register it and set the secrets. |
-| 2 | Notify participants of review outcomes | Built — Slack DM, all three outcomes, both decision paths (console + Ari). Email is a Loops workflow off the Airtable row. External: configure that workflow. |
-| 3 | Submission state across the projects UI | Built — card borders, per-phase chips, legend; the project page has a Review block above the repo checks. |
-| 4 | Review actions on the project page | Built — resubmit (opens the submit sheet) and dispute (flags for staff, changes no state). |
-| 5 | Project placeholder from a reel or devlog | Built — cover → newest journal image → newest reel frame (thumbnail, else a video's first frame). |
-| 6 | Send grants from the admin panel (HCB) | Built — manual, idempotent top-up on `/admin/users/[id]`. External: HCB OAuth app + refresh-token persistence. |
+| 2 | Notify participants of review outcomes | Built – Slack DM, all three outcomes, both decision paths (console + Ari). Email is a Loops workflow off the Airtable row. External: configure that workflow. |
+| 3 | Submission state across the projects UI | Built – card borders, per-phase chips, legend; the project page has a Review block above the repo checks. |
+| 4 | Review actions on the project page | Built – resubmit (opens the submit sheet) and dispute (flags for staff, changes no state). |
+| 5 | Project placeholder from a reel or devlog | Built – cover → newest journal image → newest reel frame (thumbnail, else a video's first frame). |
+| 6 | Send grants from the admin panel (HCB) | Built – manual, idempotent top-up on `/admin/users/[id]`. External: HCB OAuth app + refresh-token persistence. |
 
 ## Decisions
 
-- **Payout ownership — the Airtable/YSWS pipeline owns payouts.** The HCB "Send grant" action is a deliberate **manual fallback**, not the normal path. It is idempotent within Half Life but does **not** know what the pipeline has paid, so enabling both can double-pay. See `docs/BACKEND.md` → Payouts.
-- **Email — Loops, off Airtable.** Half Life does not mail anyone. It writes the decision to the submission's row – `Loops - halfLifeReviewStatus` and the reviewer's note in `Loops - halfLifeReviewerNotes` (see `syncReviewDecisionToYsws` in `src/lib/airtable/sync.ts`) – and a Loops workflow sends from there. The Resend path was removed rather than kept as a second sender. The same write fills two override columns – `Loops - Override - halfLifeProjectName` and `Loops - Override - halfLifeProjectWeek` – because email-tools only forwards a `Loops - …` field whose value changed on that row. Without them a decision on an older project changed only status and note, so the contact kept the project name and week from the maker's most recent submission. The override prefix makes email-tools apply them to the same contact property.
-- **Notifications — all three outcomes, to the maker, Slack DM plus the Loops email.** `approved`, `changes requested` and `rejected` all notify.
-- **Green border — the current phase approved.** The design until the build starts, the build once it has. A passed design with the build not begun reads green.
+- **Payout ownership – the Airtable/YSWS pipeline owns payouts.** The HCB "Send grant" action is a deliberate **manual fallback**, not the normal path. It is idempotent within Half Life but does **not** know what the pipeline has paid, so enabling both can double-pay. See `docs/BACKEND.md` → Payouts.
+- **Email – Loops, off Airtable.** Half Life does not mail anyone. It writes the decision to the submission's row – `Loops - halfLifeReviewStatus` and the reviewer's note in `Loops - halfLifeReviewerNotes` (see `syncReviewDecisionToYsws` in `src/lib/airtable/sync.ts`) – and a Loops workflow sends from there. The Resend path was removed rather than kept as a second sender. The same write fills two override columns – `Loops - Override - halfLifeProjectName` and `Loops - Override - halfLifeProjectWeek` – because email-tools only forwards a `Loops - …` field whose value changed on that row. Without them a decision on an older project changed only status and note, so the contact kept the project name and week from the maker's most recent submission. The override prefix makes email-tools apply them to the same contact property.
+- **Notifications – all three outcomes, to the maker, Slack DM plus the Loops email.** `approved`, `changes requested` and `rejected` all notify.
+- **Green border – the current phase approved.** The design until the build starts, the build once it has. A passed design with the build not begun reads green.
 
 ## Before launch (external)
 

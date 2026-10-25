@@ -1,7 +1,7 @@
 /*
  * The weeks 3 + 4 sticker-sheet promotion, in the landing's world.
  *
- * It is mounted under both root layouts, so every colour reads the landing token first and falls back to the same literal: on the site's stylesheet there is one source of truth, and on the platform's — which has its own palette and none of these names — it still lands on the right ink, paper and cyan rather than on `transparent` or the browser's blue.
+ * It is mounted under both root layouts, so every colour reads the landing token first and falls back to the same literal: on the site's stylesheet there is one source of truth, and on the platform's – which has its own palette and none of these names – it still lands on the right ink, paper and cyan rather than on `transparent` or the browser's blue.
  *
  * The promo is a deliberate visitor from the landing: the painting, the wordmark and the cyan eyebrow are the landing's branding, and that is what makes a strip across the top of the platform read as an announcement from the programme rather than as another platform panel.
  *

@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
 	},
 
 	/**
-	 * Security headers for every route, including the ones the proxy matcher excludes — the handoff page at `/r/<token>`, the integration and upload routes. The proxy sets the same set for the pages it handles; duplicates are harmless and this is the one that covers the gaps.
+	 * Security headers for every route, including the ones the proxy matcher excludes – the handoff page at `/r/<token>`, the integration and upload routes. The proxy sets the same set for the pages it handles; duplicates are harmless and this is the one that covers the gaps.
 	 */
 	headers() {
 		return [

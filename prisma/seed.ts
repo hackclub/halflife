@@ -47,7 +47,7 @@ async function main() {
 		},
 		{
 			category: ShopItemCategory.PRINTER_UPGRADE,
-			description: "For abrasive filaments — carbon fibre, glow-in-the-dark, wood fill.",
+			description: "For abrasive filaments – carbon fibre, glow-in-the-dark, wood fill.",
 			id: "hardened-nozzle",
 			name: "Hardened steel nozzle",
 			priceCredits: 40,
@@ -82,7 +82,7 @@ async function main() {
 	/**
 	 * Retire printers that have left the catalogue.
 	 *
-	 * This seed only ever added rows, which was fine while the printers were typed out here and never changed. Now that they are generated from the budget sheet, re-pricing one changes its id — and without this the shop ends up selling a Bambu A1 Mini at 250 coins next to a Bambu A1 Mini at 241, with the participant's goal tracker pointed at neither.
+	 * This seed only ever added rows, which was fine while the printers were typed out here and never changed. Now that they are generated from the budget sheet, re-pricing one changes its id – and without this the shop ends up selling a Bambu A1 Mini at 250 coins next to a Bambu A1 Mini at 241, with the participant's goal tracker pointed at neither.
 	 *
 	 * Deactivated, never deleted: a ShopOrder points at its item, and someone's order history must not stop making sense because a machine was re-priced.
 	 */

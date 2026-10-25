@@ -12,7 +12,7 @@ import styles from "./sticker-sheet-banner.module.css"
 /**
  * The weeks 3 + 4 challenge, as a strip across the top of the site.
  *
- * The banner is in flow rather than fixed: it is the first thing on the page, the platform header's own sticky behaviour still works underneath it, and it scrolls away like the announcement it is. Closing it collapses it to the floating card in the bottom-right, which is also the way back — the card's copy is a button that reopens the banner and scrolls to it.
+ * The banner is in flow rather than fixed: it is the first thing on the page, the platform header's own sticky behaviour still works underneath it, and it scrolls away like the announcement it is. Closing it collapses it to the floating card in the bottom-right, which is also the way back – the card's copy is a button that reopens the banner and scrolls to it.
  *
  * The two root layouts mount it. The site's is static and the platform's is session-gated, so the choice lives in localStorage and the boot script in that layout hides the server-rendered banner before paint when it should not be there. See `promo-state.ts` and `PromoBootScript.tsx`.
  *
