@@ -79,34 +79,51 @@ type ParsedForm = { data: FormData; error?: never } | { data?: never; error: Nex
  */
 const UPLOAD_MEMORY_BUDGET_BYTES = 128 * 1024 * 1024
 
+/**
+ * The handoff pool: the phone-upload route is deliberately unauthenticated, so it reserves from its own budget rather than the shared one. Two anonymous 64 MB videos used to fill the whole shared pool and fail every other user's upload for up to 30 seconds; now they only queue behind each other. Sized to always fit one full-size handoff body plus headroom, so a legitimate upload never waits on an empty pool.
+ */
+const HANDOFF_MEMORY_BUDGET_BYTES = 96 * 1024 * 1024
+
 /** How long a request waits for room in the budget before it is refused. */
 const UPLOAD_RESERVATION_WAIT_MS = 30_000
 
-/** Bytes reserved by bodies being buffered right now. */
-let reservedUploadBytes = 0
+interface UploadPool {
+	budget: number
+	reserved: number
+	waiters: UploadWaiter[]
+}
 
 /** Requests waiting for room, in the order they asked. */
 interface UploadWaiter {
 	bytes: number
 	resolve(granted: boolean): void
 }
-const uploadWaiters: UploadWaiter[] = []
+
+function makeUploadPool(budget: number): UploadPool {
+	return { budget, reserved: 0, waiters: [] }
+}
+
+/** The pool an authenticated upload reserves from. */
+const defaultUploadPool = makeUploadPool(UPLOAD_MEMORY_BUDGET_BYTES)
+
+/** The pool the unauthenticated phone-upload route reserves from. */
+export const handoffUploadPool = makeUploadPool(HANDOFF_MEMORY_BUDGET_BYTES)
 
 /**
  * Hand the freed bytes to the first waiter they fit.
  *
  * First come, first served, and a waiter that does not fit is passed over rather than blocking the queue behind it: one large upload must not stop a hundred small ones from going through.
  */
-function drainUploadWaiters(): void {
-	for (let i = 0; i < uploadWaiters.length; ) {
-		const waiter = uploadWaiters[i]
+function drainUploadWaiters(pool: UploadPool): void {
+	for (let i = 0; i < pool.waiters.length; ) {
+		const waiter = pool.waiters[i]
 		if (!waiter) break
-		if (reservedUploadBytes + waiter.bytes > UPLOAD_MEMORY_BUDGET_BYTES) {
+		if (pool.reserved + waiter.bytes > pool.budget) {
 			i += 1
 			continue
 		}
-		reservedUploadBytes += waiter.bytes
-		uploadWaiters.splice(i, 1)
+		pool.reserved += waiter.bytes
+		pool.waiters.splice(i, 1)
 		waiter.resolve(true)
 	}
 }
@@ -116,18 +133,18 @@ function drainUploadWaiters(): void {
  *
  * Waiting rather than refusing is what keeps a cohort upload working: the room is taken before the body is read, so a request that waits costs no memory of its own.
  */
-function reserveUploadBytes(bytes: number): Promise<boolean> {
-	if (reservedUploadBytes + bytes <= UPLOAD_MEMORY_BUDGET_BYTES) {
-		reservedUploadBytes += bytes
+function reserveUploadBytes(pool: UploadPool, bytes: number): Promise<boolean> {
+	if (pool.reserved + bytes <= pool.budget) {
+		pool.reserved += bytes
 		return Promise.resolve(true)
 	}
 	return new Promise<boolean>(resolve => {
 		const waiter: UploadWaiter = { bytes, resolve }
-		uploadWaiters.push(waiter)
+		pool.waiters.push(waiter)
 		const timer = setTimeout(() => {
-			const index = uploadWaiters.indexOf(waiter)
+			const index = pool.waiters.indexOf(waiter)
 			if (index === -1) return
-			uploadWaiters.splice(index, 1)
+			pool.waiters.splice(index, 1)
 			resolve(false)
 		}, UPLOAD_RESERVATION_WAIT_MS)
 		// The timer must not be what keeps the process alive on its way out.
@@ -136,28 +153,34 @@ function reserveUploadBytes(bytes: number): Promise<boolean> {
 }
 
 /** Give the reservation back and let the queue move. */
-function releaseUploadBytes(bytes: number): void {
-	reservedUploadBytes = Math.max(0, reservedUploadBytes - bytes)
-	drainUploadWaiters()
+function releaseUploadBytes(pool: UploadPool, bytes: number): void {
+	pool.reserved = Math.max(0, pool.reserved - bytes)
+	drainUploadWaiters(pool)
 }
 
 /**
  * Parse an upload's multipart form without letting the caller decide how much memory the server spends before a single field can be read.
  *
  * `request.formData()` materialises the whole body first, and both upload routes check their size limits afterwards – fine for a small staff form, but a denial of service for an upload. The handoff path is deliberately unauthenticated and reads its token out of the form, so a limit checked after parsing arrives too late. Content-Length is checked first (cheap, and what a normal client sends), then the stream is counted as it is read, so a chunked request cannot skip the check by omitting the header.
+ *
+ * `pool` selects whose budget the reservation comes from: the shared pool by default, the handoff pool for the unauthenticated phone route, so anonymous uploads queue behind each other instead of starving everyone else.
  */
-export async function parseUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
+export async function parseUploadForm(
+	request: Request,
+	maxFileBytes: number,
+	pool: UploadPool = defaultUploadPool,
+): Promise<ParsedForm> {
 	const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
 	const declared = Number(request.headers.get("content-length") ?? "")
 	const reservation = Number.isFinite(declared) && declared > 0 ? Math.min(declared, cap) : cap
 
-	if (!(await reserveUploadBytes(reservation)))
+	if (!(await reserveUploadBytes(pool, reservation)))
 		return { error: fail("RATE_LIMITED", "Too many uploads at once – wait a moment and try again") }
 
 	try {
 		return await bufferUploadForm(request, maxFileBytes)
 	} finally {
-		releaseUploadBytes(reservation)
+		releaseUploadBytes(pool, reservation)
 	}
 }
 
