@@ -52,7 +52,7 @@ const createPool = () => {
  * Untyped on purpose: better-auth addresses tables and columns by name from its own schema, and typing them would mean hand-writing four table interfaces that only mirror `prisma/contract.prisma`.
  */
 const createClient = () =>
-	new Kysely<Record<string, Record<string, unknown>>>({ dialect: new PostgresDialect({ pool: createPool() }) })
+	new Kysely<{ [_: string]: { [_: string]: unknown } }>({ dialect: new PostgresDialect({ pool: createPool() }) })
 
 // Cached on globalThis so Next's dev-mode module reloading does not open a new pool on every edit.
 const globalForAuthDb = globalThis as unknown as { authDb?: ReturnType<typeof createClient> }

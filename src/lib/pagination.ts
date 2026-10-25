@@ -40,7 +40,7 @@ export interface CursorOrder {
  *
  * `TModel` is the model the list reads, so the column has to be one of its own. A column that does not exist would otherwise only be found when the query runs.
  */
-export interface CursorOrderOf<T, TModel = Record<string, string>> extends Omit<CursorOrder, "column"> {
+export interface CursorOrderOf<T, TModel = { [_: string]: string }> extends Omit<CursorOrder, "column"> {
 	/** The row's value of the leading column - the first half of the cursor. */
 	at(row: T): Date | null
 	/** The leading order column. */
