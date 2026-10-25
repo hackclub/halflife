@@ -1,6 +1,6 @@
 import { and } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
-import { fail, ok, parseBody } from "@/lib/api"
+import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { projectDisplayTitle } from "@/lib/config/program"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
@@ -22,6 +22,10 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	const parsed = await parseBody(req, disputeMessageSchema)
 	if (parsed.error) return parsed.error
+
+	// Every reply pings staff on Slack, so the same ten-a-minute brake as feed comments applies.
+	if (rateLimitedInMemory(`dispute-message:${gate.user.id}`))
+		return fail("RATE_LIMITED", "Slow down – try again in a moment")
 
 	const dispute = await db.orm.public.ReviewDispute.where({ id: disputeId })
 		.where(d =>

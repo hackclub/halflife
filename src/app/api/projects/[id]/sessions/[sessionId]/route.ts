@@ -4,7 +4,7 @@ import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { Phase, PhaseStatus, type Theme } from "@/lib/enums"
+import { Phase, PhaseStatus, HoursSource, type Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
@@ -95,6 +95,24 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 
 	const updated = await db.transaction(async tx => {
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
+		// Same daily cap as creation: an edit that raises the claim (or flips the source to MANUAL) must fit under the day's 24 self-reported hours, counting this entry's own current value out and the new one in.
+		const nextSource = data.hoursSource ?? session.hoursSource
+		const nextHours = data.hoursClaimed ?? session.hoursClaimed
+		if (nextSource === HoursSource.MANUAL && (data.hoursClaimed !== undefined || data.hoursSource !== undefined)) {
+			const { claimedToday } = await tx.orm.public.WorkSession.where({
+				deletedAt: null,
+				effectiveDate: session.effectiveDate,
+				hoursSource: HoursSource.MANUAL,
+			})
+				.where(s => s.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))))
+				.where(s => s.id.neq(sessionId))
+				.aggregate(a => ({ claimedToday: a.sum("hoursClaimed") }))
+			if ((claimedToday ?? 0) + nextHours > 24)
+				throw new HttpError(
+					"VALIDATION_FAILED",
+					"That would put more than 24 hours of self-reported work on one day – split it across the days it was worked.",
+				)
+		}
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a decision that commits between the checks above and this write makes it match nothing, and the edit is refused rather than landing on a frozen week.
 		const changed = await tx.orm.public.WorkSession.where({ deletedAt: null, id: sessionId, themeProjectId: id })
 			.where(row => row.hoursApproved.isNull())

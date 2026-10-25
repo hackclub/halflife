@@ -4,6 +4,14 @@ import { publicRedirect } from "@/lib/public-origin"
 
 const handler = toNextJsHandler(auth)
 
+/** Largest auth body accepted: 1 MB. better-auth ships a zod version with GHSA-mrhx-c7xc-m3w5, where a huge scopes array builds a ~670 MB error message from a 2 MB request. The hooks.before scopes cap refuses that shape, but a giant body should never be buffered at all. */
+const MAX_AUTH_BODY_BYTES = 1_000_000
+
+function bodyTooLarge(request: Request): boolean {
+	const declared = Number(request.headers.get("content-length") ?? "")
+	return Number.isFinite(declared) && declared > MAX_AUTH_BODY_BYTES
+}
+
 /**
  * Two callback failures are answered here instead of being left to better-auth.
  *
@@ -37,4 +45,8 @@ export async function GET(request: Request): Promise<Response> {
 	return publicRedirect(request, "/")
 }
 
-export const { POST } = handler
+export async function POST(request: Request): Promise<Response> {
+	if (bodyTooLarge(request))
+		return Response.json({ message: "Request body too large" }, { status: 413 })
+	return handler.POST(request)
+}

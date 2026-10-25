@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server"
+import { readBoundedText } from "@/lib/api"
 import {
 	addReaction,
 	checkChannelMembership,
@@ -455,7 +456,9 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-	const rawBody = await request.text()
+	// Bounded before verification: an unsigned caller must not decide how much memory the HMAC read may spend.
+	const rawBody = await readBoundedText(request)
+	if (rawBody === null) return NextResponse.json({ ok: false }, { status: 413 })
 
 	const verified = verifySlackRequest(
 		rawBody,

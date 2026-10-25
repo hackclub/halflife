@@ -17,6 +17,14 @@ export function displayName(person: Person | null | undefined, fallback: string)
 export function displayName(person: Person | null | undefined, fallback?: null): string | null
 export function displayName(person: Person | null | undefined, fallback: string | null = null): string | null {
 	const nickname = person?.displayName?.trim()
-	if (nickname) return nickname
-	return person?.name?.trim() || fallback
+	// A stored name is never an address: sign-up stores the email as `name` when HCA sends no name (better-auth requires the field), so without this the address renders as the person's public name wherever the fallback is "A maker" or null. Email-shaped values are skipped, not shown – callers that deliberately pass the email as the fallback still get it, since the fallback is returned untouched.
+	if (nickname && !isEmailLike(nickname)) return nickname
+	const full = person?.name?.trim()
+	if (full && !isEmailLike(full)) return full
+	return fallback
+}
+
+/** Whether a string is shaped like an email address ( enough to catch a stored address, loose enough to leave handles like "@octocat" alone. */
+function isEmailLike(value: string): boolean {
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }

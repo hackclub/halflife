@@ -1,5 +1,6 @@
 import { createWebhookHandler } from "@hackclub/ari"
 import { NextResponse } from "next/server"
+import { readBoundedText } from "@/lib/api"
 import { applyAriWebhook, isAriWebhookConfigured } from "@/lib/ari"
 
 // Signature checks need Node's Web Crypto, not the edge runtime.
@@ -18,10 +19,10 @@ type Handler = (request: Request) => Promise<Response>
 
 let handler: Handler | null = null
 
-export function POST(request: Request): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
 	const secret = process.env.ARI_WEBHOOK_SECRET
 	if (!isAriWebhookConfigured() || !secret)
-		return Promise.resolve(NextResponse.json({ error: "Ari is not configured on this deployment" }, { status: 503 }))
+		return NextResponse.json({ error: "Ari is not configured on this deployment" }, { status: 503 })
 
 	handler ??= createWebhookHandler({
 		async on_event(event, context) {
@@ -29,5 +30,8 @@ export function POST(request: Request): Promise<Response> {
 		},
 		secret,
 	})
-	return handler(request)
+	// Bounded before the SDK reads it: the handler verifies the signature over the raw bytes, so the body is pre-read under a cap and re-wrapped – the SDK never sees more than 1 MB no matter what the caller sent.
+	const rawBody = await readBoundedText(request)
+	if (rawBody === null) return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+	return handler(new Request(request.url, { body: rawBody, headers: request.headers, method: "POST" }))
 }

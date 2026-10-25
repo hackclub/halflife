@@ -417,7 +417,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				createdById: input.reviewerId,
 				kind: LedgerKind.THEME_COMPLETION_BONUS,
 				note: `${getThemeDef(project.theme).label} shipped`,
-				target: approving ? THEME_COMPLETION_BONUS : 0,
+				// Season themes only: warm-up projects are pre-season practice, not a shipped theme, and paying the completion bonus on them mints 25 coins per warm-up hand-in.
+				target: approving && project.theme !== Theme.WARMUP ? THEME_COMPLETION_BONUS : 0,
 				themeProjectId: project.id,
 				userId: project.userId,
 			})

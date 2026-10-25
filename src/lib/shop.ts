@@ -316,6 +316,10 @@ export async function purchase(
 	const access = await getShopAccess(userId)
 	if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
+	// The fraud flag blocks spending like it blocks submitting: flagged accounts cannot move credit or receive shipments until an admin clears them. Read fresh here, and re-checked under the credit lock below, so a flag set mid-purchase still stops it.
+	const flagged = await db.orm.public.User.whereUnique({ id: userId }).select("fraudFlagged").first()
+	if (flagged?.fraudFlagged) throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
+
 	// Spending is where identity is asked for. It used to be asked at submit, which turned the last step of a finished week into a wall for anyone who had not got round to verifying – and the shop is the one thing money and a shipping address are actually behind. Checked before the transaction rather than inside it: it is the buyer's own state, read fresh, and nothing concurrent here can undo it.
 	if (!(await isIdentityVerified(userId)))
 		throw new HttpError(
@@ -337,6 +341,10 @@ export async function purchase(
 
 	return db.transaction(async tx => {
 		await lockUserCredit(tx, userId)
+
+		// Re-checked inside the transaction: a flag set between the pre-check and the lock must still stop the purchase.
+		const freshBuyer = await tx.orm.public.User.whereUnique({ id: userId }).select("fraudFlagged").first()
+		if (freshBuyer?.fraudFlagged) throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
 
 		// Re-checked inside the transaction: the pre-check above ran against reads taken before the lock, so a shop-close or a qualification-revoke in between must not still complete. Read off the transaction so this sees a consistent snapshot.
 		const settings = await tx.orm.public.ProgramSettings.whereUnique({ id: "singleton" }).first()

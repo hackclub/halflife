@@ -1,4 +1,4 @@
-import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
+import { fail, handoffUploadPool, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { clientIp } from "@/lib/client-ip"
 import { completeHandoff, HANDOFF_MAX_PER_MINUTE, HANDOFF_MAX_UPLOAD_BYTES, resolveHandoff } from "@/lib/handoff"
@@ -22,8 +22,8 @@ export const POST = withRoute(async (req: Request) => {
 	if (rateLimitedInMemory(`handoff-upload:${clientIp(req.headers)}`, HANDOFF_MAX_PER_MINUTE))
 		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
 
-	// Capped before it is parsed, because this route has no session and the token is inside the form: `req.formData()` would otherwise buffer whatever the caller sends before any credential is checked.
-	const parsed = await parseUploadForm(req, HANDOFF_MAX_UPLOAD_BYTES)
+	// Capped before it is parsed, because this route has no session and the token is inside the form: `req.formData()` would otherwise buffer whatever the caller sends before any credential is checked. From the handoff pool, not the shared one, so anonymous uploads queue behind each other instead of starving everyone else.
+	const parsed = await parseUploadForm(req, HANDOFF_MAX_UPLOAD_BYTES, handoffUploadPool)
 	if (parsed.error) return parsed.error
 	const form = parsed.data
 

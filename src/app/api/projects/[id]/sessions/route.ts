@@ -4,7 +4,7 @@ import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { PhaseStatus, Theme } from "@/lib/enums"
+import { PhaseStatus, HoursSource, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
@@ -191,6 +191,24 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 			current?.submissionExtensionUntil ? parseDbTimestamp(current.submissionExtensionUntil) : null,
 		)
 		if (new Date() >= closesAt) throw new HttpError("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
+
+		// One person cannot work more than 24 hours in a day. Self-reported (MANUAL) claims are capped per effective date across all of the maker's live projects, so ten 15-hour entries in a minute are refused. Tracked entries are excluded: their time is verified by Hackatime, not self-reported. Counted inside the transaction, so two parallel submits cannot each pass against the same total.
+		if (data.hoursSource === HoursSource.MANUAL) {
+			const { claimedToday } = await tx.orm.public.WorkSession.where({
+				deletedAt: null,
+				effectiveDate: timing.effectiveDate,
+				hoursSource: HoursSource.MANUAL,
+			})
+				.where(session =>
+					session.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))),
+				)
+				.aggregate(a => ({ claimedToday: a.sum("hoursClaimed") }))
+			if ((claimedToday ?? 0) + data.hoursClaimed > 24)
+				throw new HttpError(
+					"VALIDATION_FAILED",
+					"That would put more than 24 hours of self-reported work on one day – split it across the days it was worked.",
+				)
+		}
 
 		const created = await tx.orm.public.WorkSession.create({
 			content: data.content ? sanitizeHtml(data.content) : null,

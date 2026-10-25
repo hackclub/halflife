@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server"
-import { ok, parseBody, parseQuery } from "@/lib/api"
+import { fail, ok, parseBody, parseQuery, rateLimitedInMemory } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { addComment, getComments } from "@/lib/feed"
 import { type AuthedContext, withSession } from "@/lib/guards"
@@ -26,6 +26,9 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	const parsed = await parseBody(req, commentSchema)
 	if (parsed.error) return parsed.error
+
+	// Spam brake: ten comments a minute per account. In-memory per instance like every other app rate limit (see lib/rate-limit), so it stops one account flooding the feed, not a distributed attack.
+	if (rateLimitedInMemory(`comment:${gate.user.id}`)) return fail("RATE_LIMITED", "Slow down – try again in a moment")
 
 	const comment = await addComment(id, gate.user.id, parsed.data.body)
 

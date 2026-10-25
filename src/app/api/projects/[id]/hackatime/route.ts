@@ -1,11 +1,12 @@
+import { and } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { scheduledWeekFor } from "@/lib/config/program"
+import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
 import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import { fetchProjectSeconds } from "@/lib/hackatime"
+import { fetchProjectSeconds, phaseWeekWindow } from "@/lib/hackatime"
 import { warmLinkSpans } from "@/lib/hours"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
@@ -86,7 +87,28 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 		)
 	}
 
-	const fetched = await fetchProjectSeconds(project.user.hackatimeUserId, parsed.data.hackatimeProject)
+	// Cross-project on purpose: one block of tracked time backing two of the maker's projects counts it twice, at a $100 grant plus up to 250 coins a project. Week-scoping (below) separates themes in different scheduled weeks, but warm-ups have no week and an unscoped warm-up total otherwise swallows a theme week's hours whole – so the same tracked project may back only one project, full stop. Deleted projects are excluded: their links stop counting with them.
+	const other = await db.orm.public.HackatimeLink.where({ hackatimeProject: parsed.data.hackatimeProject })
+		.where(link =>
+			link.themeProject.some(owner =>
+				and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id), owner.id.neq(id)),
+			),
+		)
+		.include("themeProject", owner => owner.select("theme", "title"))
+		.first()
+	if (other?.themeProject)
+		return fail(
+			"CONFLICT",
+			`That Hackatime project is already linked to "${projectDisplayTitle(other.themeProject)}". One tracked project can back only one project, because its hours would otherwise count twice – unlink it there first, or link a different Hackatime project.`,
+		)
+
+	// Scoped to the phase's scheduled week: the endpoint's default is the project's all-time total, and linking that total on every theme and warm-up paid one block of work many times over. Warm-ups (week 0) have no week to scope to and keep the all-time total, with the cross-project check above as the guard.
+	const window = await phaseWeekWindow(project.theme, parsed.data.phase)
+	const fetched = await fetchProjectSeconds(
+		project.user.hackatimeUserId,
+		parsed.data.hackatimeProject,
+		window ?? undefined,
+	)
 	// A name Hackatime does not list is a typo or a renamed project, not a link: creating it would leave a row that can never contribute hours and only surfaces again at approval time. A transient fetch failure still creates the link, so it can be refreshed once Hackatime answers.
 	if (fetched.notFound)
 		return fail(
@@ -102,6 +124,20 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
 		if (currentStatus && isPhaseDecided(currentStatus))
 			throw new HttpError("PHASE_LOCKED", "This phase has been submitted and decided, so no more hours can be linked")
+
+		// Re-checked inside the transaction: a link of the same tracked project to another of the maker's projects, landing between the checks above and this create, would otherwise count one block of time twice.
+		const clash = await tx.orm.public.HackatimeLink.where({ hackatimeProject: parsed.data.hackatimeProject })
+			.where(link =>
+				link.themeProject.some(owner =>
+					and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id), owner.id.neq(id)),
+				),
+			)
+			.first()
+		if (clash)
+			throw new HttpError(
+				"CONFLICT",
+				"That Hackatime project was just linked to another of your projects – unlink it there first, or link a different Hackatime project.",
+			)
 
 		return tx.orm.public.HackatimeLink.create({
 			cachedAt: fetched.stale ? null : formatDbTimestamp(new Date()),

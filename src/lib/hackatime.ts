@@ -1,7 +1,10 @@
 import "server-only"
+import { scheduledWeekFor } from "@/lib/config/program"
+import type { Phase, Theme } from "@/lib/enums"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import type { HackatimeSpan } from "@/lib/hours-overlap"
 import db from "@/lib/prisma8"
+import { getProgramSettings, weekDateRange } from "@/lib/program"
 import { formatDbTimestamp } from "@/lib/time"
 
 const BASE = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
@@ -49,11 +52,22 @@ export function projectSecondsFrom(body: unknown, project: string): HackatimeFet
  * Returns `{ seconds, stale }` rather than a bare number on purpose.
  *
  * Stasis's client returns 0 on any error including a timeout, and that zero flows straight into the hours field on the grant row with no signal. A blip during an approval silently underpays someone. Here the caller can tell the difference between "genuinely zero" and "we don't know", and the approval path refuses to finalise on "we don't know".
+ *
+ * Pass `window` to count only time in that span (a phase's scheduled week): without it the endpoint returns the project's all-time total, which is what let one block of tracked time back every theme and warm-up at once. Hackatime's stats endpoint honours `start_date`/`end_date` (see its StatsController); when the week is unknown (warm-up, week 0) omit the window and the all-time total is returned, with cross-project uniqueness as the remaining guard.
  */
-export async function fetchProjectSeconds(hackatimeUserId: string, project: string): Promise<HackatimeFetch> {
+export async function fetchProjectSeconds(
+	hackatimeUserId: string,
+	project: string,
+	window?: { fromSeconds: number; toSeconds: number },
+): Promise<HackatimeFetch> {
 	try {
 		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
 		url.searchParams.set("features", "projects")
+		// Hackatime parses these with Time.zone.parse, so an ISO instant is unambiguous where a bare date would be read in the server's zone.
+		if (window) {
+			url.searchParams.set("start_date", new Date(window.fromSeconds * 1000).toISOString())
+			url.searchParams.set("end_date", new Date(window.toSeconds * 1000).toISOString())
+		}
 		const res = await fetchWithRetry(url, {
 			cache: "no-store",
 			signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -146,6 +160,23 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 	}
 }
 
+/**
+ * The seconds window a phase's Hackatime link counts: its scheduled week, midnight to 11:59 PM in the program timezone.
+ *
+ * One block of tracked time must not back two phases' minimums, so a link counts the week it belongs to rather than the project's all-time total. Null for unscheduled phases (warm-up, week 0): there is no week to scope to, so callers fall back to the all-time total with the cross-project uniqueness check as the remaining guard.
+ */
+export async function phaseWeekWindow(
+	theme: Theme,
+	phase: Phase,
+): Promise<{ fromSeconds: number; toSeconds: number } | null> {
+	const week = scheduledWeekFor(theme, phase)
+	if (week < 1) return null
+	const settings = await getProgramSettings()
+	const range = weekDateRange(settings, week)
+	if (!range) return null
+	return { fromSeconds: Math.floor(range.start.getTime() / 1000), toSeconds: Math.floor(range.end.getTime() / 1000) }
+}
+
 /** Refresh one link's cached total. Used by the sync job and on demand. */
 export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> {
 	const link = await db.orm.public.HackatimeLink.whereUnique({ id: linkId })
@@ -157,7 +188,9 @@ export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> 
 	if (!hackatimeUserId)
 		return { error: "user has no linked Hackatime account", seconds: link.cachedSeconds ?? 0, stale: true }
 
-	const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
+	// Week-scoped, like every other read of a link's seconds: caching the all-time total here would reintroduce the double-count the link route scopes out, one sync run later.
+	const window = await phaseWeekWindow(link.themeProject.theme, link.phase)
+	const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject, window ?? undefined)
 	if (result.stale) {
 		await db.orm.public.HackatimeLink.where({ id: linkId }).update({
 			lastFetchError: result.error ?? "unknown error",

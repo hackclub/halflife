@@ -557,12 +557,12 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 		}
 		tier = chosen
 
-		// A tier's grant buys its funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor, so this only bites when the reviewer approves less time than was logged: the tier then steps down to the one the approved hours earned, rather than the grant staying at a level the hours do not cover. Under every tier there is no parts grant at all. Clamped here rather than refused in finalizeReview, so an automatic decision never lands as an error Ari would keep redelivering.
+		// A tier's grant buys its funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor, so this only bites when the reviewer approves less time than was logged: the tier then steps down to the one the approved hours earned, rather than the grant staying at a level the hours do not cover. Under every tier there is no parts grant at all. It never steps UP: Ari reviews the work, not the money, so approved hours earning a higher tier than the maker asked for keep the asked-for tier rather than inventing a bigger grant. Clamped here rather than refused in finalizeReview, so an automatic decision never lands as an error Ari would keep redelivering.
 		const approved = approvedHoursFrom(event.review)
 		if (approved !== null) {
 			const affordable = tierForHours(approved)
 			if (affordable) {
-				if (affordable.id !== chosen) tier = affordable.id
+				if (affordable.id < chosen) tier = affordable.id
 			} else grantUsdOverride = 0
 		}
 	}
