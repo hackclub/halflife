@@ -83,7 +83,8 @@ function readOptions(args: string[]): Options {
 
 /** devalue's flattened form: slot 0 is the root, a number is another slot, and negative numbers are specials. */
 function unflatten(flat: unknown[]): unknown {
-	const done: unknown[] = new Array(flat.length)
+	// holes matter: `in` below tells a hydrated slot from one still waiting
+	const done: unknown[] = []
 
 	const hydrate = (slot: unknown): unknown => {
 		if (typeof slot !== "number") throw new Error(`Unexpected value in Ari's data: ${JSON.stringify(slot)}`)
@@ -185,11 +186,15 @@ function errorText(raw: unknown): string {
 
 	if (!isRecord(raw)) return String(raw)
 	const status = typeof raw.status === "number" ? ` ${raw.status}` : ""
-	return `${String(raw.message ?? JSON.stringify(raw))}${status}`
+	const message = typeof raw.message === "string" ? raw.message : JSON.stringify(raw)
+	return `${message}${status}`
 }
 
 function textOf(value: unknown): string {
-	return typeof value === "string" ? value : value === null || value === undefined ? "" : String(value)
+	if (typeof value === "string") return value
+	if (value === null || value === undefined) return ""
+	if (typeof value === "number" || typeof value === "boolean") return String(value)
+	return JSON.stringify(value) ?? ""
 }
 
 /** Keep the audit fields, and flatten the page's display-only ones away. */
