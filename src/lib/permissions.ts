@@ -137,17 +137,10 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
  *
  * A session can outlive its user. The session cookie cache answers `getSession` without touching the database for up to five minutes, so a user deleted inside that window – by hand, or wholesale by a database reset – still looks signed in, and every page then loads that user by id. One query answers both "who are they" and "are they still here", so the guards can turn a ghost session into a sign-out rather than let the first `findUniqueOrThrow` discover it as a 500.
  */
-export async function getUserRolesIfExists(userId: string): Promise<Role[] | null> {
-	const user = await db.orm.public.User.whereUnique({ id: userId })
-		.include("roles", roles => roles.select("role"))
-		.first()
-	return user?.roles.map(r => r.role) ?? null
-}
-
 /**
  * Roles and penalty state in the same read, for guards that must answer "who" and "may they still act" in one request.
  *
- * Same ghost rule as above: a missing row answers `null`. The penalty timestamps travel with the query because a member's ability to act can be revoked mid-session - a ban written while a session cookie is still in some browser's hands shows up on this very read, so the next request refuses rather than waiting for the cookie cache to lapse.
+ * A missing row answers `null`: a session can outlive its user, and the cookie cache can serve one for minutes after a delete, so this is also where a ghost becomes a sign-out rather than a 500 from whatever loads the user next. The penalty timestamps travel with the query because a member's ability to act can be revoked mid-session - a ban written while a session cookie is still in some browser's hands shows up on this very read, so the next request refuses rather than waiting for the cache to lapse.
  */
 export interface UserGuardState {
 	penalty: Penalty

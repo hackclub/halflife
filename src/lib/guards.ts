@@ -30,7 +30,7 @@ async function resolve(): Promise<{ user: SessionUser; roles: Role[]; penalty: P
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session) return null
 	const u = session.user
-	// The cookie cache can serve a session whose user is gone; see getUserRolesIfExists. Treat that ghost as signed out so handlers answer 401 instead of failing later with a missing-row error.
+	// The cookie cache can serve a session whose user is gone; getUserGuardState answers null for that ghost. Treat it as signed out so handlers answer 401 instead of failing later with a missing-row error.
 	// The same read carries the penalty state, so a suspension or ban written mid-session shows up on the next request rather than waiting for the cache to lapse.
 	const state: UserGuardState | null = await getUserGuardState(u.id)
 	if (!state) return null
