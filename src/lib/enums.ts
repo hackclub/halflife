@@ -3,7 +3,7 @@
  *
  * Prisma 8 has no generated `enums.ts`: the contract knows each enum as a `valueSet`, and `db.nativeEnums` exposes it as `{ members, names, values }` rather than the `Phase.DESIGN` shape the app reads. This module keeps that shape for one import that works on both sides of the client boundary, since the contract runtime is a server dependency.
  *
- * Generated from `prisma8/contract.prisma` by `scripts/generate-enums.ts` – run `bun run p8:contract:emit` after changing the schema. The `satisfies` check fails typecheck if this file and the contract disagree.
+ * Generated from `prisma/contract.prisma` by `scripts/generate-enums.ts` – run `bun run db:generate` after changing the schema. The `satisfies` check fails typecheck if this file and the contract disagree.
  */
 import type { Contract } from "@/app/generated/prisma8/contract.d"
 
