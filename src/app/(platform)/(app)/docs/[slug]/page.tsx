@@ -31,7 +31,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
 	const { slug } = await params
 	const doc = DOCS.find(d => d.slug === slug)
-	return { title: doc ? `${doc.title} – Half Life docs` : "Docs – Half Life" }
+	return { title: doc ? `${doc.title} · Half Life Docs` : "Half Life Docs" }
 }
 
 export default async function DocPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -53,8 +53,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 
 			<div className="mt-6 grid gap-10 lg:grid-cols-[1fr_220px] lg:items-start">
 				<article>
-					<p className="label text-teal-ink">{doc.section}</p>
-					<h1 className="mt-2 text-[clamp(2rem,5.5vw,3rem)] leading-[1.03] font-extrabold tracking-[-0.04em] text-navy">
+					<h1 className="text-[clamp(2rem,5.5vw,3rem)] leading-[1.03] font-extrabold tracking-[-0.04em] text-navy">
 						{doc.title}
 					</h1>
 					<p className="mt-3 max-w-[60ch] text-[1.05rem] leading-relaxed text-navy-soft">{doc.summary}</p>

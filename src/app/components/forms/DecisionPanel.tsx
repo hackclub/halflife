@@ -88,7 +88,7 @@ export function DecisionPanel({
 						<option value="">Choose a tier…</option>
 						{tiers.map(t => (
 							<option key={t.id} value={t.id}>
-								{t.name} – ${t.grantUsd} for parts, submit from {t.fundingHours}h of design time
+								{t.name}: ${t.grantUsd} for parts, submit from {t.fundingHours}h of design time
 							</option>
 						))}
 					</select>

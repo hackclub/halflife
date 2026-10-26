@@ -37,7 +37,7 @@ export function ProjectRow({
 	const [open, setOpen] = useState(false)
 	const canManage = canExtend || canMoveTheme
 	const panelId = `manage-${data.id}`
-	const tier = data.tier ?? (data.requestedTier ? `${data.requestedTier} (asked)` : "—")
+	const tier = data.tier ?? (data.requestedTier ? `${data.requestedTier} (asked)` : "-")
 
 	return (
 		<>

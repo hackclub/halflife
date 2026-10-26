@@ -20,7 +20,7 @@ const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts", "s
 
 export const POST = withSession(async (req: Request, { gate }) => {
 	if (rateLimitedInMemory(`upload:${gate.user.id}`))
-		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
+		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")
 
 	if (!isUploadConfigured()) return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 

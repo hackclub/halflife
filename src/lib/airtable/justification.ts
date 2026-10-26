@@ -164,7 +164,7 @@ function partLine(part: JustificationPart): string | null {
 	if (!name) return null
 	const purpose = part.purpose?.trim() ?? ""
 	const quantity = part.quantity > 1 ? ` (×${part.quantity})` : ""
-	return `- ${name}${purpose ? ` – ${purpose}` : ""}${quantity}`
+	return `- ${name}${purpose ? `: ${purpose}` : ""}${quantity}`
 }
 
 /** One journal entry, as a line of the log, or nothing for an entry with no title. */
@@ -172,7 +172,7 @@ function sessionLine(session: JustificationSession, description: string): string
 	const title = session.title.trim()
 	if (!title) return null
 	const date = session.effectiveDate?.trim() || ymd(session.createdAt)
-	const head = `- ${title} – ${fmtHours(session.hoursClaimed)}${date ? ` (${date})` : ""}`
+	const head = `- ${title}: ${fmtHours(session.hoursClaimed)}${date ? ` (${date})` : ""}`
 	const excerpt = sessionExcerpt(session.content, description)
 	return excerpt ? `${head}\n  ${excerpt}` : head
 }

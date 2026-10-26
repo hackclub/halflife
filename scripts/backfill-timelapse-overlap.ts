@@ -75,7 +75,7 @@ async function main() {
 				// Gone private, deleted, or still processing. Same as unattached.
 				unfillable += 1
 			}
-			await new Promise(resolve => setTimeout(resolve, PACE_MS))
+			await Bun.sleep(PACE_MS)
 		}
 	}
 

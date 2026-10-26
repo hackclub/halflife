@@ -112,13 +112,13 @@ export const REPO_FILE_KINDS: Record<
 		],
 		label: "Firmware",
 		missing:
-			"No firmware found – Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
+			"No firmware found. Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
 	},
 	logicSchematic: {
 		extensions: [".kicad_sch", ".kicad_pro", ".kicad_pcb", ".sch", ".schdoc", ".esch", ".fzz", ".circ", ".dig"],
 		json: DESIGN_JSON,
 		label: "Schematic",
-		missing: "No schematic found – KiCad, Logisim (.circ), Digital (.dig) or an exported EasyEDA file all count",
+		missing: "No schematic found. KiCad, Logisim (.circ), Digital (.dig) or an exported EasyEDA file all count",
 	},
 	pcbFab: {
 		// A .zip counts, as in Stasis: most fab houses take the Gerbers as one zipped export, and that is often all a repo carries.

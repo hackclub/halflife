@@ -80,7 +80,6 @@ export function GoalModal({
 		<Modal
 			accent={TEAL}
 			dismissible={dismissible}
-			eyebrow={dismissible ? "Your goal" : "One more thing"}
 			footer={
 				<>
 					{error && (
@@ -112,13 +111,13 @@ export function GoalModal({
 								{toGo > 0 ? (
 									weeks > 0 ? (
 										<>
-											{" – "}
-											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
+											{": "}
+											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, about{" "}
 											{Math.round(goal.paceHours * 5)} coins a week to earn for {weeks} design weeks{" "}
 										</>
 									) : (
 										<>
-											{" – "}
+											{": "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the build weeks
 											cover it at {BUILD_HOURS * 5} coins a week.{" "}
 										</>
@@ -163,7 +162,7 @@ export function GoalModal({
 						sub={
 							dismissible ? (
 								<>
-									Change this whenever you like – it decides what we build the rest of the season around. Once the
+									Change this whenever you like. It decides what we build the rest of the season around. Once the
 									funding for your chosen tier is achieved, every extra approved hour earns{" "}
 									<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>.
 								</>
@@ -219,7 +218,7 @@ export function GoalModal({
 							<>
 								<span className="font-extrabold">A printer is earned, not guaranteed.</span>{" "}
 								{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
-								week – so you may not earn enough coins for a {goal.name}. The bigger prizes need all five themes
+								week, so you may not earn enough coins for a {goal.name}. The bigger prizes need all five themes
 								finished, too.
 							</>
 						) : (
@@ -279,7 +278,7 @@ function GoalCard({
 					background: selected ? "color-mix(in srgb, var(--color-mint) 52%, #fff)" : "var(--color-paper)",
 				} as React.CSSProperties
 			}
-			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week – that pace is the same on every tier, because tier hours pay for parts while every hour past them earns 5 coins. Bigger printers cost more coins to earn each week.`}
+			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week. That pace is the same on every tier, because tier hours pay for parts while every hour past them earns 5 coins. Bigger printers cost more coins to earn each week.`}
 			type="button"
 		>
 			{/* the strip of tape that holds the one you chose to the wall */}

@@ -589,7 +589,7 @@ export async function checkRepo(
 			? { detail: `${imageCount} images`, key: "readme_photo", label: "Photos in the README", status: "pass" }
 			: {
 					blocking: true,
-					detail: `Add at least ${README_MIN_IMAGES} images of the project – renders, screenshots of the board, or photos. The README has ${imageCount}.`,
+					detail: `Add at least ${README_MIN_IMAGES} images of the project: renders, screenshots of the board, or photos. The README has ${imageCount}.`,
 					key: "readme_photo",
 					label: imageCount === 0 ? "No photos in the README" : "Not enough photos in the README",
 					link: { href: README_GUIDE_URL, label: "What goes in a README" },

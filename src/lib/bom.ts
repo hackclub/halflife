@@ -62,7 +62,7 @@ export async function listBom(themeProjectId: string): Promise<BomLine[]> {
  */
 export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus: PhaseStatus }): string | null {
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
-		return "Unsubmit before editing – a phase is in review"
+		return "A phase is in review, so unsubmit before editing"
 	if (project.designStatus === PhaseStatus.approved) return "The design week is approved, so the parts list is final"
 	return null
 }

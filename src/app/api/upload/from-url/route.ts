@@ -22,7 +22,7 @@ const bodySchema = z.object({ url: z.url().max(2048) }).strict()
 export const POST = withSession(async (req: Request, { gate }) => {
 	// The same budget as a file upload: fetching for someone is uploading for them.
 	if (rateLimitedInMemory(`upload:${gate.user.id}`))
-		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
+		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")
 	if (!isUploadConfigured()) return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 
 	const parsed = await parseBody(req, bodySchema)

@@ -1,4 +1,5 @@
 import "server-only"
+import { sleep } from "@/lib/concurrency"
 
 const API_BASE = "https://api.airtable.com/v0"
 
@@ -59,7 +60,7 @@ async function throttle(): Promise<void> {
 	const slot = Math.max(now, nextSlot)
 	nextSlot = slot + MIN_INTERVAL_MS
 	const wait = slot - now
-	if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait))
+	if (wait > 0) await sleep(wait)
 }
 
 /**
@@ -89,7 +90,7 @@ export async function withRateLimitRetry<T>(
 			console.warn(
 				`[airtable] ${operation} attempt ${attempt} failed (${err instanceof Error ? err.message : err}); retrying in ${Math.round(wait)}ms`,
 			)
-			await new Promise(resolve => setTimeout(resolve, wait))
+			await sleep(wait)
 		}
 }
 

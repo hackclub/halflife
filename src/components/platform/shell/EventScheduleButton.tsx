@@ -78,7 +78,7 @@ export function EventScheduleButton({
 				{/* One fixed-width slot, so the pill does not change width between the placeholder and the count – or as the digits roll over. Narrower on a phone, where the row is counted out to the pixel. */}
 				<span className="min-w-[5ch] text-right text-[0.72rem] font-extrabold tabular-nums text-navy sm:min-w-[9ch] sm:text-[0.78rem]">
 					{next === null ? (
-						"—"
+						"-"
 					) : now === null ? (
 						<>
 							--:--

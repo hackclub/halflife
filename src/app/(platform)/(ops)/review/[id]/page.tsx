@@ -52,8 +52,8 @@ export default async function ReviewDetailPage({ params }: Props) {
 						{statusLabel(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}
 					</Badge>
 				}
-				subtitle={`${project.user.email ? displayName(project.user, project.user.email) : (displayName(project.user) ?? "—")} · submitted ${submission.createdAt.toDateString()}`}
-				title={`${detail.themeLabel} – ${submission.phase.toLowerCase()}`}
+				subtitle={`${project.user.email ? displayName(project.user, project.user.email) : (displayName(project.user) ?? "-")} · submitted ${submission.createdAt.toDateString()}`}
+				title={`${detail.themeLabel} · ${submission.phase.toLowerCase()}`}
 			/>
 
 			{project.user.fraudFlagged ? (
@@ -131,7 +131,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 				<Callout tone="info">
 					<strong>{(breakdown.hackatimeOverlapSeconds / 3600).toFixed(1)}h counted once.</strong> That time is tracked
 					by Hackatime <em>and</em> backed by a timelapse on a journal entry, so it is taken off Hackatime and counted
-					through the entry. An explicit override bypasses this – the subtraction only applies to computed hours.
+					through the entry. An explicit override bypasses this. The subtraction only applies to computed hours.
 				</Callout>
 			)}
 			{breakdown.hackatimeOverlapUnknown && (
@@ -160,14 +160,14 @@ export default async function ReviewDetailPage({ params }: Props) {
 					<Callout tone="info">
 						<strong>Partial funding accepted.</strong> Their parts list came to $
 						{submission.requestedBomUsd?.toFixed(2) ?? "?"} against a ${submission.fundingCapUsd ?? "?"} tier, so they
-						have already agreed to cover the difference themselves. It is not a reason to return it – the box is what
-						the submit sheet requires of any over-budget design – but the grant you set decides what they actually get.
+						have already agreed to cover the difference themselves. It is not a reason to return it (the box is what the
+						submit sheet requires of any over-budget design), but the grant you set decides what they actually get.
 					</Callout>
 				)}
 				{submission.fundingDeclined && (
 					<Callout tone="info">
 						<strong>Funding declined.</strong> They asked for no parts money on this project, so approving it grants $0
-						unless you set an explicit override. Their hours still earn coins as usual – only the grant is off.
+						unless you set an explicit override. Their hours still earn coins as usual. Only the grant is off.
 					</Callout>
 				)}
 				{submission.notes ? (
@@ -184,7 +184,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 					<Table head={["Date", "What", "Claimed", "Approved", "Evidence"]}>
 						{detail.sessions.map(session => (
 							<tr key={session.id}>
-								<td className="hl-mono">{session.effectiveDate ?? "—"}</td>
+								<td className="hl-mono">{session.effectiveDate ?? "-"}</td>
 								<td>
 									{session.title}
 									{session.content ? (
@@ -193,12 +193,12 @@ export default async function ReviewDetailPage({ params }: Props) {
 										</div>
 									) : null}
 									{session.hoursSource === "HACKATIME_TRACKED" ? (
-										<div className="hl-hint">counted via Hackatime – contributes 0 to the journal total</div>
+										<div className="hl-hint">counted via Hackatime, so it contributes 0 to the journal total</div>
 									) : null}
 								</td>
 								<td className="hl-mono">{session.hoursClaimed}h</td>
 								<td>
-									<div className="hl-mono">{session.hoursApproved ?? "—"}</div>
+									<div className="hl-mono">{session.hoursApproved ?? "-"}</div>
 									<HoursApprovalForm
 										approved={session.hoursApproved}
 										claimed={claimedByMe}
@@ -274,7 +274,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 									{review.feedback}
 									{review.frozenApprovedHours !== null ? (
 										<div className="hl-hint">
-											{review.frozenApprovedHours}h at tier {review.frozenTier ?? "—"}
+											{review.frozenApprovedHours}h at tier {review.frozenTier ?? "-"}
 											{review.frozenGrantUsd !== null ? ` · $${review.frozenGrantUsd}` : ""}
 										</div>
 									) : null}

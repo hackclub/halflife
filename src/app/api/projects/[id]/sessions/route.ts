@@ -4,7 +4,7 @@ import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { PhaseStatus, HoursSource, Theme } from "@/lib/enums"
+import { HoursSource, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
@@ -131,7 +131,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	const phaseStatus = statusFor(project, data.phase)
 	if (phaseStatus === PhaseStatus.in_review)
-		return fail("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
+		return fail("PHASE_LOCKED", "This phase is in review, so unsubmit before logging more work")
 	// Same rule as editing an entry: once a week is decided, its entries are the record the decision was made against. Without this, hours could be logged after approval and paid out on the next un-approve/re-approve cycle.
 	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
@@ -178,7 +178,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 			.first()
 		const currentStatus = current ? statusFor(current, data.phase) : undefined
 		if (currentStatus === PhaseStatus.in_review)
-			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
+			throw new HttpError("PHASE_LOCKED", "This phase is in review, so unsubmit before logging more work")
 		if (currentStatus && isPhaseDecided(currentStatus))
 			throw new HttpError("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
 		const weekUser = await tx.orm.public.User.whereUnique({ id: gate.user.id })
@@ -199,14 +199,12 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 				effectiveDate: timing.effectiveDate,
 				hoursSource: HoursSource.MANUAL,
 			})
-				.where(session =>
-					session.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))),
-				)
+				.where(entry => entry.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))))
 				.aggregate(a => ({ claimedToday: a.sum("hoursClaimed") }))
 			if ((claimedToday ?? 0) + data.hoursClaimed > 24)
 				throw new HttpError(
 					"VALIDATION_FAILED",
-					"That would put more than 24 hours of self-reported work on one day – split it across the days it was worked.",
+					"That would put more than 24 hours of self-reported work on one day. Split it across the days it was worked.",
 				)
 		}
 

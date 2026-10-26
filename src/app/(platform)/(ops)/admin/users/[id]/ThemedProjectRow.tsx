@@ -60,17 +60,17 @@ export function ThemedProjectRow({
 				<td style={{ minWidth: "14rem" }}>
 					<ReviewStages buildStatus={data.buildStatus} designStatus={data.designStatus} />
 				</td>
-				<td>{data.tier ?? "—"}</td>
+				<td>{data.tier ?? "-"}</td>
 				<td>
-					{data.grantUsd !== null ? `$${data.grantUsd}` : "—"}
+					{data.grantUsd !== null ? `$${data.grantUsd}` : "-"}
 					{data.grantSent ? <div className="hl-hint">sent</div> : null}
 				</td>
-				<td className="hl-mono">{data.approvedHours ?? "—"}</td>
+				<td className="hl-mono">{data.approvedHours ?? "-"}</td>
 				<td style={{ minWidth: "13rem" }}>
 					{hasActions ? (
 						<ManageButton onToggle={() => setOpen(value => !value)} open={open} panelId={panelId} />
 					) : (
-						<span className="hl-muted">—</span>
+						<span className="hl-muted">-</span>
 					)}
 				</td>
 			</tr>

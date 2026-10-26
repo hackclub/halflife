@@ -20,7 +20,7 @@ describe("readPublicReelLink", () => {
 
 	test("refuses the wrong platform and bare homepages", () => {
 		expect(readPublicReelLink("TIKTOK", "https://youtube.com/shorts/abc")).toEqual({
-			error: "That isn't a TikTok link – it should look like tiktok.com/@you/video/…",
+			error: "That isn't a TikTok link. It should look like tiktok.com/@you/video/…",
 		})
 		expect(readPublicReelLink("X", "https://x.com")).toEqual({
 			error: "That's X (Twitter) itself, not a post. Open your post and copy its link.",

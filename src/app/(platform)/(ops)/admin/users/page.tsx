@@ -70,7 +70,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 							return (
 								<tr key={user.id}>
 									<td>
-										<Link href={`/admin/users/${user.id}`}>{displayName(user) ?? "—"}</Link>
+										<Link href={`/admin/users/${user.id}`}>{displayName(user) ?? "-"}</Link>
 										{user.fraudFlagged ? (
 											<div>
 												<Badge tone="danger">flagged</Badge>

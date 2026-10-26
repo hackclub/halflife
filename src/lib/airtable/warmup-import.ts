@@ -393,7 +393,7 @@ function importRow(
 				hoursSource: HoursSource.MANUAL,
 				phase,
 				themeProjectId: project.id,
-				title: `${row.title} – warm-up submission`,
+				title: `${row.title} (warm-up submission)`,
 				weekNumber: 0,
 			})
 

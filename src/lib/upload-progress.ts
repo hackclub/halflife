@@ -12,31 +12,31 @@ export interface UploadResponse {
 
 /** PUT a file straight to the bucket, with the same progress reporting as a form upload. */
 export function putFile(url: string, file: Blob, onProgress?: (fraction: number) => void): Promise<UploadResponse> {
-	return new Promise((resolve, reject) => {
-		const xhr = new XMLHttpRequest()
-		xhr.open("PUT", url)
-		// What R2 stores as the object's type. The presigned URL does not enforce this value (measured), so `/confirm` checks the stored type before anything can point at the object.
-		xhr.setRequestHeader("Content-Type", file.type)
-		if (onProgress) {
-			xhr.upload.addEventListener("progress", e => {
-				if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
-			})
-			xhr.upload.addEventListener("load", () => onProgress(1))
-		}
-		xhr.addEventListener("load", () => {
-			let json: unknown = null
-			try {
-				json = JSON.parse(xhr.responseText)
-			} catch {
-				json = null
-			}
-			resolve({ json, ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status })
+	const { promise, resolve, reject } = Promise.withResolvers<UploadResponse>()
+	const xhr = new XMLHttpRequest()
+	xhr.open("PUT", url)
+	// What R2 stores as the object's type. The presigned URL does not enforce this value (measured), so `/confirm` checks the stored type before anything can point at the object.
+	xhr.setRequestHeader("Content-Type", file.type)
+	if (onProgress) {
+		xhr.upload.addEventListener("progress", e => {
+			if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
 		})
-		// Status 0 is the network/CORS case, where there is no response at all to read. The caller falls back to the form route rather than treating it as a refusal.
-		xhr.addEventListener("error", () => resolve({ json: null, ok: false, status: 0 }))
-		xhr.addEventListener("abort", () => reject(new Error("The upload was cancelled.")))
-		xhr.send(file)
+		xhr.upload.addEventListener("load", () => onProgress(1))
+	}
+	xhr.addEventListener("load", () => {
+		let json: unknown = null
+		try {
+			json = JSON.parse(xhr.responseText)
+		} catch {
+			json = null
+		}
+		resolve({ json, ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status })
 	})
+	// Status 0 is the network/CORS case, where there is no response at all to read. The caller falls back to the form route rather than treating it as a refusal.
+	xhr.addEventListener("error", () => resolve({ json: null, ok: false, status: 0 }))
+	xhr.addEventListener("abort", () => reject(new Error("The upload was cancelled.")))
+	xhr.send(file)
+	return promise
 }
 
 /**
@@ -49,31 +49,31 @@ export function postForm(
 	body: FormData,
 	onProgress?: (fraction: number) => void,
 ): Promise<UploadResponse> {
-	return new Promise((resolve, reject) => {
-		const xhr = new XMLHttpRequest()
-		xhr.open("POST", url)
-		xhr.responseType = "text"
-		if (onProgress) {
-			xhr.upload.addEventListener("progress", e => {
-				if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
-			})
-			xhr.upload.addEventListener("load", () => onProgress(1))
-		}
-		xhr.addEventListener("load", () => {
-			let json: unknown = null
-			try {
-				json = JSON.parse(xhr.responseText)
-			} catch {
-				json = null
-			}
-			resolve({ json, ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status })
+	const { promise, resolve, reject } = Promise.withResolvers<UploadResponse>()
+	const xhr = new XMLHttpRequest()
+	xhr.open("POST", url)
+	xhr.responseType = "text"
+	if (onProgress) {
+		xhr.upload.addEventListener("progress", e => {
+			if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
 		})
-		xhr.addEventListener("error", () =>
-			reject(new Error("The upload did not get through. Check your connection and try again.")),
-		)
-		xhr.addEventListener("abort", () => reject(new Error("The upload was cancelled.")))
-		xhr.send(body)
+		xhr.upload.addEventListener("load", () => onProgress(1))
+	}
+	xhr.addEventListener("load", () => {
+		let json: unknown = null
+		try {
+			json = JSON.parse(xhr.responseText)
+		} catch {
+			json = null
+		}
+		resolve({ json, ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status })
 	})
+	xhr.addEventListener("error", () =>
+		reject(new Error("The upload did not get through. Check your connection and try again.")),
+	)
+	xhr.addEventListener("abort", () => reject(new Error("The upload was cancelled.")))
+	xhr.send(body)
+	return promise
 }
 
 /**

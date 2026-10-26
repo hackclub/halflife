@@ -172,6 +172,10 @@ interface Ctx {
 	/** Legacy locked coins. Drains to zero; kept so old rows still add up. */
 	bankedCoins: number
 	/**
+	 * Admins only: open one locked checkpoint, leaving the rest of the trail locked. Lasts until the page is reloaded. Does nothing for anyone else.
+	 */
+	bypassCheckpoint(id: string): void
+	/**
 	 * Admins only: every checkpoint on the trail opens, whatever its order, hours or dates say. Always false for anyone else.
 	 */
 	bypassLocks: boolean
@@ -458,6 +462,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const [tourStep, setTourStep] = useState(0)
 	const [reducedMotion, setReducedMotion] = useState(false)
 	const [bypassing, setBypassing] = useState(false)
+	// Single checkpoints an admin opened past their locks. Held in memory only: it is for checking one node, not a setting to come back to.
+	const [bypassed, setBypassed] = useState<string[]>([])
 
 	useEffect(() => {
 		const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -502,6 +508,11 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	}, [])
 	// Read by role, not by storage alone: a flag left behind on a shared browser, or by an admin since demoted, opens nothing.
 	const bypassLocks = facts.viewer.isAdmin && bypassing
+
+	const bypassCheckpoint = useCallback(
+		(id: string) => setBypassed(list => (list.includes(id) ? list : [...list, id])),
+		[],
+	)
 
 	useEffect(() => {
 		if (!hydrated) return
@@ -865,7 +876,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					method: "POST",
 				})
 			} catch {
-				return "Could not reach the server. Nothing was submitted – try again."
+				return "Could not reach the server. Nothing was submitted. Try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -896,7 +907,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					method: "POST",
 				})
 			} catch {
-				return "Could not reach the server. Nothing changed – try again."
+				return "Could not reach the server. Nothing changed. Try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1124,7 +1135,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						method: "POST",
 					})
 				} catch {
-					return "Could not reach the server. Your entry is still here – try again."
+					return "Could not reach the server. Your entry is still here. Try again."
 				}
 				if (!res.ok) {
 					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1185,7 +1196,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					method: "PATCH",
 				})
 			} catch {
-				return "Could not reach the server. Your changes are still here – try again."
+				return "Could not reach the server. Your changes are still here. Try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1396,8 +1407,11 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[isPassed, isHeld, facts.owedReels, weekPassed, weekStarted, weeks, save.progress, weekHours, reelHours],
 	)
 
-	// What the trail lets you click. An admin bypassing the locks can open anything; the server still has the last word on whatever is saved from a node opened that way. "Start here" keeps to the real rules above.
-	const isOpen = useCallback((id: string) => bypassLocks || isUnlocked(id), [bypassLocks, isUnlocked])
+	// What the trail lets you click. An admin bypassing the locks, all of them or one node, can open anything; the server still has the last word on whatever is saved from a node opened that way. "Start here" keeps to the real rules above.
+	const isOpen = useCallback(
+		(id: string) => bypassLocks || (facts.viewer.isAdmin && bypassed.includes(id)) || isUnlocked(id),
+		[bypassLocks, facts.viewer.isAdmin, bypassed, isUnlocked],
+	)
 
 	/**
 	 * Why a checkpoint is shut, in the maker's terms. Null when it is open.
@@ -1440,7 +1454,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				)
 				if (owed) return firstFinish(owed)
 				const toGo = round2(self.atHours - hours)
-				return `Opens at ${self.atHours}h logged this week – ${toGo}h to go.`
+				return `Opens at ${self.atHours}h logged this week (${toGo}h to go).`
 			}
 
 			const blocker = withoutOptionalIdea(list.slice(0, i)).find(c => !done(c))
@@ -1475,6 +1489,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			...facts,
 			addProject,
 			allCheckpoints,
+			bypassCheckpoint,
 			bypassLocks,
 			complete,
 			currentCheckpointId,
@@ -1538,6 +1553,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[
 			addProject,
 			allCheckpoints,
+			bypassCheckpoint,
 			bypassLocks,
 			ceremony,
 			complete,

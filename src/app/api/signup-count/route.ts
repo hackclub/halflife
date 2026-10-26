@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic"
  */
 export const GET = withRoute(async (req: NextRequest) => {
 	if (rateLimitedInMemory(`signup-count:${clientIp(req.headers)}`, 30, 60_000))
-		return fail("RATE_LIMITED", "Too many requests – try again in a minute")
+		return fail("RATE_LIMITED", "Too many requests. Try again in a minute")
 
 	return ok({ count: await countSignups() })
 })

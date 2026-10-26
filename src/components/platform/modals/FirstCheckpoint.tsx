@@ -47,7 +47,7 @@ export function FirstCheckpoint() {
 
 	if (error)
 		return (
-			<Modal accent="var(--color-gold-deep)" eyebrow="Getting started" onClose={close} open>
+			<Modal accent="var(--color-gold-deep)" onClose={close} open>
 				<ModalTitle sub={error}>Something went wrong</ModalTitle>
 				<Button onClick={() => setAttempt(value => value + 1)} variant="outline">
 					Try again
@@ -57,7 +57,7 @@ export function FirstCheckpoint() {
 
 	if (!view)
 		return (
-			<Modal accent="var(--color-gold-deep)" eyebrow="Getting started" onClose={close} open>
+			<Modal accent="var(--color-gold-deep)" onClose={close} open>
 				<p className="hand text-navy-soft" role="status">
 					Loading your project setup…
 				</p>
@@ -65,14 +65,7 @@ export function FirstCheckpoint() {
 		)
 
 	return (
-		<Modal
-			accent="var(--color-gold-deep)"
-			eyebrow="Getting started"
-			onClose={close}
-			open
-			scrollKey={view.reached}
-			size="xl"
-		>
+		<Modal accent="var(--color-gold-deep)" onClose={close} open scrollKey={view.reached} size="xl">
 			<OnboardingFlow
 				initial={view}
 				onComplete={() => {

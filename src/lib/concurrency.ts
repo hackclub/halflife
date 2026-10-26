@@ -1,4 +1,5 @@
 import "server-only"
+import { setTimeout as delay } from "node:timers/promises"
 
 /**
  * A queue that lets at most `max` callers through at once.
@@ -10,7 +11,11 @@ export function createSlot(max: number): () => Promise<() => void> {
 	const waiting: (() => void)[] = []
 
 	return async () => {
-		if (inFlight >= max) await new Promise<void>(resolve => waiting.push(resolve))
+		if (inFlight >= max) {
+			const { promise, resolve } = Promise.withResolvers<void>()
+			waiting.push(resolve)
+			await promise
+		}
 		inFlight++
 		return () => {
 			inFlight--
@@ -19,4 +24,6 @@ export function createSlot(max: number): () => Promise<() => void> {
 	}
 }
 
-export const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+export const sleep = (ms: number): Promise<void> =>
+	// Bun is the production runtime and the test runner, but `next start` runs on Node in CI's e2e job and on anyone running the built server without Bun.
+	typeof Bun === "undefined" ? delay(ms) : Bun.sleep(ms)

@@ -139,7 +139,7 @@ async function copyObject(endpoint: string, bucket: string, source: string, dest
 		} catch (err) {
 			if (attempt === RETRIES) throw err
 		}
-		await new Promise(resolve => setTimeout(resolve, 250 * 2 ** (attempt - 1)))
+		await Bun.sleep(250 * 2 ** (attempt - 1))
 	}
 }
 

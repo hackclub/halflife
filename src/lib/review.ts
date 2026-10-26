@@ -521,7 +521,7 @@ export async function unapprovePhase(
 			if (inFlight)
 				throw new HttpError(
 					"CONFLICT",
-					"A grant send is in flight for this design – wait for it to finish before un-approving",
+					"A grant send is in flight for this design. Wait for it to finish before un-approving",
 				)
 		}
 

@@ -37,7 +37,7 @@ const THEMES: ThemeSeed[] = [
 		],
 		fullName: "Printed Circuit Board Week",
 		primer:
-			"A PCB is the flat green (or purple, or black) board inside every piece of electronics. Copper lines etched onto it replace the messy wires you would otherwise solder by hand. You will draw a schematic – a diagram of which part connects to which – then lay those parts out on a board and let the software route copper between them. At the end you export a set of Gerber files and a real factory turns them into a board you can hold.",
+			"A PCB is the flat green (or purple, or black) board inside every piece of electronics. Copper lines etched onto it replace the messy wires you would otherwise solder by hand. You will draw a schematic (a diagram of which part connects to which), then lay those parts out on a board and let the software route copper between them. At the end you export a set of Gerber files and a real factory turns them into a board you can hold.",
 		summary: "Draw up a schematic, make a BOM, and route your board!",
 		theme: "PCB",
 	},
@@ -54,7 +54,7 @@ const THEMES: ThemeSeed[] = [
 		],
 		fullName: "Computer Aided Design Week",
 		primer:
-			"CAD is drawing an object as a solid with exact dimensions instead of a sketch. You start from a 2D sketch, pull it into 3D, then cut and round it until it is the shape you want. The hard part is not the software – it is tolerance: a hole modelled at exactly 3mm will not fit a 3mm screw once the printer squishes plastic into it.",
+			"CAD is drawing an object as a solid with exact dimensions instead of a sketch. You start from a 2D sketch, pull it into 3D, then cut and round it until it is the shape you want. The hard part is not the software. It is tolerance: a hole modelled at exactly 3mm will not fit a 3mm screw once the printer squishes plastic into it.",
 		summary: "Make some awesome 3D models (remember tolerances!)",
 		theme: "CAD",
 	},
@@ -71,7 +71,7 @@ const THEMES: ThemeSeed[] = [
 		],
 		fullName: "Music Week",
 		primer:
-			"Music week is circuits that turn voltage into sound. The simplest instrument is an oscillator – a circuit that flips a pin on and off fast enough to hear – plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
+			"Music week is circuits that turn voltage into sound. The simplest instrument is an oscillator (a circuit that flips a pin on and off fast enough to hear) plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
 		summary: "MAKE. SOME. NOOOOOOOOOOOOOISE.",
 		theme: "Music",
 	},
@@ -88,7 +88,7 @@ const THEMES: ThemeSeed[] = [
 		],
 		fullName: "Displays Week",
 		primer:
-			"Displays are the fastest way to make a project feel finished. E-paper sips power and holds an image with none. OLED is crisp and tiny. LED matrices are bright enough to read across a room. Each one talks a different protocol – SPI, I2C, or raw shift registers – and the driver you pick decides how much of your microcontroller is left over for anything else.",
+			"Displays are the fastest way to make a project feel finished. E-paper sips power and holds an image with none. OLED is crisp and tiny. LED matrices are bright enough to read across a room. Each one talks a different protocol (SPI, I2C, or raw shift registers), and the driver you pick decides how much of your microcontroller is left over for anything else.",
 		summary: "TFT? OLED? Nixie tubes? Neopixels? LED matrices?",
 		theme: "Displays",
 	},
@@ -105,7 +105,7 @@ const THEMES: ThemeSeed[] = [
 		],
 		fullName: "Breadboard Computer Week",
 		primer:
-			"Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer – slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
+			"Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer: slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
 		summary: "Plan your circuit! Simulate some gates!",
 		theme: "Breadboard computer",
 	},
@@ -131,7 +131,7 @@ export const WEEK_META: WeekMeta[] = [
 		accent: seed.accent,
 		accentDeep: seed.accentDeep,
 		examples: seed.examples,
-		fullName: `${seed.fullName} – Build`,
+		fullName: `${seed.fullName} (Build)`,
 		headline: seed.buildHeadline,
 		id: i + 6,
 		phase: "build" as Phase,

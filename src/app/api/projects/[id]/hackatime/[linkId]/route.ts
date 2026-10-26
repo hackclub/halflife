@@ -31,7 +31,7 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 	// Removing a link is a correction to the record, so it freezes with the phase: while a reviewer is deciding, the numbers have to sit still.
 	const phaseStatus = statusFor(link.themeProject, link.phase)
 	if (phaseStatus === PhaseStatus.in_review)
-		return fail("PHASE_LOCKED", "This phase is in review – unsubmit it before removing its links")
+		return fail("PHASE_LOCKED", "This phase is in review, so unsubmit it before removing its links")
 	// A decided phase is frozen: removing a link changes a number that has already been judged, so it waits for a return or an un-approval.
 	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This phase has been submitted and decided, so its links are final")

@@ -1,5 +1,6 @@
 import "server-only"
 import { HttpError } from "@/lib/errors"
+import { oauthAccessToken } from "@/lib/oauth-token"
 import db from "@/lib/prisma8"
 import { parseDbTimestamp } from "@/lib/time"
 
@@ -68,12 +69,21 @@ const NOT_LINKED = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse t
 export async function lapseCredentials(userId: string): Promise<{ lapseUserId: string; accessToken: string }> {
 	const account = await db.orm.public.Account.where({ providerId: "lapse", userId })
 		.orderBy(row => row.updatedAt.desc())
-		.select("accessToken", "accessTokenExpiresAt", "accountId")
+		.select("accessToken", "accessTokenExpiresAt", "accountId", "id")
 		.first()
 	if (!account?.accessToken) throw NOT_LINKED()
 	if (account.accessTokenExpiresAt && parseDbTimestamp(account.accessTokenExpiresAt).getTime() <= Date.now())
 		throw NOT_LINKED()
-	return { accessToken: account.accessToken, lapseUserId: account.accountId }
+
+	// The row holds ciphertext when tokens are encrypted at rest; better-auth's accessor decrypts it. Lapse issues no refresh token, so the expiry check above is still what decides whether the link is usable.
+	let { accessToken } = account
+	try {
+		accessToken = (await oauthAccessToken(account.id, userId)) ?? accessToken
+	} catch (err) {
+		// A stored token that cannot be read is handled the same way as a dead one: the caller's request to Lapse answers 401 and the UI offers the sign-in again.
+		console.warn(`[lapse] could not read the access token for account ${account.id}:`, err)
+	}
+	return { accessToken, lapseUserId: account.accountId }
 }
 
 /**
@@ -91,7 +101,7 @@ async function call<T>(accessToken: string, path: string, query?: { [_: string]:
 			signal: AbortSignal.timeout(TIMEOUT_MS),
 		})
 	} catch {
-		throw new HttpError("LAPSE_UNAVAILABLE", "Lapse is not answering right now – try again in a minute")
+		throw new HttpError("LAPSE_UNAVAILABLE", "Lapse is not answering right now. Try again in a minute")
 	}
 
 	if (res.status === 401 || res.status === 403) throw NOT_LINKED()

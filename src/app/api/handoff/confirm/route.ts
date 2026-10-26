@@ -16,7 +16,7 @@ export const POST = withRoute(async (req: Request) => {
 	if (!isUploadConfigured()) return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 
 	if (rateLimitedInMemory(`handoff-confirm:${clientIp(req.headers)}`, HANDOFF_MAX_PER_MINUTE))
-		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
+		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")
 
 	const parsed = await parseBody(
 		req,

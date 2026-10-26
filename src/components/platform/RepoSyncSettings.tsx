@@ -156,7 +156,7 @@ export function RepoSyncSettings({
 				<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 					{compact
 						? "Connect a code forge to keep your devlogs and parts list in your project's repo."
-						: "Connect the code forge your project lives on – GitHub or GitLab – to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose; nothing else on your account is touched."}
+						: "Connect the code forge your project lives on (GitHub or GitLab) to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose; nothing else on your account is touched."}
 				</p>
 				{error && (
 					<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
@@ -177,7 +177,8 @@ export function RepoSyncSettings({
 			</div>
 		)
 
-	if (state.enabled)
+	if (state.enabled) {
+		const forge = state.forge ? FORGES.find(f => f.id === state.forge) : undefined
 		return (
 			<div className="grid gap-3">
 				<p className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
@@ -206,7 +207,7 @@ export function RepoSyncSettings({
 						role="alert"
 					>
 						<IconWarning className="mt-0.5 shrink-0" />
-						{/* The server's message is now complete for its own status – rate limit, outage, permissions, a moved repo – so nothing forge-specific is appended here. The "Reconnect" buttons below are the standing offer. */}
+						{/* The server's message is now complete for its own status – rate limit, outage, permissions, a moved repo – so nothing forge-specific is appended here. The "Reconnect" button below is the standing offer. */}
 						<span>The last sync did not land: {state.error}</span>
 					</p>
 				)}
@@ -234,12 +235,23 @@ export function RepoSyncSettings({
 					<Button disabled={busy} onClick={() => send("PUT")} size="sm" variant="outline">
 						{busy ? "Syncing…" : "Sync now"}
 					</Button>
+					{forge && (
+						<Button
+							disabled={busy}
+							onClick={() => linkForge(forge.id, window.location.pathname + window.location.search)}
+							size="sm"
+							variant="outline"
+						>
+							Reconnect {forge.label}
+						</Button>
+					)}
 					<Button disabled={busy} onClick={() => send("POST", { enabled: false })} size="sm" variant="ghost">
 						Turn off
 					</Button>
 				</div>
 			</div>
 		)
+	}
 
 	// Linked, off: pick a repo and switch it on.
 	return (

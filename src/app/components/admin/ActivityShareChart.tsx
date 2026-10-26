@@ -111,7 +111,7 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 			</div>
 
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
-				Share of the {fmtInt(share.total)} makers who finished onboarding who did each thing – one maker counts in every
+				Share of the {fmtInt(share.total)} makers who finished onboarding who did each thing. One maker counts in every
 				column they reached. None is the finishers who did none of them.
 			</p>
 		</div>

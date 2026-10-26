@@ -7,7 +7,7 @@ import { sendJson, useAction } from "@/lib/use-action"
 import { uploadFile } from "@/lib/use-handoff"
 
 const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
-	{ label: "Printer – not listed in the shop", value: "PRINTER" },
+	{ label: "Printer (not listed in the shop)", value: "PRINTER" },
 	{ label: "Printer upgrade", value: "PRINTER_UPGRADE" },
 	{ label: "Consumable", value: "CONSUMABLE" },
 	{ label: "Misc", value: "MISC" },

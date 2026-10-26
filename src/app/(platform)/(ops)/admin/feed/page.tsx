@@ -144,13 +144,13 @@ export default async function AdminFeedPage() {
 										{reel.url}
 									</a>
 								</td>
-								<td className="hl-hint">{reel.themeProject?.title ?? reel.post?.caption?.slice(0, 60) ?? "—"}</td>
+								<td className="hl-hint">{reel.themeProject?.title ?? reel.post?.caption?.slice(0, 60) ?? "-"}</td>
 								<td className="hl-mono">{formatUtcDateTime(reel.postedAt)}</td>
 							</tr>
 						))}
 					</Table>
 				)}
-				<p className="hl-hint">Where a reel went viral – the links participants claimed for the virality prizes.</p>
+				<p className="hl-hint">Where a reel went viral: the links participants claimed for the virality prizes.</p>
 			</Panel>
 		</section>
 	)

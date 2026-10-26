@@ -46,6 +46,7 @@
 		"reviews:repair-ari": "bun --conditions=react-server scripts/repair-ari-decisions.ts",
 		"reviews:repair-identity-returns": "bun --conditions=react-server scripts/repair-identity-returns.ts",
 		"reviews:unreviewed-starbies": "bun --conditions=react-server scripts/list-unreviewed-starbies.ts",
+		"seed-help-calls": "bun --conditions=react-server scripts/seed-help-calls.ts",
 		"slack:backfill-tickets": "bun --conditions=react-server scripts/backfill-slack-tickets.ts",
 		"start": "next start",
 		"start:e2e": "next start -p 3100",

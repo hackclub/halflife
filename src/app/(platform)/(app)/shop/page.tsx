@@ -7,7 +7,7 @@ import { ShopGrid } from "./ShopGrid"
 
 export const metadata: Metadata = {
 	description:
-		"Spend the coins you earned – 5 per approved hour, once the funding for your tier has been achieved – on grants, tools, parts and swag.",
+		"Spend the coins you earned (5 per approved hour, once the funding for your tier has been achieved) on grants, tools, parts and swag.",
 	title: "Half Life Shop",
 }
 

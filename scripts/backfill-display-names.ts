@@ -35,7 +35,7 @@ async function main() {
 			left += 1
 			console.warn(`no answer from HCA for ${user.id}; they keep the full name until their next sign-in`)
 		}
-		await new Promise(resolve => setTimeout(resolve, PACE_MS))
+		await Bun.sleep(PACE_MS)
 	}
 
 	console.log(

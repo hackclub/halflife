@@ -14,6 +14,7 @@ import mars5Photo from "../../../public/art/printers/elegoo-mars-4.webp"
 import neptune4Photo from "../../../public/art/printers/elegoo-neptune-4.webp"
 import ender3V3SePhoto from "../../../public/art/printers/ender-3-v3-se.webp"
 import monopriceCncPhoto from "../../../public/art/printers/monoprice-cnc.webp"
+import displaysPhoto from "../../../public/art/starters/displays/leds-2.jpg"
 import merblRender from "../../../public/art/starters/merbl.png"
 import midiRender from "../../../public/art/starters/midi.png"
 import starbieRender from "../../../public/art/starters/starbie.webp"
@@ -177,9 +178,10 @@ export function PrinterPhoto({
  * ------------------------------------------------------------------ */
 
 /**
- * Each starter project's own render, from its repo's `Renders` folder, trimmed to the board with its transparency kept. Keyed by starter id; a starter with no render shows nothing.
+ * Each starter project's own render, from its repo's `Renders` folder, trimmed to the board with its transparency kept. Displays has no board of its own, so it shows the RGB LED photo from its first guide. Keyed by starter id; a starter with no render shows nothing.
  */
 const STARTER_RENDERS: Partial<{ [_: string]: StaticImageData }> = {
+	displays: displaysPhoto,
 	merbl: merblRender,
 	midi: midiRender,
 	starbie: starbieRender,

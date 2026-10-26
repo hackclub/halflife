@@ -455,10 +455,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const ok = claimed > 0 && !overCap && (journalled || recorded)
 
 	// One thing at a time – a list of four faults reads as a wall, and only the first one is actionable anyway. Once the hours are in, the entry's next shortfall is named with the other way out beside it, so nobody is told to write 200 characters they could skip with a timelapse.
-	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab – they back the same entry."
+	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab. They back the same entry."
 	const missing = !ok
 		? overCap
-			? `A single devlog covers at most ${MAX_SESSION_HOURS} hours – split longer work across sessions.`
+			? `A single devlog covers at most ${MAX_SESSION_HOURS} hours. Split longer work across sessions.`
 			: claimed <= 0
 				? "Add the hours you spent on this session, or pick a Lapse timelapse."
 				: !longEnough
@@ -653,15 +653,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									{week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
 									{showGoal ? (
 										<>
-											{" "}
-											– {fmtHours(toGoal)} more if you want to reach your goal of{" "}
+											, and {fmtHours(toGoal)} more if you want to reach your goal of{" "}
 											<strong className="rounded bg-gold-pale px-1 text-gold-ink">{weeklyGoalCoins} coins</strong> per
 											week.
 										</>
 									) : !chasingPrinter ? (
 										<>
-											{" "}
-											– every hour past the minimum earns{" "}
+											. Every hour past the minimum earns{" "}
 											<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> per hour.
 										</>
 									) : (
@@ -713,18 +711,19 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				<p className="hand -mt-2 mb-5 text-center text-[0.78rem] text-navy-soft">
 					{attachedCount > 0 ? (
 						<>
-							{attachedCount === 1 ? "1 timelapse" : `${attachedCount} timelapses`} attached –{" "}
+							{attachedCount === 1 ? "1 timelapse" : `${attachedCount} timelapses`} attached.{" "}
 							<button
 								className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 								onClick={() => setTab("timelapse")}
 								type="button"
 							>
-								change them on the timelapse tab
+								Change them on the timelapse tab
 							</button>
+							.
 						</>
 					) : (
 						<>
-							Writing, filming, or both –{" "}
+							Writing, filming, or both:{" "}
 							<button
 								className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 								onClick={() => setTab("timelapse")}
@@ -783,7 +782,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<Field
 							hint={
 								picked.length > 0
-									? "On top of your timelapses – 0 if the recording covers it all."
+									? "On top of your timelapses. Put 0 if the recording covers it all."
 									: "(9.5 is 9 and a half hours)"
 							}
 							id="journal-hours"
@@ -808,7 +807,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						)}
 						{editing && legacyBump && (
 							<p className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep" role="note">
-								This entry was logged as {fmtHours(legacyBump.from)} before timelapses added hours on top – with its{" "}
+								This entry was logged as {fmtHours(legacyBump.from)} before timelapses added hours on top. With its{" "}
 								{fmtHours(legacyBump.lapse)} of recording it now totals {fmtHours(claimed)}. Unpick timelapses on the
 								Timelapse tab to bring it back down.
 							</p>
@@ -974,7 +973,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			) : (
 				<div>
 					<ModalTitle
-						sub="Record timelapse(s) on Lapse, publish as unlisted or public, then select it here. It won't show up if the timelapses are listed as private. Make sure you're pausing your timelapse when you're not working on your project! Timelapses can back the entry on their own, or together with a written entry – pick here, write on the journal tab."
+						sub="Record timelapse(s) on Lapse, publish as unlisted or public, then select it here. It won't show up if the timelapses are listed as private. Make sure you're pausing your timelapse when you're not working on your project! Timelapses can back the entry on their own, or together with a written entry. Pick here, write on the journal tab."
 						subWide
 					>
 						Select your timelapses
@@ -1171,7 +1170,7 @@ export function PublicReelModal({
 			}
 			setStep("saved")
 		} catch {
-			setSaveError("Could not reach the server. Your links are still here – try again.")
+			setSaveError("Could not reach the server. Your links are still here. Try again.")
 		} finally {
 			setSaving(false)
 		}
@@ -1205,7 +1204,7 @@ export function PublicReelModal({
 						<IconCheck className="mt-0.5 shrink-0 text-xl text-teal-deep" />
 						<div className="min-w-0">
 							<p className="text-[0.95rem] leading-snug font-extrabold text-navy">
-								Congratulations – your design is handed in!
+								Congratulations, your design is submitted!
 							</p>
 							<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
 								{celebration.extraHours > 0 ? (
@@ -1647,24 +1646,29 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * Project creation (weeks 2-5, and week 1 once its project is deleted)
  * ================================================================== */
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
-	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore()
+	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf, projects } = useStore()
 	const week = weekOf(checkpoint.weekId)
 	const pace = usePrinterPace()
 	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
 		void ensureProject(checkpoint.weekId)
 	}, [checkpoint.weekId, ensureProject])
-	const [name, setName] = useState("")
-	const [desc, setDesc] = useState("")
-	const [tier, setTier] = useState<1 | 2 | 3>(experience === "lots" ? 3 : experience === "some" ? 2 : 1)
-	const [showExamples, setShowExamples] = useState(false)
-	const [repo, setRepo] = useState("")
+	// Set when an admin redoes a finished form: it starts from what the project already says rather than from blank.
+	const existing = projects.find(p => p.weekId === checkpoint.weekId)
+	const [name, setName] = useState(existing?.name ?? "")
+	const [desc, setDesc] = useState(existing?.description ?? "")
+	const [tier, setTier] = useState<1 | 2 | 3>(
+		existing?.tier ?? (experience === "lots" ? 3 : experience === "some" ? 2 : 1),
+	)
+	const [repo, setRepo] = useState(existing?.githubRepo ?? "")
 	// The week's starter projects, for someone who said they are new to hardware. Weeks follow the theme order, design then build, so the week number names the theme.
 	const theme = THEMES[(week.id - 1) % THEMES.length]?.id
 	const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
 	// Taking one fills the form in and holds the tier at 1, as onboarding does.
-	const [starterId, setStarterId] = useState<string | null>(null)
-	const [pick, setPick] = useState<string | null | undefined>(undefined)
+	const [starterId, setStarterId] = useState<string | null>(existing?.starterProjectId ?? null)
+	const [pick, setPick] = useState<string | null | undefined>(
+		existing ? (existing.starterProjectId ?? null) : undefined,
+	)
 	const [stage, setStage] = useState<"choose" | "details">(starters.length > 0 ? "choose" : "details")
 	const takeStarter = (s: (typeof starters)[number]) => {
 		setPick(s.id)
@@ -1749,8 +1753,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
 							week. A <span className="font-bold text-navy">{pace.printer.name}</span> asks about{" "}
 							<span className="font-bold text-navy tabular-nums">{pace.perWeekCoins}</span> coins every design week, so
-							you may not be eligible for it – the bigger prizes need all 5 themes finished. A bigger week later can
-							make some of it up.
+							you may not be eligible for it, because the bigger prizes need all 5 themes finished. A bigger week later
+							can make some of it up.
 						</p>
 					</div>
 				</div>
@@ -1769,7 +1773,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									type="button"
 									variant={pick === s.id ? "teal" : "outline"}
 								>
-									Build {s.title}
+									Use starter project
 									{pick === s.id ? <IconCheck className="text-base" /> : null}
 								</Button>
 							}
@@ -1813,7 +1817,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			) : (
 				<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 					<div className="grid gap-4">
-						<p className="label mb-2 text-left text-violet-deep">{starters.length > 0 ? "Step 2 / 2" : "Step 1 / 1"}</p>
+						{starters.length > 0 && <p className="label mb-2 text-left text-violet-deep">Step 2 / 2</p>}
 						<p className="hand mb-2 text-left text-[0.8rem] text-navy-soft">
 							Tier can be changed any time before you submit this week.
 						</p>
@@ -1840,7 +1844,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								value={name}
 							/>
 						</Field>
-						<Field hint="What it does, and what makes it yours." id="np-desc" label="Project description">
+						<Field hint="What's it gonna do?" id="np-desc" label="Project description">
 							<textarea
 								className={cx(inputClass, "resize-none")}
 								id="np-desc"
@@ -1851,35 +1855,6 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							/>
 						</Field>
 						<RepoInput id="np-repo" onChange={setRepo} value={repo} />
-
-						{/* The week's examples are ideas for a project of your own. A starter is already the idea, so they would be a second, unrelated choice under a form that is about the starter. */}
-						{!selectedStarter && (
-							<>
-								<button
-									className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-									onClick={() => setShowExamples(v => !v)}
-									type="button"
-								>
-									{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
-								</button>
-								{showExamples && (
-									<ul className="grid gap-2">
-										{week.examples.map(e => (
-											<li key={e}>
-												<button
-													className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
-													onClick={() => setDesc(e)}
-													style={{ "--sk-radius": "12px" } as React.CSSProperties}
-													type="button"
-												>
-													{e}
-												</button>
-											</li>
-										))}
-									</ul>
-								)}
-							</>
-						)}
 
 						<div className="mt-2">
 							<p className="label mb-2 text-violet-deep">Funding tier</p>
@@ -1894,14 +1869,11 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									<OptionRow
 										disabled={starterId !== null && t.id !== STARTER_PROJECT_TIER}
 										hint={
-											<>
-												{t.detail}
-												<span className="mt-1 block text-navy-soft/90">
-													You can submit on tier {t.id} from {fmtHours(t.fundingHours)} of design time – the
-													parts-funding hours and nothing more. Every hour past that (once your tier&apos;s funding is
-													achieved) earns 5 spendable coins.
-												</span>
-											</>
+											<span className="text-navy-soft/90">
+												You can submit on tier {t.id} from {fmtHours(t.fundingHours)} of design time, the parts-funding
+												hours and nothing more. Every hour past that (once your tier&apos;s funding is achieved) earns 5
+												spendable coins.
+											</span>
 										}
 										key={t.id}
 										onClick={() => setTier(t.id)}
@@ -2119,14 +2091,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const hasCover = Boolean(project?.coverImageKey)
 	const descriptionLength = project?.description.trim().length ?? 0
 	const descriptionReady = descriptionLength >= MIN_PROJECT_DESCRIPTION_CHARS
-	const descriptionBlocker = `Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting – you have ${descriptionLength}.`
+	const descriptionBlocker = `Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting. You have ${descriptionLength}.`
 	// A starter's description is written into the project when it is taken. The server refuses it; the sheet says so before the button is pressed, so the maker fixes it where the field is.
 	const starterDescriptionReady = !usesStarterDefaultDescription(
 		project?.starterProjectId ?? null,
 		project?.description ?? null,
 	)
 	const starterDescriptionBlocker =
-		"Replace the starter project's default description with your own – say what you changed, why you made it, and what makes it yours."
+		"Replace the starter project's default description with your own. Say what you changed, why you made it, and what makes it yours."
 
 	const canAdvance =
 		step === 1
@@ -2158,7 +2130,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			return !clip
 				? "Record your demo video to carry on."
 				: works === "no" && writeup.trim().length < 40
-					? "Say what needs to change – a sentence or two."
+					? "Say what needs to change in a sentence or two."
 					: !descriptionReady
 						? descriptionBlocker
 						: !starterDescriptionReady
@@ -2228,8 +2200,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (
 			window.confirm(
 				bomEmpty
-					? "Hand in with an empty parts list? No parts funding will be ordered for this project. You can still change your mind before you submit."
-					: "Hand in without any parts funding? Your parts list stays on the project for the reviewer to see, but approving it orders no grant. You can still change your mind before you submit.",
+					? "Submit with an empty parts list? No parts funding will be ordered for this project. You can still change your mind before you submit."
+					: "Submit without any parts funding? Your parts list stays on the project for the reviewer to see, but approving it orders no grant. You can still change your mind before you submit.",
 			)
 		) {
 			setDeclinedFunding(true)
@@ -2301,7 +2273,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{project ? `${project.name} needs a cover image.` : "Your project needs a cover image."}
 						</p>
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Upload a photo or screenshot of the project on that project&apos;s page before you can submit – covers are
+							Upload a photo or screenshot of the project on that project&apos;s page before you can submit. Covers are
 							per project, so a cover uploaded elsewhere does not count.{" "}
 							{project && (
 								<Link
@@ -2328,8 +2300,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{project ? `${project.name} needs a longer description.` : "Your project needs a longer description."}
 						</p>
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							A reviewer decides from the description, so it needs at least {MIN_PROJECT_DESCRIPTION_CHARS} characters –
-							you have {descriptionLength}.{" "}
+							A reviewer decides from the description, so it needs at least {MIN_PROJECT_DESCRIPTION_CHARS} characters.
+							You have {descriptionLength}.{" "}
 							{project && (
 								<Link
 									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
@@ -2357,7 +2329,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								: "This project still has the starter's description."}
 						</p>
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Write your own description – say what you changed, why you made it, and what makes it yours.{" "}
+							Write your own description. Say what you changed, why you made it, and what makes it yours.{" "}
 							{project && (
 								<Link
 									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
@@ -2412,7 +2384,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<ModalTitle
 						sub={
 							fundingDeclined
-								? "No parts, no order – just the tier your hours unlock."
+								? "No parts, no order. Just the tier your hours unlock."
 								: "Every line needs a real vendor and a real price. We ask for the cart screenshot so the total is checkable."
 						}
 					>
@@ -2447,7 +2419,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 												{bom.items.length === 0 && (
 													<tr className="border-b border-dashed border-line/60">
 														<td className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep" colSpan={5}>
-															no parts listed yet. Add them on the project page – or decline funding below – before you
+															no parts listed yet. Add them on the project page (or decline funding below) before you
 															submit this.
 														</td>
 													</tr>
@@ -2476,7 +2448,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 																	{l.vendor || "link"}
 																</a>
 															) : (
-																l.vendor || "—"
+																l.vendor || "-"
 															)}
 														</td>
 													</tr>
@@ -2486,8 +2458,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 														<span className="block font-semibold text-navy">Tax &amp; shipping</span>
 														<span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
 													</td>
-													<td className="px-4 py-2.5 text-navy-soft">–</td>
-													<td className="px-4 py-2.5 text-navy-soft">–</td>
+													<td className="px-4 py-2.5 text-navy-soft">-</td>
+													<td className="px-4 py-2.5 text-navy-soft">-</td>
 													<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
 														${bom.taxShippingUsd.toFixed(2)}
 													</td>
@@ -2548,8 +2520,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								</span>
 								<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
 									{bomEmpty
-										? "Hand in with an empty parts list – no carts, no order. We'll double-check before you submit."
-										: "Your parts list stays for the reviewer to see, but approving it orders no grant – fund the build yourself. We'll double-check before you submit."}
+										? "Submit with an empty parts list. No carts, no order. We'll double-check before you submit."
+										: "Your parts list stays for the reviewer to see, but approving it orders no grant, so fund the build yourself. We'll double-check before you submit."}
 								</span>
 							</span>
 						</label>
@@ -2563,7 +2535,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									<IconCart className="text-base" /> Screenshots of your cart
 								</p>
 								<p className="text-[0.88rem] leading-snug text-navy-soft">
-									The checkout page with the total visible. Any vendor – add one per cart if the order is split.
+									The checkout page with the total visible. Any vendor works. Add one per cart if the order is split.
 								</p>
 								<ImageUploads folder="sessions" images={carts} label="Cart screenshot" max={10} onChange={setCarts} />
 								{/* The gate below is `carts.length > 0`, and until now nothing on screen said so: the Next button simply stayed grey. Named here, next to the box that clears it. */}
@@ -2571,7 +2543,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									<p className="mt-1 flex items-start gap-1.5 text-[0.84rem] leading-snug text-coral-deep">
 										<IconWarning className="mt-0.5 shrink-0 text-sm" />
 										<span>
-											At least one cart screenshot is needed before you can carry on – it is what the parts total is
+											At least one cart screenshot is needed before you can carry on. It is what the parts total is
 											checked against. One per cart if the order is split across vendors.
 										</span>
 									</p>
@@ -2638,8 +2610,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										{short === 0 && over && (
 											<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
 												{bomTotal > t.grantUsd + BOM_MARGIN_USD
-													? `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)} – only $${t.grantUsd} of it funded, and you have to agree to that below`
-													: `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)} – within the $${BOM_MARGIN_USD} margin, you can still submit`}
+													? `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)}, so only $${t.grantUsd} of it is funded and you have to agree to that below`
+													: `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)}, but within the $${BOM_MARGIN_USD} margin, so you can still submit`}
 											</span>
 										)}
 									</button>
@@ -2738,7 +2710,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<p className="label mb-2 text-magenta">Does it work?</p>
 							<div className="grid gap-2.5 sm:grid-cols-2">
 								<OptionRow onClick={() => setWorks("yes")} selected={works === "yes"}>
-									<span className="text-[0.95rem] font-bold text-navy">Yes – it does the thing</span>
+									<span className="text-[0.95rem] font-bold text-navy">Yes, it does the thing</span>
 								</OptionRow>
 								<OptionRow onClick={() => setWorks("no")} selected={works === "no"}>
 									<span className="text-[0.95rem] font-bold text-navy">Not yet</span>
@@ -2756,7 +2728,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											className={cx(inputClass, "resize-none")}
 											id="writeup"
 											onChange={e => setWriteup(e.target.value)}
-											placeholder="The display initialises but stays blank. I think the reset pin is floating – next revision ties it through a 10k to 3V3 and I will bodge it in the meantime."
+											placeholder="The display initialises but stays blank. I think the reset pin is floating, so next revision ties it through a 10k to 3V3 and I will bodge it in the meantime."
 											rows={5}
 											value={writeup}
 										/>

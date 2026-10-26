@@ -226,7 +226,7 @@ export async function updatePrinterAwardStatus(
 		if (!address)
 			throw new HttpError(
 				"VALIDATION_FAILED",
-				"No shipping address is on file for this participant – pull it from HCA (PULL_HCA_PII) or ask them for it before locking.",
+				"No shipping address is on file for this participant. Pull it from HCA (PULL_HCA_PII) or ask them for it before locking.",
 			)
 
 		data.encryptedAddress = encryptPII(address)
@@ -238,7 +238,7 @@ export async function updatePrinterAwardStatus(
 		.where(aw => aw.revokedAt.isNull())
 		.where({ status: award.status })
 		.updateAndCount(data)
-	if (moved !== 1) throw new HttpError("CONFLICT", "The award moved while this was being saved – reload and try again")
+	if (moved !== 1) throw new HttpError("CONFLICT", "The award moved while this was being saved. Reload and try again")
 
 	await logAudit({
 		action: input.status === "REVOKED" ? AuditAction.PRINTER_REVOKED : AuditAction.PRINTER_STATUS_CHANGE,

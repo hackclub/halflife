@@ -110,7 +110,7 @@ export function CsvProjectsImport() {
 							{failures.map(o => (
 								<li className="hl-hint" key={o.projectId}>
 									<span className="hl-mono">{o.projectId}</span> · {o.email} · failed
-									{o.reason ? ` – ${o.reason}` : ""}
+									{o.reason ? `: ${o.reason}` : ""}
 								</li>
 							))}
 						</ul>

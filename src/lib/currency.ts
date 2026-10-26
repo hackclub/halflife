@@ -174,7 +174,7 @@ export async function reconcileGrant(tx: DbOrTx, params: ReconcileParams): Promi
 	// The note carries the shortfall, so the row is the whole story: a "-70" on its own would hide that 30 coins of the grant are still out there.
 	const note =
 		unrecovered > 0
-			? `${params.note} – ${unrecovered} could not be taken back: the maker had already spent them`
+			? `${params.note} (${unrecovered} could not be taken back because the maker had already spent them)`
 			: params.note
 
 	const entry = await appendLedgerEntry(tx, {
