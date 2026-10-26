@@ -3,15 +3,19 @@ import { ActionButton } from "@/app/components/forms/ActionButton"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { EmailForm } from "@/app/components/forms/EmailForm"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
+import { PenaltyCard } from "@/app/components/forms/PenaltyCard"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { isHcbConfigured } from "@/lib/hcb"
+import { penaltyFor } from "@/lib/moderation"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePermission } from "@/lib/permissions"
+import db from "@/lib/prisma8"
 import { getUserDetail } from "@/lib/queries/admin"
+import { parseDbTimestamp } from "@/lib/time"
 import { ThemedProjectRow } from "./ThemedProjectRow"
 
 export const dynamic = "force-dynamic"
@@ -39,6 +43,26 @@ export default async function AdminUserPage({ params }: Props) {
 	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
 	const canSendGrant = canManageCredit && isHcbConfigured() && identityVerified
+	// Banning and suspending are the ADMIN seat specifically: the same blast radius as reversing a role grant, reached through the same panel.
+	const isAdmin = hasRole(roles, Role.ADMIN)
+	const penalties = isAdmin
+		? await db.orm.public.User.whereUnique({ id })
+				.select("bannedAt", "bannedById", "banReason", "suspendedById", "suspendedUntil", "suspensionReason")
+				.first()
+		: null
+	// How much of the ban's own hide is still on record, so unban can offer restore. Two counts, taken when only admins reach this branch and rarely: a member with penalties.
+	const rollbackContentHidden = isAdmin
+		? (
+				await Promise.all([
+					db.orm.public.Post.where({ userId: id })
+						.where(post => post.hiddenByBanAt.isNotNull())
+						.aggregate(a => ({ count: a.count() })),
+					db.orm.public.PostComment.where({ userId: id })
+						.where(comment => comment.hiddenByBanAt.isNotNull())
+						.aggregate(a => ({ count: a.count() })),
+				])
+			).some(r => r.count > 0)
+		: false
 
 	return (
 		<div className="hl-stack">
@@ -90,6 +114,26 @@ export default async function AdminUserPage({ params }: Props) {
 					<ExtensionForm
 						current={user.submissionExtensionUntil?.toISOString() ?? null}
 						url={`/api/admin/users/${id}`}
+					/>
+				</Panel>
+			) : null}
+
+			{isAdmin && penalties ? (
+				<Panel title="Penalties">
+					{penalties.bannedAt || penalties.suspendedUntil ? (
+						<Badge tone={penalties.bannedAt ? "danger" : "warning"}>
+							{penaltyFor(penalties.bannedAt, penalties.suspendedUntil)}
+						</Badge>
+					) : null}
+					<PenaltyCard
+						banned={penalties.bannedAt !== null}
+						bannedAt={penalties.bannedAt ? parseDbTimestamp(penalties.bannedAt).toISOString() : null}
+						banReason={penalties.banReason}
+						rollbackContentHidden={rollbackContentHidden}
+						suspended={penaltyFor(penalties.bannedAt, penalties.suspendedUntil) === "suspended"}
+						suspendedUntil={penalties.suspendedUntil ? parseDbTimestamp(penalties.suspendedUntil).toISOString() : null}
+						suspensionReason={penalties.suspensionReason}
+						url={`/api/admin/users/${id}/penalties`}
 					/>
 				</Panel>
 			) : null}

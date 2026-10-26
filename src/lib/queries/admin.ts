@@ -41,6 +41,7 @@ import { eachDayBetween, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
 export interface DirectoryUser {
+	bannedAt: string | null
 	createdAt: Date
 	displayName: string | null
 	email: string
@@ -49,6 +50,7 @@ export interface DirectoryUser {
 	name: string | null
 	roles: { role: Role }[]
 	slackId: string | null
+	suspendedUntil: string | null
 	verificationStatus: string | null
 }
 
@@ -80,7 +82,18 @@ export async function listUsers(
 			: filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
 	const rows = await paged
 		.limit(opts.limit + 1)
-		.select("createdAt", "displayName", "email", "fraudFlagged", "id", "name", "slackId", "verificationStatus")
+		.select(
+			"bannedAt",
+			"createdAt",
+			"displayName",
+			"email",
+			"fraudFlagged",
+			"id",
+			"name",
+			"slackId",
+			"suspendedUntil",
+			"verificationStatus",
+		)
 		.include("roles", roles => roles.select("role"))
 		.all()
 	const items = rows.slice(0, opts.limit).map(row => withFields(row, { createdAt: parseDbTimestamp(row.createdAt) }))
