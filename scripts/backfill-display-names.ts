@@ -1,4 +1,3 @@
-import { setTimeout as sleep } from "node:timers/promises"
 import { syncHcaProfile } from "../src/lib/hca-profile"
 import db from "../src/lib/prisma8"
 
@@ -36,7 +35,7 @@ async function main() {
 			left += 1
 			console.warn(`no answer from HCA for ${user.id}; they keep the full name until their next sign-in`)
 		}
-		await sleep(PACE_MS)
+		await Bun.sleep(PACE_MS)
 	}
 
 	console.log(

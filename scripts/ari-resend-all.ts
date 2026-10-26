@@ -1,5 +1,3 @@
-import { setTimeout as sleep } from "node:timers/promises"
-
 /**
  * Resend every decision in an Ari program's "Reviewed" list, using your logged-in cookie.
  *
@@ -214,8 +212,8 @@ async function resendOne(
 	let lastBody = ""
 	for (let attempt = 1; attempt <= options.maxAttempts; attempt++) {
 		const wait = limiter.cooldownUntil - Date.now()
-		if (wait > 0) await sleep(wait)
-		if (options.delayMs > 0) await sleep(options.delayMs)
+		if (wait > 0) await Bun.sleep(wait)
+		if (options.delayMs > 0) await Bun.sleep(options.delayMs)
 
 		const result = await sendResend(options.program, options.cookie, id)
 		lastBody = result.body
@@ -227,7 +225,7 @@ async function resendOne(
 
 		// the rate limit already parked every worker; a transient failure backs off just this one
 		if (result.status === 429) noteRateLimit(limiter, result.retryAfterMs)
-		else await sleep(jitter(Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS)))
+		else await Bun.sleep(jitter(Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS)))
 	}
 	return { detail: lastBody, outcome: "failed" }
 }

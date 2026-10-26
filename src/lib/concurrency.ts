@@ -24,4 +24,6 @@ export function createSlot(max: number): () => Promise<() => void> {
 	}
 }
 
-export const sleep = (ms: number): Promise<void> => delay(ms)
+export const sleep = (ms: number): Promise<void> =>
+	// Bun is the production runtime and the test runner, but `next start` runs on Node in CI's e2e job and on anyone running the built server without Bun.
+	typeof Bun === "undefined" ? delay(ms) : Bun.sleep(ms)
