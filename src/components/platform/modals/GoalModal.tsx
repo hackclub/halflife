@@ -271,13 +271,11 @@ function GoalCard({
 			)}
 			onClick={onSelect}
 			role="radio"
-			style={
-				{
-					"--sk-color": selected ? "var(--color-teal-deep)" : "var(--color-line)",
-					"--sk-radius": "16px",
-					background: selected ? "color-mix(in srgb, var(--color-mint) 52%, #fff)" : "var(--color-paper)",
-				} as React.CSSProperties
-			}
+			style={{
+				"--sk-color": selected ? "var(--color-teal-deep)" : "var(--color-line)",
+				"--sk-radius": "16px",
+				background: selected ? "color-mix(in srgb, var(--color-mint) 52%, #fff)" : "var(--color-paper)",
+			}}
 			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week. That pace is the same on every tier, because tier hours pay for parts while every hour past them earns 5 coins. Bigger printers cost more coins to earn each week.`}
 			type="button"
 		>

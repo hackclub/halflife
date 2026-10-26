@@ -80,12 +80,10 @@ export function SubmissionReelPicker({
 									selected ? "bg-teal/10" : "bg-white hover:bg-cream active:translate-y-px",
 								)}
 								onClick={() => onSelect(selected ? null : reel)}
-								style={
-									{
-										"--sk-color": selected ? "var(--color-teal)" : undefined,
-										"--sk-radius": "16px",
-									} as React.CSSProperties
-								}
+								style={{
+									"--sk-color": selected ? "var(--color-teal)" : undefined,
+									"--sk-radius": "16px",
+								}}
 								type="button"
 							>
 								<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">

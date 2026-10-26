@@ -7,6 +7,7 @@ import { IconCamera, IconChevronLeft, IconClock } from "@/components/platform/ic
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button, Chip } from "@/components/platform/ui"
+import { messageOf } from "@/lib/errors"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import { displayRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
@@ -179,7 +180,7 @@ export function CoverImage({
 			const refused = await updateProject(projectId, { coverImageKey: objectKey })
 			if (refused) setError(refused)
 		} catch (err) {
-			setError((err as Error).message)
+			setError(messageOf(err))
 		} finally {
 			setBusy(false)
 			setUploading(false)

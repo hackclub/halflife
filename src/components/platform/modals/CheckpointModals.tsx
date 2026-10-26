@@ -685,10 +685,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		>
 			{/* An edit re-opens both tabs: the picker comes back with this entry's clips selected, ready to swap. */}
 			<div className="mb-5 flex justify-center">
-				<div
-					className="sketch flex gap-1 rounded-full bg-white p-1"
-					style={{ "--sk-radius": "999px" } as React.CSSProperties}
-				>
+				<div className="sketch flex gap-1 rounded-full bg-white p-1" style={{ "--sk-radius": "999px" }}>
 					{(["journal", "timelapse"] as const).map(t => (
 						<button
 							aria-pressed={tab === t}
@@ -909,7 +906,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						{preview && (
 							<div
 								className="sketch thin-scroll max-h-60 min-h-32 min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
-								style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties}
+								style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" }}
 							>
 								{body.trim() ? (
 									<Markdown className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" source={body} />
@@ -1199,7 +1196,7 @@ export function PublicReelModal({
 				{celebration && (
 					<div
 						className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-mint px-5 py-4"
-						style={{ "--sk-color": "var(--color-teal)", "--sk-radius": "16px" } as React.CSSProperties}
+						style={{ "--sk-color": "var(--color-teal)", "--sk-radius": "16px" }}
 					>
 						<IconCheck className="mt-0.5 shrink-0 text-xl text-teal-deep" />
 						<div className="min-w-0">
@@ -1286,7 +1283,7 @@ export function PublicReelModal({
 			{/* First, because it has to be in the caption before the post goes up. */}
 			<div
 				className="sketch mb-5 rounded-2xl bg-sky-pale px-5 py-4"
-				style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" } as React.CSSProperties}
+				style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" }}
 			>
 				<p className="label text-navy">Before you post</p>
 				<p className="mt-1.5 text-[0.9rem] leading-snug text-navy">
@@ -1549,7 +1546,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				<div className="grid gap-4">
 					<div
 						className="sketch rounded-2xl bg-sky-pale px-5 py-4"
-						style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" } as React.CSSProperties}
+						style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" }}
 					>
 						<p className="label flex items-center gap-2 text-sky-ink">
 							<IconMic className="text-base" /> What to film
@@ -1630,7 +1627,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						) : (
 							<div
 								className="sketch grid size-full place-items-center rounded-xl bg-white px-3 text-center"
-								style={{ "--sk-radius": "12px" } as React.CSSProperties}
+								style={{ "--sk-radius": "12px" }}
 							>
 								<p className="hand text-[0.78rem] leading-snug text-navy-soft">nothing here yet</p>
 							</div>
@@ -1742,7 +1739,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{pace.printer && pace.missedWeeks.length > 0 && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2265,7 +2262,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{!hasCover && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconCamera className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2292,7 +2289,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{!descriptionReady && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2319,7 +2316,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{!starterDescriptionReady && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2347,7 +2344,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{owed > 0 && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2497,12 +2494,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 								declinedFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
 							)}
-							style={
-								{
-									"--sk-color": declinedFunding ? "var(--color-violet)" : "var(--color-line)",
-									"--sk-radius": "16px",
-								} as React.CSSProperties
-							}
+							style={{
+								"--sk-color": declinedFunding ? "var(--color-violet)" : "var(--color-line)",
+								"--sk-radius": "16px",
+							}}
 						>
 							<input checked={declinedFunding} className="sr-only" onChange={toggleDeclinedFunding} type="checkbox" />
 							<span
@@ -2579,12 +2574,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										disabled={short > 0}
 										key={t.id}
 										onClick={() => setTier(t.id)}
-										style={
-											{
-												"--sk-color": on ? "var(--color-violet)" : "var(--color-line)",
-												"--sk-radius": "16px",
-											} as React.CSSProperties
-										}
+										style={{
+											"--sk-color": on ? "var(--color-violet)" : "var(--color-line)",
+											"--sk-radius": "16px",
+										}}
 										type="button"
 									>
 										<span
@@ -2626,12 +2619,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 									partialFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
 								)}
-								style={
-									{
-										"--sk-color": partialFunding ? "var(--color-violet)" : "var(--color-line)",
-										"--sk-radius": "16px",
-									} as React.CSSProperties
-								}
+								style={{
+									"--sk-color": partialFunding ? "var(--color-violet)" : "var(--color-line)",
+									"--sk-radius": "16px",
+								}}
 							>
 								<input
 									checked={partialFunding}

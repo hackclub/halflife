@@ -42,11 +42,10 @@ export const PATCH = withPermission(
 		if (!before) return fail("NOT_FOUND", "User not found")
 
 		// `User.email` has a plain btree unique index, which is case-SENSITIVE: two spellings of one address are two legal rows to Postgres. The address is stored exactly as typed (see the schema), so the duplicate check has to be the case-insensitive one or `Ada@x.com` and `ada@x.com` could both become accounts - and better-auth would then resolve either spelling to whichever row it found first.
-		const emailChanged = parsed.data.email !== undefined && parsed.data.email !== before.email
+		const nextEmail = parsed.data.email
+		const emailChanged = nextEmail !== undefined && nextEmail !== before.email
 		if (emailChanged) {
-			const taken = await db.orm.public.User.where(user =>
-				user.email.ilike(escapeLikePattern(parsed.data.email as string)),
-			)
+			const taken = await db.orm.public.User.where(user => user.email.ilike(escapeLikePattern(nextEmail)))
 				.where(user => user.id.neq(id))
 				.select("id")
 				.first()

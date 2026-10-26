@@ -142,7 +142,7 @@ export function Modal({
 				)}
 				ref={ref}
 				role="dialog"
-				style={{ "--sk-color": accent, "--sk-radius": "26px" } as React.CSSProperties}
+				style={{ "--sk-color": accent, "--sk-radius": "26px" }}
 				tabIndex={-1}
 			>
 				<div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-6">
@@ -154,7 +154,7 @@ export function Modal({
 							aria-label="Close"
 							className="sketch grid size-8 shrink-0 place-items-center rounded-lg text-navy-soft transition-colors hover:bg-white hover:text-navy"
 							onClick={onClose}
-							style={{ "--sk-radius": "9px" } as React.CSSProperties}
+							style={{ "--sk-radius": "9px" }}
 							type="button"
 						>
 							<IconX className="text-base" />

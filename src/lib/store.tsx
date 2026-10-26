@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { errorMessage } from "@/lib/api-error"
 import { ParticipantGoal } from "@/lib/enums"
 import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
@@ -641,8 +642,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "That did not save. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "That did not save. Try again.")
 			}
 			setFacts(f => ({
 				...f,
@@ -698,8 +699,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "That did not save. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "That did not save. Try again.")
 			}
 			setFacts(f => ({
 				...f,
@@ -836,8 +837,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			}
 			if (!res.ok) {
 				// No `data` envelope: ok() returns the payload itself, and only a failure is wrapped. See lib/api.ts.
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return { error: err?.error?.message ?? `Your reel didn't post (error ${res.status}).` }
+				const err: unknown = await res.json().catch(() => null)
+				return { error: errorMessage(err, `Your reel didn't post (error ${res.status}).`) }
 			}
 			// Re-recording an owed reel lifts the hold now rather than on the refresh, so the map opens back up the moment it is posted.
 			setFacts(f => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter(k => k !== id) } : f))
@@ -879,8 +880,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Nothing was submitted. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "The week was not submitted. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "The week was not submitted. Try again.")
 			}
 			patchCheckpoint(id, {})
 			router.refresh()
@@ -910,8 +911,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Nothing changed. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "The week was not unsubmitted. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "The week was not unsubmitted. Try again.")
 			}
 			if (fromCheckpoint) {
 				const weekId = Number(/^w(\d+)-/.exec(target)?.[1])
@@ -957,8 +958,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				})
 				if (res.ok) setFacts(f => ({ ...f, goalId: printerGoalId ?? f.goalId, participantGoal: goal }))
 				else {
-					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-					refusal = err?.error?.message ?? "That did not save. Try again."
+					const err: unknown = await res.json().catch(() => null)
+					refusal = errorMessage(err, "That did not save. Try again.")
 				}
 			} catch {
 				refusal = "Could not reach the server. Try again."
@@ -998,8 +999,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			return "Could not reach the server. Nothing was reset, so try again."
 		}
 		if (!res.ok) {
-			const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-			return payload?.error?.message ?? `Could not reset onboarding (${res.status})`
+			const payload: unknown = await res.json().catch(() => null)
+			return errorMessage(payload, `Could not reset onboarding (${res.status})`)
 		}
 		try {
 			window.localStorage.removeItem(KEY)
@@ -1138,8 +1139,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					return "Could not reach the server. Your entry is still here. Try again."
 				}
 				if (!res.ok) {
-					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-					return err?.error?.message ?? "The entry was not saved. Try again."
+					const err: unknown = await res.json().catch(() => null)
+					return errorMessage(err, "The entry was not saved. Try again.")
 				}
 			}
 
@@ -1199,8 +1200,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Your changes are still here. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "The entry was not saved. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "The entry was not saved. Try again.")
 			}
 			setFacts(f => {
 				const prev = { ...EMPTY, ...f.progress[id] }

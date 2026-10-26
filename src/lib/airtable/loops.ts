@@ -161,7 +161,7 @@ function unchanged(row: AirtableRecord, fields: { [_: string]: unknown }): boole
 		if (typeof want === "boolean") return (have === true) === want
 		if (want === null) return have === undefined || have === null || have === ""
 		// Airtable returns dates as ISO strings; compare the instants.
-		return typeof have === "string" && new Date(have).getTime() === new Date(want as string).getTime()
+		return typeof have === "string" && typeof want === "string" && new Date(have).getTime() === new Date(want).getTime()
 	})
 }
 

@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/api-error"
+
 /**
  * Sending a file, and reporting how much of it has gone.
  *
@@ -84,8 +86,7 @@ export function postForm(
 export function uploadFailure(res: UploadResponse): string {
 	if (res.status === 524 || res.status === 504)
 		return "That upload took too long. Try a shorter clip or a smaller picture, or move somewhere with a better connection."
-	const payload = res.json as { error?: { message?: string } } | null
-	return payload?.error?.message ?? `Upload failed (${res.status})`
+	return errorMessage(res.json, `Upload failed (${res.status})`)
 }
 
 /** The same message, for a `fetch` response whose body has not been read yet. */

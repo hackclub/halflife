@@ -102,7 +102,8 @@ export async function assertNoOwedReel(userId: string, checkpointKey?: string | 
 	const owed = await getOwedReelKeys(userId)
 	if (owed.length === 0) return
 	if (checkpointKey && owed.includes(checkpointKey)) return
-	const first = owed[0] as string
+	const [first] = owed
+	if (first === undefined) return
 	throw new HttpError(
 		"REEL_OWED",
 		`Re-record ${reelNameForKey(first)} first. You deleted it, and the rest of the map waits until it is back.`,

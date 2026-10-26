@@ -403,7 +403,7 @@ function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string 
 	return (
 		<div
 			className="sketch flex gap-3.5 bg-paper px-4 py-3.5"
-			style={{ "--sk-color": colour.accent, "--sk-radius": "14px" } as React.CSSProperties}
+			style={{ "--sk-color": colour.accent, "--sk-radius": "14px" }}
 		>
 			<div className="w-22 shrink-0">
 				<p className="text-[1.02rem] leading-tight font-extrabold text-navy">

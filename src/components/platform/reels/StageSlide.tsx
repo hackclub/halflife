@@ -461,7 +461,7 @@ function RoundControl({
 			className="sketch grid size-9 place-items-center rounded-full bg-paper text-navy transition-colors hover:bg-mint hover:text-teal-ink disabled:cursor-not-allowed disabled:text-navy-faint"
 			disabled={disabled}
 			onClick={onClick}
-			style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "999px" } as React.CSSProperties}
+			style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "999px" }}
 			type="button"
 		>
 			{children}

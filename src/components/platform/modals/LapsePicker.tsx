@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/components/platform/icons"
 import { Button, Chip } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
+import { messageOf } from "@/lib/errors"
 
 export interface LapseTimelapse {
 	attached: boolean
@@ -86,7 +87,7 @@ export function LapsePicker({
 			if ("unlinked" in page) setLoad({ state: "unlinked" })
 			else setLoad({ items: page.timelapses, nextCursor: page.nextCursor, state: "ready" })
 		} catch (err) {
-			setLoad({ message: (err as Error).message, state: "error" })
+			setLoad({ message: messageOf(err), state: "error" })
 		}
 	}, [forSession])
 
@@ -108,7 +109,7 @@ export function LapsePicker({
 					state: "ready",
 				})
 		} catch (err) {
-			setLoad({ message: (err as Error).message, state: "error" })
+			setLoad({ message: messageOf(err), state: "error" })
 		} finally {
 			setMore(false)
 		}
@@ -136,7 +137,7 @@ export function LapsePicker({
 		return (
 			<div
 				className="sketch grid justify-items-center gap-3 rounded-2xl bg-violet-pale px-6 py-8 text-center"
-				style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "18px" } as React.CSSProperties}
+				style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "18px" }}
 			>
 				<span className="grid size-12 place-items-center rounded-full bg-violet text-white">
 					<IconFilm className="text-xl" />
@@ -190,10 +191,7 @@ export function LapsePicker({
 			</div>
 
 			{load.items.length === 0 ? (
-				<div
-					className="sketch rounded-2xl bg-white px-6 py-9 text-center"
-					style={{ "--sk-radius": "18px" } as React.CSSProperties}
-				>
+				<div className="sketch rounded-2xl bg-white px-6 py-9 text-center" style={{ "--sk-radius": "18px" }}>
 					<p className="font-bold text-navy">No published timelapses yet</p>
 					<p className="mx-auto mt-1.5 max-w-[42ch] text-[0.85rem] leading-snug text-navy-soft">
 						Record your session on Lapse, publish it as public or unlisted, then hit refresh.
@@ -223,12 +221,10 @@ export function LapsePicker({
 									)}
 									disabled={blocked}
 									onClick={() => onToggle(t)}
-									style={
-										{
-											"--sk-color": selected ? "var(--color-violet)" : undefined,
-											"--sk-radius": "16px",
-										} as React.CSSProperties
-									}
+									style={{
+										"--sk-color": selected ? "var(--color-violet)" : undefined,
+										"--sk-radius": "16px",
+									}}
 									type="button"
 								>
 									<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">

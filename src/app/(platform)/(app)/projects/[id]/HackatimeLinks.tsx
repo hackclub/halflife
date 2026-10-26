@@ -6,8 +6,10 @@ import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/i
 import { Button, inputClass, Panel } from "@/components/platform/ui"
 import { linkHackatime } from "@/lib/auth-client"
 import { cx } from "@/lib/cx"
+import { messageOf } from "@/lib/errors"
 import { fmtHours } from "@/lib/projects"
 import type { Phase } from "@/lib/types"
+import { isRecord } from "@/lib/unknown"
 
 interface Link {
 	hackatimeProject: string
@@ -62,17 +64,17 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			try {
 				setLinks((await read<{ links: Link[] }>(linksRes)).links)
 			} catch (err) {
-				setError((err as Error).message)
+				setError(messageOf(err))
 				setLinks([])
 			}
 			try {
 				const { projects } = await read<{ projects: { name: string; totalSeconds: number }[] }>(projectsRes)
 				setAccount({ projects, state: "linked" })
 			} catch (err) {
-				if ((err as { code?: string }).code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
+				if (isRecord(err) && err.code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
 				else {
 					setAccount({ projects: [], state: "linked" })
-					setError((err as Error).message)
+					setError(messageOf(err))
 				}
 			}
 		} catch (err) {
@@ -105,7 +107,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			await load()
 			router.refresh()
 		} catch (err) {
-			setError((err as Error).message)
+			setError(messageOf(err))
 		} finally {
 			setBusy(null)
 		}

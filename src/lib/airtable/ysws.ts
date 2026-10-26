@@ -9,6 +9,7 @@ import {
 	withRateLimitRetry,
 } from "@/lib/airtable/client"
 import { fieldKey, formulaRef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
+import { errorMessage } from "@/lib/api-error"
 
 /**
  * Writes to the `YSWS Project Submission` table.
@@ -29,7 +30,7 @@ const MAX_DROPPED_FIELDS = 6
 function rejectedFields(err: AirtableError, fields: { [_: string]: unknown }): string[] {
 	let message = err.body
 	try {
-		message = (JSON.parse(err.body) as { error?: { message?: string } }).error?.message ?? err.body
+		message = errorMessage(JSON.parse(err.body), err.body)
 	} catch {
 		// Not JSON; search the raw text.
 	}

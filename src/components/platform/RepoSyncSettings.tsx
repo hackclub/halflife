@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { Button, Chip } from "@/components/platform/ui"
+import { errorMessage } from "@/lib/api-error"
 import { linkForge } from "@/lib/auth-client"
 import { cx } from "@/lib/cx"
 import { displayRepo } from "@/lib/repo"
@@ -108,9 +109,9 @@ export function RepoSyncSettings({
 				headers: body ? { "content-type": "application/json" } : undefined,
 				method,
 			})
-			const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+			const payload: unknown = await res.json().catch(() => null)
 			if (!res.ok) {
-				setError(payload?.error?.message ?? "That did not work. Try again.")
+				setError(errorMessage(payload, "That did not work. Try again."))
 				return false
 			}
 			await load()

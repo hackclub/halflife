@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { errorMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
 import { formatShortDate, toLocalInput } from "@/lib/deadline"
 import { type CalendarEvent, EVENT_COLOURS, type EventColour, eventColour, HUDDLE_URL } from "@/lib/events"
@@ -70,8 +71,8 @@ export function EventForm({
 				method: editing ? "PATCH" : "POST",
 			})
 			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Request failed (${res.status})`)
+				const payload: unknown = await res.json().catch(() => null)
+				setError(errorMessage(payload, `Request failed (${res.status})`))
 				return
 			}
 			onDone()

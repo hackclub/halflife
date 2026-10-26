@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
+import { errorMessage } from "@/lib/api-error"
 
 interface ImportOutcome {
 	ari: "sent" | "failed" | "not_configured" | "not_attempted"
@@ -66,8 +67,8 @@ export function AirtableImportForm({
 		try {
 			const res = await fetch("/api/admin/program/import-airtable", { method: "POST" })
 			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Import failed (${res.status})`)
+				const payload: unknown = await res.json().catch(() => null)
+				setError(errorMessage(payload, `Import failed (${res.status})`))
 				return
 			}
 			const payload = (await res.json()) as { summary: ImportSummary }

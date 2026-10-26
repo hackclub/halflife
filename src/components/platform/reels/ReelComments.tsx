@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconSend, IconX } from "@/components/platform/icons"
 import { ReportButton } from "@/components/platform/report/ReportButton"
+import { errorMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { ago, compact } from "./format"
@@ -130,8 +131,8 @@ export function ReelComments({
 				method: "POST",
 			})
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				setSendError(err?.error?.message ?? "That comment did not post. Try again.")
+				const err: unknown = await res.json().catch(() => null)
+				setSendError(errorMessage(err, "That comment did not post. Try again."))
 				return
 			}
 			const { comment } = (await res.json()) as { comment: Comment }
@@ -301,7 +302,7 @@ export function ReelComments({
 						maxLength={MAX_LENGTH}
 						onChange={e => setDraft(e.target.value)}
 						placeholder="Add a comment…"
-						style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "12px" } as React.CSSProperties}
+						style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "12px" }}
 						value={draft}
 					/>
 					<button

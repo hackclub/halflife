@@ -5,6 +5,7 @@ import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { RepoEditor } from "@/components/platform/RepoField"
 import { Button } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
+import { messageOf } from "@/lib/errors"
 import { displayRepo } from "@/lib/repo"
 import type { RepoCheck, RepoCheckResult } from "@/lib/repo-checks"
 import { useStore } from "@/lib/store"
@@ -80,7 +81,7 @@ export function RepoChecks({
 			setData(body)
 			onResult(body)
 		} catch (err) {
-			setError((err as Error).message)
+			setError(messageOf(err))
 		} finally {
 			setLoading(false)
 		}
@@ -98,7 +99,7 @@ export function RepoChecks({
 		<section
 			aria-labelledby="repo-checks-title"
 			className="sketch mb-5 rounded-2xl bg-white px-4 py-4 sm:px-5"
-			style={{ "--sk-radius": "16px" } as React.CSSProperties}
+			style={{ "--sk-radius": "16px" }}
 		>
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<h3 className="label text-violet-deep" id="repo-checks-title">

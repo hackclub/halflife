@@ -1,5 +1,6 @@
 "use client"
 import { useCallback, useEffect, useState } from "react"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * How this viewer likes the Doomscroller: sound, speed, whether it moves on by itself, and whether the comments stand open beside the reel.
@@ -26,13 +27,14 @@ export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerP
 		try {
 			const raw = window.localStorage.getItem(KEY)
 			if (!raw) return
-			const saved = JSON.parse(raw) as Partial<PlayerPrefs>
+			const saved: unknown = JSON.parse(raw)
+			if (!isRecord(saved)) return
 			// hydrating from localStorage
 			setPrefs({
 				autoScroll: typeof saved.autoScroll === "boolean" ? saved.autoScroll : DEFAULTS.autoScroll,
 				comments: typeof saved.comments === "boolean" ? saved.comments : DEFAULTS.comments,
 				muted: typeof saved.muted === "boolean" ? saved.muted : DEFAULTS.muted,
-				rate: RATES.includes(saved.rate as (typeof RATES)[number]) ? (saved.rate as number) : DEFAULTS.rate,
+				rate: RATES.find(rate => rate === saved.rate) ?? DEFAULTS.rate,
 			})
 		} catch {
 			/* storage unavailable – the defaults stand */

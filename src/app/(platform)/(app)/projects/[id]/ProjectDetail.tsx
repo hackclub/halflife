@@ -7,6 +7,7 @@ import { IconBook, IconWarning } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { Button, Chip, Panel } from "@/components/platform/ui"
+import { errorMessage } from "@/lib/api-error"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
@@ -48,8 +49,8 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 				method: "POST",
 			})
 			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `That did not send (${res.status})`)
+				const payload: unknown = await res.json().catch(() => null)
+				setError(errorMessage(payload, `That did not send (${res.status})`))
 				return
 			}
 			router.refresh()
@@ -123,8 +124,8 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
 		try {
 			const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" })
 			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `That did not delete (${res.status})`)
+				const payload: unknown = await res.json().catch(() => null)
+				setError(errorMessage(payload, `That did not delete (${res.status})`))
 				setDeleting(false)
 				return
 			}

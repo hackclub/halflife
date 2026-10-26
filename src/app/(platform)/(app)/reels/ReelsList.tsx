@@ -6,6 +6,7 @@ import { useState } from "react"
 import { IconArrowRight, IconFilm, IconPlus, IconTrash, IconX } from "@/components/platform/icons"
 import { PublicReelModal } from "@/components/platform/modals/CheckpointModals"
 import { Button, Chip, Panel } from "@/components/platform/ui"
+import { errorMessage } from "@/lib/api-error"
 import { fmtDate } from "@/lib/projects"
 import { PLATFORM_INFO } from "@/lib/public-reels"
 import type { MyReel, MyReelGroup } from "@/lib/queries/reels"
@@ -95,8 +96,8 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd(): void; onCh
 		try {
 			const res = await fetch(`/api/posts/${reel.id}`, { method: "DELETE" })
 			if (!res.ok) {
-				const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				setError(body?.error?.message ?? "That reel didn't delete. Try again.")
+				const body: unknown = await res.json().catch(() => null)
+				setError(errorMessage(body, "That reel didn't delete. Try again."))
 				return
 			}
 			setConfirming(false)
