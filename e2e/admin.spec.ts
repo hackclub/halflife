@@ -1,5 +1,6 @@
 import { readAudit, readProgramSettings } from "./db"
 import { expect, test } from "./fixtures"
+import { waitForHydration } from "./hydration"
 
 test("an admin can change program settings and see the audit entry", async ({ openAs }) => {
 	const { page, user } = await openAs({ role: "ADMIN" })
@@ -7,12 +8,15 @@ test("an admin can change program settings and see the audit entry", async ({ op
 
 	await expect(page.getByRole("heading", { level: 1, name: "Program settings" })).toBeVisible()
 
-	const submissions = page.getByLabel("Submissions open")
+	const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Save settings" }) })
+	await waitForHydration(form)
+
+	const submissions = form.getByLabel("Submissions open")
 	const next = !(await submissions.isChecked())
 	if (next) await submissions.check()
 	else await submissions.uncheck()
 
-	await page.getByRole("button", { name: "Save settings" }).click()
+	await form.getByRole("button", { name: "Save settings" }).click()
 	await expect(page.getByText("Saved.", { exact: true })).toBeVisible({ timeout: 15_000 })
 
 	expect((await readProgramSettings())?.submissionsOpen).toBe(next)
