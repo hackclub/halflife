@@ -4,6 +4,7 @@ import { Pool, types } from "pg"
 
 declare global {
 	// Cached on globalThis so Next's dev-mode module reloading does not open a new pool on every edit.
+	// biome-ignore lint/style/useVarsOnTop: a global augmentation has to declare `var`; there is no scope above it to move.
 	var halflifeAuthDb: ReturnType<typeof createClient> | undefined
 }
 

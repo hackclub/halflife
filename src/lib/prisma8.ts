@@ -6,6 +6,7 @@ import contractJson from "@/app/generated/prisma8/contract.json" with { type: "j
 
 declare global {
 	// Cached on globalThis so Next's dev-mode module reloading doesn't open a new connection pool on every edit until Postgres refuses connections.
+	// biome-ignore lint/style/useVarsOnTop: a global augmentation has to declare `var`; there is no scope above it to move.
 	var halflifePrisma8: Prisma8Client | undefined
 }
 
