@@ -72,7 +72,10 @@ export async function trackSideEffect<T>(
 		return result
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
-		console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}:`, err)
+		// An upstream rejection says all it can in its message; in production its stack points into minified chunks and buries the one line an operator reads. A failure without a status is our own bug, so that one keeps its stack.
+		const rejected = typeof err === "object" && err !== null && "status" in err && "code" in err
+		if (rejected) console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}: ${message}`)
+		else console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}:`, err)
 		await logAudit({
 			action:
 				kind === "airtable"
