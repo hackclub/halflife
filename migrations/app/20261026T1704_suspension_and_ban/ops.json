@@ -1,0 +1,734 @@
+[
+  {
+    "id": "addNativeEnumValue.AuditAction.ADMIN_SUSPEND_USER",
+    "label": "Add value \"ADMIN_SUSPEND_USER\" to enum type \"AuditAction\"",
+    "summary": "Adds value \"ADMIN_SUSPEND_USER\" to enum type \"AuditAction\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "AuditAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"AuditAction\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"AuditAction\""
+        }
+      },
+      {
+        "description": "ensure value \"ADMIN_SUSPEND_USER\" is absent from enum type \"AuditAction\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_SUSPEND_USER"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"ADMIN_SUSPEND_USER\" in enum type \"AuditAction\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"ADMIN_SUSPEND_USER\" to enum type \"AuditAction\"",
+        "sql": "ALTER TYPE \"public\".\"AuditAction\" ADD VALUE 'ADMIN_SUSPEND_USER'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"ADMIN_SUSPEND_USER\" exists on enum type \"AuditAction\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_SUSPEND_USER"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"ADMIN_SUSPEND_USER\" in enum type \"AuditAction\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "addNativeEnumValue.AuditAction.ADMIN_UNSUSPEND_USER",
+    "label": "Add value \"ADMIN_UNSUSPEND_USER\" to enum type \"AuditAction\"",
+    "summary": "Adds value \"ADMIN_UNSUSPEND_USER\" to enum type \"AuditAction\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "AuditAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"AuditAction\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"AuditAction\""
+        }
+      },
+      {
+        "description": "ensure value \"ADMIN_UNSUSPEND_USER\" is absent from enum type \"AuditAction\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_UNSUSPEND_USER"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"ADMIN_UNSUSPEND_USER\" in enum type \"AuditAction\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"ADMIN_UNSUSPEND_USER\" to enum type \"AuditAction\"",
+        "sql": "ALTER TYPE \"public\".\"AuditAction\" ADD VALUE 'ADMIN_UNSUSPEND_USER'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"ADMIN_UNSUSPEND_USER\" exists on enum type \"AuditAction\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_UNSUSPEND_USER"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"ADMIN_UNSUSPEND_USER\" in enum type \"AuditAction\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "addNativeEnumValue.AuditAction.ADMIN_BAN_USER",
+    "label": "Add value \"ADMIN_BAN_USER\" to enum type \"AuditAction\"",
+    "summary": "Adds value \"ADMIN_BAN_USER\" to enum type \"AuditAction\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "AuditAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"AuditAction\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"AuditAction\""
+        }
+      },
+      {
+        "description": "ensure value \"ADMIN_BAN_USER\" is absent from enum type \"AuditAction\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_BAN_USER"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"ADMIN_BAN_USER\" in enum type \"AuditAction\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"ADMIN_BAN_USER\" to enum type \"AuditAction\"",
+        "sql": "ALTER TYPE \"public\".\"AuditAction\" ADD VALUE 'ADMIN_BAN_USER'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"ADMIN_BAN_USER\" exists on enum type \"AuditAction\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_BAN_USER"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"ADMIN_BAN_USER\" in enum type \"AuditAction\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "addNativeEnumValue.AuditAction.ADMIN_UNBAN_USER",
+    "label": "Add value \"ADMIN_UNBAN_USER\" to enum type \"AuditAction\"",
+    "summary": "Adds value \"ADMIN_UNBAN_USER\" to enum type \"AuditAction\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "AuditAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"AuditAction\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"AuditAction\""
+        }
+      },
+      {
+        "description": "ensure value \"ADMIN_UNBAN_USER\" is absent from enum type \"AuditAction\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_UNBAN_USER"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"ADMIN_UNBAN_USER\" in enum type \"AuditAction\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"ADMIN_UNBAN_USER\" to enum type \"AuditAction\"",
+        "sql": "ALTER TYPE \"public\".\"AuditAction\" ADD VALUE 'ADMIN_UNBAN_USER'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"ADMIN_UNBAN_USER\" exists on enum type \"AuditAction\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_UNBAN_USER"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"ADMIN_UNBAN_USER\" in enum type \"AuditAction\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "column.public.post.hiddenByBanAt",
+    "label": "Add column \"hiddenByBanAt\" to \"post\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "hiddenByBanAt",
+        "table": "post"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"hiddenByBanAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "post",
+          "hiddenByBanAt"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"hiddenByBanAt\" on \"post\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"hiddenByBanAt\"",
+        "sql": "ALTER TABLE \"public\".\"post\" ADD COLUMN \"hiddenByBanAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"hiddenByBanAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "post",
+          "hiddenByBanAt"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"hiddenByBanAt\" on \"post\""
+        }
+      },
+      {
+        "description": "verify column \"hiddenByBanAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "post",
+          "hiddenByBanAt",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.post_comment.hiddenByBanAt",
+    "label": "Add column \"hiddenByBanAt\" to \"post_comment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "hiddenByBanAt",
+        "table": "post_comment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"hiddenByBanAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "post_comment",
+          "hiddenByBanAt"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"hiddenByBanAt\" on \"post_comment\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"hiddenByBanAt\"",
+        "sql": "ALTER TABLE \"public\".\"post_comment\" ADD COLUMN \"hiddenByBanAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"hiddenByBanAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "post_comment",
+          "hiddenByBanAt"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"hiddenByBanAt\" on \"post_comment\""
+        }
+      },
+      {
+        "description": "verify column \"hiddenByBanAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "post_comment",
+          "hiddenByBanAt",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.banReason",
+    "label": "Add column \"banReason\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "banReason",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"banReason\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "banReason"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"banReason\" on \"user\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"banReason\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"banReason\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"banReason\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "banReason"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"banReason\" on \"user\""
+        }
+      },
+      {
+        "description": "verify column \"banReason\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "banReason",
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.bannedAt",
+    "label": "Add column \"bannedAt\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "bannedAt",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"bannedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "bannedAt"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"bannedAt\" on \"user\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"bannedAt\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"bannedAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"bannedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "bannedAt"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"bannedAt\" on \"user\""
+        }
+      },
+      {
+        "description": "verify column \"bannedAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "bannedAt",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.bannedById",
+    "label": "Add column \"bannedById\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "bannedById",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"bannedById\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "bannedById"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"bannedById\" on \"user\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"bannedById\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"bannedById\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"bannedById\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "bannedById"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"bannedById\" on \"user\""
+        }
+      },
+      {
+        "description": "verify column \"bannedById\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "bannedById",
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.suspendedById",
+    "label": "Add column \"suspendedById\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "suspendedById",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"suspendedById\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspendedById"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"suspendedById\" on \"user\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"suspendedById\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"suspendedById\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"suspendedById\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspendedById"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"suspendedById\" on \"user\""
+        }
+      },
+      {
+        "description": "verify column \"suspendedById\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspendedById",
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.suspendedUntil",
+    "label": "Add column \"suspendedUntil\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "suspendedUntil",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"suspendedUntil\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspendedUntil"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"suspendedUntil\" on \"user\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"suspendedUntil\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"suspendedUntil\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"suspendedUntil\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspendedUntil"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"suspendedUntil\" on \"user\""
+        }
+      },
+      {
+        "description": "verify column \"suspendedUntil\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspendedUntil",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.suspensionReason",
+    "label": "Add column \"suspensionReason\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "suspensionReason",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"suspensionReason\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspensionReason"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"suspensionReason\" on \"user\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"suspensionReason\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"suspensionReason\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"suspensionReason\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspensionReason"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"suspensionReason\" on \"user\""
+        }
+      },
+      {
+        "description": "verify column \"suspensionReason\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "suspensionReason",
+          "text"
+        ]
+      }
+    ]
+  }
+]
