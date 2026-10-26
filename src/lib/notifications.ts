@@ -62,8 +62,8 @@ function headline(
 				body: `${asker(decidedBy)} asked for changes on your ${what}.`,
 				// The half that makes it actionable. What the status now permits is more work rather than less, and without this line the message reads as a verdict while the trail's own wording does the explaining somewhere a maker may never look. A return has just granted a week, so the date is worth more than "until it closes": it is the one thing the maker will come back to.
 				next: resubmitBy
-					? `Fix it and hand it in again from the project page – you have until ${resubmitBy} to resubmit.`
-					: "Fix it and hand it in again from the project page – your week still takes submissions until it closes.",
+					? `Fix it and submit it again from the project page. You have until ${resubmitBy} to resubmit.`
+					: "Fix it and submit it again from the project page. Your week still takes submissions until it closes.",
 			}
 		case ReviewResult.REJECTED:
 			return { body: `Your ${what} was not approved.` }
@@ -117,9 +117,9 @@ export function shipFailedMessage(source: { title: string; phase: Phase; reason:
 	const phase = source.phase === Phase.DESIGN ? "design" : "build"
 	return {
 		prose: [
-			`Your ${phase} for ${source.title} was handed in, but it could not be sent for review, so nothing has been reviewed yet.`,
+			`Your ${phase} for ${source.title} was submitted, but it could not be sent for review, so nothing has been reviewed yet.`,
 			source.reason,
-			"Fix that on the project page, then hand it in again – if the week still shows as in review, take it back first.",
+			"Fix that on the project page, then submit it again. If the week still shows as in review, take it back first.",
 		],
 	}
 }

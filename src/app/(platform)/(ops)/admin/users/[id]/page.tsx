@@ -113,7 +113,7 @@ export default async function AdminUserPage({ params }: Props) {
 				{canManageCredit && isHcbConfigured() && (
 					<p className="hl-hint" style={{ marginTop: 0 }}>
 						{identityVerified
-							? "Sending a grant tops up the maker's HCB card grant directly. It is a manual fallback – the payout pipeline is the normal path – and can only be sent once per project."
+							? "Sending a grant tops up the maker's HCB card grant directly. It is a manual fallback (the payout pipeline is the normal path) and can only be sent once per project."
 							: "Grants are locked until this maker verifies their identity at identity.hackclub.com."}
 					</p>
 				)}
@@ -168,7 +168,7 @@ export default async function AdminUserPage({ params }: Props) {
 							<tr key={entry.id}>
 								<td className="hl-mono">{entry.createdAt.toLocaleString()}</td>
 								<td className="hl-mono">{entry.kind}</td>
-								<td>{entry.note ?? "—"}</td>
+								<td>{entry.note ?? "-"}</td>
 								<td className="hl-mono">{entry.amount > 0 ? `+${entry.amount}` : entry.amount}</td>
 								<td className="hl-mono">{entry.balanceAfter}</td>
 							</tr>

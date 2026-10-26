@@ -111,9 +111,9 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 		hours: { build, design },
 		project: {
 			...safeProject,
+			coverImageUrl: publicUrlFor(project.coverImageKey),
 			hackatimeLinks: safeLinks,
 			workSessions: safeSessions,
-			coverImageUrl: publicUrlFor(project.coverImageKey),
 		},
 		theme: getThemeDef(project.theme),
 	})
@@ -137,7 +137,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 
 	// Editing the thing a reviewer is currently reading changes what they are deciding on halfway through.
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
-		return fail("PHASE_LOCKED", "Unsubmit before editing – a phase is in review")
+		return fail("PHASE_LOCKED", "A phase is in review, so unsubmit before editing")
 
 	// A starter can only be taken if it is one of this week's: anyone may switch to one from the project page after creation, beginner or not – the tier-1 scoping below is what keeps a starter a starter, not who was offered it during onboarding.
 	if (data.starterProjectId) {
@@ -195,7 +195,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 		if (claimed !== 1) return null
 		return tx.orm.public.ThemeProject.whereUnique({ id }).first()
 	})
-	if (!updated) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
+	if (!updated) return fail("PHASE_LOCKED", "This project just changed. Reload and try again")
 
 	// A project counts as started once it has a description and a tier; the row itself has existed since sign-up.
 	await markProjectCreated(id, gate.user.id)
@@ -273,7 +273,7 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 		}
 		return count > 0
 	})
-	if (!deleted) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
+	if (!deleted) return fail("PHASE_LOCKED", "This project just changed. Reload and try again")
 
 	await logAudit({
 		action: AuditAction.USER_DELETE_PROJECT,

@@ -23,7 +23,7 @@ export const summarySince = (now: Date = new Date()): Date => new Date(now.getTi
 const OPENING =
 	"um, um, hi there! hope i'm not disturbing you, but i just wanted to let you know that i've got some stats for you! :yay:"
 const CLOCK_LINE = ":mc-clock: in the last 24 hours..."
-const NOTHING_YET = "no one yet – there's still time... :yay-bazooka:"
+const NOTHING_YET = "no one yet, but there's still time... :yay-bazooka:"
 
 /**
  * A count that is stated rather than congratulated: "no new tickets were opened", "1 total ticket was opened", "12 total tickets were opened".

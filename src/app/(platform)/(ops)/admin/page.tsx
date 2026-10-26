@@ -147,7 +147,7 @@ export default async function AdminOverviewPage() {
 				{counters.pendingReviewsUnsent > 0 && (
 					<p className="hl-hint" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
 						<span className="hl-mono">{fmtInt(counters.pendingReviewsUnsent)}</span> more are handed in and in review
-						here but never reached Ari, so no reviewer has them –{" "}
+						here but never reached Ari, so no reviewer has them. See{" "}
 						<Link href="/admin/program">what broke, and a Retry for each</Link>.
 					</p>
 				)}
@@ -252,7 +252,7 @@ export default async function AdminOverviewPage() {
 			<Panel title="Daily active users">
 				<DauChart days={activeUsers.days} />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					A person counts once a day, and only once that day&apos;s tracked time reaches 15 minutes – a visit with no
+					A person counts once a day, and only once that day&apos;s tracked time reaches 15 minutes. A visit with no
 					time logged does not count, and neither do three devlogs where one would have done. Days are program-timezone
 					effective dates, the day the work counted for.
 				</p>
@@ -261,7 +261,7 @@ export default async function AdminOverviewPage() {
 			<Panel title="Activity over time">
 				<ActivityStrip days={activity} />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Days are program-timezone effective dates – the day the work counted for. Hours count journal devlogs only.
+					Days are program-timezone effective dates, the day the work counted for. Hours count journal devlogs only.
 				</p>
 			</Panel>
 
@@ -269,8 +269,8 @@ export default async function AdminOverviewPage() {
 				<ActivityStrip days={activity} perUser />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					One person&apos;s average working day rather than the programme&apos;s total. Read beside the chart above, the
-					totals say how much was done and this says how thinly it was spread – so a busy day and a flat average
-					together mean the work was going somewhere, and both rising means more people joined in.
+					totals say how much was done and this says how thinly it was spread, so a busy day and a flat average together
+					mean the work was going somewhere, and both rising means more people joined in.
 				</p>
 			</Panel>
 
@@ -287,7 +287,7 @@ export default async function AdminOverviewPage() {
 				<ProjectsByWeekChart weeks={projectsByWeek} />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					What people are building, by the week it is for. A project sits in its theme&apos;s design week once the
-					design has been handed in, and in the build week once the build has – so the two PCBs blocks are different
+					design has been handed in, and in the build week once the build has, so the two PCBs blocks are different
 					projects, not one cohort counted twice.
 				</p>
 			</Panel>
@@ -787,8 +787,8 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 			</div>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
 				Dashed is devlogs against the right axis, solid is hours against the left; each is scaled to its own maximum, so
-				compare the shapes and not the heights. Days are program-timezone effective dates – the day the work counted
-				for. Hours count journal devlogs only.{note}
+				compare the shapes and not the heights. Days are program-timezone effective dates, the day the work counted for.
+				Hours count journal devlogs only.{note}
 			</p>
 		</div>
 	)
@@ -847,7 +847,7 @@ function DauChart({ days }: { days: ActiveDay[] }) {
 						width: "0.7rem",
 					}}
 				/>
-				active users (15+ minutes tracked) – averaging {fmtInt(Math.round(mean))} a day, peaking at {fmtInt(peak)}
+				active users (15+ minutes tracked), averaging {fmtInt(Math.round(mean))} a day, peaking at {fmtInt(peak)}
 			</p>
 			{/* One scale column, pinned to the chart's own row so each label sits on the gridline it names. */}
 			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
@@ -1336,7 +1336,7 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 			</div>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
 				Their stage, by the week that stage runs in: a project is in a week&apos;s column once that phase has been
-				handed in, and appears in both of its theme&apos;s weeks only when it has reached both stages – design months
+				handed in, and appears in both of its theme&apos;s weeks only when it has reached both stages. Design months
 				before the build is a different piece of work. A project that has been described and not yet handed in is in no
 				column, because no week is funding anything for it yet. The tier is the reviewer&apos;s once they have set one,
 				and what the maker asked for until then; a starter project is its own column because picking one locks the
@@ -1482,8 +1482,8 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 				</div>
 			</div>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
-				Hours logged for each week, attributed to the phase they were logged in – so a week&apos;s column is its own
-				part of its projects, not their whole story, and every hour is counted once. The same projects the chart above
+				Hours logged for each week, attributed to the phase they were logged in, so a week&apos;s column is its own part
+				of its projects, not their whole story, and every hour is counted once. The same projects the chart above
 				counts, read as work rather than as headcount; a week can be busy there and flat here when its projects are
 				named but nothing has been logged against them yet. Hours are the ledger&apos;s, so a session that was both
 				journalled and tracked counts once.
@@ -1519,7 +1519,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 		<div>
 			<div className="hl-row" style={{ gap: "1.25rem", marginBottom: "0.9rem" }}>
 				<Stat label="Accounts with hours" value={fmtInt(data.withHours)} />
-				<Stat label="Median hours" value={data.median === null ? "—" : fmtHours(data.median)} />
+				<Stat label="Median hours" value={data.median === null ? "-" : fmtHours(data.median)} />
 				<Stat label="Total hours" value={fmtHours(data.totalHours)} />
 			</div>
 			<p className="hl-hint" style={{ fontSize: "0.75rem", margin: "0 0 0.5rem" }}>

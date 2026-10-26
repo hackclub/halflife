@@ -25,7 +25,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 	// Every reply pings staff on Slack, so the same ten-a-minute brake as feed comments applies.
 	if (rateLimitedInMemory(`dispute-message:${gate.user.id}`))
-		return fail("RATE_LIMITED", "Slow down – try again in a moment")
+		return fail("RATE_LIMITED", "Slow down. Try again in a moment")
 
 	const dispute = await db.orm.public.ReviewDispute.where({ id: disputeId })
 		.where(d =>

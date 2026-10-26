@@ -27,7 +27,7 @@ export async function deleteBlockReason(
 	client?: DbOrTx,
 ): Promise<string | null> {
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
-		return "Unsubmit before deleting – a phase is in review"
+		return "A phase is in review, so unsubmit before deleting"
 	if (project.designStatus === PhaseStatus.approved || project.buildStatus === PhaseStatus.approved)
 		return "An approved project can't be deleted"
 	if (project.grantEmittedAt) return "A funded project can't be deleted"

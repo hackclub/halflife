@@ -9,7 +9,7 @@ export interface StarterProjectCardData {
 	guideUrl: string
 	id: string
 	parts: readonly string[]
-	repoUrl: string
+	repoUrl?: string
 	title: string
 }
 
@@ -98,6 +98,9 @@ export function StarterProjectCard({
 	stacked?: boolean
 	className?: string
 }) {
+	// Merbl's render and the displays photo are pictures on their own ground rather than cut-out boards.
+	const photo = starter.id === "merbl" || starter.id === "displays"
+
 	return (
 		<ProjectChoiceCard
 			action={action}
@@ -111,11 +114,11 @@ export function StarterProjectCard({
 			}
 			chosen={chosen}
 			className={className}
-			flush={starter.id === "merbl"}
+			flush={photo}
 			label="Starter project"
 			stacked={stacked}
-			// A dark ground, because the board is gold and the renders are cut out: on paper or cream the edges of the star wash away. Merbl's render is a photo on its own white ground, so it takes a white tile with no padding instead rather than sitting in a navy frame.
-			tileClassName={starter.id === "merbl" ? "bg-white" : "bg-navy"}
+			// A dark ground, because the board is gold and the renders are cut out: on paper or cream the edges of the star wash away. A photo carries its own ground, so it takes a white tile with no padding instead rather than sitting in a navy frame.
+			tileClassName={photo ? "bg-white" : "bg-navy"}
 			title={starter.title}
 		>
 			<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">{starter.description}</p>
@@ -132,9 +135,11 @@ export function StarterProjectCard({
 				<a className={LINK} href={starter.guideUrl} rel="noopener noreferrer" target="_blank">
 					<IconBook className="text-[1rem]" /> Read the guide
 				</a>
-				<a className={LINK} href={starter.repoUrl} rel="noopener noreferrer" target="_blank">
-					<IconFile className="text-[1rem]" /> Project files on GitHub
-				</a>
+				{starter.repoUrl && (
+					<a className={LINK} href={starter.repoUrl} rel="noopener noreferrer" target="_blank">
+						<IconFile className="text-[1rem]" /> Project files on GitHub
+					</a>
+				)}
 			</p>
 		</ProjectChoiceCard>
 	)

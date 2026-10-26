@@ -146,7 +146,7 @@ export function ReelComments({
 			// The new comment is at the top of the thread; take the reader to it.
 			requestAnimationFrame(() => list.current?.firstElementChild?.scrollIntoView({ block: "nearest" }))
 		} catch {
-			setSendError("Could not reach the server. Your comment is still here – try again.")
+			setSendError("Could not reach the server. Your comment is still here. Try again.")
 		} finally {
 			setSending(false)
 		}

@@ -26,8 +26,8 @@ const SORTS = [
 	{ label: "Default", value: "default" },
 	{ label: "Price: low to high", value: "price-asc" },
 	{ label: "Price: high to low", value: "price-desc" },
-	{ label: "Name: A–Z", value: "name-asc" },
-	{ label: "Name: Z–A", value: "name-desc" },
+	{ label: "Name: A-Z", value: "name-asc" },
+	{ label: "Name: Z-A", value: "name-desc" },
 ] as const
 
 type Sort = (typeof SORTS)[number]["value"]

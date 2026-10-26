@@ -126,7 +126,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 				)}
 				<div className="hl-hint">
 					by {subject.author}
-					{report.details ? ` – “${preview(report.details, 80)}”` : ""}
+					{report.details ? ` · “${preview(report.details, 80)}”` : ""}
 				</div>
 			</td>
 			<td>
@@ -198,7 +198,7 @@ interface Subject {
 
 function subjectOf(report: ContentReportRow): Subject {
 	const none: Subject = {
-		author: "—",
+		author: "-",
 		gone: true,
 		hidden: false,
 		hideLabel: "Hide",

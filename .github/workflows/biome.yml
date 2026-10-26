@@ -25,8 +25,10 @@ jobs:
               with:
                   ref: ${{ github.head_ref || github.ref_name }}
                   token: ${{ secrets.GITHUB_TOKEN }}
-            # Biome ships as a single binary, so there is no Bun toolchain or `bun install` (~1min) just to run the formatter. The version is auto-detected from bun.lock, matching the pinned devDependency.
+            # Biome ships as a single binary, so there is no Bun toolchain or `bun install` (~1min) just to run the formatter. The version is pinned here to match the devDependency in bun.lock: setup-biome only reads npm, pnpm and yarn lockfiles, so left to detect it, it fell back to a release that rejects rules in biome.json.
             - uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2
+              with:
+                  version: 2.6.3
 
             # `check` covers format, lint and organise-imports in one pass, so one run and one fixup commit instead of two of each.
             - name: Apply Biome fixes

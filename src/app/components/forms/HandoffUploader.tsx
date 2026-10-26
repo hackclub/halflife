@@ -47,7 +47,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	if (state === "done")
 		return (
 			<div className="hl-stack hl-stack--tight">
-				<Callout>Sent. Go back to your computer to finish the post – you can close this.</Callout>
+				<Callout>Sent. Go back to your computer to finish the post. You can close this.</Callout>
 			</div>
 		)
 

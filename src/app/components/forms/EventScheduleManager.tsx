@@ -139,7 +139,7 @@ function RowTable({
 										{colour.label}
 									</span>
 								</td>
-								<td className="hl-mono">{series > 1 ? `×${series}` : "—"}</td>
+								<td className="hl-mono">{series > 1 ? `×${series}` : "-"}</td>
 								<td>
 									<Badge tone={event.published ? "success" : "muted"}>{event.published ? "published" : "draft"}</Badge>
 								</td>

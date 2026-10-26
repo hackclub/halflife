@@ -131,14 +131,14 @@ export const auth = betterAuth({
 			},
 			delete: {
 				// The counterpart: unlinking HCA must not be a way to launder the verification status onto another account. The HCA identity stays bound for the life of the user; nothing legitimate unlinks it (sign-in needs it, and syncHcaProfile no-ops without it).
-				// biome-ignore lint/suspicious/useAwait: better-auth requires database hooks to return promises; this one only returns.
-				before: async account => {
+				before: account => {
 					if ((account as { providerId?: string }).providerId === "hca") {
 						console.warn(
 							`[auth] refused hca unlink for ${redactForLog((account as { userId?: string }).userId ?? "?")}`,
 						)
-						return false
+						return Promise.resolve(false)
 					}
+					return Promise.resolve()
 				},
 			},
 		},
@@ -198,9 +198,9 @@ export const auth = betterAuth({
 	//
 	// The scopes cap is defence in depth for GHSA-mrhx-c7xc-m3w5 (zod 4.6.5, via better-auth): a huge scopes array builds an enormous validation error message (~670 MB from a 2 MB request). Bodies over 1 MB are refused before they are parsed for the same reason.
 	hooks: {
-		// biome-ignore lint/suspicious/useAwait: better-auth requires the hook to return a promise; this one only throws or returns.
-		before: createAuthMiddleware(async ctx => {
-			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return
+		// Not async, as nothing here awaits: a throw still reaches better-auth as a rejection, because the middleware wrapper awaits this inside its own try.
+		before: createAuthMiddleware(ctx => {
+			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return Promise.resolve()
 			const { idToken, scopes } = ctx.body as { idToken?: unknown; scopes?: unknown }
 			if (idToken) throw new APIError("FORBIDDEN", { message: "idToken is not accepted" })
 			if (Array.isArray(scopes) && scopes.length > 50) throw new APIError("BAD_REQUEST", { message: "Too many scopes" })
@@ -211,6 +211,7 @@ export const auth = betterAuth({
 			} catch (err) {
 				if (err instanceof APIError) throw err
 			}
+			return Promise.resolve()
 		}),
 	},
 

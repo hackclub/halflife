@@ -175,7 +175,7 @@ export async function parseUploadForm(
 	const reservation = Number.isFinite(declared) && declared > 0 ? Math.min(declared, cap) : cap
 
 	if (!(await reserveUploadBytes(pool, reservation)))
-		return { error: fail("RATE_LIMITED", "Too many uploads at once – wait a moment and try again") }
+		return { error: fail("RATE_LIMITED", "Too many uploads at once. Wait a moment and try again") }
 
 	try {
 		return await bufferUploadForm(request, maxFileBytes)

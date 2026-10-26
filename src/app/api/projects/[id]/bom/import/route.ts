@@ -64,7 +64,7 @@ async function readRepoBom(repoLink: string | null, limit: number): Promise<Repo
 
 	const parsed = parseBomCsv(csv, { limit })
 	if (!parsed.header)
-		return { error: `${path} does not look like a BOM table – no header row with part names was found.` }
+		return { error: `${path} does not look like a BOM table: no header row with part names was found.` }
 
 	return { lines: parsed.lines, path, skipped: parsed.skipped }
 }

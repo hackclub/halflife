@@ -29,7 +29,7 @@ export const RESOLVED_CONTEXT_BLOCK_ID = "ticket_resolved"
  * Two things are deliberately *not* here: the tickets channel's own strings, which are read by staff rather than participants, and anything the FAQ card already says.
  */
 export const HELP_THREAD_REMINDERS = `:yay-wave: hi there! i'm keeping an eye on this thread while you wait. a few things in the meantime:
-• have a read of the faq below – there's a fair chance your question's already answered in there!
+• have a read of the faq below, since there's a fair chance your question's already answered in there!
 • if it's about your own build, like wiring something up or picking a part, just say so and one of the hardware experts will dig in with you.
 • once your question's been answered, hit a button below and i'll head off :D`
 
@@ -60,7 +60,7 @@ export const RESOLVED_REACTION = "white-checkbox-checkbox-checkbox"
  * * ping that tells them it's arrived.
  */
 export function helpedAck(helperId: string): string {
-	return `oh! <@${helperId}> has this one sorted – you're all set! if anything else comes up, just send another message in #half-life-help and someone'll pick it up :D`
+	return `oh! <@${helperId}> has this one sorted, so you're all set! if anything else comes up, just send another message in #half-life-help and someone'll pick it up :D`
 }
 
 /** The same beat for the author resolving their own ticket, with no mention –
@@ -68,12 +68,12 @@ export function helpedAck(helperId: string): string {
  * * they'd be pinging themselves over their own click.
  */
 export function selfResolvedAck(): string {
-	return "oh! you've marked this as resolved – thanks for letting us know! if you need anything else, just send another message in #half-life-help and someone'll be happy to help :D"
+	return "oh! you've marked this as resolved. thanks for letting us know! if you need anything else, just send another message in #half-life-help and someone'll be happy to help :D"
 }
 
 /** Posted when a solved ticket is opened back up. The queue wording is deliberate: reopening puts it back in front of staff, so the message says so rather than pretending nothing changed. */
 export function reopenedAck(): string {
-	return "oh! this one's open again – i've put it back in the helpers' queue, someone'll pick it up :D"
+	return "oh! this one's open again, so i've put it back in the helpers' queue, someone'll pick it up :D"
 }
 
 /** The thread's two resolution buttons, with values carrying where the tickets-channel mirror lives. Shared by ticket creation and reopening: a reopened ticket goes back to exactly the state a new one starts in, so the two cannot drift apart. The mirror ts is optional because a failed repost still reopens the thread – resolving from it then just skips the dead mirror. */
@@ -123,7 +123,7 @@ export function ticketSection(ref: TicketRef): SlackBlock {
 	return {
 		text: {
 			text: ref.permalink
-				? `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}> – <${ref.permalink}|open the thread>`
+				? `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>: <${ref.permalink}|open the thread>`
 				: `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>`,
 			type: "mrkdwn",
 		},
@@ -149,7 +149,7 @@ export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 		block_id: RESOLVED_CONTEXT_BLOCK_ID,
 		elements: [
 			{
-				text: `✅ helped by <@${byUserId}>${note ? ` – ${note}` : ""}`,
+				text: `✅ helped by <@${byUserId}>${note ? `: ${note}` : ""}`,
 				type: "mrkdwn",
 			},
 		],

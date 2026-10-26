@@ -71,7 +71,7 @@ export const POST = withSession(async (req: Request, { gate }) => {
 	const dupe = await db.orm.public.ContentReport.where({ reporterId: gate.user.id, status: "OPEN", target, ...field })
 		.select("id")
 		.first()
-	if (dupe) return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
+	if (dupe) return fail("CONFLICT", `You have already reported this ${label}. Staff will take a look`)
 
 	// The friendly check above races a second press in flight: the partial unique indexes are the real guard, and their violation reads as the same conflict rather than a 500.
 	let report: { id: string }
@@ -85,7 +85,7 @@ export const POST = withSession(async (req: Request, { gate }) => {
 		})
 	} catch (err) {
 		if (isUniqueViolation(err))
-			return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
+			return fail("CONFLICT", `You have already reported this ${label}. Staff will take a look`)
 		throw err
 	}
 

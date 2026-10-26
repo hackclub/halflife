@@ -99,7 +99,6 @@ export function StickerSheetBanner({
 
 				{card ? (
 					<button className={styles.copyButton} onClick={expand} ref={cardCopyRef} type="button">
-						<span className={styles.eyebrow}>Weeks 3 &amp; 4</span>
 						<span className={styles.headline}>
 							Ship a project both weeks,
 							<br />
@@ -109,7 +108,6 @@ export function StickerSheetBanner({
 					</button>
 				) : (
 					<div className={styles.copy}>
-						<p className={styles.eyebrow}>Weeks 3 &amp; 4 challenge</p>
 						<p className={styles.headline}>Ship a project both weeks to win a free Half Life sticker sheet!</p>
 						<p className={styles.detail}>A music project for week 3 and a display project for week 4.</p>
 					</div>

@@ -13,7 +13,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "The shape of the program",
 				paragraphs: [
-					"Half Life runs for 10 weeks. The first 5 are design weeks: each one has a theme, and you spend it designing a project around that theme. The second 5 are build weeks, in the same order – on week 6 you build the PCB you designed on week 1, on week 7 the CAD part from week 2, and so on.",
+					"Half Life runs for 10 weeks. The first 5 are design weeks: each one has a theme, and you spend it designing a project around that theme. The second 5 are build weeks, in the same order: on week 6 you build the PCB you designed on week 1, on week 7 the CAD part from week 2, and so on.",
 					"You are not designing 5 things you will never make. Everything you draw in the first half arrives as real parts in the second.",
 				],
 			},
@@ -25,7 +25,7 @@ export const DOCS: DocArticle[] = [
 					"Submit gates are reviewed by a human, usually within two days.",
 				],
 				paragraphs: [
-					"Each week is a chain of checkpoints. You cannot skip one – the next puck stays sand-coloured until the one before it is done. Most checkpoints are either a journal block (keep logging sessions until the week hits 10 tracked hours) or a reel (a short video showing where you got to).",
+					"Each week is a chain of checkpoints. You cannot skip one: the next puck stays sand-coloured until the one before it is done. Most checkpoints are either a journal block (keep logging sessions until the week hits 10 tracked hours) or a reel (a short video showing where you got to).",
 					"The week ends on a submit gate. Design weeks ask for your files, a bill of materials, and a closing reel. Build weeks ask for a 30 to 60 second video of the thing working.",
 				],
 			},
@@ -47,7 +47,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What a session is",
 				paragraphs: [
-					"A session is one sitting of work on one project: you sit down, work, and stop. Every session gets its own journal entry on the map, with the hours that sitting took – ideally logged the same day. Log it while you still remember what you did – an entry written a week later is a guess, and it reads like one.",
+					"A session is one sitting of work on one project: you sit down, work, and stop. Every session gets its own journal entry on the map, with the hours that sitting took, ideally logged the same day. Log it while you still remember what you did, because an entry written a week later is a guess, and it reads like one.",
 					"Your hours are only as good as the evidence behind them. Reviewers approve hours by reading your entries and watching your timelapses, so an entry that says what happened, shows it, and claims a believable amount of time is the whole job.",
 				],
 			},
@@ -67,7 +67,7 @@ export const DOCS: DocArticle[] = [
 				],
 				paragraphs: [
 					"Lapse (lapse.hackclub.com) is Hack Club's timelapse app, and it is the only one the platform takes. Start a recording when you sit down to work and it captures your screen or your camera while you go.",
-					"You can pause or stop a timelapse at any time. Pause it when you step away – to eat, to answer a message, to wait for a print – and pick it back up when you return, so the recording, and the hours it counts, are only the time you were actually working.",
+					"You can pause or stop a timelapse at any time. Pause it when you step away (to eat, to answer a message, to wait for a print) and pick it back up when you return, so the recording, and the hours it counts, are only the time you were actually working.",
 					"When the session is done, publish the timelapse on Lapse as Unlisted or Public. A private timelapse cannot be watched by a reviewer, so it cannot back any hours, and it will not show up to pick. Then open the entry on your map, switch to the Timelapse tab, sign in with Lapse if it asks (a sign-in lasts about a month), and pick it. Each timelapse can back one entry only.",
 				],
 			},
@@ -76,7 +76,7 @@ export const DOCS: DocArticle[] = [
 				list: [
 					"At least 200 characters of writing. Images do not count toward it.",
 					"One image for every additional hour you declare, and never fewer than two: 2 additional hours need two screenshots, however long the timelapses run.",
-					"Markdown works – headings, bold, lists, code and links. Images go in with ![what it shows](link), right where they belong in the story.",
+					"Markdown works: headings, bold, lists, code and links. Images go in with ![what it shows](link), right where they belong in the story.",
 				],
 				paragraphs: ["The editor checks these before it will let you save, and tells you exactly what is missing."],
 			},
@@ -87,24 +87,24 @@ export const DOCS: DocArticle[] = [
 					'A headline that says what happened: "Got the screen to work!!" beats "Day 4".',
 					"What you set out to do, and why it was hard. The problem is half the story.",
 					"How you got there: what you looked up, what you tried, what broke, and what finally fixed it. Link the datasheet, repo or forum thread that helped.",
-					"Pictures of the work in progress – screenshots of the schematic or model, photos of the board – placed next to the sentence they prove.",
+					"Pictures of the work in progress (screenshots of the schematic or model, photos of the board), placed next to the sentence they prove.",
 					"A one-line tl;dr at the end, so a reviewer skimming a week of entries knows what each one was.",
 					"What is next, so the following session starts where this one stopped.",
 				],
 				paragraphs: [
-					"The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them – you, and a reviewer. Tell the story of the session in the order it happened, and be specific: the part number, the error message, the file you changed. A good entry has these parts:",
+					"The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them: you, and a reviewer. Tell the story of the session in the order it happened, and be specific: the part number, the error message, the file you changed. A good entry has these parts:",
 				],
 			},
 			{
 				heading: "Make it yours",
 				paragraphs: [
-					"Write your entries yourself, in your own words. Reviewers are reading for your process – the dead ends as much as the wins – and a generated summary does not show one. If writing feels like a chore, talk through the session into a voice memo or a quick video while it is fresh, then write the entry from that.",
+					"Write your entries yourself, in your own words. Reviewers are reading for your process (the dead ends as much as the wins), and a generated summary does not show one. If writing feels like a chore, talk through the session into a voice memo or a quick video while it is fresh, then write the entry from that.",
 				],
 			},
 			{
 				heading: "When an entry is final",
 				paragraphs: [
-					"You can edit an entry while its week is still open – its words, its hours, and which timelapses back it. Once you submit the week, its entries are what the reviewer is reading, so they cannot be edited until you unsubmit; and once a reviewer has set the hours on an entry, that entry is final.",
+					"You can edit an entry while its week is still open: its words, its hours, and which timelapses back it. Once you submit the week, its entries are what the reviewer is reading, so they cannot be edited until you unsubmit; and once a reviewer has set the hours on an entry, that entry is final.",
 				],
 			},
 		],
@@ -143,13 +143,13 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Coins",
 				list: [
-					"Design week: your tier's funded hours pay for your parts and earn no coins. Past them, approved time banks toward your printer goal – how much depends on the printer you picked – and anything beyond that is yours to spend.",
+					"Design week: your tier's funded hours pay for your parts and earn no coins. Past them, approved time banks toward your printer goal (how much depends on the printer you picked), and anything beyond that is yours to spend.",
 					"Build week: nothing is funded, so every hour earns coins: the first 5 bank toward your printer goal, and the rest are yours to spend.",
 					"Each submission is capped at 250 spendable coins (50 hours).",
 					"Ship a theme (design and build both approved): 25 bonus coins to spend.",
 				],
 				paragraphs: [
-					"Coins track how far you go past what your project needs. The hours your tier funds pay for parts and earn no coins – coins are earned at 5 per hour, but only after that tier's funding is achieved. They fill your printer goal before the rest is yours to spend in the shop.",
+					"Coins track how far you go past what your project needs. The hours your tier funds pay for parts and earn no coins. Coins are earned at 5 per hour, but only after that tier's funding is achieved. They fill your printer goal before the rest is yours to spend in the shop.",
 				],
 			},
 			{
@@ -181,7 +181,7 @@ export const DOCS: DocArticle[] = [
 					"Your project should be polished, something you'd be proud to show to others, and something that you can potentially sell as a product!",
 					"Copied designs, stolen project files, and more will result in a rejection and potential ban from Half life and Hack Club as a whole",
 					"Projects should be original, with most parts being designed by you. That means depending on the week, you cannot for example buy a kit, or use only premade modules for a project",
-					"If you take a starter project, write your own project description. The starter's default description blocks submission – say what you changed and why it is yours.",
+					"If you take a starter project, write your own project description. The starter's default description blocks submission, so say what you changed and why it is yours.",
 				],
 				paragraphs: ["Failure to meet the below expectations may result in your project rejected"],
 			},
@@ -221,7 +221,7 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 			{
-				heading: "Handing in a design week",
+				heading: "Submitting a design week",
 				list: [
 					"Your bill of materials, with a real vendor and a real price on every line.",
 					"Screenshots of your cart with the total visible, one per vendor if the order is split, so the total can be checked.",
@@ -231,17 +231,17 @@ export const DOCS: DocArticle[] = [
 				paragraphs: ["After the repo check, the submit sheet asks for three things:"],
 			},
 			{
-				heading: "Handing in a build week",
+				heading: "Submitting a build week",
 				paragraphs: [
 					"One demo video: point the camera at the thing, turn it on, and talk over it. Then say whether it works. If it does not, that is still a valid submission. Record what happens, and write up what went wrong and what needs to change. Reviewers pass honest failures and fail silent ones.",
-					"Anything you changed while building – the firmware, the model, a fix to the board – goes in your journal and in the repo too.",
+					"Anything you changed while building (the firmware, the model, a fix to the board) goes in your journal and in the repo too.",
 				],
 			},
 			{
 				heading: "Before your first submit",
 				paragraphs: [
-					"You need at least one logged session for the week, a project description of at least 100 characters, and a cover image on the project. The cover is what your project's card and the review queue show, so it has to be a photo or screenshot of the project itself – not a logo or a stock photo.",
-					"Your Hack Club identity has to be verified at identity.hackclub.com before you can buy anything in the shop – you can explore, journal and submit without it.",
+					"You need at least one logged session for the week, a project description of at least 100 characters, and a cover image on the project. The cover is what your project's card and the review queue show, so it has to be a photo or screenshot of the project itself, not a logo or a stock photo.",
+					"Your Hack Club identity has to be verified at identity.hackclub.com before you can buy anything in the shop. You can explore, journal and submit without it.",
 				],
 			},
 			{

@@ -1635,7 +1635,7 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 	const last = HOUR_EDGES.length - 1
 	const buckets: HoursBucket[] = HOUR_EDGES.map((upper, i) => ({
 		hours: 0,
-		label: i === last ? `${HOUR_EDGES[last - 1]}+` : i === 0 ? `under ${upper}` : `${HOUR_EDGES[i - 1]}–${upper}`,
+		label: i === last ? `${HOUR_EDGES[last - 1]}+` : i === 0 ? `under ${upper}` : `${HOUR_EDGES[i - 1]}-${upper}`,
 		participants: 0,
 	}))
 

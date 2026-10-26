@@ -123,7 +123,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 				),
 			)
 		} catch (err) {
-			console.error(`[signup] Airtable lookup failed: ${err instanceof Error ? err.message : err}`)
+			console.error(`[signup] Airtable lookup failed: ${err instanceof Error ? err.message : String(err)}`)
 			return bufferInstead("lookup failed")
 		}
 
@@ -153,7 +153,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		try {
 			referralCode = String((await countAirtableRecords(config, table)) + 1)
 		} catch (err) {
-			console.error(`[signup] Airtable count failed: ${err instanceof Error ? err.message : err}`)
+			console.error(`[signup] Airtable count failed: ${err instanceof Error ? err.message : String(err)}`)
 			return bufferInstead("count failed")
 		}
 
@@ -180,7 +180,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 				{ retryServerErrors: false },
 			)
 		} catch (err) {
-			console.error(`[signup] Airtable create failed: ${err instanceof Error ? err.message : err}`)
+			console.error(`[signup] Airtable create failed: ${err instanceof Error ? err.message : String(err)}`)
 			return bufferInstead("create failed")
 		}
 		if (cachedSignupCount?.table === table) cachedSignupCount.value += 1

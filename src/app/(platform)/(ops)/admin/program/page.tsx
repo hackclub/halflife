@@ -52,10 +52,10 @@ export default async function AdminProgramPage() {
 		const day = { day: "numeric", month: "short", timeZone: settings.programTimezone, weekday: "short" } as const
 		return {
 			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
-			label: slot ? `${slot.theme.label} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "—",
+			label: slot ? `${slot.theme.label} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "-",
 			runs: range
-				? `${range.start.toLocaleDateString("en-US", day)} – ${range.end.toLocaleDateString("en-US", day)}`
-				: "—",
+				? `${range.start.toLocaleDateString("en-US", day)} - ${range.end.toLocaleDateString("en-US", day)}`
+				: "-",
 			state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
 			week: n,
 		}
@@ -121,8 +121,8 @@ export default async function AdminProgramPage() {
 				<p className="hl-hint">
 					Before the platform opened, projects were submitted through the warm-up submission form, which writes rows
 					into the <code>{YSWS_SUBMISSION.tableId}</code> table (<code>AIRTABLE_YSWS_TABLE_ID</code>). Importing files
-					each one on the maker&apos;s Warm Up track – a pre-season slot that does not use one of their five season
-					themes – creates their account if they have not signed up yet, records the self-reported hours as a work
+					each one on the maker&apos;s Warm Up track (a pre-season slot that does not use one of their five season
+					themes), creates their account if they have not signed up yet, records the self-reported hours as a work
 					session, and hands the project to Ari for review. Rows already imported, and rows Half Life itself wrote, are
 					skipped, so the button is safe to run again. Every row becomes its own project: a maker who handed the form in
 					more than once gets every project they submitted.
@@ -138,7 +138,7 @@ export default async function AdminProgramPage() {
 				<p className="hl-hint">
 					Import a CSV exported from Macondo (project_id, project_title, project_description, journals, tier,
 					author_email, repository_url, thumbnail_url, and the rest). Each row becomes its own warm-up project on the
-					same Warm Up track – a pre-season slot that does not use one of the five season themes – with an account
+					same Warm Up track (a pre-season slot that does not use one of the five season themes), with an account
 					created if the row&apos;s email has none, and one work session filed per entry in the row&apos;s journals
 					column. Rows already imported are reported instead of duplicated, so the button is safe to run again.
 				</p>
@@ -178,7 +178,7 @@ export default async function AdminProgramPage() {
 							<tr key={`${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
-								<td className="hand">{item.reason ?? "Not attempted yet – the retry job will pick it up."}</td>
+								<td className="hand">{item.reason ?? "Not attempted yet. The retry job will pick it up."}</td>
 								<td>
 									<ActionButton
 										body={{ phase: item.phase }}
@@ -269,7 +269,7 @@ export default async function AdminProgramPage() {
 				</Table>
 				<p className="hl-hint">
 					Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts, and the submit floor is the funded
-					hours and nothing more – every hour past them earns spendable coins.
+					hours and nothing more. Every hour past them earns spendable coins.
 				</p>
 
 				<h2>Printer goals</h2>
@@ -285,7 +285,7 @@ export default async function AdminProgramPage() {
 				</Table>
 				<p className="hl-hint">
 					Earning is paced by the machine, not the tier: the same printer asks the same weekly hours on every tier. Edit
-					these in <code>lib/config/printers.ts</code>, which is the budget spreadsheet transcribed – the season lands
+					these in <code>lib/config/printers.ts</code>, which is the budget spreadsheet transcribed, so the season lands
 					exactly on each price.
 				</p>
 			</Panel>

@@ -91,7 +91,7 @@ async function call<T>(accessToken: string, path: string, query?: { [_: string]:
 			signal: AbortSignal.timeout(TIMEOUT_MS),
 		})
 	} catch {
-		throw new HttpError("LAPSE_UNAVAILABLE", "Lapse is not answering right now – try again in a minute")
+		throw new HttpError("LAPSE_UNAVAILABLE", "Lapse is not answering right now. Try again in a minute")
 	}
 
 	if (res.status === 401 || res.status === 403) throw NOT_LINKED()

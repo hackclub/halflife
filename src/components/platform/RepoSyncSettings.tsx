@@ -156,7 +156,7 @@ export function RepoSyncSettings({
 				<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 					{compact
 						? "Connect a code forge to keep your devlogs and parts list in your project's repo."
-						: "Connect the code forge your project lives on – GitHub or GitLab – to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose; nothing else on your account is touched."}
+						: "Connect the code forge your project lives on (GitHub or GitLab) to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose; nothing else on your account is touched."}
 				</p>
 				{error && (
 					<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">

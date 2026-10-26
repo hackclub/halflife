@@ -38,7 +38,7 @@ export const POST = withSession(async (_req: Request, { params, gate }: Params &
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
-		return fail("PHASE_LOCKED", "Unsubmit before editing – a phase is in review")
+		return fail("PHASE_LOCKED", "A phase is in review, so unsubmit before editing")
 
 	// Conditional on the statuses just checked, so a review that lands between the read and the write is not edited out from under. It also repeats the "still different" test against the current link, in case another tab changed it while this one was deciding to press the button.
 	const claimed = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
@@ -50,7 +50,7 @@ export const POST = withSession(async (_req: Request, { params, gate }: Params &
 		)
 		.where({ githubRepo: project.githubRepo })
 		.updateAndCount({ githubRepo: syncRepo })
-	if (claimed === 0) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
+	if (claimed === 0) return fail("PHASE_LOCKED", "This project just changed. Reload and try again")
 
 	await logAudit({
 		action: AuditAction.USER_UPDATE_PROJECT,

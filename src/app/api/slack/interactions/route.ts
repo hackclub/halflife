@@ -136,12 +136,12 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	const membership = await checkChannelMembership(ticketsChannel, payload.user.id)
 	if (membership.error) {
 		console.error(
-			`mark_helped denied by unreadable member list: channel ${ticketsChannel}, user ${payload.user.id}, Slack error ${membership.error} – re-import slack-app-manifest.yml, reinstall the app, and invite the bot into the private tickets channel`,
+			`mark_helped denied by unreadable member list: channel ${ticketsChannel}, user ${payload.user.id}, Slack error ${membership.error}. Re-import slack-app-manifest.yml, reinstall the app, and invite the bot into the private tickets channel`,
 		)
 		if (payload.response_url)
 			await respondEphemeral(
 				payload.response_url,
-				"I couldn't verify the team list just now, so I left the ticket alone – tell an admin to check the app logs for the Slack API error.",
+				"I couldn't verify the team list just now, so I left the ticket alone. Tell an admin to check the app logs for the Slack API error.",
 			)
 		return
 	}
@@ -218,7 +218,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 		if (payload.response_url)
 			await respondEphemeral(
 				payload.response_url,
-				'Only the person who asked can close it themselves – helpers can use "Mark as helped" right here in the thread.',
+				'Only the person who asked can close it themselves. Helpers can use "Mark as helped" right here in the thread.',
 			)
 
 		return
@@ -275,19 +275,19 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 		if (payload.response_url)
 			await respondEphemeral(
 				payload.response_url,
-				"I couldn't verify the team list just now, so I left the ticket alone – tell an admin to check the app logs for the Slack API error.",
+				"I couldn't verify the team list just now, so I left the ticket alone. Tell an admin to check the app logs for the Slack API error.",
 			)
 		return
 	}
 	const membership = await checkChannelMembership(ref.ticketsChannel, payload.user.id)
 	if (membership.error) {
 		console.error(
-			`mark_helped_from_thread denied by unreadable member list: channel ${ref.ticketsChannel}, user ${payload.user.id}, Slack error ${membership.error} – re-import slack-app-manifest.yml, reinstall the app, and invite the bot into the private tickets channel`,
+			`mark_helped_from_thread denied by unreadable member list: channel ${ref.ticketsChannel}, user ${payload.user.id}, Slack error ${membership.error}. Re-import slack-app-manifest.yml, reinstall the app, and invite the bot into the private tickets channel`,
 		)
 		if (payload.response_url)
 			await respondEphemeral(
 				payload.response_url,
-				"I couldn't verify the team list just now, so I left the ticket alone – tell an admin to check the app logs for the Slack API error.",
+				"I couldn't verify the team list just now, so I left the ticket alone. Tell an admin to check the app logs for the Slack API error.",
 			)
 		return
 	}
@@ -346,7 +346,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 		if (payload.response_url)
 			await respondEphemeral(
 				payload.response_url,
-				"I couldn't figure out where the tickets live, so I left this one alone – tell an admin to check the app logs.",
+				"I couldn't figure out where the tickets live, so I left this one alone. Tell an admin to check the app logs.",
 			)
 		return
 	}
@@ -362,7 +362,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 			await respondEphemeral(
 				payload.response_url,
 				membership?.error
-					? "I couldn't verify the team list just now, so I left this one alone – tell an admin to check the app logs for the Slack API error."
+					? "I couldn't verify the team list just now, so I left this one alone. Tell an admin to check the app logs for the Slack API error."
 					: "Only the person who asked, or the Half Life team, can reopen a ticket.",
 			)
 		return

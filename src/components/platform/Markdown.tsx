@@ -134,7 +134,7 @@ export function proseLength(source: string): number {
 const INLINE =
 	/!\[([^\]]*)\]\(([^)\s]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_|\[([^\]]+)\]\(([^)\s]+)\)/g
 
-function inline(text: string, key: string): ReactNode[] {
+export function inline(text: string, key: string): ReactNode[] {
 	const out: ReactNode[] = []
 	let last = 0
 	let n = 0

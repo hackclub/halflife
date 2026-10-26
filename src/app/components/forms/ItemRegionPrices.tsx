@@ -24,7 +24,7 @@ export function ItemRegionPrices({
 		const raw = (values[regionId] ?? "").trim()
 		const price = raw === "" ? null : Number(raw)
 		if (price !== null && (!Number.isInteger(price) || price < 0)) {
-			refuse("Prices are whole coins, zero or more – or blank for base pricing.")
+			refuse("Prices are whole coins, zero or more, or blank for base pricing.")
 			return
 		}
 		void run(regionId, () =>
@@ -39,7 +39,7 @@ export function ItemRegionPrices({
 		<div className="hl-stack hl-stack--tight">
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{regions.length === 0 ? (
-				<p className="hl-hint">No regions yet – add one on the shop page first.</p>
+				<p className="hl-hint">No regions yet. Add one on the shop page first.</p>
 			) : (
 				<ul className="hl-stack hl-stack--tight" style={{ listStyle: "none", margin: 0, padding: 0 }}>
 					{regions.map(region => (

@@ -166,7 +166,7 @@ export function CoverImage({
 		if (!file) return
 		// The input's `accept` is advisory: a renamed file picked on purpose sails through it and fails confusingly at the upload.
 		if (!file.type.startsWith("image/")) {
-			setError("That file is not an image – pick a PNG or JPEG.")
+			setError("That file is not an image. Pick a PNG or JPEG.")
 			if (input.current) input.current.value = ""
 			return
 		}
@@ -214,7 +214,7 @@ export function CoverImage({
 				{!url && fallback && (
 					<div className="absolute inset-x-0 bottom-0 bg-navy/65 px-3 py-2">
 						<p className="text-[0.74rem] font-semibold leading-snug text-white">
-							No cover image set yet – this picture is a stand-in from your work.
+							No cover image set yet. This picture is a stand-in from your work.
 						</p>
 					</div>
 				)}
@@ -261,7 +261,7 @@ export function CoverImage({
 			)}
 			{!locked && (
 				<p className="hand mt-1 text-[0.8rem] leading-snug text-navy-soft">
-					Your cover has to be a photo or screenshot of the project itself – the first thing a reviewer sees, so not a
+					Your cover has to be a photo or screenshot of the project itself: the first thing a reviewer sees, so not a
 					logo or a stock photo.
 				</p>
 			)}
