@@ -12,7 +12,17 @@ set -eu
 # only sign creates). On later boots sign reports "already signed", so this
 # is safe to run more than once but should not live here permanently.
 echo "[boot] signing database"
-bunx prisma db sign
+if bunx prisma db sign; then
+	echo "[boot] database signed"
+else
+	# TEMPORARY diagnostic: sign failed, so print the live enum orders and
+	# stop. The contract's native_enum member order must match the database
+	# exactly; this shows the order to rewrite prisma/contract.prisma in.
+	# Remove with the rest of the bootstrap after the first green deploy.
+	echo "[boot] sign failed; dumping live native enum orders"
+	bun scripts/dump-enum-order.ts || true
+	exit 1
+fi
 
 echo "[boot] applying migrations"
 bunx prisma db migrate
