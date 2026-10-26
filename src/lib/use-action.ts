@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { type Dispatch, type SetStateAction, useCallback, useState } from "react"
+import type { z } from "zod"
+import { errorMessage } from "@/lib/api-error"
 
 /**
  * One place for the "POST some JSON, show the server's complaint if it refused" loop that every form on the staff side was writing out by hand.
@@ -26,9 +28,9 @@ export type SendResult<T> = { ok: true; data: T } | { ok: false; message: string
 /**
  * Send a JSON request and reduce the response to either its payload or a sentence fit to show a person.
  *
- * The status is only used when the body carried no message of its own, so an API that explains itself is never overwritten by a generic one.
+ * The payload is `unknown`: most forms only need to know the request was accepted, and the one that reads a field asks for it with `sendJsonParsed`. The status is only used when the body carried no message of its own, so an API that explains itself is never overwritten by a generic one.
  */
-export async function sendJson<T = unknown>(url: string, options: SendOptions = {}): Promise<SendResult<T>> {
+export async function sendJson(url: string, options: SendOptions = {}): Promise<SendResult<unknown>> {
 	const { method = "POST", body } = options
 	let res: Response
 	try {
@@ -42,11 +44,24 @@ export async function sendJson<T = unknown>(url: string, options: SendOptions = 
 	}
 
 	// A proxy or a crash can answer with HTML or nothing, so the body is allowed to be unparseable rather than treated as a bug here.
-	const payload = (await res.json().catch(() => null)) as ({ error?: { message?: string } } & T) | null
+	const payload: unknown = await res.json().catch(() => null)
 
-	if (!res.ok) return { message: payload?.error?.message ?? `Request failed (${res.status})`, ok: false }
+	if (!res.ok) return { message: errorMessage(payload, `Request failed (${res.status})`), ok: false }
 
-	return { data: (payload ?? {}) as T, ok: true }
+	return { data: payload ?? {}, ok: true }
+}
+
+/** The same request, with the answer checked against the shape the form reads instead of assumed. */
+export async function sendJsonParsed<T>(
+	schema: z.ZodType<T>,
+	url: string,
+	options: SendOptions = {},
+): Promise<SendResult<T>> {
+	const result = await sendJson(url, options)
+	if (!result.ok) return result
+	const parsed = schema.safeParse(result.data)
+	if (!parsed.success) return { message: "The server's answer was not in the expected shape", ok: false }
+	return { data: parsed.data, ok: true }
 }
 
 /**

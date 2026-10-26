@@ -56,6 +56,7 @@ export function orderByFor<TOrder extends CursorOrder>(
 	order: TOrder,
 ): (Record<TOrder["column"], TOrder["direction"]> | { id: TOrder["direction"] })[] {
 	// The key is the column the page is ordered by, which only the type parameter names.
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 	const lead = { [order.column]: order.direction } as Record<TOrder["column"], TOrder["direction"]>
 	return [lead, { id: order.direction }]
 }

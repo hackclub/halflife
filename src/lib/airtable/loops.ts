@@ -1,6 +1,8 @@
 import "server-only"
 import {
+	AirtableListSchema,
 	type AirtableRecord,
+	AirtableRecordSchema,
 	airtableFetch,
 	escapeAirtableValue,
 	getAirtableConfig,
@@ -161,7 +163,7 @@ function unchanged(row: AirtableRecord, fields: { [_: string]: unknown }): boole
 		if (typeof want === "boolean") return (have === true) === want
 		if (want === null) return have === undefined || have === null || have === ""
 		// Airtable returns dates as ISO strings; compare the instants.
-		return typeof have === "string" && new Date(have).getTime() === new Date(want as string).getTime()
+		return typeof have === "string" && typeof want === "string" && new Date(have).getTime() === new Date(want).getTime()
 	})
 }
 
@@ -281,7 +283,8 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listSignups", () =>
-			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
+			airtableFetch(
+				AirtableListSchema,
 				config,
 				`${encodeURIComponent(TABLE)}?pageSize=100${fieldsQs ? `&${fieldsQs}` : ""}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),
@@ -397,7 +400,7 @@ export async function syncLoopsProperties(
 	for (let i = 0; i < updates.length; i += 10) {
 		const batch = updates.slice(i, i + 10)
 		await withRateLimitRetry("updateSignups", () =>
-			airtableFetch(config, encodeURIComponent(TABLE), {
+			airtableFetch(AirtableListSchema, config, encodeURIComponent(TABLE), {
 				body: JSON.stringify({
 					records: batch.map(({ id, fields }) => ({ fields, id })),
 					typecast: false,
@@ -451,7 +454,11 @@ export async function syncLoopsWeekSubmitted(
 	const getById = async (id: string) => {
 		try {
 			return await withRateLimitRetry("readSignup", () =>
-				airtableFetch<AirtableRecord>(config, `${encodeURIComponent(TABLE)}/${encodeURIComponent(id)}?${fieldsQs}`),
+				airtableFetch(
+					AirtableRecordSchema,
+					config,
+					`${encodeURIComponent(TABLE)}/${encodeURIComponent(id)}?${fieldsQs}`,
+				),
 			)
 		} catch {
 			return null
@@ -459,7 +466,8 @@ export async function syncLoopsWeekSubmitted(
 	}
 	const findByFormula = (formula: string) =>
 		withRateLimitRetry("findSignup", () =>
-			airtableFetch<{ records: AirtableRecord[] }>(
+			airtableFetch(
+				AirtableListSchema,
 				config,
 				`${encodeURIComponent(TABLE)}?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}&${fieldsQs}`,
 			),
@@ -470,7 +478,7 @@ export async function syncLoopsWeekSubmitted(
 		if (row && (row.fields[column] === true) === want) return { skipped: "already_set" }
 		if (row) {
 			await withRateLimitRetry("updateSignupSubmitted", () =>
-				airtableFetch(config, encodeURIComponent(TABLE), {
+				airtableFetch(AirtableListSchema, config, encodeURIComponent(TABLE), {
 					body: JSON.stringify({ records: [{ fields: { [column]: want }, id: row.id }], typecast: false }),
 					method: "PATCH",
 				}),
@@ -492,7 +500,7 @@ export async function syncLoopsWeekSubmitted(
 	if (!row) return { skipped: "no_row" }
 	if ((row.fields[column] === true) === want) return { skipped: "already_set" }
 	await withRateLimitRetry("updateSignupSubmitted", () =>
-		airtableFetch(config, encodeURIComponent(TABLE), {
+		airtableFetch(AirtableListSchema, config, encodeURIComponent(TABLE), {
 			body: JSON.stringify({ records: [{ fields: { [column]: want }, id: row.id }], typecast: false }),
 			method: "PATCH",
 		}),

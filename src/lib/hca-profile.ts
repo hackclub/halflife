@@ -1,9 +1,11 @@
 import "server-only"
+import { z } from "zod"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { redactForLog } from "@/lib/redact"
 import { escapeLikePattern } from "@/lib/text"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * Everything this app learns from Hack Club Auth, and the one way it is read.
@@ -89,13 +91,8 @@ async function resolveHcaEndpoints(): Promise<HcaEndpoints> {
 			console.warn(`[hca] discovery returned ${res.status}; using the built-in endpoints`)
 			return staticEndpoints
 		}
-		const config = (await res.json()) as {
-			authorization_endpoint?: string
-			token_endpoint?: string
-			userinfo_endpoint?: string
-			jwks_uri?: string
-			issuer?: string
-		}
+		const parsed = DiscoveryBody.safeParse(await res.json())
+		const config = parsed.success ? parsed.data : {}
 		return {
 			// Each field falls back on its own, so a partial document still helps.
 			authorizationUrl: config.authorization_endpoint ?? staticEndpoints.authorizationUrl,
@@ -127,7 +124,8 @@ async function getJson(url: string, accessToken: string): Promise<{ [_: string]:
 			console.warn(`[hca] ${url} returned ${res.status}`)
 			return null
 		}
-		return (await res.json()) as { [_: string]: unknown }
+		const body: unknown = await res.json()
+		return isRecord(body) ? body : null
 	} catch (err) {
 		console.warn(`[hca] ${url} failed:`, err)
 		return null
@@ -136,13 +134,22 @@ async function getJson(url: string, accessToken: string): Promise<{ [_: string]:
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null)
 
+/** The OIDC discovery document's endpoints. Unknown keys are ignored, and each field is optional so a partial document still helps. */
+const DiscoveryBody = z.object({
+	authorization_endpoint: z.string().optional(),
+	issuer: z.string().optional(),
+	jwks_uri: z.string().optional(),
+	token_endpoint: z.string().optional(),
+	userinfo_endpoint: z.string().optional(),
+})
+
 /** The address to ship to: the one marked primary, else the first. */
 function addressFrom(
 	me: { [_: string]: unknown } | null,
 	userinfo: { [_: string]: unknown } | null,
 ): HcaAddress | null {
-	const list = Array.isArray(me?.addresses) ? (me.addresses as { [_: string]: unknown }[]) : []
-	const a = list.find(x => x?.primary === true) ?? list[0]
+	const list = Array.isArray(me?.addresses) ? me.addresses.filter(isRecord) : []
+	const a = list.find(x => x.primary === true) ?? list[0]
 	if (a)
 		return {
 			city: str(a.city),
@@ -154,8 +161,8 @@ function addressFrom(
 		}
 
 	// The standard OIDC claim, when the `address` scope puts it there instead.
-	const o = userinfo?.address as { [_: string]: unknown } | undefined
-	if (o && typeof o === "object") {
+	const o = userinfo?.address
+	if (isRecord(o)) {
 		const [line1, ...more] = (str(o.street_address) ?? "").split(/\r?\n/)
 		return {
 			city: str(o.locality),
@@ -175,7 +182,8 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 		getJson(await userinfoUrl(), accessToken),
 		getJson(ME_URL, accessToken),
 	])
-	const me = (meBody?.identity as { [_: string]: unknown } | undefined) ?? meBody
+	const identity = meBody?.identity
+	const me = isRecord(identity) ? identity : meBody
 
 	const email = str(userinfo?.email) ?? str(me?.primary_email)
 	const name =

@@ -1,5 +1,7 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { z } from "zod"
+import { errorMessage } from "@/lib/api-error"
 import { postForm, putFile, routeMissing, uploadFailure, uploadFailureFrom } from "@/lib/upload-progress"
 
 /**
@@ -25,6 +27,12 @@ export interface MintedHandoff {
 }
 
 export type HandoffStatus = "idle" | "minting" | "waiting" | "ready" | "expired"
+
+/** The handoff routes' payloads. Parsed rather than asserted, because the poll reads a state it acts on and the mint reads a code it shows. */
+const HandoffPollBody = z.object({ objectKey: z.string().optional(), state: z.string(), url: z.string().nullish() })
+const MintedHandoffBody = z.object({ expiresAt: z.string(), id: z.string(), qrSvg: z.string(), url: z.string() })
+const ConfirmedUploadBody = z.object({ objectKey: z.string(), url: z.string().nullish() })
+const PresignedUploadBody = z.object({ objectKey: z.string(), uploadUrl: z.string() })
 
 const POLL_MS = 2500
 
@@ -62,11 +70,9 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 				try {
 					const res = await fetch(`/api/handoff/${id}`)
 					if (!res.ok) return
-					const payload = (await res.json()) as {
-						state: string
-						objectKey?: string
-						url?: string | null
-					}
+					const parsed = HandoffPollBody.safeParse(await res.json())
+					if (!parsed.success) return
+					const payload = parsed.data
 					if (payload.state === "ready" && payload.objectKey) {
 						stop()
 						setStatus("ready")
@@ -91,14 +97,12 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 		try {
 			const res = await fetch("/api/handoff", { method: "POST" })
 			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as {
-					error?: { message?: string }
-				}
-				setError(payload.error?.message ?? `Could not make a code (${res.status})`)
+				const payload: unknown = await res.json().catch(() => null)
+				setError(errorMessage(payload, `Could not make a code (${res.status})`))
 				setStatus("idle")
 				return
 			}
-			const handoff = (await res.json()) as MintedHandoff
+			const handoff = MintedHandoffBody.parse(await res.json())
 			setMinted(handoff)
 			setStatus("waiting")
 			poll(handoff.id)
@@ -147,7 +151,7 @@ export async function uploadFile(
 	})
 	if (!res.ok) throw new Error(await uploadFailureFrom(res))
 
-	const payload = (await res.json()) as { objectKey: string; url: string | null }
+	const payload = ConfirmedUploadBody.parse(await res.json())
 	return { objectKey: payload.objectKey, url: payload.url ?? null }
 }
 
@@ -167,7 +171,7 @@ async function presignUpload(file: File, folder: string): Promise<{ objectKey: s
 		headers: { "content-type": "application/json" },
 		method: "POST",
 	})
-	if (res.ok) return (await res.json()) as { objectKey: string; uploadUrl: string }
+	if (res.ok) return PresignedUploadBody.parse(await res.json())
 	// Only a deployment that does not have the route falls back; an ordinary refusal (an expired token, say) is the server's answer to show.
 	if (routeMissing(res)) return null
 	throw new Error(await uploadFailureFrom(res))
@@ -185,7 +189,7 @@ async function uploadThroughServer(
 	const res = await postForm("/api/upload", body, onProgress)
 	if (!res.ok) throw new Error(uploadFailure(res))
 
-	const payload = res.json as { objectKey: string; url: string | null }
+	const payload = ConfirmedUploadBody.parse(res.json)
 	return { objectKey: payload.objectKey, url: payload.url ?? null }
 }
 
@@ -213,7 +217,7 @@ export async function uploadHandoffFile(
 		if (routeMissing(res)) return uploadHandoffThroughServer(token, file, onProgress)
 		throw new Error(await uploadFailureFrom(res))
 	}
-	const presigned = (await res.json()) as { objectKey: string; uploadUrl: string }
+	const presigned = PresignedUploadBody.parse(await res.json())
 
 	const put = await putFile(presigned.uploadUrl, file, onProgress)
 	if (!put.ok) {

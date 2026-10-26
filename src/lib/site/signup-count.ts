@@ -1,6 +1,6 @@
 import "server-only"
 import { cachedAirtableWalk } from "@/lib/airtable/cache"
-import { type AirtableConfig, airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
+import { type AirtableConfig, AirtableListSchema, airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 
 /**
@@ -40,10 +40,7 @@ async function walkSignups(config: AirtableConfig): Promise<number | null> {
 				offset ? `&offset=${encodeURIComponent(offset)}` : ""
 			}`
 			const page = await withRateLimitRetry("countSignups", () =>
-				airtableFetch<{ records: { fields: { [_: string]: unknown } }[]; offset?: string }>(
-					config,
-					`${encodeURIComponent(RSVP_TABLE_ID)}?${query}`,
-				),
+				airtableFetch(AirtableListSchema, config, `${encodeURIComponent(RSVP_TABLE_ID)}?${query}`),
 			)
 			for (const record of page.records) {
 				const email = record.fields[emailField]

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { z } from "zod"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import {
 	IconArrowRight,
@@ -23,10 +24,11 @@ import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, borderedInputClass, Chip, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
+import { errorMessage } from "@/lib/api-error"
 import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
-import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
+import { type BomLine, BomLineSchema } from "@/lib/bom-schema"
 import {
 	STARTER_MODIFICATION_NOTE,
 	STARTER_PROJECT_TIER,
@@ -55,10 +57,11 @@ import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { usePrinterPace, useStore, weekListPhrase } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
+import { isRecord } from "@/lib/unknown"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
-import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
+import { fmtDuration, LapsePicker, type LapseTimelapse, LapseTimelapseSchema } from "./LapsePicker"
 import { Modal, ModalTitle } from "./Modal"
 import { RepoChecks } from "./RepoChecks"
 import { type SubmissionReel, SubmissionReelPicker } from "./SubmissionReelPicker"
@@ -83,22 +86,38 @@ function isWeeksProject(week: Week, project: Project): boolean {
 }
 
 /** The parts list read, plus the error envelope the route shares. */
-interface BomResponse {
-	error?: { message?: string }
-	items: BomLine[]
-	taxShippingUsd: number
-}
+const BomResponseSchema = z.object({
+	error: z.object({ message: z.string().optional() }).optional(),
+	items: z.array(BomLineSchema),
+	taxShippingUsd: z.number(),
+})
 
-interface JournalDraft {
-	body: string
-	hoursText: string
+const JournalDraftSchema = z.object({
+	body: z.string(),
+	hoursText: z.string(),
 	/** Older non-Lapse clips, preserved untouched. */
-	legacy?: string[]
-	picked: LapseTimelapse[]
+	legacy: z.array(z.string()).optional(),
+	picked: z.array(LapseTimelapseSchema),
 	/** Lapse clips kept from the original entry that Lapse would not re-verify. */
-	pinned?: string[]
-	tab: "journal" | "timelapse"
-}
+	pinned: z.array(z.string()).optional(),
+	tab: z.enum(["journal", "timelapse"]),
+})
+type JournalDraft = z.infer<typeof JournalDraftSchema>
+
+const LapseResolveBodySchema = z.object({
+	legacy: z.array(z.string()).optional(),
+	pinned: z.array(z.string()).optional(),
+	resolved: z.array(LapseTimelapseSchema).optional(),
+})
+
+const PublicLinksErrorSchema = z.object({
+	error: z
+		.object({
+			details: z.object({ fields: z.partialRecord(z.enum(PUBLIC_REEL_PLATFORMS), z.string()).optional() }).optional(),
+			message: z.string().optional(),
+		})
+		.optional(),
+})
 
 const draftKey = (checkpointId: string) => `halflife.journal-draft.${checkpointId}`
 
@@ -112,16 +131,7 @@ function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
 }
 
 function isJournalDraft(value: unknown): value is JournalDraft {
-	if (typeof value !== "object" || value === null) return false
-	const v = value as { [_: string]: unknown }
-	return (
-		(v.tab === "journal" || v.tab === "timelapse")
-		&& typeof v.body === "string"
-		&& typeof v.hoursText === "string"
-		&& Array.isArray(v.picked)
-		&& (!("pinned" in v) || Array.isArray((v as { pinned?: unknown }).pinned))
-		&& (!("legacy" in v) || Array.isArray((v as { legacy?: unknown }).legacy))
-	)
+	return JournalDraftSchema.safeParse(value).success
 }
 
 function peekJournalTrip(checkpointId: string): JournalDraft | null {
@@ -245,12 +255,9 @@ async function storeImage(source: ImageSource): Promise<{ url: string | null }> 
 		headers: { "content-type": "application/json" },
 		method: "POST",
 	})
-	const payload = (await res.json().catch(() => null)) as {
-		url?: string | null
-		error?: { message?: string }
-	} | null
-	if (!res.ok) throw new Error(payload?.error?.message ?? `That image did not upload (${res.status})`)
-	return { url: payload?.url ?? null }
+	const payload: unknown = await res.json().catch(() => null)
+	if (!res.ok) throw new Error(errorMessage(payload, `That image did not upload (${res.status})`))
+	return { url: isRecord(payload) && typeof payload.url === "string" ? payload.url : null }
 }
 
 /** Take an image's placeholder back out of the entry, with the blank line it came with. */
@@ -348,12 +355,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			try {
 				const query = new URLSearchParams({ forSession: existing.id, ids: existing.clips.join(",") })
 				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
-				const payload = (await res.json().catch(() => null)) as {
-					resolved?: LapseTimelapse[]
-					pinned?: string[]
-					legacy?: string[]
-				} | null
-				if (!res.ok || !payload) throw new Error("unresolvable")
+				const parsed = LapseResolveBodySchema.safeParse(await res.json().catch(() => null))
+				if (!res.ok || !parsed.success) throw new Error("unresolvable")
+				const payload = parsed.data
 				seed = { picked: payload.resolved ?? [], pinned: payload.pinned ?? [] }
 				legacy = payload.legacy ?? []
 				// Anything the resolve did not account for stays attached by id. Without this a clip the endpoint declined to read – it reads a bounded number – would fall out of the working set, and saving the edit would take it off the entry for good.
@@ -685,10 +689,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		>
 			{/* An edit re-opens both tabs: the picker comes back with this entry's clips selected, ready to swap. */}
 			<div className="mb-5 flex justify-center">
-				<div
-					className="sketch flex gap-1 rounded-full bg-white p-1"
-					style={{ "--sk-radius": "999px" } as React.CSSProperties}
-				>
+				<div className="sketch flex gap-1 rounded-full bg-white p-1" style={{ "--sk-radius": "999px" }}>
 					{(["journal", "timelapse"] as const).map(t => (
 						<button
 							aria-pressed={tab === t}
@@ -909,7 +910,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						{preview && (
 							<div
 								className="sketch thin-scroll max-h-60 min-h-32 min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
-								style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties}
+								style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" }}
 							>
 								{body.trim() ? (
 									<Markdown className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" source={body} />
@@ -1034,12 +1035,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Reel
  * ================================================================== */
-interface ReelDraft {
-	caption: string
-	clip: string
+const ReelDraftSchema = z.object({
+	caption: z.string(),
+	clip: z.string(),
 	/** The bucket's URL for the clip, never a blob URL: those die with the page. */
-	url: string | null
-}
+	url: z.string().nullable(),
+})
+type ReelDraft = z.infer<typeof ReelDraftSchema>
 
 const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpointId}`
 
@@ -1050,7 +1052,8 @@ function readReelDraft(checkpointId: string): ReelDraft | null {
 	if (typeof window === "undefined") return null
 	try {
 		const raw = window.localStorage.getItem(reelDraftKey(checkpointId))
-		return raw ? (JSON.parse(raw) as ReelDraft) : null
+		const parsed = raw ? ReelDraftSchema.safeParse(JSON.parse(raw)) : null
+		return parsed?.success ? parsed.data : null
 	} catch {
 		return null
 	}
@@ -1116,9 +1119,13 @@ export function PublicReelModal({
 			try {
 				// A POST, because the route writes: reading a link assigns the referral code and records the address on the signup list.
 				const res = await fetch("/api/me/referral", { cache: "no-store", method: "POST" })
-				const body = (await res.json().catch(() => null)) as { link?: string } | null
+				const body: unknown = await res.json().catch(() => null)
 				if (cancelled) return
-				setReferral(res.ok && body?.link ? { link: body.link, state: "ready" } : { state: "error" })
+				setReferral(
+					res.ok && isRecord(body) && typeof body.link === "string"
+						? { link: body.link, state: "ready" }
+						: { state: "error" },
+				)
 			} catch {
 				if (!cancelled) setReferral({ state: "error" })
 			}
@@ -1160,12 +1167,13 @@ export function PublicReelModal({
 				method: "POST",
 			})
 			if (!res.ok) {
-				const body = (await res.json().catch(() => null)) as {
-					error?: { message?: string; details?: { fields?: Partial<Record<PublicReelPlatform, string>> } }
-				} | null
-				const fields = body?.error?.details?.fields
+				const parsed = PublicLinksErrorSchema.safeParse(await res.json().catch(() => null))
+				const fields = parsed.success ? parsed.data.error?.details?.fields : undefined
 				if (fields && Object.keys(fields).length > 0) setErrors(fields)
-				else setSaveError(body?.error?.message ?? "Your links didn't save. Try again.")
+				else
+					setSaveError(
+						(parsed.success ? parsed.data.error?.message : undefined) ?? "Your links didn't save. Try again.",
+					)
 				return
 			}
 			setStep("saved")
@@ -1199,7 +1207,7 @@ export function PublicReelModal({
 				{celebration && (
 					<div
 						className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-mint px-5 py-4"
-						style={{ "--sk-color": "var(--color-teal)", "--sk-radius": "16px" } as React.CSSProperties}
+						style={{ "--sk-color": "var(--color-teal)", "--sk-radius": "16px" }}
 					>
 						<IconCheck className="mt-0.5 shrink-0 text-xl text-teal-deep" />
 						<div className="min-w-0">
@@ -1286,7 +1294,7 @@ export function PublicReelModal({
 			{/* First, because it has to be in the caption before the post goes up. */}
 			<div
 				className="sketch mb-5 rounded-2xl bg-sky-pale px-5 py-4"
-				style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" } as React.CSSProperties}
+				style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" }}
 			>
 				<p className="label text-navy">Before you post</p>
 				<p className="mt-1.5 text-[0.9rem] leading-snug text-navy">
@@ -1549,7 +1557,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				<div className="grid gap-4">
 					<div
 						className="sketch rounded-2xl bg-sky-pale px-5 py-4"
-						style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" } as React.CSSProperties}
+						style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" }}
 					>
 						<p className="label flex items-center gap-2 text-sky-ink">
 							<IconMic className="text-base" /> What to film
@@ -1630,7 +1638,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						) : (
 							<div
 								className="sketch grid size-full place-items-center rounded-xl bg-white px-3 text-center"
-								style={{ "--sk-radius": "12px" } as React.CSSProperties}
+								style={{ "--sk-radius": "12px" }}
 							>
 								<p className="hand text-[0.78rem] leading-snug text-navy-soft">nothing here yet</p>
 							</div>
@@ -1742,7 +1750,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{pace.printer && pace.missedWeeks.length > 0 && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2050,9 +2058,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		void (async () => {
 			try {
 				const res = await fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
-				const body = (await res.json().catch(() => null)) as BomResponse | null
-				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
-				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })
+				const parsed = BomResponseSchema.safeParse(await res.json().catch(() => null))
+				if (!res.ok)
+					throw new Error((parsed.success ? parsed.data.error?.message : undefined) ?? "Could not load the parts list")
+				if (!parsed.success) throw new Error("Could not load the parts list")
+				if (live) setBom({ items: parsed.data.items, taxShippingUsd: parsed.data.taxShippingUsd })
 			} catch (err) {
 				if (live) setBomError(err instanceof Error ? err.message : String(err))
 			}
@@ -2265,7 +2275,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{!hasCover && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconCamera className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2292,7 +2302,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{!descriptionReady && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2319,7 +2329,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{!starterDescriptionReady && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2347,7 +2357,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{owed > 0 && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
 				>
 					<IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
@@ -2497,12 +2507,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 								declinedFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
 							)}
-							style={
-								{
-									"--sk-color": declinedFunding ? "var(--color-violet)" : "var(--color-line)",
-									"--sk-radius": "16px",
-								} as React.CSSProperties
-							}
+							style={{
+								"--sk-color": declinedFunding ? "var(--color-violet)" : "var(--color-line)",
+								"--sk-radius": "16px",
+							}}
 						>
 							<input checked={declinedFunding} className="sr-only" onChange={toggleDeclinedFunding} type="checkbox" />
 							<span
@@ -2579,12 +2587,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										disabled={short > 0}
 										key={t.id}
 										onClick={() => setTier(t.id)}
-										style={
-											{
-												"--sk-color": on ? "var(--color-violet)" : "var(--color-line)",
-												"--sk-radius": "16px",
-											} as React.CSSProperties
-										}
+										style={{
+											"--sk-color": on ? "var(--color-violet)" : "var(--color-line)",
+											"--sk-radius": "16px",
+										}}
 										type="button"
 									>
 										<span
@@ -2626,12 +2632,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 									partialFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
 								)}
-								style={
-									{
-										"--sk-color": partialFunding ? "var(--color-violet)" : "var(--color-line)",
-										"--sk-radius": "16px",
-									} as React.CSSProperties
-								}
+								style={{
+									"--sk-color": partialFunding ? "var(--color-violet)" : "var(--color-line)",
+									"--sk-radius": "16px",
+								}}
 							>
 								<input
 									checked={partialFunding}

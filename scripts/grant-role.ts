@@ -8,6 +8,7 @@ async function main() {
 		console.error("usage: yarn grant-role <email> <ADMIN|REVIEWER|FULFILLER|AUDITOR>")
 		process.exit(1)
 	}
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 	const role = roleArg.toUpperCase() as Role
 	if (!Object.values(Role).includes(role)) {
 		console.error(`unknown role: ${roleArg}`)

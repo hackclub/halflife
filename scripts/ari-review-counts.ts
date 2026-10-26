@@ -54,8 +54,6 @@ async function pool<T>(items: T[], size: number, worker: (item: T) => Promise<vo
 async function main(): Promise<void> {
 	const programId = process.env.ARI_PROGRAM_ID
 	const signingSecret = process.env.ARI_SIGNING_SECRET
-	if (checkAri && (!programId || !signingSecret))
-		throw new Error("Set ARI_PROGRAM_ID and ARI_SIGNING_SECRET to read Ari's own state.")
 
 	const take = positive(limit, "--limit", Number.MAX_SAFE_INTEGER)
 	const submissions = await db.orm.public.PhaseSubmission.orderBy([
@@ -142,10 +140,12 @@ async function main(): Promise<void> {
 		console.log("Pass --ari to read each ship's phase back from Ari and compare.")
 		return
 	}
+	if (!programId || !signingSecret)
+		throw new Error("Set ARI_PROGRAM_ID and ARI_SIGNING_SECRET to read Ari's own state.")
 
 	const ari = new Ari({
-		programId: programId as string,
-		signingSecret: signingSecret as string,
+		programId,
+		signingSecret,
 		...(process.env.ARI_BASE_URL ? { baseUrl: process.env.ARI_BASE_URL } : {}),
 	})
 	const ariCounts = {

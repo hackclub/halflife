@@ -3,6 +3,7 @@ import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { betterAuth } from "better-auth"
 import { APIError, createAuthMiddleware } from "better-auth/api"
 import { genericOAuth } from "better-auth/plugins"
+import { z } from "zod"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
 import authDb from "@/lib/auth-db"
@@ -15,6 +16,7 @@ import { isLoopbackHostname, publicHosts as publicHostList } from "@/lib/origin"
 import db from "@/lib/prisma8"
 import { redactForLog } from "@/lib/redact"
 import { formatDbTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 
 // Exactly the scopes enabled on Half Life's HCA app. HCA refuses the whole sign-in ("The requested scope is invalid") if any one is not, so this list has to match the app's settings, not HCA's docs. `basic_info` carries name and verification_status; `email` is asked for on its own so the standard `email_verified` claim comes with it, which the superadmin bootstrap below trusts. Asking for `verification_status` by name is refused.
 const hcaScopes = ["openid", "profile", "email", "basic_info", "slack_id"]
@@ -36,6 +38,41 @@ const gitlabScopes = [...FORGES.gitlab.scopes]
 function linkOnlyEmail(provider: "hackatime" | "lapse" | "github" | "gitlab", id: string): string {
 	return `${provider}-${id.replaceAll(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
 }
+
+/** The identity payloads the link-only providers return. Parsed, because the id in each decides which account a link lands on. */
+const HackatimeMeBody = z.object({
+	emails: z.array(z.string()).optional(),
+	github_username: z.string().optional(),
+	id: z.union([z.number(), z.string()]),
+	slack_id: z.string().optional(),
+})
+const LapseMeBody = z.object({
+	data: z
+		.object({
+			user: z
+				.object({
+					displayName: z.string(),
+					handle: z.string(),
+					id: z.string(),
+					profilePictureUrl: z.string().nullish(),
+				})
+				.nullable(),
+		})
+		.optional(),
+	ok: z.boolean(),
+})
+const GitHubUserBody = z.object({
+	avatar_url: z.string().nullish(),
+	id: z.number(),
+	login: z.string(),
+	name: z.string().nullish(),
+})
+const GitLabUserBody = z.object({
+	avatar_url: z.string().nullish(),
+	id: z.number(),
+	name: z.string().nullish(),
+	username: z.string(),
+})
 
 /**
  * The hosts that front a deployed instance. `halflife.hackclub.com` is the one users are sent to, and `half-life.k.hackclub.dev` is the Orchard ingress in the runbook – so whichever one a request arrives on, it signs in against that host.
@@ -201,7 +238,9 @@ export const auth = betterAuth({
 		// Not async, as nothing here awaits: a throw still reaches better-auth as a rejection, because the middleware wrapper awaits this inside its own try.
 		before: createAuthMiddleware(ctx => {
 			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return Promise.resolve()
-			const { idToken, scopes } = ctx.body as { idToken?: unknown; scopes?: unknown }
+			const body: unknown = ctx.body
+			const idToken = isRecord(body) ? body.idToken : undefined
+			const scopes = isRecord(body) ? body.scopes : undefined
 			if (idToken) throw new APIError("FORBIDDEN", { message: "idToken is not accepted" })
 			if (Array.isArray(scopes) && scopes.length > 50) throw new APIError("BAD_REQUEST", { message: "Too many scopes" })
 			// Cheap size guard before validation: stringify cost is bounded because the runtime has already buffered the body, and refusing here avoids building the giant zod error that is the OOM vector.
@@ -218,11 +257,12 @@ export const auth = betterAuth({
 	// better-auth's OAuth state is single-use, so a callback delivered twice logs "Failed to parse state ... verification not found" on the second delivery even when the first one signed the user in. The callback route already turns that duplicate into a normal redirect (see app/api/auth/[...all]/route.ts), so logging it as an error only buried the failures that matter. Surface it as one info line and pass everything else through unchanged. `state_security_mismatch` is deliberately NOT caught: a state cookie that does not match is a real misconfiguration.
 	logger: {
 		log(level, message, ...args) {
-			const error = args[0] as { code?: string; details?: { state?: string } } | undefined
+			const first: unknown = args[0]
+			const error = isRecord(first) ? first : null
 			if (message === "Failed to parse state" && error?.code === "state_mismatch") {
-				console.info(
-					`[auth] ignored a duplicate or expired OAuth callback (state ${error.details?.state ?? "unknown"})`,
-				)
+				const { details } = error
+				const state = isRecord(details) && typeof details.state === "string" ? details.state : "unknown"
+				console.info(`[auth] ignored a duplicate or expired OAuth callback (state ${state})`)
 				return
 			}
 			const line = `${new Date().toISOString()} ${level.toUpperCase()} [Better Auth]: ${message}`
@@ -273,11 +313,16 @@ export const auth = betterAuth({
 						}
 					},
 					// Core fields only. The verification status, Slack id and PII are `input: false`, and better-auth drops those from a provider profile – so they are written by syncHcaProfile at sign-in instead. Mapping them here did nothing, which is how every user ended up unverified.
-					mapProfileToUser: (profile: { [_: string]: unknown }) => ({
-						email: profile.email as string,
-						image: profile.image as string | undefined,
-						name: profile.name as string | undefined,
-					}),
+					mapProfileToUser: (profile: { [_: string]: unknown }) => {
+						const { email } = profile
+						if (typeof email !== "string")
+							throw new APIError("BAD_REQUEST", { message: "The identity provider did not send an email address" })
+						return {
+							email,
+							image: typeof profile.image === "string" ? profile.image : undefined,
+							name: typeof profile.name === "string" ? profile.name : undefined,
+						}
+					},
 					// Off, because this rewrites the stored address to whatever HCA reports in the same update as name and image. When HCA moves a person to an address another local row already holds, that update fails on the unique `user_email_key`: the whole callback 500s and the person cannot sign in at all. syncHcaProfile (lib/hca-profile) writes the same fields after the session exists, where it has a user id to check the address against and can keep the old one while still storing everything else HCA sent.
 					overrideUserInfo: false,
 					providerId: "hca",
@@ -300,12 +345,7 @@ export const auth = betterAuth({
 							signal: AbortSignal.timeout(10_000),
 						})
 						if (!res.ok) return null
-						const data = (await res.json()) as {
-							id: number | string
-							emails?: string[]
-							github_username?: string
-							slack_id?: string
-						}
+						const data = HackatimeMeBody.parse(await res.json())
 						return {
 							createdAt: new Date(),
 							email: linkOnlyEmail("hackatime", String(data.id)),
@@ -335,17 +375,7 @@ export const auth = betterAuth({
 							signal: AbortSignal.timeout(10_000),
 						})
 						if (!res.ok) return null
-						const body = (await res.json()) as {
-							ok: boolean
-							data?: {
-								user: {
-									id: string
-									handle: string
-									displayName: string
-									profilePictureUrl?: string
-								} | null
-							}
-						}
+						const body = LapseMeBody.parse(await res.json())
 						const user = body.ok ? body.data?.user : null
 						if (!user) return null
 						return {
@@ -353,7 +383,7 @@ export const auth = betterAuth({
 							email: linkOnlyEmail("lapse", user.id),
 							emailVerified: false,
 							id: user.id,
-							image: user.profilePictureUrl,
+							image: user.profilePictureUrl ?? undefined,
 							name: user.displayName || user.handle,
 							updatedAt: new Date(),
 						}
@@ -385,19 +415,14 @@ export const auth = betterAuth({
 							signal: AbortSignal.timeout(10_000),
 						})
 						if (!res.ok) return null
-						const data = (await res.json()) as {
-							id: number
-							login: string
-							name?: string | null
-							avatar_url?: string
-						}
+						const data = GitHubUserBody.parse(await res.json())
 						return {
 							createdAt: new Date(),
 							email: linkOnlyEmail("github", data.login),
 							emailVerified: false,
 							// The numeric id, not the login: a login can be renamed and the account row has to survive that.
 							id: String(data.id),
-							image: data.avatar_url,
+							image: data.avatar_url ?? undefined,
 							name: data.name || data.login,
 							updatedAt: new Date(),
 						}
@@ -425,12 +450,7 @@ export const auth = betterAuth({
 							signal: AbortSignal.timeout(10_000),
 						})
 						if (!res.ok) return null
-						const data = (await res.json()) as {
-							id: number
-							username: string
-							name?: string | null
-							avatar_url?: string | null
-						}
+						const data = GitLabUserBody.parse(await res.json())
 						return {
 							createdAt: new Date(),
 							email: linkOnlyEmail("gitlab", data.username),

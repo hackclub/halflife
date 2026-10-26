@@ -349,15 +349,13 @@ export function Spotlight({
 						: "motion-safe:animate-[hl-pop_.36s_cubic-bezier(.16,1,.3,1)]",
 				)}
 				role="dialog"
-				style={
-					{
-						"--sk-color": "var(--color-gold-deep)",
-						"--sk-radius": "18px",
-						left: cardLeft,
-						top: cardTop,
-						width: cardW,
-					} as React.CSSProperties
-				}
+				style={{
+					"--sk-color": "var(--color-gold-deep)",
+					"--sk-radius": "18px",
+					left: cardLeft,
+					top: cardTop,
+					width: cardW,
+				}}
 			>
 				<div className="motion-safe:animate-[hl-rise_.4s_.12s_cubic-bezier(.16,1,.3,1)_both]" key={title}>
 					{typeof step === "number" && typeof total === "number" && (

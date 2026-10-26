@@ -141,7 +141,6 @@ export async function listProjects(
 	const now = new Date()
 	const nowText = formatDbTimestamp(now)
 	const q = opts.q?.trim()
-	const pattern = q === undefined || q === "" ? null : containsPattern(q)
 	const { tier } = opts
 	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
 	let filtered = db.orm.public.ThemeProject.where({ deletedAt: null }).orderBy([
@@ -152,10 +151,11 @@ export async function listProjects(
 	if (opts.theme) filtered = filtered.where({ theme: opts.theme })
 	if (opts.designStatus) filtered = filtered.where({ designStatus: opts.designStatus })
 	if (opts.buildStatus) filtered = filtered.where({ buildStatus: opts.buildStatus })
-	if (pattern !== null)
+	if (q) {
+		const pattern = containsPattern(q)
 		filtered = filtered.where(project =>
 			or(
-				project.id.eq(q as string),
+				project.id.eq(q),
 				project.title.ilike(pattern),
 				project.description.ilike(pattern),
 				project.githubRepo.ilike(pattern),
@@ -172,6 +172,7 @@ export async function listProjects(
 				),
 			),
 		)
+	}
 	if (opts.extended)
 		filtered = filtered.where(project =>
 			or(
@@ -1452,8 +1453,10 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 
 	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
+	const [first] = days
+	const last = days.at(-1)
+	if (first === undefined || last === undefined) return []
 	const out: DayActivity[] = []
-	const [first, last] = [days[0] as string, days.at(-1) as string]
 	for (const day of eachDayBetween(first, last)) {
 		const row = byDay.get(day)
 		out.push({
@@ -1571,8 +1574,10 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 
 	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
+	const [first] = days
+	const last = days.at(-1)
+	if (first === undefined || last === undefined) return []
 	const out: GoalDayActivity[] = []
-	const [first, last] = [days[0] as string, days.at(-1) as string]
 	for (const day of eachDayBetween(first, last)) {
 		const goals = byDay.get(day)
 		out.push({
@@ -1649,12 +1654,16 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 
 	const totalHours = perUser.reduce((n, h) => n + h, 0)
 	const middle = Math.floor(perUser.length / 2)
+	const middleValue = perUser[middle]
+	const priorValue = perUser[middle - 1]
 	const median =
-		perUser.length === 0
+		middleValue === undefined
 			? null
 			: perUser.length % 2 === 1
-				? (perUser[middle] as number)
-				: ((perUser[middle - 1] as number) + (perUser[middle] as number)) / 2
+				? middleValue
+				: priorValue === undefined
+					? null
+					: (priorValue + middleValue) / 2
 
 	return {
 		buckets,
@@ -2359,23 +2368,25 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 	for (const user of users) {
 		const boxes = boxesOf(user).filter((box): box is string => box !== null)
+		// Indices in this block are all guarded by the loop bounds and the activity search; the fallback only satisfies the checker.
+		const boxAt = (index: number): string => boxes[index] ?? NONE_BOX
 		for (const box of boxes) counts.set(box, (counts.get(box) ?? 0) + 1)
 		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. Fan-out ribbons share their source's people and fan-in ribbons their target's, so each direction flags its own edge for the renderer to overlap; every other ribbon carries disjoint users and stacks.
 		const firstAct = boxes.findIndex(box => ACTIVITY_BOXES.has(box))
 		if (firstAct === -1) {
-			for (let i = 1; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
+			for (let i = 1; i < boxes.length; i++) link(boxAt(i - 1), boxAt(i), null)
 			continue
 		}
 		let lastAct = firstAct
-		while (lastAct + 1 < boxes.length && ACTIVITY_BOXES.has(boxes[lastAct + 1] as string)) lastAct++
+		while (lastAct + 1 < boxes.length && ACTIVITY_BOXES.has(boxAt(lastAct + 1))) lastAct++
 		// "joined" is unconditional, so a block always has a box before it.
-		const prev = boxes[firstAct - 1] as string
-		for (let i = 1; i < firstAct; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
-		for (let i = firstAct; i <= lastAct; i++) link(prev, boxes[i] as string, boxes[i] === NONE_BOX ? null : "out")
+		const prev = boxAt(firstAct - 1)
+		for (let i = 1; i < firstAct; i++) link(boxAt(i - 1), boxAt(i), null)
+		for (let i = firstAct; i <= lastAct; i++) link(prev, boxAt(i), boxAt(i) === NONE_BOX ? null : "out")
 		const next = boxes[lastAct + 1]
 		if (next) {
-			for (let i = firstAct; i <= lastAct; i++) link(boxes[i] as string, next, boxes[i] === NONE_BOX ? null : "in")
-			for (let i = lastAct + 2; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
+			for (let i = firstAct; i <= lastAct; i++) link(boxAt(i), next, boxAt(i) === NONE_BOX ? null : "in")
+			for (let i = lastAct + 2; i < boxes.length; i++) link(boxAt(i - 1), boxAt(i), null)
 		}
 	}
 
@@ -2469,8 +2480,8 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		diagram: {
 			links: [...linkCounts]
 				.map(([key, entry]) => {
-					const [source, target] = key.split("\u0000")
-					return { fan: entry.fan, source: source as string, target: target as string, value: entry.value }
+					const [source = "", target = ""] = key.split("\u0000")
+					return { fan: entry.fan, source, target, value: entry.value }
 				})
 				.filter(edge => live.has(edge.source) && live.has(edge.target)),
 			nodes,

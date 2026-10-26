@@ -12,6 +12,7 @@ import { Phase, Theme } from "@/lib/enums"
 describe("getThemeDef", () => {
 	test("reads a theme and rejects the unknown", () => {
 		expect(getThemeDef(Theme.PCB).label).toBe("PCBs")
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 		expect(() => getThemeDef("NOPE" as Theme)).toThrow("Unknown theme: NOPE")
 	})
 

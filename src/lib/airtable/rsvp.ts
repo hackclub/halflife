@@ -1,6 +1,9 @@
 import "server-only"
 import {
+	AirtableListSchema,
 	type AirtableRecord,
+	AirtableRecordSchema,
+	AirtableUpsertSchema,
 	airtableFetch,
 	escapeAirtableValue,
 	getAirtableConfig,
@@ -10,6 +13,9 @@ import { existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, formulaRef, RSVP } from "@/lib/airtable/schema"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { formatDbTimestamp } from "@/lib/time"
+
+/** Internal field name to its Airtable definition, for the spread of optional columns below. */
+const RSVP_FIELDS_BY_NAME = new Map(Object.entries(RSVP.fields))
 
 export interface RsvpInput {
 	email: string
@@ -195,7 +201,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 			const fields: { [_: string]: unknown } = {}
 			for (const [key, value] of Object.entries(values)) {
 				if (value === undefined) continue
-				const field = RSVP.fields[key as keyof typeof RSVP.fields]
+				const field = RSVP_FIELDS_BY_NAME.get(key)
 				if (field && writable.has(fieldKey(field))) fields[fieldKey(field)] = value
 			}
 			if (row.userId && !writable.has(fieldKey(RSVP.fields.userId))) result.skippedUserId++
@@ -204,7 +210,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 			if (recordId) {
 				// Once the row exists upstream, updates are a patch by id rather than a formula search.
 				await withRateLimitRetry("updateRsvp", () =>
-					airtableFetch(config, `${RSVP.tableId}/${recordId}`, {
+					airtableFetch(AirtableRecordSchema, config, `${RSVP.tableId}/${recordId}`, {
 						body: JSON.stringify({ fields }),
 						method: "PATCH",
 					}),
@@ -212,7 +218,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				result.updated++
 			} else {
 				const upserted = await withRateLimitRetry("upsertRsvp", () =>
-					airtableFetch<{ records: AirtableRecord[]; updatedRecords?: string[] }>(config, RSVP.tableId, {
+					airtableFetch(AirtableUpsertSchema, config, RSVP.tableId, {
 						body: JSON.stringify({
 							performUpsert: { fieldsToMergeOn: [fieldKey(RSVP.fields.email)] },
 							records: [{ fields }],
@@ -257,7 +263,8 @@ export async function findRsvpByEmail(email: string): Promise<AirtableRecord | n
 	if (!config) return null
 	const formula = `${formulaRef(RSVP.fields.email)} = '${escapeAirtableValue(email)}'`
 	const result = await withRateLimitRetry("findRsvpByEmail", () =>
-		airtableFetch<{ records: AirtableRecord[] }>(
+		airtableFetch(
+			AirtableListSchema,
 			config,
 			`${RSVP.tableId}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`,
 		),

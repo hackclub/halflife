@@ -1,4 +1,5 @@
 import "server-only"
+import { z } from "zod"
 import {
 	DESIGN_JSON,
 	REPO_FILE_KINDS,
@@ -12,6 +13,14 @@ import { ForgeUnavailableError, forgeGet } from "@/lib/github"
 import { containsOnshapeLink, isOnshapeLink } from "@/lib/repo"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 import { README_GUIDE_URL } from "@/lib/routes"
+import { isRecord } from "@/lib/unknown"
+
+/** The forge listings and file bodies this file reads. Parsed, not asserted, so a moved field fails here rather than as an empty file list. */
+const TreeBody = z.object({
+	tree: z.array(z.object({ path: z.string(), type: z.string() })).optional(),
+	truncated: z.boolean().optional(),
+})
+const TreeEntryList = z.array(z.object({ path: z.string(), type: z.string() }))
 
 /**
  * Pre-submission repo checks, ported from Hack Club Stasis (lib/github-checks) and now forge-aware.
@@ -135,14 +144,14 @@ async function isPublicRepo(ref: RepoRef): Promise<boolean | null> {
 			const res = await forgeGet(ref.forge, `projects/${encodeURIComponent(ref.fullName)}`)
 			if (res.status === 404) return false
 			if (!res.ok) return null
-			const body = (await res.json()) as { visibility?: string }
-			return body.visibility === "public"
+			const body: unknown = await res.json()
+			return isRecord(body) && body.visibility === "public"
 		}
 		const res = await forgeGet(ref.forge, `repos/${ref.fullName}`)
 		if (res.status === 404) return false
 		if (!res.ok) return null
-		const body = (await res.json()) as { private?: boolean }
-		return body.private === false
+		const body: unknown = await res.json()
+		return isRecord(body) && body.private === false
 	} catch (err) {
 		if (err instanceof ForgeUnavailableError) return null
 		console.warn(`[repo-checks] visibility check for ${ref.forge.id}/${ref.fullName} failed:`, err)
@@ -244,16 +253,15 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	if (visible === false) return { kind: "not-found" }
 	if (visible === null) return { kind: "unavailable", why: `${forge.label} did not answer.` }
 
-	const body = treeRes.ok
-		? ((await treeRes.json()) as { tree?: { path: string; type: string }[]; truncated?: boolean })
-		: { tree: [], truncated: false }
+	const body = TreeBody.parse(treeRes.ok ? await treeRes.json() : { tree: [], truncated: false })
 	const files = (body.tree ?? []).filter(f => f.type === "blob").map(f => f.path)
 	const paths = files.map(p => p.toLowerCase())
 
 	let readme: string | null = null
 	if (readmeRes.ok) {
-		const r = (await readmeRes.json()) as { content?: string; encoding?: string }
-		if (r.content && r.encoding === "base64") readme = capReadme(Buffer.from(r.content, "base64").toString("utf-8"))
+		const r: unknown = await readmeRes.json()
+		if (isRecord(r) && typeof r.content === "string" && r.encoding === "base64")
+			readme = capReadme(Buffer.from(r.content, "base64").toString("utf-8"))
 	}
 
 	return { designs: designFinder(ref, files), files, kind: "ok", paths, readme, truncated: body.truncated === true }
@@ -291,7 +299,7 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	let page = 1
 	let res = first
 	while (page <= MAX_PAGES) {
-		const entries = (await res.json()) as { path: string; type: string }[]
+		const entries = TreeEntryList.parse(await res.json())
 		for (const entry of entries) if (entry.type === "blob") files.push(entry.path)
 		const next = res.headers.get("x-next-page")
 		if (!next) break
@@ -420,8 +428,8 @@ function artifactLinkUrls(links: unknown): string[] {
 	if (!Array.isArray(links)) return []
 	const urls: string[] = []
 	for (const link of links) {
-		if (!link || typeof link !== "object") continue
-		const { url } = link as { url?: unknown }
+		if (!isRecord(link)) continue
+		const { url } = link
 		if (typeof url === "string") urls.push(url)
 	}
 	return urls
@@ -709,14 +717,21 @@ export async function findRepoFile(repoLink: string | null, test: RegExp): Promi
  * The shallowest path in the repo whose name matches, or null.
  *
  * The same search `findRepoFile` runs, but returning the path rather than a web link – for callers that mean to read the file's bytes rather than point at it, such as the BOM import. Reads the same cached file list, so calling both for one project costs one fetch.
+ *
+ * `avoid` names a path that is a generated copy rather than a source. The BOM import passes the sync's own `BOM.csv`: with that file in the repo, it is usually the shallowest match, and reading it back can only echo what the platform already holds instead of the maker's own export sitting beside it. It is still returned when it is the only match, because a hand-written `BOM.csv` is a real source.
  */
-export async function findRepoFilePath(repoLink: string | null, test: RegExp): Promise<string | null> {
+export async function findRepoFilePath(
+	repoLink: string | null,
+	test: RegExp,
+	opts: { avoid?: string } = {},
+): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) return null
 	const snap = await snapshot(ref)
 	if (snap.kind !== "ok") return null
 	const hits = snap.files.filter(f => test.test(f)).toSorted((a, b) => a.split("/").length - b.split("/").length)
-	return hits[0] ?? null
+	const preferred = opts.avoid ? hits.find(path => path !== opts.avoid) : undefined
+	return preferred ?? hits[0] ?? null
 }
 
 /**
@@ -745,8 +760,8 @@ async function readRepoFileAt(ref: RepoRef, path: string): Promise<string | null
 	const encoded = path.split("/").map(encodeURIComponent).join("/")
 	const res = await forgeGet(ref.forge, `repos/${ref.fullName}/contents/${encoded}?ref=HEAD`)
 	if (!res.ok) return null
-	const body = (await res.json().catch(() => null)) as { content?: string; encoding?: string } | null
+	const body: unknown = await res.json().catch(() => null)
 	// GitHub omits `content` for files over a megabyte and sets `encoding` to `none`; a BOM CSV is never one, so that is just unreadable.
-	if (!body?.content || body.encoding !== "base64") return null
+	if (!isRecord(body) || typeof body.content !== "string" || body.encoding !== "base64") return null
 	return Buffer.from(body.content, "base64").toString("utf-8")
 }

@@ -55,7 +55,7 @@ export function ReadingTrail({ headings }: { headings: GuideHeading[] }) {
 							>
 								<span
 									className={cx("puck w-8 shrink-0", done ? "puck-done" : here ? "" : "puck-locked")}
-									style={{ "--puck-lift": here ? "5px" : "3px" } as React.CSSProperties}
+									style={{ "--puck-lift": here ? "5px" : "3px" }}
 								>
 									<span className="puck-face text-[0.95rem] text-white">
 										{done ? <IconCheck /> : <span className="text-[0.72rem] font-extrabold text-navy">{n + 1}</span>}

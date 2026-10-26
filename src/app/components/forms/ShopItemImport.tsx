@@ -1,6 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
+import { z } from "zod"
 import { Button, Callout } from "@/app/components/ui"
 import { SHOP_CSV_COLUMNS, SHOP_CSV_MAX_ROWS, SHOP_CSV_TEMPLATE, type ShopCsvProblem } from "@/lib/shop-csv"
 
@@ -9,6 +10,18 @@ import { SHOP_CSV_COLUMNS, SHOP_CSV_MAX_ROWS, SHOP_CSV_TEMPLATE, type ShopCsvPro
  *
  * All or nothing, like the route behind it: a refused file lists every line to fix, so staff correct the sheet and import it again rather than working out which half of it made it in.
  */
+const ShopCsvProblemSchema = z.object({ line: z.number(), message: z.string() })
+
+const ShopImportResponseSchema = z.object({
+	created: z.number().optional(),
+	error: z
+		.object({
+			details: z.object({ problems: z.array(ShopCsvProblemSchema).optional() }).optional(),
+			message: z.string().optional(),
+		})
+		.optional(),
+})
+
 export function ShopItemImport() {
 	const router = useRouter()
 	const picker = useRef<HTMLInputElement>(null)
@@ -30,16 +43,17 @@ export function ShopItemImport() {
 				headers: { "Content-Type": "application/json" },
 				method: "POST",
 			})
-			const payload = (await res.json().catch(() => ({}))) as {
-				created?: number
-				error?: { message?: string; details?: { problems?: ShopCsvProblem[] } }
-			}
+			const parsed = ShopImportResponseSchema.safeParse(await res.json().catch(() => null))
 			if (!res.ok) {
-				setError(payload.error?.message ?? `Import failed (${res.status})`)
-				setProblems(payload.error?.details?.problems ?? [])
+				setError((parsed.success ? parsed.data.error?.message : undefined) ?? `Import failed (${res.status})`)
+				setProblems((parsed.success ? parsed.data.error?.details?.problems : undefined) ?? [])
 				return
 			}
-			setCreated(payload.created ?? 0)
+			if (!parsed.success) {
+				setError("The server's answer was not in the expected shape")
+				return
+			}
+			setCreated(parsed.data.created ?? 0)
 			setFile(null)
 			router.refresh()
 		} catch {

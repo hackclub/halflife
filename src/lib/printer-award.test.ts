@@ -11,8 +11,11 @@ describe("canMovePrinterAward", () => {
 	})
 
 	test("agrees with the transition table", () => {
-		for (const [from, next] of Object.entries(PRINTER_AWARD_NEXT))
-			for (const to of next) expect(canMovePrinterAward(from as "QUALIFIED", to)).toBe(true)
+		for (const [from, next] of Object.entries(PRINTER_AWARD_NEXT)) {
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
+			const fromState = from as "QUALIFIED"
+			for (const to of next) expect(canMovePrinterAward(fromState, to)).toBe(true)
+		}
 		expect(PRINTER_AWARD_LABELS.QUALIFIED).toBe("qualified")
 	})
 })

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { Button, borderedInputClass, Field, OptionRow } from "@/components/platform/ui"
+import { errorMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
 import { REPORT_REASONS, type ReportReason, type ReportTargetInput } from "@/lib/reports"
 
@@ -60,10 +61,7 @@ export function ReportDialog({
 				method: "POST",
 			})
 			if (!res.ok) {
-				const payload = (await res.json().catch(() => null)) as {
-					error?: { message?: string }
-				} | null
-				setError(payload?.error?.message ?? "That report did not send. Try again.")
+				setError(errorMessage(await res.json().catch(() => null), "That report did not send. Try again."))
 				return
 			}
 			setDone("Thanks, staff will take a look.")

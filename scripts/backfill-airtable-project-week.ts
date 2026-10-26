@@ -1,4 +1,4 @@
-import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
+import { AirtableListSchema, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { projectWeekLabel, recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
@@ -32,7 +32,8 @@ async function currentColumns(
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listYswsProjectWeek", () =>
-			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
+			airtableFetch(
+				AirtableListSchema,
 				config,
 				`${encodeURIComponent(YSWS_SUBMISSION.tableId)}?pageSize=100&${fieldsQs}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),

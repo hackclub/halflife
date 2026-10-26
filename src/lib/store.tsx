@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { z } from "zod"
+import { errorMessage } from "@/lib/api-error"
 import { ParticipantGoal } from "@/lib/enums"
 import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
@@ -70,6 +72,18 @@ interface Ceremony {
 }
 
 const KEY = "halflife.ceremony.v4"
+
+/** The saved ceremony and the API bodies this file reads. Parsed, so a stale or hand-edited localStorage row cannot reach the trail as a wrong shape. */
+const CeremonySave = z.object({
+	doomscrollerOpen: z.boolean().optional(),
+	phase: z.enum(["cinematic", "aim", "checkpoint", "tour", "done"]).optional(),
+	replaying: z.boolean().optional(),
+	toured: z.boolean().optional(),
+	version: z.literal(4),
+})
+const CreatedProjectBody = z.object({ id: z.string() })
+const PostedReelBody = z.object({ post: z.object({ id: z.string() }).optional() })
+const LinkSyncRepoBody = z.object({ githubRepo: z.string().nullish() })
 
 /**
  * The admin lock bypass. Kept apart from the ceremony so "Replay the intro", which clears that, leaves it alone.
@@ -479,8 +493,17 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		try {
 			const raw = window.localStorage.getItem(KEY)
 			if (raw) {
-				const parsed = JSON.parse(raw) as Ceremony
-				if (parsed && parsed.version === 4) next = { ...seededCeremony(), ...parsed }
+				const parsed = CeremonySave.safeParse(JSON.parse(raw))
+				if (parsed.success) {
+					const seed = seededCeremony()
+					next = {
+						doomscrollerOpen: parsed.data.doomscrollerOpen ?? seed.doomscrollerOpen,
+						phase: parsed.data.phase ?? seed.phase,
+						replaying: parsed.data.replaying ?? seed.replaying,
+						toured: parsed.data.toured ?? seed.toured,
+						version: 4,
+					}
+				}
 			}
 		} catch {
 			/* storage unavailable – run from the seed */
@@ -574,7 +597,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						method: "POST",
 					})
 					if (!res.ok) return null
-					const { id } = (await res.json()) as { id: string }
+					const { id } = CreatedProjectBody.parse(await res.json())
 					setFacts(f => ({ ...f, projectIdByWeek: { ...f.projectIdByWeek, [weekId]: id } }))
 					return id
 				} catch {
@@ -641,8 +664,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "That did not save. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "That did not save. Try again.")
 			}
 			setFacts(f => ({
 				...f,
@@ -662,12 +685,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			} catch {
 				return "Could not reach the server. Try again."
 			}
-			const body = (await res.json().catch(() => null)) as {
-				githubRepo?: string | null
-				error?: { message?: string }
-			} | null
-			if (!res.ok) return body?.error?.message ?? "That did not save. Try again."
-			const url = body?.githubRepo ?? null
+			const body: unknown = await res.json().catch(() => null)
+			if (!res.ok) return errorMessage(body, "That did not save. Try again.")
+			const parsed = LinkSyncRepoBody.safeParse(body)
+			const url = parsed.success ? (parsed.data.githubRepo ?? null) : null
 			setFacts(f => ({
 				...f,
 				projects: f.projects.map(p => (p.id === id ? { ...p, githubRepo: url } : p)),
@@ -698,8 +719,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "That did not save. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "That did not save. Try again.")
 			}
 			setFacts(f => ({
 				...f,
@@ -836,13 +857,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			}
 			if (!res.ok) {
 				// No `data` envelope: ok() returns the payload itself, and only a failure is wrapped. See lib/api.ts.
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return { error: err?.error?.message ?? `Your reel didn't post (error ${res.status}).` }
+				const err: unknown = await res.json().catch(() => null)
+				return { error: errorMessage(err, `Your reel didn't post (error ${res.status}).`) }
 			}
 			// Re-recording an owed reel lifts the hold now rather than on the refresh, so the map opens back up the moment it is posted.
 			setFacts(f => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter(k => k !== id) } : f))
-			const { post } = (await res.json()) as { post?: { id?: string } }
-			const postId = post?.id
+			const body = PostedReelBody.safeParse(await res.json())
+			const postId = body.success ? body.data.post?.id : undefined
 			return postId ? { postId } : { error: "Your reel didn't post. Try again." }
 		},
 		[patchCheckpoint, routeOf, router],
@@ -879,8 +900,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Nothing was submitted. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "The week was not submitted. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "The week was not submitted. Try again.")
 			}
 			patchCheckpoint(id, {})
 			router.refresh()
@@ -910,8 +931,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Nothing changed. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "The week was not unsubmitted. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "The week was not unsubmitted. Try again.")
 			}
 			if (fromCheckpoint) {
 				const weekId = Number(/^w(\d+)-/.exec(target)?.[1])
@@ -957,8 +978,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				})
 				if (res.ok) setFacts(f => ({ ...f, goalId: printerGoalId ?? f.goalId, participantGoal: goal }))
 				else {
-					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-					refusal = err?.error?.message ?? "That did not save. Try again."
+					const err: unknown = await res.json().catch(() => null)
+					refusal = errorMessage(err, "That did not save. Try again.")
 				}
 			} catch {
 				refusal = "Could not reach the server. Try again."
@@ -998,8 +1019,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			return "Could not reach the server. Nothing was reset, so try again."
 		}
 		if (!res.ok) {
-			const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-			return payload?.error?.message ?? `Could not reset onboarding (${res.status})`
+			const payload: unknown = await res.json().catch(() => null)
+			return errorMessage(payload, `Could not reset onboarding (${res.status})`)
 		}
 		try {
 			window.localStorage.removeItem(KEY)
@@ -1138,8 +1159,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					return "Could not reach the server. Your entry is still here. Try again."
 				}
 				if (!res.ok) {
-					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-					return err?.error?.message ?? "The entry was not saved. Try again."
+					const err: unknown = await res.json().catch(() => null)
+					return errorMessage(err, "The entry was not saved. Try again.")
 				}
 			}
 
@@ -1199,8 +1220,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return "Could not reach the server. Your changes are still here. Try again."
 			}
 			if (!res.ok) {
-				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-				return err?.error?.message ?? "The entry was not saved. Try again."
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "The entry was not saved. Try again.")
 			}
 			setFacts(f => {
 				const prev = { ...EMPTY, ...f.progress[id] }

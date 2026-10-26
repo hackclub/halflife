@@ -9,6 +9,7 @@ import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { prefersStill } from "@/lib/reduced-motion"
 import { useStore } from "@/lib/store"
+import { isRecord } from "@/lib/unknown"
 import { compact } from "./format"
 
 /**
@@ -78,8 +79,9 @@ export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, p
 				onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe })
 				return
 			}
-			const payload = (await res.json()) as { likeCount?: number }
-			if (typeof payload.likeCount === "number") onPatch?.(reel.id, { likeCount: payload.likeCount })
+			const payload: unknown = await res.json()
+			if (isRecord(payload) && typeof payload.likeCount === "number")
+				onPatch?.(reel.id, { likeCount: payload.likeCount })
 		} catch {
 			onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe })
 		}

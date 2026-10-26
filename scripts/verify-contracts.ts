@@ -345,6 +345,7 @@ async function bodies() {
 		// Silence the waits; the tests are about attempts, not wall time.
 		const originalSetTimeout = globalThis.setTimeout
 		await (async () => {
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 			globalThis.setTimeout = ((fn: () => void) => {
 				fn()
 				return 0
@@ -751,6 +752,7 @@ async function bodies() {
 	check("hackatime spans · a null body is stale", nullSpans.stale)
 
 	// One malformed row costs that row, not the participant's hours.
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 	const mixed = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 5, start_time: null } as never))
 	check("hackatime spans · a malformed row is dropped, the rest survive", !mixed.stale && mixed.spans.length === 1)
 
@@ -931,6 +933,7 @@ async function bodies() {
 	)
 
 	// A caller that narrows its Prisma select hands over `undefined` where a number was expected, and `undefined !== null` used to read as an override and add NaN to the total. NaN is the worst shape of wrong here: it renders as "NaNh" in one place and leaves the rest of the phase looking fine.
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 	const missingOverride = rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null }] as never, null)
 	check(
 		"rollup · a link missing hoursApproved is not read as an override",
@@ -939,8 +942,10 @@ async function bodies() {
 	)
 	check(
 		"rollup · a link missing cachedSeconds counts as nothing rather than NaN",
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		rollUpHours(oneEntry, [{ hoursApproved: null }] as never, null).hackatimeHours === 0,
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 	const missingClaim = rollUpHours([{ hoursSource: Source.MANUAL }] as never, [], null)
 	check(
 		"rollup · a session missing its hours counts as nothing rather than NaN",
@@ -1520,6 +1525,7 @@ async function bodies() {
 			ticketsTs: "333.444",
 		}
 		const actions = tickets.threadResolveActions(ref)
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		const elements = (actions.elements ?? []) as { action_id: string; value?: string }[]
 		const buttons = elements.filter(el => typeof el.action_id === "string")
 		check(
@@ -1530,6 +1536,7 @@ async function bodies() {
 			"tickets · button values round-trip the ref",
 			buttons.every(b => {
 				try {
+					// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 					const parsed = JSON.parse(b.value ?? "") as { helpTs?: string; ticketsTs?: string }
 					return parsed.helpTs === ref.helpTs && parsed.ticketsTs === ref.ticketsTs
 				} catch {
@@ -1563,6 +1570,7 @@ async function bodies() {
 				&& !reopenedIds.has("ticket_resolved"),
 		)
 		const restored = reopened.find(b => b.block_id === "self_resolve_actions")
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		const restoredElements = (restored?.elements ?? []) as { value?: string }[]
 		const restoredValues = restoredElements.map(el => el.value ?? "")
 		check(

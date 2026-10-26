@@ -510,7 +510,7 @@ export function Cinematic() {
 					<p
 						className="sketch sketch-2 max-w-160 rounded-2xl bg-cream px-6 py-4 text-center text-[clamp(1.05rem,2.4vw,1.35rem)] leading-snug font-extrabold tracking-[-0.02em] text-balance text-navy lift-shadow motion-safe:animate-[hl-rise_.4s_cubic-bezier(.16,1,.3,1)_both]"
 						key={beat}
-						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "18px" } as React.CSSProperties}
+						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "18px" }}
 					>
 						{line.line(GOAL.name)}
 					</p>
@@ -522,7 +522,7 @@ export function Cinematic() {
 				<div className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-5 pb-8 sm:pb-10">
 					<div
 						className="sketch sketch-2 w-full max-w-md rounded-3xl bg-cream px-6 py-4 text-center lift-shadow motion-safe:animate-[hl-rise_.5s_cubic-bezier(.16,1,.3,1)_both]"
-						style={{ "--sk-color": "var(--color-gold-deep)", "--sk-radius": "26px" } as React.CSSProperties}
+						style={{ "--sk-color": "var(--color-gold-deep)", "--sk-radius": "26px" }}
 					>
 						<h2 className="text-[clamp(1.2rem,3.2vw,1.6rem)] leading-tight font-extrabold tracking-[-0.03em] text-navy">
 							Become an expert in 10 weeks, get a 3D printer

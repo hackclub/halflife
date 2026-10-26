@@ -1,11 +1,13 @@
 import "server-only"
 import { createHash } from "node:crypto"
+import { z } from "zod"
 import { createSlot, sleep } from "@/lib/concurrency"
 import { HttpError } from "@/lib/errors"
 import { type Forge, repoUrl } from "@/lib/forge"
 import { oauthAccessToken } from "@/lib/oauth-token"
 import db from "@/lib/prisma8"
 import type { RepoRef } from "@/lib/repo-ref"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * Writing a participant's work back into their own repo, on whichever forge they linked.
@@ -132,9 +134,11 @@ async function apiDetail(res: Response): Promise<string | null> {
 
 	let message = text
 	try {
-		const body = JSON.parse(text) as { message?: unknown; error?: unknown }
-		const said = body.message ?? body.error
-		if (typeof said === "string") message = said
+		const body: unknown = JSON.parse(text)
+		if (isRecord(body)) {
+			const said = body.message ?? body.error
+			if (typeof said === "string") message = said
+		}
 	} catch {
 		// Not JSON: a proxy page or a plain-text error, where the text itself is the only detail there is.
 	}
@@ -307,16 +311,34 @@ export async function listWritableRepos(userId: string, forge: Forge): Promise<W
 	return forge.id === "gitlab" ? listGitLabRepos(creds) : listGitHubRepos(creds)
 }
 
+/**
+ * The forge payloads this file reads.
+ *
+ * These are the shapes GitHub and GitLab document, and every read below used to assert them with `as`. A field that moved then surfaced as `undefined` or a TypeError further in; parsing names the field where the payload arrived. Extra keys are ignored, so a forge adding one does not break the sync.
+ */
+const DefaultBranchBody = z.object({ default_branch: z.string().nullish() })
+const RefBody = z.object({ object: z.object({ sha: z.string() }) })
+const CommitTreeBody = z.object({ tree: z.object({ sha: z.string() }) })
+const ShaBody = z.object({ sha: z.string() })
+const GitLabCommitBody = z.object({ id: z.string() })
+const TreeBody = z.object({
+	tree: z.array(z.object({ path: z.string(), sha: z.string(), type: z.string() })).nullish(),
+})
+const TreeEntryList = z.array(z.object({ path: z.string(), type: z.string() }))
+
 /** One repo as GitHub's `GET /user/repos` returns it. */
-interface GitHubRepo {
-	default_branch: string
-	full_name: string
-	name: string
-	owner: { login: string }
-	permissions?: { push?: boolean; admin?: boolean; maintain?: boolean }
-	private: boolean
-	pushed_at: string | null
-}
+const GitHubRepoSchema = z.object({
+	default_branch: z.string(),
+	full_name: z.string(),
+	name: z.string(),
+	owner: z.object({ login: z.string() }),
+	permissions: z
+		.object({ admin: z.boolean().optional(), maintain: z.boolean().optional(), push: z.boolean().optional() })
+		.optional(),
+	private: z.boolean(),
+	pushed_at: z.string().nullable(),
+})
+type GitHubRepo = z.infer<typeof GitHubRepoSchema>
 
 async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]> {
 	// All three affiliations – the API's default is `owner,collaborator, organization_member`, and each is needed to see every repo they can push to: `owner` their own, `collaborator` ones they were added to directly, and `organization_member` the ones reached through an organisation. Org repos are exactly the ones a team grant or an org-wide write role lands on, so dropping that affiliation hid every organisation repository from the picker no matter what was granted at the OAuth prompt. The push filter below still removes anything the token cannot write to.
@@ -329,7 +351,7 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 		}
 		const res = await call(creds, path, { method: "GET" })
 		if (!res.ok) await throwForgeError(creds.forge, res)
-		repos.push(...((await res.json()) as GitHubRepo[]))
+		repos.push(...z.array(GitHubRepoSchema).parse(await res.json()))
 		path = nextPagePath(res.headers.get("Link"), "https://api.github.com/")
 	}
 	const seen = new Set<string>()
@@ -355,15 +377,16 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 }
 
 /** One project as GitLab's `GET /projects` returns it. */
-interface GitLabProject {
-	default_branch: string | null
-	last_activity_at: string | null
-	name: string
-	namespace: { full_path: string }
-	path: string
-	path_with_namespace: string
-	visibility: string
-}
+const GitLabProjectSchema = z.object({
+	default_branch: z.string().nullable(),
+	last_activity_at: z.string().nullable(),
+	name: z.string(),
+	namespace: z.object({ full_path: z.string() }),
+	path: z.string(),
+	path_with_namespace: z.string(),
+	visibility: z.string(),
+})
+type GitLabProject = z.infer<typeof GitLabProjectSchema>
 
 async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]> {
 	// `membership=true` is "projects I am a member of", which is the closest equivalent to GitHub's owner+collaborator+organisation affiliation. `min_access_level` narrows it to projects they can push to, the same filter GitHub's `permissions.push` applies client-side. Every page is followed for the same reason GitHub's is: one page is 100 projects, and an account with more would otherwise only see the most recently active.
@@ -377,7 +400,7 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 		}
 		const res = await call(creds, path, { method: "GET" })
 		if (!res.ok) await throwForgeError(creds.forge, res)
-		projects.push(...((await res.json()) as GitLabProject[]))
+		projects.push(...z.array(GitLabProjectSchema).parse(await res.json()))
 		path = nextPagePath(res.headers.get("Link"), "https://gitlab.com/api/v4/")
 	}
 	const seen = new Set<string>()
@@ -454,14 +477,14 @@ export async function defaultBranchOf(creds: ForgeCredentials, ref: RepoRef): Pr
 		const res = await call(creds, `projects/${encodeURIComponent(ref.fullName)}`, { method: "GET" })
 		if (res.status === 404) throw new HttpError("NOT_FOUND", `${ref.fullName} does not exist or is not visible.`)
 		if (!res.ok) await throwForgeError(creds.forge, res)
-		const body = (await res.json()) as { default_branch: string | null }
+		const body = DefaultBranchBody.parse(await res.json())
 		return body.default_branch ?? "main"
 	}
 
 	const res = await call(creds, `repos/${ref.fullName}`, { method: "GET" })
 	if (res.status === 404) throw new HttpError("NOT_FOUND", `${ref.fullName} does not exist or is not visible.`)
 	if (!res.ok) await throwForgeError(creds.forge, res)
-	const body = (await res.json()) as { default_branch: string | null }
+	const body = DefaultBranchBody.parse(await res.json())
 	// An empty repo may answer null; the branch the first commit names has to come from somewhere, and `main` is what GitHub itself would create.
 	return body.default_branch ?? "main"
 }
@@ -490,11 +513,11 @@ async function commitGitHub(
 	}
 	if (refRes.status === 404) throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
 	if (!refRes.ok) await throwForgeError(creds.forge, refRes)
-	const parentSha = ((await refRes.json()) as { object: { sha: string } }).object.sha
+	const parentSha = RefBody.parse(await refRes.json()).object.sha
 
 	const commitRes = await call(creds, `${base}/git/commits/${parentSha}`, { method: "GET" })
 	if (!commitRes.ok) await throwForgeError(creds.forge, commitRes)
-	const treeSha = ((await commitRes.json()) as { tree: { sha: string } }).tree.sha
+	const treeSha = CommitTreeBody.parse(await commitRes.json()).tree.sha
 
 	// One blob per changed file, in parallel. Unchanged ones are skipped before a blob is ever made: comparing requires their current blob sha, which the tree listing already gives us.
 	const current = await currentBlobShas(creds, base, treeSha)
@@ -525,7 +548,7 @@ async function commitGitHub(
 				method: "POST",
 			})
 			if (!blobRes.ok) await throwForgeError(creds.forge, blobRes)
-			const blob = (await blobRes.json()) as { sha: string }
+			const blob = ShaBody.parse(await blobRes.json())
 			entries.push({ path: file.path, sha: blob.sha })
 			written.push({ bytes: byteLength(file.content), path: file.path, sha: blob.sha, unchanged: false })
 		}),
@@ -545,7 +568,7 @@ async function commitGitHub(
 		method: "POST",
 	})
 	if (!treeRes.ok) await throwForgeError(creds.forge, treeRes)
-	const newTree = ((await treeRes.json()) as { sha: string }).sha
+	const newTree = ShaBody.parse(await treeRes.json()).sha
 
 	const newCommitRes = await call(creds, `${base}/git/commits`, {
 		body: JSON.stringify({ message, parents: [parentSha], tree: newTree }),
@@ -553,7 +576,7 @@ async function commitGitHub(
 		method: "POST",
 	})
 	if (!newCommitRes.ok) await throwForgeError(creds.forge, newCommitRes)
-	const commit = ((await newCommitRes.json()) as { sha: string }).sha
+	const commit = ShaBody.parse(await newCommitRes.json()).sha
 
 	// Guarded: only fast-forward if the ref is still where we read it. A concurrent push makes this a 422 and nothing is written, which is the correct outcome – the next sync reads the new tip and commits on top of it.
 	const updateRes = await call(creds, `${base}/git/refs/heads/${encodeURIComponent(branch)}`, {
@@ -599,7 +622,7 @@ async function currentBlobShas(creds: ForgeCredentials, base: string, treeSha: s
 	const res = await call(creds, `${base}/git/trees/${treeSha}?recursive=1`, { method: "GET" })
 	const out = new Map<string, string>()
 	if (!res.ok) return out
-	const body = (await res.json()) as { tree?: { path: string; type: string; sha: string }[] }
+	const body = TreeBody.parse(await res.json())
 	for (const entry of body.tree ?? []) if (entry.type === "blob") out.set(entry.path, entry.sha)
 	return out
 }
@@ -661,7 +684,7 @@ async function commitGitLab(
 						{ method: "GET" },
 					)
 		if (!res.ok) break
-		const entries = (await res.json()) as { path: string; type: string }[]
+		const entries = TreeEntryList.parse(await res.json())
 		if (entries.length === 0) break
 		for (const entry of entries) if (entry.type === "blob") existing.set(entry.path, entry.path)
 		// GitLab signals another page with `x-next-page`; an empty one ends it.
@@ -730,7 +753,7 @@ async function commitGitLab(
 	if (commitRes.status === 409)
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
 	if (!commitRes.ok) await throwForgeError(creds.forge, commitRes)
-	const commit = (await commitRes.json()) as { id: string }
+	const commit = GitLabCommitBody.parse(await commitRes.json())
 
 	// GitLab's commit response carries the commit sha, not per-file shas, so the run history records that per file. It is what a maker would look up anyway.
 	return written

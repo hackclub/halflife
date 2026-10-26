@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
+const ACTIONS = ["FULFILL", "REJECT", "HOLD"] as const
 export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 	const [action, setAction] = useState<"FULFILL" | "REJECT" | "HOLD">("FULFILL")
 	const [tracking, setTracking] = useState("")
@@ -22,7 +23,14 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 	return (
 		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
-			<select className="hl-select" onChange={e => setAction(e.target.value as typeof action)} value={action}>
+			<select
+				className="hl-select"
+				onChange={e => {
+					const next = ACTIONS.find(candidate => candidate === e.target.value)
+					if (next) setAction(next)
+				}}
+				value={action}
+			>
 				<option value="FULFILL">Fulfil</option>
 				<option value="REJECT">Reject and refund</option>
 				<option value="HOLD">Put on hold</option>

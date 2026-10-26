@@ -19,6 +19,7 @@ import { getProgramSettings } from "@/lib/program"
 import { findRepoFile } from "@/lib/repo-checks"
 import { repoRefFromLink } from "@/lib/repo-ref"
 import { parseDbTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -39,7 +40,7 @@ async function lastRecordId(themeProjectId: string, phase: Phase): Promise<strin
 		.select("metadata")
 		.all()
 	for (const row of rows) {
-		const meta = row.metadata as { phase?: string; recordId?: string; removed?: boolean } | null
+		const meta = isRecord(row.metadata) ? row.metadata : null
 		if (meta?.phase !== phase) continue
 		if (meta.removed) return null
 		if (typeof meta.recordId === "string") return meta.recordId
@@ -56,8 +57,8 @@ export function recordIdsFromSyncEvents(events: { targetId: string | null; metad
 	const byPhase = new Map<string, string>()
 	const settled = new Set<string>()
 	for (const row of events) {
-		const meta = row.metadata as { phase?: string; recordId?: string; removed?: boolean } | null
-		if (!row.targetId || !meta?.phase) continue
+		const meta = isRecord(row.metadata) ? row.metadata : null
+		if (!row.targetId || typeof meta?.phase !== "string") continue
 		const key = `${row.targetId}:${meta.phase}`
 		// Newest first, so the first row seen for a phase is the one that stands.
 		if (settled.has(key)) continue
@@ -475,7 +476,7 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 			const submittedAt = p.submissions.find(s => s.phase === phase)?.createdAt
 			// Written since the latest hand-in counts; an older write was for a submission that has since been taken back and handed in again.
 			const written = synced.some(s => {
-				const meta = s.metadata as { phase?: string; recordId?: string } | null
+				const meta = isRecord(s.metadata) ? s.metadata : null
 				return (
 					s.targetId === p.id
 					&& meta?.phase === phase

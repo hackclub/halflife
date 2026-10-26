@@ -352,7 +352,7 @@ export function ReelViewer() {
 	}, [step, toggleMute, sheetOpen])
 
 	const cycleRate = useCallback(() => {
-		const at = RATES.indexOf(prefs.rate as (typeof RATES)[number])
+		const at = RATES.indexOf(prefs.rate)
 		setPrefs({ rate: RATES[(at + 1) % RATES.length] ?? 1 })
 	}, [prefs.rate, setPrefs])
 	const toggleAutoScroll = useCallback(() => setPrefs({ autoScroll: !prefs.autoScroll }), [prefs.autoScroll, setPrefs])
@@ -454,7 +454,7 @@ export function ReelViewer() {
 					<button
 						className="sketch label absolute top-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-navy px-3.5 py-2 whitespace-nowrap text-white transition-transform hover:scale-[1.03] motion-safe:animate-[hl-pop_320ms_cubic-bezier(.16,1,.3,1)]"
 						onClick={toggleMute}
-						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "14px" } as React.CSSProperties}
+						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "14px" }}
 						type="button"
 					>
 						<IconVolumeOff className="text-[1rem]" /> Tap for sound
@@ -557,7 +557,7 @@ export function ReelViewer() {
 						if (e.target === e.currentTarget && !sheetOpen) setSheetShown(false)
 					}}
 					role={sheetOpen ? "dialog" : undefined}
-					style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "24px" } as React.CSSProperties}
+					style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "24px" }}
 				>
 					<span aria-hidden="true" className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-line md:hidden" />
 					{sheetShown && (
@@ -596,12 +596,10 @@ function NavButton({
 			)}
 			disabled={disabled}
 			onClick={onClick}
-			style={
-				{
-					"--sk-color": disabled ? "var(--color-line)" : "var(--color-teal)",
-					"--sk-radius": "999px",
-				} as React.CSSProperties
-			}
+			style={{
+				"--sk-color": disabled ? "var(--color-line)" : "var(--color-teal)",
+				"--sk-radius": "999px",
+			}}
 			type="button"
 		>
 			{children}
@@ -677,7 +675,7 @@ function Action({
 					onClick && !on && "md:group-hover:bg-mint md:group-hover:text-teal-ink",
 				)}
 				ref={disc}
-				style={{ "--ring": ring, "--sk-radius": "999px" } as React.CSSProperties}
+				style={{ "--ring": ring, "--sk-radius": "999px" }}
 			>
 				{children}
 			</span>

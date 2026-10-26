@@ -1,4 +1,4 @@
-import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
+import { AirtableListSchema, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { type JustificationValues, justificationValues, timelapseLinks } from "../src/lib/airtable/justification"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
@@ -49,7 +49,8 @@ async function currentColumns(
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listYswsJustification", () =>
-			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
+			airtableFetch(
+				AirtableListSchema,
 				config,
 				`${encodeURIComponent(YSWS_SUBMISSION.tableId)}?pageSize=100&${fieldsQs}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),
@@ -148,6 +149,7 @@ async function main() {
 			continue
 		}
 		const fields: { [_: string]: string } = {}
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		for (const [key, value] of Object.entries(target.values) as [string, string | undefined][]) {
 			if (value === undefined) continue
 			if (row.get(key)) continue

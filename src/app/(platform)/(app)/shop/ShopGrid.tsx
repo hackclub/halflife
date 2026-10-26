@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
 import { IconCheck, IconCoin } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
+import { errorMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
 import type { ShopItemView } from "@/lib/shop"
 import { useStore } from "@/lib/store"
@@ -86,10 +87,7 @@ export function ShopGrid({
 				method: "POST",
 			})
 			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as {
-					error?: { message?: string }
-				}
-				setError(payload.error?.message ?? `That did not go through (${res.status})`)
+				setError(errorMessage(await res.json().catch(() => null), `That did not go through (${res.status})`))
 				return
 			}
 			keys.current.delete(item.id)
@@ -124,10 +122,7 @@ export function ShopGrid({
 										method: "PUT",
 									})
 									if (!res.ok) {
-										const payload = (await res.json().catch(() => ({}))) as {
-											error?: { message?: string }
-										}
-										setError(payload.error?.message ?? "That region did not save")
+										setError(errorMessage(await res.json().catch(() => null), "That region did not save"))
 										return
 									}
 									router.refresh()
@@ -176,7 +171,10 @@ export function ShopGrid({
 					<select
 						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy"
 						id="shop-sort"
-						onChange={e => setSort(e.target.value as Sort)}
+						onChange={e => {
+							const picked = SORTS.find(option => option.value === e.target.value)
+							if (picked) setSort(picked.value)
+						}}
 						value={sort}
 					>
 						{SORTS.map(({ label: l, value: v }) => (

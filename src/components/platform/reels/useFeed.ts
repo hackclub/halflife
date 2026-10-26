@@ -1,6 +1,7 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { FeedItem, FeedPage } from "@/lib/feed"
+import type { FeedItem } from "@/lib/feed"
+import { FeedPageSchema } from "@/lib/feed-schema"
 
 /**
  * The Doomscroller's rows.
@@ -39,7 +40,7 @@ export function useFeed(limit = 12): {
 				else query.set("tz", Intl.DateTimeFormat().resolvedOptions().timeZone)
 				const res = await fetch(`/api/feed?${query}`)
 				if (!res.ok) throw new Error(`The feed did not load (${res.status})`)
-				const page = (await res.json()) as FeedPage
+				const page = FeedPageSchema.parse(await res.json())
 				if (!after) setLeading(page.leading)
 				setItems(prev => {
 					const seen = new Set(prev.map(i => i.id))

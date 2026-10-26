@@ -1,4 +1,10 @@
-import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
+import {
+	AirtableListSchema,
+	type AirtableRecord,
+	airtableFetch,
+	getAirtableConfig,
+	withRateLimitRetry,
+} from "../src/lib/airtable/client"
 import { existingColumns } from "../src/lib/airtable/field-probe"
 import { LOOPS_FIELDS, resolveSignupRow } from "../src/lib/airtable/loops"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "../src/lib/airtable/schema"
@@ -31,7 +37,8 @@ async function signupRows(
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listSignupsSubmitted", () =>
-			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
+			airtableFetch(
+				AirtableListSchema,
 				config,
 				`${encodeURIComponent(RSVP_TABLE_ID)}?pageSize=100${fieldsQs ? `&${fieldsQs}` : ""}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),
@@ -146,7 +153,7 @@ async function main() {
 		const batch = entries.slice(i, i + 10)
 		try {
 			await withRateLimitRetry("updateSignupsSubmitted", () =>
-				airtableFetch(config, encodeURIComponent(RSVP_TABLE_ID), {
+				airtableFetch(AirtableListSchema, config, encodeURIComponent(RSVP_TABLE_ID), {
 					body: JSON.stringify({
 						records: batch.map(([id, fields]) => ({ fields, id })),
 						typecast: false,

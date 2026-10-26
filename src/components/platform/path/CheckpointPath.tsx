@@ -187,12 +187,10 @@ function CheckpointNode({
 							clickable && "motion-safe:animate-[hl-bob_2.4s_ease-in-out_infinite]",
 							gold ? "bg-gold text-navy" : "bg-navy text-white",
 						)}
-						style={
-							{
-								"--sk-color": gold ? "var(--color-gold-deep)" : "var(--color-navy)",
-								"--sk-radius": "14px",
-							} as React.CSSProperties
-						}
+						style={{
+							"--sk-color": gold ? "var(--color-gold-deep)" : "var(--color-navy)",
+							"--sk-radius": "14px",
+						}}
 					>
 						<p className="label whitespace-nowrap">{st.done ? "Redo" : "Start here"}</p>
 						<p className="mt-0.5 text-[0.74rem] leading-tight font-semibold opacity-85">{checkpoint.title}</p>
@@ -212,12 +210,10 @@ function CheckpointNode({
 				<div className="pointer-events-none absolute bottom-[calc(100%_+_10px)] z-20 w-max max-w-[min(13rem,42vw)] opacity-0 transition-opacity duration-150 group-hover:opacity-100">
 					<div
 						className="sketch rounded-2xl bg-sand px-3.5 py-2.5 text-left"
-						style={
-							{
-								"--sk-color": "var(--color-sand-deep)",
-								"--sk-radius": "14px",
-							} as React.CSSProperties
-						}
+						style={{
+							"--sk-color": "var(--color-sand-deep)",
+							"--sk-radius": "14px",
+						}}
 					>
 						{passed ? (
 							<p className="text-[0.78rem] leading-snug font-semibold whitespace-nowrap text-navy">{locked}</p>
@@ -243,12 +239,10 @@ function CheckpointNode({
 				<div className="pointer-events-none absolute bottom-[calc(100%_+_10px)] z-20 w-max max-w-[min(13rem,42vw)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
 					<div
 						className="sketch rounded-2xl bg-mint px-3.5 py-2.5 text-left"
-						style={
-							{
-								"--sk-color": "var(--color-teal-deep)",
-								"--sk-radius": "14px",
-							} as React.CSSProperties
-						}
+						style={{
+							"--sk-color": "var(--color-teal-deep)",
+							"--sk-radius": "14px",
+						}}
 					>
 						<p className="flex items-start gap-1.5 text-[0.74rem] leading-snug font-semibold text-navy">
 							<IconCheck className="mt-px shrink-0 text-[0.8rem] text-teal-ink" strokeWidth={3} />
@@ -626,17 +620,15 @@ export function CheckpointPath() {
 	return (
 		<div
 			className="mx-auto w-full max-w-180 px-4 sm:px-8"
-			style={
-				{
-					/* Room between a week banner and its first puck for the callout that hangs above the current checkpoint, bob included. */
-					"--lead": "clamp(70px, 9vw, 80px)",
-					"--node": "clamp(72px, 13.5vw, 98px)",
-					/* An entry is a beat, not a milestone: smaller puck, shorter stride, so a twenty-entry week stays a trail instead of a corridor. */
-					"--node-sm": "clamp(42px, 7.5vw, 54px)",
-					"--step": "clamp(140px, 20vw, 162px)",
-					"--step-sm": "clamp(100px, 13vw, 116px)",
-				} as React.CSSProperties
-			}
+			style={{
+				/* Room between a week banner and its first puck for the callout that hangs above the current checkpoint, bob included. */
+				"--lead": "clamp(70px, 9vw, 80px)",
+				"--node": "clamp(72px, 13.5vw, 98px)",
+				/* An entry is a beat, not a milestone: smaller puck, shorter stride, so a twenty-entry week stays a trail instead of a corridor. */
+				"--node-sm": "clamp(42px, 7.5vw, 54px)",
+				"--step": "clamp(140px, 20vw, 162px)",
+				"--step-sm": "clamp(100px, 13vw, 116px)",
+			}}
 		>
 			{weeks.map((week, wi) => (
 				<section aria-labelledby={`week-${week.id}`} key={week.id}>

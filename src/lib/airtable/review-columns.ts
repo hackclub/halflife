@@ -1,5 +1,5 @@
 import "server-only"
-import { type AirtableConfig, type AirtableRecord, airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
+import { type AirtableConfig, AirtableListSchema, airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
 import { columnExists } from "@/lib/airtable/field-probe"
 import { fieldKey, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 
@@ -25,7 +25,8 @@ export async function currentReviewColumns(
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listYswsReviewColumns", () =>
-			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
+			airtableFetch(
+				AirtableListSchema,
 				config,
 				`${encodeURIComponent(YSWS_SUBMISSION.tableId)}?pageSize=100&${fieldsQs}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),

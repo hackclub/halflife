@@ -134,7 +134,7 @@ export function getTierOrThrow(id: number): Tier {
 }
 
 export function isTierId(id: unknown): id is TierId {
-	return typeof id === "number" && TIER_IDS.includes(id as TierId)
+	return typeof id === "number" && TIER_IDS.some(tier => tier === id)
 }
 
 /**

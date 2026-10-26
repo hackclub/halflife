@@ -30,7 +30,10 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 				<select
 					aria-label="Move project to theme"
 					className="hl-input"
-					onChange={e => setValue(e.target.value as Theme)}
+					onChange={e => {
+						const picked = OPTIONS.find(t => t.id === e.target.value)
+						if (picked) setValue(picked.id)
+					}}
 					style={{ maxWidth: "12rem" }}
 					value={value}
 				>

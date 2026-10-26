@@ -6,6 +6,7 @@ import { withSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { createPostSchema } from "@/lib/schemas/feed"
+import { isRecord } from "@/lib/unknown"
 
 export const dynamic = "force-dynamic"
 
@@ -62,8 +63,11 @@ async function logPostRefusal(userId: string, actorEmail: string, req: Request, 
 	const code = err instanceof HttpError ? err.code : "INTERNAL"
 	let checkpointKey: string | null = null
 	try {
-		const body = (await req.clone().json()) as { checkpointKey?: unknown }
-		if (typeof body?.checkpointKey === "string") ({ checkpointKey } = body)
+		const body: unknown = await req.clone().json()
+		if (isRecord(body)) {
+			const { checkpointKey: key } = body
+			if (typeof key === "string") checkpointKey = key
+		}
 	} catch {
 		// The body was unparseable, which is itself what the recorded reason will say.
 	}

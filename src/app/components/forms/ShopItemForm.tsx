@@ -26,7 +26,7 @@ export interface ShopItemInitial {
 }
 
 const blank = {
-	category: "PRINTER_UPGRADE" as ShopItemCategory,
+	category: "PRINTER_UPGRADE",
 	costUsd: "",
 	description: "",
 	id: "",
@@ -161,7 +161,10 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			<Field hint="Printers are not listed in the shop; everything else is paid for in coins." label="Category">
 				<select
 					className="hl-select"
-					onChange={e => setForm({ ...form, category: e.target.value as ShopItemCategory })}
+					onChange={e => {
+						const picked = CATEGORIES.find(category => category.value === e.target.value)
+						if (picked) setForm({ ...form, category: picked.value })
+					}}
 					value={form.category}
 				>
 					{CATEGORIES.map(c => (

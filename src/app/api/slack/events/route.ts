@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server"
+import { z } from "zod"
 import { readBoundedText } from "@/lib/api"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import {
@@ -37,6 +38,25 @@ interface SlackEvent {
 	type: string
 	user?: string
 }
+
+/** Slack's Events API envelope, parsed rather than trusted: the signature proves Slack sent it, not that every field is present. */
+const SlackEventSchema: z.ZodType<SlackEvent> = z.object({
+	bot_id: z.string().optional(),
+	channel: z.string().optional(),
+	subtype: z.string().optional(),
+	text: z.string().optional(),
+	thread_ts: z.string().optional(),
+	ts: z.string().optional(),
+	type: z.string(),
+	user: z.string().optional(),
+})
+const EventCallbackSchema = z.object({
+	challenge: z.string().optional(),
+	event: SlackEventSchema.optional(),
+	event_id: z.string().optional(),
+	team_id: z.string().optional(),
+	type: z.string().optional(),
+})
 
 /** New top-level message in #half-life-help – post it to the private tickets channel with a "Mark as helped" button, reply in-thread with an "I'm all set" button the ticket's own author can use to self-resolve, and drop the pending reaction on the original so the channel shows at a glance that it's still waiting. Thread replies and anything from a bot (including our own acks) are
  *
@@ -223,9 +243,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 	)
 	if (!verified) return NextResponse.json({ ok: false }, { status: 401 })
 
-	let body: { event_id?: string; team_id?: string; type?: string; challenge?: string; event?: SlackEvent }
+	let body: z.infer<typeof EventCallbackSchema>
 	try {
-		body = JSON.parse(rawBody) as typeof body
+		const parsed = EventCallbackSchema.safeParse(JSON.parse(rawBody))
+		if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 })
+		body = parsed.data
 	} catch {
 		return NextResponse.json({ ok: false }, { status: 400 })
 	}

@@ -37,14 +37,12 @@ export function Panel({
 	return (
 		<As
 			className={cx("sketch", variant === 2 && "sketch-2", variant === 3 && "sketch-3", className)}
-			style={
-				{
-					"--sk-color": color,
-					"--sk-radius": `${radius}px`,
-					// The drawn border lives on a pseudo-element, so the panel's own background does not inherit its radius – a light fill sits in a square box and pokes out past the rounded corners. Most panels hide it by being nearly the colour of the page; a white one does not.
-					borderRadius: `${radius}px`,
-				} as React.CSSProperties
-			}
+			style={{
+				"--sk-color": color,
+				"--sk-radius": `${radius}px`,
+				// The drawn border lives on a pseudo-element, so the panel's own background does not inherit its radius – a light fill sits in a square box and pokes out past the rounded corners. Most panels hide it by being nearly the colour of the page; a white one does not.
+				borderRadius: `${radius}px`,
+			}}
 		>
 			{children}
 		</As>
@@ -169,13 +167,11 @@ export function OptionRow({
 			)}
 			disabled={disabled}
 			onClick={onClick}
-			style={
-				{
-					"--sk-color": ring,
-					"--sk-radius": "14px",
-					background: selected ? fill : "var(--color-paper)",
-				} as React.CSSProperties
-			}
+			style={{
+				"--sk-color": ring,
+				"--sk-radius": "14px",
+				background: selected ? fill : "var(--color-paper)",
+			}}
 			type="button"
 		>
 			<span className="flex items-center gap-3">

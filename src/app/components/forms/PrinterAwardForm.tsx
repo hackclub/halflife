@@ -54,7 +54,10 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 				aria-label="Next printer award status"
 				className="hl-select"
 				disabled={busy !== null}
-				onChange={e => setNext(e.target.value as PrinterAwardStatus | "")}
+				onChange={e => {
+					const picked = options.find(option => option === e.target.value)
+					setNext(picked ?? "")
+				}}
 				value={next}
 			>
 				<option value="">Move to…</option>

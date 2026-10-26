@@ -86,6 +86,7 @@ describe("steps / week intros", () => {
 
 	test("reads week intros by theme", () => {
 		expect(weekIntroFor(Theme.PCB)).toBeDefined()
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 		expect(weekIntroFor("NOPE" as Theme)).toBeUndefined()
 	})
 })

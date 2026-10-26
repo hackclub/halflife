@@ -1,4 +1,5 @@
 import "server-only"
+import { z } from "zod"
 import { scheduledWeekFor } from "@/lib/config/program"
 import type { Phase, Theme } from "@/lib/enums"
 import { fetchWithRetry } from "@/lib/fetch-retry"
@@ -6,6 +7,7 @@ import type { HackatimeSpan } from "@/lib/hours-overlap"
 import db from "@/lib/prisma8"
 import { getProgramSettings, weekDateRange } from "@/lib/program"
 import { formatDbTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 
 const BASE = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
 const TIMEOUT_MS = 10_000
@@ -21,9 +23,12 @@ export interface HackatimeFetch {
 	stale: boolean
 }
 
-interface StatsBody {
-	data?: { projects?: { name?: unknown; total_seconds?: unknown }[] }
-}
+/** The project list `GET /api/v1/users/:id/stats` returns, for the picker. */
+const StatsProjectsBody = z.object({
+	data: z
+		.object({ projects: z.array(z.object({ name: z.string(), total_seconds: z.number() })).optional() })
+		.optional(),
+})
 
 /**
  * Read one project's seconds out of a Hackatime stats response.
@@ -31,10 +36,11 @@ interface StatsBody {
  * Pure so the contract can be pinned without a network: a project that is present with zero seconds is the ONLY live zero. A name missing from a successfully fetched list means the project was renamed or deleted, and reporting zero for it would silently underpay the hand-in the number is about. A response with no usable project list is stale too – a shape change must not look like "nothing logged".
  */
 export function projectSecondsFrom(body: unknown, project: string): HackatimeFetch {
-	const projects = (body as StatsBody | null)?.data?.projects
+	const data = isRecord(body) ? body.data : null
+	const projects = isRecord(data) ? data.projects : null
 	if (!Array.isArray(projects)) return { error: "Hackatime returned no project list", seconds: 0, stale: true }
 
-	const match = projects.find(p => p?.name === project)
+	const match = projects.find((p): p is { [_: string]: unknown } => isRecord(p) && p.name === project)
 	if (!match)
 		return {
 			error: `Hackatime does not list a project named "${project}"`,
@@ -88,13 +94,14 @@ export async function fetchProjectSeconds(
  * Malformed rows are dropped rather than failing the whole read: one bad span should cost that span, not the participant's hours. Times are seconds.
  */
 export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boolean; error?: string } {
-	const raw = (body as { spans?: unknown } | null)?.spans
+	const raw = isRecord(body) ? body.spans : null
 	if (!Array.isArray(raw)) return { error: "Hackatime returned no spans", spans: [], stale: true }
 
 	const spans: HackatimeSpan[] = []
 	for (const row of raw) {
-		const start = (row as { start_time?: unknown })?.start_time
-		const end = (row as { end_time?: unknown })?.end_time
+		if (!isRecord(row)) continue
+		const start = row.start_time
+		const end = row.end_time
 		if (
 			typeof start !== "number"
 			|| typeof end !== "number"
@@ -148,10 +155,9 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 		url.searchParams.set("features", "projects")
 		const res = await fetchWithRetry(url, { cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) })
 		if (!res.ok) return []
-		const body = (await res.json()) as {
-			data?: { projects?: { name: string; total_seconds: number }[] }
-		}
-		return (body.data?.projects ?? []).map(p => ({
+		const parsed = StatsProjectsBody.safeParse(await res.json())
+		if (!parsed.success) return []
+		return (parsed.data.data?.projects ?? []).map(p => ({
 			name: p.name,
 			totalSeconds: p.total_seconds,
 		}))

@@ -6,12 +6,14 @@ import { WeekPainting } from "@/components/platform/art"
 import { IconArrowRight } from "@/components/platform/icons"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { Button, Field, inputClass, OptionRow } from "@/components/platform/ui"
+import { errorMessage } from "@/lib/api-error"
 import { submitFloorFor } from "@/lib/config/printers"
 import { WARMUP_THEME } from "@/lib/config/program"
 import { BUILD_HOURS, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/numbers"
 import { validateRepoField } from "@/lib/repo"
+import { isRecord } from "@/lib/unknown"
 import { Modal, ModalTitle } from "./Modal"
 
 /**
@@ -45,12 +47,13 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			const payload = (await res.json().catch(() => null)) as { id?: string; error?: { message?: string } } | null
-			if (!res.ok || !payload?.id) {
-				setError(payload?.error?.message ?? `The project was not created (${res.status}). Try again.`)
+			const payload: unknown = await res.json().catch(() => null)
+			const id = isRecord(payload) && typeof payload.id === "string" ? payload.id : null
+			if (!res.ok || !id) {
+				setError(errorMessage(payload, `The project was not created (${res.status}). Try again.`))
 				return
 			}
-			router.push(`/projects/${payload.id}`)
+			router.push(`/projects/${id}`)
 			router.refresh()
 			onClose()
 		} catch {

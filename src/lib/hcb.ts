@@ -1,5 +1,7 @@
 import "server-only"
+import { z } from "zod"
 import { HttpError } from "@/lib/errors"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * HCB's v4 API – the authenticated, write-capable one.
@@ -13,6 +15,17 @@ import { HttpError } from "@/lib/errors"
  */
 
 const DEFAULT_BASE = "https://hcb.hackclub.com"
+
+/** The parts of HCB's JSON this module reads. Parsed at the boundary rather than asserted, because a shape change here moves money. */
+const TokenBody = z.object({
+	access_token: z.string().optional(),
+	expires_in: z.number().optional(),
+	refresh_token: z.string().optional(),
+})
+const CardGrantBody = z.object({
+	disbursements: z.array(z.object({ transaction_id: z.string().nullish() })).optional(),
+	user: z.object({ email: z.string().nullish() }).nullish(),
+})
 
 function base(): string {
 	return (process.env.HCB_BASE_URL ?? DEFAULT_BASE).replace(/\/$/, "")
@@ -54,7 +67,7 @@ async function accessToken(force = false): Promise<string> {
 	})
 	if (!res.ok) throw new HttpError("INTERNAL", `HCB token refresh failed (${res.status})`)
 
-	const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number }
+	const data = TokenBody.parse(await res.json())
 	if (!data.access_token) throw new HttpError("INTERNAL", "HCB token refresh returned no access token")
 	// Default an hour when HCB does not say; either way the token is now bounded rather than cached for the life of the process.
 	const lifetimeMs = (typeof data.expires_in === "number" && data.expires_in > 0 ? data.expires_in : 3600) * 1000
@@ -147,10 +160,7 @@ export async function topUpCardGrant(grantHashid: string, amountCents: number): 
 		const body = await res.text().catch(() => "")
 		throw new HttpError("INTERNAL", `HCB refused the top-up (${res.status})`, { detail: body.slice(0, 300) })
 	}
-	const data = (await res.json()) as {
-		disbursements?: { transaction_id?: string }[]
-		user?: { email?: string | null } | null
-	}
+	const data = CardGrantBody.parse(await res.json())
 	return {
 		ownerEmail: readOwnerEmail(data.user),
 		transactionId: data.disbursements?.[0]?.transaction_id ?? null,
@@ -173,8 +183,8 @@ export async function readCardGrantOwner(grantHashid: string): Promise<CardGrant
 		const body = await res.text().catch(() => "")
 		throw new HttpError("INTERNAL", `HCB refused to read the grant (${res.status})`, { detail: body.slice(0, 300) })
 	}
-	const data = (await res.json().catch(() => null)) as { user?: { email?: string | null } | null } | null
-	return { email: readOwnerEmail(data?.user) }
+	const parsed = CardGrantBody.safeParse(await res.json().catch(() => null))
+	return { email: readOwnerEmail(parsed.success ? parsed.data.user : null) }
 }
 
 export interface GrantDisbursement {
@@ -205,14 +215,14 @@ export async function listCardGrantDisbursements(grantHashid: string): Promise<G
 		throw new HttpError("INTERNAL", `HCB refused to read the grant (${res.status})`, { detail: body.slice(0, 300) })
 	}
 
-	const data = (await res.json().catch(() => null)) as { disbursements?: unknown } | null
-	const raw = data?.disbursements
+	const data: unknown = await res.json().catch(() => null)
+	const raw = isRecord(data) ? data.disbursements : null
 	if (!Array.isArray(raw)) return { kind: "unreadable" }
 
 	const rows: GrantDisbursement[] = []
 	for (const entry of raw) {
-		if (typeof entry !== "object" || entry === null) return { kind: "unreadable" }
-		const d = entry as { [_: string]: unknown }
+		if (!isRecord(entry)) return { kind: "unreadable" }
+		const d = entry
 		if (typeof d.amount_cents !== "number" || !Number.isFinite(d.amount_cents)) return { kind: "unreadable" }
 		rows.push({
 			amountCents: d.amount_cents,

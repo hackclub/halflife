@@ -37,6 +37,7 @@ describe("reviewTone / reviewChipTone / labels", () => {
 		expect(reviewChipTone("update_requested")).toBe("gold")
 		expect(reviewChipTone("rejected")).toBe("coral")
 		expect(reviewChipTone("draft")).toBe("muted")
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 		expect(reviewChipTone("BOGUS" as "draft")).toBe("muted")
 	})
 

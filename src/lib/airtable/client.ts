@@ -1,4 +1,5 @@
 import "server-only"
+import { z } from "zod"
 import { sleep } from "@/lib/concurrency"
 
 const API_BASE = "https://api.airtable.com/v0"
@@ -94,7 +95,12 @@ export async function withRateLimitRetry<T>(
 		}
 }
 
-export async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {
+export async function airtableFetch<S extends z.ZodType>(
+	schema: S,
+	config: AirtableConfig,
+	path: string,
+	init: RequestInit = {},
+): Promise<z.infer<S>> {
 	const headers = new Headers({
 		Authorization: `Bearer ${config.apiKey}`,
 		"Content-Type": "application/json",
@@ -111,14 +117,31 @@ export async function airtableFetch<T>(config: AirtableConfig, path: string, ini
 		const body = await res.text().catch(() => "")
 		throw new AirtableError(`Airtable ${res.status} on ${path}`, res.status, body)
 	}
-	return (await res.json()) as T
+	return schema.parse(await res.json())
 }
 
-export interface AirtableRecord {
-	createdTime?: string
-	fields: { [_: string]: unknown }
-	id: string
-}
+/** One Airtable record. `fields` stays open because each table has its own columns. */
+export const AirtableRecordSchema = z.object({
+	createdTime: z.string().optional(),
+	fields: z.record(z.string(), z.unknown()),
+	id: z.string(),
+})
+export type AirtableRecord = z.infer<typeof AirtableRecordSchema>
+
+/** A list page: the records plus the cursor for the next one. */
+export const AirtableListSchema = z.object({ offset: z.string().optional(), records: z.array(AirtableRecordSchema) })
+
+/** A create, which reports the id of the row it made. */
+export const AirtableCreatedSchema = z.object({ id: z.string() })
+
+/** A delete by id, which reports whether the row went. */
+export const AirtableDeletedSchema = z.object({ deleted: z.boolean() })
+
+/** A delete by query, which reports the ids it removed. */
+export const AirtableDeletedRecordsSchema = z.object({ records: z.array(z.object({ id: z.string() })) })
+
+/** An upsert: the records written, and the ids that were updated rather than created. */
+export const AirtableUpsertSchema = AirtableListSchema.extend({ updatedRecords: z.array(z.string()).optional() })
 
 /** Chunk into batches of 10, Airtable's per-request record limit. */
 export function chunk<T>(items: T[], size = 10): T[][] {

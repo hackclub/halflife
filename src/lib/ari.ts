@@ -9,6 +9,7 @@ import {
 	type AriWebhookEvent,
 } from "@hackclub/ari"
 import { and, or } from "@prisma/orm-postgres/orm-client"
+import { z } from "zod"
 import { mirrorAriPhaseToYsws, mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
@@ -18,7 +19,6 @@ import { getThemeDef, MAX_APPROVED_HOURS, WARMUP_THEME } from "@/lib/config/prog
 import { isTierId, tierForHours } from "@/lib/config/tiers"
 import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import type { JsonValue } from "@/lib/json"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import { notifyReviewOutcome, notifyShipFailed } from "@/lib/notifications"
@@ -30,6 +30,7 @@ import { withFields } from "@/lib/rows"
 import { sanitize } from "@/lib/sanitize"
 import { DEFAULT_SESSION_TITLE } from "@/lib/schemas/session"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -407,15 +408,12 @@ export async function findUnsyncedAriSubmissions(): Promise<
 		.select("metadata", "targetId")
 		.all()
 	const reasonOf = (themeProjectId: string, phase: Phase): string | null => {
-		const meta = failures.find(failure => {
-			if (failure.targetId !== themeProjectId) return false
-			const data =
-				typeof failure.metadata === "object" && failure.metadata !== null && !Array.isArray(failure.metadata)
-					? (failure.metadata as { [_: string]: unknown })
-					: null
-			if (!data || "withdrawn" in data || data.phase !== phase) return false
-			return true
-		})?.metadata as { error?: unknown } | null
+		const failure = failures.find(entry => {
+			if (entry.targetId !== themeProjectId) return false
+			const meta = isRecord(entry.metadata) ? entry.metadata : null
+			return meta !== null && !("withdrawn" in meta) && meta.phase === phase
+		})
+		const meta = failure && isRecord(failure.metadata) ? failure.metadata : null
 		return typeof meta?.error === "string" ? meta.error : null
 	}
 	return pending.map(item => withFields(item, { reason: reasonOf(item.themeProjectId, item.phase) }))
@@ -866,7 +864,7 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
 				deliveryId,
 				event: event.event,
 				externalId,
-				payload: event as unknown as JsonValue,
+				payload: z.json().parse(event),
 			})
 			await logAudit({
 				action: AuditAction.ARI_WEBHOOK_IGNORED,

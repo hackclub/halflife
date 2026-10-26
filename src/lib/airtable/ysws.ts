@@ -1,14 +1,18 @@
 import "server-only"
 import {
 	type AirtableConfig,
+	AirtableDeletedRecordsSchema,
+	AirtableDeletedSchema,
 	AirtableError,
-	type AirtableRecord,
+	AirtableListSchema,
+	AirtableRecordSchema,
 	airtableFetch,
 	escapeAirtableValue,
 	getAirtableConfig,
 	withRateLimitRetry,
 } from "@/lib/airtable/client"
 import { fieldKey, formulaRef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
+import { errorMessage } from "@/lib/api-error"
 
 /**
  * Writes to the `YSWS Project Submission` table.
@@ -29,7 +33,7 @@ const MAX_DROPPED_FIELDS = 6
 function rejectedFields(err: AirtableError, fields: { [_: string]: unknown }): string[] {
 	let message = err.body
 	try {
-		message = (JSON.parse(err.body) as { error?: { message?: string } }).error?.message ?? err.body
+		message = errorMessage(JSON.parse(err.body), err.body)
 	} catch {
 		// Not JSON; search the raw text.
 	}
@@ -71,7 +75,8 @@ async function findExistingRow(
 	)}='${escapeAirtableValue(projectName)}',${formulaRef(YSWS_SUBMISSION.fields.stage)}='${escapeAirtableValue(stage)}')`
 
 	const result = await withRateLimitRetry("findYswsSubmission", () =>
-		airtableFetch<{ records?: AirtableRecord[] }>(
+		airtableFetch(
+			AirtableListSchema,
 			config,
 			`${YSWS_SUBMISSION.tableId}?maxRecords=3&filterByFormula=${encodeURIComponent(formula)}`,
 		),
@@ -101,7 +106,7 @@ export async function writeYswsRecord(
 		withRateLimitRetry(
 			id ? "updateYswsSubmission" : "createYswsSubmission",
 			() =>
-				airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
+				airtableFetch(AirtableListSchema, config, YSWS_SUBMISSION.tableId, {
 					body: JSON.stringify({ records: [id ? { fields: f, id } : { fields: f }], typecast: false }),
 					method: id ? "PATCH" : "POST",
 				}),
@@ -160,7 +165,7 @@ export async function updateYswsRecord(
 	if (!config) return { ok: false, reason: "not_configured" }
 	try {
 		await withRateLimitRetry("updateYswsSubmission", () =>
-			airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
+			airtableFetch(AirtableListSchema, config, YSWS_SUBMISSION.tableId, {
 				body: JSON.stringify({ records: [{ fields, id: recordId }], typecast: false }),
 				method: "PATCH",
 			}),
@@ -186,11 +191,11 @@ export async function deleteYswsRecord(
 	if (!config) return { deleted: false, skipped: "not_configured", unifiedRecordId: null }
 	try {
 		const row = await withRateLimitRetry("readYswsSubmission", () =>
-			airtableFetch<AirtableRecord>(config, `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`),
+			airtableFetch(AirtableRecordSchema, config, `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`),
 		)
 		const twin = row.fields[YSWS_SUBMISSION.fields.unifiedRecordId.name]
 		await withRateLimitRetry("deleteYswsSubmission", () =>
-			airtableFetch<{ deleted: boolean }>(config, `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`, {
+			airtableFetch(AirtableDeletedSchema, config, `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`, {
 				method: "DELETE",
 			}),
 		)
@@ -220,7 +225,7 @@ export async function deleteUnifiedRecords(
 	const query = recordIds.map(id => `records[]=${encodeURIComponent(id)}`).join("&")
 	try {
 		const result = await withRateLimitRetry("deleteUnifiedRecords", () =>
-			airtableFetch<{ records: { id: string }[] }>({ apiKey, baseId }, `${table}?${query}`, { method: "DELETE" }),
+			airtableFetch(AirtableDeletedRecordsSchema, { apiKey, baseId }, `${table}?${query}`, { method: "DELETE" }),
 		)
 		return { deleted: result.records.map(r => r.id) }
 	} catch (err) {

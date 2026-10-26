@@ -11,6 +11,7 @@ import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { findRepoFilePath, readRepoFile } from "@/lib/repo-checks"
 import { repoRefFromLink } from "@/lib/repo-ref"
 import { scheduleRepoSync } from "@/lib/repo-sync"
+import { BOM_PATH } from "@/lib/repo-sync-files"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { bomImportSchema } from "@/lib/schemas/project"
 
@@ -50,7 +51,8 @@ async function readRepoBom(repoLink: string | null, limit: number): Promise<Repo
 				"Half Life can only read repos on GitHub or GitLab. This project's repo is on another service, so its parts have to be added by hand.",
 		}
 
-	const path = await findRepoFilePath(repoLink, BOM_CSV_PATTERN)
+	// The sync owns BOM.csv at the repo root. When the maker's own export sits beside it, read that instead: the generated copy can only echo what the platform already holds.
+	const path = await findRepoFilePath(repoLink, BOM_CSV_PATTERN, { avoid: BOM_PATH })
 	if (!path)
 		return {
 			error: "No bom*.csv file was found in the repo. Export one from your design tool and push it, then try again.",

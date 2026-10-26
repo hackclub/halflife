@@ -1,7 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { z } from "zod"
 import { COUNTDOWN_UNITS, countdownParts, pad2 } from "@/lib/site/countdown"
+
+const ScheduleSchema = z.object({
+	programEndsAt: z.string(),
+	weekOpensAt: z.array(z.union([z.number(), z.string()])),
+})
 
 /**
  * The programme's week, as a large plate across the top of the landing page: a countdown before it opens, the running week's number once it has.
@@ -33,11 +39,11 @@ export default function WeekCountdown() {
 			try {
 				const res = await fetch("/api/program", { cache: "no-store" })
 				if (!res.ok) return
-				const body = (await res.json()) as { weekOpensAt?: unknown; programEndsAt?: unknown }
-				if (!live || !Array.isArray(body.weekOpensAt) || typeof body.programEndsAt !== "string") return
+				const parsed = ScheduleSchema.safeParse(await res.json())
+				if (!live || !parsed.success) return
 				setSchedule({
-					endsAt: new Date(body.programEndsAt).getTime(),
-					opens: body.weekOpensAt.map(at => new Date(String(at)).getTime()),
+					endsAt: new Date(parsed.data.programEndsAt).getTime(),
+					opens: parsed.data.weekOpensAt.map(at => new Date(String(at)).getTime()),
 				})
 			} catch {
 				// Offline or the endpoint is down: keep the placeholder.

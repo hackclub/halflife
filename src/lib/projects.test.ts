@@ -3,10 +3,12 @@ import { fmtDate, fmtDay, projectEvents, projectStats, projectWeeks } from "@/li
 import type { Project, Week } from "@/lib/types"
 
 function week(id: number, checkpoints: Week["checkpoints"] = []): Week {
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 	return { checkpoints, id } as Week
 }
 
 function project(weekId: number): Project {
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 	return { weekId } as Project
 }
 
@@ -25,7 +27,9 @@ describe("projectWeeks", () => {
 describe("projectEvents", () => {
 	const weeks = [
 		week(1, [
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 			{ id: "j1", kind: "journal", title: "Log" } as Week["checkpoints"][number],
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 			{ id: "r1", kind: "reel", reelBrief: "Film it", title: "Reel" } as Week["checkpoints"][number],
 		]),
 	]

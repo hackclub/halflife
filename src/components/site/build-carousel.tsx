@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { type CSSProperties, useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import ImageSlot from "@/components/site/image-slot"
 import { BUILD_CARDS } from "@/lib/site/content"
 
@@ -101,8 +101,10 @@ export default function BuildCarousel() {
 
 		const measure = () => {
 			const items = rail.children
-			const head = items[0] as HTMLElement | undefined
-			const wrap = items[BUILD_CARDS.length] as HTMLElement | undefined
+			const [first] = items
+			const head = first instanceof HTMLElement ? first : undefined
+			const wrapCandidate = items[BUILD_CARDS.length]
+			const wrap = wrapCandidate instanceof HTMLElement ? wrapCandidate : undefined
 			if (!head || !wrap) return
 
 			// Measured off rects, not `offsetLeft`. `offsetLeft` is rounded to whole pixels, and one set here is 1490.67 wide: wrapping by 1491 drops a third of a pixel every time round, which on a belt this slow is a visible tick roughly twice a minute.
@@ -241,16 +243,14 @@ export default function BuildCarousel() {
 								className="group relative shrink-0 overflow-hidden bg-hl-blue"
 								key={`${copy}-${card.id}`}
 								role={copy === 0 ? "group" : undefined}
-								style={
-									{
-										// An absolutely positioned child is laid out against the padding box, so the overlay needs the frame's own width to reach back over it. It is a clamp, so it travels as a custom property rather than being written out twice.
-										"--hl-card-frame": CARD_BORDER,
-										aspectRatio: CARD_RATIO,
-										border: `${CARD_BORDER} solid var(--color-hl-yellow-pale)`,
-										borderRadius: CARD_RADIUS,
-										width: CARD_W,
-									} as CSSProperties
-								}
+								style={{
+									// An absolutely positioned child is laid out against the padding box, so the overlay needs the frame's own width to reach back over it. It is a clamp, so it travels as a custom property rather than being written out twice.
+									"--hl-card-frame": CARD_BORDER,
+									aspectRatio: CARD_RATIO,
+									border: `${CARD_BORDER} solid var(--color-hl-yellow-pale)`,
+									borderRadius: CARD_RADIUS,
+									width: CARD_W,
+								}}
 							>
 								<div className="flex h-full w-full flex-col">
 									{/* Contained, never cropped: a build is the thing on show, and the field left around it is the card's own ground rather than a gap – which is how the comp mounts these, each photograph a different size on the same field.

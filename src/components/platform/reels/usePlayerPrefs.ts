@@ -1,22 +1,24 @@
 "use client"
 import { useCallback, useEffect, useState } from "react"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * How this viewer likes the Doomscroller: sound, speed, whether it moves on by itself, and whether the comments stand open beside the reel.
  *
  * Per browser, in localStorage, the way the rest of the ceremony is kept: nobody else ever needs to read it, and a new laptop starting from the defaults is no loss. Every read and write is guarded – a private window or blocked storage just means the defaults, every visit.
  */
+
+export const RATES = [1, 1.5, 2, 0.5] as const
+
 export interface PlayerPrefs {
 	autoScroll: boolean
 	comments: boolean
 	muted: boolean
-	rate: number
+	rate: (typeof RATES)[number]
 }
 
 const KEY = "halflife.player.v1"
 const DEFAULTS: PlayerPrefs = { autoScroll: false, comments: true, muted: false, rate: 1 }
-
-export const RATES = [1, 1.5, 2, 0.5] as const
 
 export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerPrefs>) => void] {
 	const [prefs, setPrefs] = useState<PlayerPrefs>(DEFAULTS)
@@ -26,13 +28,14 @@ export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerP
 		try {
 			const raw = window.localStorage.getItem(KEY)
 			if (!raw) return
-			const saved = JSON.parse(raw) as Partial<PlayerPrefs>
+			const saved: unknown = JSON.parse(raw)
+			if (!isRecord(saved)) return
 			// hydrating from localStorage
 			setPrefs({
 				autoScroll: typeof saved.autoScroll === "boolean" ? saved.autoScroll : DEFAULTS.autoScroll,
 				comments: typeof saved.comments === "boolean" ? saved.comments : DEFAULTS.comments,
 				muted: typeof saved.muted === "boolean" ? saved.muted : DEFAULTS.muted,
-				rate: RATES.includes(saved.rate as (typeof RATES)[number]) ? (saved.rate as number) : DEFAULTS.rate,
+				rate: RATES.find(rate => rate === saved.rate) ?? DEFAULTS.rate,
 			})
 		} catch {
 			/* storage unavailable – the defaults stand */

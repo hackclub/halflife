@@ -1,8 +1,9 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises"
 import path from "node:path"
-import { airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
+import { AirtableCreatedSchema, AirtableListSchema, airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
 import { bufferRsvp, recordDirectSignup } from "@/lib/airtable/rsvp"
 import { rateLimited } from "@/lib/rate-limit"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * Signup capture.
@@ -62,7 +63,7 @@ async function countAirtableRecords(config: { apiKey: string; baseId: string }, 
 		const params = new URLSearchParams({ "fields[]": "email", pageSize: "100" })
 		if (offset) params.set("offset", offset)
 		const data = await withRateLimitRetry("signup-count", () =>
-			airtableFetch<{ records?: unknown[]; offset?: string }>(config, `${table}?${params.toString()}`),
+			airtableFetch(AirtableListSchema, config, `${table}?${params.toString()}`),
 		)
 		count += data.records?.length ?? 0
 		;({ offset } = data)
@@ -117,10 +118,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		let found: { records?: { id?: string; fields?: { [_: string]: unknown } }[] }
 		try {
 			found = await withRateLimitRetry("signup-lookup", () =>
-				airtableFetch<{ records?: { id?: string; fields?: { [_: string]: unknown } }[] }>(
-					config,
-					`${table}?filterByFormula=${filter}&maxRecords=1`,
-				),
+				airtableFetch(AirtableListSchema, config, `${table}?filterByFormula=${filter}&maxRecords=1`),
 			)
 		} catch (err) {
 			console.error(`[signup] Airtable lookup failed: ${err instanceof Error ? err.message : String(err)}`)
@@ -163,7 +161,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			created = await withRateLimitRetry(
 				"signup-create",
 				() =>
-					airtableFetch<{ id?: string }>(config, table, {
+					airtableFetch(AirtableCreatedSchema, config, table, {
 						body: JSON.stringify({
 							fields: {
 								email,
@@ -247,7 +245,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		if (match) {
 			duplicate = true
 			try {
-				referralCode = (JSON.parse(match) as { referralCode?: string }).referralCode ?? ""
+				const parsed: unknown = JSON.parse(match)
+				referralCode = isRecord(parsed) && typeof parsed.referralCode === "string" ? parsed.referralCode : ""
 			} catch {
 				referralCode = ""
 			}

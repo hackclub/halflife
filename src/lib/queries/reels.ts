@@ -86,8 +86,11 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 	const locks = new Map<string, Promise<string | null>>()
 	const lockFor = (projectId: string | null, key: string) => {
 		const k = `${projectId}:${key.replace(/-reel-.*$/, "")}`
-		if (!locks.has(k)) locks.set(k, reelLockReason(userId, projectId, key))
-		return locks.get(k) as Promise<string | null>
+		const existing = locks.get(k)
+		if (existing) return existing
+		const created = reelLockReason(userId, projectId, key)
+		locks.set(k, created)
+		return created
 	}
 
 	const groups = new Map<string, MyReelGroup>()

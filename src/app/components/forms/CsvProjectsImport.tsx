@@ -1,15 +1,33 @@
 "use client"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
+import { z } from "zod"
 import { Button, Callout } from "@/app/components/ui"
 
-interface CsvOutcome {
-	email: string
-	projectId: string
-	reason: string | null
-	status: "imported" | "already_imported" | "failed"
-	title: string
-}
+const CsvOutcomeSchema = z.object({
+	email: z.string(),
+	projectId: z.string(),
+	reason: z.string().nullable(),
+	status: z.enum(["imported", "already_imported", "failed"]),
+	title: z.string(),
+})
+type CsvOutcome = z.infer<typeof CsvOutcomeSchema>
+
+const CsvImportResponseSchema = z.object({
+	alreadyImported: z.number().optional(),
+	error: z
+		.object({
+			details: z
+				.object({ problems: z.array(z.object({ line: z.number(), message: z.string() })).optional() })
+				.optional(),
+			message: z.string().optional(),
+		})
+		.optional(),
+	failed: z.number().optional(),
+	imported: z.number().optional(),
+	outcomes: z.array(CsvOutcomeSchema).optional(),
+	read: z.number().optional(),
+})
 
 interface CsvSummary {
 	alreadyImported: number
@@ -52,25 +70,22 @@ export function CsvProjectsImport() {
 				headers: { "Content-Type": "application/json" },
 				method: "POST",
 			})
-			const payload = (await res.json().catch(() => ({}))) as {
-				read?: number
-				imported?: number
-				alreadyImported?: number
-				failed?: number
-				outcomes?: CsvOutcome[]
-				error?: { message?: string; details?: { problems?: { line: number; message: string }[] } }
-			}
+			const parsed = CsvImportResponseSchema.safeParse(await res.json().catch(() => null))
 			if (!res.ok) {
-				setError(payload.error?.message ?? `Import failed (${res.status})`)
-				setProblems(payload.error?.details?.problems ?? [])
+				setError((parsed.success ? parsed.data.error?.message : undefined) ?? `Import failed (${res.status})`)
+				setProblems((parsed.success ? parsed.data.error?.details?.problems : undefined) ?? [])
+				return
+			}
+			if (!parsed.success) {
+				setError("The server's answer was not in the expected shape")
 				return
 			}
 			setSummary({
-				alreadyImported: payload.alreadyImported ?? 0,
-				failed: payload.failed ?? 0,
-				imported: payload.imported ?? 0,
-				outcomes: payload.outcomes ?? [],
-				read: payload.read ?? 0,
+				alreadyImported: parsed.data.alreadyImported ?? 0,
+				failed: parsed.data.failed ?? 0,
+				imported: parsed.data.imported ?? 0,
+				outcomes: parsed.data.outcomes ?? [],
+				read: parsed.data.read ?? 0,
 			})
 			setFile(null)
 			router.refresh()

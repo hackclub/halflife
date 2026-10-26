@@ -2,6 +2,12 @@ import "server-only"
 import { Kysely, PostgresDialect } from "kysely"
 import { Pool, types } from "pg"
 
+declare global {
+	// Cached on globalThis so Next's dev-mode module reloading does not open a new pool on every edit.
+	// biome-ignore lint/style/useVarsOnTop: a global augmentation has to declare `var`; there is no scope above it to move.
+	var halflifeAuthDb: ReturnType<typeof createClient> | undefined
+}
+
 /**
  * The pool better-auth reads and writes through.
  *
@@ -20,6 +26,9 @@ const TIMESTAMP_OID = 1114
 
 const parseUtcTimestamp = (value: string): Date => new Date(`${value.replace(" ", "T")}Z`)
 
+// pg reads `timestamp without time zone` as local time by default; the schema stores every instant as UTC, so the parser is replaced for this process.
+types.setTypeParser(TIMESTAMP_OID, parseUtcTimestamp)
+
 const createPool = () => {
 	const connectionString = process.env.DATABASE_URL
 	if (!connectionString && process.env.NEXT_PHASE !== "phase-production-build")
@@ -28,12 +37,6 @@ const createPool = () => {
 		connectionString: connectionString ?? BUILD_TIME_DATABASE_URL,
 		idleTimeoutMillis: 300_000,
 		max: 5,
-		types: {
-			getTypeParser: (oid, format) =>
-				(String(oid) === String(TIMESTAMP_OID) ? parseUtcTimestamp : types.getTypeParser(oid, format)) as (
-					value: string,
-				) => unknown,
-		},
 	})
 	// The pool hands a fresh client its first query in order, so the session timezone is set before auth's own statement runs.
 	pool.on("connect", client => {
@@ -54,11 +57,8 @@ const createPool = () => {
 const createClient = () =>
 	new Kysely<{ [_: string]: { [_: string]: unknown } }>({ dialect: new PostgresDialect({ pool: createPool() }) })
 
-// Cached on globalThis so Next's dev-mode module reloading does not open a new pool on every edit.
-const globalForAuthDb = globalThis as unknown as { authDb?: ReturnType<typeof createClient> }
+const authDb = globalThis.halflifeAuthDb ?? createClient()
 
-const authDb = globalForAuthDb.authDb ?? createClient()
-
-if (process.env.NODE_ENV !== "production") globalForAuthDb.authDb = authDb
+if (process.env.NODE_ENV !== "production") globalThis.halflifeAuthDb = authDb
 
 export default authDb
