@@ -717,14 +717,21 @@ export async function findRepoFile(repoLink: string | null, test: RegExp): Promi
  * The shallowest path in the repo whose name matches, or null.
  *
  * The same search `findRepoFile` runs, but returning the path rather than a web link – for callers that mean to read the file's bytes rather than point at it, such as the BOM import. Reads the same cached file list, so calling both for one project costs one fetch.
+ *
+ * `avoid` names a path that is a generated copy rather than a source. The BOM import passes the sync's own `BOM.csv`: with that file in the repo, it is usually the shallowest match, and reading it back can only echo what the platform already holds instead of the maker's own export sitting beside it. It is still returned when it is the only match, because a hand-written `BOM.csv` is a real source.
  */
-export async function findRepoFilePath(repoLink: string | null, test: RegExp): Promise<string | null> {
+export async function findRepoFilePath(
+	repoLink: string | null,
+	test: RegExp,
+	opts: { avoid?: string } = {},
+): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) return null
 	const snap = await snapshot(ref)
 	if (snap.kind !== "ok") return null
 	const hits = snap.files.filter(f => test.test(f)).toSorted((a, b) => a.split("/").length - b.split("/").length)
-	return hits[0] ?? null
+	const preferred = opts.avoid ? hits.find(path => path !== opts.avoid) : undefined
+	return preferred ?? hits[0] ?? null
 }
 
 /**
