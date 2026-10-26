@@ -1,7 +1,7 @@
 import "server-only"
 import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { betterAuth } from "better-auth"
-import { APIError, createAuthMiddleware } from "better-auth/api"
+import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api"
 import { genericOAuth } from "better-auth/plugins"
 import { z } from "zod"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
@@ -187,15 +187,19 @@ export const auth = betterAuth({
 					void markLogin(session.userId)
 					return Promise.resolve()
 				},
-				// A banned member cannot sign in: the session rows are already gone, and a new one must never appear. Returning false refuses the sign-in; the member gets a generic error and the free-text reason stays in the admin record rather than in a browser.
+				// A banned member cannot sign in: the session rows are already gone, and a new one must never appear. The throw carries its own code so the callback route can send them to /banned rather than to better-auth's bare error page; anything that stops the lookup completing is a sign-in refused as well (fail closed).
 				before: async session => {
 					try {
 						const user = await db.orm.public.User.whereUnique({ id: session.userId }).select("bannedAt").first()
 						if (user?.bannedAt) {
 							console.warn(`[auth] refused sign-in for banned account ${redactForLog(session.userId)}`)
-							return false
+							throw new APIError("FORBIDDEN", {
+								code: "ACCOUNT_BANNED",
+								message: "This account has been banned",
+							})
 						}
 					} catch (err) {
+						if (isAPIError(err)) throw err
 						// Fail closed, the same stance the hca-account link takes: a vetting we cannot complete is a sign-in refused.
 						console.error("[auth] ban vetting failed:", err)
 						return false
