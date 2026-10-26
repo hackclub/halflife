@@ -73,6 +73,10 @@
 		"verify:uploads": "bun --conditions=react-server scripts/verify-uploads.ts"
 	},
 	"overrides": {
+		"@hono/node-server": "^2.1.5",
+		"hono": "^4.13.14",
+		"lodash": "^4.18.1",
+		"valibot": "^1.5.0",
 		"zod": "^4.6.7"
 	},
 	"dependencies": {
