@@ -15,7 +15,8 @@ export async function waitForHydration(locator: Locator): Promise<void> {
 		.poll(
 			() =>
 				locator.evaluate((node, prefix) => Object.keys(node).some(key => key.startsWith(prefix)), REACT_PROPS_PREFIX),
-			{ message: "React has not hydrated this element yet" },
+			// A cold `next dev` compiles the page's client bundle on the first request, which can take longer than the suite's default expect timeout. CI runs a built server, so this only ever waits that long on a laptop.
+			{ message: "React has not hydrated this element yet", timeout: 30_000 },
 		)
 		.toBe(true)
 }
