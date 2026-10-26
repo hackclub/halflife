@@ -4,6 +4,17 @@
 # terminate cleanly rather than waiting out the grace period.
 set -eu
 
+echo "[boot] verifying database against contract"
+bunx prisma db verify
+
+# TEMPORARY: remove after the first deploy that signs production. Adopts the
+# database before migrating, so the first Prisma 8 boot writes the contract
+# marker instead of replaying the baseline. `db sign` verifies first and
+# refuses on drift, and reports "already signed" on later boots, so this is
+# safe to run more than once but should not live here permanently.
+echo "[boot] signing database"
+bunx prisma db sign
+
 echo "[boot] applying migrations"
 bunx prisma db migrate
 
