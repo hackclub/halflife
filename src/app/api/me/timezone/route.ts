@@ -1,5 +1,5 @@
 import { fail, ok, parseBody } from "@/lib/api"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
 import { isTimeZone } from "@/lib/program"
 import { timezonePreferenceSchema } from "@/lib/schemas/timezone"
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic"
  *
  * Refused unless the runtime knows the zone: a value that is not a real IANA name would land in the panels as `other` or a mislabelled country, and `isTimeZone` is the same check the calendar and the feed already trust.
  */
-export const PUT = withSession(async (req: Request, { gate }) => {
+export const PUT = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, timezonePreferenceSchema)
 	if (parsed.error) return parsed.error
 	const { timezone } = parsed.data

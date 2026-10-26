@@ -2,7 +2,7 @@ import { after } from "next/server"
 import { markProjectCreated } from "@/lib/analytics"
 import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { withSession } from "@/lib/guards"
+import { withSession, withWriteSession } from "@/lib/guards"
 import { getOnboardingState, submitStep } from "@/lib/onboarding"
 import { toOnboardingView } from "@/lib/onboarding-view"
 import { assertWeekStarted } from "@/lib/program"
@@ -15,7 +15,7 @@ export const GET = withSession(async (_req: Request, { gate }) =>
 	ok({ onboarding: toOnboardingView(await getOnboardingState(gate.user.id)) }),
 )
 
-export const POST = withSession(async (req: Request, { gate }) => {
+export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, onboardingStepSchema)
 	if (parsed.error) return parsed.error
 

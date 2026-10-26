@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -11,7 +11,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const PATCH = withPermission(
+export const PATCH = withWritePermission(
 	Permission.MANAGE_SHOP,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -73,7 +73,7 @@ export const PATCH = withPermission(
 /**
  * Retire, never delete: orders reference the item forever, and "retired" is a different concept from "deleted".
  */
-export const DELETE = withPermission(
+export const DELETE = withWritePermission(
 	Permission.MANAGE_SHOP,
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

@@ -1,7 +1,7 @@
 import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { hidePost, restorePost } from "@/lib/feed"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { moderatePostSchema } from "@/lib/schemas/feed"
 
@@ -12,7 +12,7 @@ interface Params {
 }
 
 /** Hide a reel. */
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.MANAGE_FEED,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -36,7 +36,7 @@ export const POST = withPermission(
 )
 
 /** Put it back. */
-export const DELETE = withPermission(
+export const DELETE = withWritePermission(
 	Permission.MANAGE_FEED,
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

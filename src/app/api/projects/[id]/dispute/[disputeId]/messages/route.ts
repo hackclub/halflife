@@ -2,7 +2,7 @@ import { and } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { projectDisplayTitle } from "@/lib/config/program"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
 import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
@@ -17,7 +17,7 @@ interface Params {
  *
  * Scoped through the project so one maker's dispute id cannot be written to from another's session. A reply pings staff the same way the original dispute did, so a maker answering a reviewer's question is not left waiting on a channel nobody is reading.
  */
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { disputeId, id } = await params
 
 	const parsed = await parseBody(req, disputeMessageSchema)

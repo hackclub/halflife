@@ -1,5 +1,5 @@
 import { fail, ok, parseBody } from "@/lib/api"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
 import { shopRegionPreferenceSchema } from "@/lib/schemas/shop"
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 /**
  * Which region's prices a participant's shop shows. Null is base pricing; a region id that is unknown or deactivated is refused, so a saved preference can never point at prices that do not exist.
  */
-export const PUT = withSession(async (req: Request, { gate }) => {
+export const PUT = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, shopRegionPreferenceSchema)
 	if (parsed.error) return parsed.error
 	const { regionId } = parsed.data

@@ -2,7 +2,7 @@ import type { Models } from "@/app/generated/prisma8/contract.d"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { Theme } from "@/lib/enums"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { projectExtensionSchema } from "@/lib/schemas/admin"
@@ -15,7 +15,7 @@ interface Params {
 /**
  * One project's extension and/or theme. The extension reopens that project alone – its passed weeks take journal entries again, and it can be submitted past a global close – where the user-level one on /api/admin/users/[id] covers everything they own. The theme move re-files a project (warm-up to week 1, say) without touching its review state.
  */
-export const PATCH = withPermission(
+export const PATCH = withWritePermission(
 	Permission.MANAGE_PROGRAM,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

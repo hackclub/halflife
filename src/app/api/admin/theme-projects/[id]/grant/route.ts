@@ -1,6 +1,6 @@
 import { ok, parseBody } from "@/lib/api"
 import { sendGrant } from "@/lib/grants"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { grantSchema } from "@/lib/schemas/admin"
 
@@ -15,7 +15,7 @@ export const maxDuration = 60
  *
  * A payout is a MANAGE_CREDIT action, not a review one: a reviewer decides what a project is worth, and granting the money is deliberately a different permission. Idempotent per (user, project, design) in lib/grants.
  */
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.MANAGE_CREDIT,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

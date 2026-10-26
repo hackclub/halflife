@@ -3,7 +3,7 @@ import { z } from "zod"
 import { fail, ok, parseBody } from "@/lib/api"
 import { getThemeDef, themeForDesignWeek } from "@/lib/config/program"
 import { HoursSource, Phase } from "@/lib/enums"
-import { withSession } from "@/lib/guards"
+import { withSession, withWriteSession } from "@/lib/guards"
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import db from "@/lib/prisma8"
@@ -105,7 +105,7 @@ const createSchema = z.object({ weekId: z.number().int().min(1).max(10) }).stric
 /**
  * Create the project for a design week – called when its "create a project" checkpoint is opened, which is the only moment a project row is made (see lib/provisioning). Opening it again returns the same row.
  */
-export const POST = withSession(async (req: Request, { gate }) => {
+export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, createSchema)
 	if (parsed.error) return parsed.error
 

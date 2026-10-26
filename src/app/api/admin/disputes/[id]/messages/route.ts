@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { notifyDisputeReply } from "@/lib/notifications"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -16,7 +16,7 @@ interface Params {
  *
  * The maker is told a reply exists, not the whole thread: the project page is the record. Replying does not close the dispute; a reviewer closes it or sends it back when they are done.
  */
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.REVIEW_SUBMISSIONS,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

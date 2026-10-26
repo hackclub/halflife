@@ -1,5 +1,5 @@
 import { ok, parseBody } from "@/lib/api"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { updatePrinterAwardStatus } from "@/lib/printer"
 import { printerAwardUpdateSchema } from "@/lib/schemas/admin"
@@ -13,7 +13,7 @@ interface Params {
  *
  * FULFILL_ORDERS, not MANAGE_PROGRAM: shipping a printer is the same job as shipping a shop order, and the role that does one does the other. The transition rules and the audit row live in `updatePrinterAwardStatus`.
  */
-export const PATCH = withPermission(
+export const PATCH = withWritePermission(
 	Permission.FULFILL_ORDERS,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

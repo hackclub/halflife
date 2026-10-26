@@ -4,7 +4,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { lockUserCredit } from "@/lib/currency"
 import { Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { withPermission } from "@/lib/guards"
+import { withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
@@ -18,7 +18,7 @@ import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
  *
  * These numbers feed `getHoursBreakdown` and therefore the payout, so the route is scoped to work actually awaiting review: every entry must belong to a phase that is `in_review`, and another reviewer's live claim refuses the whole batch. Without that, a REVIEW_HOURS holder could rewrite accepted hours on a draft project or after a decision, which a later un-approve/re-approve cycle would then pay against.
  */
-export const POST = withPermission(Permission.REVIEW_HOURS, async (req: Request, { gate }) => {
+export const POST = withWritePermission(Permission.REVIEW_HOURS, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, hoursDecisionSchema)
 	if (parsed.error) return parsed.error
 

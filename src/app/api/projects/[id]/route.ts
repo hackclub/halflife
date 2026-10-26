@@ -6,7 +6,7 @@ import { starterProjectsFor } from "@/lib/config/onboarding"
 import { getThemeDef } from "@/lib/config/program"
 import { Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
 import db from "@/lib/prisma8"
 import {
@@ -119,7 +119,7 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	})
 })
 
-export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const PATCH = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, projectUpdateSchema)
@@ -218,7 +218,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 /**
  * Delete a project: a soft delete, so the row and its record stay for audit and every read that filters on `deletedAt` stops seeing it. What may be deleted is `deleteBlockReason`'s call, shared with the page.
  */
-export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+export const DELETE = withWriteSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })

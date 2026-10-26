@@ -5,7 +5,7 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { WARMUP_THEME } from "@/lib/config/program"
 import { Phase } from "@/lib/enums"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import { createWarmupProject } from "@/lib/provisioning"
 import { boundedText, phaseSchema } from "@/lib/schemas/common"
 import { projectRepoUrl } from "@/lib/schemas/project"
@@ -31,7 +31,7 @@ const createSchema = z
  *
  * Everything after this is the ordinary flow: journal against it, then hand it in once, as the phase chosen here.
  */
-export const POST = withSession(async (req: Request, { gate }) => {
+export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, createSchema)
 	if (parsed.error) return parsed.error
 	const { data } = parsed

@@ -3,7 +3,7 @@ import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
 import { bomData, bomLockReason, listBom } from "@/lib/bom"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { scheduleRepoSync } from "@/lib/repo-sync"
@@ -34,7 +34,7 @@ async function guard(userId: string, id: string, itemId: string) {
 	return { item }
 }
 
-export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const PATCH = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, itemId } = await params
 
 	const parsed = await parseBody(req, bomItemUpdateSchema)
@@ -67,7 +67,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	return ok({ items: await listBom(id) })
 })
 
-export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+export const DELETE = withWriteSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, itemId } = await params
 
 	const g = await guard(gate.user.id, id, itemId)

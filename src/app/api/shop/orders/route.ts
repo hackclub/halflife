@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { withSession } from "@/lib/guards"
+import { withSession, withWriteSession } from "@/lib/guards"
 import { decodeCursor, encodeCursor, paginationQuery } from "@/lib/pagination"
 import db from "@/lib/prisma8"
 import { purchaseSchema } from "@/lib/schemas/shop"
@@ -37,7 +37,7 @@ export const GET = withSession(async (req: NextRequest, { gate }) => {
 	})
 })
 
-export const POST = withSession(async (req: Request, { gate }) => {
+export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, purchaseSchema)
 	if (parsed.error) return parsed.error
 

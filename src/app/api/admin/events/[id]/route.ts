@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { programEventUpdateSchema } from "@/lib/schemas/admin"
@@ -15,7 +15,7 @@ interface Params {
  *
  * The path is a single occurrence even when the row is one of ten, and that is the intent: a series is edited a week at a time, since that is the edit that gets made. `endsAt: null` clears a published end time rather than leaving it, because an admin removing an end time means to remove it.
  */
-export const PATCH = withPermission(
+export const PATCH = withWritePermission(
 	Permission.MANAGE_PROGRAM,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -79,7 +79,7 @@ export const PATCH = withPermission(
  *
  * Delete rather than unpublish, because the two mean different things: unpublish hides an event that is still true, while this is the way a mistakenly-created series is undone. The audit row keeps the before, so what was removed is still answerable afterwards.
  */
-export const DELETE = withPermission(
+export const DELETE = withWritePermission(
 	Permission.MANAGE_PROGRAM,
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

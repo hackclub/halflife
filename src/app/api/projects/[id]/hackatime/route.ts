@@ -5,7 +5,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
 import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { fetchProjectSeconds, phaseWeekWindow } from "@/lib/hackatime"
 import { warmLinkSpans } from "@/lib/hours"
 import { statusFor } from "@/lib/phase"
@@ -42,7 +42,7 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	})
 })
 
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, hackatimeLinkSchema)

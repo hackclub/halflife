@@ -2,7 +2,7 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
@@ -20,7 +20,7 @@ export const maxDuration = 60
  *
  * Sending writes an ARI_SYNC_SUCCESS/FAILURE audit row through trackSideEffect, so a replay is as visible as the original attempt.
  */
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.MANAGE_PROGRAM,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

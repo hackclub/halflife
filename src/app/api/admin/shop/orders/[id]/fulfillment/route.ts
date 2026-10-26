@@ -1,7 +1,7 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { FULFILLMENT_ORDER_STATUSES, fulfillmentStageOf } from "@/lib/queries/admin"
@@ -15,7 +15,7 @@ interface Params {
 /**
  * Mark how an order ships and how far it has got. Bookkeeping only: it moves no coins and does not touch the order's approve/reject status.
  */
-export const PATCH = withPermission(
+export const PATCH = withWritePermission(
 	Permission.FULFILL_ORDERS,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
