@@ -41,15 +41,23 @@ async function resolve(): Promise<{ user: SessionUser; roles: Role[]; penalty: P
 	}
 }
 
-export async function requireSession(): Promise<Guard> {
+/**
+ * Resolve the caller, then refuse a banned account outright.
+ *
+ * A suspension is read-only, so the read guards below still answer a suspended member. A ban is not: its sessions are revoked, and this check is what makes the refusal hold even for a cookie cache still answering in that window, or if the session rows outlived a failed revoke. Every guard goes through here, so no route can be left reachable by being guarded with the wrong predicate.
+ */
+async function resolveAllowed(): Promise<Guard> {
 	const ctx = await resolve()
 	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
+	if (ctx.penalty === "banned") return { error: fail("ACCOUNT_BANNED", "Your account has been banned") }
 	return ctx
 }
 
+export const requireSession = resolveAllowed
+
 export async function requirePermission(permission: Permission): Promise<Guard> {
-	const ctx = await resolve()
-	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
+	const ctx = await resolveAllowed()
+	if (ctx.error) return ctx
 	if (!hasPermission(ctx.roles, permission))
 		return { error: fail("FORBIDDEN", `Requires the ${permission} permission`) }
 
@@ -57,17 +65,16 @@ export async function requirePermission(permission: Permission): Promise<Guard> 
 }
 
 export async function requireRole(role: Role): Promise<Guard> {
-	const ctx = await resolve()
-	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
+	const ctx = await resolveAllowed()
+	if (ctx.error) return ctx
 	if (!hasRole(ctx.roles, role)) return { error: fail("FORBIDDEN", `Requires the ${role} role`) }
 
 	return ctx
 }
 
 export async function requireActiveSession(): Promise<Guard> {
-	const ctx = await resolve()
-	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
-	if (ctx.penalty === "banned") return { error: fail("ACCOUNT_BANNED", "Your account has been banned") }
+	const ctx = await resolveAllowed()
+	if (ctx.error) return ctx
 	if (ctx.penalty === "suspended") return { error: fail("ACCOUNT_SUSPENDED", "Your account is suspended") }
 	return ctx
 }

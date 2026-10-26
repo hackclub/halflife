@@ -181,7 +181,8 @@ export const penaltySchema = z.discriminatedUnion("action", [
 		.object({
 			action: z.literal("SUSPEND"),
 			reason: boundedText(1000, 1),
-			until: requiredInstant,
+			// A suspension already over when it is written is a no-op the admin sees as "no penalty on record"; refusing it is clearer than storing a stale row.
+			until: requiredInstant.refine(until => until.getTime() > Date.now(), "Pick a suspension end in the future"),
 		})
 		.strict(),
 	z

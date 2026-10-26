@@ -28,6 +28,9 @@ export function PenaltyCard({ url, ...onRecord }: Readonly<PenaltySnapshot & { u
 	const [hideContent, setHideContent] = useState(true)
 	const [restoreContent, setRestoreContent] = useState(true)
 
+	// The reason on the row belongs to whichever penalty is on. An expired suspension keeps its own reason until cleared, so reading it on "no penalty" would show a note with nothing behind it.
+	const activeReason = onRecord.banned ? onRecord.banReason : onRecord.suspended ? onRecord.suspensionReason : null
+
 	function apply(action: string, extra?: object) {
 		void run(action, () => sendJson(url, { body: { action, ...extra }, method: "POST" }))
 	}
@@ -43,22 +46,22 @@ export function PenaltyCard({ url, ...onRecord }: Readonly<PenaltySnapshot & { u
 
 	return (
 		<div className="hl-stack hl-stack--tight">
-			<p className="hl-hint" style={{ margin: 0 }}>
+			<p className="hl-hint" style={{ margin: 0 }} suppressHydrationWarning>
 				{onRecord.banned
 					? `Banned since ${new Date(onRecord.bannedAt ?? "").toLocaleString()}`
 					: onRecord.suspended && onRecord.suspendedUntil
 						? `Suspended until ${new Date(onRecord.suspendedUntil).toLocaleString()}`
 						: "No penalty on record"}
 			</p>
-			{!onRecord.banReason && !onRecord.suspensionReason ? null : (
+			{activeReason ? (
 				<p className="hl-hint" style={{ margin: 0 }}>
-					Reason: {onRecord.banReason ?? onRecord.suspensionReason}
+					Reason: {activeReason}
 				</p>
-			)}
+			) : null}
 
 			{onRecord.banned ? (
 				<div className="hl-row">
-					<Button disabled={busy === "UNBAN"} onClick={() => apply("UNBAN", { restoreContent })} type="button">
+					<Button disabled={busy !== null} onClick={() => apply("UNBAN", { restoreContent })} type="button">
 						Lift ban
 					</Button>
 					{onRecord.rollbackContentHidden ? (
@@ -69,7 +72,7 @@ export function PenaltyCard({ url, ...onRecord }: Readonly<PenaltySnapshot & { u
 					) : null}
 				</div>
 			) : onRecord.suspended ? (
-				<Button disabled={busy === "UNSUSPEND"} onClick={() => apply("UNSUSPEND")} type="button">
+				<Button disabled={busy !== null} onClick={() => apply("UNSUSPEND")} type="button">
 					Lift suspension
 				</Button>
 			) : null}
