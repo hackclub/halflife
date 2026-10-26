@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Plus_Jakarta_Sans, Shantell_Sans } from "next/font/google"
 import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
 import { SketchDefs } from "@/components/platform/art"
+import { PromoBootScript } from "@/components/promo/PromoBootScript"
 import "./globals.css"
 
 /**
@@ -40,6 +41,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 		<html className={`${jakarta.variable} ${hand.variable}`} lang="en">
 			<head>
 				<PlausibleAnalytics />
+				<PromoBootScript />
 			</head>
 			<body>
 				<SketchDefs />

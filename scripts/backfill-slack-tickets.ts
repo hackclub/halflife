@@ -1,5 +1,4 @@
-import "dotenv/config"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 import { backfillHelpTickets } from "../src/lib/site/ticket-store"
 
 /**
@@ -11,13 +10,13 @@ if (!channel) {
 	process.exit(1)
 }
 
-backfillHelpTickets(channel)
-	.then(result => {
-		console.log("help tickets backfilled:", result)
-		if (!result.exhausted) console.warn("channel history was not fully walked; run again to continue")
-	})
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	const result = await backfillHelpTickets(channel)
+	console.log("help tickets backfilled:", result)
+	if (!result.exhausted) console.warn("channel history was not fully walked; run again to continue")
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await db.close()
+}

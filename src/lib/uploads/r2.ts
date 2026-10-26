@@ -92,9 +92,7 @@ function hasWebmVideoTrack(bytes: Uint8Array): boolean {
 }
 
 /**
- * A MIME type and filename are only claims. These are the container signatures
- * for the video formats the app accepts, so a renamed image or text file cannot
- * become a reel by lying about its extension.
+ * A MIME type and filename are only claims. These are the container signatures for the video formats the app accepts, so a renamed image or text file cannot become a reel by lying about its extension.
  */
 export function isVideoBytes(bytes: Uint8Array): boolean {
 	if (bytes.length < 12) return false
@@ -269,6 +267,102 @@ export async function putObject(key: string, body: Buffer, contentType: string):
 		const s3 = await client()
 		await s3.write(key, body, { type: contentType })
 	} catch (err) {
+		throw asConfigError(err)
+	}
+}
+
+/**
+ * How long a presigned upload URL is good for.
+ *
+ * Long enough for a phone to find its file and start sending, short enough that a URL copied out of a devtools panel is not a standing invitation to write into someone's folder. The bytes do not have to arrive within the window once the PUT has started.
+ */
+export const PRESIGN_TTL_SECONDS = 300
+
+export interface PresignedUpload {
+	expiresAt: Date
+	objectKey: string
+	uploadUrl: string
+}
+
+/**
+ * A URL that lets the browser PUT one object straight into the bucket.
+ *
+ * Every upload used to travel through this app first, and Cloudflare gives an origin about 100 seconds to answer. A reel is 14 MiB at the median here, which is already past that budget on a school uplink – so the edge returns 524 while the origin is still reading the body. A signed URL moves the transfer to R2, where no such timer exists, and leaves the origin free to serve pages.
+ *
+ * The key is minted by the caller from the session's own user id, so a URL can only ever write inside that user's prefix. What the URL cannot do is bound the size or pin the type: R2 accepts any Content-Type on a presigned PUT (measured - the signed value is not enforced), so `/confirm` checks the stored type and the real size afterwards and deletes anything that fails.
+ */
+export async function presignUpload(key: string, contentType: string): Promise<PresignedUpload> {
+	if (!isUploadConfigured()) throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
+	try {
+		const s3 = await client()
+		const uploadUrl = s3.presign(key, { expiresIn: PRESIGN_TTL_SECONDS, method: "PUT", type: contentType })
+		return { expiresAt: new Date(Date.now() + PRESIGN_TTL_SECONDS * 1000), objectKey: key, uploadUrl }
+	} catch (err) {
+		throw asConfigError(err)
+	}
+}
+
+export interface StoredObjectStat {
+	size: number
+	type: string | null
+}
+
+function isMissingObject(err: unknown): boolean {
+	const details = err as { code?: string; status?: number; statusCode?: number }
+	return details.code === "NoSuchKey" || details.code === "NotFound" || (details.status ?? details.statusCode) === 404
+}
+
+/**
+ * What actually landed in the bucket.
+ *
+ * Deliberately the bucket's answer rather than the client's: with a direct upload the size and type are claims until this asks. A missing object is a user-facing failure – the browser thought it had sent something, or the URL expired first – not a deployment fault.
+ */
+export async function statObject(key: string): Promise<StoredObjectStat> {
+	try {
+		const s3 = await client()
+		const stat = await s3.stat(key)
+		return { size: stat.size, type: stat.type || null }
+	} catch (err) {
+		if (isMissingObject(err))
+			throw new HttpError("VALIDATION_FAILED", "That upload did not arrive. Try sending it again.")
+		throw asConfigError(err)
+	}
+}
+
+/** The first `bytes` of an object, fetched with a Range request so a video's header does not cost a whole reel. */
+export async function readObjectHead(key: string, bytes: number): Promise<Buffer> {
+	try {
+		const s3 = await client()
+		return Buffer.from(await s3.file(key).slice(0, bytes).arrayBuffer())
+	} catch (err) {
+		if (isMissingObject(err))
+			throw new HttpError("VALIDATION_FAILED", "That upload did not arrive. Try sending it again.")
+		throw asConfigError(err)
+	}
+}
+
+/**
+ * Every byte of an object, hashed as it arrives.
+ *
+ * Pictures are named after their hash (see `contentHash`), which is what makes re-picking one idempotent and stops a single picture counting twice in the journal. A direct upload cannot hash the bytes before they are stored, so the client sends the hash it named the key with and this checks it against the bytes that actually landed. The first chunk comes back too, for the format sniff.
+ */
+export async function hashObject(key: string): Promise<{ head: Buffer; sha256: string }> {
+	try {
+		const s3 = await client()
+		const reader = s3.file(key).stream().getReader()
+		const hash = createHash("sha256")
+		let head = Buffer.alloc(0)
+		for (;;) {
+			const { done, value } = await reader.read()
+			if (done) break
+			const chunk = Buffer.from(value)
+			hash.update(chunk)
+			if (head.length < 4096) head = Buffer.concat([head, chunk.subarray(0, 4096 - head.length)])
+		}
+		return { head, sha256: hash.digest("hex") }
+	} catch (err) {
+		if (isMissingObject(err))
+			throw new HttpError("VALIDATION_FAILED", "That upload did not arrive. Try sending it again.")
 		throw asConfigError(err)
 	}
 }

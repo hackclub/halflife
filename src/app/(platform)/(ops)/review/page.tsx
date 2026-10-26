@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
-import { Phase } from "@/app/generated/prisma/enums"
+import { Phase } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { getReviewQueue } from "@/lib/queries/review"
@@ -58,8 +58,7 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 								</td>
 								<td>
 									{item.phase.toLowerCase()}
-									{/* A warm-up submission was recorded before the season, so
-                      its "week" is 0 and saying so would only confuse. */}
+									{/* A warm-up submission was recorded before the season, so its "week" is 0 and saying so would only confuse. */}
 									{!item.onTime && item.submittedInWeek !== null && item.submittedInWeek > 0 ? (
 										<div className="hl-hint">submitted week {item.submittedInWeek}</div>
 									) : null}

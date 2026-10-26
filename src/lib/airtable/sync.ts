@@ -1,5 +1,5 @@
 import "server-only"
-import { Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
+import { or } from "@prisma/orm-postgres/orm-client"
 import { getAirtableConfig } from "@/lib/airtable/client"
 import { existingColumns } from "@/lib/airtable/field-probe"
 import { justificationValues, timelapseLinks } from "@/lib/airtable/justification"
@@ -7,16 +7,18 @@ import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUB
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
+import { Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
 import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"
 import { statusFor } from "@/lib/phase"
 import { decryptUserPII } from "@/lib/pii"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { findRepoFile } from "@/lib/repo-checks"
 import { repoRefFromLink } from "@/lib/repo-ref"
+import { parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -31,12 +33,11 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  * Kept in the audit row each successful write leaves (see trackSideEffect), because the table has no column of ours to find the row by. A later "removed" entry means the row was deleted on unsubmit, so the next submission starts a fresh one.
  */
 async function lastRecordId(themeProjectId: string, phase: Phase): Promise<string | null> {
-	const rows = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true },
-		take: 50,
-		where: { action: "AIRTABLE_SYNC_SUCCESS", targetId: themeProjectId },
-	})
+	const rows = await db.orm.public.AuditLog.where({ action: "AIRTABLE_SYNC_SUCCESS", targetId: themeProjectId })
+		.orderBy(entry => entry.createdAt.desc())
+		.limit(50)
+		.select("metadata")
+		.all()
 	for (const row of rows) {
 		const meta = row.metadata as { phase?: string; recordId?: string; removed?: boolean } | null
 		if (meta?.phase !== phase) continue
@@ -103,12 +104,7 @@ export function projectWeekLabel(week: number): string | null {
 /**
  * A zero-width stamp appended to an override value.
  *
- * The poller compares values to decide whether a field changed, and the
- * dispatcher's override strategy then always sends whatever is in the envelope.
- * A decision on the same project, or two decisions that name the same week,
- * would otherwise write the same value the field already holds and be invisible
- * to the poller. The stamp changes the source value without changing what the
- * email renders.
+ * The poller compares values to decide whether a field changed, and the dispatcher's override strategy then always sends whatever is in the envelope. A decision on the same project, or two decisions that name the same week, would otherwise write the same value the field already holds and be invisible to the poller. The stamp changes the source value without changing what the email renders.
  */
 const ZERO_WIDTH = ["\u200B", "\u200C", "\u200D", "\u2060"]
 
@@ -125,9 +121,7 @@ function overrideStamp(value: string): string {
 /**
  * The two values a decision puts on its row's override columns.
  *
- * Exported so the field names and the week label can be checked without a
- * database or an Airtable call: a typo in either name is the difference
- * between email-tools recognising the field and ignoring it.
+ * Exported so the field names and the week label can be checked without a database or an Airtable call: a typo in either name is the difference between email-tools recognising the field and ignoring it.
  */
 export function reviewOverrideValues(title: string, week: number | null): { [_: string]: string } {
 	return {
@@ -138,30 +132,22 @@ export function reviewOverrideValues(title: string, week: number | null): { [_: 
 
 /** The fields for this submission, exactly as the table names them. */
 async function fieldsFor(themeProjectId: string, phase: Phase) {
-	const project = await prisma.themeProject.findUnique({
-		include: {
-			bomItems: { select: { name: true, purpose: true, quantity: true, unitCostUsd: true } },
-			hackatimeLinks: { select: { hackatimeProject: true }, where: { phase } },
-			workSessions: {
-				orderBy: { createdAt: "asc" },
-				select: {
-					content: true,
-					createdAt: true,
-					effectiveDate: true,
-					hoursClaimed: true,
-					timelapses: { select: { externalId: true, objectKey: true, playbackUrl: true, provider: true } },
-					title: true,
-				},
-				where: { deletedAt: null, phase },
-			},
-		},
-		where: { id: themeProjectId },
-	})
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+		.include("bomItems", items => items.select("name", "purpose", "quantity", "unitCostUsd"))
+		.include("hackatimeLinks", links => links.where({ phase }).select("hackatimeProject"))
+		.include("workSessions", sessions =>
+			sessions
+				.where({ deletedAt: null, phase })
+				.orderBy(session => session.createdAt.asc())
+				.select("content", "createdAt", "effectiveDate", "hoursClaimed", "title")
+				.include("timelapses", timelapse => timelapse.select("externalId", "objectKey", "playbackUrl", "provider")),
+		)
+		.first()
 	if (!project) return null
 
 	// Fresh from HCA, so the address a grant ships to is the one on file today rather than the one from whenever they last signed in.
 	await syncHcaProfile(project.userId)
-	const user = await prisma.user.findUniqueOrThrow({ where: { id: project.userId } })
+	const user = await db.orm.public.User.whereUnique({ id: project.userId }).firstOrThrow()
 	const pii = decryptUserPII(user)
 
 	const week = scheduledWeekFor(project.theme, phase)
@@ -173,15 +159,14 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	// A design is judged from its repo; a build from the video of it working – the closing reel the submit sheet asks for, posted under this week's key.
 	let playableUrl = project.githubRepo ?? ""
 	if (phase === Phase.BUILD) {
-		const demo = await prisma.post.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { objectKey: true },
-			where: {
-				checkpointKey: `w${week}-reel-submission`,
-				deletedAt: null,
-				userId: project.userId,
-			},
+		const demo = await db.orm.public.Post.where({
+			checkpointKey: `w${week}-reel-submission`,
+			deletedAt: null,
+			userId: project.userId,
 		})
+			.orderBy(post => post.createdAt.desc())
+			.select("objectKey")
+			.first()
 		playableUrl = publicUrlFor(demo?.objectKey ?? null) ?? playableUrl
 	}
 
@@ -199,7 +184,10 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 			hackatimeProjects: project.hackatimeLinks.map(l => l.hackatimeProject),
 			hackatimeUserId: user.hackatimeUserId,
 			lapseLinks,
-			workSessions: project.workSessions,
+			workSessions: project.workSessions.map(session => ({
+				...session,
+				createdAt: parseDbTimestamp(session.createdAt),
+			})),
 		},
 		{ eventStart: settings.eventStartDate, phase, theme: project.theme },
 	)
@@ -246,20 +234,16 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 /**
  * Serialize the adopt-or-create decision for one (project, phase).
  *
- * The record id is only known from an audit row written after a successful write, so two callers can arrive before either row exists – the submit `after` hook and the hourly retry job, or an admin's Retry button racing either. Both read "no row yet", both find nothing to adopt, and both POST a
- * new "Pending Review" row into the payout sink. Postgres serializes them
- * here: the loser runs its lookup after the winner's row exists and adopts it instead of creating a second.
+ * The record id is only known from an audit row written after a successful write, so two callers can arrive before either row exists – the submit `after` hook and the hourly retry job, or an admin's Retry button racing either. Both read "no row yet", both find nothing to adopt, and both POST a new "Pending Review" row into the payout sink. Postgres serializes them here: the loser runs its lookup after the winner's row exists and adopts it instead of creating a second.
  *
  * An advisory xact lock releases with the transaction. The work inside is HTTP, so the transaction gets a generous timeout rather than the default 5 seconds, which would release the lock in the middle of Airtable's own retry backoff.
  */
 function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
-	return prisma.$transaction(
-		async tx => {
-			await lockKey(tx, `ysws:${themeProjectId}:${phase}`)
-			return fn()
-		},
-		{ maxWait: 30_000, timeout: 120_000 },
-	)
+	// P8 transactions take no timeout options; the lock releases with the transaction either way.
+	return db.transaction(async tx => {
+		await lockKey(tx, `ysws:${themeProjectId}:${phase}`)
+		return fn()
+	})
 }
 
 /**
@@ -279,67 +263,55 @@ export async function syncSubmissionToYsws(
 }
 
 /**
- * Move a submission's row on to the decision Ari just reached: the status Loops
- * triggers on, the reviewer's note the email quotes, and the project and week
- * that decision is about.
+ * Move a submission's row on to the decision Ari just reached: the status Loops triggers on, the reviewer's note the email quotes, and the project and week that decision is about.
  *
- * The email-tools poller only forwards a `Loops - …` field when the value on
- * that row changed. The row's `Loops - halfLifeProjectName` and
- * `Loops - halfLifeProjectWeek` are written at submit and never change on a
- * decision, so the poller never re-sends them; the contact keeps whatever was
- * submitted most recently. The `Loops - Override - …` columns are separate
- * fields, so writing them here is a change the poller forwards, and email-tools
- * maps them onto the same contact property with its override strategy. The
- * status trigger and the project it names then arrive in one contact update.
+ * The email-tools poller only forwards a `Loops - …` field when the value on that row changed. The row's `Loops - halfLifeProjectName` and `Loops - halfLifeProjectWeek` are written at submit and never change on a decision, so the poller never re-sends them; the contact keeps whatever was submitted most recently. The `Loops - Override - …` columns are separate fields, so writing them here is a change the poller forwards, and email-tools maps them onto the same contact property with its override strategy. The status trigger and the project it names then arrive in one contact update.
  *
- * Half Life writes the row as "Pending Review" and reviewers work from
- * ari.hackclub.com, but a decision there changes nothing in the base – without
- * this the status sits at "Pending Review" forever and the note is never
- * written (see YSWS_REVIEW_STATUS in lib/airtable/schema).
+ * Half Life writes the row as "Pending Review" and reviewers work from ari.hackclub.com, but a decision there changes nothing in the base – without this the status sits at "Pending Review" forever and the note is never written (see YSWS_REVIEW_STATUS in lib/airtable/schema).
  *
- * Best-effort, and only ever after the fact: the review is already committed in
- * Postgres by the time this runs, so a base that is briefly unreachable must not
- * throw and turn a decided submission into one Ari redelivers. No row is not a
- * failure either – a submission written before this sync existed has no record
- * id, and one taken back has none any more.
+ * Best-effort, and only ever after the fact: the review is already committed in Postgres by the time this runs, so a base that is briefly unreachable must not throw and turn a decided submission into one Ari redelivers. No row is not a failure either – a submission written before this sync existed has no record id, and one taken back has none any more.
  *
- * The status and note are written together with the overrides in the ordinary
- * case. If that request is refused, the fallback keeps the status load-bearing:
- * status + overrides, then status alone, then the note. Each failure is named.
+ * The status, note, first-pass reviewer and overrides are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides, then status alone, then the note and the reviewer. Each failure is named.
+ *
+ * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the decision (the first of Ari's two passes). Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
  */
 export async function syncReviewDecisionToYsws(
 	themeProjectId: string,
 	phase: Phase,
 	status: string,
 	note: string | null,
-): Promise<{ updated: boolean; reason?: string; noteFailed?: string }> {
+	reviewerEmail?: string | null,
+): Promise<{ updated: boolean; reason?: string; noteFailed?: string; reviewerFailed?: string }> {
 	const settings = await getProgramSettings()
 	if (!settings.airtableSyncEnabled) return { reason: "sync_disabled", updated: false }
 	// The id lives in the audit row each successful write left (see lastRecordId), not in a column of ours.
 	const recordId = await lastRecordId(themeProjectId, phase)
 	if (!recordId) return { reason: "no_row", updated: false }
 
-	const { reviewStatus, reviewerNotes } = YSWS_SUBMISSION.fields
+	const { pass1Reviewer, reviewStatus, reviewerNotes } = YSWS_SUBMISSION.fields
 	const statusField = { [fieldKey(reviewStatus)]: status }
 	const noteField = { [fieldKey(reviewerNotes)]: note ?? "" }
+	// Undefined leaves the column alone, for a caller that only knows about the status (the older review backfill). Null clears it, for a decision that no longer stands.
+	const reviewerField = reviewerEmail === undefined ? null : { [fieldKey(pass1Reviewer)]: reviewerEmail ?? "" }
 
-	// The override columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
+	// The override and reviewer columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
 	const overrides: { [_: string]: unknown } = {}
+	let reviewerWritable = false
 	const config = getAirtableConfig()
 	if (config)
 		try {
-			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, Object.values(LOOPS_REVIEW_OVERRIDE))
+			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, [
+				...Object.values(LOOPS_REVIEW_OVERRIDE),
+				pass1Reviewer.name,
+			])
+			reviewerWritable = writable.has(pass1Reviewer.name)
 			if (writable.size > 0) {
 				const [project, submission] = await Promise.all([
-					prisma.themeProject.findUnique({
-						select: { theme: true, title: true },
-						where: { id: themeProjectId },
-					}),
-					prisma.phaseSubmission.findFirst({
-						orderBy: { createdAt: "desc" },
-						select: { scheduledWeek: true },
-						where: { phase, themeProjectId },
-					}),
+					db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).select("theme", "title").first(),
+					db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
+						.orderBy(row => row.createdAt.desc())
+						.select("scheduledWeek")
+						.first(),
 				])
 				if (project) {
 					const week = submission?.scheduledWeek ?? scheduledWeekFor(project.theme, phase)
@@ -349,10 +321,18 @@ export async function syncReviewDecisionToYsws(
 			}
 		} catch (err) {
 			// A probe failure is not a reason to lose the status; the next decision retries it.
-			console.error("[airtable] could not probe the Loops override columns; writing the decision without them:", err)
+			console.error(
+				"[airtable] could not probe the Loops override and reviewer columns; writing the decision without them:",
+				err,
+			)
 		}
 
-	const complete = { ...statusField, ...noteField, ...overrides }
+	const complete = {
+		...statusField,
+		...noteField,
+		...(reviewerWritable && reviewerField ? reviewerField : {}),
+		...overrides,
+	}
 	const moved = await updateYswsRecord(recordId, complete)
 	if (moved.ok) return { updated: true }
 
@@ -363,13 +343,18 @@ export async function syncReviewDecisionToYsws(
 		if (!statusOnly.ok) return { reason: statusOnly.reason, updated: false }
 	}
 	const noted = await updateYswsRecord(recordId, noteField)
-	return noted.ok ? { updated: true } : { noteFailed: noted.reason, updated: true }
+	const reviewed = reviewerWritable && reviewerField ? await updateYswsRecord(recordId, reviewerField) : null
+	return {
+		updated: true,
+		...(noted.ok ? {} : { noteFailed: noted.reason }),
+		...(reviewed && !reviewed.ok ? { reviewerFailed: reviewed.reason } : {}),
+	}
 }
 
 /**
  * Put a decision on the submission's Airtable row, for Loops, and log whatever did not land.
  *
- * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in and `note` is the reviewer's own words, or null to clear the column.
+ * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column.
  *
  * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. On the Ari path that is load-bearing – a throw becomes a 5xx and a redelivery of a decision that has already been applied.
  */
@@ -378,8 +363,9 @@ export async function mirrorReviewDecision(
 	phase: Phase,
 	status: string,
 	note: string | null,
+	reviewerEmail?: string | null,
 ): Promise<void> {
-	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note)
+	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note, reviewerEmail)
 	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
 	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
 		console.error(
@@ -389,6 +375,65 @@ export async function mirrorReviewDecision(
 		console.error(
 			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the reviewer's note: ${mirrored.noteFailed}`,
 		)
+	else if (mirrored.reviewerFailed)
+		console.error(
+			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the pass 1 reviewer: ${mirrored.reviewerFailed}`,
+		)
+}
+
+/**
+ * Ari's phase names as an operator reads them on the row.
+ *
+ * Unknown values fall through unchanged rather than being dropped: a phase Ari adds later should still show up in the base, even if this map has not learned a nicer word for it.
+ */
+const ARI_PHASE_LABEL: { [_: string]: string } = {
+	fraud_review: "Fraud review",
+	processing: "Processing",
+	reverted: "Reverted",
+	review: "In review",
+	reviewed: "Reviewed",
+	second_pass: "Second pass",
+	under_review: "Under review",
+	withdrawn: "Withdrawn",
+}
+
+/** Mirror a ship's current Ari phase onto its Airtable row, where an operator can see a hold or a return that Ari never pushes. */
+export async function mirrorAriPhaseToYsws(
+	themeProjectId: string,
+	phase: Phase,
+	ariPhase: string,
+	at: Date,
+): Promise<void> {
+	try {
+		const settings = await getProgramSettings()
+		if (!settings.airtableSyncEnabled) return
+		const config = getAirtableConfig()
+		if (!config) return
+		const recordId = await lastRecordId(themeProjectId, phase)
+		if (!recordId) return
+
+		const { ariReviewPhase, ariReviewPhaseAt, ariSecondPassSince } = YSWS_SUBMISSION.fields
+		const { tableId } = YSWS_SUBMISSION
+		const columns = [ariReviewPhase, ariReviewPhaseAt, ariSecondPassSince]
+		const writable = await existingColumns(
+			config,
+			tableId,
+			columns.map(column => column.name),
+		)
+		const values: { [_: string]: unknown } = {}
+		if (writable.has(ariReviewPhase.name)) values[fieldKey(ariReviewPhase)] = ARI_PHASE_LABEL[ariPhase] ?? ariPhase
+		if (writable.has(ariReviewPhaseAt.name)) values[fieldKey(ariReviewPhaseAt)] = at.toISOString()
+		if (writable.has(ariSecondPassSince.name))
+			values[fieldKey(ariSecondPassSince)] = ariPhase === "second_pass" ? at.toISOString() : null
+		if (Object.keys(values).length === 0) return
+
+		const written = await updateYswsRecord(recordId, values)
+		if (!written.ok && written.reason !== "row_gone" && written.reason !== "not_configured")
+			console.error(`[airtable] could not write the Ari phase for ${themeProjectId} (${phase}): ${written.reason}`)
+	} catch (err) {
+		// The poll must keep going for every other ship; the next run retries this one.
+		console.error(`[airtable] could not mirror the Ari phase for ${themeProjectId} (${phase}):`, err)
+	}
 }
 
 /** Remove a submission's row, and its unified-base twin, when it is taken back. */
@@ -408,24 +453,19 @@ export async function removeSubmissionFromYsws(
  * Submissions awaiting review whose row never made it to the table – a write that failed, or one made before this sync existed. Replayed by the retry job and listed on /admin/program.
  */
 export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
-	const pending = await prisma.themeProject.findMany({
-		select: {
-			buildStatus: true,
-			designStatus: true,
-			id: true,
-			submissions: { orderBy: { createdAt: "desc" }, select: { createdAt: true, phase: true } },
-		},
-		where: {
-			deletedAt: null,
-			OR: [{ designStatus: PhaseStatus.in_review }, { buildStatus: PhaseStatus.in_review }],
-		},
-	})
+	const pending = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)))
+		.select("buildStatus", "designStatus", "id")
+		.include("submissions", submissions =>
+			submissions.orderBy(submission => submission.createdAt.desc()).select("createdAt", "phase"),
+		)
+		.all()
 	if (pending.length === 0) return []
 
-	const synced = await prisma.auditLog.findMany({
-		select: { createdAt: true, metadata: true, targetId: true },
-		where: { action: "AIRTABLE_SYNC_SUCCESS", targetId: { in: pending.map(p => p.id) } },
-	})
+	const synced = await db.orm.public.AuditLog.where({ action: "AIRTABLE_SYNC_SUCCESS" })
+		.where(entry => entry.targetId.in(pending.map(p => p.id)))
+		.select("createdAt", "metadata", "targetId")
+		.all()
 
 	const out: { themeProjectId: string; phase: Phase }[] = []
 	for (const p of pending)

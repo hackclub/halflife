@@ -1,4 +1,4 @@
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
+import { ParticipantGoal } from "@/lib/enums"
 
 /**
  * What a participant is here for.

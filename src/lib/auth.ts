@@ -1,17 +1,20 @@
 import "server-only"
+import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { betterAuth } from "better-auth"
-import { prismaAdapter } from "better-auth/adapters/prisma"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { genericOAuth } from "better-auth/plugins"
-import { Role } from "@/app/generated/prisma/enums"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
+import authDb from "@/lib/auth-db"
+import { Role } from "@/lib/enums"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import { FORGES } from "@/lib/forge"
 import { adoptHcaVerifiedEmail, fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { LAPSE_API_BASE } from "@/lib/lapse"
 import { isLoopbackHostname, publicHosts as publicHostList } from "@/lib/origin"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { redactForLog } from "@/lib/redact"
+import { formatDbTimestamp } from "@/lib/time"
 
 // Exactly the scopes enabled on Half Life's HCA app. HCA refuses the whole sign-in ("The requested scope is invalid") if any one is not, so this list has to match the app's settings, not HCA's docs. `basic_info` carries name and verification_status; `email` is asked for on its own so the standard `email_verified` claim comes with it, which the superadmin bootstrap below trusts. Asking for `verification_status` by name is refused.
 const hcaScopes = ["openid", "profile", "email", "basic_info", "slack_id"]
@@ -75,6 +78,8 @@ export const auth = betterAuth({
 			// Hackatime and Lapse are trusted for (1) and defused for (2): their getUserInfo reports a per-identity address on the reserved .invalid TLD (linkOnlyEmail, above) that no real user can hold, so the email match in (2) can never find anyone. Nothing reads those addresses – a user's email comes from HCA, and Account rows store no email.
 			trustedProviders: ["hca", "hackatime", "lapse", "github", "gitlab"],
 		},
+		// Forge tokens (GitHub `repo`, GitLab `api` – write access to people's repositories) are encrypted at rest with BETTER_AUTH_SECRET. Plaintext rows written before this stay readable (better-auth leaves non-encrypted values alone, and encrypts on the next refresh/write).
+		encryptOAuthTokens: true,
 	},
 
 	// The ingress terminates TLS and forwards the public host in `x-forwarded-host`. Trusting it for base URL resolution is what makes the previous block see `halflife.hackclub.com` rather than the pod's own address; a forged value cannot point anywhere outside `allowedHosts`.
@@ -94,7 +99,7 @@ export const auth = betterAuth({
 		protocol: "https",
 	},
 
-	database: prismaAdapter(prisma, { provider: "postgresql" }),
+	database: kyselyAdapter(authDb, { type: "postgres" }),
 
 	databaseHooks: {
 		account: {
@@ -102,20 +107,46 @@ export const auth = betterAuth({
 				after: async account => {
 					// Denormalise the Hackatime id onto User so hour lookups are one query.
 					if (account.providerId === "hackatime")
-						await prisma.user
-							.update({
-								data: { hackatimeUserId: account.accountId },
-								where: { id: account.userId },
-							})
+						await db.orm.public.User.where({ id: account.userId })
+							.update({ hackatimeUserId: account.accountId })
 							.catch(err => console.error("[auth] hackatime id copy failed:", err))
+				},
+				// An HCA identity is the account itself: it is bound at sign-up and never changed after. A signed-in user who links a second, already-verified person's HCA account would inherit their verification status (syncHcaProfile copies it over), then keep it after unlinking – passing one identity check to any number of accounts. So an hca account may only ever be the user's FIRST account (the sign-up itself, including the staff-import adoption path where the row exists but has no accounts yet). Every other provider stays linkable.
+				before: async account => {
+					if (account.providerId !== "hca") return
+					try {
+						const { count } = await db.orm.public.Account.where({ userId: account.userId }).aggregate(a => ({
+							count: a.count(),
+						}))
+						if (count > 0) {
+							console.warn(`[auth] refused second hca link for ${redactForLog(account.userId)}`)
+							return false
+						}
+					} catch (err) {
+						// Fail closed: a link we could not vet is a link refused, while the sign-up path (zero accounts) is unaffected by a transient failure only if the count query itself fails – which also refuses, and the user retries.
+						console.error("[auth] hca link vetting failed:", err)
+						return false
+					}
+				},
+			},
+			delete: {
+				// The counterpart: unlinking HCA must not be a way to launder the verification status onto another account. The HCA identity stays bound for the life of the user; nothing legitimate unlinks it (sign-in needs it, and syncHcaProfile no-ops without it).
+				// biome-ignore lint/suspicious/useAwait: better-auth requires database hooks to return promises; this one only returns.
+				before: async account => {
+					if ((account as { providerId?: string }).providerId === "hca") {
+						console.warn(
+							`[auth] refused hca unlink for ${redactForLog((account as { userId?: string }).userId ?? "?")}`,
+						)
+						return false
+					}
 				},
 			},
 		},
 		session: {
 			create: {
-				// Every sign-in re-reads the HCA profile, so a status that changed since the last one – most often "pending" becoming "verified" – is current. Not awaited: signing in must not wait on, or fail with, HCA.
+				// Every sign-in re-reads the HCA profile, so a status that changed since the last one – most often "pending" becoming "verified" – is current, and so the name, image and address better-auth no longer overrides are kept up to date. Not awaited: signing in must not wait on, or fail with, HCA.
 				after: session => {
-					void syncHcaProfile(session.userId)
+					void syncHcaProfile(session.userId, { profile: true })
 					void markLogin(session.userId)
 					return Promise.resolve()
 				},
@@ -126,7 +157,9 @@ export const auth = betterAuth({
 				after: async user => {
 					// No project rows here: each is created when its week's "create a project" checkpoint is opened (lib/provisioning).
 
-					await prisma.user.update({ data: { joinedProgramAt: new Date() }, where: { id: user.id } }).catch(() => {})
+					await db.orm.public.User.where({ id: user.id })
+						.update({ joinedProgramAt: formatDbTimestamp(new Date()) })
+						.catch(() => {})
 
 					// Buffered, never a synchronous Airtable call: a signup must not fail because a third party is rate-limiting us.
 					if (user.email)
@@ -142,16 +175,43 @@ export const auth = betterAuth({
 						.map(s => s.trim().toLowerCase())
 						.filter(Boolean)
 					if (user.emailVerified && user.email && superadmins.includes(user.email.toLowerCase()))
-						await prisma.userRole
-							.upsert({
-								create: { grantedBy: "SUPERADMIN_EMAILS", role: Role.ADMIN, userId: user.id },
-								update: {},
-								where: { userId_role: { role: Role.ADMIN, userId: user.id } },
-							})
-							.catch(err => console.error("[auth] superadmin grant failed:", err))
+						try {
+							await db.orm.public.UserRole.createAll(
+								[{ grantedBy: "SUPERADMIN_EMAILS", role: Role.ADMIN, userId: user.id }],
+								{ onConflict: "skip" },
+							)
+						} catch (err) {
+							console.error("[auth] superadmin grant failed:", err)
+						}
 				},
 			},
 		},
+	},
+	// Token-disclosing and profile-writing endpoints the client never needs.
+	//
+	// `/update-user` lets any signed-in user set their own name and avatar to an arbitrary external URL – an IP-logging pixel on a platform for minors, served from our own pages. Names and avatars come from HCA via syncHcaProfile instead, and nothing in the client calls this.
+	// `/get-access-token` and `/refresh-token` hand the caller's own GitHub/GitLab tokens (write access to their repos) to the browser. All forge writes run server-side through `auth.api.getAccessToken`, so nothing browser-side needs them.
+	disabledPaths: ["/get-access-token", "/refresh-token", "/update-user"],
+	// Rejects a caller-supplied OIDC idToken on the social sign-in/link paths.
+	//
+	// better-auth's /sign-in/social accepts a Hack Club Auth login token pasted in by the caller (idToken) and verifies it, but then resolves the identity from a separately supplied access token – with nothing checking the two belong to the same person, and replay protection only when the caller opts in. An attacker could send their own valid login token plus a victim's access token and get a session as the victim. The app's HCA flow never sends an idToken (browser redirect/code exchange), so anything carrying one is rejected here.
+	//
+	// The scopes cap is defence in depth for GHSA-mrhx-c7xc-m3w5 (zod 4.6.5, via better-auth): a huge scopes array builds an enormous validation error message (~670 MB from a 2 MB request). Bodies over 1 MB are refused before they are parsed for the same reason.
+	hooks: {
+		// biome-ignore lint/suspicious/useAwait: better-auth requires the hook to return a promise; this one only throws or returns.
+		before: createAuthMiddleware(async ctx => {
+			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return
+			const { idToken, scopes } = ctx.body as { idToken?: unknown; scopes?: unknown }
+			if (idToken) throw new APIError("FORBIDDEN", { message: "idToken is not accepted" })
+			if (Array.isArray(scopes) && scopes.length > 50) throw new APIError("BAD_REQUEST", { message: "Too many scopes" })
+			// Cheap size guard before validation: stringify cost is bounded because the runtime has already buffered the body, and refusing here avoids building the giant zod error that is the OOM vector.
+			try {
+				const size = JSON.stringify(ctx.body ?? {}).length
+				if (size > 1_000_000) throw new APIError("PAYLOAD_TOO_LARGE", { message: "Request body too large" })
+			} catch (err) {
+				if (err instanceof APIError) throw err
+			}
+		}),
 	},
 
 	// better-auth's OAuth state is single-use, so a callback delivered twice logs "Failed to parse state ... verification not found" on the second delivery even when the first one signed the user in. The callback route already turns that duplicate into a normal redirect (see app/api/auth/[...all]/route.ts), so logging it as an error only buried the failures that matter. Surface it as one info line and pass everything else through unchanged. `state_security_mismatch` is deliberately NOT caught: a state cookie that does not match is a real misconfiguration.
@@ -217,7 +277,8 @@ export const auth = betterAuth({
 						image: profile.image as string | undefined,
 						name: profile.name as string | undefined,
 					}),
-					overrideUserInfo: true,
+					// Off, because this rewrites the stored address to whatever HCA reports in the same update as name and image. When HCA moves a person to an address another local row already holds, that update fails on the unique `user_email_key`: the whole callback 500s and the person cannot sign in at all. syncHcaProfile (lib/hca-profile) writes the same fields after the session exists, where it has a user id to check the address against and can keep the old one while still storing everything else HCA sent.
+					overrideUserInfo: false,
 					providerId: "hca",
 					scopes: hcaScopes,
 					tokenUrl: process.env.HCA_TOKEN_URL ?? "https://auth.hackclub.com/oauth/token",

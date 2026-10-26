@@ -253,15 +253,10 @@ export default function BuildCarousel() {
 								}
 							>
 								<div className="flex h-full w-full flex-col">
-									{/* Contained, never cropped: a build is the thing on show,
-                      and the field left around it is the card's own ground
-                      rather than a gap – which is how the comp mounts these,
-                      each photograph a different size on the same field.
+									{/* Contained, never cropped: a build is the thing on show, and the field left around it is the card's own ground rather than a gap – which is how the comp mounts these, each photograph a different size on the same field.
 
-                      The lattice is on this box and not the card, so it is
-                      only ever the ground behind a photograph: the caption
-                      band below is opaque and would have covered the lower
-                      third of it anyway. */}
+									  The lattice is on this box and not the card, so it is only ever the ground behind a photograph: the caption band below is opaque and would have covered the lower third of it anyway.
+									 */}
 									<div className="hl-ground-mesh relative min-h-0 flex-1">
 										{card.photo ? (
 											<Image

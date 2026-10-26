@@ -3,7 +3,8 @@ import type { NextResponse } from "next/server"
 import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import type { Guard } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
+import { formatDbTimestamp } from "@/lib/time"
 
 /**
  * The two ways a staff member closes a report, which are one operation apart.
@@ -30,16 +31,17 @@ export async function decideReport(
 	id: string,
 	outcome: Outcome,
 ): Promise<NextResponse> {
-	const report = await prisma.contentReport.findUnique({ select: { status: true }, where: { id } })
+	const report = await db.orm.public.ContentReport.whereUnique({ id }).select("status").first()
 	if (!report) return fail("NOT_FOUND", "Report not found")
 	if (report.status !== "OPEN") return fail("CONFLICT", "This report was already decided")
 
 	// Conditional, so two admins deciding at once cannot both succeed: the loser matches no OPEN row and gets the same conflict as a late arrival.
-	const updated = await prisma.contentReport.updateMany({
-		data: { resolvedAt: new Date(), resolvedById: gate.user.id, status: outcome },
-		where: { id, status: "OPEN" },
+	const updated = await db.orm.public.ContentReport.where({ id, status: "OPEN" }).updateAndCount({
+		resolvedAt: formatDbTimestamp(new Date()),
+		resolvedById: gate.user.id,
+		status: outcome,
 	})
-	if (updated.count === 0) return fail("CONFLICT", "This report was already decided")
+	if (updated === 0) return fail("CONFLICT", "This report was already decided")
 
 	await logAudit({
 		action: auditAction[outcome],

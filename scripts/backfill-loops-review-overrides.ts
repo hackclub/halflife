@@ -1,31 +1,20 @@
-import "dotenv/config"
 import { airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { existingColumns } from "../src/lib/airtable/field-probe"
 import { LOOPS_REVIEW_OVERRIDE, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 
 /**
- * Fill the two `Loops - Override - …` columns with each row's own project and
- * week before the email-tools poller starts forwarding them.
+ * Fill the two `Loops - Override - …` columns with each row's own project and week before the email-tools poller starts forwarding them.
  *
- * Creating those fields makes the poller treat every row as newly changed. If
- * they were left blank, the override strategy would send a blank project name
- * and week to every contact on the first full resync. Filling them here keeps
- * the value the row already carries, so the resync changes nothing visible and
- * a later decision is the first write that moves the contact.
+ * Creating those fields makes the poller treat every row as newly changed. If they were left blank, the override strategy would send a blank project name and week to every contact on the first full resync. Filling them here keeps the value the row already carries, so the resync changes nothing visible and a later decision is the first write that moves the contact.
  *
- * The columns have to exist first, as plain single-line text fields on
- * `YSWS Project Submission`:
+ * The columns have to exist first, as plain single-line text fields on `YSWS Project Submission`:
  *
  *   Loops - Override - halfLifeProjectName
  *   Loops - Override - halfLifeProjectWeek
  *
- * Pause the email-tools Airtable source while you create them. The first poll
- * after a new `Loops - …` field appears does a full resync, and an override
- * that is still blank on that pass would write a blank project name to every
- * contact. Fill them here, then resume the source.
+ * Pause the email-tools Airtable source while you create them. The first poll after a new `Loops - …` field appears does a full resync, and an override that is still blank on that pass would write a blank project name to every contact. Fill them here, then resume the source.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-loops-review-overrides.ts [--commit]`.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-loops-review-overrides.ts [--commit]`.
  */
 
 const commit = process.argv.includes("--commit")
@@ -67,7 +56,7 @@ async function main() {
 			),
 		)
 		rows.push(...page.records)
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 
 	const updates: { fields: { [_: string]: unknown }; id: string }[] = []
@@ -108,7 +97,9 @@ async function main() {
 	console.log(`updated: ${written}`)
 }
 
-main().catch(err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
 	process.exitCode = 1
-})
+}

@@ -15,7 +15,9 @@ import { type AirtableConfig, AirtableError, airtableFetch } from "@/lib/airtabl
 const probed = new Map<string, boolean>()
 
 /** How long a "no" is remembered. A column added in the Airtable UI is noticed
- *    within this window without a redeploy. */
+ *
+ * *    within this window without a redeploy.
+ */
 const ABSENT_TTL_MS = 10 * 60_000
 const absentSince = new Map<string, number>()
 

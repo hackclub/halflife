@@ -1,15 +1,16 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
-import { PostKind, PostStatus, Role } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { markReel } from "@/lib/analytics"
 import { avatarUrl } from "@/lib/avatar"
 import { displayName } from "@/lib/display-name"
+import { PostKind, PostStatus, Role } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { type CursorOrderOf, cursorWhere, orderByFor, pageResult } from "@/lib/pagination"
-import prisma from "@/lib/prisma"
+import { decodeCursor, encodeCursor } from "@/lib/pagination"
+import db, { type DbOrTx } from "@/lib/prisma8"
 import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@/lib/program"
 import { sanitize } from "@/lib/sanitize"
 import { recomputeStreak } from "@/lib/streak"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -50,42 +51,24 @@ export interface FeedItem {
 	width: number | null
 }
 
-const feedInclude = {
-	themeProject: { select: { deletedAt: true, id: true, theme: true, title: true } },
-	user: {
-		// No Slack id: nothing here renders it, and a selected column rides along in the RSC payload to every browser that opens the feed.
-		select: { currentStreak: true, displayName: true, id: true, image: true, name: true },
-	},
-} satisfies Prisma.PostInclude
-
-type PostWithAuthor = Prisma.PostGetPayload<{ include: typeof feedInclude }>
-
-/**
- * The feed's order: newest first by the moment a reel went up, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary that falls between two reels posted in the same millisecond drops neither of them. A cursor over the id alone would: a cuid is random, so it says nothing about the timestamp it sits next to, and the reels around the boundary would come back out of order.
- */
-const FEED_ORDER = {
-	at: (row: PostWithAuthor) => row.publishedAt,
-	column: "publishedAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<PostWithAuthor, Prisma.PostOrderByWithRelationInput>
-
-const commentInclude = {
-	// No Slack id, for the same reason as the feed's author above.
-	user: { select: { displayName: true, id: true, image: true, name: true } },
-} satisfies Prisma.PostCommentInclude
-
-type CommentWithAuthor = Prisma.PostCommentGetPayload<{ include: typeof commentInclude }>
-
-/**
- * The comments' order: newest first, with the id as the tiebreaker.
- */
-const COMMENTS_ORDER = {
-	at: (row: CommentWithAuthor) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<CommentWithAuthor, Prisma.PostCommentOrderByWithRelationInput>
+/** One feed row as Prisma 8 reads it, with the author and project attached. Timestamps are PostgreSQL text until `toFeedItem` parses them. */
+export interface PostWithAuthor {
+	caption: string
+	commentCount: number
+	durationSeconds: number | null
+	height: number | null
+	id: string
+	kind: Models.public_Post["kind"]
+	likeCount: number
+	objectKey: string
+	pinnedAt: string | null
+	publishedAt: string | null
+	themeProject: { deletedAt: string | null; id: string; theme: string; title: string } | null
+	thumbnailKey: string | null
+	user: { currentStreak: number; displayName: string | null; id: string; image: string | null; name: string | null }
+	viewCount: number
+	width: number | null
+}
 
 function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): FeedItem {
 	return {
@@ -113,7 +96,7 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
 						title: post.themeProject.title,
 					}
 				: null,
-		publishedAt: post.publishedAt,
+		publishedAt: post.publishedAt === null ? null : parseDbTimestamp(post.publishedAt),
 		thumbnailUrl: publicUrlFor(post.thumbnailKey),
 		// Keys are stored, never URLs, so the bucket or CDN can move without rewriting a single row. The URL is minted here, at read time.
 		videoUrl: publicUrlFor(post.objectKey),
@@ -127,10 +110,7 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
  *
  * Defined once and reused by every read path. A feed filter that has to be rewritten at each call site is a filter that will eventually be written wrong at one of them, and the failure mode is a hidden post reappearing.
  */
-const visible: Prisma.PostWhereInput = {
-	deletedAt: null,
-	status: PostStatus.PUBLISHED,
-}
+const visible = () => ({ deletedAt: null, status: PostStatus.PUBLISHED }) as const
 
 export interface FeedPage {
 	items: FeedItem[]
@@ -148,53 +128,91 @@ export interface FeedPage {
  *
  * The leading reels are returned as their own list rather than spliced into the paged rows. Paginating a cursor across two different orderings is how a feed starts skipping or repeating items – the set is small, bounded, and only needed on the first page.
  */
+/** The author is required by the foreign key, so a missing one is a data-integrity error rather than a row to render without one. */
+function withAuthor(row: Omit<PostWithAuthor, "user"> & { user: PostWithAuthor["user"] | null }): PostWithAuthor {
+	if (!row.user) throw new Error(`post ${row.id} has no author`)
+	return { ...row, user: row.user }
+}
+
+/** The feed's order: newest first by the moment a reel went up, with the id as the tiebreaker. Cursor pages carry both halves of that position, so a page boundary that falls between two reels posted in the same millisecond drops neither. */
+function feedOrdered() {
+	return db.orm.public.Post.where(visible())
+		.select(
+			"caption",
+			"commentCount",
+			"durationSeconds",
+			"height",
+			"id",
+			"kind",
+			"likeCount",
+			"objectKey",
+			"pinnedAt",
+			"publishedAt",
+			"thumbnailKey",
+			"viewCount",
+			"width",
+		)
+		.include("themeProject", project => project.select("deletedAt", "id", "theme", "title"))
+		.include("user", user =>
+			// No Slack id: nothing here renders it, and a selected column rides along in the RSC payload to every browser that opens the feed.
+			user.select("currentStreak", "displayName", "id", "image", "name"),
+		)
+		.orderBy([post => post.publishedAt.desc(), post => post.id.desc()])
+}
+
 export async function getFeed(
 	viewerId: string,
 	opts: { cursor?: string; limit: number; timeZone?: string },
 ): Promise<FeedPage> {
-	const rows = await prisma.post.findMany({
-		include: feedInclude,
-		orderBy: orderByFor(FEED_ORDER),
-		take: opts.limit + 1,
-		where: cursorWhere<Prisma.PostWhereInput>(opts.cursor, FEED_ORDER, visible),
-	})
+	const position = opts.cursor === undefined ? null : decodeCursor(opts.cursor)
+	const fetched = await (position?.at === undefined || position?.at === null
+		? feedOrdered()
+		: feedOrdered().cursor({
+				id: position.id,
+				publishedAt: position.at === null ? null : formatDbTimestamp(position.at),
+			})
+	)
+		.limit(opts.limit + 1)
+		.all()
+	const rows = fetched.map(withAuthor)
 
-	let leading: typeof rows = []
+	let leading: PostWithAuthor[] = []
 	if (!opts.cursor) {
 		const timeZone =
 			opts.timeZone && isTimeZone(opts.timeZone) ? opts.timeZone : (await getProgramSettings()).programTimezone
-		leading = await prisma.post.findMany({
-			include: feedInclude,
-			orderBy: orderByFor(FEED_ORDER),
-			take: 5,
-			where: {
-				...visible,
-				publishedAt: { gte: startOfDay(new Date(), timeZone) },
-				user: { roles: { some: { role: Role.ADMIN } } },
-			},
-		})
+		leading = (
+			await feedOrdered()
+				.where(post => post.publishedAt.gte(formatDbTimestamp(startOfDay(new Date(), timeZone))))
+				.where(post => post.user.some(author => author.roles.some(userRole => userRole.role.eq(Role.ADMIN))))
+				.limit(5)
+				.all()
+		).map(withAuthor)
 	}
 
 	// Each reel once: the leading ones are taken out of the page below them. A later page can still carry one, which the client drops as already seen.
 	const leadIds = new Set(leading.map(p => p.id))
-	const page = pageResult(rows, opts.limit, FEED_ORDER)
-	const pageItems = page.items.filter(p => !leadIds.has(p.id))
+	const items = rows.slice(0, opts.limit)
+	const last = items.at(-1)
+	const pageItems = items.filter(p => !leadIds.has(p.id))
 	const all = [...leading, ...pageItems]
 
 	// One query for the viewer's likes across the whole page, rather than a correlated exists() per row.
 	const liked =
 		all.length > 0
-			? await prisma.postLike.findMany({
-					select: { postId: true },
-					where: { postId: { in: all.map(p => p.id) }, userId: viewerId },
-				})
+			? await db.orm.public.PostLike.where(like => like.postId.in(all.map(p => p.id)))
+					.where({ userId: viewerId })
+					.select("postId")
+					.all()
 			: []
 	const likedIds = new Set(liked.map(l => l.postId))
 
 	return {
 		items: pageItems.map(p => toFeedItem(p, likedIds)),
 		leading: leading.map(p => toFeedItem(p, likedIds)),
-		nextCursor: page.nextCursor,
+		nextCursor:
+			rows.length > opts.limit && last
+				? encodeCursor({ at: last.publishedAt === null ? null : parseDbTimestamp(last.publishedAt), id: last.id })
+				: null,
 	}
 }
 
@@ -204,19 +222,14 @@ export async function getFeed(
  * The same `visible` filter and the same mapper as the feed, on purpose: a reel a moderator hid, or the author deleted, is not on their profile either, and whether the viewer has liked it is answered the way the feed answers it.
  */
 export async function getCreatorReels(creatorId: string, viewerId: string, limit = 24): Promise<FeedItem[]> {
-	const rows = await prisma.post.findMany({
-		include: feedInclude,
-		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-		take: limit,
-		where: { ...visible, userId: creatorId },
-	})
+	const rows = (await feedOrdered().where({ userId: creatorId }).limit(limit).all()).map(withAuthor)
 	if (rows.length === 0) return []
 
 	// One query for the viewer's likes across the whole set, exactly as the feed.
-	const liked = await prisma.postLike.findMany({
-		select: { postId: true },
-		where: { postId: { in: rows.map(p => p.id) }, userId: viewerId },
-	})
+	const liked = await db.orm.public.PostLike.where(like => like.postId.in(rows.map(p => p.id)))
+		.where({ userId: viewerId })
+		.select("postId")
+		.all()
 	const likedIds = new Set(liked.map(l => l.postId))
 	return rows.map(p => toFeedItem(p, likedIds))
 }
@@ -242,12 +255,46 @@ export interface CreatePostInput {
 /**
  * An object key must live under this user's own prefix.
  *
- * `/api/upload` builds keys as `posts/<userId>/<uuid>.<ext>`, but the key travels through the browser between the upload and this call, so the server has to check it rather than trust it. Without this, a post can be created pointing at somebody else's object – or at a key outside the posts folder entirely.
+ * `/api/upload/presign` builds keys as `posts/<userId>/<uuid>.<ext>`, but the key travels through the browser between the upload and this call, so the server has to check it rather than trust it. Without this, a post can be created pointing at somebody else's object – or at a key outside the posts folder entirely.
  */
 function assertOwnedKey(userId: string, key: string, field: string): void {
 	// Ownership plus the folder: a reel's video has to be in the posts folder, so a key that is genuinely yours but was uploaded as session evidence cannot be re-filed as a reel.
 	if (!isOwnedKey(userId, key) || !key.startsWith(`${POST_UPLOAD_FOLDER}/`))
 		throw new HttpError("VALIDATION_FAILED", `That ${field} is not one of your uploads`)
+}
+
+/** Atomically add `delta` to a post counter, returning the new value. Prisma 8 has no `increment`, so this is one raw statement rather than read-modify-write. The column is fixed per branch because a column name cannot be interpolated. */
+async function bumpPostCount(
+	tx: DbOrTx,
+	postId: string,
+	column: "viewCount" | "likeCount" | "commentCount",
+	delta: number,
+): Promise<number> {
+	if (column === "viewCount") {
+		const plan = tx.raw
+			.sql`UPDATE "post" SET "viewCount" = "viewCount" + ${delta} WHERE "id" = ${postId} RETURNING "viewCount" AS "viewCount"`
+			.returnsRow({ viewCount: "pg/int4@1" })
+			.build()
+		const [row] = await tx.query(plan)
+		if (!row) throw new HttpError("NOT_FOUND", "Post not found")
+		return row.viewCount
+	}
+	if (column === "likeCount") {
+		const plan = tx.raw
+			.sql`UPDATE "post" SET "likeCount" = "likeCount" + ${delta} WHERE "id" = ${postId} RETURNING "likeCount" AS "likeCount"`
+			.returnsRow({ likeCount: "pg/int4@1" })
+			.build()
+		const [row] = await tx.query(plan)
+		if (!row) throw new HttpError("NOT_FOUND", "Post not found")
+		return row.likeCount
+	}
+	const plan = tx.raw
+		.sql`UPDATE "post" SET "commentCount" = "commentCount" + ${delta} WHERE "id" = ${postId} RETURNING "commentCount" AS "commentCount"`
+		.returnsRow({ commentCount: "pg/int4@1" })
+		.build()
+	const [row] = await tx.query(plan)
+	if (!row) throw new HttpError("NOT_FOUND", "Post not found")
+	return row.commentCount
 }
 
 export async function createPost(input: CreatePostInput): Promise<FeedItem> {
@@ -259,10 +306,13 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 
 	if (input.themeProjectId) {
 		// A reel can be attached to a project, but only to one of yours – otherwise a reel could be filed against someone else's submission.
-		const owned = await prisma.themeProject.findFirst({
-			select: { id: true },
-			where: { deletedAt: null, id: input.themeProjectId, userId: input.userId },
+		const owned = await db.orm.public.ThemeProject.where({
+			deletedAt: null,
+			id: input.themeProjectId,
+			userId: input.userId,
 		})
+			.select("id")
+			.first()
 		if (!owned) throw new HttpError("NOT_FOUND", "Project not found")
 	}
 
@@ -270,39 +320,39 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 	const weekNumber = await currentWeekNumber()
 
 	// The reel and the streak day it earns land together: a rolled-back post must not leave a day behind, exactly as a rolled-back devlog must not.
-	const post = await prisma.$transaction(async tx => {
-		const created = await tx.post.create({
-			data: {
-				byteSize: input.byteSize ?? null,
-				caption,
-				checkpointKey: input.checkpointKey ?? null,
-				contentType: input.contentType ?? null,
-				durationSeconds: input.durationSeconds ?? null,
-				height: input.height ?? null,
-				kind: input.kind,
-				objectKey: input.objectKey,
-				publishedAt: new Date(),
-				// There is no transcoding step yet: the file is already in R2 by the time this runs, so the post is playable immediately. PROCESSING stays in the enum for when a pipeline lands and the thumbnail arrives later.
-				status: PostStatus.PUBLISHED,
-				themeProjectId: input.themeProjectId ?? null,
-				thumbnailKey: input.thumbnailKey ?? null,
-				userId: input.userId,
-				weekNumber,
-				width: input.width ?? null,
-				...(input.kind === PostKind.ANNOUNCEMENT ? { pinnedAt: new Date() } : {}),
-			},
-			include: feedInclude,
+	const created = await db.transaction(async tx => {
+		const now = formatDbTimestamp(new Date())
+		const post = await tx.orm.public.Post.create({
+			byteSize: input.byteSize ?? null,
+			caption,
+			checkpointKey: input.checkpointKey ?? null,
+			contentType: input.contentType ?? null,
+			durationSeconds: input.durationSeconds ?? null,
+			height: input.height ?? null,
+			kind: input.kind,
+			objectKey: input.objectKey,
+			publishedAt: now,
+			// There is no transcoding step yet: the file is already in R2 by the time this runs, so the post is playable immediately. PROCESSING stays in the enum for when a pipeline lands and the thumbnail arrives later.
+			status: PostStatus.PUBLISHED,
+			themeProjectId: input.themeProjectId ?? null,
+			thumbnailKey: input.thumbnailKey ?? null,
+			userId: input.userId,
+			weekNumber,
+			width: input.width ?? null,
+			...(input.kind === PostKind.ANNOUNCEMENT ? { pinnedAt: now } : {}),
 		})
 
 		// A participant's own reel, not a staff announcement.
 		if (input.kind !== PostKind.ANNOUNCEMENT) await recomputeStreak(tx, input.userId)
 
-		return created
+		return post
 	})
 
-	if (input.kind !== PostKind.ANNOUNCEMENT) await markReel(input.userId, post.createdAt)
+	if (input.kind !== PostKind.ANNOUNCEMENT) await markReel(input.userId, parseDbTimestamp(created.createdAt))
 
-	return toFeedItem(post, new Set())
+	const [row] = await feedOrdered().where({ id: created.id }).limit(1).all()
+	if (!row) throw new HttpError("NOT_FOUND", "Post not found")
+	return toFeedItem(withAuthor(row), new Set())
 }
 
 /**
@@ -311,28 +361,19 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
  * The unique key does the work: a repeat view is a failed insert, so the count only moves when a genuinely new viewer arrives. This matters because the program pays prizes on virality – a number anyone can inflate by refreshing is a number that decides who gets a drawing tablet.
  */
 export function recordView(postId: string, userId: string): Promise<number> {
-	return prisma.$transaction(async tx => {
+	return db.transaction(async tx => {
 		// Only a live, published reel counts. Without this, views keep accruing on a hidden or deleted post, and the virality number those prizes rest on could be moved for a reel that is out of the feed.
-		const post = await tx.post.findFirst({ select: { id: true }, where: { id: postId, ...visible } })
+		const post = await tx.orm.public.Post.where({ id: postId, ...visible() })
+			.select("id")
+			.first()
 		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
-		const { count } = await tx.postView.createMany({
-			data: [{ postId, userId }],
-			skipDuplicates: true,
-		})
-		if (count === 0) {
-			const existing = await tx.post.findUnique({
-				select: { viewCount: true },
-				where: { id: postId },
-			})
+		const inserted = await tx.orm.public.PostView.createAll([{ postId, userId }], { onConflict: "skip" })
+		if (inserted.length === 0) {
+			const existing = await tx.orm.public.Post.whereUnique({ id: postId }).select("viewCount").first()
 			return existing?.viewCount ?? 0
 		}
-		const updated = await tx.post.update({
-			data: { viewCount: { increment: count } },
-			select: { viewCount: true },
-			where: { id: postId },
-		})
-		return updated.viewCount
+		return bumpPostCount(tx, postId, "viewCount", inserted.length)
 	})
 }
 
@@ -344,28 +385,22 @@ export function setLike(
 	userId: string,
 	liked: boolean,
 ): Promise<{ likeCount: number; likedByMe: boolean }> {
-	return prisma.$transaction(async tx => {
-		const post = await tx.post.findFirst({ select: { id: true }, where: { id: postId, ...visible } })
+	return db.transaction(async tx => {
+		const post = await tx.orm.public.Post.where({ id: postId, ...visible() })
+			.select("id")
+			.first()
 		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
 		const delta = liked
-			? (await tx.postLike.createMany({ data: [{ postId, userId }], skipDuplicates: true })).count
-			: -(await tx.postLike.deleteMany({ where: { postId, userId } })).count
+			? (await tx.orm.public.PostLike.createAll([{ postId, userId }], { onConflict: "skip" })).length
+			: -(await tx.orm.public.PostLike.where({ postId, userId }).deleteAndCount())
 
 		if (delta === 0) {
-			const current = await tx.post.findUniqueOrThrow({
-				select: { likeCount: true },
-				where: { id: postId },
-			})
+			const current = await tx.orm.public.Post.whereUnique({ id: postId }).select("likeCount").firstOrThrow()
 			return { likeCount: current.likeCount, likedByMe: liked }
 		}
 
-		const updated = await tx.post.update({
-			data: { likeCount: { increment: delta } },
-			select: { likeCount: true },
-			where: { id: postId },
-		})
-		return { likeCount: updated.likeCount, likedByMe: liked }
+		return { likeCount: await bumpPostCount(tx, postId, "likeCount", delta), likedByMe: liked }
 	})
 }
 
@@ -383,30 +418,40 @@ export async function getComments(
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: CommentView[]; nextCursor: string | null }> {
 	// A hidden or deleted post's comments are not readable by id. The filter on the comments themselves is not enough – the parent has to be visible too.
-	const post = await prisma.post.findFirst({ select: { id: true }, where: { id: postId, ...visible } })
+	const post = await db.orm.public.Post.where({ id: postId, ...visible() })
+		.select("id")
+		.first()
 	if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
 	// Newest first, like every other conversation on the platform. The thread reads top-down from what just happened, and "show older comments" walks the cursor further back rather than forward – so the order and the affordance name the same direction.
-	const rows = await prisma.postComment.findMany({
-		include: commentInclude,
-		orderBy: orderByFor(COMMENTS_ORDER),
-		take: opts.limit + 1,
-		where: cursorWhere<Prisma.PostCommentWhereInput>(opts.cursor, COMMENTS_ORDER, {
-			deletedAt: null,
-			hiddenAt: null,
-			postId,
-		}),
-	})
-	const page = pageResult(rows, opts.limit, COMMENTS_ORDER)
-	return {
-		items: page.items.map(c => ({
+	const position = opts.cursor === undefined ? null : decodeCursor(opts.cursor)
+	// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+	const filtered = db.orm.public.PostComment.where({ deletedAt: null, postId })
+		.where(comment => comment.hiddenAt.isNull())
+		.orderBy([comment => comment.createdAt.desc(), comment => comment.id.desc()])
+	const rows = await (position?.at
+		? filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+		: filtered
+	)
+		.limit(opts.limit + 1)
+		.select("body", "createdAt", "id")
+		// No Slack id, for the same reason as the feed's author above.
+		.include("user", user => user.select("displayName", "id", "image", "name"))
+		.all()
+	const items = rows.slice(0, opts.limit).map(c => {
+		if (!c.user) throw new Error(`comment ${c.id} has no author`)
+		return {
 			author: { id: c.user.id, image: avatarUrl(c.user), name: displayName(c.user) },
 			body: c.body,
-			createdAt: c.createdAt,
+			createdAt: parseDbTimestamp(c.createdAt),
 			id: c.id,
 			mine: c.user.id === viewerId,
-		})),
-		nextCursor: page.nextCursor,
+		}
+	})
+	const last = items.at(-1)
+	return {
+		items,
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.createdAt, id: last.id }) : null,
 	}
 }
 
@@ -414,20 +459,22 @@ export function addComment(postId: string, userId: string, body: string): Promis
 	const clean = sanitize(body)
 	if (!clean) throw new HttpError("VALIDATION_FAILED", "Say something")
 
-	return prisma.$transaction(async tx => {
-		const post = await tx.post.findFirst({ select: { id: true }, where: { id: postId, ...visible } })
+	return db.transaction(async tx => {
+		const post = await tx.orm.public.Post.where({ id: postId, ...visible() })
+			.select("id")
+			.first()
 		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
-		const comment = await tx.postComment.create({
-			data: { body: clean, postId, userId },
-			include: commentInclude,
-		})
-		await tx.post.update({ data: { commentCount: { increment: 1 } }, where: { id: postId } })
+		const comment = await tx.orm.public.PostComment.create({ body: clean, postId, userId })
+		await bumpPostCount(tx, postId, "commentCount", 1)
 
+		const author = await tx.orm.public.User.whereUnique({ id: userId })
+			.select("displayName", "id", "image", "name")
+			.firstOrThrow()
 		return {
-			author: { id: comment.user.id, image: avatarUrl(comment.user), name: displayName(comment.user) },
+			author: { id: author.id, image: avatarUrl(author), name: displayName(author) },
 			body: comment.body,
-			createdAt: comment.createdAt,
+			createdAt: parseDbTimestamp(comment.createdAt),
 			id: comment.id,
 			mine: true,
 		}
@@ -436,30 +483,23 @@ export function addComment(postId: string, userId: string, body: string): Promis
 
 /** Delete your own comment. Moderators use `hideComment` instead. */
 export async function deleteOwnComment(commentId: string, userId: string): Promise<void> {
-	await prisma.$transaction(async tx => {
+	await db.transaction(async tx => {
 		// `hiddenAt: null` too: a moderator-hidden comment already had its decrement when it was hidden, so letting the owner delete it as well would take the count down a second time and could drive it negative.
-		const { count } = await tx.postComment.updateMany({
-			data: { deletedAt: new Date() },
-			where: { deletedAt: null, hiddenAt: null, id: commentId, userId },
-		})
+		const count = await tx.orm.public.PostComment.where({ deletedAt: null, id: commentId, userId })
+			.where(comment => comment.hiddenAt.isNull())
+			.updateAndCount({ deletedAt: formatDbTimestamp(new Date()) })
 		if (count === 0) throw new HttpError("NOT_FOUND", "Comment not found")
-		const comment = await tx.postComment.findUniqueOrThrow({
-			select: { postId: true },
-			where: { id: commentId },
-		})
-		await tx.post.update({
-			data: { commentCount: { decrement: count } },
-			where: { id: comment.postId },
-		})
+		const comment = await tx.orm.public.PostComment.whereUnique({ id: commentId }).select("postId").firstOrThrow()
+		await bumpPostCount(tx, comment.postId, "commentCount", -count)
 	})
 }
 
 /** Soft-delete your own reel. */
 export async function deleteOwnPost(postId: string, userId: string): Promise<void> {
-	await prisma.$transaction(async tx => {
-		const { count } = await tx.post.updateMany({
-			data: { deletedAt: new Date(), status: PostStatus.REMOVED },
-			where: { deletedAt: null, id: postId, userId },
+	await db.transaction(async tx => {
+		const count = await tx.orm.public.Post.where({ deletedAt: null, id: postId, userId }).updateAndCount({
+			deletedAt: formatDbTimestamp(new Date()),
+			status: PostStatus.REMOVED,
 		})
 		if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 		// Deleting the only reel on a day removes that day from the run, so the streak is recomputed with it – same rule as deleting a devlog.
@@ -470,43 +510,43 @@ export async function deleteOwnPost(postId: string, userId: string): Promise<voi
 // ─── Moderation ──────────────────────────────────────────────────────────────
 
 export async function hidePost(postId: string, moderatorId: string, reason: string): Promise<void> {
-	const { count } = await prisma.post.updateMany({
-		data: {
-			hiddenAt: new Date(),
-			hiddenById: moderatorId,
-			hiddenReason: sanitize(reason),
-			status: PostStatus.HIDDEN,
-		},
-		where: { deletedAt: null, id: postId },
+	const count = await db.orm.public.Post.where({ deletedAt: null, id: postId }).updateAndCount({
+		hiddenAt: formatDbTimestamp(new Date()),
+		hiddenById: moderatorId,
+		hiddenReason: sanitize(reason),
+		status: PostStatus.HIDDEN,
 	})
 	if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 }
 
 export async function restorePost(postId: string): Promise<void> {
-	const { count } = await prisma.post.updateMany({
-		data: { hiddenAt: null, hiddenById: null, hiddenReason: null, status: PostStatus.PUBLISHED },
-		where: { deletedAt: null, id: postId, status: PostStatus.HIDDEN },
+	const count = await db.orm.public.Post.where({
+		deletedAt: null,
+		id: postId,
+		status: PostStatus.HIDDEN,
+	}).updateAndCount({
+		hiddenAt: null,
+		hiddenById: null,
+		hiddenReason: null,
+		status: PostStatus.PUBLISHED,
 	})
 	if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 }
 
 export async function hideComment(commentId: string, moderatorId: string, reason: string): Promise<void> {
-	await prisma.$transaction(async tx => {
-		const { count } = await tx.postComment.updateMany({
-			data: { hiddenAt: new Date(), hiddenById: moderatorId, hiddenReason: sanitize(reason) },
-			where: { deletedAt: null, hiddenAt: null, id: commentId },
-		})
+	await db.transaction(async tx => {
+		const count = await tx.orm.public.PostComment.where({ deletedAt: null, id: commentId })
+			.where(comment => comment.hiddenAt.isNull())
+			.updateAndCount({
+				hiddenAt: formatDbTimestamp(new Date()),
+				hiddenById: moderatorId,
+				hiddenReason: sanitize(reason),
+			})
 		if (count === 0) throw new HttpError("NOT_FOUND", "Comment not found")
-		const comment = await tx.postComment.findUniqueOrThrow({
-			select: { postId: true },
-			where: { id: commentId },
-		})
+		const comment = await tx.orm.public.PostComment.whereUnique({ id: commentId }).select("postId").firstOrThrow()
 		// A hidden comment is out of the feed, so it is out of the count too.
-		await tx.post.update({
-			data: { commentCount: { decrement: count } },
-			where: { id: comment.postId },
-		})
+		await bumpPostCount(tx, comment.postId, "commentCount", -count)
 	})
 }
 
-export { PostKind, PostStatus } from "@/app/generated/prisma/enums"
+export { PostKind, PostStatus } from "@/lib/enums"

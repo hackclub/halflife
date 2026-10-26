@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server"
+import { readBoundedText } from "@/lib/api"
 import {
 	addReaction,
 	checkChannelMembership,
@@ -117,11 +118,10 @@ function reopenRefFrom(ref: Partial<TicketRef & { ticketsChannel: string }>) {
 		: undefined
 }
 
-/** Staff clicking "Mark as helped" in the tickets channel – gated on
- * membership of the private tickets channel, like the thread path below. The request signature already proves Slack sent it; this is defence in depth so a leaked message-ts pair or a future workspace-wide action with
- * the same action_id cannot resolve tickets as any Slack identity. Denials answer ephemerally so the clicker knows whether they lack membership or the membership check itself is broken (missing scope, bot not in the channel), instead of the click silently doing nothing.
+/** Staff clicking "Mark as helped" in the tickets channel – gated on membership of the private tickets channel, like the thread path below. The request signature already proves Slack sent it; this is defence in depth so a leaked message-ts pair or a future workspace-wide action with the same action_id cannot resolve tickets as any Slack identity. Denials answer ephemerally so the clicker knows whether they lack membership or the membership check itself is broken (missing scope, bot not in the channel), instead of the click silently doing nothing.
  *
- * Resolving here lands where the in-thread button lands: the help thread's reminder is rewritten into its resolved state, and the tickets-channel mirror leaves the queue. The mirror is the message the button was clicked on, so its coordinates are on the payload rather than the ref. */
+ * * Resolving here lands where the in-thread button lands: the help thread's reminder is rewritten into its resolved state, and the tickets-channel mirror leaves the queue. The mirror is the message the button was clicked on, so its coordinates are on the payload rather than the ref.
+ */
 async function handleMarkHelped(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
@@ -198,9 +198,10 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	await reactResolved(ref)
 }
 
-/** The ticket's own author clicking "I'm all set" in the help-channel
- * thread – restricted to whoever opened the ticket, so someone else in the thread can't close it out from under them. Also clears the ticket out of the
- * tickets channel so staff see it's already handled. */
+/** The ticket's own author clicking "I'm all set" in the help-channel thread – restricted to whoever opened the ticket, so someone else in the thread can't close it out from under them. Also clears the ticket out of the
+ *
+ * * tickets channel so staff see it's already handled.
+ */
 async function handleSelfResolve(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
@@ -252,9 +253,10 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 	await reactResolved(ref)
 }
 
-/** A helper clicking "Mark as helped" in the help-channel thread – the ask
- * from the helpers, so nobody has to jump over to the tickets channel to close a ticket. Resolves both the thread ack and the tickets-channel
- * message, mirroring what the staff-side button does. */
+/** A helper clicking "Mark as helped" in the help-channel thread – the ask from the helpers, so nobody has to jump over to the tickets channel to close a ticket. Resolves both the thread ack and the tickets-channel
+ *
+ * * message, mirroring what the staff-side button does.
+ */
 async function handleThreadMarkHelped(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
@@ -325,7 +327,9 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 }
 
 /** The reopen button on a resolved thread message – the asker whose problem came back, or a helper who sees it needs more.
- * Gated like the resolve buttons: the author, or the team that owns the tickets channel. Anyone else gets an ephemeral denial rather than a silent nothing. */
+ *
+ * * Gated like the resolve buttons: the author, or the team that owns the tickets channel. Anyone else gets an ephemeral denial rather than a silent nothing.
+ */
 async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
@@ -373,8 +377,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 	}
 	if (!reopened) return
 
-	// Back in the queue: the mirror was deleted on resolve, so staff need a fresh one. Best-effort like the rest of this file – the thread below reopens regardless.
-	// The row itself counts in the history read, so one is subtracted: at creation the row does not exist yet and the count excludes it.
+	// Back in the queue: the mirror was deleted on resolve, so staff need a fresh one. Best-effort like the rest of this file – the thread below reopens regardless. The row itself counts in the history read, so one is subtracted: at creation the row does not exist yet and the count excludes it.
 	let ticketsTs: string | null = null
 	try {
 		const priorTickets = Math.max(0, (await countPriorHelpTickets(ref.authorId)) - 1)
@@ -453,7 +456,9 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-	const rawBody = await request.text()
+	// Bounded before verification: an unsigned caller must not decide how much memory the HMAC read may spend.
+	const rawBody = await readBoundedText(request)
+	if (rawBody === null) return NextResponse.json({ ok: false }, { status: 413 })
 
 	const verified = verifySlackRequest(
 		rawBody,

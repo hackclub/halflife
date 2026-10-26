@@ -1,8 +1,7 @@
-import "dotenv/config"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
-import { HardwareExperience, Theme } from "../src/app/generated/prisma/enums"
 import { scheduleForWeek } from "../src/lib/config/program"
+import { HardwareExperience, Theme } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
  * End-to-end check of the first checkpoint.
@@ -10,14 +9,11 @@ import { scheduleForWeek } from "../src/lib/config/program"
  * Two properties matter enough to assert rather than trust:
  *
  * 1. The flow cannot be skipped. Posting a later step than you have reached is refused, so nobody arrives at a funded project without having been asked what they are building.
+ *
  * 2. Onboarding never writes `ThemeProject.tier`. That column is the reviewer's decision and the number the grant is paid against; the participant's answer belongs in `requestedTier`. If these two ever merge, a participant is choosing their own funding.
  *
  * Run with `pnpm verify:onboarding` against a scratch database.
  */
-
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
-})
 
 let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {
@@ -51,15 +47,27 @@ async function main() {
 		starterProjectsFor(Theme.SYNTH).map(p => p.id),
 		["midi"],
 	)
+	// A week without a starter of its own must offer none. Falling back to another week's starter put the week-one Starbie guide on week-three projects, and weeks four and five have no starter yet either.
+	check("week 4 is Displays", scheduleForWeek(4)?.theme.id, Theme.DISPLAYS)
+	check(
+		"week 4 offers no starter",
+		starterProjectsFor(Theme.DISPLAYS).map(p => p.id),
+		[],
+	)
+	check(
+		"week 5 offers no starter",
+		starterProjectsFor(Theme.BREADBOARD_COMPUTER).map(p => p.id),
+		[],
+	)
 
 	const stamp = Date.now()
-	const user = await prisma.user.create({
-		data: {
-			email: `onboarding-check-${stamp}@example.test`,
-			name: "Onboarding Check",
-			verificationStatus: "verified",
-		},
+	const user = await db.orm.public.User.create({
+		email: `onboarding-check-${stamp}@example.test`,
+		name: "Onboarding Check",
+		verificationStatus: "verified",
 	})
+	// Onboarding anchors to the participant's first project, which is normally the current week's. This suite exercises the starter fork, so it anchors to week one's PCB project rather than to whichever week the check happens to run in – weeks without a starter have no fork to test.
+	await db.orm.public.ThemeProject.create({ theme: Theme.PCB, title: "PCB", userId: user.id })
 
 	// ── Starting state ─────────────────────────────────────────────────────────
 	const start = await getOnboardingState(user.id)
@@ -85,7 +93,7 @@ async function main() {
 
 	// ── 2. Week intro: a beginner's fork, taking the starter ───────────────────
 	const starters = starterProjectsFor(afterExperience.state.theme)
-	const starter = starters[0]
+	const [starter] = starters
 	if (!starter) throw new Error("no starter projects configured for the onboarding theme")
 	check("a first-timer is offered the starter", afterExperience.state.starterProjects[0]?.id, starter.id)
 
@@ -126,17 +134,15 @@ async function main() {
 	)
 
 	// The invariant this whole split exists for.
-	const project = await prisma.themeProject.findFirstOrThrow({
-		select: { grantUsd: true, requestedTier: true, tier: true },
-		where: { theme: start.theme, userId: user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ theme: start.theme, userId: user.id })
+		.select("grantUsd", "requestedTier", "tier")
+		.firstOrThrow()
 	check("onboarding never set the reviewer's tier", project.tier, null)
 	check("onboarding never set a grant", project.grantUsd, null)
 	check("the request is recorded separately", project.requestedTier, 3)
 
 	// ── 6. Tracking, then the repo step, and completion ─────────────────────────
-	// Tracking is second-to-last: answering it moves on to the repo step, and
-	// only the repo answer stamps the checkpoint complete.
+	// Tracking is second-to-last: answering it moves on to the repo step, and only the repo answer stamps the checkpoint complete.
 	const afterTracking = await submitStep(user.id, { dismissed: true, step: "tracking" })
 	check("tracking moves on to the repo step", afterTracking.state.current?.id, "repo")
 	check("not complete before the last step", afterTracking.completed, false)
@@ -145,10 +151,9 @@ async function main() {
 	check("state says completed", done.state.completed, true)
 	check("no longer needs onboarding", await needsOnboarding(user.id), false)
 
-	const finished = await prisma.user.findUniqueOrThrow({
-		select: { onboardingCompletedAt: true, trackingTutorialDismissedAt: true },
-		where: { id: user.id },
-	})
+	const finished = await db.orm.public.User.whereUnique({ id: user.id })
+		.select("onboardingCompletedAt", "trackingTutorialDismissedAt")
+		.firstOrThrow()
 	check("dismissal recorded", finished.trackingTutorialDismissedAt !== null, true)
 	check("completion stamped", finished.onboardingCompletedAt !== null, true)
 
@@ -156,10 +161,24 @@ async function main() {
 		submitStep(user.id, { experience: HardwareExperience.ITS_LIFE, step: "experience" }),
 	)
 
-	// ── Someone experienced: no starter, and naming a project skips "Stuck?" ───
-	const maker = await prisma.user.create({
-		data: { email: `maker-${stamp}@example.test`, name: "Maker" },
+	// ── A week with no starter yet ─────────────────────────────────────────────
+	// Week four is Displays, which has no starter configured. A beginner must be able to name their own project, and must not be able to take another week's starter by posting its id.
+	const displayUser = await db.orm.public.User.create({
+		email: `display-${stamp}@example.test`,
+		name: "Displays Maker",
 	})
+	await db.orm.public.ThemeProject.create({ theme: Theme.DISPLAYS, title: "Displays", userId: displayUser.id })
+	await submitStep(displayUser.id, { experience: HardwareExperience.FIRST_TIME, step: "experience" })
+	const displayWeek = await getOnboardingState(displayUser.id)
+	check("a beginner on a week without a starter is offered none", displayWeek.starterProjects, [])
+	await refused("and cannot take another week's starter", () =>
+		submitStep(displayUser.id, { starterProjectId: starter.id, step: "week" }),
+	)
+	const displayProject = await submitStep(displayUser.id, { step: "week" })
+	check("the week step still moves on", displayProject.state.current?.id, "project")
+
+	// ── Someone experienced: no starter, and naming a project skips "Stuck?" ───
+	const maker = await db.orm.public.User.create({ email: `maker-${stamp}@example.test`, name: "Maker" })
 	const makerStart = await submitStep(maker.id, {
 		experience: HardwareExperience.A_GOOD_AMOUNT,
 		step: "experience",
@@ -177,32 +196,28 @@ async function main() {
 	check("naming a project goes on to the tier, past the idea step", makerProject.state.current?.id, "tier")
 
 	// ── Someone who was already working is never sent through it ───────────────
-	const veteran = await prisma.user.create({
-		data: { email: `veteran-${stamp}@example.test`, name: "Veteran" },
+	const veteran = await db.orm.public.User.create({ email: `veteran-${stamp}@example.test`, name: "Veteran" })
+	const veteranProject = await db.orm.public.ThemeProject.create({
+		theme: Theme.CAD,
+		title: "Already going",
+		userId: veteran.id,
 	})
-	const veteranProject = await prisma.themeProject.create({
-		data: { theme: Theme.CAD, title: "Already going", userId: veteran.id },
-	})
-	await prisma.workSession.create({
-		data: {
-			effectiveDate: "2026-09-10",
-			hoursClaimed: 3,
-			phase: "DESIGN",
-			themeProjectId: veteranProject.id,
-			title: "Modelling",
-		},
+	await db.orm.public.WorkSession.create({
+		effectiveDate: "2026-09-10",
+		hoursClaimed: 3,
+		phase: "DESIGN",
+		themeProjectId: veteranProject.id,
+		title: "Modelling",
 	})
 	check("an existing participant is not sent through onboarding", await needsOnboarding(veteran.id), false)
 	check("starter lookup round-trips", getStarterProject(starter.id)?.id, starter.id)
 
 	// ── The goal gate the first checkpoint hands off to ──────────────────────── The prompt after onboarding is held open on one fact – participantGoal being null – and that fact has to travel with the account rather than with a browser, or a new laptop would let somebody past a question they have never been asked. These three are what that rests on.
-	const asked = await prisma.user.create({
-		data: {
-			email: `goal-${stamp}@example.test`,
-			name: "Goal Check",
-			onboardingCompletedAt: new Date(),
-			// No participantGoal: finished onboarding, not yet answered.
-		},
+	const asked = await db.orm.public.User.create({
+		email: `goal-${stamp}@example.test`,
+		name: "Goal Check",
+		onboardingCompletedAt: formatDbTimestamp(new Date()),
+		// No participantGoal: finished onboarding, not yet answered.
 	})
 	const { getStoreSnapshot } = await import("../src/lib/queries/store")
 	const unanswered = await getStoreSnapshot(asked.id)
@@ -214,30 +229,30 @@ async function main() {
 	)
 
 	// Answering it is a plain write, and the gate opens the moment it lands.
-	await prisma.user.update({ data: { participantGoal: "FULL_FUNDING" }, where: { id: asked.id } })
+	await db.orm.public.User.where({ id: asked.id }).update({ participantGoal: "FULL_FUNDING" })
 	const answered = await getStoreSnapshot(asked.id)
 	check("answering closes the gate", answered.onboardingDone && answered.participantGoal === null, false)
 
 	// A participant on the printer branch keeps their machine across a change of heart; nulling it here would hand them the default instead of their own.
-	await prisma.user.update({ data: { printerGoalId: "bambu-a1-mini" }, where: { id: asked.id } })
-	await prisma.user.update({ data: { participantGoal: "PARTIAL_FUNDING" }, where: { id: asked.id } })
-	await prisma.user.update({ data: { participantGoal: "PRINTER" }, where: { id: asked.id } })
-	const returned = await prisma.user.findUniqueOrThrow({
-		select: { printerGoalId: true },
-		where: { id: asked.id },
-	})
+	await db.orm.public.User.where({ id: asked.id }).update({ printerGoalId: "bambu-a1-mini" })
+	await db.orm.public.User.where({ id: asked.id }).update({ participantGoal: "PARTIAL_FUNDING" })
+	await db.orm.public.User.where({ id: asked.id }).update({ participantGoal: "PRINTER" })
+	const returned = await db.orm.public.User.whereUnique({ id: asked.id }).select("printerGoalId").firstOrThrow()
 	check("their own machine is still theirs after switching back", returned.printerGoalId, "bambu-a1-mini")
 
-	await prisma.user.delete({ where: { id: user.id } })
-	await prisma.user.delete({ where: { id: veteran.id } })
-	await prisma.user.delete({ where: { id: asked.id } })
+	await db.orm.public.User.where({ id: user.id }).delete()
+	await db.orm.public.User.where({ id: displayUser.id }).delete()
+	await db.orm.public.User.where({ id: veteran.id }).delete()
+	await db.orm.public.User.where({ id: asked.id }).delete()
 
 	console.log(failures === 0 ? "\nAll onboarding checks passed." : `\n${failures} check(s) failed.`)
 	process.exit(failures === 0 ? 0 : 1)
 }
 
-main().catch(async err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
-	await prisma.$disconnect()
+	await db.close()
 	process.exit(1)
-})
+}

@@ -1,0 +1,431 @@
+/*
+ * The weeks 3 + 4 sticker-sheet promotion, in the landing's world.
+ *
+ * It is mounted under both root layouts, so every colour reads the landing token first and falls back to the same literal: on the site's stylesheet there is one source of truth, and on the platform's – which has its own palette and none of these names – it still lands on the right ink, paper and cyan rather than on `transparent` or the browser's blue.
+ *
+ * The promo is a deliberate visitor from the landing: the painting, the wordmark and the cyan eyebrow are the landing's branding, and that is what makes a strip across the top of the platform read as an announcement from the programme rather than as another platform panel.
+ *
+ * Its controls are the exception. On the platform the banner sits directly above the dashboard and is used far more often there, so its buttons and edges wear that side's chrome: the drawn 12px control radius, a two-pixel rim, the hand label face, and the platform's own `line` stroke and panel radius. The site keeps the landing's bevel-cut cyan plate. Keep the fallbacks in step with both globals.css files by hand.
+ */
+
+.root {
+	--ink: var(--color-hl-ink, #31222c);
+	--paper: var(--color-hl-paper, #ededed);
+	--cyan: var(--color-hl-cyan, #8ed3dc);
+	--paper-soft: color-mix(in srgb, var(--paper) 78%, var(--ink));
+	--font-promo: var(--font-ubuntu, var(--font-jakarta, ui-sans-serif)), system-ui, sans-serif;
+	/* The platform's chrome, for the skin at the end of the file. The same fallbacks as its own tokens, so the platform rules stay readable here. */
+	--line: var(--color-line, #c8c3d6);
+	--navy: var(--color-navy, #1c1a59);
+	--sky: var(--color-sky, #52b4d5);
+	--sky-deep: var(--color-sky-deep, #2e8cae);
+	--violet: var(--color-violet, #a47cc0);
+
+	position: relative;
+	font-family: var(--font-promo);
+	line-height: 1.4;
+	color: var(--paper);
+	isolation: isolate;
+}
+
+/* ── The open banner ───────────────────────────────────────────────────── */
+
+.banner {
+	z-index: 20;
+	display: block;
+	width: 100%;
+	overflow: hidden;
+	background-color: var(--ink);
+	border-bottom: 1px solid color-mix(in srgb, var(--cyan) 32%, transparent);
+}
+
+.inner {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	gap: clamp(0.85rem, 2vw, 1.5rem);
+	align-items: center;
+	width: 100%;
+	max-width: 90rem;
+	min-height: 5.5rem;
+	padding: 0.9rem 4.25rem 0.9rem clamp(1rem, 3.5vw, 2.5rem);
+	margin-inline: auto;
+}
+
+.copy {
+	flex: 1 1 20rem;
+	min-width: 0;
+}
+
+.eyebrow {
+	display: block;
+	margin: 0;
+	font-size: 0.68rem;
+	font-weight: 700;
+	line-height: 1.2;
+	color: var(--cyan);
+	text-transform: uppercase;
+	letter-spacing: 0.18em;
+}
+
+.headline {
+	display: block;
+	margin: 0.18rem 0 0;
+	font-size: clamp(0.98rem, 1.2vw, 1.18rem);
+	font-weight: 700;
+	line-height: 1.25;
+	color: var(--paper);
+	letter-spacing: -0.01em;
+	text-wrap: balance;
+}
+
+.detail {
+	display: block;
+	margin: 0.2rem 0 0;
+	font-size: 0.8rem;
+	line-height: 1.35;
+	color: var(--paper-soft);
+}
+
+.logo {
+	display: block;
+	flex: 0 0 auto;
+	width: clamp(4.25rem, 6vw, 5.5rem);
+}
+
+.logoImage {
+	display: block;
+	width: 100%;
+	height: auto;
+	filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+}
+
+/* The sign-up button's own material: a cyan plate, ink type, a bevel corner. The landing's global `corner-shape` is not set on the platform, so it is asked for here and degrades to a soft radius where it is unsupported. */
+.cta {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 2.6rem;
+	padding: 0.55rem 1rem;
+	font-size: 0.74rem;
+	font-weight: 700;
+	line-height: 1.15;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	text-align: center;
+	text-decoration: none;
+	white-space: nowrap;
+	color: var(--ink);
+	background-color: var(--cyan);
+	border-radius: 0.55rem;
+	corner-shape: bevel;
+	transition:
+		background-color 150ms,
+		transform 150ms;
+}
+
+.cta:hover {
+	background-color: #fff;
+}
+
+.cta:active {
+	transform: translateY(1px);
+}
+
+/* ── The background painting ───────────────────────────────────────────── */
+
+.media {
+	position: absolute;
+	inset: 0;
+	z-index: -2;
+	overflow: hidden;
+}
+
+.image {
+	object-fit: cover;
+	/* The painting's lower half: the open blue, the branches and, on a wide screen, a corner of the fox. The top third is mostly empty sky at this crop, which reads as dead space in a 5.5rem strip. */
+	object-position: 50% 78%;
+}
+
+.scrim {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background:
+		linear-gradient(
+			90deg,
+			rgb(49 34 44 / 0.97) 0%,
+			rgb(49 34 44 / 0.9) 32%,
+			rgb(49 34 44 / 0.6) 56%,
+			rgb(49 34 44 / 0.28) 82%,
+			rgb(49 34 44 / 0.42) 100%
+		),
+		linear-gradient(180deg, rgb(49 34 44 / 0.22), rgb(49 34 44 / 0.1));
+}
+
+/* ── The close, shared by both states ──────────────────────────────────── */
+
+.close {
+	position: absolute;
+	top: 50%;
+	right: clamp(0.85rem, 2vw, 1.25rem);
+	z-index: 2;
+	display: grid;
+	place-items: center;
+	width: 2.35rem;
+	height: 2.35rem;
+	padding: 0;
+	color: var(--paper);
+	background-color: color-mix(in srgb, var(--ink) 55%, transparent);
+	border: 1px solid color-mix(in srgb, var(--paper) 24%, transparent);
+	border-radius: 0.5rem;
+	corner-shape: bevel;
+	translate: 0 -50%;
+	transition:
+		background-color 150ms,
+		border-color 150ms,
+		color 150ms;
+}
+
+.close:hover {
+	color: #fff;
+	background-color: color-mix(in srgb, var(--paper) 16%, transparent);
+	border-color: color-mix(in srgb, var(--paper) 42%, transparent);
+}
+
+.close svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+.root :focus-visible {
+	outline: 3px solid var(--cyan);
+	outline-offset: 3px;
+	border-radius: 2px;
+}
+
+/* The reopened banner takes focus so assistive tech announces the region, but it is not a control: a ring around the whole strip would read as one. */
+.banner:focus-visible {
+	outline: none;
+}
+
+.root ::selection {
+	color: var(--ink);
+	background-color: var(--cyan);
+}
+
+/* ── The floating card ─────────────────────────────────────────────────── */
+
+.card {
+	position: fixed;
+	z-index: 60;
+	right: clamp(1rem, 2.5vw, 1.5rem);
+	bottom: 1.5rem;
+	width: min(21rem, calc(100vw - 2rem));
+	overflow: hidden;
+	background-color: var(--ink);
+	border: 1px solid color-mix(in srgb, var(--cyan) 42%, transparent);
+	border-radius: 0.9rem;
+	corner-shape: bevel;
+	box-shadow:
+		0 3px 6px rgb(28 26 89 / 0.18),
+		0 18px 40px -16px rgb(28 26 89 / 0.55);
+	animation: promo-card-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The platform's phone tab bar owns the bottom of the screen; the card sits above it. From `lg` the tab bar is gone and the card can take the corner. */
+.card[data-platform="true"] {
+	bottom: calc(env(safe-area-inset-bottom, 0px) + 5.4rem);
+}
+
+.card .scrim {
+	background: linear-gradient(180deg, rgb(49 34 44 / 0.52) 0%, rgb(49 34 44 / 0.9) 42%, rgb(49 34 44 / 0.98) 100%);
+}
+
+.card .image {
+	object-position: 50% 66%;
+}
+
+.cardInner {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.7rem;
+	align-items: flex-start;
+	padding: 0.95rem 1rem 1rem;
+}
+
+.card .logo {
+	width: 4.5rem;
+}
+
+/* The copy is the way back to the banner. A button rather than a card-wide click target so the CTA and the close stay their own controls. */
+.copyButton {
+	display: block;
+	width: 100%;
+	padding: 0;
+	margin: 0;
+	color: inherit;
+	text-align: left;
+	background: transparent;
+	border: 0;
+}
+
+.copyButton .headline {
+	font-size: 1.02rem;
+}
+
+.copyButton:hover .headline {
+	color: var(--cyan);
+}
+
+.copyButton .detail {
+	font-size: 0.78rem;
+}
+
+.card .cta {
+	width: 100%;
+	min-height: 2.5rem;
+}
+
+.card .close {
+	top: 0.6rem;
+	right: 0.6rem;
+	width: 2rem;
+	height: 2rem;
+	translate: none;
+}
+
+/* ── The platform skin ─────────────────────────────────────────────────── */
+
+/* On the dashboard the strip is the first row of the app, so its controls and edges borrow the dashboard's material rather than the landing's: the primary action is a sky plate on a sky-deep two-pixel rim with navy type, as the platform sets any label on an accent fill, the close is one of the chrome's round outlined icon controls, and every edge is the platform's `line` at the panel weight and radius. */
+.root[data-platform="true"].banner {
+	border-bottom: 2px solid color-mix(in srgb, var(--line) 62%, transparent);
+}
+
+.root[data-platform="true"] .cta {
+	min-height: 2.75rem;
+	padding: 0 1.25rem;
+	font-family: var(--font-hand, var(--font-promo));
+	font-size: 0.78rem;
+	letter-spacing: 0.11em;
+	color: var(--navy);
+	background-color: var(--sky);
+	border: 2px solid var(--sky-deep);
+	border-radius: 0.75rem;
+	corner-shape: round;
+	transition:
+		background-color 150ms,
+		filter 150ms,
+		transform 150ms;
+}
+
+.root[data-platform="true"] .cta:hover {
+	background-color: var(--sky);
+	filter: brightness(1.06);
+}
+
+.root[data-platform="true"] .close {
+	width: 2.25rem;
+	height: 2.25rem;
+	color: var(--paper);
+	background-color: color-mix(in srgb, var(--ink) 55%, transparent);
+	border: 2px solid color-mix(in srgb, var(--line) 55%, transparent);
+	border-radius: 999px;
+	corner-shape: round;
+}
+
+.root[data-platform="true"] .close:hover {
+	color: #ffffff;
+	background-color: color-mix(in srgb, var(--paper) 14%, transparent);
+	border-color: var(--violet);
+}
+
+/* The floating card is a panel on the platform, not a sticker: the same line stroke, the 16px panel radius, and the tape shadow it already had. */
+.root[data-platform="true"].card {
+	border: 2px solid color-mix(in srgb, var(--line) 62%, transparent);
+	border-radius: 1rem;
+	corner-shape: round;
+}
+
+/* ── Before React remembers ────────────────────────────────────────────── */
+
+/* `PromoBootScript` writes the stored mode onto <html> before paint. A banner that is really a card would otherwise fill the top of the page and then be yanked out; this keeps it out of the first paint instead. */
+html[data-promo="card"] .banner,
+html[data-promo="hidden"] .root {
+	display: none;
+}
+
+@keyframes promo-card-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.6rem) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* ── Narrow screens ────────────────────────────────────────────────────── */
+
+@media (max-width: 47.99em) {
+	.inner {
+		flex-wrap: wrap;
+		gap: 0.55rem 0.9rem;
+		min-height: 0;
+		padding: 0.8rem 3.2rem 0.9rem 1rem;
+	}
+
+	.copy {
+		flex: 1 1 100%;
+		padding-right: 0.5rem;
+	}
+
+	.eyebrow {
+		font-size: 0.64rem;
+	}
+
+	.headline {
+		font-size: 1rem;
+	}
+
+	.detail {
+		display: none;
+	}
+
+	.cta {
+		min-height: 2.35rem;
+	}
+
+	.close {
+		top: 0.7rem;
+		width: 2rem;
+		height: 2rem;
+		translate: none;
+	}
+
+	.card {
+		right: 0.75rem;
+		bottom: 1rem;
+		width: min(20.5rem, calc(100vw - 1.5rem));
+	}
+
+	.card[data-platform="true"] {
+		bottom: calc(env(safe-area-inset-bottom, 0px) + 5.35rem);
+	}
+}
+
+@media (min-width: 1024px) {
+	.card[data-platform="true"] {
+		bottom: 1.5rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.card {
+		animation: none;
+	}
+}

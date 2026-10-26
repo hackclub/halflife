@@ -1,15 +1,22 @@
 import "server-only"
-import type { Theme } from "@/app/generated/prisma/enums"
-import { DESIGN_JSON, REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
+import {
+	DESIGN_JSON,
+	REPO_FILE_KINDS,
+	type RepoFileKind,
+	readmeBomTable,
+	THEME_REPO_REQUIREMENTS,
+} from "@/lib/config/repo-checks"
+import type { Theme } from "@/lib/enums"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
 import { ForgeUnavailableError, forgeGet } from "@/lib/github"
+import { containsOnshapeLink, isOnshapeLink } from "@/lib/repo"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 import { README_GUIDE_URL } from "@/lib/routes"
 
 /**
  * Pre-submission repo checks, ported from Hack Club Stasis (lib/github-checks) and now forge-aware.
  *
- * The checks themselves are the same on every forge – a README with enough text and photos, and the file kinds the week exists to produce. What changes per forge is how the file list and the README are read, which is why `fetchSnapshot` branches and everything below it does not.
+ * The checks themselves are the same on every forge – a README with enough text and photos, the BOM table a reviewer prices the week from, and the file kinds the week exists to produce. What changes per forge is how the file list and the README are read, which is why `fetchSnapshot` branches and everything below it does not.
  *
  * A forge we do not speak is still a repo a maker may hand in: `checkRepo` warns rather than blocks, exactly as it did for a GitLab link before GitLab was understood. That path stays, because Codeberg and a self-hosted Gitea are still real answers to "where is your project".
  */
@@ -94,22 +101,53 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 	}
 
 	// Never rejects. The promise is what the cache holds, so a rejected one would be handed to every check of this repo for the next minute – each of them a 500 – instead of the short-lived "could not check" it should be.
-	const value = fetchSnapshot(ref).catch((err): Snapshot => {
-		console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
-		return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
-	})
+	const value = (async (): Promise<Snapshot> => {
+		try {
+			return await fetchSnapshot(ref)
+		} catch (err) {
+			console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
+			return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
+		}
+	})()
 	const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
 	snapshots.set(key, entry)
 	// Settled, a failure is only kept briefly. Checked against the entry itself, so a newer fetch that has replaced it is left alone.
-	void value.then(snap => {
+	void (async () => {
+		const snap = await value
 		if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
-	})
+	})()
 	return value
 }
 
 /** Read the file list and README from whichever forge the repo lives on. */
 function fetchSnapshot(ref: RepoRef): Promise<Snapshot> {
 	return ref.forge.id === "gitlab" ? fetchGitLabSnapshot(ref) : fetchGitHubSnapshot(ref)
+}
+
+/**
+ * Whether the forge reports this repo as public.
+ *
+ * A repo the server token can see but the world cannot must read as not-found: otherwise anyone can point a project at someone else's private repo and have the server read its file list and BOM contents back to them (the GitLab token is the likeliest one with such access). True means public, false means private or gone, null means the forge could not be asked.
+ */
+async function isPublicRepo(ref: RepoRef): Promise<boolean | null> {
+	try {
+		if (ref.forge.id === "gitlab") {
+			const res = await forgeGet(ref.forge, `projects/${encodeURIComponent(ref.fullName)}`)
+			if (res.status === 404) return false
+			if (!res.ok) return null
+			const body = (await res.json()) as { visibility?: string }
+			return body.visibility === "public"
+		}
+		const res = await forgeGet(ref.forge, `repos/${ref.fullName}`)
+		if (res.status === 404) return false
+		if (!res.ok) return null
+		const body = (await res.json()) as { private?: boolean }
+		return body.private === false
+	} catch (err) {
+		if (err instanceof ForgeUnavailableError) return null
+		console.warn(`[repo-checks] visibility check for ${ref.forge.id}/${ref.fullName} failed:`, err)
+		return null
+	}
 }
 
 /**
@@ -176,7 +214,7 @@ function isDesignJson(text: string): boolean {
  * Two requests, side by side. The file list is read at HEAD – the default branch, whatever it is called – so there is no need to ask for the repo first just to learn the branch name, which is what used to make this three. The file list also answers whether the repo exists: 404 there means it does not, or is private, which to a reviewer is the same thing.
  */
 async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
-	const forge = ref.forge
+	const { forge } = ref
 	const base = `repos/${ref.fullName}`
 	let treeRes: Response
 	let readmeRes: Response
@@ -201,6 +239,11 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	if (!readmeRes.ok && readmeRes.status !== 404)
 		return { kind: "unavailable", why: `${forge.label} returned an error (${readmeRes.status}).` }
 
+	// A repo the server token can see but the world cannot reads as not-found (see isPublicRepo): the file list and the BOM import below must never return a private repo's contents to whoever linked it.
+	const visible = await isPublicRepo(ref)
+	if (visible === false) return { kind: "not-found" }
+	if (visible === null) return { kind: "unavailable", why: `${forge.label} did not answer.` }
+
 	const body = treeRes.ok
 		? ((await treeRes.json()) as { tree?: { path: string; type: string }[]; truncated?: boolean })
 		: { tree: [], truncated: false }
@@ -210,7 +253,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	let readme: string | null = null
 	if (readmeRes.ok) {
 		const r = (await readmeRes.json()) as { content?: string; encoding?: string }
-		if (r.content && r.encoding === "base64") readme = Buffer.from(r.content, "base64").toString("utf-8")
+		if (r.content && r.encoding === "base64") readme = capReadme(Buffer.from(r.content, "base64").toString("utf-8"))
 	}
 
 	return { designs: designFinder(ref, files), files, kind: "ok", paths, readme, truncated: body.truncated === true }
@@ -219,12 +262,10 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 /**
  * GitLab's tree API, walked page by page.
  *
- * GitLab has no `truncated` flag and no README endpoint that finds the README
- * for you, so this asks for the tree and then reads the README by the name it
- * actually found. Both lists are paginated at 100, and a project with more files than one page would silently look emptier than it is – which, for a required-file check, means failing a maker who did the work. So the tree is walked until GitLab stops offering a next page.
+ * GitLab has no `truncated` flag and no README endpoint that finds the README for you, so this asks for the tree and then reads the README by the name it actually found. Both lists are paginated at 100, and a project with more files than one page would silently look emptier than it is – which, for a required-file check, means failing a maker who did the work. So the tree is walked until GitLab stops offering a next page.
  */
 async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
-	const forge = ref.forge
+	const { forge } = ref
 	const project = encodeURIComponent(ref.fullName)
 
 	let first: Response
@@ -238,6 +279,11 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	}
 	if (first.status === 404) return { kind: "not-found" }
 	if (!first.ok) return { kind: "unavailable", why: `${forge.label} returned an error (${first.status}).` }
+
+	// As on GitHub above: a private repo the server token can see reads as not-found, so its file list is never returned to whoever linked it.
+	const visible = await isPublicRepo(ref)
+	if (visible === false) return { kind: "not-found" }
+	if (visible === null) return { kind: "unavailable", why: `${forge.label} did not answer.` }
 
 	const files: string[] = []
 	// A generous ceiling: 100 pages of 100 is 10,000 files, which no hardware project is, and it stops a pathological repo looping here forever.
@@ -277,28 +323,51 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 	const candidates = files
 		.filter(f => README_NAMES.has((f.split("/").pop() ?? "").toLowerCase()))
 		.toSorted((a, b) => a.split("/").length - b.split("/").length)
-	const name = candidates[0]
+	const [name] = candidates
 	if (!name) return null
 
 	const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`)
 	if (!res.ok) return null
-	return res.text()
+	return capReadme(await res.text())
 }
 
 /** Markdown or HTML images. Global so the README can be counted as well as tested. */
-const README_IMAGE = /!\[[^\]]*\]\([^)]*\)|!\[[^\]]*\]\[[^\]]*\]|<img\b[^>]*>/gi
+const README_IMAGE =
+	/!\[[^\]\n]{0,1000}\]\([^)\n]{0,2000}\)|!\[[^\]\n]{0,1000}\]\[[^\]\n]{0,1000}\]|<img\b[^>\n]{0,5000}>/gi
 const README_MIN_CHARS = 200
 const README_MIN_IMAGES = 2
 const README_MIN_LINES = 3
 
+/**
+ * Longest README kept from a forge: 256 KB.
+ *
+ * Bounds the snapshot cache against a pathological repo. Checks only scan the first 64 KB (see README_SCAN_LIMIT), so nothing they can pass on is lost.
+ */
+const README_KEEP_LIMIT = 256 * 1024
+
+function capReadme(readme: string): string {
+	return readme.length > README_KEEP_LIMIT ? readme.slice(0, README_KEEP_LIMIT) : readme
+}
+
+/**
+ * Longest README slice any check runs a regex over: 64 KB.
+ *
+ * The image regex takes quadratic time on inputs like `![![![…`, and a participant can point their project at any repo – so one /preflight call with such a README would stop that server for minutes. A 64 KB prefix still answers every check (200 chars, 3 lines, 2 images), and anything longer is already a pass on length.
+ */
+const README_SCAN_LIMIT = 64 * 1024
+
+function scannableReadme(readme: string): string {
+	return readme.length > README_SCAN_LIMIT ? readme.slice(0, README_SCAN_LIMIT) : readme
+}
+
 /** How many images the README embeds. */
 function readmeImageCount(readme: string): number {
-	return [...readme.matchAll(README_IMAGE)].length
+	return [...scannableReadme(readme).matchAll(README_IMAGE)].length
 }
 
 /** The README's prose, with images and the whitespace they leave behind removed. */
 function readmeText(readme: string): string {
-	return readme.replaceAll(README_IMAGE, " ").replaceAll(/\s+/g, " ").trim()
+	return scannableReadme(readme).replaceAll(README_IMAGE, " ").replaceAll(/\s+/g, " ").trim()
 }
 
 /**
@@ -307,7 +376,7 @@ function readmeText(readme: string): string {
  * Counted from the text that is left once images come out, so a line holding only a picture is not a line of writing. Blank lines do not count either; the floor is about how the README reads, not how it is spaced.
  */
 function readmeLineCount(readme: string): number {
-	return readme
+	return scannableReadme(readme)
 		.replaceAll(README_IMAGE, "")
 		.split(/\r?\n/)
 		.filter(line => line.trim().length > 0).length
@@ -316,7 +385,7 @@ function readmeLineCount(readme: string): number {
 /** The paths in the repo that satisfy a file kind by name. */
 function namedMatches(kind: RepoFileKind, snap: RepoSnapshot): string[] {
 	const def = REPO_FILE_KINDS[kind]
-	const pattern = def.pattern
+	const { pattern } = def
 	if (pattern) return snap.paths.filter(p => pattern.test(p))
 	return snap.paths.filter(p => (def.extensions ?? []).some(ext => p.endsWith(ext)))
 }
@@ -340,6 +409,62 @@ function sample(found: readonly string[]): string {
 	return found.length > 3 ? `${shown} and ${found.length - 3} more` : shown
 }
 
+/** The neutral CAD exchange formats. Accepted as a source, but not the editable original. */
+const STEP_EXTENSIONS = [".step", ".stp"] as const
+
+/** The native Fusion formats, which a reviewer can actually open and edit. */
+const NATIVE_CAD_EXTENSIONS = [".f3d", ".f3z"] as const
+
+/** The URLs in a project's `artifactLinks` JSON, or none when the column is empty or malformed. */
+function artifactLinkUrls(links: unknown): string[] {
+	if (!Array.isArray(links)) return []
+	const urls: string[] = []
+	for (const link of links) {
+		if (!link || typeof link !== "object") continue
+		const { url } = link as { url?: unknown }
+		if (typeof url === "string") urls.push(url)
+	}
+	return urls
+}
+
+/**
+ * The recommendation a repo with a STEP file earns.
+ *
+ * `.step` is accepted as CAD source, but it is a neutral export rather than the editable original: a reviewer cannot open it in Fusion and change the model. A repo that carries one should also carry the native file or a link to the Onshape document, so the check passes when any of those is present and warns when STEP is all there is. Null for a repo with no STEP file, which is most of them.
+ */
+export function stepSourceCheck(input: {
+	artifactLinks?: unknown
+	description?: string | null
+	paths: readonly string[]
+}): RepoCheck | null {
+	const stepFiles = input.paths.filter(p => STEP_EXTENSIONS.some(ext => p.endsWith(ext)))
+	if (stepFiles.length === 0) return null
+
+	const nativeFiles = input.paths.filter(p => NATIVE_CAD_EXTENSIONS.some(ext => p.endsWith(ext)))
+	const inDescription = input.description ? containsOnshapeLink(input.description) : false
+	const inDemoLinks = artifactLinkUrls(input.artifactLinks).some(url => isOnshapeLink(url))
+	const alternatives = [
+		...(nativeFiles.length > 0 ? [sample(nativeFiles)] : []),
+		...(inDescription ? ["a link in the description"] : []),
+		...(inDemoLinks ? ["a link in the demo URL"] : []),
+	]
+
+	return alternatives.length > 0
+		? {
+				detail: `Editable source alongside ${sample(stepFiles)}: ${alternatives.join(", ")}`,
+				key: "cad_editable",
+				label: "Editable CAD source alongside STEP",
+				status: "pass",
+			}
+		: {
+				detail:
+					"A .step file is a neutral export, not the editable original. Add at least one of: a Fusion .f3d, a .f3z, an Onshape link in your project description, or an Onshape link in your demo URL. Do not put the Onshape link in the repo URL.",
+				key: "cad_editable",
+				label: "STEP needs the editable source",
+				status: "warn",
+			}
+}
+
 function result(repo: string | null, checks: RepoCheck[], unavailable = false): RepoCheckResult {
 	return {
 		canSubmit: !checks.some(c => c.blocking && c.status === "fail"),
@@ -350,7 +475,11 @@ function result(repo: string | null, checks: RepoCheck[], unavailable = false): 
 	}
 }
 
-export async function checkRepo(repoLink: string | null, theme: Theme): Promise<RepoCheckResult> {
+export async function checkRepo(
+	repoLink: string | null,
+	theme: Theme,
+	project: { artifactLinks?: unknown; description?: string | null } = {},
+): Promise<RepoCheckResult> {
 	if (!repoLink)
 		return result(null, [
 			{
@@ -379,7 +508,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 	}
 
 	const name = ref.fullName
-	const forge = ref.forge
+	const { forge } = ref
 
 	const unavailable = (why: string) =>
 		result(
@@ -410,7 +539,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 
 	const { readme, truncated } = snap
 
-	const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]
+	const { bomTable, required, recommended } = THEME_REPO_REQUIREMENTS[theme]
 	// Reading the repo's JSON is what finds an EasyEDA design, so it is done only when a kind that accepts one has found nothing by name – which for a PCB week is a repo exported from EasyEDA, and for every other repo never happens.
 	const designs = [...required, ...recommended].some(
 		kind => REPO_FILE_KINDS[kind].json && namedMatches(kind, snap).length === 0,
@@ -468,6 +597,26 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 				},
 	)
 
+	if (readme !== null && bomTable) {
+		const table = readmeBomTable(scannableReadme(readme), bomTable.minRows)
+		checks.push(
+			table
+				? {
+						detail: `${table.rows} row${table.rows === 1 ? "" : "s"}`,
+						key: "readme_bom",
+						label: "BOM table in README",
+						status: "pass",
+					}
+				: {
+						detail: `Recommended, not required: add a Markdown table with one row per part or material and columns for quantity, unit price and a buying link. The README needs at least ${bomTable.minRows} row${bomTable.minRows === 1 ? "" : "s"} to count.`,
+						key: "readme_bom",
+						label: "No BOM table in the README",
+						link: { href: README_GUIDE_URL, label: "What goes in a README" },
+						status: "warn",
+					},
+		)
+	}
+
 	for (const kind of required) {
 		const found = matches(kind, snap, designs)
 		const def = REPO_FILE_KINDS[kind]
@@ -501,6 +650,14 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		)
 	}
 
+	// A STEP export passes the CAD source check, but it is not the file a reviewer can edit, so a repo that carries one is offered the native or Onshape alternative as a recommendation rather than a refusal.
+	const step = stepSourceCheck({
+		artifactLinks: project.artifactLinks,
+		description: project.description,
+		paths: snap.paths,
+	})
+	if (step) checks.push(step)
+
 	return result(repoLink, checks)
 }
 
@@ -517,7 +674,7 @@ function foreignRepoHost(link: string): string | null {
 	if (forgeByHostname(host)) return null
 	const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(link) ? link : `https://${link}`
 	try {
-		const pathname = new URL(withScheme).pathname
+		const { pathname } = new URL(withScheme)
 		return pathname.split("/").filter(Boolean).length >= 2 ? host : null
 	} catch {
 		return null

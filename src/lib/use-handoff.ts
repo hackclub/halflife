@@ -1,6 +1,6 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { postForm } from "@/lib/upload-progress"
+import { postForm, putFile, routeMissing, uploadFailure, uploadFailureFrom } from "@/lib/upload-progress"
 
 /**
  * The desktop half of the phone handoff.
@@ -121,6 +121,8 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
  * Upload a file from this machine.
  *
  * Returns the R2 object key. Keys rather than URLs everywhere: the bucket or the CDN in front of it can move without rewriting a single stored row.
+ *
+ * The bytes go browser → R2 with a presigned PUT, not through this origin: a reel is 14 MiB at the median and an origin behind Cloudflare only gets about 100 seconds to answer, so the old form path turned a slow uplink into 524. The signed-in server checks what landed at `/confirm`. The form route stays as the fallback for a browser that cannot reach the bucket directly, which is what a missing CORS rule looks like.
  */
 export async function uploadFile(
 	file: File,
@@ -128,14 +130,129 @@ export async function uploadFile(
 	/** The fraction sent, 0 to 1. 1 means sent, not yet stored. */
 	onProgress?: (fraction: number) => void,
 ): Promise<{ objectKey: string; url: string | null }> {
+	const presigned = await presignUpload(file, folder)
+	if (!presigned) return uploadThroughServer(file, folder, onProgress)
+
+	const put = await putFile(presigned.uploadUrl, file, onProgress)
+	if (!put.ok) {
+		// Status 0 means the browser never reached the bucket at all – CORS is not set on a deployment that has not had the rule applied yet, or this network blocks it. The slow path still works.
+		if (put.status === 0) return uploadThroughServer(file, folder, onProgress)
+		throw new Error(`Storage refused the upload (${put.status}). Try again.`)
+	}
+
+	const res = await fetch("/api/upload/confirm", {
+		body: JSON.stringify({ contentType: file.type, objectKey: presigned.objectKey, size: file.size }),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	if (!res.ok) throw new Error(await uploadFailureFrom(res))
+
+	const payload = (await res.json()) as { objectKey: string; url: string | null }
+	return { objectKey: payload.objectKey, url: payload.url ?? null }
+}
+
+async function presignUpload(file: File, folder: string): Promise<{ objectKey: string; uploadUrl: string } | null> {
+	// Pictures are keyed by their hash, and WebCrypto only exists in a secure context. A plain-HTTP deployment (a dev server on a LAN address, say) therefore takes the server path, which hashes after the upload instead.
+	if (file.type.startsWith("image/") && !globalThis.crypto?.subtle) return null
+
+	const res = await fetch("/api/upload/presign", {
+		body: JSON.stringify({
+			contentType: file.type,
+			filename: file.name,
+			folder,
+			// Pictures are named after their bytes, so the key is minted here and `/confirm` checks the hash against what landed.
+			...(file.type.startsWith("image/") ? { sha256: await sha256Hex(file) } : {}),
+			size: file.size,
+		}),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	if (res.ok) return (await res.json()) as { objectKey: string; uploadUrl: string }
+	// Only a deployment that does not have the route falls back; an ordinary refusal (an expired token, say) is the server's answer to show.
+	if (routeMissing(res)) return null
+	throw new Error(await uploadFailureFrom(res))
+}
+
+/** The original path, for a browser that cannot PUT to the bucket. Slow, and still subject to the edge timeout. */
+async function uploadThroughServer(
+	file: File,
+	folder: string,
+	onProgress?: (fraction: number) => void,
+): Promise<{ objectKey: string; url: string | null }> {
 	const body = new FormData()
 	body.set("file", file)
 	body.set("folder", folder)
 	const res = await postForm("/api/upload", body, onProgress)
-	if (!res.ok) {
-		const payload = (res.json ?? {}) as { error?: { message?: string } }
-		throw new Error(payload.error?.message ?? `Upload failed (${res.status})`)
-	}
+	if (!res.ok) throw new Error(uploadFailure(res))
+
 	const payload = res.json as { objectKey: string; url: string | null }
 	return { objectKey: payload.objectKey, url: payload.url ?? null }
+}
+
+/**
+ * The phone's side of a handoff, sent straight to the bucket.
+ *
+ * Same shape as `uploadFile`, but the token is the credential instead of a session, and there is no image path: a handoff only receives video.
+ */
+export async function uploadHandoffFile(
+	token: string,
+	file: File,
+	onProgress?: (fraction: number) => void,
+): Promise<void> {
+	const res = await fetch("/api/handoff/presign", {
+		body: JSON.stringify({
+			contentType: file.type,
+			filename: file.name,
+			size: file.size,
+			token,
+		}),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	if (!res.ok) {
+		if (routeMissing(res)) return uploadHandoffThroughServer(token, file, onProgress)
+		throw new Error(await uploadFailureFrom(res))
+	}
+	const presigned = (await res.json()) as { objectKey: string; uploadUrl: string }
+
+	const put = await putFile(presigned.uploadUrl, file, onProgress)
+	if (!put.ok) {
+		if (put.status === 0) return uploadHandoffThroughServer(token, file, onProgress)
+		throw new Error(`Storage refused the upload (${put.status}). Try again.`)
+	}
+
+	const confirm = await fetch("/api/handoff/confirm", {
+		body: JSON.stringify({
+			contentType: file.type,
+			filename: file.name,
+			objectKey: presigned.objectKey,
+			size: file.size,
+			token,
+		}),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	if (!confirm.ok) throw new Error(await uploadFailureFrom(confirm))
+}
+
+async function uploadHandoffThroughServer(
+	token: string,
+	file: File,
+	onProgress?: (fraction: number) => void,
+): Promise<void> {
+	const body = new FormData()
+	body.append("token", token)
+	body.append("file", file)
+	const res = await postForm("/api/handoff/upload", body, onProgress)
+	if (!res.ok) throw new Error(uploadFailure(res))
+}
+
+/**
+ * The hash the picture's key is named after.
+ *
+ * WebCrypto has no streaming digest, so this holds the picture in memory – they are screenshots, and the ceiling is checked by the server anyway. A secure context is required, which every deployment of this app is.
+ */
+async function sha256Hex(file: File): Promise<string> {
+	const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer())
+	return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("")
 }

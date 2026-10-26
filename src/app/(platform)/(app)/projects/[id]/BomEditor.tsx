@@ -326,7 +326,7 @@ export function BomEditor({
 				after your project is approved.
 			</p>
 			<div className="-mx-1 overflow-x-auto px-1">
-				<table className="w-full min-w-[480px] text-left text-[0.86rem]">
+				<table className="w-full min-w-120 text-left text-[0.86rem]">
 					<thead>
 						<tr className="border-b border-dashed border-line">
 							{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
@@ -578,7 +578,7 @@ export function BomEditor({
 									</p>
 								)}
 								<div className="-mx-1 max-h-[42vh] overflow-auto px-1">
-									<table className="w-full min-w-[440px] text-left text-[0.85rem]">
+									<table className="w-full min-w-110 text-left text-[0.85rem]">
 										<thead>
 											<tr className="border-b border-dashed border-line">
 												{["Part", "Qty", "Unit", "Vendor"].map(h => (

@@ -108,15 +108,10 @@ export function RepoChecks({
 					{loading ? "Checking…" : "Check again"}
 				</Button>
 			</div>
-			{/* Where the link can be changed, it sits here with its editor. Where it
-          cannot – the project page – it is already in the page's heading, and
-          saying it twice a few lines apart only makes the reader compare them. */}
+			{/* Where the link can be changed, it sits here with its editor. Where it cannot – the project page – it is already in the page's heading, and saying it twice a few lines apart only makes the reader compare them. */}
 			{editable && <RepoEditor className="mt-1" project={project} />}
 
-			{/* The sync can be pointed at a repo the project link never got, which is
-          exactly the state the checks below fail in. One press copies it over,
-          so the fix for a "No repo" finding is here rather than a trip to the
-          details form. */}
+			{/* The sync can be pointed at a repo the project link never got, which is exactly the state the checks below fail in. One press copies it over, so the fix for a "No repo" finding is here rather than a trip to the details form. */}
 			{syncRepo && (
 				<p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl bg-gold-pale/60 px-3.5 py-2.5 text-[0.85rem] leading-relaxed text-navy">
 					<span>

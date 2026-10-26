@@ -1,4 +1,3 @@
-import { Prisma } from "@/app/generated/prisma/client"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
@@ -6,7 +5,7 @@ import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { disputeSchema } from "@/lib/schemas/project"
 
@@ -28,38 +27,34 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	// Stored as plain text elsewhere, so it is stripped of markup on the way in too.
 	const note = sanitize(parsed.data.note)
 
-	const project = await prisma.themeProject.findFirst({
-		select: { id: true, theme: true, title: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("id", "theme", "title")
+		.first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	// Wrap the status check, submission selection and dispute creation in one transaction so a dispute cannot attach to a submission that has since been resolved superseded or a phase that has since moved.
-	const submissionId = await prisma.$transaction(async tx => {
-		const fresh = await tx.themeProject.findFirst({
-			select: { buildStatus: true, designStatus: true },
-			where: { deletedAt: null, id, userId: gate.user.id },
-		})
+	const submissionId = await db.transaction(async tx => {
+		const fresh = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+			.select("buildStatus", "designStatus")
+			.first()
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 
 		const status = statusFor(fresh, phase)
 		if (status !== "update_requested" && status !== "rejected")
 			throw new HttpError("CONFLICT", "Only a review that asked for changes or rejected the work can be disputed")
 
-		const submission = await tx.phaseSubmission.findFirst({
-			orderBy: { resolvedAt: "desc" },
-			select: { id: true },
-			where: { phase, resolvedAt: { not: null }, themeProjectId: id },
-		})
+		const submission = await tx.orm.public.PhaseSubmission.where({ phase, themeProjectId: id })
+			.where(s => s.resolvedAt.isNotNull())
+			.orderBy(s => s.resolvedAt.desc())
+			.select("id")
+			.first()
 		if (!submission) throw new HttpError("NOT_FOUND", "There is no decided submission to dispute")
 
 		try {
-			await tx.reviewDispute.create({
-				data: { note, submissionId: submission.id, userId: gate.user.id },
-			})
+			await tx.orm.public.ReviewDispute.create({ note, submissionId: submission.id, userId: gate.user.id })
 		} catch (err) {
 			// The unique submissionId is the guard: one second look per decision. Anything else – a dropped connection, a constraint that is not this one – is not the caller's conflict to be told about.
-			if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
+			if (isUniqueViolation(err))
 				throw new HttpError("CONFLICT", "You have already asked for a second look at this review")
 			throw err
 		}

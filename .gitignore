@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/e2e/.auth/
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -100,3 +103,5 @@ yarn.lock
 # throwaway auth secret for looking at the UI without the OIDC round trip),
 # and a secret-shaped string in the repo is a bad habit even when it is fake.
 /.claude/launch.json
+
+.opencode

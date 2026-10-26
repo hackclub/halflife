@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { shopRegionPreferenceSchema } from "@/lib/schemas/shop"
 
 export const dynamic = "force-dynamic"
@@ -14,12 +14,12 @@ export const PUT = withSession(async (req: Request, { gate }) => {
 	const { regionId } = parsed.data
 
 	if (regionId !== null) {
-		const region = await prisma.shopRegion.findUnique({ select: { active: true }, where: { id: regionId } })
+		const region = await db.orm.public.ShopRegion.whereUnique({ id: regionId }).select("active").first()
 		if (!region) return fail("NOT_FOUND", "Region not found")
 		if (!region.active) return fail("CONFLICT", "That region is not available right now")
 	}
 
-	await prisma.user.update({ data: { shopRegionId: regionId }, where: { id: gate.user.id } })
+	await db.orm.public.User.where({ id: gate.user.id }).update({ shopRegionId: regionId })
 
 	return ok({ regionId })
 })

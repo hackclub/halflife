@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import {
 	IconArrowRight,
@@ -28,13 +27,19 @@ import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
-import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
+import {
+	STARTER_MODIFICATION_NOTE,
+	STARTER_PROJECT_TIER,
+	starterProjectsFor,
+	usesStarterDefaultDescription,
+} from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { formatShortDate } from "@/lib/deadline"
+import { ParticipantGoal } from "@/lib/enums"
 import { round2 } from "@/lib/money"
 import { fmtHours } from "@/lib/numbers"
 import {
@@ -44,7 +49,7 @@ import {
 	type PublicReelPlatform,
 	readPublicReelLink,
 } from "@/lib/public-reels"
-import { normalizeRepo } from "@/lib/repo"
+import { validateRepoField } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
@@ -299,8 +304,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	)
 
 	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
-	// The Lapse timelapses backing this session (clip state lives above, with the seed it resolves from).
-	// A draft is cut to the box's own ceiling: autosave wrote whatever was typed, including entries past a limit the server refuses, so a draft from before `maxLength` existed restores to something that can be typed on and saved. The saved entry is not cut, because it came from the server and is already within bounds.
+	// The Lapse timelapses backing this session (clip state lives above, with the seed it resolves from). A draft is cut to the box's own ceiling: autosave wrote whatever was typed, including entries past a limit the server refuses, so a draft from before `maxLength` existed restores to something that can be typed on and saved. The saved entry is not cut, because it came from the server and is already within bounds.
 	const [body, setBody] = useState(draft ? clampToContentLimit(draft.body) : (existing?.body ?? ""))
 	const [preview, setPreview] = useState(false)
 	// Free text, not a number: a controlled number input that coerces as you type eats the decimal point the moment you reach for "1.5".
@@ -681,8 +685,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			scrollKey={tab}
 			size="lg"
 		>
-			{/* An edit re-opens both tabs: the picker comes back with this entry's
-			    clips selected, ready to swap. */}
+			{/* An edit re-opens both tabs: the picker comes back with this entry's clips selected, ready to swap. */}
 			<div className="mb-5 flex justify-center">
 				<div
 					className="sketch flex gap-1 rounded-full bg-white p-1"
@@ -705,9 +708,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</div>
 			</div>
 
-			{/* Timelapses are picked on the other tab but belong to this entry too:
-			    say so under the switcher, so combining the two is an offer on screen
-			    rather than something you find by accident. */}
+			{/* Timelapses are picked on the other tab but belong to this entry too: say so under the switcher, so combining the two is an offer on screen rather than something you find by accident. */}
 			{tab === "journal" && (
 				<p className="hand -mt-2 mb-5 text-center text-[0.78rem] text-navy-soft">
 					{attachedCount > 0 ? (
@@ -778,7 +779,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</ModalTitle>
 					)}
 
-					<div className="mb-4 max-w-[220px]">
+					<div className="mb-4 max-w-55">
 						<Field
 							hint={
 								picked.length > 0
@@ -798,8 +799,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								value={hoursText}
 							/>
 						</Field>
-						{/* The claim as the server will log it: what was typed plus what
-						    the timelapses recorded. */}
+						{/* The claim as the server will log it: what was typed plus what the timelapses recorded. */}
 						{lapseHours > 0 && (
 							<p className="hand mt-1.5 text-[0.76rem] tabular-nums text-navy-soft" role="status">
 								{fmtDuration(coveredSeconds)} from timelapses
@@ -835,10 +835,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</span>
 					</div>
 
-					{/* Write and read sit side by side rather than behind a swap, so a
-              long entry can be checked against its own formatting without
-              losing the cursor. Below md there is only room for one, and the
-              toggle picks which. */}
+					{/* Write and read sit side by side rather than behind a swap, so a long entry can be checked against its own formatting without losing the cursor. Below md there is only room for one, and the toggle picks which. */}
 					<div className="mb-2 flex items-center justify-between gap-3">
 						<p className="label text-violet-deep">
 							Your entry{" "}
@@ -875,9 +872,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					</div>
 
 					<div className={cx("grid gap-3", preview && "md:grid-cols-2")}>
-						{/* `min-w-0` on both columns: a grid item is otherwise as wide as
-                its widest unbroken content, so a long URL in the entry widened
-                the column and the preview beside it scrolled sideways. */}
+						{/* `min-w-0` on both columns: a grid item is otherwise as wide as its widest unbroken content, so a long URL in the entry widened the column and the preview beside it scrolled sideways. */}
 						<div className={cx("relative min-w-0", preview && "hidden md:block")}>
 							<Gato
 								className="pointer-events-none absolute top-1/2 left-1/2 h-auto w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
@@ -914,7 +909,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 						{preview && (
 							<div
-								className="sketch thin-scroll max-h-[15rem] min-h-[8rem] min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
+								className="sketch thin-scroll max-h-60 min-h-32 min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
 								style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties}
 							>
 								{body.trim() ? (
@@ -987,8 +982,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 					{editing && (pinned.length > 0 || legacyKept.length > 0) && (
 						<div className="mb-3 grid justify-items-center gap-1.5">
-							{/* Clips Lapse would not re-verify stay by id: listed so they
-							    can still be taken off, rather than stuck on forever. */}
+							{/* Clips Lapse would not re-verify stay by id: listed so they can still be taken off, rather than stuck on forever. */}
 							{pinned.map(id => (
 								<p
 									className="hand flex flex-wrap items-center justify-center gap-x-2 text-center text-[0.78rem] text-navy-soft"
@@ -1391,7 +1385,7 @@ export function PublicReelModal({
 export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
-	const done = stateOf(checkpoint.id).done
+	const { done } = stateOf(checkpoint.id)
 	// A reel draft is restored once, when the sheet opens, and never changes while it is open – so it is a value to read, not one to set.
 	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => readReelDraft(checkpoint.id))
@@ -1410,7 +1404,13 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (!video) return
 		// The `muted` attribute only sets the initial state – React re-renders do not move the property after mount – so the toggle writes it here.
 		video.muted = muted
-		video.play().catch(() => undefined)
+		void (async () => {
+			try {
+				await video.play()
+			} catch {
+				// Autoplay refuses before a gesture; the play button below is the fallback.
+			}
+		})()
 	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.
@@ -1527,8 +1527,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						}}
 						variant="outline"
 					>
-						{/* On a finished checkpoint with nothing started there is no
-                draft to keep – it is just the answer to "another one?" */}
+						{/* On a finished checkpoint with nothing started there is no draft to keep – it is just the answer to "another one?" */}
 						{done && !clip && !caption.trim() ? "Not now" : "Save draft"}
 					</Button>
 					<Button disabled={Boolean(postBlocker) || posting} onClick={() => post()} variant="solid">
@@ -1586,15 +1585,12 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					</Field>
 				</div>
 
-				<div className="mx-auto w-[180px] md:w-full">
+				<div className="mx-auto w-45 md:w-full">
 					<p className="label mb-2 text-navy-soft">Preview</p>
 					<div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "9 / 16" }}>
 						{clip ? (
 							<>
-								{/* The clip itself, looping the way the Doomscroller will show
-                    it. Without a URL (a draft on a deployment with no public
-                    bucket URL) it says so rather than standing a stock
-                    illustration in for someone's footage. */}
+								{/* The clip itself, looping the way the Doomscroller will show it. Without a URL (a draft on a deployment with no public bucket URL) it says so rather than standing a stock illustration in for someone's footage. */}
 								{previewUrl ? (
 									<>
 										<video
@@ -1721,7 +1717,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									buildStatus: "draft",
 									description: desc.trim(),
 									designStatus: "draft",
-									githubRepo: normalizeRepo(repo).url,
+									githubRepo: validateRepoField(repo).url,
 									name: name.trim(),
 									starter: starterId !== null,
 									starterProjectId: starterId,
@@ -1802,7 +1798,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								{pick === null ? <IconCheck className="text-base" /> : null}
 							</Button>
 						}
-						art={<Gato className="h-[140px] w-auto" pose="schematic" sizes="260px" />}
+						art={<Gato className="h-35 w-auto" pose="schematic" sizes="260px" />}
 						chosen={pick === null}
 						label="Custom project"
 						stacked
@@ -1823,7 +1819,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			) : (
 				<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 					<div className="grid gap-4">
-						<p className="label mb-2 text-left text-violet-deep">Step 2 / 2</p>
+						<p className="label mb-2 text-left text-violet-deep">{starters.length > 0 ? "Step 2 / 2" : "Step 1 / 1"}</p>
 						<p className="hand mb-2 text-left text-[0.8rem] text-navy-soft">
 							Tier can be changed any time before you submit this week.
 						</p>
@@ -1898,9 +1894,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									Starter projects are Tier 1. Switch to your own idea to choose a different tier.
 								</p>
 							)}
-							{/* The hours quoted here are the funded block, which is exactly
-                what the submit gate holds you to. The funded hours buy the
-                parts; every hour past them earns spendable coins. */}
+							{/* The hours quoted here are the funded block, which is exactly what the submit gate holds you to. The funded hours buy the parts; every hour past them earns spendable coins. */}
 							<div className="grid gap-2.5">
 								{TIERS.map(t => (
 									<OptionRow
@@ -1935,7 +1929,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<div className="order-first lg:order-none">
 						<div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
 							<WeekPainting
-								className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
+								className="sticker-shadow mx-auto aspect-square w-full max-w-55"
 								sizes="(min-width: 1024px) 198px, 220px"
 								theme={week.theme}
 							/>
@@ -2087,13 +2081,16 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	useEffect(() => {
 		if (isBuild || !project) return
 		let live = true
-		fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
-			.then(async res => {
+		void (async () => {
+			try {
+				const res = await fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
 				const body = (await res.json().catch(() => null)) as BomResponse | null
 				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
 				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })
-			})
-			.catch((err: Error) => live && setBomError(err.message))
+			} catch (err) {
+				if (live) setBomError(err instanceof Error ? err.message : String(err))
+			}
+		})()
 		return () => {
 			live = false
 		}
@@ -2129,16 +2126,26 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const descriptionLength = project?.description.trim().length ?? 0
 	const descriptionReady = descriptionLength >= MIN_PROJECT_DESCRIPTION_CHARS
 	const descriptionBlocker = `Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting – you have ${descriptionLength}.`
+	// A starter's description is written into the project when it is taken. The server refuses it; the sheet says so before the button is pressed, so the maker fixes it where the field is.
+	const starterDescriptionReady = !usesStarterDefaultDescription(
+		project?.starterProjectId ?? null,
+		project?.description ?? null,
+	)
+	const starterDescriptionBlocker =
+		"Replace the starter project's default description with your own – say what you changed, why you made it, and what makes it yours."
 
 	const canAdvance =
 		step === 1
 			? repoReady
 			: isBuild
-				? clip && descriptionReady && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
+				? clip
+					&& descriptionReady
+					&& starterDescriptionReady
+					&& (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
 						(carts.length > 0 || fundingDeclined) && !tierBlocked && fundingOk
-					: clip && !tierBlocked && fundingOk && hasCover && descriptionReady
+					: clip && !tierBlocked && fundingOk && hasCover && descriptionReady && starterDescriptionReady
 
 	/**
 	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
@@ -2160,12 +2167,15 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					? "Say what needs to change – a sentence or two."
 					: !descriptionReady
 						? descriptionBlocker
-						: null
+						: !starterDescriptionReady
+							? starterDescriptionBlocker
+							: null
 		if (step === 2)
 			return carts.length === 0 && !fundingDeclined ? "Add a screenshot of your cart above to carry on." : null
 		if (!clip) return "Record your closing reel to carry on."
 		if (!hasCover) return "Add a cover image to your project before you can submit."
 		if (!descriptionReady) return descriptionBlocker
+		if (!starterDescriptionReady) return starterDescriptionBlocker
 		return null
 	}
 
@@ -2285,10 +2295,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			scrollKey={step}
 			size="lg"
 		>
-			{/* On every step, not just the last one: a maker who is short on hours
-          should find that out before working through the checklist, not after.
-          It warns and does not block – the hours needed for a printer at all
-          are the trail's gate, and this is the gap to the one they chose. */}
+			{/* On every step, not just the last one: a maker who is short on hours should find that out before working through the checklist, not after. It warns and does not block – the hours needed for a printer at all are the trail's gate, and this is the gap to the one they chose. */}
 			{!hasCover && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
@@ -2329,6 +2336,34 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
 							A reviewer decides from the description, so it needs at least {MIN_PROJECT_DESCRIPTION_CHARS} characters –
 							you have {descriptionLength}.{" "}
+							{project && (
+								<Link
+									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									href={`/projects/${project.id}`}
+									onClick={() => setOpenCheckpoint(null)}
+								>
+									Edit the description
+								</Link>
+							)}
+						</p>
+					</div>
+				</div>
+			)}
+
+			{!starterDescriptionReady && (
+				<div
+					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+				>
+					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
+					<div className="min-w-0">
+						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
+							{project
+								? `${project.name} still has the starter's description.`
+								: "This project still has the starter's description."}
+						</p>
+						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+							Write your own description – say what you changed, why you made it, and what makes it yours.{" "}
 							{project && (
 								<Link
 									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
@@ -2404,7 +2439,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									</p>
 								) : (
 									<div className="overflow-x-auto">
-										<table className="w-full min-w-[480px] text-left text-[0.86rem]">
+										<table className="w-full min-w-120 text-left text-[0.86rem]">
 											<thead>
 												<tr className="border-b border-dashed border-line">
 													{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
@@ -2473,8 +2508,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
 								</div>
 							</Panel>
-							{/* One place to change the list: the project page. The sheet reads
-	              it, so what is handed in is what the maker kept there. */}
+							{/* One place to change the list: the project page. The sheet reads it, so what is handed in is what the maker kept there. */}
 							{project && (
 								<p className="hand mt-2 text-[0.82rem] text-navy-soft">
 									Something wrong?{" "}
@@ -2596,9 +2630,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											${t.grantUsd} for parts
 										</span>
 
-										{/* The hours are the gate, so they lead. The cart only
-                        says whether the money fits inside the tier once the
-                        tier is actually available to you. */}
+										{/* The hours are the gate, so they lead. The cart only says whether the money fits inside the tier once the tier is actually available to you. */}
 										<span
 											className={cx(
 												"mt-1 block text-[0.76rem] leading-snug",

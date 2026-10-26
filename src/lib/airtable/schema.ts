@@ -4,9 +4,10 @@
  * Two things are true at once, which is why every field carries both an id and a name:
  *
  * - Reads and writes use field IDs, which survive an ops person renaming a column. Siege does this and says why: "robust to column renames". Stasis writes by name, so a rename silently 422s inside a fire-and-forget side effect and nobody notices until payout.
+ *
  * - filterByFormula can only reference fields by NAME, so the name has to be here too. `formulaRef()` is the only sanctioned way to build one.
  *
- * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `yarn tsx scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
+ * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `bun scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
  */
 
 export interface FieldDef<T = unknown> {
@@ -42,6 +43,12 @@ export const YSWS_SUBMISSION = {
 	fields: {
 		addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
 		addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
+		// What Ari says the ship is doing right now. Filled by the `ari-retry` status poll because Ari sends no webhook when a decision is held for its second pass or returned from one. A single-line text field, not a select: a new phase on Ari's side must not need an option created here before the write lands.
+		ariReviewPhase: f<string>("fldYswsAriReviewPhase", "Ari - Review phase"),
+		// When the phase last changed, ISO with time. A date field with time enabled, so an operator can see how long a ship has been held.
+		ariReviewPhaseAt: f<string>("fldYswsAriReviewPhaseAt", "Ari - Review phase at"),
+		// Only set while the phase is `second_pass`; cleared when it leaves. The same instant as the phase timestamp, kept separately so “in second pass since” is a filter rather than a comparison.
+		ariSecondPassSince: f<string>("fldYswsAriSecondPassSince", "Ari - Second pass since"),
 		birthday: f<string>("fldYswsBirthday", "Birthday"),
 		city: f<string>("fldYswsCity", "City"),
 		codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
@@ -59,6 +66,8 @@ export const YSWS_SUBMISSION = {
 		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
 		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
 		lastName: f<string>("fldYswsLastName", "Last Name"),
+		// The reviewer whose decision the webhook carries as `review.reviewer.email`. Half Life stores that address on the review (`SubmissionReview.reviewerEmail`), and the same mirror that moves the status fills this column from it. Ari names no one for its second pass – the organizer who confirms a held decision exists only in Ari's internal activity log – so this is the only reviewer column.
+		pass1Reviewer: f<string>("fldYswsPass1Reviewer", "Pass 1 reviewer"),
 		playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
 		projectName: f<string>("fldYswsProjectName", "Project name"),
 		// Which program week this submission is for, as the single select Loops triggers off (`Week 1` … `Week 10`). Derived from the theme and phase's own scheduled week (see `projectWeekLabel` in lib/airtable/sync); a warm-up has no scheduled week and leaves it blank.
@@ -104,20 +113,11 @@ export const YSWS_REVIEW_STATUS = {
 } as const
 
 /**
- * The two columns a review decision writes alongside the status, so the Loops
- * workflow that reads the contact has the project this decision is about.
+ * The two columns a review decision writes alongside the status, so the Loops workflow that reads the contact has the project this decision is about.
  *
- * The email-tools poller only forwards a `Loops - …` field when its value
- * changed on that row. The row's normal project name and week were written at
- * submit, so a decision on an older project changes only status and notes – the
- * poller never re-sends the name, and the contact keeps whatever the maker
- * submitted most recently. These `Override` columns are separate fields, so
- * writing them in the decision changes their values and the poller forwards
- * them; email-tools maps the `Loops - Override - ` prefix onto the same Loops
- * property with its `override` strategy.
+ * The email-tools poller only forwards a `Loops - …` field when its value changed on that row. The row's normal project name and week were written at submit, so a decision on an older project changes only status and notes – the poller never re-sends the name, and the contact keeps whatever the maker submitted most recently. These `Override` columns are separate fields, so writing them in the decision changes their values and the poller forwards them; email-tools maps the `Loops - Override - ` prefix onto the same Loops property with its `override` strategy.
  *
- * They are plain single-line text fields, because the app does not know their
- * Airtable field ids and writes them by name (see `syncReviewDecisionToYsws`).
+ * They are plain single-line text fields, because the app does not know their Airtable field ids and writes them by name (see `syncReviewDecisionToYsws`).
  */
 export const LOOPS_REVIEW_OVERRIDE = {
 	projectName: "Loops - Override - halfLifeProjectName",

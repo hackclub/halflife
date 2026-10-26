@@ -1,8 +1,7 @@
-import "dotenv/config"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import type { z } from "zod"
-import type { ReviewResult as AriReviewResult } from "../src/app/generated/prisma/enums"
+import type { ReviewResult as AriReviewResult } from "../src/lib/enums"
 import type { JournalEntry } from "../src/lib/repo-sync-files"
 
 /**
@@ -15,6 +14,7 @@ import type { JournalEntry } from "../src/lib/repo-sync-files"
  * Two checks, both static – this needs no database:
  *
  * 1. every method a client fetches with is exported by the route it hits
+ *
  * 2. every request body a client sends parses against that route's schema
  *
  * The bodies below are written out by hand rather than extracted, because the point is to state what the client is believed to send. When one drifts, this fails and names it.
@@ -22,9 +22,7 @@ import type { JournalEntry } from "../src/lib/repo-sync-files"
  * Run with `pnpm verify:contracts`.
  */
 
-// The project link is absolute only when the deployment names an origin, and this
-// script has to name one itself: CI runs it with no environment at all, and the
-// check below is about the rendering rather than about the deployment's config.
+// The project link is absolute only when the deployment names an origin, and this script has to name one itself: CI runs it with no environment at all, and the check below is about the rendering rather than about the deployment's config.
 process.env.NEXT_PUBLIC_APP_URL ??= "https://halflife.hackclub.com"
 
 let failures = 0
@@ -73,10 +71,7 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 			// Group 1 is always there when the regex matched; the fallback keeps the type honest without a non-null assertion.
 			const path = match[1]?.slice(1, -1) ?? ""
 			if (!path.startsWith("/api")) continue
-			// The options object follows the URL. Capturing up to the first `)`
-			// used to end inside `JSON.stringify(...)` whenever a body is
-			// serialised before `method:` is stated, so every such call read as
-			// GET. Scan to the fetch's own closing paren instead.
+			// The options object follows the URL. Capturing up to the first `)` used to end inside `JSON.stringify(...)` whenever a body is serialised before `method:` is stated, so every such call read as GET. Scan to the fetch's own closing paren instead.
 			const options = fetchOptions(source, (match.index ?? 0) + match[0].length)
 			// A method can be a literal or a ternary; collect every literal offered.
 			const methods = [...options.matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
@@ -89,9 +84,7 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 }
 
 /**
- * The text of a `fetch(url, ...)` call from just after the URL literal through
- * its closing paren, tracking depth past nested calls and skipping string
- * literals, so `method:` is read from the whole options object.
+ * The text of a `fetch(url, ...)` call from just after the URL literal through its closing paren, tracking depth past nested calls and skipping string literals, so `method:` is read from the whole options object.
  */
 function fetchOptions(source: string, from: number): string {
 	let depth = 1 // inside fetch's own paren
@@ -301,6 +294,22 @@ async function bodies() {
 		"body · repoSync accepts a GitLab nested-group URL",
 		repoSyncSettingsSchema.safeParse({ enabled: true, repo: "https://gitlab.com/group/sub/repo" }).success,
 	)
+	// A repo field wants a repository. An Onshape document is one CAD file opened in a browser, so in the repo column it is read as the project's source and is found out at submission. Refused where it is typed, and pointed at the demo links.
+	const onshapeDoc = "https://cad.onshape.com/documents/abc123/w/def456/e/ghi789"
+	check(
+		"body · a project repo refuses an Onshape document",
+		!projectUpdateSchema.safeParse({ githubRepo: onshapeDoc }).success,
+	)
+	check(
+		"body · a project repo still accepts another forge",
+		projectUpdateSchema.safeParse({ githubRepo: "https://codeberg.org/maker/hackpad" }).success,
+	)
+	const { validateRepoField } = await import("../src/lib/repo")
+	check("repo field · an Onshape link is refused", validateRepoField("cad.onshape.com/documents/abc123").error !== null)
+	check(
+		"repo field · a lookalike host is not Onshape",
+		validateRepoField("https://onshape.example.com/me/repo").error === null,
+	)
 	// An empty body is a preview, not a write: the defaults have to be false on both axes or a stray POST would replace the list.
 	const importDefaults = bomImportSchema.safeParse({})
 	check(
@@ -309,10 +318,7 @@ async function bodies() {
 	)
 	check("body · bomImport rejects an unknown field", !bomImportSchema.safeParse({ write: true }).success)
 
-	// The review email's project identity is a pair of Airtable override
-	// columns. email-tools only forwards a Loops field whose value changed, so
-	// these are separate fields the decision writes; a typo in either name means
-	// the workflow silently ignores it and the email names the wrong project.
+	// The review email's project identity is a pair of Airtable override columns. email-tools only forwards a Loops field whose value changed, so these are separate fields the decision writes; a typo in either name means the workflow silently ignores it and the email names the wrong project.
 	const { reviewOverrideValues } = await import("../src/lib/airtable/sync")
 	const { LOOPS_REVIEW_OVERRIDE } = await import("../src/lib/airtable/schema")
 	const overrides = reviewOverrideValues("Macropad", 3)
@@ -472,7 +478,7 @@ async function bodies() {
 	//
 	// One Ari ship per (project, phase), so the external id has to survive a round trip for a webhook to find the right submission.
 	const { ariExternalId, parseAriExternalId } = await import("../src/lib/ari-id")
-	const { Phase } = await import("../src/app/generated/prisma/enums")
+	const { Phase } = await import("../src/lib/enums")
 	const ariDesign = ariExternalId(me, Phase.DESIGN)
 	const ariBuild = ariExternalId(me, Phase.BUILD)
 	check("ari · design external id", ariDesign === `${me}:design`, ariDesign)
@@ -487,7 +493,7 @@ async function bodies() {
 	//
 	// What the hourly retry job replays and what the admin Retry button offers: in-review phases whose NEWEST open submission has no ariSubmissionId.
 	const { selectPendingShips } = await import("../src/lib/ari-pending")
-	const { PhaseStatus } = await import("../src/app/generated/prisma/enums")
+	const { PhaseStatus } = await import("../src/lib/enums")
 	const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
 	const projects = [
 		{ buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" },
@@ -532,7 +538,7 @@ async function bodies() {
 	//
 	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
 	const { countAriShips } = await import("../src/lib/ari-counts")
-	const { ReviewResult } = await import("../src/app/generated/prisma/enums")
+	const { ReviewResult } = await import("../src/lib/enums")
 	const ship = (over: Partial<Parameters<typeof countAriShips>[0][number]> = {}) => ({
 		ariSubmissionId: "ship_1",
 		createdAt: at(0),
@@ -758,7 +764,7 @@ async function bodies() {
 
 	// The subtraction as the ledger applies it: a journal entry claiming two hours with a two-hour recording, beside a link reporting two hours tracked over the same period. Five hours claimed, three hours of actual work.
 	const { rollUpHours } = await import("../src/lib/hours")
-	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/app/generated/prisma/enums")
+	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/lib/enums")
 	const oneEntry = [
 		{
 			hoursApproved: null,
@@ -1206,8 +1212,10 @@ async function bodies() {
 		check("repo-files · legacy bom deletion is a delete", legacy.content === null)
 
 		// The BOM is what a PCB design week's funding is asked against, so its absence blocks the hand-in rather than warning. Pinned because the two lists are plain arrays a later edit can quietly re-sort a kind out of.
-		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN } = await import("../src/lib/config/repo-checks")
-		const { Theme } = await import("../src/app/generated/prisma/enums")
+		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN, readmeBomTable, REPO_FILE_KINDS } = await import(
+			"../src/lib/config/repo-checks"
+		)
+		const { Theme } = await import("../src/lib/enums")
 		check("repo-checks · a PCB repo must carry a BOM", THEME_REPO_REQUIREMENTS[Theme.PCB].required.includes("bom"))
 		check(
 			"repo-checks · the BOM is no longer merely recommended",
@@ -1216,6 +1224,102 @@ async function bodies() {
 		check(
 			"repo-checks · the BOM pattern is the one the check reads",
 			BOM_CSV_PATTERN.test("BOM.csv") && BOM_CSV_PATTERN.test("hardware/bom-v2.csv") && !BOM_CSV_PATTERN.test("bom.md"),
+		)
+		check(
+			"repo-checks · a PCB week suggests two README BOM rows",
+			THEME_REPO_REQUIREMENTS[Theme.PCB].bomTable?.minRows === 2,
+		)
+		check(
+			"repo-checks · a CAD week suggests one README BOM row",
+			THEME_REPO_REQUIREMENTS[Theme.CAD].bomTable?.minRows === 1,
+		)
+
+		// CAD policy: the source has to be editable, and the tools reviewers return are not sources. Tinkercad has no source format at all, OpenSCAD and Blender are excluded, and a printable mesh is a model, never a source.
+		const cadSource = REPO_FILE_KINDS.cadSource.extensions ?? []
+		check(
+			"repo-checks · CAD source excludes Tinkercad, OpenSCAD, Blender and STL",
+			![".scad", ".blend", ".stl", ".obj", ".3mf"].some(ext => cadSource.includes(ext)),
+		)
+		check(
+			"repo-checks · the CAD week still requires a source",
+			THEME_REPO_REQUIREMENTS[Theme.CAD].required.includes("cadSource"),
+		)
+		check(
+			"repo-checks · the missing-source message names the rejected tools",
+			REPO_FILE_KINDS.cadSource.missing.includes("not accepted as the source"),
+		)
+
+		// A STEP file passes the CAD source check, but it is not the editable original. The recommendation is a warning, and only when STEP is all there is: a native Fusion file or an Onshape link in the description or demo links answers it.
+		const { stepSourceCheck } = await import("../src/lib/repo-checks")
+		const stepRepo = { paths: ["cad/enclosure.step", "README.md"] }
+		const stepOnly = stepSourceCheck(stepRepo)
+		check(
+			"repo-checks · a STEP-only repo is warned, not blocked",
+			stepOnly !== null && stepOnly.status === "warn" && !stepOnly.blocking,
+		)
+		check(
+			"repo-checks · a repo without STEP gets no STEP recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.f3d"] }) === null,
+		)
+		check(
+			"repo-checks · an f3d beside STEP satisfies the recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.step", "cad/enclosure.f3d"] })?.status === "pass",
+		)
+		check(
+			"repo-checks · an f3z beside STEP satisfies the recommendation",
+			stepSourceCheck({ paths: ["cad/enclosure.stp", "cad/enclosure.f3z"] })?.status === "pass",
+		)
+		check(
+			"repo-checks · an Onshape link in the description satisfies the recommendation",
+			stepSourceCheck({ ...stepRepo, description: "Model: https://cad.onshape.com/documents/abc/w/def" })?.status
+				=== "pass",
+		)
+		check(
+			"repo-checks · an Onshape link in the demo links satisfies the recommendation",
+			stepSourceCheck({
+				...stepRepo,
+				artifactLinks: [{ label: "Demo", url: "https://cad.onshape.com/documents/abc" }],
+			})?.status === "pass",
+		)
+		check(
+			"repo-checks · a lookalike host does not satisfy the recommendation",
+			stepSourceCheck({ ...stepRepo, description: "https://notonshape.com/cad" })?.status === "warn",
+		)
+
+		// The README BOM table is a hint a reviewer prices the week from, so it is checked by shape: a part-like header, a price/cost/link/supplier column, and enough data rows. These pin the shapes that actually turn up, including the ones that must not count: a pinout, a screenshot, a link to a CSV, and a one-row board BOM.
+		const markdownBom =
+			"| Part | Qty | Unit price | Link |\n| --- | --- | --- | --- |\n| PCB | 5 | $2 | https://example.com/pcb |\n| XIAO | 1 | $5 | https://example.com/xiao |"
+		check("repo-checks · a README BOM table passes", readmeBomTable(markdownBom, 2)?.rows === 2)
+		check(
+			"repo-checks · a table without outer pipes passes",
+			readmeBomTable("Part | Price | Link\n--- | --- | ---\nPCB | $2 | https://example.com", 1)?.rows === 1,
+		)
+		check(
+			"repo-checks · a BOM table without a price or link does not count",
+			readmeBomTable("| Part | Qty |\n| --- | --- |\n| PCB | 5 |", 1) === null,
+		)
+		check(
+			"repo-checks · a pinout table does not count",
+			readmeBomTable("| Pin | Function |\n| --- | --- |\n| D1 | SDA |", 1) === null,
+		)
+		check("repo-checks · a screenshot of a BOM does not count", readmeBomTable("![BOM](bom.png)", 1) === null)
+		check("repo-checks · a link to a BOM file does not count", readmeBomTable("[BOM](BOM.csv)", 1) === null)
+		check(
+			"repo-checks · a table in a code block does not count",
+			readmeBomTable("```\n| Part | Price |\n| --- | --- |\n| PCB | $2 |\n```", 1) === null,
+		)
+		check(
+			"repo-checks · a one-row board BOM is short",
+			readmeBomTable("| Part | Price |\n| --- | --- |\n| PCB | $2 |", 2) === null,
+		)
+		check(
+			"repo-checks · a one-row material BOM is enough for CAD",
+			readmeBomTable("| Material | Cost |\n| --- | --- |\n| PLA | $20 |", 1)?.rows === 1,
+		)
+		check(
+			"repo-checks · an HTML BOM table passes",
+			readmeBomTable("<table><tr><th>Part</th><th>Price</th></tr><tr><td>PCB</td><td>$2</td></tr></table>", 1)?.rows
+				=== 1,
 		)
 
 		// The date in the banner has to come from the data, not the wall clock. When it was `new Date()`, two renders of identical content differed, so the blob SHA never matched, "skip unchanged files" never fired, and every debounced sync committed a no-op diff. A render now pins the date to the newest entry (or the project row), so identical content is byte-identical.
@@ -1234,6 +1338,41 @@ async function bodies() {
 				// The fixture's newest entry is 2026-10-06T12:00Z. If the banner ever carries "now", it drifts forward on every run and this stays true.
 				return Math.abs(Date.now() - new Date(stamped).getTime()) > 60_000
 			})(),
+		)
+
+		// Taking a starter writes its description into the project. A maker who never replaces it has handed in the guide's words, so submitPhase refuses it; the comparison is pinned on the cases that decide that gate.
+		const { STARTER_PROJECTS, usesStarterDefaultDescription } = await import("../src/lib/config/onboarding")
+		const starbie = STARTER_PROJECTS.find(p => p.id === "starbie")
+		const merbl = STARTER_PROJECTS.find(p => p.id === "merbl")
+		check(
+			"starter · the default description is recognised",
+			starbie !== undefined && usesStarterDefaultDescription("starbie", starbie.description),
+		)
+		check(
+			"starter · case and whitespace do not make it the maker's",
+			starbie !== undefined && usesStarterDefaultDescription("starbie", `  ${starbie.description.toUpperCase()}  `),
+		)
+		check(
+			"starter · punctuation and zero-width variants do not make it the maker's",
+			starbie !== undefined
+				&& usesStarterDefaultDescription(
+					"starbie",
+					starbie.description.replaceAll("-", "–").replace("Starboy", "Star\u200Bboy"),
+				),
+		)
+		check(
+			"starter · an added sentence is a change",
+			starbie !== undefined
+				&& !usesStarterDefaultDescription("starbie", `${starbie.description} I made the case from cardboard.`),
+		)
+		check(
+			"starter · a different starter's description does not match",
+			starbie !== undefined && merbl !== undefined && !usesStarterDefaultDescription("starbie", merbl.description),
+		)
+		check("starter · no starter id never matches", !usesStarterDefaultDescription(null, starbie?.description ?? ""))
+		check(
+			"starter · an unknown starter id never matches",
+			!usesStarterDefaultDescription("unknown", starbie?.description ?? ""),
 		)
 	}
 
@@ -1438,7 +1577,7 @@ async function bodies() {
 	const { justificationValues, specificTechnicalFeatures, timelapseLinks } = await import(
 		"../src/lib/airtable/justification"
 	)
-	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/app/generated/prisma/enums")
+	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/lib/enums")
 	{
 		const description = "A moonboard case, 3D printed in PLA."
 		const source = {
@@ -1575,12 +1714,11 @@ async function bodies() {
 	}
 }
 
-bodies()
-	.then(() => {
-		console.log(failures === 0 ? "\nAll contract checks passed." : `\n${failures} check(s) failed.`)
-		process.exitCode = failures === 0 ? 0 : 1
-	})
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
+try {
+	await bodies()
+	console.log(failures === 0 ? "\nAll contract checks passed." : `\n${failures} check(s) failed.`)
+	process.exitCode = failures === 0 ? 0 : 1
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+}

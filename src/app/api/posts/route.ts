@@ -63,7 +63,7 @@ async function logPostRefusal(userId: string, actorEmail: string, req: Request, 
 	let checkpointKey: string | null = null
 	try {
 		const body = (await req.clone().json()) as { checkpointKey?: unknown }
-		if (typeof body?.checkpointKey === "string") checkpointKey = body.checkpointKey
+		if (typeof body?.checkpointKey === "string") ({ checkpointKey } = body)
 	} catch {
 		// The body was unparseable, which is itself what the recorded reason will say.
 	}

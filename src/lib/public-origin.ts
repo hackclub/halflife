@@ -9,7 +9,9 @@ import { configuredOrigin, hostName, isLoopbackHost, isPublicHost } from "@/lib/
  * The order is the whole answer to it:
  *
  * 1. the configured origin (`NEXT_PUBLIC_APP_URL`, then `BETTER_AUTH_URL`) – the deployment's own answer, and the only one a caller cannot steer;
+ *
  * 2. the forwarded host, when it names a host we serve – the ingress's answer, and still only ours;
+ *
  * 3. the request's own host, but only a loopback one – a laptop, where there is no proxy and the host is the one the developer typed.
  *
  * Never an arbitrary `Host`. That header is as caller-controlled as `x-forwarded-host` is, and a redirect built from it answers `307 Location: https://<whatever the caller asked for>/` – an open redirect, on `/`, on `/signed-out` and on the auth callback. The pod's own address is not a fallback either (a QR pointing at `10.x` is a QR nobody's phone can reach), so a deployment that configures nothing has no origin to name and the callers fail closed instead.
@@ -23,8 +25,7 @@ export function publicOrigin(request: { headers: Headers; url: string }): string
 	const forwarded = trustedForwardedHost(request.headers.get("x-forwarded-host"))
 	if (forwarded) return `https://${forwarded}`
 
-	// The request's own host, but only a laptop's. A loopback name cannot be steered at
-	// a host somebody else owns; every other name in the `Host` header is the caller's.
+	// The request's own host, but only a laptop's. A loopback name cannot be steered at a host somebody else owns; every other name in the `Host` header is the caller's.
 	const host = request.headers.get("host")?.split(",")[0]?.trim() ?? ""
 	if (!isLoopbackHost(host)) return null
 	return `${requestProtocol(request)}://${host}`
@@ -40,8 +41,7 @@ function trustedForwardedHost(value: string | null): string | null {
 	if (!host) return null
 	const name = hostName(host)
 	if (!name || !isPublicHost(name)) return null
-	// The host as it came, so a deployment on a port of its own keeps it. The parse
-	// above is what proves the value is a plain host and not something else.
+	// The host as it came, so a deployment on a port of its own keeps it. The parse above is what proves the value is a plain host and not something else.
 	return host
 }
 

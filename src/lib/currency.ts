@@ -1,18 +1,18 @@
 import "server-only"
-import type { LedgerEntry, Prisma } from "@/app/generated/prisma/client"
-import { CoinBucket, LedgerKind, type ShopItemCategory } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
+import { CoinBucket, LedgerKind, type ShopItemCategory } from "@/lib/enums"
 import { lockKey } from "@/lib/locks"
-import { type CursorOrderOf, cursorWhere, orderByFor, pageResult } from "@/lib/pagination"
-import prisma from "@/lib/prisma"
-
-type Tx = Prisma.TransactionClient
+import { decodeCursor, encodeCursor } from "@/lib/pagination"
+import db, { type DbOrTx } from "@/lib/prisma8"
+import { withFields } from "@/lib/rows"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
  * Serialize every credit mutation for one user.
  *
- * MUST be the first statement inside any `$transaction` that reads a balance and then writes against it; see `lockKey`.
+ * MUST be the first statement inside any transaction that reads a balance and then writes against it; see `lockKey`.
  */
-export function lockUserCredit(tx: Tx, userId: string): Promise<void> {
+export function lockUserCredit(tx: DbOrTx, userId: string): Promise<void> {
 	return lockKey(tx, `credit:${userId}`)
 }
 
@@ -28,9 +28,17 @@ const EARNING_KINDS: LedgerKind[] = [
 	LedgerKind.REVIEWER_PAYMENT,
 ]
 
-async function sumFor(tx: Tx, where: Prisma.LedgerEntryWhereInput): Promise<number> {
-	const { _sum } = await tx.ledgerEntry.aggregate({ _sum: { amount: true }, where })
-	return _sum.amount ?? 0
+async function sumFor(
+	tx: DbOrTx,
+	filter: { bucket?: CoinBucket; kinds?: LedgerKind[]; themeProjectId?: string; userId: string },
+): Promise<number> {
+	const { kinds, themeProjectId, bucket } = filter
+	let entries = tx.orm.public.LedgerEntry.where({ userId: filter.userId })
+	if (bucket !== undefined) entries = entries.where({ bucket })
+	if (kinds !== undefined) entries = entries.where(entry => entry.kind.in(kinds))
+	if (themeProjectId !== undefined) entries = entries.where({ themeProjectId })
+	const { total } = await entries.aggregate(a => ({ total: a.sum("amount") }))
+	return total ?? 0
 }
 
 /** A single spendable pot, plus its legacy split. Every balance read should go through this. */
@@ -50,7 +58,7 @@ export interface Balances {
  *
  * The two sums are read one after the other, never together. An interactive transaction is a single connection, so two queries issued at once on the same `tx` are interleaved on that one connection rather than run in parallel: the second aggregate is evaluated against a snapshot the first one already moved past, and the transaction's timeout is spent on both at once. Sequential reads keep the two halves of a balance describing the same moment, which is the only thing a balance is for.
  */
-export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
+export async function getBalances(tx: DbOrTx, userId: string): Promise<Balances> {
 	const spendable = await sumFor(tx, { bucket: CoinBucket.SPENDABLE, userId })
 	const banked = await sumFor(tx, { bucket: CoinBucket.BANKED, userId })
 	return { banked, spendable, total: spendable + banked }
@@ -64,8 +72,8 @@ export function spendableFor(balances: Balances, _category: ShopItemCategory): n
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
-export function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
-	return sumFor(tx, { kind: { in: EARNING_KINDS }, userId })
+export function getEarnedCredit(tx: DbOrTx, userId: string): Promise<number> {
+	return sumFor(tx, { kinds: EARNING_KINDS, userId })
 }
 
 export interface LedgerEntryParams {
@@ -80,28 +88,29 @@ export interface LedgerEntryParams {
 	userId: string
 }
 
+/** One ledger row as `create` returns it: scalars only, no relations loaded. */
+export type NewLedgerEntry = Omit<Models.public_LedgerEntry, "shopOrder" | "themeProject" | "user">
+
 /**
  * Append one ledger row.
  *
- * MUST be called inside `prisma.$transaction` so the balance aggregate and the insert cannot interleave with a concurrent write and record a balanceBefore/balanceAfter pair that was never true.
+ * MUST be called inside a transaction so the balance aggregate and the insert cannot interleave with a concurrent write and record a balanceBefore/balanceAfter pair that was never true.
  */
-export async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Promise<LedgerEntry> {
+export async function appendLedgerEntry(tx: DbOrTx, params: LedgerEntryParams): Promise<NewLedgerEntry> {
 	const bucket = params.bucket ?? CoinBucket.SPENDABLE
 	// Scoped to the bucket: a combined figure here would make the audit columns disagree with the balance the participant was actually shown and spent against, which is the one question these columns exist to answer.
 	const balanceBefore = await sumFor(tx, { bucket, userId: params.userId })
-	return tx.ledgerEntry.create({
-		data: {
-			amount: params.amount,
-			balanceAfter: balanceBefore + params.amount,
-			balanceBefore,
-			bucket,
-			createdById: params.createdById ?? null,
-			kind: params.kind,
-			note: params.note ?? null,
-			shopOrderId: params.shopOrderId ?? null,
-			themeProjectId: params.themeProjectId ?? null,
-			userId: params.userId,
-		},
+	return tx.orm.public.LedgerEntry.create({
+		amount: params.amount,
+		balanceAfter: balanceBefore + params.amount,
+		balanceBefore,
+		bucket,
+		createdById: params.createdById ?? null,
+		kind: params.kind,
+		note: params.note ?? null,
+		shopOrderId: params.shopOrderId ?? null,
+		themeProjectId: params.themeProjectId ?? null,
+		userId: params.userId,
 	})
 }
 
@@ -124,7 +133,7 @@ export interface ReconcileParams {
  */
 export interface ReconcileResult {
 	/** The row it wrote, or null when the total was already where it had to be. */
-	entry: LedgerEntry | null
+	entry: NewLedgerEntry | null
 	/**
 	 * Coins the maker had already spent, so the reversal could not take them back.
 	 */
@@ -142,9 +151,9 @@ export interface ReconcileResult {
  *
  * Must run inside a transaction, for the same reason as appendLedgerEntry.
  */
-export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<ReconcileResult> {
+export async function reconcileGrant(tx: DbOrTx, params: ReconcileParams): Promise<ReconcileResult> {
 	const current = await sumFor(tx, {
-		kind: params.kind,
+		kinds: [params.kind],
 		themeProjectId: params.themeProjectId,
 		userId: params.userId,
 	})
@@ -181,29 +190,60 @@ export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<R
 	return { entry, unrecovered }
 }
 
-/**
- * The ledger's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
- */
-const LEDGER_ORDER = {
-	at: (row: LedgerEntry) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<LedgerEntry, Prisma.LedgerEntryOrderByWithRelationInput>
+/** One row of the ledger page. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface LedgerEntryRow {
+	amount: number
+	balanceAfter: number
+	balanceBefore: number
+	bucket: Models.public_LedgerEntry["bucket"]
+	createdAt: Date
+	createdById: string | null
+	id: string
+	kind: Models.public_LedgerEntry["kind"]
+	note: string | null
+	shopOrderId: string | null
+	themeProjectId: string | null
+	userId: string
+}
 
 export async function getLedgerPage(
 	userId: string,
 	cursor: string | undefined,
 	limit: number,
-): Promise<{ items: LedgerEntry[]; nextCursor: string | null }> {
-	const rows = await prisma.ledgerEntry.findMany({
-		orderBy: orderByFor(LEDGER_ORDER),
-		take: limit + 1,
-		// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
-		where: cursorWhere<Prisma.LedgerEntryWhereInput>(cursor, LEDGER_ORDER, { userId }),
-	})
-	return pageResult(rows, limit, LEDGER_ORDER)
+): Promise<{ items: LedgerEntryRow[]; nextCursor: string | null }> {
+	const filtered = db.orm.public.LedgerEntry.where({ userId }).orderBy([
+		entry => entry.createdAt.desc(),
+		entry => entry.id.desc(),
+	])
+	// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+	const position = cursor === undefined ? null : decodeCursor(cursor)
+	const paged =
+		position?.at === undefined || position?.at === null
+			? filtered
+			: filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+	const rows = await paged
+		.limit(limit + 1)
+		.select(
+			"amount",
+			"balanceAfter",
+			"balanceBefore",
+			"bucket",
+			"createdAt",
+			"createdById",
+			"id",
+			"kind",
+			"note",
+			"shopOrderId",
+			"themeProjectId",
+			"userId",
+		)
+		.all()
+	const items = rows.slice(0, limit).map(row => withFields(row, { createdAt: parseDbTimestamp(row.createdAt) }))
+	const last = items.at(-1)
+	return {
+		items,
+		nextCursor: rows.length > limit && last ? encodeCursor({ at: last.createdAt, id: last.id }) : null,
+	}
 }
 
-export { CoinBucket, LedgerKind } from "@/app/generated/prisma/enums"
+export { CoinBucket, LedgerKind } from "@/lib/enums"

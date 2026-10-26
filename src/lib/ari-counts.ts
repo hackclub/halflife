@@ -1,4 +1,4 @@
-import { type Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
+import { type Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
 
 /**
  * How Ari's review board breaks down, counted the way Ari counts it.
@@ -8,6 +8,7 @@ import { type Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/en
  * Two kinds of row are not on Ari's board and are counted nowhere:
  *
  * - A row Ari never received (`ariSubmissionId` null). It is waiting on us, not on a reviewer; the admin page counts it apart.
+ *
  * - An older open row for a phase that has since been handed in again. Ari holds at most one open ship per `external_id` – one (project, phase) – so a stale row is either a reverted ship the local reset left behind or an old ship a newer hand-in has replaced.
  *
  * A pending row only counts while its phase is actually `in_review`: a reverted or un-approved ship is terminal at Ari, and keeping it here would make the console's pending figure outrun the queue reviewers can open.

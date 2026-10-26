@@ -1,6 +1,7 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
-import prisma from "@/lib/prisma"
+import type { JsonValue } from "@/lib/json"
+import db from "@/lib/prisma8"
+import { parseDbTimestamp } from "@/lib/time"
 
 /** Keep these literals stable – admin surfaces match them by string. */
 export type SyncKey =
@@ -19,13 +20,11 @@ export type SyncKey =
  */
 export async function recordSyncRun(
 	syncKey: SyncKey,
-	result: Prisma.InputJsonValue | null,
+	result: JsonValue | null,
 	actorId: string | null = null,
 ): Promise<void> {
 	try {
-		await prisma.syncRunLog.create({
-			data: { actorId, result: result ?? undefined, syncKey },
-		})
+		await db.orm.public.SyncRunLog.create({ actorId, result: result ?? undefined, syncKey })
 	} catch (err) {
 		// Never fail a sync because its bookkeeping row didn't land.
 		console.error(`[sync] failed to record run for ${syncKey}:`, err)
@@ -42,18 +41,17 @@ export interface LatestSyncRun {
 export async function getLatestSyncRuns(keys: SyncKey[]): Promise<LatestSyncRun[]> {
 	const rows = await Promise.all(
 		keys.map(syncKey =>
-			prisma.syncRunLog.findFirst({
-				include: { actor: { select: { email: true, id: true, name: true } } },
-				orderBy: { createdAt: "desc" },
-				where: { syncKey },
-			}),
+			db.orm.public.SyncRunLog.where({ syncKey })
+				.orderBy(run => run.createdAt.desc())
+				.include("actor", actor => actor.select("email", "id", "name"))
+				.first(),
 		),
 	)
 	return rows
 		.filter((r): r is NonNullable<typeof r> => r !== null)
 		.map(r => ({
 			actor: r.actor,
-			lastRunAt: r.createdAt,
+			lastRunAt: parseDbTimestamp(r.createdAt),
 			result: r.result,
 			syncKey: r.syncKey,
 		}))

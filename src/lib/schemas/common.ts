@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { Phase } from "@/app/generated/prisma/enums"
+import { Phase } from "@/lib/enums"
 
 export const cuid = z.string().min(1).max(64)
 

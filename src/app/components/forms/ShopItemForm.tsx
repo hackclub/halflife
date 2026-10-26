@@ -1,7 +1,7 @@
 "use client"
 import { useRef, useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
-import type { ShopItemCategory } from "@/app/generated/prisma/enums"
+import type { ShopItemCategory } from "@/lib/enums"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { sendJson, useAction } from "@/lib/use-action"
 import { uploadFile } from "@/lib/use-handoff"

@@ -2,11 +2,13 @@ import { after } from "next/server"
 import { mirrorReviewDecision, reviewStatusForResult } from "@/lib/airtable/sync"
 import { fail, ok, parseBody } from "@/lib/api"
 import { type AuthedContext, withPermission } from "@/lib/guards"
+import { Phase } from "@/lib/enums"
 import { notifyReviewOutcome } from "@/lib/notifications"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { finalizeReview } from "@/lib/review"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { decisionSchema } from "@/lib/schemas/review"
+import db from "@/lib/prisma8"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -31,6 +33,20 @@ export const POST = withPermission(
 		)
 			return fail("FORBIDDEN", "Overriding the grant amount requires the MANAGE_CREDIT permission")
 
+		// The same hole one step removed: the tier decides the grant via the tier table, so raising it above what the maker requested mints parts money without MANAGE_CREDIT either. A reviewer may still lower it (or keep it); only the raise needs the permission. Checked on design approvals, which is the only place the tier moves money.
+		if ("tier" in body && body.tier != null && !hasPermission(gate.roles, Permission.MANAGE_CREDIT)) {
+			const sub = await db.orm.public.PhaseSubmission.whereUnique({ id })
+				.select("phase")
+				.include("themeProject", project => project.select("requestedTier"))
+				.first()
+			const cap = sub?.phase === Phase.DESIGN ? (sub.themeProject?.requestedTier ?? null) : null
+			if (cap !== null && body.tier > cap)
+				return fail(
+					"FORBIDDEN",
+					"Raising the tier above what the maker requested requires the MANAGE_CREDIT permission",
+				)
+		}
+
 		const feedback = sanitize(body.feedback ?? "")
 
 		const outcome = await finalizeReview({
@@ -54,6 +70,7 @@ export const POST = withPermission(
 				outcome.phase,
 				reviewStatusForResult(outcome.result),
 				feedback || null,
+				gate.user.email,
 			)
 			await notifyReviewOutcome({
 				decidedBy: "console",

@@ -10,9 +10,10 @@ export interface SlackBlock {
 	[_: string]: unknown
 }
 
-/** Slack answers `missing_scope` with the scope it wanted (`needed`) and the
- * ones the token actually carries (`provided`). Folding them into the logged detail turns a bare "missing_scope" into a line that names the scope to add,
- * instead of leaving it to a manual trip through the app's OAuth settings. */
+/** Slack answers `missing_scope` with the scope it wanted (`needed`) and the ones the token actually carries (`provided`). Folding them into the logged detail turns a bare "missing_scope" into a line that names the scope to add,
+ *
+ * * instead of leaving it to a manual trip through the app's OAuth settings.
+ */
 function slackErrorDetail(data: { error?: string; needed?: string; provided?: string }, status: number): string {
 	if (data.error === "missing_scope" && data.needed)
 		return data.provided
@@ -31,10 +32,14 @@ async function callSlackApi<T extends { [_: string]: unknown }>(
 	method: string,
 	params: { [_: string]: unknown },
 	/** Slack errors that are expected outcomes rather than faults. Matches are
-	 * logged at `log` level so a normal path doesn't fill the error logs. */
+	 *
+	 * * logged at `log` level so a normal path doesn't fill the error logs.
+	 */
 	expectedErrors: string[] = [],
 	/** Slack errors to omit from the logs entirely. Matches produce no log
-	 * line at any level. */
+	 *
+	 * * line at any level.
+	 */
 	silentErrors: string[] = [],
 ): SlackResult<T> {
 	const token = process.env.SLACK_BOT_TOKEN
@@ -87,16 +92,18 @@ export function updateMessage(
 	return callSlackApi("chat.update", { blocks, channel, text, ts })
 }
 
-/** Drops a reaction on a message: the pending one when a #half-life-help
- * question opens its ticket, the resolved one when any of the three buttons closes it. `already_reacted` is marked expected: a ticket can be resolved from the tickets channel or the help thread, so a second resolution finds the bot's own reaction already in place, which is the outcome we wanted rather than a fault. `invalid_name` – the custom emoji not existing in the workspace – is logged by the API layer since there's no runtime fix for it;
- * see `slack-app-manifest.yml` for the `reactions:write` scope this needs. */
+/** Drops a reaction on a message: the pending one when a #half-life-help question opens its ticket, the resolved one when any of the three buttons closes it. `already_reacted` is marked expected: a ticket can be resolved from the tickets channel or the help thread, so a second resolution finds the bot's own reaction already in place, which is the outcome we wanted rather than a fault. `invalid_name` – the custom emoji not existing in the workspace – is logged by the API layer since there's no runtime fix for it;
+ *
+ * * see `slack-app-manifest.yml` for the `reactions:write` scope this needs.
+ */
 export function addReaction(channel: string, timestamp: string, name: string): SlackResult<{ [_: string]: unknown }> {
 	return callSlackApi("reactions.add", { channel, name, timestamp }, ["already_reacted"])
 }
 
-/** Takes a reaction back off a message, the other half of swapping a
- * #half-life-help question from pending to resolved. `no_reaction` is marked expected for the mirror of `already_reacted` above: two people can resolve the same ticket from different places, or a Slack redelivery can rerun the handler, and whoever gets there second finds the emoji already gone – the
- * outcome we wanted rather than a fault. Same `reactions:write` scope. */
+/** Takes a reaction back off a message, the other half of swapping a #half-life-help question from pending to resolved. `no_reaction` is marked expected for the mirror of `already_reacted` above: two people can resolve the same ticket from different places, or a Slack redelivery can rerun the handler, and whoever gets there second finds the emoji already gone – the
+ *
+ * * outcome we wanted rather than a fault. Same `reactions:write` scope.
+ */
 export function removeReaction(
 	channel: string,
 	timestamp: string,
@@ -105,16 +112,18 @@ export function removeReaction(
 	return callSlackApi("reactions.remove", { channel, name, timestamp }, ["no_reaction"])
 }
 
-/** A bot token may delete only messages that bot posted, which is the whole
- * point here – every tickets-channel mirror is one we posted ourselves, so this needs `chat:write` and nothing more. `message_not_found` is marked expected: two people can resolve the same ticket from different places, and whoever gets there second is told the message is already gone, which is the
- * outcome we wanted rather than a fault. */
+/** A bot token may delete only messages that bot posted, which is the whole point here – every tickets-channel mirror is one we posted ourselves, so this needs `chat:write` and nothing more. `message_not_found` is marked expected: two people can resolve the same ticket from different places, and whoever gets there second is told the message is already gone, which is the
+ *
+ * * outcome we wanted rather than a fault.
+ */
 export function deleteMessage(channel: string, ts: string): SlackResult<{ [_: string]: unknown }> {
 	return callSlackApi("chat.delete", { channel, ts }, ["message_not_found"])
 }
 
-/** `already_in_channel` is treated as success – the caller just wants the
- * user in the channel, not a report of how they got there. It is omitted from the logs entirely: the join handler fires for every member join, so logging the no-op case buries real failures. Genuine invites still log, as
- * do genuine failures. */
+/** `already_in_channel` is treated as success – the caller just wants the user in the channel, not a report of how they got there. It is omitted from the logs entirely: the join handler fires for every member join, so logging the no-op case buries real failures. Genuine invites still log, as
+ *
+ * * do genuine failures.
+ */
 export async function inviteToChannel(channel: string, user: string): Promise<void> {
 	const result = await callSlackApi(
 		"conversations.invite",
@@ -130,17 +139,19 @@ export async function inviteToChannel(channel: string, user: string): Promise<vo
 		console.error(`Failed to invite ${user} to ${channel}: ${result.error}`)
 }
 
-/** A Slack permalink, dropped into a message's text, auto-unfurls into a
- * rich preview of the original message (sender, avatar, timestamp, files, formatting) – the closest the Bot API gets to the client's "Forward
- * message" action, which isn't itself exposed over the API. */
+/** A Slack permalink, dropped into a message's text, auto-unfurls into a rich preview of the original message (sender, avatar, timestamp, files, formatting) – the closest the Bot API gets to the client's "Forward
+ *
+ * * message" action, which isn't itself exposed over the API.
+ */
 export async function getPermalink(channel: string, messageTs: string): Promise<string | null> {
 	const result = await callSlackApiGet<{ permalink?: string }>("chat.getPermalink", { channel, message_ts: messageTs })
 	return result.ok ? (result.permalink ?? null) : null
 }
 
-/** Slack's GET-family methods (`chat.getPermalink` among them) read their
- * arguments from the query string – POSTing them as a JSON body gets an `invalid_arguments` back, since Slack sees no `channel`/`message_ts` at
- * all. Those methods go through here instead of `callSlackApi`. */
+/** Slack's GET-family methods (`chat.getPermalink` among them) read their arguments from the query string – POSTing them as a JSON body gets an `invalid_arguments` back, since Slack sees no `channel`/`message_ts` at
+ *
+ * * all. Those methods go through here instead of `callSlackApi`.
+ */
 async function callSlackApiGet<T extends { [_: string]: unknown }>(
 	method: string,
 	params: { [_: string]: string },
@@ -181,12 +192,13 @@ export function getSlackUserName(userId: string): Promise<string> {
 	const pending = slackUserNamePending.get(userId)
 	if (pending) return pending
 
-	const lookup = resolveSlackUserName(userId).then(name => {
+	const lookup = (async () => {
+		const name = await resolveSlackUserName(userId)
 		slackUserNamePending.delete(userId)
 		if (!name) return `<@${userId}>`
 		slackUserNameCache.set(userId, name)
 		return name
-	})
+	})()
 	slackUserNamePending.set(userId, lookup)
 	return lookup
 }
@@ -261,7 +273,9 @@ export async function isChannelMember(channel: string, user: string): Promise<bo
 }
 
 /** A message as `conversations.history` returns it, trimmed to the fields that
- * decide whether it opened a ticket. */
+ *
+ * * decide whether it opened a ticket.
+ */
 export interface SlackHistoryMessage {
 	bot_id?: string
 	subtype?: string
@@ -272,7 +286,9 @@ export interface SlackHistoryMessage {
 }
 
 /** A message as `conversations.replies` returns it, carrying the blocks a
- * caller needs to rewrite one. */
+ *
+ * * caller needs to rewrite one.
+ */
 export interface SlackThreadMessage extends SlackHistoryMessage {
 	blocks?: SlackBlock[]
 }
@@ -321,9 +337,10 @@ export async function listChannelHistory(
 	return { exhausted: false, messages }
 }
 
-/** Cached for the life of the instance – this never changes for a given
- * bot token, and calling auth.test on every event would be wasted latency
- * inside Slack's 3-second Events API window. */
+/** Cached for the life of the instance – this never changes for a given bot token, and calling auth.test on every event would be wasted latency
+ *
+ * * inside Slack's 3-second Events API window.
+ */
 export async function getBotUserId(): Promise<string | null> {
 	if (botUserId) return botUserId
 	const result = await callSlackApi<{ user_id?: string }>("auth.test", {})

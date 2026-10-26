@@ -1,5 +1,5 @@
-import "dotenv/config"
-import prisma from "../src/lib/prisma"
+import { CoinBucket } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
 
 /**
  * Merge the legacy locked printer fund into the single spendable pot.
@@ -9,30 +9,29 @@ import prisma from "../src/lib/prisma"
  * One UPDATE, idempotent: running it again moves nothing. Safe to run while the app is live – no amounts change, so no totals move, only which pot they sit in.
  */
 async function main() {
-	const before = await prisma.ledgerEntry.groupBy({
-		_count: true,
-		_sum: { amount: true },
-		by: ["bucket"],
-	})
+	const before = await db.orm.public.LedgerEntry.groupBy("bucket").aggregate(group => ({
+		count: group.count(),
+		total: group.sum("amount"),
+	}))
 	console.log("before:", JSON.stringify(before))
 
-	const moved = await prisma.ledgerEntry.updateMany({
-		data: { bucket: "SPENDABLE" },
-		where: { bucket: "BANKED" },
+	const moved = await db.orm.public.LedgerEntry.where({ bucket: CoinBucket.BANKED }).updateAndCount({
+		bucket: CoinBucket.SPENDABLE,
 	})
-	console.log(`moved ${moved.count} BANKED rows to SPENDABLE`)
+	console.log(`moved ${moved} BANKED rows to SPENDABLE`)
 
-	const after = await prisma.ledgerEntry.groupBy({
-		_count: true,
-		_sum: { amount: true },
-		by: ["bucket"],
-	})
+	const after = await db.orm.public.LedgerEntry.groupBy("bucket").aggregate(group => ({
+		count: group.count(),
+		total: group.sum("amount"),
+	}))
 	console.log("after:", JSON.stringify(after))
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await db.close()
+}

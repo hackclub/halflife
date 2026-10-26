@@ -164,10 +164,7 @@ export function Overlays() {
 			{openCheckpoint && <CheckpointModal id={openCheckpoint} />}
 
 			{/*
-			 * Uncloseable, and above everything else here. It waits its turn rather
-			 * than stacking: `openCheckpoint` is the first checkpoint's own modal, and
-			 * the tour is the thing this most often lands on top of, since answering
-			 * the goal hands you straight into it.
+			 * Uncloseable, and above everything else here. It waits its turn rather than stacking: `openCheckpoint` is the first checkpoint's own modal, and the tour is the thing this most often lands on top of, since answering the goal hands you straight into it.
 			 */}
 			{needsGoal && !openCheckpoint && <GoalModal dismissible={false} onClose={() => {}} open />}
 

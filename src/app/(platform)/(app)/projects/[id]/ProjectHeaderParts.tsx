@@ -1,15 +1,135 @@
 "use client"
 
-import { useRef, useState } from "react"
+import Link from "next/link"
+import { type ReactNode, useRef, useState } from "react"
 import { WeekPainting } from "@/components/platform/art"
-import { IconCamera } from "@/components/platform/icons"
+import { IconCamera, IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { UploadProgress } from "@/components/platform/UploadProgress"
-import { Button } from "@/components/platform/ui"
+import { Button, Chip } from "@/components/platform/ui"
+import { fmtDate, fmtHours } from "@/lib/projects"
+import { displayRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 import type { ProjectThumbnail } from "@/lib/thumbnail"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
+
+/**
+ * The way back off a project page, to the list it was opened from.
+ */
+export function ProjectBackLink({ href, label }: Readonly<{ href: string; label: string }>) {
+	return (
+		<Link
+			className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
+			href={href}
+		>
+			<IconChevronLeft className="text-base" /> {label}
+		</Link>
+	)
+}
+
+/**
+ * The project's facts under its name: how much work is on it, which week it belongs to, and where its repo lives.
+ *
+ * The owner's page and someone else's show the same facts; only the optional started date and tier are the owner's own.
+ */
+export function ProjectFacts({
+	hours,
+	entries,
+	theme,
+	weekId,
+	buildWeekId,
+	warmup,
+	repo,
+	startedAt,
+	tier,
+	starter,
+}: Readonly<{
+	hours: number
+	entries: number
+	theme: string
+	weekId: number
+	buildWeekId: number
+	warmup: boolean
+	repo: string | null
+	startedAt?: number
+	tier?: number
+	starter?: boolean
+}>) {
+	return (
+		<div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft tabular-nums">
+			<p className="flex flex-wrap items-center gap-x-2">
+				<span className="inline-flex items-center gap-1.5 text-teal-ink">
+					<IconClock className="text-sm" /> {fmtHours(hours)} logged
+				</span>
+				<Dot />
+				<span>{entries === 1 ? "1 entry" : `${entries} entries`}</span>
+				{startedAt ? (
+					<>
+						<Dot />
+						<span>started {fmtDate(startedAt)}</span>
+					</>
+				) : null}
+			</p>
+			<p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+				<Chip tone="muted">{warmup ? "Warm Up" : theme}</Chip>
+				{tier !== undefined ? (
+					<Chip tone="violet">
+						Tier {tier}
+						{starter ? " · starter" : ""}
+					</Chip>
+				) : null}
+				{!warmup ? (
+					<span>
+						weeks {weekId} &amp; {buildWeekId}
+					</span>
+				) : null}
+				{repo ? (
+					<>
+						<Dot />
+						<a
+							className="min-w-0 truncate text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
+							href={repo}
+							rel="noopener noreferrer"
+							target="_blank"
+							title={repo}
+						>
+							{displayRepo(repo)}
+						</a>
+					</>
+				) : null}
+			</p>
+		</div>
+	)
+}
+
+function Dot() {
+	return (
+		<span aria-hidden="true" className="text-navy-faint">
+			·
+		</span>
+	)
+}
+
+/** A titled section of a project page, with an optional note on the right of its heading. */
+export function ProjectSection({
+	title,
+	aside,
+	children,
+	id,
+}: Readonly<{ title: string; aside?: ReactNode; children: ReactNode; id: string }>) {
+	return (
+		<section aria-labelledby={id} className="mt-8">
+			<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+				<h2 className="label text-violet-deep" id={id}>
+					{title}
+				</h2>
+				{aside}
+			</div>
+			{children}
+		</section>
+	)
+}
 
 /**
  * The project's thumbnail – what its card and the review queue show.
@@ -98,8 +218,7 @@ export function CoverImage({
 						</p>
 					</div>
 				)}
-				{/* The bar sits on the picture it is replacing, where the eye already
-            is, on a veil dark enough to read over any thumbnail. */}
+				{/* The bar sits on the picture it is replacing, where the eye already is, on a veil dark enough to read over any thumbnail. */}
 				{uploading && (
 					<div className="absolute inset-0 grid items-end bg-navy/45 p-3">
 						<div className="rounded-xl bg-white/95 px-3 py-2">

@@ -1,6 +1,14 @@
-import { getTier, isTierId } from "@/lib/config/tiers"
 import "server-only"
-import type { AuditLog, LedgerEntry, Prisma } from "@/app/generated/prisma/client"
+import { and, or } from "@prisma/orm-postgres/orm-client"
+import type { Models } from "@/app/generated/prisma8/contract.d"
+import { isActiveDay } from "@/lib/analytics"
+import { countAriShips } from "@/lib/ari-counts"
+import { GOAL_OPTIONS } from "@/lib/config/goal"
+import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
+import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { getTier, isTierId } from "@/lib/config/tiers"
+import { type Balances, getBalances, type LedgerEntryRow } from "@/lib/currency"
+import { displayName } from "@/lib/display-name"
 import {
 	AuditAction,
 	HoursSource,
@@ -16,26 +24,20 @@ import {
 	ShopFulfillmentStage,
 	ShopOrderStatus,
 	Theme,
-} from "@/app/generated/prisma/enums"
-import { isActiveDay } from "@/lib/analytics"
-import { countAriShips } from "@/lib/ari-counts"
-import { GOAL_OPTIONS } from "@/lib/config/goal"
-import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
-import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { type Balances, getBalances } from "@/lib/currency"
-import { displayName } from "@/lib/display-name"
+} from "@/lib/enums"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
-import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, positionWhere, readCursor } from "@/lib/pagination"
+import { decodeCursor, encodeCursor, readCursor } from "@/lib/pagination"
 import { safeDecrypt } from "@/lib/pii"
-import { getPrinterQualification, type PrinterQualification, printerAwardSelect } from "@/lib/printer"
-import prisma from "@/lib/prisma"
+import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
+import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { projectReviewState } from "@/lib/review-state"
-import { shopOrderStaffSelect } from "@/lib/shop"
-import { eachDayBetween } from "@/lib/time"
+import { withFields } from "@/lib/rows"
+import { containsPattern } from "@/lib/text"
+import { eachDayBetween, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
 export interface DirectoryUser {
@@ -50,68 +52,48 @@ export interface DirectoryUser {
 	verificationStatus: string | null
 }
 
-/**
- * The directory's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an account or hands one out twice.
- */
-const USERS_ORDER = {
-	at: (row: DirectoryUser) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<DirectoryUser, Prisma.UserOrderByWithRelationInput>
-
 export async function listUsers(
 	opts: { q?: string; cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
+	const ordered = db.orm.public.User.orderBy([user => user.createdAt.desc(), user => user.id.desc()])
 	// Without PII the search box matches names only. Matching an address or a Slack id would turn the directory into a registration oracle: anybody holding VIEW_USERS could confirm whether a given person has an account here.
-	//
-	// The search sits inside an AND array rather than at the top level. The cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying: a page of search results that ignored the search would be a worse answer than no page at all.
-	const base: Prisma.UserWhereInput = opts.q
-		? {
-				AND: [
-					{
-						OR: [
-							{ name: { contains: opts.q, mode: "insensitive" } },
-							{ displayName: { contains: opts.q, mode: "insensitive" } },
-							...(includePii
-								? ([
-										{ email: { contains: opts.q, mode: "insensitive" } },
-										{ slackId: { contains: opts.q, mode: "insensitive" } },
-									] satisfies Prisma.UserWhereInput[])
-								: []),
-						],
-					},
-				],
-			}
-		: {}
-	const rows = await prisma.user.findMany({
-		orderBy: orderByFor(USERS_ORDER),
-		select: {
-			createdAt: true,
-			displayName: true,
-			email: true,
-			fraudFlagged: true,
-			id: true,
-			name: true,
-			roles: { select: { role: true } },
-			slackId: true,
-			verificationStatus: true,
-		},
-		take: opts.limit + 1,
-		// The directory is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.UserWhereInput>(readCursor(opts.cursor), USERS_ORDER, base),
-	})
-	const page = pageResult(rows, opts.limit, USERS_ORDER)
+	const term = opts.q
+	const pattern = term === undefined ? null : containsPattern(term)
+	const filtered =
+		pattern === null
+			? ordered
+			: ordered.where(user =>
+					or(
+						user.name.ilike(pattern),
+						user.displayName.ilike(pattern),
+						// The PII columns are only searched when the caller may see them, per the rule above.
+						...(includePii ? [user.email.ilike(pattern), user.slackId.ilike(pattern)] : []),
+					),
+				)
+	const position = readCursor(opts.cursor)
+	// The directory is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged =
+		position?.at === undefined || position?.at === null
+			? filtered
+			: filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+	const rows = await paged
+		.limit(opts.limit + 1)
+		.select("createdAt", "displayName", "email", "fraudFlagged", "id", "name", "slackId", "verificationStatus")
+		.include("roles", roles => roles.select("role"))
+		.all()
+	const items = rows.slice(0, opts.limit).map(row => withFields(row, { createdAt: parseDbTimestamp(row.createdAt) }))
+	const last = items.at(-1)
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
-	const items = page.items.map(row =>
-		includePii
-			? row
-			: Object.assign({}, row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
-	)
-	return { items, nextCursor: page.nextCursor }
+	return {
+		items: includePii
+			? items
+			: items.map(row =>
+					Object.assign(row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
+				),
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.createdAt, id: last.id }) : null,
+	}
 }
 
 export interface ProjectFilters {
@@ -129,42 +111,27 @@ export interface ProjectFilters {
 	unstarted?: boolean
 }
 
-/** One row of the admin project directory, with its owner's directory fields. */
-export type ProjectDirectoryRow = Prisma.ThemeProjectGetPayload<{ select: typeof projectDirectorySelect }>
-
-const projectDirectorySelect = {
-	buildStatus: true,
-	designStatus: true,
-	githubRepo: true,
-	id: true,
-	requestedTier: true,
-	submissionExtensionUntil: true,
-	theme: true,
-	tier: true,
-	title: true,
-	updatedAt: true,
+/** One row of the admin project directory, with its owner's directory fields. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface ProjectDirectoryRow {
+	buildStatus: Models.public_ThemeProject["buildStatus"]
+	designStatus: Models.public_ThemeProject["designStatus"]
+	githubRepo: string | null
+	id: string
+	requestedTier: number | null
+	submissionExtensionUntil: Date | null
+	theme: Models.public_ThemeProject["theme"]
+	tier: number | null
+	title: string
+	updatedAt: Date
 	user: {
-		select: {
-			displayName: true,
-			email: true,
-			id: true,
-			name: true,
-			slackId: true,
-			submissionExtensionUntil: true,
-		},
-	},
-} satisfies Prisma.ThemeProjectSelect
-
-/**
- * The project directory's order: most recently touched first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops a project or hands one out twice.
- */
-const PROJECTS_ORDER = {
-	at: (row: ProjectDirectoryRow) => row.updatedAt,
-	column: "updatedAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<ProjectDirectoryRow, Prisma.ThemeProjectOrderByWithRelationInput>
+		displayName: string | null
+		email: string
+		id: string
+		name: string | null
+		slackId: string | null
+		submissionExtensionUntil: Date | null
+	}
+}
 
 export async function listProjects(
 	opts: ProjectFilters & { cursor?: string; limit: number },
@@ -172,121 +139,160 @@ export async function listProjects(
 ): Promise<{ items: ProjectDirectoryRow[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
 	const now = new Date()
+	const nowText = formatDbTimestamp(now)
 	const q = opts.q?.trim()
-	// The owner's email and Slack id are contact details, so they are matched only for a caller who may see them. A REVIEWER searching for an address gets the same answer whether or not it is registered here.
-	//
-	// Every filter that is itself an OR lives in the AND array, never at the top level: the cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying.
-	const where: Prisma.ThemeProjectWhereInput = {
-		deletedAt: null,
-		...(opts.unstarted ? {} : { namedAt: { not: null } }),
-		...(opts.theme ? { theme: opts.theme } : {}),
-		...(opts.designStatus ? { designStatus: opts.designStatus } : {}),
-		...(opts.buildStatus ? { buildStatus: opts.buildStatus } : {}),
-		AND: [
-			q
-				? {
-						OR: [
-							{ id: q },
-							{ title: { contains: q, mode: "insensitive" } },
-							{ description: { contains: q, mode: "insensitive" } },
-							{ githubRepo: { contains: q, mode: "insensitive" } },
-							{ user: { name: { contains: q, mode: "insensitive" } } },
-							{ user: { displayName: { contains: q, mode: "insensitive" } } },
-							...(includePii
-								? ([
-										{ user: { email: { contains: q, mode: "insensitive" } } },
-										{ user: { slackId: { contains: q, mode: "insensitive" } } },
-									] satisfies Prisma.ThemeProjectWhereInput[])
-								: []),
-						],
-					}
-				: {},
-			opts.extended
-				? {
-						OR: [{ submissionExtensionUntil: { gt: now } }, { user: { submissionExtensionUntil: { gt: now } } }],
-					}
-				: {},
-			opts.tier ? { OR: [{ tier: opts.tier }, { requestedTier: opts.tier, tier: null }] } : {},
-		],
-	}
-
-	const rows = await prisma.themeProject.findMany({
-		orderBy: orderByFor(PROJECTS_ORDER),
-		select: projectDirectorySelect,
-		take: opts.limit + 1,
-		// The directory is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.ThemeProjectWhereInput>(readCursor(opts.cursor), PROJECTS_ORDER, where),
+	const pattern = q === undefined || q === "" ? null : containsPattern(q)
+	const { tier } = opts
+	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
+	let filtered = db.orm.public.ThemeProject.where({ deletedAt: null }).orderBy([
+		project => project.updatedAt.desc(),
+		project => project.id.desc(),
+	])
+	if (!opts.unstarted) filtered = filtered.where(project => project.namedAt.isNotNull())
+	if (opts.theme) filtered = filtered.where({ theme: opts.theme })
+	if (opts.designStatus) filtered = filtered.where({ designStatus: opts.designStatus })
+	if (opts.buildStatus) filtered = filtered.where({ buildStatus: opts.buildStatus })
+	if (pattern !== null)
+		filtered = filtered.where(project =>
+			or(
+				project.id.eq(q as string),
+				project.title.ilike(pattern),
+				project.description.ilike(pattern),
+				project.githubRepo.ilike(pattern),
+				// The owner's email and Slack id are contact details, so they are matched only for a caller who may see them. A REVIEWER searching for an address gets the same answer whether or not it is registered here.
+				project.user.some(user =>
+					includePii
+						? or(
+								user.name.ilike(pattern),
+								user.displayName.ilike(pattern),
+								user.email.ilike(pattern),
+								user.slackId.ilike(pattern),
+							)
+						: or(user.name.ilike(pattern), user.displayName.ilike(pattern)),
+				),
+			),
+		)
+	if (opts.extended)
+		filtered = filtered.where(project =>
+			or(
+				project.submissionExtensionUntil.gt(nowText),
+				project.user.some(user => user.submissionExtensionUntil.gt(nowText)),
+			),
+		)
+	if (tier !== undefined)
+		filtered = filtered.where(project =>
+			or(project.tier.eq(tier), and(project.requestedTier.eq(tier), project.tier.isNull())),
+		)
+	const position = readCursor(opts.cursor)
+	// The directory is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged =
+		position?.at === undefined || position?.at === null
+			? filtered
+			: filtered.cursor({ id: position.id, updatedAt: formatDbTimestamp(position.at) })
+	const rows = await paged
+		.limit(opts.limit + 1)
+		.select(
+			"buildStatus",
+			"designStatus",
+			"githubRepo",
+			"id",
+			"requestedTier",
+			"submissionExtensionUntil",
+			"theme",
+			"tier",
+			"title",
+			"updatedAt",
+		)
+		.include("user", user => user.select("displayName", "email", "id", "name", "slackId", "submissionExtensionUntil"))
+		.all()
+	const items = rows.slice(0, opts.limit).map(row => {
+		// The foreign key is required, so a missing owner is a data-integrity error rather than a row to render without one.
+		if (!row.user) throw new Error(`project ${row.id} has no owner`)
+		return {
+			buildStatus: row.buildStatus,
+			designStatus: row.designStatus,
+			githubRepo: row.githubRepo,
+			id: row.id,
+			requestedTier: row.requestedTier,
+			submissionExtensionUntil:
+				row.submissionExtensionUntil === null ? null : parseDbTimestamp(row.submissionExtensionUntil),
+			theme: row.theme,
+			tier: row.tier,
+			title: row.title,
+			updatedAt: parseDbTimestamp(row.updatedAt),
+			user: {
+				displayName: row.user.displayName,
+				email: row.user.email,
+				id: row.user.id,
+				name: row.user.name,
+				slackId: row.user.slackId,
+				submissionExtensionUntil:
+					row.user.submissionExtensionUntil === null ? null : parseDbTimestamp(row.user.submissionExtensionUntil),
+			},
+		}
 	})
-	const page = pageResult(rows, opts.limit, PROJECTS_ORDER)
+	const last = items.at(-1)
 	// The same rule as the user directory: the owner's contact details leave the server for ADMIN/AUDITOR only. A REVIEWER/FULFILLER gets names and roles, with no email or Slack id to scrape.
-	const items = page.items.map(row =>
-		includePii ? row : Object.assign({}, row, { user: Object.assign({}, row.user, { email: "", slackId: null }) }),
-	)
-	return { items, nextCursor: page.nextCursor }
+	return {
+		items: includePii
+			? items
+			: items.map(row => Object.assign(row, { user: Object.assign(row.user, { email: "", slackId: null }) })),
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.updatedAt, id: last.id }) : null,
+	}
 }
 
-const userDetailSelect = {
-	createdAt: true,
-	displayName: true,
-	email: true,
-	fraudFlagged: true,
-	hackatimeUserId: true,
-	id: true,
-	joinedProgramAt: true,
-	name: true,
-	// The award's fulfilment fields only. The locked address and phone are ciphertext and the snapshot is write-only, so none of them are part of a profile that anybody with VIEW_USERS may read.
+/** The admin user profile: the selected columns plus money sections both branches fill. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface UserDetail {
+	createdAt: Date
+	displayName: string | null
+	email: string
+	fraudFlagged: boolean
+	hackatimeUserId: string | null
+	id: string
+	joinedProgramAt: Date | null
+	name: string | null
 	printerAward: {
-		select: {
-			addressLockedAt: true,
-			deliveredAt: true,
-			id: true,
-			qualifiedAt: true,
-			revokedAt: true,
-			revokedReason: true,
-			shippedAt: true,
-			status: true,
-			trackingCarrier: true,
-			trackingNumber: true,
-		},
-	},
-	roles: { select: { grantedAt: true, grantedBy: true, role: true } },
-	slackDisplayName: true,
-	slackId: true,
-	submissionExtensionUntil: true,
+		addressLockedAt: Date | null
+		deliveredAt: Date | null
+		id: string
+		qualifiedAt: Date
+		revokedAt: Date | null
+		revokedReason: string | null
+		shippedAt: Date | null
+		status: Models.public_PrinterAward["status"]
+		trackingCarrier: string | null
+		trackingNumber: string | null
+	} | null
+	roles: { grantedAt: string; grantedBy: string | null; role: Models.public_UserRole["role"] }[]
+	slackDisplayName: string | null
+	slackId: string | null
+	submissionExtensionUntil: Date | null
 	themeProjects: {
-		select: {
-			approvedHours: true,
-			buildCoins: true,
-			buildStatus: true,
-			designBankedCoins: true,
-			designSpendableCoins: true,
-			designStatus: true,
-			grantUsd: true,
-			hcbGrantTopUps: { select: { id: true }, where: { phase: "DESIGN", sentAt: { not: null } } },
-			id: true,
-			submissionExtensionUntil: true,
-			theme: true,
-			tier: true,
-			title: true,
-		},
-		where: { deletedAt: null },
-	},
-	verificationStatus: true,
-} satisfies Prisma.UserSelect
-
-/** The admin user profile: the selected columns plus money sections both branches fill. */
-export type UserDetail = Prisma.UserGetPayload<{ select: typeof userDetailSelect }>
-
-const userDetailOrderSelect = {
-	id: true,
-	itemNameSnapshot: true,
-	orderNumber: true,
-	status: true,
-	totalCredits: true,
-} satisfies Prisma.ShopOrderSelect
+		approvedHours: number | null
+		buildCoins: number | null
+		buildStatus: Models.public_ThemeProject["buildStatus"]
+		designBankedCoins: number | null
+		designSpendableCoins: number | null
+		designStatus: Models.public_ThemeProject["designStatus"]
+		grantUsd: number | null
+		hcbGrantTopUps: { id: string }[]
+		id: string
+		submissionExtensionUntil: Date | null
+		theme: Models.public_ThemeProject["theme"]
+		tier: number | null
+		title: string
+	}[]
+	verificationStatus: string | null
+}
 
 /** The 25 most recent orders on the user page: number, item, credit total and status only. */
-export type UserDetailOrder = Prisma.ShopOrderGetPayload<{ select: typeof userDetailOrderSelect }>
+export interface UserDetailOrder {
+	id: string
+	itemNameSnapshot: string
+	orderNumber: number
+	status: Models.public_ShopOrder["status"]
+	totalCredits: number
+}
 
 export async function getUserDetail(
 	userId: string,
@@ -294,16 +300,97 @@ export async function getUserDetail(
 ): Promise<{
 	user: UserDetail
 	balances: Balances
-	ledger: LedgerEntry[]
+	ledger: LedgerEntryRow[]
 	orders: UserDetailOrder[]
 	printer: PrinterQualification
 } | null> {
 	const includeSensitive = flags?.includeSensitive ?? false
-	const user = await prisma.user.findUnique({
-		select: userDetailSelect,
-		where: { id: userId },
-	})
-	if (!user) return null
+	const row = await db.orm.public.User.whereUnique({ id: userId })
+		.select(
+			"createdAt",
+			"displayName",
+			"email",
+			"fraudFlagged",
+			"hackatimeUserId",
+			"id",
+			"joinedProgramAt",
+			"name",
+			"slackDisplayName",
+			"slackId",
+			"submissionExtensionUntil",
+			"verificationStatus",
+		)
+		.include("printerAward", award =>
+			award.select(
+				"addressLockedAt",
+				"deliveredAt",
+				"id",
+				"qualifiedAt",
+				"revokedAt",
+				"revokedReason",
+				"shippedAt",
+				"status",
+				"trackingCarrier",
+				"trackingNumber",
+			),
+		)
+		.include("roles", roles => roles.select("grantedAt", "grantedBy", "role"))
+		.include("themeProjects", projects =>
+			projects
+				.select(
+					"approvedHours",
+					"buildCoins",
+					"buildStatus",
+					"designBankedCoins",
+					"designSpendableCoins",
+					"designStatus",
+					"grantUsd",
+					"id",
+					"submissionExtensionUntil",
+					"theme",
+					"tier",
+					"title",
+				)
+				.where({ deletedAt: null })
+				.include("hcbGrantTopUps", topUps =>
+					topUps
+						.select("id")
+						.where({ phase: "DESIGN" })
+						.where(topUp => topUp.sentAt.isNotNull()),
+				),
+		)
+		.first()
+	if (!row) return null
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	const user: UserDetail = {
+		createdAt: parseDbTimestamp(row.createdAt),
+		displayName: row.displayName,
+		email: row.email,
+		fraudFlagged: row.fraudFlagged,
+		hackatimeUserId: row.hackatimeUserId,
+		id: row.id,
+		joinedProgramAt: parseNullable(row.joinedProgramAt),
+		name: row.name,
+		printerAward: row.printerAward
+			? {
+					...row.printerAward,
+					addressLockedAt: parseNullable(row.printerAward.addressLockedAt),
+					deliveredAt: parseNullable(row.printerAward.deliveredAt),
+					qualifiedAt: parseDbTimestamp(row.printerAward.qualifiedAt),
+					revokedAt: parseNullable(row.printerAward.revokedAt),
+					shippedAt: parseNullable(row.printerAward.shippedAt),
+				}
+			: null,
+		roles: row.roles,
+		slackDisplayName: row.slackDisplayName,
+		slackId: row.slackId,
+		submissionExtensionUntil: parseNullable(row.submissionExtensionUntil),
+		themeProjects: row.themeProjects.map(project => ({
+			...project,
+			submissionExtensionUntil: parseNullable(project.submissionExtensionUntil),
+		})),
+		verificationStatus: row.verificationStatus,
+	}
 
 	// Ledger, balances and order history only leave the server for ADMIN/AUDITOR – a FULFILLER (shipping role) needs the fulfilment sheet, not someone's full credit history. Stripped callers get the profile with contact/risk fields redacted and empty money sections.
 	if (!includeSensitive) {
@@ -325,64 +412,136 @@ export async function getUserDetail(
 		}
 	}
 
-	const [balances, ledger, orders, printer] = await Promise.all([
-		prisma.$transaction(tx => getBalances(tx, userId)),
-		prisma.ledgerEntry.findMany({
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			take: 50,
-			where: { userId },
-		}),
-		prisma.shopOrder.findMany({
-			orderBy: { placedAt: "desc" },
+	const [balances, ledgerRows, orders, printer] = await Promise.all([
+		db.transaction(tx => getBalances(tx, userId)),
+		db.orm.public.LedgerEntry.where({ userId })
+			.orderBy([entry => entry.createdAt.desc(), entry => entry.id.desc()])
+			.limit(50)
+			.all(),
+		db.orm.public.ShopOrder.where({ userId })
+			.orderBy(order => order.placedAt.desc())
 			// The user page lists the number, item, credit total and status only; internal cost and encrypted columns are not part of VIEW_USERS.
-			select: userDetailOrderSelect,
-			take: 25,
-			where: { userId },
-		}),
+			.select("id", "itemNameSnapshot", "orderNumber", "status", "totalCredits")
+			.limit(25)
+			.all(),
 		getPrinterQualification(userId),
 	])
 
+	const ledger: LedgerEntryRow[] = ledgerRows.map(entry =>
+		withFields(entry, { createdAt: parseDbTimestamp(entry.createdAt) }),
+	)
 	return { balances, ledger, orders, printer, user }
 }
 
-/** One row of the admin order directory: the staff-safe columns plus buyer and item names. */
-export type OrderDirectoryRow = Prisma.ShopOrderGetPayload<{ select: typeof orderDirectorySelect }>
-
-const orderDirectorySelect = {
-	...shopOrderStaffSelect,
-	shopItem: { select: { id: true, name: true } },
-	user: { select: { displayName: true, id: true, name: true } },
-} satisfies Prisma.ShopOrderSelect
-
-/**
- * The order directory's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an order or hands one out twice.
- */
-const ORDERS_ORDER = {
-	at: (row: OrderDirectoryRow) => row.placedAt,
-	column: "placedAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<OrderDirectoryRow, Prisma.ShopOrderOrderByWithRelationInput>
+/** One row of the admin order directory: the staff-safe columns plus buyer and item names. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns, so the API's JSON keeps its ISO shapes. */
+export interface OrderDirectoryRow {
+	fulfilledAt: Date | null
+	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
+	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
+	fulfillmentUpdatedAt: Date | null
+	heldAt: Date | null
+	holdReason: string | null
+	id: string
+	itemNameSnapshot: string
+	notes: { authorId: string; body: string; createdAt: Date }[]
+	orderNumber: number
+	placedAt: Date
+	quantity: number
+	rejectedAt: Date | null
+	rejectionReason: string | null
+	shopItem: { id: string; name: string }
+	shopItemId: string
+	status: Models.public_ShopOrder["status"]
+	totalCredits: number
+	trackingCarrier: string | null
+	trackingNumber: string | null
+	unitCostUsd: number | null
+	unitCredits: number
+	user: { displayName: string | null; id: string; name: string | null }
+	userId: string
+}
 
 export async function listOrders(opts: {
 	status?: ShopOrderStatus
 	cursor?: string
 	limit: number
 }): Promise<{ items: OrderDirectoryRow[]; nextCursor: string | null }> {
-	const rows = await prisma.shopOrder.findMany({
-		orderBy: orderByFor(ORDERS_ORDER),
-		// Explicit select, not `include`: a whole-row response carries the encrypted address/phone and `lastActorId` this API has no use for.
-		select: orderDirectorySelect,
-		take: opts.limit + 1,
-		// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
-		where: cursorWhere<Prisma.ShopOrderWhereInput>(
-			opts.cursor,
-			ORDERS_ORDER,
-			opts.status ? { status: opts.status } : {},
-		),
+	const filtered = db.orm.public.ShopOrder.where(opts.status ? { status: opts.status } : {}).orderBy([
+		order => order.placedAt.desc(),
+		order => order.id.desc(),
+	])
+	// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+	const position = opts.cursor === undefined ? null : decodeCursor(opts.cursor)
+	// Explicit select, not a whole row: a whole-row response would carry the encrypted address/phone and `lastActorId` this API has no use for.
+	const paged = position?.at ? filtered.cursor({ id: position.id, placedAt: formatDbTimestamp(position.at) }) : filtered
+	const rows = await paged
+		.limit(opts.limit + 1)
+		.select(
+			"fulfilledAt",
+			"fulfillmentMethod",
+			"fulfillmentStage",
+			"fulfillmentUpdatedAt",
+			"heldAt",
+			"holdReason",
+			"id",
+			"itemNameSnapshot",
+			"orderNumber",
+			"placedAt",
+			"quantity",
+			"rejectedAt",
+			"rejectionReason",
+			"shopItemId",
+			"status",
+			"totalCredits",
+			"trackingCarrier",
+			"trackingNumber",
+			"unitCostUsd",
+			"unitCredits",
+			"userId",
+		)
+		.include("notes", notes => notes.select("authorId", "body", "createdAt"))
+		.include("shopItem", item => item.select("id", "name"))
+		.include("user", user => user.select("displayName", "id", "name"))
+		.all()
+	const items = rows.slice(0, opts.limit).map(row => {
+		if (!row.shopItem) throw new Error(`order ${row.id} has no item`)
+		if (!row.user) throw new Error(`order ${row.id} has no buyer`)
+		return {
+			fulfilledAt: row.fulfilledAt === null ? null : parseDbTimestamp(row.fulfilledAt),
+			fulfillmentMethod: row.fulfillmentMethod,
+			fulfillmentStage: row.fulfillmentStage,
+			fulfillmentUpdatedAt: row.fulfillmentUpdatedAt === null ? null : parseDbTimestamp(row.fulfillmentUpdatedAt),
+			heldAt: row.heldAt === null ? null : parseDbTimestamp(row.heldAt),
+			holdReason: row.holdReason,
+			id: row.id,
+			itemNameSnapshot: row.itemNameSnapshot,
+			notes: row.notes.map(note => ({
+				authorId: note.authorId,
+				body: note.body,
+				createdAt: parseDbTimestamp(note.createdAt),
+			})),
+			orderNumber: row.orderNumber,
+			placedAt: parseDbTimestamp(row.placedAt),
+			quantity: row.quantity,
+			rejectedAt: row.rejectedAt === null ? null : parseDbTimestamp(row.rejectedAt),
+			rejectionReason: row.rejectionReason,
+			shopItem: row.shopItem,
+			shopItemId: row.shopItemId,
+			status: row.status,
+			totalCredits: row.totalCredits,
+			trackingCarrier: row.trackingCarrier,
+			trackingNumber: row.trackingNumber,
+			unitCostUsd: row.unitCostUsd,
+			unitCredits: row.unitCredits,
+			user: row.user,
+			userId: row.userId,
+		}
 	})
-	return pageResult(rows, opts.limit, ORDERS_ORDER)
+	const last = items.at(-1)
+	return {
+		items,
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.placedAt, id: last.id }) : null,
+	}
 }
 
 /**
@@ -432,84 +591,89 @@ export interface FulfillmentOrderRow {
 	user: { id: string; name: string | null }
 }
 
-/** The columns the fulfilment sheet reads, and the order they are read in. */
-const fulfillmentOrderSelect = {
-	fulfillmentMethod: true,
-	fulfillmentStage: true,
-	id: true,
-	itemNameSnapshot: true,
-	orderNumber: true,
-	placedAt: true,
-	quantity: true,
-	shopItem: { select: { costUsd: true } },
-	status: true,
-	unitCostUsd: true,
-	user: {
-		select: { displayName: true, encryptedAddressCountry: true, id: true, name: true },
-	},
-} satisfies Prisma.ShopOrderSelect
-
-/** One row as it comes out of the database, before the sheet's own arithmetic. */
-type FulfillmentOrderModel = Prisma.ShopOrderGetPayload<{ select: typeof fulfillmentOrderSelect }>
-
-/**
- * The fulfilment sheet's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an order or hands one out twice.
- */
-const FULFILLMENT_ORDERS_ORDER = {
-	at: (row: FulfillmentOrderModel) => row.placedAt,
-	column: "placedAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<FulfillmentOrderModel, Prisma.ShopOrderOrderByWithRelationInput>
+/** One row as it comes out of the database, before the sheet's own arithmetic. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface FulfillmentOrderModel {
+	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
+	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
+	id: string
+	itemNameSnapshot: string
+	orderNumber: number
+	placedAt: Date
+	quantity: number
+	shopItem: { costUsd: number | null }
+	status: Models.public_ShopOrder["status"]
+	unitCostUsd: number | null
+	user: { displayName: string | null; encryptedAddressCountry: string | null; id: string; name: string | null }
+}
 
 export async function listFulfillmentOrders(
 	filters: FulfillmentFilters,
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
-	// The stage filter lives in the AND array rather than at the top level: the cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying.
-	const where: Prisma.ShopOrderWhereInput = {
-		status: { in: FULFILLMENT_ORDER_STATUSES },
-		...(filters.placedFrom || filters.placedBefore
-			? {
-					placedAt: {
-						...(filters.placedFrom ? { gte: filters.placedFrom } : {}),
-						...(filters.placedBefore ? { lt: filters.placedBefore } : {}),
-					},
-				}
-			: {}),
-		...(filters.method === "NONE"
-			? { fulfillmentMethod: null }
-			: filters.method
-				? { fulfillmentMethod: filters.method }
-				: {}),
-		...(filters.stage
-			? {
-					AND: [
-						filters.stage === ShopFulfillmentStage.CANCELLED
-							? {
-									OR: [{ status: ShopOrderStatus.CANCELLED }, { fulfillmentStage: ShopFulfillmentStage.CANCELLED }],
-								}
-							: {
-									// A cancelled order shows as cancelled, so it matches no other stage.
-									fulfillmentStage: filters.stage,
-									status: { not: ShopOrderStatus.CANCELLED },
-								},
-					],
-				}
-			: {}),
-	}
-
-	const rows = await prisma.shopOrder.findMany({
-		orderBy: orderByFor(FULFILLMENT_ORDERS_ORDER),
-		select: fulfillmentOrderSelect,
-		take: opts.limit + 1,
-		// The sheet is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.ShopOrderWhereInput>(readCursor(opts.cursor), FULFILLMENT_ORDERS_ORDER, where),
+	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
+	const { method, placedBefore, placedFrom, stage } = filters
+	let filtered = db.orm.public.ShopOrder.where(order => order.status.in(FULFILLMENT_ORDER_STATUSES)).orderBy([
+		order => order.placedAt.desc(),
+		order => order.id.desc(),
+	])
+	if (placedFrom || placedBefore)
+		filtered = filtered.where(order =>
+			and(
+				...(placedFrom ? [order.placedAt.gte(formatDbTimestamp(placedFrom))] : []),
+				...(placedBefore ? [order.placedAt.lt(formatDbTimestamp(placedBefore))] : []),
+			),
+		)
+	if (method === "NONE") filtered = filtered.where(order => order.fulfillmentMethod.isNull())
+	else if (method) filtered = filtered.where({ fulfillmentMethod: method })
+	if (stage)
+		filtered = filtered.where(order =>
+			// A cancelled order shows as cancelled, so it matches no other stage.
+			stage === ShopFulfillmentStage.CANCELLED
+				? or(order.status.eq(ShopOrderStatus.CANCELLED), order.fulfillmentStage.eq(ShopFulfillmentStage.CANCELLED))
+				: and(order.fulfillmentStage.eq(stage), order.status.neq(ShopOrderStatus.CANCELLED)),
+		)
+	const position = readCursor(opts.cursor)
+	// The sheet is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged =
+		position?.at === undefined || position?.at === null
+			? filtered
+			: filtered.cursor({ id: position.id, placedAt: formatDbTimestamp(position.at) })
+	const rows = await paged
+		.limit(opts.limit + 1)
+		.select(
+			"fulfillmentMethod",
+			"fulfillmentStage",
+			"id",
+			"itemNameSnapshot",
+			"orderNumber",
+			"placedAt",
+			"quantity",
+			"status",
+			"unitCostUsd",
+		)
+		.include("shopItem", item => item.select("costUsd"))
+		.include("user", user => user.select("displayName", "encryptedAddressCountry", "id", "name"))
+		.all()
+	const models = rows.slice(0, opts.limit).map(row => {
+		if (!row.shopItem) throw new Error(`order ${row.id} has no item`)
+		if (!row.user) throw new Error(`order ${row.id} has no buyer`)
+		return {
+			fulfillmentMethod: row.fulfillmentMethod,
+			fulfillmentStage: row.fulfillmentStage,
+			id: row.id,
+			itemNameSnapshot: row.itemNameSnapshot,
+			orderNumber: row.orderNumber,
+			placedAt: parseDbTimestamp(row.placedAt),
+			quantity: row.quantity,
+			shopItem: row.shopItem,
+			status: row.status,
+			unitCostUsd: row.unitCostUsd,
+			user: row.user,
+		}
 	})
-	const page = pageResult(rows, opts.limit, FULFILLMENT_ORDERS_ORDER)
+	const last = models.at(-1)
 
-	const items = page.items.map(({ shopItem, user, unitCostUsd, ...order }) => {
+	const items = models.map(({ shopItem, user, unitCostUsd, ...order }) => {
 		// Orders from before the item had a cost fall back to today's.
 		const unit = unitCostUsd ?? shopItem.costUsd
 		return Object.assign(order, {
@@ -519,7 +683,10 @@ export async function listFulfillmentOrders(
 			user: { id: user.id, name: displayName(user) },
 		})
 	})
-	return { items, nextCursor: page.nextCursor }
+	return {
+		items,
+		nextCursor: rows.length > opts.limit && last ? encodeCursor({ at: last.placedAt, id: last.id }) : null,
+	}
 }
 
 /** True for one of the recorded action names. Guards the audit-log filter. */
@@ -527,77 +694,124 @@ export function isAuditAction(value: string): value is AuditAction {
 	return (Object.values(AuditAction) as string[]).includes(value)
 }
 
-/**
- * The audit log's order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
- */
-const AUDIT_LOG_ORDER = {
-	at: (row: AuditLog) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<AuditLog, Prisma.AuditLogOrderByWithRelationInput>
+/** One row of the audit log as Prisma 8 reads it. Its timestamps are PostgreSQL text, not Dates. */
+export type AuditLogRow = Models.public_AuditLog
 
 export async function listAuditLog(opts: {
 	action?: string
 	targetId?: string
 	cursor?: string
 	limit: number
-}): Promise<{ items: AuditLog[]; nextCursor: string | null }> {
-	const base: Prisma.AuditLogWhereInput = {
+}): Promise<{ items: AuditLogRow[]; nextCursor: string | null }> {
+	const position = readCursor(opts.cursor)
+	const base = db.orm.public.AuditLog.where({
 		// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
 		...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
 		...(opts.targetId ? { targetId: opts.targetId } : {}),
+	}).orderBy([entry => entry.createdAt.desc(), entry => entry.id.desc()])
+	// The log is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const rows = position?.at
+		? await base
+				.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+				.limit(opts.limit + 1)
+				.all()
+		: await base.limit(opts.limit + 1).all()
+	const items = rows.slice(0, opts.limit)
+	const last = items.at(-1)
+	return {
+		items,
+		nextCursor:
+			rows.length > opts.limit && last ? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id }) : null,
 	}
-	const rows = await prisma.auditLog.findMany({
-		orderBy: orderByFor(AUDIT_LOG_ORDER),
-		take: opts.limit + 1,
-		// The log is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.AuditLogWhereInput>(readCursor(opts.cursor), AUDIT_LOG_ORDER, base),
-	})
-	return pageResult(rows, opts.limit, AUDIT_LOG_ORDER)
 }
 
 /**
  * Awards to ship, newest qualification first. `encryptedAddress` is read only to answer "is an address locked on file"; the ciphertext never leaves the server.
  */
-/** Printer awards with the ciphertext folded into an on-file flag. */
-export interface PrinterAwardRow
-	extends Omit<Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>, "encryptedAddress"> {
+/** Printer awards with the ciphertext folded into an on-file flag. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
+export interface PrinterAwardRow {
+	addressLockedAt: Date | null
 	addressOnFile: boolean
+	deliveredAt: Date | null
+	id: string
+	qualifiedAt: Date
+	revokedAt: Date | null
+	revokedReason: string | null
+	shippedAt: Date | null
+	status: Models.public_PrinterAward["status"]
+	trackingCarrier: string | null
+	trackingNumber: string | null
+	user: { displayName: string | null; id: string; name: string | null }
 }
 
 export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
-	const rows = await prisma.printerAward.findMany({
-		orderBy: [{ qualifiedAt: "desc" }],
-		select: printerAwardSelect,
-		take: limit,
+	const rows = await db.orm.public.PrinterAward.orderBy(award => award.qualifiedAt.desc())
+		.limit(limit)
+		.select(
+			"addressLockedAt",
+			"deliveredAt",
+			"encryptedAddress",
+			"id",
+			"qualifiedAt",
+			"revokedAt",
+			"revokedReason",
+			"shippedAt",
+			"status",
+			"trackingCarrier",
+			"trackingNumber",
+		)
+		.include("user", user => user.select("displayName", "id", "name"))
+		.all()
+	return rows.map(({ encryptedAddress, user, ...award }) => {
+		if (!user) throw new Error(`printer award ${award.id} has no user`)
+		return Object.assign(award, {
+			addressLockedAt: award.addressLockedAt === null ? null : parseDbTimestamp(award.addressLockedAt),
+			addressOnFile: encryptedAddress !== "",
+			deliveredAt: award.deliveredAt === null ? null : parseDbTimestamp(award.deliveredAt),
+			qualifiedAt: parseDbTimestamp(award.qualifiedAt),
+			revokedAt: award.revokedAt === null ? null : parseDbTimestamp(award.revokedAt),
+			shippedAt: award.shippedAt === null ? null : parseDbTimestamp(award.shippedAt),
+			user,
+		})
 	})
-	return rows.map(({ encryptedAddress, ...award }) => Object.assign(award, { addressOnFile: encryptedAddress !== "" }))
 }
 
 /** Recent live reels, newest first, for the moderation panel. */
 /** One row of the listRecentPostsForModeration list. */
-export type ModeratedPost = Prisma.PostGetPayload<{ select: typeof moderatedPostSelect }>
+export interface ModeratedPost {
+	caption: string
+	createdAt: Date
+	hiddenAt: Date | null
+	hiddenReason: string | null
+	id: string
+	kind: Models.public_Post["kind"]
+	publishedAt: Date | null
+	themeProject: { id: string; title: string } | null
+	user: { displayName: string | null; email: string; id: string; name: string | null }
+}
 
-const moderatedPostSelect = {
-	caption: true,
-	createdAt: true,
-	hiddenAt: true,
-	hiddenReason: true,
-	id: true,
-	kind: true,
-	publishedAt: true,
-	themeProject: { select: { id: true, title: true } },
-	user: { select: { displayName: true, email: true, id: true, name: true } },
-} satisfies Prisma.PostSelect
-
-export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
-	return prisma.post.findMany({
-		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-		select: moderatedPostSelect,
-		take: limit,
-		where: { deletedAt: null },
+export async function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
+	const rows = await db.orm.public.Post.where({ deletedAt: null })
+		.orderBy([post => post.publishedAt.desc(), post => post.id.desc()])
+		.limit(limit)
+		.select("caption", "createdAt", "hiddenAt", "hiddenReason", "id", "kind", "publishedAt")
+		.include("themeProject", project => project.select("id", "title"))
+		.include("user", user => user.select("displayName", "email", "id", "name"))
+		.all()
+	return rows.map(post => {
+		// The foreign key is required, so a missing user is a data-integrity error rather than a row to render without an author.
+		if (!post.user) throw new Error(`post ${post.id} has no author`)
+		return {
+			caption: post.caption,
+			createdAt: parseDbTimestamp(post.createdAt),
+			hiddenAt: post.hiddenAt === null ? null : parseDbTimestamp(post.hiddenAt),
+			hiddenReason: post.hiddenReason,
+			id: post.id,
+			kind: post.kind,
+			publishedAt: post.publishedAt === null ? null : parseDbTimestamp(post.publishedAt),
+			themeProject: post.themeProject,
+			user: post.user,
+		}
 	})
 }
 
@@ -605,47 +819,73 @@ export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[
  * Recent live comments, newest first. A comment on a soft-deleted post is not shown – nobody can reach it to report it – but a hidden comment stays in the list so staff can see it was handled.
  */
 /** One row of the listRecentCommentsForModeration list. */
-export type ModeratedComment = Prisma.PostCommentGetPayload<{ select: typeof moderatedCommentSelect }>
+export interface ModeratedComment {
+	body: string
+	createdAt: Date
+	hiddenAt: Date | null
+	hiddenReason: string | null
+	id: string
+	post: { caption: string; id: string }
+	user: { displayName: string | null; email: string; id: string; name: string | null }
+}
 
-const moderatedCommentSelect = {
-	body: true,
-	createdAt: true,
-	hiddenAt: true,
-	hiddenReason: true,
-	id: true,
-	post: { select: { caption: true, id: true } },
-	user: { select: { displayName: true, email: true, id: true, name: true } },
-} satisfies Prisma.PostCommentSelect
-
-export function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
-	return prisma.postComment.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		select: moderatedCommentSelect,
-		take: limit,
-		where: { deletedAt: null, post: { deletedAt: null } },
+export async function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
+	const rows = await db.orm.public.PostComment.where({ deletedAt: null })
+		.where(comment => comment.post.some(post => post.deletedAt.isNull()))
+		.orderBy([comment => comment.createdAt.desc(), comment => comment.id.desc()])
+		.limit(limit)
+		.select("body", "createdAt", "hiddenAt", "hiddenReason", "id")
+		.include("post", post => post.select("caption", "id"))
+		.include("user", user => user.select("displayName", "email", "id", "name"))
+		.all()
+	return rows.map(comment => {
+		if (!comment.post) throw new Error(`comment ${comment.id} has no post`)
+		if (!comment.user) throw new Error(`comment ${comment.id} has no author`)
+		return {
+			body: comment.body,
+			createdAt: parseDbTimestamp(comment.createdAt),
+			hiddenAt: comment.hiddenAt === null ? null : parseDbTimestamp(comment.hiddenAt),
+			hiddenReason: comment.hiddenReason,
+			id: comment.id,
+			post: comment.post,
+			user: comment.user,
+		}
 	})
 }
 
 /** Public reel links, newest first, so staff can find a post that went viral. */
 /** One row of the public-reel directory. */
-export type PublicReelRow = Prisma.PublicReelGetPayload<{ select: typeof publicReelSelect }>
+export interface PublicReelRow {
+	email: string | null
+	id: string
+	platform: Models.public_PublicReel["platform"]
+	post: { caption: string; id: string } | null
+	postedAt: Date
+	themeProject: { id: string; title: string } | null
+	url: string
+	user: { displayName: string | null; id: string; name: string | null }
+}
 
-const publicReelSelect = {
-	email: true,
-	id: true,
-	platform: true,
-	post: { select: { caption: true, id: true } },
-	postedAt: true,
-	themeProject: { select: { id: true, title: true } },
-	url: true,
-	user: { select: { displayName: true, id: true, name: true } },
-} satisfies Prisma.PublicReelSelect
-
-export function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
-	return prisma.publicReel.findMany({
-		orderBy: [{ postedAt: "desc" }, { id: "desc" }],
-		select: publicReelSelect,
-		take: limit,
+export async function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
+	const rows = await db.orm.public.PublicReel.orderBy([reel => reel.postedAt.desc(), reel => reel.id.desc()])
+		.limit(limit)
+		.select("email", "id", "platform", "postedAt", "url")
+		.include("post", post => post.select("caption", "id"))
+		.include("themeProject", project => project.select("id", "title"))
+		.include("user", user => user.select("displayName", "id", "name"))
+		.all()
+	return rows.map(reel => {
+		if (!reel.user) throw new Error(`public reel ${reel.id} has no user`)
+		return {
+			email: reel.email,
+			id: reel.id,
+			platform: reel.platform,
+			post: reel.post,
+			postedAt: parseDbTimestamp(reel.postedAt),
+			themeProject: reel.themeProject,
+			url: reel.url,
+			user: reel.user,
+		}
 	})
 }
 
@@ -657,41 +897,45 @@ export async function getAdminCounters(): Promise<{
 	shipped: number
 }> {
 	// The open hand-ins, each phase's newest only: an older unresolved row is a ship Ari no longer holds, and counting it would put a hand-in in the queue that no reviewer can open. The same rule as the reviewer-activity ring, so the two figures on the page cannot disagree.
-	const open = await prisma.phaseSubmission.findMany({
-		select: {
-			ariSubmissionId: true,
-			createdAt: true,
-			id: true,
-			phase: true,
-			themeProject: { select: { buildStatus: true, designStatus: true } },
-			themeProjectId: true,
-		},
-		where: { resolvedAt: null },
-	})
+	const open = await db.orm.public.PhaseSubmission.where({ resolvedAt: null })
+		.select("ariSubmissionId", "createdAt", "id", "phase", "themeProjectId")
+		.include("themeProject", project => project.select("buildStatus", "designStatus"))
+		.all()
 	const ships = countAriShips(
-		open.map(submission => ({
-			ariSubmissionId: submission.ariSubmissionId,
-			createdAt: submission.createdAt,
-			id: submission.id,
-			phase: submission.phase,
-			phaseStatus:
-				submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
-			resolvedAt: null,
-			result: null,
-			themeProjectId: submission.themeProjectId,
-		})),
+		open.map(submission => {
+			if (!submission.themeProject) throw new Error(`submission ${submission.id} has no project`)
+			return {
+				ariSubmissionId: submission.ariSubmissionId,
+				createdAt: parseDbTimestamp(submission.createdAt),
+				id: submission.id,
+				phase: submission.phase,
+				phaseStatus:
+					submission.phase === Phase.DESIGN
+						? submission.themeProject.designStatus
+						: submission.themeProject.buildStatus,
+				resolvedAt: null,
+				result: null,
+				themeProjectId: submission.themeProjectId,
+			}
+		}),
 	)
 
 	const [pendingOrders, participants, shipped] = await Promise.all([
-		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
-		prisma.user.count(),
-		prisma.printerAward.count({ where: { revokedAt: null } }),
+		db.orm.public.ShopOrder.where({ status: ShopOrderStatus.PENDING }).aggregate(a => ({ count: a.count() })),
+		db.orm.public.User.aggregate(a => ({ count: a.count() })),
+		db.orm.public.PrinterAward.where(award => award.revokedAt.isNull()).aggregate(a => ({ count: a.count() })),
 	])
 	// Sent, and Ari holds it: the figure comparable to Ari's own pending count. `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
 	const pendingReviews = ships.pending
 	// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
 	const pendingReviewsUnsent = ships.unreached
-	return { participants, pendingOrders, pendingReviews, pendingReviewsUnsent, shipped }
+	return {
+		participants: participants.count,
+		pendingOrders: pendingOrders.count,
+		pendingReviews,
+		pendingReviewsUnsent,
+		shipped: shipped.count,
+	}
 }
 
 export interface FlowStep {
@@ -720,53 +964,51 @@ export interface FlowStep {
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers] = await Promise.all([
-		prisma.user.findMany({
-			select: {
-				firstChecksPassedAt: true,
-				firstProjectAt: true,
-				firstReelAt: true,
-				firstSubmissionAt: true,
-				hardwareExperience: true,
-				id: true,
-				onboardingCompletedAt: true,
-				onboardingStep: true,
-				participantGoal: true,
-			},
-		}),
+		db.orm.public.User.select(
+			"firstChecksPassedAt",
+			"firstProjectAt",
+			"firstReelAt",
+			"firstSubmissionAt",
+			"hardwareExperience",
+			"id",
+			"onboardingCompletedAt",
+			"onboardingStep",
+			"participantGoal",
+		).all(),
 		// People who logged in: a sign-in is what issues a session. Derived from the table rather than the lastLoginAt marker, so the funnel does not depend on the analytics backfill having run.
-		prisma.session.findMany({ distinct: ["userId"], select: { userId: true } }),
+		db.orm.public.Session.distinct("userId").select("userId").all(),
 		// The onboarding paper trail, per person, read off their live projects: a description means they named something, a starter means they took one of the catalogue's, and a requested tier means they answered the tier question. One read for all three because the funnel needs them together.
-		prisma.themeProject.findMany({
-			select: { description: true, requestedTier: true, starterProjectId: true, userId: true },
-			where: { deletedAt: null },
-		}),
+		db.orm.public.ThemeProject.where({ deletedAt: null })
+			.select("description", "requestedTier", "starterProjectId", "userId")
+			.all(),
 		// People who added a devlog: a project with a real work session on it.
-		prisma.user.findMany({
-			select: { id: true },
-			where: {
-				themeProjects: {
-					some: {
-						deletedAt: null,
-						// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
-						workSessions: {
-							some: {
-								deletedAt: null,
-								OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-							},
-						},
-					},
-				},
-			},
-		}),
+		db.orm.public.User.where(user =>
+			user.themeProjects.some(project =>
+				and(
+					project.deletedAt.isNull(),
+					project.workSessions.some(session =>
+						and(
+							session.deletedAt.isNull(),
+							or(
+								session.hoursSource.neq(HoursSource.HACKATIME_TRACKED),
+								// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
+								session.timelapses.some(),
+							),
+						),
+					),
+				),
+			),
+		)
+			.select("id")
+			.all(),
 		// People who connected a repository to a project.
-		prisma.themeProject.findMany({
-			distinct: ["userId"],
-			select: { userId: true },
-			where: {
-				deletedAt: null,
-				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
-			},
-		}),
+		db.orm.public.ThemeProject.where({ deletedAt: null })
+			.where(project =>
+				or(project.githubRepo.isNotNull(), project.repoSyncRepo.isNotNull(), project.repoSyncEnabled.eq(true)),
+			)
+			.distinct("userId")
+			.select("userId")
+			.all(),
 	])
 
 	const sessions = new Set(sessionUsers.map(s => s.userId))
@@ -889,23 +1131,23 @@ export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
 	if (openWeeks < 1) return []
 
 	const [signups, submissions] = await Promise.all([
-		prisma.user.count(),
-		prisma.phaseSubmission.findMany({
-			select: {
-				phase: true,
-				scheduledWeek: true,
-				themeProject: { select: { theme: true, userId: true } },
-			},
+		db.orm.public.User.aggregate(a => ({ count: a.count() })),
+		db.orm.public.PhaseSubmission.where(submission =>
+			or(
+				and(submission.scheduledWeek.gte(1), submission.scheduledWeek.lte(openWeeks)),
+				submission.scheduledWeek.isNull(),
+			),
+		)
 			// Null rows are kept because a hand-in from before `scheduledWeek` was recorded only finds its week through its theme and phase below.
-			where: {
-				OR: [{ scheduledWeek: { gte: 1, lte: openWeeks } }, { scheduledWeek: null }],
-				themeProject: { deletedAt: null },
-			},
-		}),
+			.where(submission => submission.themeProject.some(project => project.deletedAt.isNull()))
+			.select("id", "phase", "scheduledWeek")
+			.include("themeProject", project => project.select("theme", "userId"))
+			.all(),
 	])
 
 	const submitters = new Map<number, Set<string>>()
 	for (const submission of submissions) {
+		if (!submission.themeProject) throw new Error(`submission ${submission.id} has no project`)
 		const week = submission.scheduledWeek ?? scheduledWeekFor(submission.themeProject.theme, submission.phase)
 		if (week < 1 || week > openWeeks) continue
 		const seen = submitters.get(week) ?? new Set<string>()
@@ -923,7 +1165,7 @@ export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
 				? `${scheduled.theme.label} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
 				: "No theme scheduled",
 			label: `Week ${week}`,
-			ofSignupsPct: pctOf(count, signups),
+			ofSignupsPct: pctOf(count, signups.count),
 			week,
 		}
 	})
@@ -934,98 +1176,60 @@ export type ReportStatusFilter = ReportStatus | "ALL"
 /**
  * The moderation queue for user reports: who flagged what, why, and what staff did about it. Newest first, with the reported row's own preview and author alongside, so a report reads without opening five tabs. Cursor- paged like the audit log, so a busy queue never silently drops its tail.
  */
-const contentReportSelect = {
-	comment: {
-		select: {
-			body: true,
-			deletedAt: true,
-			hiddenAt: true,
-			id: true,
-			postId: true,
-			user: { select: { displayName: true, id: true, name: true } },
-		},
-	},
-	createdAt: true,
-	details: true,
-	id: true,
-	post: {
-		select: {
-			caption: true,
-			deletedAt: true,
-			hiddenAt: true,
-			id: true,
-			user: { select: { displayName: true, id: true, name: true } },
-		},
-	},
-	reason: true,
-	reporter: { select: { displayName: true, email: true, id: true, name: true } },
-	resolvedAt: true,
-	resolvedById: true,
-	status: true,
-	target: true,
-	targetUser: { select: { displayName: true, id: true, name: true } },
-	themeProject: {
-		select: {
-			deletedAt: true,
-			id: true,
-			title: true,
-			user: { select: { displayName: true, id: true, name: true } },
-		},
-	},
-	workSession: {
-		select: {
-			content: true,
-			deletedAt: true,
-			id: true,
-			themeProject: {
-				select: {
-					id: true,
-					title: true,
-					user: { select: { displayName: true, id: true, name: true } },
-				},
-			},
-			title: true,
-		},
-	},
-} satisfies Prisma.ContentReportSelect
-
-/** One row of the content-report directory, with every reportable target attached. */
-export type ContentReportRow = Prisma.ContentReportGetPayload<{ select: typeof contentReportSelect }>
-
-/**
- * The reports' order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops a report or hands one out twice.
- */
-const CONTENT_REPORTS_ORDER = {
-	at: (row: ContentReportRow) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<ContentReportRow, Prisma.ContentReportOrderByWithRelationInput>
-
 export async function listContentReports(
 	status: ReportStatusFilter = "OPEN",
 	opts: { cursor?: string; limit?: number } = {},
-): Promise<{ items: ContentReportRow[]; nextCursor: string | null }> {
+) {
 	const limit = opts.limit ?? 50
-	const rows = await prisma.contentReport.findMany({
-		orderBy: orderByFor(CONTENT_REPORTS_ORDER),
-		select: contentReportSelect,
-		take: limit + 1,
-		// The queue is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
-		where: positionWhere<Prisma.ContentReportWhereInput>(
-			readCursor(opts.cursor),
-			CONTENT_REPORTS_ORDER,
-			status === "ALL" ? {} : { status },
-		),
-	})
-	return pageResult(rows, limit, CONTENT_REPORTS_ORDER)
+	const position = readCursor(opts.cursor)
+	const ordered = db.orm.public.ContentReport.where(status === "ALL" ? {} : { status }).orderBy([
+		report => report.createdAt.desc(),
+		report => report.id.desc(),
+	])
+	// The queue is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+	const paged = position?.at ? ordered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id }) : ordered
+	const rows = await paged
+		.limit(limit + 1)
+		.select("createdAt", "details", "id", "reason", "resolvedAt", "resolvedById", "status", "target")
+		.include("comment", comment =>
+			comment
+				.select("body", "deletedAt", "hiddenAt", "id", "postId")
+				.include("user", user => user.select("displayName", "id", "name")),
+		)
+		.include("post", post =>
+			post
+				.select("caption", "deletedAt", "hiddenAt", "id")
+				.include("user", user => user.select("displayName", "id", "name")),
+		)
+		.include("reporter", reporter => reporter.select("displayName", "email", "id", "name"))
+		.include("themeProject", project =>
+			project.select("deletedAt", "id", "title").include("user", user => user.select("displayName", "id", "name")),
+		)
+		.include("workSession", session =>
+			session
+				.select("content", "deletedAt", "id", "title")
+				.include("themeProject", project =>
+					project.select("id", "title").include("user", user => user.select("displayName", "id", "name")),
+				),
+		)
+		.include("targetUser", user => user.select("displayName", "id", "name"))
+		.all()
+	const items = rows.slice(0, limit)
+	const last = items.at(-1)
+	return {
+		items,
+		nextCursor:
+			rows.length > limit && last ? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id }) : null,
+	}
 }
 
+/** One row of the content-report directory, with every reportable target attached. */
+export type ContentReportRow = Awaited<ReturnType<typeof listContentReports>>["items"][number]
+
 export async function countContentReports(): Promise<Record<ReportStatus, number>> {
-	const groups = await prisma.contentReport.groupBy({ _count: { _all: true }, by: ["status"] })
+	const groups = await db.orm.public.ContentReport.groupBy("status").aggregate(group => ({ count: group.count() }))
 	const counts: Record<ReportStatus, number> = { DISMISSED: 0, OPEN: 0, RESOLVED: 0 }
-	for (const group of groups) counts[group.status] = group._count._all
+	for (const group of groups) counts[group.status] = group.count
 	return counts
 }
 
@@ -1057,33 +1261,38 @@ export interface CountryStat {
  */
 async function loadRegionInputs() {
 	const [users, sessions, links] = await Promise.all([
-		prisma.user.findMany({ select: { id: true, timezone: true } }),
-		prisma.workSession.findMany({
-			select: {
-				hoursApproved: true,
-				hoursClaimed: true,
-				hoursSource: true,
-				phase: true,
-				themeProject: { select: { userId: true } },
-				themeProjectId: true,
-				timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
-			},
-			where: { deletedAt: null, themeProject: { deletedAt: null } },
-		}),
-		prisma.hackatimeLink.findMany({
-			select: {
-				cachedSeconds: true,
-				cachedSpans: true,
-				hackatimeProject: true,
-				hoursApproved: true,
-				phase: true,
-				themeProject: { select: { userId: true } },
-				themeProjectId: true,
-			},
-			where: { themeProject: { deletedAt: null } },
-		}),
+		db.orm.public.User.select("id", "timezone").all(),
+		db.orm.public.WorkSession.where({ deletedAt: null })
+			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			.select("hoursApproved", "hoursClaimed", "hoursSource", "id", "phase", "themeProjectId")
+			.include("themeProject", project => project.select("userId"))
+			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
+			.all(),
+		db.orm.public.HackatimeLink.where(link => link.themeProject.some(project => project.deletedAt.isNull()))
+			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "id", "phase", "themeProjectId")
+			.include("themeProject", project => project.select("userId"))
+			.all(),
 	])
-	return { links, sessions, users }
+	return {
+		links: links.map(link => {
+			const { themeProject } = link
+			if (!themeProject) throw new Error(`hackatime link ${link.id} has no project`)
+			return withFields(link, { themeProject })
+		}),
+		sessions: sessions.map(session => {
+			const { themeProject } = session
+			if (!themeProject) throw new Error(`session ${session.id} has no project`)
+			return withFields(session, {
+				themeProject,
+				timelapses: session.timelapses.map(timelapse =>
+					withFields(timelapse, {
+						recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+					}),
+				),
+			})
+		}),
+		users,
+	}
 }
 
 type RegionInputs = Awaited<ReturnType<typeof loadRegionInputs>>
@@ -1219,20 +1428,16 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
  * The distinct people behind each day come along too, because the totals and the per-user reading are the same rows and re-reading them for a second chart would be the same query twice. A person is counted once however many devlogs they wrote, so it is people rather than entries.
  */
 export async function getDailyActivity(): Promise<DayActivity[]> {
-	const sessions = await prisma.workSession.findMany({
-		select: {
-			effectiveDate: true,
-			hoursApproved: true,
-			hoursClaimed: true,
-			hoursSource: true,
-			// A session belongs to the project, not the person, so the user is reached through it.
-			themeProject: { select: { userId: true } },
-		},
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
-	})
+	const sessions = await db.orm.public.WorkSession.where({ deletedAt: null })
+		.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+		.select("effectiveDate", "hoursApproved", "hoursClaimed", "hoursSource", "id")
+		// A session belongs to the project, not the person, so the user is reached through it.
+		.include("themeProject", project => project.select("userId"))
+		.all()
 
 	const byDay = new Map<string, { devlogs: number; hours: number; users: Set<string> }>()
 	for (const s of sessions) {
+		if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
 		const day = s.effectiveDate
 		if (!day || !DAY.test(day)) continue
 		let row = byDay.get(day)
@@ -1281,21 +1486,18 @@ export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today:
 	const { programTimezone } = await getProgramSettings()
 	const today = effectiveDateFor(new Date(), programTimezone)
 
-	const sessions = await prisma.workSession.findMany({
-		select: {
-			createdAt: true,
-			effectiveDate: true,
-			hoursClaimed: true,
-			// A session belongs to the project, not the person, so the user is reached through it.
-			themeProject: { select: { userId: true } },
-		},
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
-	})
+	const sessions = await db.orm.public.WorkSession.where({ deletedAt: null })
+		.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+		.select("createdAt", "effectiveDate", "hoursClaimed", "id")
+		// A session belongs to the project, not the person, so the user is reached through it.
+		.include("themeProject", project => project.select("userId"))
+		.all()
 
 	// day → (user → that person's hours that day), so the threshold is applied to a whole day rather than one entry.
 	const totals = new Map<string, Map<string, number>>()
 	for (const s of sessions) {
-		const day = s.effectiveDate ?? effectiveDateFor(s.createdAt, programTimezone)
+		if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
+		const day = s.effectiveDate ?? effectiveDateFor(parseDbTimestamp(s.createdAt), programTimezone)
 		let users = totals.get(day)
 		if (!users) {
 			users = new Map()
@@ -1337,19 +1539,18 @@ export interface GoalDayActivity {
  * A maker who has not answered the prompt yet belongs to no line. The question is held open until it is answered, but it is asked after the first checkpoint, so the earliest days are largely people who had not been asked; reading an empty start as "nobody was working towards anything" would be reading the prompt's timing rather than the work.
  */
 export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
-	const sessions = await prisma.workSession.findMany({
-		select: {
-			effectiveDate: true,
-			hoursApproved: true,
-			hoursClaimed: true,
-			hoursSource: true,
-			themeProject: { select: { user: { select: { participantGoal: true } }, userId: true } },
-		},
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
-	})
+	const sessions = await db.orm.public.WorkSession.where({ deletedAt: null })
+		.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+		.select("effectiveDate", "hoursApproved", "hoursClaimed", "hoursSource", "id")
+		.include("themeProject", project =>
+			project.select("userId").include("user", user => user.select("participantGoal")),
+		)
+		.all()
 
 	const byDay = new Map<string, Map<ParticipantGoal, { hours: number; users: Set<string> }>>()
 	for (const s of sessions) {
+		if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
+		if (!s.themeProject.user) throw new Error(`session ${s.id} has no author`)
 		const day = s.effectiveDate
 		const goal = s.themeProject.user.participantGoal
 		if (!day || !DAY.test(day) || !goal) continue
@@ -1363,8 +1564,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 			row = { hours: 0, users: new Set<string>() }
 			goals.set(goal, row)
 		}
-		// The person counts as active for their goal whatever the entry's source, but only a journal entry carries
-		// journal hours – a HACKATIME_TRACKED one arrives through the link, the same exclusion `getDailyActivity` makes.
+		// The person counts as active for their goal whatever the entry's source, but only a journal entry carries journal hours – a HACKATIME_TRACKED one arrives through the link, the same exclusion `getDailyActivity` makes.
 		row.users.add(s.themeProject.userId)
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
@@ -1415,22 +1615,16 @@ export interface HoursDistribution {
 /**
  * The upper bound of each bucket, in hours.
  *
- * Uneven, and drawn as a set of bands rather than as a continuous scale: the distribution is long-tailed, so even
- * spacing would pile almost everyone into the first bucket. The first is open at zero because every account here
- * has at least some hours – the zero case is counted and reported rather than binned. The trailing Infinity edge
- * is the overflow band rather than a bound, so the tail has somewhere to land.
+ * Uneven, and drawn as a set of bands rather than as a continuous scale: the distribution is long-tailed, so even spacing would pile almost everyone into the first bucket. The first is open at zero because every account here has at least some hours – the zero case is counted and reported rather than binned. The trailing Infinity edge is the overflow band rather than a bound, so the tail has somewhere to land.
  */
 export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 240, Number.POSITIVE_INFINITY]
 
 /**
  * Hours per account, bucketed, for the overview's distribution.
  *
- * Reads the same ledger as the geography panels (`hoursByUser`, which runs every one of these hours through `rollUpHours`), so this
- * and the continent and country pies are the same hours counted two ways rather than two definitions that could drift apart – which is
- * what they used to be, and they had: this panel added both sides of a timelapse overlap the ledger subtracts.
+ * Reads the same ledger as the geography panels (`hoursByUser`, which runs every one of these hours through `rollUpHours`), so this and the continent and country pies are the same hours counted two ways rather than two definitions that could drift apart – which is what they used to be, and they had: this panel added both sides of a timelapse overlap the ledger subtracts.
  *
- * Accounts with no hours are a count and not a bar. At three quarters of all accounts, a zero bar would be four
- * times every other and answer a question nobody asked.
+ * Accounts with no hours are a count and not a bar. At three quarters of all accounts, a zero bar would be four times every other and answer a question nobody asked.
  */
 export async function getHoursDistribution(): Promise<HoursDistribution> {
 	const inputs = await loadRegionInputs()
@@ -1485,10 +1679,10 @@ export interface FirstProjectStat {
  * Setup edits one row – the week-one (PCB) project – so its final `starterProjectId` is the choice: a starter id, or null for custom. Only users who finished setup and still have that project count; accounts with no week-one row made no choice in this system.
  */
 export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
-	const rows = await prisma.themeProject.findMany({
-		select: { starterProjectId: true },
-		where: { deletedAt: null, theme: Theme.PCB, user: { onboardingCompletedAt: { not: null } } },
-	})
+	const rows = await db.orm.public.ThemeProject.where({ deletedAt: null, theme: Theme.PCB })
+		.where(project => project.user.some(user => user.onboardingCompletedAt.isNotNull()))
+		.select("starterProjectId")
+		.all()
 
 	const counts = new Map<string | null, number>()
 	for (const r of rows) counts.set(r.starterProjectId, (counts.get(r.starterProjectId) ?? 0) + 1)
@@ -1576,17 +1770,9 @@ function weekSlots(): WeekSlot[] {
  * The warm-up track needs no special case: it is one phase on one of the two statuses, and `scheduledWeekFor` sends both to the single warm-up column.
  */
 export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			buildStatus: true,
-			designStatus: true,
-			requestedTier: true,
-			starterProjectId: true,
-			theme: true,
-			tier: true,
-		},
-		where: { deletedAt: null },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.select("buildStatus", "designStatus", "requestedTier", "starterProjectId", "theme", "tier")
+		.all()
 
 	const clusters = new Map<number, WeekProjectCluster>()
 	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
@@ -1631,35 +1817,19 @@ export interface WeekHoursCluster {
  * The hours are the ledger's, through `rollUpHours` on each (project, phase) – the same call the project page and the reviewer's numbers use, so a sitting that was both journalled and tracked is not counted twice here either. A project named but never logged against contributes nothing, which is why a week can be busy on the projects chart and flat on this one.
  */
 export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			hackatimeLinks: {
-				select: {
-					cachedSeconds: true,
-					cachedSpans: true,
-					hackatimeProject: true,
-					hoursApproved: true,
-					phase: true,
-				},
-			},
-			requestedTier: true,
-			starterProjectId: true,
-			theme: true,
-			tier: true,
-			userId: true,
-			workSessions: {
-				select: {
-					hoursApproved: true,
-					hoursClaimed: true,
-					hoursSource: true,
-					phase: true,
-					timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
-				},
-				where: { deletedAt: null },
-			},
-		},
-		where: { deletedAt: null, namedAt: { not: null } },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => project.namedAt.isNotNull())
+		.select("requestedTier", "starterProjectId", "theme", "tier", "userId")
+		.include("hackatimeLinks", links =>
+			links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
+		)
+		.include("workSessions", sessions =>
+			sessions
+				.select("hoursApproved", "hoursClaimed", "hoursSource", "phase")
+				.where({ deletedAt: null })
+				.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt")),
+		)
+		.all()
 
 	const clusters = new Map<number, WeekHoursCluster>()
 	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
@@ -1671,7 +1841,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		for (const s of project.workSessions) {
 			if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 			for (const t of s.timelapses) {
-				const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+				const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
 				if (window) made.push({ hackatimeProject: t.hackatimeProject, window })
 			}
 		}
@@ -1684,7 +1854,17 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 
 		// Grouped by phase for the journal/link arithmetic, but the recordings a link is deduplicated against cross phases and projects by project name (see `windowsForLink`).
 		for (const phase of [Phase.DESIGN, Phase.BUILD]) {
-			const sessions = project.workSessions.filter(s => s.phase === phase)
+			const sessions = project.workSessions
+				.filter(s => s.phase === phase)
+				.map(session =>
+					withFields(session, {
+						timelapses: session.timelapses.map(timelapse =>
+							withFields(timelapse, {
+								recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+							}),
+						),
+					}),
+				)
 			const links = project.hackatimeLinks.filter(l => l.phase === phase)
 			if (sessions.length === 0 && links.length === 0) continue
 
@@ -1720,15 +1900,17 @@ export interface VerificationStat {
  * The status is HCA's own word, stored at each sign-in and submit by lib/hca-profile; a null is an account HCA has never answered for (a staff import nobody has signed in as, or an HCA that could not be reached).
  */
 export async function getVerificationStats(): Promise<VerificationStat[]> {
-	const rows = await prisma.user.groupBy({ _count: { _all: true }, by: ["verificationStatus"] })
+	const rows = await db.orm.public.User.groupBy("verificationStatus").aggregate(group => ({
+		count: group.count(),
+	}))
 	return rows
-		.filter(row => row._count._all > 0)
+		.filter(row => row.count > 0)
 		.map(row => ({
 			label:
 				row.verificationStatus === null
 					? "Not asked"
 					: (VERIFICATION_STATUS_LABELS[row.verificationStatus] ?? row.verificationStatus),
-			users: row._count._all,
+			users: row.count,
 		}))
 		.toSorted((a, b) => b.users - a.users)
 }
@@ -1774,20 +1956,27 @@ export interface ReviewerStats {
 export async function getReviewerStats(): Promise<ReviewerStats> {
 	const [{ programTimezone }, reviews] = await Promise.all([
 		getProgramSettings(),
-		prisma.submissionReview.findMany({
+		db.orm.public.SubmissionReview.where({ invalidated: false, pass: ReviewPass.FINAL })
+			.where(review =>
+				review.submission.some(submission => submission.themeProject.some(project => project.deletedAt.isNull())),
+			)
 			// Newest first, so the first row seen for a project is that project's most recent live review.
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			select: { createdAt: true, result: true, submission: { select: { themeProjectId: true } } },
-			where: { invalidated: false, pass: ReviewPass.FINAL, submission: { themeProject: { deletedAt: null } } },
-		}),
+			.orderBy([review => review.createdAt.desc(), review => review.id.desc()])
+			.select("createdAt", "id", "result")
+			.include("submission", submission => submission.select("themeProjectId"))
+			.all(),
 	])
 
 	const since = startOfDay(new Date(), programTimezone)
 	const latest = new Map<string, { result: ReviewResult; today: boolean }>()
 	for (const review of reviews) {
-		const themeProjectId = review.submission.themeProjectId
+		if (!review.submission) throw new Error(`review ${review.id} has no submission`)
+		const { themeProjectId } = review.submission
 		if (latest.has(themeProjectId)) continue
-		latest.set(themeProjectId, { result: review.result, today: review.createdAt >= since })
+		latest.set(themeProjectId, {
+			result: review.result,
+			today: parseDbTimestamp(review.createdAt) >= since,
+		})
 	}
 
 	const projects = [...latest.values()]
@@ -1816,10 +2005,9 @@ export interface ProjectReviewStatusStat {
  * The state is `projectReviewState`, the same function the projects grid uses to colour a card, so the ring and the cards cannot disagree about which state a project is in. Deleted projects are left out, as they are on the grid.
  */
 export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
-	const projects = await prisma.themeProject.findMany({
-		select: { buildStatus: true, designStatus: true },
-		where: { deletedAt: null },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.select("buildStatus", "designStatus")
+		.all()
 
 	const counts = { approved: 0, changes: 0, not_started: 0, pending: 0, rejected: 0 }
 	for (const project of projects) counts[projectReviewState(project.designStatus, project.buildStatus)] += 1
@@ -1940,81 +2128,73 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		designHours,
 		designHackatime,
 	] = await Promise.all([
-		prisma.user.findMany({
-			select: {
-				firstChecksPassedAt: true,
-				firstProjectAt: true,
-				hardwareExperience: true,
-				id: true,
-				onboardingCompletedAt: true,
-				onboardingStep: true,
-				participantGoal: true,
-			},
-		}),
+		db.orm.public.User.select(
+			"firstChecksPassedAt",
+			"firstProjectAt",
+			"hardwareExperience",
+			"id",
+			"onboardingCompletedAt",
+			"onboardingStep",
+			"participantGoal",
+		).all(),
 		// A sign-in is what issues a session. Read off the table rather than the `lastLoginAt` marker, so a backfill that never ran cannot read as "nobody logged in".
-		prisma.session.findMany({ distinct: ["userId"], select: { userId: true } }),
+		db.orm.public.Session.distinct("userId").select("userId").all(),
 		// The onboarding paper trail, per person, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it. One read for all three, because the journey stages need them together.
-		prisma.themeProject.findMany({
-			select: {
-				createdAt: true,
-				description: true,
-				id: true,
-				requestedTier: true,
-				starterProjectId: true,
-				userId: true,
-			},
-			where: { deletedAt: null },
-		}),
+		db.orm.public.ThemeProject.where({ deletedAt: null })
+			.select("createdAt", "description", "id", "requestedTier", "starterProjectId", "userId")
+			.all(),
 		// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
-		prisma.workSession.findMany({
-			select: { createdAt: true, themeProject: { select: { userId: true } } },
-			where: {
-				deletedAt: null,
-				OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-				themeProject: { deletedAt: null },
-			},
-		}),
+		db.orm.public.WorkSession.where({ deletedAt: null })
+			.where(session => or(session.hoursSource.neq(HoursSource.HACKATIME_TRACKED), session.timelapses.some()))
+			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			.select("createdAt", "id")
+			.include("themeProject", project => project.select("userId"))
+			.all(),
 		// A maker's own post, not a staff announcement: an announcement in their feed is not something they did.
-		prisma.post.findMany({
-			select: { createdAt: true, publishedAt: true, userId: true },
-			where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
-		}),
-		prisma.themeProject.findMany({
-			select: { createdAt: true, userId: true },
-			where: {
-				deletedAt: null,
-				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
-			},
-		}),
-		prisma.hackatimeLink.findMany({
-			select: { createdAt: true, themeProject: { select: { userId: true } } },
-			where: { themeProject: { deletedAt: null } },
-		}),
-		prisma.sessionTimelapse.findMany({
-			select: { createdAt: true, workSession: { select: { themeProject: { select: { userId: true } } } } },
-			where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
-		}),
+		db.orm.public.Post.where({ deletedAt: null })
+			.where(post => post.kind.neq(PostKind.ANNOUNCEMENT))
+			.select("createdAt", "publishedAt", "userId")
+			.all(),
+		db.orm.public.ThemeProject.where({ deletedAt: null })
+			.where(project =>
+				or(project.githubRepo.isNotNull(), project.repoSyncRepo.isNotNull(), project.repoSyncEnabled.eq(true)),
+			)
+			.select("createdAt", "userId")
+			.all(),
+		db.orm.public.HackatimeLink.where(link => link.themeProject.some(project => project.deletedAt.isNull()))
+			.select("createdAt", "id")
+			.include("themeProject", project => project.select("userId"))
+			.all(),
+		db.orm.public.SessionTimelapse.where(timelapse =>
+			timelapse.workSession.some(session =>
+				and(
+					session.deletedAt.isNull(),
+					session.themeProject.some(project => project.deletedAt.isNull()),
+				),
+			),
+		)
+			.select("createdAt", "id")
+			.include("workSession", session =>
+				session.select("id").include("themeProject", project => project.select("userId")),
+			)
+			.all(),
 		// The decision on each hand-in, to end the journey in an outcome rather than at "submitted".
-		prisma.phaseSubmission.findMany({
-			select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
-			where: { themeProject: { deletedAt: null } },
-		}),
+		db.orm.public.PhaseSubmission.where(submission =>
+			submission.themeProject.some(project => project.deletedAt.isNull()),
+		)
+			.select("resolvedAt", "resolvedResult")
+			.include("themeProject", project => project.select("userId"))
+			.all(),
 		// Design hours per project, for the tier-requirements stage: journal claims outside the tracked-link stream, plus the Hackatime cache, so one wall hour is not counted twice in the common case. An approximation of the sheet's own arithmetic – reviewer adjustments and overlap edge cases stay server-side – but the right shape for "has this tier's floor been worked".
-		prisma.workSession.groupBy({
-			_sum: { hoursClaimed: true },
-			by: ["themeProjectId"],
-			where: {
-				deletedAt: null,
-				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
-				phase: Phase.DESIGN,
-				themeProject: { deletedAt: null },
-			},
-		}),
-		prisma.hackatimeLink.groupBy({
-			_sum: { cachedSeconds: true },
-			by: ["themeProjectId"],
-			where: { phase: Phase.DESIGN, themeProject: { deletedAt: null } },
-		}),
+		db.orm.public.WorkSession.where({ deletedAt: null, phase: Phase.DESIGN })
+			.where(session => session.hoursSource.neq(HoursSource.HACKATIME_TRACKED))
+			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			.groupBy("themeProjectId")
+			.aggregate(group => ({ hours: group.sum("hoursClaimed") })),
+		db.orm.public.HackatimeLink.where({ phase: Phase.DESIGN })
+			.where(link => link.themeProject.some(project => project.deletedAt.isNull()))
+			.groupBy("themeProjectId")
+			.aggregate(group => ({ seconds: group.sum("cachedSeconds") })),
 	])
 
 	// Earliest occurrence of each activity per person. One Map of Maps, built from rows already tagged with their kind, so a kind needs no second pass.
@@ -2033,15 +2213,28 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 
 	const activity = earliest([
-		...devlogs.map(s => ({ at: s.createdAt, key: "devlog" as const, userId: s.themeProject.userId })),
-		...reels.map(p => ({ at: p.publishedAt ?? p.createdAt, key: "reel" as const, userId: p.userId })),
-		...repoLinks.map(p => ({ at: p.createdAt, key: "repo" as const, userId: p.userId })),
-		...hackatimeLinks.map(l => ({ at: l.createdAt, key: "hackatime" as const, userId: l.themeProject.userId })),
-		...timelapses.map(t => ({
-			at: t.createdAt,
-			key: "timelapse" as const,
-			userId: t.workSession.themeProject.userId,
+		...devlogs.map(s => {
+			if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
+			return { at: parseDbTimestamp(s.createdAt), key: "devlog" as const, userId: s.themeProject.userId }
+		}),
+		...reels.map(p => ({
+			at: parseDbTimestamp(p.publishedAt ?? p.createdAt),
+			key: "reel" as const,
+			userId: p.userId,
 		})),
+		...repoLinks.map(p => ({ at: parseDbTimestamp(p.createdAt), key: "repo" as const, userId: p.userId })),
+		...hackatimeLinks.map(l => {
+			if (!l.themeProject) throw new Error(`hackatime link ${l.id} has no project`)
+			return { at: parseDbTimestamp(l.createdAt), key: "hackatime" as const, userId: l.themeProject.userId }
+		}),
+		...timelapses.map(t => {
+			if (!t.workSession?.themeProject) throw new Error(`timelapse ${t.id} has no project`)
+			return {
+				at: parseDbTimestamp(t.createdAt),
+				key: "timelapse" as const,
+				userId: t.workSession.themeProject.userId,
+			}
+		}),
 	])
 
 	const described = new Set(
@@ -2066,7 +2259,8 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const OPEN = Number.NEGATIVE_INFINITY
 	const handIns = new Map<string, { at: number; node: (typeof SANKEY_OUTCOME)[number]["node"] }>()
 	for (const row of submissions) {
-		const at = row.resolvedAt?.getTime() ?? OPEN
+		if (!row.themeProject) throw new Error("submission has no project")
+		const at = row.resolvedAt === null ? OPEN : parseDbTimestamp(row.resolvedAt).getTime()
 		const node = !row.resolvedResult
 			? "awaiting"
 			: row.resolvedResult === ReviewResult.APPROVED
@@ -2085,16 +2279,15 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const userTier = new Map<string, 1 | 2 | 3>()
 	const tierMet = new Map<string, boolean>()
 	{
-		const journalByProject = new Map(designHours.map(row => [row.themeProjectId, row._sum.hoursClaimed ?? 0]))
-		const hackByProject = new Map(
-			designHackatime.map(row => [row.themeProjectId, (row._sum.cachedSeconds ?? 0) / 3600]),
-		)
-		const latest = new Map<string, { project: (typeof projects)[number]; tier: 1 | 2 | 3 }>()
+		const journalByProject = new Map(designHours.map(row => [row.themeProjectId, row.hours ?? 0]))
+		const hackByProject = new Map(designHackatime.map(row => [row.themeProjectId, (row.seconds ?? 0) / 3600]))
+		const latest = new Map<string, { createdAt: Date; project: (typeof projects)[number]; tier: 1 | 2 | 3 }>()
 		for (const project of projects) {
 			const raw = project.requestedTier ?? (project.starterProjectId !== null ? STARTER_PROJECT_TIER : null)
 			if (!isTierId(raw)) continue
+			const createdAt = parseDbTimestamp(project.createdAt)
 			const held = latest.get(project.userId)
-			if (!held || project.createdAt > held.project.createdAt) latest.set(project.userId, { project, tier: raw })
+			if (!held || createdAt > held.createdAt) latest.set(project.userId, { createdAt, project, tier: raw })
 		}
 		for (const [userId, { project, tier }] of latest) {
 			userTier.set(userId, tier)

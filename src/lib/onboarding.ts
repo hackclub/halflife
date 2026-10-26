@@ -1,5 +1,5 @@
 import "server-only"
-import { type HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
+import { or } from "@prisma/orm-postgres/orm-client"
 import {
 	ONBOARDING_STEP_COUNT,
 	type OnboardingStep,
@@ -13,11 +13,13 @@ import {
 } from "@/lib/config/onboarding"
 import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
 import { isTierId, type TierId } from "@/lib/config/tiers"
+import { type HardwareExperience, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getProgramSettings, weekNumberForDate } from "@/lib/program"
 import { ensureThemeProject } from "@/lib/provisioning"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { formatDbTimestamp } from "@/lib/time"
 
 /**
  * The first checkpoint's state machine.
@@ -25,6 +27,7 @@ import { sanitize, sanitizeHtml } from "@/lib/sanitize"
  * Two rules hold everything together:
  *
  * 1. `onboardingStep` is the furthest step REACHED, never the step being displayed. Answering step 3 again after reaching step 5 edits the answer and leaves the progress alone, so a participant can go back and change their project name without being walked through the tier question again.
+ *
  * 2. Nothing here writes `ThemeProject.tier`. The participant's choice lands in `requestedTier`; the reviewer's decision at design approval is a different column, and money is paid against theirs.
  */
 
@@ -60,27 +63,21 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 	//
 	// An existing project is the anchor: once the flow has made one, the theme cannot move under someone who finishes the questions the next day. With no project yet, the fallback is the theme of the current program week, so an onboarding started today is for the week it is actually happening in.
 	const [user, found] = await Promise.all([
-		prisma.user.findUniqueOrThrow({
-			select: {
-				hardwareExperience: true,
-				onboardingCompletedAt: true,
-				onboardingStep: true,
-				trackingTutorialDismissedAt: true,
-			},
-			where: { id: userId },
-		}),
-		prisma.themeProject.findFirst({
-			orderBy: { createdAt: "asc" },
-			select: { ...PROJECT_SELECT, theme: true },
-			where: { deletedAt: null, theme: { not: Theme.WARMUP }, userId },
-		}),
+		db.orm.public.User.whereUnique({ id: userId })
+			.select("hardwareExperience", "onboardingCompletedAt", "onboardingStep", "trackingTutorialDismissedAt")
+			.firstOrThrow(),
+		db.orm.public.ThemeProject.where({ deletedAt: null, userId })
+			.where(project => project.theme.neq(Theme.WARMUP))
+			.orderBy(project => project.createdAt.asc())
+			.select("description", "id", "requestedTier", "starterProjectId", "theme", "title")
+			.first(),
 	])
 
 	let project: ReturnType<typeof pickProject>
 	let theme: Theme
 	if (found) {
 		project = pickProject(found)
-		theme = found.theme
+		;({ theme } = found)
 	} else {
 		const settings = await getProgramSettings()
 		theme = themeForCurrentWeek(settings.eventStartDate, settings.programTimezone)
@@ -114,15 +111,6 @@ function themeForCurrentWeek(eventStartDate: Date, programTimezone: string): The
 	const designWeek = ((Math.max(week, 1) - 1) % DESIGN_WEEKS) + 1
 	return THEMES.find(t => t.designWeek === designWeek)?.id ?? ONBOARDING_THEME
 }
-
-/** The project fields the flow reads and writes. */
-const PROJECT_SELECT = {
-	description: true,
-	id: true,
-	requestedTier: true,
-	starterProjectId: true,
-	title: true,
-} as const
 
 function pickProject(p: {
 	id: string
@@ -181,6 +169,7 @@ export interface AdvanceResult {
  * Where the flow goes next is decided here, not only in the browser, so the server never has someone "on" a step the page skipped:
  *
  * - A beginner forks on the week step. Building the starter answers the project, idea and tier steps at once (its name, its pick, Tier 1) and moves them straight to time tracking. Their own project goes on to naming it.
+ *
  * - The idea step ("Stuck? Pick one") is stepped over after naming a project. The starter is offered on the week step now, and anyone naming their own project has already said no to it.
  */
 export async function submitStep(userId: string, answer: OnboardingAnswer): Promise<AdvanceResult> {
@@ -282,21 +271,11 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 	// The step this answer lands on: normally the next one, further when the answer settles the steps in between (see above).
 	const tookStarter = answer.step === "week" && typeof answer.starterProjectId === "string"
 	const next = tookStarter ? stepIndexOf("tracking") : answer.step === "project" ? stepIndexOf("idea") + 1 : index + 1
-	// Only ever forward: re-answering step 3 from step 5 must not rewind anyone. The transaction re-reads the marker and takes the max against its own fresh value.
-	const userWrite = {
-		data: {
-			...userData,
-			// Keeps the statement non-empty for an informational answer (the PCB week has no fields of its own) without writing the marker here; the guarded update below owns it.
-			onboardingStep: { increment: 0 },
-		},
-		select: {
-			hardwareExperience: true,
-			onboardingCompletedAt: true,
-			onboardingStep: true,
-			trackingTutorialDismissedAt: true,
-		},
-		where: { id: userId },
-	} as const
+	// Only ever forward: re-answering step 3 from step 5 must not rewind anyone. The transaction re-reads the marker and takes the max against its own fresh value. The guarded update below owns the progress marker; this write carries only the answer's own fields.
+	const userWrite: { hardwareExperience?: HardwareExperience; trackingTutorialDismissedAt?: string } = {}
+	if (userData.hardwareExperience !== undefined) userWrite.hardwareExperience = userData.hardwareExperience
+	if (userData.trackingTutorialDismissedAt !== undefined)
+		userWrite.trackingTutorialDismissedAt = formatDbTimestamp(userData.trackingTutorialDismissedAt)
 	const touchesProject = Object.keys(projectData).length > 0
 
 	// Turning the sync on is a GitHub round trip that can fail, so it is not done here: this returns the request and the route performs it after the response has gone. That way a repo the token cannot push to refuses the *sync*, not the finishing of the setup flow.
@@ -306,21 +285,14 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 		projectAfter,
 		userAfter,
 		reached: reachedAfter,
-	} = await prisma.$transaction(async tx => {
+	} = await db.transaction(async tx => {
 		// Re-read on the transaction client, so a concurrent step/project change cannot land a write against a stale snapshot.
-		const txUser = await tx.user.findUniqueOrThrow({
-			select: {
-				hardwareExperience: true,
-				onboardingCompletedAt: true,
-				onboardingStep: true,
-				trackingTutorialDismissedAt: true,
-			},
-			where: { id: userId },
-		})
-		const txProject = await tx.themeProject.findFirst({
-			select: PROJECT_SELECT,
-			where: { deletedAt: null, theme: before.theme, userId },
-		})
+		const txUser = await tx.orm.public.User.whereUnique({ id: userId })
+			.select("hardwareExperience", "onboardingCompletedAt", "onboardingStep", "trackingTutorialDismissedAt")
+			.firstOrThrow()
+		const txProject = await tx.orm.public.ThemeProject.where({ deletedAt: null, theme: before.theme, userId })
+			.select("description", "id", "requestedTier", "starterProjectId", "title")
+			.first()
 		const freshReached = clampStep(txUser.onboardingStep)
 		if (index > freshReached) throw new HttpError("VALIDATION_FAILED", "Finish the earlier steps first")
 
@@ -328,27 +300,24 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		const targetProjectId = txProject?.id ?? before.project.id
 
-		const updatedProject = touchesProject
-			? await tx.themeProject.update({
-					data: projectData,
-					select: PROJECT_SELECT,
-					where: { id: targetProjectId },
-				})
-			: (txProject ?? before.project)
-		const updatedUser = await tx.user.update({
-			...userWrite,
-			data: {
-				...userWrite.data,
-				...(reachedNow >= ONBOARDING_STEP_COUNT ? { onboardingCompletedAt: new Date() } : {}),
-				onboardingStep: { increment: 0 },
-			},
-		})
+		if (touchesProject) await tx.orm.public.ThemeProject.where({ id: targetProjectId }).update(projectData)
+		const updatedProject = await tx.orm.public.ThemeProject.whereUnique({ id: targetProjectId })
+			.select("description", "id", "requestedTier", "starterProjectId", "title")
+			.firstOrThrow()
+		// An answer that only touches the project still lands its completion stamp here when the flow finishes on it; the guarded update below owns the progress marker itself.
+		if (Object.keys(userWrite).length > 0 || reachedNow >= ONBOARDING_STEP_COUNT)
+			await tx.orm.public.User.where({ id: userId }).update({
+				...userWrite,
+				...(reachedNow >= ONBOARDING_STEP_COUNT ? { onboardingCompletedAt: formatDbTimestamp(new Date()) } : {}),
+			})
+		const updatedUser = await tx.orm.public.User.whereUnique({ id: userId })
+			.select("hardwareExperience", "onboardingCompletedAt", "onboardingStep", "trackingTutorialDismissedAt")
+			.firstOrThrow()
 
 		// Raise the furthest-reached marker, never lower it: two answers in flight read the same snapshot, and the slower one must not rewind the faster one.
-		await tx.user.updateMany({
-			data: { onboardingStep: reachedNow },
-			where: { id: userId, onboardingStep: { lt: reachedNow } },
-		})
+		await tx.orm.public.User.where({ id: userId })
+			.where(user => user.onboardingStep.lt(reachedNow))
+			.updateAndCount({ onboardingStep: reachedNow })
 
 		return { projectAfter: updatedProject, reached: reachedNow, userAfter: updatedUser }
 	})
@@ -378,30 +347,23 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
  * Only the progress and the answers the flow owns are cleared. The onboarding project keeps its row, name and entries, and the flow edits it in place as the questions are answered again; its starter pick is dropped so the tier is not left locked by an answer that no longer stands.
  */
 export async function resetOnboarding(userId: string): Promise<void> {
-	const project = await prisma.themeProject.findFirst({
-		orderBy: { createdAt: "asc" },
-		select: { theme: true },
-		where: { deletedAt: null, theme: { not: Theme.WARMUP }, userId },
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, userId })
+		.where(p => p.theme.neq(Theme.WARMUP))
+		.orderBy(p => p.createdAt.asc())
+		.select("theme")
+		.first()
+	await db.transaction(async tx => {
+		await tx.orm.public.User.where({ id: userId }).update({
+			hardwareExperience: null,
+			onboardingCompletedAt: null,
+			onboardingStep: 0,
+			trackingTutorialDismissedAt: null,
+		})
+		if (project)
+			await tx.orm.public.ThemeProject.where({ deletedAt: null, theme: project.theme, userId }).updateAndCount({
+				starterProjectId: null,
+			})
 	})
-	await prisma.$transaction([
-		prisma.user.update({
-			data: {
-				hardwareExperience: null,
-				onboardingCompletedAt: null,
-				onboardingStep: 0,
-				trackingTutorialDismissedAt: null,
-			},
-			where: { id: userId },
-		}),
-		...(project
-			? [
-					prisma.themeProject.updateMany({
-						data: { starterProjectId: null },
-						where: { deletedAt: null, theme: project.theme, userId },
-					}),
-				]
-			: []),
-	])
 }
 
 /**
@@ -410,23 +372,18 @@ export async function resetOnboarding(userId: string): Promise<void> {
  * Anyone who has already started working is past it whatever the column says: the flow was added after the platform, and walking an existing participant through "make your first project" when they have three approved designs would be absurd. The check is deliberately generous for that reason.
  */
 export async function needsOnboarding(userId: string): Promise<boolean> {
-	const user = await prisma.user.findUnique({
-		select: { onboardingCompletedAt: true },
-		where: { id: userId },
-	})
+	const user = await db.orm.public.User.whereUnique({ id: userId }).select("onboardingCompletedAt").first()
 	if (!user || user.onboardingCompletedAt) return false
 
-	const started = await prisma.themeProject.count({
-		where: {
-			deletedAt: null,
-			OR: [
-				{ designStatus: { not: PhaseStatus.draft } },
-				{ buildStatus: { not: PhaseStatus.draft } },
-				{ workSessions: { some: { deletedAt: null } } },
-			],
-			userId,
-		},
-	})
+	const { count: started } = await db.orm.public.ThemeProject.where({ deletedAt: null, userId })
+		.where(project =>
+			or(
+				project.designStatus.neq(PhaseStatus.draft),
+				project.buildStatus.neq(PhaseStatus.draft),
+				project.workSessions.some(session => session.deletedAt.isNull()),
+			),
+		)
+		.aggregate(a => ({ count: a.count() }))
 	return started === 0
 }
 

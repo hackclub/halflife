@@ -1,0 +1,1198 @@
+// use prisma-8
+// Printed from a copy of prisma/schema.prisma with the partial-index predicates and index sort directions Prisma 8 refuses removed. Field and relation names must stay in sync with the Prisma 7 schema until migrations move over.
+
+namespace public {
+  model ShopRegion {
+    id        String                @id
+    name      String
+    active    Boolean               @default(true)
+    sortOrder Int                   @default(0)
+    createdAt TimestampString(3)    @default(now())
+    updatedAt TimestampString(3)    @onCreate(now()) @onUpdate(now())
+    prices    ShopItemRegionPrice[]
+    users     User[]
+
+    @@index([active, sortOrder], map: "shop_region_active_sortOrder_idx")
+    @@map("shop_region")
+  }
+
+  model User {
+    id                          String                       @id @onCreate(cuid(2))
+    email                       String
+    name                        String?
+    displayName                 String?
+    emailVerified               Boolean                      @default(false)
+    image                       String?
+    createdAt                   TimestampString(3)           @default(now())
+    updatedAt                   TimestampString(3)           @onCreate(now()) @onUpdate(now())
+    slackId                     String?
+    slackDisplayName            String?
+    hackatimeUserId             String?
+    verificationStatus          String?
+    bio                         String?
+    pronouns                    String?
+    timezone                    String?
+    encryptedAddressStreet      String?
+    encryptedAddressLine2       String?
+    encryptedAddressCity        String?
+    encryptedAddressState       String?
+    encryptedAddressZip         String?
+    encryptedAddressCountry     String?
+    encryptedBirthday           String?
+    encryptedPhone              String?
+    joinedProgramAt             TimestampString(3)?
+    hardwareExperience          pg.enum(HardwareExperience)?
+    printerGoalId               String?
+    onboardingStep              Int                          @default(0)
+    onboardingCompletedAt       TimestampString(3)?
+    participantGoal             pg.enum(ParticipantGoal)?
+    trackingTutorialDismissedAt TimestampString(3)?
+    currentStreak               Int                          @default(0)
+    longestStreak               Int                          @default(0)
+    lastStreakDate              String?
+    firstProjectAt              TimestampString(3)?
+    firstReelAt                 TimestampString(3)?
+    firstSubmissionAt           TimestampString(3)?
+    lastSubmissionAt            TimestampString(3)?
+    firstChecksPassedAt         TimestampString(3)?
+    lastLoginAt                 TimestampString(3)?
+    lastActiveAt                TimestampString(3)?
+    activeDays                  Int                          @default(0)
+    submissionExtensionUntil    TimestampString(3)?
+    fraudFlagged                Boolean                      @default(false)
+    shopRegionId                String?
+    utmSource                   String?
+    signupPage                  String?
+    accounts                    Account[]
+    activityDays                UserDay[]
+    activityWeeks               UserWeek[]
+    disputeMessages             ReviewDisputeMessage[]
+    hcbGrantTopUps              HcbGrantTopUp[]
+    ledgerEntries               LedgerEntry[]
+    postComments                PostComment[]
+    postLikes                   PostLike[]
+    posts                       Post[]
+    postViews                   PostView[]
+    printerAward                PrinterAward?
+    publicReels                 PublicReel[]
+    reviewClaims                ReviewClaim[]
+    reviewDisputes              ReviewDispute[]
+    reviewsGiven                SubmissionReview[]
+    roles                       UserRole[]
+    sessions                    Session[]
+    shopOrderNotes              ShopOrderNote[]
+    shopOrders                  ShopOrder[]
+    syncRunLogs                 SyncRunLog[]
+    themeProjects               ThemeProject[]
+    uploadHandoffs              UploadHandoff[]
+    shopRegion                  ShopRegion?                  @relation(fields: [shopRegionId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
+    reportsAgainst              ContentReport[]              @relation(name: "ContentReport_targetUser")
+    reportsMade                 ContentReport[]              @relation(name: "ContentReport_reporter")
+
+    @@index([email], map: "user_email_key", unique: true)
+    @@index([slackId], map: "user_slackId_key", unique: true)
+    @@index([hackatimeUserId], map: "user_hackatimeUserId_key", unique: true)
+    @@index([createdAt], map: "user_createdAt_idx")
+    @@map("user")
+  }
+
+  model Account {
+    id                    String              @id
+    accountId             String
+    providerId            String
+    userId                String
+    accessToken           String?
+    refreshToken          String?
+    idToken               String?
+    accessTokenExpiresAt  TimestampString(3)?
+    refreshTokenExpiresAt TimestampString(3)?
+    scope                 String?
+    password              String?
+    createdAt             TimestampString(3)  @default(now())
+    updatedAt             TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([providerId, accountId], map: "account_providerId_accountId_key", unique: true)
+    @@index([userId], map: "account_userId_idx")
+    @@map("account")
+  }
+
+  model AriWebhookDelivery {
+    id              String              @id @onCreate(cuid(2))
+    deliveryId      String
+    event           String
+    ariSubmissionId String?
+    externalId      String?
+    receivedAt      TimestampString(3)  @default(now())
+    appliedAt       TimestampString(3)?
+    payload         Jsonb?
+
+    @@index([deliveryId], map: "ari_webhook_delivery_deliveryId_key", unique: true)
+    @@index([receivedAt], map: "ari_webhook_delivery_receivedAt_idx")
+    @@index([appliedAt], map: "ari_webhook_delivery_appliedAt_idx")
+    @@map("ari_webhook_delivery")
+  }
+
+  model AuditLog {
+    id             String               @id @onCreate(cuid(2))
+    action         pg.enum(AuditAction)
+    actorId        String?
+    actorEmail     String?
+    actorIp        String?
+    actorUserAgent String?
+    targetType     String?
+    targetId       String?
+    metadata       Jsonb?
+    createdAt      TimestampString(3)   @default(now())
+
+    @@index([actorId, createdAt], map: "audit_log_actorId_createdAt_idx")
+    @@index([action, createdAt], map: "audit_log_action_createdAt_idx")
+    @@index([targetId], map: "audit_log_targetId_idx")
+    @@index([createdAt], map: "audit_log_createdAt_idx")
+    @@map("audit_log")
+  }
+
+  model ThemeProject {
+    id                       String               @id @onCreate(cuid(2))
+    userId                   String
+    theme                    pg.enum(Theme)
+    title                    String               @default("")
+    description              String?
+    coverImageKey            String?
+    githubRepo               String?
+    artifactLinks            Jsonb?
+    repoSyncEnabled          Boolean              @default(false)
+    repoSyncRepo             String?
+    repoSyncedAt             TimestampString(3)?
+    repoSyncError            String?
+    repoSyncQueuedAt         TimestampString(3)?
+    designStatus             pg.enum(PhaseStatus) @default("draft")
+    designReviewComments     String?
+    designReviewedAt         TimestampString(3)?
+    designReviewedById       String?
+    buildStatus              pg.enum(PhaseStatus) @default("draft")
+    buildReviewComments      String?
+    buildReviewedAt          TimestampString(3)?
+    buildReviewedById        String?
+    tier                     Int?
+    grantUsd                 Int?
+    grantEmittedAt           TimestampString(3)?
+    approvedHours            Float?
+    approvedHoursAt          TimestampString(3)?
+    designApprovedHours      Float?
+    designApprovedHoursAt    TimestampString(3)?
+    designBankedCoins        Int?
+    designSpendableCoins     Int?
+    buildCoins               Int?
+    bomSavingsUsd            Int?
+    bomTaxShippingUsd        Float?
+    requestedTier            Int?
+    starterProjectId         String?
+    warmupPhase              pg.enum(Phase)?
+    submissionExtensionUntil TimestampString(3)?
+    namedAt                  TimestampString(3)?
+    createdAt                TimestampString(3)   @default(now())
+    updatedAt                TimestampString(3)   @onCreate(now()) @onUpdate(now())
+    deletedAt                TimestampString(3)?
+    deletedById              String?
+    bomItems                 BomItem[]
+    hackatimeLinks           HackatimeLink[]
+    hcbGrantTopUps           HcbGrantTopUp[]
+    ledgerEntries            LedgerEntry[]
+    posts                    Post[]
+    publicReels              PublicReel[]
+    reports                  ContentReport[]
+    repoSyncRuns             RepoSyncRun[]
+    submissions              PhaseSubmission[]
+    workSessions             WorkSession[]
+    user                     User                 @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([userId, theme], map: "theme_project_userId_theme_key", unique: true, where: sql`((theme <> 'WARMUP'::"Theme") AND ("deletedAt" IS NULL))`)
+    @@index([userId], map: "theme_project_userId_idx")
+    @@index([designStatus], map: "theme_project_designStatus_idx")
+    @@index([buildStatus], map: "theme_project_buildStatus_idx")
+    @@map("theme_project")
+  }
+
+  model BomItem {
+    id             String             @id @onCreate(cuid(2))
+    themeProjectId String
+    name           String
+    purpose        String?
+    quantity       Int                @default(1)
+    unitCostUsd    Float              @default(0)
+    vendor         String?
+    link           String?
+    sortOrder      Int                @default(0)
+    createdAt      TimestampString(3) @default(now())
+    updatedAt      TimestampString(3) @onCreate(now()) @onUpdate(now())
+    themeProject   ThemeProject       @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "bom_item_themeProjectId_sortOrder_idx")
+
+    @@index([themeProjectId, sortOrder], map: "bom_item_themeProjectId_sortOrder_idx")
+    @@map("bom_item")
+  }
+
+  model Post {
+    id              String              @id @onCreate(cuid(2))
+    userId          String
+    themeProjectId  String?
+    kind            pg.enum(PostKind)   @default("FREEFORM")
+    caption         String
+    checkpointKey   String?
+    objectKey       String
+    thumbnailKey    String?
+    contentType     String?
+    byteSize        Int?
+    durationSeconds Int?
+    width           Int?
+    height          Int?
+    status          pg.enum(PostStatus) @default("PROCESSING")
+    publishedAt     TimestampString(3)?
+    viewCount       Int                 @default(0)
+    likeCount       Int                 @default(0)
+    commentCount    Int                 @default(0)
+    pinnedAt        TimestampString(3)?
+    hiddenAt        TimestampString(3)?
+    hiddenById      String?
+    hiddenReason    String?
+    weekNumber      Int?
+    createdAt       TimestampString(3)  @default(now())
+    updatedAt       TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    deletedAt       TimestampString(3)?
+    comments        PostComment[]
+    likes           PostLike[]
+    publicReels     PublicReel[]
+    reports         ContentReport[]
+    views           PostView[]
+    user            User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "post_userId_checkpointKey_idx")
+    themeProject    ThemeProject?       @relation(fields: [themeProjectId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+    @@index([status, publishedAt], map: "post_status_publishedAt_idx")
+    @@index([themeProjectId, kind], map: "post_themeProjectId_kind_idx")
+    @@index([userId, checkpointKey], map: "post_userId_checkpointKey_idx")
+    @@index([userId, createdAt], map: "post_userId_createdAt_idx")
+    @@index([themeProjectId], map: "post_themeProjectId_idx")
+    @@map("post")
+  }
+
+  model PostComment {
+    id           String              @id @onCreate(cuid(2))
+    postId       String
+    userId       String
+    body         String
+    hiddenAt     TimestampString(3)?
+    hiddenById   String?
+    hiddenReason String?
+    createdAt    TimestampString(3)  @default(now())
+    updatedAt    TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    deletedAt    TimestampString(3)?
+    reports      ContentReport[]
+    post         Post                @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "post_comment_postId_createdAt_idx")
+    user         User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([postId, createdAt], map: "post_comment_postId_createdAt_idx")
+    @@index([userId], map: "post_comment_userId_idx")
+    @@map("post_comment")
+  }
+
+  model WorkSession {
+    id             String               @id @onCreate(cuid(2))
+    themeProjectId String
+    phase          pg.enum(Phase)
+    title          String
+    content        String?
+    hoursClaimed   Float
+    hoursApproved  Float?
+    hoursSource    pg.enum(HoursSource) @default("MANUAL")
+    effectiveDate  String?
+    weekNumber     Int?
+    reviewComments String?
+    reviewedAt     TimestampString(3)?
+    reviewedById   String?
+    createdAt      TimestampString(3)   @default(now())
+    updatedAt      TimestampString(3)   @onCreate(now()) @onUpdate(now())
+    deletedAt      TimestampString(3)?
+    media          SessionMedia[]
+    reports        ContentReport[]
+    timelapses     SessionTimelapse[]
+    themeProject   ThemeProject         @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "work_session_themeProjectId_phase_idx")
+
+    @@index([themeProjectId, phase], map: "work_session_themeProjectId_phase_idx")
+    @@index([themeProjectId, createdAt], map: "work_session_themeProjectId_createdAt_idx")
+    @@index([effectiveDate], map: "work_session_effectiveDate_idx")
+    @@map("work_session")
+  }
+
+  model ContentReport {
+    id             String                @id @onCreate(cuid(2))
+    reporterId     String
+    target         pg.enum(ReportTarget)
+    reason         pg.enum(ReportReason)
+    details        String?
+    postId         String?
+    commentId      String?
+    themeProjectId String?
+    targetUserId   String?
+    workSessionId  String?
+    status         pg.enum(ReportStatus) @default("OPEN")
+    resolvedAt     TimestampString(3)?
+    resolvedById   String?
+    createdAt      TimestampString(3)    @default(now())
+    updatedAt      TimestampString(3)    @onCreate(now()) @onUpdate(now())
+    reporter       User                  @relation(name: "ContentReport_reporter", fields: [reporterId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    post           Post?                 @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+    comment        PostComment?          @relation(fields: [commentId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+    themeProject   ThemeProject?         @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+    targetUser     User?                 @relation(name: "ContentReport_targetUser", fields: [targetUserId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+    workSession    WorkSession?          @relation(fields: [workSessionId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([reporterId, postId], map: "content_report_open_post_idx", unique: true, where: sql`((status = 'OPEN'::"ReportStatus") AND ("postId" IS NOT NULL))`)
+    @@index([reporterId, commentId], map: "content_report_open_comment_idx", unique: true, where: sql`((status = 'OPEN'::"ReportStatus") AND ("commentId" IS NOT NULL))`)
+    @@index([reporterId, themeProjectId], map: "content_report_open_project_idx", unique: true, where: sql`((status = 'OPEN'::"ReportStatus") AND ("themeProjectId" IS NOT NULL))`)
+    @@index([reporterId, targetUserId], map: "content_report_open_user_idx", unique: true, where: sql`((status = 'OPEN'::"ReportStatus") AND ("targetUserId" IS NOT NULL))`)
+    @@index([reporterId, workSessionId], map: "content_report_open_session_idx", unique: true, where: sql`((status = 'OPEN'::"ReportStatus") AND ("workSessionId" IS NOT NULL))`)
+    @@index([status, createdAt], map: "content_report_status_createdAt_idx")
+    @@index([reporterId], map: "content_report_reporterId_idx")
+    @@map("content_report")
+  }
+
+  model HackatimeLink {
+    id               String              @id @onCreate(cuid(2))
+    themeProjectId   String
+    hackatimeProject String
+    phase            pg.enum(Phase)      @default("BUILD")
+    hoursApproved    Float?
+    reviewedAt       TimestampString(3)?
+    reviewedById     String?
+    cachedSeconds    Int?
+    cachedAt         TimestampString(3)?
+    lastFetchError   String?
+    cachedSpans      Jsonb?
+    spansFetchedAt   TimestampString(3)?
+    spansFetchError  String?
+    createdAt        TimestampString(3)  @default(now())
+    themeProject     ThemeProject        @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hackatime_link_themeProjectId_hackatimeProject_key")
+
+    @@index([themeProjectId, hackatimeProject], map: "hackatime_link_themeProjectId_hackatimeProject_key", unique: true)
+    @@index([themeProjectId, phase], map: "hackatime_link_themeProjectId_phase_idx")
+    @@index([cachedAt], map: "hackatime_link_cachedAt_idx", where: sql`("hoursApproved" IS NULL)`)
+    @@map("hackatime_link")
+  }
+
+  model HcbGrantTopUp {
+    id             String              @id @onCreate(cuid(2))
+    userId         String
+    themeProjectId String
+    phase          pg.enum(Phase)
+    grantHashid    String
+    amountCents    Int
+    transactionId  String?
+    sentAt         TimestampString(3)?
+    error          String?
+    createdAt      TimestampString(3)  @default(now())
+    createdById    String?
+    user           User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_grant_topup_userId_themeProjectId_phase_key")
+    themeProject   ThemeProject        @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([userId, themeProjectId, phase], map: "hcb_grant_topup_userId_themeProjectId_phase_key", unique: true)
+    @@index([grantHashid], map: "hcb_grant_topup_grantHashid_key", unique: true)
+    @@map("hcb_grant_topup")
+  }
+
+  model HelpTicket {
+    id            String              @id @onCreate(cuid(2))
+    authorSlackId String
+    helpChannel   String
+    helpTs        String
+    createdAt     TimestampString(3)  @default(now())
+    resolvedAt    TimestampString(3)?
+    resolvedBy    String?
+
+    @@index([helpChannel, helpTs], map: "help_ticket_helpChannel_helpTs_key", unique: true)
+    @@index([authorSlackId, createdAt], map: "help_ticket_authorSlackId_createdAt_idx")
+    @@index([resolvedAt], map: "help_ticket_resolvedAt_idx")
+    @@map("help_ticket")
+  }
+
+  model ShopItem {
+    id                       String                    @id
+    name                     String
+    description              String
+    imageUrl                 String?
+    category                 pg.enum(ShopItemCategory) @default("PRINTER_UPGRADE")
+    priceCredits             Int
+    costUsd                  Float?
+    maxPerUser               Int                       @default(1)
+    stock                    Int?
+    requiresPrinterQualified Boolean                   @default(true)
+    active                   Boolean                   @default(true)
+    sortOrder                Int                       @default(0)
+    createdAt                TimestampString(3)        @default(now())
+    updatedAt                TimestampString(3)        @onCreate(now()) @onUpdate(now())
+    orders                   ShopOrder[]
+    regionPrices             ShopItemRegionPrice[]
+
+    @@index([active, sortOrder], map: "shop_item_active_sortOrder_idx")
+    @@map("shop_item")
+  }
+
+  model ShopOrder {
+    id                   String                          @id @onCreate(cuid(2))
+    orderNumber          Int                             @default(autoincrement())
+    userId               String
+    shopItemId           String
+    quantity             Int
+    unitCredits          Int
+    totalCredits         Int
+    itemNameSnapshot     String
+    unitCostUsd          Float?
+    stockDebited         Boolean?
+    status               pg.enum(ShopOrderStatus)        @default("PENDING")
+    holdReason           String?
+    rejectionReason      String?
+    encryptedAddress     String                          @default("")
+    encryptedPhone       String                          @default("")
+    trackingNumber       String?
+    trackingCarrier      String?
+    fulfillmentMethod    pg.enum(ShopFulfillmentMethod)?
+    fulfillmentStage     pg.enum(ShopFulfillmentStage)   @default("UNFULFILLED")
+    fulfillmentUpdatedAt TimestampString(3)?
+    placedAt             TimestampString(3)              @default(now())
+    heldAt               TimestampString(3)?
+    rejectedAt           TimestampString(3)?
+    fulfilledAt          TimestampString(3)?
+    lastActorId          String?
+    idempotencyKey       String?
+    ledgerEntries        LedgerEntry[]
+    notes                ShopOrderNote[]
+    user                 User                            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    shopItem             ShopItem                        @relation(fields: [shopItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+    @@index([userId, idempotencyKey], map: "shop_order_userId_idempotencyKey_key", unique: true)
+    @@index([orderNumber], map: "shop_order_orderNumber_key", unique: true)
+    @@index([userId], map: "shop_order_userId_idx")
+    @@index([status, placedAt], map: "shop_order_status_placedAt_idx")
+    @@index([shopItemId], map: "shop_order_shopItemId_idx")
+    @@map("shop_order")
+  }
+
+  model LedgerEntry {
+    id             String              @id @onCreate(cuid(2))
+    userId         String
+    themeProjectId String?
+    kind           pg.enum(LedgerKind)
+    bucket         pg.enum(CoinBucket) @default("SPENDABLE")
+    amount         Int
+    note           String?
+    balanceBefore  Int
+    balanceAfter   Int
+    shopOrderId    String?
+    createdById    String?
+    createdAt      TimestampString(3)  @default(now())
+    user           User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "ledger_entry_userId_createdAt_idx")
+    themeProject   ThemeProject?       @relation(fields: [themeProjectId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
+    shopOrder      ShopOrder?          @relation(fields: [shopOrderId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: "ledger_entry_shopOrderId_kind_bucket_key")
+
+    @@index([shopOrderId, kind, bucket], map: "ledger_entry_shopOrderId_kind_bucket_key", unique: true)
+    @@index([userId, createdAt], map: "ledger_entry_userId_createdAt_idx")
+    @@index([userId, themeProjectId, kind], map: "ledger_entry_userId_themeProjectId_kind_idx")
+    @@index([userId, bucket], map: "ledger_entry_userId_bucket_idx")
+    @@map("ledger_entry")
+  }
+
+  model PhaseSubmission {
+    id                     String                 @id @onCreate(cuid(2))
+    themeProjectId         String
+    phase                  pg.enum(Phase)
+    notes                  String?
+    attachmentKeys         String?[]?             @default([])
+    submittedInWeek        Int?
+    scheduledWeek          Int?
+    onTime                 Boolean                @default(false)
+    partialFundingAccepted Boolean                @default(false)
+    fundingDeclined        Boolean                @default(false)
+    requestedBomUsd        Float?
+    fundingCapUsd          Int?
+    preReviewed            Boolean                @default(false)
+    preReviewedAt          TimestampString(3)?
+    ariSubmissionId        String?
+    ariStatus              String?
+    ariStatusAt            TimestampString(3)?
+    ariDecision            String?
+    ariSyncedAt            TimestampString(3)?
+    ariShipError           String?
+    resolvedAt             TimestampString(3)?
+    resolvedResult         pg.enum(ReviewResult)?
+    createdAt              TimestampString(3)     @default(now())
+    claim                  ReviewClaim?
+    dispute                ReviewDispute?
+    reviews                SubmissionReview[]
+    themeProject           ThemeProject           @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([themeProjectId], map: "phase_submission_themeProjectId_idx")
+    @@index([themeProjectId, phase, createdAt], map: "phase_submission_themeProjectId_phase_createdAt_idx")
+    @@index([resolvedAt, createdAt], map: "phase_submission_resolvedAt_createdAt_idx")
+    @@map("phase_submission")
+  }
+
+  model PostLike {
+    id        String             @id @onCreate(cuid(2))
+    postId    String
+    userId    String
+    createdAt TimestampString(3) @default(now())
+    post      Post               @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "post_like_postId_userId_key")
+    user      User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([postId, userId], map: "post_like_postId_userId_key", unique: true)
+    @@index([userId], map: "post_like_userId_idx")
+    @@map("post_like")
+  }
+
+  model PostView {
+    id        String             @id @onCreate(cuid(2))
+    postId    String
+    userId    String
+    createdAt TimestampString(3) @default(now())
+    post      Post               @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "post_view_postId_userId_key")
+    user      User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([postId, userId], map: "post_view_postId_userId_key", unique: true)
+    @@index([userId], map: "post_view_userId_idx")
+    @@map("post_view")
+  }
+
+  model PrinterAward {
+    id                 String                      @id @onCreate(cuid(2))
+    userId             String
+    qualifiedAt        TimestampString(3)
+    qualifyingSnapshot Jsonb
+    status             pg.enum(PrinterAwardStatus) @default("QUALIFIED")
+    encryptedAddress   String                      @default("")
+    encryptedPhone     String                      @default("")
+    addressLockedAt    TimestampString(3)?
+    trackingNumber     String?
+    trackingCarrier    String?
+    shippedAt          TimestampString(3)?
+    deliveredAt        TimestampString(3)?
+    revokedAt          TimestampString(3)?
+    revokedReason      String?
+    createdAt          TimestampString(3)          @default(now())
+    updatedAt          TimestampString(3)          @onCreate(now()) @onUpdate(now())
+    user               User                        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([userId], map: "printer_award_userId_key", unique: true)
+    @@index([status], map: "printer_award_status_idx")
+    @@map("printer_award")
+  }
+
+  model ProgramEvent {
+    id          String               @id @onCreate(cuid(2))
+    title       String
+    colour      pg.enum(EventColour) @default("SLATE")
+    description String?
+    startsAt    TimestampString(3)
+    endsAt      TimestampString(3)?
+    published   Boolean              @default(true)
+    seriesId    String?
+    createdAt   TimestampString(3)   @default(now())
+    updatedAt   TimestampString(3)   @onCreate(now()) @onUpdate(now())
+    createdById String?
+
+    @@index([published, startsAt], map: "program_event_published_startsAt_idx")
+    @@index([seriesId], map: "program_event_seriesId_idx")
+    @@map("program_event")
+  }
+
+  model ProgramSettings {
+    id                    String              @id @default("singleton")
+    eventStartDate        TimestampString(3)
+    programTimezone       String              @default("America/New_York")
+    submissionsOpen       Boolean             @default(true)
+    submissionsCloseAt    TimestampString(3)?
+    shopOpen              Boolean             @default(false)
+    shopClosesAt          TimestampString(3)?
+    shopGraceDays         Int                 @default(7)
+    reviewClaimTtlMinutes Int                 @default(45)
+    airtableSyncEnabled   Boolean             @default(true)
+    repoSyncEnabled       Boolean             @default(true)
+    updatedAt             TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    updatedById           String?
+
+    @@map("program_settings")
+  }
+
+  model PublicReel {
+    id             String                      @id @onCreate(cuid(2))
+    url            String
+    platform       pg.enum(PublicReelPlatform)
+    email          String
+    userId         String
+    postId         String?
+    themeProjectId String?
+    postedAt       TimestampString(3)          @default(now())
+    user           User                        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "public_reel_userId_postedAt_idx")
+    post           Post?                       @relation(fields: [postId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+    themeProject   ThemeProject?               @relation(fields: [themeProjectId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+    @@index([url], map: "public_reel_url_key", unique: true)
+    @@index([userId, postedAt], map: "public_reel_userId_postedAt_idx")
+    @@index([postId], map: "public_reel_postId_idx")
+    @@index([themeProjectId], map: "public_reel_themeProjectId_idx")
+    @@map("public_reel")
+  }
+
+  model RepoSyncRun {
+    id             String              @id @onCreate(cuid(2))
+    themeProjectId String
+    repo           String
+    files          Jsonb?
+    error          String?
+    manual         Boolean             @default(false)
+    startedAt      TimestampString(3)  @default(now())
+    finishedAt     TimestampString(3)?
+    themeProject   ThemeProject        @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "repo_sync_run_themeProjectId_startedAt_idx")
+
+    @@index([themeProjectId, startedAt], map: "repo_sync_run_themeProjectId_startedAt_idx")
+    @@map("repo_sync_run")
+  }
+
+  model ReviewClaim {
+    id           String             @id @onCreate(cuid(2))
+    submissionId String
+    reviewerId   String
+    expiresAt    TimestampString(3)
+    createdAt    TimestampString(3) @default(now())
+    submission   PhaseSubmission    @relation(fields: [submissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    reviewer     User               @relation(fields: [reviewerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([submissionId], map: "review_claim_submissionId_key", unique: true)
+    @@index([reviewerId], map: "review_claim_reviewerId_idx")
+    @@index([expiresAt], map: "review_claim_expiresAt_idx")
+    @@map("review_claim")
+  }
+
+  model ReviewDispute {
+    id           String                         @id @onCreate(cuid(2))
+    submissionId String
+    userId       String
+    note         String
+    createdAt    TimestampString(3)             @default(now())
+    resolvedAt   TimestampString(3)?
+    resolvedById String?
+    outcome      pg.enum(ReviewDisputeOutcome)?
+    messages     ReviewDisputeMessage[]
+    submission   PhaseSubmission                @relation(fields: [submissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    user         User                           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([submissionId], map: "review_dispute_submissionId_key", unique: true)
+    @@index([resolvedAt], map: "review_dispute_resolvedAt_idx")
+    @@map("review_dispute")
+  }
+
+  model ReviewDisputeMessage {
+    id           String             @id @onCreate(cuid(2))
+    disputeId    String
+    authorId     String
+    fromReviewer Boolean
+    body         String
+    createdAt    TimestampString(3) @default(now())
+    dispute      ReviewDispute      @relation(fields: [disputeId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "review_dispute_message_disputeId_createdAt_idx")
+    author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([disputeId, createdAt], map: "review_dispute_message_disputeId_createdAt_idx")
+    @@map("review_dispute_message")
+  }
+
+  model RsvpBuffer {
+    id                      String              @id @onCreate(cuid(2))
+    email                   String
+    firstName               String?
+    lastName                String?
+    pronouns                String?
+    ip                      String?
+    utmSource               String?
+    signupPage              String?
+    referredBy              String?
+    finishedAccountCreation Boolean             @default(false)
+    userId                  String?
+    syncedToAirtable        Boolean             @default(false)
+    syncedAt                TimestampString(3)?
+    syncAttempts            Int                 @default(0)
+    lastSyncError           String?
+    airtableRecordId        String?
+    createdAt               TimestampString(3)  @default(now())
+    updatedAt               TimestampString(3)  @onCreate(now()) @onUpdate(now())
+
+    @@index([email], map: "rsvp_buffer_email_key", unique: true)
+    @@index([syncedToAirtable, syncAttempts, createdAt], map: "rsvp_buffer_syncedToAirtable_syncAttempts_createdAt_idx")
+    @@index([createdAt], map: "rsvp_buffer_createdAt_idx", where: sql`("syncedToAirtable" = false)`)
+    @@map("rsvp_buffer")
+  }
+
+  model Session {
+    id        String             @id
+    expiresAt TimestampString(3)
+    token     String
+    createdAt TimestampString(3) @default(now())
+    updatedAt TimestampString(3) @onCreate(now()) @onUpdate(now())
+    ipAddress String?
+    userAgent String?
+    userId    String
+    user      User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([token], map: "session_token_key", unique: true)
+    @@index([userId], map: "session_userId_idx")
+    @@map("session")
+  }
+
+  model SessionMedia {
+    id            String             @id @onCreate(cuid(2))
+    workSessionId String
+    type          pg.enum(MediaType)
+    objectKey     String
+    contentType   String?
+    byteSize      Int?
+    sortOrder     Int                @default(0)
+    createdAt     TimestampString(3) @default(now())
+    workSession   WorkSession        @relation(fields: [workSessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([workSessionId], map: "session_media_workSessionId_idx")
+    @@map("session_media")
+  }
+
+  model SessionTimelapse {
+    id               String              @id @onCreate(cuid(2))
+    workSessionId    String
+    provider         String              @default("r2")
+    objectKey        String?
+    externalId       String?
+    playbackUrl      String?
+    thumbnailUrl     String?
+    coveredSeconds   Int?
+    runtimeSeconds   Int?
+    speedupFactor    Float?
+    recordedAt       TimestampString(3)?
+    hackatimeProject String?
+    createdAt        TimestampString(3)  @default(now())
+    workSession      WorkSession         @relation(fields: [workSessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([workSessionId], map: "session_timelapse_workSessionId_idx")
+    @@index([provider, externalId], map: "session_timelapse_provider_externalId_idx")
+    @@map("session_timelapse")
+  }
+
+  model ShopItemRegionPrice {
+    id           String             @id @onCreate(cuid(2))
+    shopItemId   String
+    regionId     String
+    priceCredits Int
+    createdAt    TimestampString(3) @default(now())
+    updatedAt    TimestampString(3) @onCreate(now()) @onUpdate(now())
+    shopItem     ShopItem           @relation(fields: [shopItemId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "shop_item_region_price_shopItemId_regionId_key")
+    region       ShopRegion         @relation(fields: [regionId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([shopItemId, regionId], map: "shop_item_region_price_shopItemId_regionId_key", unique: true)
+    @@map("shop_item_region_price")
+  }
+
+  model ShopOrderNote {
+    id        String             @id @onCreate(cuid(2))
+    orderId   String
+    authorId  String
+    body      String
+    createdAt TimestampString(3) @default(now())
+    order     ShopOrder          @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    author    User               @relation(fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
+
+    @@index([orderId], map: "shop_order_note_orderId_idx")
+    @@map("shop_order_note")
+  }
+
+  model SlackEventDelivery {
+    id         String             @id @onCreate(cuid(2))
+    eventId    String
+    event      String
+    teamId     String?
+    receivedAt TimestampString(3) @default(now())
+
+    @@index([eventId], map: "slack_event_delivery_eventId_key", unique: true)
+    @@index([receivedAt], map: "slack_event_delivery_receivedAt_idx")
+    @@map("slack_event_delivery")
+  }
+
+  model SubmissionReview {
+    id                     String                @id @onCreate(cuid(2))
+    submissionId           String
+    reviewerId             String?
+    reviewerEmail          String?
+    reviewerName           String?
+    pass                   pg.enum(ReviewPass)   @default("FINAL")
+    result                 pg.enum(ReviewResult)
+    feedback               String
+    reason                 String?
+    invalidated            Boolean               @default(false)
+    invalidatedAt          TimestampString(3)?
+    hoursOverride          Float?
+    tierOverride           Int?
+    grantUsdOverride       Int?
+    frozenJournalHours     Float?
+    frozenHackatimeHours   Float?
+    frozenTimelapseSeconds Int?
+    frozenEntryCount       Int?
+    frozenApprovedHours    Float?
+    frozenTier             Int?
+    frozenGrantUsd         Int?
+    frozenBankedCoins      Int?
+    frozenSpendableCoins   Int?
+    frozenFundingHours     Float?
+    frozenBankHours        Float?
+    frozenPrinterGoalId    String?
+    createdAt              TimestampString(3)    @default(now())
+    submission             PhaseSubmission       @relation(fields: [submissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    reviewer               User?                 @relation(fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: "submission_review_reviewerId_createdAt_idx")
+
+    @@index([submissionId], map: "submission_review_submissionId_idx")
+    @@index([reviewerId, createdAt], map: "submission_review_reviewerId_createdAt_idx")
+    @@map("submission_review")
+  }
+
+  model SyncRunLog {
+    id        String             @id @onCreate(cuid(2))
+    syncKey   String
+    result    Jsonb?
+    actorId   String?
+    createdAt TimestampString(3) @default(now())
+    actor     User?              @relation(fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
+
+    @@index([syncKey, createdAt], map: "sync_run_log_syncKey_createdAt_idx")
+    @@map("sync_run_log")
+  }
+
+  model UploadHandoff {
+    id          String              @id @onCreate(cuid(2))
+    tokenHash   String
+    userId      String
+    expiresAt   TimestampString(3)
+    usedAt      TimestampString(3)?
+    claimedAt   TimestampString(3)?
+    objectKey   String?
+    contentType String?
+    byteSize    Int?
+    createdAt   TimestampString(3)  @default(now())
+    user        User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "upload_handoff_userId_createdAt_idx")
+
+    @@index([tokenHash], map: "upload_handoff_tokenHash_key", unique: true)
+    @@index([userId, createdAt], map: "upload_handoff_userId_createdAt_idx")
+    @@index([expiresAt], map: "upload_handoff_expiresAt_idx")
+    @@map("upload_handoff")
+  }
+
+  model UserDay {
+    userId      String
+    day         String
+    firstSeenAt TimestampString(3) @default(now())
+    user        User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@id([userId, day])
+    @@index([day], map: "user_day_day_idx")
+    @@map("user_day")
+  }
+
+  model UserRole {
+    id        String             @id @onCreate(cuid(2))
+    userId    String
+    role      pg.enum(Role)
+    grantedAt TimestampString(3) @default(now())
+    grantedBy String?
+    user      User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([userId, role], map: "user_role_userId_role_key", unique: true)
+    @@index([userId], map: "user_role_userId_idx")
+    @@map("user_role")
+  }
+
+  model UserWeek {
+    userId       String
+    week         Int
+    hours        Float               @default(0)
+    reached1hAt  TimestampString(3)?
+    reached5hAt  TimestampString(3)?
+    reached10hAt TimestampString(3)?
+    reached20hAt TimestampString(3)?
+    updatedAt    TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    user         User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@id([userId, week])
+    @@index([week], map: "user_week_week_idx")
+    @@map("user_week")
+  }
+
+  model Verification {
+    id         String             @id
+    identifier String
+    value      String
+    expiresAt  TimestampString(3)
+    createdAt  TimestampString(3) @default(now())
+    updatedAt  TimestampString(3) @onCreate(now()) @onUpdate(now())
+
+    @@index([identifier], map: "verification_identifier_idx")
+    @@map("verification")
+  }
+
+  native_enum Theme {
+    PCB = "PCB"
+    CAD = "CAD"
+    SYNTH = "SYNTH"
+    DISPLAYS = "DISPLAYS"
+    BREADBOARD_COMPUTER = "BREADBOARD_COMPUTER"
+    WARMUP = "WARMUP"
+  }
+
+  native_enum Phase {
+    DESIGN = "DESIGN"
+    BUILD = "BUILD"
+  }
+
+  native_enum PhaseStatus {
+    draft = "draft"
+    in_review = "in_review"
+    update_requested = "update_requested"
+    approved = "approved"
+    rejected = "rejected"
+  }
+
+  native_enum ReviewResult {
+    APPROVED = "APPROVED"
+    RETURNED = "RETURNED"
+    REJECTED = "REJECTED"
+  }
+
+  native_enum ReviewPass {
+    FIRST = "FIRST"
+    FINAL = "FINAL"
+  }
+
+  native_enum HoursSource {
+    MANUAL = "MANUAL"
+    HACKATIME_TRACKED = "HACKATIME_TRACKED"
+  }
+
+  native_enum MediaType {
+    IMAGE = "IMAGE"
+    VIDEO = "VIDEO"
+  }
+
+  native_enum CoinBucket {
+    SPENDABLE = "SPENDABLE"
+    BANKED = "BANKED"
+  }
+
+  native_enum LedgerKind {
+    DESIGN_BANKED_HOURS = "DESIGN_BANKED_HOURS"
+    DESIGN_EXCESS_HOURS = "DESIGN_EXCESS_HOURS"
+    BUILD_HOURS = "BUILD_HOURS"
+    BOM_SAVINGS = "BOM_SAVINGS"
+    THEME_COMPLETION_BONUS = "THEME_COMPLETION_BONUS"
+    PARTS_TOP_UP = "PARTS_TOP_UP"
+    ADMIN_ADJUSTMENT = "ADMIN_ADJUSTMENT"
+    REVIEWER_PAYMENT = "REVIEWER_PAYMENT"
+    SHOP_PURCHASE = "SHOP_PURCHASE"
+    SHOP_REFUND = "SHOP_REFUND"
+    BUILD_BANKED_HOURS = "BUILD_BANKED_HOURS"
+  }
+
+  native_enum ShopItemCategory {
+    PRINTER_UPGRADE = "PRINTER_UPGRADE"
+    CONSUMABLE = "CONSUMABLE"
+    MISC = "MISC"
+    PRINTER = "PRINTER"
+  }
+
+  native_enum HardwareExperience {
+    FIRST_TIME = "FIRST_TIME"
+    A_LITTLE = "A_LITTLE"
+    A_GOOD_AMOUNT = "A_GOOD_AMOUNT"
+    ITS_LIFE = "ITS_LIFE"
+  }
+
+  native_enum ParticipantGoal {
+    PRINTER = "PRINTER"
+    FULL_FUNDING = "FULL_FUNDING"
+    PARTIAL_FUNDING = "PARTIAL_FUNDING"
+  }
+
+  native_enum PostKind {
+    IDEA = "IDEA"
+    PROGRESS = "PROGRESS"
+    SUBMISSION = "SUBMISSION"
+    FREEFORM = "FREEFORM"
+    ANNOUNCEMENT = "ANNOUNCEMENT"
+  }
+
+  native_enum PostStatus {
+    PROCESSING = "PROCESSING"
+    PUBLISHED = "PUBLISHED"
+    HIDDEN = "HIDDEN"
+    REMOVED = "REMOVED"
+  }
+
+  native_enum ReportTarget {
+    REEL = "REEL"
+    REEL_COMMENT = "REEL_COMMENT"
+    PROJECT = "PROJECT"
+    USER = "USER"
+    DEVLOG = "DEVLOG"
+  }
+
+  native_enum ReportReason {
+    EXCESSIVE_AI_USE = "EXCESSIVE_AI_USE"
+    MISCONDUCT = "MISCONDUCT"
+    SPAM = "SPAM"
+    OTHER = "OTHER"
+  }
+
+  native_enum ReportStatus {
+    OPEN = "OPEN"
+    RESOLVED = "RESOLVED"
+    DISMISSED = "DISMISSED"
+  }
+
+  native_enum PublicReelPlatform {
+    INSTAGRAM = "INSTAGRAM"
+    TIKTOK = "TIKTOK"
+    X = "X"
+    YOUTUBE = "YOUTUBE"
+  }
+
+  native_enum ShopOrderStatus {
+    PENDING = "PENDING"
+    ON_HOLD = "ON_HOLD"
+    FULFILLED = "FULFILLED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
+  }
+
+  native_enum ShopFulfillmentMethod {
+    DIRECT_SHIP = "DIRECT_SHIP"
+    BULK_TO_HQ = "BULK_TO_HQ"
+  }
+
+  native_enum ShopFulfillmentStage {
+    UNFULFILLED = "UNFULFILLED"
+    ORDERED_TO_HQ = "ORDERED_TO_HQ"
+    SENT_FOR_DELIVERY = "SENT_FOR_DELIVERY"
+    CANCELLED = "CANCELLED"
+  }
+
+  native_enum EventColour {
+    CORAL = "CORAL"
+    SKY = "SKY"
+    VIOLET = "VIOLET"
+    GOLD = "GOLD"
+    TEAL = "TEAL"
+    SLATE = "SLATE"
+  }
+
+  native_enum PrinterAwardStatus {
+    QUALIFIED = "QUALIFIED"
+    ADDRESS_LOCKED = "ADDRESS_LOCKED"
+    PACKING = "PACKING"
+    SHIPPED = "SHIPPED"
+    DELIVERED = "DELIVERED"
+    REVOKED = "REVOKED"
+  }
+
+  native_enum Role {
+    ADMIN = "ADMIN"
+    REVIEWER = "REVIEWER"
+    FULFILLER = "FULFILLER"
+    AUDITOR = "AUDITOR"
+  }
+
+  native_enum AuditAction {
+    USER_UPDATE_PROJECT = "USER_UPDATE_PROJECT"
+    USER_SUBMIT_PHASE = "USER_SUBMIT_PHASE"
+    USER_UNSUBMIT_PHASE = "USER_UNSUBMIT_PHASE"
+    USER_CREATE_SESSION = "USER_CREATE_SESSION"
+    USER_UPDATE_SESSION = "USER_UPDATE_SESSION"
+    USER_DELETE_SESSION = "USER_DELETE_SESSION"
+    USER_LINK_HACKATIME = "USER_LINK_HACKATIME"
+    USER_UNLINK_HACKATIME = "USER_UNLINK_HACKATIME"
+    USER_PLACE_ORDER = "USER_PLACE_ORDER"
+    REVIEW_CLAIM = "REVIEW_CLAIM"
+    REVIEW_RELEASE = "REVIEW_RELEASE"
+    REVIEW_APPROVE = "REVIEW_APPROVE"
+    REVIEW_RETURN = "REVIEW_RETURN"
+    REVIEW_REJECT = "REVIEW_REJECT"
+    REVIEW_APPROVE_HOURS = "REVIEW_APPROVE_HOURS"
+    ADMIN_UNAPPROVE_PHASE = "ADMIN_UNAPPROVE_PHASE"
+    ADMIN_REOPEN_PHASE = "ADMIN_REOPEN_PHASE"
+    ADMIN_GRANT_ROLE = "ADMIN_GRANT_ROLE"
+    ADMIN_REVOKE_ROLE = "ADMIN_REVOKE_ROLE"
+    ADMIN_FLAG_FRAUD = "ADMIN_FLAG_FRAUD"
+    ADMIN_UNFLAG_FRAUD = "ADMIN_UNFLAG_FRAUD"
+    ADMIN_GRANT_EXTENSION = "ADMIN_GRANT_EXTENSION"
+    ADMIN_ADJUST_CREDIT = "ADMIN_ADJUST_CREDIT"
+    ADMIN_DELETE_PROJECT = "ADMIN_DELETE_PROJECT"
+    ADMIN_RESTORE_PROJECT = "ADMIN_RESTORE_PROJECT"
+    ADMIN_CREATE_SHOP_ITEM = "ADMIN_CREATE_SHOP_ITEM"
+    ADMIN_UPDATE_SHOP_ITEM = "ADMIN_UPDATE_SHOP_ITEM"
+    ADMIN_RETIRE_SHOP_ITEM = "ADMIN_RETIRE_SHOP_ITEM"
+    ADMIN_FULFILL_ORDER = "ADMIN_FULFILL_ORDER"
+    ADMIN_REJECT_ORDER = "ADMIN_REJECT_ORDER"
+    ADMIN_UPDATE_PROGRAM_SETTINGS = "ADMIN_UPDATE_PROGRAM_SETTINGS"
+    PRINTER_QUALIFIED = "PRINTER_QUALIFIED"
+    PRINTER_STATUS_CHANGE = "PRINTER_STATUS_CHANGE"
+    PRINTER_REVOKED = "PRINTER_REVOKED"
+    AIRTABLE_SYNC_SUCCESS = "AIRTABLE_SYNC_SUCCESS"
+    AIRTABLE_SYNC_FAILURE = "AIRTABLE_SYNC_FAILURE"
+    NOTIFICATION_FAILURE = "NOTIFICATION_FAILURE"
+    SYSTEM_HACKATIME_SYNC = "SYSTEM_HACKATIME_SYNC"
+    SYSTEM_CLAIM_SWEEP = "SYSTEM_CLAIM_SWEEP"
+    SYSTEM_RSVP_DRAIN = "SYSTEM_RSVP_DRAIN"
+    USER_CREATE_POST = "USER_CREATE_POST"
+    USER_DELETE_POST = "USER_DELETE_POST"
+    ADMIN_HIDE_POST = "ADMIN_HIDE_POST"
+    ADMIN_RESTORE_POST = "ADMIN_RESTORE_POST"
+    USER_ADVANCE_ONBOARDING = "USER_ADVANCE_ONBOARDING"
+    USER_COMPLETE_ONBOARDING = "USER_COMPLETE_ONBOARDING"
+    USER_COMMENT_POST = "USER_COMMENT_POST"
+    USER_DELETE_COMMENT = "USER_DELETE_COMMENT"
+    ADMIN_HIDE_COMMENT = "ADMIN_HIDE_COMMENT"
+    ADMIN_PIN_POST = "ADMIN_PIN_POST"
+    USER_HANDOFF_UPLOAD = "USER_HANDOFF_UPLOAD"
+    USER_SET_PRINTER_GOAL = "USER_SET_PRINTER_GOAL"
+    ADMIN_UPDATE_ORDER_FULFILLMENT = "ADMIN_UPDATE_ORDER_FULFILLMENT"
+    ARI_SYNC_SUCCESS = "ARI_SYNC_SUCCESS"
+    ARI_SYNC_FAILURE = "ARI_SYNC_FAILURE"
+    ARI_WEBHOOK_APPLIED = "ARI_WEBHOOK_APPLIED"
+    ARI_WEBHOOK_IGNORED = "ARI_WEBHOOK_IGNORED"
+    USER_DISPUTE_REVIEW = "USER_DISPUTE_REVIEW"
+    ADMIN_RESOLVE_DISPUTE = "ADMIN_RESOLVE_DISPUTE"
+    ADMIN_SEND_GRANT = "ADMIN_SEND_GRANT"
+    ADMIN_RESET_ONBOARDING = "ADMIN_RESET_ONBOARDING"
+    ADMIN_IMPORT_AIRTABLE_PROJECT = "ADMIN_IMPORT_AIRTABLE_PROJECT"
+    USER_DELETE_PROJECT = "USER_DELETE_PROJECT"
+    USER_UPDATE_REPO_SYNC = "USER_UPDATE_REPO_SYNC"
+    REPO_SYNC_SUCCESS = "REPO_SYNC_SUCCESS"
+    REPO_SYNC_FAILURE = "REPO_SYNC_FAILURE"
+    USER_SET_PARTICIPANT_GOAL = "USER_SET_PARTICIPANT_GOAL"
+    ADMIN_CREATE_SHOP_REGION = "ADMIN_CREATE_SHOP_REGION"
+    ADMIN_UPDATE_SHOP_REGION = "ADMIN_UPDATE_SHOP_REGION"
+    ADMIN_SET_REGION_PRICE = "ADMIN_SET_REGION_PRICE"
+    USER_CREATE_REPORT = "USER_CREATE_REPORT"
+    ADMIN_RESOLVE_REPORT = "ADMIN_RESOLVE_REPORT"
+    ADMIN_DISMISS_REPORT = "ADMIN_DISMISS_REPORT"
+    ADMIN_CREATE_PROGRAM_EVENT = "ADMIN_CREATE_PROGRAM_EVENT"
+    ADMIN_UPDATE_PROGRAM_EVENT = "ADMIN_UPDATE_PROGRAM_EVENT"
+    ADMIN_DELETE_PROGRAM_EVENT = "ADMIN_DELETE_PROGRAM_EVENT"
+    ADMIN_MOVE_PROJECT = "ADMIN_MOVE_PROJECT"
+    ADMIN_CHANGE_EMAIL = "ADMIN_CHANGE_EMAIL"
+    USER_CREATE_POST_FAILED = "USER_CREATE_POST_FAILED"
+  }
+
+  native_enum ReviewDisputeOutcome {
+    upheld = "upheld"
+    stood = "stood"
+  }
+}

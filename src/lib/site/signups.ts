@@ -1,8 +1,8 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises"
 import path from "node:path"
+import { airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
 import { bufferRsvp, recordDirectSignup } from "@/lib/airtable/rsvp"
 import { rateLimited } from "@/lib/rate-limit"
-import { redactForLog } from "@/lib/redact"
 
 /**
  * Signup capture.
@@ -42,20 +42,32 @@ export function normalizeEmail(raw: unknown): string | null {
 }
 
 /**
+ * The signup table's size, cached briefly.
+ *
+ * Assigning the next referral ordinal used to walk the whole table on every signup – 100 records a page, so tens of Airtable calls per signup, each one unthrottled. At 8 signups a minute from one IP that is hundreds of requests against the base's 5/sec cap, rate-limiting every other integration on the base. The count is cached for a minute (ordinals were already rough – two simultaneous signups can claim the same one – and a create bumps the cached value, so the common case still increases), and every call behind it goes through the shared throttle.
+ */
+let cachedSignupCount: { at: number; table: string; value: number } | null = null
+const SIGNUP_COUNT_TTL_MS = 60_000
+
+/**
  * Fetches every record's `referral_code` isn't an option at scale, but counting record ids is cheap – request just the `email` field (Airtable rejects an empty field name outright) so each page carries almost nothing else. The count is a snapshot, not a lock, so two signups landing in the same instant can in principle claim the same ordinal; acceptable here given the existing rate limit and the low stakes of a referral number colliding.
  */
-async function countAirtableRecords(url: string, headers: { [_: string]: string }): Promise<number> {
+async function countAirtableRecords(config: { apiKey: string; baseId: string }, table: string): Promise<number> {
+	const now = Date.now()
+	if (cachedSignupCount && cachedSignupCount.table === table && now - cachedSignupCount.at < SIGNUP_COUNT_TTL_MS)
+		return cachedSignupCount.value
 	let count = 0
 	let offset: string | undefined
 	do {
 		const params = new URLSearchParams({ "fields[]": "email", pageSize: "100" })
 		if (offset) params.set("offset", offset)
-		const res = await fetch(`${url}?${params.toString()}`, { headers })
-		if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
-		const data = (await res.json()) as { records?: unknown[]; offset?: string }
+		const data = await withRateLimitRetry("signup-count", () =>
+			airtableFetch<{ records?: unknown[]; offset?: string }>(config, `${table}?${params.toString()}`),
+		)
 		count += data.records?.length ?? 0
-		offset = data.offset
+		;({ offset } = data)
 	} while (offset)
+	cachedSignupCount = { at: now, table, value: count }
 	return count
 }
 
@@ -73,11 +85,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 	if (airtableToken && airtableBase) {
 		// The Signups table. It used to default to "Table 1", which is not in the base, so any deployment without AIRTABLE_TABLE_NAME failed every signup; the platform already names this table in AIRTABLE_RSVP_TABLE_ID.
 		const table = encodeURIComponent(process.env.AIRTABLE_TABLE_NAME ?? process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups")
-		const url = `https://api.airtable.com/v0/${airtableBase}/${table}`
-		const headers = {
-			authorization: `Bearer ${airtableToken}`,
-			"content-type": "application/json",
-		}
+		const config = { apiKey: airtableToken, baseId: airtableBase }
 
 		/**
 		 * Airtable being unreachable must not lose the signup. Buffer it for the drain job instead of returning 502, so the person is on the list even though they do not get a referral number yet (the drain does not assign one – the signed-in owner gets a code from /api/me/referral once the row exists).
@@ -104,20 +112,21 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			return { duplicate: false, ok: true, referralCode: "" }
 		}
 
-		// Airtable has no unique-field constraint to lean on, so duplicates are caught with a lookup before the write – same contract the other two sinks give the caller.
+		// Airtable has no unique-field constraint to lean on, so duplicates are caught with a lookup before the write – same contract the other two sinks give the caller. Throttled and 429-retried through the shared client: this endpoint is unauthenticated, and raw fetch here used to let one IP turn 8 signups a minute into hundreds of unthrottled base requests.
 		const filter = encodeURIComponent(`LOWER({email})="${email}"`)
-		const lookup = await fetch(`${url}?filterByFormula=${filter}&maxRecords=1`, {
-			headers,
-		})
-
-		if (!lookup.ok) {
-			console.error(`Airtable lookup failed: ${lookup.status} ${redactForLog(await lookup.text())}`)
+		let found: { records?: { id?: string; fields?: { [_: string]: unknown } }[] }
+		try {
+			found = await withRateLimitRetry("signup-lookup", () =>
+				airtableFetch<{ records?: { id?: string; fields?: { [_: string]: unknown } }[] }>(
+					config,
+					`${table}?filterByFormula=${filter}&maxRecords=1`,
+				),
+			)
+		} catch (err) {
+			console.error(`[signup] Airtable lookup failed: ${err instanceof Error ? err.message : err}`)
 			return bufferInstead("lookup failed")
 		}
 
-		const found = (await lookup.json()) as {
-			records?: { id?: string; fields?: { [_: string]: unknown } }[]
-		}
 		if ((found.records?.length ?? 0) > 0) {
 			// The row already exists upstream, so remember its id: the direct path bypasses the drain, and without this the buffer – and the Loops sync's record-id join – never learns this row exists.
 			const duplicateId = found.records?.[0]?.id
@@ -142,35 +151,41 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 
 		let referralCode: string
 		try {
-			referralCode = String((await countAirtableRecords(url, headers)) + 1)
+			referralCode = String((await countAirtableRecords(config, table)) + 1)
 		} catch (err) {
-			console.error(`Airtable count failed: ${redactForLog(err instanceof Error ? err.message : String(err))}`)
+			console.error(`[signup] Airtable count failed: ${err instanceof Error ? err.message : err}`)
 			return bufferInstead("count failed")
 		}
 
-		const response = await fetch(url, {
-			body: JSON.stringify({
-				fields: {
-					email,
-					ip,
-					"Loops - halfLifeReferralNumber": referralCode,
-					referred_by: ref ?? undefined,
-					utm_campaign: utmCampaign ?? undefined,
-					utm_medium: utmMedium ?? undefined,
-					utm_source: utmSource ?? undefined,
-				},
-			}),
-			headers,
-			method: "POST",
-		})
-
-		if (!response.ok) {
-			console.error(`Airtable create failed: ${response.status} ${redactForLog(await response.text())}`)
+		// Non-idempotent, so server errors are not retried (a 5xx can arrive after the row committed, and a retry would duplicate it). A 429 never processed anything and is always safe to retry.
+		let created: { id?: string }
+		try {
+			created = await withRateLimitRetry(
+				"signup-create",
+				() =>
+					airtableFetch<{ id?: string }>(config, table, {
+						body: JSON.stringify({
+							fields: {
+								email,
+								ip,
+								"Loops - halfLifeReferralNumber": referralCode,
+								referred_by: ref ?? undefined,
+								utm_campaign: utmCampaign ?? undefined,
+								utm_medium: utmMedium ?? undefined,
+								utm_source: utmSource ?? undefined,
+							},
+						}),
+						method: "POST",
+					}),
+				{ retryServerErrors: false },
+			)
+		} catch (err) {
+			console.error(`[signup] Airtable create failed: ${err instanceof Error ? err.message : err}`)
 			return bufferInstead("create failed")
 		}
+		if (cachedSignupCount?.table === table) cachedSignupCount.value += 1
 		// Remember the row the direct path just made, for the same reason as above: no buffer entry means no record-id join for the Loops sync.
 		try {
-			const created = (await response.json()) as { id?: string }
 			if (created.id)
 				await recordDirectSignup({
 					email,

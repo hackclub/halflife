@@ -1,5 +1,4 @@
 import "server-only"
-import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import {
 	type AirtableRecord,
 	airtableFetch,
@@ -10,7 +9,10 @@ import {
 import { columnExists, existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 import { scheduledWeekFor, THEMES } from "@/lib/config/program"
-import prisma from "@/lib/prisma"
+import { HoursSource, Phase } from "@/lib/enums"
+import db, { isUniqueViolation } from "@/lib/prisma8"
+import { withFields } from "@/lib/rows"
+import { parseDbTimestamp } from "@/lib/time"
 
 /**
  * The Loops properties on the `Signups` table: what Loops emails people from.
@@ -59,33 +61,50 @@ interface LoopsValues {
  * Each person's values, from Postgres.
  *
  * A week's box is ticked when its first checkpoint is complete, which differs by kind of week:
+ *
  * - week 1's is "Get started", the onboarding;
+ *
  * - weeks 2-5 open with "New project", complete once the project has its description and tier (`namedAt`, see lib/analytics);
+ *
  * - weeks 6-10 are the builds of those same projects and open straight into logging, so their first checkpoint is the first build journal entry.
  */
 async function loopsValues(): Promise<LoopsValues[]> {
-	const users = await prisma.user.findMany({
-		select: {
-			email: true,
-			id: true,
-			lastActiveAt: true,
-			lastLoginAt: true,
-			onboardingCompletedAt: true,
-			themeProjects: {
-				select: {
-					namedAt: true,
-					submissions: { select: { phase: true, scheduledWeek: true } },
-					theme: true,
-					workSessions: {
-						orderBy: { createdAt: "desc" },
-						select: { createdAt: true, hoursSource: true, phase: true, timelapses: { select: { id: true }, take: 1 } },
-						where: { deletedAt: null },
-					},
-				},
-				where: { deletedAt: null },
-			},
-		},
-	})
+	const userRows = await db.orm.public.User.select(
+		"email",
+		"id",
+		"lastActiveAt",
+		"lastLoginAt",
+		"onboardingCompletedAt",
+	)
+		.include("themeProjects", projects =>
+			projects
+				.select("namedAt", "theme")
+				.where({ deletedAt: null })
+				.include("submissions", submissions => submissions.select("phase", "scheduledWeek"))
+				.include("workSessions", sessions =>
+					sessions
+						.orderBy(session => session.createdAt.desc())
+						.select("createdAt", "hoursSource", "phase")
+						.where({ deletedAt: null })
+						.include("timelapses", timelapse => timelapse.select("id").limit(1)),
+				),
+		)
+		.all()
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	const users = userRows.map(user =>
+		withFields(user, {
+			lastActiveAt: parseNullable(user.lastActiveAt),
+			lastLoginAt: parseNullable(user.lastLoginAt),
+			onboardingCompletedAt: parseNullable(user.onboardingCompletedAt),
+			themeProjects: user.themeProjects.map(project =>
+				withFields(project, {
+					workSessions: project.workSessions.map(session =>
+						withFields(session, { createdAt: parseDbTimestamp(session.createdAt) }),
+					),
+				}),
+			),
+		}),
+	)
 
 	return users.map(u => {
 		const weeks: { [_: number]: boolean } = {}
@@ -154,7 +173,9 @@ function unchanged(row: AirtableRecord, fields: { [_: string]: unknown }): boole
  * Three keys, strongest first:
  *
  * 1. **The `Half-Life User ID` column.** The designed join, and the one that survives somebody typing one address on the landing page and being issued a different one at sign-in.
+ *
  * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at all: it is the row this app itself created for this person, read back out of `RsvpBuffer`. It is here because key 1 is only stamped by the drain, and rows the landing form wrote straight to Airtable never went through the drain – going forward `recordDirectSignup` remembers those rows, but rows from before that fix are only reachable this way if a buffer entry already names them.
+ *
  * 3. **Email.** The last resort, and the one that mostly fails: the Signups row holds whatever address was typed on the landing page.
  */
 export function resolveSignupRow(
@@ -180,10 +201,10 @@ export function resolveSignupRow(
  */
 async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 	const byRecordId = new Map<string, AirtableRecord>()
-	const rows = await prisma.rsvpBuffer.findMany({
-		select: { airtableRecordId: true, userId: true },
-		where: { airtableRecordId: { not: null }, userId: { not: null } },
-	})
+	const rows = await db.orm.public.RsvpBuffer.where(row => row.airtableRecordId.isNotNull())
+		.where(row => row.userId.isNotNull())
+		.select("airtableRecordId", "userId")
+		.all()
 	// The row id in the listing and the one the drain recorded are the same thing, so this needs no second request: a placeholder is enough for the join, and the write below addresses the real record by that id.
 	for (const row of rows)
 		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId))
@@ -195,20 +216,9 @@ async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 /**
  * Remember the row for every user whose email still matches one.
  *
- * The landing form wrote straight to Airtable without leaving an
- * `RsvpBuffer` entry (now fixed at the source by `recordDirectSignup`), so
- * for rows from before that fix the email match is the only key that reaches
- * them – and it stops working the moment the address changes. Persisting the
- * (user id, record id) pair upgrades those users to the record-id join and
- * queues the drain to stamp `Half-Life User ID` onto their row, so the match
- * survives an email change. Only fills in what is missing and never moves a
- * row onto a different user: a buffer row already pointing at someone else is
- * left alone.
+ * The landing form wrote straight to Airtable without leaving an `RsvpBuffer` entry (now fixed at the source by `recordDirectSignup`), so for rows from before that fix the email match is the only key that reaches them – and it stops working the moment the address changes. Persisting the (user id, record id) pair upgrades those users to the record-id join and queues the drain to stamp `Half-Life User ID` onto their row, so the match survives an email change. Only fills in what is missing and never moves a row onto a different user: a buffer row already pointing at someone else is left alone.
  *
- * Runs inside the sync rather than only in the one-shot backfill script so
- * the hourly job heals itself – the way this stayed broken for months was a
- * job that needed a manual step nobody ran. Steady-state cost is zero: users
- * already in `known` short-circuit before any query.
+ * Runs inside the sync rather than only in the one-shot backfill script so the hourly job heals itself – the way this stayed broken for months was a job that needed a manual step nobody ran. Steady-state cost is zero: users already in `known` short-circuit before any query.
  */
 async function persistRecordLinks(
 	values: Pick<LoopsValues, "id" | "email">[],
@@ -221,28 +231,29 @@ async function persistRecordLinks(
 		const row = byEmail.get(v.email.trim().toLowerCase())
 		if (!row) continue
 		const key = v.email.trim().toLowerCase()
-		const existing = await prisma.rsvpBuffer.findUnique({ where: { email: key } })
+		const existing = await db.orm.public.RsvpBuffer.where({ email: key }).select("airtableRecordId", "userId").first()
 		if (existing?.userId && existing.userId !== v.id) continue
 		if (existing?.airtableRecordId === row.id && existing?.userId === v.id) continue
 		try {
-			await prisma.rsvpBuffer.upsert({
-				create: {
+			try {
+				await db.orm.public.RsvpBuffer.create({
 					airtableRecordId: row.id,
 					email: key,
 					finishedAccountCreation: true,
 					syncAttempts: 0,
 					syncedToAirtable: false,
 					userId: v.id,
-				},
-				update: {
+				})
+			} catch (err) {
+				if (!isUniqueViolation(err)) throw err
+				await db.orm.public.RsvpBuffer.where({ email: key }).update({
 					airtableRecordId: row.id,
 					finishedAccountCreation: true,
 					syncAttempts: 0,
 					syncedToAirtable: false,
 					userId: v.id,
-				},
-				where: { email: key },
-			})
+				})
+			}
 			linked++
 		} catch (err) {
 			console.error(`[airtable] loops-sync could not link ${row.id} to ${v.id}:`, err)
@@ -283,7 +294,7 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 			const userId = r.fields[LOOPS_FIELDS.userId]
 			if (typeof userId === "string" && !byUserId.has(userId.trim())) byUserId.set(userId.trim(), r)
 		}
-		offset = page.offset
+		;({ offset } = page)
 	} while (offset)
 	return { byEmail, byUserId, writable }
 }
@@ -415,14 +426,14 @@ export async function syncLoopsWeekSubmitted(
 	const column = LOOPS_FIELDS.submitted(week)
 	if (!(await columnExists(config, TABLE, column))) return { skipped: "no_column" }
 
-	const user = await prisma.user.findUnique({ select: { email: true }, where: { id: userId } })
+	const user = await db.orm.public.User.whereUnique({ id: userId }).select("email").first()
 	if (!user) return { skipped: "no_user" }
 
 	// Recomputed, not forced: submit lands with the row present (true), unsubmit lands with it deleted (false unless another hand-in for the same week stands).
-	const projects = await prisma.themeProject.findMany({
-		select: { submissions: { select: { phase: true, scheduledWeek: true } }, theme: true },
-		where: { userId },
-	})
+	const projects = await db.orm.public.ThemeProject.where({ userId })
+		.select("theme")
+		.include("submissions", submissions => submissions.select("phase", "scheduledWeek"))
+		.all()
 	let want = false
 	for (const p of projects) {
 		for (const s of p.submissions)
@@ -435,15 +446,17 @@ export async function syncLoopsWeekSubmitted(
 	}
 
 	// The drained record id addresses the row without a table scan. Otherwise fall back to the same filtered lookups the bulk sync resolves with.
-	const buf = await prisma.rsvpBuffer.findFirst({
-		select: { airtableRecordId: true },
-		where: { userId },
-	})
+	const buf = await db.orm.public.RsvpBuffer.where({ userId }).select("airtableRecordId").first()
 	const fieldsQs = `fields%5B%5D=${encodeURIComponent(column)}`
-	const getById = (id: string) =>
-		withRateLimitRetry("readSignup", () =>
-			airtableFetch<AirtableRecord>(config, `${encodeURIComponent(TABLE)}/${encodeURIComponent(id)}?${fieldsQs}`),
-		).catch(() => null)
+	const getById = async (id: string) => {
+		try {
+			return await withRateLimitRetry("readSignup", () =>
+				airtableFetch<AirtableRecord>(config, `${encodeURIComponent(TABLE)}/${encodeURIComponent(id)}?${fieldsQs}`),
+			)
+		} catch {
+			return null
+		}
+	}
 	const findByFormula = (formula: string) =>
 		withRateLimitRetry("findSignup", () =>
 			airtableFetch<{ records: AirtableRecord[] }>(
@@ -469,12 +482,12 @@ export async function syncLoopsWeekSubmitted(
 
 	// filterByFormula names columns by name, never by id – so these use the schema names, not the probed keys.
 	const byUserId = await findByFormula(`{${RSVP.fields.userId.name}}='${escapeAirtableValue(userId)}'`)
-	let row = byUserId.records[0]
+	let [row] = byUserId.records
 	if (!row) {
 		const byEmail = await findByFormula(
 			`LOWER({${RSVP.fields.email.name}})='${escapeAirtableValue(user.email.trim().toLowerCase())}'`,
 		)
-		row = byEmail.records[0]
+		;[row] = byEmail.records
 	}
 	if (!row) return { skipped: "no_row" }
 	if ((row.fields[column] === true) === want) return { skipped: "already_set" }

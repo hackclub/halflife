@@ -1,4 +1,4 @@
-import { Phase } from "@/app/generated/prisma/enums"
+import { Phase } from "@/lib/enums"
 
 /**
  * The `external_id` Half Life gives Ari.

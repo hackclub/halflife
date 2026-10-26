@@ -1,7 +1,6 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
-import { PhaseStatus } from "@/app/generated/prisma/enums"
-import prisma from "@/lib/prisma"
+import { PhaseStatus } from "@/lib/enums"
+import db, { type DbOrTx } from "@/lib/prisma8"
 
 /**
  * Why a maker cannot delete this project, or null when they can.
@@ -9,7 +8,9 @@ import prisma from "@/lib/prisma"
  * Deleting is a soft delete (`deletedAt`), but to the maker it is gone, so the line is drawn where a project stops being only theirs:
  *
  * - A phase in review is on a reviewer's desk; unsubmitting takes it back.
+ *
  * - An approved phase, a grant, or a coin in the ledger means money was paid against the project, and the ledger has to keep pointing at a live one.
+ *
  * - An open dispute is still waiting on a reviewer's second look.
  *
  * Week one's project may go too, though onboarding made it: the trail then gives week one a "New project" node of its own (see `checkpointsFor`).
@@ -23,7 +24,7 @@ export async function deleteBlockReason(
 		buildStatus: PhaseStatus
 		grantEmittedAt: Date | null
 	},
-	client?: Prisma.TransactionClient,
+	client?: DbOrTx,
 ): Promise<string | null> {
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return "Unsubmit before deleting – a phase is in review"
@@ -31,13 +32,15 @@ export async function deleteBlockReason(
 		return "An approved project can't be deleted"
 	if (project.grantEmittedAt) return "A funded project can't be deleted"
 
-	const db = client ?? prisma
+	const dbOrTx = client ?? db
 	const [ledger, topUps, disputes] = await Promise.all([
-		db.ledgerEntry.count({ where: { themeProjectId: project.id } }),
-		db.hcbGrantTopUp.count({ where: { themeProjectId: project.id } }),
-		db.reviewDispute.count({ where: { resolvedAt: null, submission: { themeProjectId: project.id } } }),
+		dbOrTx.orm.public.LedgerEntry.where({ themeProjectId: project.id }).aggregate(a => ({ count: a.count() })),
+		dbOrTx.orm.public.HcbGrantTopUp.where({ themeProjectId: project.id }).aggregate(a => ({ count: a.count() })),
+		dbOrTx.orm.public.ReviewDispute.where({ resolvedAt: null })
+			.where(dispute => dispute.submission.some(submission => submission.themeProjectId.eq(project.id)))
+			.aggregate(a => ({ count: a.count() })),
 	])
-	if (ledger > 0 || topUps > 0) return "This project has earned coins or funding, so it can't be deleted"
-	if (disputes > 0) return "A reviewer is still taking a second look, so it can't be deleted yet"
+	if (ledger.count > 0 || topUps.count > 0) return "This project has earned coins or funding, so it can't be deleted"
+	if (disputes.count > 0) return "A reviewer is still taking a second look, so it can't be deleted yet"
 	return null
 }

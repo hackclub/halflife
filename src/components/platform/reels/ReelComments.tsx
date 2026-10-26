@@ -154,7 +154,7 @@ export function ReelComments({
 
 	async function remove(c: Comment) {
 		if (!reel) return
-		const id = reel.id
+		const { id } = reel
 		const count = reel.commentCount
 		// Gone at once; put back where it was if the server says no.
 		let at = -1
@@ -206,7 +206,7 @@ export function ReelComments({
 								<span className="size-9 rounded-full bg-black/[.06]" />
 								<span className="grid content-start gap-2 pt-1">
 									<span className="h-3 w-24 rounded-full bg-black/[.06]" />
-									<span className="h-3.5 w-full max-w-[14rem] rounded-full bg-black/[.06]" />
+									<span className="h-3.5 w-full max-w-56 rounded-full bg-black/[.06]" />
 								</span>
 							</li>
 						))}

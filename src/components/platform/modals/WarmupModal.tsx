@@ -11,7 +11,7 @@ import { WARMUP_THEME } from "@/lib/config/program"
 import { BUILD_HOURS, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/numbers"
-import { normalizeRepo } from "@/lib/repo"
+import { validateRepoField } from "@/lib/repo"
 import { Modal, ModalTitle } from "./Modal"
 
 /**
@@ -37,7 +37,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 			const res = await fetch("/api/projects/warmup", {
 				body: JSON.stringify({
 					description: desc.trim(),
-					githubRepo: normalizeRepo(repo).url,
+					githubRepo: validateRepoField(repo).url,
 					phase,
 					requestedTier: tier,
 					title: name.trim(),
@@ -175,7 +175,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 					<div className="overflow-hidden rounded-2xl bg-violet-pale p-4">
 						<WeekPainting
 							alt=""
-							className="mx-auto aspect-square w-full max-w-[220px]"
+							className="mx-auto aspect-square w-full max-w-55"
 							sizes="(min-width: 1024px) 198px, 220px"
 							theme={WARMUP_THEME.label}
 						/>

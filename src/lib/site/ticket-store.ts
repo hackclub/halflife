@@ -1,6 +1,7 @@
 import "server-only"
 
-import prisma from "@/lib/prisma"
+import db, { isUniqueViolation } from "@/lib/prisma8"
+import { formatDbTimestamp } from "@/lib/time"
 import { tallyBoard } from "./leaderboard"
 import { listChannelHistory, type SlackHistoryMessage } from "./slack"
 
@@ -9,8 +10,9 @@ import { listChannelHistory, type SlackHistoryMessage } from "./slack"
  *
  * The Slack flow keeps no state of its own, so this table is what lets the tickets-channel mirror tell a first-time asker from a repeat one.
  */
-export function countPriorHelpTickets(authorSlackId: string): Promise<number> {
-	return prisma.helpTicket.count({ where: { authorSlackId } })
+export async function countPriorHelpTickets(authorSlackId: string): Promise<number> {
+	const { count } = await db.orm.public.HelpTicket.where({ authorSlackId }).aggregate(a => ({ count: a.count() }))
+	return count
 }
 
 /**
@@ -23,11 +25,12 @@ export async function rememberHelpTicket(input: {
 	helpChannel: string
 	helpTs: string
 }): Promise<void> {
-	await prisma.helpTicket.upsert({
-		create: input,
-		update: {},
-		where: { helpChannel_helpTs: { helpChannel: input.helpChannel, helpTs: input.helpTs } },
-	})
+	// Create-or-nothing: Slack can redeliver an event, and the unique [helpChannel, helpTs] must not turn that into an error. The violation is the existence proof, so it is swallowed and nothing else changes.
+	try {
+		await db.orm.public.HelpTicket.create(input)
+	} catch (err) {
+		if (!isUniqueViolation(err)) throw err
+	}
 }
 
 /**
@@ -40,10 +43,9 @@ export async function resolveHelpTicket(input: {
 	helpTs: string
 	resolvedBy: string
 }): Promise<void> {
-	await prisma.helpTicket.updateMany({
-		data: { resolvedAt: new Date(), resolvedBy: input.resolvedBy },
-		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: null },
-	})
+	await db.orm.public.HelpTicket.where({ helpChannel: input.helpChannel, helpTs: input.helpTs })
+		.where(ticket => ticket.resolvedAt.isNull())
+		.updateAndCount({ resolvedAt: formatDbTimestamp(new Date()), resolvedBy: input.resolvedBy })
 }
 
 /**
@@ -52,10 +54,9 @@ export async function resolveHelpTicket(input: {
  * Returns whether anything actually reopened. A double-clicked button (or a Slack redelivery) arrives twice with the same stale blocks: the first delivery clears the row and the second must change nothing, so the caller only rewrites messages when this is true. The `resolvedAt: not-null` guard is the mirror of resolve's own, for the same race.
  */
 export async function reopenHelpTicket(input: { helpChannel: string; helpTs: string }): Promise<boolean> {
-	const { count } = await prisma.helpTicket.updateMany({
-		data: { resolvedAt: null, resolvedBy: null },
-		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: { not: null } },
-	})
+	const count = await db.orm.public.HelpTicket.where({ helpChannel: input.helpChannel, helpTs: input.helpTs })
+		.where(ticket => ticket.resolvedAt.isNotNull())
+		.updateAndCount({ resolvedAt: null, resolvedBy: null })
 	return count > 0
 }
 
@@ -85,30 +86,34 @@ function closerBoard(rows: { resolvedBy: string | null; authorSlackId: string }[
 
 /** The counts behind the daily summary. `since` is normally 24 hours ago. */
 export async function getHelpTicketStats(since: Date): Promise<HelpTicketStats> {
+	const sinceText = formatDbTimestamp(since)
 	const [opened, closedRows, allClosedRows] = await Promise.all([
-		prisma.helpTicket.count({ where: { createdAt: { gte: since } } }),
-		prisma.helpTicket.findMany({
-			select: { authorSlackId: true, resolvedBy: true },
-			where: { resolvedAt: { gte: since }, resolvedBy: { not: null } },
-		}),
+		db.orm.public.HelpTicket.where(ticket => ticket.createdAt.gte(sinceText)).aggregate(a => ({
+			count: a.count(),
+		})),
+		db.orm.public.HelpTicket.where(ticket => ticket.resolvedAt.gte(sinceText))
+			.where(ticket => ticket.resolvedBy.isNotNull())
+			.select("authorSlackId", "resolvedBy")
+			.all(),
 		// Every closed ticket ever, for the all-time board under the daily one.
-		prisma.helpTicket.findMany({
-			select: { authorSlackId: true, resolvedBy: true },
-			where: { resolvedAt: { not: null }, resolvedBy: { not: null } },
-		}),
+		db.orm.public.HelpTicket.where(ticket => ticket.resolvedAt.isNotNull())
+			.where(ticket => ticket.resolvedBy.isNotNull())
+			.select("authorSlackId", "resolvedBy")
+			.all(),
 	])
 
 	return {
 		closed: closedRows.length,
 		globalLeaderboard: closerBoard(allClosedRows),
 		leaderboard: closerBoard(closedRows),
-		opened,
+		opened: opened.count,
 	}
 }
 
-/** A history message that opened a ticket, under the same guards
- * `handleHelpMessage` applies to a live event. A parent message carries `thread_ts` equal to its own `ts` once it has replies, so it only counts as
- * a reply when the two differ. A message sharing a file (e.g. a photo) carries subtype `file_share`, so that subtype still opens a ticket. */
+/** A history message that opened a ticket, under the same guards `handleHelpMessage` applies to a live event. A parent message carries `thread_ts` equal to its own `ts` once it has replies, so it only counts as
+ *
+ * * a reply when the two differ. A message sharing a file (e.g. a photo) carries subtype `file_share`, so that subtype still opens a ticket.
+ */
 function isTicketOpeningMessage(
 	message: SlackHistoryMessage,
 ): message is SlackHistoryMessage & { user: string; ts: string } {
@@ -136,20 +141,17 @@ export async function backfillHelpTickets(channel: string): Promise<{
 	const rows = messages.filter(isTicketOpeningMessage).map(message => ({
 		authorSlackId: message.user,
 		// The question's own time, not the backfill's, so the rows order as the conversation actually happened.
-		createdAt: new Date(Number(message.ts) * 1000),
+		createdAt: formatDbTimestamp(new Date(Number(message.ts) * 1000)),
 		helpChannel: channel,
 		helpTs: message.ts,
 	}))
 
-	// Chunked so a long channel does not exceed one INSERT's parameter limit; `skipDuplicates` is the idempotency.
+	// Chunked so a long channel does not exceed one INSERT's parameter limit; `onConflict: "skip"` is the idempotency.
 	const CHUNK = 1000
 	let created = 0
 	for (let i = 0; i < rows.length; i += CHUNK) {
-		const result = await prisma.helpTicket.createMany({
-			data: rows.slice(i, i + CHUNK),
-			skipDuplicates: true,
-		})
-		created += result.count
+		const inserted = await db.orm.public.HelpTicket.createAll(rows.slice(i, i + CHUNK), { onConflict: "skip" })
+		created += inserted.length
 	}
 
 	return { created, exhausted, scanned: messages.length }

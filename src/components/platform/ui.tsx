@@ -71,9 +71,7 @@ export function accentText(accent: string): string {
 }
 
 /**
- * What goes on top of an accent fill: navy, except on the one fill dark enough
- * for white. White on sky, teal, orange and violet is 1.98-3.37:1; navy on
- * them is 4.64-7.90. The pill is the counter's ground on the same banner.
+ * What goes on top of an accent fill: navy, except on the one fill dark enough for white. White on sky, teal, orange and violet is 1.98-3.37:1; navy on them is 4.64-7.90. The pill is the counter's ground on the same banner.
  */
 export function onAccent(accent: string): { text: string; pill: string } {
 	return accent === "var(--color-magenta)"

@@ -1,5 +1,3 @@
-import "dotenv/config"
-
 /**
  * Print the field ids for the configured Airtable base, ready to paste into lib/airtable/schema.ts.
  *
@@ -32,7 +30,11 @@ async function main() {
 	console.log("\nPaste these ids into lib/airtable/schema.ts, then set AIRTABLE_USE_FIELD_IDS=true.")
 }
 
-main().catch(err => {
+try {
+	await main()
+} catch (err) {
 	console.error(err)
 	process.exit(1)
-})
+}
+
+export { main }

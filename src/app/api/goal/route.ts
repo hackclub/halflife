@@ -1,9 +1,9 @@
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { PRINTERS } from "@/lib/config/printers"
+import { ParticipantGoal } from "@/lib/enums"
 import { withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { setGoalSchema } from "@/lib/schemas/goal"
 
 export const dynamic = "force-dynamic"
@@ -28,14 +28,13 @@ export const PATCH = withSession(async (req: Request, { gate }) => {
 		printer = found.id
 	}
 
-	const before = await prisma.user.findUnique({
-		select: { participantGoal: true, printerGoalId: true },
-		where: { id: gate.user.id },
-	})
+	const before = await db.orm.public.User.whereUnique({ id: gate.user.id })
+		.select("participantGoal", "printerGoalId")
+		.first()
 
-	await prisma.user.update({
-		data: { participantGoal: goal, ...(printer ? { printerGoalId: printer } : {}) },
-		where: { id: gate.user.id },
+	await db.orm.public.User.where({ id: gate.user.id }).update({
+		participantGoal: goal,
+		...(printer ? { printerGoalId: printer } : {}),
 	})
 
 	const who = {

@@ -93,7 +93,7 @@ export function Modal({
 			const items = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
 				el => el.offsetParent !== null || el === document.activeElement,
 			)
-			const firstEl = items[0]
+			const [firstEl] = items
 			const lastEl = items.at(-1)
 			if (!firstEl || !lastEl) return
 			if (e.shiftKey && document.activeElement === firstEl) {
@@ -119,7 +119,7 @@ export function Modal({
 
 	if (!open || !isClient) return null
 
-	const width = { lg: "max-w-[880px]", md: "max-w-[720px]", xl: "max-w-[1020px]" }[size]
+	const width = { lg: "max-w-220", md: "max-w-180", xl: "max-w-255" }[size]
 
 	// Straight onto the body: several callers sit inside sticky panels, and a sticky ancestor is its own stacking context that a z-index cannot escape.
 	return createPortal(

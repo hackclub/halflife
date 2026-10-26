@@ -14,7 +14,7 @@ export default function DocsIndex() {
 	const sections = Array.from(new Set(DOCS.map(d => d.section)))
 
 	return (
-		<div className="mx-auto w-full max-w-[800px] px-4 pt-2 sm:px-8">
+		<div className="mx-auto w-full max-w-200 px-4 pt-2 sm:px-8">
 			<PageSign color="var(--color-teal)" ink="#ffffff" label="DOCS" sub="Confused? Start here!" />
 
 			<div className="grid gap-9">

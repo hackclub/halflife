@@ -1,14 +1,11 @@
-import { PrismaPg } from "@prisma/adapter-pg"
-import { config } from "dotenv"
-import { PrismaClient } from "@/app/generated/prisma/client"
+import { Pool } from "pg"
 
-config()
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error("DATABASE_URL missing")
-const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) })
+const pool = new Pool({ connectionString: databaseUrl })
 
 async function q(label: string, sql: string) {
-	const rows = await db.$queryRawUnsafe<{ [_: string]: unknown }[]>(sql)
+	const { rows } = await pool.query<{ [_: string]: unknown }>(sql)
 	console.log(`\n${label}`)
 	for (const r of rows)
 		console.log(`  ${JSON.stringify(r, (_k, v: unknown) => (typeof v === "bigint" ? Number(v) : v))}`)
@@ -79,9 +76,11 @@ async function main() {
 	)
 }
 
-main()
-	.catch(e => {
-		console.error(e)
-		process.exitCode = 1
-	})
-	.finally(() => db.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await pool.end()
+}

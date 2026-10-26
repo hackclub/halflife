@@ -18,7 +18,7 @@ function safeSrc(raw: string): string | undefined {
 	const src = raw.trim()
 	if (/^https?:/i.test(src)) return src
 	if (/^data:image\//i.test(src)) return src
-	if (src.startsWith("/")) return src
+	// No site-relative paths: uploaded images are absolute R2 URLs, so a relative `![x](/signed-out)` can only be aimed at our own routes – and loading one as an image fires a credentialed GET at it (which is how one logged out every viewer of Explore).
 	return undefined
 }
 
@@ -42,7 +42,7 @@ export function countImages(source: string): number {
 	// Only ones that will actually render: counting by syntax alone would let `![x](javascript:)` three times clear the bar with nothing to show. And only once each – the same picture pasted again is the same picture, so a maker cannot clear the evidence bar by repeating one image down the entry.
 	const seen = new Set<string>()
 	for (const match of source.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
-		const raw = match[1]
+		const [, raw] = match
 		if (raw === undefined) continue
 		const src = safeSrc(raw)
 		if (src !== undefined) seen.add(imageIdentity(src))

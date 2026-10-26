@@ -1,4 +1,4 @@
-import { Theme } from "@/app/generated/prisma/enums"
+import { Theme } from "@/lib/enums"
 
 /**
  * Funding tiers.
@@ -7,9 +7,7 @@ import { Theme } from "@/app/generated/prisma/enums"
  *
  * A tier decides ONE thing: how many of a design week's hours are spoken for by the project itself. Those `fundingHours` earn dollars, not coins – they are what the grant buys. Every hour above them is banked or spent.
  *
- * It decides nothing about the machine at the end of the season. That is paid
- * for out of banked coins at the same rate on every tier, and how many hours a
- * week must bank is a property of the printer someone is saving for, not of the tier they are working at – see ./printers.ts. Tier 1 and Tier 3 both reach a Bambu P1S; Tier 3 simply has more funded hours sitting underneath the same banking.
+ * It decides nothing about the machine at the end of the season. That is paid for out of banked coins at the same rate on every tier, and how many hours a week must bank is a property of the printer someone is saving for, not of the tier they are working at – see ./printers.ts. Tier 1 and Tier 3 both reach a Bambu P1S; Tier 3 simply has more funded hours sitting underneath the same banking.
  *
  * This is why there is no `bankHours` here any more. It used to be a tier property (2/5/10), which quietly made the expensive machines unreachable from Tier 1 and the cheap ones over-funded from Tier 3.
  */
@@ -123,7 +121,7 @@ export type TierId = (typeof TIERS)[number]["id"]
 export const TIER_IDS: readonly TierId[] = TIERS.map(t => t.id)
 
 /** The tier everyone starts on, and the floor the week's ask is measured from. */
-export const ENTRY_TIER = TIERS[0]
+export const [ENTRY_TIER] = TIERS
 
 export function getTier(id: number): Tier | undefined {
 	return TIERS.find(t => t.id === id)
@@ -142,10 +140,7 @@ export function isTierId(id: unknown): id is TierId {
 /**
  * The highest tier whose funded block the given hours cover.
  *
- * A tier's grant buys its funded block of hours, so hours below a tier's floor cannot pay that tier's grant. The
- * submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when a decision approves less
- * time than was logged: the tier then steps down to the one the approved hours earned, rather than the grant staying
- * at a level the hours do not cover. Null when even Tier 1 is out of reach, which is a design with no parts grant.
+ * A tier's grant buys its funded block of hours, so hours below a tier's floor cannot pay that tier's grant. The submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when a decision approves less time than was logged: the tier then steps down to the one the approved hours earned, rather than the grant staying at a level the hours do not cover. Null when even Tier 1 is out of reach, which is a design with no parts grant.
  */
 export function tierForHours(hours: number): Tier | null {
 	const affordable = TIERS.filter(t => hours >= t.fundingHours)

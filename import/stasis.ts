@@ -3,7 +3,12 @@
  *
  * The source (Stasis/Siege lineage) is read-only; the target is whatever Half Life's DATABASE_URL points at. Run it against a scratch database, not production:
  *
- * pnpm exec tsx import/stasis.ts                 # everything pnpm exec tsx import/stasis.ts --limit=50      # first 50 users (quick pass) pnpm exec tsx import/stasis.ts --dry-run       # count, write nothing pnpm exec tsx import/stasis.ts --keep-emails   # keep real addresses
+ * Run with both env files, because the source connection lives in `import/.env` and the target in the root `.env`:
+ *
+ * bun --env-file=import/.env --env-file=.env import/stasis.ts                 # everything
+ * bun --env-file=import/.env --env-file=.env import/stasis.ts --limit=50      # first 50 users (quick pass)
+ * bun --env-file=import/.env --env-file=.env import/stasis.ts --dry-run       # count, write nothing
+ * bun --env-file=import/.env --env-file=.env import/stasis.ts --keep-emails   # keep real addresses
  *
  * Shape differences this bridges:
  * - Half Life is theme-based (one project per user per theme, five themes). The source is unthemed, so each user's projects are assigned themes in creation order and anything past the fifth is dropped.
@@ -12,9 +17,9 @@
  * - PII: emails are anonymised unless --keep-emails, encrypted columns are never read, and third-party ids that would collide with an existing row are dropped rather than failing the import.
  */
 
-import { PrismaPg } from "@prisma/adapter-pg"
-import { config } from "dotenv"
-import { type Prisma, PrismaClient } from "@/app/generated/prisma/client"
+import { Pool } from "pg"
+import { DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor } from "@/lib/config/program"
+import { getTierOrThrow } from "@/lib/config/tiers"
 import {
 	CoinBucket,
 	HoursSource,
@@ -28,12 +33,9 @@ import {
 	ShopItemCategory,
 	type ShopOrderStatus,
 	Theme,
-} from "@/app/generated/prisma/enums"
-import { DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor } from "@/lib/config/program"
-import { getTierOrThrow } from "@/lib/config/tiers"
-
-config({ path: "import/.env" })
-config()
+} from "@/lib/enums"
+import db from "@/lib/prisma8"
+import { formatDbTimestamp } from "@/lib/time"
 
 const SOURCE_URL = process.env.DB_URL
 const TARGET_URL = process.env.DATABASE_URL
@@ -48,13 +50,29 @@ const LIMIT = Number(args.find(a => a.startsWith("--limit="))?.split("=")[1] ?? 
 const KEEP_EMAILS = has("keep-emails")
 const DRY = has("dry-run")
 
-const source = new PrismaClient({ adapter: new PrismaPg({ connectionString: sourceUrl }) })
-const target = new PrismaClient({ adapter: new PrismaPg({ connectionString: targetUrl }) })
+const source = new Pool({ connectionString: sourceUrl })
+
+/** A row as the Prisma 8 client's `create` accepts it, typed by the model rather than a generated DTO. */
+type CreateManyInput<M> = M extends { create(input: infer I, ...rest: never[]): unknown } ? I : never
+
+/** A row before `dbRow` converts its Dates: anything the create input takes, or a Date in its place. */
+type RowInput<M> = { [K in keyof CreateManyInput<M>]: CreateManyInput<M>[K] | Date }
+
+/** A row with any Date fields written as the PostgreSQL text the client stores; the import's reads hand back Dates. */
+type DbRow<T> = {
+	[K in keyof T]: T[K] extends Date ? string : T[K] extends Date | null ? string | null : T[K]
+}
+
+function dbRow<T extends object>(row: T): DbRow<T> {
+	const out: { [_: string]: unknown } = {}
+	for (const [key, value] of Object.entries(row)) out[key] = value instanceof Date ? formatDbTimestamp(value) : value
+	return out as DbRow<T>
+}
 
 const BATCH = 1000
 const THEME_ORDER = [Theme.PCB, Theme.CAD, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER]
 
-async function insert<T>(label: string, rows: T[], run: (batch: T[]) => Promise<number>): Promise<number> {
+async function insert<T>(label: string, rows: T[], run: (batch: T[]) => PromiseLike<number>): Promise<number> {
 	if (DRY || rows.length === 0) {
 		console.log(`  ${label}: ${rows.length}${DRY ? " (dry run)" : ""}`)
 		return rows.length
@@ -65,7 +83,7 @@ async function insert<T>(label: string, rows: T[], run: (batch: T[]) => Promise<
 	return n
 }
 
-const read = <T>(sql: string) => source.$queryRawUnsafe<T[]>(sql)
+const read = async <T>(sql: string): Promise<T[]> => (await source.query(sql)).rows as T[]
 
 /** YYYY-MM-DD in a timezone, matching lib/program.effectiveDateFor. */
 function effectiveDateFor(date: Date, timeZone: string): string {
@@ -267,15 +285,13 @@ async function importUsers(): Promise<{
 	ids: Set<string>
 	reviewerIds: Set<string>
 }> {
-	const existing = await target.user.findMany({
-		select: { email: true, hackatimeUserId: true, id: true, slackId: true },
-	})
+	const existing = await db.orm.public.User.select("email", "hackatimeUserId", "id", "slackId").all()
 	const takenSlack = new Set(existing.map(u => u.slackId).filter((v): v is string => Boolean(v)))
 	const takenHackatime = new Set(existing.map(u => u.hackatimeUserId).filter((v): v is string => Boolean(v)))
 
 	const users = await read<SourceUser>(`SELECT * FROM "user" ORDER BY "createdAt"`)
 	const limited = users.slice(0, LIMIT)
-	const rows: Prisma.UserCreateManyInput[] = []
+	const rows: RowInput<typeof db.orm.public.User>[] = []
 	const ids = new Set<string>()
 
 	for (const u of limited) {
@@ -305,7 +321,9 @@ async function importUsers(): Promise<{
 		})
 	}
 
-	await insert("users", rows, b => target.user.createMany({ data: b, skipDuplicates: true }).then(r => r.count))
+	await insert("users", rows, b =>
+		db.orm.public.User.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
+	)
 
 	// Roles, so the review console has staff to exercise it with.
 	const sourceRoles = await read<{
@@ -315,17 +333,17 @@ async function importUsers(): Promise<{
 		grantedAt: Date
 		grantedBy: string | null
 	}>("SELECT * FROM user_role")
-	const roleRows: Prisma.UserRoleCreateManyInput[] = []
+	const roleRows: RowInput<typeof db.orm.public.UserRole>[] = []
 	for (const r of sourceRoles) {
 		const role = ROLE_MAP[r.role]
 		if (!role || !ids.has(r.userId)) continue
 		roleRows.push({ grantedAt: r.grantedAt, grantedBy: r.grantedBy, id: r.id, role, userId: r.userId })
 	}
 	await insert("user roles", roleRows, b =>
-		target.userRole.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.UserRole.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 
-	const reviewerIds = new Set(roleRows.map(r => r.userId))
+	const reviewerIds = new Set(roleRows.flatMap(r => (typeof r.userId === "string" ? [r.userId] : [])))
 	return { ids, reviewerIds }
 }
 
@@ -345,7 +363,7 @@ async function importProjects(userIds: Set<string>): Promise<{
 		byUser.set(p.userId, list)
 	}
 
-	const rows: Prisma.ThemeProjectCreateManyInput[] = []
+	const rows: RowInput<typeof db.orm.public.ThemeProject>[] = []
 	const ids = new Set<string>()
 	const userIdOf = new Map<string, string>()
 	const themeOf = new Map<string, Theme>()
@@ -392,7 +410,7 @@ async function importProjects(userIds: Set<string>): Promise<{
 	if (dropped > 0) console.log(`  (dropped ${dropped} projects past each user's fifth theme slot)`)
 
 	await insert("projects", rows, b =>
-		target.themeProject.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.ThemeProject.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 	return { ids, themeOf, userIdOf }
 }
@@ -404,7 +422,7 @@ async function importSessions(
 	const all = await read<SourceSession>(`SELECT * FROM work_session ORDER BY "createdAt"`)
 	const sessions = all.filter(s => projectIds.has(s.projectId))
 
-	const rows: Prisma.WorkSessionCreateManyInput[] = sessions.map(s => {
+	const rows: RowInput<typeof db.orm.public.WorkSession>[] = sessions.map(s => {
 		const theme = themeOf.get(s.projectId)
 		if (!theme) throw new Error(`No imported theme for project ${s.projectId}`)
 		const week = scheduledWeekFor(theme, s.stage)
@@ -427,14 +445,14 @@ async function importSessions(
 	})
 
 	await insert("work sessions", rows, b =>
-		target.workSession.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.WorkSession.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 	return { ids: new Set(sessions.map(s => s.id)), sessions }
 }
 
 async function importMedia(sessionIds: Set<string>): Promise<void> {
 	const all = await read<SourceMedia>(`SELECT * FROM session_media ORDER BY "createdAt"`)
-	const rows: Prisma.SessionMediaCreateManyInput[] = all
+	const rows: RowInput<typeof db.orm.public.SessionMedia>[] = all
 		.filter(m => sessionIds.has(m.workSessionId))
 		.map(m => ({
 			createdAt: m.createdAt,
@@ -445,13 +463,13 @@ async function importMedia(sessionIds: Set<string>): Promise<void> {
 			workSessionId: m.workSessionId,
 		}))
 	await insert("session media", rows, b =>
-		target.sessionMedia.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.SessionMedia.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
 
 async function importTimelapses(sessionIds: Set<string>): Promise<void> {
 	const all = await read<SourceTimelapse>(`SELECT * FROM session_timelapse ORDER BY "createdAt"`)
-	const rows: Prisma.SessionTimelapseCreateManyInput[] = all
+	const rows: RowInput<typeof db.orm.public.SessionTimelapse>[] = all
 		.filter(t => sessionIds.has(t.workSessionId))
 		.map(t => ({
 			coveredSeconds: t.duration,
@@ -463,14 +481,14 @@ async function importTimelapses(sessionIds: Set<string>): Promise<void> {
 			workSessionId: t.workSessionId,
 		}))
 	await insert("session timelapses", rows, b =>
-		target.sessionTimelapse.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.SessionTimelapse.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
 
 async function importBom(projectIds: Set<string>): Promise<void> {
 	const all = await read<SourceBom>(`SELECT * FROM bom_item ORDER BY "createdAt"`)
 	let sort = 0
-	const rows: Prisma.BomItemCreateManyInput[] = all
+	const rows: RowInput<typeof db.orm.public.BomItem>[] = all
 		.filter(b => projectIds.has(b.projectId))
 		.map(b => ({
 			createdAt: b.createdAt,
@@ -484,12 +502,14 @@ async function importBom(projectIds: Set<string>): Promise<void> {
 			unitCostUsd: b.costPerItem ?? 0,
 			vendor: b.distributor,
 		}))
-	await insert("bom items", rows, b => target.bomItem.createMany({ data: b, skipDuplicates: true }).then(r => r.count))
+	await insert("bom items", rows, b =>
+		db.orm.public.BomItem.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
+	)
 }
 
 async function importHackatime(projectIds: Set<string>): Promise<void> {
 	const all = await read<SourceHackatime>(`SELECT * FROM hackatime_project ORDER BY "createdAt"`)
-	const rows: Prisma.HackatimeLinkCreateManyInput[] = all
+	const rows: RowInput<typeof db.orm.public.HackatimeLink>[] = all
 		.filter(h => projectIds.has(h.projectId))
 		.map(h => ({
 			createdAt: h.createdAt,
@@ -502,7 +522,7 @@ async function importHackatime(projectIds: Set<string>): Promise<void> {
 			themeProjectId: h.projectId,
 		}))
 	await insert("hackatime links", rows, b =>
-		target.hackatimeLink.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.HackatimeLink.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
 
@@ -512,7 +532,7 @@ async function importSubmissions(
 	cartScreenshots: Map<string, string[]>,
 ): Promise<Map<string, { phase: Phase; createdAt: Date }>> {
 	const all = await read<SourceSubmission>(`SELECT * FROM project_submission ORDER BY "createdAt"`)
-	const rows: Prisma.PhaseSubmissionCreateManyInput[] = all
+	const rows: RowInput<typeof db.orm.public.PhaseSubmission>[] = all
 		.filter(s => projectIds.has(s.projectId))
 		.map(s => {
 			const theme = themeOf.get(s.projectId)
@@ -533,7 +553,7 @@ async function importSubmissions(
 			}
 		})
 	await insert("submissions", rows, b =>
-		target.phaseSubmission.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.PhaseSubmission.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 	return new Map(
 		all.filter(s => projectIds.has(s.projectId)).map(s => [s.id, { createdAt: s.createdAt, phase: s.stage }] as const),
@@ -545,7 +565,7 @@ async function importReviews(
 	userIds: Set<string>,
 ): Promise<void> {
 	const all = await read<SourceReview>(`SELECT * FROM submission_review ORDER BY "createdAt"`)
-	const rows: Prisma.SubmissionReviewCreateManyInput[] = all
+	const rows: RowInput<typeof db.orm.public.SubmissionReview>[] = all
 		.filter(r => submissionIds.has(r.submissionId))
 		.map(r => ({
 			createdAt: r.createdAt,
@@ -567,7 +587,7 @@ async function importReviews(
 			tierOverride: r.tierOverride,
 		}))
 	await insert("submission reviews", rows, b =>
-		target.submissionReview.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.SubmissionReview.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 
 	// Resolve each submission whose latest review decided it.
@@ -579,20 +599,18 @@ async function importReviews(
 			if (!prev || r.createdAt > prev.at) resolved.set(r.submissionId, { at: r.createdAt, result: r.result })
 		}
 		let n = 0
-		for (const [submissionId, v] of resolved) {
-			const res = await target.phaseSubmission.updateMany({
-				data: { resolvedAt: v.at, resolvedResult: v.result },
-				where: { id: submissionId, resolvedAt: null },
+		for (const [submissionId, v] of resolved)
+			n += await db.orm.public.PhaseSubmission.where({ id: submissionId, resolvedAt: null }).updateAndCount({
+				resolvedAt: formatDbTimestamp(v.at),
+				resolvedResult: v.result,
 			})
-			n += res.count
-		}
 		console.log(`  resolved submissions: ${n}`)
 	}
 }
 
 async function importLedger(userIds: Set<string>, projectIds: Set<string>): Promise<void> {
 	const all = await read<SourceTransaction>(`SELECT * FROM currency_transaction ORDER BY "createdAt"`)
-	const rows: Prisma.LedgerEntryCreateManyInput[] = all
+	const rows: RowInput<typeof db.orm.public.LedgerEntry>[] = all
 		.filter(t => userIds.has(t.userId))
 		.map(t => ({
 			amount: t.amount,
@@ -608,13 +626,13 @@ async function importLedger(userIds: Set<string>, projectIds: Set<string>): Prom
 			userId: t.userId,
 		}))
 	await insert("ledger entries", rows, b =>
-		target.ledgerEntry.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.LedgerEntry.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
 
 async function importShop(userIds: Set<string>): Promise<void> {
 	const items = await read<SourceShopItem>(`SELECT * FROM shop_item ORDER BY "sortOrder"`)
-	const itemRows: Prisma.ShopItemCreateManyInput[] = items.map(i => ({
+	const itemRows: RowInput<typeof db.orm.public.ShopItem>[] = items.map(i => ({
 		active: i.active,
 		// The source has no category; keeping them open (not printer-gated) makes them usable in a test build.
 		category: ShopItemCategory.MISC,
@@ -629,11 +647,11 @@ async function importShop(userIds: Set<string>): Promise<void> {
 	}))
 	const itemIds = new Set(items.map(i => i.id))
 	await insert("shop items", itemRows, b =>
-		target.shopItem.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.ShopItem.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 
 	const orders = await read<SourceShopOrder>(`SELECT * FROM shop_order ORDER BY "placedAt"`)
-	const orderRows: Prisma.ShopOrderCreateManyInput[] = orders
+	const orderRows: RowInput<typeof db.orm.public.ShopOrder>[] = orders
 		.filter(o => userIds.has(o.userId) && itemIds.has(o.shopItemId))
 		.map(o => ({
 			fulfilledAt: o.fulfilledAt,
@@ -656,11 +674,14 @@ async function importShop(userIds: Set<string>): Promise<void> {
 			userId: o.userId,
 		}))
 	await insert("shop orders", orderRows, b =>
-		target.shopOrder.createMany({ data: b, skipDuplicates: true }).then(r => r.count),
+		db.orm.public.ShopOrder.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 
 	if (!DRY) {
-		const paid = await target.ledgerEntry.count({ where: { kind: LedgerKind.SHOP_PURCHASE, shopOrderId: null } })
+		const { paid } = await db.orm.public.LedgerEntry.where({
+			kind: LedgerKind.SHOP_PURCHASE,
+			shopOrderId: null,
+		}).aggregate(a => ({ paid: a.count() }))
 		console.log(`  (${paid} imported shop-purchase ledger rows keep shopOrderId null to avoid the unique key)`)
 	}
 }
@@ -706,12 +727,12 @@ async function main() {
 	console.log(`\nDone in ${((Date.now() - started) / 1000).toFixed(1)}s`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(async () => {
-		await source.$disconnect()
-		await target.$disconnect()
-	})
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await source.end()
+	await db.close()
+}

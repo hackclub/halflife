@@ -21,12 +21,12 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
               with:
                   ref: ${{ github.head_ref || github.ref_name }}
                   token: ${{ secrets.GITHUB_TOKEN }}
             # Biome ships as a single binary, so there is no Bun toolchain or `bun install` (~1min) just to run the formatter. The version is auto-detected from bun.lock, matching the pinned devDependency.
-            - uses: biomejs/setup-biome@v2
+            - uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2
 
             # `check` covers format, lint and organise-imports in one pass, so one run and one fixup commit instead of two of each.
             - name: Apply Biome fixes

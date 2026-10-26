@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
+import { ParticipantGoal } from "@/lib/enums"
 import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
 import { ENTRY_TIER, getTier } from "./config/tiers"
@@ -63,9 +63,7 @@ interface Ceremony {
 	 */
 	replaying?: boolean
 	/**
-	 * Set once the tab tour has been finished or skipped. Before week 1 opens a
-	 * new account gets the intro and the tour but not the Get started
-	 * checkpoint, so it meets that checkpoint later, and finishing it must not walk the tour a second time. Optional so older saves read as not toured.
+	 * Set once the tab tour has been finished or skipped. Before week 1 opens a new account gets the intro and the tour but not the Get started checkpoint, so it meets that checkpoint later, and finishing it must not walk the tour a second time. Optional so older saves read as not toured.
 	 */
 	toured?: boolean
 	version: 4
@@ -380,13 +378,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	// A trail left open over midnight greys a closing week out, and opens a starting one, on the stroke of it rather than on the next navigation. Timers top out at about 24.8 days, so a moment further off than that just re-arms when this one fires.
 	useEffect(() => {
-		const next = [
+		const [next] = [
 			...Object.values(facts.weekClosesAt),
 			...Object.values(facts.weekOpensAt),
 			...Object.values(facts.warmups).map(w => w.closesAt),
 		]
 			.filter(at => at > now)
-			.toSorted((a, b) => a - b)[0]
+			.toSorted((a, b) => a - b)
 		if (next === undefined) return
 		const t = window.setTimeout(() => setNow(Date.now()), Math.min(next - now, 2 ** 31 - 1))
 		return () => window.clearTimeout(t)
@@ -597,26 +595,30 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const addProject = useCallback(
 		(p: Omit<Project, "id">) => {
 			void (async () => {
-				// Normally made when the checkpoint opened; made here if that request had not landed yet, so a quick "Create project" still has a row.
-				const id = await ensureProject(p.weekId)
-				if (!id) return
-				setFacts(f =>
-					f.projects.some(existing => existing.weekId === p.weekId)
-						? f
-						: { ...f, projects: [...f.projects, { ...p, id }] },
-				)
-				await send(
-					`/api/projects/${id}`,
-					{
-						description: p.description,
-						requestedTier: p.tier,
-						title: p.name,
-						...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
-						...(p.starterProjectId !== undefined ? { starterProjectId: p.starterProjectId } : {}),
-					},
-					"PATCH",
-				)
-			})().finally(() => router.refresh())
+				try {
+					// Normally made when the checkpoint opened; made here if that request had not landed yet, so a quick "Create project" still has a row.
+					const id = await ensureProject(p.weekId)
+					if (!id) return
+					setFacts(f =>
+						f.projects.some(existing => existing.weekId === p.weekId)
+							? f
+							: { ...f, projects: [...f.projects, { ...p, id }] },
+					)
+					await send(
+						`/api/projects/${id}`,
+						{
+							description: p.description,
+							requestedTier: p.tier,
+							title: p.name,
+							...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
+							...(p.starterProjectId !== undefined ? { starterProjectId: p.starterProjectId } : {}),
+						},
+						"PATCH",
+					)
+				} finally {
+					router.refresh()
+				}
+			})()
 		},
 		[ensureProject, router],
 	)
@@ -729,7 +731,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				...f,
 				projects: f.projects.map(p => (p.id === id ? { ...p, tier } : p)),
 			}))
-			void send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH").finally(() => router.refresh())
+			void (async () => {
+				try {
+					await send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH")
+				} finally {
+					router.refresh()
+				}
+			})()
 		},
 		[router],
 	)
@@ -780,7 +788,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 			const route = routeOf(id)
 			if (route && id.endsWith("-submit")) {
-				void send(`/api/projects/${route.projectId}/submit`, { phase: route.phase }).finally(() => router.refresh())
+				void (async () => {
+					try {
+						await send(`/api/projects/${route.projectId}/submit`, { phase: route.phase })
+					} finally {
+						router.refresh()
+					}
+				})()
 				return
 			}
 
@@ -1348,7 +1362,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * It used to be otherwise: an unhanded-in week kept the next shut until it was submitted. That dead-ended anyone who could not reach that week's floor – the tier is the maker's own choice, and a week below its floor cannot be handed in at all – and it also punished asking for an extension, which is granted precisely when a maker is behind. Nothing is lost by not waiting: a passed week's Submit stays open for anyone who does reach the floor, so late work can still go in.
 	 *
 	 * What does still break the sequence:
+	 *
 	 * - a week that has passed is shut, all but the Submit it still owes – which opens whatever the hours say, since no more can be logged;
+	 *
 	 * - anything on the clock (the milestone reels, and Submit itself) opens on the week's hours, so a half-written entry never traps you and the choice to wrap up is always live. Everything else unlocks in order, as it always has – except week 1's idea reel, which is the optional arm of the opening fork and never holds anything shut (see WEEK1_IDEA_REEL_ID).
 	 */
 	const isUnlocked = useCallback(
@@ -1410,7 +1426,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (isUnlocked(id)) return null
 			if (isPassed(id)) return PASSED_REASON
 			if (isHeld(id)) {
-				const owedId = facts.owedReels[0]
+				const [owedId] = facts.owedReels
 				const owed = weeks.flatMap(w => w.checkpoints).find(c => c.id === owedId)
 				return owed ? `Re-record ${owed.title} first. You deleted it.` : "Re-record the reel you deleted first."
 			}

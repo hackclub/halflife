@@ -1,15 +1,17 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
-import { Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
+import { Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/lib/enums"
 import { lapseTimelapseUrl } from "@/lib/lapse"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { projectEditLockReason } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
 import { getRepoSyncState, type RepoSyncState } from "@/lib/repo-sync"
+import { withFields } from "@/lib/rows"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
+import { parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -126,39 +128,38 @@ export interface ProjectPageData {
 	timeline: TimelineItem[]
 }
 
-const SESSION_SELECT = {
-	content: true,
-	createdAt: true,
-	hoursApproved: true,
-	hoursClaimed: true,
-	id: true,
-	phase: true,
+/** One session row as these queries read it: timestamps already parsed to Dates. */
+export interface ProjectSessionRow {
+	content: string | null
+	createdAt: Date
+	hoursApproved: number | null
+	hoursClaimed: number
+	id: string
+	phase: Models.public_WorkSession["phase"]
 	timelapses: {
-		orderBy: { createdAt: "asc" },
-		select: {
-			coveredSeconds: true,
-			externalId: true,
-			id: true,
-			objectKey: true,
-			playbackUrl: true,
-			provider: true,
-			thumbnailUrl: true,
-		},
-	},
-	title: true,
-} satisfies Prisma.WorkSessionSelect
+		coveredSeconds: number | null
+		externalId: string | null
+		id: string
+		objectKey: string | null
+		playbackUrl: string | null
+		provider: Models.public_SessionTimelapse["provider"]
+		thumbnailUrl: string | null
+	}[]
+	title: string
+}
 
-const POST_SELECT = {
-	caption: true,
-	createdAt: true,
-	id: true,
-	objectKey: true,
-	publishedAt: true,
-	status: true,
-	thumbnailKey: true,
-} satisfies Prisma.PostSelect
+/** One post row as these queries read it: timestamps already parsed to Dates. */
+export interface ProjectPostRow {
+	caption: string
+	createdAt: Date
+	id: string
+	objectKey: string
+	publishedAt: Date | null
+	status: Models.public_Post["status"]
+	thumbnailKey: string | null
+}
 
-function sessionItem(s: Prisma.WorkSessionGetPayload<{ select: typeof SESSION_SELECT }>): TimelineItem {
+function sessionItem(s: ProjectSessionRow): TimelineItem {
 	return {
 		approvedHours: s.hoursApproved !== null && s.hoursApproved !== s.hoursClaimed ? s.hoursApproved : null,
 		at: s.createdAt.getTime(),
@@ -179,7 +180,7 @@ function sessionItem(s: Prisma.WorkSessionGetPayload<{ select: typeof SESSION_SE
 	}
 }
 
-function reelItem(p: Prisma.PostGetPayload<{ select: typeof POST_SELECT }>): TimelineItem {
+function reelItem(p: ProjectPostRow): TimelineItem {
 	return {
 		at: (p.publishedAt ?? p.createdAt).getTime(),
 		caption: p.caption,
@@ -192,51 +193,84 @@ function reelItem(p: Prisma.PostGetPayload<{ select: typeof POST_SELECT }>): Tim
 }
 
 export async function getProjectPage(userId: string, id: string): Promise<ProjectPageData | null> {
-	const project = await prisma.themeProject.findFirst({
-		select: {
-			bomTaxShippingUsd: true,
-			buildReviewComments: true,
-			buildReviewedAt: true,
-			buildStatus: true,
-			coverImageKey: true,
-			designReviewComments: true,
-			designReviewedAt: true,
-			designStatus: true,
-			grantEmittedAt: true,
-			id: true,
-			posts: {
-				select: POST_SELECT,
+	const fetched = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId })
+		.select(
+			"bomTaxShippingUsd",
+			"buildReviewComments",
+			"buildReviewedAt",
+			"buildStatus",
+			"coverImageKey",
+			"designReviewComments",
+			"designReviewedAt",
+			"designStatus",
+			"grantEmittedAt",
+			"id",
+		)
+		.include("posts", posts =>
+			posts
+				.select("caption", "createdAt", "id", "objectKey", "publishedAt", "status", "thumbnailKey")
 				// Their own reels, including one a moderator took out of the feed – the author still sees those, as the feed's own rule has it.
-				where: { deletedAt: null, status: { not: PostStatus.REMOVED }, userId },
-			},
-			submissions: {
-				select: {
-					ariShipError: true,
-					createdAt: true,
-					dispute: {
-						select: {
-							createdAt: true,
-							id: true,
-							messages: {
-								orderBy: { createdAt: "asc" },
-								select: { body: true, createdAt: true, fromReviewer: true, id: true },
-							},
-							note: true,
-							outcome: true,
-							resolvedAt: true,
-						},
-					},
-					id: true,
-					phase: true,
-					resolvedAt: true,
-					resolvedResult: true,
-				},
-			},
-			workSessions: { select: SESSION_SELECT, where: { deletedAt: null } },
-		},
-		where: { deletedAt: null, id, userId },
-	})
-	if (!project) return null
+				.where({ deletedAt: null, userId })
+				.where(post => post.status.neq(PostStatus.REMOVED)),
+		)
+		.include("submissions", submissions =>
+			submissions
+				.select("ariShipError", "createdAt", "id", "phase", "resolvedAt", "resolvedResult")
+				.include("dispute", dispute =>
+					dispute
+						.select("createdAt", "id", "note", "outcome", "resolvedAt")
+						.include("messages", messages =>
+							messages.select("body", "createdAt", "fromReviewer", "id").orderBy(message => message.createdAt.asc()),
+						),
+				),
+		)
+		.include("workSessions", sessions =>
+			sessions
+				.select("content", "createdAt", "hoursApproved", "hoursClaimed", "id", "phase", "title")
+				.where({ deletedAt: null })
+				.include("timelapses", timelapse =>
+					timelapse
+						.select("coveredSeconds", "externalId", "id", "objectKey", "playbackUrl", "provider", "thumbnailUrl")
+						.orderBy(t => t.createdAt.asc()),
+				),
+		)
+		.first()
+	if (!fetched) return null
+
+	// Prisma 8 reads timestamps as PostgreSQL text; everything below works in Dates.
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	const project = {
+		...fetched,
+		buildReviewedAt: parseNullable(fetched.buildReviewedAt),
+		designReviewedAt: parseNullable(fetched.designReviewedAt),
+		grantEmittedAt: parseNullable(fetched.grantEmittedAt),
+		posts: fetched.posts.map(
+			(post): ProjectPostRow =>
+				withFields(post, {
+					createdAt: parseDbTimestamp(post.createdAt),
+					publishedAt: parseNullable(post.publishedAt),
+				}),
+		),
+		submissions: fetched.submissions.map(submission => ({
+			...submission,
+			createdAt: parseDbTimestamp(submission.createdAt),
+			dispute: submission.dispute
+				? {
+						...submission.dispute,
+						createdAt: parseDbTimestamp(submission.dispute.createdAt),
+						messages: submission.dispute.messages.map(message => ({
+							...message,
+							createdAt: parseDbTimestamp(message.createdAt),
+						})),
+						resolvedAt: parseNullable(submission.dispute.resolvedAt),
+					}
+				: null,
+			resolvedAt: parseNullable(submission.resolvedAt),
+		})),
+		workSessions: fetched.workSessions.map(
+			(session): ProjectSessionRow => withFields(session, { createdAt: parseDbTimestamp(session.createdAt) }),
+		),
+	}
 
 	const timeline: TimelineItem[] = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)]
 
@@ -283,9 +317,9 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				.filter(s => s.phase === phase && s.dispute)
 				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.dispute
 			// Only an open hand-in can be stuck: one that was decided had its marker cleared by the send that succeeded, and one that was withdrawn was deleted outright.
-			const openShip = project.submissions
+			const [openShip] = project.submissions
 				.filter(s => s.phase === phase && s.resolvedAt === null)
-				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 			return {
 				comments: isDesign ? project.designReviewComments : project.buildReviewComments,
 				dispute: disputed
@@ -368,34 +402,53 @@ export interface ProjectOpenDispute {
  * Read only for a reviewer looking at someone else's project: the review console is where a dispute is answered, so the project page needs each submission id to open it. The maker's own page already carries the threads themselves and never calls this.
  */
 export async function getOpenDisputesForProject(projectId: string): Promise<ProjectOpenDispute[]> {
-	const submissions = await prisma.phaseSubmission.findMany({
-		orderBy: { createdAt: "asc" },
-		select: { id: true, phase: true },
-		where: { dispute: { is: { resolvedAt: null } }, themeProjectId: projectId },
-	})
+	const submissions = await db.orm.public.PhaseSubmission.where({ themeProjectId: projectId })
+		.where(submission => submission.dispute.some(dispute => dispute.resolvedAt.isNull()))
+		.orderBy(submission => submission.createdAt.asc())
+		.select("id", "phase")
+		.all()
 	return submissions.map(submission => ({ phase: submission.phase, submissionId: submission.id }))
 }
 
 export async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {
-	const project = await prisma.themeProject.findFirst({
-		select: {
-			coverImageKey: true,
-			description: true,
-			githubRepo: true,
-			id: true,
-			posts: {
-				select: POST_SELECT,
-				where: { deletedAt: null, status: PostStatus.PUBLISHED },
-			},
-			theme: true,
-			title: true,
-			user: { select: { displayName: true, id: true, name: true } },
-			workSessions: { select: SESSION_SELECT, where: { deletedAt: null } },
-		},
-		// A row nobody has started is a placeholder made at sign-up, not a project.
-		where: { deletedAt: null, id, namedAt: { not: null } },
-	})
-	if (!project) return null
+	const fetched = await db.orm.public.ThemeProject.where({ deletedAt: null, id })
+		.where(project => project.namedAt.isNotNull())
+		.select("coverImageKey", "description", "githubRepo", "id", "theme", "title")
+		.include("posts", posts =>
+			posts
+				.select("caption", "createdAt", "id", "objectKey", "publishedAt", "status", "thumbnailKey")
+				.where({ deletedAt: null, status: PostStatus.PUBLISHED }),
+		)
+		.include("user", user => user.select("displayName", "id", "name"))
+		.include("workSessions", sessions =>
+			sessions
+				.select("content", "createdAt", "hoursApproved", "hoursClaimed", "id", "phase", "title")
+				.where({ deletedAt: null })
+				.include("timelapses", timelapse =>
+					timelapse
+						.select("coveredSeconds", "externalId", "id", "objectKey", "playbackUrl", "provider", "thumbnailUrl")
+						.orderBy(t => t.createdAt.asc()),
+				),
+		)
+		.first()
+	// A row nobody has started is a placeholder made at sign-up, not a project.
+	if (!fetched?.user) return null
+	const { user, ...rest } = fetched
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	const project = {
+		...rest,
+		posts: fetched.posts.map(
+			(post): ProjectPostRow =>
+				withFields(post, {
+					createdAt: parseDbTimestamp(post.createdAt),
+					publishedAt: parseNullable(post.publishedAt),
+				}),
+		),
+		user,
+		workSessions: fetched.workSessions.map(
+			(session): ProjectSessionRow => withFields(session, { createdAt: parseDbTimestamp(session.createdAt) }),
+		),
+	}
 
 	const themeIndex = THEMES.findIndex(t => t.id === project.theme)
 	const timeline = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)].toSorted(

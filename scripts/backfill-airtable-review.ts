@@ -1,5 +1,3 @@
-import "dotenv/config"
-import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/app/generated/prisma/enums"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { currentReviewColumns } from "../src/lib/airtable/review-columns"
@@ -7,7 +5,8 @@ import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents, reviewStatusFor } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
 import { defaultFeedback } from "../src/lib/ari"
-import prisma from "../src/lib/prisma"
+import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
 
 /**
  * Fill `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes` on the submission rows written before the mirror existed.
@@ -17,15 +16,14 @@ import prisma from "../src/lib/prisma"
  * The status is `reviewStatusFor` of the phase – the same mapping every write uses, so the column cannot disagree with the state it mirrors. The note is the project's standing review comment (`designReviewComments`/`buildReviewComments`), which is the string the live mirror writes for a console decision and for a reversal alike. Two cases need more than the comment:
  *
  * - An Ari decision that carried no note is stored as Ari's generic fallback (`defaultFeedback`), because the review row and the project page always need something to show, but the raw note was never kept. The mirror deliberately writes an empty column rather than that fallback, so the standing decision is read too and the note cleared instead of quoting a sentence the maker already read as the headline.
+ *
  * - A phase still in review has no decision to quote, so its note is cleared whichever comment last touched the row.
  *
  * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. Rows whose columns already agree are left alone, so a second run writes nothing.
  *
  * Loops triggers off this column, so restoring a decided row can email the maker the same way a fresh decision does. Run this before the Loops workflow is switched on if nobody is to be told about a decision already made.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-airtable-review.ts [--commit]`.
- * In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-review.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")
@@ -71,45 +69,38 @@ async function main() {
 	const statusKey = fieldKey(statusField)
 	const notesKey = fieldKey(notesField)
 
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			buildReviewComments: true,
-			buildStatus: true,
-			designReviewComments: true,
-			designStatus: true,
-			id: true,
-			title: true,
-		},
-	})
+	const projects = await db.orm.public.ThemeProject.select(
+		"buildReviewComments",
+		"buildStatus",
+		"designReviewComments",
+		"designStatus",
+		"id",
+		"title",
+	).all()
 	if (projects.length === 0) {
 		console.log("No themed projects; nothing to backfill.")
 		return
 	}
 
-	const events = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
-	})
+	const events = await db.orm.public.AuditLog.where({ action: AuditAction.AIRTABLE_SYNC_SUCCESS })
+		.where(entry => entry.targetId.in(projects.map(p => p.id)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
 	const records = recordIdsFromSyncEvents(events)
 
 	// The decision that still holds per phase – the one case the comment alone cannot answer.
-	const reviews = await prisma.submissionReview.findMany({
-		orderBy: { createdAt: "desc" },
-		select: {
-			feedback: true,
-			result: true,
-			reviewerId: true,
-			submission: { select: { phase: true, themeProjectId: true } },
-		},
-		where: {
-			invalidated: false,
-			submission: { themeProjectId: { in: projects.map(p => p.id) } },
-		},
-	})
+	const reviews = await db.orm.public.SubmissionReview.where({ invalidated: false })
+		.where(review => review.submission.some(submission => submission.themeProjectId.in(projects.map(p => p.id))))
+		.orderBy(review => review.createdAt.desc())
+		.select("feedback", "result", "reviewerId")
+		.include("submission", submission => submission.select("phase", "themeProjectId"))
+		.all()
 	const standing = new Map<string, StandingReview>()
 	for (const review of reviews) {
-		const key = `${review.submission.themeProjectId}:${review.submission.phase}`
+		const { submission } = review
+		if (!submission) continue
+		const key = `${submission.themeProjectId}:${submission.phase}`
 		// Newest first, so the first review seen for a phase is the decision that stands.
 		if (!standing.has(key)) standing.set(key, review)
 	}
@@ -194,9 +185,11 @@ async function main() {
 	console.log(`updated: ${updated}, note failed: ${noteFailed}, row gone: ${rowGone}, failed: ${failed}`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await db.close()
+}

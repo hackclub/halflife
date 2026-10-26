@@ -14,12 +14,20 @@
 		"builtin": true,
 		"node": true
 	},
-	"ignorePatterns": [".next/**", "node_modules/**", "public/**", "src/app/generated/**"],
+	"ignorePatterns": [".next/**", "node_modules/**", "public/**", "src/app/generated/**", "migrations/**"],
 	"options": {
 		"denyWarnings": true,
 		"reportUnusedDisableDirectives": "warn",
 		"typeAware": true
 	},
+	"overrides": [
+		{
+			"files": ["e2e/**"],
+			"rules": {
+				"eslint/no-empty-pattern": "off"
+			}
+		}
+	],
 	"plugins": ["eslint", "import", "jsx-a11y", "nextjs", "node", "oxc", "promise", "react", "typescript", "unicorn"],
 	"rules": {
 		"eslint/capitalized-comments": "off",
@@ -53,7 +61,6 @@
 		"eslint/object-shorthand": "warn",
 		"eslint/one-var": "off",
 		"eslint/prefer-const": "error",
-		"eslint/prefer-destructuring": "off",
 		"eslint/prefer-named-capture-group": "off",
 		"eslint/prefer-object-spread": "off",
 		"eslint/prefer-template": "warn",
@@ -77,14 +84,11 @@
 		"jsx-a11y/no-noninteractive-tabindex": "off",
 		"jsx-a11y/prefer-tag-over-role": "off",
 		"nextjs/no-img-element": "off",
-		"node/callback-return": "off",
 		"node/no-sync": "off",
-		"oxc/branches-sharing-code": "off",
 		"promise/always-return": "off",
 		"promise/avoid-new": "off",
 		"promise/no-nesting": "off",
 		"promise/prefer-await-to-callbacks": "off",
-		"promise/prefer-await-to-then": "off",
 		"react/exhaustive-deps": "off",
 		"react/exhaustive-effect-dependencies": "off",
 		"react/function-component-definition": "off",
@@ -118,7 +122,7 @@
 		"typescript/strict-boolean-expressions": "off",
 		"typescript/strict-void-return": "off",
 		"typescript/unbound-method": "off",
-		"unicorn/catch-error-name": "off",
+		"unicorn/catch-error-name": ["error", { "name": "err" }],
 		"unicorn/consistent-function-scoping": "off",
 		"unicorn/empty-brace-spaces": "error",
 		"unicorn/filename-case": "off",

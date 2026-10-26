@@ -53,11 +53,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 			radius={20}
 			tone="line"
 		>
-			{/* A grid rather than a wrapping flex row. A phone cannot hold the avatar,
-          the byline, the date and the report on one line, and letting the flex row
-          fit them all squeezed the byline into a column of single words. The date
-          and the report drop under the byline on a phone, and return to the right
-          from sm, where there is room for all four. */}
+			{/* A grid rather than a wrapping flex row. A phone cannot hold the avatar, the byline, the date and the report on one line, and letting the flex row fit them all squeezed the byline into a column of single words. The date and the report drop under the byline on a phone, and return to the right from sm, where there is room for all four. */}
 			<header className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3.5 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
 				<Link
 					aria-label={`${entry.author}'s profile`}
@@ -102,11 +98,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 				</div>
 			</header>
 
-			{/* Journals are written in Markdown, images included – the pictures that
-          back a session live inside the sentence that explains them, so the
-          entry renders as written rather than with a tray of photos
-          underneath. Only its opening, though: the feed is for finding work,
-          and the whole entry is on the project's page. */}
+			{/* Journals are written in Markdown, images included – the pictures that back a session live inside the sentence that explains them, so the entry renders as written rather than with a tray of photos underneath. Only its opening, though: the feed is for finding work, and the whole entry is on the project's page. */}
 			<Markdown
 				className="mt-4 grid max-w-[68ch] gap-3 text-[0.95rem] leading-relaxed text-navy [overflow-wrap:anywhere]"
 				source={text}
@@ -132,7 +124,7 @@ export default async function ExplorePage() {
 	const yesterday = effectiveDateFor(new Date(now.getTime() - DAY_MS), settings.programTimezone)
 
 	return (
-		<div className="mx-auto w-full max-w-[780px] px-4 pt-2 sm:px-8">
+		<div className="mx-auto w-full max-w-195 px-4 pt-2 sm:px-8">
 			<PageSign
 				color="var(--color-sky)"
 				label="EXPLORE"

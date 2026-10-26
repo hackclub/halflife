@@ -1,4 +1,4 @@
-import type { EventColour } from "@/app/generated/prisma/client"
+import type { EventColour } from "@/lib/enums"
 import { calendarDay, DAY_MS } from "@/lib/time"
 
 export { calendarDay } from "@/lib/time"
@@ -6,10 +6,7 @@ export { calendarDay } from "@/lib/time"
 /**
  * What a calendar surface needs, and nothing more.
  *
- * Declared here rather than imported from `lib/queries/events.ts` because the
- * client components read it and that module reaches for Prisma. The admin table
- * and the participant's calendar render the same shape from the same projection,
- * so a field cannot be present on one and missing on the other.
+ * Declared here rather than imported from `lib/queries/events.ts` because the client components read it and that module reaches for Prisma. The admin table and the participant's calendar render the same shape from the same projection, so a field cannot be present on one and missing on the other.
  */
 export interface CalendarEvent {
 	colour: EventColour
@@ -31,27 +28,17 @@ export const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
  *
  * Split into three parts on purpose:
  *
- * - `EVENT_COLOURS` is the display vocabulary. It is one list rather than two
- *   parallel maps because a colour missing from one of them is a swatch that
- *   renders `undefined`, which is exactly the failure that makes a calendar look
- *   broken.
- * - The colour helpers take a whole `CalendarEvent` where they need two fields,
- *   because a caller wanting the accent of an event should not have to remember
- *   that it is keyed off `colour` and not off `id`.
- * - The calendar maths works in `YYYY-MM-DD` strings in the viewer's zone, for
- *   the same reason `lib/program.ts` counts weeks in calendar days. Counting in
- *   elapsed milliseconds puts the late evening of a Sunday in the next column.
+ * - `EVENT_COLOURS` is the display vocabulary. It is one list rather than two parallel maps because a colour missing from one of them is a swatch that renders `undefined`, which is exactly the failure that makes a calendar look broken.
+ * - The colour helpers take a whole `CalendarEvent` where they need two fields, because a caller wanting the accent of an event should not have to remember that it is keyed off `colour` and not off `id`.
+ * - The calendar maths works in `YYYY-MM-DD` strings in the viewer's zone, for the same reason `lib/program.ts` counts weeks in calendar days. Counting in elapsed milliseconds puts the late evening of a Sunday in the next column.
  */
 
-export type { EventColour } from "@/app/generated/prisma/client"
+export type { EventColour } from "@/lib/enums"
 
 /**
  * The display name and swatch for every colour.
  *
- * The accents are the platform palette's, and they are not arbitrary: the ones
- * people plan around – the huddle and the show & tell – take the colours that
- * carry the most weight elsewhere in the app, and everything routine falls to
- * the muted pair.
+ * The accents are the platform palette's, and they are not arbitrary: the ones people plan around – the huddle and the show & tell – take the colours that carry the most weight elsewhere in the app, and everything routine falls to the muted pair.
  */
 /** Named rather than picked off the end, so `eventColour` can fall back to it without an index. */
 const SLATE_COLOUR = {
@@ -78,17 +65,14 @@ export interface EventColourDef {
 /**
  * The colour's own entry, for the label and the swatch.
  *
- * The fallback is the point: a colour added to the enum and not to the table above
- * renders as "Slate" rather than crashing a participant's header on a Monday.
+ * The fallback is the point: a colour added to the enum and not to the table above renders as "Slate" rather than crashing a participant's header on a Monday.
  */
 export function eventColour(colour: EventColour): EventColourDef {
 	return EVENT_COLOURS.find(c => c.id === colour) ?? SLATE_COLOUR
 }
 
 /**
- * Whether the event is on now: it has started and has not ended. An event with no
- * end stays "on" until the next tick after its start, which is the honest reading
- * of an open call with no published end time.
+ * Whether the event is on now: it has started and has not ended. An event with no end stays "on" until the next tick after its start, which is the honest reading of an open call with no published end time.
  */
 export function eventIsLive(event: Pick<CalendarEvent, "startsAt" | "endsAt">, now: Date): boolean {
 	if (now < event.startsAt) return false
@@ -96,9 +80,7 @@ export function eventIsLive(event: Pick<CalendarEvent, "startsAt" | "endsAt">, n
 }
 
 /**
- * Whether the event is still ahead. An event with no `endsAt` is ahead until it
- * starts, and past once it has – never indefinitely live, or a forgotten end
- * date would pin the header countdown at zero forever.
+ * Whether the event is still ahead. An event with no `endsAt` is ahead until it starts, and past once it has – never indefinitely live, or a forgotten end date would pin the header countdown at zero forever.
  */
 export function eventIsUpcoming(event: Pick<CalendarEvent, "startsAt" | "endsAt">, now: Date): boolean {
 	return now < (event.endsAt ?? event.startsAt)
@@ -145,16 +127,16 @@ export function shiftWeek(day: string, offset: number): string {
 	return addDays(day, offset * 7)
 }
 
-/** "March 2 – 8, 2026", widening to months and years when the week straddles them. */
+/** "March 2 - 8, 2026", widening to months and years when the week straddles them. */
 export function weekLabel(days: readonly string[]): string {
 	const [first = "", last = ""] = [days[0], days[6]]
 	const [fy = 1970, fm = 1, fd = 1] = first.split("-").map(Number)
 	const [ly = 1970, lm = 1, ld = 1] = last.split("-").map(Number)
 	const month = (year: number, m: number) =>
 		new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(year, m - 1, 1)))
-	if (fy !== ly) return `${month(fy, fm)} ${fd}, ${fy} – ${month(ly, lm)} ${ld}, ${ly}`
-	if (fm !== lm) return `${month(fy, fm)} ${fd} – ${month(ly, lm)} ${ld}, ${ly}`
-	return `${month(fy, fm)} ${fd} – ${ld}, ${fy}`
+	if (fy !== ly) return `${month(fy, fm)} ${fd}, ${fy} - ${month(ly, lm)} ${ld}, ${ly}`
+	if (fm !== lm) return `${month(fy, fm)} ${fd} - ${month(ly, lm)} ${ld}, ${ly}`
+	return `${month(fy, fm)} ${fd} - ${ld}, ${fy}`
 }
 
 /** Minutes from local midnight to `at` in `timeZone`. */
@@ -171,10 +153,7 @@ export function minutesInDay(at: Date, timeZone: string): number {
 }
 
 /**
- * An event's slice of one calendar day in `timeZone`, clipped at midnight so a
- * block never leaks into the next column. Null when the event never touches
- * the day. Open-ended events get a nominal half hour so they still take a
- * block rather than vanishing.
+ * An event's slice of one calendar day in `timeZone`, clipped at midnight so a block never leaks into the next column. Null when the event never touches the day. Open-ended events get a nominal half hour so they still take a block rather than vanishing.
  */
 export function daySegment(
 	event: Pick<CalendarEvent, "startsAt" | "endsAt">,
@@ -220,22 +199,20 @@ function eventTimeLabel(at: Date, timeZone: string): string {
 	return at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone })
 }
 
-/** "7:00 – 8:00 PM", collapsing the meridiem when both ends share one. */
+/** "7:00 - 8:00 PM", collapsing the meridiem when both ends share one. */
 export function eventRangeLabel(startsAt: Date, endsAt: Date | null, timeZone: string): string {
 	if (!endsAt) return eventTimeLabel(startsAt, timeZone)
 	const from = eventTimeLabel(startsAt, timeZone)
 	const to = eventTimeLabel(endsAt, timeZone)
 	const meridiem = /\s(AM|PM)$/.exec(from)?.[1]
 	// Same meridiem: showing it twice reads as a typo. Different: both keep theirs.
-	return meridiem && to.endsWith(meridiem) ? `${from.replace(/\s(AM|PM)$/, "")} – ${to}` : `${from} – ${to}`
+	return meridiem && to.endsWith(meridiem) ? `${from.replace(/\s(AM|PM)$/, "")} - ${to}` : `${from} - ${to}`
 }
 
 /**
  * The events falling on one calendar day in `timeZone`, in the order they start.
  *
- * An event that runs past midnight belongs to the day it *started*: a 9pm call
- * that ends at 11:30pm is tonight's, and a list that lost it overnight would be
- * wrong in the direction that matters.
+ * An event that runs past midnight belongs to the day it *started*: a 9pm call that ends at 11:30pm is tonight's, and a list that lost it overnight would be wrong in the direction that matters.
  */
 export function eventsOnDay<T extends CalendarEvent>(events: readonly T[], day: string, timeZone: string): T[] {
 	return events.filter(event => calendarDay(event.startsAt, timeZone) === day)

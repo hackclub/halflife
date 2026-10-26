@@ -1,8 +1,9 @@
+import { and } from "@prisma/orm-postgres/orm-client"
 import type { NextRequest } from "next/server"
 import { ok } from "@/lib/api"
 import { withSession } from "@/lib/guards"
 import { listMyTimelapses } from "@/lib/lapse"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 
 export const dynamic = "force-dynamic"
 
@@ -19,25 +20,28 @@ export const GET = withSession(async (req: NextRequest, { gate }) => {
 	let excludeSession: string | null = null
 	const forSession = req.nextUrl.searchParams.get("forSession") ?? undefined
 	if (forSession) {
-		const own = await prisma.workSession.findFirst({
-			select: { id: true },
-			where: { deletedAt: null, id: forSession, themeProject: { deletedAt: null, userId: gate.user.id } },
-		})
+		const own = await db.orm.public.WorkSession.where({ deletedAt: null, id: forSession })
+			.where(session =>
+				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(gate.user.id))),
+			)
+			.select("id")
+			.first()
 		if (own) excludeSession = own.id
 	}
 
-	const used = await prisma.sessionTimelapse.findMany({
-		select: { externalId: true },
-		where: {
-			externalId: { in: page.timelapses.map(t => t.id) },
-			provider: "lapse",
-			workSession: {
-				deletedAt: null,
-				themeProject: { deletedAt: null },
-				...(excludeSession ? { id: { not: excludeSession } } : {}),
-			},
-		},
-	})
+	const used = await db.orm.public.SessionTimelapse.where({ provider: "lapse" })
+		.where(timelapse => timelapse.externalId.in(page.timelapses.map(t => t.id)))
+		.where(timelapse =>
+			timelapse.workSession.some(session =>
+				and(
+					session.deletedAt.isNull(),
+					session.themeProject.some(project => project.deletedAt.isNull()),
+					...(excludeSession ? ([session.id.neq(excludeSession)] as const) : []),
+				),
+			),
+		)
+		.select("externalId")
+		.all()
 	const attached = new Set(used.map(u => u.externalId))
 
 	return ok({

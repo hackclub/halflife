@@ -17,10 +17,10 @@ RUN bun install --frozen-lockfile
 
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-RUN bunx prisma generate
+RUN bunx prisma contract emit
 
 # ── prod-deps ────────────────────────────────────────────────────────────────
-# Runtime-only node_modules: the runner ships no build toolchain (typescript, eslint, tailwind, tsx, …). `prisma` itself is a production dependency, so `migrate deploy` at boot keeps working, as do the seed and backfill scripts (their only non-runtime import was `dotenv`, which is a dependency for exactly this reason). Rebuilt only when the lockfile or schema changes, like `deps` above.
+# Runtime-only node_modules: the runner ships no build toolchain (typescript, eslint, tailwind, …). `prisma` itself is a production dependency, so `db migrate` at boot keeps working, as do the seed and backfill scripts. Rebuilt only when the lockfile or contract changes, like `deps` above.
 FROM base AS prod-deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
@@ -30,7 +30,7 @@ RUN bun install --production --frozen-lockfile
 
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-RUN bunx prisma generate
+RUN bunx prisma contract emit
 
 # ── next-cache ───────────────────────────────────────────────────────────────
 # The Turbopack cache as an image, so a build can start warm.
@@ -134,17 +134,18 @@ COPY --from=builder-live /app/public ./public
 COPY --from=builder-live --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder-live --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# `prisma migrate deploy` runs at container start, so the CLI and the schema
+# `prisma db migrate` runs at container start, so the CLI and the contract
 # have to ship in the runtime image. This is the production-only tree: the
 # build toolchain stays in `deps`, which is why this layer is hundreds of MB
 # smaller than a full install.
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder-live /app/prisma ./prisma
 COPY --from=builder-live /app/prisma.config.ts ./
+COPY --from=builder-live /app/migrations ./migrations
 
 # `bun prisma/seed.ts` (RUNBOOK step 9) imports the printer catalogue from src/lib/config, and that config reaches the Prisma enums through the `@/` path alias. Neither is in the standalone trace — Next bundles the app's own imports rather than shipping the source — so the config module and the tsconfig whose `paths` resolves the alias have to ship as well, or a fresh deploy seeds no shop items.
 #
-# The migration/backfill scripts in scripts/ (`bun --conditions=react-server scripts/backfill-analytics.ts`, …) import from all over src/lib via relative paths, and those modules reach further still — so the whole src tree ships, not just the config. Without it the scripts are absent from the image and there is nothing to run migrations/backfills with inside the container. Run them with `bun --conditions=react-server` (the condition swaps the `server-only` imports for plain ones). Bun runs TypeScript directly, so the `tsx` dev dependency that local pnpm scripts use is not needed here.
+# The migration/backfill scripts in scripts/ (`bun --conditions=react-server scripts/backfill-analytics.ts`, …) import from all over src/lib via relative paths, and those modules reach further still — so the whole src tree ships, not just the config. Without it the scripts are absent from the image and there is nothing to run migrations/backfills with inside the container. Run them with `bun --conditions=react-server` (the condition swaps the `server-only` imports for plain ones). Bun runs TypeScript directly, so no separate TypeScript runner is needed here.
 COPY --from=builder-live --chown=nextjs:nodejs /app/src ./src
 COPY --from=builder-live --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder-live --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json

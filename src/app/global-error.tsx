@@ -1,9 +1,7 @@
 "use client"
 
 /**
- * The last-resort error page. It replaces the whole document, so neither
- * stylesheet loads and there is no design system to lean on – the button carries
- * its own cursor, hover and press here.
+ * The last-resort error page. It replaces the whole document, so neither stylesheet loads and there is no design system to lean on – the button carries its own cursor, hover and press here.
  */
 export default function GlobalError({ reset }: Readonly<{ error: Error; reset(): void }>) {
 	return (

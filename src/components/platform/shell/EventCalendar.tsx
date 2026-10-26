@@ -17,6 +17,7 @@ import {
 	eventsOnDay,
 	HUDDLE_URL,
 	minutesInDay,
+	nextEvent,
 	shiftWeek,
 	weekDays,
 	weekLabel,
@@ -48,16 +49,9 @@ function hourLabel(hour: number): string {
 /**
  * The week view of the programme calendar, and the day selected in it.
  *
- * Seven columns, one per day, on a shared time axis: a block's position is its
- * start and its height its runtime, so a two-hour call takes twice the space
- * of a one-hour one. The axis fits the week's own events – padded by an hour
- * either side – rather than the whole day, so an evening of calls is not a
- * thin stripe at the bottom of an empty grid.
+ * Seven columns, one per day, on a shared time axis: a block's position is its start and its height its runtime, so a two-hour call takes twice the space of a one-hour one. The axis fits the week's own events – padded by an hour either side – rather than the whole day, so an evening of calls is not a thin stripe at the bottom of an empty grid.
  *
- * Selecting a day lists only that day. The list underneath is otherwise the
- * next handful of events, so the calendar is useful without a click – which is
- * what someone opening it from the header countdown actually wants, since they
- * are usually looking for what is on *tonight*.
+ * Selecting a day lists only that day. The list underneath is otherwise the next handful of events, so the calendar is useful without a click – which is what someone opening it from the header countdown actually wants, since they are usually looking for what is on *tonight*.
  */
 export function EventCalendar({
 	open,
@@ -71,24 +65,30 @@ export function EventCalendar({
 	timeZone: string
 }) {
 	const today = useMemo(() => calendarDay(new Date(), timeZone), [timeZone])
+	// The week to open on. The header this dialog hangs off counts down to the next event, so opening the calendar on *its* week is what makes the thing the button just advertised visible: a call on Friday the 30th used to land in an empty Monday-to-Sunday grid because "today" is still in the week before. An event already under way keeps today's week, since its start may be the previous day.
+	const openingDay = useMemo(() => {
+		const next = nextEvent(events, new Date())
+		if (!next) return today
+		const nextDay = calendarDay(next.startsAt, timeZone)
+		// A live event that began yesterday still belongs to today's view, not last week's.
+		if (nextDay < today) return today
+		return nextDay
+	}, [events, timeZone, today])
 	// Any day in the viewed week; the grid always shows its Monday-to-Sunday.
-	const [anchor, setAnchor] = useState(today)
+	const [anchor, setAnchor] = useState(openingDay)
 	const [selected, setSelected] = useState<string | null>(null)
 
 	const days = useMemo(() => weekDays(anchor), [anchor])
 
-	// Reopening starts on the current week with nothing selected. Adjusting during
-	// render rather than in an effect: an effect would paint a frame of the old
-	// week after the dialog opened.
+	// Reopening starts on the next event's week with nothing selected. Adjusting during render rather than in an effect: an effect would paint a frame of the old week after the dialog opened.
 	const [seen, setSeen] = useState({ open, today })
 	if (seen.open !== open || seen.today !== today) {
 		setSeen({ open, today })
-		setAnchor(today)
+		setAnchor(openingDay)
 		setSelected(null)
 	}
 
-	// Midnight can roll over while the dialog is open, and the grid would otherwise
-	// be highlighting yesterday until it was closed and reopened.
+	// Midnight can roll over while the dialog is open, and the grid would otherwise be highlighting yesterday until it was closed and reopened.
 	useEffect(() => {
 		if (!open) return
 		const timer = setInterval(() => {
@@ -98,10 +98,7 @@ export function EventCalendar({
 		return () => clearInterval(timer)
 	}, [open, timeZone])
 
-	// Each day's clipped segments with greedy overlap lanes, plus the week's
-	// shared hour range. Lanes are counted per overlap crowd, not per day: two
-	// calls sharing an hour split their column, but a lone event keeps the full
-	// width even on a day that is busy elsewhere.
+	// Each day's clipped segments with greedy overlap lanes, plus the week's shared hour range. Lanes are counted per overlap crowd, not per day: two calls sharing an hour split their column, but a lone event keeps the full width even on a day that is busy elsewhere.
 	const { segments, startHour, endHour } = useMemo(() => {
 		const placed = new Map<string, PlacedSegment[]>()
 		let earliest = Number.POSITIVE_INFINITY
@@ -159,8 +156,7 @@ export function EventCalendar({
 
 	function shift(delta: number) {
 		setAnchor(shiftWeek(anchor, delta))
-		// A day does not carry across a week boundary, so the selection drops
-		// rather than pointing at a day that is no longer drawn.
+		// A day does not carry across a week boundary, so the selection drops rather than pointing at a day that is no longer drawn.
 		setSelected(null)
 	}
 
@@ -207,12 +203,10 @@ export function EventCalendar({
 				) : null}
 			</div>
 
-			{/* The week grid, scrolling sideways on a phone where seven columns
-			cannot fit. A block's height is its runtime on the shared axis, so
-			durations compare across days as well as within one. */}
+			{/* The week grid, scrolling sideways on a phone where seven columns cannot fit. A block's height is its runtime on the shared axis, so durations compare across days as well as within one. */}
 			<div className="mt-4 overflow-x-auto">
 				{/* The bottom hour label centers on the last gridline, so its lower half hangs below the grid: without this padding the wrapper grows a few-pixel vertical scrollbar that clips it. */}
-				<div className="min-w-[620px] pb-4">
+				<div className="min-w-155 pb-4">
 					<div className="grid" style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}>
 						<span aria-hidden="true" />
 						{days.map((day, i) => {
@@ -411,7 +405,7 @@ function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string 
 			className="sketch flex gap-3.5 bg-paper px-4 py-3.5"
 			style={{ "--sk-color": colour.accent, "--sk-radius": "14px" } as React.CSSProperties}
 		>
-			<div className="w-[5.5rem] shrink-0">
+			<div className="w-22 shrink-0">
 				<p className="text-[1.02rem] leading-tight font-extrabold text-navy">
 					{eventRangeLabel(event.startsAt, event.endsAt, timeZone)}
 				</p>

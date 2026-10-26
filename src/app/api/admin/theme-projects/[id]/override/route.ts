@@ -1,8 +1,8 @@
 import { after } from "next/server"
 import { z } from "zod"
-import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { mirrorReviewDecision, reviewStatusFor } from "@/lib/airtable/sync"
 import { ok, parseBody } from "@/lib/api"
+import { PhaseStatus } from "@/lib/enums"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { notifyReviewOutcome } from "@/lib/notifications"
 import { Permission } from "@/lib/permissions"
@@ -42,7 +42,7 @@ export const POST = withPermission(
 		// After the response: the reversal has already committed, and a Slack or Airtable outage must not fail an admin's action.
 		after(async () => {
 			// Both actions leave the phase on "needs changes", so the row follows it there rather than keeping the decision that was just undone – and the note goes with that decision, so it is replaced by the admin's reason.
-			await mirrorReviewDecision(id, phase, reviewStatusFor(PhaseStatus.update_requested), note || null)
+			await mirrorReviewDecision(id, phase, reviewStatusFor(PhaseStatus.update_requested), note || null, null)
 			await notifyReviewOutcome({
 				decidedBy: "console",
 				note: note || null,

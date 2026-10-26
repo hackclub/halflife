@@ -1,4 +1,4 @@
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import { statusFor } from "@/lib/phase"
 
 /**

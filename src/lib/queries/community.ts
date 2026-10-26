@@ -1,11 +1,13 @@
 import "server-only"
+import { and, not } from "@prisma/orm-postgres/orm-client"
 import { avatarUrl } from "@/lib/avatar"
 import { getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { DEFAULT_SESSION_TITLE } from "@/lib/schemas/session"
 import { streakAsOf } from "@/lib/streak"
+import { parseDbTimestamp } from "@/lib/time"
 
 /**
  * The page that is about everyone else: Explore.
@@ -40,44 +42,22 @@ const FEED_LIMIT = 60
 
 export async function getJournalFeed(): Promise<JournalRow[]> {
 	const [sessions, settings] = await Promise.all([
-		prisma.workSession.findMany({
-			// The id breaks ties, so two entries saved in the same millisecond keep one order between loads.
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			select: {
-				content: true,
-				createdAt: true,
-				effectiveDate: true,
-				hoursApproved: true,
-				hoursClaimed: true,
-				hoursSource: true,
-				id: true,
-				themeProject: {
-					select: {
-						id: true,
-						theme: true,
-						title: true,
-						user: {
-							select: {
-								currentStreak: true,
-								displayName: true,
-								id: true,
-								image: true,
-								lastStreakDate: true,
-								name: true,
-							},
-						},
-					},
-				},
-				title: true,
-			},
-			take: FEED_LIMIT,
+		db.orm.public.WorkSession.where({ deletedAt: null })
+			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
 			// `NOT` negates the pair, so an entry survives when it carries a body: a writer who really typed the fallback line as their opening has content behind the title, and is not caught here.
-			where: {
-				deletedAt: null,
-				NOT: { content: null, title: DEFAULT_SESSION_TITLE },
-				themeProject: { deletedAt: null },
-			},
-		}),
+			.where(session => not(and(session.content.isNull(), session.title.eq(DEFAULT_SESSION_TITLE))))
+			// The id breaks ties, so two entries saved in the same millisecond keep one order between loads.
+			.orderBy([session => session.createdAt.desc(), session => session.id.desc()])
+			.limit(FEED_LIMIT)
+			.select("content", "createdAt", "effectiveDate", "hoursApproved", "hoursClaimed", "hoursSource", "id", "title")
+			.include("themeProject", project =>
+				project
+					.select("id", "theme", "title")
+					.include("user", user =>
+						user.select("currentStreak", "displayName", "id", "image", "lastStreakDate", "name"),
+					),
+			)
+			.all(),
 		getProgramSettings(),
 	])
 
@@ -85,12 +65,15 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 
 	return sessions.map(session => {
 		const project = session.themeProject
+		if (!project) throw new Error(`session ${session.id} has no project`)
+		if (!project.user) throw new Error(`session ${session.id} has no author`)
+		const createdAt = parseDbTimestamp(session.createdAt)
 		return {
 			author: displayName(project.user, "A maker"),
 			authorId: project.user.id,
 			authorImage: avatarUrl(project.user),
 			body: session.content ?? session.title,
-			day: session.effectiveDate ?? effectiveDateFor(session.createdAt, settings.programTimezone),
+			day: session.effectiveDate ?? effectiveDateFor(createdAt, settings.programTimezone),
 			id: session.id,
 			// A tracked entry's time arrives (and is paid) through the Hackatime link, so advertising its claimed minutes here would show hours the paid totals deliberately exclude.
 			minutes:
@@ -101,7 +84,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 			projectId: project.id,
 			// Expired against today, so a run that ended weeks ago reads 0 rather than the number it reached before it broke.
 			streak: streakAsOf(project.user, today),
-			when: session.createdAt.toISOString(),
+			when: createdAt.toISOString(),
 		}
 	})
 }

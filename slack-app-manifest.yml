@@ -2,7 +2,7 @@
 # Slack validates the request URLs during creation by sending a
 # url_verification challenge, which src/app/api/slack/events/route.ts answers.
 #
-# Changing anything here later — adding a scope, editing the request URLs —
+# Changing anything here later – adding a scope, editing the request URLs –
 # only reaches the live app when the manifest is re-imported (Features → App
 # Manifest → paste → Save). "Reinstall to Workspace" on its own re-runs OAuth
 # with the app's *existing* scopes, so a scope added to this file and nothing
@@ -13,7 +13,7 @@
 #      (starts xoxb-) into SLACK_BOT_TOKEN, and the Signing Secret (Basic
 #      Information page) into SLACK_SIGNING_SECRET.
 #   2. Invite the bot user into the main channel, #half-life-bulletin,
-#      #half-life-help, and the private tickets channel — conversations.invite
+#      #half-life-help, and the private tickets channel – conversations.invite
 #      and the message/member events both require the bot to already be a
 #      member of a channel to act on it.
 #   3. Set SLACK_MAIN_CHANNEL_ID, SLACK_BULLETIN_CHANNEL_ID,
@@ -35,10 +35,10 @@ oauth_config:
         bot:
             # Required for message.channels, which is how a new #half-life-help post
             # is noticed and turned into a ticket, and for conversations.replies on
-            # that channel — the read the tickets-channel "mark as helped" button
+            # that channel – the read the tickets-channel "mark as helped" button
             # makes to find the thread reminder it rewrites (lib/site/slack.getThreadReplies).
             - channels:history
-            # Required for member_joined_channel on public channels — the trigger for
+            # Required for member_joined_channel on public channels – the trigger for
             # the auto-invite. Without it the event never arrives.
             - channels:read
             # conversations.members, which is how the #half-life-help thread's "mark
@@ -46,7 +46,7 @@ oauth_config:
             # channel (lib/site/slack.isChannelMember). channels:read only lists a
             # PUBLIC channel's members; a private one needs groups:read, and the bot
             # must be in the channel. Without this the membership check fails closed
-            # and every helper — staff included — is told they're not on the team.
+            # and every helper – staff included – is told they're not on the team.
             - groups:read
             # conversations.invite takes this for public channels, which is all the
             # auto-invite needs. channels:manage would also work but additionally
@@ -56,11 +56,11 @@ oauth_config:
             # chat.postMessage/chat.update/chat.delete. chat.delete needs no scope of
             # its own and a bot token may delete its own messages, which is the only
             # kind this app ever removes. Posting into the private tickets channel
-            # needs only this plus membership — but READING its member list is the
+            # needs only this plus membership – but READING its member list is the
             # groups:read call above, which is why a groups scope is present now.
             - chat:write
             # conversations.open (sendDM) accepts this, im:write, groups:write, or
-            # channels:manage — this is the narrow one, and all it grants is starting
+            # channels:manage – this is the narrow one, and all it grants is starting
             # a DM with someone.
             - im:write
             # users.info, behind getSlackProfile's avatar/display-name enrichment

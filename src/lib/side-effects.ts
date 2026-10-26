@@ -1,19 +1,19 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
 import { AuditAction, logAudit } from "@/lib/audit"
+import type { InputJsonValue } from "@/lib/json"
 
 export interface SideEffectContext {
 	actorEmail?: string | null
 	actorId: string | null
-	metadata?: Prisma.InputJsonValue
+	metadata?: InputJsonValue
 	targetId: string
 	targetType: string
 }
 
 /** The metadata object to spread into an audit row, ignoring JSON values that are not objects. */
-function metadataObject(value: Prisma.InputJsonValue | undefined): { [_: string]: Prisma.InputJsonValue } {
+function metadataObject(value: InputJsonValue | undefined): { [_: string]: InputJsonValue } {
 	if (typeof value !== "object" || value === null || Array.isArray(value)) return {}
-	return value as { [_: string]: Prisma.InputJsonValue }
+	return value as { [_: string]: InputJsonValue }
 }
 
 /**

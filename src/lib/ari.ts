@@ -8,25 +8,28 @@ import {
 	type AriShipStatus,
 	type AriWebhookEvent,
 } from "@hackclub/ari"
-import type { Prisma } from "@/app/generated/prisma/client"
-import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
-import { mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
+import { and, or } from "@prisma/orm-postgres/orm-client"
+import { mirrorAriPhaseToYsws, mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
 import { type StandingDecision, standingDecision } from "@/lib/ari-standing"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { getThemeDef, MAX_APPROVED_HOURS, WARMUP_THEME } from "@/lib/config/program"
 import { isTierId, tierForHours } from "@/lib/config/tiers"
+import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import type { JsonValue } from "@/lib/json"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import { notifyReviewOutcome, notifyShipFailed } from "@/lib/notifications"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { normalizeRepo } from "@/lib/repo"
 import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
+import { withFields } from "@/lib/rows"
 import { sanitize } from "@/lib/sanitize"
 import { DEFAULT_SESSION_TITLE } from "@/lib/schemas/session"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -50,8 +53,7 @@ export function isAriWebhookConfigured(): boolean {
 /**
  * The absolute webhook URL to paste into the Ari program settings.
  *
- * Configured origin first: behind an ingress the request's own host is the internal one, and a webhook URL the Ari service cannot reach is one that silently never fires. The caller may pass the request origin as a fallback
- * for local development.
+ * Configured origin first: behind an ingress the request's own host is the internal one, and a webhook URL the Ari service cannot reach is one that silently never fires. The caller may pass the request origin as a fallback for local development.
  */
 export function ariWebhookUrl(originFallback = ""): string {
 	const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? originFallback).replace(/\/$/, "")
@@ -93,11 +95,14 @@ function thumbnailFor(coverImageKey: string | null, slug: string): string {
 
 /** The build's closing reel, or null – hardware projects may omit a demo. */
 async function buildDemoUrl(userId: string, buildWeek: number): Promise<string | null> {
-	const reel = await prisma.post.findFirst({
-		orderBy: { createdAt: "desc" },
-		select: { objectKey: true },
-		where: { checkpointKey: `w${buildWeek}-reel-submission`, deletedAt: null, userId },
+	const reel = await db.orm.public.Post.where({
+		checkpointKey: `w${buildWeek}-reel-submission`,
+		deletedAt: null,
+		userId,
 	})
+		.orderBy(post => post.createdAt.desc())
+		.select("objectKey")
+		.first()
 	return publicUrlFor(reel?.objectKey ?? null)
 }
 
@@ -125,45 +130,30 @@ interface ShipBundle {
 }
 
 async function buildShipInput(themeProjectId: string, phase: Phase): Promise<ShipBundle> {
-	const project = await prisma.themeProject.findUnique({
-		include: {
-			hackatimeLinks: { select: { hackatimeProject: true }, where: { phase } },
-			submissions: {
-				orderBy: { createdAt: "desc" },
-				select: { id: true, notes: true, phase: true, resolvedAt: true },
-			},
-			user: { select: { email: true, hackatimeUserId: true, name: true, slackId: true } },
-			workSessions: {
-				orderBy: { createdAt: "asc" },
-				select: {
-					content: true,
-					createdAt: true,
-					hoursClaimed: true,
-					hoursSource: true,
-					timelapses: {
-						select: {
-							externalId: true,
-							hackatimeProject: true,
-							objectKey: true,
-							playbackUrl: true,
-							provider: true,
-						},
-					},
-					title: true,
-				},
-				where: { deletedAt: null, phase },
-			},
-		},
-		where: { id: themeProjectId },
-	})
-	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+		.include("hackatimeLinks", links => links.where({ phase }).select("hackatimeProject"))
+		.include("submissions", submissions =>
+			submissions.orderBy(submission => submission.createdAt.desc()).select("id", "notes", "phase", "resolvedAt"),
+		)
+		.include("user", user => user.select("email", "hackatimeUserId", "name", "slackId"))
+		.include("workSessions", sessions =>
+			sessions
+				.where({ deletedAt: null, phase })
+				.orderBy(session => session.createdAt.asc())
+				.select("content", "createdAt", "hoursClaimed", "hoursSource", "title")
+				.include("timelapses", timelapse =>
+					timelapse.select("externalId", "hackatimeProject", "objectKey", "playbackUrl", "provider"),
+				),
+		)
+		.first()
+	if (!project?.user) throw new HttpError("NOT_FOUND", "Project not found")
 
 	// A retry job snapshots what is pending and sends later; the maker can have unsubmitted in between. The row the decision would land on is gone, so sending would leave an untracked ship in Ari's queue.
 	const phaseStatus = statusFor(project, phase)
 	if (phaseStatus !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is no longer awaiting review, so there is no ship to send")
 
-	const user = project.user
+	const { user } = project
 	if (!project.title.trim()) throw new HttpError("UNPROCESSABLE", "This project has no title to send to Ari")
 	if (!project.githubRepo) throw new HttpError("UNPROCESSABLE", "This project has no repository link to send to Ari")
 	if (!user.slackId)
@@ -287,15 +277,14 @@ function terminalShipFailure(err: unknown): string | null {
  */
 async function noteShipFailure(themeProjectId: string, phase: Phase, reason: string): Promise<void> {
 	try {
-		const submission = await prisma.phaseSubmission.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { ariShipError: true, id: true },
-			where: { phase, resolvedAt: null, themeProjectId },
-		})
+		const submission = await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
+			.orderBy(row => row.createdAt.desc())
+			.select("ariShipError", "id")
+			.first()
 		if (!submission) return
 
 		const firstTime = submission.ariShipError === null
-		await prisma.phaseSubmission.update({ data: { ariShipError: reason }, where: { id: submission.id } })
+		await db.orm.public.PhaseSubmission.where({ id: submission.id }).update({ ariShipError: reason })
 		if (!firstTime) return
 
 		await notifyShipFailed({ phase, reason, themeProjectId })
@@ -311,9 +300,9 @@ async function noteShipFailure(themeProjectId: string, phase: Phase, reason: str
  */
 function alreadyQueuedShipId(err: unknown): string | null {
 	if (!(err instanceof AriApiError) || err.code !== "already_queued") return null
-	const details = err.details
+	const { details } = err
 	if (typeof details !== "object" || details === null) return null
-	const id = (details as { id?: unknown }).id
+	const { id } = details as { id?: unknown }
 	return typeof id === "string" && id.length > 0 ? id : null
 }
 
@@ -335,16 +324,12 @@ export async function sendSubmissionToAri(
 		let status: "accepted" | "duplicate"
 		try {
 			const result = await ari().ships.create(input)
-			id = result.id
-			status = result.status
+			;({ id, status } = result)
 		} catch (err) {
 			const queuedId = alreadyQueuedShipId(err)
 			if (!queuedId || !submissionId) throw err
 
-			const owner = await prisma.phaseSubmission.findFirst({
-				select: { id: true },
-				where: { ariSubmissionId: queuedId },
-			})
+			const owner = await db.orm.public.PhaseSubmission.where({ ariSubmissionId: queuedId }).select("id").first()
 			if (owner && owner.id !== submissionId) {
 				// Bound elsewhere already: adopting it would give one ship two local rows. Leave the retry to a human, who can see which hand-in really owns it.
 				console.error(
@@ -357,10 +342,11 @@ export async function sendSubmissionToAri(
 		}
 
 		if (submissionId)
-			await prisma.phaseSubmission.update({
+			await db.orm.public.PhaseSubmission.where({ id: submissionId }).update({
 				// The error is cleared with the send: a hand-in that reached Ari is not stuck, and the marker is only ever about the current attempt.
-				data: { ariShipError: null, ariSubmissionId: id, ariSyncedAt: new Date() },
-				where: { id: submissionId },
+				ariShipError: null,
+				ariSubmissionId: id,
+				ariSyncedAt: formatDbTimestamp(new Date()),
 			})
 
 		return { id, status }
@@ -387,39 +373,38 @@ export async function withdrawSubmissionFromAri(
 	}
 }
 
-/** Hand-ins awaiting review that never reached Ari – for the retry job and the
- * admin panel. Three queries total rather than several per project, because the
- * admin page renders this on every load. */
+/** Hand-ins awaiting review that never reached Ari – for the retry job and the admin panel. Three queries total rather than several per project, because the
+ *
+ * * admin page renders this on every load.
+ */
 export async function findUnsyncedAriSubmissions(): Promise<
 	{ themeProjectId: string; phase: Phase; reason: string | null }[]
 > {
 	if (!isAriConfigured()) return []
 
-	const projects = await prisma.themeProject.findMany({
-		select: { buildStatus: true, designStatus: true, id: true },
-		where: {
-			deletedAt: null,
-			OR: [{ designStatus: PhaseStatus.in_review }, { buildStatus: PhaseStatus.in_review }],
-		},
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)))
+		.select("buildStatus", "designStatus", "id")
+		.all()
 	if (projects.length === 0) return []
 
-	const open = await prisma.phaseSubmission.findMany({
+	const openRows = await db.orm.public.PhaseSubmission.where({ resolvedAt: null })
+		.where(submission => submission.themeProjectId.in(projects.map(p => p.id)))
 		// Ascending so the newest-per-key tie-break in selectPendingShips sees a stable order when two rows share a millisecond.
-		orderBy: { createdAt: "asc" },
-		select: { ariSubmissionId: true, createdAt: true, phase: true, themeProjectId: true },
-		where: { resolvedAt: null, themeProjectId: { in: projects.map(p => p.id) } },
-	})
+		.orderBy(submission => submission.createdAt.asc())
+		.select("ariSubmissionId", "createdAt", "phase", "themeProjectId")
+		.all()
+	const open = openRows.map(row => withFields(row, { createdAt: parseDbTimestamp(row.createdAt) }))
 	const pending = selectPendingShips(projects, open)
 	if (pending.length === 0) return []
 
 	// Why each one is stuck: the last send failure, so the panel reads "no Slack account" rather than a row to blindly retry. Withdraw failures are a different operation and live on the same action, so they are skipped here. Capped rather than per-pair queried; beyond a few hundred recent failures the oldest pairs fall back to "not attempted", which the next failure corrects.
-	const failures = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		take: 500,
-		where: { action: AuditAction.ARI_SYNC_FAILURE, targetId: { in: pending.map(p => p.themeProjectId) } },
-	})
+	const failures = await db.orm.public.AuditLog.where({ action: AuditAction.ARI_SYNC_FAILURE })
+		.where(entry => entry.targetId.in(pending.map(p => p.themeProjectId)))
+		.orderBy(entry => entry.createdAt.desc())
+		.limit(500)
+		.select("metadata", "targetId")
+		.all()
 	const reasonOf = (themeProjectId: string, phase: Phase): string | null => {
 		const meta = failures.find(failure => {
 			if (failure.targetId !== themeProjectId) return false
@@ -432,7 +417,7 @@ export async function findUnsyncedAriSubmissions(): Promise<
 		})?.metadata as { error?: unknown } | null
 		return typeof meta?.error === "string" ? meta.error : null
 	}
-	return pending.map(item => Object.assign({}, item, { reason: reasonOf(item.themeProjectId, item.phase) }))
+	return pending.map(item => withFields(item, { reason: reasonOf(item.themeProjectId, item.phase) }))
 }
 
 // ─── Inbound ─────────────────────────────────────────────────────────────────
@@ -491,6 +476,38 @@ async function ignored(event: { event: string }, reason: string, externalId: str
 	})
 }
 
+/** A row whose last Ari phase is known, for `recordAriPhase`. */
+interface AriPhaseRow {
+	ariStatus: string | null
+	id: string
+	phase: Phase
+	themeProjectId: string
+}
+
+/**
+ * Record the phase Ari reports for a ship, and mirror it to the row when it changed.
+ *
+ * Ari pushes a decision but not the states before it: a first-pass decision held for second pass, and a second pass returned to the queue, are both silent. The retry job reads `ari.ships.status` for every open ship, so this is where those states become visible here and in Airtable. A row already carrying the phase is left alone, which keeps a poll of a hundred unchanged ships to zero writes.
+ *
+ * Returns whether anything changed.
+ */
+async function recordAriPhase(row: AriPhaseRow, ariPhase: string): Promise<boolean> {
+	if (row.ariStatus === ariPhase) return false
+	const at = new Date()
+	try {
+		await db.orm.public.PhaseSubmission.where({ id: row.id }).update({
+			ariStatus: ariPhase,
+			ariStatusAt: formatDbTimestamp(at),
+		})
+	} catch (err) {
+		// Bookkeeping after a committed decision must not turn that decision into an Ari redelivery. The next poll retries the phase.
+		console.error(`[ari] could not record the phase ${ariPhase} for ${row.themeProjectId}:${row.phase}:`, err)
+		return false
+	}
+	await mirrorAriPhaseToYsws(row.themeProjectId, row.phase, ariPhase, at)
+	return true
+}
+
 async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } = {}): Promise<void> {
 	const parsed = parseAriExternalId(event.external_id)
 	if (!parsed) {
@@ -500,17 +517,15 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	const { themeProjectId, phase } = parsed
 
 	// Prefer the row this ship was actually sent for. A withdraw-and-resubmit reuses the same external id, so a decision for the withdrawn ship must not be applied to the newer hand-in that now holds the open slot.
-	const byShip = await prisma.phaseSubmission.findFirst({
-		select: { ariSubmissionId: true, id: true, resolvedAt: true },
-		where: { ariSubmissionId: event.id, phase, themeProjectId },
-	})
+	const byShip = await db.orm.public.PhaseSubmission.where({ ariSubmissionId: event.id, phase, themeProjectId })
+		.select("ariStatus", "ariSubmissionId", "id", "resolvedAt")
+		.first()
 	const open =
 		byShip
-		?? (await prisma.phaseSubmission.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { ariSubmissionId: true, id: true, resolvedAt: true },
-			where: { phase, resolvedAt: null, themeProjectId },
-		}))
+		?? (await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
+			.orderBy(submission => submission.createdAt.desc())
+			.select("ariStatus", "ariSubmissionId", "id", "resolvedAt")
+			.first())
 	if (!open) {
 		await ignored(event, "no open submission for this phase", event.external_id)
 		return
@@ -532,10 +547,9 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	let tier: number | null = null
 	let grantUsdOverride: number | null = null
 	if (result === ReviewResult.APPROVED && phase === Phase.DESIGN) {
-		const project = await prisma.themeProject.findUnique({
-			select: { requestedTier: true, tier: true },
-			where: { id: themeProjectId },
-		})
+		const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+			.select("requestedTier", "tier")
+			.first()
 		const chosen = project?.tier ?? project?.requestedTier ?? null
 		if (!chosen || !isTierId(chosen)) {
 			await ignored(event, "design approved but no valid funding tier is set", event.external_id)
@@ -543,26 +557,21 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 		}
 		tier = chosen
 
-		// A tier's grant buys its funded block of hours, so it is not paid on fewer hours than it funds. The submit
-		// gate refuses a hand-in below the floor, so this only bites when the reviewer approves less time than was
-		// logged: the tier then steps down to the one the approved hours earned, rather than the grant staying at a
-		// level the hours do not cover. Under every tier there is no parts grant at all. Clamped here rather than
-		// refused in finalizeReview, so an automatic decision never lands as an error Ari would keep redelivering.
+		// A tier's grant buys its funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor, so this only bites when the reviewer approves less time than was logged: the tier then steps down to the one the approved hours earned, rather than the grant staying at a level the hours do not cover. Under every tier there is no parts grant at all. It never steps UP: Ari reviews the work, not the money, so approved hours earning a higher tier than the maker asked for keep the asked-for tier rather than inventing a bigger grant. Clamped here rather than refused in finalizeReview, so an automatic decision never lands as an error Ari would keep redelivering.
 		const approved = approvedHoursFrom(event.review)
 		if (approved !== null) {
 			const affordable = tierForHours(approved)
 			if (affordable) {
-				if (affordable.id !== chosen) tier = affordable.id
+				if (affordable.id < chosen) tier = affordable.id
 			} else grantUsdOverride = 0
 		}
 	}
 
 	// A build cannot be approved before its design is. Ari reviews each phase on its own clock – and Half Life deliberately lets a build be submitted before its design is approved, so a build approval arriving first is expected, not an error. It is a decision deferred by state, so throw: the delivery is not recorded and Ari redelivers it, which is what eventually applies it once the design is approved. Checked before the claim is cleared so a deferred redelivery does not keep deleting a human reviewer's claim.
 	if (result === ReviewResult.APPROVED && phase === Phase.BUILD) {
-		const project = await prisma.themeProject.findUnique({
-			select: { designStatus: true, theme: true },
-			where: { id: themeProjectId },
-		})
+		const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+			.select("designStatus", "theme")
+			.first()
 		// A warm-up project's only phase is the one the form collected, so there is no design approval to wait for.
 		if (project?.theme !== Theme.WARMUP && project?.designStatus !== PhaseStatus.approved)
 			throw new HttpError(
@@ -572,7 +581,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	}
 
 	// Ari owns the decision, so a human claim must not block it.
-	await prisma.reviewClaim.deleteMany({ where: { submissionId: submission.id } })
+	await db.orm.public.ReviewClaim.where({ submissionId: submission.id }).deleteAndCount()
 
 	const feedback = event.review.note_to_maker?.trim() || defaultFeedback(result)
 	// The note without the fallback above: it is the reviewer's own words, and an invented one would say the headline twice wherever it is quoted – the Slack DM and the row's Loops column.
@@ -624,10 +633,14 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 		throw err
 	}
 
-	await prisma.phaseSubmission.update({
-		data: { ariDecision: event.decision, ariStatus: "reviewed", ariSubmissionId: event.id },
-		where: { id: submission.id },
+	await db.orm.public.PhaseSubmission.where({ id: submission.id }).update({
+		ariDecision: event.decision,
+		ariStatus: "reviewed",
+		ariSubmissionId: event.id,
 	})
+
+	// The status poll writes this too when it is the one that found the decision. The helper reads the phase from before the update, so only the path that has not recorded it yet does the work.
+	await recordAriPhase({ ...submission, phase, themeProjectId }, "reviewed")
 
 	await logAudit({
 		action: AuditAction.ARI_WEBHOOK_APPLIED,
@@ -647,7 +660,13 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	//
 	// A reconciliation that replays a backlog skips both this and the notice below: the maker is told once, by the live webhook, and a run that decided hundreds of old hand-ins at once must not turn into hundreds of late messages. The Airtable backfill mirrors the state afterwards instead.
 	if (opts.announce !== false)
-		await mirrorReviewDecision(themeProjectId, phase, reviewStatusForResult(result), makerNote)
+		await mirrorReviewDecision(
+			themeProjectId,
+			phase,
+			reviewStatusForResult(result),
+			makerNote,
+			event.review.reviewer?.email ?? null,
+		)
 
 	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
 	if (opts.announce !== false)
@@ -681,20 +700,18 @@ async function applyReset(event: ResetInput): Promise<void> {
 	}
 	const { themeProjectId, phase } = parsed
 
-	const project = await prisma.themeProject.findUnique({
-		select: { buildStatus: true, designStatus: true },
-		where: { id: themeProjectId },
-	})
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+		.select("buildStatus", "designStatus")
+		.first()
 	if (!project) {
 		await ignored(event, "project not found", event.external_id)
 		return
 	}
 
-	const latest = await prisma.phaseSubmission.findFirst({
-		orderBy: { createdAt: "desc" },
-		select: { ariSubmissionId: true, id: true },
-		where: { phase, themeProjectId },
-	})
+	const latest = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
+		.orderBy(submission => submission.createdAt.desc())
+		.select("ariStatus", "ariSubmissionId", "id")
+		.first()
 	if (!latest) {
 		await ignored(event, "no submission to requeue", event.external_id)
 		return
@@ -711,24 +728,23 @@ async function applyReset(event: ResetInput): Promise<void> {
 	else if (status === PhaseStatus.rejected) await reopenPhase(themeProjectId, phase, null, null, reason)
 
 	const nextStatus = event.event === "review.reverted" ? PhaseStatus.update_requested : PhaseStatus.in_review
-	await prisma.$transaction(async tx => {
-		await tx.submissionReview.updateMany({
-			data: { invalidated: true, invalidatedAt: new Date() },
-			where: { invalidated: false, submission: { phase, themeProjectId } },
+	const ariStatus = event.event === "review.reverted" ? "reverted" : "review"
+	const nowText = formatDbTimestamp(new Date())
+	await db.transaction(async tx => {
+		await tx.orm.public.SubmissionReview.where({ invalidated: false })
+			.where(review =>
+				review.submission.some(submission =>
+					and(submission.phase.eq(phase), submission.themeProjectId.eq(themeProjectId)),
+				),
+			)
+			.updateAndCount({ invalidated: true, invalidatedAt: nowText })
+		await tx.orm.public.PhaseSubmission.where({ id: latest.id }).update({
+			ariDecision: null,
+			ariStatus,
+			resolvedAt: null,
+			resolvedResult: null,
 		})
-		await tx.phaseSubmission.update({
-			data: {
-				ariDecision: null,
-				ariStatus: event.event === "review.reverted" ? "reverted" : "review",
-				resolvedAt: null,
-				resolvedResult: null,
-			},
-			where: { id: latest.id },
-		})
-		await tx.themeProject.update({
-			data: phaseStatusUpdate(phase, nextStatus),
-			where: { id: themeProjectId },
-		})
+		await tx.orm.public.ThemeProject.where({ id: themeProjectId }).update(phaseStatusUpdate(phase, nextStatus))
 	})
 
 	await logAudit({
@@ -738,8 +754,10 @@ async function applyReset(event: ResetInput): Promise<void> {
 		targetType: "ThemeProject",
 	})
 
+	await recordAriPhase({ ...latest, phase, themeProjectId }, ariStatus)
+
 	// The row follows the phase rather than being reset to "Pending Review" regardless: a requeue is back in the queue, a revert is back with the maker. The note goes with the decision it belonged to – it is cleared, so an email for whatever comes next cannot quote words that no longer stand.
-	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(nextStatus), null)
+	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(nextStatus), null, null)
 }
 
 /** An optional post-approval fraud check. A failure flags the maker. */
@@ -747,15 +765,12 @@ async function applyFraud(event: FraudEvent): Promise<void> {
 	const parsed = parseAriExternalId(event.external_id)
 	let userId: string | null = null
 	if (parsed) {
-		const project = await prisma.themeProject.findUnique({
-			select: { userId: true },
-			where: { id: parsed.themeProjectId },
-		})
+		const project = await db.orm.public.ThemeProject.whereUnique({ id: parsed.themeProjectId }).select("userId").first()
 		userId = project?.userId ?? null
 	}
 
 	if (event.fraud.verdict === "failed" && userId)
-		await prisma.user.update({ data: { fraudFlagged: true }, where: { id: userId } })
+		await db.orm.public.User.where({ id: userId }).update({ fraudFlagged: true })
 
 	await logAudit({
 		action: AuditAction.ARI_WEBHOOK_APPLIED,
@@ -834,7 +849,7 @@ export async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
  * Errors are rethrown so the route answers non-2xx.
  */
 export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string): Promise<void> {
-	const seen = await prisma.ariWebhookDelivery.findUnique({ select: { id: true }, where: { deliveryId } })
+	const seen = await db.orm.public.AriWebhookDelivery.where({ deliveryId }).select("id").first()
 	if (seen) return
 
 	const externalId = "external_id" in event ? event.external_id : null
@@ -845,14 +860,12 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
 	} catch (err) {
 		// "Not yet", not "never": the design has to be approved before a build approval can be applied, and that ordering is normal here. Keep the whole event so the retry job can apply it later, and accept the delivery rather than asking Ari to redeliver indefinitely.
 		if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") {
-			await prisma.ariWebhookDelivery.create({
-				data: {
-					ariSubmissionId,
-					deliveryId,
-					event: event.event,
-					externalId,
-					payload: event as unknown as Prisma.InputJsonValue,
-				},
+			await db.orm.public.AriWebhookDelivery.create({
+				ariSubmissionId,
+				deliveryId,
+				event: event.event,
+				externalId,
+				payload: event as unknown as JsonValue,
 			})
 			await logAudit({
 				action: AuditAction.ARI_WEBHOOK_IGNORED,
@@ -865,8 +878,11 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
 		throw err
 	}
 
-	await prisma.ariWebhookDelivery.create({
-		data: { ariSubmissionId, deliveryId, event: event.event, externalId },
+	await db.orm.public.AriWebhookDelivery.create({
+		ariSubmissionId,
+		deliveryId,
+		event: event.event,
+		externalId,
 	})
 }
 
@@ -886,8 +902,14 @@ export interface ReconcileSummary {
 	failed: number
 	/** Hand-ins Ari still holds open. */
 	pending: number
+	/** Open hand-ins whose stored phase changed this pass. */
+	phaseUpdated: number
 	/** Open-hand-ins Ari reports as reverted – terminal ships the local reset would otherwise leave in the queue. */
 	reverted: number
+	/** Open ships Ari currently holds for a second pass. */
+	secondPass: number
+	/** Ships that were in a second pass last pass and are now back in the queue – the organizer returned the held decision. */
+	secondPassReturned: number
 	/** Decided ships whose newest ship is not this hand-in (withdrawn and resubmitted). */
 	skipped: number
 }
@@ -976,23 +998,31 @@ export async function reconcileAriDecisions(
 		deferred: 0,
 		failed: 0,
 		pending: 0,
+		phaseUpdated: 0,
 		reverted: 0,
+		secondPass: 0,
+		secondPassReturned: 0,
 		skipped: 0,
 	}
 	if (!isAriConfigured()) return summary
 
-	const candidates = await prisma.phaseSubmission.findMany({
-		select: { ariSubmissionId: true, phase: true, themeProjectId: true },
-		where: {
-			ariSubmissionId: { not: null },
-			OR: [
-				{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-				{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-			],
-			resolvedAt: null,
-			themeProject: { deletedAt: null },
-		},
-	})
+	const candidates = await db.orm.public.PhaseSubmission.where({ resolvedAt: null })
+		.where(submission => submission.ariSubmissionId.isNotNull())
+		.where(submission =>
+			or(
+				and(
+					submission.phase.eq(Phase.DESIGN),
+					submission.themeProject.some(project => project.designStatus.eq(PhaseStatus.in_review)),
+				),
+				and(
+					submission.phase.eq(Phase.BUILD),
+					submission.themeProject.some(project => project.buildStatus.eq(PhaseStatus.in_review)),
+				),
+			),
+		)
+		.where(submission => submission.themeProject.some(project => project.deletedAt.isNull()))
+		.select("ariStatus", "ariSubmissionId", "id", "phase", "themeProjectId")
+		.all()
 	// Shuffled rather than ordered: see the header. Sort keys are only for the shuffle and carry no meaning.
 	const open = candidates
 		.map(value => ({ order: Math.random(), value }))
@@ -1010,6 +1040,15 @@ export async function reconcileAriDecisions(
 			summary.failed += 1
 			console.error(`[ari] reconcile: status failed for ${submission.themeProjectId}:${submission.phase}`, err)
 			continue
+		}
+
+		// Only the ship this hand-in was sent as can say anything about its phase. A newer ship for the same project and phase is a withdraw-and-resubmit, and its `second_pass` must not be written onto the older local row.
+		if (submission.ariSubmissionId === status.id) {
+			const wasSecondPass = submission.ariStatus === "second_pass"
+			const returnedFromSecondPass = wasSecondPass && (status.phase === "review" || status.phase === "under_review")
+			if (status.phase === "second_pass") summary.secondPass += 1
+			if (returnedFromSecondPass) summary.secondPassReturned += 1
+			if (opts.commit && (await recordAriPhase(submission, status.phase))) summary.phaseUpdated += 1
 		}
 
 		const standing = standingDecision(status)
@@ -1114,11 +1153,14 @@ async function adoptStatusPlaceholder(input: {
 	submissionId: string
 	themeProjectId: string
 }): Promise<boolean> {
-	const review = await prisma.submissionReview.findFirst({
-		orderBy: { createdAt: "desc" },
-		select: { feedback: true, id: true, reviewerEmail: true, reviewerId: true },
-		where: { invalidated: false, result: input.result, submissionId: input.submissionId },
+	const review = await db.orm.public.SubmissionReview.where({
+		invalidated: false,
+		result: input.result,
+		submissionId: input.submissionId,
 	})
+		.orderBy(row => row.createdAt.desc())
+		.select("feedback", "id", "reviewerEmail", "reviewerId")
+		.first()
 	if (!review || !isStatusPlaceholder(review, input.result)) return false
 
 	await writeStatusReviewNote({
@@ -1147,29 +1189,24 @@ async function writeStatusReviewNote(input: {
 	reviewerEmail: string | null
 	themeProjectId: string
 }): Promise<void> {
-	await prisma.$transaction(async tx => {
-		await tx.submissionReview.update({
-			data: {
-				feedback: input.note,
-				...(input.auditNote ? { reason: input.auditNote } : {}),
-				reviewerEmail: input.reviewerEmail,
-				// Ari names a decision by the reviewer's address, so the label follows the address exactly as the webhook path does (see `ariReviewerLabel`).
-				reviewerName: input.reviewerEmail ?? "Ari",
-			},
-			where: { id: input.reviewId },
+	await db.transaction(async tx => {
+		await tx.orm.public.SubmissionReview.where({ id: input.reviewId }).update({
+			feedback: input.note,
+			...(input.auditNote ? { reason: input.auditNote } : {}),
+			reviewerEmail: input.reviewerEmail,
+			// Ari names a decision by the reviewer's address, so the label follows the address exactly as the webhook path does (see `ariReviewerLabel`).
+			reviewerName: input.reviewerEmail ?? "Ari",
 		})
 
-		const project = await tx.themeProject.findUnique({
-			select: { buildReviewComments: true, designReviewComments: true },
-			where: { id: input.themeProjectId },
-		})
+		const project = await tx.orm.public.ThemeProject.whereUnique({ id: input.themeProjectId })
+			.select("buildReviewComments", "designReviewComments")
+			.first()
 		const current = input.phase === Phase.DESIGN ? project?.designReviewComments : project?.buildReviewComments
 		if (current !== defaultFeedback(input.result)) return
 
-		await tx.themeProject.update({
-			data: input.phase === Phase.DESIGN ? { designReviewComments: input.note } : { buildReviewComments: input.note },
-			where: { id: input.themeProjectId },
-		})
+		await tx.orm.public.ThemeProject.where({ id: input.themeProjectId }).update(
+			input.phase === Phase.DESIGN ? { designReviewComments: input.note } : { buildReviewComments: input.note },
+		)
 	})
 }
 
@@ -1189,30 +1226,19 @@ export async function repairStatusDecisions(opts: { commit?: boolean; limit?: nu
 	if (!isAriConfigured()) return summary
 
 	const placeholders = (
-		await prisma.submissionReview.findMany({
-			orderBy: { createdAt: "asc" },
-			select: {
-				feedback: true,
-				id: true,
-				result: true,
-				reviewerEmail: true,
-				reviewerId: true,
-				submission: { select: { ariSubmissionId: true, phase: true, themeProjectId: true } },
-			},
-			where: {
-				invalidated: false,
-				reviewerEmail: null,
-				reviewerId: null,
-				// Without a ship id there is nothing to ask Ari about, and the decision never came from it.
-				submission: { ariSubmissionId: { not: null } },
-			},
-		})
+		await db.orm.public.SubmissionReview.where({ invalidated: false, reviewerEmail: null, reviewerId: null })
+			.where(review => review.submission.some(submission => submission.ariSubmissionId.isNotNull()))
+			.orderBy(review => review.createdAt.asc())
+			.select("feedback", "id", "result", "reviewerEmail", "reviewerId")
+			.include("submission", submission => submission.select("ariSubmissionId", "phase", "themeProjectId"))
+			.all()
 	).filter(review => isStatusPlaceholder(review, review.result))
 
 	const stubs = placeholders.slice(0, opts.limit ?? placeholders.length)
 	summary.checked = stubs.length
 
 	for (const review of stubs) {
+		if (!review.submission) continue
 		const { ariSubmissionId, phase, themeProjectId } = review.submission
 
 		let status: AriShipStatusWithReview

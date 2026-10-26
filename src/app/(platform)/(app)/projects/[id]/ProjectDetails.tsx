@@ -1,7 +1,6 @@
 "use client"
 
 import { useId, useState } from "react"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { IconCheck, IconPencil } from "@/components/platform/icons"
 import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, OptionRow } from "@/components/platform/ui"
@@ -11,8 +10,9 @@ import { DESIGN_WEEKS, MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } f
 import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
+import { ParticipantGoal } from "@/lib/enums"
 import { fmtHours } from "@/lib/projects"
-import { normalizeRepo } from "@/lib/repo"
+import { validateRepoField } from "@/lib/repo"
 import { README_GUIDE_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
@@ -70,9 +70,7 @@ export function ProjectDetails({
 				<h1 className="min-w-0 flex-1 text-[1.5rem] leading-tight font-extrabold tracking-[-0.03em] text-balance [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
 					{project.name}
 				</h1>
-				{/* Always where it lives, even while it cannot be used: a control that
-            disappears sends the reader looking for it. Shut, it says why
-            right underneath, instead of at the foot of the block. */}
+				{/* Always where it lives, even while it cannot be used: a control that disappears sends the reader looking for it. Shut, it says why right underneath, instead of at the foot of the block. */}
 				<div className="mt-1 flex shrink-0 flex-col items-end gap-1">
 					<Button
 						aria-describedby={locked ? lockedId : undefined}
@@ -85,13 +83,13 @@ export function ProjectDetails({
 						<IconPencil className="text-sm" /> Edit details
 					</Button>
 					{locked && (
-						<p className="hand max-w-[14rem] text-right text-[0.78rem] leading-snug text-navy-soft" id={lockedId}>
+						<p className="hand max-w-56 text-right text-[0.78rem] leading-snug text-navy-soft" id={lockedId}>
 							{locked}.
 						</p>
 					)}
 					{unsubmit
 						&& (confirming ? (
-							<div className="flex max-w-[16rem] flex-col items-end gap-1.5 text-right">
+							<div className="flex max-w-64 flex-col items-end gap-1.5 text-right">
 								<p className="text-[0.82rem] leading-snug text-navy">
 									Take {unsubmit.label} out of review? You can submit it again when you&apos;re done.
 								</p>
@@ -118,7 +116,7 @@ export function ProjectDetails({
 							</Button>
 						))}
 					{unsubmitError && (
-						<p className="hand max-w-[16rem] text-right text-[0.78rem] leading-snug text-coral-deep" role="alert">
+						<p className="hand max-w-64 text-right text-[0.78rem] leading-snug text-coral-deep" role="alert">
 							{unsubmitError}
 						</p>
 					)}
@@ -192,7 +190,7 @@ function DetailsForm({
 
 	async function save() {
 		if (!name.trim()) return setError({ field: "name", message: "A project needs a name." })
-		const { url, error: repoError } = normalizeRepo(repo)
+		const { url, error: repoError } = validateRepoField(repo)
 		if (repoError) return setError({ field: "repo", message: repoError })
 
 		// Only what changed, so an untouched tier is never re-sent against a server rule it does not need to meet. Taking a starter always carries tier 1 with it when the project is not already there – the server refuses a starter at any other tier.
@@ -352,9 +350,7 @@ function DetailsForm({
 							/>
 						)
 					})}
-					{/* Your own idea is the default: picked explicitly here so a
-					    project that already has a starter can leave it even when
-					    no starters are offered anymore. */}
+					{/* Your own idea is the default: picked explicitly here so a project that already has a starter can leave it even when no starters are offered anymore. */}
 					{starters.length > 0 ? (
 						<OptionRow
 							onClick={() => {

@@ -52,13 +52,12 @@ export const POST = withSession(async (req: Request, { gate }) => {
 		return fail("VALIDATION_FAILED", "That file does not look like a video")
 
 	// The extension/MIME check above trusts what the client *claimed*. For images, verify the bytes too – the from-url path already does – so an HTML file renamed to .png cannot land in the bucket as image/png.
-	let ext = check.ext
+	let { ext } = check
 	let contentType = file.type
 	if (file.type.startsWith("image/")) {
 		const sniffed = sniffImage(bytes)
 		if (!sniffed) return fail("VALIDATION_FAILED", "That file does not look like a PNG, JPEG, GIF or WebP image")
-		ext = sniffed.ext
-		contentType = sniffed.contentType
+		;({ contentType, ext } = sniffed)
 	}
 
 	// Keys are namespaced by user so abuse is traceable and orphans are findable. Pictures are named after their bytes rather than a fresh uuid: picking the same image again has to mint the same URL, because the journal counts its evidence by URL (`countImages`) and a second URL counts as a second picture. Videos keep the random name – a reel is identified by its post.

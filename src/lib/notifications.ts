@@ -1,14 +1,16 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
-import { Phase, ReviewResult } from "@/app/generated/prisma/enums"
 import { projectUrl, reviewUrl } from "@/lib/app-url"
 import { ariReviewUrl } from "@/lib/ari-url"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
-import prisma from "@/lib/prisma"
+import { Phase, ReviewResult } from "@/lib/enums"
+import type { InputJsonObject } from "@/lib/json"
+import db from "@/lib/prisma8"
 import { formatProgramDate, getProgramSettings } from "@/lib/program"
 import { trackSideEffect } from "@/lib/side-effects"
 import { postMessage, sendDM } from "@/lib/slack"
+import { escapeLikePattern } from "@/lib/text"
+import { parseDbTimestamp } from "@/lib/time"
 
 /**
  * Telling a maker what a review decided.
@@ -147,7 +149,7 @@ async function deliverToMaker(input: {
 	note: string | null
 	slackId: string | null
 	/** Extra fields for the audit row, for a notice whose kind and phase alone do not say enough. */
-	meta?: Prisma.InputJsonObject
+	meta?: InputJsonObject
 }): Promise<void> {
 	const { slackId } = input
 	if (!slackId) return
@@ -197,22 +199,20 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
 }
 
 async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> {
-	const project = await prisma.themeProject.findUnique({
-		select: {
-			submissionExtensionUntil: true,
-			theme: true,
-			title: true,
-			user: { select: { slackId: true } },
-		},
-		where: { id: notice.themeProjectId },
-	})
-	if (!project) return
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: notice.themeProjectId })
+		.select("submissionExtensionUntil", "theme", "title")
+		.include("user", user => user.select("slackId"))
+		.first()
+	if (!project?.user) return
 
 	const title = projectDisplayTitle(project)
 	// A return grants the project a week, so its message can name the day the maker can resubmit through. Formatted in the program's timezone, the same one the dashboard's own deadlines use, rather than the server's.
 	const resubmitBy =
 		notice.result === ReviewResult.RETURNED && project.submissionExtensionUntil
-			? formatProgramDate(project.submissionExtensionUntil, (await getProgramSettings()).programTimezone)
+			? formatProgramDate(
+					parseDbTimestamp(project.submissionExtensionUntil),
+					(await getProgramSettings()).programTimezone,
+				)
 			: null
 	const message = reviewOutcomeMessage(notice, { phase: notice.phase, resubmitBy, title })
 
@@ -234,15 +234,11 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
  */
 export async function notifyShipFailed(input: { themeProjectId: string; phase: Phase; reason: string }): Promise<void> {
 	try {
-		const project = await prisma.themeProject.findUnique({
-			select: {
-				theme: true,
-				title: true,
-				user: { select: { slackId: true } },
-			},
-			where: { id: input.themeProjectId },
-		})
-		if (!project) return
+		const project = await db.orm.public.ThemeProject.whereUnique({ id: input.themeProjectId })
+			.select("theme", "title")
+			.include("user", user => user.select("slackId"))
+			.first()
+		if (!project?.user) return
 
 		const title = projectDisplayTitle(project)
 		const message = shipFailedMessage({ phase: input.phase, reason: input.reason, title })
@@ -287,27 +283,25 @@ function escapeSlackText(value: string): string {
 async function disputeContext(
 	submissionId: string,
 ): Promise<{ ariUrl: string | null; reviewPageUrl: string; slackId: string | null }> {
-	const submission = await prisma.phaseSubmission.findUnique({
-		select: {
-			ariSubmissionId: true,
-			reviews: {
-				orderBy: { createdAt: "desc" },
-				select: { reviewer: { select: { slackId: true } }, reviewerEmail: true },
-				take: 1,
-				where: { invalidated: false },
-			},
-		},
-		where: { id: submissionId },
-	})
+	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
+		.select("ariSubmissionId")
+		.include("reviews", reviews =>
+			reviews
+				.orderBy(review => review.createdAt.desc())
+				.where({ invalidated: false })
+				.limit(1)
+				.select("reviewerEmail")
+				.include("reviewer", reviewer => reviewer.select("slackId")),
+		)
+		.first()
 
 	const review = submission?.reviews[0]
 	let slackId = review?.reviewer?.slackId ?? null
 	const email = review?.reviewerEmail?.trim()
 	if (!slackId && email) {
-		const account = await prisma.user.findFirst({
-			select: { slackId: true },
-			where: { email: { equals: email, mode: "insensitive" } },
-		})
+		const account = await db.orm.public.User.where(user => user.email.ilike(escapeLikePattern(email)))
+			.select("slackId")
+			.first()
 		slackId = account?.slackId ?? null
 	}
 
@@ -321,7 +315,7 @@ async function disputeContext(
 /**
  * Ask staff to look again at a decision a maker has disputed.
  *
- * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
+ * Posted to `SLACK_DISPUTES_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
  *
  * The reviewer who made the disputed decision is pinged and given links straight to the hand-in: the review console thread, where the dispute can be answered, and Ari, where the decision can be re-read and made again. Both are additions to the same channel post rather than a DM: the point is that whoever picks it up has the reviewer named and the conversation a click away. A reviewer with no account on this deployment, or a hand-in that never reached Ari, simply drops its half.
  */
@@ -334,7 +328,7 @@ export async function notifyStaffDispute(input: {
 	note: string
 	participant: string
 }): Promise<void> {
-	const channel = process.env.SLACK_REVIEW_CHANNEL_ID
+	const channel = process.env.SLACK_DISPUTES_CHANNEL_ID
 	if (!channel) return
 	const phase = input.phase === Phase.DESIGN ? "design" : "build"
 
@@ -348,8 +342,7 @@ export async function notifyStaffDispute(input: {
 		.join("\n")
 	const links = [
 		disputeUrl ? `<${disputeUrl}|Open the project>` : null,
-		// Empty when the deployment names no origin (lib/app-url), so the link is left
-		// out rather than sent with no URL in it.
+		// Empty when the deployment names no origin (lib/app-url), so the link is left out rather than sent with no URL in it.
 		reviewPageUrl ? `<${reviewPageUrl}|Open the review thread>` : null,
 		ariUrl ? `<${ariUrl}|Open the review on Ari>` : null,
 	].filter(link => link !== null)
@@ -370,11 +363,11 @@ export async function notifyStaffDispute(input: {
  */
 export async function notifyDisputeReply(input: { body: string; phase: Phase; themeProjectId: string }): Promise<void> {
 	try {
-		const project = await prisma.themeProject.findUnique({
-			select: { theme: true, title: true, user: { select: { slackId: true } } },
-			where: { id: input.themeProjectId },
-		})
-		if (!project) return
+		const project = await db.orm.public.ThemeProject.whereUnique({ id: input.themeProjectId })
+			.select("theme", "title")
+			.include("user", user => user.select("slackId"))
+			.first()
+		if (!project?.user) return
 
 		const phase = input.phase === Phase.DESIGN ? "design" : "build"
 		await deliverToMaker({

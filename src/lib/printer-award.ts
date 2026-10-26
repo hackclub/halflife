@@ -1,4 +1,4 @@
-import type { PrinterAwardStatus } from "@/app/generated/prisma/enums"
+import type { PrinterAwardStatus } from "@/lib/enums"
 
 /**
  * How a printer award moves from "earned" to "in someone's hands".

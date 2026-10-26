@@ -1,9 +1,10 @@
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 
 interface Params {
@@ -16,15 +17,13 @@ const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested
 export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, linkId } = await params
 
-	const link = await prisma.hackatimeLink.findFirst({
-		include: { themeProject: { select: { buildStatus: true, designStatus: true } } },
-		where: {
-			id: linkId,
-			themeProject: { deletedAt: null, userId: gate.user.id },
-			themeProjectId: id,
-		},
-	})
-	if (!link) return fail("NOT_FOUND", "Link not found")
+	const link = await db.orm.public.HackatimeLink.where({ id: linkId, themeProjectId: id })
+		.where(hackatimeLink =>
+			hackatimeLink.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(gate.user.id))),
+		)
+		.include("themeProject", project => project.select("buildStatus", "designStatus"))
+		.first()
+	if (!link?.themeProject) return fail("NOT_FOUND", "Link not found")
 
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
@@ -41,18 +40,21 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 	if (link.hoursApproved !== null) return fail("PHASE_LOCKED", "A reviewer has set hours on this link")
 
 	// Conditional on the phase still being editable and the link still unreviewed: a submit or a decision that commits between the checks above and this delete makes it match nothing, and the link stays.
-	const removed = await prisma.hackatimeLink.deleteMany({
-		where: {
-			hoursApproved: null,
-			id: linkId,
-			OR: [
-				{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
-				{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
-			],
-			themeProjectId: id,
-		},
-	})
-	if (removed.count !== 1) return fail("PHASE_LOCKED", "This phase moved while its link was being removed")
+	const removed = await db.orm.public.HackatimeLink.where({ hoursApproved: null, id: linkId, themeProjectId: id })
+		.where(row =>
+			or(
+				and(
+					row.phase.eq(Phase.DESIGN),
+					row.themeProject.some(owner => owner.designStatus.in(EDITABLE_PHASE_STATUSES)),
+				),
+				and(
+					row.phase.eq(Phase.BUILD),
+					row.themeProject.some(owner => owner.buildStatus.in(EDITABLE_PHASE_STATUSES)),
+				),
+			),
+		)
+		.deleteAndCount()
+	if (removed !== 1) return fail("PHASE_LOCKED", "This phase moved while its link was being removed")
 
 	await logAudit({
 		action: AuditAction.USER_UNLINK_HACKATIME,

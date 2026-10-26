@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { checkRepo } from "@/lib/repo-checks"
 
 export const dynamic = "force-dynamic"
@@ -19,12 +19,14 @@ interface Params {
 export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
-	const project = await prisma.themeProject.findFirst({
-		select: { githubRepo: true, theme: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("artifactLinks", "description", "githubRepo", "theme")
+		.first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
-	const checks = await checkRepo(project.githubRepo, project.theme)
+	const checks = await checkRepo(project.githubRepo, project.theme, {
+		artifactLinks: project.artifactLinks,
+		description: project.description,
+	})
 	return ok(checks)
 })

@@ -11,8 +11,7 @@
  *
  * Run with `bun run ari:resend-all` (dry run), then `bun run ari:resend-all -- --limit 1 --commit` to prove the cookie and permissions on one ship before `bun run ari:resend-all -- --commit`.
  *
- * Flags: `--program`, `--cookie`, `--concurrency` (5), `--max-attempts` (5), `--delay` (0), `--limit`, `--commit`.
- * Env: `ARI_PROGRAM`, `ARI_COOKIE`, `ARI_CONCURRENCY`, `ARI_MAX_ATTEMPTS`, `ARI_DELAY`, `ARI_BASE`.
+ * Flags: `--program`, `--cookie`, `--concurrency` (5), `--max-attempts` (5), `--delay` (0), `--limit`, `--commit`. Env: `ARI_PROGRAM`, `ARI_COOKIE`, `ARI_CONCURRENCY`, `ARI_MAX_ATTEMPTS`, `ARI_DELAY`, `ARI_BASE`.
  */
 
 const BASE = process.env.ARI_BASE ?? "https://ari.hackclub.com"
@@ -277,7 +276,13 @@ async function main(): Promise<void> {
 	if (totals.refused + totals.failed > 0) process.exitCode = 1
 }
 
-main().catch(error => {
-	console.error(error instanceof Error ? error.message : error)
-	process.exit(1)
-})
+void (async () => {
+	try {
+		await main()
+	} catch (err) {
+		console.error(err instanceof Error ? err.message : err)
+		process.exit(1)
+	}
+})()
+
+export { main }

@@ -181,6 +181,7 @@ export const DOCS: DocArticle[] = [
 					"Your project should be polished, something you'd be proud to show to others, and something that you can potentially sell as a product!",
 					"Copied designs, stolen project files, and more will result in a rejection and potential ban from Half life and Hack Club as a whole",
 					"Projects should be original, with most parts being designed by you. That means depending on the week, you cannot for example buy a kit, or use only premade modules for a project",
+					"If you take a starter project, write your own project description. The starter's default description blocks submission – say what you changed and why it is yours.",
 				],
 				paragraphs: ["Failure to meet the below expectations may result in your project rejected"],
 			},
@@ -188,14 +189,14 @@ export const DOCS: DocArticle[] = [
 				heading: "Your repo",
 				list: [
 					"Every week: a public repo, with a README that has enough text and photos in it.",
-					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
-					"CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf).",
+					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), a bom.csv, and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a BOM table in the README.",
+					"CAD week: editable CAD files (.step, .f3d, .fcstd, .sldprt). Tinkercad, OpenSCAD, Blender and STL-only exports are not accepted as the source. Recommended: printable models (.stl, .3mf) and a BOM table in the README.",
 					"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
 					"Displays week: firmware or code. Recommended: a schematic.",
 					"Breadboard computer week: a schematic (KiCad, Logisim or Digital).",
 				],
 				paragraphs: [
-					"The submit sheet checks your repo before it lets you submit. A missing README, a README with too little text or too few photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
+					"The submit sheet checks your repo before it lets you submit. A missing README, a README with too little text or too few photos, or a missing required file blocks the submit and tells you what to add. Recommended files, including a BOM table in the README, are flagged but never block.",
 				],
 			},
 			{
@@ -206,7 +207,7 @@ export const DOCS: DocArticle[] = [
 					"How it works: how the parts fit together.",
 					"Photos and screenshots: the schematic, the board layout, the 3D model, and the real thing once it exists.",
 					"A wiring diagram, if anything is wired by hand.",
-					"The bill of materials, as a table with links to where each part is bought.",
+					"The bill of materials, as a table with prices and links to where each part is bought.",
 				],
 				paragraphs: [
 					"A folder of files and two sentences is not documentation. Write the README for someone who has never heard of your project and wants to build one:",
@@ -216,7 +217,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Source files, not exports",
 				paragraphs: [
-					"Upload the files someone would need to change your design, not just look at it. A PDF of a schematic is not a schematic, and an STL is not a CAD model. Keep the repo organised in folders, with firmware, libraries and anything you referenced alongside it.",
+					"Upload the files someone would need to change your design, not just look at it. A PDF of a schematic is not a schematic, and an STL is not a CAD model. For the CAD week, Tinkercad, OpenSCAD and Blender are not accepted as the final source: export an editable file from Fusion, Onshape, FreeCAD or SolidWorks. Keep the repo organised in folders, with firmware, libraries and anything you referenced alongside it.",
 				],
 			},
 			{

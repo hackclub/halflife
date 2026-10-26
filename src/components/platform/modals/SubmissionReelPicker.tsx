@@ -38,23 +38,23 @@ export function SubmissionReelPicker({
 
 	useEffect(() => {
 		let live = true
-		fetch(`/api/me/reels?checkpointKey=${encodeURIComponent(checkpointKey)}`, { cache: "no-store" })
-			.then(async res => {
+		void (async () => {
+			try {
+				const res = await fetch(`/api/me/reels?checkpointKey=${encodeURIComponent(checkpointKey)}`, {
+					cache: "no-store",
+				})
 				const body = (await res.json().catch(() => null)) as {
 					error?: { message?: string }
 					reels: SubmissionReel[]
 				} | null
 				if (!res.ok) throw new Error(body?.error?.message ?? "Could not load your previous reels")
 				if (!body) throw new Error("Could not load your previous reels")
-				return body
-			})
-			.then(body => {
 				if (live) setReels(body.reels)
-			})
-			.catch(() => {
+			} catch {
 				// Nothing to offer if the list will not load: the maker records a fresh reel as before rather than meeting an error here.
 				if (live) setReels([])
-			})
+			}
+		})()
 		return () => {
 			live = false
 		}

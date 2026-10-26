@@ -1,9 +1,10 @@
+import { and } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
 import { bomData, bomLockReason, listBom } from "@/lib/bom"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { scheduleRepoSync } from "@/lib/repo-sync"
 import { bomItemUpdateSchema } from "@/lib/schemas/project"
@@ -18,11 +19,13 @@ interface Params {
  * The line, only if it belongs to one of the caller's projects – looked up through the project so someone else's item id reads as not found.
  */
 async function guard(userId: string, id: string, itemId: string) {
-	const item = await prisma.bomItem.findFirst({
-		select: { id: true, themeProject: { select: { buildStatus: true, designStatus: true } } },
-		where: { id: itemId, themeProject: { deletedAt: null, userId }, themeProjectId: id },
-	})
+	const item = await db.orm.public.BomItem.where({ id: itemId, themeProjectId: id })
+		.where(bomItem => bomItem.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))))
+		.select("id")
+		.include("themeProject", project => project.select("buildStatus", "designStatus"))
+		.first()
 	if (!item) return { error: fail("NOT_FOUND", "Part not found") }
+	if (!item.themeProject) return { error: fail("NOT_FOUND", "Part not found") }
 
 	const access = await getSubmissionAccess(userId, id)
 	if (!access.open) return { error: fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE) }
@@ -43,22 +46,22 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	const g = await guard(gate.user.id, id, itemId)
 	if (g.error) return g.error
 
-	await prisma.$transaction(async tx => {
+	await db.transaction(async tx => {
 		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the edit would change a list that is supposed to be final.
-		const fresh = await tx.themeProject.findFirst({
-			select: { buildStatus: true, designStatus: true },
-			where: { deletedAt: null, id, userId: gate.user.id },
-		})
+		const fresh = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+			.select("buildStatus", "designStatus")
+			.first()
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 		const freshLock = bomLockReason(fresh)
 		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
 
 		// Conditional on the line still being the caller's, so a line deleted or moved in the meantime is not written.
-		const changed = await tx.bomItem.updateMany({
-			data: bomData(parsed.data),
-			where: { id: itemId, themeProject: { deletedAt: null, userId: gate.user.id }, themeProjectId: id },
-		})
-		if (changed.count !== 1) throw new HttpError("NOT_FOUND", "Part not found")
+		const changed = await tx.orm.public.BomItem.where({ id: itemId, themeProjectId: id })
+			.where(item =>
+				item.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(gate.user.id))),
+			)
+			.updateAndCount(bomData(parsed.data))
+		if (changed !== 1) throw new HttpError("NOT_FOUND", "Part not found")
 	})
 	after(() => scheduleRepoSync(id))
 	return ok({ items: await listBom(id) })
@@ -70,20 +73,21 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 	const g = await guard(gate.user.id, id, itemId)
 	if (g.error) return g.error
 
-	await prisma.$transaction(async tx => {
+	await db.transaction(async tx => {
 		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the delete would empty a list that is supposed to be final.
-		const fresh = await tx.themeProject.findFirst({
-			select: { buildStatus: true, designStatus: true },
-			where: { deletedAt: null, id, userId: gate.user.id },
-		})
+		const fresh = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+			.select("buildStatus", "designStatus")
+			.first()
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 		const freshLock = bomLockReason(fresh)
 		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
 
-		const removed = await tx.bomItem.deleteMany({
-			where: { id: itemId, themeProject: { deletedAt: null, userId: gate.user.id }, themeProjectId: id },
-		})
-		if (removed.count !== 1) throw new HttpError("NOT_FOUND", "Part not found")
+		const removed = await tx.orm.public.BomItem.where({ id: itemId, themeProjectId: id })
+			.where(item =>
+				item.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(gate.user.id))),
+			)
+			.deleteAndCount()
+		if (removed !== 1) throw new HttpError("NOT_FOUND", "Part not found")
 	})
 	after(() => scheduleRepoSync(id))
 	return ok({ items: await listBom(id) })

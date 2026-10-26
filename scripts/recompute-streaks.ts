@@ -1,5 +1,4 @@
-import "dotenv/config"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 import { recomputeAllStreaks } from "../src/lib/streak"
 
 /**
@@ -15,9 +14,11 @@ async function main() {
 	console.log(`recomputed streaks for ${users} users in ${((Date.now() - started) / 1000).toFixed(1)}s`)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exit(1)
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exit(1)
+} finally {
+	await db.close()
+}

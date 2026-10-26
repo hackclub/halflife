@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 
 // Orchard's healthcheck and the container's HEALTHCHECK both point here. Touching Postgres means a pod with a dead database is marked unhealthy instead of serving errors for every request.
 export const dynamic = "force-dynamic"
@@ -13,7 +13,8 @@ export async function GET(): Promise<NextResponse> {
 	}
 
 	try {
-		await prisma.$queryRaw`SELECT 1`
+		const plan = db.raw.sql`SELECT 1`.affectedCount().build()
+		await db.execute(plan)
 		return NextResponse.json({ ok: true })
 	} catch (err) {
 		console.error("[health] database check failed:", err)

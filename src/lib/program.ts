@@ -1,11 +1,52 @@
 import "server-only"
+import { or } from "@prisma/orm-postgres/orm-client"
 import { cache } from "react"
-import type { ProgramSettings } from "@/app/generated/prisma/client"
-import { PhaseStatus } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
+import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import prisma from "@/lib/prisma"
-import { calendarDayNumber, DAY_MS, effectiveDateFor, utcCalendarDay } from "@/lib/time"
+import db from "@/lib/prisma8"
+import {
+	calendarDayNumber,
+	DAY_MS,
+	effectiveDateFor,
+	formatDbTimestamp,
+	parseDbTimestamp,
+	utcCalendarDay,
+} from "@/lib/time"
+
+/** The program settings row, with timestamps as Dates. Parsed from the PostgreSQL text Prisma 8 returns. */
+export interface ProgramSettings {
+	airtableSyncEnabled: boolean
+	eventStartDate: Date
+	id: string
+	programTimezone: string
+	repoSyncEnabled: boolean
+	reviewClaimTtlMinutes: number
+	shopClosesAt: Date | null
+	shopGraceDays: number
+	shopOpen: boolean
+	submissionsCloseAt: Date | null
+	submissionsOpen: boolean
+	updatedAt: Date
+}
+
+function toProgramSettings(row: Models.public_ProgramSettings): ProgramSettings {
+	return {
+		airtableSyncEnabled: row.airtableSyncEnabled,
+		eventStartDate: parseDbTimestamp(row.eventStartDate),
+		id: row.id,
+		programTimezone: row.programTimezone,
+		repoSyncEnabled: row.repoSyncEnabled,
+		reviewClaimTtlMinutes: row.reviewClaimTtlMinutes,
+		shopClosesAt: row.shopClosesAt === null ? null : parseDbTimestamp(row.shopClosesAt),
+		shopGraceDays: row.shopGraceDays,
+		shopOpen: row.shopOpen,
+		submissionsCloseAt: row.submissionsCloseAt === null ? null : parseDbTimestamp(row.submissionsCloseAt),
+		submissionsOpen: row.submissionsOpen,
+		updatedAt: parseDbTimestamp(row.updatedAt),
+	}
+}
 
 /**
  * Re-exported rather than kept here: the check itself belongs next to the other shape helpers, because a zone is validated where it is typed and this module is server-only.
@@ -19,15 +60,14 @@ export { effectiveDateFor } from "@/lib/time"
  * Read once per server render: the layout's snapshot, the page, the week number and the access gates all ask for it, and each asking was a round trip. Nothing writes the row and then reads it back in the same render.
  */
 export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
-	const existing = await prisma.programSettings.findUnique({ where: { id: "singleton" } })
-	if (existing) return existing
-	return prisma.programSettings.create({
-		data: {
-			eventStartDate: new Date(`${DEFAULT_EVENT_START_DATE}T00:00:00.000Z`),
-			id: "singleton",
-			programTimezone: DEFAULT_PROGRAM_TIMEZONE,
-		},
+	const existing = await db.orm.public.ProgramSettings.whereUnique({ id: "singleton" }).first()
+	if (existing) return toProgramSettings(existing)
+	const created = await db.orm.public.ProgramSettings.create({
+		eventStartDate: formatDbTimestamp(new Date(`${DEFAULT_EVENT_START_DATE}T00:00:00.000Z`)),
+		id: "singleton",
+		programTimezone: DEFAULT_PROGRAM_TIMEZONE,
 	})
+	return toProgramSettings(created)
 })
 
 /**
@@ -153,19 +193,13 @@ export const WEEK_CLOSED_MESSAGE =
 export async function isWeekOpen(userId: string, themeProjectId: string, week: number): Promise<boolean> {
 	const [settings, user, project] = await Promise.all([
 		getProgramSettings(),
-		prisma.user.findUnique({
-			select: { submissionExtensionUntil: true },
-			where: { id: userId },
-		}),
-		prisma.themeProject.findUnique({
-			select: { submissionExtensionUntil: true },
-			where: { id: themeProjectId },
-		}),
+		db.orm.public.User.whereUnique({ id: userId }).select("submissionExtensionUntil").first(),
+		db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).select("submissionExtensionUntil").first(),
 	])
 	const closesAt = effectiveWeekClose(
 		weekClosesAt(settings, week),
-		user?.submissionExtensionUntil,
-		project?.submissionExtensionUntil,
+		user?.submissionExtensionUntil ? parseDbTimestamp(user.submissionExtensionUntil) : null,
+		project?.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null,
 	)
 	return new Date() < closesAt
 }
@@ -204,20 +238,14 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 	const now = new Date()
 	const [settings, user, project] = await Promise.all([
 		getProgramSettings(),
-		prisma.user.findUnique({
-			select: { submissionExtensionUntil: true },
-			where: { id: userId },
-		}),
+		db.orm.public.User.whereUnique({ id: userId }).select("submissionExtensionUntil").first(),
 		themeProjectId
-			? prisma.themeProject.findUnique({
-					select: { submissionExtensionUntil: true },
-					where: { id: themeProjectId },
-				})
+			? db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).select("submissionExtensionUntil").first()
 			: Promise.resolve(null),
 	])
 
-	const userExt = user?.submissionExtensionUntil ?? null
-	const projectExt = project?.submissionExtensionUntil ?? null
+	const userExt = user?.submissionExtensionUntil ? parseDbTimestamp(user.submissionExtensionUntil) : null
+	const projectExt = project?.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null
 
 	const globallyOpen = settings.submissionsOpen && (!settings.submissionsCloseAt || settings.submissionsCloseAt > now)
 
@@ -283,9 +311,9 @@ export function shopGraceAccess(
 	if (state.awaitingReview > 0) return { graceUntil: null, open: true }
 
 	// The last review is a max over every project's two review dates, not the most recently *updated* row: editing a title or granting an extension bumps `updatedAt` without touching a review, which would mask a review that just landed and close the grace window early.
-	const reviewedAt = [state.designReviewedAt, state.buildReviewedAt]
+	const [reviewedAt] = [state.designReviewedAt, state.buildReviewedAt]
 		.filter((d): d is Date => Boolean(d))
-		.toSorted((a, b) => b.getTime() - a.getTime())[0]
+		.toSorted((a, b) => b.getTime() - a.getTime())
 	if (!reviewedAt) return { graceUntil: null, open: false }
 
 	const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)
@@ -307,22 +335,24 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 	if (!settings.shopOpen) return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
 
 	const [awaitingReview, lastReview] = await Promise.all([
-		prisma.themeProject.count({
-			where: { deletedAt: null, OR: [{ designStatus: "in_review" }, { buildStatus: "in_review" }], userId },
-		}),
+		db.orm.public.ThemeProject.where({ deletedAt: null, userId })
+			.where(project =>
+				or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)),
+			)
+			.aggregate(a => ({ count: a.count() })),
 		// The last review is a max over every project's two review dates, not the most recently *updated* row: editing a title or granting an extension bumps `updatedAt` without touching a review, which would mask a review that just landed and close the grace window early.
-		prisma.themeProject.aggregate({
-			_max: { buildReviewedAt: true, designReviewedAt: true },
-			where: { deletedAt: null, userId },
-		}),
+		db.orm.public.ThemeProject.where({ deletedAt: null, userId }).aggregate(a => ({
+			buildReviewedAt: a.max("buildReviewedAt"),
+			designReviewedAt: a.max("designReviewedAt"),
+		})),
 	])
 
 	const grace = shopGraceAccess(
 		settings,
 		{
-			awaitingReview,
-			buildReviewedAt: lastReview._max.buildReviewedAt,
-			designReviewedAt: lastReview._max.designReviewedAt,
+			awaitingReview: awaitingReview.count,
+			buildReviewedAt: lastReview.buildReviewedAt === null ? null : parseDbTimestamp(lastReview.buildReviewedAt),
+			designReviewedAt: lastReview.designReviewedAt === null ? null : parseDbTimestamp(lastReview.designReviewedAt),
 		},
 		now,
 	)

@@ -1,10 +1,10 @@
 import "server-only"
-import type { Prisma, ThemeProject } from "@/app/generated/prisma/client"
-import { type Phase, Theme } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { MAX_WARMUP_PROJECTS, THEMES } from "@/lib/config/program"
+import { type Phase, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { lockKey } from "@/lib/locks"
-import prisma from "@/lib/prisma"
+import db, { type DbOrTx } from "@/lib/prisma8"
 
 /**
  * Create one themed project row, when its week's "create a project" checkpoint is opened – never ahead of time.
@@ -13,23 +13,33 @@ import prisma from "@/lib/prisma"
  *
  * Idempotent: the `(userId, theme)` unique constraint plus `skipDuplicates` means opening the checkpoint twice, or two tabs racing, is still one row. Resolves to the row either way.
  */
-export async function ensureThemeProject(userId: string, theme: Theme): Promise<ThemeProject> {
+/** One project row as reads return it: scalars only, no relations loaded. */
+export type ThemeProjectRow = Omit<
+	Models.public_ThemeProject,
+	| "user"
+	| "posts"
+	| "workSessions"
+	| "submissions"
+	| "hcbGrantTopUps"
+	| "hackatimeLinks"
+	| "contentReports"
+	| "publicReels"
+	| "ledgerEntries"
+	| "bomItems"
+	| "repoSyncRuns"
+	| "reports"
+>
+
+export async function ensureThemeProject(userId: string, theme: Theme): Promise<ThemeProjectRow> {
 	const def = THEMES.find(t => t.id === theme)
 	if (!def) throw new Error(`Unknown theme ${theme}`)
 
 	// Most onboarding reads happen after the row already exists. Avoid a pointless write/round-trip on that hot path; the unique constraint still makes the create branch safe when two tabs open the checkpoint together.
-	const existing = await prisma.themeProject.findFirst({
-		where: { deletedAt: null, theme, userId },
-	})
+	const existing = await db.orm.public.ThemeProject.where({ deletedAt: null, theme, userId }).first()
 	if (existing) return existing
 
-	await prisma.themeProject.createMany({
-		data: [{ theme, title: def.label, userId }],
-		skipDuplicates: true,
-	})
-	return prisma.themeProject.findFirstOrThrow({
-		where: { deletedAt: null, theme, userId },
-	})
+	await db.orm.public.ThemeProject.createAll([{ theme, title: def.label, userId }], { onConflict: "skip" })
+	return db.orm.public.ThemeProject.where({ deletedAt: null, theme, userId }).firstOrThrow()
 }
 
 /**
@@ -37,7 +47,7 @@ export async function ensureThemeProject(userId: string, theme: Theme): Promise<
  *
  * The cap is a count, and a count read before the create is a race: two requests at once both read a count under the cap and both create, so the cap would be a suggestion rather than a cap. The lock is the same per-maker advisory lock the money paths take (see `lockUserCredit` in lib/currency.ts), in its own namespace so it cannot collide with a credit mutation, and it is the first statement in the transaction so the count cannot be read before the other request has finished creating.
  */
-function lockWarmupProjects(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+function lockWarmupProjects(tx: DbOrTx, userId: string): Promise<void> {
 	return lockKey(tx, `warmup:${userId}`)
 }
 
@@ -57,30 +67,30 @@ export interface WarmupProjectInput {
  *
  * The count and the create are one transaction under a per-maker lock, so two requests at once cannot both slip past the cap.
  */
-export function createWarmupProject(input: WarmupProjectInput): Promise<ThemeProject> {
-	return prisma.$transaction(async tx => {
+export function createWarmupProject(input: WarmupProjectInput): Promise<ThemeProjectRow> {
+	return db.transaction(async tx => {
 		await lockWarmupProjects(tx, input.userId)
 
 		// Only the rows that still exist count. A warm-up that has been approved, funded or earned a coin cannot be deleted at all (see `deleteBlockReason`), so a project that could carry a grant is always in this count: deleting a draft never buys another one.
-		const existing = await tx.themeProject.count({
-			where: { deletedAt: null, theme: Theme.WARMUP, userId: input.userId },
-		})
+		const { count: existing } = await tx.orm.public.ThemeProject.where({
+			deletedAt: null,
+			theme: Theme.WARMUP,
+			userId: input.userId,
+		}).aggregate(a => ({ count: a.count() }))
 		if (existing >= MAX_WARMUP_PROJECTS)
 			throw new HttpError(
 				"CONFLICT",
 				`You already have ${MAX_WARMUP_PROJECTS} warm-up projects. Delete one to start another.`,
 			)
 
-		return tx.themeProject.create({
-			data: {
-				description: input.description,
-				githubRepo: input.githubRepo,
-				requestedTier: input.requestedTier,
-				theme: Theme.WARMUP,
-				title: input.title,
-				userId: input.userId,
-				warmupPhase: input.warmupPhase,
-			},
+		return tx.orm.public.ThemeProject.create({
+			description: input.description,
+			githubRepo: input.githubRepo,
+			requestedTier: input.requestedTier,
+			theme: Theme.WARMUP,
+			title: input.title,
+			userId: input.userId,
+			warmupPhase: input.warmupPhase,
 		})
 	})
 }

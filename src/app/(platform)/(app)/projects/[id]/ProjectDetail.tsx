@@ -1,10 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { DisputeThread } from "@/app/components/forms/DisputeThread"
-import { IconBook, IconChevronLeft, IconClock, IconWarning } from "@/components/platform/icons"
+import { IconBook, IconWarning } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { Button, Chip, Panel } from "@/components/platform/ui"
@@ -15,51 +14,14 @@ import { getTier } from "@/lib/config/tiers"
 import { cx } from "@/lib/cx"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
-import { displayRepo } from "@/lib/repo"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewChipTone } from "@/lib/review-state"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 import { BomEditor } from "./BomEditor"
 import { HackatimeLinks } from "./HackatimeLinks"
 import { ProjectDetails } from "./ProjectDetails"
-import { CoverImage } from "./ProjectHeaderParts"
+import { CoverImage, ProjectBackLink, ProjectFacts, ProjectSection } from "./ProjectHeaderParts"
 import { Timeline } from "./Timeline"
-
-function BackLink() {
-	return (
-		<Link
-			className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
-			href="/projects"
-		>
-			<IconChevronLeft className="text-base" /> All projects
-		</Link>
-	)
-}
-
-/** A titled section of the page. */
-function Section({
-	title,
-	aside,
-	children,
-	id,
-}: {
-	title: string
-	aside?: React.ReactNode
-	children: React.ReactNode
-	id: string
-}) {
-	return (
-		<section aria-labelledby={id} className="mt-8">
-			<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-				<h2 className="label text-violet-deep" id={id}>
-					{title}
-				</h2>
-				{aside}
-			</div>
-			{children}
-		</section>
-	)
-}
 
 /**
  * One project, laid out the way Stasis lays out its project page: what it is at the top with its thumbnail beside it, then what the repo has, the hours tracked elsewhere, the parts list, and last the full record of the work – every entry, timelapse, reel and review, newest first.
@@ -101,8 +63,13 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 
 	return (
 		<div className="grid gap-2.5 rounded-xl border-2 border-line bg-cream/60 p-3.5">
+			<p className="rounded-lg bg-gold-pale/70 px-3 py-2 text-[0.82rem] leading-snug text-navy-soft">
+				Use this only if something is wrong with the previous review: if it judged older work, misread what you
+				submitted, or applied a rule that does not fit. It is not for asking to be approved, or for saying what you
+				changed: if you have made the changes and can hand in again, resubmit instead.
+			</p>
 			<label className="label text-violet-deep" htmlFor={`dispute-${phase}`}>
-				What looks wrong?{" "}
+				What is wrong with the review?{" "}
 				<span className="hand font-normal normal-case text-navy-soft">(a sentence is enough, 10+ characters)</span>
 			</label>
 			<textarea
@@ -113,7 +80,7 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 					setNote(e.target.value)
 					if (error) setError(null)
 				}}
-				placeholder="The build works – the video runs at 1:20."
+				placeholder="The review says the case is missing, but it is in the photos from 2:10."
 				rows={3}
 				value={note}
 			/>
@@ -134,7 +101,8 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 				</Button>
 			</div>
 			<p className="hand text-[0.8rem] text-navy-soft">
-				this does not change the decision – it asks a reviewer to read it again.
+				a dispute does not approve the phase or count as a resubmission – it only asks a reviewer to read the review
+				again.
 			</p>
 		</div>
 	)
@@ -231,7 +199,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 	const canActuallySubmit = canSubmit && hasCover
 
 	return (
-		<Section id="warmup-title" title="Warm-up">
+		<ProjectSection id="warmup-title" title="Warm-up">
 			<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 				<div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
 					<p className="text-[0.95rem] font-extrabold text-navy tabular-nums">
@@ -302,7 +270,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 					</>
 				)}
 			</Panel>
-		</Section>
+		</ProjectSection>
 	)
 }
 
@@ -445,7 +413,7 @@ function DecisionNotice({
 								className="mt-3"
 								onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
 								size="sm"
-								variant="solid"
+								variant="gold"
 							>
 								I&apos;ve made these changes – resubmit
 							</Button>
@@ -533,8 +501,8 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	if (!project || !data) {
 		const missing = hydrated || !data
 		return (
-			<div className="mx-auto w-full max-w-[960px] px-4 pt-6 sm:px-8">
-				<BackLink />
+			<div className="mx-auto w-full max-w-240 px-4 pt-6 sm:px-8">
+				<ProjectBackLink href="/projects" label="All projects" />
 				<Panel className="mt-6 bg-paper px-6 py-14 text-center" radius={20} tone="line">
 					<p className="text-[1.05rem] font-extrabold text-navy">{missing ? "No such project" : "Loading…"}</p>
 					{missing && (
@@ -563,23 +531,19 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	const tierLocked = statusOf(week) === "approved"
 	const grantUsd = getTier(project.tier)?.grantUsd ?? 0
 	// Kept in a local so the phase survives into the unsubmit handler below.
-	const inReview = data.inReview
+	const { inReview } = data
 	// The overlap between a recording and a Hackatime link could not be checked for a phase of this project, so the total on this page may still be counting the same sitting once through each. A season project spans its design and build weeks, five apart, so either of them is enough.
 	const overlapUnchecked = overlapUncheckedWeek(project.weekId) || overlapUncheckedWeek(buildWeekId)
 
 	return (
-		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
-			<BackLink />
+		<div className="mx-auto w-full max-w-240 px-4 pt-6 pb-10 sm:px-8">
+			<ProjectBackLink href="/projects" label="All projects" />
 
 			{/* ---------- what a decision asks for, first ---------- */}
 			<DecisionNotice phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
 
 			{/* ---------- the project itself ---------- */}
-			{/* Sized by its own width, not the viewport's: the rails either side of
-          the page take a different share at every breakpoint, and the header
-          only has room for two columns once it is wide enough for both. Below
-          that the thumbnail leads as a banner, and it is first in the DOM so
-          focus order agrees with what is seen. */}
+			{/* Sized by its own width, not the viewport's: the rails either side of the page take a different share at every breakpoint, and the header only has room for two columns once it is wide enough for both. Below that the thumbnail leads as a banner, and it is first in the DOM so focus order agrees with what is seen. */}
 			<Panel className="@container mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6" radius={22} tone="line">
 				<div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">
 					<CoverImage
@@ -597,47 +561,18 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 							locked={data.editLocked}
 							// Two lines, one voice: how far it has got, then what it is. Everything else the page knows about it is further down, where it can be acted on.
 							meta={
-								<div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft">
-									<p className="flex flex-wrap items-center gap-x-2 tabular-nums">
-										<span className="inline-flex items-center gap-1.5 text-teal-ink">
-											<IconClock className="text-sm" /> {fmtHours(hours)} logged
-										</span>
-										<Dot />
-										<span>{sessions.length === 1 ? "1 entry" : `${sessions.length} entries`}</span>
-										{started > 0 && (
-											<>
-												<Dot />
-												<span>started {fmtDate(started)}</span>
-											</>
-										)}
-									</p>
-									<p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-										<Chip tone="muted">{warmup ? "Warm Up" : week.theme}</Chip>
-										<Chip tone="violet">
-											Tier {project.tier}
-											{project.starter && " · starter"}
-										</Chip>
-										{!warmup && (
-											<span>
-												weeks {project.weekId} &amp; {buildWeekId}
-											</span>
-										)}
-										{project.githubRepo && (
-											<>
-												<Dot />
-												<a
-													className="min-w-0 truncate text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
-													href={project.githubRepo}
-													rel="noopener noreferrer"
-													target="_blank"
-													title={project.githubRepo}
-												>
-													{displayRepo(project.githubRepo)}
-												</a>
-											</>
-										)}
-									</p>
-								</div>
+								<ProjectFacts
+									buildWeekId={buildWeekId}
+									entries={sessions.length}
+									hours={hours}
+									repo={project.githubRepo ?? null}
+									startedAt={started > 0 ? started : undefined}
+									starter={project.starter}
+									theme={week.theme}
+									tier={project.tier}
+									warmup={warmup}
+									weekId={project.weekId}
+								/>
 							}
 							project={project}
 							tierLocked={tierLocked}
@@ -681,9 +616,9 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 			{/* ---------- where review stands ---------- */}
 			{data.phases.length > 0 && (
-				<Section id="review-title" title="Review">
+				<ProjectSection id="review-title" title="Review">
 					<ReviewState phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
-				</Section>
+				</ProjectSection>
 			)}
 
 			{/* ---------- what the repo has ---------- */}
@@ -699,16 +634,16 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 			</div>
 
 			{/* ---------- keeping the repo in step ---------- */}
-			<Section id="repo-sync-title" title="Sync your repo">
+			<ProjectSection id="repo-sync-title" title="Sync your repo">
 				<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 					<RepoSyncSettings projectId={project.id} />
 				</Panel>
-			</Section>
+			</ProjectSection>
 
 			<HackatimeLinks phase={week.phase} projectId={project.id} />
 
 			{/* ---------- the parts ---------- */}
-			<Section id="bom-title" title="Bill of materials">
+			<ProjectSection id="bom-title" title="Bill of materials">
 				<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 					<BomEditor
 						grantUsd={grantUsd}
@@ -719,10 +654,10 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 						tier={project.tier}
 					/>
 				</Panel>
-			</Section>
+			</ProjectSection>
 
 			{/* ---------- what happened, newest first ---------- */}
-			<Section id="timeline-title" title="Timeline">
+			<ProjectSection id="timeline-title" title="Timeline">
 				<Panel className="bg-paper px-5 py-6 sm:px-6" radius={20} tone="line">
 					{data.timeline.length === 0 ? (
 						<p className="hand py-8 text-center text-[0.9rem] text-navy-soft">
@@ -732,23 +667,15 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 						<Timeline items={data.timeline} weekFor={weekFor} />
 					)}
 				</Panel>
-			</Section>
+			</ProjectSection>
 
 			{/* ---------- last, and out of the way ---------- */}
-			<Section id="delete-title" title="Delete project">
+			<ProjectSection id="delete-title" title="Delete project">
 				<DeleteProject blocked={data.deleteBlocked} name={project.name} projectId={project.id} />
-			</Section>
+			</ProjectSection>
 		</div>
 	)
 }
 
 // Stable, so the repo checks do not re-run on every render of the page.
 function noop() {}
-
-function Dot() {
-	return (
-		<span aria-hidden="true" className="text-navy-faint">
-			·
-		</span>
-	)
-}
