@@ -3,8 +3,9 @@ import type { Models } from "@/app/generated/prisma8/contract.d"
 import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
-import { Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/lib/enums"
+import { HoursSource, Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/lib/enums"
 import { lapseTimelapseUrl } from "@/lib/lapse"
+import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
 import { projectEditLockReason } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
@@ -91,10 +92,16 @@ export interface PhaseDispute {
 
 /** One phase's review state, for the block above the repo checks. */
 export interface PhaseReview {
+	/** Hours the reviewer approved, once decided. Null until then. */
+	approvedHours: number | null
+	/** Hours the maker claimed for the phase: journal entries plus linked Hackatime time, before reviewer cuts. */
+	claimedHours: number
 	/** The reviewer's note on the latest decision, if any. */
 	comments: string | null
 	/** The maker's dispute on the latest decision, with its thread, if they raised one. */
 	dispute: PhaseDispute | null
+	/** Hours cut at the entry level so far (sessions and links a reviewer put explicit hours on), before any final override. Shown while no decision has frozen a total. */
+	entryDeflatedHours: number
 	phase: Phase
 	/** When it was decided, epoch ms. */
 	reviewedAt: number | null
@@ -134,6 +141,7 @@ export interface ProjectSessionRow {
 	createdAt: Date
 	hoursApproved: number | null
 	hoursClaimed: number
+	hoursSource: HoursSource
 	id: string
 	phase: Models.public_WorkSession["phase"]
 	timelapses: {
@@ -195,17 +203,20 @@ function reelItem(p: ProjectPostRow): TimelineItem {
 export async function getProjectPage(userId: string, id: string): Promise<ProjectPageData | null> {
 	const fetched = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId })
 		.select(
+			"approvedHours",
 			"bomTaxShippingUsd",
 			"buildReviewComments",
 			"buildReviewedAt",
 			"buildStatus",
 			"coverImageKey",
+			"designApprovedHours",
 			"designReviewComments",
 			"designReviewedAt",
 			"designStatus",
 			"grantEmittedAt",
 			"id",
 		)
+		.include("hackatimeLinks", links => links.select("cachedSeconds", "hoursApproved", "phase"))
 		.include("posts", posts =>
 			posts
 				.select("caption", "createdAt", "id", "objectKey", "publishedAt", "status", "thumbnailKey")
@@ -226,7 +237,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		)
 		.include("workSessions", sessions =>
 			sessions
-				.select("content", "createdAt", "hoursApproved", "hoursClaimed", "id", "phase", "title")
+				.select("content", "createdAt", "hoursApproved", "hoursClaimed", "hoursSource", "id", "phase", "title")
 				.where({ deletedAt: null })
 				.include("timelapses", timelapse =>
 					timelapse
@@ -320,7 +331,28 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 			const [openShip] = project.submissions
 				.filter(s => s.phase === phase && s.resolvedAt === null)
 				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+			// What the maker claimed, before any reviewer cut: journal entries at their claimed hours (a HACKATIME_TRACKED entry claims nothing – its time arrives through the link) plus linked Hackatime time at its cached total. The frozen total below already folds in every reviewer cut, so the gap between the two is the deflation.
+			const claimedHours = round2(
+				project.workSessions
+					.filter(s => s.phase === phase && s.hoursSource !== HoursSource.HACKATIME_TRACKED)
+					.reduce((n, s) => n + s.hoursClaimed, 0)
+					+ project.hackatimeLinks
+						.filter(l => l.phase === phase)
+						.reduce((n, l) => n + (l.cachedSeconds ?? 0) / 3600, 0),
+			)
+			const approvedHours = isDesign ? (project.designApprovedHours ?? null) : (project.approvedHours ?? null)
+			// Entry-level cuts so far, before any final override: a session or link a reviewer put explicit hours on. A HACKATIME_TRACKED entry claims nothing, so it cannot be cut either.
+			const entryDeflatedHours = round2(
+				project.workSessions
+					.filter(s => s.phase === phase && s.hoursSource !== HoursSource.HACKATIME_TRACKED && s.hoursApproved !== null)
+					.reduce((n, s) => n + (s.hoursClaimed - (s.hoursApproved ?? s.hoursClaimed)), 0)
+					+ project.hackatimeLinks
+						.filter(l => l.phase === phase && l.hoursApproved !== null)
+						.reduce((n, l) => n + ((l.cachedSeconds ?? 0) / 3600 - (l.hoursApproved ?? 0)), 0),
+			)
 			return {
+				approvedHours,
+				claimedHours,
 				comments: isDesign ? project.designReviewComments : project.buildReviewComments,
 				dispute: disputed
 					? {
@@ -337,6 +369,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 							resolvedAt: disputed.resolvedAt?.getTime() ?? null,
 						}
 					: null,
+				entryDeflatedHours,
 				phase,
 				reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
 				shipError: openShip?.ariShipError ?? null,
@@ -422,7 +455,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		.include("user", user => user.select("displayName", "id", "name"))
 		.include("workSessions", sessions =>
 			sessions
-				.select("content", "createdAt", "hoursApproved", "hoursClaimed", "id", "phase", "title")
+				.select("content", "createdAt", "hoursApproved", "hoursClaimed", "hoursSource", "id", "phase", "title")
 				.where({ deletedAt: null })
 				.include("timelapses", timelapse =>
 					timelapse

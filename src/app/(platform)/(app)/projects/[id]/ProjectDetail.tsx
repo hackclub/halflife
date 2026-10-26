@@ -276,6 +276,33 @@ function WarmupWork({ projectId }: { projectId: string }) {
 }
 
 /** Where each phase stands with review, above the repo checks. */
+function PhaseHours({ phase }: { phase: ProjectPageData["phases"][number] }) {
+	// The gap between what was claimed and what stands is the reviewer deflation, said outright rather than left for the reviewer's note to mention. A frozen total covers entry cuts and any final override together; while undecided only the entry cuts exist so far.
+	const deflated = phase.approvedHours !== null ? phase.claimedHours - phase.approvedHours : 0
+	if (phase.approvedHours !== null && deflated > 0.005)
+		return (
+			<p className="hand text-[0.84rem] leading-snug text-navy-soft tabular-nums">
+				Claimed {fmtHours(phase.claimedHours)} · approved {fmtHours(phase.approvedHours)}{" "}
+				<span className="font-semibold text-coral-deep">(deflated by {fmtHours(deflated)})</span>
+			</p>
+		)
+	if (phase.approvedHours !== null)
+		return (
+			<p className="hand text-[0.84rem] leading-snug text-navy-soft tabular-nums">
+				{fmtHours(phase.approvedHours)} approved
+			</p>
+		)
+	if (phase.entryDeflatedHours > 0.005)
+		return (
+			<p className="hand text-[0.84rem] leading-snug text-navy-soft tabular-nums">
+				Claimed {fmtHours(phase.claimedHours)} · reviewer adjusted entries by{" "}
+				<span className="font-semibold text-coral-deep">{fmtHours(phase.entryDeflatedHours)}</span> so far (counts as{" "}
+				{fmtHours(phase.claimedHours - phase.entryDeflatedHours)} for now)
+			</p>
+		)
+	return null
+}
+
 function ReviewState({
 	projectId,
 	phases,
@@ -308,6 +335,8 @@ function ReviewState({
 									<span className="hand text-[0.82rem] text-navy-soft">decided {fmtDate(p.reviewedAt)}</span>
 								)}
 							</div>
+
+							<PhaseHours phase={p} />
 
 							{p.comments && (
 								<p className="rounded-xl bg-cream px-3.5 py-2.5 text-[0.9rem] leading-snug text-navy-soft">
@@ -401,6 +430,9 @@ function DecisionNotice({
 							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
 								{p.phase === "DESIGN" ? "Design" : "Build"} needs changes
 							</p>
+							<div className="mt-1.5">
+								<PhaseHours phase={p} />
+							</div>
 							{p.comments ? (
 								// Pre-lined, so a reviewer's own line breaks survive: their note is often a list, and reflowing it into one paragraph loses which request ended and the next began.
 								<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
@@ -433,6 +465,9 @@ function DecisionNotice({
 							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
 								{p.phase === "DESIGN" ? "Design" : "Build"} was rejected
 							</p>
+							<div className="mt-1.5">
+								<PhaseHours phase={p} />
+							</div>
 							{p.comments ? (
 								<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
 									{p.comments}

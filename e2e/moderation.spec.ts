@@ -33,7 +33,7 @@ test("an admin suspends, then bans, a participant", async ({ admin, openAs }) =>
 	// A write is refused by the guard, not by whichever route body would have run next.
 	const refused = await participantPage.request.put("/api/posts/does-not-exist/like", { data: { liked: true } })
 	expect(refused.status()).toBe(403)
-	expect((await refused.json()).error?.code).toBe("ACCOUNT_SUSPENDED")
+	expect(await refused.json()).toMatchObject({ error: { code: "ACCOUNT_SUSPENDED" } })
 
 	// ── Lift the suspension ────────────────────────────────────────────────────
 	await admin.goto(`/admin/users/${user.id}`)
@@ -95,6 +95,6 @@ test("a suspended participant cannot spend, report or log work", async ({ admin,
 	for (const attempt of attempts) {
 		const refused = await page.request.post(attempt.url, { data: attempt.body })
 		expect(refused.status()).toBe(403)
-		expect((await refused.json()).error?.code).toBe("ACCOUNT_SUSPENDED")
+		expect(await refused.json()).toMatchObject({ error: { code: "ACCOUNT_SUSPENDED" } })
 	}
 })
