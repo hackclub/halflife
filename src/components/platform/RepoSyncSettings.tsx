@@ -32,7 +32,7 @@ const WritableRepoSchema = z.object({
 
 const SyncPayloadSchema = z.object({
 	enabled: z.boolean(),
-	error: z.object({ message: z.string().optional() }).optional(),
+	error: z.object({ message: z.string().optional() }).nullish(),
 	forge: z.string().nullable(),
 	linkedForges: z.array(z.string()),
 	/** The project's own repo link, what the sync target is compared against. */
