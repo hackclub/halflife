@@ -1,22 +1,25 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { z } from "zod"
 import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/components/platform/icons"
 import { Button, Chip } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 import { messageOf } from "@/lib/errors"
 
-export interface LapseTimelapse {
-	attached: boolean
-	createdAt: number
-	durationSeconds: number
-	hackatimeProject: string | null
-	id: string
-	processing: boolean
-	thumbnailUrl: string | null
-	title: string
-	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
-}
+/** One timelapse as the picker's routes send it. */
+export const LapseTimelapseSchema = z.object({
+	attached: z.boolean(),
+	createdAt: z.number(),
+	durationSeconds: z.number(),
+	hackatimeProject: z.string().nullable(),
+	id: z.string(),
+	processing: z.boolean(),
+	thumbnailUrl: z.string().nullable(),
+	title: z.string(),
+	visibility: z.enum(["PUBLIC", "UNLISTED", "FAILED_PROCESSING"]),
+})
+export type LapseTimelapse = z.infer<typeof LapseTimelapseSchema>
 
 type Load =
 	| { state: "loading" }
@@ -24,11 +27,11 @@ type Load =
 	| { state: "error"; message: string }
 	| { state: "ready"; items: LapseTimelapse[]; nextCursor: string | null }
 
-interface LapsePageResponse {
-	error?: { code?: string; message?: string }
-	nextCursor: string | null
-	timelapses: LapseTimelapse[]
-}
+const LapsePageResponseSchema = z.object({
+	error: z.object({ code: z.string().optional(), message: z.string().optional() }).optional(),
+	nextCursor: z.string().nullable(),
+	timelapses: z.array(LapseTimelapseSchema),
+})
 
 const LAPSE_URL = "https://lapse.hackclub.com"
 
@@ -46,14 +49,13 @@ async function fetchPage(cursor?: string, forSession?: string) {
 		...(forSession ? { forSession } : {}),
 	})
 	const res = await fetch(`/api/lapse/timelapses?${query}`, { cache: "no-store" })
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-	const body = (await res.json().catch(() => null)) as LapsePageResponse | null
+	const parsed = LapsePageResponseSchema.safeParse(await res.json().catch(() => null))
 	if (!res.ok) {
-		if (body?.error?.code === "LAPSE_NOT_LINKED") return { unlinked: true as const }
-		throw new Error(body?.error?.message ?? "Could not load your timelapses")
+		if (parsed.success && parsed.data.error?.code === "LAPSE_NOT_LINKED") return { unlinked: true as const }
+		throw new Error((parsed.success ? parsed.data.error?.message : undefined) ?? "Could not load your timelapses")
 	}
-	if (!body) throw new Error("Could not load your timelapses")
-	return body
+	if (!parsed.success) throw new Error("Could not load your timelapses")
+	return parsed.data
 }
 
 /**

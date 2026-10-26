@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { z } from "zod"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { RepoEditor } from "@/components/platform/RepoField"
 import { Button } from "@/components/platform/ui"
@@ -10,6 +11,28 @@ import { displayRepo } from "@/lib/repo"
 import type { RepoCheck, RepoCheckResult } from "@/lib/repo-checks"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
+import { isRecord } from "@/lib/unknown"
+
+const RepoCheckSchema = z.object({
+	blocking: z.boolean().optional(),
+	detail: z.string().optional(),
+	key: z.string(),
+	label: z.string(),
+	link: z.object({ href: z.string(), label: z.string() }).optional(),
+	status: z.enum(["pass", "fail", "warn"]),
+})
+
+const RepoCheckResultSchema = z.object({
+	canSubmit: z.boolean(),
+	checkedAt: z.string(),
+	checks: z.array(RepoCheckSchema),
+	repo: z.string().nullable(),
+	unavailable: z.boolean(),
+})
+
+const RepoCheckResponseSchema = RepoCheckResultSchema.extend({
+	error: z.object({ message: z.string().optional() }).optional(),
+})
 
 /**
  * What the repo has, checked against what this week needs – before the maker hands it in rather than after a reviewer bounces it.
@@ -46,9 +69,10 @@ export function RepoChecks({
 		try {
 			const res = await fetch(`/api/projects/${project.id}/repo-sync`, { cache: "no-store" })
 			if (!res.ok) return
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const body = (await res.json()) as { repo?: string | null; syncRepoDiffers?: boolean }
-			setSyncRepo(body.repo && body.syncRepoDiffers ? { differs: true, repo: body.repo } : null)
+			const body: unknown = await res.json()
+			if (!isRecord(body)) return
+			const { repo, syncRepoDiffers } = body
+			setSyncRepo(typeof repo === "string" && syncRepoDiffers === true ? { differs: true, repo } : null)
 		} catch {
 			// Best effort: the shortcut is a convenience, not the check itself.
 		}
@@ -76,12 +100,12 @@ export function RepoChecks({
 		onResult(null)
 		try {
 			const res = await fetch(`/api/projects/${project.id}/preflight`, { cache: "no-store" })
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const body = (await res.json().catch(() => null)) as (RepoCheckResult & { error?: { message?: string } }) | null
-			if (!res.ok) throw new Error(body?.error?.message ?? "Could not check the repo")
-			if (!body) throw new Error("Could not check the repo")
-			setData(body)
-			onResult(body)
+			const parsed = RepoCheckResponseSchema.safeParse(await res.json().catch(() => null))
+			if (!res.ok)
+				throw new Error((parsed.success ? parsed.data.error?.message : undefined) ?? "Could not check the repo")
+			if (!parsed.success) throw new Error("Could not check the repo")
+			setData(parsed.data)
+			onResult(parsed.data)
 		} catch (err) {
 			setError(messageOf(err))
 		} finally {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { z } from "zod"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { Button, Chip } from "@/components/platform/ui"
 import { errorMessage } from "@/lib/api-error"
@@ -18,33 +19,33 @@ import { ago } from "./reels/format"
  * The first commit happens when the sync is switched on (the server does it before the setting takes), so "on" always means "the files are in the repo", never a promise that the next write will try.
  */
 
-interface WritableRepo {
-	defaultBranch: string
-	fullName: string
-	name: string
-	ownerPath: string
-	private: boolean
-	pushedAt: string | null
+const WritableRepoSchema = z.object({
+	defaultBranch: z.string(),
+	fullName: z.string(),
+	name: z.string(),
+	ownerPath: z.string(),
+	private: z.boolean(),
+	pushedAt: z.string().nullable(),
 	/** The repo's forge URL – what the sync stores and links out to. */
-	url: string
-}
+	url: z.string(),
+})
 
-interface SyncState {
-	enabled: boolean
-	error: string | null
-	forge: string | null
-	linkedForges: string[]
+const SyncPayloadSchema = z.object({
+	enabled: z.boolean(),
+	error: z.object({ message: z.string().optional() }).optional(),
+	forge: z.string().nullable(),
+	linkedForges: z.array(z.string()),
 	/** The project's own repo link, what the sync target is compared against. */
-	projectRepo: string | null
-	repo: string | null
-	repos: WritableRepo[]
-	reposError: string | null
-	syncedAt: number | null
+	projectRepo: z.string().nullable(),
+	repo: z.string().nullable(),
+	repos: z.array(WritableRepoSchema),
+	reposError: z.string().nullable(),
+	syncedAt: z.number().nullable(),
 	/** True when the sync writes to a different repo than the project points at. */
-	syncRepoDiffers: boolean
-}
-
-type SyncPayload = Omit<SyncState, "error"> & { error?: { message?: string } }
+	syncRepoDiffers: z.boolean(),
+})
+type SyncPayload = z.infer<typeof SyncPayloadSchema>
+type SyncState = Omit<SyncPayload, "error"> & { error: string | null }
 
 /** The forges a maker can connect here, and how each is named in the UI. */
 const FORGES = [
@@ -54,6 +55,9 @@ const FORGES = [
 
 // The reels' relative-time wording, reused rather than re-spelled: "3h ago" reads the same everywhere, and this file had its own copy that said "3 hours ago" and rendered a bare locale date past a day.
 const when = (ms: number) => ago(new Date(ms))
+
+/** The route's error envelope on a refusal. */
+const syncErrorMessage = (error: SyncPayload["error"]): string | undefined => error?.message
 
 export function RepoSyncSettings({
 	projectId,
@@ -82,14 +86,16 @@ export function RepoSyncSettings({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/repo-sync`, { cache: "no-store" })
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const body = (await res.json().catch(() => null)) as SyncPayload | null
-			if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the sync settings")
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-			setState(body as SyncState)
+			const parsed = SyncPayloadSchema.safeParse(await res.json().catch(() => null))
+			if (!res.ok)
+				throw new Error(
+					(parsed.success ? syncErrorMessage(parsed.data.error) : undefined) ?? "Could not load the sync settings",
+				)
+			if (!parsed.success) throw new Error("Could not load the sync settings")
+			setState({ ...parsed.data, error: null })
 			// Pre-select the repo a project already points at, if it is one of the writable ones, so re-enabling does not need the picker used again.
-			const current = body?.repo ?? null
-			setPicked(p => p ?? body?.repos.find(r => r.url === current)?.url ?? null)
+			const current = parsed.data.repo ?? null
+			setPicked(p => p ?? parsed.data.repos.find(r => r.url === current)?.url ?? null)
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Could not load the sync settings")
 		} finally {

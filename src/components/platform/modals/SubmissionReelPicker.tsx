@@ -1,19 +1,26 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { z } from "zod"
 import { IconCheck, IconFilm } from "@/components/platform/icons"
 import { cx } from "@/lib/cx"
 
 /** One closing reel the maker already posted for this hand-in. */
-export interface SubmissionReel {
-	caption: string
-	createdAt: string
-	durationSeconds: number | null
-	id: string
-	objectKey: string
-	thumbnailUrl: string | null
-	videoUrl: string | null
-}
+const SubmissionReelSchema = z.object({
+	caption: z.string(),
+	createdAt: z.string(),
+	durationSeconds: z.number().nullable(),
+	id: z.string(),
+	objectKey: z.string(),
+	thumbnailUrl: z.string().nullable(),
+	videoUrl: z.string().nullable(),
+})
+export type SubmissionReel = z.infer<typeof SubmissionReelSchema>
+
+const SubmissionReelPageSchema = z.object({
+	error: z.object({ message: z.string().optional() }).optional(),
+	reels: z.array(SubmissionReelSchema),
+})
 
 /**
  * The reels a maker has already closed this week with, offered back when they hand it in again.
@@ -43,14 +50,13 @@ export function SubmissionReelPicker({
 				const res = await fetch(`/api/me/reels?checkpointKey=${encodeURIComponent(checkpointKey)}`, {
 					cache: "no-store",
 				})
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const body = (await res.json().catch(() => null)) as {
-					error?: { message?: string }
-					reels: SubmissionReel[]
-				} | null
-				if (!res.ok) throw new Error(body?.error?.message ?? "Could not load your previous reels")
-				if (!body) throw new Error("Could not load your previous reels")
-				if (live) setReels(body.reels)
+				const parsed = SubmissionReelPageSchema.safeParse(await res.json().catch(() => null))
+				if (!res.ok)
+					throw new Error(
+						(parsed.success ? parsed.data.error?.message : undefined) ?? "Could not load your previous reels",
+					)
+				if (!parsed.success) throw new Error("Could not load your previous reels")
+				if (live) setReels(parsed.data.reels)
 			} catch {
 				// Nothing to offer if the list will not load: the maker records a fresh reel as before rather than meeting an error here.
 				if (live) setReels([])

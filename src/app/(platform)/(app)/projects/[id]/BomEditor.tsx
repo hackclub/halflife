@@ -3,36 +3,46 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useId, useRef, useState } from "react"
+import { z } from "zod"
 import { IconArrowDown, IconPencil, IconPlus, IconX } from "@/components/platform/icons"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { Button, inputClass } from "@/components/platform/ui"
-import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd } from "@/lib/bom-policy"
+import { type BomLine, BomLineSchema } from "@/lib/bom-schema"
 import { cx } from "@/lib/cx"
 import { formatUsd, round2 } from "@/lib/money"
 
 /** What the import route reports after reading the repo's CSV. */
-interface ImportPreview {
+const ImportPreviewSchema = z.object({
 	/** Lines already on the page, so the copy can offer add vs replace. */
-	existing: number
-	lines: {
-		name: string
-		purpose: string | null
-		quantity: number
-		unitCostUsd: number
-		vendor: string | null
-		link: string | null
-	}[]
-	path: string
-	skipped: { row: number; name: string; reason: string }[]
-}
+	existing: z.number(),
+	lines: z.array(
+		z.object({
+			link: z.string().nullable(),
+			name: z.string(),
+			purpose: z.string().nullable(),
+			quantity: z.number(),
+			unitCostUsd: z.number(),
+			vendor: z.string().nullable(),
+		}),
+	),
+	path: z.string(),
+	skipped: z.array(z.object({ name: z.string(), reason: z.string(), row: z.number() })),
+})
+type ImportPreview = z.infer<typeof ImportPreviewSchema>
 
 /** The BOM routes' success payload, plus the error envelope they share. */
-interface BomPayload {
-	error?: { code?: string; details?: { properties?: { [_: string]: unknown } }; message?: string }
-	items?: BomLine[]
-	taxShippingUsd?: number
-}
+const BomPayloadSchema = z.object({
+	error: z
+		.object({
+			code: z.string().optional(),
+			details: z.object({ properties: z.record(z.string(), z.unknown()).optional() }).optional(),
+			message: z.string().optional(),
+		})
+		.optional(),
+	items: z.array(BomLineSchema).optional(),
+	taxShippingUsd: z.number().optional(),
+})
 
 interface Draft {
 	link: string
@@ -144,22 +154,25 @@ export function BomEditor({
 				headers: body ? { "content-type": "application/json" } : undefined,
 				method,
 			})
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const payload = (await res.json().catch(() => null)) as BomPayload | null
+			const parsed = BomPayloadSchema.safeParse(await res.json().catch(() => null))
 			if (!res.ok) {
 				// The server's field check says which fields, not just "Invalid request": outline those and say it the way the form's own check does. This catches anything the form let through, like a tab still running an older copy of it.
-				const fields = Object.keys(payload?.error?.details?.properties ?? {}).filter(
+				const envelope = parsed.success ? parsed.data.error : undefined
+				const fields = Object.keys(envelope?.details?.properties ?? {}).filter(
 					(k): k is keyof Draft => k in FIELD_NAMES,
 				)
-				if (payload?.error?.code === "VALIDATION_FAILED" && fields.length > 0) {
+				if (envelope?.code === "VALIDATION_FAILED" && fields.length > 0) {
 					setInvalid(new Set(fields))
 					setError(requiredMessage(fields))
-				} else setError(payload?.error?.message ?? "That did not save. Try again.")
+				} else setError(envelope?.message ?? "That did not save. Try again.")
 
 				return false
 			}
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-			setItems(payload?.items as BomLine[])
+			if (!parsed.success) {
+				setError("The server's answer was not in the expected shape. Try again.")
+				return false
+			}
+			setItems(parsed.data.items ?? [])
 			router.refresh()
 			return true
 		} catch {
@@ -232,14 +245,20 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const payload = (await res.json().catch(() => null)) as BomPayload | null
+			const raw: unknown = await res.json().catch(() => null)
+			const parsed = BomPayloadSchema.safeParse(raw)
 			if (!res.ok) {
-				setImportError(payload?.error?.message ?? "Could not read the repo. Try again.")
+				setImportError(
+					(parsed.success ? parsed.data.error?.message : undefined) ?? "Could not read the repo. Try again.",
+				)
 				return
 			}
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- shape named at this boundary
-			setPreview(payload as unknown as ImportPreview)
+			const parsedPreview = ImportPreviewSchema.safeParse(raw)
+			if (!parsedPreview.success) {
+				setImportError("The server's answer was not in the expected shape. Try again.")
+				return
+			}
+			setPreview(parsedPreview.data)
 		} catch {
 			setImportError("Could not reach the server. Try again.")
 		} finally {
@@ -256,14 +275,17 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const payload = (await res.json().catch(() => null)) as BomPayload | null
+			const raw: unknown = await res.json().catch(() => null)
+			const parsed = BomPayloadSchema.safeParse(raw)
 			if (!res.ok) {
-				setImportError(payload?.error?.message ?? "That did not save. Try again.")
+				setImportError((parsed.success ? parsed.data.error?.message : undefined) ?? "That did not save. Try again.")
 				return
 			}
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-			setItems(payload?.items as BomLine[])
+			if (!parsed.success) {
+				setImportError("The server's answer was not in the expected shape. Try again.")
+				return
+			}
+			setItems(parsed.data.items ?? [])
 			setImportOpen(false)
 			router.refresh()
 		} catch {
@@ -284,13 +306,16 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "PATCH",
 			})
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const payload = (await res.json().catch(() => null)) as BomPayload | null
+			const parsed = BomPayloadSchema.safeParse(await res.json().catch(() => null))
 			if (!res.ok) {
-				setError(payload?.error?.message ?? "That did not save. Try again.")
+				setError((parsed.success ? parsed.data.error?.message : undefined) ?? "That did not save. Try again.")
 				return false
 			}
-			setTaxShipping(payload?.taxShippingUsd ?? 0)
+			if (!parsed.success) {
+				setError("The server's answer was not in the expected shape. Try again.")
+				return false
+			}
+			setTaxShipping(parsed.data.taxShippingUsd ?? 0)
 			router.refresh()
 			return true
 		} catch {

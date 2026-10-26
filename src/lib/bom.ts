@@ -1,6 +1,7 @@
 import "server-only"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { bomTotalUsd, type PartsFunding, partsFunding } from "@/lib/bom-policy"
+import type { BomLine } from "@/lib/bom-schema"
 import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import { Phase, PhaseStatus } from "@/lib/enums"
 import { round2 } from "@/lib/money"
@@ -17,16 +18,7 @@ import { parseDbTimestamp } from "@/lib/time"
 /** Plenty for a hand-built board, and a ceiling on a runaway script. */
 export const MAX_BOM_ITEMS = 80
 
-export interface BomLine {
-	id: string
-	link: string | null
-	name: string
-	purpose: string | null
-	quantity: number
-	unitCostUsd: number
-	updatedAt: Date
-	vendor: string | null
-}
+export type { BomLine } from "@/lib/bom-schema"
 
 /**
  * What this project's parts list asks against the tier it is asking for, read from the database.

@@ -24,10 +24,11 @@ import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, borderedInputClass, Chip, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
+import { errorMessage } from "@/lib/api-error"
 import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
-import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
+import { type BomLine, BomLineSchema } from "@/lib/bom-schema"
 import {
 	STARTER_MODIFICATION_NOTE,
 	STARTER_PROJECT_TIER,
@@ -56,10 +57,11 @@ import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { usePrinterPace, useStore, weekListPhrase } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
+import { isRecord } from "@/lib/unknown"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
-import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
+import { fmtDuration, LapsePicker, type LapseTimelapse, LapseTimelapseSchema } from "./LapsePicker"
 import { Modal, ModalTitle } from "./Modal"
 import { RepoChecks } from "./RepoChecks"
 import { type SubmissionReel, SubmissionReelPicker } from "./SubmissionReelPicker"
@@ -84,22 +86,38 @@ function isWeeksProject(week: Week, project: Project): boolean {
 }
 
 /** The parts list read, plus the error envelope the route shares. */
-interface BomResponse {
-	error?: { message?: string }
-	items: BomLine[]
-	taxShippingUsd: number
-}
+const BomResponseSchema = z.object({
+	error: z.object({ message: z.string().optional() }).optional(),
+	items: z.array(BomLineSchema),
+	taxShippingUsd: z.number(),
+})
 
-interface JournalDraft {
-	body: string
-	hoursText: string
+const JournalDraftSchema = z.object({
+	body: z.string(),
+	hoursText: z.string(),
 	/** Older non-Lapse clips, preserved untouched. */
-	legacy?: string[]
-	picked: LapseTimelapse[]
+	legacy: z.array(z.string()).optional(),
+	picked: z.array(LapseTimelapseSchema),
 	/** Lapse clips kept from the original entry that Lapse would not re-verify. */
-	pinned?: string[]
-	tab: "journal" | "timelapse"
-}
+	pinned: z.array(z.string()).optional(),
+	tab: z.enum(["journal", "timelapse"]),
+})
+type JournalDraft = z.infer<typeof JournalDraftSchema>
+
+const LapseResolveBodySchema = z.object({
+	legacy: z.array(z.string()).optional(),
+	pinned: z.array(z.string()).optional(),
+	resolved: z.array(LapseTimelapseSchema).optional(),
+})
+
+const PublicLinksErrorSchema = z.object({
+	error: z
+		.object({
+			details: z.object({ fields: z.partialRecord(z.enum(PUBLIC_REEL_PLATFORMS), z.string()).optional() }).optional(),
+			message: z.string().optional(),
+		})
+		.optional(),
+})
 
 const draftKey = (checkpointId: string) => `halflife.journal-draft.${checkpointId}`
 
@@ -113,17 +131,7 @@ function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
 }
 
 function isJournalDraft(value: unknown): value is JournalDraft {
-	if (typeof value !== "object" || value === null) return false
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-	const v = value as { [_: string]: unknown }
-	return (
-		(v.tab === "journal" || v.tab === "timelapse")
-		&& typeof v.body === "string"
-		&& typeof v.hoursText === "string"
-		&& Array.isArray(v.picked)
-		&& (!("pinned" in v) || Array.isArray((v as { pinned?: unknown }).pinned))
-		&& (!("legacy" in v) || Array.isArray((v as { legacy?: unknown }).legacy))
-	)
+	return JournalDraftSchema.safeParse(value).success
 }
 
 function peekJournalTrip(checkpointId: string): JournalDraft | null {
@@ -247,13 +255,9 @@ async function storeImage(source: ImageSource): Promise<{ url: string | null }> 
 		headers: { "content-type": "application/json" },
 		method: "POST",
 	})
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-	const payload = (await res.json().catch(() => null)) as {
-		url?: string | null
-		error?: { message?: string }
-	} | null
-	if (!res.ok) throw new Error(payload?.error?.message ?? `That image did not upload (${res.status})`)
-	return { url: payload?.url ?? null }
+	const payload: unknown = await res.json().catch(() => null)
+	if (!res.ok) throw new Error(errorMessage(payload, `That image did not upload (${res.status})`))
+	return { url: isRecord(payload) && typeof payload.url === "string" ? payload.url : null }
 }
 
 /** Take an image's placeholder back out of the entry, with the blank line it came with. */
@@ -351,13 +355,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			try {
 				const query = new URLSearchParams({ forSession: existing.id, ids: existing.clips.join(",") })
 				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const payload = (await res.json().catch(() => null)) as {
-					resolved?: LapseTimelapse[]
-					pinned?: string[]
-					legacy?: string[]
-				} | null
-				if (!res.ok || !payload) throw new Error("unresolvable")
+				const parsed = LapseResolveBodySchema.safeParse(await res.json().catch(() => null))
+				if (!res.ok || !parsed.success) throw new Error("unresolvable")
+				const payload = parsed.data
 				seed = { picked: payload.resolved ?? [], pinned: payload.pinned ?? [] }
 				legacy = payload.legacy ?? []
 				// Anything the resolve did not account for stays attached by id. Without this a clip the endpoint declined to read – it reads a bounded number – would fall out of the working set, and saving the edit would take it off the entry for good.
@@ -1119,10 +1119,13 @@ export function PublicReelModal({
 			try {
 				// A POST, because the route writes: reading a link assigns the referral code and records the address on the signup list.
 				const res = await fetch("/api/me/referral", { cache: "no-store", method: "POST" })
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const body = (await res.json().catch(() => null)) as { link?: string } | null
+				const body: unknown = await res.json().catch(() => null)
 				if (cancelled) return
-				setReferral(res.ok && body?.link ? { link: body.link, state: "ready" } : { state: "error" })
+				setReferral(
+					res.ok && isRecord(body) && typeof body.link === "string"
+						? { link: body.link, state: "ready" }
+						: { state: "error" },
+				)
 			} catch {
 				if (!cancelled) setReferral({ state: "error" })
 			}
@@ -1164,13 +1167,13 @@ export function PublicReelModal({
 				method: "POST",
 			})
 			if (!res.ok) {
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const body = (await res.json().catch(() => null)) as {
-					error?: { message?: string; details?: { fields?: Partial<Record<PublicReelPlatform, string>> } }
-				} | null
-				const fields = body?.error?.details?.fields
+				const parsed = PublicLinksErrorSchema.safeParse(await res.json().catch(() => null))
+				const fields = parsed.success ? parsed.data.error?.details?.fields : undefined
 				if (fields && Object.keys(fields).length > 0) setErrors(fields)
-				else setSaveError(body?.error?.message ?? "Your links didn't save. Try again.")
+				else
+					setSaveError(
+						(parsed.success ? parsed.data.error?.message : undefined) ?? "Your links didn't save. Try again.",
+					)
 				return
 			}
 			setStep("saved")
@@ -2055,10 +2058,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		void (async () => {
 			try {
 				const res = await fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const body = (await res.json().catch(() => null)) as BomResponse | null
-				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
-				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })
+				const parsed = BomResponseSchema.safeParse(await res.json().catch(() => null))
+				if (!res.ok)
+					throw new Error((parsed.success ? parsed.data.error?.message : undefined) ?? "Could not load the parts list")
+				if (!parsed.success) throw new Error("Could not load the parts list")
+				if (live) setBom({ items: parsed.data.items, taxShippingUsd: parsed.data.taxShippingUsd })
 			} catch (err) {
 				if (live) setBomError(err instanceof Error ? err.message : String(err))
 			}
