@@ -60,10 +60,10 @@ describe("starter projects", () => {
 		expect(starterProjectsFor(Theme.PCB).map(p => p.id)).toEqual(["starbie"])
 		expect(starterProjectsFor(Theme.CAD).map(p => p.id)).toEqual(["merbl"])
 		expect(starterProjectsFor(Theme.SYNTH).map(p => p.id)).toEqual(["midi"])
+		expect(starterProjectsFor(Theme.DISPLAYS).map(p => p.id)).toEqual(["displays"])
 	})
 
 	test("a week with no starter of its own offers none", () => {
-		expect(starterProjectsFor(Theme.DISPLAYS)).toEqual([])
 		expect(starterProjectsFor(Theme.BREADBOARD_COMPUTER)).toEqual([])
 	})
 

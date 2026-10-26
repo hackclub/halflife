@@ -174,7 +174,7 @@ interface Ctx {
 	/**
 	 * Admins only: open one locked checkpoint, leaving the rest of the trail locked. Lasts until the page is reloaded. Does nothing for anyone else.
 	 */
-	bypassCheckpoint: (id: string) => void
+	bypassCheckpoint(id: string): void
 	/**
 	 * Admins only: every checkpoint on the trail opens, whatever its order, hours or dates say. Always false for anyone else.
 	 */

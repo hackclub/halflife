@@ -18,16 +18,16 @@ export interface GuideHeading {
 const slugify = (text: string): string =>
 	text
 		.toLowerCase()
-		.replace(/[`*]/g, "")
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-|-$/g, "")
+		.replaceAll(/[`*]/g, "")
+		.replaceAll(/[^a-z0-9]+/g, "-")
+		.replaceAll(/^-|-$/g, "")
 
 /** The guide's `##` sections, for the reading trail beside it. */
 export function guideHeadings(source: string): GuideHeading[] {
 	const out: GuideHeading[] = []
 	let fenced = false
 	for (const line of source.split("\n")) {
-		if (/^```/.test(line)) fenced = !fenced
+		if (line.startsWith("```")) fenced = !fenced
 		if (fenced) continue
 		const m = /^## (.+)$/.exec(line)
 		if (m?.[1]) out.push({ id: slugify(m[1]), text: m[1] })
@@ -40,7 +40,7 @@ const LANGUAGE: { [_: string]: string } = { cpp: "Arduino C++", python: "Python"
 const splitRow = (line: string): string[] =>
 	line
 		.trim()
-		.replace(/^\||\|$/g, "")
+		.replaceAll(/^\||\|$/g, "")
 		.split("|")
 		.map(cell => cell.trim())
 

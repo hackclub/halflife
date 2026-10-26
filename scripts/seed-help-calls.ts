@@ -1,26 +1,15 @@
-import "dotenv/config"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "../src/app/generated/prisma/client"
-import { EventColour } from "../src/app/generated/prisma/enums"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "../src/lib/config/program"
+import { EventColour } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
- * `yarn seed-help-calls [--write]` – puts the hardware help call rota on the programme calendar for every week.
+ * `bun run seed-help-calls [--write]` – puts the hardware help call rota on the programme calendar for every week.
  *
  * Each slot below becomes one series of TOTAL_WEEKS rows, the same shape the admin form writes with `repeatWeeks`, so any one occurrence can still be moved or cancelled from the admin table. Times are Eastern wall-clock and stay put across the November clock change.
  *
  * Dry run by default. Re-running is safe: an occurrence already on the calendar with the same title and start is skipped.
  */
-
-// Node `pg` rejects `sslmode=verify-full&sslrootcert=system`, so the params come off and TLS is asked for directly.
-const url = new URL(process.env.DATABASE_URL ?? "")
-const ssl = url.searchParams.has("sslmode")
-url.searchParams.delete("sslmode")
-url.searchParams.delete("sslrootcert")
-
-const prisma = new PrismaClient({
-	adapter: new PrismaPg({ connectionString: url.toString(), ssl: ssl ? { rejectUnauthorized: true } : undefined }),
-})
 
 const WEEKDAY = Object.freeze({
 	colour: EventColour.SKY,
@@ -111,19 +100,19 @@ async function main() {
 	for (const slot of SLOTS) {
 		const kind = slot.day >= 5 ? WEEKEND : WEEKDAY
 		const occurrences = Array.from({ length: TOTAL_WEEKS }, (_, week) => ({
-			endsAt: wallInstant(week * 7 + slot.day, slot.to, timeZone),
+			endsAt: formatDbTimestamp(wallInstant(week * 7 + slot.day, slot.to, timeZone)),
 			startsAt: wallInstant(week * 7 + slot.day, slot.from, timeZone),
 		}))
 
-		const existing = await prisma.programEvent.findMany({
-			select: { seriesId: true, startsAt: true },
-			where: { startsAt: { in: occurrences.map(o => o.startsAt) }, title: kind.title },
-		})
-		const taken = new Set(existing.map(e => e.startsAt.getTime()))
-		const missing = occurrences.filter(o => !taken.has(o.startsAt.getTime()))
+		const existing = await db.orm.public.ProgramEvent.where({ title: kind.title })
+			.where(event => event.startsAt.in(occurrences.map(o => formatDbTimestamp(o.startsAt))))
+			.select("seriesId", "startsAt")
+			.all()
+		const taken = new Set<string>(existing.map(e => e.startsAt))
+		const missing = occurrences.filter(o => !taken.has(formatDbTimestamp(o.startsAt)))
 		skipped += occurrences.length - missing.length
 
-		const first = occurrences[0]
+		const [first] = occurrences
 		if (first)
 			console.log(
 				`${first.startsAt.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", timeZone, weekday: "short" })} ${slot.host.padEnd(12)} ${kind.title}: ${missing.length} to create`,
@@ -132,18 +121,20 @@ async function main() {
 
 		// Topping up a series keeps its id, so the slot stays one series in the admin table.
 		const seriesId = existing.find(e => e.seriesId)?.seriesId ?? crypto.randomUUID()
-		const { count } = await prisma.programEvent.createMany({
-			data: missing.map(o => ({ ...o, ...kind, published: true, seriesId })),
-		})
-		created += count
+		const rows = await db.orm.public.ProgramEvent.createAll(
+			missing.map(o => ({ ...o, ...kind, published: true, seriesId, startsAt: formatDbTimestamp(o.startsAt) })),
+		)
+		created += rows.length
 	}
 
 	console.log(write ? `created ${created}, skipped ${skipped} already there` : "dry run: pass --write to create")
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exit(1)
-	})
-	.finally(() => prisma.$disconnect())
+try {
+	await main()
+} catch (err) {
+	console.error(err)
+	process.exitCode = 1
+} finally {
+	await db.close()
+}

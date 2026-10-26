@@ -19,9 +19,8 @@ export function ReadingTrail({ headings }: { headings: GuideHeading[] }) {
 		const update = (): void => {
 			const line = window.innerHeight / 3
 			let index = 0
-			for (const [n, el] of targets.entries()) {
-				if (el.getBoundingClientRect().top <= line) index = n
-			}
+			for (const [n, el] of targets.entries()) if (el.getBoundingClientRect().top <= line) index = n
+
 			setCurrent(index)
 		}
 
