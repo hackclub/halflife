@@ -58,36 +58,30 @@ export function PenaltyCard({ url, ...onRecord }: Readonly<PenaltySnapshot & { u
 
 			{onRecord.banned ? (
 				<div className="hl-row">
-					<Button
-						disabled={busy === "UNBAN"}
-						onClick={() => apply("UNBAN", { restoreContent })}
-						type="button"
-					>
+					<Button disabled={busy === "UNBAN"} onClick={() => apply("UNBAN", { restoreContent })} type="button">
 						Lift ban
 					</Button>
 					{onRecord.rollbackContentHidden ? (
 						<label className="hl-row" style={{ alignItems: "center", gap: "0.4rem" }}>
-							<input
-								checked={restoreContent}
-								onChange={e => setRestoreContent(e.target.checked)}
-								type="checkbox"
-							/>
+							<input checked={restoreContent} onChange={e => setRestoreContent(e.target.checked)} type="checkbox" />
 							restore the reels and comments this ban hid
 						</label>
 					) : null}
 				</div>
 			) : onRecord.suspended ? (
-				<Button
-					disabled={busy === "UNSUSPEND"}
-					onClick={() => apply("UNSUSPEND")}
-					type="button"
-				>
+				<Button disabled={busy === "UNSUSPEND"} onClick={() => apply("UNSUSPEND")} type="button">
 					Lift suspension
 				</Button>
 			) : null}
 
 			{!onRecord.banned ? (
-				<form className="hl-stack hl-stack--tight" onSubmit={e => { e.preventDefault(); handDown() }}>
+				<form
+					className="hl-stack hl-stack--tight"
+					onSubmit={e => {
+						e.preventDefault()
+						handDown()
+					}}
+				>
 					<textarea
 						aria-label="Penalty reason"
 						className="hl-input"
@@ -116,11 +110,7 @@ export function PenaltyCard({ url, ...onRecord }: Readonly<PenaltySnapshot & { u
 					</div>
 					{until ? null : (
 						<label className="hl-row" style={{ alignItems: "center", gap: "0.4rem" }}>
-							<input
-								checked={hideContent}
-								onChange={e => setHideContent(e.target.checked)}
-								type="checkbox"
-							/>
+							<input checked={hideContent} onChange={e => setHideContent(e.target.checked)} type="checkbox" />
 							also hide all of their public reels and comments
 						</label>
 					)}
