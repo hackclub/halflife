@@ -1,3 +1,4 @@
+import { z } from "zod"
 import { EXPERIENCE_OPTIONS, isBeginner, ONBOARDING_STEPS, weekIntroFor } from "@/lib/config/onboarding"
 import { THEMES } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
@@ -69,6 +70,67 @@ export interface OnboardingView {
 		examples: readonly string[]
 	} | null
 }
+
+/** The identity options HCA carries, as the client receives them. */
+const HardwareExperienceSchema = z.enum(["A_GOOD_AMOUNT", "A_LITTLE", "FIRST_TIME", "ITS_LIFE"])
+
+const StarterProjectViewSchema = z.object({
+	description: z.string(),
+	guideUrl: z.string(),
+	id: z.string(),
+	parts: z.array(z.string()),
+	repoUrl: z.string().optional(),
+	title: z.string(),
+})
+
+/**
+ * The view the API returns to the flow and the dashboard modal, checked rather than trusted.
+ *
+ * The server builds it, so a mismatch is a drift between the two, and the failure is here rather than as an undefined heading three steps in. Typed as the interface above so the schema and the type cannot drift apart.
+ */
+export const OnboardingViewSchema: z.ZodType<OnboardingView> = z.object({
+	beginner: z.boolean(),
+	completed: z.boolean(),
+	experience: HardwareExperienceSchema.nullable(),
+	experienceOptions: z.array(z.object({ hint: z.string(), label: z.string(), value: HardwareExperienceSchema })),
+	project: z.object({
+		description: z.string(),
+		requestedTier: z.number().nullable(),
+		starterProjectId: z.string().nullable(),
+		tierLocked: z.boolean(),
+		title: z.string(),
+	}),
+	projectId: z.string(),
+	reached: z.number(),
+	starterProjects: z.array(StarterProjectViewSchema),
+	stepCount: z.number(),
+	steps: z.array(z.object({ heading: z.string(), id: z.string(), number: z.number(), skippable: z.boolean() })),
+	suggestedTier: z.number(),
+	tiers: z.array(
+		z.object({
+			estimate: z.string(),
+			grantUsd: z.number(),
+			id: z.number(),
+			name: z.string(),
+			showcase: z.array(z.object({ href: z.string(), image: z.string(), title: z.string() })),
+		}),
+	),
+	weekIntro: z
+		.object({
+			examples: z.array(z.string()),
+			headline: z.string(),
+			kicker: z.string(),
+			painting: z.string(),
+			primer: z.string(),
+		})
+		.nullable(),
+})
+
+/** The route's answer: the view, or the error envelope a refusal carries. */
+export const OnboardingResponseSchema = z.object({
+	error: z.object({ message: z.string().optional() }).optional(),
+	onboarding: OnboardingViewSchema.optional(),
+})
 
 /**
  * The API and the dashboard modal deliberately share this view model. The server remains authoritative for progress; the client only chooses which answered step to display.

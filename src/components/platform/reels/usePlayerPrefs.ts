@@ -7,17 +7,19 @@ import { isRecord } from "@/lib/unknown"
  *
  * Per browser, in localStorage, the way the rest of the ceremony is kept: nobody else ever needs to read it, and a new laptop starting from the defaults is no loss. Every read and write is guarded – a private window or blocked storage just means the defaults, every visit.
  */
+
+export const RATES = [1, 1.5, 2, 0.5] as const
+
 export interface PlayerPrefs {
 	autoScroll: boolean
 	comments: boolean
 	muted: boolean
-	rate: number
+	rate: (typeof RATES)[number]
 }
 
 const KEY = "halflife.player.v1"
 const DEFAULTS: PlayerPrefs = { autoScroll: false, comments: true, muted: false, rate: 1 }
 
-export const RATES = [1, 1.5, 2, 0.5] as const
 
 export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerPrefs>) => void] {
 	const [prefs, setPrefs] = useState<PlayerPrefs>(DEFAULTS)

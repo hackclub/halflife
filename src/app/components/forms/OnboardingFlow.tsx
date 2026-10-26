@@ -9,16 +9,11 @@ import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/Sta
 import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
 import { STARTER_MODIFICATION_NOTE } from "@/lib/config/onboarding"
 import { cx } from "@/lib/cx"
-import type { OnboardingView } from "@/lib/onboarding-view"
+import { OnboardingResponseSchema, type OnboardingView } from "@/lib/onboarding-view"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 
 const projectInputClass =
 	"block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-navy-soft focus:border-violet focus:bg-white"
-
-interface OnboardingResponse {
-	error?: { message?: string }
-	onboarding?: OnboardingView
-}
 
 /**
  * Every step ends on the same bar: Back on the left, the step's one submit on the right. Choosing an option only selects it; nothing is sent until this. Without `onSubmit` the button submits its enclosing form.
@@ -128,14 +123,13 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 				headers: { "Content-Type": "application/json" },
 				method: "POST",
 			})
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const payload = (await res.json().catch(() => null)) as OnboardingResponse | null
-			if (!res.ok || !payload?.onboarding) {
-				setError(payload?.error?.message ?? `Something went wrong (${res.status})`)
+			const parsed = OnboardingResponseSchema.safeParse(await res.json().catch(() => null))
+			if (!res.ok || !parsed.success || !parsed.data.onboarding) {
+				setError((parsed.success ? parsed.data.error?.message : undefined) ?? `Something went wrong (${res.status})`)
 				return null
 			}
 
-			const next = payload.onboarding
+			const next = parsed.data.onboarding
 			setView(next)
 			if (next.completed) {
 				onComplete?.()

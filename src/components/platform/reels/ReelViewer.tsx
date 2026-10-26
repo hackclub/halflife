@@ -352,8 +352,7 @@ export function ReelViewer() {
 	}, [step, toggleMute, sheetOpen])
 
 	const cycleRate = useCallback(() => {
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-		const at = RATES.indexOf(prefs.rate as (typeof RATES)[number])
+		const at = RATES.indexOf(prefs.rate)
 		setPrefs({ rate: RATES[(at + 1) % RATES.length] ?? 1 })
 	}, [prefs.rate, setPrefs])
 	const toggleAutoScroll = useCallback(() => setPrefs({ autoScroll: !prefs.autoScroll }), [prefs.autoScroll, setPrefs])

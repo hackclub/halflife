@@ -5,6 +5,7 @@ import { avatarUrl } from "@/lib/avatar"
 import { displayName } from "@/lib/display-name"
 import { PostKind, PostStatus, Role } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import type { FeedItem, FeedPage } from "@/lib/feed-schema"
 import { decodeCursor, encodeCursor } from "@/lib/pagination"
 import db, { type DbOrTx } from "@/lib/prisma8"
 import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@/lib/program"
@@ -24,32 +25,7 @@ import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 /** Where reel uploads live in the bucket. Keys are validated against this. */
 export const POST_UPLOAD_FOLDER = "posts"
 
-export interface FeedAuthor {
-	id: string
-	image: string | null
-	name: string | null
-	streak: number
-}
-
-export interface FeedItem {
-	author: FeedAuthor
-	caption: string
-	commentCount: number
-	durationSeconds: number | null
-	height: number | null
-	id: string
-	kind: PostKind
-	likeCount: number
-	/** Whether the person asking has already liked it. */
-	likedByMe: boolean
-	pinned: boolean
-	project: { id: string; theme: string; title: string } | null
-	publishedAt: Date | null
-	thumbnailUrl: string | null
-	videoUrl: string | null
-	viewCount: number
-	width: number | null
-}
+export type { FeedAuthor, FeedItem, FeedPage } from "@/lib/feed-schema"
 
 /** One feed row as Prisma 8 reads it, with the author and project attached. Timestamps are PostgreSQL text until `toFeedItem` parses them. */
 export interface PostWithAuthor {
@@ -111,15 +87,6 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
  * Defined once and reused by every read path. A feed filter that has to be rewritten at each call site is a filter that will eventually be written wrong at one of them, and the failure mode is a hidden post reappearing.
  */
 const visible = () => ({ deletedAt: null, status: PostStatus.PUBLISHED }) as const
-
-export interface FeedPage {
-	items: FeedItem[]
-	/**
-	 * What goes above the paged rows, on the first page only: any reel an admin posted today in the viewer's timezone, newest first.
-	 */
-	leading: FeedItem[]
-	nextCursor: string | null
-}
 
 /**
  * One page of the feed, newest first, announcements included.

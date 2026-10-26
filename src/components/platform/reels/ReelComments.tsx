@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useId, useRef, useState } from "react"
+import { z } from "zod"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconSend, IconX } from "@/components/platform/icons"
 import { ReportButton } from "@/components/platform/report/ReportButton"
@@ -10,13 +11,20 @@ import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { ago, compact } from "./format"
 
-interface Comment {
-	author: { id: string; name: string | null; image: string | null }
-	body: string
-	createdAt: string
-	id: string
-	mine: boolean
-}
+const CommentSchema = z.object({
+	author: z.object({ id: z.string(), image: z.string().nullable(), name: z.string().nullable() }),
+	body: z.string(),
+	createdAt: z.string(),
+	id: z.string(),
+	mine: z.boolean(),
+})
+type Comment = z.infer<typeof CommentSchema>
+
+const CommentPageSchema = z.object({
+	items: z.array(CommentSchema),
+	nextCursor: z.string().nullable(),
+})
+const CommentMutationSchema = z.object({ comment: CommentSchema })
 
 interface Thread {
 	items: Comment[]
@@ -71,8 +79,7 @@ export function ReelComments({
 				if (cursor) query.set("cursor", cursor)
 				const res = await fetch(`/api/posts/${id}/comments?${query}`)
 				if (!res.ok) throw new Error(String(res.status))
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const page = (await res.json()) as { items: Comment[]; nextCursor: string | null }
+				const page = CommentPageSchema.parse(await res.json())
 				patchThread(id, prev => {
 					const had = cursor ? (prev?.items ?? []) : []
 					const seen = new Set(had.map(c => c.id))
@@ -136,8 +143,7 @@ export function ReelComments({
 				setSendError(errorMessage(err, "That comment did not post. Try again."))
 				return
 			}
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const { comment } = (await res.json()) as { comment: Comment }
+			const { comment } = CommentMutationSchema.parse(await res.json())
 			// Newest first, so the new comment goes to the top of the thread, not the end of it.
 			patchThread(reel.id, prev => ({
 				items: [comment, ...(prev?.items ?? [])],

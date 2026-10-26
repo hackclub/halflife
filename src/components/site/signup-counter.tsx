@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { fmtInt } from "@/lib/numbers"
+import { isRecord } from "@/lib/unknown"
 
 /** How often to ask again. A number that moves is the point; a fast poll is not. */
 const REFRESH_MS = 60_000
@@ -27,9 +28,8 @@ export default function SignupCounter({ className = "", style }: { className?: s
 			try {
 				const res = await fetch("/api/signup-count", { cache: "no-store" })
 				if (!res.ok) return
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const body = (await res.json()) as { count?: unknown }
-				if (live && typeof body.count === "number") setCount(body.count)
+				const body: unknown = await res.json()
+				if (live && isRecord(body) && typeof body.count === "number") setCount(body.count)
 			} catch {
 				// Offline, or the endpoint is down: keep the last number we had, or none at all. A counter is never worth a visible error.
 			}

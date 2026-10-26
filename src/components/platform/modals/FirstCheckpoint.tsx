@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { OnboardingFlow } from "@/app/components/forms/OnboardingFlow"
 import { Button } from "@/components/platform/ui"
-import type { OnboardingView } from "@/lib/onboarding-view"
+import { OnboardingResponseSchema, type OnboardingView } from "@/lib/onboarding-view"
 import { useStore } from "@/lib/store"
 import { Modal, ModalTitle } from "./Modal"
 
@@ -25,14 +25,12 @@ export function FirstCheckpoint() {
 			setError(null)
 			try {
 				const response = await fetch("/api/onboarding", { cache: "no-store" })
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const payload = (await response.json().catch(() => null)) as {
-					onboarding?: OnboardingView
-					error?: { message?: string }
-				} | null
-				if (!response.ok || !payload?.onboarding)
-					throw new Error(payload?.error?.message ?? "The onboarding state could not be loaded")
-				if (!cancelled) setView(payload.onboarding)
+				const parsed = OnboardingResponseSchema.safeParse(await response.json().catch(() => null))
+				if (!response.ok || !parsed.success || !parsed.data.onboarding)
+					throw new Error(
+						(parsed.success ? parsed.data.error?.message : undefined) ?? "The onboarding state could not be loaded",
+					)
+				if (!cancelled) setView(parsed.data.onboarding)
 			} catch (err) {
 				if (!cancelled) setError(err instanceof Error ? err.message : "The onboarding state could not be loaded")
 			}
