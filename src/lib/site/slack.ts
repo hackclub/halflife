@@ -1,4 +1,5 @@
 import crypto from "node:crypto"
+import { z } from "zod"
 
 /**
  * Slack Web API + request verification.
@@ -28,7 +29,30 @@ export type SlackResult<T extends { [_: string]: unknown }> = Promise<
 	T & { ok: boolean; error?: string; needed?: string; provided?: string }
 >
 
-async function callSlackApi<T extends { [_: string]: unknown }>(
+/** The envelope every answer carries, and the message shapes the readers above need. Parsed, because an `ok` read off a malformed body would hide a failed call. */
+const envelopeShape = {
+	error: z.string().optional(),
+	needed: z.string().optional(),
+	ok: z.boolean(),
+	provided: z.string().optional(),
+}
+const Envelope = z.object(envelopeShape)
+type SlackEnvelope = z.infer<typeof Envelope>
+
+const HistoryMessageSchema = z.object({
+	bot_id: z.string().optional(),
+	subtype: z.string().optional(),
+	thread_ts: z.string().optional(),
+	ts: z.string().optional(),
+	type: z.string().optional(),
+	user: z.string().optional(),
+})
+const ThreadMessageSchema = HistoryMessageSchema.extend({
+	blocks: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+async function callSlackApi<S extends z.ZodType<SlackEnvelope>>(
+	schema: S,
 	method: string,
 	params: { [_: string]: unknown },
 	/** Slack errors that are expected outcomes rather than faults. Matches are
@@ -41,7 +65,7 @@ async function callSlackApi<T extends { [_: string]: unknown }>(
 	 * * line at any level.
 	 */
 	silentErrors: string[] = [],
-): SlackResult<T> {
+): Promise<z.infer<S>> {
 	const token = process.env.SLACK_BOT_TOKEN
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
 
@@ -56,7 +80,9 @@ async function callSlackApi<T extends { [_: string]: unknown }>(
 		signal: AbortSignal.timeout(10_000),
 	})
 
-	const data = (await res.json()) as T & { ok: boolean; error?: string; needed?: string; provided?: string }
+	const parsed = schema.safeParse(await res.json().catch(() => null))
+	if (!parsed.success) throw new Error(`Slack ${method} failed: an unreadable answer (HTTP ${res.status})`)
+	const { data } = parsed
 	if (!res.ok || !data.ok) {
 		const detail = slackErrorDetail(data, res.status)
 		// A silent error is an anticipated outcome noisy enough to omit entirely (e.g. inviting someone already in the channel on every join event). A matched expected error is still anticipated, but worth a normal log line rather than an error.
@@ -73,14 +99,18 @@ export function postMessage(
 	text: string,
 	opts: { blocks?: SlackBlock[]; threadTs?: string; unfurlLinks?: boolean } = {},
 ): SlackResult<{ ts?: string; channel?: string }> {
-	return callSlackApi<{ ts?: string; channel?: string }>("chat.postMessage", {
-		blocks: opts.blocks,
-		channel,
-		text,
-		thread_ts: opts.threadTs,
-		// `undefined` drops out of JSON.stringify, so callers that don't care get Slack's default; the ticket post passes true explicitly.
-		unfurl_links: opts.unfurlLinks,
-	})
+	return callSlackApi(
+		z.object({ ...envelopeShape, channel: z.string().optional(), ts: z.string().optional() }),
+		"chat.postMessage",
+		{
+			blocks: opts.blocks,
+			channel,
+			text,
+			thread_ts: opts.threadTs,
+			// `undefined` drops out of JSON.stringify, so callers that don't care get Slack's default; the ticket post passes true explicitly.
+			unfurl_links: opts.unfurlLinks,
+		},
+	)
 }
 
 export function updateMessage(
@@ -88,36 +118,32 @@ export function updateMessage(
 	ts: string,
 	text: string,
 	blocks?: SlackBlock[],
-): SlackResult<{ [_: string]: unknown }> {
-	return callSlackApi("chat.update", { blocks, channel, text, ts })
+): Promise<SlackEnvelope> {
+	return callSlackApi(Envelope, "chat.update", { blocks, channel, text, ts })
 }
 
 /** Drops a reaction on a message: the pending one when a #half-life-help question opens its ticket, the resolved one when any of the three buttons closes it. `already_reacted` is marked expected: a ticket can be resolved from the tickets channel or the help thread, so a second resolution finds the bot's own reaction already in place, which is the outcome we wanted rather than a fault. `invalid_name` – the custom emoji not existing in the workspace – is logged by the API layer since there's no runtime fix for it;
  *
  * * see `slack-app-manifest.yml` for the `reactions:write` scope this needs.
  */
-export function addReaction(channel: string, timestamp: string, name: string): SlackResult<{ [_: string]: unknown }> {
-	return callSlackApi("reactions.add", { channel, name, timestamp }, ["already_reacted"])
+export function addReaction(channel: string, timestamp: string, name: string): Promise<SlackEnvelope> {
+	return callSlackApi(Envelope, "reactions.add", { channel, name, timestamp }, ["already_reacted"])
 }
 
 /** Takes a reaction back off a message, the other half of swapping a #half-life-help question from pending to resolved. `no_reaction` is marked expected for the mirror of `already_reacted` above: two people can resolve the same ticket from different places, or a Slack redelivery can rerun the handler, and whoever gets there second finds the emoji already gone – the
  *
  * * outcome we wanted rather than a fault. Same `reactions:write` scope.
  */
-export function removeReaction(
-	channel: string,
-	timestamp: string,
-	name: string,
-): SlackResult<{ [_: string]: unknown }> {
-	return callSlackApi("reactions.remove", { channel, name, timestamp }, ["no_reaction"])
+export function removeReaction(channel: string, timestamp: string, name: string): Promise<SlackEnvelope> {
+	return callSlackApi(Envelope, "reactions.remove", { channel, name, timestamp }, ["no_reaction"])
 }
 
 /** A bot token may delete only messages that bot posted, which is the whole point here – every tickets-channel mirror is one we posted ourselves, so this needs `chat:write` and nothing more. `message_not_found` is marked expected: two people can resolve the same ticket from different places, and whoever gets there second is told the message is already gone, which is the
  *
  * * outcome we wanted rather than a fault.
  */
-export function deleteMessage(channel: string, ts: string): SlackResult<{ [_: string]: unknown }> {
-	return callSlackApi("chat.delete", { channel, ts }, ["message_not_found"])
+export function deleteMessage(channel: string, ts: string): Promise<SlackEnvelope> {
+	return callSlackApi(Envelope, "chat.delete", { channel, ts }, ["message_not_found"])
 }
 
 /** `already_in_channel` is treated as success – the caller just wants the user in the channel, not a report of how they got there. It is omitted from the logs entirely: the join handler fires for every member join, so logging the no-op case buries real failures. Genuine invites still log, as
@@ -126,6 +152,7 @@ export function deleteMessage(channel: string, ts: string): SlackResult<{ [_: st
  */
 export async function inviteToChannel(channel: string, user: string): Promise<void> {
 	const result = await callSlackApi(
+		Envelope,
 		"conversations.invite",
 		{
 			channel,
@@ -144,7 +171,11 @@ export async function inviteToChannel(channel: string, user: string): Promise<vo
  * * message" action, which isn't itself exposed over the API.
  */
 export async function getPermalink(channel: string, messageTs: string): Promise<string | null> {
-	const result = await callSlackApiGet<{ permalink?: string }>("chat.getPermalink", { channel, message_ts: messageTs })
+	const result = await callSlackApiGet(
+		z.object({ ...envelopeShape, permalink: z.string().optional() }),
+		"chat.getPermalink",
+		{ channel, message_ts: messageTs },
+	)
 	return result.ok ? (result.permalink ?? null) : null
 }
 
@@ -152,10 +183,11 @@ export async function getPermalink(channel: string, messageTs: string): Promise<
  *
  * * all. Those methods go through here instead of `callSlackApi`.
  */
-async function callSlackApiGet<T extends { [_: string]: unknown }>(
+async function callSlackApiGet<S extends z.ZodType<SlackEnvelope>>(
+	schema: S,
 	method: string,
 	params: { [_: string]: string },
-): SlackResult<T> {
+): Promise<z.infer<S>> {
 	const token = process.env.SLACK_BOT_TOKEN
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
 
@@ -166,7 +198,9 @@ async function callSlackApiGet<T extends { [_: string]: unknown }>(
 		signal: AbortSignal.timeout(10_000),
 	})
 
-	const data = (await res.json()) as T & { ok: boolean; error?: string; needed?: string; provided?: string }
+	const parsed = schema.safeParse(await res.json().catch(() => null))
+	if (!parsed.success) throw new Error(`Slack ${method} failed: an unreadable answer (HTTP ${res.status})`)
+	const { data } = parsed
 	if (!res.ok || !data.ok) console.error(`Slack API ${method} failed: ${slackErrorDetail(data, res.status)}`)
 	return data
 }
@@ -210,9 +244,19 @@ export function getSlackUserName(userId: string): Promise<string> {
  */
 async function resolveSlackUserName(userId: string): Promise<string | null> {
 	try {
-		const result = await callSlackApiGet<{
-			user?: { real_name?: string; profile?: { display_name?: string; real_name?: string } }
-		}>("users.info", { user: userId })
+		const result = await callSlackApiGet(
+			z.object({
+				...envelopeShape,
+				user: z
+					.object({
+						profile: z.object({ display_name: z.string().optional(), real_name: z.string().optional() }).optional(),
+						real_name: z.string().optional(),
+					})
+					.optional(),
+			}),
+			"users.info",
+			{ user: userId },
+		)
 		if (!result.ok) return null
 		return result.user?.profile?.display_name || result.user?.profile?.real_name || result.user?.real_name || null
 	} catch {
@@ -249,7 +293,12 @@ export interface ChannelMembership {
 export async function checkChannelMembership(channel: string, user: string): Promise<ChannelMembership> {
 	let cursor: string | undefined
 	for (let page = 0; page < 10; page += 1) {
-		const result = await callSlackApiGet<{ members?: string[]; response_metadata?: { next_cursor?: string } }>(
+		const result = await callSlackApiGet(
+			z.object({
+				...envelopeShape,
+				members: z.array(z.string()).optional(),
+				response_metadata: z.object({ next_cursor: z.string().optional() }).optional(),
+			}),
 			"conversations.members",
 			{ channel, limit: "200", ...(cursor ? { cursor } : {}) },
 		)
@@ -301,11 +350,11 @@ export interface SlackThreadMessage extends SlackHistoryMessage {
  * Throws on a Slack error rather than returning a short list, like `listChannelHistory`, so a failed read surfaces in the caller's guard instead of silently leaving the thread unresolved. The reminder is the thread's first reply, so one page of Slack's default `limit` always covers it – a help thread never runs long enough to page.
  */
 export async function getThreadReplies(channel: string, ts: string): Promise<SlackThreadMessage[]> {
-	const result = await callSlackApiGet<{ messages?: SlackThreadMessage[] }>("conversations.replies", {
-		channel,
-		limit: "200",
-		ts,
-	})
+	const result = await callSlackApiGet(
+		z.object({ ...envelopeShape, messages: z.array(ThreadMessageSchema).optional() }),
+		"conversations.replies",
+		{ channel, limit: "200", ts },
+	)
 	if (!result.ok) throw new Error(`conversations.replies failed: ${result.error ?? "unknown error"}`)
 	return result.messages ?? []
 }
@@ -325,10 +374,15 @@ export async function listChannelHistory(
 	const messages: SlackHistoryMessage[] = []
 	let cursor: string | undefined
 	for (let page = 0; page < maxPages; page += 1) {
-		const result = await callSlackApiGet<{
-			messages?: SlackHistoryMessage[]
-			response_metadata?: { next_cursor?: string }
-		}>("conversations.history", { channel, limit: "200", ...(cursor ? { cursor } : {}) })
+		const result = await callSlackApiGet(
+			z.object({
+				...envelopeShape,
+				messages: z.array(HistoryMessageSchema).optional(),
+				response_metadata: z.object({ next_cursor: z.string().optional() }).optional(),
+			}),
+			"conversations.history",
+			{ channel, limit: "200", ...(cursor ? { cursor } : {}) },
+		)
 		if (!result.ok) throw new Error(`conversations.history failed: ${result.error ?? "unknown error"}`)
 		messages.push(...(result.messages ?? []))
 		cursor = result.response_metadata?.next_cursor || undefined
@@ -343,7 +397,7 @@ export async function listChannelHistory(
  */
 export async function getBotUserId(): Promise<string | null> {
 	if (botUserId) return botUserId
-	const result = await callSlackApi<{ user_id?: string }>("auth.test", {})
+	const result = await callSlackApi(z.object({ ...envelopeShape, user_id: z.string().optional() }), "auth.test", {})
 	botUserId = result.user_id ?? null
 	return botUserId
 }

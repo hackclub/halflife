@@ -1,4 +1,5 @@
 import "server-only"
+import { z } from "zod"
 import { HttpError } from "@/lib/errors"
 import db from "@/lib/prisma8"
 import { parseDbTimestamp } from "@/lib/time"
@@ -36,17 +37,26 @@ export interface LapseTimelapse {
 	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
 }
 
-interface RawTimelapse {
-	createdAt: number
-	duration: number
-	id: string
-	name: string
-	owner: { id: string }
-	playbackUrl: string | null
-	private?: { hackatimeProject?: string | null } | null
-	thumbnailUrl: string | null
-	visibility: LapseTimelapse["visibility"]
-}
+/** One timelapse as Lapse returns it, before it is mapped to the narrower `LapseTimelapse`. */
+const RawTimelapseSchema = z.object({
+	createdAt: z.number(),
+	duration: z.number(),
+	id: z.string(),
+	name: z.string(),
+	owner: z.object({ id: z.string() }),
+	playbackUrl: z.string().nullable(),
+	private: z.object({ hackatimeProject: z.string().nullish() }).nullish(),
+	thumbnailUrl: z.string().nullable(),
+	visibility: z.enum(["PUBLIC", "UNLISTED", "FAILED_PROCESSING"]),
+})
+type RawTimelapse = z.infer<typeof RawTimelapseSchema>
+
+/** Lapse wraps every answer in `{ ok, data }` or `{ ok: false, error, message }`. */
+const envelopeOf = <T>(data: z.ZodType<T>) =>
+	z.union([
+		z.object({ data, ok: z.literal(true) }),
+		z.object({ error: z.string(), message: z.string(), ok: z.literal(false) }),
+	])
 
 function toTimelapse(t: RawTimelapse): LapseTimelapse {
 	return {
@@ -79,7 +89,12 @@ export async function lapseCredentials(userId: string): Promise<{ lapseUserId: s
 /**
  * One call into Lapse's REST API, unwrapped from its `{ ok, data }` envelope. A 401 means the token died early (revoked, or Lapse rotated its keys) and is reported as not-linked so the UI offers the same way back in.
  */
-async function call<T>(accessToken: string, path: string, query?: { [_: string]: string }) {
+async function call<T>(
+	schema: z.ZodType<T>,
+	accessToken: string,
+	path: string,
+	query?: { [_: string]: string },
+): Promise<T> {
 	const url = new URL(`${LAPSE_API_BASE}${path}`)
 	for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v)
 
@@ -95,11 +110,9 @@ async function call<T>(accessToken: string, path: string, query?: { [_: string]:
 	}
 
 	if (res.status === 401 || res.status === 403) throw NOT_LINKED()
-	const body = (await res.json().catch(() => null)) as
-		| { ok: true; data: T }
-		| { ok: false; error: string; message: string }
-		| null
-	if (!body) throw new HttpError("LAPSE_UNAVAILABLE", `Lapse returned HTTP ${res.status}`)
+	const parsed = envelopeOf(schema).safeParse(await res.json().catch(() => null))
+	if (!parsed.success) throw new HttpError("LAPSE_UNAVAILABLE", `Lapse returned HTTP ${res.status}`)
+	const body = parsed.data
 	if (!body.ok) {
 		if (body.error === "EXPIRED") throw NOT_LINKED()
 		if (body.error === "NO_PERMISSION") throw new HttpError("VALIDATION_FAILED", "That timelapse is not one of yours")
@@ -115,7 +128,8 @@ export async function listMyTimelapses(
 	cursor?: string,
 ): Promise<{ timelapses: LapseTimelapse[]; nextCursor: string | null }> {
 	const { accessToken } = await lapseCredentials(userId)
-	const data = await call<{ timelapses: RawTimelapse[]; nextCursor: string | null }>(
+	const data = await call(
+		z.object({ nextCursor: z.string().nullable(), timelapses: z.array(RawTimelapseSchema) }),
 		accessToken,
 		"/timelapse/myPublishedTimelapses",
 		{ limit: "50", ...(cursor ? { cursor } : {}) },
@@ -146,7 +160,9 @@ export async function verifyOwnTimelapses(userId: string, ids: readonly string[]
 		const chunk = ids.slice(at, at + VERIFY_CHUNK_SIZE)
 		const verified = await Promise.all(
 			chunk.map(async id =>
-				toTimelapse((await call<{ timelapse: RawTimelapse }>(accessToken, "/timelapse/query", { id })).timelapse),
+				toTimelapse(
+					(await call(z.object({ timelapse: RawTimelapseSchema }), accessToken, "/timelapse/query", { id })).timelapse,
+				),
 			),
 		)
 		for (const t of verified) {

@@ -1,5 +1,5 @@
 import "server-only"
-import { type AirtableConfig, AirtableError, airtableFetch } from "@/lib/airtable/client"
+import { type AirtableConfig, AirtableError, AirtableListSchema, airtableFetch } from "@/lib/airtable/client"
 
 /**
  * Whether a column exists on a table, probed once per process.
@@ -35,6 +35,7 @@ export async function columnExists(config: AirtableConfig, tableId: string, colu
 
 	try {
 		await airtableFetch(
+			AirtableListSchema,
 			config,
 			`${encodeURIComponent(tableId)}?maxRecords=1&fields%5B%5D=${encodeURIComponent(column)}`,
 		)

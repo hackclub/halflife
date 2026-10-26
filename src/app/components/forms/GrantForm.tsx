@@ -1,8 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { z } from "zod"
 import { Button, Callout } from "@/app/components/ui"
-import { sendJson, useAction } from "@/lib/use-action"
+import { sendJsonParsed, useAction } from "@/lib/use-action"
+
+/** What `/grant` answers once it has sent the design's grant, or found one already sent. */
+const GrantBody = z.object({ alreadySent: z.boolean().optional() })
 
 /**
  * Send a design's parts grant to a maker's HCB card grant.
@@ -25,7 +29,7 @@ export function GrantForm({
 		void run(
 			"send",
 			() =>
-				sendJson<{ alreadySent?: boolean }>(`/api/admin/theme-projects/${projectId}/grant`, {
+				sendJsonParsed(GrantBody, `/api/admin/theme-projects/${projectId}/grant`, {
 					body: { grantUrl, phase: "DESIGN" },
 				}),
 			data => {

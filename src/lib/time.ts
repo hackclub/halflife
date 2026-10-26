@@ -30,10 +30,10 @@ export function parseTimestampFields<T extends object, K extends keyof T>(
 	row: T,
 	keys: readonly K[],
 ): Omit<T, K> & { [P in K]: ParsedTimestamp<T[P]> } {
-	const out = { ...row } as { [_: string]: unknown }
+	const out: { [_: PropertyKey]: unknown } = Object.fromEntries(Object.entries(row))
 	for (const key of keys) {
-		const value = out[key as string]
-		out[key as string] = typeof value === "string" ? parseDbTimestamp(value) : null
+		const value = out[key]
+		out[key] = typeof value === "string" ? parseDbTimestamp(value) : null
 	}
 	return out as Omit<T, K> & { [P in K]: ParsedTimestamp<T[P]> }
 }

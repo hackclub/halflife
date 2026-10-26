@@ -1,4 +1,5 @@
-import { airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
+import { z } from "zod"
+import { AirtableListSchema, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { existingColumns } from "../src/lib/airtable/field-probe"
 import { LOOPS_REVIEW_OVERRIDE, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 
@@ -20,10 +21,9 @@ import { LOOPS_REVIEW_OVERRIDE, YSWS_SUBMISSION } from "../src/lib/airtable/sche
 const commit = process.argv.includes("--commit")
 const BATCH = 10
 
-interface Row {
-	fields: { [_: string]: unknown }
-	id: string
-}
+const RowSchema = z.object({ fields: z.record(z.string(), z.unknown()), id: z.string() })
+type Row = z.infer<typeof RowSchema>
+const RowListSchema = AirtableListSchema.extend({ records: z.array(RowSchema) })
 
 async function main() {
 	const config = getAirtableConfig()
@@ -50,7 +50,8 @@ async function main() {
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listYswsOverrides", () =>
-			airtableFetch<{ offset?: string; records: Row[] }>(
+			airtableFetch(
+				RowListSchema,
 				config,
 				`${encodeURIComponent(YSWS_SUBMISSION.tableId)}?pageSize=100&${fieldsQs}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),
@@ -87,7 +88,7 @@ async function main() {
 	for (let i = 0; i < updates.length; i += BATCH) {
 		const batch = updates.slice(i, i + BATCH)
 		await withRateLimitRetry("updateYswsOverrides", () =>
-			airtableFetch(config, encodeURIComponent(YSWS_SUBMISSION.tableId), {
+			airtableFetch(AirtableListSchema, config, encodeURIComponent(YSWS_SUBMISSION.tableId), {
 				body: JSON.stringify({ records: batch, typecast: false }),
 				method: "PATCH",
 			}),

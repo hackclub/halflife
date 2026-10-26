@@ -1,6 +1,9 @@
 import "server-only"
 import {
+	AirtableListSchema,
 	type AirtableRecord,
+	AirtableRecordSchema,
+	AirtableUpsertSchema,
 	airtableFetch,
 	escapeAirtableValue,
 	getAirtableConfig,
@@ -207,7 +210,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 			if (recordId) {
 				// Once the row exists upstream, updates are a patch by id rather than a formula search.
 				await withRateLimitRetry("updateRsvp", () =>
-					airtableFetch(config, `${RSVP.tableId}/${recordId}`, {
+					airtableFetch(AirtableRecordSchema, config, `${RSVP.tableId}/${recordId}`, {
 						body: JSON.stringify({ fields }),
 						method: "PATCH",
 					}),
@@ -215,7 +218,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				result.updated++
 			} else {
 				const upserted = await withRateLimitRetry("upsertRsvp", () =>
-					airtableFetch<{ records: AirtableRecord[]; updatedRecords?: string[] }>(config, RSVP.tableId, {
+					airtableFetch(AirtableUpsertSchema, config, RSVP.tableId, {
 						body: JSON.stringify({
 							performUpsert: { fieldsToMergeOn: [fieldKey(RSVP.fields.email)] },
 							records: [{ fields }],
@@ -260,7 +263,8 @@ export async function findRsvpByEmail(email: string): Promise<AirtableRecord | n
 	if (!config) return null
 	const formula = `${formulaRef(RSVP.fields.email)} = '${escapeAirtableValue(email)}'`
 	const result = await withRateLimitRetry("findRsvpByEmail", () =>
-		airtableFetch<{ records: AirtableRecord[] }>(
+		airtableFetch(
+			AirtableListSchema,
 			config,
 			`${RSVP.tableId}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`,
 		),

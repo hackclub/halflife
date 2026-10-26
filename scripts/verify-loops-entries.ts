@@ -1,5 +1,11 @@
 import { and, or } from "@prisma/orm-postgres/orm-client"
-import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
+import {
+	AirtableListSchema,
+	type AirtableRecord,
+	airtableFetch,
+	getAirtableConfig,
+	withRateLimitRetry,
+} from "../src/lib/airtable/client"
 import { LOOPS_FIELDS } from "../src/lib/airtable/loops"
 import { RSVP_TABLE_ID } from "../src/lib/airtable/schema"
 import { HoursSource } from "../src/lib/enums"
@@ -32,7 +38,8 @@ async function main() {
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listSignups", () =>
-			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
+			airtableFetch(
+				AirtableListSchema,
 				config,
 				`${encodeURIComponent(RSVP_TABLE_ID)}?pageSize=100&${fieldsQs}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),
@@ -120,7 +127,7 @@ async function main() {
 	for (let i = 0; i < matchedStale.length; i += 10) {
 		const batch = matchedStale.slice(i, i + 10)
 		await withRateLimitRetry("clearLastEntryAt", () =>
-			airtableFetch(config, encodeURIComponent(RSVP_TABLE_ID), {
+			airtableFetch(AirtableListSchema, config, encodeURIComponent(RSVP_TABLE_ID), {
 				body: JSON.stringify({
 					records: batch.map(r => ({ fields: { [LOOPS_FIELDS.lastEntryAt]: null }, id: r.id })),
 					typecast: false,

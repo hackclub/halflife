@@ -1,6 +1,6 @@
 import "server-only"
 import { cachedAirtableWalk } from "@/lib/airtable/cache"
-import { type AirtableConfig, airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
+import { type AirtableConfig, AirtableListSchema, airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 
 /**
@@ -65,7 +65,8 @@ async function walkReferrals(config: AirtableConfig): Promise<ReferralLeaderboar
 	try {
 		do {
 			const page = await withRateLimitRetry("referralLeaderboard", () =>
-				airtableFetch<{ records: { fields: { [_: string]: unknown } }[]; offset?: string }>(
+				airtableFetch(
+					AirtableListSchema,
 					config,
 					`${encodeURIComponent(RSVP_TABLE_ID)}?pageSize=${PAGE_SIZE}&${want}${
 						offset ? `&offset=${encodeURIComponent(offset)}` : ""

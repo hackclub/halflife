@@ -1,4 +1,4 @@
-import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
+import { AirtableListSchema, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { LOOPS_FIELDS, syncLoopsProperties } from "../src/lib/airtable/loops"
 import { RSVP_TABLE_ID } from "../src/lib/airtable/schema"
 import db from "../src/lib/prisma8"
@@ -25,7 +25,8 @@ async function listSignupEmails(
 	const fieldsQs = `fields%5B%5D=${encodeURIComponent(LOOPS_FIELDS.email)}`
 	do {
 		const page = await withRateLimitRetry("listSignupEmails", () =>
-			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
+			airtableFetch(
+				AirtableListSchema,
 				config,
 				`${encodeURIComponent(RSVP_TABLE_ID)}?pageSize=100&${fieldsQs}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),
