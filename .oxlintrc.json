@@ -86,7 +86,7 @@
 		"nextjs/no-img-element": "off",
 		"node/no-sync": "off",
 		"promise/always-return": "off",
-		"promise/avoid-new": "off",
+		"promise/avoid-new": "error",
 		"promise/no-nesting": "off",
 		"promise/prefer-await-to-callbacks": "off",
 		"react/exhaustive-deps": "off",

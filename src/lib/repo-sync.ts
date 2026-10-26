@@ -1,6 +1,7 @@
 import "server-only"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { listBom } from "@/lib/bom"
+import { sleep } from "@/lib/concurrency"
 import { getThemeDef, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
@@ -137,9 +138,8 @@ async function claimQueued(themeProjectId: string): Promise<Date | null> {
 
 async function waitForFree(themeProjectId: string): Promise<void> {
 	const deadline = Date.now() + QUEUE_MAX_WAIT_MS
-	await new Promise(resolve => setTimeout(resolve, SYNC_DEBOUNCE_MS))
-	while (inFlight.has(themeProjectId) && Date.now() < deadline)
-		await new Promise(resolve => setTimeout(resolve, QUEUE_POLL_MS))
+	await sleep(SYNC_DEBOUNCE_MS)
+	while (inFlight.has(themeProjectId) && Date.now() < deadline) await sleep(QUEUE_POLL_MS)
 }
 
 /** One commit: read the project, render its files, write them. */

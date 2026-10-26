@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises"
 import type { Phase } from "../src/lib/enums"
 import { refreshOverlapSpans } from "../src/lib/hours"
 import { lapseCredentials, verifyOwnTimelapses } from "../src/lib/lapse"
@@ -75,7 +76,7 @@ async function main() {
 				// Gone private, deleted, or still processing. Same as unattached.
 				unfillable += 1
 			}
-			await new Promise(resolve => setTimeout(resolve, PACE_MS))
+			await sleep(PACE_MS)
 		}
 	}
 

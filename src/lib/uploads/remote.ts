@@ -96,19 +96,19 @@ function assertFetchable(url: URL): void {
 }
 
 function get(url: URL, signal: AbortSignal): Promise<IncomingMessage> {
-	return new Promise((resolve, reject) => {
-		const client = url.protocol === "https:" ? https : http
-		const req = client.get(
-			url,
-			{
-				headers: { accept: "image/png,image/jpeg,image/gif,image/webp", "user-agent": "HalfLife-ImageImport/1.0" },
-				lookup: safeLookup,
-				signal,
-			},
-			resolve,
-		)
-		req.on("error", reject)
-	})
+	const { promise, resolve, reject } = Promise.withResolvers<IncomingMessage>()
+	const client = url.protocol === "https:" ? https : http
+	const req = client.get(
+		url,
+		{
+			headers: { accept: "image/png,image/jpeg,image/gif,image/webp", "user-agent": "HalfLife-ImageImport/1.0" },
+			lookup: safeLookup,
+			signal,
+		},
+		resolve,
+	)
+	req.on("error", reject)
+	return promise
 }
 
 async function readCapped(res: IncomingMessage, maxBytes: number): Promise<Buffer> {

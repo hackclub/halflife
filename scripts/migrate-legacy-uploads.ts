@@ -1,4 +1,5 @@
 import { createHash, createHmac } from "node:crypto"
+import { setTimeout as sleep } from "node:timers/promises"
 import { S3Client } from "bun"
 
 /**
@@ -139,7 +140,7 @@ async function copyObject(endpoint: string, bucket: string, source: string, dest
 		} catch (err) {
 			if (attempt === RETRIES) throw err
 		}
-		await new Promise(resolve => setTimeout(resolve, 250 * 2 ** (attempt - 1)))
+		await sleep(250 * 2 ** (attempt - 1))
 	}
 }
 

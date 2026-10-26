@@ -1,4 +1,5 @@
 import "server-only"
+import { sleep } from "@/lib/concurrency"
 
 /**
  * A fetch for an external service this app depends on, with a short retry so a blip does not become a failed sign-in.
@@ -64,7 +65,7 @@ export async function fetchWithRetry(url: string | URL, options: FetchRetryOptio
 	let lastError: unknown = null
 
 	for (let attempt = 0; attempt <= retries; attempt++) {
-		if (attempt > 0) await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS_MS[attempt - 1] ?? 1000))
+		if (attempt > 0) await sleep(RETRY_DELAYS_MS[attempt - 1] ?? 1000)
 		try {
 			const res = await fetch(url, init)
 			// A 5xx is worth another go; a 4xx is a real answer.

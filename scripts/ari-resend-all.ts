@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from "node:timers/promises"
+
 /**
  * Resend every decision in an Ari program's "Reviewed" list, using your logged-in cookie.
  *
@@ -44,8 +46,6 @@ interface Limiter {
 
 type SendOutcome = "refused" | "resent" | "retry"
 type TaskOutcome = "failed" | "refused" | "resent"
-
-const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 /** ±20%, so workers that backed off together do not all retry on the same tick. */
 const jitter = (ms: number): number => Math.round(ms * (0.8 + Math.random() * 0.4))

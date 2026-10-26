@@ -138,18 +138,18 @@ function reserveUploadBytes(pool: UploadPool, bytes: number): Promise<boolean> {
 		pool.reserved += bytes
 		return Promise.resolve(true)
 	}
-	return new Promise<boolean>(resolve => {
-		const waiter: UploadWaiter = { bytes, resolve }
-		pool.waiters.push(waiter)
-		const timer = setTimeout(() => {
-			const index = pool.waiters.indexOf(waiter)
-			if (index === -1) return
-			pool.waiters.splice(index, 1)
-			resolve(false)
-		}, UPLOAD_RESERVATION_WAIT_MS)
-		// The timer must not be what keeps the process alive on its way out.
-		timer.unref?.()
-	})
+	const { promise, resolve } = Promise.withResolvers<boolean>()
+	const waiter: UploadWaiter = { bytes, resolve }
+	pool.waiters.push(waiter)
+	const timer = setTimeout(() => {
+		const index = pool.waiters.indexOf(waiter)
+		if (index === -1) return
+		pool.waiters.splice(index, 1)
+		resolve(false)
+	}, UPLOAD_RESERVATION_WAIT_MS)
+	// The timer must not be what keeps the process alive on its way out.
+	timer.unref?.()
+	return promise
 }
 
 /** Give the reservation back and let the queue move. */
