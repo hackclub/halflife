@@ -5,7 +5,7 @@ import { markSubmission } from "@/lib/analytics"
 import { ok, parseBody } from "@/lib/api"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { refreshLinkCache } from "@/lib/hackatime"
 import db from "@/lib/prisma8"
 import { sanitizeOptional } from "@/lib/sanitize"
@@ -17,7 +17,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, submitSchema)

@@ -1,5 +1,5 @@
 import { fail, ok, parseUploadForm, rateLimitedInMemory } from "@/lib/api"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import {
 	buildObjectKey,
@@ -18,7 +18,7 @@ export const maxDuration = 60
 
 const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts", "shop"])
 
-export const POST = withSession(async (req: Request, { gate }) => {
+export const POST = withWriteSession(async (req: Request, { gate }) => {
 	if (rateLimitedInMemory(`upload:${gate.user.id}`))
 		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")
 

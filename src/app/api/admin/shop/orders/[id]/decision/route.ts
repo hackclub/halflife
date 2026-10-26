@@ -1,7 +1,7 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { ShopOrderStatus } from "@/lib/enums"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
@@ -13,7 +13,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.FULFILL_ORDERS,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

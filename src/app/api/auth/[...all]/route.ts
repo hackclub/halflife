@@ -19,6 +19,8 @@ function bodyTooLarge(request: Request): boolean {
  *
  * `account_not_linked`: better-auth refused to attach the HCA identity to an existing local user because that user was not `emailVerified`. `lib/hca-profile` adopts HCA's own proof onto the pre-created rows it safely can before better-auth makes that decision, so this is the rare remainder (an unverified address at HCA, or a row we could not safely claim). The person is sent to the landing page with a flag its signup form reads, so they meet an explanation rather than better-auth's bare error page – which, in production, redirects to a query string nothing renders.
  *
+ * `ACCOUNT_BANNED`: the session hook refused to open a session for a banned account (see lib/auth). The person is sent to the public front-door screen, not better-auth's error page, because this refusal is the point and the page explains it.
+ *
  * Every other callback failure – an invalid code, a missing email, a provider we do not trust – is left to better-auth, because those are real and their page is the right one.
  */
 export async function GET(request: Request): Promise<Response> {
@@ -33,13 +35,16 @@ export async function GET(request: Request): Promise<Response> {
 		// A Location that will not parse is not one of ours to rewrite.
 		return response
 	}
-	if (error !== "state_mismatch" && error !== "account_not_linked") return response
+	if (error !== "state_mismatch" && error !== "account_not_linked" && error !== "ACCOUNT_BANNED") return response
 
 	// A duplicate callback that already signed someone in leaves a session behind; a failed link attempt does not. Redirects stay on the public origin (see lib/public-origin): `request.url` carries the pod's own host behind the ingress.
 	const session = await auth.api.getSession({ headers: request.headers })
 	if (session) return publicRedirect(request, "/dashboard")
 
 	if (error === "account_not_linked") return publicRedirect(request, "/?error=account_not_linked")
+
+	// A banned account's attempt is over, and it has a page of its own to land on.
+	if (error === "ACCOUNT_BANNED") return publicRedirect(request, "/banned")
 
 	// An expired or duplicate state, with no session: the attempt is over.
 	return publicRedirect(request, "/")

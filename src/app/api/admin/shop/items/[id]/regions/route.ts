@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { itemRegionPriceSchema } from "@/lib/schemas/admin"
@@ -14,7 +14,7 @@ interface Params {
 /**
  * Set (or clear, with null) one region's coin price for one shop item. Absent means base pricing, so clearing restores the base price rather than deleting history – orders snapshot the price they were charged.
  */
-export const PUT = withPermission(
+export const PUT = withWritePermission(
 	Permission.MANAGE_SHOP,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

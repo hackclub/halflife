@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { deleteOwnPost } from "@/lib/feed"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
 import { reelLockReason } from "@/lib/reel-gate"
 
@@ -16,7 +16,7 @@ interface Params {
  *
  * A reel on a checkpoint can only go while its week can still take work: a week in review or decided keeps its reels as its record, and a passed week could never have the reel re-recorded, which would hold the rest of the map forever (see lib/reel-gate).
  */
-export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+export const DELETE = withWriteSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const post = await db.orm.public.Post.where({ deletedAt: null, id, userId: gate.user.id })

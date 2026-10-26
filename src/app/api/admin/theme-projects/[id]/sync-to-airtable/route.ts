@@ -1,7 +1,7 @@
 import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { fail, ok, parseBody } from "@/lib/api"
 import { PhaseStatus } from "@/lib/enums"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
@@ -19,7 +19,7 @@ export const maxDuration = 60
  *
  * The audit log is where a failed sync shows up; this is how an admin fixes it.
  */
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.MANAGE_PROGRAM,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

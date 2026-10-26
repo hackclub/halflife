@@ -6,7 +6,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HoursSource, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { lockKey } from "@/lib/locks"
@@ -106,7 +106,7 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 	})
 })
 
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, sessionCreateSchema)

@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { withPermission } from "@/lib/guards"
+import { withPermission, withWritePermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -15,7 +15,7 @@ export const GET = withPermission(Permission.MANAGE_SHOP, async () =>
 	}),
 )
 
-export const POST = withPermission(Permission.MANAGE_SHOP, async (req: Request, { gate }) => {
+export const POST = withWritePermission(Permission.MANAGE_SHOP, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, shopItemSchema)
 	if (parsed.error) return parsed.error
 	const { data } = parsed

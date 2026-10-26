@@ -2,7 +2,7 @@ import { and, or } from "@prisma/orm-postgres/orm-client"
 import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { Phase, PhaseStatus } from "@/lib/enums"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
@@ -14,7 +14,7 @@ interface Params {
 /** Statuses in which a phase's links may still be removed: a draft, or one an admin or reviewer sent back for changes. */
 const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
-export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+export const DELETE = withWriteSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, linkId } = await params
 
 	const link = await db.orm.public.HackatimeLink.where({ id: linkId, themeProjectId: id })

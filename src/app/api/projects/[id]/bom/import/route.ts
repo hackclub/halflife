@@ -4,7 +4,7 @@ import { bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
 import { type ImportedBomLine, parseBomCsv, type SkippedRow } from "@/lib/bom-csv"
 import { BOM_CSV_PATTERN } from "@/lib/config/repo-checks"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
@@ -71,7 +71,7 @@ async function readRepoBom(repoLink: string | null, limit: number): Promise<Repo
 	return { lines: parsed.lines, path, skipped: parsed.skipped }
 }
 
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, bomImportSchema)

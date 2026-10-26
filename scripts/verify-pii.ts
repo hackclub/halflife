@@ -143,9 +143,13 @@ async function main() {
 				] as [string, string][])),
 	]
 
+	// The viewer's own avatar is fetched from Cachet by their Slack id, so that one URL necessarily carries it. Removing exactly that URL keeps the check honest about everywhere else the id could appear.
+	const cachetBase = (process.env.CACHET_BASE_URL ?? "https://cachet.dunkirk.sh").replace(/\/$/, "")
+	const ownAvatar = `${cachetBase}/users/${encodeURIComponent(S.viewerSlack)}/r`
+
 	for (const path of [...PARTICIPANT_PAGES, `/u/${other.id}`, ...PARTICIPANT_APIS]) {
 		const res = await fetch(`${BASE}${path}`, { headers: { cookie } })
-		const text = await res.text()
+		const text = (await res.text()).replaceAll(ownAvatar, "")
 		const found = forbidden(path)
 			.filter(([, needle]) => text.includes(needle))
 			.map(([label]) => label)

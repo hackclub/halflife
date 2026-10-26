@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server"
 import { fail, ok, parseBody, parseQuery, rateLimitedInMemory } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { addComment, getComments } from "@/lib/feed"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import { commentSchema } from "@/lib/schemas/feed"
 
@@ -21,7 +21,7 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 	return ok(await getComments(id, gate.user.id, { cursor: parsed.data.cursor, limit: parsed.data.limit }))
 })
 
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, commentSchema)

@@ -3,7 +3,7 @@ import { z } from "zod"
 import { mirrorReviewDecision, reviewStatusFor } from "@/lib/airtable/sync"
 import { ok, parseBody } from "@/lib/api"
 import { PhaseStatus } from "@/lib/enums"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { notifyReviewOutcome } from "@/lib/notifications"
 import { Permission } from "@/lib/permissions"
 import { reopenPhase, unapprovePhase } from "@/lib/review"
@@ -25,7 +25,7 @@ const bodySchema = overrideSchema.extend({
  *
  * Both actions leave the phase on "needs changes", which is the one state a maker is expected to go and act on, so both tell them and both grant them a week to act with (`grantExtension`). The notification and the extension are here rather than inside `unapprovePhase`/`reopenPhase` because Ari's own revert calls them on its way back to "in review" – a transient state the maker never holds – and one message, and one week, per real change is the whole point.
  */
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.OVERRIDE_DECISIONS,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

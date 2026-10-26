@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api"
 import { requireAppBaseUrl } from "@/lib/app-url"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import { normalizeEmail, recordSignup } from "@/lib/site/signups"
 
 export const dynamic = "force-dynamic"
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic"
  *
  * A POST, not a GET. Reading it assigns a code and writes the participant's own address to the signup list, and a GET that writes is reachable from anywhere: a cross-site top-level navigation carries the session cookie, so a link on another site was enough to have the write happen without the participant asking for it. The write is now behind the same POST every other write in the app is behind.
  */
-export const POST = withSession(async (_req: Request, { gate }) => {
+export const POST = withWriteSession(async (_req: Request, { gate }) => {
 	const email = normalizeEmail(gate.user.email)
 	if (!email) return fail("UNPROCESSABLE", "Your account has no email to make a referral link from")
 

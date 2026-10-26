@@ -1,6 +1,6 @@
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { REPORT_TARGET_LABELS, type ReportTarget } from "@/lib/reports"
 import { createReportSchema } from "@/lib/schemas/report"
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic"
  *
  * It changes no state: the row stays up and the queue gains a row. Taking something down stays a separate admin action, so a report is never a silent takedown – and, because an open report per reporter per row is the most the queue holds, neither is it a flood.
  */
-export const POST = withSession(async (req: Request, { gate }) => {
+export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, createReportSchema)
 	if (parsed.error) return parsed.error
 	const { target, targetId, reason, details } = parsed.data

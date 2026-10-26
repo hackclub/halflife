@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { claimSubmission, releaseClaim } from "@/lib/review"
 
@@ -8,7 +8,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.REVIEW_SUBMISSIONS,
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
@@ -34,7 +34,7 @@ export const POST = withPermission(
 	},
 )
 
-export const DELETE = withPermission(
+export const DELETE = withWritePermission(
 	Permission.REVIEW_SUBMISSIONS,
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

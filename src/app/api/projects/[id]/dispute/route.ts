@@ -2,7 +2,7 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
 import { statusFor } from "@/lib/phase"
 import db, { isUniqueViolation } from "@/lib/prisma8"
@@ -18,7 +18,7 @@ interface Params {
  *
  * It changes no state: the phase stays returned or rejected. It records the maker's own words against the submission and puts it in front of staff, so a decision is never silently overridden by a button – and, because `ReviewDispute.submissionId` is unique, neither is the queue flooded.
  */
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, disputeSchema)

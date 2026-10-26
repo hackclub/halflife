@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { claimHandoff, getHandoffStatus } from "@/lib/handoff"
 
 export const dynamic = "force-dynamic"
@@ -19,7 +19,7 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 })
 
 /** Called once the desktop has taken the object key, to stop the polling. */
-export const POST = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const claimed = await claimHandoff(id, gate.user.id)

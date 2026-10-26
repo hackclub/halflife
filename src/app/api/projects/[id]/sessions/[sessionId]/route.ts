@@ -6,7 +6,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HoursSource, Phase, PhaseStatus, type Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { statusFor } from "@/lib/phase"
@@ -44,7 +44,7 @@ function weekOpenFor(userId: string, projectId: string, session: { phase: Phase;
 	return isWeekOpen(userId, projectId, scheduledWeekFor(session.themeProject.theme, session.phase))
 }
 
-export const PATCH = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const PATCH = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const parsed = await parseBody(req, sessionUpdateSchema)
@@ -169,7 +169,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	})
 })
 
-export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+export const DELETE = withWriteSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, sessionId } = await params
 
 	const loadedDelete = await loadOwned(gate.user.id, id, sessionId)

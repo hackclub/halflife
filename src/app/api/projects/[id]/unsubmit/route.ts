@@ -5,7 +5,7 @@ import { ok, parseBody } from "@/lib/api"
 import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
 import { unsubmitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -15,7 +15,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, unsubmitSchema)

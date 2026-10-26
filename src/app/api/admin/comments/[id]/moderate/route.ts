@@ -1,7 +1,7 @@
 import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { hideComment } from "@/lib/feed"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { moderatePostSchema } from "@/lib/schemas/feed"
 
@@ -14,7 +14,7 @@ interface Params {
 /**
  * Hide a comment. Hiding only: a hidden comment is out of the feed and out of the comment count, and there is no moderator-facing restore – the owner cannot delete it either (that would decrement the count twice), so unhiding would need a new pair of operations rather than a flag flip.
  */
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.MANAGE_FEED,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

@@ -77,6 +77,14 @@ export interface E2eAuditRow {
 	metadata: unknown
 }
 
+export interface E2eModerationRows {
+	commentsHidden: number
+	commentsStamped: number
+	postsHidden: number
+	postsPublished: number
+	postsStamped: number
+}
+
 export interface E2eProgramSettingsRow {
 	programTimezone: string
 	shopOpen: boolean
@@ -188,6 +196,56 @@ export async function seedProject(userId: string, theme = "PCB"): Promise<string
 		[id, userId, theme, theme],
 	)
 	return id
+}
+
+/**
+ * Two published reels and one comment by the same member.
+ *
+ * Two reels rather than one on purpose: a bulk hide that quietly updates only a single row still passes with one post to hide, which is exactly the bug this seeds against.
+ */
+export async function seedReelsWithComment(userId: string): Promise<string[]> {
+	const postIds = [randomUUID(), randomUUID()]
+	for (const id of postIds)
+		await pool.query(
+			`insert into post (id, "userId", caption, "objectKey", status, "createdAt", "updatedAt")
+			values ($1, $2, 'e2e reel', 'e2e/reel.mp4', 'PUBLISHED'::"PostStatus", now(), now())`,
+			[id, userId],
+		)
+
+	await pool.query(
+		`insert into post_comment (id, "postId", "userId", body, "createdAt", "updatedAt")
+		values ($1, $2, $3, 'e2e comment', now(), now())`,
+		[randomUUID(), postIds[0], userId],
+	)
+
+	return postIds
+}
+
+/** What a ban's bulk hide did to the member's reels and comments, read back from the rows rather than the card. */
+export async function readModerationRows(userId: string): Promise<E2eModerationRows> {
+	const [posts, comments] = await Promise.all([
+		pool.query(
+			`select
+				count(*) filter (where "hiddenAt" is not null)::int as "postsHidden",
+				count(*) filter (where status = 'PUBLISHED'::"PostStatus")::int as "postsPublished",
+				count(*) filter (where "hiddenByBanAt" is not null)::int as "postsStamped"
+			from post where "userId" = $1`,
+			[userId],
+		),
+		pool.query(
+			`select
+				count(*) filter (where "hiddenAt" is not null)::int as "commentsHidden",
+				count(*) filter (where "hiddenByBanAt" is not null)::int as "commentsStamped"
+			from post_comment where "userId" = $1`,
+			[userId],
+		),
+	])
+
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
+	const postRow = posts.rows[0] as Pick<E2eModerationRows, "postsHidden" | "postsPublished" | "postsStamped">
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
+	const commentRow = comments.rows[0] as Pick<E2eModerationRows, "commentsHidden" | "commentsStamped">
+	return { ...commentRow, ...postRow }
 }
 
 /** Coins in one bucket. The purchase debit is one row, so a sum is the balance the page shows. */

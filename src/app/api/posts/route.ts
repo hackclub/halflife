@@ -2,7 +2,7 @@ import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
 import { createPost } from "@/lib/feed"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { createPostSchema } from "@/lib/schemas/feed"
@@ -10,7 +10,7 @@ import { isRecord } from "@/lib/unknown"
 
 export const dynamic = "force-dynamic"
 
-export const POST = withSession(async (req: Request, { gate }) => {
+export const POST = withWriteSession(async (req: Request, { gate }) => {
 	// A refusal is recorded before it is returned. `withRoute` turns an HttpError into a response and keeps it to itself, so before this a maker blocked by an owed reel, or by an upload-ownership check, left no row anywhere: the client was told why and the server forgot. This is the only place the number of people stuck this way can be seen.
 	const parsed = await parseBody(req, createPostSchema)
 	if (parsed.error) {

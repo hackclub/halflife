@@ -63,6 +63,12 @@ namespace public {
     shopRegionId                String?
     utmSource                   String?
     signupPage                  String?
+    suspendedUntil              TimestampString(3)?
+    suspensionReason            String?
+    suspendedById               String?
+    bannedAt                    TimestampString(3)?
+    banReason                   String?
+    bannedById                  String?
     accounts                    Account[]
     activityDays                UserDay[]
     activityWeeks               UserWeek[]
@@ -255,6 +261,7 @@ namespace public {
     hiddenAt        TimestampString(3)?
     hiddenById      String?
     hiddenReason    String?
+    hiddenByBanAt   TimestampString(3)?
     weekNumber      Int?
     createdAt       TimestampString(3)  @default(now())
     updatedAt       TimestampString(3)  @onCreate(now()) @onUpdate(now())
@@ -283,6 +290,7 @@ namespace public {
     hiddenAt     TimestampString(3)?
     hiddenById   String?
     hiddenReason String?
+    hiddenByBanAt TimestampString(3)?
     createdAt    TimestampString(3)  @default(now())
     updatedAt    TimestampString(3)  @onCreate(now()) @onUpdate(now())
     deletedAt    TimestampString(3)?
@@ -1189,6 +1197,10 @@ namespace public {
     ADMIN_MOVE_PROJECT = "ADMIN_MOVE_PROJECT"
     ADMIN_CHANGE_EMAIL = "ADMIN_CHANGE_EMAIL"
     USER_CREATE_POST_FAILED = "USER_CREATE_POST_FAILED"
+    ADMIN_SUSPEND_USER = "ADMIN_SUSPEND_USER"
+    ADMIN_UNSUSPEND_USER = "ADMIN_UNSUSPEND_USER"
+    ADMIN_BAN_USER = "ADMIN_BAN_USER"
+    ADMIN_UNBAN_USER = "ADMIN_UNBAN_USER"
   }
 
   native_enum ReviewDisputeOutcome {

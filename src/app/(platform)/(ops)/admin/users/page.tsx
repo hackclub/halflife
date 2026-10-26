@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { displayName } from "@/lib/display-name"
+import { penaltyFor } from "@/lib/moderation"
 import { requirePermissionPage } from "@/lib/page-guards"
 import {
 	hasRole,
@@ -75,6 +76,11 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 											<div>
 												<Badge tone="danger">flagged</Badge>
 											</div>
+										) : null}
+										{penaltyFor(user.bannedAt, user.suspendedUntil) === "banned" ? (
+											<Badge tone="danger">banned</Badge>
+										) : penaltyFor(user.bannedAt, user.suspendedUntil) === "suspended" ? (
+											<Badge tone="warning">suspended</Badge>
 										) : null}
 									</td>
 									<td className="hl-mono">{user.email}</td>

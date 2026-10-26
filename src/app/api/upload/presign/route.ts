@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { buildObjectKey, isUploadConfigured, presignUpload, UPLOAD_FOLDERS, validateUpload } from "@/lib/uploads/r2"
 
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic"
  *
  * Everything the app used to check before writing is still checked, just at a different moment: the claims here (extension, MIME, size cap, folder permission), and the real size, magic bytes and content hash at `/confirm`.
  */
-export const POST = withSession(async (req, { gate }) => {
+export const POST = withWriteSession(async (req, { gate }) => {
 	if (rateLimitedInMemory(`upload-presign:${gate.user.id}`, 30, 60_000))
 		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")
 

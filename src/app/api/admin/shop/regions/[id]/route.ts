@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { shopRegionUpdateSchema } from "@/lib/schemas/admin"
@@ -11,7 +11,7 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
-export const PATCH = withPermission(
+export const PATCH = withWritePermission(
 	Permission.MANAGE_SHOP,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params

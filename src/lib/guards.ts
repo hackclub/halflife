@@ -3,7 +3,15 @@ import { headers } from "next/headers"
 import type { NextRequest, NextResponse } from "next/server"
 import { type ApiErrorBody, fail, withRoute } from "@/lib/api"
 import { auth } from "@/lib/auth"
-import { getUserRolesIfExists, hasPermission, hasRole, type Permission, type Role } from "@/lib/permissions"
+import type { Penalty } from "@/lib/moderation"
+import {
+	getUserGuardState,
+	hasPermission,
+	hasRole,
+	type Permission,
+	type Role,
+	type UserGuardState,
+} from "@/lib/permissions"
 
 export interface SessionUser {
 	email: string
@@ -15,31 +23,41 @@ export interface SessionUser {
 }
 
 export type Guard =
-	| { error: NextResponse<ApiErrorBody>; user?: never; roles?: never }
-	| { error?: never; user: SessionUser; roles: Role[] }
+	| { error: NextResponse<ApiErrorBody>; user?: never; roles?: never; penalty?: never }
+	| { error?: never; user: SessionUser; roles: Role[]; penalty: Penalty }
 
-async function resolve(): Promise<{ user: SessionUser; roles: Role[] } | null> {
+async function resolve(): Promise<{ user: SessionUser; roles: Role[]; penalty: Penalty } | null> {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session) return null
 	const u = session.user
-	// The cookie cache can serve a session whose user is gone; see getUserRolesIfExists. Treat that ghost as signed out so handlers answer 401 instead of failing later with a missing-row error.
-	const roles = await getUserRolesIfExists(u.id)
-	if (roles === null) return null
+	// The cookie cache can serve a session whose user is gone; getUserGuardState answers null for that ghost. Treat it as signed out so handlers answer 401 instead of failing later with a missing-row error.
+	// The same read carries the penalty state, so a suspension or ban written mid-session shows up on the next request rather than waiting for the cache to lapse.
+	const state: UserGuardState | null = await getUserGuardState(u.id)
+	if (!state) return null
 	return {
-		roles,
+		penalty: state.penalty,
+		roles: state.roles,
 		user: { email: u.email, id: u.id, image: u.image ?? null, name: u.name ?? null, timezone: u.timezone ?? null },
 	}
 }
 
-export async function requireSession(): Promise<Guard> {
+/**
+ * Resolve the caller, then refuse a banned account outright.
+ *
+ * A suspension is read-only, so the read guards below still answer a suspended member. A ban is not: its sessions are revoked, and this check is what makes the refusal hold even for a cookie cache still answering in that window, or if the session rows outlived a failed revoke. Every guard goes through here, so no route can be left reachable by being guarded with the wrong predicate.
+ */
+async function resolveAllowed(): Promise<Guard> {
 	const ctx = await resolve()
 	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
+	if (ctx.penalty === "banned") return { error: fail("ACCOUNT_BANNED", "Your account has been banned") }
 	return ctx
 }
 
+export const requireSession = resolveAllowed
+
 export async function requirePermission(permission: Permission): Promise<Guard> {
-	const ctx = await resolve()
-	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
+	const ctx = await resolveAllowed()
+	if (ctx.error) return ctx
 	if (!hasPermission(ctx.roles, permission))
 		return { error: fail("FORBIDDEN", `Requires the ${permission} permission`) }
 
@@ -47,10 +65,17 @@ export async function requirePermission(permission: Permission): Promise<Guard> 
 }
 
 export async function requireRole(role: Role): Promise<Guard> {
-	const ctx = await resolve()
-	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
+	const ctx = await resolveAllowed()
+	if (ctx.error) return ctx
 	if (!hasRole(ctx.roles, role)) return { error: fail("FORBIDDEN", `Requires the ${role} role`) }
 
+	return ctx
+}
+
+export async function requireActiveSession(): Promise<Guard> {
+	const ctx = await resolveAllowed()
+	if (ctx.error) return ctx
+	if (ctx.penalty === "suspended") return { error: fail("ACCOUNT_SUSPENDED", "Your account is suspended") }
 	return ctx
 }
 
@@ -101,4 +126,25 @@ export function withRole<C extends object = object>(
 	handler: GuardedHandler<C>,
 ): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
 	return guardedRoute(() => requireRole(role), handler)
+}
+
+/** A write route any signed-in participant may call, while their penalty state allows acting. */
+export function withWriteSession<C extends object = object>(
+	handler: GuardedHandler<C>,
+): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
+	return guardedRoute(requireActiveSession, handler)
+}
+
+/** A write route that needs the named staff permission, while their penalty state allows acting. */
+export function withWritePermission<C extends object = object>(
+	permission: Permission,
+	handler: GuardedHandler<C>,
+): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
+	return guardedRoute(async () => {
+		const gate = await requirePermission(permission)
+		if (gate.error) return gate
+		// A staff member under a penalty is refused the same way: the check is on the person, not the roster seat.
+		if (gate.penalty !== "none") return { error: fail("ACCOUNT_SUSPENDED", "Your account is unable to act") }
+		return gate
+	}, handler)
 }

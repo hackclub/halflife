@@ -1,9 +1,9 @@
 import "server-only"
 import { Role } from "@/lib/enums"
+import { type Penalty, penaltyFor } from "@/lib/moderation"
 import db from "@/lib/prisma8"
 
 export { Role } from "@/lib/enums"
-
 export enum Permission {
 	FULFILL_ORDERS = "FULFILL_ORDERS",
 	MANAGE_CREDIT = "MANAGE_CREDIT",
@@ -133,13 +133,25 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
 }
 
 /**
- * Roles for a user that still exists, or `null` when the row is gone.
+ * Roles and penalty state for a user that still exists, or `null` when the row is gone.
  *
  * A session can outlive its user. The session cookie cache answers `getSession` without touching the database for up to five minutes, so a user deleted inside that window – by hand, or wholesale by a database reset – still looks signed in, and every page then loads that user by id. One query answers both "who are they" and "are they still here", so the guards can turn a ghost session into a sign-out rather than let the first `findUniqueOrThrow` discover it as a 500.
+ *
+ * The penalty timestamps travel with the same read because a member's ability to act can be revoked mid-session: a ban written while a session cookie is still in some browser's hands shows up on this very read, so the next request refuses rather than waiting for the cache to lapse.
  */
-export async function getUserRolesIfExists(userId: string): Promise<Role[] | null> {
+export interface UserGuardState {
+	penalty: Penalty
+	roles: Role[]
+}
+
+export async function getUserGuardState(userId: string): Promise<UserGuardState | null> {
 	const user = await db.orm.public.User.whereUnique({ id: userId })
 		.include("roles", roles => roles.select("role"))
+		.select("bannedAt", "suspendedUntil")
 		.first()
-	return user?.roles.map(r => r.role) ?? null
+	if (!user) return null
+	return {
+		penalty: penaltyFor(user.bannedAt ?? null, user.suspendedUntil ?? null),
+		roles: user.roles.map(r => r.role),
+	}
 }

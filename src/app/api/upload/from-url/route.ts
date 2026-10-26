@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import {
 	buildObjectKey,
 	contentHash,
@@ -19,7 +19,7 @@ const bodySchema = z.object({ url: z.url().max(2048) }).strict()
 /**
  * Re-host an image from another site in the bucket: an image dragged into a journal entry from another page arrives as its address, and a hotlinked picture can vanish or change after the entry is reviewed. Journal images only, so they land beside the uploaded ones in `sessions`, named after their bytes the same way (see /api/upload).
  */
-export const POST = withSession(async (req: Request, { gate }) => {
+export const POST = withWriteSession(async (req: Request, { gate }) => {
 	// The same budget as a file upload: fetching for someone is uploading for them.
 	if (rateLimitedInMemory(`upload:${gate.user.id}`))
 		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")

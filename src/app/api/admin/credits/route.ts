@@ -1,14 +1,14 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { appendLedgerEntry, CoinBucket, getBalances, LedgerKind, lockUserCredit } from "@/lib/currency"
-import { withPermission } from "@/lib/guards"
+import { withWritePermission } from "@/lib/guards"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { creditAdjustSchema } from "@/lib/schemas/admin"
 
-export const POST = withPermission(Permission.MANAGE_CREDIT, async (req: Request, { gate }) => {
+export const POST = withWritePermission(Permission.MANAGE_CREDIT, async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, creditAdjustSchema)
 	if (parsed.error) return parsed.error
 	const { userId, amount, reason, bucket } = parsed.data

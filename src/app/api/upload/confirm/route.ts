@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { isOwnedKey, isUploadConfigured, publicUrlFor, UPLOAD_FOLDERS, validateUpload } from "@/lib/uploads/r2"
 import { verifyStoredUpload } from "@/lib/uploads/verify"
@@ -16,7 +16,7 @@ const ALLOWED_FOLDERS = new Set<string>(UPLOAD_FOLDERS)
  *
  * The key is taken from the request but is re-checked against the session: only a key in the caller's own prefix, in a known folder, and in the shape this app mints can be confirmed. Without that, a participant could confirm somebody else's object and attach it to their own post.
  */
-export const POST = withSession(async (req, { gate }) => {
+export const POST = withWriteSession(async (req, { gate }) => {
 	if (rateLimitedInMemory(`upload-confirm:${gate.user.id}`, 30, 60_000))
 		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")
 

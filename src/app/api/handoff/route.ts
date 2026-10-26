@@ -1,7 +1,7 @@
 import QRCode from "qrcode"
 import { fail, ok, rateLimitedInMemory } from "@/lib/api"
 import { requireAppBaseUrl } from "@/lib/app-url"
-import { withSession } from "@/lib/guards"
+import { withWriteSession } from "@/lib/guards"
 import { createHandoff, HANDOFF_TTL_MINUTES } from "@/lib/handoff"
 
 export const dynamic = "force-dynamic"
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic"
  *
  * The plaintext token exists only in this response – it is stored as a hash and can never be read back.
  */
-export const POST = withSession(async (_req: Request, { gate }) => {
+export const POST = withWriteSession(async (_req: Request, { gate }) => {
 	// Each call inserts an UploadHandoff row, so cap how many one account can mint in a window.
 	if (rateLimitedInMemory(`handoff-mint:${gate.user.id}`))
 		return fail("RATE_LIMITED", "Too many handoff codes at once. Wait a minute and try again")

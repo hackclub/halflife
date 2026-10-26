@@ -3,7 +3,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
 import { type Forge, forgeById } from "@/lib/forge"
 import { forgeCredentials, listWritableRepos, type WritableRepo } from "@/lib/forge-write"
-import { type AuthedContext, withSession } from "@/lib/guards"
+import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
 import { repoRefFromLink } from "@/lib/repo-ref"
 import { disableRepoSync, enableRepoSync, getRepoSyncState, runProjectSync } from "@/lib/repo-sync"
@@ -44,7 +44,7 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	return ok({ ...state, repos, reposError })
 })
 
-export const POST = withSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
+export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const parsed = await parseBody(req, repoSyncSettingsSchema)
@@ -92,7 +92,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 /**
  * Force a sync now. Separate from the settings POST because it is a different intent: not "turn this on or off" but "do it again", which is what a maker reaches for after fixing a failure or pushing a change from elsewhere.
  */
-export const PUT = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
+export const PUT = withWriteSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
 	const state = await getRepoSyncState(id, gate.user.id)

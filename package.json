@@ -9,6 +9,7 @@
 		"airtable:backfill-reviewers": "bun --conditions=react-server scripts/backfill-airtable-reviewers.ts",
 		"airtable:backfill-starters": "bun --conditions=react-server scripts/backfill-airtable-starters.ts",
 		"analytics:backfill": "bun --conditions=react-server scripts/backfill-analytics.ts",
+		"ari:audit-log": "bun scripts/ari-audit-log.ts",
 		"ari:backfill-empty-journals": "bun --conditions=react-server scripts/backfill-ari-empty-journals.ts",
 		"ari:backfill-timelapses": "bun --conditions=react-server scripts/backfill-ari-timelapses.ts",
 		"ari:resend-all": "bun scripts/ari-resend-all.ts",
@@ -73,6 +74,10 @@
 		"verify:uploads": "bun --conditions=react-server scripts/verify-uploads.ts"
 	},
 	"overrides": {
+		"@hono/node-server": "^2.1.5",
+		"hono": "^4.13.14",
+		"lodash": "^4.18.1",
+		"valibot": "^1.5.0",
 		"zod": "^4.6.7"
 	},
 	"dependencies": {

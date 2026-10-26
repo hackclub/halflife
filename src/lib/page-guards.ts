@@ -4,9 +4,19 @@ import { notFound, redirect } from "next/navigation"
 import { cache } from "react"
 import { auth } from "@/lib/auth"
 import type { SessionUser } from "@/lib/guards"
-import { getUserRolesIfExists, hasAnyPermission, hasPermission, type Permission, type Role } from "@/lib/permissions"
+import type { Penalty } from "@/lib/moderation"
+import {
+	getUserGuardState,
+	hasAnyPermission,
+	hasPermission,
+	type Permission,
+	type Role,
+	type UserGuardState,
+} from "@/lib/permissions"
 
 export interface PageContext {
+	/** The penalty state on the account, evaluated on this request's own read. */
+	penalty: Penalty
 	roles: Role[]
 	user: SessionUser
 }
@@ -22,10 +32,13 @@ export const requireSessionPage = cache(async (): Promise<PageContext> => {
 	if (!session) redirect("/signed-out")
 	const u = session.user
 	// The cookie cache can serve a session whose user is gone – a deleted account, or a database reset inside the cache's five-minute window – and the layout below loads that user by id. Same destination as no session at all, before the first query can turn a ghost into a 500.
-	const roles = await getUserRolesIfExists(u.id)
-	if (roles === null) redirect("/signed-out")
+	// The same read carries the penalty state: a ban written mid-session is seen here on the next request, and a banned member is redirected to the front door screen rather than into the app.
+	const state: UserGuardState | null = await getUserGuardState(u.id)
+	if (!state) redirect("/signed-out")
+	if (state.penalty === "banned") redirect("/banned")
 	return {
-		roles,
+		penalty: state.penalty,
+		roles: state.roles,
 		user: { email: u.email, id: u.id, image: u.image ?? null, name: u.name ?? null, timezone: u.timezone ?? null },
 	}
 })

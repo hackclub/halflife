@@ -1,7 +1,7 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withPermission, withWritePermission } from "@/lib/guards"
 import { hasRole, Permission, Role } from "@/lib/permissions"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { getUserDetail } from "@/lib/queries/admin"
@@ -28,7 +28,7 @@ export const GET = withPermission(
 	},
 )
 
-export const PATCH = withPermission(
+export const PATCH = withWritePermission(
 	Permission.MANAGE_USERS,
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
