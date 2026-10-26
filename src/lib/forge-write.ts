@@ -4,10 +4,9 @@ import { z } from "zod"
 import { createSlot, sleep } from "@/lib/concurrency"
 import { HttpError } from "@/lib/errors"
 import { type Forge, repoUrl } from "@/lib/forge"
+import { oauthAccessToken } from "@/lib/oauth-token"
 import db from "@/lib/prisma8"
 import type { RepoRef } from "@/lib/repo-ref"
-import { parseDbTimestamp } from "@/lib/time"
-import { isRecord } from "@/lib/unknown"
 
 /**
  * Writing a participant's work back into their own repo, on whichever forge they linked.
@@ -62,62 +61,27 @@ export class ForgeWriteUnavailableError extends Error {
 }
 
 /**
- * A refresh already running for one account row.
+ * The token for one forge, decrypted and refreshed when it has expired.
  *
- * GitLab rotates the refresh token on every use and invalidates the old one, so two requests refreshing the same account cannot both succeed: the second presents a token the first just spent and is refused with `invalid_grant`, on a link that is perfectly healthy. That is not hypothetical here – a repo listing and a project sync can ask for one maker's token in the same second, and each app instance is another independent caller. Joining the in-flight call makes that one refresh with one answer.
- */
-const refreshing = new Map<string, Promise<string | null>>()
-
-function refreshAccessToken(accountId: string, userId: string): Promise<string | null> {
-	const running = refreshing.get(accountId)
-	if (running) return running
-	const pending = (async () => {
-		try {
-			// Imported lazily: lib/auth reaches back into the database and its hooks, and importing it at module scope here would close a cycle.
-			const { auth } = await import("@/lib/auth")
-			const fresh = await auth.api.getAccessToken({ body: { accountId, userId } })
-			return fresh?.accessToken ?? null
-		} finally {
-			refreshing.delete(accountId)
-		}
-	})()
-	refreshing.set(accountId, pending)
-	return pending
-}
-
-/**
- * The token for one forge, refreshed when it has expired.
+ * Read through `auth.api.getAccessToken`, not straight from the account row. Tokens are encrypted at rest, so the row holds `$ba$…` ciphertext; sending that as a bearer is a 401 that reads as a dead sign-in, and a reconnect only wrote another ciphertext token – which is why the button appeared to do nothing. Better-auth's accessor decrypts it. It also refreshes GitLab's token, whose OAuth access tokens expire after **two hours**, from the stored refresh token and writes the new one back; GitHub tokens do not expire, so for those it is only the decryption that matters.
  *
- * Read through `auth.api.getAccessToken`, not straight from the account row. That distinction is the whole reason GitLab is safe to support: GitLab's OAuth access tokens expire after **two hours**, so a token read raw from the database is dead within one syncing session. better-auth's call refreshes it from the stored refresh token and writes the new one back, which is exactly what a two-hour lifetime needs and what GitHub never asked of us (GitHub tokens do not expire).
- *
- * Only an expiring token is refreshed. GitHub has no refresh token and no expiry, so asking better-auth on every sync was a read of every account for an answer that never changed; GitLab is the one that needs it, and a refresh is shared per account rather than fired twice (`refreshAccessToken`).
- *
- * Resolves null when the user has not linked this forge. A refresh that fails keeps the stored token: a concurrent request may have just written a new one, which the re-read below picks up, and the call the caller makes next is what decides whether the old one is dead.
+ * Resolves null when the user has not linked this forge. If the token cannot be read, the stored value is kept: a concurrent request may have just written a new one, which the retry picks up, and the call the caller makes next is what decides whether the old one is dead.
  */
 export async function forgeCredentials(userId: string, forge: Forge): Promise<ForgeCredentials | null> {
 	const account = await db.orm.public.Account.where({ providerId: forge.id, userId })
 		.orderBy(row => row.updatedAt.desc())
-		.select("accessToken", "accessTokenExpiresAt", "accountId", "id", "refreshToken")
+		.select("accessToken", "accountId", "id")
 		.first()
 	if (!account?.accessToken) return null
 
 	let { accessToken } = account
-	// Matches better-auth's own five-second margin, so a token is refreshed exactly when `getAccessToken` would refresh it.
-	const expiring =
-		account.accessTokenExpiresAt !== null
-		&& parseDbTimestamp(account.accessTokenExpiresAt).getTime() - Date.now() < 5_000
-	if (account.refreshToken && expiring)
-		try {
-			accessToken = (await refreshAccessToken(account.id, userId)) ?? accessToken
-		} catch (err) {
-			// The losing half of a refresh race is not a broken link: if another request refreshed and persisted while this one failed, its token is the good one.
-			const latest = await db.orm.public.Account.whereUnique({ id: account.id }).select("accessToken").first()
-			if (latest?.accessToken) ({ accessToken } = latest)
-			console.warn(
-				`[forge-write] token refresh for ${forge.id} failed for account ${account.id}; using the stored token:`,
-				err,
-			)
-		}
+	try {
+		accessToken = (await oauthAccessToken(account.id, userId)) ?? accessToken
+	} catch (err) {
+		// The losing half of a refresh race is not a broken link: if another request refreshed and persisted while this one failed, its token is the good one.
+		console.warn(`[forge-write] could not read the ${forge.id} token for account ${account.id}; retrying:`, err)
+		accessToken = (await oauthAccessToken(account.id, userId).catch(() => null)) ?? accessToken
+	}
 
 	return { accessToken, forge, login: account.accountId }
 }
