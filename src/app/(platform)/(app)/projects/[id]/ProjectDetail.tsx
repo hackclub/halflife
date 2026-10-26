@@ -1,10 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { DisputeThread } from "@/app/components/forms/DisputeThread"
-import { IconBook, IconChevronLeft, IconClock, IconWarning } from "@/components/platform/icons"
+import { IconBook, IconWarning } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { Button, Chip, Panel } from "@/components/platform/ui"
@@ -15,51 +14,14 @@ import { getTier } from "@/lib/config/tiers"
 import { cx } from "@/lib/cx"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
-import { displayRepo } from "@/lib/repo"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewChipTone } from "@/lib/review-state"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 import { BomEditor } from "./BomEditor"
 import { HackatimeLinks } from "./HackatimeLinks"
 import { ProjectDetails } from "./ProjectDetails"
-import { CoverImage } from "./ProjectHeaderParts"
+import { CoverImage, ProjectBackLink, ProjectFacts, ProjectSection } from "./ProjectHeaderParts"
 import { Timeline } from "./Timeline"
-
-function BackLink() {
-	return (
-		<Link
-			className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
-			href="/projects"
-		>
-			<IconChevronLeft className="text-base" /> All projects
-		</Link>
-	)
-}
-
-/** A titled section of the page. */
-function Section({
-	title,
-	aside,
-	children,
-	id,
-}: {
-	title: string
-	aside?: React.ReactNode
-	children: React.ReactNode
-	id: string
-}) {
-	return (
-		<section aria-labelledby={id} className="mt-8">
-			<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-				<h2 className="label text-violet-deep" id={id}>
-					{title}
-				</h2>
-				{aside}
-			</div>
-			{children}
-		</section>
-	)
-}
 
 /**
  * One project, laid out the way Stasis lays out its project page: what it is at the top with its thumbnail beside it, then what the repo has, the hours tracked elsewhere, the parts list, and last the full record of the work – every entry, timelapse, reel and review, newest first.
@@ -237,7 +199,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 	const canActuallySubmit = canSubmit && hasCover
 
 	return (
-		<Section id="warmup-title" title="Warm-up">
+		<ProjectSection id="warmup-title" title="Warm-up">
 			<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 				<div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
 					<p className="text-[0.95rem] font-extrabold text-navy tabular-nums">
@@ -308,7 +270,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 					</>
 				)}
 			</Panel>
-		</Section>
+		</ProjectSection>
 	)
 }
 
@@ -540,7 +502,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 		const missing = hydrated || !data
 		return (
 			<div className="mx-auto w-full max-w-240 px-4 pt-6 sm:px-8">
-				<BackLink />
+				<ProjectBackLink href="/projects" label="All projects" />
 				<Panel className="mt-6 bg-paper px-6 py-14 text-center" radius={20} tone="line">
 					<p className="text-[1.05rem] font-extrabold text-navy">{missing ? "No such project" : "Loading…"}</p>
 					{missing && (
@@ -575,7 +537,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 	return (
 		<div className="mx-auto w-full max-w-240 px-4 pt-6 pb-10 sm:px-8">
-			<BackLink />
+			<ProjectBackLink href="/projects" label="All projects" />
 
 			{/* ---------- what a decision asks for, first ---------- */}
 			<DecisionNotice phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
@@ -599,47 +561,18 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 							locked={data.editLocked}
 							// Two lines, one voice: how far it has got, then what it is. Everything else the page knows about it is further down, where it can be acted on.
 							meta={
-								<div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft">
-									<p className="flex flex-wrap items-center gap-x-2 tabular-nums">
-										<span className="inline-flex items-center gap-1.5 text-teal-ink">
-											<IconClock className="text-sm" /> {fmtHours(hours)} logged
-										</span>
-										<Dot />
-										<span>{sessions.length === 1 ? "1 entry" : `${sessions.length} entries`}</span>
-										{started > 0 && (
-											<>
-												<Dot />
-												<span>started {fmtDate(started)}</span>
-											</>
-										)}
-									</p>
-									<p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-										<Chip tone="muted">{warmup ? "Warm Up" : week.theme}</Chip>
-										<Chip tone="violet">
-											Tier {project.tier}
-											{project.starter && " · starter"}
-										</Chip>
-										{!warmup && (
-											<span>
-												weeks {project.weekId} &amp; {buildWeekId}
-											</span>
-										)}
-										{project.githubRepo && (
-											<>
-												<Dot />
-												<a
-													className="min-w-0 truncate text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
-													href={project.githubRepo}
-													rel="noopener noreferrer"
-													target="_blank"
-													title={project.githubRepo}
-												>
-													{displayRepo(project.githubRepo)}
-												</a>
-											</>
-										)}
-									</p>
-								</div>
+								<ProjectFacts
+									buildWeekId={buildWeekId}
+									entries={sessions.length}
+									hours={hours}
+									repo={project.githubRepo ?? null}
+									startedAt={started > 0 ? started : undefined}
+									starter={project.starter}
+									theme={week.theme}
+									tier={project.tier}
+									warmup={warmup}
+									weekId={project.weekId}
+								/>
 							}
 							project={project}
 							tierLocked={tierLocked}
@@ -683,9 +616,9 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 			{/* ---------- where review stands ---------- */}
 			{data.phases.length > 0 && (
-				<Section id="review-title" title="Review">
+				<ProjectSection id="review-title" title="Review">
 					<ReviewState phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
-				</Section>
+				</ProjectSection>
 			)}
 
 			{/* ---------- what the repo has ---------- */}
@@ -701,16 +634,16 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 			</div>
 
 			{/* ---------- keeping the repo in step ---------- */}
-			<Section id="repo-sync-title" title="Sync your repo">
+			<ProjectSection id="repo-sync-title" title="Sync your repo">
 				<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 					<RepoSyncSettings projectId={project.id} />
 				</Panel>
-			</Section>
+			</ProjectSection>
 
 			<HackatimeLinks phase={week.phase} projectId={project.id} />
 
 			{/* ---------- the parts ---------- */}
-			<Section id="bom-title" title="Bill of materials">
+			<ProjectSection id="bom-title" title="Bill of materials">
 				<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 					<BomEditor
 						grantUsd={grantUsd}
@@ -721,10 +654,10 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 						tier={project.tier}
 					/>
 				</Panel>
-			</Section>
+			</ProjectSection>
 
 			{/* ---------- what happened, newest first ---------- */}
-			<Section id="timeline-title" title="Timeline">
+			<ProjectSection id="timeline-title" title="Timeline">
 				<Panel className="bg-paper px-5 py-6 sm:px-6" radius={20} tone="line">
 					{data.timeline.length === 0 ? (
 						<p className="hand py-8 text-center text-[0.9rem] text-navy-soft">
@@ -734,23 +667,15 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 						<Timeline items={data.timeline} weekFor={weekFor} />
 					)}
 				</Panel>
-			</Section>
+			</ProjectSection>
 
 			{/* ---------- last, and out of the way ---------- */}
-			<Section id="delete-title" title="Delete project">
+			<ProjectSection id="delete-title" title="Delete project">
 				<DeleteProject blocked={data.deleteBlocked} name={project.name} projectId={project.id} />
-			</Section>
+			</ProjectSection>
 		</div>
 	)
 }
 
 // Stable, so the repo checks do not re-run on every render of the page.
 function noop() {}
-
-function Dot() {
-	return (
-		<span aria-hidden="true" className="text-navy-faint">
-			·
-		</span>
-	)
-}

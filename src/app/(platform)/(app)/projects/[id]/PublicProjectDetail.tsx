@@ -2,16 +2,15 @@
 
 import Link from "next/link"
 import { WeekPainting } from "@/components/platform/art"
-import { IconArrowRight, IconChevronLeft, IconClock } from "@/components/platform/icons"
+import { IconArrowRight } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { ReportButton } from "@/components/platform/report/ReportButton"
-import { Chip, Panel } from "@/components/platform/ui"
+import { Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
-import { fmtHours } from "@/lib/projects"
 import type { ProjectOpenDispute, PublicProjectData } from "@/lib/queries/project-page"
-import { displayRepo } from "@/lib/repo"
+import { ProjectBackLink, ProjectFacts, ProjectSection } from "./ProjectHeaderParts"
 import { Timeline } from "./Timeline"
 
 /**
@@ -44,12 +43,7 @@ export function PublicProjectDetail({
 
 	return (
 		<div className="mx-auto w-full max-w-240 px-4 pt-6 pb-10 sm:px-8">
-			<Link
-				className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
-				href="/explore"
-			>
-				<IconChevronLeft className="text-base" /> Explore
-			</Link>
+			<ProjectBackLink href="/explore" label="Explore" />
 
 			{openDisputes.length > 0 ? (
 				<Panel className="mt-5 bg-gold-pale/70 px-5 py-4 sm:px-6" radius={20} tone="gold">
@@ -121,52 +115,24 @@ export function PublicProjectDetail({
 							</p>
 						)}
 						{/* The owner's page says the same two things the same way. */}
-						<div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft tabular-nums">
-							<p className="flex flex-wrap items-center gap-x-2">
-								<span className="inline-flex items-center gap-1.5 text-teal-ink">
-									<IconClock className="text-sm" /> {fmtHours(hours)} logged
-								</span>
-								<span aria-hidden="true" className="text-navy-faint">
-									·
-								</span>
-								<span>{sessions.length === 1 ? "1 entry" : `${sessions.length} entries`}</span>
-							</p>
-							<p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-								<Chip tone="muted">{warmup ? "Warm Up" : (week?.theme ?? "PCB")}</Chip>
-								{!warmup && (
-									<span>
-										weeks {data.weekId} &amp; {buildWeekId}
-									</span>
-								)}
-								{data.githubRepo && (
-									<>
-										<span aria-hidden="true" className="text-navy-faint">
-											·
-										</span>
-										<a
-											className="min-w-0 truncate text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
-											href={data.githubRepo}
-											rel="noopener noreferrer"
-											target="_blank"
-											title={data.githubRepo}
-										>
-											{displayRepo(data.githubRepo)}
-										</a>
-									</>
-								)}
-							</p>
-						</div>
+						<ProjectFacts
+							buildWeekId={buildWeekId}
+							entries={sessions.length}
+							hours={hours}
+							repo={data.githubRepo}
+							theme={week?.theme ?? "PCB"}
+							warmup={warmup}
+							weekId={data.weekId}
+						/>
 					</div>
 				</div>
 			</Panel>
 
-			<section aria-labelledby="timeline-title" className="mt-8">
-				<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-					<h2 className="label text-violet-deep" id="timeline-title">
-						Timeline
-					</h2>
-					{data.timeline.length > 0 && <span className="hand text-[0.84rem] text-navy-soft">newest first</span>}
-				</div>
+			<ProjectSection
+				aside={data.timeline.length > 0 && <span className="hand text-[0.84rem] text-navy-soft">newest first</span>}
+				id="timeline-title"
+				title="Timeline"
+			>
 				<Panel className="bg-paper px-5 py-6 sm:px-6" radius={20} tone="line">
 					{data.timeline.length === 0 ? (
 						<p className="hand py-8 text-center text-[0.9rem] text-navy-soft">nothing on the record yet.</p>
@@ -174,7 +140,7 @@ export function PublicProjectDetail({
 						<Timeline allowReport items={data.timeline} weekFor={weekFor} />
 					)}
 				</Panel>
-			</section>
+			</ProjectSection>
 		</div>
 	)
 }
