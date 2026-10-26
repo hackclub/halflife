@@ -115,7 +115,7 @@ export const auth = betterAuth({
 			// Hackatime and Lapse are trusted for (1) and defused for (2): their getUserInfo reports a per-identity address on the reserved .invalid TLD (linkOnlyEmail, above) that no real user can hold, so the email match in (2) can never find anyone. Nothing reads those addresses – a user's email comes from HCA, and Account rows store no email.
 			trustedProviders: ["hca", "hackatime", "lapse", "github", "gitlab"],
 		},
-		// Forge tokens (GitHub `repo`, GitLab `api` – write access to people's repositories) are encrypted at rest with BETTER_AUTH_SECRET. Plaintext rows written before this stay readable (better-auth leaves non-encrypted values alone, and encrypts on the next refresh/write).
+		// Forge tokens (GitHub `repo`, GitLab `api` – write access to people's repositories) are encrypted at rest with BETTER_AUTH_SECRET. Plaintext rows written before this stay readable (better-auth leaves non-encrypted values alone, and encrypts on the next refresh/write). Read a token through `auth.api.getAccessToken` (lib/oauth-token), never from `Account.accessToken` directly: that value is ciphertext once encrypted.
 		encryptOAuthTokens: true,
 	},
 
