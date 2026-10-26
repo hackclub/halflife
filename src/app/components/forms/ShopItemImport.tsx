@@ -30,6 +30,7 @@ export function ShopItemImport() {
 				headers: { "Content-Type": "application/json" },
 				method: "POST",
 			})
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json().catch(() => ({}))) as {
 				created?: number
 				error?: { message?: string; details?: { problems?: ShopCsvProblem[] } }

@@ -75,6 +75,7 @@ export function Modal({
 
 	useEffect(() => {
 		if (!open) return
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 		restoreTo.current = document.activeElement as HTMLElement | null
 		const prevOverflow = document.body.style.overflow
 		document.body.style.overflow = "hidden"

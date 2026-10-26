@@ -78,6 +78,7 @@ export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, p
 				onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe })
 				return
 			}
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json()) as { likeCount?: number }
 			if (typeof payload.likeCount === "number") onPatch?.(reel.id, { likeCount: payload.likeCount })
 		} catch {

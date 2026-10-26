@@ -184,6 +184,7 @@ describe("eventColour", () => {
 	})
 
 	test("falls back to slate for an unknown colour", () => {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 		expect(eventColour("BOGUS" as "CORAL")).toEqual({
 			accent: "var(--color-navy-faint)",
 			id: "SLATE",

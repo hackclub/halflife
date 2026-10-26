@@ -22,7 +22,10 @@ describe("HttpError", () => {
 	})
 
 	test("status agrees with the table for every code", () => {
-		for (const [code, status] of Object.entries(API_ERROR_STATUS))
-			expect(new HttpError(code as keyof typeof API_ERROR_STATUS, "x").status).toBe(status)
+		for (const [code, status] of Object.entries(API_ERROR_STATUS)) {
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
+			const error = new HttpError(code as keyof typeof API_ERROR_STATUS, "x")
+			expect(error.status).toBe(status)
+		}
 	})
 })

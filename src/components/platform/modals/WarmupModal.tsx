@@ -45,6 +45,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json().catch(() => null)) as { id?: string; error?: { message?: string } } | null
 			if (!res.ok || !payload?.id) {
 				setError(payload?.error?.message ?? `The project was not created (${res.status}). Try again.`)

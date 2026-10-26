@@ -75,6 +75,7 @@ export function DecisionPanel({
 			) : null}
 
 			<Field label="Decision">
+				{/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check */}
 				<select className="hl-select" onChange={e => setResult(e.target.value as typeof result)} value={result}>
 					<option value="APPROVED">Approve</option>
 					<option value="RETURNED">Send back for changes</option>

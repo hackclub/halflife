@@ -75,6 +75,7 @@ function guardedRoute<C extends object = object>(
 	return withRoute(async (req: NextRequest, ctx?: C) => {
 		const gate = await resolveGuard()
 		if (gate.error) return gate.error
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 		return handler(req, { ...(ctx as C), gate })
 	})
 }

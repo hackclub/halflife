@@ -43,6 +43,7 @@ export function SubmissionReelPicker({
 				const res = await fetch(`/api/me/reels?checkpointKey=${encodeURIComponent(checkpointKey)}`, {
 					cache: "no-store",
 				})
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const body = (await res.json().catch(() => null)) as {
 					error?: { message?: string }
 					reels: SubmissionReel[]

@@ -159,6 +159,7 @@ export async function readUser(id: string): Promise<E2eUserRow | null> {
 		from "user" where id = $1`,
 		[id],
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 	return (rows[0] as E2eUserRow | undefined) ?? null
 }
 
@@ -170,6 +171,7 @@ export async function readProjects(userId: string): Promise<E2eProjectRow[]> {
 		order by "createdAt" asc`,
 		[userId],
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 	return rows as E2eProjectRow[]
 }
 
@@ -194,6 +196,7 @@ export async function readBalance(userId: string, bucket: "BANKED" | "SPENDABLE"
 		`select coalesce(sum(amount), 0)::int as balance from ledger_entry where "userId" = $1 and bucket = $2::"CoinBucket"`,
 		[userId, bucket],
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 	return (rows[0] as { balance: number }).balance
 }
 
@@ -204,6 +207,7 @@ export async function readShopOrders(userId: string): Promise<E2eShopOrderRow[]>
 		order by "placedAt" asc`,
 		[userId],
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 	return rows as E2eShopOrderRow[]
 }
 
@@ -249,6 +253,7 @@ export async function readSubmission(id: string): Promise<E2eSubmissionRow | nul
 		from phase_submission where id = $1`,
 		[id],
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 	return (rows[0] as E2eSubmissionRow | undefined) ?? null
 }
 
@@ -259,6 +264,7 @@ export async function readSubmissionReviews(submissionId: string): Promise<E2eSu
 		order by "createdAt" desc`,
 		[submissionId],
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 	return rows as E2eSubmissionReviewRow[]
 }
 
@@ -269,6 +275,7 @@ export async function readAudit(action: string): Promise<E2eAuditRow | null> {
 		order by "createdAt" desc limit 1`,
 		[action],
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 	return (rows[0] as E2eAuditRow | undefined) ?? null
 }
 
@@ -276,6 +283,7 @@ export async function readProgramSettings(): Promise<E2eProgramSettingsRow | nul
 	const { rows } = await pool.query(
 		`select "programTimezone", "shopOpen", "submissionsOpen" from program_settings where id = 'singleton'`,
 	)
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 	return (rows[0] as E2eProgramSettingsRow | undefined) ?? null
 }
 

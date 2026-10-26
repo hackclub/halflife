@@ -71,6 +71,7 @@ export function ReelComments({
 				if (cursor) query.set("cursor", cursor)
 				const res = await fetch(`/api/posts/${id}/comments?${query}`)
 				if (!res.ok) throw new Error(String(res.status))
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const page = (await res.json()) as { items: Comment[]; nextCursor: string | null }
 				patchThread(id, prev => {
 					const had = cursor ? (prev?.items ?? []) : []
@@ -135,6 +136,7 @@ export function ReelComments({
 				setSendError(errorMessage(err, "That comment did not post. Try again."))
 				return
 			}
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const { comment } = (await res.json()) as { comment: Comment }
 			// Newest first, so the new comment goes to the top of the thread, not the end of it.
 			patchThread(reel.id, prev => ({

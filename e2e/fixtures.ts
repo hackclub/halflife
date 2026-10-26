@@ -74,6 +74,7 @@ export const test = base.extend<E2eFixtures, E2eWorkerFixtures>({
 			const page = await context.newPage()
 			// Prove the cookie before the test does any work. A rejected session would otherwise look like a guard bug in whatever page the test opened first.
 			const response = await context.request.get("/api/auth/get-session")
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
 			const session = (await response.json()) as { user?: { id?: string } }
 			if (session.user?.id !== user.id)
 				throw new Error(

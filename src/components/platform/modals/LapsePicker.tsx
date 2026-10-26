@@ -46,6 +46,7 @@ async function fetchPage(cursor?: string, forSession?: string) {
 		...(forSession ? { forSession } : {}),
 	})
 	const res = await fetch(`/api/lapse/timelapses?${query}`, { cache: "no-store" })
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 	const body = (await res.json().catch(() => null)) as LapsePageResponse | null
 	if (!res.ok) {
 		if (body?.error?.code === "LAPSE_NOT_LINKED") return { unlinked: true as const }

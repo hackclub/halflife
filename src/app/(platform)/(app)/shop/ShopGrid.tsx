@@ -86,6 +86,7 @@ export function ShopGrid({
 				method: "POST",
 			})
 			if (!res.ok) {
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const payload = (await res.json().catch(() => ({}))) as {
 					error?: { message?: string }
 				}
@@ -124,6 +125,7 @@ export function ShopGrid({
 										method: "PUT",
 									})
 									if (!res.ok) {
+										// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 										const payload = (await res.json().catch(() => ({}))) as {
 											error?: { message?: string }
 										}
@@ -176,6 +178,7 @@ export function ShopGrid({
 					<select
 						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy"
 						id="shop-sort"
+						// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 						onChange={e => setSort(e.target.value as Sort)}
 						value={sort}
 					>

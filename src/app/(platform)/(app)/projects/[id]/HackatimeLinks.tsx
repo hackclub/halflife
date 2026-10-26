@@ -31,12 +31,14 @@ interface ApiErrorBody {
 }
 
 async function read<T>(res: Response): Promise<T> {
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 	const body = (await res.json().catch(() => null)) as ApiErrorBody | null
 	if (!res.ok)
 		throw Object.assign(new Error(body?.error?.message ?? "Something went wrong"), {
 			code: body?.error?.code,
 		})
 
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 	return body as T
 }
 

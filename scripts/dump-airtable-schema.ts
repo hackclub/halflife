@@ -19,6 +19,7 @@ async function main() {
 		process.exit(1)
 	}
 
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 	const body = (await res.json()) as {
 		tables: { id: string; name: string; fields: { id: string; name: string; type: string }[] }[]
 	}

@@ -60,6 +60,7 @@ export function ReportDialog({
 				method: "POST",
 			})
 			if (!res.ok) {
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const payload = (await res.json().catch(() => null)) as {
 					error?: { message?: string }
 				} | null

@@ -33,6 +33,7 @@ export default function WeekCountdown() {
 			try {
 				const res = await fetch("/api/program", { cache: "no-store" })
 				if (!res.ok) return
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const body = (await res.json()) as { weekOpensAt?: unknown; programEndsAt?: unknown }
 				if (!live || !Array.isArray(body.weekOpensAt) || typeof body.programEndsAt !== "string") return
 				setSchedule({

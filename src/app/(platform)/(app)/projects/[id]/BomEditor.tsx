@@ -144,6 +144,7 @@ export function BomEditor({
 				headers: body ? { "content-type": "application/json" } : undefined,
 				method,
 			})
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				// The server's field check says which fields, not just "Invalid request": outline those and say it the way the form's own check does. This catches anything the form let through, like a tab still running an older copy of it.
@@ -157,6 +158,7 @@ export function BomEditor({
 
 				return false
 			}
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 			setItems(payload?.items as BomLine[])
 			router.refresh()
 			return true
@@ -230,11 +232,13 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setImportError(payload?.error?.message ?? "Could not read the repo. Try again.")
 				return
 			}
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- shape named at this boundary
 			setPreview(payload as unknown as ImportPreview)
 		} catch {
 			setImportError("Could not reach the server. Try again.")
@@ -252,11 +256,13 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setImportError(payload?.error?.message ?? "That did not save. Try again.")
 				return
 			}
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 			setItems(payload?.items as BomLine[])
 			setImportOpen(false)
 			router.refresh()
@@ -278,6 +284,7 @@ export function BomEditor({
 				headers: { "content-type": "application/json" },
 				method: "PATCH",
 			})
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json().catch(() => null)) as BomPayload | null
 			if (!res.ok) {
 				setError(payload?.error?.message ?? "That did not save. Try again.")

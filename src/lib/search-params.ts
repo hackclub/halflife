@@ -31,5 +31,6 @@ export function firstValues<T extends { [K in keyof T]: SearchParamValue }>(para
 	const record = params as { [_: string]: SearchParamValue }
 	const out: { [_: string]: string | undefined } = {}
 	for (const key of Object.keys(record)) out[key] = firstValue(record[key])
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 	return out as FirstValues<T>
 }

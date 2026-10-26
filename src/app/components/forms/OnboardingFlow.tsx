@@ -128,6 +128,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 				headers: { "Content-Type": "application/json" },
 				method: "POST",
 			})
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json().catch(() => null)) as OnboardingResponse | null
 			if (!res.ok || !payload?.onboarding) {
 				setError(payload?.error?.message ?? `Something went wrong (${res.status})`)

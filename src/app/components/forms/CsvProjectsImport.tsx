@@ -52,6 +52,7 @@ export function CsvProjectsImport() {
 				headers: { "Content-Type": "application/json" },
 				method: "POST",
 			})
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json().catch(() => ({}))) as {
 				read?: number
 				imported?: number

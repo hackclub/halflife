@@ -66,6 +66,7 @@ type DbRow<T> = {
 function dbRow<T extends object>(row: T): DbRow<T> {
 	const out: { [_: string]: unknown } = {}
 	for (const [key, value] of Object.entries(row)) out[key] = value instanceof Date ? formatDbTimestamp(value) : value
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 	return out as DbRow<T>
 }
 
@@ -83,6 +84,7 @@ async function insert<T>(label: string, rows: T[], run: (batch: T[]) => PromiseL
 	return n
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 const read = async <T>(sql: string): Promise<T[]> => (await source.query(sql)).rows as T[]
 
 /** YYYY-MM-DD in a timezone, matching lib/program.effectiveDateFor. */
@@ -322,6 +324,7 @@ async function importUsers(): Promise<{
 	}
 
 	await insert("users", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.User.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 
@@ -340,6 +343,7 @@ async function importUsers(): Promise<{
 		roleRows.push({ grantedAt: r.grantedAt, grantedBy: r.grantedBy, id: r.id, role, userId: r.userId })
 	}
 	await insert("user roles", roleRows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.UserRole.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 
@@ -410,6 +414,7 @@ async function importProjects(userIds: Set<string>): Promise<{
 	if (dropped > 0) console.log(`  (dropped ${dropped} projects past each user's fifth theme slot)`)
 
 	await insert("projects", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.ThemeProject.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 	return { ids, themeOf, userIdOf }
@@ -445,6 +450,7 @@ async function importSessions(
 	})
 
 	await insert("work sessions", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.WorkSession.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 	return { ids: new Set(sessions.map(s => s.id)), sessions }
@@ -463,6 +469,7 @@ async function importMedia(sessionIds: Set<string>): Promise<void> {
 			workSessionId: m.workSessionId,
 		}))
 	await insert("session media", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.SessionMedia.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
@@ -481,6 +488,7 @@ async function importTimelapses(sessionIds: Set<string>): Promise<void> {
 			workSessionId: t.workSessionId,
 		}))
 	await insert("session timelapses", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.SessionTimelapse.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
@@ -503,6 +511,7 @@ async function importBom(projectIds: Set<string>): Promise<void> {
 			vendor: b.distributor,
 		}))
 	await insert("bom items", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.BomItem.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
@@ -522,6 +531,7 @@ async function importHackatime(projectIds: Set<string>): Promise<void> {
 			themeProjectId: h.projectId,
 		}))
 	await insert("hackatime links", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.HackatimeLink.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
@@ -553,6 +563,7 @@ async function importSubmissions(
 			}
 		})
 	await insert("submissions", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.PhaseSubmission.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 	return new Map(
@@ -587,6 +598,7 @@ async function importReviews(
 			tierOverride: r.tierOverride,
 		}))
 	await insert("submission reviews", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.SubmissionReview.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 
@@ -626,6 +638,7 @@ async function importLedger(userIds: Set<string>, projectIds: Set<string>): Prom
 			userId: t.userId,
 		}))
 	await insert("ledger entries", rows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.LedgerEntry.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 }
@@ -647,6 +660,7 @@ async function importShop(userIds: Set<string>): Promise<void> {
 	}))
 	const itemIds = new Set(items.map(i => i.id))
 	await insert("shop items", itemRows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.ShopItem.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 
@@ -674,6 +688,7 @@ async function importShop(userIds: Set<string>): Promise<void> {
 			userId: o.userId,
 		}))
 	await insert("shop orders", orderRows, b =>
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
 		db.orm.public.ShopOrder.createAll(b.map(dbRow) as never, { onConflict: "skip" }).then(r => r.length),
 	)
 

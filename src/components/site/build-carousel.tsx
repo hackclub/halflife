@@ -101,7 +101,9 @@ export default function BuildCarousel() {
 
 		const measure = () => {
 			const items = rail.children
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 			const head = items[0] as HTMLElement | undefined
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 			const wrap = items[BUILD_CARDS.length] as HTMLElement | undefined
 			if (!head || !wrap) return
 

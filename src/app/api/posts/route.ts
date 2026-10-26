@@ -62,6 +62,7 @@ async function logPostRefusal(userId: string, actorEmail: string, req: Request, 
 	const code = err instanceof HttpError ? err.code : "INTERNAL"
 	let checkpointKey: string | null = null
 	try {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 		const body = (await req.clone().json()) as { checkpointKey?: unknown }
 		if (typeof body?.checkpointKey === "string") ({ checkpointKey } = body)
 	} catch {

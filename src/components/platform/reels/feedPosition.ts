@@ -21,6 +21,7 @@ export function readPosition(): FeedPosition | null {
 	try {
 		const raw = window.localStorage.getItem(KEY)
 		if (!raw) return null
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 		const saved = JSON.parse(raw) as Partial<FeedPosition & { day: string }>
 		if (saved.day !== today() || typeof saved.id !== "string") return null
 		const leadIds = Array.isArray(saved.leadIds) ? saved.leadIds.filter(x => typeof x === "string") : []

@@ -22,6 +22,7 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 	return (
 		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
+			{/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check */}
 			<select className="hl-select" onChange={e => setAction(e.target.value as typeof action)} value={action}>
 				<option value="FULFILL">Fulfil</option>
 				<option value="REJECT">Reject and refund</option>

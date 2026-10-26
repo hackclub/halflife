@@ -47,6 +47,7 @@ describe("toOnboardingView", () => {
 	})
 
 	test("falls back to empty text and no intro for unknown data", () => {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately invalid or partial value for this test
 		const view = toOnboardingView(state({ project: { ...state().project, description: "hi" }, theme: "NOPE" as Theme }))
 		expect(view.project.description).toBe("hi")
 		expect(view.weekIntro).toBeNull()

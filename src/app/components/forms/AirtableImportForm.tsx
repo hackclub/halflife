@@ -71,6 +71,7 @@ export function AirtableImportForm({
 				setError(errorMessage(payload, `Import failed (${res.status})`))
 				return
 			}
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const payload = (await res.json()) as { summary: ImportSummary }
 			setSummary(payload.summary)
 			router.refresh()

@@ -19,6 +19,7 @@ import { parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 const REASON_LABELS = Object.fromEntries(REPORT_REASONS.map(r => [r.id, r.label])) as Record<ReportReason, string>
 
 function reasonTone(reason: ReportReason): "success" | "warning" | "danger" | "muted" {

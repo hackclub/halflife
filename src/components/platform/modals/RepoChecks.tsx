@@ -46,6 +46,7 @@ export function RepoChecks({
 		try {
 			const res = await fetch(`/api/projects/${project.id}/repo-sync`, { cache: "no-store" })
 			if (!res.ok) return
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const body = (await res.json()) as { repo?: string | null; syncRepoDiffers?: boolean }
 			setSyncRepo(body.repo && body.syncRepoDiffers ? { differs: true, repo: body.repo } : null)
 		} catch {
@@ -75,6 +76,7 @@ export function RepoChecks({
 		onResult(null)
 		try {
 			const res = await fetch(`/api/projects/${project.id}/preflight`, { cache: "no-store" })
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const body = (await res.json().catch(() => null)) as (RepoCheckResult & { error?: { message?: string } }) | null
 			if (!res.ok) throw new Error(body?.error?.message ?? "Could not check the repo")
 			if (!body) throw new Error("Could not check the repo")

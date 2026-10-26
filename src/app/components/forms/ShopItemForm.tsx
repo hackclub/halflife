@@ -161,6 +161,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			<Field hint="Printers are not listed in the shop; everything else is paid for in coins." label="Category">
 				<select
 					className="hl-select"
+					// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 					onChange={e => setForm({ ...form, category: e.target.value as ShopItemCategory })}
 					value={form.category}
 				>

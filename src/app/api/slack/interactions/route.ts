@@ -153,6 +153,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 
 	let ref: Partial<TicketRef> = {}
 	try {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 		ref = action.value ? (JSON.parse(action.value) as Partial<TicketRef>) : {}
 	} catch {
 		// Malformed value – still clear the mirror below.
@@ -188,6 +189,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	try {
 		if (!(await deleteTicketMessage(payload.channel.id, payload.message.ts)))
 			await updateMessage(payload.channel.id, payload.message.ts, `Ticket resolved by <@${payload.user.id}>`, [
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 				ticketSection(ref as TicketRef),
 				...resolveBlocks(undefined, payload.user.id),
 			])
@@ -208,7 +210,8 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 	let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {}
 	try {
 		ref = action.value
-			? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
+			? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
+				(JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
 			: {}
 	} catch {
 		return
@@ -243,6 +246,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 		try {
 			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs)))
 				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
+					// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 					ticketSection(ref as TicketRef),
 					...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
 				])
@@ -263,7 +267,8 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 	let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {}
 	try {
 		ref = action.value
-			? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
+			? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
+				(JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
 			: {}
 	} catch {
 		return
@@ -316,6 +321,7 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 		try {
 			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs)))
 				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
+					// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 					ticketSection(ref as TicketRef),
 					...resolveBlocks(undefined, payload.user.id),
 				])
@@ -335,6 +341,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 
 	let ref: Partial<TicketRef & { ticketsChannel: string }> = {}
 	try {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 		ref = action.value ? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string }>) : {}
 	} catch {
 		return
@@ -474,6 +481,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	let payload: InteractionPayload
 	try {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 		payload = JSON.parse(raw) as InteractionPayload
 	} catch {
 		return NextResponse.json({ ok: false }, { status: 400 })

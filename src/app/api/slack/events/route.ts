@@ -225,6 +225,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	let body: { event_id?: string; team_id?: string; type?: string; challenge?: string; event?: SlackEvent }
 	try {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 		body = JSON.parse(rawBody) as typeof body
 	} catch {
 		return NextResponse.json({ ok: false }, { status: 400 })

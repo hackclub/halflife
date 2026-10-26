@@ -290,6 +290,7 @@ function HackClubFlag() {
 			rel="noopener noreferrer"
 			target="_blank"
 		>
+			{/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary */}
 			<Image alt="Hack Club" className="w-full" priority src={flagArt as StaticImageData} />
 		</a>
 	)

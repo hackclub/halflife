@@ -39,6 +39,7 @@ export function useFeed(limit = 12): {
 				else query.set("tz", Intl.DateTimeFormat().resolvedOptions().timeZone)
 				const res = await fetch(`/api/feed?${query}`)
 				if (!res.ok) throw new Error(`The feed did not load (${res.status})`)
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const page = (await res.json()) as FeedPage
 				if (!after) setLeading(page.leading)
 				setItems(prev => {

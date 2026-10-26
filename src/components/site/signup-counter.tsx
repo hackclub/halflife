@@ -27,6 +27,7 @@ export default function SignupCounter({ className = "", style }: { className?: s
 			try {
 				const res = await fetch("/api/signup-count", { cache: "no-store" })
 				if (!res.ok) return
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const body = (await res.json()) as { count?: unknown }
 				if (live && typeof body.count === "number") setCount(body.count)
 			} catch {

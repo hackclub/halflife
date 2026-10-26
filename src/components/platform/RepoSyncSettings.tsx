@@ -82,8 +82,10 @@ export function RepoSyncSettings({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/repo-sync`, { cache: "no-store" })
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 			const body = (await res.json().catch(() => null)) as SyncPayload | null
 			if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the sync settings")
+			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 			setState(body as SyncState)
 			// Pre-select the repo a project already points at, if it is one of the writable ones, so re-enabling does not need the picker used again.
 			const current = body?.repo ?? null

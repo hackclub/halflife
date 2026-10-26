@@ -25,6 +25,7 @@ export function FirstCheckpoint() {
 			setError(null)
 			try {
 				const response = await fetch("/api/onboarding", { cache: "no-store" })
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const payload = (await response.json().catch(() => null)) as {
 					onboarding?: OnboardingView
 					error?: { message?: string }

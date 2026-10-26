@@ -175,6 +175,7 @@ async function findHealTargets(): Promise<{ targets: HealTarget[]; withoutRow: n
 		.select("metadata", "targetId")
 		.all()
 	for (const event of events) {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		const meta = event.metadata as { phase?: string; source?: string } | null
 		if (meta?.source !== "repair-identity-returns" || !meta.phase || !event.targetId) continue
 		reopened.add(`${event.targetId}:${meta.phase}`)

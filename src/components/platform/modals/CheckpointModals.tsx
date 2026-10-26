@@ -113,6 +113,7 @@ function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
 
 function isJournalDraft(value: unknown): value is JournalDraft {
 	if (typeof value !== "object" || value === null) return false
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 	const v = value as { [_: string]: unknown }
 	return (
 		(v.tab === "journal" || v.tab === "timelapse")
@@ -245,6 +246,7 @@ async function storeImage(source: ImageSource): Promise<{ url: string | null }> 
 		headers: { "content-type": "application/json" },
 		method: "POST",
 	})
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 	const payload = (await res.json().catch(() => null)) as {
 		url?: string | null
 		error?: { message?: string }
@@ -348,6 +350,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			try {
 				const query = new URLSearchParams({ forSession: existing.id, ids: existing.clips.join(",") })
 				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const payload = (await res.json().catch(() => null)) as {
 					resolved?: LapseTimelapse[]
 					pinned?: string[]
@@ -1047,6 +1050,7 @@ function readReelDraft(checkpointId: string): ReelDraft | null {
 	if (typeof window === "undefined") return null
 	try {
 		const raw = window.localStorage.getItem(reelDraftKey(checkpointId))
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 		return raw ? (JSON.parse(raw) as ReelDraft) : null
 	} catch {
 		return null
@@ -1113,6 +1117,7 @@ export function PublicReelModal({
 			try {
 				// A POST, because the route writes: reading a link assigns the referral code and records the address on the signup list.
 				const res = await fetch("/api/me/referral", { cache: "no-store", method: "POST" })
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const body = (await res.json().catch(() => null)) as { link?: string } | null
 				if (cancelled) return
 				setReferral(res.ok && body?.link ? { link: body.link, state: "ready" } : { state: "error" })
@@ -1157,6 +1162,7 @@ export function PublicReelModal({
 				method: "POST",
 			})
 			if (!res.ok) {
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const body = (await res.json().catch(() => null)) as {
 					error?: { message?: string; details?: { fields?: Partial<Record<PublicReelPlatform, string>> } }
 				} | null
@@ -2047,6 +2053,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		void (async () => {
 			try {
 				const res = await fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const body = (await res.json().catch(() => null)) as BomResponse | null
 				if (!res.ok || !body) throw new Error(body?.error?.message ?? "Could not load the parts list")
 				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd })

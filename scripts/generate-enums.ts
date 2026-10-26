@@ -27,6 +27,7 @@ interface Contract {
 	}
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 const contract = JSON.parse(await readFile(contractPath, "utf8")) as Contract
 const valueSets = contract.storage.namespaces.public.entries.valueSet
 const names = Object.keys(valueSets).toSorted()

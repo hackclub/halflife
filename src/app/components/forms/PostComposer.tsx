@@ -89,6 +89,7 @@ export function PostComposer({
 				method: "POST",
 			})
 			if (!created.ok) {
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
 				const payload = (await created.json().catch(() => ({}))) as ApiError
 				setError(payload.error?.message ?? `Could not post (${created.status})`)
 				return

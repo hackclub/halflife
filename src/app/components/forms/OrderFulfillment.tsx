@@ -29,6 +29,7 @@ export function OrderFulfillment({
 				aria-label="Shipping method"
 				className="hl-select"
 				disabled={busy !== null}
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 				onChange={e => save({ method: e.target.value === "" ? null : (e.target.value as ShopFulfillmentMethod) })}
 				value={method ?? ""}
 			>
@@ -43,6 +44,7 @@ export function OrderFulfillment({
 				aria-label="Fulfilment stage"
 				className="hl-select"
 				disabled={busy !== null || cancelled}
+				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
 				onChange={e => save({ stage: e.target.value as ShopFulfillmentStage })}
 				value={stage}
 			>

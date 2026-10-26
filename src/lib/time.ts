@@ -35,6 +35,7 @@ export function parseTimestampFields<T extends object, K extends keyof T>(
 		const value = out[key]
 		out[key] = typeof value === "string" ? parseDbTimestamp(value) : null
 	}
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TypeScript cannot construct a mapped type generically.
 	return out as Omit<T, K> & { [P in K]: ParsedTimestamp<T[P]> }
 }
 
