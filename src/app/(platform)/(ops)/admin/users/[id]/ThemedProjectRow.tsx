@@ -2,12 +2,12 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { ManageButton, ManageRow, ManageSection } from "@/app/components/admin/ProjectManage"
 import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
 import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
-import { Button } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
 import type { Theme } from "@/lib/enums"
 
@@ -25,19 +25,6 @@ export interface ThemedProjectRowData {
 	themeLabel: string
 	tier: number | null
 	title: string
-}
-
-function Chevron({ open }: { open: boolean }) {
-	return (
-		<svg
-			aria-hidden="true"
-			className={open ? "hl-manage-chevron hl-manage-chevron--open" : "hl-manage-chevron"}
-			fill="none"
-			viewBox="0 0 24 24"
-		>
-			<path d="m6 9 6 6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-		</svg>
-	)
 }
 
 export function ThemedProjectRow({
@@ -81,72 +68,59 @@ export function ThemedProjectRow({
 				<td className="hl-mono">{data.approvedHours ?? "—"}</td>
 				<td style={{ minWidth: "13rem" }}>
 					{hasActions ? (
-						<Button aria-controls={panelId} aria-expanded={open} onClick={() => setOpen(value => !value)} type="button">
-							Manage
-							<Chevron open={open} />
-						</Button>
+						<ManageButton onToggle={() => setOpen(value => !value)} open={open} panelId={panelId} />
 					) : (
 						<span className="hl-muted">—</span>
 					)}
 				</td>
 			</tr>
-			{open && hasActions ? (
-				<tr className="hl-manage-row" id={panelId}>
-					<td colSpan={6}>
-						<div className="hl-manage-panel">
-							{grantAction ? (
-								<section>
-									<h3>Send grant</h3>
-									<GrantForm alreadySent={data.grantSent} amountUsd={data.grantUsd ?? 0} projectId={data.id} />
-								</section>
+			<ManageRow id={panelId} open={open && hasActions}>
+				{grantAction ? (
+					<ManageSection title="Send grant">
+						<GrantForm alreadySent={data.grantSent} amountUsd={data.grantUsd ?? 0} projectId={data.id} />
+					</ManageSection>
+				) : null}
+				{canMoveTheme ? (
+					<ManageSection title="Move to theme">
+						<ThemeMoveForm current={data.theme} projectId={data.id} />
+					</ManageSection>
+				) : null}
+				{canExtend ? (
+					<ManageSection title="Extension">
+						<ExtensionForm current={data.extension} url={`/api/admin/theme-projects/${data.id}`} />
+					</ManageSection>
+				) : null}
+				{designOverride || buildOverride ? (
+					<ManageSection title="Override a decision">
+						<div className="hl-stack hl-stack--tight">
+							{designOverride ? (
+								<ActionButton
+									body={{
+										action: "unapprove",
+										phase: "DESIGN",
+										reason: "Un-approved by an admin",
+									}}
+									confirm="Un-approve the design? This clears the tier and grant."
+									label="Un-approve design"
+									url={`/api/admin/theme-projects/${data.id}/override`}
+								/>
 							) : null}
-							{canMoveTheme ? (
-								<section>
-									<h3>Move to theme</h3>
-									<ThemeMoveForm current={data.theme} projectId={data.id} />
-								</section>
-							) : null}
-							{canExtend ? (
-								<section>
-									<h3>Extension</h3>
-									<ExtensionForm current={data.extension} url={`/api/admin/theme-projects/${data.id}`} />
-								</section>
-							) : null}
-							{designOverride || buildOverride ? (
-								<section>
-									<h3>Override a decision</h3>
-									<div className="hl-stack hl-stack--tight">
-										{designOverride ? (
-											<ActionButton
-												body={{
-													action: "unapprove",
-													phase: "DESIGN",
-													reason: "Un-approved by an admin",
-												}}
-												confirm="Un-approve the design? This clears the tier and grant."
-												label="Un-approve design"
-												url={`/api/admin/theme-projects/${data.id}/override`}
-											/>
-										) : null}
-										{buildOverride ? (
-											<ActionButton
-												body={{
-													action: "unapprove",
-													phase: "BUILD",
-													reason: "Un-approved by an admin",
-												}}
-												confirm={`Un-approve the build? This reconciles their ${CREDIT_NAME_PLURAL} back down.`}
-												label="Un-approve build"
-												url={`/api/admin/theme-projects/${data.id}/override`}
-											/>
-										) : null}
-									</div>
-								</section>
+							{buildOverride ? (
+								<ActionButton
+									body={{
+										action: "unapprove",
+										phase: "BUILD",
+										reason: "Un-approved by an admin",
+									}}
+									confirm={`Un-approve the build? This reconciles their ${CREDIT_NAME_PLURAL} back down.`}
+									label="Un-approve build"
+									url={`/api/admin/theme-projects/${data.id}/override`}
+								/>
 							) : null}
 						</div>
-					</td>
-				</tr>
-			) : null}
+					</ManageSection>
+				) : null}
+			</ManageRow>
 		</>
 	)
 }

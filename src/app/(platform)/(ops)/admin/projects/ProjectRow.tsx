@@ -2,10 +2,10 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { ManageButton, ManageRow, ManageSection } from "@/app/components/admin/ProjectManage"
 import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
-import { Button } from "@/app/components/ui"
 import type { Theme } from "@/lib/enums"
 
 /** One project row, with the controls folded into a panel under it. */
@@ -27,20 +27,6 @@ export interface ProjectRowData {
 	title: string
 	/** The owner-wide extension, already formatted, when one is running. */
 	userExtension: string | null
-}
-
-/** The open/closed marker on the Manage button. */
-function Chevron({ open }: { open: boolean }) {
-	return (
-		<svg
-			aria-hidden="true"
-			className={open ? "hl-manage-chevron hl-manage-chevron--open" : "hl-manage-chevron"}
-			fill="none"
-			viewBox="0 0 24 24"
-		>
-			<path d="m6 9 6 6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-		</svg>
-	)
 }
 
 export function ProjectRow({
@@ -83,15 +69,7 @@ export function ProjectRow({
 				<td style={{ minWidth: "13rem" }}>
 					{canManage ? (
 						<div className="hl-stack hl-stack--tight">
-							<Button
-								aria-controls={panelId}
-								aria-expanded={open}
-								onClick={() => setOpen(value => !value)}
-								type="button"
-							>
-								Manage
-								<Chevron open={open} />
-							</Button>
+							<ManageButton onToggle={() => setOpen(value => !value)} open={open} panelId={panelId} />
 							{data.userExtension ? <span className="hl-hint">Owner extended until {data.userExtension}</span> : null}
 						</div>
 					) : data.extensionLabel ? (
@@ -101,27 +79,19 @@ export function ProjectRow({
 					)}
 				</td>
 			</tr>
-			{open ? (
-				<tr className="hl-manage-row" id={panelId}>
-					<td colSpan={6}>
-						<div className="hl-manage-panel">
-							{canMoveTheme ? (
-								<section>
-									<h3>Move to theme</h3>
-									<ThemeMoveForm current={data.theme} projectId={data.id} />
-								</section>
-							) : null}
-							{canExtend ? (
-								<section>
-									<h3>Extension</h3>
-									<ExtensionForm current={data.extension} url={`/api/admin/theme-projects/${data.id}`} />
-									{data.userExtension ? <p className="hl-hint">Owner extended until {data.userExtension}</p> : null}
-								</section>
-							) : null}
-						</div>
-					</td>
-				</tr>
-			) : null}
+			<ManageRow id={panelId} open={open}>
+				{canMoveTheme ? (
+					<ManageSection title="Move to theme">
+						<ThemeMoveForm current={data.theme} projectId={data.id} />
+					</ManageSection>
+				) : null}
+				{canExtend ? (
+					<ManageSection title="Extension">
+						<ExtensionForm current={data.extension} url={`/api/admin/theme-projects/${data.id}`} />
+						{data.userExtension ? <p className="hl-hint">Owner extended until {data.userExtension}</p> : null}
+					</ManageSection>
+				) : null}
+			</ManageRow>
 		</>
 	)
 }
