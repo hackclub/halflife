@@ -66,7 +66,7 @@ export function ReportDialog({
 				setError(payload?.error?.message ?? "That report did not send. Try again.")
 				return
 			}
-			setDone("Thanks – staff will take a look.")
+			setDone("Thanks, staff will take a look.")
 		} catch {
 			setError("Could not reach the server. Try again.")
 		} finally {
@@ -75,10 +75,10 @@ export function ReportDialog({
 	}
 
 	return (
-		<Modal accent="var(--color-coral)" eyebrow="Report to staff" onClose={close} open={open} size="md">
+		<Modal accent="var(--color-coral)" onClose={close} open={open} size="md">
 			{done ? (
 				<>
-					<ModalTitle sub="Nothing changes right away – a report puts it in front of staff, it never takes anything down by itself.">
+					<ModalTitle sub="Nothing changes right away. A report puts it in front of staff, and it never takes anything down by itself.">
 						Report sent
 					</ModalTitle>
 					<p className="hand text-[0.9rem] text-navy">{done}</p>

@@ -20,7 +20,7 @@ export const POST = withRoute(async (req: Request) => {
 
 	// The token is the only credential and it lives inside the form, so without this a caller could loop the largest allowed body until the process runs out of memory before any token is ever read.
 	if (rateLimitedInMemory(`handoff-upload:${clientIp(req.headers)}`, HANDOFF_MAX_PER_MINUTE))
-		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
+		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")
 
 	// Capped before it is parsed, because this route has no session and the token is inside the form: `req.formData()` would otherwise buffer whatever the caller sends before any credential is checked. From the handoff pool, not the shared one, so anonymous uploads queue behind each other instead of starving everyone else.
 	const parsed = await parseUploadForm(req, HANDOFF_MAX_UPLOAD_BYTES, handoffUploadPool)

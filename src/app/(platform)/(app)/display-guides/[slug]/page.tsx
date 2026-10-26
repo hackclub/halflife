@@ -20,8 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 	const { slug } = await params
 	const starter = getDisplayStarter(slug)
 	return starter
-		? { description: starter.short, title: `${starter.title} – Half Life starter projects` }
-		: { title: "Starter Projects – Half Life" }
+		? { description: starter.short, title: `${starter.title} · Half Life Display Guides` }
+		: { title: "Half Life Display Guides" }
 }
 
 /**
@@ -42,9 +42,9 @@ export default async function DisplayGuide({ params }: { params: Promise<{ slug:
 		<div className="mx-auto w-full max-w-[1100px] px-4 pt-6 sm:px-8">
 			<Link
 				className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
-				href={`/starter-projects?display=${starter.slug}`}
+				href={`/display-guides?display=${starter.slug}`}
 			>
-				<IconChevronLeft className="text-base" /> All starter projects
+				<IconChevronLeft className="text-base" /> All display guides
 			</Link>
 
 			<header className="mt-6 grid gap-6 md:grid-cols-[1fr_minmax(0,22rem)] md:items-center md:gap-10">
@@ -96,10 +96,7 @@ export default async function DisplayGuide({ params }: { params: Promise<{ slug:
 
 					{next && (
 						<Panel className="mt-14 bg-mint" radius={18} tone="teal">
-							<Link
-								className="group flex items-center gap-4 px-5 py-4"
-								href={`/starter-projects/displays/${next.slug}`}
-							>
+							<Link className="group flex items-center gap-4 px-5 py-4" href={`/display-guides/${next.slug}`}>
 								<span className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-cream">
 									<Image alt="" className="object-cover" fill sizes="64px" src={displayPhotoSrc(next.photo.file)} />
 								</span>

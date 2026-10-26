@@ -38,7 +38,7 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 
 	async function submit() {
 		if (saving) return
-		if (note.trim().length < 10) return setError("Tell us what looks wrong – a sentence is enough.")
+		if (note.trim().length < 10) return setError("Tell us what looks wrong. A sentence is enough.")
 		setSaving(true)
 		setError(null)
 		try {
@@ -66,7 +66,7 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 			<p className="rounded-lg bg-gold-pale/70 px-3 py-2 text-[0.82rem] leading-snug text-navy-soft">
 				Use this only if something is wrong with the previous review: if it judged older work, misread what you
 				submitted, or applied a rule that does not fit. It is not for asking to be approved, or for saying what you
-				changed: if you have made the changes and can hand in again, resubmit instead.
+				changed: if you have made the changes and can submit again, resubmit instead.
 			</p>
 			<label className="label text-violet-deep" htmlFor={`dispute-${phase}`}>
 				What is wrong with the review?{" "}
@@ -101,7 +101,7 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 				</Button>
 			</div>
 			<p className="hand text-[0.8rem] text-navy-soft">
-				a dispute does not approve the phase or count as a resubmission – it only asks a reviewer to read the review
+				a dispute does not approve the phase or count as a resubmission. It only asks a reviewer to read the review
 				again.
 			</p>
 		</div>
@@ -316,10 +316,10 @@ function ReviewState({
 
 							{p.shipError && (
 								<div className="rounded-xl bg-coral/10 px-3.5 py-3">
-									<p className="text-[0.88rem] font-extrabold text-coral-dark">This hand-in has not reached review</p>
+									<p className="text-[0.88rem] font-extrabold text-coral-dark">This submission has not reached review</p>
 									<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">{p.shipError}</p>
 									<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">
-										Fix that, then hand it in again – take the week back first if it is still in review.
+										Fix that, then submit it again. Take the week back first if it is still in review.
 									</p>
 								</div>
 							)}
@@ -342,7 +342,7 @@ function ReviewState({
 											size="sm"
 											variant="solid"
 										>
-											I&apos;ve made these changes – resubmit
+											I&apos;ve made these changes, resubmit
 										</Button>
 									)}
 									{!p.dispute && (
@@ -415,7 +415,7 @@ function DecisionNotice({
 								size="sm"
 								variant="gold"
 							>
-								I&apos;ve made these changes – resubmit
+								I&apos;ve made these changes, resubmit
 							</Button>
 						</div>
 					</div>
@@ -603,7 +603,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 						<IconWarning className="mt-0.5 shrink-0 text-base text-gold-ink" />
 						<span>
 							The hours above might count one session twice. Where you recorded with Lapse, the same time also appears
-							as Hackatime heartbeats, so it is taken off one side and counted once – but Hackatime could not be read to
+							as Hackatime heartbeats, so it is taken off one side and counted once, but Hackatime could not be read to
 							check which time that was, so the overlap is still in the total. It resolves itself once Hackatime answers
 							again.
 						</span>

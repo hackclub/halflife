@@ -93,7 +93,7 @@ export function ProgramStartForm({
 					<ul className="hl-hint" style={{ margin: 0, paddingLeft: "1.1rem" }}>
 						{weeks.map((label, i) => (
 							<li key={label}>
-								Week {i + 1} ({label}): {dayLabel(date, i * 7)} – {dayLabel(date, i * 7 + 6)}
+								Week {i + 1} ({label}): {dayLabel(date, i * 7)} to {dayLabel(date, i * 7 + 6)}
 							</li>
 						))}
 					</ul>

@@ -232,7 +232,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 							/>
 							<div className="min-w-0 flex-1 space-y-2">
 								{view.beginner ? (
-									<p className="max-w-[62ch] text-[0.92rem] leading-relaxed text-navy-soft">{view.weekIntro.primer}</p>
+									<p className="max-w-[62ch] text-[0.92rem] leading-relaxed text-navy-soft"></p>
 								) : (
 									<>
 										<p className="text-[0.92rem] text-navy-soft">Some places to start, if you want one:</p>
@@ -430,7 +430,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 													type="radio"
 												/>
 												<h3 className="text-[1.2rem] leading-tight font-extrabold text-navy" id={headingId}>
-													{tier.name} – ${tier.grantUsd}{" "}
+													{tier.name}: ${tier.grantUsd}{" "}
 													<span className="font-semibold text-navy-soft">({tier.estimate})</span>
 												</h3>
 												{chosen ? (
@@ -503,7 +503,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 							</a>
 							). A <strong className="text-navy">timelapse</strong> is a screenrecording or video of yourself working on
 							your project. Every approved hour you log past the funding for your chosen tier earns{" "}
-							<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> – those funded hours pay for
+							<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>. Those funded hours pay for
 							your parts instead. Coins are what you spend in the shop.
 						</p>
 						<ul className="grid gap-3 sm:grid-cols-3">
@@ -519,8 +519,8 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 							))}
 						</ul>
 						<p className="text-[0.9rem] leading-relaxed text-navy-soft">
-							Time spent researching may be deflated fully or partially unless it&apos;s clearly used productively – for
-							example, taking notes from tutorials or referencing datasheets.
+							Time spent researching may be deflated fully or partially unless it&apos;s clearly used productively (for
+							example, taking notes from tutorials or referencing datasheets).
 						</p>
 						<StepActions
 							busy={busy}

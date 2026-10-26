@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic"
  */
 export const POST = withSession(async (req, { gate }) => {
 	if (rateLimitedInMemory(`upload-presign:${gate.user.id}`, 30, 60_000))
-		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
+		return fail("RATE_LIMITED", "Too many uploads at once. Wait a minute and try again")
 
 	if (!isUploadConfigured()) return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 

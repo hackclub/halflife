@@ -263,7 +263,7 @@ function DetailsForm({
 						description.trim().length < MIN_PROJECT_DESCRIPTION_CHARS ? "text-coral-deep" : "text-navy-soft",
 					)}
 				>
-					{description.trim().length}/{MIN_PROJECT_DESCRIPTION_CHARS} characters – a week needs at least{" "}
+					{description.trim().length}/{MIN_PROJECT_DESCRIPTION_CHARS} characters. A week needs at least{" "}
 					{MIN_PROJECT_DESCRIPTION_CHARS} to submit.
 				</p>
 			</div>
@@ -287,15 +287,15 @@ function DetailsForm({
 					value={repo}
 				/>
 				<p className="text-[0.78rem] leading-snug text-navy-soft">
-					Your repo needs a README that says what the project is, how it works, and shows at least two photos of it – at
-					least 200 characters of text over at least 3 lines, once images are removed –{" "}
+					Your repo needs a README that says what the project is, how it works, and shows at least two photos of it,
+					with at least 200 characters of text over at least 3 lines once images are removed.{" "}
 					<a
 						className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 						href={README_GUIDE_URL}
 						rel="noopener noreferrer"
 						target="_blank"
 					>
-						see how to write one
+						See how to write one
 					</a>
 					.
 				</p>
@@ -307,7 +307,7 @@ function DetailsForm({
 					<p className="-mt-1 text-[0.82rem] leading-snug text-navy-soft">
 						{takingStarter
 							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
-							: "Building from a starter, or your own idea? Picked the wrong one by accident – change it here."}
+							: "Building from a starter, or your own idea? Picked the wrong one by accident? Change it here."}
 					</p>
 					{takingStarter && hotGoal && !selectedStarter?.longerBuild && (
 						<p className="hand text-[0.82rem] leading-snug text-coral-deep" role="status">
@@ -340,7 +340,7 @@ function DetailsForm({
 										</span>
 									) : (
 										<Button onClick={() => takeStarter(s.id)} size="sm" type="button" variant="outline">
-											Build {s.title}
+											Use starter project
 										</Button>
 									)
 								}
@@ -384,7 +384,7 @@ function DetailsForm({
 					<>
 						<p className="text-[0.82rem] leading-snug text-navy-soft">
 							Bigger tiers fund bigger builds, and ask for more design time before you submit. The hours next to each
-							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit – not
+							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit, not
 							a cap, and not a suggestion. You have{" "}
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}

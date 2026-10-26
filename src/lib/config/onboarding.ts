@@ -100,7 +100,8 @@ export interface StarterProject {
 	readonly longerBuild?: boolean
 	/** What goes on the board, for the card's parts line. */
 	readonly parts: readonly string[]
-	readonly repoUrl: string
+	/** Left out for a starter that is a set of guides rather than one board, so there are no project files to link. */
+	readonly repoUrl?: string
 	/** The weeks it is offered in. */
 	readonly themes: readonly Theme[]
 	readonly title: string
@@ -114,7 +115,7 @@ export const STARTER_PROJECTS = [
 		id: "starbie",
 		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
 		repoUrl: "https://github.com/SharKingStudios/Starbie",
-		// Week one's starter, offered only in its own week. Displays and Breadboard Computer have no starter yet, so those weeks offer none: listing Starbie for them would hand out the week-one guide under a different theme.
+		// Week one's starter, offered only in its own week. Breadboard Computer has no starter yet, so that week offers none: listing Starbie for it would hand out the week-one guide under a different theme.
 		themes: [Theme.PCB],
 		title: "Starbie",
 	},
@@ -140,6 +141,16 @@ export const STARTER_PROJECTS = [
 		repoUrl: "https://github.com/KaiPereira/MIDI-Keypad",
 		themes: [Theme.SYNTH],
 		title: "Midi Keyboard",
+	},
+	{
+		// Seven guides rather than one board, all on this site, so there is no repo.
+		description:
+			"Pick a display, from a single LED to a colour TFT screen, and follow its guide to design it into a board of your own.",
+		guideUrl: "/display-guides",
+		id: "displays",
+		parts: ["LEDs", "7-segment", "NeoPixels", "LED matrix", "OLED", "TFT"],
+		themes: [Theme.DISPLAYS],
+		title: "Displays",
 	},
 ] as const satisfies readonly StarterProject[]
 
@@ -188,7 +199,7 @@ export const STARTER_PROJECT_TIER: TierId = 1
  * The guide is a starting point, not a submission, and "how much do I have to change?" comes up every cohort. Said once here so the two onboarding steps that offer a starter cannot drift apart in how they answer it.
  */
 export const STARTER_MODIFICATION_NOTE =
-	"A starter is a starting point, not the finished project. Make it yours – it needs enough of your own changes, to the design or the code, that the result is clearly unique to you. Handing in the guide's build with only small tweaks is not enough. Write your own project description too: the starter's default description blocks the hand-in."
+	"A starter is a starting point, not the finished project. Make it yours: it needs enough of your own changes, to the design or the code, that the result is clearly unique to you. Submitting the guide's build with only small tweaks is not enough. Write your own project description too: the starter's default description blocks submission."
 
 /**
  * Step two's copy: "Each week will have a theme, this week it's..."

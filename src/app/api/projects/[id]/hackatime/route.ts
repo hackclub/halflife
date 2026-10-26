@@ -61,7 +61,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	// Linking adds hours to the phase, and the decision recomputes those hours live, so an in-review phase is frozen for this too – not only a decided one.
 	const phaseStatus = statusFor(project, parsed.data.phase)
 	if (phaseStatus === PhaseStatus.in_review)
-		return fail("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
+		return fail("PHASE_LOCKED", "This phase is in review, so unsubmit it before linking more hours")
 	// A decided phase is frozen: linking a project adds hours to a number that has already been judged, so it waits for a return or an un-approval.
 	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This phase has been submitted and decided, so no more hours can be linked")
@@ -83,7 +83,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 					: "the build phase"
 		return fail(
 			"CONFLICT",
-			`That Hackatime project is already linked to ${where} of this project. One tracked project can back only one phase, because its hours are the project's whole total – unlink it there first, or link a different Hackatime project.`,
+			`That Hackatime project is already linked to ${where} of this project. One tracked project can back only one phase, because its hours are the project's whole total. Unlink it there first, or link a different Hackatime project.`,
 		)
 	}
 
@@ -99,7 +99,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	if (other?.themeProject)
 		return fail(
 			"CONFLICT",
-			`That Hackatime project is already linked to "${projectDisplayTitle(other.themeProject)}". One tracked project can back only one project, because its hours would otherwise count twice – unlink it there first, or link a different Hackatime project.`,
+			`That Hackatime project is already linked to "${projectDisplayTitle(other.themeProject)}". One tracked project can back only one project, because its hours would otherwise count twice. Unlink it there first, or link a different Hackatime project.`,
 		)
 
 	// Scoped to the phase's scheduled week: the endpoint's default is the project's all-time total, and linking that total on every theme and warm-up paid one block of work many times over. Warm-ups (week 0) have no week to scope to and keep the all-time total, with the cross-project check above as the guard.
@@ -121,7 +121,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 		const current = await tx.orm.public.ThemeProject.whereUnique({ id }).select("buildStatus", "designStatus").first()
 		const currentStatus = current ? statusFor(current, parsed.data.phase) : undefined
 		if (currentStatus === PhaseStatus.in_review)
-			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
+			throw new HttpError("PHASE_LOCKED", "This phase is in review, so unsubmit it before linking more hours")
 		if (currentStatus && isPhaseDecided(currentStatus))
 			throw new HttpError("PHASE_LOCKED", "This phase has been submitted and decided, so no more hours can be linked")
 
@@ -136,7 +136,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 		if (clash)
 			throw new HttpError(
 				"CONFLICT",
-				"That Hackatime project was just linked to another of your projects – unlink it there first, or link a different Hackatime project.",
+				"That Hackatime project was just linked to another of your projects. Unlink it there first, or link a different Hackatime project.",
 			)
 
 		return tx.orm.public.HackatimeLink.create({

@@ -106,7 +106,7 @@ export function StarterPicker({ initial }: { initial: string }) {
 
 					<Link
 						className="label mt-6 inline-flex h-13 w-full items-center justify-center gap-2 rounded-xl border-2 border-violet-dark bg-violet-deep px-7 text-[0.95rem] text-white transition-[background-color,transform] duration-150 hover:bg-violet-dark active:translate-y-px lg:mt-auto"
-						href={`/starter-projects/displays/${starter.slug}`}
+						href={`/display-guides/${starter.slug}`}
 					>
 						Read the guide <IconArrowRight className="text-[1.1rem]" />
 					</Link>

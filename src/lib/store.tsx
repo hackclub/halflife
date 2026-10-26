@@ -876,7 +876,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					method: "POST",
 				})
 			} catch {
-				return "Could not reach the server. Nothing was submitted – try again."
+				return "Could not reach the server. Nothing was submitted. Try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -907,7 +907,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					method: "POST",
 				})
 			} catch {
-				return "Could not reach the server. Nothing changed – try again."
+				return "Could not reach the server. Nothing changed. Try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1135,7 +1135,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						method: "POST",
 					})
 				} catch {
-					return "Could not reach the server. Your entry is still here – try again."
+					return "Could not reach the server. Your entry is still here. Try again."
 				}
 				if (!res.ok) {
 					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1196,7 +1196,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					method: "PATCH",
 				})
 			} catch {
-				return "Could not reach the server. Your changes are still here – try again."
+				return "Could not reach the server. Your changes are still here. Try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1454,7 +1454,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				)
 				if (owed) return firstFinish(owed)
 				const toGo = round2(self.atHours - hours)
-				return `Opens at ${self.atHours}h logged this week – ${toGo}h to go.`
+				return `Opens at ${self.atHours}h logged this week (${toGo}h to go).`
 			}
 
 			const blocker = withoutOptionalIdea(list.slice(0, i)).find(c => !done(c))

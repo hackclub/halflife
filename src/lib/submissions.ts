@@ -153,7 +153,7 @@ export async function submitPhase(
 		if (breakdown.effectiveHours < floor)
 			throw new HttpError(
 				"UNPROCESSABLE",
-				`Tier ${tierId} needs ${floor}h of design time to hand in and you have logged ${round2(breakdown.effectiveHours)}h. Pick a tier you have earned.`,
+				`Tier ${tierId} needs ${floor}h of design time to submit and you have logged ${round2(breakdown.effectiveHours)}h. Pick a tier you have earned.`,
 			)
 	}
 

@@ -49,7 +49,7 @@ export const POST = withPermission(
 			.select("ariSubmissionId")
 			.first()
 		if (open?.ariSubmissionId)
-			return fail("CONFLICT", "That submission already reached Ari – there is nothing to retry")
+			return fail("CONFLICT", "That submission already reached Ari, so there is nothing to retry")
 
 		try {
 			const result = await trackSideEffect(

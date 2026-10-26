@@ -18,7 +18,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady(objectKey: string):
 			{!minted ? (
 				<>
 					<p className="hl-hint" style={{ margin: 0 }}>
-						Record on your phone instead – scan a code, film it, and the video lands here. No signing in on the phone.
+						Record on your phone instead: scan a code, film it, and the video lands here. No signing in on the phone.
 					</p>
 					<div>
 						<Button disabled={busy} onClick={mint}>

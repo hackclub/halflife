@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic"
 export const POST = withSession(async (_req: Request, { gate }) => {
 	// Each call inserts an UploadHandoff row, so cap how many one account can mint in a window.
 	if (rateLimitedInMemory(`handoff-mint:${gate.user.id}`))
-		return fail("RATE_LIMITED", "Too many handoff codes at once – wait a minute and try again")
+		return fail("RATE_LIMITED", "Too many handoff codes at once. Wait a minute and try again")
 
 	// The origin is resolved before the handoff is minted: minting one retires the user's other codes, and a deployment with no public URL has no use for a new one.
 	const origin = requireAppBaseUrl()

@@ -10,7 +10,7 @@ export interface StarterProjectView {
 	guideUrl: string
 	id: string
 	parts: readonly string[]
-	repoUrl: string
+	repoUrl?: string
 	title: string
 }
 

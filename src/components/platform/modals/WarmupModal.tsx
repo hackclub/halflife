@@ -54,7 +54,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 			router.refresh()
 			onClose()
 		} catch {
-			setError("Could not reach the server. Nothing was created – try again.")
+			setError("Could not reach the server. Nothing was created. Try again.")
 		} finally {
 			setSaving(false)
 		}
@@ -63,7 +63,6 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 	return (
 		<Modal
 			accent="var(--color-violet)"
-			eyebrow="Warm-up project"
 			footer={
 				<>
 					{error ? (
@@ -109,7 +108,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 							value={name}
 						/>
 					</Field>
-					<Field hint="What it does, and what makes it yours." id="wu-desc" label="Project description">
+					<Field hint="What's it gonna do?." id="wu-desc" label="Project description">
 						<textarea
 							className={cx(inputClass, "resize-none")}
 							id="wu-desc"
@@ -149,8 +148,8 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 										{t.detail}
 										{phase !== "BUILD" && (
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtHours(submitFloorFor(t.fundingHours))} of design time –
-												every hour past that (once your tier&apos;s funding is achieved) earns 5 spendable coins.
+												You can submit on tier {t.id} from {fmtHours(submitFloorFor(t.fundingHours))} of design time.
+												Every hour past that (once your tier&apos;s funding is achieved) earns 5 spendable coins.
 											</span>
 										)}
 									</>

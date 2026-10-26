@@ -28,7 +28,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	if (parsed.error) return parsed.error
 
 	// Spam brake: ten comments a minute per account. In-memory per instance like every other app rate limit (see lib/rate-limit), so it stops one account flooding the feed, not a distributed attack.
-	if (rateLimitedInMemory(`comment:${gate.user.id}`)) return fail("RATE_LIMITED", "Slow down – try again in a moment")
+	if (rateLimitedInMemory(`comment:${gate.user.id}`)) return fail("RATE_LIMITED", "Slow down. Try again in a moment")
 
 	const comment = await addComment(id, gate.user.id, parsed.data.body)
 

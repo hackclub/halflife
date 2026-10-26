@@ -1,5 +1,5 @@
 /** What the repo field says when someone pastes an Onshape document into it. */
-export const ONSHAPE_REPO_ERROR = "That is an Onshape link, not a repo – add it as a demo link instead."
+export const ONSHAPE_REPO_ERROR = "That is an Onshape link, not a repo. Add it as a demo link instead."
 
 /**
  * Whether a hostname belongs to Onshape, subdomains included (`cad.onshape.com`).

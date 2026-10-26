@@ -381,10 +381,10 @@ export async function syncLoopsProperties(
 	if (degraded)
 		console.error(
 			`[airtable] Loops sync matched only ${matched}/${values.length} Half Life users to a Signups row `
-				+ `(${matchedById} by id, ${matchedByRecord} by drained record id, ${matchedByEmail} by email) – `
+				+ `(${matchedById} by id, ${matchedByRecord} by drained record id, ${matchedByEmail} by email); `
 				+ `${result.unmatched} were skipped and their Loops columns left empty. In order of likelihood: `
 				+ "their rsvp-drain row hit the attempt cap while the table was missing a column the drain sends, and a "
-				+ "row at the cap is never retried – reset `syncAttempts` on those to give them another go; "
+				+ "row at the cap is never retried (reset `syncAttempts` on those to give them another go); "
 				+ "their Signups row was written straight from the landing page with no buffer entry naming it, so neither the user id nor the record id joins can reach it; "
 				+ "or the person never had a Signups row at all.",
 		)

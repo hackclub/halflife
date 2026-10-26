@@ -524,8 +524,7 @@ export function Cinematic() {
 						className="sketch sketch-2 w-full max-w-md rounded-3xl bg-cream px-6 py-4 text-center lift-shadow motion-safe:animate-[hl-rise_.5s_cubic-bezier(.16,1,.3,1)_both]"
 						style={{ "--sk-color": "var(--color-gold-deep)", "--sk-radius": "26px" } as React.CSSProperties}
 					>
-						<p className="label text-gold-ink">Ten weeks · five projects</p>
-						<h2 className="mt-1.5 text-[clamp(1.2rem,3.2vw,1.6rem)] leading-tight font-extrabold tracking-[-0.03em] text-navy">
+						<h2 className="text-[clamp(1.2rem,3.2vw,1.6rem)] leading-tight font-extrabold tracking-[-0.03em] text-navy">
 							Become an expert in 10 weeks, get a 3D printer
 						</h2>
 						<Button className="mt-4" full onClick={() => setPhase("aim")} size="lg" variant="gold">

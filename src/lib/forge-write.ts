@@ -187,9 +187,9 @@ async function apiDetail(res: Response): Promise<string | null> {
  */
 async function errorMessage(forge: Forge, res: Response): Promise<string> {
 	if (res.status === 401)
-		return `Your ${forge.label} sign-in is no longer valid – reconnect ${forge.label} and try again.`
+		return `Your ${forge.label} sign-in is no longer valid. Reconnect ${forge.label} and try again.`
 	if (res.status === 403)
-		return `${forge.label} refused this – reconnect ${forge.label} and try again, or check your write access to the repo.`
+		return `${forge.label} refused this. Reconnect ${forge.label} and try again, or check your write access to the repo.`
 	if (res.status === 404) return `The repo or branch was not found, or your ${forge.label} account cannot see it.`
 	if (res.status === 429) return `${forge.label} is rate-limiting us right now; wait a minute and try again.`
 	if (res.status >= 500)
@@ -198,7 +198,7 @@ async function errorMessage(forge: Forge, res: Response): Promise<string> {
 	const detail = await apiDetail(res)
 	const lead =
 		res.status === 409
-			? `${forge.label} reported a conflict – the repo changed while syncing; nothing was written, so try again.`
+			? `${forge.label} reported a conflict: the repo changed while syncing. Nothing was written, so try again.`
 			: res.status === 422
 				? `${forge.label} would not accept the commit.`
 				: `${forge.label} returned an error (${res.status}).`

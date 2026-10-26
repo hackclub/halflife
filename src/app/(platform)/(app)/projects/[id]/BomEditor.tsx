@@ -318,7 +318,7 @@ export function BomEditor({
 	return (
 		<div>
 			<p className="mb-4 text-[0.88rem] leading-snug text-navy-soft">
-				Parts only – don&apos;t list tools here. Enter all prices in US dollars (USD). Soldering irons, multimeters,
+				Parts only. Don&apos;t list tools here. Enter all prices in US dollars (USD). Soldering irons, multimeters,
 				cutters and the like are bought in the{" "}
 				<Link className="underline decoration-dashed underline-offset-4 hover:text-navy" href="/shop">
 					programme shop
@@ -377,7 +377,7 @@ export function BomEditor({
 											{l.vendor || "link"}
 										</a>
 									) : (
-										l.vendor || "—"
+										l.vendor || "-"
 									)}
 								</td>
 								{!locked && (
@@ -428,8 +428,8 @@ export function BomEditor({
 					{over && (
 						<span className="hand block text-[0.84rem] text-coral-deep">
 							{pastMargin
-								? `${formatUsd(total - grantUsd)} over – you can still submit, but only $${grantUsd} of it will be funded and you'll cover the rest.`
-								: `${formatUsd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
+								? `${formatUsd(total - grantUsd)} over. You can still submit, but only $${grantUsd} of it will be funded and you'll cover the rest.`
+								: `${formatUsd(total - grantUsd)} over. That is still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
 						</span>
 					)}
 				</p>
@@ -517,7 +517,6 @@ export function BomEditor({
 
 			<Modal
 				dismissible={!importing}
-				eyebrow="Bill of materials"
 				footer={
 					preview && preview.lines.length > 0 ? (
 						<>
@@ -569,8 +568,8 @@ export function BomEditor({
 							<>
 								<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 									Read {preview.lines.length} {preview.lines.length === 1 ? "part" : "parts"} from{" "}
-									<code className="hand text-navy">{preview.path}</code>. What the file did not say is left blank – open
-									each line and add a purpose, and a vendor and price a reviewer can check.
+									<code className="hand text-navy">{preview.path}</code>. What the file did not say is left blank, so
+									open each line and add a purpose, and a vendor and price a reviewer can check.
 								</p>
 								{preview.existing > 0 && (
 									<p className="hand text-[0.84rem] text-navy-soft">
@@ -602,7 +601,7 @@ export function BomEditor({
 															<span className="text-coral-deep">no price</span>
 														)}
 													</td>
-													<td className="hand px-3 py-2 text-navy-soft">{l.vendor || "—"}</td>
+													<td className="hand px-3 py-2 text-navy-soft">{l.vendor || "-"}</td>
 												</tr>
 											))}
 										</tbody>
@@ -617,7 +616,7 @@ export function BomEditor({
 								<ul className="mt-1.5 grid gap-1">
 									{preview.skipped.map(s => (
 										<li className="text-[0.82rem] leading-snug text-navy-soft" key={s.row}>
-											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span> – {s.reason}
+											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span>: {s.reason}
 										</li>
 									))}
 								</ul>
@@ -672,8 +671,8 @@ function ExtraRow({
 				</label>
 				<span className="block text-[0.8rem] leading-snug text-navy-soft">{hint}</span>
 			</td>
-			<td className="px-3 py-2.5 text-navy-soft">–</td>
-			<td className="px-3 py-2.5 text-navy-soft">–</td>
+			<td className="px-3 py-2.5 text-navy-soft">-</td>
+			<td className="px-3 py-2.5 text-navy-soft">-</td>
 			<td className="px-3 py-1.5 font-semibold text-navy tabular-nums" colSpan={locked ? 2 : 3}>
 				{locked ? (
 					formatUsd(value)

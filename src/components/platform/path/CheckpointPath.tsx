@@ -150,7 +150,7 @@ function CheckpointNode({
 					: reviewStatus === "update_requested"
 						? "sent back for changes. click to submit it again."
 						: reviewStatus === "approved"
-							? "approved – this week is done."
+							? "approved, so this week is done."
 							: reviewStatus === "rejected"
 								? "this week has been reviewed."
 								: null
@@ -266,10 +266,10 @@ function CheckpointNode({
 			<button
 				aria-label={
 					locked
-						? `${checkpoint.title} – ${status}. ${locked}`
+						? `${checkpoint.title}: ${status}. ${locked}`
 						: doneTip && doneNote
-							? `${checkpoint.title} – ${status}. ${doneNote.charAt(0).toUpperCase()}${doneNote.slice(1)}`
-							: `${checkpoint.title} – ${status}`
+							? `${checkpoint.title}: ${status}. ${doneNote.charAt(0).toUpperCase()}${doneNote.slice(1)}`
+							: `${checkpoint.title}: ${status}`
 				}
 				className={cx(
 					"puck",
@@ -494,7 +494,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 function GhostNode({ top, left }: { top: string; left: string }) {
 	return (
 		<div
-			aria-label="More journal entries land here as you log them – the trail grows"
+			aria-label="More journal entries land here as you log them, and the trail grows"
 			className="absolute flex w-[var(--node-sm)] flex-col items-center"
 			role="img"
 			style={{ left, top, transform: "translateX(-50%)" }}

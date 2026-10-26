@@ -21,7 +21,7 @@ export default function DocsIndex() {
 				<section>
 					<h2 className="label mb-3 text-navy-faint">Starter projects</h2>
 					<Panel className="bg-paper" radius={18} tone="orange">
-						<ArticleLink className="group flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5" href="/starter-projects">
+						<ArticleLink className="group flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5" href="/display-guides">
 							<span className="min-w-0 flex-1">
 								<span className="block text-[1.1rem] leading-tight font-extrabold text-navy transition-colors group-hover:text-orange-ink">
 									Week 4: seven displays to start from

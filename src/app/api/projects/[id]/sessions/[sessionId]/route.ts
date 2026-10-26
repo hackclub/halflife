@@ -63,7 +63,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	// A submitted week's entries are what it was judged on, or is being judged on: in review, a reviewer is reading them; decided, they are the record the decision was made against. Only a week that is still open or has been sent back for changes can have its entries corrected.
 	const phaseStatus = statusFor(session.themeProject, session.phase)
 	if (phaseStatus === PhaseStatus.in_review)
-		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before editing its entries")
+		return fail("PHASE_LOCKED", "This week is in review, so unsubmit it before editing its entries")
 	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This week has been submitted and decided, so its entries are final")
 
@@ -110,7 +110,7 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 			if ((claimedToday ?? 0) + nextHours > 24)
 				throw new HttpError(
 					"VALIDATION_FAILED",
-					"That would put more than 24 hours of self-reported work on one day – split it across the days it was worked.",
+					"That would put more than 24 hours of self-reported work on one day. Split it across the days it was worked.",
 				)
 		}
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a decision that commits between the checks above and this write makes it match nothing, and the edit is refused rather than landing on a frozen week.
@@ -184,7 +184,7 @@ export const DELETE = withSession(async (_req: Request, { params, gate }: Params
 	// Deleting an entry is a correction to the record, so it freezes with the phase: while a reviewer is reading the week, its evidence has to sit still, exactly as editing it does.
 	const phaseStatus = statusFor(session.themeProject, session.phase)
 	if (phaseStatus === PhaseStatus.in_review)
-		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before deleting its entries")
+		return fail("PHASE_LOCKED", "This week is in review, so unsubmit it before deleting its entries")
 	// Once the week is decided its entries are final, exactly as editing is.
 	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This week has been submitted and decided, so its entries are final")

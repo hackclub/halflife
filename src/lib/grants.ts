@@ -180,7 +180,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		throw new HttpError("FORBIDDEN", "This account is under review, so no grant can be sent until it is cleared.")
 
 	const amountCents = Math.round(project.grantUsd * 100)
-	const memo = `[grant] ${project.title || "Half Life project"} – Half Life tier ${project.tier ?? "?"}`
+	const memo = `[grant] ${project.title || "Half Life project"} (Half Life tier ${project.tier ?? "?"})`
 
 	// Who owns the card is settled before it is paid. The top-up moves the money as it answers, so a grant that belongs to somebody else cannot be caught afterwards, and the maker's email is the one identity Half Life and HCB both hold. An owner HCB will not name is not an owner Half Life will pay on trust.
 	//
@@ -290,7 +290,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
 			.update({ error: "The grant amount changed before the top-up was sent" })
 			.catch(() => undefined)
-		throw new HttpError("CONFLICT", "The grant amount changed – reload and try again")
+		throw new HttpError("CONFLICT", "The grant amount changed. Reload and try again")
 	}
 
 	try {

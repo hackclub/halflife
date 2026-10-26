@@ -169,7 +169,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										githubRepo: project.githubRepo,
 										id: project.id,
 										ownerId: project.user.id,
-										ownerName: displayName(project.user) ?? "—",
+										ownerName: displayName(project.user) ?? "-",
 										requestedTier: project.requestedTier,
 										theme: project.theme,
 										themeLabel: getThemeDef(project.theme).label,

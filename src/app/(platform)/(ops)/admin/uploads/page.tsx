@@ -113,12 +113,12 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 									<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
 										{object.key}
 									</td>
-									<td>{parts.folder || "—"}</td>
+									<td>{parts.folder || "-"}</td>
 									<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-										{parts.owner || "—"}
+										{parts.owner || "-"}
 									</td>
 									<td className="hl-mono">{formatBytes(object.size)}</td>
-									<td className="hl-mono">{object.lastModified ? modifiedFormat.format(object.lastModified) : "—"}</td>
+									<td className="hl-mono">{object.lastModified ? modifiedFormat.format(object.lastModified) : "-"}</td>
 									<td>
 										{object.url ? (
 											<a href={object.url} rel="noreferrer" target="_blank">
