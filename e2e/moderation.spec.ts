@@ -1,4 +1,4 @@
-import { readAudit } from "./db"
+import { readAudit, readModerationRows, seedReelsWithComment } from "./db"
 import { expect, test } from "./fixtures"
 import { waitForHydration } from "./hydration"
 
@@ -11,6 +11,8 @@ import { waitForHydration } from "./hydration"
  */
 test("an admin suspends, then bans, a participant", async ({ admin, openAs }) => {
 	const { page: participantPage, user } = await openAs({ onboarding: "complete" })
+	// More than one row of each, so a bulk hide that updates a single row fails here instead of passing quietly.
+	await seedReelsWithComment(user.id)
 
 	await admin.goto(`/admin/users/${user.id}`)
 	await expect(admin.getByRole("heading", { level: 1, name: "E2E Participant" })).toBeVisible()
@@ -46,10 +48,31 @@ test("an admin suspends, then bans, a participant", async ({ admin, openAs }) =>
 	await admin.locator("form").filter({ has: banReason }).getByRole("button", { name: "Ban" }).click()
 	await expect(admin.getByText(/Banned since/)).toBeVisible({ timeout: 15_000 })
 	expect(await readAudit("ADMIN_BAN_USER")).not.toBeNull()
+	// The ban with "hide content" ticked takes every reel and comment, not the first one the filter happens to return.
+	expect(await readModerationRows(user.id)).toMatchObject({
+		commentsHidden: 1,
+		commentsStamped: 1,
+		postsHidden: 2,
+		postsPublished: 0,
+		postsStamped: 2,
+	})
 
 	// The advertisement is honest: the seeded session row is gone, so the member is signed out of the next page load.
 	await participantPage.goto("/dashboard")
 	await expect(participantPage).toHaveURL(/\/$/)
+
+	// ── Lift the ban, restoring only what the ban itself hid ───────────────────
+	await admin.goto(`/admin/users/${user.id}`)
+	await waitForHydration(admin.getByRole("button", { name: "Lift ban" }))
+	await admin.getByRole("button", { name: "Lift ban" }).click()
+	await expect(admin.getByText("No penalty on record")).toBeVisible({ timeout: 15_000 })
+	expect(await readModerationRows(user.id)).toMatchObject({
+		commentsHidden: 0,
+		commentsStamped: 0,
+		postsHidden: 0,
+		postsPublished: 2,
+		postsStamped: 0,
+	})
 })
 
 test("a suspended participant cannot spend, report or log work", async ({ admin, openAs }) => {

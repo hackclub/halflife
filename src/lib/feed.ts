@@ -487,6 +487,8 @@ export async function deleteOwnPost(postId: string, userId: string): Promise<voi
 export async function hidePost(postId: string, moderatorId: string, reason: string): Promise<void> {
 	const count = await db.orm.public.Post.where({ deletedAt: null, id: postId }).updateAndCount({
 		hiddenAt: formatDbTimestamp(new Date()),
+		// A moderator's own hide supersedes the ban's stamp, so lifting the ban cannot undo this separate decision.
+		hiddenByBanAt: null,
 		hiddenById: moderatorId,
 		hiddenReason: sanitize(reason),
 		status: PostStatus.HIDDEN,
@@ -501,6 +503,7 @@ export async function restorePost(postId: string): Promise<void> {
 		status: PostStatus.HIDDEN,
 	}).updateAndCount({
 		hiddenAt: null,
+		hiddenByBanAt: null,
 		hiddenById: null,
 		hiddenReason: null,
 		status: PostStatus.PUBLISHED,

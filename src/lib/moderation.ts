@@ -94,7 +94,7 @@ export async function suspendUser(input: {
 			action: AuditAction.ADMIN_SUSPEND_USER,
 			actorEmail: input.actorEmail,
 			actorId: input.byId,
-			metadata: { after: { until: formatDbTimestamp(input.until) }, before },
+			metadata: { after: { reason: input.reason, until: formatDbTimestamp(input.until) }, before },
 			targetId: input.userId,
 			targetType: "User",
 		})
@@ -134,7 +134,7 @@ export async function banUser(input: {
 			action: AuditAction.ADMIN_BAN_USER,
 			actorEmail: input.actorEmail,
 			actorId: input.byId,
-			metadata: { after: { hideContent: input.hideContent }, before },
+			metadata: { after: { hideContent: input.hideContent, reason: input.reason }, before },
 			targetId: input.userId,
 			targetType: "User",
 		})
@@ -211,11 +211,11 @@ export async function unbanUser(input: {
 async function hideAllContent(tx: DbOrTx, userId: string, moderatorId: string, reason: string): Promise<void> {
 	const now = formatDbTimestamp(new Date())
 
-	// Only PUBLISHED reels become HIDDEN: a reel still PROCESSING or already REMOVED keeps its own state.
+	// Only PUBLISHED reels become HIDDEN: a reel still PROCESSING or already REMOVED keeps its own state. `update()` is a single-row terminal in Prisma 8, so a bulk action must use `updateAndCount`.
 	await tx.orm.public.Post.where({ deletedAt: null, userId })
 		.where(post => post.status.eq(PostStatus.PUBLISHED))
 		.where(post => post.hiddenAt.isNull())
-		.update({
+		.updateAndCount({
 			hiddenAt: now,
 			hiddenByBanAt: now,
 			hiddenById: moderatorId,
@@ -225,7 +225,7 @@ async function hideAllContent(tx: DbOrTx, userId: string, moderatorId: string, r
 
 	await tx.orm.public.PostComment.where({ deletedAt: null, userId })
 		.where(comment => comment.hiddenAt.isNull())
-		.update({ hiddenAt: now, hiddenByBanAt: now, hiddenById: moderatorId, hiddenReason: reason })
+		.updateAndCount({ hiddenAt: now, hiddenByBanAt: now, hiddenById: moderatorId, hiddenReason: reason })
 
 	await resyncCommentCounts(tx, userId)
 }
@@ -234,7 +234,7 @@ async function hideAllContent(tx: DbOrTx, userId: string, moderatorId: string, r
 async function restoreAllContent(tx: DbOrTx, userId: string): Promise<void> {
 	await tx.orm.public.Post.where({ deletedAt: null, userId })
 		.where(post => post.hiddenByBanAt.isNotNull())
-		.update({
+		.updateAndCount({
 			hiddenAt: null,
 			hiddenByBanAt: null,
 			hiddenById: null,
@@ -244,7 +244,7 @@ async function restoreAllContent(tx: DbOrTx, userId: string): Promise<void> {
 
 	await tx.orm.public.PostComment.where({ deletedAt: null, userId })
 		.where(comment => comment.hiddenByBanAt.isNotNull())
-		.update({ hiddenAt: null, hiddenByBanAt: null, hiddenById: null, hiddenReason: null })
+		.updateAndCount({ hiddenAt: null, hiddenByBanAt: null, hiddenById: null, hiddenReason: null })
 
 	await resyncCommentCounts(tx, userId)
 }
