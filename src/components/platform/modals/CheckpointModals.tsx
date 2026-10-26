@@ -1813,7 +1813,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			) : (
 				<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 					<div className="grid gap-4">
-						<p className="label mb-2 text-left text-violet-deep">Step 2 / 2</p>
+						<p className="label mb-2 text-left text-violet-deep">{starters.length > 0 ? "Step 2 / 2" : "Step 1 / 1"}</p>
 						<p className="hand mb-2 text-left text-[0.8rem] text-navy-soft">
 							Tier can be changed any time before you submit this week.
 						</p>

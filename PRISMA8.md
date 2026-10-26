@@ -54,14 +54,12 @@ The contract was rewritten from the Prisma 7 schema rather than inferred, so eve
 
 ## Production cutover
 
-`prisma db sign` has been run against the local database only. The production database has the same schema but has **not** been signed. No data migration is needed at any point: Prisma 8 reads the same tables, rows and enums as Prisma 7 did. The only write outside the app is the marker row in `prisma_contract.marker`, which records that the database matches the contract.
+Complete. No data migration was needed at any point: Prisma 8 reads the same tables, rows and enums as Prisma 7 did. The only write outside the app was the marker row in `prisma_contract.marker`, which records that the database matches the contract.
 
-Cutover order matters because the entrypoint runs `prisma db migrate` at boot, and migrate is replay-only: with no marker it replays the baseline package (slow and precheck-heavy against a live database), and it only no-ops once the marker matches. So sign first, deploy second:
+What it took, for the record – the first boot could not just run `migrate`, because migrate is replay-only and a marker-less database replays the baseline:
 
-1. Back up production and take a maintenance window.
-2. From any machine with this branch checked out: `DATABASE_URL=<production-url> bunx prisma db verify` (read-only). If it reports drift, stop: the drift output names the exact object.
-3. `DATABASE_URL=<production-url> bunx prisma db sign` – writes the marker, and only if verification passes.
-4. Deploy this branch. Boot is `db migrate`, which reports "Already up to date".
-5. `GET https://<host>/api/health` must return `{"ok":true}`.
+1. The entrypoint temporarily ran `db sign --no-advance-ref` before `migrate`. (`verify` cannot run before the marker exists, and the flag skips the dev-side ref file, which the runtime user cannot write — without it a successful sign still exited non-zero on EACCES.)
+2. The first `sign` refused with a native-enum order mismatch: production lists two `AuditAction` member pairs in the opposite order to the dev database the contract was matched to. The contract was rewritten to production's exact order and `migrations/app/20261026T0302_audit_action_enum_order` performs the swap (new type, move the one `audit_log` column across with a `USING` cast, drop, rename) – validated on scratch and dev databases before deploy. The planner does not reorder enums, so this package is hand-authored.
+3. With the contract matching, `sign` wrote the marker, `migrate` reported "Already up to date", and the temporary bootstrap was removed. Boot is now `db migrate` alone.
 
 The old `_prisma_migrations` table stays where it is; it is Prisma 7's history and nothing reads it anymore. Its rows remain in git history under `prisma/migrations/`.
