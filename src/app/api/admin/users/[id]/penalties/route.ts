@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { Role } from "@/lib/enums"
-import { type AuthedContext, withWritePermission } from "@/lib/guards"
+import { type AuthedContext, withPermission, withWritePermission } from "@/lib/guards"
 import { banUser, penaltyFor, suspendUser, unbanUser, unsuspendUser } from "@/lib/moderation"
 import { hasRole, Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -13,7 +13,7 @@ interface Params {
 export const dynamic = "force-dynamic"
 
 /** Current penalty state on the row, for the card on the admin page to render. */
-export const GET = withWritePermission(Permission.VIEW_USERS, async (_req, { params }: Params & AuthedContext) => {
+export const GET = withPermission(Permission.VIEW_USERS, async (_req, { params }: Params & AuthedContext) => {
 	const { id } = await params
 	const row = await db.orm.public.User.whereUnique({ id })
 		.select("bannedAt", "bannedById", "banReason", "suspendedById", "suspendedUntil", "suspensionReason")
