@@ -1773,7 +1773,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									type="button"
 									variant={pick === s.id ? "teal" : "outline"}
 								>
-									Build {s.title}
+									Use starter project
 									{pick === s.id ? <IconCheck className="text-base" /> : null}
 								</Button>
 							}
