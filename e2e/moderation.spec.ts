@@ -2,34 +2,27 @@ import { readAudit } from "./db"
 import { expect, test } from "./fixtures"
 import { waitForHydration } from "./hydration"
 
-/** The `error.code` of a refused request, or undefined when the body is not one of ours. */
-async function refusalCode(response) {
-	const body = await response.json()
-	const error = body && typeof body === "object" ? body.error : null
-	return error && typeof error.code === "string" ? error.code : undefined
-}
-
-/** Apply a suspension from the admin user page, whose card is the one holding the reason box. */
-async function suspend(admin, reason, until) {
-	const card = admin.locator("form").filter({ has: admin.getByLabel("Penalty reason") })
-	await waitForHydration(card)
-	await admin.getByLabel("Penalty reason").fill(reason)
-	await admin.getByLabel("Suspend until").fill(until)
-	await card.getByRole("button", { name: "Suspend" }).click()
-	await expect(admin.getByText(/Suspended until/)).toBeVisible({ timeout: 15_000 })
-}
-
 /**
  * Suspension and ban, end to end: applied from the admin user page, felt by the participant's own browser, and recorded in the audit trail.
  *
  * The two penalties differ in exactly one observable way – a suspended member still reads and still sees their banner, a banned one loses the session – so the test drives both and checks the boundary rather than restating the implementation.
+ *
+ * Everything is written inside the test bodies rather than in helpers: this suite's transform is plain JavaScript, so a type annotation anywhere but a test callback's inferred parameters is a file that will not load.
  */
 test("an admin suspends, then bans, a participant", async ({ admin, openAs }) => {
 	const { page: participantPage, user } = await openAs({ onboarding: "complete" })
 
 	await admin.goto(`/admin/users/${user.id}`)
 	await expect(admin.getByRole("heading", { level: 1, name: "E2E Participant" })).toBeVisible()
-	await suspend(admin, "e2e suspension", "2030-01-01T12:00")
+
+	// ── Suspend ────────────────────────────────────────────────────────────────
+	const reason = admin.getByLabel("Penalty reason")
+	const form = admin.locator("form").filter({ has: reason })
+	await waitForHydration(form)
+	await reason.fill("e2e suspension")
+	await admin.getByLabel("Suspend until").fill("2030-01-01T12:00")
+	await form.getByRole("button", { name: "Suspend" }).click()
+	await expect(admin.getByText(/Suspended until/)).toBeVisible({ timeout: 15_000 })
 
 	// The member still signs in; the banner says what they can no longer do.
 	await participantPage.goto("/reels")
@@ -38,7 +31,7 @@ test("an admin suspends, then bans, a participant", async ({ admin, openAs }) =>
 	// A write is refused by the guard, not by whichever route body would have run next.
 	const refused = await participantPage.request.put("/api/posts/does-not-exist/like", { data: { liked: true } })
 	expect(refused.status()).toBe(403)
-	expect(await refusalCode(refused)).toBe("ACCOUNT_SUSPENDED")
+	expect((await refused.json()).error?.code).toBe("ACCOUNT_SUSPENDED")
 
 	// ── Lift the suspension ────────────────────────────────────────────────────
 	await admin.goto(`/admin/users/${user.id}`)
@@ -47,10 +40,10 @@ test("an admin suspends, then bans, a participant", async ({ admin, openAs }) =>
 	await expect(admin.getByText("No penalty on record")).toBeVisible({ timeout: 15_000 })
 
 	// ── Ban ────────────────────────────────────────────────────────────────────
-	await waitForHydration(admin.getByLabel("Penalty reason"))
-	await admin.getByLabel("Penalty reason").fill("e2e ban")
-	const banCard = admin.locator("form").filter({ has: admin.getByLabel("Penalty reason") })
-	await banCard.getByRole("button", { name: "Ban" }).click()
+	const banReason = admin.getByLabel("Penalty reason")
+	await waitForHydration(banReason)
+	await banReason.fill("e2e ban")
+	await admin.locator("form").filter({ has: banReason }).getByRole("button", { name: "Ban" }).click()
 	await expect(admin.getByText(/Banned since/)).toBeVisible({ timeout: 15_000 })
 	expect(await readAudit("ADMIN_BAN_USER")).not.toBeNull()
 
@@ -63,7 +56,13 @@ test("a suspended participant cannot spend, report or log work", async ({ admin,
 	const { page, user } = await openAs({ onboarding: "complete" })
 
 	await admin.goto(`/admin/users/${user.id}`)
-	await suspend(admin, "e2e suspension", "2030-01-01T12:00")
+	const reason = admin.getByLabel("Penalty reason")
+	const form = admin.locator("form").filter({ has: reason })
+	await waitForHydration(form)
+	await reason.fill("e2e suspension")
+	await admin.getByLabel("Suspend until").fill("2030-01-01T12:00")
+	await form.getByRole("button", { name: "Suspend" }).click()
+	await expect(admin.getByText(/Suspended until/)).toBeVisible({ timeout: 15_000 })
 
 	const attempts = [
 		{ body: { hoursClaimed: 1, phase: "DESIGN", title: "x" }, url: "/api/projects/does-not-exist/sessions" },
@@ -73,6 +72,6 @@ test("a suspended participant cannot spend, report or log work", async ({ admin,
 	for (const attempt of attempts) {
 		const refused = await page.request.post(attempt.url, { data: attempt.body })
 		expect(refused.status()).toBe(403)
-		expect(await refusalCode(refused)).toBe("ACCOUNT_SUSPENDED")
+		expect((await refused.json()).error?.code).toBe("ACCOUNT_SUSPENDED")
 	}
 })
