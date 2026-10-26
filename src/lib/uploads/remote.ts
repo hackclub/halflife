@@ -111,16 +111,24 @@ function get(url: URL, signal: AbortSignal): Promise<IncomingMessage> {
 	return promise
 }
 
+/** One chunk of a response body as bytes. Node hands a Buffer; a string is the only other thing a body stream can yield. */
+function chunkBuffer(chunk: unknown): Buffer {
+	if (Buffer.isBuffer(chunk)) return chunk
+	if (typeof chunk === "string") return Buffer.from(chunk)
+	throw new HttpError("INTERNAL", "The image server sent something that is not bytes")
+}
+
 async function readCapped(res: IncomingMessage, maxBytes: number): Promise<Buffer> {
 	const chunks: Buffer[] = []
 	let size = 0
 	for await (const chunk of res) {
-		size += (chunk as Buffer).length
+		const bytes = chunkBuffer(chunk)
+		size += bytes.length
 		if (size > maxBytes) {
 			res.destroy()
 			throw new HttpError("VALIDATION_FAILED", "That image is too large")
 		}
-		chunks.push(chunk as Buffer)
+		chunks.push(bytes)
 	}
 	return Buffer.concat(chunks)
 }

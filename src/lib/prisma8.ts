@@ -4,6 +4,11 @@ import { contractFromJson } from "@prisma/orm-postgres/static"
 import type { Contract } from "@/app/generated/prisma8/contract.d"
 import contractJson from "@/app/generated/prisma8/contract.json" with { type: "json" }
 
+declare global {
+	// Cached on globalThis so Next's dev-mode module reloading doesn't open a new connection pool on every edit until Postgres refuses connections.
+	var halflifePrisma8: Prisma8Client | undefined
+}
+
 /**
  * The Prisma 8 client, next to the Prisma 7 one in `@/lib/prisma`, while routes move over.
  *
@@ -42,11 +47,8 @@ export function isUniqueViolation(error: unknown): boolean {
 	return typeof error === "object" && error !== null && "sqlState" in error && error.sqlState === "23505"
 }
 
-// Cached on globalThis so Next's dev-mode module reloading doesn't open a new connection pool on every edit until Postgres refuses connections.
-const globalForPrisma8 = globalThis as unknown as { prisma8?: Prisma8Client }
+const db = globalThis.halflifePrisma8 ?? createClient()
 
-const db = globalForPrisma8.prisma8 ?? createClient()
-
-if (process.env.NODE_ENV !== "production") globalForPrisma8.prisma8 = db
+if (process.env.NODE_ENV !== "production") globalThis.halflifePrisma8 = db
 
 export default db

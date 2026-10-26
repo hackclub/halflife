@@ -1654,12 +1654,16 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 
 	const totalHours = perUser.reduce((n, h) => n + h, 0)
 	const middle = Math.floor(perUser.length / 2)
+	const middleValue = perUser[middle]
+	const priorValue = perUser[middle - 1]
 	const median =
-		perUser.length === 0
+		middleValue === undefined
 			? null
 			: perUser.length % 2 === 1
-				? (perUser[middle] as number)
-				: ((perUser[middle - 1] as number) + (perUser[middle] as number)) / 2
+				? middleValue
+				: priorValue === undefined
+					? null
+					: (priorValue + middleValue) / 2
 
 	return {
 		buckets,

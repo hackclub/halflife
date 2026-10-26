@@ -3,6 +3,7 @@ import path from "node:path"
 import { airtableFetch, withRateLimitRetry } from "@/lib/airtable/client"
 import { bufferRsvp, recordDirectSignup } from "@/lib/airtable/rsvp"
 import { rateLimited } from "@/lib/rate-limit"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * Signup capture.
@@ -247,7 +248,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		if (match) {
 			duplicate = true
 			try {
-				referralCode = (JSON.parse(match) as { referralCode?: string }).referralCode ?? ""
+				const parsed: unknown = JSON.parse(match)
+				referralCode = isRecord(parsed) && typeof parsed.referralCode === "string" ? parsed.referralCode : ""
 			} catch {
 				referralCode = ""
 			}

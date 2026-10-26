@@ -21,6 +21,7 @@ import { normalizeRepo } from "@/lib/repo"
 import { trackSideEffect } from "@/lib/side-effects"
 import { escapeLikePattern } from "@/lib/text"
 import { formatDbTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 import { buildObjectKey, isUploadConfigured, MAX_UPLOAD_BYTES, putObject } from "@/lib/uploads/r2"
 import { fetchRemoteImage } from "@/lib/uploads/remote"
 
@@ -231,7 +232,7 @@ async function importedRecordIds(): Promise<Map<string, string>> {
 	const rows = await db.orm.public.AuditLog.where({ action: IMPORT_ACTION }).select("metadata", "targetId").all()
 	const out = new Map<string, string>()
 	for (const row of rows) {
-		const meta = row.metadata as { airtableRecordId?: unknown } | null
+		const meta = isRecord(row.metadata) ? row.metadata : null
 		if (row.targetId && typeof meta?.airtableRecordId === "string") out.set(meta.airtableRecordId, row.targetId)
 	}
 	return out
@@ -244,7 +245,7 @@ async function halfLifeWrittenRecordIds(): Promise<Set<string>> {
 		.all()
 	const out = new Set<string>()
 	for (const row of rows) {
-		const meta = row.metadata as { recordId?: unknown } | null
+		const meta = isRecord(row.metadata) ? row.metadata : null
 		if (typeof meta?.recordId === "string") out.add(meta.recordId)
 	}
 	return out
@@ -332,12 +333,11 @@ function importRow(
 
 		// Two runs of the same click (two admins, two tabs) both read their "not imported yet" snapshot before either transaction started. Since warm-up rows are no longer held unique by `(userId, theme)`, the insert below would happily make a second project for one Airtable row; this re-read under the lock is what keeps a row to one project. The JSON path filter Prisma 7 expressed has no ORM equivalent, so the check reads the action's rows and matches in memory – imports are rare enough for that to be one small read.
 		const prior = await tx.orm.public.AuditLog.where({ action: IMPORT_ACTION }).select("metadata", "targetId").all()
-		const raced = prior.find(
-			entry =>
-				entry.targetId
-				&& typeof (entry.metadata as { airtableRecordId?: unknown } | null)?.airtableRecordId === "string"
-				&& (entry.metadata as { airtableRecordId: string }).airtableRecordId === record.id,
-		)
+		const raced = prior.find(entry => {
+			if (!entry.targetId) return false
+			const meta = isRecord(entry.metadata) ? entry.metadata : null
+			return meta?.airtableRecordId === record.id
+		})
 		if (raced?.targetId)
 			return {
 				reason: "another import run filed this row first",

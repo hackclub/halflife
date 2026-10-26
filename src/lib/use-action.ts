@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { type Dispatch, type SetStateAction, useCallback, useState } from "react"
+import { errorMessage } from "@/lib/api-error"
 
 /**
  * One place for the "POST some JSON, show the server's complaint if it refused" loop that every form on the staff side was writing out by hand.
@@ -42,9 +43,9 @@ export async function sendJson<T = unknown>(url: string, options: SendOptions = 
 	}
 
 	// A proxy or a crash can answer with HTML or nothing, so the body is allowed to be unparseable rather than treated as a bug here.
-	const payload = (await res.json().catch(() => null)) as ({ error?: { message?: string } } & T) | null
+	const payload: unknown = await res.json().catch(() => null)
 
-	if (!res.ok) return { message: payload?.error?.message ?? `Request failed (${res.status})`, ok: false }
+	if (!res.ok) return { message: errorMessage(payload, `Request failed (${res.status})`), ok: false }
 
 	return { data: (payload ?? {}) as T, ok: true }
 }

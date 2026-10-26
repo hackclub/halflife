@@ -3,6 +3,7 @@ import "server-only"
 import { createHash, randomUUID } from "node:crypto"
 import type { S3Client as BunS3Client } from "bun"
 import { HttpError } from "@/lib/errors"
+import { isRecord } from "@/lib/unknown"
 
 const DEFAULT_MAX_UPLOAD_BYTES = 104_857_600
 
@@ -308,8 +309,8 @@ export interface StoredObjectStat {
 }
 
 function isMissingObject(err: unknown): boolean {
-	const details = err as { code?: string; status?: number; statusCode?: number }
-	return details.code === "NoSuchKey" || details.code === "NotFound" || (details.status ?? details.statusCode) === 404
+	if (!isRecord(err)) return false
+	return err.code === "NoSuchKey" || err.code === "NotFound" || (err.status ?? err.statusCode) === 404
 }
 
 /**
@@ -375,8 +376,9 @@ export async function hashObject(key: string): Promise<{ head: Buffer; sha256: s
  * Only client-side faults are translated. A network blip or a bucket outage is genuinely transient and should keep its own error and its retry semantics.
  */
 function asConfigError(err: unknown): unknown {
-	const name = (err as { name?: string })?.name
-	const code = (err as { code?: string })?.code
+	const details = isRecord(err) ? err : null
+	const name = typeof details?.name === "string" ? details.name : undefined
+	const code = typeof details?.code === "string" ? details.code : undefined
 	// Bun's own refusals are configuration too: a bad endpoint, a missing credential or a signature it could not build.
 	const bunConfigFault = code?.startsWith("ERR_S3_") === true
 	const credentialFault =

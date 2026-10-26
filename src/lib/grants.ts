@@ -15,6 +15,7 @@ import {
 } from "@/lib/hcb"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * Send a participant's parts grant to their HCB card grant.
@@ -43,7 +44,7 @@ export const ABANDONED_ATTEMPT_MS = 10 * 60_000
 function isDuplicateGrantHashid(err: unknown): boolean {
 	if (!isUniqueViolation(err)) return false
 	// A unique violation carries the constraint that fired, which names the index.
-	const { constraint } = err as { constraint?: unknown }
+	const constraint = isRecord(err) ? err.constraint : undefined
 	return typeof constraint === "string" && constraint.includes("grantHashid")
 }
 

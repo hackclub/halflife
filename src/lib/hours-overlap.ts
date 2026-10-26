@@ -1,3 +1,5 @@
+import { isRecord } from "@/lib/unknown"
+
 /**
  * How much of a period was logged twice – once through a journal entry and once through a linked Hackatime project.
  *
@@ -127,19 +129,19 @@ export interface CachedSpans {
  * Strict on purpose. A shape this does not recognise is treated as no cache, which costs one refetch, rather than parsed leniently into spans that might overlap the wrong hours.
  */
 export function parseCachedSpans(value: unknown): CachedSpans | null {
-	if (!value || typeof value !== "object" || Array.isArray(value)) return null
-	const raw = value as { from?: unknown; to?: unknown; spans?: unknown }
-	if (typeof raw.from !== "number" || typeof raw.to !== "number" || !Array.isArray(raw.spans)) return null
+	if (!isRecord(value)) return null
+	const { from, spans: rawSpans, to } = value
+	if (typeof from !== "number" || typeof to !== "number" || !Array.isArray(rawSpans)) return null
 
 	const spans: Interval[] = []
-	for (const row of raw.spans) {
-		const start = (row as { start?: unknown } | null)?.start
-		const end = (row as { end?: unknown } | null)?.end
+	for (const row of rawSpans) {
+		if (!isRecord(row)) continue
+		const { end, start } = row
 		if (typeof start !== "number" || typeof end !== "number") continue
 		if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue
 		spans.push({ end, start })
 	}
-	return { from: raw.from, spans, to: raw.to }
+	return { from, spans, to }
 }
 
 /** Whether a cached answer covers the window it is being used for. */

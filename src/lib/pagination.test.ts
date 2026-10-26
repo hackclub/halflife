@@ -29,7 +29,7 @@ describe("encodeCursor / decodeCursor", () => {
 			decodeCursor("!!!")
 		} catch (err) {
 			expect(err).toBeInstanceOf(HttpError)
-			expect((err as HttpError).code).toBe("INVALID_QUERY")
+			expect(err).toMatchObject({ code: "INVALID_QUERY" })
 		}
 	})
 })

@@ -1,6 +1,6 @@
 import "server-only"
 import { AuditAction, logAudit } from "@/lib/audit"
-import type { InputJsonValue } from "@/lib/json"
+import type { InputJsonObject, InputJsonValue } from "@/lib/json"
 
 export interface SideEffectContext {
 	actorEmail?: string | null
@@ -10,10 +10,14 @@ export interface SideEffectContext {
 	targetType: string
 }
 
+/** Whether a JSON value is an object, as opposed to a scalar, an array, or the `toJSON` stand-in. */
+function isJsonObject(value: InputJsonValue | undefined): value is InputJsonObject {
+	return typeof value === "object" && value !== null && !Array.isArray(value) && !("toJSON" in value)
+}
+
 /** The metadata object to spread into an audit row, ignoring JSON values that are not objects. */
-function metadataObject(value: InputJsonValue | undefined): { [_: string]: InputJsonValue } {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) return {}
-	return value as { [_: string]: InputJsonValue }
+function metadataObject(value: InputJsonValue | undefined): InputJsonObject {
+	return isJsonObject(value) ? value : {}
 }
 
 /**

@@ -1,5 +1,6 @@
 import "server-only"
 import { sleep } from "@/lib/concurrency"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * A fetch for an external service this app depends on, with a short retry so a blip does not become a failed sign-in.
@@ -29,7 +30,9 @@ export interface FetchRetryOptions extends RequestInit {
 function unreachable(err: unknown): boolean {
 	// Node/undici put the real cause on `.cause`; a bare TimeoutError from `AbortSignal.timeout` is its own. Both mean "no answer", which is worth another try – a rejection from the fetch itself (bad URL, bad options) is not.
 	if (!(err instanceof Error)) return true
-	const code = (err as { cause?: { code?: string } }).cause?.code ?? (err as { code?: string }).code
+	const { cause } = err
+	const causeCode = isRecord(cause) && typeof cause.code === "string" ? cause.code : undefined
+	const code = causeCode ?? (isRecord(err) && typeof err.code === "string" ? err.code : undefined)
 	if (
 		code === "ECONNRESET"
 		|| code === "ECONNREFUSED"
@@ -58,10 +61,8 @@ async function boundedBody(res: Response): Promise<ArrayBuffer | null> {
  * Resolves to the final `Response` for any status the server chose, including a 4xx and a 5xx that survived every retry – a non-2xx is a finding the caller decides about, not an exception. Throws when there is genuinely no answer to be had, with a message naming the endpoint.
  */
 export async function fetchWithRetry(url: string | URL, options: FetchRetryOptions = {}): Promise<Response> {
-	const retries = options.retries ?? RETRY_DELAYS_MS.length
-	// `retries` is not a RequestInit field; strip it before handing the rest to fetch, which would otherwise be told about an option it does not know.
-	const init: RequestInit = { ...options }
-	delete (init as { retries?: number }).retries
+	// `retries` is not a RequestInit field; it is taken out here so fetch is not handed an option it does not know.
+	const { retries = RETRY_DELAYS_MS.length, ...init } = options
 	let lastError: unknown = null
 
 	for (let attempt = 0; attempt <= retries; attempt++) {

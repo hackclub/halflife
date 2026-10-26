@@ -8,6 +8,7 @@ import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
 import { escapeLikePattern } from "@/lib/text"
 import { formatDbTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * Projects submitted through Macondo (macondo.hackclub.com), taken out as a CSV and brought in as warm-up projects.
@@ -122,8 +123,8 @@ function parseJournals(raw: string): MacondoJournal[] {
 	if (!Array.isArray(data)) return []
 	const out: MacondoJournal[] = []
 	for (const entry of data) {
-		if (!entry || typeof entry !== "object") continue
-		const e = entry as { [_: string]: unknown }
+		if (!isRecord(entry)) continue
+		const e = entry
 		const hours = Number(e.hours)
 		out.push({
 			content: typeof e.content === "string" ? e.content : null,
@@ -242,7 +243,7 @@ async function importedProjectIds(): Promise<Set<string>> {
 		.all()
 	const out = new Set<string>()
 	for (const row of rows) {
-		const meta = row.metadata as { macondoProjectId?: unknown } | null
+		const meta = isRecord(row.metadata) ? row.metadata : null
 		if (typeof meta?.macondoProjectId === "string") out.add(meta.macondoProjectId)
 	}
 	return out

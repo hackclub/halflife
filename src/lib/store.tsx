@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { z } from "zod"
 import { errorMessage } from "@/lib/api-error"
 import { ParticipantGoal } from "@/lib/enums"
 import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
@@ -71,6 +72,18 @@ interface Ceremony {
 }
 
 const KEY = "halflife.ceremony.v4"
+
+/** The saved ceremony and the API bodies this file reads. Parsed, so a stale or hand-edited localStorage row cannot reach the trail as a wrong shape. */
+const CeremonySave = z.object({
+	doomscrollerOpen: z.boolean().optional(),
+	phase: z.enum(["cinematic", "aim", "checkpoint", "tour", "done"]).optional(),
+	replaying: z.boolean().optional(),
+	toured: z.boolean().optional(),
+	version: z.literal(4),
+})
+const CreatedProjectBody = z.object({ id: z.string() })
+const PostedReelBody = z.object({ post: z.object({ id: z.string() }).optional() })
+const LinkSyncRepoBody = z.object({ githubRepo: z.string().nullish() })
 
 /**
  * The admin lock bypass. Kept apart from the ceremony so "Replay the intro", which clears that, leaves it alone.
@@ -480,8 +493,17 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		try {
 			const raw = window.localStorage.getItem(KEY)
 			if (raw) {
-				const parsed = JSON.parse(raw) as Ceremony
-				if (parsed && parsed.version === 4) next = { ...seededCeremony(), ...parsed }
+				const parsed = CeremonySave.safeParse(JSON.parse(raw))
+				if (parsed.success) {
+					const seed = seededCeremony()
+					next = {
+						doomscrollerOpen: parsed.data.doomscrollerOpen ?? seed.doomscrollerOpen,
+						phase: parsed.data.phase ?? seed.phase,
+						replaying: parsed.data.replaying ?? seed.replaying,
+						toured: parsed.data.toured ?? seed.toured,
+						version: 4,
+					}
+				}
 			}
 		} catch {
 			/* storage unavailable – run from the seed */
@@ -575,7 +597,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						method: "POST",
 					})
 					if (!res.ok) return null
-					const { id } = (await res.json()) as { id: string }
+					const { id } = CreatedProjectBody.parse(await res.json())
 					setFacts(f => ({ ...f, projectIdByWeek: { ...f.projectIdByWeek, [weekId]: id } }))
 					return id
 				} catch {
@@ -663,12 +685,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			} catch {
 				return "Could not reach the server. Try again."
 			}
-			const body = (await res.json().catch(() => null)) as {
-				githubRepo?: string | null
-				error?: { message?: string }
-			} | null
-			if (!res.ok) return body?.error?.message ?? "That did not save. Try again."
-			const url = body?.githubRepo ?? null
+			const body: unknown = await res.json().catch(() => null)
+			if (!res.ok) return errorMessage(body, "That did not save. Try again.")
+			const parsed = LinkSyncRepoBody.safeParse(body)
+			const url = parsed.success ? (parsed.data.githubRepo ?? null) : null
 			setFacts(f => ({
 				...f,
 				projects: f.projects.map(p => (p.id === id ? { ...p, githubRepo: url } : p)),
@@ -842,8 +862,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			}
 			// Re-recording an owed reel lifts the hold now rather than on the refresh, so the map opens back up the moment it is posted.
 			setFacts(f => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter(k => k !== id) } : f))
-			const { post } = (await res.json()) as { post?: { id?: string } }
-			const postId = post?.id
+			const body = PostedReelBody.safeParse(await res.json())
+			const postId = body.success ? body.data.post?.id : undefined
 			return postId ? { postId } : { error: "Your reel didn't post. Try again." }
 		},
 		[patchCheckpoint, routeOf, router],

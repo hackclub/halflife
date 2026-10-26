@@ -11,6 +11,9 @@ import { fieldKey, formulaRef, RSVP } from "@/lib/airtable/schema"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { formatDbTimestamp } from "@/lib/time"
 
+/** Internal field name to its Airtable definition, for the spread of optional columns below. */
+const RSVP_FIELDS_BY_NAME = new Map(Object.entries(RSVP.fields))
+
 export interface RsvpInput {
 	email: string
 	firstName?: string | null
@@ -195,7 +198,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 			const fields: { [_: string]: unknown } = {}
 			for (const [key, value] of Object.entries(values)) {
 				if (value === undefined) continue
-				const field = RSVP.fields[key as keyof typeof RSVP.fields]
+				const field = RSVP_FIELDS_BY_NAME.get(key)
 				if (field && writable.has(fieldKey(field))) fields[fieldKey(field)] = value
 			}
 			if (row.userId && !writable.has(fieldKey(RSVP.fields.userId))) result.skippedUserId++

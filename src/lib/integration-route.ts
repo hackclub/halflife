@@ -14,12 +14,12 @@ import { postMessage } from "@/lib/site/slack"
  *
  * `withRoute` turns a thrown `HttpError` into its response and anything else into a logged 500; this puts the key check in front of it, so a handler body can assume it is already authorised and start with its actual work.
  */
-export function withIntegrationRoute<A extends unknown[]>(
+export function withIntegrationRoute<A extends [NextRequest, ...unknown[]]>(
 	handler: (...args: A) => Promise<NextResponse>,
 ): (...args: A) => Promise<NextResponse> {
 	const routed = withRoute(handler)
 	return (...args: A) => {
-		const denied = requireIntegrationAuth(args[0] as NextRequest)
+		const denied = requireIntegrationAuth(args[0])
 		if (denied) return Promise.resolve(denied)
 		return routed(...args)
 	}
