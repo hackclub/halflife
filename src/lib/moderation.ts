@@ -72,7 +72,13 @@ async function readTargetState(
  *
  * Refused while a ban stands: lifting a ban is its own decision, not a side effect of choosing to suspend. An already-running suspension is extended rather than errored - "suspend until Friday" on a Monday to a member suspended for three more days is one action said twice, not a conflict.
  */
-export async function suspendUser(input: { byId: string; reason: string; until: Date; userId: string }): Promise<void> {
+export async function suspendUser(input: {
+	actorEmail: string
+	byId: string
+	reason: string
+	until: Date
+	userId: string
+}): Promise<void> {
 	await db.transaction(async tx => {
 		const before = await readTargetState(tx, input.userId)
 		if (!before) throw new HttpError("NOT_FOUND", "User not found")
@@ -86,6 +92,7 @@ export async function suspendUser(input: { byId: string; reason: string; until: 
 
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_SUSPEND_USER,
+			actorEmail: input.actorEmail,
 			actorId: input.byId,
 			metadata: { after: { until: formatDbTimestamp(input.until) }, before },
 			targetId: input.userId,
@@ -100,6 +107,7 @@ export async function suspendUser(input: { byId: string; reason: string; until: 
  * The steps are ordered by speed on purpose: the row is written and the action logged inside one transaction, and the sessions are only cut after it commits, since a failed session cut must not fail a ban - the guard's user-row read would still deny the member access within seconds even if the session rows somehow survived.
  */
 export async function banUser(input: {
+	actorEmail: string
 	byId: string
 	hideContent: boolean
 	reason: string
@@ -124,6 +132,7 @@ export async function banUser(input: {
 
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_BAN_USER,
+			actorEmail: input.actorEmail,
 			actorId: input.byId,
 			metadata: { after: { hideContent: input.hideContent }, before },
 			targetId: input.userId,
@@ -134,7 +143,7 @@ export async function banUser(input: {
 	await revokeSessions(input.userId)
 }
 
-export async function unsuspendUser(input: { byId: string; userId: string }): Promise<void> {
+export async function unsuspendUser(input: { actorEmail: string; byId: string; userId: string }): Promise<void> {
 	await db.transaction(async tx => {
 		const before = await readTargetState(tx, input.userId)
 		if (!before) throw new HttpError("NOT_FOUND", "User not found")
@@ -148,6 +157,7 @@ export async function unsuspendUser(input: { byId: string; userId: string }): Pr
 
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_UNSUSPEND_USER,
+			actorEmail: input.actorEmail,
 			actorId: input.byId,
 			metadata: { before },
 			targetId: input.userId,
@@ -161,7 +171,12 @@ export async function unsuspendUser(input: { byId: string; userId: string }): Pr
  *
  * `restoreContent` reverses exactly what the ban hid - the rows stamped `hiddenByBanAt` at ban time - so content a moderator hid separately, for a reason of its own, stays hidden. Content the member deleted themselves stays deleted.
  */
-export async function unbanUser(input: { byId: string; restoreContent: boolean; userId: string }): Promise<void> {
+export async function unbanUser(input: {
+	actorEmail: string
+	byId: string
+	restoreContent: boolean
+	userId: string
+}): Promise<void> {
 	await db.transaction(async tx => {
 		const before = await readTargetState(tx, input.userId)
 		if (!before) throw new HttpError("NOT_FOUND", "User not found")
@@ -177,6 +192,7 @@ export async function unbanUser(input: { byId: string; restoreContent: boolean; 
 
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_UNBAN_USER,
+			actorEmail: input.actorEmail,
 			actorId: input.byId,
 			metadata: { before, restoreContent: input.restoreContent },
 			targetId: input.userId,

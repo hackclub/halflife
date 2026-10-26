@@ -50,16 +50,30 @@ export const POST = withWritePermission(
 		// The business rules live in lib/moderation and throw HttpError for everything the admin needs to hear back, which withRoute already turns into the proper response. Nothing to re-word here.
 		const { action } = parsed.data
 		if (action === "SUSPEND")
-			await suspendUser({ byId: gate.user.id, reason: parsed.data.reason, until: parsed.data.until, userId: id })
+			await suspendUser({
+				actorEmail: gate.user.email,
+				byId: gate.user.id,
+				reason: parsed.data.reason,
+				until: parsed.data.until,
+				userId: id,
+			})
 		else if (action === "BAN")
 			await banUser({
+				actorEmail: gate.user.email,
 				byId: gate.user.id,
 				hideContent: parsed.data.hideContent,
 				reason: parsed.data.reason,
 				userId: id,
 			})
-		else if (action === "UNSUSPEND") await unsuspendUser({ byId: gate.user.id, userId: id })
-		else await unbanUser({ byId: gate.user.id, restoreContent: parsed.data.restoreContent, userId: id })
+		else if (action === "UNSUSPEND")
+			await unsuspendUser({ actorEmail: gate.user.email, byId: gate.user.id, userId: id })
+		else
+			await unbanUser({
+				actorEmail: gate.user.email,
+				byId: gate.user.id,
+				restoreContent: parsed.data.restoreContent,
+				userId: id,
+			})
 
 		const row = await db.orm.public.User.whereUnique({ id })
 			.select("bannedAt", "bannedById", "banReason", "suspendedById", "suspendedUntil", "suspensionReason")
