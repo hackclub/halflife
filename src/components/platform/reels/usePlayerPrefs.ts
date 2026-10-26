@@ -20,7 +20,6 @@ export interface PlayerPrefs {
 const KEY = "halflife.player.v1"
 const DEFAULTS: PlayerPrefs = { autoScroll: false, comments: true, muted: false, rate: 1 }
 
-
 export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerPrefs>) => void] {
 	const [prefs, setPrefs] = useState<PlayerPrefs>(DEFAULTS)
 
