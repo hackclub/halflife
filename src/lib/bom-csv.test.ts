@@ -50,6 +50,32 @@ describe("parseBomCsv", () => {
 		expect(out.skipped).toEqual([{ name: "Monster cap", reason: "unit price is above $10000", row: 6 }])
 	})
 
+	test("reads a cost-each column from a spreadsheet export", () => {
+		const out = parseBomCsv(
+			[
+				"Item, amount, cost (ea.), Link",
+				"XIAO ESP32 C3, 1, 5.00, https://www.seeedstudio.com/x",
+				"MX Switches, 4, 0.18, https://www.amazon.com/dp/B0",
+				"Total (each kit), 1, 24.95,",
+			].join("\n"),
+		)
+		expect(out.lines.map(l => l.unitCostUsd)).toEqual([5, 0.18])
+		expect(out.lines.map(l => l.quantity)).toEqual([1, 4])
+		expect(out.skipped).toEqual([{ name: "Total (each kit)", reason: "looks like an order total, not a part", row: 4 }])
+	})
+
+	test("reads the sync's own BOM.csv, whose price column is Cost/item", () => {
+		const out = parseBomCsv(
+			["Item,Qty,Supplier,Cost/item,Total Cost,link", "10k resistor,2,DigiKey,0.05,0.10,"].join("\n"),
+		)
+		expect(out.lines[0]).toMatchObject({
+			name: "10k resistor",
+			quantity: 2,
+			unitCostUsd: 0.05,
+			vendor: "DigiKey",
+		})
+	})
+
 	test("a lone name column still imports, and the header itself is skipped", () => {
 		const out = parseBomCsv("Part\nresistor\nPart\n")
 		expect(out.header).toEqual(["Part"])
