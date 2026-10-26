@@ -171,6 +171,35 @@ export const orderFulfillmentSchema = z
  */
 const requiredInstant = z.preprocess(value => (value === null ? undefined : value), z.coerce.date())
 
+/**
+ * The penalties an admin can hand down and lift.
+ *
+ * One route, one discriminated union, because the four actions differ by at most a couple of fields and two extra endpoints invite drift. Suspension requires an end date (a suspension without one is a ban); hiding content on a ban is opt-in - moderation damage is. Unban's restore flag covers only what the ban itself hid, stamped `hiddenByBanAt`, so content hidden separately for other reasons stays hidden.
+ */
+export const penaltySchema = z.discriminatedUnion("action", [
+	z
+		.object({
+			action: z.literal("SUSPEND"),
+			reason: boundedText(1000, 1),
+			until: requiredInstant,
+		})
+		.strict(),
+	z
+		.object({
+			action: z.literal("BAN"),
+			hideContent: z.boolean().default(false),
+			reason: boundedText(1000, 1),
+		})
+		.strict(),
+	z.object({ action: z.literal("UNSUSPEND") }).strict(),
+	z
+		.object({
+			action: z.literal("UNBAN"),
+			restoreContent: z.boolean().default(false),
+		})
+		.strict(),
+])
+
 export const programEventCreateSchema = z
 	.object({
 		colour: z.enum(EventColour).default(EventColour.SLATE),

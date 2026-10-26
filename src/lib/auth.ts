@@ -187,6 +187,20 @@ export const auth = betterAuth({
 					void markLogin(session.userId)
 					return Promise.resolve()
 				},
+				// A banned member cannot sign in: the session rows are already gone, and a new one must never appear. Returning false refuses the sign-in; the member gets a generic error and the free-text reason stays in the admin record rather than in a browser.
+				before: async session => {
+					try {
+						const user = await db.orm.public.User.whereUnique({ id: session.userId }).select("bannedAt").first()
+						if (user?.bannedAt) {
+							console.warn(`[auth] refused sign-in for banned account ${redactForLog(session.userId)}`)
+							return false
+						}
+					} catch (err) {
+						// Fail closed, the same stance the hca-account link takes: a vetting we cannot complete is a sign-in refused.
+						console.error("[auth] ban vetting failed:", err)
+						return false
+					}
+				},
 			},
 		},
 		user: {

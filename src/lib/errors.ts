@@ -2,6 +2,10 @@
  * Closed set of API error codes, each bound to the status it always returns. Pairing them here means a handler cannot accidentally send CONFLICT with a 400, and clients can branch on the code rather than parsing prose.
  */
 export const API_ERROR_STATUS = {
+	/** A banned member reaching a gate: the session is dead or dying. */
+	ACCOUNT_BANNED: 403,
+	/** A suspended member making a change: reading is fine, writing is not. */
+	ACCOUNT_SUSPENDED: 403,
 	ALREADY_RESOLVED: 409,
 	ALREADY_SUBMITTED: 409,
 	CLAIMED_BY_OTHER: 409,
