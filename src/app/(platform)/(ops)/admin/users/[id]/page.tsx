@@ -63,6 +63,8 @@ export default async function AdminUserPage({ params }: Props) {
 				])
 			).some(r => r.count > 0)
 		: false
+	// Which penalty is on right now. An expired suspension still has its end timestamp on the row, so the timestamps alone cannot decide whether to show a badge.
+	const penalty = penalties ? penaltyFor(penalties.bannedAt, penalties.suspendedUntil) : "none"
 
 	return (
 		<div className="hl-stack">
@@ -120,17 +122,17 @@ export default async function AdminUserPage({ params }: Props) {
 
 			{isAdmin && penalties ? (
 				<Panel title="Penalties">
-					{penalties.bannedAt || penalties.suspendedUntil ? (
-						<Badge tone={penalties.bannedAt ? "danger" : "warning"}>
-							{penaltyFor(penalties.bannedAt, penalties.suspendedUntil)}
-						</Badge>
+					{penalty !== "none" ? (
+						<div className="hl-row">
+							<Badge tone={penalty === "banned" ? "danger" : "warning"}>{penalty}</Badge>
+						</div>
 					) : null}
 					<PenaltyCard
 						banned={penalties.bannedAt !== null}
 						bannedAt={penalties.bannedAt ? parseDbTimestamp(penalties.bannedAt).toISOString() : null}
 						banReason={penalties.banReason}
 						rollbackContentHidden={rollbackContentHidden}
-						suspended={penaltyFor(penalties.bannedAt, penalties.suspendedUntil) === "suspended"}
+						suspended={penalty === "suspended"}
 						suspendedUntil={penalties.suspendedUntil ? parseDbTimestamp(penalties.suspendedUntil).toISOString() : null}
 						suspensionReason={penalties.suspensionReason}
 						url={`/api/admin/users/${id}/penalties`}
