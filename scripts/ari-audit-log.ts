@@ -134,11 +134,11 @@ function readPageData(body: string, program: string): AuditLog {
 		}
 		if (!isRecord(message)) continue
 
-		if (message.type === "redirect") {
+		if (message.type === "redirect")
 			throw new Error(
 				`Ari asked for a sign-in (redirect to ${String(message.location)}): the cookie is missing, expired, or not signed in.`,
 			)
-		}
+
 		if (message.type === "data" && Array.isArray(message.nodes)) {
 			const { nodes: pageNodes } = message
 			nodes = pageNodes
@@ -176,13 +176,13 @@ function readPageData(body: string, program: string): AuditLog {
 
 /** The message (and status, when there is one) of a SvelteKit error payload, given plain or in devalue's flattened form. */
 function errorText(raw: unknown): string {
-	if (Array.isArray(raw)) {
+	if (Array.isArray(raw))
 		try {
 			return errorText(unflatten(raw))
 		} catch {
 			return JSON.stringify(raw)
 		}
-	}
+
 	if (!isRecord(raw)) return String(raw)
 	const status = typeof raw.status === "number" ? ` ${raw.status}` : ""
 	return `${String(raw.message ?? JSON.stringify(raw))}${status}`
