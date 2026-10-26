@@ -12,7 +12,11 @@ set -eu
 # only sign creates). On later boots sign reports "already signed", so this
 # is safe to run more than once but should not live here permanently.
 echo "[boot] signing database"
-if bunx prisma db sign; then
+# --no-advance-ref: the marker in the database is what boot needs; the
+# db ref file is a dev-side pointer and the image's migrations tree is not
+# writable by the runtime user. (Without the flag, a successful sign still
+# exits non-zero when the ref write fails, which would stop the boot.)
+if bunx prisma db sign --no-advance-ref; then
 	echo "[boot] database signed"
 else
 	# TEMPORARY diagnostic: sign failed, so print the live enum orders and
