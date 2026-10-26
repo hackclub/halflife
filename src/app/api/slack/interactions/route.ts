@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server"
+import { z } from "zod"
 import { readBoundedText } from "@/lib/api"
 import {
 	addReaction,
@@ -12,6 +13,8 @@ import {
 } from "@/lib/site/slack"
 import { countPriorHelpTickets, reopenHelpTicket, resolveHelpTicket } from "@/lib/site/ticket-store"
 import {
+	type ActionTicketRef,
+	ActionTicketRefSchema,
 	carriesResolveActions,
 	deleteTicketMessage,
 	helpedAck,
@@ -30,20 +33,31 @@ import {
 
 export const runtime = "nodejs"
 
-interface BlockAction {
-	action_id: string
-	value?: string
-}
+const BlockActionSchema = z.object({ action_id: z.string(), value: z.string().optional() })
+type BlockAction = z.infer<typeof BlockActionSchema>
 
-interface InteractionPayload {
-	actions?: BlockAction[]
+/** A Slack interaction, parsed rather than trusted: the signature proves Slack sent it, not that every field is there. */
+const InteractionPayloadSchema = z.object({
+	actions: z.array(BlockActionSchema).optional(),
 	/** Present only on the `url_verification` challenge Slack sends first. */
-	challenge?: string
-	channel?: { id: string }
-	message?: { ts: string; blocks?: SlackBlock[] }
-	response_url?: string
-	type: string
-	user: { id: string }
+	challenge: z.string().optional(),
+	channel: z.object({ id: z.string() }).optional(),
+	message: z.object({ blocks: z.array(z.record(z.string(), z.unknown())).optional(), ts: z.string() }).optional(),
+	response_url: z.string().optional(),
+	type: z.string(),
+	user: z.object({ id: z.string() }),
+})
+type InteractionPayload = z.infer<typeof InteractionPayloadSchema>
+
+/** The ticket reference a button carries, checked rather than trusted. */
+function actionRef(action: BlockAction): ActionTicketRef | null {
+	if (!action.value) return null
+	try {
+		const parsed = ActionTicketRefSchema.safeParse(JSON.parse(action.value))
+		return parsed.success ? parsed.data : null
+	} catch {
+		return null
+	}
 }
 
 /** The only origin Slack sets `response_url` to. */
@@ -91,8 +105,8 @@ async function respondEphemeral(responseUrl: string, text: string) {
  *
  * Best-effort: the reaction is a nice-to-have marker, so a Slack call that fails here (the custom emoji missing from the workspace, the question deleted) must not sink the ack that follows it. The two calls are guarded separately so one failure still leaves the other half of the swap to land. Guarded on the ref carrying a help thread, which every resolution button does but a malformed value might not.
  */
-async function reactResolved(ref: Partial<TicketRef>) {
-	if (!ref.helpChannel || !ref.helpTs) return
+async function reactResolved(ref: Partial<TicketRef> | null) {
+	if (!ref?.helpChannel || !ref.helpTs) return
 	try {
 		await removeReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
 	} catch (err) {
@@ -151,15 +165,9 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 		return
 	}
 
-	let ref: Partial<TicketRef> = {}
-	try {
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-		ref = action.value ? (JSON.parse(action.value) as Partial<TicketRef>) : {}
-	} catch {
-		// Malformed value – still clear the mirror below.
-	}
+	const ref = actionRef(action)
 
-	if (ref.helpChannel && ref.helpTs) {
+	if (ref?.helpChannel && ref.helpTs) {
 		// The thread reminder's ts is not carried on this payload, so read the thread to find it and make the same rewrite the in-thread button makes. The mirror is clicked from the tickets channel while the reminder lives in the help thread, which is why this path needs the read and the in-thread path does not. Best-effort like the rest of the file – a failed read must not leave the ticket sitting in the queue or the database.
 		try {
 			const replies = await getThreadReplies(ref.helpChannel, ref.helpTs)
@@ -189,8 +197,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	try {
 		if (!(await deleteTicketMessage(payload.channel.id, payload.message.ts)))
 			await updateMessage(payload.channel.id, payload.message.ts, `Ticket resolved by <@${payload.user.id}>`, [
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-				ticketSection(ref as TicketRef),
+				...(ref ? [ticketSection(ref)] : []),
 				...resolveBlocks(undefined, payload.user.id),
 			])
 	} catch (err) {
@@ -207,17 +214,10 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 async function handleSelfResolve(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
-	let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {}
-	try {
-		ref = action.value
-			? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				(JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
-			: {}
-	} catch {
-		return
-	}
+	const ref = actionRef(action)
+	if (!ref) return
 
-	if (!ref.authorId || payload.user.id !== ref.authorId) {
+	if (payload.user.id !== ref.authorId) {
 		if (payload.response_url)
 			await respondEphemeral(
 				payload.response_url,
@@ -242,12 +242,11 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${String(err)}`)
 		}
 
-	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel)
+	if (ref.ticketsChannel && ref.ticketsTs)
 		try {
 			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs)))
 				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
-					// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-					ticketSection(ref as TicketRef),
+					ticketSection(ref),
 					...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
 				])
 		} catch (err) {
@@ -264,18 +263,10 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 async function handleThreadMarkHelped(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
-	let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {}
-	try {
-		ref = action.value
-			? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				(JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }>)
-			: {}
-	} catch {
-		return
-	}
+	const ref = actionRef(action)
 
 	// The help channel is open to every participant, so the button is gated on membership of the private tickets channel the bot posts to – the same people who can resolve it from there.
-	if (!ref.ticketsChannel) {
+	if (!ref?.ticketsChannel) {
 		console.error("mark_helped_from_thread dropped: ticket carries no tickets-channel reference")
 		if (payload.response_url)
 			await respondEphemeral(
@@ -317,12 +308,11 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${String(err)}`)
 		}
 
-	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel)
+	if (ref.ticketsChannel && ref.ticketsTs)
 		try {
 			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs)))
 				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
-					// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-					ticketSection(ref as TicketRef),
+					ticketSection(ref),
 					...resolveBlocks(undefined, payload.user.id),
 				])
 		} catch (err) {
@@ -339,14 +329,8 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
-	let ref: Partial<TicketRef & { ticketsChannel: string }> = {}
-	try {
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-		ref = action.value ? (JSON.parse(action.value) as Partial<TicketRef & { ticketsChannel: string }>) : {}
-	} catch {
-		return
-	}
-	if (!ref.authorId || !ref.helpChannel || !ref.helpTs) return
+	const ref = actionRef(action)
+	if (!ref) return
 	const ticketsChannel = ref.ticketsChannel ?? process.env.SLACK_TICKETS_CHANNEL_ID
 	if (!ticketsChannel) {
 		console.error("reopen_ticket dropped: no tickets channel on the ref or in env")
@@ -481,8 +465,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 	let payload: InteractionPayload
 	try {
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-		payload = JSON.parse(raw) as InteractionPayload
+		const parsed = InteractionPayloadSchema.safeParse(JSON.parse(raw))
+		if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 })
+		payload = parsed.data
 	} catch {
 		return NextResponse.json({ ok: false }, { status: 400 })
 	}

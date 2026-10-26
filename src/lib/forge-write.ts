@@ -7,6 +7,7 @@ import { type Forge, repoUrl } from "@/lib/forge"
 import { oauthAccessToken } from "@/lib/oauth-token"
 import db from "@/lib/prisma8"
 import type { RepoRef } from "@/lib/repo-ref"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * Writing a participant's work back into their own repo, on whichever forge they linked.

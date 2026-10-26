@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { z } from "zod"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import {
 	IconArrowRight,
@@ -1034,12 +1035,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Reel
  * ================================================================== */
-interface ReelDraft {
-	caption: string
-	clip: string
+const ReelDraftSchema = z.object({
+	caption: z.string(),
+	clip: z.string(),
 	/** The bucket's URL for the clip, never a blob URL: those die with the page. */
-	url: string | null
-}
+	url: z.string().nullable(),
+})
+type ReelDraft = z.infer<typeof ReelDraftSchema>
 
 const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpointId}`
 
@@ -1050,8 +1052,8 @@ function readReelDraft(checkpointId: string): ReelDraft | null {
 	if (typeof window === "undefined") return null
 	try {
 		const raw = window.localStorage.getItem(reelDraftKey(checkpointId))
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-		return raw ? (JSON.parse(raw) as ReelDraft) : null
+		const parsed = raw ? ReelDraftSchema.safeParse(JSON.parse(raw)) : null
+		return parsed?.success ? parsed.data : null
 	} catch {
 		return null
 	}

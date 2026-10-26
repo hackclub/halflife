@@ -11,6 +11,7 @@ import { AuditAction, logAudit } from "../src/lib/audit"
 import { Phase, PhaseStatus, ReviewResult, type Theme } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 import { formatDbTimestamp } from "../src/lib/time"
+import { isRecord } from "../src/lib/unknown"
 
 /**
  * Undo the projects Ari auto-returned for a maker whose Hack Club identity was not yet verified.
@@ -175,9 +176,8 @@ async function findHealTargets(): Promise<{ targets: HealTarget[]; withoutRow: n
 		.select("metadata", "targetId")
 		.all()
 	for (const event of events) {
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
-		const meta = event.metadata as { phase?: string; source?: string } | null
-		if (meta?.source !== "repair-identity-returns" || !meta.phase || !event.targetId) continue
+		const meta = isRecord(event.metadata) ? event.metadata : null
+		if (meta?.source !== "repair-identity-returns" || typeof meta.phase !== "string" || !event.targetId) continue
 		reopened.add(`${event.targetId}:${meta.phase}`)
 	}
 	if (reopened.size === 0) return { targets: [], withoutRow: 0 }

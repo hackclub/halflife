@@ -1,18 +1,31 @@
+import { z } from "zod"
 import { deleteMessage, type SlackBlock } from "./slack"
 
 /**
  * Everything either button (the staff-facing one in the tickets channel, or the self-resolve one in the #half-life-help thread) needs to act – carried in the button's own `value` since there's no ticket database to look it up from.
  */
-export interface TicketRef {
-	authorId: string
-	helpChannel: string
-	helpTs: string
+export const TicketRefSchema = z.object({
+	authorId: z.string(),
+	helpChannel: z.string(),
+	helpTs: z.string(),
 	/** null when the permalink lookup failed – the ticket still posts, just
 	 *
 	 * * without a jump link.
 	 */
-	permalink: string | null
-}
+	permalink: z.string().nullable(),
+})
+export type TicketRef = z.infer<typeof TicketRefSchema>
+
+/**
+ * The same reference as it arrives back in a button's `value`, plus the mirror's coordinates.
+ *
+ * Both mirror fields are optional: a button posted before the ticket moved channels still carries a usable help-thread reference, and the readers fall back to `SLACK_TICKETS_CHANNEL_ID` for the channel.
+ */
+export const ActionTicketRefSchema = TicketRefSchema.extend({
+	ticketsChannel: z.string().optional(),
+	ticketsTs: z.string().optional(),
+})
+export type ActionTicketRef = z.infer<typeof ActionTicketRefSchema>
 
 export const TICKET_ACTIONS_BLOCK_ID = "ticket_actions"
 export const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions"

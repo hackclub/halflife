@@ -17,6 +17,7 @@ import db from "@/lib/prisma8"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
 import { DAY_MS, formatDbTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 
 export const maxDuration = 300
 
@@ -24,8 +25,7 @@ export const maxDuration = 300
 const WITHDRAW_REPLAY_WINDOW_MS = 7 * DAY_MS
 
 function phaseOf(metadata: unknown): Phase | null {
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- shape named at this boundary
-	const phase = (metadata as { phase?: unknown } | null)?.phase
+	const phase = isRecord(metadata) ? metadata.phase : undefined
 	return phase === Phase.DESIGN || phase === Phase.BUILD ? phase : null
 }
 

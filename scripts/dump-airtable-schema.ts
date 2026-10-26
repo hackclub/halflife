@@ -1,8 +1,20 @@
+import { z } from "zod"
+
 /**
  * Print the field ids for the configured Airtable base, ready to paste into lib/airtable/schema.ts.
  *
  * Writing by field id rather than field name is what keeps the integration working when an ops person renames a column. Until these ids are filled in, the writer falls back to names (AIRTABLE_USE_FIELD_IDS=false), which works but breaks silently on a rename.
  */
+const SchemaBody = z.object({
+	tables: z.array(
+		z.object({
+			fields: z.array(z.object({ id: z.string(), name: z.string(), type: z.string() })),
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+})
+
 async function main() {
 	const apiKey = process.env.AIRTABLE_API_KEY
 	const baseId = process.env.AIRTABLE_BASE_ID
@@ -19,10 +31,7 @@ async function main() {
 		process.exit(1)
 	}
 
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
-	const body = (await res.json()) as {
-		tables: { id: string; name: string; fields: { id: string; name: string; type: string }[] }[]
-	}
+	const body = SchemaBody.parse(await res.json())
 
 	for (const table of body.tables) {
 		console.log(`\n# ${table.name}  (${table.id})`)

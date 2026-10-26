@@ -1,9 +1,18 @@
+import { z } from "zod"
+
 /**
  * Where this viewer left off in the Doomscroller today, so closing the tab and coming back later does not start them from the top of the day again.
  *
  * Per browser, in localStorage, like the player prefs: a convenience, not a record, and a new laptop starting from the newest reel is no loss. Kept for the viewer's own day only – tomorrow the top of the feed is new, and that is where they should start. Every read and write is guarded.
  */
 const KEY = "halflife.doomscroller.position.v1"
+
+/** The saved position, with the day it was saved for. Parsed, because a hand-edited or stale row must not place the viewer somewhere the feed cannot resolve. */
+const SavedPositionSchema = z.object({
+	day: z.string(),
+	id: z.string(),
+	leadIds: z.array(z.string()).optional(),
+})
 
 export interface FeedPosition {
 	/** The reel they were on. */
@@ -21,11 +30,9 @@ export function readPosition(): FeedPosition | null {
 	try {
 		const raw = window.localStorage.getItem(KEY)
 		if (!raw) return null
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-		const saved = JSON.parse(raw) as Partial<FeedPosition & { day: string }>
-		if (saved.day !== today() || typeof saved.id !== "string") return null
-		const leadIds = Array.isArray(saved.leadIds) ? saved.leadIds.filter(x => typeof x === "string") : []
-		return { id: saved.id, leadIds }
+		const parsed = SavedPositionSchema.safeParse(JSON.parse(raw))
+		if (!parsed.success || parsed.data.day !== today()) return null
+		return { id: parsed.data.id, leadIds: parsed.data.leadIds ?? [] }
 	} catch {
 		return null
 	}

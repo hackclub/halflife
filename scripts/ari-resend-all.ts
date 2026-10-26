@@ -1,3 +1,5 @@
+import { isRecord } from "../src/lib/unknown"
+
 /**
  * Resend every decision in an Ari program's "Reviewed" list, using your logged-in cookie.
  *
@@ -140,9 +142,8 @@ async function collectIds(program: string, cookie: string): Promise<string[]> {
 /** The type and status of a SvelteKit action result, or null when the body was not one. */
 function actionResult(body: string): { status: number | null; type: string } | null {
 	try {
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
-		const parsed = JSON.parse(body) as { status?: unknown; type?: unknown }
-		if (typeof parsed.type !== "string") return null
+		const parsed: unknown = JSON.parse(body)
+		if (!isRecord(parsed) || typeof parsed.type !== "string") return null
 		return { status: typeof parsed.status === "number" ? parsed.status : null, type: parsed.type }
 	} catch {
 		return null
