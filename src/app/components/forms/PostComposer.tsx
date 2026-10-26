@@ -3,12 +3,9 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { PhoneHandoff } from "@/app/components/forms/PhoneHandoff"
 import { Button, Callout, Field, Panel } from "@/app/components/ui"
+import { errorMessage } from "@/lib/api-error"
 import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 import { uploadFile } from "@/lib/use-handoff"
-
-interface ApiError {
-	error?: { message?: string }
-}
 
 export interface ComposerProject {
 	id: string
@@ -89,9 +86,7 @@ export function PostComposer({
 				method: "POST",
 			})
 			if (!created.ok) {
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-				const payload = (await created.json().catch(() => ({}))) as ApiError
-				setError(payload.error?.message ?? `Could not post (${created.status})`)
+				setError(errorMessage(await created.json().catch(() => null), `Could not post (${created.status})`))
 				return
 			}
 

@@ -1,28 +1,31 @@
 "use client"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { z } from "zod"
 import { Button, Callout } from "@/app/components/ui"
 import { errorMessage } from "@/lib/api-error"
 
-interface ImportOutcome {
-	ari: "sent" | "failed" | "not_configured" | "not_attempted"
-	email: string | null
-	reason: string | null
-	recordId: string
-	status: "imported" | "already_imported" | "skipped" | "failed"
-	themeProjectId: string | null
-}
+const ImportOutcomeSchema = z.object({
+	ari: z.enum(["sent", "failed", "not_configured", "not_attempted"]),
+	email: z.string().nullable(),
+	reason: z.string().nullable(),
+	recordId: z.string(),
+	status: z.enum(["imported", "already_imported", "skipped", "failed"]),
+	themeProjectId: z.string().nullable(),
+})
+type ImportOutcome = z.infer<typeof ImportOutcomeSchema>
 
-interface ImportSummary {
-	alreadyImported: number
-	ariSent: number
-	failed: number
-	fetched: number
-	imported: number
-	outcomes: ImportOutcome[]
-	skipped: number
-	table: string
-}
+const ImportSummarySchema = z.object({
+	alreadyImported: z.number(),
+	ariSent: z.number(),
+	failed: z.number(),
+	fetched: z.number(),
+	imported: z.number(),
+	outcomes: z.array(ImportOutcomeSchema),
+	skipped: z.number(),
+	table: z.string(),
+})
+type ImportSummary = z.infer<typeof ImportSummarySchema>
 
 const STATUS_LABEL: Record<ImportOutcome["status"], string> = {
 	already_imported: "already imported",
@@ -71,9 +74,12 @@ export function AirtableImportForm({
 				setError(errorMessage(payload, `Import failed (${res.status})`))
 				return
 			}
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-			const payload = (await res.json()) as { summary: ImportSummary }
-			setSummary(payload.summary)
+			const parsed = z.object({ summary: ImportSummarySchema }).safeParse(await res.json().catch(() => null))
+			if (!parsed.success) {
+				setError("The server's answer was not in the expected shape")
+				return
+			}
+			setSummary(parsed.data.summary)
 			router.refresh()
 		} catch {
 			setError("Could not reach the server")

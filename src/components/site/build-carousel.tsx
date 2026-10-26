@@ -101,10 +101,10 @@ export default function BuildCarousel() {
 
 		const measure = () => {
 			const items = rail.children
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-			const head = items[0] as HTMLElement | undefined
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-			const wrap = items[BUILD_CARDS.length] as HTMLElement | undefined
+			const [first] = items
+			const head = first instanceof HTMLElement ? first : undefined
+			const wrapCandidate = items[BUILD_CARDS.length]
+			const wrap = wrapCandidate instanceof HTMLElement ? wrapCandidate : undefined
 			if (!head || !wrap) return
 
 			// Measured off rects, not `offsetLeft`. `offsetLeft` is rounded to whole pixels, and one set here is 1490.67 wide: wrapping by 1491 drops a third of a pixel every time round, which on a belt this slow is a visible tick roughly twice a minute.

@@ -54,8 +54,10 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 				aria-label="Next printer award status"
 				className="hl-select"
 				disabled={busy !== null}
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-				onChange={e => setNext(e.target.value as PrinterAwardStatus | "")}
+				onChange={e => {
+					const picked = options.find(option => option === e.target.value)
+					setNext(picked ?? "")
+				}}
 				value={next}
 			>
 				<option value="">Move to…</option>

@@ -18,6 +18,8 @@ interface TierOption {
  *
  * A tier is required when approving a design, because that is where the parts money is decided. Feedback is required on anything that is not an approval.
  */
+
+const DECISIONS = ["APPROVED", "RETURNED", "REJECTED"] as const
 export function DecisionPanel({
 	submissionId,
 	phase,
@@ -75,8 +77,14 @@ export function DecisionPanel({
 			) : null}
 
 			<Field label="Decision">
-				{/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check */}
-				<select className="hl-select" onChange={e => setResult(e.target.value as typeof result)} value={result}>
+				<select
+					className="hl-select"
+					onChange={e => {
+						const next = DECISIONS.find(decision => decision === e.target.value)
+						if (next) setResult(next)
+					}}
+					value={result}
+				>
 					<option value="APPROVED">Approve</option>
 					<option value="RETURNED">Send back for changes</option>
 					<option value="REJECTED">Reject</option>

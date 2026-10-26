@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { z } from "zod"
 import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/icons"
 import { Button, inputClass, Panel } from "@/components/platform/ui"
 import { linkHackatime } from "@/lib/auth-client"
@@ -11,14 +12,15 @@ import { fmtHours } from "@/lib/projects"
 import type { Phase } from "@/lib/types"
 import { isRecord } from "@/lib/unknown"
 
-interface Link {
-	hackatimeProject: string
-	hours: number
-	hoursApproved: number | null
-	id: string
-	lastFetchError: string | null
-	phase: "DESIGN" | "BUILD"
-}
+const LinkSchema = z.object({
+	hackatimeProject: z.string(),
+	hours: z.number(),
+	hoursApproved: z.number().nullable(),
+	id: z.string(),
+	lastFetchError: z.string().nullable(),
+	phase: z.enum(["DESIGN", "BUILD"]),
+})
+type Link = z.infer<typeof LinkSchema>
 
 type Account =
 	| { state: "loading" }
@@ -26,20 +28,30 @@ type Account =
 	| { state: "linked"; projects: { name: string; totalSeconds: number }[] }
 	| { state: "error" }
 
-interface ApiErrorBody {
-	error?: { code?: string; message?: string }
+const ErrorBodySchema = z.object({
+	error: z.object({ code: z.string().optional(), message: z.string().optional() }).optional(),
+})
+const LinkPageSchema = z.object({ links: z.array(LinkSchema) })
+const HackatimeProjectsSchema = z.object({
+	projects: z.array(z.object({ name: z.string(), totalSeconds: z.number() })),
+})
+
+/** Read the body and turn a refusal into the error the panel shows. */
+async function ensureOk(res: Response): Promise<unknown> {
+	const body: unknown = await res.json().catch(() => null)
+	const envelope = ErrorBodySchema.safeParse(body)
+	if (!res.ok)
+		throw Object.assign(
+			new Error((envelope.success ? envelope.data.error?.message : undefined) ?? "Something went wrong"),
+			{ code: envelope.success ? envelope.data.error?.code : undefined },
+		)
+	return body
 }
 
-async function read<T>(res: Response): Promise<T> {
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary
-	const body = (await res.json().catch(() => null)) as ApiErrorBody | null
-	if (!res.ok)
-		throw Object.assign(new Error(body?.error?.message ?? "Something went wrong"), {
-			code: body?.error?.code,
-		})
-
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-	return body as T
+async function read<S extends z.ZodType>(schema: S, res: Response): Promise<z.infer<S>> {
+	const parsed = schema.safeParse(await ensureOk(res))
+	if (!parsed.success) throw new Error("The server's answer was not in the expected shape")
+	return parsed.data
 }
 
 /**
@@ -64,13 +76,13 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 				fetch("/api/hackatime/projects", { cache: "no-store" }),
 			])
 			try {
-				setLinks((await read<{ links: Link[] }>(linksRes)).links)
+				setLinks((await read(LinkPageSchema, linksRes)).links)
 			} catch (err) {
 				setError(messageOf(err))
 				setLinks([])
 			}
 			try {
-				const { projects } = await read<{ projects: { name: string; totalSeconds: number }[] }>(projectsRes)
+				const { projects } = await read(HackatimeProjectsSchema, projectsRes)
 				setAccount({ projects, state: "linked" })
 			} catch (err) {
 				if (isRecord(err) && err.code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
@@ -117,7 +129,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 
 	const link = () =>
 		run("link", async () => {
-			await read(
+			await ensureOk(
 				await fetch(`/api/projects/${projectId}/hackatime`, {
 					body: JSON.stringify({
 						hackatimeProject: picked,
@@ -132,7 +144,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 
 	const unlink = (id: string) =>
 		run(id, async () => {
-			await read(await fetch(`/api/projects/${projectId}/hackatime/${id}`, { method: "DELETE" }))
+			await ensureOk(await fetch(`/api/projects/${projectId}/hackatime/${id}`, { method: "DELETE" }))
 		})
 
 	const linkedNames = new Set(links?.map(l => l.hackatimeProject))

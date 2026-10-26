@@ -4,6 +4,9 @@ import type { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
 import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { sendJson, useAction } from "@/lib/use-action"
 
+const isFulfillmentMethod = (value: string): value is ShopFulfillmentMethod => Object.hasOwn(METHOD_LABELS, value)
+const isFulfillmentStage = (value: string): value is ShopFulfillmentStage => Object.hasOwn(STAGE_LABELS, value)
+
 /** The two markings on one order, each saved the moment it changes. */
 export function OrderFulfillment({
 	orderId,
@@ -29,8 +32,7 @@ export function OrderFulfillment({
 				aria-label="Shipping method"
 				className="hl-select"
 				disabled={busy !== null}
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-				onChange={e => save({ method: e.target.value === "" ? null : (e.target.value as ShopFulfillmentMethod) })}
+				onChange={e => save({ method: isFulfillmentMethod(e.target.value) ? e.target.value : null })}
 				value={method ?? ""}
 			>
 				<option value="">Method not chosen</option>
@@ -44,8 +46,9 @@ export function OrderFulfillment({
 				aria-label="Fulfilment stage"
 				className="hl-select"
 				disabled={busy !== null || cancelled}
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
-				onChange={e => save({ stage: e.target.value as ShopFulfillmentStage })}
+				onChange={e => {
+					if (isFulfillmentStage(e.target.value)) save({ stage: e.target.value })
+				}}
 				value={stage}
 			>
 				{Object.entries(STAGE_LABELS).map(([value, label]) => (
