@@ -4,7 +4,7 @@ import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { PhaseStatus, HoursSource, Theme } from "@/lib/enums"
+import { HoursSource, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
@@ -199,9 +199,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 				effectiveDate: timing.effectiveDate,
 				hoursSource: HoursSource.MANUAL,
 			})
-				.where(session =>
-					session.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))),
-				)
+				.where(entry => entry.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))))
 				.aggregate(a => ({ claimedToday: a.sum("hoursClaimed") }))
 			if ((claimedToday ?? 0) + data.hoursClaimed > 24)
 				throw new HttpError(

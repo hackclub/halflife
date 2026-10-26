@@ -90,9 +90,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	// Cross-project on purpose: one block of tracked time backing two of the maker's projects counts it twice, at a $100 grant plus up to 250 coins a project. Week-scoping (below) separates themes in different scheduled weeks, but warm-ups have no week and an unscoped warm-up total otherwise swallows a theme week's hours whole – so the same tracked project may back only one project, full stop. Deleted projects are excluded: their links stop counting with them.
 	const other = await db.orm.public.HackatimeLink.where({ hackatimeProject: parsed.data.hackatimeProject })
 		.where(link =>
-			link.themeProject.some(owner =>
-				and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id), owner.id.neq(id)),
-			),
+			link.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id), owner.id.neq(id))),
 		)
 		.include("themeProject", owner => owner.select("theme", "title"))
 		.first()
@@ -127,10 +125,8 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 
 		// Re-checked inside the transaction: a link of the same tracked project to another of the maker's projects, landing between the checks above and this create, would otherwise count one block of time twice.
 		const clash = await tx.orm.public.HackatimeLink.where({ hackatimeProject: parsed.data.hackatimeProject })
-			.where(link =>
-				link.themeProject.some(owner =>
-					and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id), owner.id.neq(id)),
-				),
+			.where(row =>
+				row.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id), owner.id.neq(id))),
 			)
 			.first()
 		if (clash)

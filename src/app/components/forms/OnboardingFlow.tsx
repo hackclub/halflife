@@ -232,7 +232,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 							/>
 							<div className="min-w-0 flex-1 space-y-2">
 								{view.beginner ? (
-									<p className="max-w-[62ch] text-[0.92rem] leading-relaxed text-navy-soft"></p>
+									<p className="max-w-[62ch] text-[0.92rem] leading-relaxed text-navy-soft" />
 								) : (
 									<>
 										<p className="text-[0.92rem] text-navy-soft">Some places to start, if you want one:</p>

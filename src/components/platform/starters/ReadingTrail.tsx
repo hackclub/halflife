@@ -12,7 +12,9 @@ export function ReadingTrail({ headings }: { headings: GuideHeading[] }) {
 	const [current, setCurrent] = useState(0)
 
 	useEffect(() => {
-		const targets = headings.map(h => document.getElementById(h.id)).filter((el): el is HTMLElement => el !== null)
+		const targets = headings
+			.map(h => document.querySelector<HTMLElement>(`#${CSS.escape(h.id)}`))
+			.filter((el): el is HTMLElement => el !== null)
 		if (targets.length === 0) return
 
 		// The section you are in is the last heading above a line a third of the way down the window.

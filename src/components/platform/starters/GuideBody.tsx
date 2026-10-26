@@ -84,7 +84,7 @@ function Figure({ alt, src, credit, id }: { alt: string; src: string; credit?: s
 	const size = DISPLAY_PHOTO_SIZES[src.slice(src.lastIndexOf("/") + 1)]
 	return (
 		<figure className="grid gap-2">
-			{/* eslint-disable-next-line @next/next/no-img-element -- a guide's photos keep their own crop and run at their own width */}
+			{/* A plain img: a guide's photos keep their own crop and run at their own width */}
 			<img
 				alt={alt}
 				className="block h-auto max-h-[34rem] w-full rounded-[14px] bg-white object-contain"

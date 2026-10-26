@@ -65,13 +65,7 @@ export function FirstCheckpoint() {
 		)
 
 	return (
-		<Modal
-			accent="var(--color-gold-deep)"
-			onClose={close}
-			open
-			scrollKey={view.reached}
-			size="xl"
-		>
+		<Modal accent="var(--color-gold-deep)" onClose={close} open scrollKey={view.reached} size="xl">
 			<OnboardingFlow
 				initial={view}
 				onComplete={() => {

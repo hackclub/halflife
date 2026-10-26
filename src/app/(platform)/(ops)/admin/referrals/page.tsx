@@ -1,8 +1,8 @@
 import Link from "next/link"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import { Role } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasRole, Permission } from "@/lib/permissions"
-import { Role } from "@/lib/enums"
 import { getReferralLeaderboard } from "@/lib/site/referrals"
 
 export const dynamic = "force-dynamic"

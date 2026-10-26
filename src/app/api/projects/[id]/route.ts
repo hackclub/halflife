@@ -111,9 +111,9 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 		hours: { build, design },
 		project: {
 			...safeProject,
+			coverImageUrl: publicUrlFor(project.coverImageKey),
 			hackatimeLinks: safeLinks,
 			workSessions: safeSessions,
-			coverImageUrl: publicUrlFor(project.coverImageKey),
 		},
 		theme: getThemeDef(project.theme),
 	})

@@ -122,7 +122,15 @@ async function main() {
 		// Topping up a series keeps its id, so the slot stays one series in the admin table.
 		const seriesId = existing.find(e => e.seriesId)?.seriesId ?? crypto.randomUUID()
 		const rows = await db.orm.public.ProgramEvent.createAll(
-			missing.map(o => ({ ...o, ...kind, published: true, seriesId, startsAt: formatDbTimestamp(o.startsAt) })),
+			missing.map(o => ({
+				colour: kind.colour,
+				description: kind.description,
+				endsAt: o.endsAt,
+				published: true,
+				seriesId,
+				startsAt: formatDbTimestamp(o.startsAt),
+				title: kind.title,
+			})),
 		)
 		created += rows.length
 	}

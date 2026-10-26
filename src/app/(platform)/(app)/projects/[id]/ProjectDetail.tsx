@@ -316,7 +316,9 @@ function ReviewState({
 
 							{p.shipError && (
 								<div className="rounded-xl bg-coral/10 px-3.5 py-3">
-									<p className="text-[0.88rem] font-extrabold text-coral-dark">This submission has not reached review</p>
+									<p className="text-[0.88rem] font-extrabold text-coral-dark">
+										This submission has not reached review
+									</p>
 									<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">{p.shipError}</p>
 									<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">
 										Fix that, then submit it again. Take the week back first if it is still in review.

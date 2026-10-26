@@ -26,7 +26,8 @@ export default async function StarterProjects({ searchParams }: { searchParams: 
 			<StarterPicker initial={initial} />
 
 			<p className="hand mx-auto max-w-[52ch] py-10 text-center text-[0.86rem] leading-relaxed text-navy-soft">
-				a guide is a starting point, you can't copy a starter project exactly. change the design, the case and the code until it&apos;s uniquely your project!
+				a guide is a starting point, you can&apos;t copy a starter project exactly. change the design, the case and the
+				code until it&apos;s uniquely your project!
 			</p>
 		</div>
 	)

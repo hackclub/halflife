@@ -45,8 +45,8 @@ export async function GET(request: Request): Promise<Response> {
 	return publicRedirect(request, "/")
 }
 
-export async function POST(request: Request): Promise<Response> {
+export function POST(request: Request): Promise<Response> {
 	if (bodyTooLarge(request))
-		return Response.json({ message: "Request body too large" }, { status: 413 })
+		return Promise.resolve(Response.json({ message: "Request body too large" }, { status: 413 }))
 	return handler.POST(request)
 }
