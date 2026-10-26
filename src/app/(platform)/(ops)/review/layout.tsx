@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { OpsShell } from "@/app/components/OpsShell"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 
@@ -9,16 +10,17 @@ export default async function ReviewLayout({ children }: Readonly<{ children: Re
 	const { user } = await requirePermissionPage(Permission.REVIEW_SUBMISSIONS)
 
 	return (
-		<>
-			<nav className="hl-nav">
-				<strong>Half-Life review</strong>
-				<Link href="/review">Queue</Link>
-				<Link href="/dashboard">Dashboard</Link>
-				<span className="hl-muted" style={{ marginLeft: "auto" }}>
-					{user.email}
-				</span>
-			</nav>
-			<main className="hl-shell">{children}</main>
-		</>
+		<OpsShell
+			email={user.email}
+			nav={
+				<>
+					<Link href="/review">Queue</Link>
+					<Link href="/dashboard">Dashboard</Link>
+				</>
+			}
+			title="Half-Life review"
+		>
+			{children}
+		</OpsShell>
 	)
 }
