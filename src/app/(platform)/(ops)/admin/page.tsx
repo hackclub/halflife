@@ -498,6 +498,44 @@ const EDGE = 0.012
 const pct = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 
 /**
+ * The day labels under a time-series plot, one printed label per block so a long season does not squeeze "MM-DD" into a few pixels.
+ */
+function DayAxis({ days, labelEvery }: { days: readonly { day: string }[]; labelEvery: number }) {
+	return (
+		<div
+			aria-hidden="true"
+			style={{
+				color: "var(--color-ink-muted)",
+				display: "grid",
+				fontSize: "0.65rem",
+				gap: "1px",
+				gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+				marginTop: "4px",
+				// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
+				paddingLeft: pct(EDGE),
+				paddingRight: pct(EDGE),
+			}}
+		>
+			{days.map((d, i) =>
+				i % labelEvery === 0 ? (
+					<div
+						key={d.day}
+						style={{
+							gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+						}}
+					>
+						{d.day.slice(5)}
+					</div>
+				) : null,
+			)}
+		</div>
+	)
+}
+
+/**
  * Hours and devlogs per day, as two lines over one shared day axis and two scales.
  *
  * One chart rather than two stacked ones because the two move together, and that is the thing worth seeing: a day where the hours line jumps and the devlogs line does not is a long sitting, and a day where both jump is a busy one. Stacked, that comparison needed the eye to travel between panels and hold one scale in mind.
@@ -710,37 +748,7 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 							</circle>
 						))}
 					</svg>
-					<div
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							display: "grid",
-							fontSize: "0.65rem",
-							gap: "1px",
-							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-							marginTop: "4px",
-							// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
-							paddingLeft: pct(EDGE),
-							paddingRight: pct(EDGE),
-						}}
-					>
-						{/* Each printed label spans its whole labelEvery block: one label per column squeezes a "MM-DD" into a few pixels on a long season and it ellipsizes to its first character ("1…", "0…"). */}
-						{days.map((d, i) =>
-							i % labelEvery === 0 ? (
-								<div
-									key={d.day}
-									style={{
-										gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-								>
-									{d.day.slice(5)}
-								</div>
-							) : null,
-						)}
-					</div>
+					<DayAxis days={days} labelEvery={labelEvery} />
 				</div>
 
 				<div style={{ height: `${CHART_H}px`, position: "relative", width: "3.4rem" }}>
@@ -924,36 +932,7 @@ function DauChart({ days }: { days: ActiveDay[] }) {
 							</circle>
 						))}
 					</svg>
-					<div
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							display: "grid",
-							fontSize: "0.65rem",
-							gap: "1px",
-							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-							marginTop: "4px",
-							// The plot leaves EDGE either side, so the labels take the same inset and sit under their dots.
-							paddingLeft: pct(EDGE),
-							paddingRight: pct(EDGE),
-						}}
-					>
-						{days.map((d, i) =>
-							i % labelEvery === 0 ? (
-								<div
-									key={d.day}
-									style={{
-										gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-								>
-									{d.day.slice(5)}
-								</div>
-							) : null,
-						)}
-					</div>
+					<DayAxis days={days} labelEvery={labelEvery} />
 				</div>
 			</div>
 		</div>
@@ -1122,36 +1101,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 							)),
 						)}
 					</svg>
-					<div
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							display: "grid",
-							fontSize: "0.65rem",
-							gap: "1px",
-							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-							marginTop: "4px",
-							// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
-							paddingLeft: pct(EDGE),
-							paddingRight: pct(EDGE),
-						}}
-					>
-						{days.map((d, i) =>
-							i % labelEvery === 0 ? (
-								<div
-									key={d.day}
-									style={{
-										gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-								>
-									{d.day.slice(5)}
-								</div>
-							) : null,
-						)}
-					</div>
+					<DayAxis days={days} labelEvery={labelEvery} />
 				</div>
 			</div>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
