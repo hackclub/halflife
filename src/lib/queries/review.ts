@@ -268,7 +268,12 @@ export async function getSubmissionDetail(
 		loadLinks(row.phase, row.themeProjectId),
 		loadPriorReviews(row.themeProjectId),
 	])
-	const submission = parseSubmissionRow(row) as SubmissionDetail
+	const parsed = parseSubmissionRow(row)
+	if (!parsed.themeProject?.user) return null
+	const submission: SubmissionDetail = {
+		...parsed,
+		themeProject: { ...parsed.themeProject, user: parsed.themeProject.user },
+	}
 
 	return {
 		breakdown,

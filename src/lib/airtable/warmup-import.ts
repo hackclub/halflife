@@ -1,6 +1,7 @@
 import "server-only"
 import {
 	type AirtableConfig,
+	AirtableListSchema,
 	type AirtableRecord,
 	airtableFetch,
 	getAirtableConfig,
@@ -214,10 +215,7 @@ async function listWarmupRecords(config: AirtableConfig): Promise<AirtableRecord
 		const params = new URLSearchParams({ pageSize: "100" })
 		if (offset) params.set("offset", offset)
 		const page = await withRateLimitRetry("listWarmupProjects", () =>
-			airtableFetch<{ records?: AirtableRecord[]; offset?: string }>(
-				config,
-				`${YSWS_SUBMISSION.tableId}?${params.toString()}`,
-			),
+			airtableFetch(AirtableListSchema, config, `${YSWS_SUBMISSION.tableId}?${params.toString()}`),
 		)
 		records.push(...(page.records ?? []))
 		;({ offset } = page)
