@@ -120,7 +120,7 @@ export async function banUser(input: {
 			suspensionReason: null,
 		})
 
-		if (input.hideContent) await hideAllContent(tx, input.userId, input.reason)
+		if (input.hideContent) await hideAllContent(tx, input.userId, input.byId, input.reason)
 
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_BAN_USER,
@@ -192,7 +192,7 @@ export async function unbanUser(input: { byId: string; restoreContent: boolean; 
  *
  * The stamp is what makes "restore" safe: only rows the ban touched carry it, so a separate moderator hide for a separate reason survives the unban untouched. Feeds pass through the same `visible` predicate as always - nothing about a bulk ban may quietly force-feed other code paths a different rule.
  */
-async function hideAllContent(tx: DbOrTx, userId: string, reason: string): Promise<void> {
+async function hideAllContent(tx: DbOrTx, userId: string, moderatorId: string, reason: string): Promise<void> {
 	const now = formatDbTimestamp(new Date())
 
 	// Only PUBLISHED reels become HIDDEN: a reel still PROCESSING or already REMOVED keeps its own state.
@@ -202,13 +202,14 @@ async function hideAllContent(tx: DbOrTx, userId: string, reason: string): Promi
 		.update({
 			hiddenAt: now,
 			hiddenByBanAt: now,
+			hiddenById: moderatorId,
 			hiddenReason: reason,
 			status: PostStatus.HIDDEN,
 		})
 
 	await tx.orm.public.PostComment.where({ deletedAt: null, userId })
 		.where(comment => comment.hiddenAt.isNull())
-		.update({ hiddenAt: now, hiddenByBanAt: now, hiddenReason: reason })
+		.update({ hiddenAt: now, hiddenByBanAt: now, hiddenById: moderatorId, hiddenReason: reason })
 
 	await resyncCommentCounts(tx, userId)
 }
@@ -220,13 +221,14 @@ async function restoreAllContent(tx: DbOrTx, userId: string): Promise<void> {
 		.update({
 			hiddenAt: null,
 			hiddenByBanAt: null,
+			hiddenById: null,
 			hiddenReason: null,
 			status: PostStatus.PUBLISHED,
 		})
 
 	await tx.orm.public.PostComment.where({ deletedAt: null, userId })
 		.where(comment => comment.hiddenByBanAt.isNotNull())
-		.update({ hiddenAt: null, hiddenByBanAt: null, hiddenReason: null })
+		.update({ hiddenAt: null, hiddenByBanAt: null, hiddenById: null, hiddenReason: null })
 
 	await resyncCommentCounts(tx, userId)
 }

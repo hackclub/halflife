@@ -34,11 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 	return (
 		<StoreProvider snapshot={snapshot}>
 			<AppShell events={events} programTimezone={settings.programTimezone} timezone={user.timezone}>
-				{penalty === "suspended" ? (
-					<div className="hl-stack" style={{ marginBottom: "1rem" }}>
-						<SuspensionBanner userId={user.id} />
-					</div>
-				) : null}
+				{penalty === "suspended" ? <SuspensionBanner userId={user.id} /> : null}
 				{children}
 			</AppShell>
 		</StoreProvider>

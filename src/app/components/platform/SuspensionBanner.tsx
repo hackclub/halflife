@@ -7,16 +7,19 @@ import { parseDbTimestamp } from "@/lib/time"
  * A server component on purpose: the text is the moderation reason, so it is fetched per request and rendered as plain text, never passed through any markup-affecting path.
  */
 export async function SuspensionBanner({ userId }: { userId: string }) {
-	const row = await db.orm.public.User.whereUnique({ id: userId })
-		.select("suspendedById", "suspendedUntil", "suspensionReason")
-		.first()
+	const row = await db.orm.public.User.whereUnique({ id: userId }).select("suspendedUntil", "suspensionReason").first()
 	if (!row?.suspendedUntil) return null
 
 	return (
-		<div className="hl-callout hl-callout--warning" role="status">
-			<strong>Your account is suspended.</strong> You can still look around, but you cannot post, comment, like, log
-			work or spend until {parseDbTimestamp(row.suspendedUntil).toLocaleString()}.
-			{row.suspensionReason ? <p className="hl-hint">Reason: {row.suspensionReason}</p> : null}
+		<div className="mx-auto w-full max-w-3xl px-4 pt-4" role="status">
+			<div className="rounded-xl border-2 border-orange bg-orange/10 px-4 py-3 text-ink">
+				<p className="font-semibold">Your account is suspended.</p>
+				<p>
+					You can still look around, but you cannot post, comment, like, log work or spend until{" "}
+					{parseDbTimestamp(row.suspendedUntil).toLocaleString()}.
+				</p>
+				{row.suspensionReason ? <p className="mt-1 text-sm text-navy-soft">Reason: {row.suspensionReason}</p> : null}
+			</div>
 		</div>
 	)
 }
