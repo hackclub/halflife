@@ -12,7 +12,7 @@ import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@
 import { sanitize } from "@/lib/sanitize"
 import { recomputeStreak } from "@/lib/streak"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
-import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
+import { deleteObject, isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 /**
  * The Doomscroller.
@@ -463,15 +463,23 @@ export async function deleteOwnComment(commentId: string, userId: string): Promi
 
 /** Soft-delete your own reel. */
 export async function deleteOwnPost(postId: string, userId: string): Promise<void> {
-	await db.transaction(async tx => {
-		const count = await tx.orm.public.Post.where({ deletedAt: null, id: postId, userId }).updateAndCount({
+	const media = await db.transaction(async tx => {
+		const post = await tx.orm.public.Post.where({ deletedAt: null, id: postId, userId })
+			.select("objectKey", "thumbnailKey")
+			.first()
+		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
+		await tx.orm.public.Post.where({ deletedAt: null, id: postId, userId }).update({
 			deletedAt: formatDbTimestamp(new Date()),
 			status: PostStatus.REMOVED,
 		})
-		if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 		// Deleting the only reel on a day removes that day from the run, so the streak is recomputed with it – same rule as deleting a devlog.
 		await recomputeStreak(tx, userId)
+		return post
 	})
+
+	// The row is gone, so nothing may keep serving the file: a public bucket URL outlives the post. Best-effort – a storage hiccup must not fail the delete the person asked for.
+	for (const key of new Set([media.objectKey, media.thumbnailKey]))
+		if (key) await deleteObject(key).catch(err => console.error(`[feed] could not delete ${key} for ${postId}:`, err))
 }
 
 // ─── Moderation ──────────────────────────────────────────────────────────────

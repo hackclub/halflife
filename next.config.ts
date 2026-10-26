@@ -1,4 +1,5 @@
 import type { NextConfig } from "next"
+import { contentSecurityPolicy } from "./src/lib/csp"
 
 // `output: "standalone"` traces the whole dependency graph, which is what the container image needs and pure overhead for a local `pnpm build`. Gate it on the two env vars that only ever appear in CI or a Docker build.
 const isDeployBuild = Boolean(process.env.CI || process.env.DOCKER_BUILD)
@@ -23,10 +24,7 @@ const nextConfig: NextConfig = {
 					{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 					{ key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 					{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
-					{
-						key: "Content-Security-Policy",
-						value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
-					},
+					{ key: "Content-Security-Policy", value: contentSecurityPolicy() },
 				],
 				source: "/:path*",
 			},

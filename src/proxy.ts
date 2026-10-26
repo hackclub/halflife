@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
+import { contentSecurityPolicy } from "@/lib/csp"
 import { publicRedirect } from "@/lib/public-origin"
 import { PLATFORM_HOME } from "@/lib/routes"
 
@@ -22,11 +23,8 @@ function securityHeaders(res: NextResponse): NextResponse {
 	res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 	// Applies to every origin, but harmless on plain http dev and the one header that stops a downgrade on the way to production.
 	res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-	// A CSP without `script-src`/`style-src`: it cannot break the app's inline styles and scripts, but it closes framed pages, plugin content and form/post hijacking. A nonce-based script policy is a follow-up, not a launch-day change.
-	res.headers.set(
-		"Content-Security-Policy",
-		"frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
-	)
+	// A CSP without `script-src`/`style-src`: it cannot break the app's inline styles and scripts, but it closes framed pages, plugin content and form/post hijacking, and it stops an image or video from any host but our own and the identity CDNs from seeing every reader. A nonce-based script policy is a follow-up, not a launch-day change.
+	res.headers.set("Content-Security-Policy", contentSecurityPolicy())
 	return res
 }
 
