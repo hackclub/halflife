@@ -1,14 +1,9 @@
 /**
  * Where the sticker-sheet promotion is, across page loads.
  *
- * The promo has three positions and they are all remembered: open at the top,
- * collapsed to its floating card, or gone. The card is a way back rather than a
- * lesser banner, so only its own close button writes `hidden`.
+ * The promo has three positions and they are all remembered: open at the top, collapsed to its floating card, or gone. The card is a way back rather than a lesser banner, so only its own close button writes `hidden`.
  *
- * The state travels through a subscription rather than context because the two
- * root layouts that mount the banner do not share one, and the platform's shell
- * already carries enough providers. Reading it from `window` also means the
- * landing can stay static: nothing here is server-rendered per visitor.
+ * The state travels through a subscription rather than context because the two root layouts that mount the banner do not share one, and the platform's shell already carries enough providers. Reading it from `window` also means the landing can stay static: nothing here is server-rendered per visitor.
  */
 
 export type PromoMode = "banner" | "card" | "hidden"
@@ -49,8 +44,7 @@ export function getServerPromoMode(): PromoMode {
 export function subscribePromo(listener: () => void): () => void {
 	listeners.add(listener)
 
-	// Another tab closing the promo should close this one too. `storage` only
-	// fires for writes made elsewhere, which is exactly the case handled here.
+	// Another tab closing the promo should close this one too. `storage` only fires for writes made elsewhere, which is exactly the case handled here.
 	const onStorage = (event: StorageEvent) => {
 		if (event.key !== STICKER_SHEET_PROMO_KEY) return
 		memory = isMode(event.newValue) ? event.newValue : "banner"
@@ -69,11 +63,9 @@ export function setPromoMode(mode: PromoMode): void {
 	try {
 		window.localStorage.setItem(STICKER_SHEET_PROMO_KEY, mode)
 	} catch {
-		// Private mode, a full quota, or storage disabled: the in-memory value
-		// still carries this tab, and the next page starts clean.
+		// Private mode, a full quota, or storage disabled: the in-memory value still carries this tab, and the next page starts clean.
 	}
-	// The boot script uses the same attribute to hide the server-rendered
-	// banner before paint, so keep it in step with what React is doing.
+	// The boot script uses the same attribute to hide the server-rendered banner before paint, so keep it in step with what React is doing.
 	document.documentElement.dataset.promo = mode
 	emit()
 }

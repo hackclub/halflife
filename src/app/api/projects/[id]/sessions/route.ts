@@ -1,18 +1,18 @@
+import { and } from "@prisma/orm-postgres/orm-client"
 import { after, type NextRequest } from "next/server"
-import type { Prisma } from "@/app/generated/prisma/client"
-import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
+import { PhaseStatus, HoursSource, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { lockKey } from "@/lib/locks"
-import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, paginationQuery } from "@/lib/pagination"
+import { decodeCursor, encodeCursor, paginationQuery } from "@/lib/pagination"
 import { statusFor } from "@/lib/phase"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import {
 	assertWeekStarted,
 	effectiveWeekClose,
@@ -26,10 +26,12 @@ import {
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { scheduleRepoSync } from "@/lib/repo-sync"
+import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
 import { stampSessionTiming } from "@/lib/submissions"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
@@ -39,16 +41,19 @@ interface Params {
 
 export const dynamic = "force-dynamic"
 
-/**
- * The entries' order: newest first, with the id as the tiebreaker.
- *
- * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
- */
-const SESSIONS_ORDER = {
-	at: (row: { createdAt: Date }) => row.createdAt,
-	column: "createdAt",
-	direction: "desc",
-} as const satisfies CursorOrderOf<{ createdAt: Date }, Prisma.WorkSessionOrderByWithRelationInput>
+/** The entries' order: newest first, with the id as the tiebreaker. Cursor pages carry both halves of that position, so a page boundary never drops an entry or hands one out twice. */
+const parseSessionDates = <T extends { createdAt: string; deletedAt: string | null; reviewedAt: string | null }>(
+	session: T,
+): Omit<T, "createdAt" | "deletedAt" | "reviewedAt"> & {
+	createdAt: Date
+	deletedAt: Date | null
+	reviewedAt: Date | null
+} => ({
+	...session,
+	createdAt: parseDbTimestamp(session.createdAt),
+	deletedAt: session.deletedAt === null ? null : parseDbTimestamp(session.deletedAt),
+	reviewedAt: session.reviewedAt === null ? null : parseDbTimestamp(session.reviewedAt),
+})
 
 export const GET = withSession(async (req: NextRequest, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
@@ -56,29 +61,48 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 	const query = parseQuery(req, paginationQuery)
 	if (query.error) return query.error
 
-	const project = await prisma.themeProject.findFirst({
-		select: { id: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("id")
+		.first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
-	const rows = await prisma.workSession.findMany({
-		include: { media: true, timelapses: true },
-		orderBy: orderByFor(SESSIONS_ORDER),
-		take: query.data.limit + 1,
-		where: cursorWhere<Prisma.WorkSessionWhereInput>(query.data.cursor, SESSIONS_ORDER, {
-			deletedAt: null,
-			themeProjectId: id,
-		}),
-	})
-
-	const page = pageResult(rows, query.data.limit, SESSIONS_ORDER)
+	const filtered = db.orm.public.WorkSession.where({ deletedAt: null, themeProjectId: id }).orderBy([
+		session => session.createdAt.desc(),
+		session => session.id.desc(),
+	])
+	// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+	const position = query.data.cursor === undefined ? null : decodeCursor(query.data.cursor)
+	const rows = await (position?.at
+		? filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+		: filtered
+	)
+		.limit(query.data.limit + 1)
+		.include("media")
+		.include("timelapses")
+		.all()
+	const items = rows.slice(0, query.data.limit)
+	const last = items.at(-1)
 	return ok({
-		items: page.items.map(s => ({
-			...s,
-			media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
-		})),
-		nextCursor: page.nextCursor,
+		items: items.map(s =>
+			withFields(parseSessionDates(s), {
+				media: s.media.map(m =>
+					withFields(m, {
+						createdAt: parseDbTimestamp(m.createdAt),
+						url: publicUrlFor(m.objectKey),
+					}),
+				),
+				timelapses: s.timelapses.map(t =>
+					withFields(t, {
+						createdAt: parseDbTimestamp(t.createdAt),
+						recordedAt: t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt),
+					}),
+				),
+			}),
+		),
+		nextCursor:
+			rows.length > query.data.limit && last
+				? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id })
+				: null,
 	})
 })
 
@@ -89,9 +113,7 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	if (parsed.error) return parsed.error
 	const { data } = parsed
 
-	const project = await prisma.themeProject.findFirst({
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id }).first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	const access = await getSubmissionAccess(gate.user.id, id)
@@ -127,19 +149,23 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	const timing = await stampSessionTiming(new Date())
 
 	// One transaction: a session and the streak it feeds have to land together, or a rolled-back write leaves an inflated streak with nothing behind it.
-	const session = await prisma.$transaction(async tx => {
+	const session = await db.transaction(async tx => {
 		if (lapseIds.length > 0) {
 			// Sorted so two requests naming the same recordings cannot deadlock on each other's locks.
 			for (const lapseId of [...lapseIds].toSorted()) await lockKey(tx, `lapse:${lapseId}`)
 
-			const taken = await tx.sessionTimelapse.findFirst({
-				select: { externalId: true },
-				where: {
-					externalId: { in: lapseIds },
-					provider: "lapse",
-					workSession: { deletedAt: null, themeProject: { deletedAt: null } },
-				},
-			})
+			const taken = await tx.orm.public.SessionTimelapse.where({ provider: "lapse" })
+				.where(timelapse => timelapse.externalId.in(lapseIds))
+				.where(timelapse =>
+					timelapse.workSession.some(entry =>
+						and(
+							entry.deletedAt.isNull(),
+							entry.themeProject.some(owner => owner.deletedAt.isNull()),
+						),
+					),
+				)
+				.select("externalId")
+				.first()
 			if (taken) {
 				const title = timelapses.find(t => t.id === taken.externalId)?.title ?? "That timelapse"
 				throw new HttpError("CONFLICT", `"${title}" already backs another journal entry`)
@@ -147,64 +173,85 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 		}
 
 		// The gates above are the fast fail; the phase and the week are re-read on the transaction client immediately before the write so a submit or a week that closes in between cannot file an entry into a frozen phase or a passed week.
-		const current = await tx.themeProject.findUnique({
-			select: { buildStatus: true, designStatus: true, submissionExtensionUntil: true },
-			where: { id },
-		})
+		const current = await tx.orm.public.ThemeProject.whereUnique({ id })
+			.select("buildStatus", "designStatus", "submissionExtensionUntil")
+			.first()
 		const currentStatus = current ? statusFor(current, data.phase) : undefined
 		if (currentStatus === PhaseStatus.in_review)
 			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
 		if (currentStatus && isPhaseDecided(currentStatus))
 			throw new HttpError("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
-		const weekUser = await tx.user.findUnique({
-			select: { submissionExtensionUntil: true },
-			where: { id: gate.user.id },
-		})
+		const weekUser = await tx.orm.public.User.whereUnique({ id: gate.user.id })
+			.select("submissionExtensionUntil")
+			.first()
 		const settings = await getProgramSettings()
 		const closesAt = effectiveWeekClose(
 			weekClosesAt(settings, week),
-			weekUser?.submissionExtensionUntil,
-			current?.submissionExtensionUntil,
+			weekUser?.submissionExtensionUntil ? parseDbTimestamp(weekUser.submissionExtensionUntil) : null,
+			current?.submissionExtensionUntil ? parseDbTimestamp(current.submissionExtensionUntil) : null,
 		)
 		if (new Date() >= closesAt) throw new HttpError("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
-		const created = await tx.workSession.create({
-			data: {
-				content: data.content ? sanitizeHtml(data.content) : null,
+		// One person cannot work more than 24 hours in a day. Self-reported (MANUAL) claims are capped per effective date across all of the maker's live projects, so ten 15-hour entries in a minute are refused. Tracked entries are excluded: their time is verified by Hackatime, not self-reported. Counted inside the transaction, so two parallel submits cannot each pass against the same total.
+		if (data.hoursSource === HoursSource.MANUAL) {
+			const { claimedToday } = await tx.orm.public.WorkSession.where({
+				deletedAt: null,
 				effectiveDate: timing.effectiveDate,
-				hoursClaimed: data.hoursClaimed,
-				hoursSource: data.hoursSource,
-				media: {
-					create: data.media.map((m, i) => ({
-						byteSize: m.byteSize ?? null,
-						contentType: m.contentType ?? null,
-						objectKey: m.objectKey,
-						sortOrder: i,
-						type: m.type,
-					})),
-				},
-				phase: data.phase,
-				themeProjectId: id,
-				timelapses: {
-					create: timelapses.map(t => ({
-						// Lapse's duration is wall-clock time recorded, which is exactly what coverage is measured in.
-						coveredSeconds: t.durationSeconds,
-						externalId: t.id,
-						hackatimeProject: t.hackatimeProject,
-						playbackUrl: t.playbackUrl,
-						provider: "lapse",
-						// When it was recorded, and what Lapse saw on Hackatime while it ran. Together these are what stops one sitting being counted by this entry and again by the linked project.
-						recordedAt: new Date(t.createdAt),
-						thumbnailUrl: t.thumbnailUrl,
-					})),
-				},
-				title: sanitize(data.title),
-				weekNumber: timing.weekNumber,
-			},
-			include: { media: true, timelapses: true },
+				hoursSource: HoursSource.MANUAL,
+			})
+				.where(session =>
+					session.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))),
+				)
+				.aggregate(a => ({ claimedToday: a.sum("hoursClaimed") }))
+			if ((claimedToday ?? 0) + data.hoursClaimed > 24)
+				throw new HttpError(
+					"VALIDATION_FAILED",
+					"That would put more than 24 hours of self-reported work on one day – split it across the days it was worked.",
+				)
+		}
+
+		const created = await tx.orm.public.WorkSession.create({
+			content: data.content ? sanitizeHtml(data.content) : null,
+			effectiveDate: timing.effectiveDate,
+			hoursClaimed: data.hoursClaimed,
+			hoursSource: data.hoursSource,
+			phase: data.phase,
+			themeProjectId: id,
+			title: sanitize(data.title),
+			weekNumber: timing.weekNumber,
 		})
+		if (data.media.length > 0)
+			await tx.orm.public.SessionMedia.createAll(
+				data.media.map((m, i) => ({
+					byteSize: m.byteSize ?? null,
+					contentType: m.contentType ?? null,
+					objectKey: m.objectKey,
+					sortOrder: i,
+					type: m.type,
+					workSessionId: created.id,
+				})),
+			)
+		if (timelapses.length > 0)
+			await tx.orm.public.SessionTimelapse.createAll(
+				timelapses.map(t => ({
+					// Lapse's duration is wall-clock time recorded, which is exactly what coverage is measured in.
+					coveredSeconds: t.durationSeconds,
+					externalId: t.id,
+					hackatimeProject: t.hackatimeProject,
+					playbackUrl: t.playbackUrl,
+					provider: "lapse",
+					// When it was recorded, and what Lapse saw on Hackatime while it ran. Together these are what stops one sitting being counted by this entry and again by the linked project.
+					recordedAt: formatDbTimestamp(new Date(t.createdAt)),
+					thumbnailUrl: t.thumbnailUrl,
+					workSessionId: created.id,
+				})),
+			)
 		await recomputeStreak(tx, gate.user.id)
-		return created
+		const full = await tx.orm.public.WorkSession.whereUnique({ id: created.id })
+			.include("media")
+			.include("timelapses")
+			.firstOrThrow()
+		return { ...full, media: full.media ?? [], timelapses: full.timelapses ?? [] }
 	})
 
 	await logAudit({

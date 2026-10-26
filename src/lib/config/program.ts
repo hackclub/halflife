@@ -1,4 +1,4 @@
-import { Phase, Theme } from "@/app/generated/prisma/enums"
+import { Phase, Theme } from "@/lib/enums"
 
 /**
  * Every tunable program number lives in this file and ./tiers.ts. If you are about to hardcode a threshold anywhere else, put it here instead.

@@ -1,5 +1,5 @@
-import { HardwareExperience, Theme } from "@/app/generated/prisma/enums"
 import type { TierId } from "@/lib/config/tiers"
+import { HardwareExperience, Theme } from "@/lib/enums"
 
 /**
  * The first checkpoint.
@@ -88,7 +88,7 @@ export const EXPERIENCE_OPTIONS = [
 /**
  * Starter projects: a real, finished build with a step-by-step guide, offered to anyone who said they are new to hardware (see `seesStarterProjects`).
  *
- * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own; until those repos exist, Starbie, week one's, stands in for every theme without one.
+ * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own, and a week with none offers no starter at all rather than handing out another week's guide.
  */
 export interface StarterProject {
 	readonly description: string
@@ -114,8 +114,8 @@ export const STARTER_PROJECTS = [
 		id: "starbie",
 		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
 		repoUrl: "https://github.com/SharKingStudios/Starbie",
-		// Week one's starter, and the stand-in for weeks 4 and 5 until each has one of its own. CAD and Music have theirs; Starbie must not be listed for Music, or week 3 hands out the week-one guide.
-		themes: [Theme.PCB, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER],
+		// Week one's starter, offered only in its own week. Displays and Breadboard Computer have no starter yet, so those weeks offer none: listing Starbie for them would hand out the week-one guide under a different theme.
+		themes: [Theme.PCB],
 		title: "Starbie",
 	},
 	{
@@ -185,8 +185,7 @@ export const STARTER_PROJECT_TIER: TierId = 1
 /**
  * What a starter has to become before it can be handed in.
  *
- * The guide is a starting point, not a submission, and "how much do I have to change?" comes up every cohort. Said
- * once here so the two onboarding steps that offer a starter cannot drift apart in how they answer it.
+ * The guide is a starting point, not a submission, and "how much do I have to change?" comes up every cohort. Said once here so the two onboarding steps that offer a starter cannot drift apart in how they answer it.
  */
 export const STARTER_MODIFICATION_NOTE =
 	"A starter is a starting point, not the finished project. Make it yours – it needs enough of your own changes, to the design or the code, that the result is clearly unique to you. Handing in the guide's build with only small tweaks is not enough. Write your own project description too: the starter's default description blocks the hand-in."

@@ -1,10 +1,10 @@
 import "server-only"
-
-import type { Prisma } from "@/app/generated/prisma/client"
-import { PhaseStatus, ReviewPass, type Theme } from "@/app/generated/prisma/enums"
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import { THEMES } from "@/lib/config/program"
-import prisma from "@/lib/prisma"
+import { PhaseStatus, ReviewPass, type Theme } from "@/lib/enums"
+import db from "@/lib/prisma8"
 import { currentWeekNumber } from "@/lib/program"
+import { formatDbTimestamp } from "@/lib/time"
 import { tallyBoard } from "./leaderboard"
 
 export interface ProjectReviewStats {
@@ -95,36 +95,46 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 	const themes = started.map(t => t.id)
 
 	// The same threshold the admin projects-by-week chart uses: a phase enters a week's pile the first time it is submitted and stops being a draft.
-	const submittedProjects: Prisma.ThemeProjectWhereInput = {
-		deletedAt: null,
-		namedAt: { not: null },
-		OR: [{ designStatus: { not: PhaseStatus.draft } }, { buildStatus: { not: PhaseStatus.draft } }],
-		theme: { in: themes },
-	}
-
+	const submitted = db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => project.namedAt.isNotNull())
+		.where(project => or(project.designStatus.neq(PhaseStatus.draft), project.buildStatus.neq(PhaseStatus.draft)))
+		.where(project => project.theme.in(themes))
 	const [projects, reviews] = await Promise.all([
-		prisma.themeProject.findMany({ select: { theme: true }, where: submittedProjects }),
-		prisma.submissionReview.findMany({
-			select: { submission: { select: { themeProject: { select: { theme: true } }, themeProjectId: true } } },
-			where: {
-				invalidated: false,
-				pass: ReviewPass.FINAL,
-				submission: { themeProject: submittedProjects },
-			},
-		}),
+		submitted.select("theme").all(),
+		db.orm.public.SubmissionReview.where({ invalidated: false, pass: ReviewPass.FINAL })
+			.where(review =>
+				review.submission.some(submission =>
+					and(
+						submission.themeProject.some(project =>
+							and(
+								project.deletedAt.isNull(),
+								project.namedAt.isNotNull(),
+								or(project.designStatus.neq(PhaseStatus.draft), project.buildStatus.neq(PhaseStatus.draft)),
+								project.theme.in(themes),
+							),
+						),
+					),
+				),
+			)
+			.select("id")
+			.include("submission", submission =>
+				submission.select("themeProjectId").include("themeProject", project => project.select("theme")),
+			)
+			.all(),
 	])
 
 	const totals = new Map<Theme, number>()
 	for (const project of projects) totals.set(project.theme, (totals.get(project.theme) ?? 0) + 1)
 	const reviewed = new Map<Theme, Set<string>>()
 	for (const review of reviews) {
-		const { theme } = review.submission.themeProject
-		let set = reviewed.get(theme)
+		const themeProject = review.submission?.themeProject
+		if (!themeProject) continue
+		let set = reviewed.get(themeProject.theme)
 		if (!set) {
 			set = new Set()
-			reviewed.set(theme, set)
+			reviewed.set(themeProject.theme, set)
 		}
-		set.add(review.submission.themeProjectId)
+		if (review.submission) set.add(review.submission.themeProjectId)
 	}
 
 	return started
@@ -138,23 +148,19 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 }
 /** The counts behind the daily project review summary. `since` is normally 24 hours ago. */
 export async function getProjectReviewStats(since: Date): Promise<ProjectReviewStats> {
-	const live: Prisma.SubmissionReviewWhereInput = {
-		invalidated: false,
-		pass: ReviewPass.FINAL,
-		submission: { themeProject: { deletedAt: null } },
-	}
-
+	const sinceText = formatDbTimestamp(since)
 	const [submitted, reviewRows, allReviewRows, byWeek] = await Promise.all([
-		prisma.phaseSubmission.count({ where: { createdAt: { gte: since } } }),
-		prisma.submissionReview.findMany({
-			select: { reviewerEmail: true, reviewerId: true, reviewerName: true },
-			where: { ...live, createdAt: { gte: since } },
-		}),
+		db.orm.public.PhaseSubmission.where(submission => submission.createdAt.gte(sinceText)).aggregate(a => ({
+			count: a.count(),
+		})),
+		db.orm.public.SubmissionReview.where({ invalidated: false, pass: ReviewPass.FINAL })
+			.where(review => review.createdAt.gte(sinceText))
+			.select("reviewerEmail", "reviewerId", "reviewerName")
+			.all(),
 		// Every live review ever, for the all-time board under the daily one.
-		prisma.submissionReview.findMany({
-			select: { reviewerEmail: true, reviewerId: true, reviewerName: true },
-			where: live,
-		}),
+		db.orm.public.SubmissionReview.where({ invalidated: false, pass: ReviewPass.FINAL })
+			.select("reviewerEmail", "reviewerId", "reviewerName")
+			.all(),
 		getWeekReviewProgress(),
 	])
 
@@ -164,10 +170,9 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 	]
 	const usersById = new Map(
 		(
-			await prisma.user.findMany({
-				select: { email: true, id: true },
-				where: { id: { in: reviewerIds } },
-			})
+			await db.orm.public.User.where(user => user.id.in(reviewerIds))
+				.select("email", "id")
+				.all()
 		).map(user => [user.id, { email: user.email }]),
 	)
 
@@ -176,6 +181,6 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 		globalLeaderboard: reviewerBoard(allReviewRows, usersById),
 		leaderboard: reviewerBoard(reviewRows, usersById),
 		reviewed: reviewRows.length,
-		submitted,
+		submitted: submitted.count,
 	}
 }

@@ -8,10 +8,7 @@ import { Panel } from "@/components/platform/ui"
 import { DOCS } from "@/lib/data"
 
 /**
- * Wraps the 5-coins figure in the same gold pill the onboarding flow and
- * project page use (`bg-gold-pale text-gold-ink`). Docs paragraphs are plain
- * strings, so the highlight happens here at render time rather than in the
- * copy itself.
+ * Wraps the 5-coins figure in the same gold pill the onboarding flow and project page use (`bg-gold-pale text-gold-ink`). Docs paragraphs are plain strings, so the highlight happens here at render time rather than in the copy itself.
  */
 function highlightCoins(text: string): string | React.ReactNode[] {
 	const parts = text.split(/(\b5 coins\b|\b5 per hour\b)/g)
@@ -46,7 +43,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 	const next = DOCS[i + 1]
 
 	return (
-		<div className="mx-auto w-full max-w-[1000px] px-4 pt-6 sm:px-8">
+		<div className="mx-auto w-full max-w-250 px-4 pt-6 sm:px-8">
 			<Link
 				className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
 				href="/docs"

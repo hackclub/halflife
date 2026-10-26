@@ -8,7 +8,7 @@ import {
 	ShopFulfillmentStage,
 	ShopItemCategory,
 	Theme,
-} from "@/app/generated/prisma/enums"
+} from "@/lib/enums"
 import { boundedText, cuid, httpsUrl, isTimeZone } from "@/lib/schemas/common"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
@@ -160,23 +160,14 @@ export const orderFulfillmentSchema = z
 /**
  * Creating an event on the programme calendar.
  *
- * `startsAt` and `endsAt` arrive as ISO strings from `datetime-local` inputs, so
- * they are coerced rather than typed as dates on the wire. The end is optional
- * and independent: an open call has no end, and a call with a start but a blank
- * end is a common mistake rather than a nonsense one.
+ * `startsAt` and `endsAt` arrive as ISO strings from `datetime-local` inputs, so they are coerced rather than typed as dates on the wire. The end is optional and independent: an open call has no end, and a call with a start but a blank end is a common mistake rather than a nonsense one.
  *
- * `repeatWeeks` asks the route to write the whole series in one go rather than
- * making an admin press create ten times. It is a number of *weeks*, so the
- * occurrences land on the same weekday; the route owns the arithmetic and the
- * audit row records how many were made.
+ * `repeatWeeks` asks the route to write the whole series in one go rather than making an admin press create ten times. It is a number of *weeks*, so the occurrences land on the same weekday; the route owns the arithmetic and the audit row records how many were made.
  */
 /**
  * A required instant from the ISO string a JSON body carries.
  *
- * `z.coerce.date()` on its own turns `null` into 1970-01-01, which is a valid date
- * and so passes validation: an event could be created in 1970, or moved there, by
- * a client that cleared the field without disabling its submit button. A missing
- * start is a missing field, not a moment.
+ * `z.coerce.date()` on its own turns `null` into 1970-01-01, which is a valid date and so passes validation: an event could be created in 1970, or moved there, by a client that cleared the field without disabling its submit button. A missing start is a missing field, not a moment.
  */
 const requiredInstant = z.preprocess(value => (value === null ? undefined : value), z.coerce.date())
 
@@ -200,9 +191,7 @@ export const programEventCreateSchema = z
 /**
  * Editing one occurrence.
  *
- * No `repeatWeeks`: a series is edited one occurrence at a time on purpose, since
- * that is the edit that actually gets made. `null` is the clear for a nullable
- * field, so a half-finished draft can be emptied rather than only set.
+ * No `repeatWeeks`: a series is edited one occurrence at a time on purpose, since that is the edit that actually gets made. `null` is the clear for a nullable field, so a half-finished draft can be emptied rather than only set.
  */
 export const programEventUpdateSchema = z
 	.object({

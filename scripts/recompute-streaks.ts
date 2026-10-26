@@ -1,5 +1,4 @@
-import "dotenv/config"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 import { recomputeAllStreaks } from "../src/lib/streak"
 
 /**
@@ -21,5 +20,5 @@ try {
 	console.error(err)
 	process.exit(1)
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

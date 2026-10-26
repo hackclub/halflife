@@ -30,8 +30,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady(objectKey: string):
 
 			{minted && status === "waiting" ? (
 				<div className="hl-stack hl-stack--tight">
-					{/* Server-rendered SVG from our own origin – the token is never sent
-              to a third-party QR service. */}
+					{/* Server-rendered SVG from our own origin – the token is never sent to a third-party QR service. */}
 					<div
 						aria-label="QR code linking to the upload page"
 						dangerouslySetInnerHTML={{ __html: minted.qrSvg }}

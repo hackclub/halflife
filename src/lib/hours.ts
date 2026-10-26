@@ -1,9 +1,9 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
-import { HoursSource, Phase } from "@/app/generated/prisma/enums"
+import { and, not } from "@prisma/orm-postgres/orm-client"
 import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
 import { getTierOrThrow } from "@/lib/config/tiers"
-import { fetchProjectSeconds, fetchProjectSpans } from "@/lib/hackatime"
+import { HoursSource, Phase } from "@/lib/enums"
+import { fetchProjectSeconds, fetchProjectSpans, phaseWeekWindow } from "@/lib/hackatime"
 import {
 	cachedSpansCover,
 	capSubtraction,
@@ -17,7 +17,8 @@ import {
 	windowsForLink,
 } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
-import prisma from "@/lib/prisma"
+import db, { type DbOrTx } from "@/lib/prisma8"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 export interface HoursBreakdown {
 	/** journalHours + hackatimeHours. The reviewer's default. */
@@ -62,40 +63,23 @@ export interface HoursBreakdown {
 export async function getHoursBreakdown(
 	themeProjectId: string,
 	phase: Phase,
-	opts: { client?: Prisma.TransactionClient; live?: boolean } = {},
+	opts: { client?: DbOrTx; live?: boolean } = {},
 ): Promise<HoursBreakdown> {
 	const live = opts.live ?? false
-	const db: Prisma.TransactionClient = opts.client ?? prisma
+	const client: DbOrTx = opts.client ?? db
 
 	const [project, sessions, links] = await Promise.all([
-		db.themeProject.findUnique({
-			select: {
-				approvedHours: true,
-				designApprovedHours: true,
-				user: { select: { hackatimeUserId: true } },
-				userId: true,
-			},
-			where: { id: themeProjectId },
-		}),
-		db.workSession.findMany({
-			select: {
-				hoursApproved: true,
-				hoursClaimed: true,
-				hoursSource: true,
-				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
-			},
-			where: { deletedAt: null, phase, themeProjectId },
-		}),
-		db.hackatimeLink.findMany({
-			select: {
-				cachedSeconds: true,
-				cachedSpans: true,
-				hackatimeProject: true,
-				hoursApproved: true,
-				id: true,
-			},
-			where: { phase, themeProjectId },
-		}),
+		client.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+			.select("approvedHours", "designApprovedHours", "theme", "userId")
+			.include("user", user => user.select("hackatimeUserId"))
+			.first(),
+		client.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
+			.select("hoursApproved", "hoursClaimed", "hoursSource")
+			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "recordedAt"))
+			.all(),
+		client.orm.public.HackatimeLink.where({ phase, themeProjectId })
+			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "id")
+			.all(),
 	])
 
 	let journalHours = 0
@@ -109,7 +93,7 @@ export async function getHoursBreakdown(
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 		for (const t of s.timelapses) {
 			timelapseSeconds += t.coveredSeconds ?? 0
-			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+			const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
 			if (window) journalWindows.push(window)
 		}
 		journalHours += s.hoursApproved ?? s.hoursClaimed
@@ -120,10 +104,13 @@ export async function getHoursBreakdown(
 	let hackatimeStale = false
 	let hackatimeOverlapSeconds = 0
 	let hackatimeOverlapUnknown = false
-	const hackatimeUserId = project?.user.hackatimeUserId ?? null
+	if (project && !project.user) throw new Error(`project ${themeProjectId} has no owner`)
+	const hackatimeUserId = project?.user?.hackatimeUserId ?? null
+	// Week-scoped like the link route: the live re-read must answer the same question the link was created with, or a refresh would silently swap the week's hours for the all-time total. Warm-ups keep the all-time total (no week to scope to).
+	const liveWindow = live && hackatimeUserId && project ? await phaseWeekWindow(project.theme, phase) : null
 	// This maker's recordings on their OTHER projects and phases, fetched only when there is a link to deduplicate against – the only time they can matter. A clip attached in one week carries tracked time that may have been linked on another week's project, and the recording's own `hackatimeProject` is what pairs the two.
 	const elsewhere =
-		links.length === 0 || !project ? [] : await elsewhereRecordings(db, project.userId, themeProjectId, phase)
+		links.length === 0 || !project ? [] : await elsewhereRecordings(client, project.userId, themeProjectId, phase)
 
 	for (const link of links) {
 		// A reviewer override replaces the live value permanently, so there is nothing to fetch and nothing that can go stale. It is also a human decision made against a breakdown that already showed the overlap, so it stands untouched: the subtraction is for computed values.
@@ -133,15 +120,16 @@ export async function getHoursBreakdown(
 		}
 		let linkSeconds = 0
 		if (live && hackatimeUserId) {
-			const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
+			const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject, liveWindow ?? undefined)
 			if (result.stale) {
 				hackatimeStale = true
 				linkSeconds = link.cachedSeconds ?? 0
 			} else {
 				linkSeconds = result.seconds
-				await db.hackatimeLink.update({
-					data: { cachedAt: new Date(), cachedSeconds: result.seconds, lastFetchError: null },
-					where: { id: link.id },
+				await client.orm.public.HackatimeLink.where({ id: link.id }).update({
+					cachedAt: formatDbTimestamp(new Date()),
+					cachedSeconds: result.seconds,
+					lastFetchError: null,
 				})
 			}
 		} else {
@@ -164,9 +152,8 @@ export async function getHoursBreakdown(
 				hackatimeOverlapUnknown = true
 				// Recorded only when a fetch was actually attempted. This runs on read paths too – the projects list breaks down every project – and a write per dashboard load to note a cache that was simply cold would be a great deal of write load for no new information.
 				if (live)
-					await db.hackatimeLink.update({
-						data: { spansFetchError: spans.error ?? "unknown error" },
-						where: { id: link.id },
+					await client.orm.public.HackatimeLink.where({ id: link.id }).update({
+						spansFetchError: spans.error ?? "unknown error",
 					})
 			} else {
 				const overlap = capSubtraction(linkSeconds, overlapSeconds(linkWindows, spans.spans))
@@ -176,17 +163,14 @@ export async function getHoursBreakdown(
 				}
 				// Persisted only on a fresh fetch, and with the window they were fetched for rather than as a bare array: the next read has to know whether these spans cover the window it is being asked about, and a list cannot say. Re-writing a cache that was just read from would put a write on every read of this row.
 				if (spans.fetched)
-					await db.hackatimeLink.update({
-						data: {
-							cachedSpans: {
-								from: linkSpanWindow.fromSeconds,
-								spans: spans.spans,
-								to: linkSpanWindow.toSeconds,
-							},
-							spansFetchError: null,
-							spansFetchedAt: new Date(),
+					await client.orm.public.HackatimeLink.where({ id: link.id }).update({
+						cachedSpans: {
+							from: linkSpanWindow.fromSeconds,
+							spans: spans.spans,
+							to: linkSpanWindow.toSeconds,
 						},
-						where: { id: link.id },
+						spansFetchError: null,
+						spansFetchedAt: formatDbTimestamp(new Date()),
 					})
 			}
 		}
@@ -249,25 +233,26 @@ async function resolveSpans(
  * These are the windows that let a link find a recording made somewhere other than beside it. The exclusion is only an optimisation – `windowsForLink` would ignore the own-phase ones anyway once they are already in its own set – but it keeps this query to the rows that can actually add a window.
  */
 async function elsewhereRecordings(
-	db: Prisma.TransactionClient,
+	client: DbOrTx,
 	userId: string,
 	notThemeProjectId: string,
 	notPhase: Phase,
 ): Promise<RecordedWindow[]> {
-	const rows = await db.sessionTimelapse.findMany({
-		select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true },
-		where: {
-			workSession: {
-				deletedAt: null,
-				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
-				NOT: { phase: notPhase, themeProjectId: notThemeProjectId },
-				themeProject: { deletedAt: null, userId },
-			},
-		},
-	})
+	const rows = await client.orm.public.SessionTimelapse.where(timelapse =>
+		timelapse.workSession.some(session =>
+			and(
+				session.deletedAt.isNull(),
+				session.hoursSource.neq(HoursSource.HACKATIME_TRACKED),
+				not(and(session.phase.eq(notPhase), session.themeProjectId.eq(notThemeProjectId))),
+				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+			),
+		),
+	)
+		.select("coveredSeconds", "hackatimeProject", "recordedAt")
+		.all()
 	const windows: RecordedWindow[] = []
 	for (const t of rows) {
-		const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+		const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
 		if (window) windows.push({ hackatimeProject: t.hackatimeProject, window })
 	}
 	return windows
@@ -283,45 +268,43 @@ async function elsewhereRecordings(
 export async function refreshOverlapSpans(themeProjectId: string, phase: Phase): Promise<void> {
 	try {
 		const [project, sessions, links] = await Promise.all([
-			prisma.themeProject.findUnique({
-				select: { user: { select: { hackatimeUserId: true } }, userId: true },
-				where: { id: themeProjectId },
-			}),
-			prisma.workSession.findMany({
-				select: { timelapses: { select: { coveredSeconds: true, recordedAt: true } } },
-				where: { deletedAt: null, hoursSource: { not: HoursSource.HACKATIME_TRACKED }, phase, themeProjectId },
-			}),
-			prisma.hackatimeLink.findMany({
-				select: { hackatimeProject: true, id: true },
-				where: { hoursApproved: null, phase, themeProjectId },
-			}),
+			db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+				.select("userId")
+				.include("user", user => user.select("hackatimeUserId"))
+				.first(),
+			db.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
+				.where(session => session.hoursSource.neq(HoursSource.HACKATIME_TRACKED))
+				.include("timelapses", timelapse => timelapse.select("coveredSeconds", "recordedAt"))
+				.all(),
+			db.orm.public.HackatimeLink.where({ hoursApproved: null, phase, themeProjectId })
+				.select("hackatimeProject", "id")
+				.all(),
 		])
-		const hackatimeUserId = project?.user.hackatimeUserId
+		const hackatimeUserId = project?.user ? project.user.hackatimeUserId : null
 		if (!hackatimeUserId || !project || links.length === 0) return
 
 		const ownWindows = sessions.flatMap(s =>
 			s.timelapses.flatMap(t => {
-				const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+				const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
 				return window ? [window] : []
 			}),
 		)
 		// The recordings on this maker's other projects and phases, so a link whose time was journalled in another week is warmed for the window that actually matters to it. Fetched once for the phase rather than once per link.
-		const elsewhere = await elsewhereRecordings(prisma, project.userId, themeProjectId, phase)
+		const elsewhere = await elsewhereRecordings(db, project.userId, themeProjectId, phase)
 
 		for (const link of links) {
 			const spanWindow = spanWindowFor(windowsForLink(ownWindows, elsewhere, link.hackatimeProject))
 			if (!spanWindow) continue
 			const result = await fetchProjectSpans(hackatimeUserId, link.hackatimeProject, spanWindow)
-			await prisma.hackatimeLink.update({
-				data: result.stale
+			await db.orm.public.HackatimeLink.where({ id: link.id }).update(
+				result.stale
 					? { spansFetchError: result.error ?? "unknown error" }
 					: {
 							cachedSpans: { from: spanWindow.fromSeconds, spans: result.spans, to: spanWindow.toSeconds },
 							spansFetchError: null,
-							spansFetchedAt: new Date(),
+							spansFetchedAt: formatDbTimestamp(new Date()),
 						},
-				where: { id: link.id },
-			})
+			)
 		}
 	} catch {
 		// A cache warm that failed is the same as one that never ran.
@@ -353,34 +336,31 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 	const userIds = [...new Set(targets.map(t => t.userId))]
 
 	const [sessions, projects] = await Promise.all([
-		prisma.workSession.findMany({
-			select: {
-				phase: true,
-				themeProject: { select: { userId: true } },
-				themeProjectId: true,
-				timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
-			},
-			where: {
-				deletedAt: null,
-				// A HACKATIME_TRACKED entry claims nothing, so its recording is not one of the windows a link's time has to be measured against.
-				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
-				themeProject: { deletedAt: null, userId: { in: userIds } },
-			},
-		}),
-		prisma.themeProject.findMany({
-			select: { id: true, user: { select: { hackatimeUserId: true } } },
-			where: { id: { in: projectIds } },
-		}),
+		db.orm.public.WorkSession.where({ deletedAt: null })
+			// A HACKATIME_TRACKED entry claims nothing, so its recording is not one of the windows a link's time has to be measured against.
+			.where(session => session.hoursSource.neq(HoursSource.HACKATIME_TRACKED))
+			.where(session =>
+				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.in(userIds))),
+			)
+			.select("id", "phase", "themeProjectId")
+			.include("themeProject", project => project.select("userId"))
+			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
+			.all(),
+		db.orm.public.ThemeProject.where(project => project.id.in(projectIds))
+			.select("id")
+			.include("user", user => user.select("hackatimeUserId"))
+			.all(),
 	])
 
 	const windowsByPhase = new Map<string, Interval[]>()
 	const recordingsByUser = new Map<string, RecordedWindow[]>()
 	for (const s of sessions) {
+		if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
 		const k = key(s.themeProjectId, s.phase)
 		const list = windowsByPhase.get(k) ?? []
 		const made = recordingsByUser.get(s.themeProject.userId) ?? []
 		for (const t of s.timelapses) {
-			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+			const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
 			if (!window) continue
 			list.push(window)
 			made.push({ hackatimeProject: t.hackatimeProject, window })
@@ -388,7 +368,12 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 		windowsByPhase.set(k, list)
 		recordingsByUser.set(s.themeProject.userId, made)
 	}
-	const userByProject = new Map(projects.map(p => [p.id, p.user.hackatimeUserId]))
+	const userByProject = new Map(
+		projects.map(p => {
+			if (!p.user) throw new Error(`project ${p.id} has no owner`)
+			return [p.id, p.user.hackatimeUserId] as const
+		}),
+	)
 
 	let warmed = 0
 	let failed = 0
@@ -412,20 +397,17 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 		if (result.stale) {
 			failed += 1
 			// Recorded, never used to decide anything. The next run tries again, and until it succeeds the reading is flagged as unchecked rather than quietly believed.
-			await prisma.hackatimeLink
-				.update({ data: { spansFetchError: result.error ?? "unknown error" }, where: { id: target.id } })
+			await db.orm.public.HackatimeLink.where({ id: target.id })
+				.update({ spansFetchError: result.error ?? "unknown error" })
 				.catch(() => undefined)
 			continue
 		}
 		warmed += 1
-		await prisma.hackatimeLink
+		await db.orm.public.HackatimeLink.where({ id: target.id })
 			.update({
-				data: {
-					cachedSpans: { from: spanWindow.fromSeconds, spans: result.spans, to: spanWindow.toSeconds },
-					spansFetchError: null,
-					spansFetchedAt: new Date(),
-				},
-				where: { id: target.id },
+				cachedSpans: { from: spanWindow.fromSeconds, spans: result.spans, to: spanWindow.toSeconds },
+				spansFetchError: null,
+				spansFetchedAt: formatDbTimestamp(new Date()),
 			})
 			.catch(() => undefined)
 	}

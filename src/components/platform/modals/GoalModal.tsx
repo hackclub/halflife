@@ -1,7 +1,6 @@
 "use client"
 
 import { useId, useState } from "react"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { PrinterPhoto } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin } from "@/components/platform/icons"
 import { Button, OptionRow } from "@/components/platform/ui"
@@ -9,6 +8,7 @@ import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { PRINTERS, type PrinterGoal, printerById, weeksToGo } from "@/lib/config/printers"
 import { BUILD_HOURS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
+import { ParticipantGoal } from "@/lib/enums"
 import { usePrinterPace, useStore, weekListPhrase } from "@/lib/store"
 import { Modal, ModalTitle } from "./Modal"
 
@@ -297,10 +297,9 @@ function GoalCard({
 			)}
 
 			<span className="flex items-start gap-3.5">
-				{/* the maker's photo on its own white ground, so it reads as a photo
-            on the mint of a selected card as much as on the paper of the rest */}
+				{/* the maker's photo on its own white ground, so it reads as a photo on the mint of a selected card as much as on the paper of the rest */}
 				<PrinterPhoto
-					className="size-[76px] shrink-0 rounded-xl border border-line/80 lg:size-[88px]"
+					className="size-19 shrink-0 rounded-xl border border-line/80 lg:size-22"
 					id={goal.id}
 					sizes="(min-width: 1024px) 88px, 76px"
 				/>

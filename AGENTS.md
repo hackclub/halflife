@@ -35,7 +35,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 	- Avoid `var`
 - Use `===` and `!==` over `==` and `!=` except when comparing with null
 - Use Object.freeze() to make objects immutable where possible
-- Omit `void` before function calls, unless this function call is a IIFE
+- Use `void` before function calls that return promises to be discarded, or before IIFEs rather than semicolons
 - Declare only 1 variable per declaration statement, avoid `const x = 1, y = 2, z = 3`
 - When making large functions that return objects with many functions, consider if this would be more natural as a class with methods instead
 
@@ -57,8 +57,15 @@ None of this should conflict with the formatting or linting rules of Biome.
 	- Replace with padding or gaps where spacing is needed
 	- Replace with flex or grid for centreing
 	- If needing negative margins for funky tricks, OK
-- Use canonical Tailwind classes, like `w-36` instead of `w-[9rem]`
+- Use canonical Tailwind classes like `w-36` instead of `w-[9rem]`
 - In the rare case where something is more concise in standard CSS than in Tailwind, write it in standard CSS
+
+## Markdown
+
+- Single * for italics, double ** for bold
+- Use `#` for headings, not `=` or `-` underlines
+- Use fenced code blocks with language identifiers instead of indented code blocks
+- Do not hard-wrap. Never split a sentence or a paragraph over multiple lines
 
 ## Comments
 

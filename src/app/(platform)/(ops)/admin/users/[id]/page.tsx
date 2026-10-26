@@ -48,8 +48,7 @@ export default async function AdminUserPage({ params }: Props) {
 				title={displayName(user, user.email)}
 			/>
 
-			{/* The nickname is what every surface shows; this is the one place staff
-				need the whole name, because the payout and shipping rows split it. */}
+			{/* The nickname is what every surface shows; this is the one place staff need the whole name, because the payout and shipping rows split it. */}
 			{user.name && user.name !== displayName(user) ? <p className="hl-hint">Full name on file: {user.name}</p> : null}
 
 			<div className="hl-row">

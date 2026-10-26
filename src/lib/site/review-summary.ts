@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { ANONYMOUS_ARI, type ProjectReviewStats, type WeekReviewProgress } from "./review-store"
 import { getSlackUserNames } from "./slack"
 import { countedLine, creditedLine, rankedShareBoard, renderSummary, type SummaryBoard } from "./summary"
@@ -22,10 +22,9 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 		return names
 	}
 
-	const users = await prisma.user.findMany({
-		select: { displayName: true, email: true, name: true, slackId: true },
-		where: { email: { in: emails } },
-	})
+	const users = await db.orm.public.User.where(user => user.email.in(emails))
+		.select("displayName", "email", "name", "slackId")
+		.all()
 	const byEmail = new Map(users.map(user => [user.email.trim().toLowerCase(), user]))
 
 	const slackNames = await getSlackUserNames(users.flatMap(user => (user.slackId ? [user.slackId] : [])))

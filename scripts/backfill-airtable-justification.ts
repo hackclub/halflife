@@ -1,13 +1,14 @@
-import "dotenv/config"
-import { AuditAction, Phase } from "../src/app/generated/prisma/enums"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { type JustificationValues, justificationValues, timelapseLinks } from "../src/lib/airtable/justification"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
-import prisma from "../src/lib/prisma"
+import { AuditAction, Phase } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
 import { getProgramSettings } from "../src/lib/program"
+import { withFields } from "../src/lib/rows"
+import { parseDbTimestamp } from "../src/lib/time"
 
 /**
  * Fill the `Justification - …` columns on the submission rows that are missing them.
@@ -22,9 +23,7 @@ import { getProgramSettings } from "../src/lib/program"
  *
  * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. A row in the base that Half Life never wrote or imported has no project behind it and nothing to fill it from – the report says how many those are, and the warm-up import on /admin/program is what turns them into local projects.
  *
- * Read-only unless `--commit` is passed. Run with
- * `bun --conditions=react-server scripts/backfill-airtable-justification.ts [--commit]`.
- * In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
+ * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-justification.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")
@@ -84,40 +83,28 @@ async function main() {
 	const keys = new Map<string, string>()
 	for (const [key, field] of Object.entries(COLUMNS)) keys.set(key, fieldKey(field))
 
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			bomItems: { select: { name: true, purpose: true, quantity: true } },
-			description: true,
-			hackatimeLinks: { select: { hackatimeProject: true, phase: true } },
-			id: true,
-			theme: true,
-			title: true,
-			user: { select: { hackatimeUserId: true } },
-			workSessions: {
-				orderBy: { createdAt: "asc" },
-				select: {
-					content: true,
-					createdAt: true,
-					effectiveDate: true,
-					hoursClaimed: true,
-					phase: true,
-					timelapses: { select: { externalId: true, objectKey: true, playbackUrl: true, provider: true } },
-					title: true,
-				},
-				where: { deletedAt: null },
-			},
-		},
-	})
+	const projects = await db.orm.public.ThemeProject.select("description", "id", "theme", "title")
+		.include("bomItems", items => items.select("name", "purpose", "quantity"))
+		.include("hackatimeLinks", links => links.select("hackatimeProject", "phase"))
+		.include("user", user => user.select("hackatimeUserId"))
+		.include("workSessions", sessions =>
+			sessions
+				.where({ deletedAt: null })
+				.orderBy(session => session.createdAt.asc())
+				.select("content", "createdAt", "effectiveDate", "hoursClaimed", "phase", "title")
+				.include("timelapses", timelapses => timelapses.select("externalId", "objectKey", "playbackUrl", "provider")),
+		)
+		.all()
 	if (projects.length === 0) {
 		console.log("No themed projects; nothing to backfill.")
 		return
 	}
 
-	const events = await prisma.auditLog.findMany({
-		orderBy: { createdAt: "desc" },
-		select: { metadata: true, targetId: true },
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
-	})
+	const events = await db.orm.public.AuditLog.where({ action: AuditAction.AIRTABLE_SYNC_SUCCESS })
+		.where(entry => entry.targetId.in(projects.map(p => p.id)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
 	const records = recordIdsFromSyncEvents(events)
 	const settings = await getProgramSettings()
 
@@ -130,13 +117,15 @@ async function main() {
 				withoutRow++
 				continue
 			}
-			const sessions = project.workSessions.filter(s => s.phase === phase)
+			const sessions = project.workSessions
+				.filter(s => s.phase === phase)
+				.map(s => withFields(s, { createdAt: parseDbTimestamp(s.createdAt) }))
 			const values = justificationValues(
 				{
 					bomItems: project.bomItems,
 					description: project.description,
 					hackatimeProjects: project.hackatimeLinks.filter(l => l.phase === phase).map(l => l.hackatimeProject),
-					hackatimeUserId: project.user.hackatimeUserId,
+					hackatimeUserId: project.user?.hackatimeUserId ?? null,
 					lapseLinks: timelapseLinks(sessions.flatMap(s => s.timelapses)),
 					workSessions: sessions,
 				},
@@ -213,5 +202,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

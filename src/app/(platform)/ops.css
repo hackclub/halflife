@@ -3,13 +3,9 @@
 /*
  * The Half-Life design system.
  *
- * Values come from the Figma "platform ui" page – the BRANDING frame
- * (389:1774) for palette and type, and the [ MAIN PAGE ] / [ EXPLORE PAGE ]
- * frames for how they are used. Where the comp is silent (hover, focus,
- * disabled, small screens) the rule is derived from a value it does state.
+ * Values come from the Figma "platform ui" page – the BRANDING frame (389:1774) for palette and type, and the [ MAIN PAGE ] / [ EXPLORE PAGE ] frames for how they are used. Where the comp is silent (hover, focus, disabled, small screens) the rule is derived from a value it does state.
  *
- * This file and app/components/ui/ are the only places that know about colour,
- * radius or type. A page composes primitives and never writes a raw value.
+ * This file and app/components/ui/ are the only places that know about colour, radius or type. A page composes primitives and never writes a raw value.
  */
 
 @theme {
@@ -19,20 +15,15 @@
 	--color-surface-raised: #ffffff; /* cards sitting on the ground */
 	--color-surface-sunken: #f2ecec;
 	--color-border: #cacedd;
-	/* A field's edge, which has to meet 3:1 where a panel's need not: #cacedd
-     is 1.57:1 on a white field. 3.68:1. */
+	/* A field's edge, which has to meet 3:1 where a panel's need not: #cacedd is 1.57:1 on a white field. 3.68:1. */
 	--color-field-edge: #86829f;
 	--color-border-strong: #1c1a59;
 
 	--color-ink: #100f30; /* body text */
 	--color-ink-strong: #1c1a59; /* headings, outlines, the brand navy */
 	/*
-   * The comp's secondary grey is #979bab, which is 2.77:1 on white – below the
-   * 4.5:1 body-text floor, and this is read by teenagers on school laptops in
-   * bright rooms. Darkened along its own hue (228°) and saturation rather than
-   * swapped for a neutral, so it stays the comp's colour: 5.06:1 on white,
-   * 4.76:1 on the page ground.
-   */
+	 * The comp's secondary grey is #979bab, which is 2.77:1 on white – below the 4.5:1 body-text floor, and this is read by teenagers on school laptops in bright rooms. Darkened along its own hue (228°) and saturation rather than swapped for a neutral, so it stays the comp's colour: 5.06:1 on white, 4.76:1 on the page ground.
+	 */
 	--color-ink-muted: #696e82;
 	/* The original, kept for the decorative rules and borders that are not text. */
 	--color-line-soft: #cacedd;
@@ -53,8 +44,7 @@
 	--color-success: #06ae97;
 	--color-warning: #fba62f;
 	--color-danger: #f35757;
-	/* The status colours as text. Teal, coin and flame read 2.80, 1.98 and
-     3.33:1 on white, so a badge's word takes these instead. */
+	/* The status colours as text. Teal, coin and flame read 2.80, 1.98 and 3.33:1 on white, so a badge's word takes these instead. */
 	--color-success-ink: #037365;
 	--color-warning-ink: #8c5507;
 	--color-danger-ink: #c73b3b;
@@ -68,14 +58,10 @@
 
 	/* ── Type ──────────────────────────────────────────────────────────────── */
 	/*
-   * Headings and body are both Plus Jakarta Sans: nav items and names in Bold
-   * 22, body in Regular 16/22, page titles in ExtraBold.
-   *
-   * The accent face is Comico, used only for small uppercase labels
-   * ("VIEW MORE", "LOG OUT", "YESTERDAY", "The Doomscroller") and the two
-   * numeric counters. It is not on Google Fonts and no licensed file ships
-   * here, so it falls back until one does – see the note in layout.tsx.
-   */
+	 * Headings and body are both Plus Jakarta Sans: nav items and names in Bold 22, body in Regular 16/22, page titles in ExtraBold.
+	 *
+	 * The accent face is Comico, used only for small uppercase labels ("VIEW MORE", "LOG OUT", "YESTERDAY", "The Doomscroller") and the two numeric counters. It is not on Google Fonts and no licensed file ships here, so it falls back until one does – see the note in layout.tsx.
+	 */
 	--font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif;
 	--font-accent: var(--font-comico), "Comic Sans MS", "Chalkboard SE", var(--font-jakarta), sans-serif;
 	--font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -98,8 +84,7 @@ a {
 }
 
 /*
- * The surfaces we did not draw still carry the design. Left at their defaults
- * these are the browser's blue, and they belong to no design system.
+ * The surfaces we did not draw still carry the design. Left at their defaults these are the browser's blue, and they belong to no design system.
  */
 ::selection {
 	color: var(--color-ink-strong);
@@ -131,10 +116,8 @@ h4 {
 @layer components {
 	/* ── App shell ─────────────────────────────────────────────────────────── */
 	/*
-   * Three columns: the 343px sidebar, the content well, and the 409px
-   * Doomscroller rail. The hairline the comp draws down the page at x=425 is
-   * the content column's left border, not a separate element.
-   */
+	 * Three columns: the 343px sidebar, the content well, and the 409px Doomscroller rail. The hairline the comp draws down the page at x=425 is the content column's left border, not a separate element.
+	 */
 	.hl-app {
 		display: grid;
 		grid-template-columns: 343px minmax(0, 1fr);
@@ -153,8 +136,7 @@ h4 {
 		border-left: 1px solid var(--color-border);
 	}
 
-	/* Narrower than the rail, the feed matters more than the rail. Narrower
-     than the sidebar, the nav becomes a strip above the content. */
+	/* Narrower than the rail, the feed matters more than the rail. Narrower than the sidebar, the nav becomes a strip above the content. */
 	@media (max-width: 1400px) {
 		.hl-app,
 		.hl-app--with-rail {
@@ -179,10 +161,8 @@ h4 {
 			position: static;
 		}
 		/*
-     * On one column the sidebar is three tall cards of chrome. Leaving it
-     * first means scrolling past the whole nav, the printer card and the
-     * account card to reach the thing you opened the app for.
-     */
+		 * On one column the sidebar is three tall cards of chrome. Leaving it first means scrolling past the whole nav, the printer card and the account card to reach the thing you opened the app for.
+		 */
 		.hl-main {
 			order: -1;
 		}
@@ -302,22 +282,17 @@ h4 {
 
 	/* ── The hanging sign ──────────────────────────────────────────────────── */
 	/*
-   * Every page title hangs from two straps pinned to the top of the page. The
-   * straps are drawn behind the board and run up past it.
-   */
+	 * Every page title hangs from two straps pinned to the top of the page. The straps are drawn behind the board and run up past it.
+	 */
 	.hl-sign {
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		/* Counter the shell's top padding so the straps hang from the very top:
-         right under the staff navbar on the ops pages, at the top of the page
-         on the one-shot handoff screen. */
+		/* Counter the shell's top padding so the straps hang from the very top: right under the staff navbar on the ops pages, at the top of the page on the one-shot handoff screen. */
 		margin: -2.5rem 0 2.5rem;
 	}
-	/* The same hanging sign as the platform pages (PageSign): two straps run up
-     out of the header, a torn plaque swings underneath. The tear is drawn on
-     its own layer so the heading is never crinkled by the filter. */
+	/* The same hanging sign as the platform pages (PageSign): two straps run up out of the header, a torn plaque swings underneath. The tear is drawn on its own layer so the heading is never crinkled by the filter. */
 	.hl-sign-straps {
 		position: relative;
 		display: flex;
@@ -393,10 +368,8 @@ h4 {
 	}
 
 	/*
-   * The comp stands a gato beside the printer card, overlapping its right
-   * edge. It is decoration, so it is out of the accessibility tree and out of
-   * the pointer's way.
-   */
+	 * The comp stands a gato beside the printer card, overlapping its right edge. It is decoration, so it is out of the accessibility tree and out of the pointer's way.
+	 */
 	.hl-card--mascot {
 		position: relative;
 	}
@@ -537,9 +510,7 @@ h4 {
 	.hl-btn--danger:hover:not(:disabled) {
 		filter: brightness(0.94);
 	}
-	/* The press, hung on the class rather than on `button` so a link styled as a
-     button (LinkButton) presses too. `filter` darkens whatever the variant's
-     fill happens to be, so one rule covers all three. */
+	/* The press, hung on the class rather than on `button` so a link styled as a button (LinkButton) presses too. `filter` darkens whatever the variant's fill happens to be, so one rule covers all three. */
 	.hl-btn:active:not(:disabled) {
 		filter: brightness(0.9);
 		transform: translateY(1px);
@@ -640,11 +611,7 @@ h4 {
 	.hl-badge--muted {
 		color: var(--color-ink-muted);
 	}
-	/* Access, not status. The staff console's other three badge colours all mean
-	   something about the world – verified, pending, gone – and a privilege level
-	   means none of those things. The navy is the console's own primary ink, so an
-	   account that can hand out every other permission is the one that reads as
-	   loud, and the seats below it stay quiet. */
+	/* Access, not status. The staff console's other three badge colours all mean something about the world – verified, pending, gone – and a privilege level means none of those things. The navy is the console's own primary ink, so an account that can hand out every other permission is the one that reads as loud, and the seats below it stay quiet. */
 	.hl-badge--access {
 		color: var(--color-accent-ink);
 	}
@@ -661,8 +628,7 @@ h4 {
 	.hl-callout--warning {
 		border-color: var(--color-coin);
 	}
-	/* A plain explanation, not a problem to act on – the deduplicated hours
-	   notice is the reader being told why a number is smaller than expected. */
+	/* A plain explanation, not a problem to act on – the deduplicated hours notice is the reader being told why a number is smaller than expected. */
 	.hl-callout--info {
 		background: var(--color-surface);
 		border-color: var(--color-mint);
@@ -688,13 +654,10 @@ h4 {
 
 	/* ── The week banner ───────────────────────────────────────────────────── */
 	/*
-   * The comp's banner is painted art with a torn edge, exported from the file
-   * rather than reconstructed. Its surround is exactly the page ground
-   * (#fcf7f7), so it needs no mask – the tear blends into the page on its own.
-   *
-   * Stretched to the container width: the edge is organic enough to take it,
-   * and a fixed-width band would letterbox on every screen that is not 676px.
-   */
+	 * The comp's banner is painted art with a torn edge, exported from the file rather than reconstructed. Its surround is exactly the page ground (#fcf7f7), so it needs no mask – the tear blends into the page on its own.
+	 *
+	 * Stretched to the container width: the edge is organic enough to take it, and a fixed-width band would letterbox on every screen that is not 676px.
+	 */
 	.hl-banner {
 		position: relative;
 		display: flex;
@@ -714,8 +677,7 @@ h4 {
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 	}
-	/* "DESIGN YOUR BREADBOARD COMPUTER" is the longest headline the program can
-     produce; the ceiling is set so it takes two lines rather than three. */
+	/* "DESIGN YOUR BREADBOARD COMPUTER" is the longest headline the program can produce; the ceiling is set so it takes two lines rather than three. */
 	.hl-banner-copy {
 		position: relative;
 		z-index: 1;
@@ -744,9 +706,8 @@ h4 {
 
 	/* ── The programme path ───────────────────────────────────────────────── */
 	/*
-   * Ten weeks as one continuous track. Each week is a section with its own
-   * header and lane; the lane's swing and node geometry come from the comp.
-   */
+	 * Ten weeks as one continuous track. Each week is a section with its own header and lane; the lane's swing and node geometry come from the comp.
+	 */
 	.hl-programme {
 		display: flex;
 		flex-direction: column;
@@ -756,8 +717,7 @@ h4 {
 	.hl-week {
 		scroll-margin-top: 1.5rem;
 	}
-	/* Weeks not yet reached recede without being hidden – the point of the
-     track is that you can see what is coming. */
+	/* Weeks not yet reached recede without being hidden – the point of the track is that you can see what is coming. */
 	.hl-week--future {
 		opacity: 0.55;
 	}
@@ -811,11 +771,8 @@ h4 {
 	}
 	/* ── Staff top bar ─────────────────────────────────────────────────────── */
 	/*
-   * Review and admin keep a plain strip rather than the participant sidebar.
-   * The comp designs neither, and inventing a sidebar for them would be
-   * guessing – this at least dresses them in the same palette and outline
-   * weight as everything else.
-   */
+	 * Review and admin keep a plain strip rather than the participant sidebar. The comp designs neither, and inventing a sidebar for them would be guessing – this at least dresses them in the same palette and outline weight as everything else.
+	 */
 	.hl-nav {
 		display: flex;
 		flex-wrap: wrap;
@@ -840,9 +797,7 @@ h4 {
 	/* ── Layout helpers ────────────────────────────────────────────────────── */
 	.hl-shell {
 		max-width: 62rem;
-		/* Match the participant shell's top inset. The hanging sign's straps
-       extend 4rem above its board; without this extra half-rem they cross
-       into the staff navigation strip. */
+		/* Match the participant shell's top inset. The hanging sign's straps extend 4rem above its board; without this extra half-rem they cross into the staff navigation strip. */
 		padding: 2.5rem 1.25rem 4rem;
 		margin: 0 auto;
 	}
@@ -999,8 +954,7 @@ h4 {
 		justify-content: space-between;
 		margin-bottom: 0.7rem;
 	}
-	/* The comp sets this in the border grey. That is 1.6:1 – decorative, and
-     this is the panel's name, so it takes the readable muted instead. */
+	/* The comp sets this in the border grey. That is 1.6:1 – decorative, and this is the panel's name, so it takes the readable muted instead. */
 	.hl-rail-title {
 		margin: 0;
 		font-family: var(--font-accent);

@@ -1,11 +1,12 @@
-import { ShopFulfillmentStage, ShopOrderStatus } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { FULFILLMENT_ORDER_STATUSES, fulfillmentStageOf } from "@/lib/queries/admin"
 import { orderFulfillmentSchema } from "@/lib/schemas/admin"
+import { formatDbTimestamp } from "@/lib/time"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -23,10 +24,9 @@ export const PATCH = withPermission(
 		if (parsed.error) return parsed.error
 		const body = parsed.data
 
-		const before = await prisma.shopOrder.findUnique({
-			select: { fulfillmentMethod: true, fulfillmentStage: true, status: true },
-			where: { id },
-		})
+		const before = await db.orm.public.ShopOrder.whereUnique({ id })
+			.select("fulfillmentMethod", "fulfillmentStage", "status")
+			.first()
 		if (!before) return fail("NOT_FOUND", "Order not found")
 		if (!FULFILLMENT_ORDER_STATUSES.includes(before.status)) return fail("CONFLICT", "This order was rejected")
 		// The method can still be recorded – it may have gone out before the cancellation – but the stage cannot pretend it is still shipping.
@@ -38,21 +38,17 @@ export const PATCH = withPermission(
 			return fail("CONFLICT", "The participant cancelled this order")
 
 		// Conditional on the status that was just read: an order rejected between that read and this write must not be marked as on its way out.
-		const updated = await prisma.shopOrder.updateMany({
-			data: {
-				...(body.method !== undefined ? { fulfillmentMethod: body.method } : {}),
-				...(body.stage !== undefined ? { fulfillmentStage: body.stage } : {}),
-				fulfillmentUpdatedAt: new Date(),
-				lastActorId: gate.user.id,
-			},
-			where: { id, status: before.status },
+		const updated = await db.orm.public.ShopOrder.where({ id, status: before.status }).updateAndCount({
+			...(body.method !== undefined ? { fulfillmentMethod: body.method } : {}),
+			...(body.stage !== undefined ? { fulfillmentStage: body.stage } : {}),
+			fulfillmentUpdatedAt: formatDbTimestamp(new Date()),
+			lastActorId: gate.user.id,
 		})
-		if (updated.count !== 1) return fail("CONFLICT", "This order was decided by someone else")
+		if (updated !== 1) return fail("CONFLICT", "This order was decided by someone else")
 
-		const order = await prisma.shopOrder.findUniqueOrThrow({
-			select: { fulfillmentMethod: true, fulfillmentStage: true, id: true, status: true },
-			where: { id },
-		})
+		const order = await db.orm.public.ShopOrder.whereUnique({ id })
+			.select("fulfillmentMethod", "fulfillmentStage", "id", "status")
+			.firstOrThrow()
 
 		await logAudit({
 			action: AuditAction.ADMIN_UPDATE_ORDER_FULFILLMENT,

@@ -1,6 +1,5 @@
-import "dotenv/config"
 import { syncHcaProfile } from "../src/lib/hca-profile"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 
 /**
  * Fill in `User.displayName` – HCA's nickname, the name the site shows – for everyone who signed in before the column existed, so the platform stops showing full names only as people happen to come back.
@@ -14,11 +13,11 @@ import prisma from "../src/lib/prisma"
 const PACE_MS = 250
 
 async function main() {
-	const users = await prisma.user.findMany({
-		orderBy: { createdAt: "asc" },
-		select: { id: true },
-		where: { accounts: { some: { providerId: "hca" } }, displayName: null },
-	})
+	const users = await db.orm.public.User.where({ displayName: null })
+		.where(user => user.accounts.some(account => account.providerId.eq("hca")))
+		.orderBy(user => user.createdAt.asc())
+		.select("id")
+		.all()
 	if (users.length === 0) {
 		console.log("every account with an HCA identity already has a display name")
 		return
@@ -30,7 +29,7 @@ async function main() {
 	for (const user of users) {
 		// Also refreshes the verification status and the address on file, which is what a sign-in would have done anyway. Never throws.
 		await syncHcaProfile(user.id)
-		const row = await prisma.user.findUnique({ select: { displayName: true }, where: { id: user.id } })
+		const row = await db.orm.public.User.whereUnique({ id: user.id }).select("displayName").first()
 		if (row?.displayName) filled += 1
 		else {
 			left += 1
@@ -50,5 +49,5 @@ try {
 	console.error(err)
 	process.exit(1)
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

@@ -1,5 +1,4 @@
-import "dotenv/config"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
 import { backfillHelpTickets } from "../src/lib/site/ticket-store"
 
 /**
@@ -19,5 +18,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

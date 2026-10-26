@@ -18,7 +18,7 @@ export default async function ShopPage() {
 	const { items, regions, regionId, country } = await getShopItemsFor(user.id)
 
 	return (
-		<div className="mx-auto w-full max-w-[1040px] px-4 pt-2 sm:px-8">
+		<div className="mx-auto w-full max-w-260 px-4 pt-2 sm:px-8">
 			<PageSign
 				color="var(--color-orange)"
 				label="SHOP"
@@ -37,9 +37,7 @@ export default async function ShopPage() {
 					</>
 				}
 			/>
-			{/* Where a printer is paid out as a grant rather than shipped, said here because the shop is where a maker
-			    comes to spend coins and asks what happened to the machine. Rendered on the server so it costs the page
-			    no client work, and keyed off the same country the notice names. */}
+			{/* Where a printer is paid out as a grant rather than shipped, said here because the shop is where a maker comes to spend coins and asks what happened to the machine. Rendered on the server so it costs the page no client work, and keyed off the same country the notice names. */}
 			{printerComesAsGrant(country) ? (
 				<div className="mb-5 rounded-2xl border-2 border-dashed border-gold-deep/40 bg-gold-pale/50 px-4 py-3">
 					<p className="label mb-1 text-gold-ink">Printers in {country}</p>

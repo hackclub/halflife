@@ -5,7 +5,6 @@ import { CsvProjectsImport } from "@/app/components/forms/CsvProjectsImport"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
-import { Phase } from "@/app/generated/prisma/enums"
 import { getAirtableConfig } from "@/lib/airtable/client"
 import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
@@ -14,6 +13,7 @@ import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { formatDeadline } from "@/lib/deadline"
+import { Phase } from "@/lib/enums"
 import { configuredOrigin } from "@/lib/origin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -101,9 +101,7 @@ export default async function AdminProgramPage() {
 			</Panel>
 
 			<Panel title="Settings">
-				{/* These live in the database rather than env vars on purpose: stasis
-            put its submission gate in an env var, nobody flipped it, and
-            submissions stayed open for two weeks after the event ended. */}
+				{/* These live in the database rather than env vars on purpose: stasis put its submission gate in an env var, nobody flipped it, and submissions stayed open for two weeks after the event ended. */}
 				<ProgramSettingsForm
 					initial={{
 						airtableSyncEnabled: settings.airtableSyncEnabled,
@@ -258,9 +256,7 @@ export default async function AdminProgramPage() {
 			</Panel>
 
 			<Panel title="Tiers">
-				{/* Tier values are code, not data: editing them is a pull request, and
-            every review freezes the numbers it used, so changing them never
-            rewrites anyone's history. */}
+				{/* Tier values are code, not data: editing them is a pull request, and every review freezes the numbers it used, so changing them never rewrites anyone's history. */}
 				<Table head={["Tier", "Grant", "Funded hours", "Submit floor"]}>
 					{TIERS.map(tier => (
 						<tr key={tier.id}>

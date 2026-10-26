@@ -1,7 +1,5 @@
 import type { AriWebhookEvent } from "@hackclub/ari"
 import type { NextRequest } from "next/server"
-import { Prisma } from "@/app/generated/prisma/client"
-import { Phase } from "@/app/generated/prisma/enums"
 import { ok } from "@/lib/api"
 import {
 	applyStoredEvent,
@@ -12,12 +10,13 @@ import {
 	withdrawSubmissionFromAri,
 } from "@/lib/ari"
 import { AuditAction } from "@/lib/audit"
+import { Phase } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
-import { DAY_MS } from "@/lib/time"
+import { DAY_MS, formatDbTimestamp } from "@/lib/time"
 
 export const maxDuration = 300
 
@@ -63,17 +62,25 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	let withdrawn = 0
 	let withdrawFailed = 0
 	if (isAriConfigured()) {
-		const failures = await prisma.auditLog.findMany({
-			orderBy: { createdAt: "desc" },
-			select: { createdAt: true, metadata: true, targetId: true },
-			take: 50,
-			where: {
-				action: AuditAction.ARI_SYNC_FAILURE,
-				createdAt: { gte: new Date(Date.now() - WITHDRAW_REPLAY_WINDOW_MS) },
-				metadata: { equals: true, path: ["withdrawn"] },
-				targetId: { not: null },
-			},
-		})
+		// The `withdrawn` marker lives inside a JSON column, and the Prisma 8 ORM has no JSON path filter, so both halves of this replay are one raw statement each rather than a read that filters in memory (which could starve an old failure behind newer send failures).
+		const failures = await db.query(
+			db.raw.sql`
+				SELECT "createdAt", "metadata", "targetId"
+				FROM "audit_log"
+				WHERE "action" = ${AuditAction.ARI_SYNC_FAILURE}
+					AND "targetId" IS NOT NULL
+					AND "createdAt" >= ${formatDbTimestamp(new Date(Date.now() - WITHDRAW_REPLAY_WINDOW_MS))}
+					AND "metadata"->>'withdrawn' = 'true'
+				ORDER BY "createdAt" DESC
+				LIMIT 50
+			`
+				.returnsRow({
+					createdAt: "pg/timestamp-string@1",
+					metadata: "pg/jsonb@1",
+					targetId: "pg/text@1",
+				})
+				.build(),
+		)
 
 		const attempted = new Set<string>()
 		for (const failure of failures) {
@@ -84,15 +91,19 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 			if (attempted.has(key)) continue
 			attempted.add(key)
 
-			const resolved = await prisma.auditLog.findFirst({
-				select: { id: true },
-				where: {
-					action: AuditAction.ARI_SYNC_SUCCESS,
-					createdAt: { gt: failure.createdAt },
-					metadata: { equals: true, path: ["withdrawn"] },
-					targetId,
-				},
-			})
+			const [resolved] = await db.query(
+				db.raw.sql`
+					SELECT 1 AS "found"
+					FROM "audit_log"
+					WHERE "action" = ${AuditAction.ARI_SYNC_SUCCESS}
+						AND "targetId" = ${targetId}
+						AND "createdAt" > ${failure.createdAt}
+						AND "metadata"->>'withdrawn' = 'true'
+					LIMIT 1
+				`
+					.returnsRow({ found: "pg/int4@1" })
+					.build(),
+			)
 			if (resolved) continue
 
 			const result = await trackSideEffect(
@@ -109,16 +120,18 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	let deferred = 0
 	let deferredFailed = 0
 	if (isAriConfigured()) {
-		const waiting = await prisma.ariWebhookDelivery.findMany({
-			orderBy: { receivedAt: "asc" },
-			select: { id: true, payload: true },
-			take: 25,
-			where: { appliedAt: null, payload: { not: Prisma.DbNull } },
-		})
+		const waiting = await db.orm.public.AriWebhookDelivery.where({ appliedAt: null })
+			.where(row => row.payload.isNotNull())
+			.orderBy(row => row.receivedAt.asc())
+			.select("id", "payload")
+			.limit(25)
+			.all()
 		for (const row of waiting)
 			try {
 				await applyStoredEvent(row.payload as unknown as AriWebhookEvent)
-				await prisma.ariWebhookDelivery.update({ data: { appliedAt: new Date() }, where: { id: row.id } })
+				await db.orm.public.AriWebhookDelivery.where({ id: row.id }).update({
+					appliedAt: formatDbTimestamp(new Date()),
+				})
 				deferred++
 			} catch (err) {
 				// Still waiting on the design: leave it for a later run rather than counting it failed.

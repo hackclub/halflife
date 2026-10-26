@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
+import { ParticipantGoal } from "@/lib/enums"
 
 /**
  * Answering "what are you here for", optionally with the machine.

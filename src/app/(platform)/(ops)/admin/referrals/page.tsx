@@ -1,13 +1,17 @@
 import Link from "next/link"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { Permission } from "@/lib/permissions"
+import { hasRole, Permission } from "@/lib/permissions"
+import { Role } from "@/lib/enums"
 import { getReferralLeaderboard } from "@/lib/site/referrals"
 
 export const dynamic = "force-dynamic"
 
 export default async function AdminReferralsPage() {
-	await requirePermissionPage(Permission.VIEW_USERS)
+	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
+
+	// Referrer emails are landing-page sign-up PII: ADMIN/AUDITOR see them (with the user lookup), everyone else on VIEW_USERS gets the counts without the addresses.
+	const showEmails = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
 
 	const board = await getReferralLeaderboard()
 
@@ -47,10 +51,12 @@ export default async function AdminReferralsPage() {
 									<tr key={row.code}>
 										<td className="hl-hint hl-mono">{index + 1}</td>
 										<td>
-											{row.email ? (
+											{row.email && showEmails ? (
 												<Link className="hl-mono" href={`/admin/users?q=${encodeURIComponent(row.email)}`}>
 													{row.email}
 												</Link>
+											) : row.email ? (
+												<span className="hl-hint">a referrer</span>
 											) : (
 												<span className="hl-hint">unknown referrer</span>
 											)}

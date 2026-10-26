@@ -1,13 +1,5 @@
 import "server-only"
-import {
-	HardwareExperience,
-	HoursSource,
-	type ParticipantGoal,
-	Phase,
-	PhaseStatus,
-	Role,
-	Theme,
-} from "@/app/generated/prisma/enums"
+import { and } from "@prisma/orm-postgres/orm-client"
 import { avatarUrl } from "@/lib/avatar"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
 import {
@@ -20,11 +12,12 @@ import {
 } from "@/lib/config/program"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
+import { HardwareExperience, HoursSource, type ParticipantGoal, Phase, PhaseStatus, Role, Theme } from "@/lib/enums"
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
 import { getUserRoles, hasRole } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import {
 	effectiveDateFor,
 	effectiveWeekClose,
@@ -34,8 +27,10 @@ import {
 	weekOpensAt,
 } from "@/lib/program"
 import { getOwedReelKeys } from "@/lib/reel-gate"
+import { withFields } from "@/lib/rows"
 import { streakAsOf } from "@/lib/streak"
 import { projectThumbnail } from "@/lib/thumbnail"
+import { parseDbTimestamp } from "@/lib/time"
 import type { Experience, Project, SessionLog } from "@/lib/types"
 import { publicUrlFor } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
@@ -149,107 +144,109 @@ function weekOf(themeIndex: number, phase: Phase): number {
 }
 
 export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
-	const [user, projects, sessions, links, posts, submissions, balances, settings, owedReels, roles] = await Promise.all(
-		[
-			prisma.user.findUniqueOrThrow({
-				select: {
-					currentStreak: true,
-					displayName: true,
-					hardwareExperience: true,
-					image: true,
-					lastStreakDate: true,
-					name: true,
-					onboardingCompletedAt: true,
-					participantGoal: true,
-					printerGoalId: true,
-					slackId: true,
-					submissionExtensionUntil: true,
-				},
-				where: { id: userId },
-			}),
-			prisma.themeProject.findMany({
-				select: {
-					approvedHours: true,
-					buildStatus: true,
-					coverImageKey: true,
-					description: true,
-					designApprovedHours: true,
-					designStatus: true,
-					githubRepo: true,
-					id: true,
-					namedAt: true,
-					requestedTier: true,
-					starterProjectId: true,
-					submissionExtensionUntil: true,
-					theme: true,
-					tier: true,
-					title: true,
-					warmupPhase: true,
-				},
-				where: { deletedAt: null, userId },
-			}),
+	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
+	const [userRow, projectRows, sessionRows, linkRows, postRows, submissionRows, balances, settings, owedReels, roles] =
+		await Promise.all([
+			db.orm.public.User.whereUnique({ id: userId })
+				.select(
+					"currentStreak",
+					"displayName",
+					"hardwareExperience",
+					"id",
+					"image",
+					"lastStreakDate",
+					"name",
+					"onboardingCompletedAt",
+					"participantGoal",
+					"printerGoalId",
+					"slackId",
+					"submissionExtensionUntil",
+				)
+				.firstOrThrow(),
+			db.orm.public.ThemeProject.where({ deletedAt: null, userId })
+				.select(
+					"approvedHours",
+					"buildStatus",
+					"coverImageKey",
+					"description",
+					"designApprovedHours",
+					"designStatus",
+					"githubRepo",
+					"id",
+					"namedAt",
+					"requestedTier",
+					"starterProjectId",
+					"submissionExtensionUntil",
+					"theme",
+					"tier",
+					"title",
+					"warmupPhase",
+				)
+				.all(),
 			// Ordered, because the trail's Nth entry node IS the Nth session written.
-			prisma.workSession.findMany({
-				orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-				select: {
-					content: true,
-					createdAt: true,
-					hoursApproved: true,
-					hoursClaimed: true,
-					hoursSource: true,
-					id: true,
-					media: { select: { objectKey: true } },
-					phase: true,
-					themeProjectId: true,
-					timelapses: {
-						select: {
-							coveredSeconds: true,
-							externalId: true,
-							hackatimeProject: true,
-							objectKey: true,
-							recordedAt: true,
-						},
-					},
-					title: true,
-				},
-				where: { deletedAt: null, themeProject: { deletedAt: null, userId } },
-			}),
-			prisma.hackatimeLink.findMany({
+			db.orm.public.WorkSession.where({ deletedAt: null })
+				.where(session =>
+					session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+				)
+				.orderBy([session => session.createdAt.asc(), session => session.id.asc()])
+				.select(
+					"content",
+					"createdAt",
+					"hoursApproved",
+					"hoursClaimed",
+					"hoursSource",
+					"id",
+					"phase",
+					"themeProjectId",
+					"title",
+				)
+				.include("media", media => media.select("objectKey"))
+				.include("timelapses", timelapse =>
+					timelapse.select("coveredSeconds", "externalId", "hackatimeProject", "objectKey", "recordedAt"),
+				)
+				.all(),
+			db.orm.public.HackatimeLink.where(link =>
+				link.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+			)
 				// cachedSpans comes along because `rollUpHours` is what the ledger uses, and a trail that reported a different Hackatime total from the one a reviewer approves is the disagreement this file already warns about – the same minutes must not be payable twice on one screen and once off it.
-				select: {
-					cachedSeconds: true,
-					cachedSpans: true,
-					hackatimeProject: true,
-					hoursApproved: true,
-					phase: true,
-					themeProjectId: true,
-				},
-				where: { themeProject: { deletedAt: null, userId } },
-			}),
-			prisma.post.findMany({
-				orderBy: { createdAt: "asc" },
-				select: {
-					caption: true,
-					checkpointKey: true,
-					createdAt: true,
-					objectKey: true,
-					themeProjectId: true,
-					thumbnailKey: true,
-				},
-				// Every reel, not only the ones bound to a checkpoint: a project's stand-in picture may come from any of them (see the thumbnail below).
-				where: { deletedAt: null, userId },
-			}),
-			prisma.phaseSubmission.findMany({
-				orderBy: { createdAt: "asc" },
-				select: { createdAt: true, phase: true, themeProjectId: true },
-				where: { themeProject: { deletedAt: null, userId } },
-			}),
+				.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase", "themeProjectId")
+				.all(),
+			db.orm.public.Post.where({ deletedAt: null, userId })
+				.orderBy(post => post.createdAt.asc())
+				.select("caption", "checkpointKey", "createdAt", "objectKey", "themeProjectId", "thumbnailKey")
+				.all(),
+			db.orm.public.PhaseSubmission.where(submission =>
+				submission.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+			)
+				.orderBy(submission => submission.createdAt.asc())
+				.select("createdAt", "phase", "themeProjectId")
+				.all(),
 			// Not in a transaction: this is a read for display, and BEGIN and COMMIT are two more round trips to a database ~110ms away from a laptop – the slowest part of the whole snapshot. Spending still reads its balance inside the transaction that spends it.
-			getBalances(prisma, userId),
+			getBalances(db, userId),
 			getProgramSettings(),
 			getOwedReelKeys(userId),
 			getUserRoles(userId),
-		],
+		])
+
+	// Prisma 8 reads timestamps as PostgreSQL text; everything below works in Dates.
+	const user = withFields(userRow, {
+		onboardingCompletedAt: parseNullable(userRow.onboardingCompletedAt),
+		submissionExtensionUntil: parseNullable(userRow.submissionExtensionUntil),
+	})
+	const projects = projectRows.map(project =>
+		withFields(project, { submissionExtensionUntil: parseNullable(project.submissionExtensionUntil) }),
+	)
+	const sessions = sessionRows.map(session =>
+		withFields(session, {
+			createdAt: parseDbTimestamp(session.createdAt),
+			timelapses: session.timelapses.map(timelapse =>
+				withFields(timelapse, { recordedAt: parseNullable(timelapse.recordedAt) }),
+			),
+		}),
+	)
+	const posts = postRows.map(post => withFields(post, { createdAt: parseDbTimestamp(post.createdAt) }))
+	const submissions = submissionRows.map(submission =>
+		withFields(submission, { createdAt: parseDbTimestamp(submission.createdAt) }),
 	)
 
 	// Every recording this maker has, whatever project or phase it was attached to, each with the Hackatime project it named. A link finds the ones made under its own project by that name (`windowsForLink`), which is how a clip journalled in one week is deduplicated against a link in another.
@@ -296,7 +293,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			const id = (suffix: string) => `${prefix}-${suffix}`
 
 			const phaseSessions = sessions.filter(s => s.themeProjectId === project.id && s.phase === phase)
-			const phaseLinks = links.filter(l => l.themeProjectId === project.id && l.phase === phase)
+			const phaseLinks = linkRows.filter(l => l.themeProjectId === project.id && l.phase === phase)
 
 			// Week one's project comes into existence through the first checkpoint rather than a project form, so the node that stands for it is different and is already recorded above. A warm-up has no such node at all.
 			if (phase === Phase.DESIGN && week !== undefined && week > 1) {

@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { deleteOwnPost } from "@/lib/feed"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { reelLockReason } from "@/lib/reel-gate"
 
 export const dynamic = "force-dynamic"
@@ -19,10 +19,9 @@ interface Params {
 export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
-	const post = await prisma.post.findFirst({
-		select: { checkpointKey: true, themeProjectId: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const post = await db.orm.public.Post.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("checkpointKey", "themeProjectId")
+		.first()
 	if (!post) return fail("NOT_FOUND", "Post not found")
 	if (post.checkpointKey) {
 		const locked = await reelLockReason(gate.user.id, post.themeProjectId, post.checkpointKey)

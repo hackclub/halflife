@@ -18,16 +18,12 @@ export function PageSign({
 }) {
 	return (
 		<div className="relative flex flex-col items-center -mt-2 pb-6 lg:-mt-[4.5rem]">
-			<div aria-hidden="true" className="relative flex w-[172px] justify-between sm:w-[214px]">
-				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11 lg:h-[7rem]" />
-				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11 lg:h-[7rem]" />
+			<div aria-hidden="true" className="relative flex w-43 justify-between sm:w-[214px]">
+				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11 lg:h-28" />
+				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11 lg:h-28" />
 			</div>
 
-			{/* `min-w` so the plaque is never narrower than the straps pinned to it:
-          a short title would otherwise leave them hanging in mid-air beside it,
-          which is what "Shop" and "Docs" did. The same floor the ops sign
-          (`.hl-sign-board`) carries, and `text-center` goes with it because the
-          heading now stretches into a box wider than its own text. */}
+			{/* `min-w` so the plaque is never narrower than the straps pinned to it: a short title would otherwise leave them hanging in mid-air beside it, which is what "Shop" and "Docs" did. The same floor the ops sign (`.hl-sign-board`) carries, and `text-center` goes with it because the heading now stretches into a box wider than its own text. */}
 			<div className="relative -mt-1 min-w-[min(340px,100%)] text-center">
 				<div
 					aria-hidden="true"

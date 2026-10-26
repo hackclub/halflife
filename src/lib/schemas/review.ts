@@ -1,7 +1,7 @@
 import { z } from "zod"
-import { ReviewResult } from "@/app/generated/prisma/enums"
 import { MAX_APPROVED_HOURS } from "@/lib/config/program"
 import { TIER_IDS } from "@/lib/config/tiers"
+import { ReviewResult } from "@/lib/enums"
 import { paginationQuery } from "@/lib/pagination"
 import { boundedText, cuid, phaseSchema } from "@/lib/schemas/common"
 import { MAX_SESSION_HOURS } from "@/lib/schemas/session"

@@ -1,8 +1,8 @@
-import "dotenv/config"
 import { Ari } from "@hackclub/ari"
-import { Phase, PhaseStatus, ReviewPass, ReviewResult } from "../src/app/generated/prisma/enums"
 import { countAriShips } from "../src/lib/ari-counts"
-import prisma from "../src/lib/prisma"
+import { Phase, PhaseStatus, ReviewPass, ReviewResult } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { parseDbTimestamp } from "../src/lib/time"
 
 /**
  * Why the admin review ring and Ari's own board disagree, ship by ship.
@@ -58,47 +58,53 @@ async function main(): Promise<void> {
 		throw new Error("Set ARI_PROGRAM_ID and ARI_SIGNING_SECRET to read Ari's own state.")
 
 	const take = positive(limit, "--limit", Number.MAX_SAFE_INTEGER)
-	const submissions = await prisma.phaseSubmission.findMany({
-		orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-		select: {
-			ariDecision: true,
-			ariSubmissionId: true,
-			createdAt: true,
-			id: true,
-			phase: true,
-			resolvedAt: true,
-			resolvedResult: true,
-			reviews: {
-				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-				select: { result: true },
-				take: 1,
-				where: { invalidated: false, pass: ReviewPass.FINAL },
-			},
-			themeProject: { select: { buildStatus: true, designStatus: true } },
-			themeProjectId: true,
-		},
-	})
+	const submissions = await db.orm.public.PhaseSubmission.orderBy([
+		submission => submission.createdAt.asc(),
+		submission => submission.id.asc(),
+	])
+		.select(
+			"ariDecision",
+			"ariSubmissionId",
+			"createdAt",
+			"id",
+			"phase",
+			"resolvedAt",
+			"resolvedResult",
+			"themeProjectId",
+		)
+		.include("reviews", reviews =>
+			reviews
+				.where({ invalidated: false, pass: ReviewPass.FINAL })
+				.orderBy([review => review.createdAt.desc(), review => review.id.desc()])
+				.select("result")
+				.limit(1),
+		)
+		.include("themeProject", project => project.select("buildStatus", "designStatus"))
+		.all()
 
-	const rows = submissions.map(submission => ({
-		ariSubmissionId: submission.ariSubmissionId,
-		createdAt: submission.createdAt,
-		id: submission.id,
-		phase: submission.phase,
-		phaseStatus:
-			submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
-		resolvedAt: submission.resolvedAt,
-		result:
-			submission.reviews[0]?.result
-			?? submission.resolvedResult
-			?? (submission.ariDecision === "approved"
-				? ReviewResult.APPROVED
-				: submission.ariDecision === "changes"
-					? ReviewResult.RETURNED
-					: submission.ariDecision === "rejected"
-						? ReviewResult.REJECTED
-						: null),
-		themeProjectId: submission.themeProjectId,
-	}))
+	const rows = submissions.map(submission => {
+		const project = submission.themeProject
+		if (!project) throw new Error(`submission ${submission.id} has no project`)
+		return {
+			ariSubmissionId: submission.ariSubmissionId,
+			createdAt: parseDbTimestamp(submission.createdAt),
+			id: submission.id,
+			phase: submission.phase,
+			phaseStatus: submission.phase === Phase.DESIGN ? project.designStatus : project.buildStatus,
+			resolvedAt: submission.resolvedAt === null ? null : parseDbTimestamp(submission.resolvedAt),
+			result:
+				submission.reviews[0]?.result
+				?? submission.resolvedResult
+				?? (submission.ariDecision === "approved"
+					? ReviewResult.APPROVED
+					: submission.ariDecision === "changes"
+						? ReviewResult.RETURNED
+						: submission.ariDecision === "rejected"
+							? ReviewResult.REJECTED
+							: null),
+			themeProjectId: submission.themeProjectId,
+		}
+	})
 
 	const counts = countAriShips(rows)
 	console.log("Local ship counts (what the admin ring shows):")
@@ -217,5 +223,5 @@ try {
 	console.error(err instanceof Error ? err.message : err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

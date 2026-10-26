@@ -1,10 +1,10 @@
-import "dotenv/config"
 import { Ari, type AriShipPhase } from "@hackclub/ari"
-import type { Phase } from "../src/app/generated/prisma/enums"
 import { appBaseUrl, projectUrl, reviewUrl } from "../src/lib/app-url"
 import { ariReviewUrl } from "../src/lib/ari-url"
 import { displayName } from "../src/lib/display-name"
-import prisma from "../src/lib/prisma"
+import type { Phase } from "../src/lib/enums"
+import db from "../src/lib/prisma8"
+import { parseDbTimestamp } from "../src/lib/time"
 
 /**
  * Every Starbie starter project whose hand-in is in Ari's FIRST-pass queue, one line per project, with the five links needed to work through it.
@@ -91,23 +91,17 @@ interface FirstPassHandIn {
 
 async function main() {
 	const ari = ariClient()
-	const projects = await prisma.themeProject.findMany({
-		select: {
-			id: true,
-			submissions: {
-				orderBy: { createdAt: "asc" },
-				select: { ariSubmissionId: true, createdAt: true, id: true, phase: true },
-				where: { resolvedAt: null },
-			},
-			title: true,
-			user: { select: { displayName: true, id: true, name: true } },
-		},
-		where: {
-			deletedAt: null,
-			starterProjectId: STARTER_PROJECT_ID,
-			submissions: { some: { resolvedAt: null } },
-		},
-	})
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null, starterProjectId: STARTER_PROJECT_ID })
+		.where(project => project.submissions.some(submission => submission.resolvedAt.isNull()))
+		.select("id", "title")
+		.include("submissions", submissions =>
+			submissions
+				.where({ resolvedAt: null })
+				.orderBy(submission => submission.createdAt.asc())
+				.select("ariSubmissionId", "createdAt", "id", "phase"),
+		)
+		.include("user", user => user.select("displayName", "id", "name"))
+		.all()
 
 	// One status read per ship actually recorded. Keyed by ship id: two local rows can only point at one ship through a data fault, and asking twice would say nothing new.
 	const ships = new Map<string, { phase: Phase; themeProjectId: string }>()
@@ -136,9 +130,16 @@ async function main() {
 	})
 
 	const excluded = new Map<string, number>()
-	const rows: { firstPass: FirstPassHandIn[]; project: (typeof projects)[number]; waitingSince: Date }[] = []
+	const rows: {
+		firstPass: FirstPassHandIn[]
+		project: (typeof projects)[number]
+		user: NonNullable<(typeof projects)[number]["user"]>
+		waitingSince: Date
+	}[] = []
 
 	for (const project of projects) {
+		const { user } = project
+		if (!user) continue
 		const firstPass: FirstPassHandIn[] = []
 		for (const submission of project.submissions) {
 			if (!submission.ariSubmissionId) continue
@@ -150,13 +151,13 @@ async function main() {
 			}
 			firstPass.push({
 				ariSubmissionId: submission.ariSubmissionId,
-				createdAt: submission.createdAt,
+				createdAt: parseDbTimestamp(submission.createdAt),
 				id: submission.id,
 			})
 		}
 		const [first] = firstPass
 		if (!first) continue
-		rows.push({ firstPass, project, waitingSince: first.createdAt })
+		rows.push({ firstPass, project, user, waitingSince: first.createdAt })
 	}
 
 	// Oldest hand-in first, the queue's own order: the people who have been waiting longest are the ones to look at first.
@@ -166,20 +167,20 @@ async function main() {
 	console.log("| Maker | Project | Waiting since | Page | Review | Profile | Admin | Ari |")
 	console.log("| --- | --- | --- | --- | --- | --- | --- | --- |")
 
-	for (const { firstPass, project, waitingSince } of rows) {
+	for (const { firstPass, project, user, waitingSince } of rows) {
 		const reviewCell = firstPass.map(submission => `[Review](${reviewUrl(submission.id)})`).join("<br>")
 		const ariLinks = firstPass
 			.map(submission => ariReviewUrl(submission.ariSubmissionId))
 			.filter(link => link !== null)
 			.map(link => `[Ari](${link})`)
 		const cells = [
-			displayName(project.user, "—"),
+			displayName(user, "—"),
 			project.title || project.id,
 			waitingSince.toISOString(),
 			`[Page](${projectUrl(project.id)})`,
 			reviewCell,
-			`[Profile](${base}/u/${project.user.id})`,
-			`[Admin](${base}/admin/users/${project.user.id})`,
+			`[Profile](${base}/u/${user.id})`,
+			`[Admin](${base}/admin/users/${user.id})`,
 			ariLinks.length > 0 ? ariLinks.join("<br>") : "—",
 		]
 		console.log(`| ${cells.map(value => mdCell(value)).join(" | ")} |`)
@@ -204,5 +205,5 @@ try {
 	console.error(err instanceof Error ? err.message : err)
 	process.exitCode = 1
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

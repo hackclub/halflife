@@ -26,7 +26,9 @@ const size = (floorRem: number, vw: number, maxPx: number) =>
 const FIELD = {
 	answer: size(1, 1.74, 30),
 	/** Two scaled plates and the gutter between them, and nothing wider. The
-	 *  section's own 1615 field stays put so the heading keeps its measure. */
+	 *
+	 * *  section's own 1615 field stays put so the heading keeps its measure.
+	 */
 	grid: `${(PLATE_W * 2 + GUTTER) * CARD_SCALE}px`,
 	gutter: size(1.25, 3.24, GUTTER),
 	padding: size(1.25, 2.37, 41),

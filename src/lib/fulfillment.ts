@@ -1,4 +1,4 @@
-import type { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/app/generated/prisma/enums"
+import type { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
 
 export const METHOD_LABELS: Record<ShopFulfillmentMethod, string> = {
 	BULK_TO_HQ: "Bulk ordering to HQ",

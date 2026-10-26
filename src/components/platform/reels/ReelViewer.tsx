@@ -366,7 +366,7 @@ export function ReelViewer() {
 			<section
 				aria-label="Reels"
 				// A reel is portrait, so the column is only ever as wide as a 9:16 card fits in the frame, less the player strip under it. From md the actions hang off its right side, so that much room is kept for them.
-				className="doom-stage relative h-full w-[min(100%,26rem,calc((var(--frame)-4.25rem)*9/16))] shrink-0 md:mr-[4.75rem] md:w-[min(26rem,calc((var(--frame)-4.25rem)*9/16))]"
+				className="doom-stage relative h-full w-[min(100%,26rem,calc((var(--frame)-4.25rem)*9/16))] shrink-0 md:mr-19 md:w-[min(26rem,calc((var(--frame)-4.25rem)*9/16))]"
 				ref={stage}
 			>
 				<div
@@ -405,12 +405,7 @@ export function ReelViewer() {
 						</div>
 					))}
 
-					{/* Only once there is something to be at the end OF. Rendering it
-              while the first page is still in the air is what let the reels
-              arrive above the reader. After that it is always there: the
-              sign-off once the feed has run out, and until then the slot the
-              next page arrives into – anyone who outruns the prefetch lands
-              here, and the next reel slides in where they already are. */}
+					{/* Only once there is something to be at the end OF. Rendering it while the first page is still in the air is what let the reels arrive above the reader. After that it is always there: the sign-off once the feed has run out, and until then the slot the next page arrives into – anyone who outruns the prefetch lands here, and the next reel slides in where they already are. */}
 					{!restoring && (feed.items.length > 0 || !feed.loading) && (
 						<div
 							className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
@@ -454,9 +449,7 @@ export function ReelViewer() {
 					)}
 				</div>
 
-				{/* The browser refused sound on arrival. One tap is the permission it
-            wanted, so the offer is the whole fix. It speaks the way the trail's
-            "Start here" callout does. */}
+				{/* The browser refused sound on arrival. One tap is the permission it wanted, so the offer is the whole fix. It speaks the way the trail's "Start here" callout does. */}
 				{autoMuted && !prefs.muted && current && (
 					<button
 						className="sketch label absolute top-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-navy px-3.5 py-2 whitespace-nowrap text-white transition-transform hover:scale-[1.03] motion-safe:animate-[hl-pop_320ms_cubic-bezier(.16,1,.3,1)]"
@@ -469,14 +462,10 @@ export function ReelViewer() {
 				)}
 
 				{/* ---------- what stays put ---------- */}
-				{/* Hugging the reel rather than the page edge, so the actions read as
-            belonging to it. Over the picture on a phone, where there is no
-            room beside it – white, as on the rail's card. */}
+				{/* Hugging the reel rather than the page edge, so the actions read as belonging to it. Over the picture on a phone, where there is no room beside it – white, as on the rail's card. */}
 				{current && (
-					<div className="absolute right-2.5 bottom-[4.75rem] z-20 flex flex-col items-center md:right-auto md:bottom-[4.25rem] md:left-full md:ml-5">
-						{/* Only where the column is tall enough to hold them above the
-                actions (see .doom-stage); the wheel and the keys still move
-                the reel when it is not. */}
+					<div className="absolute right-2.5 bottom-19 z-20 flex flex-col items-center md:right-auto md:bottom-17 md:left-full md:ml-5">
+						{/* Only where the column is tall enough to hold them above the actions (see .doom-stage); the wheel and the keys still move the reel when it is not. */}
 						<div className="doom-arrows mb-6 hidden flex-col gap-2.5 md:flex">
 							<NavButton disabled={index === 0} label="Previous reel" onClick={() => step(-1)}>
 								<IconChevronUp className="text-xl" />
@@ -533,12 +522,7 @@ export function ReelViewer() {
 
 			{/* ---------- the conversation, beside the reel ---------- */}
 			{commentsBeside && (
-				<Panel
-					as="aside"
-					className="my-3 flex w-[21rem] shrink-0 flex-col bg-paper 2xl:w-[24rem]"
-					radius={18}
-					tone="line"
-				>
+				<Panel as="aside" className="my-3 flex w-84 shrink-0 flex-col bg-paper 2xl:w-96" radius={18} tone="line">
 					<ReelComments
 						className="h-full w-full"
 						onClose={() => setPrefs({ comments: false })}
@@ -566,7 +550,7 @@ export function ReelViewer() {
 					className={cx(
 						"sketch absolute inset-x-0 bottom-0 flex h-[72dvh] flex-col rounded-t-3xl bg-cream",
 						"transition-transform duration-[380ms] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none",
-						"md:inset-x-auto md:right-6 md:bottom-6 md:h-[min(42rem,calc(100dvh-3rem))] md:w-[24rem] md:rounded-3xl",
+						"md:inset-x-auto md:right-6 md:bottom-6 md:h-[min(42rem,calc(100dvh-3rem))] md:w-96 md:rounded-3xl",
 						sheetOpen ? "translate-y-0" : "translate-y-[calc(100%+3rem)]",
 					)}
 					onTransitionEnd={e => {
@@ -626,9 +610,7 @@ function NavButton({
 }
 
 /**
- * One of the reel's actions: an icon in a drawn disc, its count underneath. Pressed, the disc takes the action's own colour – coral for a like, violet
- * for the open conversation. Over the picture on a phone the disc is dropped
- * and the icon carries a shadow instead, so it reads on any frame without boxing off the video.
+ * One of the reel's actions: an icon in a drawn disc, its count underneath. Pressed, the disc takes the action's own colour – coral for a like, violet for the open conversation. Over the picture on a phone the disc is dropped and the icon carries a shadow instead, so it reads on any frame without boxing off the video.
  */
 function Action({
 	label,
@@ -699,8 +681,7 @@ function Action({
 			>
 				{children}
 			</span>
-			{/* The count is text on the same unknown picture, so it gets the same
-          ground on a phone. */}
+			{/* The count is text on the same unknown picture, so it gets the same ground on a phone. */}
 			<span className="label rounded-full bg-black/55 px-1.5 py-px text-white tabular-nums backdrop-blur-sm md:bg-transparent md:px-0 md:py-0 md:text-navy md:backdrop-blur-none">
 				{compact(count)}
 			</span>

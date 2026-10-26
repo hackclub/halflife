@@ -49,9 +49,7 @@ const SHIFT = HEADER.y + HEADER.h - LEAD_WELD.rise + LEAD_WELD.run - LEAD_WELD.d
 /**
  * The plates, and the only place their geometry is written.
  *
- * Every number is the comp's own, and the two offsets that have moved the programme are added here rather than folded into the literals: `STEP_ONE_GROWTH`
- * for the 105 units step 1 grew to hold its heading, which its own height
- * takes and the three below it take as a shift, and `SHIFT` for the room the header and its weld now need above all four. Both were counted into these numbers by hand before, which is why the record of them lived in prose.
+ * Every number is the comp's own, and the two offsets that have moved the programme are added here rather than folded into the literals: `STEP_ONE_GROWTH` for the 105 units step 1 grew to hold its heading, which its own height takes and the three below it take as a shift, and `SHIFT` for the room the header and its weld now need above all four. Both were counted into these numbers by hand before, which is why the record of them lived in prose.
  */
 const PLATES = {
 	build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
@@ -186,11 +184,7 @@ function StepArt({
 			// `position` lives in `style` for the same reason it does on ImageSlot and the week backdrops: the stage passes `absolute` here, where it has to be able to beat the component's own `relative`.
 			style={{ position: "relative", ...style }}
 		>
-			{/* Decorative: each of these sits directly under the heading that says
-          what the step is, and the drawn slot it replaces carried only its own
-          footprint label. If either picture turns out to carry information the
-          heading does not – an order-flow diagram would – it wants real alt
-          text rather than this. */}
+			{/* Decorative: each of these sits directly under the heading that says what the step is, and the drawn slot it replaces carried only its own footprint label. If either picture turns out to carry information the heading does not – an order-flow diagram would – it wants real alt text rather than this. */}
 			<Image alt="" className="object-cover" fill quality={90} sizes={sizes} src={step.art} />
 		</div>
 	)
@@ -245,31 +239,14 @@ export default function Process() {
 	return (
 		<section aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]" id="how-it-works">
 			{/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
-			{/* Every child here is absolutely positioned, so the stage has no
-          intrinsic height and has to be told one – as a ratio of its own
-          width, never as a `cqw` length.
+			{/* Every child here is absolutely positioned, so the stage has no intrinsic height and has to be told one – as a ratio of its own width, never as a `cqw` length.
 
-          `height: u(2474)` looked equivalent and was not. A container query
-          unit resolves against the nearest *ancestor* container, and an element
-          is never its own: `.stage` is the container here, so its own `cqw`
-          height found no eligible ancestor and fell back to the viewport, the
-          spec's last resort. The children, being descendants, did resolve
-          against `.stage` and stopped at its 1180 cap. So the content ended at
-          a flat 1689px while the box claimed 143.17vw, and every pixel past the
-          cap became dead air under step 4 – 372 at 1440, 1060 at 1920, 1976 at
-          2560, growing without limit. (Those are the numbers as they stood;
-          `STAGE_H` has moved twice since, with the artwork.)
+			  `height: u(2474)` looked equivalent and was not. A container query unit resolves against the nearest *ancestor* container, and an element is never its own: `.stage` is the container here, so its own `cqw` height found no eligible ancestor and fell back to the viewport, the spec's last resort. The children, being descendants, did resolve against `.stage` and stopped at its 1180 cap. So the content ended at a flat 1689px while the box claimed 143.17vw, and every pixel past the cap became dead air under step 4 – 372 at 1440, 1060 at 1920, 1976 at 2560, growing without limit. (Those are the numbers as they stood; `STAGE_H` has moved twice since, with the artwork.)
 
-          `aspect-ratio` is self-referential by definition and needs no
-          container, which is why this is written as a ratio and not a length.
-          Height is now `STAGE_H`/1728 of the used width at every
-          size, so it is the flat pixel count the cap was introduced to
-          deliver.
+			  `aspect-ratio` is self-referential by definition and needs no container, which is why this is written as a ratio and not a length. Height is now `STAGE_H`/1728 of the used width at every size, so it is the flat pixel count the cap was introduced to deliver.
 
-          The trailing air below it is the section's `pb-[10vh]`. Viewport
-          height, not the comp grid: this gap is the beat between two sections
-          and what makes it feel long or short is how much screen is left to
-          look at, not how wide the window is. */}
+			  The trailing air below it is the section's `pb-[10vh]`. Viewport height, not the comp grid: this gap is the beat between two sections and what makes it feel long or short is how much screen is left to look at, not how wide the window is.
+			 */}
 			<div
 				className="stage hidden min-[1180px]:block"
 				style={{
@@ -277,13 +254,10 @@ export default function Process() {
 					maxWidth: STAGE_CAP,
 				}}
 			>
-				{/* The section's own heading, and the plate the first weld leaves.
-            First in the stage because it reads first; nothing else is drawn
-            in the 297 units it occupies, so it has no paint order to lose.
+				{/* The section's own heading, and the plate the first weld leaves. First in the stage because it reads first; nothing else is drawn in the 297 units it occupies, so it has no paint order to lose.
 
-            `grid place-items-center` rather than the comp's own offset: the
-            line is a label for the plate, so it is centred by the box and
-            stays centred if the copy changes. */}
+				  `grid place-items-center` rather than the comp's own offset: the line is a label for the plate, so it is centred by the box and stays centred if the copy changes.
+				 */}
 				<h2 className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale" style={plateBox(PLATES.header)}>
 					<span
 						className="whitespace-nowrap font-display font-bold text-hl-ink"
@@ -299,8 +273,7 @@ export default function Process() {
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft" /> */}
 				</h2>
 
-				{/* Decorative, and drawn before the plates so that if a plate is ever
-            resized past one of them the plate wins the overlap. */}
+				{/* Decorative, and drawn before the plates so that if a plate is ever resized past one of them the plate wins the overlap. */}
 				{EXTRAS.map(extra => (
 					<div
 						aria-hidden
@@ -314,35 +287,16 @@ export default function Process() {
 
 				{/* Step 1 – design weeks: a title over one piece of artwork.
 
-            `allweeks.png` is 1920x1080 and gets 975x548 here, 1.7778 against
-            1.7792 – a 0.08% match, which is why it is still `cover`. The five
-            hand-placed pairings, their five screened backdrops and the comp's
-            own week marks are all inside it.
+				  `allweeks.png` is 1920x1080 and gets 975x548 here, 1.7778 against 1.7792 – a 0.08% match, which is why it is still `cover`. The five hand-placed pairings, their five screened backdrops and the comp's own week marks are all inside it.
 
-            The picture had the whole plate for a while and the title was
-            sr-only, and that is the one thing that made this step read as a
-            different object from the three below it: they say what you do and
-            then show it, and this one only showed. The plate is
-            `STEP_ONE_GROWTH` taller so the title can sit where theirs do – top
-            of the plate, 40 units, on the plate's own ground – and the picture
-            keeps every unit of width it had.
+				  The picture had the whole plate for a while and the title was sr-only, and that is the one thing that made this step read as a different object from the three below it: they say what you do and then show it, and this one only showed. The plate is `STEP_ONE_GROWTH` taller so the title can sit where theirs do – top of the plate, 40 units, on the plate's own ground – and the picture keeps every unit of width it had.
 
-            The title is centred where the other three are ranged left, and
-            that is the picture's doing rather than a whim: the five pairings
-            are hand-placed across the full 975 with no left edge to range
-            against, so a left-ranged line would hang off a composition that
-            has no margin. The box is still the family's 68 gutter, taken on
-            both sides – 68 + 839/2 lands on 487.5, the plate's own centre – so
-            the line is centred by the box rather than by an offset that has to
-            be re-derived if the copy changes. 38 from the top is step 2's.
+				  The title is centred where the other three are ranged left, and that is the picture's doing rather than a whim: the five pairings are hand-placed across the full 975 with no left edge to range against, so a left-ranged line would hang off a composition that has no margin. The box is still the family's 68 gutter, taken on both sides – 68 + 839/2 lands on 487.5, the plate's own centre – so the line is centred by the box rather than by an offset that has to be re-derived if the copy changes. 38 from the top is step 2's.
 
-            The picture starts at 92 instead of the family's ~109 because it
-            brings 30 units of its own transparent margin with it, so first ink
-            lands 40 below the title either way.
+				  The picture starts at 92 instead of the family's ~109 because it brings 30 units of its own transparent margin with it, so first ink lands 40 below the title either way.
 
-            The five weeks stay in the document under it. A picture that
-            replaces text has to hand that text back or the page has quietly
-            lost it, and `WeekList` carries the subjects and their numbers. */}
+				  The five weeks stay in the document under it. A picture that replaces text has to hand that text back or the page has quietly lost it, and `WeekList` carries the subjects and their numbers.
+				 */}
 				<div
 					className="absolute overflow-hidden rounded-xl bg-hl-lavender-pale text-hl-ink"
 					style={plateBox(PLATES.design)}
@@ -440,8 +394,7 @@ export default function Process() {
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" /> */}
 				</div>
 
-				{/* Asides – small plates orbiting the band. Only where they sit
-            differs; the plate itself is the same object twice. */}
+				{/* Asides – small plates orbiting the band. Only where they sit differs; the plate itself is the same object twice. */}
 				<Aside aside={viral} origin={[1114, 1636 + SHIFT]} />
 				<Aside aside={community} origin={[59, 2367 + SHIFT]} />
 
@@ -458,9 +411,7 @@ export default function Process() {
 							style={box(b.x, b.y, b.w, b.h)}
 							viewBox={`0 0 ${b.w} ${b.h}`}
 						>
-							{/* The bands are the plates' own material, not a rule drawn
-                  between them – they ride over the plates they join, so a band
-                  in any other colour reads as a weld in a second metal. */}
+							{/* The bands are the plates' own material, not a rule drawn between them – they ride over the plates they join, so a band in any other colour reads as a weld in a second metal. */}
 							<path d={b.d} fill="var(--color-hl-lavender-pale)" />
 						</svg>
 					)
@@ -468,22 +419,13 @@ export default function Process() {
 			</div>
 
 			{/* ── Stacked layout, below 1180px ───────────────────────────────── */}
-			{/* `pt-8` on a phone, where the hero above is content-sized and ends on
-          its scroll cue: the full 80 on top of the cue's own room read as the
-          two sections having nothing to do with each other. */}
+			{/* `pt-8` on a phone, where the hero above is content-sized and ends on its scroll cue: the full 80 on top of the cue's own room read as the two sections having nothing to do with each other. */}
 			<div className="px-4 pt-8 pb-24 sm:px-8 sm:pt-20 min-[1180px]:hidden">
 				<div className="mx-auto flex max-w-2xl flex-col">
-					{/* The header, and the weld that leaves it – the same two objects
-              the stage opens with, and for the same reason: this is where the
-              drawing starts, so this is where the line starts.
+					{/* The header, and the weld that leaves it – the same two objects the stage opens with, and for the same reason: this is where the drawing starts, so this is where the line starts.
 
-              `w-fit` is load-bearing. The plate is as wide as its own line
-              rather than the column, so the weld below it is offset by a share
-              of *the plate* – `StackWeld`'s `anchor` – and cannot wander off the
-              edge of it as the copy or the type size changes. The plate keeps
-              its left rank; the four below it are full-width, which is what
-              makes this one read as their heading rather than as a fifth
-              step. */}
+					  `w-fit` is load-bearing. The plate is as wide as its own line rather than the column, so the weld below it is offset by a share of *the plate* – `StackWeld`'s `anchor` – and cannot wander off the edge of it as the copy or the type size changes. The plate keeps its left rank; the four below it are full-width, which is what makes this one read as their heading rather than as a fifth step.
+					 */}
 					<div className="flex w-fit flex-col">
 						<h2
 							className="rounded-xl bg-hl-lavender-pale px-5 py-3 font-display font-bold text-balance text-hl-ink sm:px-8 sm:py-4"
@@ -506,12 +448,7 @@ export default function Process() {
 					<ol className="flex flex-col">
 						<li>
 							<Plate>
-								{/* Centred here for the same reason as on the stage: the
-                  picture below runs the plate's full width and places its five
-                  pairings across all of it, so the title belongs over the
-                  middle of it rather than ranged against an edge the drawing
-                  does not have. Steps 2-4 keep their left rank – their
-                  pictures are single objects sitting inside the plate. */}
+								{/* Centred here for the same reason as on the stage: the picture below runs the plate's full width and places its five pairings across all of it, so the title belongs over the middle of it rather than ranged against an edge the drawing does not have. Steps 2-4 keep their left rank – their pictures are single objects sitting inside the plate. */}
 								<h3 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">{design.title}</h3>
 								{design.art ? (
 									<div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
@@ -560,14 +497,9 @@ export default function Process() {
 
 					{/* The asides, after the line rather than inside it.
 
-              `viral` used to sit between steps 3 and 4, which left the third
-              weld running from *it* into step 4 – the one place either layout
-              said an aside was part of the programme. On the stage they orbit
-              the line and no weld touches them; down here they follow it. */}
-					{/* `gap-8` against the plates' own `py-7`: two plates of the same
-              colour separated by less than their own padding read as one
-              object with a seam. 32 outside, 28 inside. The `pt-10` above the
-              pair is the generous break that takes them off the line. */}
+					  `viral` used to sit between steps 3 and 4, which left the third weld running from *it* into step 4 – the one place either layout said an aside was part of the programme. On the stage they orbit the line and no weld touches them; down here they follow it.
+					 */}
+					{/* `gap-8` against the plates' own `py-7`: two plates of the same colour separated by less than their own padding read as one object with a seam. 32 outside, 28 inside. The `pt-10` above the pair is the generous break that takes them off the line. */}
 					<div className="flex flex-col gap-8 pt-10">
 						<Aside aside={viral} stacked />
 						<Aside aside={community} stacked />
@@ -643,7 +575,9 @@ const ASIDE = {
 	padY: 30,
 	titleSize: 30.833,
 	/** The comp's plate. Height is a floor, not a fixed size, so a title that
-	 *  wraps lengthens the plate instead of crushing the gap below it. */
+	 *
+	 * *  wraps lengthens the plate instead of crushing the gap below it.
+	 */
 	w: 555,
 } as const
 

@@ -40,7 +40,7 @@ export interface CursorOrder {
  *
  * `TModel` is the model the list reads, so the column has to be one of its own. A column that does not exist would otherwise only be found when the query runs.
  */
-export interface CursorOrderOf<T, TModel = Record<string, string>> extends Omit<CursorOrder, "column"> {
+export interface CursorOrderOf<T, TModel = { [_: string]: string }> extends Omit<CursorOrder, "column"> {
 	/** The row's value of the leading column - the first half of the cursor. */
 	at(row: T): Date | null
 	/** The leading order column. */
@@ -130,11 +130,7 @@ export function positionWhere<TWhere extends object>(
 ): TWhere {
 	if (!position) return base
 	const after = order.direction === "asc" ? "gt" : "lt"
-	// A row whose leading value is null. Where those sit in the order depends on the
-	// direction, because Postgres puts nulls last for an ascending order and first for
-	// a descending one. A descending page therefore reaches a null row before every
-	// dated row, so the rows after it are the rest of the nulls AND every dated row;
-	// an ascending page reaches it after them all, so only the rest of the nulls follow.
+	// A row whose leading value is null. Where those sit in the order depends on the direction, because Postgres puts nulls last for an ascending order and first for a descending one. A descending page therefore reaches a null row before every dated row, so the rows after it are the rest of the nulls AND every dated row; an ascending page reaches it after them all, so only the rest of the nulls follow.
 	if (position.at === null) {
 		const dated = order.direction === "desc" ? { [order.column]: { not: null } } : null
 		return {

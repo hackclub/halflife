@@ -1,5 +1,5 @@
-import "dotenv/config"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
+import { containsPattern } from "../src/lib/text"
 import { listUploadedObjects } from "../src/lib/uploads/r2"
 
 /**
@@ -10,6 +10,7 @@ import { listUploadedObjects } from "../src/lib/uploads/r2"
  * A blind rewrite is wrong here, which is why this asks the bucket. Two key layouts are in circulation:
  *
  * - Objects written while the S3 endpoint still carried the bucket name landed at `<bucket>/<key>`, and their public URL is `<origin>/<bucket>/<key>`.
+ *
  * - Objects written after that was fixed land at `<key>`, and their public URL is `<origin>/<key>`.
  *
  * Both URLs are correct for their own object, so a row may hold either and only the bucket can say which one is real. For each URL on the public origin, this checks the key it names; if that object is missing, it checks the other layout and repoints the URL when the bytes are there. A URL whose object is in neither place is reported and left alone, because a guess would only trade one broken image for another.
@@ -22,8 +23,7 @@ import { listUploadedObjects } from "../src/lib/uploads/r2"
  *
  * Read-only unless `--commit` is passed. Safe to run again: a row with every URL already correct changes nothing.
  *
- * Run `pnpm verify:uploads` first, so the base is known to serve the bucket. Then:
- * `pnpm uploads:backfill-urls` (dry run), and `pnpm uploads:backfill-urls -- --commit` to write.
+ * Run `pnpm verify:uploads` first, so the base is known to serve the bucket. Then: `pnpm uploads:backfill-urls` (dry run), and `pnpm uploads:backfill-urls -- --commit` to write.
  *
  * A project that mirrors into GitHub keeps the old links in `JOURNAL.md` until that project's next sync; the projects this run changed are listed at the end.
  */
@@ -113,15 +113,10 @@ async function main() {
 	console.log(`${existing.size} objects in the bucket`)
 
 	console.log("reading journal entries…")
-	const rows = await prisma.workSession.findMany({
-		orderBy: { createdAt: "asc" },
-		select: {
-			content: true,
-			id: true,
-			themeProjectId: true,
-		},
-		where: { content: { contains: base.origin } },
-	})
+	const rows = await db.orm.public.WorkSession.where(session => session.content.ilike(containsPattern(base.origin)))
+		.orderBy(session => session.createdAt.asc())
+		.select("content", "id", "themeProjectId")
+		.all()
 	console.log(`${rows.length} journal entries mention ${base.origin}`)
 
 	const resolved = new Map<string, Resolution>()
@@ -144,10 +139,9 @@ async function main() {
 	const projects = new Map<string, { repoSyncEnabled: boolean; title: string }>()
 	if (plan.length > 0) {
 		const ids = [...new Set(plan.map(row => row.projectId))]
-		const found = await prisma.themeProject.findMany({
-			select: { id: true, repoSyncEnabled: true, title: true },
-			where: { id: { in: ids } },
-		})
+		const found = await db.orm.public.ThemeProject.where(project => project.id.in(ids))
+			.select("id", "repoSyncEnabled", "title")
+			.all()
 		for (const project of found) projects.set(project.id, project)
 	}
 	const titleFor = (projectId: string): string => projects.get(projectId)?.title || "(untitled)"
@@ -186,7 +180,7 @@ async function main() {
 
 	let written = 0
 	for (const row of plan) {
-		await prisma.workSession.update({ data: { content: row.content }, where: { id: row.id } })
+		await db.orm.public.WorkSession.where({ id: row.id }).update({ content: row.content })
 		written += 1
 	}
 	console.log(`updated ${plural(written, "journal entry", "journal entries")}`)
@@ -216,5 +210,5 @@ try {
 	console.error(err)
 	process.exit(1)
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

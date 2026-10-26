@@ -6,15 +6,18 @@ import { BlockList, isIP } from "node:net"
 import { HttpError } from "@/lib/errors"
 
 /**
- * Fetch an image from somewhere else on the web, so it can be re-hosted in the bucket. This is what an image dragged in from another page arrives as: its address, not its bytes, and the browser cannot read another site's image
- * for us.
+ * Fetch an image from somewhere else on the web, so it can be re-hosted in the bucket. This is what an image dragged in from another page arrives as: its address, not its bytes, and the browser cannot read another site's image for us.
  *
  * The server fetching a URL a user chose is the textbook way in to its private network, so everything here is about refusing that:
  *
  * - http and https on their standard ports only;
+ *
  * - no private, loopback, link-local or otherwise reserved address, checked in the DNS lookup the connection itself uses – so a name that resolves to a public address when asked and a private one when connected ("DNS rebinding") still cannot get through – and for IP literals, which skip the lookup entirely;
+ *
  * - every redirect is checked the same way, and there are at most three;
+ *
  * - a time limit on the whole thing, and a byte cap that stops reading;
+ *
  * - and the bytes must actually be a PNG, JPEG, GIF or WebP, whatever the Content-Type says. SVG is refused: it can carry script.
  */
 

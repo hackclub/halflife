@@ -1,6 +1,6 @@
 import { after, NextResponse } from "next/server"
-import { Prisma } from "@/app/generated/prisma/client"
-import prisma from "@/lib/prisma"
+import { readBoundedText } from "@/lib/api"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import {
 	addReaction,
 	getBotUserId,
@@ -38,9 +38,10 @@ interface SlackEvent {
 	user?: string
 }
 
-/** New top-level message in #half-life-help – post it to the private
- * tickets channel with a "Mark as helped" button, reply in-thread with an "I'm all set" button the ticket's own author can use to self-resolve, and drop the pending reaction on the original so the channel shows at a glance that it's still waiting. Thread replies and anything from a bot (including our own acks) are
- * conversation on an existing ticket, not a new one. A message that shares a file (e.g. a photo of a build) arrives with subtype `file_share`, so that one still opens a ticket – every other subtype (edits, deletes, joins, broadcasts) does not. */
+/** New top-level message in #half-life-help – post it to the private tickets channel with a "Mark as helped" button, reply in-thread with an "I'm all set" button the ticket's own author can use to self-resolve, and drop the pending reaction on the original so the channel shows at a glance that it's still waiting. Thread replies and anything from a bot (including our own acks) are
+ *
+ * * conversation on an existing ticket, not a new one. A message that shares a file (e.g. a photo of a build) arrives with subtype `file_share`, so that one still opens a ticket – every other subtype (edits, deletes, joins, broadcasts) does not.
+ */
 async function handleHelpMessage(event: SlackEvent) {
 	const ticketsChannel = process.env.SLACK_TICKETS_CHANNEL_ID
 	if (!ticketsChannel) return
@@ -162,9 +163,10 @@ async function handleHelpMessage(event: SlackEvent) {
 	})
 }
 
-/** Someone joined the main channel – pull them into the rest of the Half
- * Life channels too. Skips the bot's own membership changes so wiring the
- * bot into the main channel doesn't loop back into inviting itself. */
+/** Someone joined the main channel – pull them into the rest of the Half Life channels too. Skips the bot's own membership changes so wiring the
+ *
+ * * bot into the main channel doesn't loop back into inviting itself.
+ */
 async function handleMainChannelJoin(event: SlackEvent) {
 	const mainChannel = process.env.SLACK_MAIN_CHANNEL_ID
 	const joined = event.user
@@ -199,10 +201,10 @@ async function claimDelivery(
 ): Promise<boolean> {
 	if (!eventId) return true
 	try {
-		await prisma.slackEventDelivery.create({ data: { event: eventType, eventId, teamId: teamId ?? null } })
+		await db.orm.public.SlackEventDelivery.create({ event: eventType, eventId, teamId: teamId ?? null })
 		return true
 	} catch (err) {
-		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return false
+		if (isUniqueViolation(err)) return false
 		// The table is unreachable, so the delivery cannot be recorded and a replay could not be told apart from the original. The work still runs: a member waiting to be invited is worse than the rare duplicate, and the failure is logged.
 		console.error(`[slack] could not record the delivery ${eventId}:`, err)
 		return true
@@ -210,7 +212,9 @@ async function claimDelivery(
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-	const rawBody = await request.text()
+	// Bounded before verification: an unsigned caller must not decide how much memory the HMAC read may spend.
+	const rawBody = await readBoundedText(request)
+	if (rawBody === null) return NextResponse.json({ ok: false }, { status: 413 })
 
 	const verified = verifySlackRequest(
 		rawBody,

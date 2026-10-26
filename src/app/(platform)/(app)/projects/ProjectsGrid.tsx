@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import type { PhaseStatus } from "@/app/generated/prisma/enums"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
@@ -9,6 +8,7 @@ import { RepoEditor } from "@/components/platform/RepoField"
 import { Chip, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { cx } from "@/lib/cx"
+import type { PhaseStatus } from "@/lib/enums"
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewTone } from "@/lib/review-state"
 import { PLATFORM_HOME } from "@/lib/routes"
@@ -120,8 +120,7 @@ export function ProjectsGrid() {
 										{project.description}
 									</span>
 
-									{/* Only the phases that have left draft: a fresh project's
-                      card stays quiet. */}
+									{/* Only the phases that have left draft: a fresh project's card stays quiet. */}
 									{(project.designStatus !== "draft" || project.buildStatus !== "draft") && (
 										<span className="mt-2 flex flex-wrap gap-1.5">
 											{project.designStatus !== "draft" && <PhaseChip phase="Design" status={project.designStatus} />}
@@ -129,9 +128,7 @@ export function ProjectsGrid() {
 										</span>
 									)}
 
-									{/* Warm-up projects were never walked on the trail, so the
-                      checkpoint-derived stats would read zero. The project
-                      page has the real record; the card stays quiet. */}
+									{/* Warm-up projects were never walked on the trail, so the checkpoint-derived stats would read zero. The project page has the real record; the card stays quiet. */}
 									{!warmup && (
 										<span className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-3.5">
 											<span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
@@ -150,9 +147,7 @@ export function ProjectsGrid() {
 									)}
 								</span>
 							</Link>
-							{/* Outside the card's link, so editing the repo is not a click
-                  through to the project page and the link inside it is not a
-                  link nested in a link. */}
+							{/* Outside the card's link, so editing the repo is not a click through to the project page and the link inside it is not a link nested in a link. */}
 							<RepoEditor className="border-t border-line/70 px-4 py-2.5" project={project} />
 						</Panel>
 					)

@@ -39,11 +39,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 
 	return (
 		<>
-			{/* `grid-cols-1` rather than a bare grid: the implicit `auto` track takes
-          each section's max-content, and a reel row's two nowrap buttons ask for
-          more than a phone has – which pushed the whole page wider than the
-          viewport. Tailwind's `grid-cols-1` is `minmax(0, 1fr)`, so the track is
-          the column and the row wraps instead. */}
+			{/* `grid-cols-1` rather than a bare grid: the implicit `auto` track takes each section's max-content, and a reel row's two nowrap buttons ask for more than a phone has – which pushed the whole page wider than the viewport. Tailwind's `grid-cols-1` is `minmax(0, 1fr)`, so the track is the column and the row wraps instead. */}
 			<div className="grid grid-cols-1 gap-8">
 				{groups.map(group => (
 					<section aria-labelledby={`reels-${group.project?.id ?? "none"}`} key={group.project?.id ?? "none"}>
@@ -128,9 +124,8 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd(): void; onCh
 
 	return (
 		<Panel as="li" className="flex gap-4 bg-paper p-3.5 sm:gap-5 sm:p-4" radius={18} tone="line">
-			{/* The reel itself, small and playable. Metadata only until played, so
-          a page of reels is not a page of downloads. */}
-			<div className="w-[84px] shrink-0 sm:w-[96px]">
+			{/* The reel itself, small and playable. Metadata only until played, so a page of reels is not a page of downloads. */}
+			<div className="w-21 shrink-0 sm:w-24">
 				<div className="relative overflow-hidden rounded-xl bg-navy" style={{ aspectRatio: "9 / 16" }}>
 					{reel.videoUrl ? (
 						// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.

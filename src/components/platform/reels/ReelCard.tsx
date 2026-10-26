@@ -200,11 +200,7 @@ export function ReelCard({
 
 	return (
 		<article className={cx("relative w-full overflow-hidden rounded-xl", className)} ref={card}>
-			{/* Nothing generates thumbnails yet, so most reels have no poster, and
-          with `preload="none"` that left a blank box with a play button on
-          it. Without a poster the card fetches only the metadata and asks for
-          the frame at 0.1s – the clip's own first frame, for a few kilobytes,
-          rather than the whole video for every card in the feed. */}
+			{/* Nothing generates thumbnails yet, so most reels have no poster, and with `preload="none"` that left a blank box with a play button on it. Without a poster the card fetches only the metadata and asks for the frame at 0.1s – the clip's own first frame, for a few kilobytes, rather than the whole video for every card in the feed. */}
 			{reel.videoUrl ? (
 				// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 				<video
@@ -328,8 +324,7 @@ export function ReelCard({
 								{compact(reel.viewCount)}
 							</span>
 						</span>
-						{/* No button on your own reel: the route rejects self-reports,
-						    so showing one would only ever end in an error. */}
+						{/* No button on your own reel: the route rejects self-reports, so showing one would only ever end in an error. */}
 						{reel.author.id !== viewer.id && (
 							<ReportButton
 								context={reel.caption || undefined}

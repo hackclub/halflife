@@ -1,10 +1,11 @@
-import { ok, parseBody } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { programSettingsSchema } from "@/lib/schemas/admin"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -18,10 +19,24 @@ export const PATCH = withPermission(Permission.MANAGE_PROGRAM, async (req: Reque
 	if (parsed.error) return parsed.error
 
 	const before = await getProgramSettings()
-	const settings = await prisma.programSettings.update({
-		data: { ...parsed.data, updatedById: gate.user.id },
-		where: { id: "singleton" },
+	const { eventStartDate, shopClosesAt, submissionsCloseAt, ...rest } = parsed.data
+	const row = await db.orm.public.ProgramSettings.where({ id: "singleton" }).update({
+		...rest,
+		...(eventStartDate !== undefined ? { eventStartDate: formatDbTimestamp(eventStartDate) } : {}),
+		...(shopClosesAt !== undefined ? { shopClosesAt: shopClosesAt ? formatDbTimestamp(shopClosesAt) : null } : {}),
+		...(submissionsCloseAt !== undefined
+			? { submissionsCloseAt: submissionsCloseAt ? formatDbTimestamp(submissionsCloseAt) : null }
+			: {}),
+		updatedById: gate.user.id,
 	})
+	if (!row) return fail("NOT_FOUND", "Settings not found")
+	const iso = (value: string | null): string | null => (value === null ? null : parseDbTimestamp(value).toISOString())
+	const settings = {
+		...row,
+		eventStartDate: parseDbTimestamp(row.eventStartDate).toISOString(),
+		shopClosesAt: iso(row.shopClosesAt),
+		submissionsCloseAt: iso(row.submissionsCloseAt),
+	}
 
 	await logAudit({
 		action: AuditAction.ADMIN_UPDATE_PROGRAM_SETTINGS,
@@ -30,7 +45,7 @@ export const PATCH = withPermission(Permission.MANAGE_PROGRAM, async (req: Reque
 		metadata: {
 			after: {
 				airtableSyncEnabled: settings.airtableSyncEnabled,
-				eventStartDate: settings.eventStartDate.toISOString(),
+				eventStartDate: settings.eventStartDate,
 				repoSyncEnabled: settings.repoSyncEnabled,
 				shopOpen: settings.shopOpen,
 				submissionsOpen: settings.submissionsOpen,

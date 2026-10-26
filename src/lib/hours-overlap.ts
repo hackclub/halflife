@@ -6,6 +6,7 @@
  * The two tools each know what the other did, which is what makes this exact rather than a guess:
  *
  * - Lapse reports when a recording started and how long it ran, so a timelapse is a real wall-clock WINDOW, not just a duration.
+ *
  * - Hackatime reports the project's tracked INTERVALS, so a link is a set of windows rather than one opaque number.
  *
  * The overlap of those two sets of windows is the double-counted time. Whatever the two buckets report beyond it is genuinely distinct work and is left alone.
@@ -162,6 +163,7 @@ export interface RecordedWindow {
  * Two sets, and both are needed:
  *
  * - The recordings beside the link in its own (project, phase), taken whatever Hackatime project they name: the span intersection below decides whether they overlap, exactly as it always has, and legacy rows carry no project name to match on.
+ *
  * - This maker's recordings ELSEWHERE that name this project. Without this set a sitting journalled in one week and tracked against a link in another was paid for on both sides: the recording was never compared to the link it was made under, because the two live on different rows.
  *
  * A recording that names a different project is deliberately left out of the second set. It may still intersect this link's spans by coincidence, but the maker told us which project was being tracked while it ran, and subtracting against the wrong one is an underpayment dressed up as deduplication.

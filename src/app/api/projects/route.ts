@@ -1,13 +1,16 @@
+import { and } from "@prisma/orm-postgres/orm-client"
 import { z } from "zod"
-import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody } from "@/lib/api"
 import { getThemeDef, themeForDesignWeek } from "@/lib/config/program"
+import { HoursSource, Phase } from "@/lib/enums"
 import { withSession } from "@/lib/guards"
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { assertWeekStarted } from "@/lib/program"
 import { ensureThemeProject } from "@/lib/provisioning"
+import { withFields } from "@/lib/rows"
+import { parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -15,44 +18,42 @@ export const GET = withSession(async (_req: Request, { gate }) => {
 	// The rows behind every project's hours, loaded once for the whole list.
 	//
 	// This used to ask `getHoursBreakdown` for each project and phase, which is three queries each – six per project, on a page that shows every project the maker has. `rollUpHours` is the summation half of that breakdown, separated so a caller holding the rows in bulk can apply the same rules without the extra round trips.
-	const [projects, sessions, links] = await Promise.all([
-		prisma.themeProject.findMany({
-			select: {
-				approvedHours: true,
-				buildStatus: true,
-				designApprovedHours: true,
-				designStatus: true,
-				grantUsd: true,
-				id: true,
-				theme: true,
-				tier: true,
-				title: true,
-			},
-			where: { deletedAt: null, userId: gate.user.id },
-		}),
-		prisma.workSession.findMany({
-			select: {
-				hoursApproved: true,
-				hoursClaimed: true,
-				hoursSource: true,
-				phase: true,
-				themeProjectId: true,
-				timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
-			},
-			where: { deletedAt: null, themeProject: { deletedAt: null, userId: gate.user.id } },
-		}),
-		prisma.hackatimeLink.findMany({
-			select: {
-				cachedSeconds: true,
-				cachedSpans: true,
-				hackatimeProject: true,
-				hoursApproved: true,
-				phase: true,
-				themeProjectId: true,
-			},
-			where: { themeProject: { deletedAt: null, userId: gate.user.id } },
-		}),
+	const [projects, sessionRows, links] = await Promise.all([
+		db.orm.public.ThemeProject.where({ deletedAt: null, userId: gate.user.id })
+			.select(
+				"approvedHours",
+				"buildStatus",
+				"designApprovedHours",
+				"designStatus",
+				"grantUsd",
+				"id",
+				"theme",
+				"tier",
+				"title",
+			)
+			.all(),
+		db.orm.public.WorkSession.where({ deletedAt: null })
+			.where(session =>
+				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(gate.user.id))),
+			)
+			.select("hoursApproved", "hoursClaimed", "hoursSource", "phase", "themeProjectId")
+			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
+			.all(),
+		db.orm.public.HackatimeLink.where(link =>
+			link.themeProject.some(project => project.deletedAt.isNull() && project.userId.eq(gate.user.id)),
+		)
+			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase", "themeProjectId")
+			.all(),
 	])
+	const sessions = sessionRows.map(session =>
+		withFields(session, {
+			timelapses: session.timelapses.map(timelapse =>
+				withFields(timelapse, {
+					recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+				}),
+			),
+		}),
+	)
 
 	// Every recording this maker has, whatever project or phase it was attached to. A link finds the ones made under its own project by the name the recording carried, which is how a clip journalled in one week is deduplicated against a link in another.
 	const recordings: RecordedWindow[] = sessions.flatMap(s =>

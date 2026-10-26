@@ -156,13 +156,9 @@ export { COINS_PER_HOUR } from "./program"
 /**
  * Where a printer is paid out as a grant instead of being shipped.
  *
- * Egypt is the one so far: a 3D printer is notoriously expensive to buy there and worse to send, so the award becomes
- * a grant of the printer's value rather than a delivery. The grant may not stretch to the exact model we would have
- * shipped, so the machine a maker ends up with can differ from the one on their goal.
+ * Egypt is the one so far: a 3D printer is notoriously expensive to buy there and worse to send, so the award becomes a grant of the printer's value rather than a delivery. The grant may not stretch to the exact model we would have shipped, so the machine a maker ends up with can differ from the one on their goal.
  *
- * Keyed by the country name `countryOfTimezone` reports (see lib/regions), because an account's timezone is the only
- * per-user geography with real coverage – it is what the admin overview's country breakdown reads too. Adding a
- * country here is the whole change: the shop's notice follows from it.
+ * Keyed by the country name `countryOfTimezone` reports (see lib/regions), because an account's timezone is the only per-user geography with real coverage – it is what the admin overview's country breakdown reads too. Adding a country here is the whole change: the shop's notice follows from it.
  */
 export const PRINTER_GRANT_COUNTRIES: readonly string[] = ["Egypt"]
 
@@ -174,8 +170,7 @@ export function printerComesAsGrant(country: string): boolean {
 /**
  * What a maker in one of those countries reads in the shop.
  *
- * Answers all three things the notice has to: why (printers are expensive there), what changes (a grant, not a
- * delivery), and the consequence they need to plan around (it may not buy the exact model).
+ * Answers all three things the notice has to: why (printers are expensive there), what changes (a grant, not a delivery), and the consequence they need to plan around (it may not buy the exact model).
  */
 export const PRINTER_GRANT_NOTICE =
 	"3D printers are notoriously expensive in Egypt, so if you earn one we'll give you its value as a grant instead of delivering it. The grant may not stretch to the exact printer we'd have shipped, so you may not be able to get that specific model for the money."
@@ -236,10 +231,7 @@ export function printerById(id: string): PrinterGoal {
 /**
  * Design weeks of earning still to do, at the pace that goal assumes.
  *
- * Only the design weeks are a variable. The build weeks earn BUILD_WEEK_COINS
- * for every maker on every goal, so that much of the price is already spoken
- * for and pacing it against the design rate would invent weeks – enough of
- * them to run past the end of a season that is only SEASON_WEEKS long.
+ * Only the design weeks are a variable. The build weeks earn BUILD_WEEK_COINS for every maker on every goal, so that much of the price is already spoken for and pacing it against the design rate would invent weeks – enough of them to run past the end of a season that is only SEASON_WEEKS long.
  */
 export function weeksToGo(goal: PrinterGoal, coins: number): number {
 	const fromDesign = Math.max(0, goal.coins - coins - BUILD_WEEK_COINS)

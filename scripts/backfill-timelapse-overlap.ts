@@ -1,8 +1,8 @@
-import "dotenv/config"
-import type { Phase } from "../src/app/generated/prisma/enums"
+import type { Phase } from "../src/lib/enums"
 import { refreshOverlapSpans } from "../src/lib/hours"
 import { lapseCredentials, verifyOwnTimelapses } from "../src/lib/lapse"
-import prisma from "../src/lib/prisma"
+import db from "../src/lib/prisma8"
+import { formatDbTimestamp } from "../src/lib/time"
 
 /**
  * Fill in the two facts a timelapse row cannot be deduplicated without: WHEN the recording was made, and which Hackatime project Lapse saw while it ran.
@@ -21,15 +21,15 @@ const PACE_MS = 250
 
 async function main() {
 	// One recording per row, grouped by owner so a lapsed token is discovered once instead of once per clip.
-	const rows = await prisma.sessionTimelapse.findMany({
-		orderBy: { id: "asc" },
-		select: {
-			externalId: true,
-			id: true,
-			workSession: { select: { phase: true, themeProject: { select: { userId: true } }, themeProjectId: true } },
-		},
-		where: { externalId: { not: null }, provider: "lapse", recordedAt: null, workSession: { deletedAt: null } },
-	})
+	const rows = await db.orm.public.SessionTimelapse.where({ provider: "lapse", recordedAt: null })
+		.where(timelapse => timelapse.externalId.isNotNull())
+		.where(timelapse => timelapse.workSession.some(session => session.deletedAt.isNull()))
+		.orderBy(timelapse => timelapse.id.asc())
+		.select("externalId", "id")
+		.include("workSession", session =>
+			session.select("phase", "themeProjectId").include("themeProject", project => project.select("userId")),
+		)
+		.all()
 	if (rows.length === 0) {
 		console.log("every Lapse timelapse already records when it was made")
 		return
@@ -37,9 +37,11 @@ async function main() {
 
 	const byUser = new Map<string, typeof rows>()
 	for (const row of rows) {
-		const list = byUser.get(row.workSession.themeProject.userId) ?? []
+		const project = row.workSession?.themeProject
+		if (!project) continue
+		const list = byUser.get(project.userId) ?? []
 		list.push(row)
-		byUser.set(row.workSession.themeProject.userId, list)
+		byUser.set(project.userId, list)
 	}
 
 	const started = Date.now()
@@ -64,9 +66,9 @@ async function main() {
 				// The same ownership and processing checks the attach path makes, so a backfill can never attach facts to a recording the platform would refuse today.
 				const [timelapse] = await verifyOwnTimelapses(userId, [lapseId])
 				if (!timelapse) continue
-				await prisma.sessionTimelapse.update({
-					data: { hackatimeProject: timelapse.hackatimeProject, recordedAt: new Date(timelapse.createdAt) },
-					where: { id: row.id },
+				await db.orm.public.SessionTimelapse.where({ id: row.id }).update({
+					hackatimeProject: timelapse.hackatimeProject,
+					recordedAt: formatDbTimestamp(new Date(timelapse.createdAt)),
 				})
 				filled += 1
 			} catch {
@@ -79,11 +81,14 @@ async function main() {
 
 	// Warm the cached spans for every phase that just gained a window, so the review screen shows the deduplicated total rather than discovering the overlap at approval time.
 	const phases = new Map<string, { themeProjectId: string; phase: Phase }>()
-	for (const row of rows)
-		phases.set(`${row.workSession.themeProjectId}:${row.workSession.phase}`, {
-			phase: row.workSession.phase,
-			themeProjectId: row.workSession.themeProjectId,
+	for (const row of rows) {
+		const session = row.workSession
+		if (!session) continue
+		phases.set(`${session.themeProjectId}:${session.phase}`, {
+			phase: session.phase,
+			themeProjectId: session.themeProjectId,
 		})
+	}
 
 	for (const target of phases.values()) await refreshOverlapSpans(target.themeProjectId, target.phase)
 
@@ -102,5 +107,5 @@ try {
 	console.error(err)
 	process.exit(1)
 } finally {
-	await prisma.$disconnect()
+	await db.close()
 }

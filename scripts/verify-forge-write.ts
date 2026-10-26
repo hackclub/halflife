@@ -1,4 +1,3 @@
-import "dotenv/config"
 import { HttpError } from "../src/lib/errors"
 import { FORGES } from "../src/lib/forge"
 import { commitFiles, defaultBranchOf } from "../src/lib/forge-write"

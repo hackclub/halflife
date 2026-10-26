@@ -23,10 +23,7 @@ interface Props {
 /**
  * The badge tone for each level.
  *
- * Only `full` gets a colour of its own. The other three are deliberately quiet: the
- * point of the column is to find the accounts that can hand out every other
- * permission, and a directory where every row is coloured says nothing about which
- * one matters.
+ * Only `full` gets a colour of its own. The other three are deliberately quiet: the point of the column is to find the accounts that can hand out every other permission, and a directory where every row is coloured says nothing about which one matters.
  */
 const LEVEL_TONES = {
 	full: "access",

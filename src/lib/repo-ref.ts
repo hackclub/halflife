@@ -7,6 +7,7 @@ import { type Forge, forgeFromRepoUrlOrNull } from "@/lib/forge"
  * This replaces what used to be `parseGitHubRepo`. Two things made a rewrite better than a second branch:
  *
  * - **Nested groups.** GitLab allows `gitlab.com/group/subgroup/repo`, so a repo is not always two path segments and "owner" is not always one. The path to the repo is kept whole as `ownerPath`; `owner` is only the last segment, for the places (a display name, a fallback label) that want one.
+ *
  * - **Bare slugs.** The sync's pinned target was once `owner/name` with no host. Those still parse – against a named forge, since a host-less slug cannot say which one it means – and the caller supplies the forge it must have come from. See `parseRepoRef(value, { forge })`.
  */
 export interface RepoRef {

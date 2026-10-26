@@ -13,6 +13,7 @@ import { COUNTDOWN_UNITS, countdownParts, pad2 } from "@/lib/site/countdown"
  * Two things it has to get right, and both are about the server/client seam:
  *
  * - **No hydration mismatch.** The server renders the placeholder and the browser hydrates later; a live figure on the server would disagree and React would rewrite the markup on every load. The stable placeholder (unit labels with `--`) is what both the server and the client's first paint show, and the ticking figure appears only once mounted, in an effect. Before the first answer the plate keeps its height, so nothing under it moves when the number lands.
+ *
  * - **Ends cleanly.** At zero the countdown stops and the plate names the week that opened, so it never counts into the negative; once the last week has passed it says the programme is over, rather than claiming a tenth week is running forever.
  *
  * The count is split into days/hours/minutes/seconds rather than one string, so each unit is its own large figure with a small label beneath – the same figure-leads, words-follow relationship the sign-up counter uses, taken to the four columns a countdown wants.

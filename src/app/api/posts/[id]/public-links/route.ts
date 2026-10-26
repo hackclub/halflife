@@ -1,6 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { PLATFORM_INFO, readPublicReelLink } from "@/lib/public-reels"
 import { publicReelLinksSchema } from "@/lib/schemas/feed"
 
@@ -21,10 +21,9 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	const parsed = await parseBody(req, publicReelLinksSchema)
 	if (parsed.error) return parsed.error
 
-	const post = await prisma.post.findFirst({
-		select: { id: true, themeProjectId: true },
-		where: { deletedAt: null, id, userId: gate.user.id },
-	})
+	const post = await db.orm.public.Post.where({ deletedAt: null, id, userId: gate.user.id })
+		.select("id", "themeProjectId")
+		.first()
 	if (!post) return fail("NOT_FOUND", "Reel not found")
 
 	const links: { platform: keyof typeof PLATFORM_INFO; url: string }[] = []
@@ -35,10 +34,9 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 		else links.push({ platform: link.platform, url: read.url })
 	}
 
-	const taken = await prisma.publicReel.findMany({
-		select: { url: true, userId: true },
-		where: { url: { in: links.map(l => l.url) } },
-	})
+	const taken = await db.orm.public.PublicReel.where(reel => reel.url.in(links.map(l => l.url)))
+		.select("url", "userId")
+		.all()
 	for (const row of taken) {
 		const link = links.find(l => l.url === row.url)
 		if (link && row.userId !== gate.user.id)
@@ -50,8 +48,8 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	const mine = new Set(taken.map(t => t.url))
 	const fresh = links.filter(l => !mine.has(l.url))
 	if (fresh.length > 0)
-		await prisma.publicReel.createMany({
-			data: fresh.map(l => ({
+		await db.orm.public.PublicReel.createAll(
+			fresh.map(l => ({
 				email: gate.user.email,
 				platform: l.platform,
 				postId: post.id,
@@ -60,8 +58,8 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 				userId: gate.user.id,
 			})),
 			// Two tabs sending the same link at once: the unique url settles it.
-			skipDuplicates: true,
-		})
+			{ onConflict: "skip" },
+		)
 
 	return ok({ saved: links.length }, { status: 201 })
 })

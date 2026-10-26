@@ -1,11 +1,12 @@
-import { Prisma } from "@/app/generated/prisma/client"
-import { Theme } from "@/app/generated/prisma/enums"
+import type { Models } from "@/app/generated/prisma8/contract.d"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { Theme } from "@/lib/enums"
 import { type AuthedContext, withPermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import prisma from "@/lib/prisma"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import { projectExtensionSchema } from "@/lib/schemas/admin"
+import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -22,22 +23,27 @@ export const PATCH = withPermission(
 		const parsed = await parseBody(req, projectExtensionSchema)
 		if (parsed.error) return parsed.error
 
-		const before = await prisma.themeProject.findFirst({
-			select: { submissionExtensionUntil: true, theme: true, userId: true },
-			where: { deletedAt: null, id },
-		})
+		const before = await db.orm.public.ThemeProject.where({ deletedAt: null, id })
+			.select("submissionExtensionUntil", "theme", "userId")
+			.first()
 		if (!before) return fail("NOT_FOUND", "Project not found")
 
-		const data: { submissionExtensionUntil?: Date | null; theme?: Theme; warmupPhase?: null } = {}
+		const data: { submissionExtensionUntil?: string | null; theme?: Theme; warmupPhase?: null } = {}
 		if (parsed.data.submissionExtensionUntil !== undefined)
 			data.submissionExtensionUntil = parsed.data.submissionExtensionUntil
+				? formatDbTimestamp(parsed.data.submissionExtensionUntil)
+				: null
 
 		if (parsed.data.theme !== undefined && parsed.data.theme !== before.theme) {
 			if (parsed.data.theme !== Theme.WARMUP) {
-				const clash = await prisma.themeProject.findFirst({
-					select: { id: true },
-					where: { deletedAt: null, id: { not: id }, theme: parsed.data.theme, userId: before.userId },
+				const clash = await db.orm.public.ThemeProject.where({
+					deletedAt: null,
+					theme: parsed.data.theme,
+					userId: before.userId,
 				})
+					.where(project => project.id.neq(id))
+					.select("id")
+					.first()
 				if (clash) return fail("CONFLICT", "That maker already has a live project on the target theme")
 			}
 			data.theme = parsed.data.theme
@@ -47,18 +53,18 @@ export const PATCH = withPermission(
 
 		if (Object.keys(data).length === 0) return ok({ project: { id } })
 
-		let updated: { id: string; theme: Theme; submissionExtensionUntil: Date | null }
+		let updated: Pick<Models.public_ThemeProject, "id" | "theme" | "submissionExtensionUntil">
 		try {
-			updated = await prisma.themeProject.update({
-				data,
-				select: { id: true, submissionExtensionUntil: true, theme: true },
-				where: { id },
-			})
+			const row = await db.orm.public.ThemeProject.where({ id })
+				.select("id", "theme", "submissionExtensionUntil")
+				.update(data)
+			if (!row) return fail("NOT_FOUND", "Project not found")
+			updated = row
 		} catch (err) {
-			if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
-				return fail("CONFLICT", "That maker already has a live project on the target theme")
+			if (isUniqueViolation(err)) return fail("CONFLICT", "That maker already has a live project on the target theme")
 			throw err
 		}
+		if (!updated) return fail("NOT_FOUND", "Project not found")
 
 		if (data.submissionExtensionUntil !== undefined)
 			await logAudit({
@@ -66,8 +72,14 @@ export const PATCH = withPermission(
 				actorEmail: gate.user.email,
 				actorId: gate.user.id,
 				metadata: {
-					after: updated.submissionExtensionUntil?.toISOString() ?? null,
-					before: before.submissionExtensionUntil?.toISOString() ?? null,
+					after:
+						updated.submissionExtensionUntil === null
+							? null
+							: parseDbTimestamp(updated.submissionExtensionUntil).toISOString(),
+					before:
+						before.submissionExtensionUntil === null
+							? null
+							: parseDbTimestamp(before.submissionExtensionUntil).toISOString(),
 				},
 				targetId: id,
 				targetType: "ThemeProject",
@@ -83,6 +95,14 @@ export const PATCH = withPermission(
 				targetType: "ThemeProject",
 			})
 
-		return ok({ project: updated })
+		return ok({
+			project: {
+				...updated,
+				submissionExtensionUntil:
+					updated.submissionExtensionUntil === null
+						? null
+						: parseDbTimestamp(updated.submissionExtensionUntil).toISOString(),
+			},
+		})
 	},
 )

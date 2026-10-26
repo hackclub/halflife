@@ -4,7 +4,7 @@ import { bomData, bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { dollars } from "@/lib/money"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { scheduleRepoSync } from "@/lib/repo-sync"
 import { bomExtrasSchema, bomItemSchema } from "@/lib/schemas/project"
@@ -16,10 +16,9 @@ interface Params {
 }
 
 function ownProject(userId: string, id: string) {
-	return prisma.themeProject.findFirst({
-		select: { bomTaxShippingUsd: true, buildStatus: true, designStatus: true, id: true },
-		where: { deletedAt: null, id, userId },
-	})
+	return db.orm.public.ThemeProject.where({ deletedAt: null, id, userId })
+		.select("bomTaxShippingUsd", "buildStatus", "designStatus", "id")
+		.first()
 }
 
 export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
@@ -51,33 +50,27 @@ export const POST = withSession(async (req: Request, { params, gate }: Params & 
 	if (locked) return fail("PHASE_LOCKED", locked)
 
 	const input = parsed.data
-	await prisma.$transaction(async tx => {
+	await db.transaction(async tx => {
 		// Re-read inside the transaction the write happens in: a design approval landing between the check above and the create would let a line into a list that is supposed to be final.
-		const fresh = await tx.themeProject.findUnique({
-			select: { buildStatus: true, designStatus: true },
-			where: { id },
-		})
+		const fresh = await tx.orm.public.ThemeProject.whereUnique({ id }).select("buildStatus", "designStatus").first()
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 		const freshLock = bomLockReason(fresh)
 		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
 
-		const last = await tx.bomItem.aggregate({
-			_count: true,
-			_max: { sortOrder: true },
-			where: { themeProjectId: id },
-		})
-		if (last._count >= MAX_BOM_ITEMS)
+		const last = await tx.orm.public.BomItem.where({ themeProjectId: id }).aggregate(a => ({
+			count: a.count(),
+			sortOrder: a.max("sortOrder"),
+		}))
+		if (last.count >= MAX_BOM_ITEMS)
 			throw new HttpError("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
 
-		await tx.bomItem.create({
-			data: {
-				name: input.name,
-				quantity: input.quantity,
-				sortOrder: (last._max.sortOrder ?? -1) + 1,
-				themeProjectId: id,
-				unitCostUsd: input.unitCostUsd,
-				...bomData(input),
-			},
+		await tx.orm.public.BomItem.create({
+			name: input.name,
+			quantity: input.quantity,
+			sortOrder: (last.sortOrder ?? -1) + 1,
+			themeProjectId: id,
+			unitCostUsd: input.unitCostUsd,
+			...bomData(input),
 		})
 	})
 
@@ -104,23 +97,25 @@ export const PATCH = withSession(async (req: Request, { params, gate }: Params &
 	const locked = bomLockReason(project)
 	if (locked) return fail("PHASE_LOCKED", locked)
 
-	const updated = await prisma.$transaction(async tx => {
+	const updated = await db.transaction(async tx => {
 		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the write would change a list that is supposed to be final.
-		const fresh = await tx.themeProject.findFirst({
-			select: { buildStatus: true, designStatus: true },
-			where: { deletedAt: null, id, userId: gate.user.id },
-		})
+		const fresh = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
+			.select("buildStatus", "designStatus")
+			.first()
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 		const freshLock = bomLockReason(fresh)
 		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
 
-		const claimed = await tx.themeProject.updateMany({
-			data: { bomTaxShippingUsd: cents(parsed.data.taxShippingUsd) },
-			where: { deletedAt: null, id, userId: gate.user.id },
+		const claimed = await tx.orm.public.ThemeProject.where({
+			deletedAt: null,
+			id,
+			userId: gate.user.id,
+		}).updateAndCount({
+			bomTaxShippingUsd: cents(parsed.data.taxShippingUsd),
 		})
-		if (claimed.count !== 1) throw new HttpError("NOT_FOUND", "Project not found")
+		if (claimed !== 1) throw new HttpError("NOT_FOUND", "Project not found")
 
-		const row = await tx.themeProject.findUnique({ select: { bomTaxShippingUsd: true }, where: { id } })
+		const row = await tx.orm.public.ThemeProject.whereUnique({ id }).select("bomTaxShippingUsd").first()
 		if (!row) throw new HttpError("NOT_FOUND", "Project not found")
 		return row
 	})

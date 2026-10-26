@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
-import type { ReportReason, ReportStatus } from "@/app/generated/prisma/enums"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
+import type { ReportReason, ReportStatus } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
@@ -15,6 +15,7 @@ import {
 import { REPORT_REASONS, REPORT_STATUS_LABELS, REPORT_TARGET_LABELS } from "@/lib/reports"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { preview } from "@/lib/text"
+import { parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -131,12 +132,12 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 			<td>
 				<Badge tone={reasonTone(report.reason)}>{REASON_LABELS[report.reason]}</Badge>
 			</td>
-			<td className="hl-hint">{displayName(report.reporter, report.reporter.email)}</td>
-			<td className="hl-mono">{formatUtcDateTime(report.createdAt)}</td>
+			<td className="hl-hint">{displayName(report.reporter, report.reporter?.email ?? "")}</td>
+			<td className="hl-mono">{formatUtcDateTime(parseDbTimestamp(report.createdAt))}</td>
 			<td>
 				<Badge tone={statusTone(report.status)}>{REPORT_STATUS_LABELS[report.status]}</Badge>
 				{report.status !== "OPEN" && report.resolvedAt ? (
-					<div className="hl-hint">{formatUtcDateTime(report.resolvedAt)}</div>
+					<div className="hl-hint">{formatUtcDateTime(parseDbTimestamp(report.resolvedAt))}</div>
 				) : null}
 			</td>
 			<td>
@@ -265,13 +266,15 @@ function subjectOf(report: ContentReportRow): Subject {
 	}
 	if (report.target === "DEVLOG" && report.workSession) {
 		const session = report.workSession
+		const project = session.themeProject
+		if (!project) return none
 		return {
-			author: displayName(session.themeProject.user) ?? "a maker",
+			author: displayName(project.user) ?? "a maker",
 			gone: session.deletedAt !== null,
 			hidden: false,
 			hideLabel: "Hide",
 			hideUrl: null,
-			href: `/projects/${session.themeProject.id}#${session.id}`,
+			href: `/projects/${project.id}#${session.id}`,
 			kind: "entry",
 			preview: session.content ?? session.title,
 			restoreUrl: null,

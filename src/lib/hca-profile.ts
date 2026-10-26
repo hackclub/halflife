@@ -1,8 +1,9 @@
 import "server-only"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { redactForLog } from "@/lib/redact"
+import { escapeLikePattern } from "@/lib/text"
 
 /**
  * Everything this app learns from Hack Club Auth, and the one way it is read.
@@ -220,22 +221,23 @@ export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: strin
  *
  * Two conditions keep this from becoming a way to re-verify an address a human typed into the admin panel onto somebody else's account:
  *
- *   (a) The address is matched case-insensitively (like better-auth's own `findUserByEmail`), so the repaired row is the one it will look up next.
- *   (b) A row that already has a linked `Account` is left alone: a typed address only ever sits on a staff-import row that has not signed in yet. Adoption only ever repairs those account-less rows.
+ * (a) The address is matched case-insensitively (like better-auth's own `findUserByEmail`), so the repaired row is the one it will look up next.
+ * (b) A row that already has a linked `Account` is left alone: a typed address only ever sits on a staff-import row that has not signed in yet. Adoption only ever repairs those account-less rows.
  *
  * Returns whether a row was changed, so the caller can say so in the log.
  */
 export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolean): Promise<boolean> {
 	if (!emailVerified) return false
-	const user = await prisma.user.findFirst({
-		select: { emailVerified: true, id: true },
-		where: { email: { equals: email, mode: "insensitive" } },
-	})
+	const user = await db.orm.public.User.where(candidate => candidate.email.ilike(escapeLikePattern(email)))
+		.select("emailVerified", "id")
+		.first()
 	if (!user || user.emailVerified) return false
 	// An already-linked account proves its own ownership; adopting onto it would let an admin-typed address be re-verified, so only account-less (staff-import) rows are repaired here.
-	const accountCount = await prisma.account.count({ where: { userId: user.id } })
+	const { count: accountCount } = await db.orm.public.Account.where({ userId: user.id }).aggregate(a => ({
+		count: a.count(),
+	}))
 	if (accountCount > 0) return false
-	await prisma.user.update({ data: { emailVerified: true }, where: { id: user.id } })
+	await db.orm.public.User.where({ id: user.id }).update({ emailVerified: true })
 	return true
 }
 
@@ -245,10 +247,10 @@ export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolea
  * `User.email` is unique exactly as stored, not case-insensitively, so the same address in another spelling is a second legal row until something tries to write the lowercased form over it.
  */
 async function emailHeldByAnother(email: string, userId: string): Promise<string | null> {
-	const other = await prisma.user.findFirst({
-		select: { id: true },
-		where: { email: { equals: email, mode: "insensitive" }, id: { not: userId } },
-	})
+	const other = await db.orm.public.User.where(user => user.email.ilike(escapeLikePattern(email)))
+		.where(user => user.id.neq(userId))
+		.select("id")
+		.first()
 	return other?.id ?? null
 }
 
@@ -263,19 +265,24 @@ export async function syncHcaProfile(userId: string, { profile = false } = {}): 
 	try {
 		// Imported here, not at the top: lib/auth calls this from its own hooks.
 		const { auth } = await import("@/lib/auth")
-		const account = await prisma.account.findFirst({
-			select: { id: true },
-			where: { providerId: "hca", userId },
-		})
+		const account = await db.orm.public.Account.where({ providerId: "hca", userId }).select("id").first()
 		if (!account) return null
 		// Refreshes the token first if it has expired. No request headers, so better-auth takes this as the trusted server-side call it is.
 		const { accessToken } = await auth.api.getAccessToken({ body: { accountId: account.id, userId } })
 		if (!accessToken) return null
 
+		// The verification status belongs to the ONE hca account bound at sign-up (see lib/auth's link/unlink guards). A user with two hca rows is a laundering attempt in progress or a legacy double-link: the status from either token proves nothing about the user, so it is never upgraded here. Downgrades still apply – a non-verified answer clears nothing by itself, but it must not mint verified either.
+		const { count: hcaCount } = await db.orm.public.Account.where({ providerId: "hca", userId }).aggregate(a => ({
+			count: a.count(),
+		}))
+		const singleHcaAccount = hcaCount === 1
+		if (!singleHcaAccount)
+			console.warn(`[hca] ${userId} holds ${hcaCount} hca accounts; verification status not upgraded`)
+
 		const identity = await fetchHcaIdentity(accessToken)
 
 		const current = profile
-			? await prisma.user.findUnique({ select: { email: true, emailVerified: true }, where: { id: userId } })
+			? await db.orm.public.User.whereUnique({ id: userId }).select("email", "emailVerified").first()
 			: null
 		const email = profile ? (identity.email?.toLowerCase() ?? null) : null
 		const emailChanged = email !== null && email !== current?.email.toLowerCase()
@@ -291,23 +298,24 @@ export async function syncHcaProfile(userId: string, { profile = false } = {}): 
 					? { emailVerified: true }
 					: {}
 
-		await prisma.user.update({
-			data: {
-				// Only what HCA actually said: a missing field leaves the stored value.
-				...(identity.verificationStatus ? { verificationStatus: identity.verificationStatus } : {}),
-				// The name the site shows, alongside `name` rather than instead of it: better-auth's own mapping cannot carry this (see the header), and the Airtable rows, Ari and the export still need the full name they split into first and last. See lib/display-name.
-				...(identity.nickname ? { displayName: identity.nickname } : {}),
-				...(profile && identity.name ? { name: identity.name } : {}),
-				...(profile && identity.image ? { image: identity.image } : {}),
-				...emailData,
-				...encryptedFieldsFrom(identity),
-			},
-			where: { id: userId },
+		await db.orm.public.User.where({ id: userId }).update({
+			// Only what HCA actually said: a missing field leaves the stored value. Verified is only ever written when exactly one hca account is bound – see above.
+			...(identity.verificationStatus === "verified" && !singleHcaAccount
+				? {}
+				: identity.verificationStatus
+					? { verificationStatus: identity.verificationStatus }
+					: {}),
+			// The name the site shows, alongside `name` rather than instead of it: better-auth's own mapping cannot carry this (see the header), and the Airtable rows, Ari and the export still need the full name they split into first and last. See lib/display-name.
+			...(identity.nickname ? { displayName: identity.nickname } : {}),
+			...(profile && identity.name ? { name: identity.name } : {}),
+			...(profile && identity.image ? { image: identity.image } : {}),
+			...emailData,
+			...encryptedFieldsFrom(identity),
 		})
 		// Apart, because slackId is unique: a clash with another row must not cost this user their verification status.
 		if (identity.slackId)
-			await prisma.user
-				.update({ data: { slackId: identity.slackId }, where: { id: userId } })
+			await db.orm.public.User.where({ id: userId })
+				.update({ slackId: identity.slackId })
 				.catch(err => console.warn(`[hca] slack id for ${userId} not stored:`, err))
 
 		return identity.verificationStatus
@@ -324,7 +332,7 @@ export async function syncHcaProfile(userId: string, { profile = false } = {}): 
  */
 export async function isIdentityVerified(userId: string): Promise<boolean> {
 	if (process.env.SKIP_YSWS_VERIFICATION_CHECK === "true") return true
-	const user = await prisma.user.findUnique({ select: { verificationStatus: true }, where: { id: userId } })
+	const user = await db.orm.public.User.whereUnique({ id: userId }).select("verificationStatus").first()
 	if (user?.verificationStatus === "verified") return true
 	return (await syncHcaProfile(userId)) === "verified"
 }

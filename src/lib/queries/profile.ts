@@ -1,15 +1,16 @@
 import "server-only"
-import { PostStatus, Theme } from "@/app/generated/prisma/enums"
 import { avatarUrl } from "@/lib/avatar"
 import { getThemeDef } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { displayName } from "@/lib/display-name"
+import { PostStatus, Theme } from "@/lib/enums"
 import { type FeedItem, getCreatorReels } from "@/lib/feed"
 import { round2 } from "@/lib/money"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
+import { parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -57,46 +58,30 @@ export interface ProfileData {
 export const PROFILE_REELS = 24
 
 export async function getProfile(userId: string, viewerId: string): Promise<ProfileData | null> {
-	const [user, projects, reels, reelCount, settings] = await Promise.all([
-		prisma.user.findUnique({
-			select: {
-				createdAt: true,
-				currentStreak: true,
-				displayName: true,
-				id: true,
-				image: true,
-				joinedProgramAt: true,
-				lastStreakDate: true,
-				name: true,
-			},
-			where: { id: userId },
-		}),
-		prisma.themeProject.findMany({
-			select: {
-				coverImageKey: true,
-				id: true,
-				posts: {
-					select: { createdAt: true, objectKey: true, thumbnailKey: true },
-					where: { deletedAt: null, status: PostStatus.PUBLISHED },
-				},
-				theme: true,
-				title: true,
-				workSessions: {
-					select: {
-						content: true,
-						createdAt: true,
-						hoursApproved: true,
-						hoursClaimed: true,
-						hoursSource: true,
-					},
-					where: { deletedAt: null },
-				},
-			},
-			// A project nobody has named is a placeholder made at sign-up, not one to show, the same rule the project page applies.
-			where: { deletedAt: null, namedAt: { not: null }, title: { not: "" }, userId },
-		}),
+	const [user, projects, reels, counts, settings] = await Promise.all([
+		db.orm.public.User.whereUnique({ id: userId })
+			.select("createdAt", "currentStreak", "displayName", "id", "image", "joinedProgramAt", "lastStreakDate", "name")
+			.first(),
+		db.orm.public.ThemeProject.where({ deletedAt: null, userId })
+			.where(project => project.namedAt.isNotNull())
+			.where(project => project.title.neq(""))
+			.select("coverImageKey", "id", "theme", "title")
+			.include("posts", posts =>
+				posts
+					.select("createdAt", "objectKey", "thumbnailKey")
+					.where({ deletedAt: null })
+					.where(post => post.status.eq(PostStatus.PUBLISHED)),
+			)
+			.include("workSessions", sessions =>
+				sessions
+					.select("content", "createdAt", "hoursApproved", "hoursClaimed", "hoursSource")
+					.where({ deletedAt: null }),
+			)
+			.all(),
 		getCreatorReels(userId, viewerId, PROFILE_REELS),
-		prisma.post.count({ where: { deletedAt: null, status: PostStatus.PUBLISHED, userId } }),
+		db.orm.public.Post.where({ deletedAt: null, userId })
+			.where(post => post.status.eq(PostStatus.PUBLISHED))
+			.aggregate(a => ({ count: a.count() })),
 		getProgramSettings(),
 	])
 	if (!user) return null
@@ -105,9 +90,9 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 
 	// Later weeks first, warm-ups after them: a warm-up is not one of the season's weeks, and it comes before week 1.
 	const ordered = projects.toSorted((a, b) => {
-		const da = a.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(a.theme).designWeek
-		const db = b.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(b.theme).designWeek
-		return db - da
+		const designWeekA = a.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(a.theme).designWeek
+		const designWeekB = b.theme === Theme.WARMUP ? Number.MIN_SAFE_INTEGER : getThemeDef(b.theme).designWeek
+		return designWeekB - designWeekA
 	})
 
 	const shaped: ProfileProject[] = ordered.map(p => {
@@ -126,9 +111,9 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 			themeLabel: def.label,
 			thumbnail: projectThumbnail(
 				publicUrlFor(p.coverImageKey),
-				p.workSessions.map(s => ({ content: s.content, createdAt: s.createdAt })),
+				p.workSessions.map(s => ({ content: s.content, createdAt: parseDbTimestamp(s.createdAt) })),
 				p.posts.map(post => ({
-					createdAt: post.createdAt,
+					createdAt: parseDbTimestamp(post.createdAt),
 					thumbnailUrl: publicUrlFor(post.thumbnailKey),
 					videoUrl: publicUrlFor(post.objectKey),
 				})),
@@ -142,10 +127,10 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		id: user.id,
 		image: avatarUrl(user),
 		isViewer: user.id === viewerId,
-		joinedAt: (user.joinedProgramAt ?? user.createdAt).getTime(),
+		joinedAt: parseDbTimestamp(user.joinedProgramAt ?? user.createdAt).getTime(),
 		name: displayName(user, "A maker"),
 		projects: shaped,
-		reelCount,
+		reelCount: counts.count,
 		reels,
 		// Expired against today, so a run that ended weeks ago reads 0 rather than the number it reached before it broke.
 		streak: streakAsOf(user, today),

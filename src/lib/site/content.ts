@@ -52,9 +52,7 @@ export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
 
 export interface Step {
 	/**
-	 * The step's artwork, on the same terms as a `DesignWeek`'s `art` and a `BuildCard`'s `photo`: an optional path, with `slot` drawn as the fallback
-	 * while a step is still waiting for its picture. `slot` stays on a step that
-	 * has its art – it is the in-source record of the footprint the comp drew.
+	 * The step's artwork, on the same terms as a `DesignWeek`'s `art` and a `BuildCard`'s `photo`: an optional path, with `slot` drawn as the fallback while a step is still waiting for its picture. `slot` stays on a step that has its art – it is the in-source record of the footprint the comp drew.
 	 */
 	art?: StaticImageData
 	caption?: string
@@ -64,9 +62,10 @@ export interface Step {
 	title: string
 }
 
-/** Exactly four, in comp order: design, funding, build, printer. The
- * arity is load-bearing – `process.tsx` destructures these positionally
- *  and gives each one its own plate. */
+/** Exactly four, in comp order: design, funding, build, printer. The arity is load-bearing – `process.tsx` destructures these positionally
+ *
+ * *  and gives each one its own plate.
+ */
 export const STEPS: [Step, Step, Step, Step] = [
 	{
 		art: allWeeksArt,

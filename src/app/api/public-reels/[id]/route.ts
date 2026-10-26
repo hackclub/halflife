@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api"
 import { type AuthedContext, withSession } from "@/lib/guards"
-import prisma from "@/lib/prisma"
+import db from "@/lib/prisma8"
 
 export const dynamic = "force-dynamic"
 
@@ -14,7 +14,7 @@ interface Params {
 export const DELETE = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
-	const { count } = await prisma.publicReel.deleteMany({ where: { id, userId: gate.user.id } })
+	const count = await db.orm.public.PublicReel.where({ id, userId: gate.user.id }).deleteAndCount()
 	if (count === 0) return fail("NOT_FOUND", "Link not found")
 	return ok({ deleted: true })
 })
