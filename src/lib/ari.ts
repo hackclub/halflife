@@ -185,7 +185,8 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 				: written || sanitize(session.title) || "Journal entry"
 		return Object.assign(
 			{
-				at: session.createdAt,
+				// `createdAt` is a Prisma 8 `TimestampString`, so it reads as `2026-10-22 14:25:05.757` – a space where the `T` belongs and no zone. Ari validates `journals[].at` as a date string and refuses that form (422 `invalid_payload: journals.at`), so convert it to a real Date and let the SDK send ISO text.
+				at: parseDbTimestamp(session.createdAt),
 				// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see.
 				minutes:
 					session.hoursSource === HoursSource.HACKATIME_TRACKED
