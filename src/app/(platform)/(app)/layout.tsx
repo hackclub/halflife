@@ -1,4 +1,5 @@
 import { after } from "next/server"
+import { SuspensionBanner } from "@/app/components/platform/SuspensionBanner"
 import { AppShell } from "@/components/platform/shell/AppShell"
 import { touchActivity } from "@/lib/analytics"
 import { requireSessionPage } from "@/lib/page-guards"
@@ -18,7 +19,7 @@ import { StoreProvider } from "@/lib/store"
  */
 export const dynamic = "force-dynamic"
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-	const { user } = await requireSessionPage()
+	const { penalty, user } = await requireSessionPage()
 	// After the response: counting a page view must never slow one down.
 	after(() => touchActivity(user.id))
 	// The events come from here rather than from the dashboard page, because the countdown is in the shell's header and the header is in the layout: reading them per page would put a second calendar query on every route and leave the header empty on the ones that forgot.
@@ -33,6 +34,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 	return (
 		<StoreProvider snapshot={snapshot}>
 			<AppShell events={events} programTimezone={settings.programTimezone} timezone={user.timezone}>
+				{penalty === "suspended" ? (
+					<div className="hl-stack" style={{ marginBottom: "1rem" }}>
+						<SuspensionBanner userId={user.id} />
+					</div>
+				) : null}
 				{children}
 			</AppShell>
 		</StoreProvider>
