@@ -51,11 +51,14 @@ export function OrderFulfillment({
 				}}
 				value={stage}
 			>
-				{Object.entries(STAGE_LABELS).map(([value, label]) => (
-					<option key={value} value={value}>
-						{label}
-					</option>
-				))}
+				{Object.entries(STAGE_LABELS)
+					// Cancelled is a decision with a refund attached, not a shipping stage staff can tick; the participant's own cancel action sets it.
+					.filter(([value]) => value !== "CANCELLED" || cancelled)
+					.map(([value, label]) => (
+						<option key={value} value={value}>
+							{label}
+						</option>
+					))}
 			</select>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 		</div>

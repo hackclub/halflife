@@ -20,21 +20,27 @@ export function ManageButton({
 	open,
 	panelId,
 	onToggle,
-}: Readonly<{ open: boolean; panelId: string; onToggle(): void }>) {
+	label = "Manage",
+}: Readonly<{ open: boolean; panelId: string; onToggle(): void; label?: string }>) {
 	return (
 		<Button aria-controls={panelId} aria-expanded={open} onClick={onToggle} type="button">
-			Manage
+			{label}
 			<ManageChevron open={open} />
 		</Button>
 	)
 }
 
 /** The extra row, under the project, that holds its controls while open. */
-export function ManageRow({ children, id, open }: Readonly<{ children: ReactNode; id: string; open: boolean }>) {
+export function ManageRow({
+	children,
+	id,
+	open,
+	columns = 6,
+}: Readonly<{ children: ReactNode; id: string; open: boolean; columns?: number }>) {
 	if (!open) return null
 	return (
 		<tr className="hl-manage-row" id={id}>
-			<td colSpan={6}>
+			<td colSpan={columns}>
 				<div className="hl-manage-panel">{children}</div>
 			</td>
 		</tr>

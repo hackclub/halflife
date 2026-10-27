@@ -912,6 +912,25 @@ h4 {
 		font-size: 0.82rem;
 		color: var(--color-ink-strong);
 	}
+	/* A small two-column list for the read-only facts inside a manage panel, so labels line up instead of running into their values. */
+	.hl-detail-list {
+		display: grid;
+		gap: 0.35rem;
+		margin: 0;
+	}
+	.hl-detail-list > div {
+		display: grid;
+		grid-template-columns: 7rem minmax(0, 1fr);
+		gap: 0.5rem;
+		font-size: 0.82rem;
+	}
+	.hl-detail-list dt {
+		color: var(--color-ink-muted);
+	}
+	.hl-detail-list dd {
+		margin: 0;
+		overflow-wrap: anywhere;
+	}
 	.hl-manage-chevron {
 		width: 1rem;
 		height: 1rem;

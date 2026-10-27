@@ -1,11 +1,12 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
 import { IconCheck, IconCoin } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
-import { errorMessage } from "@/lib/api-error"
+import { errorCode, errorMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
 import type { ShopItemView } from "@/lib/shop"
 import { useStore } from "@/lib/store"
@@ -47,6 +48,8 @@ export function ShopGrid({
 	const [cat, setCat] = useState<string>("All")
 	const [sort, setSort] = useState<Sort>("default")
 	const [busy, setBusy] = useState<string | null>(null)
+	// A refusal to buy belongs to the item it was about, not to the top of a long shelf: the maker is looking at that card.
+	const [itemError, setItemError] = useState<{ code?: string; id: string; message: string } | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [savingRegion, setSavingRegion] = useState(false)
 	// One key per item until it sells, so a retry replays the same purchase instead of minting a second order.
@@ -78,6 +81,7 @@ export function ShopGrid({
 		if (busy) return
 		setBusy(item.id)
 		setError(null)
+		setItemError(null)
 		try {
 			const key = keys.current.get(item.id) ?? crypto.randomUUID()
 			keys.current.set(item.id, key)
@@ -86,14 +90,26 @@ export function ShopGrid({
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
+			const payload: unknown = await res.json().catch(() => null)
 			if (!res.ok) {
-				setError(errorMessage(await res.json().catch(() => null), `That did not go through (${res.status})`))
+				setItemError({
+					code: errorCode(payload),
+					id: item.id,
+					message: errorMessage(payload, `That did not go through (${res.status})`),
+				})
+				// The refusal is drawn under the card the reader just pressed; bring that card into view rather than leaving the message off-screen.
+				requestAnimationFrame(() =>
+					document.querySelector(`[id="shop-order-error-${item.id}"]`)?.scrollIntoView({ block: "nearest" }),
+				)
 				return
 			}
 			keys.current.delete(item.id)
 			router.refresh()
 		} catch {
-			setError("That did not go through")
+			setItemError({ id: item.id, message: "That did not go through. Try again." })
+			requestAnimationFrame(() =>
+				document.querySelector(`[id="shop-order-error-${item.id}"]`)?.scrollIntoView({ block: "nearest" }),
+			)
 		} finally {
 			setBusy(null)
 		}
@@ -101,6 +117,14 @@ export function ShopGrid({
 
 	return (
 		<>
+			<div className="mb-4 flex justify-end">
+				<Link
+					className="label rounded-full border-2 border-line px-4 py-1.5 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+					href="/shop/orders"
+				>
+					Your orders
+				</Link>
+			</div>
 			{regions.length > 0 && (
 				<div className="mb-5 flex flex-wrap items-center justify-center gap-2">
 					<label className="label text-navy-soft" htmlFor="shop-region">
@@ -230,37 +254,44 @@ export function ShopGrid({
 										</span>
 									)}
 								</div>
-								<button
-									className={cx(
-										"label flex w-full items-center justify-center gap-1.5 border-t-2 px-3.5 py-2.5 transition-all duration-150",
-										"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
-										"sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
-										has
-											? "border-teal-deep bg-teal text-white"
-											: out || !afford
+								{has && item.locked ? (
+									<Link
+										className={cx(
+											"label flex w-full items-center justify-center gap-1.5 border-t-2 border-teal-deep bg-teal px-3.5 py-2.5 text-white transition-all duration-150",
+											"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
+											"sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
+										)}
+										href="/shop/orders"
+									>
+										<IconCheck className="text-sm" strokeWidth={3} /> Ordered
+									</Link>
+								) : (
+									<button
+										className={cx(
+											"label flex w-full items-center justify-center gap-1.5 border-t-2 px-3.5 py-2.5 transition-all duration-150",
+											"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
+											"sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
+											out || !afford
 												? "cursor-not-allowed border-line bg-cream text-navy-soft"
 												: "border-teal-deep bg-teal-mid text-navy hover:bg-teal hover:text-white",
-									)}
-									disabled={out || item.locked || !afford || busy !== null}
-									onClick={() => buy(item)}
-									type="button"
-								>
-									{busy === item.id ? (
-										"Ordering…"
-									) : has ? (
-										<>
-											<IconCheck className="text-sm" strokeWidth={3} /> Ordered
-										</>
-									) : out ? (
-										"Sold out"
-									) : item.locked ? (
-										"Locked"
-									) : afford ? (
-										"Buy"
-									) : (
-										"Not enough coins"
-									)}
-								</button>
+										)}
+										disabled={out || item.locked || !afford || busy !== null}
+										onClick={() => buy(item)}
+										type="button"
+									>
+										{busy === item.id
+											? "Ordering…"
+											: out
+												? "Sold out"
+												: item.locked
+													? "Locked"
+													: !afford
+														? "Not enough coins"
+														: has
+															? "Order another"
+															: "Buy"}
+									</button>
+								)}
 							</div>
 
 							<div className="flex flex-1 flex-col gap-1.5 px-4 py-3.5">
@@ -279,6 +310,26 @@ export function ShopGrid({
 										{item.priceCredits}
 									</span>
 								</p>
+								{itemError?.id === item.id && (
+									<p
+										className="mt-2 rounded-xl border-2 border-coral bg-cream px-3 py-2 text-[0.8rem] leading-snug font-semibold text-coral-deep"
+										id={`shop-order-error-${item.id}`}
+										role="alert"
+									>
+										{itemError.message}
+										{itemError.code === "PURCHASE_LIMIT" && (
+											<>
+												{" "}
+												<Link
+													className="underline decoration-dashed underline-offset-4 hover:text-navy"
+													href="/shop/orders"
+												>
+													View your orders
+												</Link>
+											</>
+										)}
+									</p>
+								)}
 							</div>
 						</Panel>
 					)

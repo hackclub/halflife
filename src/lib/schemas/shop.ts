@@ -17,6 +17,15 @@ export const purchaseSchema = z
 	.strict()
 
 /**
+ * A participant cancelling one of their orders. The reason is optional and private to the record; the route rejects an order that has moved past the point where a participant can withdraw it.
+ */
+export const cancelOrderSchema = z
+	.object({
+		reason: boundedText(500).optional(),
+	})
+	.strict()
+
+/**
  * A participant picking which region's prices their shop shows. Null is base pricing. The region has to exist and be active – checked in the route, so a deactivated region falls back to base rather than stranding anyone.
  */
 export const shopRegionPreferenceSchema = z

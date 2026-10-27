@@ -121,6 +121,8 @@ bun run db:plan -- --name <what_changed>
 
 Review the planned operations, fill any data-transform placeholders, and apply with `bun run db:migrate`. Verify with `bun run db:verify`. The signed marker in `migrations/app/refs/db.json` records which contract hash the database is at; `prisma db sign` adopts a database whose schema already matches.
 
+Restart `bun dev` after generating a new contract. The ORM reads `contract.json` when the process starts, so a running dev server keeps the old field list until it restarts and answers with errors such as `Model "ShopOrder" has no field "cancellationReason"` even though the migration is applied.
+
 ### The checks
 
 Eleven suites. The DB-backed ones write to whatever `DATABASE_URL` points at and clean up after themselves – **point them at a scratch database, never production.**

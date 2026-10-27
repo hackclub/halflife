@@ -1,0 +1,185 @@
+[
+  {
+    "id": "addNativeEnumValue.AuditAction.USER_CANCEL_ORDER",
+    "label": "Add value \"USER_CANCEL_ORDER\" to enum type \"AuditAction\"",
+    "summary": "Adds value \"USER_CANCEL_ORDER\" to enum type \"AuditAction\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "AuditAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"AuditAction\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"AuditAction\""
+        }
+      },
+      {
+        "description": "ensure value \"USER_CANCEL_ORDER\" is absent from enum type \"AuditAction\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "USER_CANCEL_ORDER"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"USER_CANCEL_ORDER\" in enum type \"AuditAction\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"USER_CANCEL_ORDER\" to enum type \"AuditAction\"",
+        "sql": "ALTER TYPE \"public\".\"AuditAction\" ADD VALUE 'USER_CANCEL_ORDER'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"USER_CANCEL_ORDER\" exists on enum type \"AuditAction\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "USER_CANCEL_ORDER"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"USER_CANCEL_ORDER\" in enum type \"AuditAction\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "column.public.shop_order.cancellationReason",
+    "label": "Add column \"cancellationReason\" to \"shop_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "cancellationReason",
+        "table": "shop_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"cancellationReason\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "cancellationReason"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"cancellationReason\" on \"shop_order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"cancellationReason\"",
+        "sql": "ALTER TABLE \"public\".\"shop_order\" ADD COLUMN \"cancellationReason\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"cancellationReason\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "cancellationReason"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"cancellationReason\" on \"shop_order\""
+        }
+      },
+      {
+        "description": "verify column \"cancellationReason\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "cancellationReason",
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.shop_order.cancelledAt",
+    "label": "Add column \"cancelledAt\" to \"shop_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "cancelledAt",
+        "table": "shop_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"cancelledAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "cancelledAt"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"cancelledAt\" on \"shop_order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"cancelledAt\"",
+        "sql": "ALTER TABLE \"public\".\"shop_order\" ADD COLUMN \"cancelledAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"cancelledAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "cancelledAt"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"cancelledAt\" on \"shop_order\""
+        }
+      },
+      {
+        "description": "verify column \"cancelledAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "cancelledAt",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  }
+]

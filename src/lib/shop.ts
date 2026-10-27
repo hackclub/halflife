@@ -3,14 +3,22 @@ import { or } from "@prisma/orm-postgres/orm-client"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
-import { CoinBucket, LedgerKind, PhaseStatus, ShopItemCategory, ShopOrderStatus } from "@/lib/enums"
+import {
+	CoinBucket,
+	LedgerKind,
+	PhaseStatus,
+	ShopFulfillmentStage,
+	ShopItemCategory,
+	ShopOrderStatus,
+} from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { getPrinterQualification } from "@/lib/printer"
-import db from "@/lib/prisma8"
+import db, { type DbOrTx } from "@/lib/prisma8"
 import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/program"
 import { countryOfTimezone } from "@/lib/regions"
 import { sanitize } from "@/lib/sanitize"
+import { canCancelOrder, cancelBlockedReason } from "@/lib/shop-order"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
@@ -24,6 +32,8 @@ export type ShopItemPublic = Omit<Models.public_ShopItem, "costUsd" | "orders" |
  * The buyer's own view of an order, shared by the purchase response and the order list so the two cannot drift. `unitCostUsd` (what Hack Club pays), the encrypted address/phone and `lastActorId` are staff-side and never selected. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns.
  */
 export interface ShopOrderPublic {
+	cancellationReason: string | null
+	cancelledAt: Date | null
 	fulfilledAt: Date | null
 	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
 	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
@@ -47,6 +57,8 @@ export interface ShopOrderPublic {
 
 /** The fields of the buyer's view, for selects. */
 export const shopOrderPublicFields = [
+	"cancellationReason",
+	"cancelledAt",
 	"fulfilledAt",
 	"fulfillmentMethod",
 	"fulfillmentStage",
@@ -74,6 +86,8 @@ export const shopOrderPublicFields = [
  * What the buyer wrote about the order. Staff are the ones who fulfil it, so it is theirs to read; the buyer's own view above leaves it out, because it is a note to staff rather than part of the order's state.
  */
 export const shopOrderStaffFields = [
+	"cancellationReason",
+	"cancelledAt",
 	"fulfilledAt",
 	"fulfillmentMethod",
 	"fulfillmentStage",
@@ -100,6 +114,8 @@ export const shopOrderStaffFields = [
 /** One staff-view row as Prisma 8 reads it: timestamps stay text until each reader parses them. */
 export type ShopOrderStaffRow = Pick<
 	Models.public_ShopOrder,
+	| "cancellationReason"
+	| "cancelledAt"
 	| "fulfilledAt"
 	| "fulfillmentMethod"
 	| "fulfillmentStage"
@@ -126,8 +142,9 @@ export type ShopOrderStaffRow = Pick<
 export interface ShopOrderStaffView
 	extends Omit<
 		ShopOrderStaffRow,
-		"fulfilledAt" | "fulfillmentUpdatedAt" | "heldAt" | "placedAt" | "rejectedAt" | "notes"
+		"cancelledAt" | "fulfilledAt" | "fulfillmentUpdatedAt" | "heldAt" | "placedAt" | "rejectedAt" | "notes"
 	> {
+	cancelledAt: Date | null
 	fulfilledAt: Date | null
 	fulfillmentUpdatedAt: Date | null
 	heldAt: Date | null
@@ -140,6 +157,7 @@ export function toShopOrderStaffView(row: ShopOrderStaffRow): ShopOrderStaffView
 	const parse = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	return {
 		...row,
+		cancelledAt: parse(row.cancelledAt),
 		fulfilledAt: parse(row.fulfilledAt),
 		fulfillmentUpdatedAt: parse(row.fulfillmentUpdatedAt),
 		heldAt: parse(row.heldAt),
@@ -291,12 +309,27 @@ export function toShopOrderPublic(row: ShopOrderPublicRow): ShopOrderPublic {
 	const parse = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	return {
 		...row,
+		cancelledAt: parse(row.cancelledAt),
 		fulfilledAt: parse(row.fulfilledAt),
 		fulfillmentUpdatedAt: parse(row.fulfillmentUpdatedAt),
 		heldAt: parse(row.heldAt),
 		placedAt: parseDbTimestamp(row.placedAt),
 		rejectedAt: parse(row.rejectedAt),
 	}
+}
+
+/**
+ * A participant's own orders, newest first, for the orders page.
+ *
+ * Bounded because this is a history rather than an archive: a season is ten weeks, and a page can grow a cursor if it ever needs one.
+ */
+export async function getShopOrdersFor(userId: string, limit = 50): Promise<ShopOrderPublic[]> {
+	const rows = await db.orm.public.ShopOrder.where({ userId })
+		.orderBy([order => order.placedAt.desc(), order => order.id.desc()])
+		.limit(limit)
+		.select(...shopOrderPublicFields)
+		.all()
+	return rows.map(toShopOrderPublic)
 }
 
 /**
@@ -412,8 +445,14 @@ export async function purchase(
 			const owned = await tx.orm.public.ShopOrder.where({ shopItemId, userId })
 				.where(order => order.status.notIn([ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED]))
 				.aggregate(a => ({ quantity: a.sum("quantity") }))
-			if ((owned.quantity ?? 0) + quantity > fresh.maxPerUser)
-				throw new HttpError("PURCHASE_LIMIT", `Limit ${fresh.maxPerUser} per person`)
+			const held = owned.quantity ?? 0
+			if (held + quantity > fresh.maxPerUser)
+				throw new HttpError(
+					"PURCHASE_LIMIT",
+					held > 0
+						? `You already have ${held} of this item. The limit is ${fresh.maxPerUser} per person.`
+						: `Limit ${fresh.maxPerUser} per person`,
+				)
 		}
 
 		const unitPrice = regional?.priceCredits ?? fresh.priceCredits
@@ -476,13 +515,44 @@ export async function purchase(
 	})
 }
 
-/**
- * Reject an order and refund it.
- *
- * The refund is a new positive row, never an edit to the original debit: the ledger is append-only, and the history of a rejected order is part of the record.
- */
 /** One order row as writes return it: scalars only, no relations loaded. */
 export type ShopOrderRow = Omit<Models.public_ShopOrder, "ledgerEntries" | "notes" | "shopItem" | "user">
+
+/**
+ * Return everything an order took: its coins, to the pots that paid, and its stock.
+ *
+ * Shared by a staff rejection and a participant cancellation so the two refund paths cannot drift. The refund is a new positive row per bucket, never an edit to the debit: the ledger is append-only, and the history of an order is part of the record. Each pot is given back exactly what it paid rather than the total as spendable, which would turn a refunded printer order into a laundering step.
+ */
+async function refundOrder(tx: DbOrTx, order: ShopOrderRow, actorId: string, reason: string): Promise<void> {
+	const paid = await tx.orm.public.LedgerEntry.where({ kind: LedgerKind.SHOP_PURCHASE, shopOrderId: order.id })
+		.groupBy("bucket")
+		.aggregate(group => ({ total: group.sum("amount") }))
+
+	for (const row of paid) {
+		// Purchases are negative; the refund is its mirror.
+		const amount = -(row.total ?? 0)
+		if (amount <= 0) continue
+		await appendLedgerEntry(tx, {
+			amount,
+			bucket: row.bucket,
+			createdById: actorId,
+			kind: LedgerKind.SHOP_REFUND,
+			note: `Refund for order #${order.orderNumber}: ${reason}`,
+			shopOrderId: order.id,
+			userId: order.userId,
+		})
+	}
+
+	// The stock goes back only if it was taken. The catalogue's stock figure can change after the order was placed – an item that was unlimited can be given a figure – so the order carries the answer rather than the item's stock now. Orders placed before that column existed do not carry it, and are treated as having taken stock, which is what this path always did.
+	const stockDebited = order.stockDebited ?? true
+	if (stockDebited && order.shopItemId) {
+		const restockPlan = tx.raw
+			.sql`UPDATE "shop_item" SET "stock" = "stock" + ${order.quantity} WHERE "id" = ${order.shopItemId} AND "stock" IS NOT NULL`
+			.affectedCount()
+			.build()
+		await tx.execute(restockPlan)
+	}
+}
 
 export async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrderRow> {
 	const target = await db.orm.public.ShopOrder.whereUnique({ id: orderId }).select("userId").first()
@@ -496,35 +566,7 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 		if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD)
 			throw new HttpError("CONFLICT", "This order has already been decided")
 
-		// Refund each pot exactly what it paid, by reading back the purchase rows rather than assuming. Refunding the whole total as spendable would turn a rejected printer order into a laundering step: coins that could only ever have bought a printer would come back as coins that can buy anything.
-		const paid = await tx.orm.public.LedgerEntry.where({ kind: LedgerKind.SHOP_PURCHASE, shopOrderId: order.id })
-			.groupBy("bucket")
-			.aggregate(group => ({ total: group.sum("amount") }))
-
-		for (const row of paid) {
-			// Purchases are negative; the refund is its mirror.
-			const amount = -(row.total ?? 0)
-			if (amount <= 0) continue
-			await appendLedgerEntry(tx, {
-				amount,
-				bucket: row.bucket,
-				createdById: adminId,
-				kind: LedgerKind.SHOP_REFUND,
-				note: `Refund for order #${order.orderNumber}: ${reason}`,
-				shopOrderId: order.id,
-				userId: order.userId,
-			})
-		}
-
-		// The stock goes back only if it was taken. The catalogue's stock figure can change after the order was placed – an item that was unlimited can be given a figure – so the order carries the answer rather than the item's stock now. Orders placed before that column existed do not carry it, and are treated as having taken stock, which is what this path always did.
-		const stockDebited = order.stockDebited ?? true
-		if (stockDebited && order.shopItemId) {
-			const restockPlan = tx.raw
-				.sql`UPDATE "shop_item" SET "stock" = "stock" + ${order.quantity} WHERE "id" = ${order.shopItemId} AND "stock" IS NOT NULL`
-				.affectedCount()
-				.build()
-			await tx.execute(restockPlan)
-		}
+		await refundOrder(tx, order, adminId, reason)
 
 		const [updated] = await tx.orm.public.ShopOrder.where({ id: orderId }).updateAll({
 			lastActorId: adminId,
@@ -534,6 +576,37 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 		})
 		if (!updated) throw new HttpError("NOT_FOUND", "Order not found")
 		return updated
+	})
+}
+
+/**
+ * Cancel an order as its owner and refund it.
+ *
+ * The per-user credit lock is the same one purchases, rejections and fulfilment take, and the conditional update is the second guard: a cancellation that races staff deciding the order leaves exactly one decision and at most one refund. Cancelling does not require the shop to be open – it is a refund, and a closed shop must not trap coins.
+ */
+export async function cancelOrder(orderId: string, userId: string, reason: string | null): Promise<ShopOrderPublic> {
+	const target = await db.orm.public.ShopOrder.where({ id: orderId, userId }).select("userId").first()
+	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
+
+	return db.transaction(async tx => {
+		await lockUserCredit(tx, userId)
+
+		const order = await tx.orm.public.ShopOrder.whereUnique({ id: orderId }).first()
+		if (!order || order.userId !== userId) throw new HttpError("NOT_FOUND", "Order not found")
+		if (!canCancelOrder(order))
+			throw new HttpError("CONFLICT", cancelBlockedReason(order) ?? "This order can no longer be cancelled")
+
+		await refundOrder(tx, order, userId, reason ?? "cancelled by the participant")
+
+		const [updated] = await tx.orm.public.ShopOrder.where({ id: orderId, status: order.status }).updateAll({
+			cancellationReason: reason,
+			cancelledAt: formatDbTimestamp(new Date()),
+			fulfillmentStage: ShopFulfillmentStage.CANCELLED,
+			lastActorId: userId,
+			status: ShopOrderStatus.CANCELLED,
+		})
+		if (!updated) throw new HttpError("CONFLICT", "This order was decided by someone else")
+		return toShopOrderPublic(updated)
 	})
 }
 

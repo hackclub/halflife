@@ -468,6 +468,8 @@ namespace public {
     placedAt             TimestampString(3)              @default(now())
     heldAt               TimestampString(3)?
     rejectedAt           TimestampString(3)?
+    cancelledAt          TimestampString(3)?
+    cancellationReason   String?
     fulfilledAt          TimestampString(3)?
     lastActorId          String?
     idempotencyKey       String?
@@ -1202,6 +1204,7 @@ namespace public {
     ADMIN_UNSUSPEND_USER = "ADMIN_UNSUSPEND_USER"
     ADMIN_BAN_USER = "ADMIN_BAN_USER"
     ADMIN_UNBAN_USER = "ADMIN_UNBAN_USER"
+    USER_CANCEL_ORDER = "USER_CANCEL_ORDER"
   }
 
   native_enum ReviewDisputeOutcome {

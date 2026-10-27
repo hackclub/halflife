@@ -5,7 +5,7 @@ import { STICKER_SHEET_PROMO_KEY } from "./promo-state"
  *
  * The server cannot read localStorage, so it always renders the banner. Without this, someone who closed the promo would see it flash back on every load before React remembered their choice. The stylesheet reads `html[data-promo]` and hides the banner or the whole thing until the client takes over, which is the same handful of pixels either way and no layout shift for a visitor who never closed it.
  *
- * Inline rather than a module because it has to run before the stylesheet has painted the banner, and it is only a read and a `dataset` write.
+ * Inline rather than a module because it has to run before the stylesheet has painted the banner, and it is only a read and a `dataset` write. Because it changes `<html>` before React hydrates, both layouts mark that element with `suppressHydrationWarning`: the extra attribute is the point, not a mismatch to repair.
  */
 const boot = `try{var m=localStorage.getItem(${JSON.stringify(STICKER_SHEET_PROMO_KEY)});if(m==="card"||m==="hidden")document.documentElement.dataset.promo=m}catch(e){}`
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { errorMessage, refusalMessage } from "@/lib/api-error"
+import { errorCode, errorMessage, refusalMessage } from "@/lib/api-error"
 
 describe("errorMessage", () => {
 	test("quotes the route's message", () => {
@@ -11,6 +11,19 @@ describe("errorMessage", () => {
 		expect(errorMessage("<html>bad gateway</html>", "fallback")).toBe("fallback")
 		expect(errorMessage({ error: "nope" }, "fallback")).toBe("fallback")
 		expect(errorMessage({ error: { message: 42 } }, "fallback")).toBe("fallback")
+	})
+})
+
+describe("errorCode", () => {
+	test("reads the code out of the envelope", () => {
+		expect(errorCode({ error: { code: "PURCHASE_LIMIT", message: "Limit 1 per person" } })).toBe("PURCHASE_LIMIT")
+	})
+
+	test("returns undefined for anything else", () => {
+		expect(errorCode(null)).toBeUndefined()
+		expect(errorCode("<html>bad gateway</html>")).toBeUndefined()
+		expect(errorCode({ error: { message: "no code" } })).toBeUndefined()
+		expect(errorCode({ error: { code: 42 } })).toBeUndefined()
 	})
 })
 
