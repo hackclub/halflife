@@ -13,9 +13,9 @@ export interface ProjectReviewStats {
 	 */
 	byWeek: WeekReviewProgress[]
 	/**
-	 * The same board over the last 30 days rather than every review on file. One query, so it cannot disagree with a table of daily runs that happened to be missed.
+	 * The same board over the last 7 days rather than every review on file. One query, so it cannot disagree with a table of daily runs that happened to be missed.
 	 */
-	last30DaysLeaderboard: BoardEntry[]
+	last7DaysLeaderboard: BoardEntry[]
 	/**
 	 * Who reviewed what, busiest first, keyed by lower-cased email. Email rather than account because Ari's reviewers hold no Half Life account; `"ari"` is Ari's anonymous decisions, which have no address at all. Ties break by key so the order is stable between runs.
 	 */
@@ -149,7 +149,7 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 /** The counts behind the daily project review summary. `since` is normally 24 hours ago; `now` anchors the rolling 30-day board to the same moment. */
 export async function getProjectReviewStats(since: Date, now: Date = new Date()): Promise<ProjectReviewStats> {
 	const sinceText = formatDbTimestamp(since)
-	const boardSinceText = formatDbTimestamp(new Date(now.getTime() - 30 * DAY_MS))
+	const boardSinceText = formatDbTimestamp(new Date(now.getTime() - 7 * DAY_MS))
 	const [submitted, reviewRows, recentReviewRows, byWeek] = await Promise.all([
 		db.orm.public.PhaseSubmission.where(submission => submission.createdAt.gte(sinceText)).aggregate(a => ({
 			count: a.count(),
@@ -158,7 +158,7 @@ export async function getProjectReviewStats(since: Date, now: Date = new Date())
 			.where(review => review.createdAt.gte(sinceText))
 			.select("reviewerEmail", "reviewerId", "reviewerName")
 			.all(),
-		// The last 30 days, for the rolling board under the daily one.
+		// The last 7 days, for the rolling board under the daily one.
 		db.orm.public.SubmissionReview.where({ invalidated: false, pass: ReviewPass.FINAL })
 			.where(review => review.createdAt.gte(boardSinceText))
 			.select("reviewerEmail", "reviewerId", "reviewerName")
@@ -180,7 +180,7 @@ export async function getProjectReviewStats(since: Date, now: Date = new Date())
 
 	return {
 		byWeek,
-		last30DaysLeaderboard: reviewerBoard(recentReviewRows, usersById),
+		last7DaysLeaderboard: reviewerBoard(recentReviewRows, usersById),
 		leaderboard: reviewerBoard(reviewRows, usersById),
 		reviewed: reviewRows.length,
 		submitted: submitted.count,
