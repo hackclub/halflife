@@ -212,13 +212,8 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	const isUpdate = phaseSubmissions.some(s => s.resolvedAt !== null)
 	const demoUrl = phase === Phase.BUILD ? await buildDemoUrl(project.userId, def.buildWeek) : null
 	const hasTimelapse = project.workSessions.some(s => s.timelapses.length > 0)
-	// Ari fetches Lapse clips per Hackatime project key, so a recording's own project has to be named even when the maker never linked it to this phase. Linked projects first, then the ones only a timelapse names, deduped and capped at Ari's limit.
-	const hackatimeProjects = [
-		...new Set([
-			...project.hackatimeLinks.map(l => l.hackatimeProject),
-			...project.workSessions.flatMap(s => s.timelapses.flatMap(t => (t.hackatimeProject ? [t.hackatimeProject] : []))),
-		]),
-	].slice(0, 50)
+	// Only projects the maker attached are named here: everything in `hackatime_projects` is time Ari counts, and a recording's `hackatimeProject` is whatever Hackatime happened to be tracking when it was filmed, not a link the maker made to this entry. The recording still travels as evidence through the clip links in its journal below.
+	const hackatimeProjects = [...new Set(project.hackatimeLinks.map(l => l.hackatimeProject))].slice(0, 50)
 
 	const input: AriShipInput = {
 		// Ari rejects an empty description. Week one's onboarding allows one, and submissions made before that was enforced would otherwise fail every retry, so fall back to the title rather than throw: the title is always present and is a truer description than a placeholder would be.

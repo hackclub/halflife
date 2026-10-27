@@ -11,6 +11,8 @@ import { type AriRefreshTarget, flag, limitArg, phaseArg, refreshAriShip } from 
  *
  * Only in-review work is touched. A decided hand-in is not reopened: re-sending it would put already-reviewed work back in front of reviewers.
  *
+ * Re-sending is also how an already-sent ship drops Hackatime project names that only a recording carried: Ari counts every named project as time, so a recording's project is evidence for its clip, not hours the maker linked. Useful after the ship builder stopped adding those names; pass `--project <themeProjectId>` to refresh one hand-in.
+ *
  * Read-only unless `--commit` is passed.
  *
  * Run with `bun run ari:backfill-timelapses` (dry run), then `bun run ari:backfill-timelapses -- --limit 1 --commit` to prove it on one hand-in. Flags: `--commit`, `--phase design|build`, `--project <themeProjectId>`, `--limit <n>`.
