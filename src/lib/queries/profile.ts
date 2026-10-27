@@ -60,7 +60,17 @@ export const PROFILE_REELS = 24
 export async function getProfile(userId: string, viewerId: string): Promise<ProfileData | null> {
 	const [user, projects, reels, counts, settings] = await Promise.all([
 		db.orm.public.User.whereUnique({ id: userId })
-			.select("createdAt", "currentStreak", "displayName", "id", "image", "joinedProgramAt", "lastStreakDate", "name")
+			.select(
+				"createdAt",
+				"currentStreak",
+				"displayName",
+				"id",
+				"image",
+				"joinedProgramAt",
+				"lastStreakDate",
+				"name",
+				"slackId",
+			)
 			.first(),
 		db.orm.public.ThemeProject.where({ deletedAt: null, userId })
 			.where(project => project.namedAt.isNotNull())

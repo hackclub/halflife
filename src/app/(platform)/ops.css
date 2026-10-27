@@ -79,8 +79,13 @@ body {
 	background: var(--color-surface);
 }
 
-a {
-	color: var(--color-ink-strong);
+/*
+ * Layered, not plain: this stylesheet outlives the route that loads it. Navigating from the console to the platform leaves it in the document, and an unlayered `a` rule outranks every Tailwind colour utility on the page it lands on – which is what turned the Doomscroller's white author names and project tags navy. In the base layer it is still the console's default link colour, while a component that names one wins.
+ */
+@layer base {
+	a {
+		color: var(--color-ink-strong);
+	}
 }
 
 /*
