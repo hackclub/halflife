@@ -592,30 +592,44 @@ export interface FulfillmentFilters {
  */
 /** One row of the fulfilment sheet: the order with its resolved stage, dollar total and buyer. */
 export interface FulfillmentOrderRow {
+	cancellationReason: string | null
+	cancelledAt: Date | null
 	country: string | null
+	fulfilledAt: Date | null
 	fulfillmentMethod: ShopFulfillmentMethod | null
 	fulfillmentStage: ShopFulfillmentStage
+	holdReason: string | null
 	id: string
 	itemNameSnapshot: string
 	orderNumber: number
 	placedAt: Date
 	quantity: number
+	rejectionReason: string | null
 	status: ShopOrderStatus
 	totalUsd: number | null
+	trackingCarrier: string | null
+	trackingNumber: string | null
 	user: { id: string; name: string | null }
 }
 
 /** One row as it comes out of the database, before the sheet's own arithmetic. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns. */
 export interface FulfillmentOrderModel {
+	cancellationReason: string | null
+	cancelledAt: string | null
+	fulfilledAt: string | null
 	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
 	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
+	holdReason: string | null
 	id: string
 	itemNameSnapshot: string
 	orderNumber: number
 	placedAt: Date
 	quantity: number
+	rejectionReason: string | null
 	shopItem: { costUsd: number | null }
 	status: Models.public_ShopOrder["status"]
+	trackingCarrier: string | null
+	trackingNumber: string | null
 	unitCostUsd: number | null
 	user: { displayName: string | null; encryptedAddressCountry: string | null; id: string; name: string | null }
 }
@@ -655,14 +669,21 @@ export async function listFulfillmentOrders(
 	const rows = await paged
 		.limit(opts.limit + 1)
 		.select(
+			"cancellationReason",
+			"cancelledAt",
+			"fulfilledAt",
 			"fulfillmentMethod",
 			"fulfillmentStage",
+			"holdReason",
 			"id",
 			"itemNameSnapshot",
 			"orderNumber",
 			"placedAt",
 			"quantity",
+			"rejectionReason",
 			"status",
+			"trackingCarrier",
+			"trackingNumber",
 			"unitCostUsd",
 		)
 		.include("shopItem", item => item.select("costUsd"))
@@ -672,15 +693,22 @@ export async function listFulfillmentOrders(
 		if (!row.shopItem) throw new Error(`order ${row.id} has no item`)
 		if (!row.user) throw new Error(`order ${row.id} has no buyer`)
 		return {
+			cancellationReason: row.cancellationReason,
+			cancelledAt: row.cancelledAt,
+			fulfilledAt: row.fulfilledAt,
 			fulfillmentMethod: row.fulfillmentMethod,
 			fulfillmentStage: row.fulfillmentStage,
+			holdReason: row.holdReason,
 			id: row.id,
 			itemNameSnapshot: row.itemNameSnapshot,
 			orderNumber: row.orderNumber,
 			placedAt: parseDbTimestamp(row.placedAt),
 			quantity: row.quantity,
+			rejectionReason: row.rejectionReason,
 			shopItem: row.shopItem,
 			status: row.status,
+			trackingCarrier: row.trackingCarrier,
+			trackingNumber: row.trackingNumber,
 			unitCostUsd: row.unitCostUsd,
 			user: row.user,
 		}
@@ -691,7 +719,9 @@ export async function listFulfillmentOrders(
 		// Orders from before the item had a cost fall back to today's.
 		const unit = unitCostUsd ?? shopItem.costUsd
 		return Object.assign(order, {
+			cancelledAt: order.cancelledAt === null ? null : parseDbTimestamp(order.cancelledAt),
 			country: safeDecrypt(user.encryptedAddressCountry),
+			fulfilledAt: order.fulfilledAt === null ? null : parseDbTimestamp(order.fulfilledAt),
 			fulfillmentStage: fulfillmentStageOf(order),
 			totalUsd: unit === null ? null : unit * order.quantity,
 			user: { id: user.id, name: displayName(user) },

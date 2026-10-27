@@ -1,19 +1,17 @@
 import Link from "next/link"
-import { OrderDecision } from "@/app/components/forms/OrderDecision"
-import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
 import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
-import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import { type FulfillmentFilters, listFulfillmentOrders, listPrinterAwards } from "@/lib/queries/admin"
 import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 import { DAY_MS } from "@/lib/time"
+import { FulfillmentRow } from "./FulfillmentRow"
 
 export const dynamic = "force-dynamic"
 
@@ -79,7 +77,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	)
 
 	return (
-		<div className="hl-stack">
+		<div className="hl-stack hl-page-wide">
 			<PageHeader subtitle="Every order that was not rejected, including cancelled ones." title="Fulfillment" />
 
 			<Panel>
@@ -123,47 +121,12 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 				{items.length === 0 ? (
 					<EmptyState>No orders match.</EmptyState>
 				) : (
-					<Table head={["#", "Participant", "Item", "Cost (USD)", "Country", "Placed", "Fulfillment", "Decision"]}>
+					<Table
+						className="hl-table--roomy"
+						head={["#", "Participant", "Item", "Cost (USD)", "Country", "Placed", "Status", "Manage"]}
+					>
 						{items.map(order => (
-							<tr key={order.id}>
-								<td className="hl-mono">{order.orderNumber}</td>
-								<td>
-									<Link href={`/admin/users/${order.user.id}`}>{displayName(order.user)}</Link>
-									{order.status === "PENDING" || order.status === "ON_HOLD" ? (
-										<div>
-											<Badge tone="warning">{order.status.toLowerCase().replace("_", " ")}</Badge>
-										</div>
-									) : order.status === "CANCELLED" ? (
-										<div>
-											<Badge tone="danger">cancelled by participant</Badge>
-										</div>
-									) : null}
-								</td>
-								<td>
-									{order.itemNameSnapshot}
-									{order.quantity > 1 ? <span className="hl-hint"> ×{order.quantity}</span> : null}
-								</td>
-								<td className="hl-mono">
-									{order.totalUsd === null ? <span className="hl-hint">not set</span> : formatUsd(order.totalUsd)}
-								</td>
-								<td>{order.country ?? <span className="hl-hint">unknown</span>}</td>
-								<td className="hl-mono">{formatUtcDateTime(order.placedAt)}</td>
-								<td>
-									<OrderFulfillment
-										cancelled={order.status === "CANCELLED"}
-										method={order.fulfillmentMethod}
-										orderId={order.id}
-										stage={order.fulfillmentStage}
-									/>
-								</td>
-								<td>
-									{order.status === "PENDING" || order.status === "ON_HOLD" ? (
-										<OrderDecision orderId={order.id} />
-									) : (
-										<span className="hl-hint">{order.status.toLowerCase()}</span>
-									)}
-								</td>
-							</tr>
+							<FulfillmentRow key={order.id} order={order} />
 						))}
 					</Table>
 				)}
@@ -178,7 +141,10 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 				{awards.length === 0 ? (
 					<EmptyState>Nobody has shipped all five themes yet.</EmptyState>
 				) : (
-					<Table head={["Participant", "Qualified", "Status", "Address", "Tracking", "Update"]}>
+					<Table
+						className="hl-table--roomy"
+						head={["Participant", "Qualified", "Status", "Address", "Tracking", "Update"]}
+					>
 						{awards.map(award => (
 							<tr key={award.id}>
 								<td>
