@@ -1,0 +1,5 @@
+[test]
+# Only the app's own tests: e2e/ holds Playwright specs, which the Bun test runner would otherwise collect and fail on because `test()` comes from a different runner.
+root = "src"
+# `server-only` throws unless the react-server condition resolves it. The `test` script passes --conditions=react-server; this makes a bare `bun test` behave the same.
+preload = ["./scripts/test-setup.ts"]
