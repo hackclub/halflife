@@ -36,6 +36,9 @@ export const PATCH = withWritePermission(
 			&& body.stage !== ShopFulfillmentStage.CANCELLED
 		)
 			return fail("CONFLICT", "The participant cancelled this order")
+		// Cancelled is a participant decision with a refund attached. Letting staff set the stage here would mark an order cancelled without returning its coins.
+		if (before.status !== ShopOrderStatus.CANCELLED && body.stage === ShopFulfillmentStage.CANCELLED)
+			return fail("VALIDATION_FAILED", "Use Reject and refund to cancel an order")
 
 		// Conditional on the status that was just read: an order rejected between that read and this write must not be marked as on its way out.
 		const updated = await db.orm.public.ShopOrder.where({ id, status: before.status }).updateAndCount({
