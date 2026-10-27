@@ -1246,8 +1246,9 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 	const BAR_GAP = clusterW * BAR_GAP_SHARE
 	const barW = (clusterW - (PROJECT_KIND.length - 1) * BAR_GAP) / PROJECT_KIND.length
 
-	// These are counts, so the top is rounded up to a whole number of tick steps: a gridline labelled 9.25 would be nonsense on an axis of projects.
-	const axisMax = Math.max(4, Math.ceil(Math.max(1, ...totals) / 4) * 4)
+	// These are counts, so the top is rounded up to a whole number of tick steps: a gridline labelled 9.25 would be nonsense on an axis of projects. The tallest mark is one kind's bar, never the week's four added together – they stand side by side and are never drawn as one column, so sizing to the sum put a week of 280-high bars against a top of 560.
+	const tallest = Math.max(1, ...weeks.flatMap(week => PROJECT_KIND.map(kind => week[kind.key])))
+	const axisMax = Math.max(4, Math.ceil(tallest / 4) * 4)
 	const ticks = Array.from({ length: 5 }, (_, i) => (axisMax / 4) * i)
 
 	const yFor = (v: number) => PAD_T + plotH - (v / axisMax) * plotH
