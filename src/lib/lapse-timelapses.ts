@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { errorMessage } from "@/lib/api-error"
+import { errorMessage, refusalMessage } from "@/lib/api-error"
 import { isRecord } from "@/lib/unknown"
 
 /**
@@ -43,18 +43,6 @@ function errorCodeOf(payload: unknown): string | undefined {
 }
 
 /**
- * What to say when a refusal carries no message of its own.
- *
- * A body that is not our envelope usually comes from the network rather than the route – a gateway timing out while Lapse is slow, or a proxy's HTML page – so the status is the one detail worth passing on, and the one that makes a bug report actionable.
- */
-function refusalMessage(status: number): string {
-	if (status === 401 || status === 403) return "You are signed out. Refresh the page and sign in again."
-	if (status === 502 || status === 503 || status === 504)
-		return `The timelapse list could not be loaded (HTTP ${status}). This is usually temporary – try again in a minute.`
-	return `Could not load your timelapses (HTTP ${status}). Try again.`
-}
-
-/**
  * Read one answer from `/api/lapse/timelapses`.
  *
  * A refusal is read for its own envelope first: the route sends `{ error: { code, message } }` with none of a page's fields, so parsing it as a page can only ever fail. A Lapse link that has expired comes back as `LAPSE_NOT_LINKED` and is the one refusal the picker answers with the sign-in card rather than an error, because signing in is the fix.
@@ -62,7 +50,7 @@ function refusalMessage(status: number): string {
 export function readLapsePage(status: number, payload: unknown): LapsePageRead {
 	if (status >= 400) {
 		if (errorCodeOf(payload) === "LAPSE_NOT_LINKED") return { unlinked: true }
-		return { error: errorMessage(payload, refusalMessage(status)) }
+		return { error: errorMessage(payload, refusalMessage(status, "The timelapse list could not be loaded")) }
 	}
 	const parsed = LapsePageResponseSchema.safeParse(payload)
 	if (!parsed.success) {

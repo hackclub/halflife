@@ -24,7 +24,7 @@ import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, borderedInputClass, Chip, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
-import { errorMessage } from "@/lib/api-error"
+import { errorMessage, refusalMessage } from "@/lib/api-error"
 import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
@@ -86,9 +86,8 @@ function isWeeksProject(week: Week, project: Project): boolean {
 	return project.weekId === (week.phase === "build" ? week.id - 5 : week.id)
 }
 
-/** The parts list read, plus the error envelope the route shares. */
+/** The parts list read. A refusal carries none of these fields, so it is read before the shape it is not. */
 const BomResponseSchema = z.object({
-	error: z.object({ message: z.string().optional() }).optional(),
 	items: z.array(BomLineSchema),
 	taxShippingUsd: z.number(),
 })
@@ -2059,10 +2058,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		void (async () => {
 			try {
 				const res = await fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
-				const parsed = BomResponseSchema.safeParse(await res.json().catch(() => null))
-				if (!res.ok)
-					throw new Error((parsed.success ? parsed.data.error?.message : undefined) ?? "Could not load the parts list")
-				if (!parsed.success) throw new Error("Could not load the parts list")
+				const payload: unknown = await res.json().catch(() => null)
+				if (!res.ok) throw new Error(errorMessage(payload, refusalMessage(res.status, "Could not load the parts list")))
+				const parsed = BomResponseSchema.safeParse(payload)
+				if (!parsed.success) throw new Error("The parts list came back unreadable. Try again.")
 				if (live) setBom({ items: parsed.data.items, taxShippingUsd: parsed.data.taxShippingUsd })
 			} catch (err) {
 				if (live) setBomError(err instanceof Error ? err.message : String(err))
