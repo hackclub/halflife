@@ -7,6 +7,7 @@ import { Phase, ReviewResult } from "@/lib/enums"
 import type { InputJsonObject } from "@/lib/json"
 import db from "@/lib/prisma8"
 import { formatProgramDate, getProgramSettings } from "@/lib/program"
+import { resubmissionBudget } from "@/lib/resubmissions"
 import { trackSideEffect } from "@/lib/side-effects"
 import { postMessage, sendDM } from "@/lib/slack"
 import { escapeLikePattern } from "@/lib/text"
@@ -52,6 +53,7 @@ function headline(
 	title: string,
 	decidedBy: "ari" | "console",
 	resubmitBy: string | null,
+	resubmissionsLeft: number | null,
 ): { body: string; next?: string } {
 	const what = `${phase} for ${title}`
 	switch (result) {
@@ -61,9 +63,12 @@ function headline(
 			return {
 				body: `${asker(decidedBy)} asked for changes on your ${what}.`,
 				// The half that makes it actionable. What the status now permits is more work rather than less, and without this line the message reads as a verdict while the trail's own wording does the explaining somewhere a maker may never look. A return has just granted a week, so the date is worth more than "until it closes": it is the one thing the maker will come back to.
-				next: resubmitBy
-					? `Fix it and submit it again from the project page. You have until ${resubmitBy} to resubmit.`
-					: "Fix it and submit it again from the project page. Your week still takes submissions until it closes.",
+				next:
+					resubmissionsLeft === 0
+						? "You've used both resubmissions for this phase, so you cannot submit it again. If you think the decision is wrong, dispute it on the project page or ask a reviewer in Slack."
+						: resubmitBy
+							? `Fix it and submit it again from the project page. You have until ${resubmitBy} to resubmit.`
+							: "Fix it and submit it again from the project page. Your week still takes submissions until it closes.",
 			}
 		case ReviewResult.REJECTED:
 			return { body: `Your ${what} was not approved.` }
@@ -90,7 +95,7 @@ export interface ReviewOutcomeMessage {
  */
 export function reviewOutcomeMessage(
 	notice: Pick<ReviewOutcomeNotice, "result" | "decidedBy" | "note">,
-	context: { phase: Phase; title: string; resubmitBy?: string | null },
+	context: { phase: Phase; title: string; resubmitBy?: string | null; resubmissionsLeft?: number | null },
 ): ReviewOutcomeMessage {
 	const phaseLabel = context.phase === Phase.DESIGN ? "design" : "build"
 	const { body, next } = headline(
@@ -99,6 +104,7 @@ export function reviewOutcomeMessage(
 		context.title,
 		notice.decidedBy,
 		context.resubmitBy ?? null,
+		context.resubmissionsLeft ?? null,
 	)
 	const note = notice.note?.trim() || ""
 	return { note: note || null, prose: [body, ...(next ? [next] : [])] }
@@ -214,7 +220,21 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 					(await getProgramSettings()).programTimezone,
 				)
 			: null
-	const message = reviewOutcomeMessage(notice, { phase: notice.phase, resubmitBy, title })
+	// A return is a request to submit again, so the message must not ask for one the cap refuses. Read from the same rows the gate reads: the submission just decided is already counted, and a return that spends the second resubmission says so.
+	let resubmissionsLeft: number | null = null
+	if (notice.result === ReviewResult.RETURNED) {
+		const rows = await db.orm.public.PhaseSubmission.where({
+			phase: notice.phase,
+			themeProjectId: notice.themeProjectId,
+		})
+			.select("createdAt", "phase")
+			.all()
+		resubmissionsLeft = resubmissionBudget(
+			rows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), phase: row.phase })),
+			notice.phase,
+		).remaining
+	}
+	const message = reviewOutcomeMessage(notice, { phase: notice.phase, resubmissionsLeft, resubmitBy, title })
 
 	await deliverToMaker({
 		kind: "review_outcome",

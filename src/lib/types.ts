@@ -111,6 +111,10 @@ export interface Project {
 	githubRepo?: string | null
 	id: string
 	name: string
+	/**
+	 * How many resubmissions each phase has used under the per-phase limit. Present once the project has any hand-in on record, so the submit sheet can warn before the server refuses.
+	 */
+	resubmissions?: { build: number; design: number }
 	starter: boolean
 	/** Which starter project it is, when it is one. See config/onboarding. */
 	starterProjectId?: string | null

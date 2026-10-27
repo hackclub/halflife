@@ -39,6 +39,8 @@ export const API_ERROR_STATUS = {
 	RATE_LIMITED: 429,
 	/** A deleted reel has to be re-recorded before anything else moves. */
 	REEL_OWED: 409,
+	/** The phase has spent both hand-ins it is allowed after a review. */
+	RESUBMISSION_LIMIT: 409,
 	SHOP_CLOSED: 409,
 	SUBMISSIONS_CLOSED: 409,
 

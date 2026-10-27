@@ -303,6 +303,66 @@ function PhaseHours({ phase }: { phase: ProjectPageData["phases"][number] }) {
 	return null
 }
 
+/**
+ * How many hand-ins a returned phase may still make, said in words and drawn as pips.
+ *
+ * The words carry the fact; the pips are a second look for anyone scanning. Two is the whole rule, so a fixed pair reads faster than a number ever would.
+ */
+function ResubmissionMeter({ limit, used }: { limit: number; used: number }) {
+	const remaining = Math.max(0, limit - used)
+	const exhausted = remaining === 0
+	return (
+		<span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
+			<span aria-hidden="true" className="inline-flex items-center gap-1">
+				{Array.from({ length: limit }, (_, index) => (
+					<span
+						className={cx(
+							"size-2.5 rounded-full border-2",
+							index < remaining ? "border-teal bg-teal" : "border-line-strong bg-transparent",
+						)}
+						key={index}
+					/>
+				))}
+			</span>
+			<span className={cx("text-[0.92rem] font-extrabold tabular-nums", exhausted ? "text-coral-deep" : "text-navy")}>
+				{exhausted ? "No resubmissions left" : `${remaining} of ${limit} left`}
+			</span>
+		</span>
+	)
+}
+
+/**
+ * The budget for every phase on the page, in one place above the review record.
+ *
+ * Kept separate from the phase list rather than repeated under each, because the numbers are the same rule for both and reading it twice makes it look like two different limits. It is the first thing in the Review section, so a maker never has to open a submit sheet to find out what is left.
+ */
+function ResubmissionBudgetPanel({ phases }: { phases: ProjectPageData["phases"] }) {
+	// A decided phase has nothing left to spend its budget on, and an approved one reading "no resubmissions left" would look like a problem rather than a fact. Rejected phases are reopened by staff before they can be handed in again, so only the live ones appear.
+	const live = phases.filter(phase => phase.status !== "approved" && phase.status !== "rejected")
+	if (live.length === 0) return null
+	return (
+		<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
+			<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+				<h3 className="text-[0.95rem] font-extrabold text-navy">Resubmissions</h3>
+				<p className="hand text-[0.84rem] text-navy-soft">two per phase, after a review sends it back</p>
+			</div>
+			<ul className="mt-4 grid gap-3.5">
+				{live.map(phase => (
+					<li
+						className="grid gap-1.5 border-t border-dashed border-line pt-3.5 first:border-0 first:pt-0"
+						key={phase.phase}
+					>
+						<span className="text-[0.95rem] font-extrabold text-navy">
+							{phase.phase === "DESIGN" ? "Design" : "Build"}
+						</span>
+						<ResubmissionMeter limit={phase.resubmissionLimit} used={phase.resubmissionsUsed} />
+					</li>
+				))}
+			</ul>
+		</Panel>
+	)
+}
+
 function ReviewState({
 	projectId,
 	phases,
@@ -323,6 +383,7 @@ function ReviewState({
 			<ul className="grid gap-5">
 				{phases.map(p => {
 					const negative = p.status === "update_requested" || p.status === "rejected"
+					const remaining = Math.max(0, p.resubmissionLimit - p.resubmissionsUsed)
 					return (
 						<li className="grid gap-2.5" key={p.phase}>
 							<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -366,7 +427,7 @@ function ReviewState({
 
 							{negative && (
 								<div className="flex flex-wrap items-center gap-2">
-									{p.status === "update_requested" && (
+									{p.status === "update_requested" && remaining > 0 && (
 										<Button
 											onClick={() =>
 												setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
@@ -376,6 +437,11 @@ function ReviewState({
 										>
 											I&apos;ve made these changes, resubmit
 										</Button>
+									)}
+									{p.status === "update_requested" && remaining === 0 && (
+										<p className="text-[0.88rem] font-semibold leading-snug text-coral-deep">
+											Both resubmissions are used. Dispute this review or ask a reviewer in Slack.
+										</p>
 									)}
 									{!p.dispute && (
 										<Button onClick={() => setDisputing(p.phase)} size="sm" variant="outline">
@@ -422,40 +488,54 @@ function DecisionNotice({
 
 	return (
 		<div className="mt-5 grid gap-4">
-			{returned.map(p => (
-				<Panel className="bg-gold-pale/70 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="gold">
-					<div className="flex items-start gap-2.5">
-						<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
-						<div className="min-w-0 flex-1">
-							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
-								{p.phase === "DESIGN" ? "Design" : "Build"} needs changes
-							</p>
-							<div className="mt-1.5">
-								<PhaseHours phase={p} />
+			{returned.map(p => {
+				const remaining = Math.max(0, p.resubmissionLimit - p.resubmissionsUsed)
+				return (
+					<Panel className="bg-gold-pale/70 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="gold">
+						<div className="flex items-start gap-2.5">
+							<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
+							<div className="min-w-0 flex-1">
+								<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
+									{p.phase === "DESIGN" ? "Design" : "Build"} needs changes
+								</p>
+								<div className="mt-1.5">
+									<PhaseHours phase={p} />
+								</div>
+								{p.comments ? (
+									// Pre-lined, so a reviewer's own line breaks survive: their note is often a list, and reflowing it into one paragraph loses which request ended and the next began.
+									<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
+										{p.comments}
+									</p>
+								) : (
+									<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">
+										no reason was recorded with this decision. If that looks wrong, dispute it from the Review section
+										below.
+									</p>
+								)}
+								<div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-white/60 px-3.5 py-2.5">
+									<span className="label text-gold-ink">Resubmissions</span>
+									<ResubmissionMeter limit={p.resubmissionLimit} used={p.resubmissionsUsed} />
+								</div>
+								{remaining > 0 ? (
+									<Button
+										className="mt-3"
+										onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
+										size="sm"
+										variant="gold"
+									>
+										I&apos;ve made these changes, resubmit
+									</Button>
+								) : (
+									<p className="mt-3 rounded-xl bg-white/60 px-3.5 py-3 text-[0.9rem] leading-relaxed text-navy">
+										You&apos;ve used both resubmissions for this phase. It stays returned for now: dispute the review
+										below if you think it is wrong, or ask a reviewer in Slack.
+									</p>
+								)}
 							</div>
-							{p.comments ? (
-								// Pre-lined, so a reviewer's own line breaks survive: their note is often a list, and reflowing it into one paragraph loses which request ended and the next began.
-								<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
-									{p.comments}
-								</p>
-							) : (
-								<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">
-									no reason was recorded with this decision. If that looks wrong, dispute it from the Review section
-									below.
-								</p>
-							)}
-							<Button
-								className="mt-3"
-								onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
-								size="sm"
-								variant="gold"
-							>
-								I&apos;ve made these changes, resubmit
-							</Button>
 						</div>
-					</div>
-				</Panel>
-			))}
+					</Panel>
+				)
+			})}
 
 			{rejected.map(p => (
 				<Panel className="bg-coral/10 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="coral">
@@ -655,7 +735,10 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 			{/* ---------- where review stands ---------- */}
 			{data.phases.length > 0 && (
 				<ProjectSection id="review-title" title="Review">
-					<ReviewState phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
+					<ResubmissionBudgetPanel phases={data.phases} />
+					<div className="mt-4">
+						<ReviewState phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
+					</div>
 				</ProjectSection>
 			)}
 
