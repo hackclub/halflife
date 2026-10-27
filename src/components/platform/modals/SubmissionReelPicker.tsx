@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react"
 import { z } from "zod"
 import { IconCheck, IconFilm } from "@/components/platform/icons"
+import { errorMessage, refusalMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
+import { messageOf } from "@/lib/errors"
 
 /** One closing reel the maker already posted for this hand-in. */
 const SubmissionReelSchema = z.object({
@@ -17,8 +19,8 @@ const SubmissionReelSchema = z.object({
 })
 export type SubmissionReel = z.infer<typeof SubmissionReelSchema>
 
+/** A page of reels. A refusal carries none of these fields, so it is read before the shape it is not. */
 const SubmissionReelPageSchema = z.object({
-	error: z.object({ message: z.string().optional() }).optional(),
 	reels: z.array(SubmissionReelSchema),
 })
 
@@ -50,15 +52,15 @@ export function SubmissionReelPicker({
 				const res = await fetch(`/api/me/reels?checkpointKey=${encodeURIComponent(checkpointKey)}`, {
 					cache: "no-store",
 				})
-				const parsed = SubmissionReelPageSchema.safeParse(await res.json().catch(() => null))
+				const payload: unknown = await res.json().catch(() => null)
 				if (!res.ok)
-					throw new Error(
-						(parsed.success ? parsed.data.error?.message : undefined) ?? "Could not load your previous reels",
-					)
-				if (!parsed.success) throw new Error("Could not load your previous reels")
+					throw new Error(errorMessage(payload, refusalMessage(res.status, "Could not load your previous reels")))
+				const parsed = SubmissionReelPageSchema.safeParse(payload)
+				if (!parsed.success) throw new Error("The reel list came back unreadable")
 				if (live) setReels(parsed.data.reels)
-			} catch {
-				// Nothing to offer if the list will not load: the maker records a fresh reel as before rather than meeting an error here.
+			} catch (err) {
+				// Nothing to offer if the list will not load: the maker records a fresh reel as before rather than meeting an error here. Logged so a repeat failure is diagnosable rather than silent.
+				console.warn("[reels] could not load the previous reels:", messageOf(err))
 				if (live) setReels([])
 			}
 		})()

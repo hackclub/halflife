@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { z } from "zod"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { Button, Chip } from "@/components/platform/ui"
-import { errorMessage } from "@/lib/api-error"
+import { errorMessage, refusalMessage } from "@/lib/api-error"
 import { linkForge } from "@/lib/auth-client"
 import { cx } from "@/lib/cx"
 import { displayRepo } from "@/lib/repo"
@@ -32,7 +32,8 @@ const WritableRepoSchema = z.object({
 
 const SyncPayloadSchema = z.object({
 	enabled: z.boolean(),
-	error: z.object({ message: z.string().optional() }).nullish(),
+	/** The last sync's recorded refusal, shown in the panel rather than as a failure to load it. */
+	error: z.string().nullish(),
 	forge: z.string().nullable(),
 	linkedForges: z.array(z.string()),
 	/** The project's own repo link, what the sync target is compared against. */
@@ -55,9 +56,6 @@ const FORGES = [
 
 // The reels' relative-time wording, reused rather than re-spelled: "3h ago" reads the same everywhere, and this file had its own copy that said "3 hours ago" and rendered a bare locale date past a day.
 const when = (ms: number) => ago(new Date(ms))
-
-/** The route's error envelope on a refusal. */
-const syncErrorMessage = (error: SyncPayload["error"]): string | undefined => error?.message
 
 export function RepoSyncSettings({
 	projectId,
@@ -86,13 +84,13 @@ export function RepoSyncSettings({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/repo-sync`, { cache: "no-store" })
-			const parsed = SyncPayloadSchema.safeParse(await res.json().catch(() => null))
+			// A refusal is `{ error }` and shares none of the settings' fields, so reading it as settings lost its message.
+			const payload: unknown = await res.json().catch(() => null)
 			if (!res.ok)
-				throw new Error(
-					(parsed.success ? syncErrorMessage(parsed.data.error) : undefined) ?? "Could not load the sync settings",
-				)
-			if (!parsed.success) throw new Error("Could not load the sync settings")
-			setState({ ...parsed.data, error: null })
+				throw new Error(errorMessage(payload, refusalMessage(res.status, "Could not load the sync settings")))
+			const parsed = SyncPayloadSchema.safeParse(payload)
+			if (!parsed.success) throw new Error("The sync settings came back unreadable. Try again.")
+			setState({ ...parsed.data, error: parsed.data.error ?? null })
 			// Pre-select the repo a project already points at, if it is one of the writable ones, so re-enabling does not need the picker used again.
 			const current = parsed.data.repo ?? null
 			setPicked(p => p ?? parsed.data.repos.find(r => r.url === current)?.url ?? null)
@@ -119,7 +117,7 @@ export function RepoSyncSettings({
 			})
 			const payload: unknown = await res.json().catch(() => null)
 			if (!res.ok) {
-				setError(errorMessage(payload, "That did not work. Try again."))
+				setError(errorMessage(payload, refusalMessage(res.status, "That did not work")))
 				return false
 			}
 			await load()

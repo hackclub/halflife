@@ -5,6 +5,7 @@ import { z } from "zod"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { RepoEditor } from "@/components/platform/RepoField"
 import { Button } from "@/components/platform/ui"
+import { errorMessage, refusalMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
 import { messageOf } from "@/lib/errors"
 import { displayRepo } from "@/lib/repo"
@@ -28,10 +29,6 @@ const RepoCheckResultSchema = z.object({
 	checks: z.array(RepoCheckSchema),
 	repo: z.string().nullable(),
 	unavailable: z.boolean(),
-})
-
-const RepoCheckResponseSchema = RepoCheckResultSchema.extend({
-	error: z.object({ message: z.string().optional() }).optional(),
 })
 
 /**
@@ -100,10 +97,11 @@ export function RepoChecks({
 		onResult(null)
 		try {
 			const res = await fetch(`/api/projects/${project.id}/preflight`, { cache: "no-store" })
-			const parsed = RepoCheckResponseSchema.safeParse(await res.json().catch(() => null))
-			if (!res.ok)
-				throw new Error((parsed.success ? parsed.data.error?.message : undefined) ?? "Could not check the repo")
-			if (!parsed.success) throw new Error("Could not check the repo")
+			// A refusal is `{ error }` and shares none of the check's fields, so read it before the shape it is not.
+			const payload: unknown = await res.json().catch(() => null)
+			if (!res.ok) throw new Error(errorMessage(payload, refusalMessage(res.status, "Could not check the repo")))
+			const parsed = RepoCheckResultSchema.safeParse(payload)
+			if (!parsed.success) throw new Error("The repo check came back unreadable. Try again.")
 			setData(parsed.data)
 			onResult(parsed.data)
 		} catch (err) {
