@@ -14,6 +14,19 @@ export function errorMessage(payload: unknown, fallback: string): string {
 }
 
 /**
+ * The code out of an API error body.
+ *
+ * A message is for the reader; the code is for the caller that has a different next step to offer – "you already have one, here are your orders" rather than another attempt. Read without assuming the body is the envelope, like `errorMessage`.
+ */
+export function errorCode(payload: unknown): string | undefined {
+	if (!isRecord(payload)) return undefined
+	const { error } = payload
+	if (!isRecord(error)) return undefined
+	const { code } = error
+	return typeof code === "string" ? code : undefined
+}
+
+/**
  * The message for a refusal whose body is not the app's envelope.
  *
  * A proxy's HTML page, a gateway timing out, or a body cut short leaves nothing to quote, so the status is the one detail worth passing on – it is what turns "something went wrong" into a report someone can act on. Only a signed-out answer is common and actionable enough to say in words rather than numbers.

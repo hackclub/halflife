@@ -445,8 +445,14 @@ export async function purchase(
 			const owned = await tx.orm.public.ShopOrder.where({ shopItemId, userId })
 				.where(order => order.status.notIn([ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED]))
 				.aggregate(a => ({ quantity: a.sum("quantity") }))
-			if ((owned.quantity ?? 0) + quantity > fresh.maxPerUser)
-				throw new HttpError("PURCHASE_LIMIT", `Limit ${fresh.maxPerUser} per person`)
+			const held = owned.quantity ?? 0
+			if (held + quantity > fresh.maxPerUser)
+				throw new HttpError(
+					"PURCHASE_LIMIT",
+					held > 0
+						? `You already have ${held} of this item. The limit is ${fresh.maxPerUser} per person.`
+						: `Limit ${fresh.maxPerUser} per person`,
+				)
 		}
 
 		const unitPrice = regional?.priceCredits ?? fresh.priceCredits
