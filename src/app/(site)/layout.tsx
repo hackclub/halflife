@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
 	return (
-		<html className={`${siteFontVariables} h-full antialiased`} lang="en">
+		<html className={`${siteFontVariables} h-full antialiased`} lang="en" suppressHydrationWarning>
 			<head>
 				<PlausibleAnalytics />
 				<PromoBootScript />
