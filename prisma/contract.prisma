@@ -519,6 +519,7 @@ namespace public {
     onTime                 Boolean                @default(false)
     partialFundingAccepted Boolean                @default(false)
     fundingDeclined        Boolean                @default(false)
+    noMicrocontroller      Boolean                @default(false)
     requestedBomUsd        Float?
     fundingCapUsd          Int?
     preReviewed            Boolean                @default(false)

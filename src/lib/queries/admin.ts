@@ -1087,7 +1087,11 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		{ hint: "Answered what they are here for", id: "setGoal", label: "Set a goal" },
 		{ hint: "Logged a work session on a project", id: "addedDevlog", label: "Added a devlog" },
 		{ hint: "Linked an external repository to a project", id: "connectedRepo", label: "Connected a repo" },
-		{ hint: "Every submission repo check came back green", id: "checksPassed", label: "Repo checks passed" },
+		{
+			hint: "Every submission met the repo checks (a Displays project may waive firmware by confirming no microcontroller)",
+			id: "checksPassed",
+			label: "Repo checks passed",
+		},
 		{ hint: "Handed a phase in for review", id: "submitted", label: "Submitted a project" },
 	] as const
 

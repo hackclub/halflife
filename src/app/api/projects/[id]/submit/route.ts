@@ -31,6 +31,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		parsed.data.attachmentKeys,
 		parsed.data.partialFundingAccepted,
 		parsed.data.fundingDeclined,
+		parsed.data.noMicrocontroller,
 	)
 
 	await markSubmission(gate.user.id)
@@ -47,6 +48,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 				? { fundingCapUsd: submission.fundingCapUsd, requestedBomUsd: submission.requestedBomUsd }
 				: {}),
 			...(submission.fundingDeclined ? { fundingDeclined: true } : {}),
+			...(submission.noMicrocontroller ? { noMicrocontroller: true } : {}),
 		},
 		targetId: id,
 		targetType: "ThemeProject",

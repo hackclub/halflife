@@ -170,6 +170,13 @@ export default async function ReviewDetailPage({ params }: Props) {
 						unless you set an explicit override. Their hours still earn coins as usual. Only the grant is off.
 					</Callout>
 				)}
+				{submission.noMicrocontroller && (
+					<Callout tone="info">
+						<strong>No microcontroller.</strong> They confirmed this project has no microcontroller, so it has no
+						firmware to hand in and that check was waived. Do not return it for missing firmware; judge the project on
+						what the repo and the reel show.
+					</Callout>
+				)}
 				{submission.notes ? (
 					<Callout>
 						<strong>Submission note:</strong> {submission.notes}

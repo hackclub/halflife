@@ -6,6 +6,7 @@ import { partsFundingFor } from "@/lib/bom"
 import { usesStarterDefaultDescription } from "@/lib/config/onboarding"
 import { submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
+import { firmwareWaiverCovers } from "@/lib/config/repo-checks"
 import { ENTRY_TIER, getTierOrThrow } from "@/lib/config/tiers"
 import { lockUserCredit } from "@/lib/currency"
 import { Phase, PhaseStatus, ReviewResult, Theme } from "@/lib/enums"
@@ -100,6 +101,7 @@ export async function submitPhase(
 	attachmentKeys: string[] = [],
 	partialFundingAccepted = false,
 	fundingDeclined = false,
+	noMicrocontroller = false,
 ): Promise<Omit<Models.public_PhaseSubmission, "claim" | "dispute" | "reviews" | "themeProject">> {
 	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: themeProjectId, userId }).first()
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
@@ -166,8 +168,11 @@ export async function submitPhase(
 		artifactLinks: project.artifactLinks,
 		description: project.description,
 	})
-	if (!repoChecks.canSubmit) {
-		const first = repoChecks.checks.find(c => c.blocking && c.status === "fail")
+	const blocking = repoChecks.checks.filter(check => check.blocking && check.status === "fail")
+	// The Displays week asks for firmware because most display projects drive one from a microcontroller. A display driven some other way has no firmware to hand in, and the maker says so with the box; see firmwareWaiverCovers for what it may clear.
+	const firmwareWaived = firmwareWaiverCovers(project.theme, blocking, noMicrocontroller)
+	if (blocking.length > 0 && !firmwareWaived) {
+		const [first] = blocking
 		throw new HttpError(
 			"UNPROCESSABLE",
 			first ? `${first.label}. ${first.detail ?? ""}`.trim() : "The repo is missing something this week needs",
@@ -175,7 +180,7 @@ export async function submitPhase(
 		)
 	}
 
-	// The checks came back green, on the path that enforces them. The stamp used to sit on the advisory preflight GET, which made it a GET that wrote – and a cross-site top-level navigation carries the session cookie, so any site could stamp a participant's funnel marker by linking them at it. Here it sits behind the POST that hands a phase in, so the marker is written when the maker actually tries to submit, and the admin funnel's "repo checks passed" step means what its hint says: the checks that ran for a submission came back green.
+	// The checks that gate a submission came back green, or their one waivable failure was waived by the maker. The stamp used to sit on the advisory preflight GET, which made it a GET that wrote – a cross-site top-level navigation carries the session cookie, so any site could stamp a participant's funnel marker by linking them at it. Here it sits behind the POST that hands a phase in, so the marker is written when the maker actually tries to submit, and the admin funnel's "repo checks passed" step means what its hint says: the checks that ran for a submission were satisfied.
 	await markChecksPassed(userId)
 
 	// A cart past the tier's funding is not a refusal, it is a grant that covers part of it – which is something the maker has to agree to rather than something this route infers. The numbers come from the database and never from the sheet: a list edited in another tab, or a tier request changed since the page was opened, decide what the maker is agreeing to.
@@ -236,6 +241,7 @@ export async function submitPhase(
 			attachmentKeys,
 			fundingCapUsd: agreedPartial ? funding.capUsd : null,
 			fundingDeclined: phase === Phase.DESIGN && fundingDeclined,
+			noMicrocontroller: firmwareWaived,
 			notes,
 			// Analytics only. Nothing gates on lateness – a late joiner has to be able to finish.
 			onTime: submittedInWeek > 0 && submittedInWeek <= scheduledWeek,
