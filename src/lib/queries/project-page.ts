@@ -10,7 +10,7 @@ import db from "@/lib/prisma8"
 import { projectEditLockReason } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
 import { getRepoSyncState, type RepoSyncState } from "@/lib/repo-sync"
-import { resubmissionBudget } from "@/lib/resubmissions"
+import { submissionBudget } from "@/lib/resubmissions"
 import { withFields } from "@/lib/rows"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { parseDbTimestamp } from "@/lib/time"
@@ -104,16 +104,16 @@ export interface PhaseReview {
 	/** Hours cut at the entry level so far (sessions and links a reviewer put explicit hours on), before any final override. Shown while no decision has frozen a total. */
 	entryDeflatedHours: number
 	phase: Phase
-	/**
-	 * How many hand-ins this phase may still make after a review sends it back, and how many it has used of them. Both are read from the submissions so the page cannot disagree with the gate.
-	 */
-	resubmissionLimit: number
-	resubmissionsUsed: number
 	/** When it was decided, epoch ms. */
 	reviewedAt: number | null
 	/** Why the maker's open hand-in never reached Ari, when it did not. Null once it has, or when there is no open hand-in. */
 	shipError: string | null
 	status: PhaseStatus
+	/**
+	 * How many submissions this phase may make in all, and how many it has used. Both are read from the submissions so the page cannot disagree with the gate.
+	 */
+	submissionLimit: number
+	submissionsUsed: number
 	/** When the latest submission for this phase was handed in, epoch ms. */
 	submittedAt: number | null
 }
@@ -327,7 +327,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 	const phases: PhaseReview[] = ([Phase.DESIGN, Phase.BUILD] as const)
 		.map(phase => {
 			const isDesign = phase === Phase.DESIGN
-			const budget = resubmissionBudget(project.submissions, phase)
+			const budget = submissionBudget(project.submissions, phase)
 			const latest = project.submissions
 				.filter(s => s.phase === phase)
 				.reduce<Date | null>((at, s) => (!at || s.createdAt > at ? s.createdAt : at), null)
@@ -378,11 +378,11 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 					: null,
 				entryDeflatedHours,
 				phase,
-				resubmissionLimit: budget.limit,
-				resubmissionsUsed: budget.used,
 				reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
 				shipError: openShip?.ariShipError ?? null,
 				status: isDesign ? project.designStatus : project.buildStatus,
+				submissionLimit: budget.limit,
+				submissionsUsed: budget.used,
 				submittedAt: latest?.getTime() ?? null,
 			}
 		})

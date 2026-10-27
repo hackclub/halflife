@@ -54,7 +54,7 @@ import {
 } from "@/lib/public-reels"
 import { validateRepoField } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
-import { RESUBMISSION_LIMIT } from "@/lib/resubmissions"
+import { SUBMISSION_LIMIT } from "@/lib/resubmissions"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { usePrinterPace, useStore, weekListPhrase } from "@/lib/store"
@@ -2005,9 +2005,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		projects.find(p => isWeeksProject(week, p)) ?? projects.find(p => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
 	// Handing a returned phase in again is a resubmission, and the budget rides on the project from the store. It is said here before the sheet is filled in, because the server refuses it either way and a maker deserves to know at the start rather than at the button.
 	const resubmitting = statusOf(week) === "update_requested"
-	const resubmissionsUsed = project?.resubmissions?.[week.phase] ?? 0
-	const resubmissionsLeft = Math.max(0, RESUBMISSION_LIMIT - resubmissionsUsed)
-	const outOfResubmissions = resubmitting && resubmissionsLeft === 0
+	const submissionsUsed = project?.submissions?.[week.phase] ?? 0
+	const submissionsLeft = Math.max(0, SUBMISSION_LIMIT - submissionsUsed)
+	const outOfSubmissions = resubmitting && submissionsLeft === 0
 
 	const [step, setStep] = useState(1)
 	// R2 object keys, not flags: what these ask for is evidence, and a boolean was letting the form take a file and drop it on the floor. Several screenshots, because one order is often split across vendors and one checkout page is not always one screen tall.
@@ -2133,7 +2133,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				? clip
 					&& descriptionReady
 					&& starterDescriptionReady
-					&& !outOfResubmissions
+					&& !outOfSubmissions
 					&& (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
@@ -2144,7 +2144,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						&& hasCover
 						&& descriptionReady
 						&& starterDescriptionReady
-						&& !outOfResubmissions
+						&& !outOfSubmissions
 
 	/**
 	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
@@ -2155,8 +2155,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	 */
 	function nextBlocker(): string | null {
 		if (step === 1) return null
-		if (outOfResubmissions)
-			return "Both resubmissions for this phase are used. Dispute the review or ask a reviewer in Slack."
+		if (outOfSubmissions)
+			return `All ${SUBMISSION_LIMIT} submissions for this phase are used. Dispute the review or ask a reviewer in Slack.`
 		// These two block whichever of the later steps is showing.
 		if (tierBlocked)
 			return `Your tier needs ${fmtHours(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
@@ -2303,33 +2303,33 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				<div
 					className={cx(
 						"sketch mb-5 flex items-start gap-3 rounded-2xl px-5 py-4",
-						outOfResubmissions ? "bg-coral/10" : "bg-gold-pale/70",
+						outOfSubmissions ? "bg-coral/10" : "bg-gold-pale/70",
 					)}
 					style={{
-						"--sk-color": outOfResubmissions ? "var(--color-coral)" : "var(--color-gold-deep)",
+						"--sk-color": outOfSubmissions ? "var(--color-coral)" : "var(--color-gold-deep)",
 						"--sk-radius": "16px",
 					}}
 				>
 					<IconWarning
-						className={cx("mt-0.5 shrink-0 text-xl", outOfResubmissions ? "text-coral-deep" : "text-gold-ink")}
+						className={cx("mt-0.5 shrink-0 text-xl", outOfSubmissions ? "text-coral-deep" : "text-gold-ink")}
 					/>
 					<div className="min-w-0">
 						<p
 							className={cx(
 								"text-[0.95rem] leading-snug font-extrabold",
-								outOfResubmissions ? "text-coral-dark" : "text-navy",
+								outOfSubmissions ? "text-coral-dark" : "text-navy",
 							)}
 						>
-							{outOfResubmissions
-								? "Both resubmissions for this phase are used."
-								: `Resubmission ${RESUBMISSION_LIMIT - resubmissionsLeft + 1} of ${RESUBMISSION_LIMIT} for this phase`}
+							{outOfSubmissions
+								? `All ${SUBMISSION_LIMIT} submissions for this phase are used.`
+								: `Submission ${submissionsUsed + 1} of ${SUBMISSION_LIMIT} for this phase`}
 						</p>
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							{outOfResubmissions
+							{outOfSubmissions
 								? "It stays returned for now. Dispute the review or ask a reviewer in Slack; you cannot submit it again. "
-								: resubmissionsLeft === 1
-									? "This is your last one. If it comes back needing changes again, you cannot resubmit it. "
-									: `${resubmissionsLeft} left after this one. `}
+								: submissionsLeft === 1
+									? "This is your last one. If it comes back needing changes again, you cannot submit it. "
+									: `${submissionsLeft - 1} left after this one. `}
 							{project && (
 								<Link
 									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"

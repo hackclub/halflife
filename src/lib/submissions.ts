@@ -26,7 +26,7 @@ import {
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { checkRepo } from "@/lib/repo-checks"
-import { RESUBMISSION_LIMIT, RESUBMISSION_LIMIT_MESSAGE, resubmissionBudget } from "@/lib/resubmissions"
+import { RESUBMISSION_LIMIT, SUBMISSION_LIMIT_MESSAGE, submissionBudget } from "@/lib/resubmissions"
 import { parseDbTimestamp } from "@/lib/time"
 import { isOwnedKey } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
@@ -40,7 +40,7 @@ export function canSubmitPhase(
 	project: Pick<Models.public_ThemeProject, "theme" | "designStatus" | "buildStatus" | "warmupPhase">,
 	phase: Phase,
 	resubmissionsUsed = 0,
-): { ok: true } | { ok: false; code: "ALREADY_SUBMITTED" | "PHASE_LOCKED" | "RESUBMISSION_LIMIT"; message: string } {
+): { ok: true } | { ok: false; code: "ALREADY_SUBMITTED" | "PHASE_LOCKED" | "SUBMISSION_LIMIT"; message: string } {
 	// A warm-up is one submission, as the phase it was made for: a design asking for funding, or a finished build. Never the other, never both.
 	if (project.theme === Theme.WARMUP && phase !== warmupPhaseOf(project))
 		return {
@@ -66,9 +66,9 @@ export function canSubmitPhase(
 			ok: false,
 		}
 
-	// A return is the one review state a maker acts on, and each phase may turn it into a new hand-in twice. Leaving the phase `update_requested` is deliberate: the work is still returned, so a dispute or a reviewer is the way forward rather than another trip through the queue.
+	// A return is the one review state a maker acts on, and each phase may turn it into a new hand-in twice before its three submissions are spent. Leaving the phase `update_requested` is deliberate: the work is still returned, so a dispute or a reviewer is the way forward rather than another trip through the queue.
 	if (status === PhaseStatus.update_requested && resubmissionsUsed >= RESUBMISSION_LIMIT)
-		return { code: "RESUBMISSION_LIMIT", message: RESUBMISSION_LIMIT_MESSAGE, ok: false }
+		return { code: "SUBMISSION_LIMIT", message: SUBMISSION_LIMIT_MESSAGE, ok: false }
 
 	// A warm-up project is one phase by nature – it was handed in through the pre-season form, not designed and then built – so the design-first rule does not apply to it.
 	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft)
@@ -119,12 +119,12 @@ export async function submitPhase(
 	const submissionRows = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
 		.select("createdAt", "phase")
 		.all()
-	const budget = resubmissionBudget(
+	const budget = submissionBudget(
 		submissionRows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), phase: row.phase })),
 		phase,
 	)
 
-	const eligible = canSubmitPhase(project, phase, budget.used)
+	const eligible = canSubmitPhase(project, phase, budget.resubmissions)
 	if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
 	// The Ari SDK refuses a ship without a description. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
@@ -248,11 +248,11 @@ export async function submitPhase(
 			const currentRows = await tx.orm.public.PhaseSubmission.where({ phase, themeProjectId })
 				.select("createdAt", "phase")
 				.all()
-			const current = resubmissionBudget(
+			const current = submissionBudget(
 				currentRows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), phase: row.phase })),
 				phase,
 			)
-			if (current.used >= RESUBMISSION_LIMIT) throw new HttpError("RESUBMISSION_LIMIT", RESUBMISSION_LIMIT_MESSAGE)
+			if (current.resubmissions >= RESUBMISSION_LIMIT) throw new HttpError("SUBMISSION_LIMIT", SUBMISSION_LIMIT_MESSAGE)
 		}
 
 		// Claim the phase first, conditionally on it still being one that can be submitted. Two concurrent submits both read the same outside state, so without this both would create an open submission and both flip the status; the row lock makes the loser's update match nothing.

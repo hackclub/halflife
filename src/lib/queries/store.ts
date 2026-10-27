@@ -27,7 +27,7 @@ import {
 	weekOpensAt,
 } from "@/lib/program"
 import { getOwedReelKeys } from "@/lib/reel-gate"
-import { resubmissionBudget } from "@/lib/resubmissions"
+import { submissionBudget } from "@/lib/resubmissions"
 import { withFields } from "@/lib/rows"
 import { streakAsOf } from "@/lib/streak"
 import { projectThumbnail } from "@/lib/thumbnail"
@@ -439,8 +439,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				|| project.buildStatus !== PhaseStatus.draft
 			if ((!warmup && themeIndex === -1) || !started) return []
 			const projectSubmissions = submissions.filter(submission => submission.themeProjectId === project.id)
-			const designBudget = resubmissionBudget(projectSubmissions, Phase.DESIGN)
-			const buildBudget = resubmissionBudget(projectSubmissions, Phase.BUILD)
+			const designBudget = submissionBudget(projectSubmissions, Phase.DESIGN)
+			const buildBudget = submissionBudget(projectSubmissions, Phase.BUILD)
 			return [
 				{
 					buildStatus: project.buildStatus,
@@ -450,9 +450,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					githubRepo: project.githubRepo,
 					id: project.id,
 					name: project.title,
-					resubmissions: { build: buildBudget.used, design: designBudget.used },
 					starter: project.starterProjectId !== null,
 					starterProjectId: project.starterProjectId,
+					submissions: { build: buildBudget.used, design: designBudget.used },
 					thumbnail: projectThumbnail(
 						publicUrlFor(project.coverImageKey),
 						sessions.filter(s => s.themeProjectId === project.id),
