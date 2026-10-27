@@ -336,7 +336,8 @@ export function StageSlide({
 							<p
 								className={cx(
 									"min-w-0 flex-1 text-[0.8rem] leading-snug whitespace-pre-line [overflow-wrap:anywhere] text-white/90",
-									expanded ? "thin-scroll max-h-[34vh] overflow-y-auto" : "line-clamp-2",
+									// Two lines, always: the clamp draws the ellipsis, and the height is a hard second line's worth so a browser that ignores `-webkit-line-clamp` still cuts the caption off rather than letting it run over the video.
+									expanded ? "thin-scroll max-h-[34vh] overflow-y-auto" : "line-clamp-2 max-h-[2.75em] overflow-hidden",
 								)}
 								// Opened, the caption can outgrow its space and scrolls itself; the page's wheel handler leaves anything marked so alone.
 								data-own-scroll={expanded || undefined}

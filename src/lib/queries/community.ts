@@ -54,7 +54,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 				project
 					.select("id", "theme", "title")
 					.include("user", user =>
-						user.select("currentStreak", "displayName", "id", "image", "lastStreakDate", "name"),
+						user.select("currentStreak", "displayName", "id", "image", "lastStreakDate", "name", "slackId"),
 					),
 			)
 			.all(),

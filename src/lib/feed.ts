@@ -41,7 +41,14 @@ export interface PostWithAuthor {
 	publishedAt: string | null
 	themeProject: { deletedAt: string | null; id: string; theme: string; title: string } | null
 	thumbnailKey: string | null
-	user: { currentStreak: number; displayName: string | null; id: string; image: string | null; name: string | null }
+	user: {
+		currentStreak: number
+		displayName: string | null
+		id: string
+		image: string | null
+		name: string | null
+		slackId: string | null
+	}
 	viewCount: number
 	width: number | null
 }
@@ -121,8 +128,8 @@ function feedOrdered() {
 		)
 		.include("themeProject", project => project.select("deletedAt", "id", "theme", "title"))
 		.include("user", user =>
-			// No Slack id: nothing here renders it, and a selected column rides along in the RSC payload to every browser that opens the feed.
-			user.select("currentStreak", "displayName", "id", "image", "name"),
+			// The Slack id is read, never rendered: it is how `avatarUrl` reaches Cachet for a face, and the mapper drops the rest of the row before anything leaves the server.
+			user.select("currentStreak", "displayName", "id", "image", "name", "slackId"),
 		)
 		.orderBy([post => post.publishedAt.desc(), post => post.id.desc()])
 }
@@ -402,8 +409,8 @@ export async function getComments(
 	)
 		.limit(opts.limit + 1)
 		.select("body", "createdAt", "id")
-		// No Slack id, for the same reason as the feed's author above.
-		.include("user", user => user.select("displayName", "id", "image", "name"))
+		// The Slack id is read for the avatar, exactly as the feed's author above.
+		.include("user", user => user.select("displayName", "id", "image", "name", "slackId"))
 		.all()
 	const items = rows.slice(0, opts.limit).map(c => {
 		if (!c.user) throw new Error(`comment ${c.id} has no author`)
@@ -436,7 +443,7 @@ export function addComment(postId: string, userId: string, body: string): Promis
 		await bumpPostCount(tx, postId, "commentCount", 1)
 
 		const author = await tx.orm.public.User.whereUnique({ id: userId })
-			.select("displayName", "id", "image", "name")
+			.select("displayName", "id", "image", "name", "slackId")
 			.firstOrThrow()
 		return {
 			author: { id: author.id, image: avatarUrl(author), name: displayName(author) },
