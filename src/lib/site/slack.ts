@@ -210,7 +210,7 @@ const slackUserNameCache = new Map<string, string>()
 /**
  * In-flight lookups, so two callers wanting the same name at once share one `users.info` call rather than racing a second identical request.
  *
- * A summary posts a daily board and an all-time board, and the same people are usually on both. Without this the cache only helps the *second* call, and by then the first has already gone out – so every shared name cost two requests.
+ * A summary posts two boards and the same people are usually on both. Without this the cache only helps the *second* call, and by then the first has already gone out – so every shared name cost two requests.
  */
 const slackUserNamePending = new Map<string, Promise<string>>()
 

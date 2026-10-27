@@ -6,7 +6,7 @@ import { countedLine, creditedLine, rankedShareBoard, renderSummary, type Summar
 /**
  * The daily project-review summary, the same post as the ticket summary with review nouns.
  *
- * Reviewers are Half Life users rather than Slack ids, so the board's keys have to be resolved to a Slack account before a name can be asked for. One query and one batched lookup cover both boards: the daily ten are usually also on the all-time ten, and users.info is rate-limited.
+ * Reviewers are Half Life users rather than Slack ids, so the board's keys have to be resolved to a Slack account before a name can be asked for. One query and one batched lookup cover both boards: the daily ten are usually also on the last 7 days ten, and users.info is rate-limited.
  */
 
 /**
@@ -79,8 +79,8 @@ function weekProgressSection(byWeek: WeekReviewProgress[]): SummaryBoard | null 
 
 export async function buildReviewSummary(stats: ProjectReviewStats): Promise<string> {
 	const daily = stats.leaderboard
-	const global = stats.globalLeaderboard
-	const names = await namesFor([...daily, ...global])
+	const recent = stats.last7DaysLeaderboard
+	const names = await namesFor([...daily, ...recent])
 
 	const weekly = weekProgressSection(stats.byWeek)
 
@@ -92,9 +92,9 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 				daily.reduce((n, row) => n + row.reviewed, 0),
 			),
 			rankedShareBoard(
-				":yay-blush-2: all-time leaderboard",
-				global.map(row => ({ count: row.reviewed, name: names.get(row.email) ?? row.email })),
-				global.reduce((n, row) => n + row.reviewed, 0),
+				":yay-blush-2: last 7 days leaderboard",
+				recent.map(row => ({ count: row.reviewed, name: names.get(row.email) ?? row.email })),
+				recent.reduce((n, row) => n + row.reviewed, 0),
 			),
 			...(weekly ? [weekly] : []),
 		],
