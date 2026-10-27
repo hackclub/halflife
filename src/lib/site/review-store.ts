@@ -4,7 +4,7 @@ import { THEMES } from "@/lib/config/program"
 import { PhaseStatus, ReviewPass, type Theme } from "@/lib/enums"
 import db from "@/lib/prisma8"
 import { currentWeekNumber } from "@/lib/program"
-import { formatDbTimestamp } from "@/lib/time"
+import { DAY_MS, formatDbTimestamp } from "@/lib/time"
 import { tallyBoard } from "./leaderboard"
 
 export interface ProjectReviewStats {
@@ -13,9 +13,9 @@ export interface ProjectReviewStats {
 	 */
 	byWeek: WeekReviewProgress[]
 	/**
-	 * The same board over every review on file rather than the last day, so the all-time ranking cannot disagree with the table by whatever the daily runs happened to have fired.
+	 * The same board over the last 30 days rather than every review on file. One query, so it cannot disagree with a table of daily runs that happened to be missed.
 	 */
-	globalLeaderboard: BoardEntry[]
+	last30DaysLeaderboard: BoardEntry[]
 	/**
 	 * Who reviewed what, busiest first, keyed by lower-cased email. Email rather than account because Ari's reviewers hold no Half Life account; `"ari"` is Ari's anonymous decisions, which have no address at all. Ties break by key so the order is stable between runs.
 	 */
@@ -37,7 +37,7 @@ export interface BoardEntry {
 export const ANONYMOUS_ARI = "ari"
 
 /**
- * Ari attributes its automated decisions to this address. It is not a person, so it never takes a place on a board: ranked under its own email it outranked every human reviewer with work nobody did, which is what pushed `system@ari` to the top of the all-time leaderboard.
+ * Ari attributes its automated decisions to this address. It is not a person, so it never takes a place on a board: ranked under its own email it outranked every human reviewer with work nobody did, which is what pushed `system@ari` to the top of the leaderboard.
  */
 export const SYSTEM_ARI = "system@ari"
 
@@ -146,10 +146,11 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 		}))
 		.toSorted((a, b) => a.week - b.week)
 }
-/** The counts behind the daily project review summary. `since` is normally 24 hours ago. */
-export async function getProjectReviewStats(since: Date): Promise<ProjectReviewStats> {
+/** The counts behind the daily project review summary. `since` is normally 24 hours ago; `now` anchors the rolling 30-day board to the same moment. */
+export async function getProjectReviewStats(since: Date, now: Date = new Date()): Promise<ProjectReviewStats> {
 	const sinceText = formatDbTimestamp(since)
-	const [submitted, reviewRows, allReviewRows, byWeek] = await Promise.all([
+	const boardSinceText = formatDbTimestamp(new Date(now.getTime() - 30 * DAY_MS))
+	const [submitted, reviewRows, recentReviewRows, byWeek] = await Promise.all([
 		db.orm.public.PhaseSubmission.where(submission => submission.createdAt.gte(sinceText)).aggregate(a => ({
 			count: a.count(),
 		})),
@@ -157,8 +158,9 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 			.where(review => review.createdAt.gte(sinceText))
 			.select("reviewerEmail", "reviewerId", "reviewerName")
 			.all(),
-		// Every live review ever, for the all-time board under the daily one.
+		// The last 30 days, for the rolling board under the daily one.
 		db.orm.public.SubmissionReview.where({ invalidated: false, pass: ReviewPass.FINAL })
+			.where(review => review.createdAt.gte(boardSinceText))
 			.select("reviewerEmail", "reviewerId", "reviewerName")
 			.all(),
 		getWeekReviewProgress(),
@@ -166,7 +168,7 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 
 	// Canonical emails for console reviewers, so a decision-time address in a different case still lands on the same row.
 	const reviewerIds = [
-		...new Set([...reviewRows, ...allReviewRows].flatMap(row => (row.reviewerId ? [row.reviewerId] : []))),
+		...new Set([...reviewRows, ...recentReviewRows].flatMap(row => (row.reviewerId ? [row.reviewerId] : []))),
 	]
 	const usersById = new Map(
 		(
@@ -178,7 +180,7 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 
 	return {
 		byWeek,
-		globalLeaderboard: reviewerBoard(allReviewRows, usersById),
+		last30DaysLeaderboard: reviewerBoard(recentReviewRows, usersById),
 		leaderboard: reviewerBoard(reviewRows, usersById),
 		reviewed: reviewRows.length,
 		submitted: submitted.count,

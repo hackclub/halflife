@@ -14,8 +14,9 @@ import { recordSyncRun } from "@/lib/sync-run-log"
  * `?dryRun=true` returns the counts and the rendered message without posting, so a schedule can be trusted before it is wired up.
  */
 export const POST = withIntegrationRoute(async (req: NextRequest) => {
-	const since = summarySince()
-	const stats = await getProjectReviewStats(since)
+	const now = new Date()
+	const since = summarySince(now)
+	const stats = await getProjectReviewStats(since, now)
 
 	if (wantsDryRun(req)) return ok({ dryRun: true, since, ...stats, message: await buildReviewSummary(stats) })
 
