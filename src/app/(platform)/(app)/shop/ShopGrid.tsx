@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
@@ -101,6 +102,14 @@ export function ShopGrid({
 
 	return (
 		<>
+			<div className="mb-4 flex justify-end">
+				<Link
+					className="label rounded-full border-2 border-line px-4 py-1.5 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+					href="/shop/orders"
+				>
+					Your orders
+				</Link>
+			</div>
 			{regions.length > 0 && (
 				<div className="mb-5 flex flex-wrap items-center justify-center gap-2">
 					<label className="label text-navy-soft" htmlFor="shop-region">
@@ -230,37 +239,42 @@ export function ShopGrid({
 										</span>
 									)}
 								</div>
-								<button
-									className={cx(
-										"label flex w-full items-center justify-center gap-1.5 border-t-2 px-3.5 py-2.5 transition-all duration-150",
-										"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
-										"sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
-										has
-											? "border-teal-deep bg-teal text-white"
-											: out || !afford
+								{has ? (
+									<Link
+										className={cx(
+											"label flex w-full items-center justify-center gap-1.5 border-t-2 border-teal-deep bg-teal px-3.5 py-2.5 text-white transition-all duration-150",
+											"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
+											"sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
+										)}
+										href="/shop/orders"
+									>
+										<IconCheck className="text-sm" strokeWidth={3} /> Ordered
+									</Link>
+								) : (
+									<button
+										className={cx(
+											"label flex w-full items-center justify-center gap-1.5 border-t-2 px-3.5 py-2.5 transition-all duration-150",
+											"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
+											"sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
+											out || !afford
 												? "cursor-not-allowed border-line bg-cream text-navy-soft"
 												: "border-teal-deep bg-teal-mid text-navy hover:bg-teal hover:text-white",
-									)}
-									disabled={out || item.locked || !afford || busy !== null}
-									onClick={() => buy(item)}
-									type="button"
-								>
-									{busy === item.id ? (
-										"Ordering…"
-									) : has ? (
-										<>
-											<IconCheck className="text-sm" strokeWidth={3} /> Ordered
-										</>
-									) : out ? (
-										"Sold out"
-									) : item.locked ? (
-										"Locked"
-									) : afford ? (
-										"Buy"
-									) : (
-										"Not enough coins"
-									)}
-								</button>
+										)}
+										disabled={out || item.locked || !afford || busy !== null}
+										onClick={() => buy(item)}
+										type="button"
+									>
+										{busy === item.id
+											? "Ordering…"
+											: out
+												? "Sold out"
+												: item.locked
+													? "Locked"
+													: afford
+														? "Buy"
+														: "Not enough coins"}
+									</button>
+								)}
 							</div>
 
 							<div className="flex flex-1 flex-col gap-1.5 px-4 py-3.5">
