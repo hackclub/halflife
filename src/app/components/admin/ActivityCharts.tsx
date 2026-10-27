@@ -1,5 +1,6 @@
 "use client"
-import { createContext, type ReactNode, useContext, useMemo, useState } from "react"
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react"
+import { weeklyAverages } from "@/app/components/admin/activity-weeks"
 import { CHART_H, DayAxis, EDGE, niceTicks, PAD_B, PAD_T, pct } from "@/app/components/admin/chart-geometry"
 import { EmptyState } from "@/app/components/ui"
 import { fmtInt } from "@/lib/numbers"
@@ -339,18 +340,44 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 	)
 }
 
+/** A bar's tooltip name: the programme's own week number, or the warm-up when it predates week 1. */
+const weekName = (week: number, first: string, last: string) => {
+	const range = `${first.slice(5)} to ${last.slice(5)}`
+	return week < 0 ? `Before the programme (${range})` : `Week ${week + 1} (${range})`
+}
+
+/** A weekly mean to one decimal, so 18.4 is not flattened to 18. */
+const fmtAverage = (mean: number) => mean.toLocaleString("en-US", { maximumFractionDigits: 1 })
+
 /**
  * People active per day, as one line.
  *
  * Active is "tracked at least 15 minutes that day", the bar `UserDay` is built on (lib/analytics), so this draws the DAU the analytics export reports rather than counting it a second way. It is people, not entries: someone with three devlogs and someone with one count the same, which is why this line sits so much lower than the hours drawn below it.
  *
  * One line on one axis, so there is no second scale and no dashed series – the whole reading is where the line sits and how many are under it.
+ *
+ * Behind the line, one bar per programme week carries that week's average. The line is daily and spiky; the bars are the level the week was actually running at, which is the thing a single busy day hides. They share the line's scale rather than a second axis, so a bar's top compared with the line above it says whether a day beat its week.
  */
 export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 	const { programmeOnly, programmeStart } = useProgrammeFilter()
 	const hasEarlier = allDays.some(d => d.day < programmeStart)
 	const days = programmeOnly ? allDays.filter(d => d.day >= programmeStart) : allDays
 	const toggle = hasEarlier ? <ProgrammeToggle /> : null
+
+	// The weekly labels only go where the bar is wide enough to hold them, which depends on the chart's real width: the bars are laid out as percentages, so the rendered width is the one thing the SVG cannot know from its own markup. A ResizeObserver on the element keeps that measurement current as the panel is resized.
+	const observer = useRef<ResizeObserver | null>(null)
+	const [size, setSize] = useState({ fontPx: 10, width: 0 })
+	const measure = useCallback((node: SVGSVGElement | null) => {
+		observer.current?.disconnect()
+		if (!node) return
+		const update = () => {
+			const rem = Number(getComputedStyle(document.documentElement).fontSize.replace("px", "")) || 16
+			setSize({ fontPx: 0.65 * rem, width: node.getBoundingClientRect().width })
+		}
+		update()
+		observer.current = new ResizeObserver(update)
+		observer.current.observe(node)
+	}, [])
 
 	if (allDays.length === 0) return <EmptyState>Nobody has tracked 15 minutes in a day yet.</EmptyState>
 	if (days.length === 0)
@@ -368,6 +395,7 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 	// Whole people only: the step is 1, 2, 5 or 10, never a fraction of a person.
 	const axis = niceTicks(peak, { integer: true })
 	const mean = values.reduce((n, v) => n + v, 0) / days.length
+	const weeks = weeklyAverages(days, programmeStart)
 
 	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
 	const yFor = (v: number) => PAD_T + plotH - (v / axis.top) * plotH
@@ -377,12 +405,26 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 		const previous = at[i] ?? point
 		return { x1: previous.x, x2: point.x, y1: previous.y, y2: point.y }
 	})
-	/** The fill under the line, as a column per day rather than a closed path, for the same reason. */
-	const areaBars = days.map((d, i) => ({
-		width: (i === days.length - 1 ? 1 - EDGE : xOf(i + 1)) - xOf(i),
-		x: xOf(i),
-		y: yFor(d.users),
-	}))
+
+	// A bar spans the days its week covers on the chart, not a fixed seventh of the width: the first and last weeks can be partial. The label is only kept when that pixel span can hold it plus a gutter, so a long season drops the text rather than printing one number over the next.
+	const weekBars = weeks.map(week => {
+		const left = days.length === 1 ? EDGE : xOf(week.start)
+		const right = week.end === days.length - 1 ? 1 - EDGE : xOf(week.end + 1)
+		const top = yFor(week.average)
+		const label = fmtAverage(week.average)
+		// 0.65em is a generous digit's width in the chart's sans face; the extra 8px is the gap to the neighbouring label.
+		const fits = size.width > 0 && (right - left) * size.width >= label.length * size.fontPx * 0.65 + 8
+		return {
+			fits,
+			from: days[week.start]?.day ?? "",
+			label,
+			left,
+			right,
+			to: days[week.end]?.day ?? "",
+			top,
+			week: week.week,
+		}
+	})
 
 	// Evenly spaced whole people, from zero to the round top the axis chose.
 	const { ticks } = axis
@@ -406,6 +448,20 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 					}}
 				/>
 				active users (15+ minutes tracked), averaging {fmtInt(Math.round(mean))} a day, peaking at {fmtInt(peak)}
+				<span
+					aria-hidden="true"
+					style={{
+						background: "var(--color-teal-soft)",
+						display: "inline-block",
+						height: "0.55rem",
+						marginLeft: "1rem",
+						marginRight: "0.35rem",
+						opacity: 0.45,
+						verticalAlign: "middle",
+						width: "0.55rem",
+					}}
+				/>
+				weekly average
 			</p>
 			{/* One scale column, pinned to the chart's own row so each label sits on the gridline it names. */}
 			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
@@ -444,12 +500,26 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 
 				<div>
 					<svg
-						aria-label={`Daily active users from ${first} to ${last}: averaging ${fmtInt(Math.round(mean))} a day and peaking at ${fmtInt(peak)}`}
+						aria-label={`Daily active users from ${first} to ${last}: averaging ${fmtInt(Math.round(mean))} a day and peaking at ${fmtInt(peak)}, with a bar for each programme week's average`}
 						height={CHART_H}
+						ref={measure}
 						role="img"
 						style={{ display: "block" }}
 						width="100%"
 					>
+						{weekBars.map(bar => (
+							<rect
+								fill="var(--color-teal-soft)"
+								height={PAD_T + plotH - bar.top}
+								key={bar.week}
+								opacity="0.45"
+								width={pct(bar.right - bar.left)}
+								x={pct(bar.left)}
+								y={bar.top}
+							>
+								<title>{`${weekName(bar.week, bar.from, bar.to)}: ${bar.label} active users a day on average`}</title>
+							</rect>
+						))}
 						{ticks.map((t, i) => (
 							<line
 								key={`g${i}`}
@@ -459,17 +529,6 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 								x2={pct(1 - EDGE)}
 								y1={yFor(t)}
 								y2={yFor(t)}
-							/>
-						))}
-						{areaBars.map((bar, i) => (
-							<rect
-								fill="var(--color-teal)"
-								height={PAD_T + plotH - bar.y}
-								key={`a${i}`}
-								opacity="0.1"
-								width={pct(bar.width)}
-								x={pct(bar.x)}
-								y={bar.y}
 							/>
 						))}
 						{segments.map((segment, i) => (
@@ -489,6 +548,26 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 								<title>{`${d.day}: ${fmtInt(d.users)} active ${d.users === 1 ? "person" : "people"}`}</title>
 							</circle>
 						))}
+						{weekBars.map(bar =>
+							bar.fits ? (
+								<text
+									fill="var(--color-teal-ink)"
+									fontSize="0.65rem"
+									fontWeight="600"
+									key={`w${bar.week}`}
+									paintOrder="stroke"
+									stroke="var(--color-surface-raised)"
+									strokeLinejoin="round"
+									strokeWidth="2"
+									style={{ fontVariantNumeric: "tabular-nums" }}
+									textAnchor="middle"
+									x={pct((bar.left + bar.right) / 2)}
+									y={bar.top - 4}
+								>
+									{bar.label}
+								</text>
+							) : null,
+						)}
 					</svg>
 					<DayAxis days={days} labelEvery={labelEvery} />
 				</div>

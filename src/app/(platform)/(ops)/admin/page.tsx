@@ -261,7 +261,9 @@ export default async function AdminOverviewPage() {
 					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 						A person counts once a day, and only once that day&apos;s tracked time reaches 15 minutes. A visit with no
 						time logged does not count, and neither do three devlogs where one would have done. Days are
-						program-timezone effective dates, the day the work counted for.
+						program-timezone effective dates, the day the work counted for. The bars behind the line are each
+						week&apos;s average, over the days that week covers on the chart, and are labelled where they are wide
+						enough to hold the number.
 					</p>
 				</Panel>
 
