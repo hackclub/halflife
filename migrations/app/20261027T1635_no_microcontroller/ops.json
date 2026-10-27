@@ -1,0 +1,72 @@
+[
+  {
+    "id": "column.public.phase_submission.noMicrocontroller",
+    "label": "Add column \"noMicrocontroller\" to \"phase_submission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "noMicrocontroller",
+        "table": "phase_submission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"noMicrocontroller\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "phase_submission",
+          "noMicrocontroller"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"noMicrocontroller\" on \"phase_submission\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"noMicrocontroller\"",
+        "sql": "ALTER TABLE \"public\".\"phase_submission\" ADD COLUMN \"noMicrocontroller\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"noMicrocontroller\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "phase_submission",
+          "noMicrocontroller"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"noMicrocontroller\" on \"phase_submission\""
+        }
+      },
+      {
+        "description": "verify column \"noMicrocontroller\" has type \"boolean\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "phase_submission",
+          "noMicrocontroller",
+          "boolean"
+        ]
+      },
+      {
+        "description": "verify column \"noMicrocontroller\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "phase_submission",
+          "noMicrocontroller",
+          "NO"
+        ]
+      }
+    ]
+  }
+]

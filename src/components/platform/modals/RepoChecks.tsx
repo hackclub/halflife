@@ -41,6 +41,7 @@ export function RepoChecks({
 	onResult,
 	editable = true,
 	syncRepo: initialSyncRepo,
+	waivedFirmware = false,
 }: {
 	project: Project
 	onResult(result: RepoCheckResult | null): void
@@ -52,6 +53,10 @@ export function RepoChecks({
 	 * The sync target the page already loaded, when it has one. Passing it – even as null – skips the second read of an endpoint the server render has already answered; omitting it makes the sheet load the shortcut for itself.
 	 */
 	syncRepo?: { repo: string; differs: boolean } | null
+	/**
+	 * The firmware finding is being skipped by the maker's "no microcontroller" confirmation. It still reads as a finding, but not as one that blocks the hand-in, so the summary and the row agree with the box that cleared it.
+	 */
+	waivedFirmware?: boolean
 }) {
 	const { linkSyncRepoToProject } = useStore()
 	const [data, setData] = useState<RepoCheckResult | null>(null)
@@ -117,7 +122,9 @@ export function RepoChecks({
 		void run()
 	}, [run])
 
-	const blocking = data?.checks.filter(c => c.blocking && c.status === "fail").length ?? 0
+	const failed = data?.checks.filter(c => c.blocking && c.status === "fail") ?? []
+	const waived = waivedFirmware ? failed.filter(c => c.key === "firmware").length : 0
+	const blocking = failed.length - waived
 
 	return (
 		<section
@@ -162,13 +169,19 @@ export function RepoChecks({
 					<p aria-live="polite" className="mt-1 text-[0.9rem] leading-snug text-navy-soft">
 						{blocking > 0
 							? `${blocking} ${blocking === 1 ? "thing needs" : "things need"} fixing before you can submit.`
-							: data.unavailable
-								? "GitHub could not be reached, so this was not checked. You can still submit."
-								: "Everything this week needs is in the repo."}
+							: waived > 0
+								? "Everything else this week needs is in the repo. The firmware check is skipped by the box below."
+								: data.unavailable
+									? "GitHub could not be reached, so this was not checked. You can still submit."
+									: "Everything this week needs is in the repo."}
 					</p>
 					<ul className={cx("mt-3 grid gap-1.5", loading && "opacity-60")}>
 						{data.checks.map(c => (
-							<CheckRow check={c} key={c.key} />
+							<CheckRow
+								check={c}
+								key={c.key}
+								waived={waivedFirmware && c.key === "firmware" && c.blocking === true && c.status === "fail"}
+							/>
 						))}
 					</ul>
 				</>
@@ -177,16 +190,27 @@ export function RepoChecks({
 	)
 }
 
-function CheckRow({ check }: { check: RepoCheck }) {
-	const tone =
-		check.status === "pass" ? "text-teal-ink" : check.status === "fail" ? "text-coral-deep" : "text-orange-ink"
+function CheckRow({ check, waived = false }: { check: RepoCheck; waived?: boolean }) {
+	const tone = waived
+		? "text-violet-deep"
+		: check.status === "pass"
+			? "text-teal-ink"
+			: check.status === "fail"
+				? "text-coral-deep"
+				: "text-orange-ink"
 	return (
 		<li className="flex items-start gap-2.5">
 			<span
 				aria-hidden="true"
 				className={cx(
 					"mt-0.5 grid size-5 shrink-0 place-items-center rounded-full",
-					check.status === "pass" ? "bg-mint" : check.status === "fail" ? "bg-coral/15" : "bg-gold-pale",
+					waived
+						? "bg-violet-pale"
+						: check.status === "pass"
+							? "bg-mint"
+							: check.status === "fail"
+								? "bg-coral/15"
+								: "bg-gold-pale",
 					tone,
 				)}
 			>
@@ -200,7 +224,13 @@ function CheckRow({ check }: { check: RepoCheck }) {
 				<span className={cx("block text-[0.9rem] font-bold", check.status === "pass" ? "text-navy" : tone)}>
 					{check.label}
 					<span className="sr-only">
-						{check.status === "pass" ? " (passed)" : check.blocking ? " (required)" : " (recommended)"}
+						{waived
+							? " (waived)"
+							: check.status === "pass"
+								? " (passed)"
+								: check.blocking
+									? " (required)"
+									: " (recommended)"}
 					</span>
 				</span>
 				{check.detail && (

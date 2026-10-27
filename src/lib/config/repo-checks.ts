@@ -170,6 +170,17 @@ export const THEME_REPO_REQUIREMENTS: Record<
 }
 
 /**
+ * Whether the maker's confirmation that their project has no microcontroller clears the repo's blocking checks.
+ *
+ * Displays requires firmware because most of its projects drive one; a display built from logic or mechanisms has none to hand in. Only firmware can be waived, and only when nothing else is blocking, so the box cannot skip the README, the photos or the schematic.
+ */
+export function firmwareWaiverCovers(theme: Theme, blocking: readonly { key: string }[], confirmed: boolean): boolean {
+	return (
+		confirmed && theme === Theme.DISPLAYS && blocking.length > 0 && blocking.every(check => check.key === "firmware")
+	)
+}
+
+/**
  * The columns that make a README table a BOM a reviewer can price.
  *
  * A part-like column alone is a parts list; a price, cost, link or supplier column is what turns it into a BOM the funding can be checked against. Quantity is useful but a table with only `Part | Qty` still leaves the reviewer with no price to check, so it does not count on its own.

@@ -2010,6 +2010,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [declinedFunding, setDeclinedFunding] = useState(false)
 	// A cart past the tier's funding: the maker ticks this to say they will cover the shortfall themselves. Held in local state like the decline above, because it is a statement about this hand-in and the server re-reads the numbers before it believes it.
 	const [acceptsPartialFunding, setAcceptsPartialFunding] = useState(false)
+	// A Displays project can have no microcontroller, and so no firmware to hand in. This is the maker's confirmation of that; the server honours it only when firmware is the one check missing.
+	const [noMicrocontroller, setNoMicrocontroller] = useState(false)
 	const [clip, setClip] = useState<string | null>(null)
 	// The bucket URL of the closing clip, when there is one, so it can be saved and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
@@ -2096,7 +2098,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// The gate needs the agreement only when there is something to agree to: under budget there is nothing, and declined means no grant at all.
 	const fundingOk = fundingDeclined || !bomOverCap || acceptsPartialFunding
 
-	const repoReady = repoResult?.canSubmit ?? false
+	// The Displays week requires firmware, but a project with no microcontroller has none to give. That check is waivable only when it is the one thing missing; every other blocking failure still holds the sheet.
+	const firmwareMissing =
+		week.theme === "Displays"
+		&& (repoResult?.checks.some(check => check.key === "firmware" && check.blocking && check.status === "fail")
+			?? false)
+	const otherRepoBlocker =
+		repoResult?.checks.some(check => check.blocking && check.status === "fail" && check.key !== "firmware") ?? false
+	const repoReady = (repoResult?.canSubmit ?? false) || (firmwareMissing && !otherRepoBlocker && noMicrocontroller)
 
 	const hasCover = Boolean(project?.coverImageKey)
 	const descriptionLength = project?.description.trim().length ?? 0
@@ -2180,6 +2189,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		const refused = await submitPhase(checkpoint.id, {
 			attachmentKeys: carts.map(c => c.objectKey),
 			fundingDeclined,
+			noMicrocontroller: firmwareMissing && noMicrocontroller,
 			notes: isBuild ? buildNotes : undefined,
 			partialFundingAccepted: partialFunding,
 		})
@@ -2235,7 +2245,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					)}
 					{step === 1 && !submitError && !repoReady && repoResult && (
 						<p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
-							Fix the repo checks above to carry on.
+							{firmwareMissing && !otherRepoBlocker
+								? "Tick the box above if your project has no microcontroller, or add its firmware."
+								: "Fix the repo checks above to carry on."}
 						</p>
 					)}
 					{step === 1 && !submitError && !repoReady && repoResult === null && (
@@ -2385,7 +2397,49 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					>
 						Check all files are included
 					</ModalTitle>
-					{project && <RepoChecks onResult={setRepoResult} project={project} />}
+					{project && (
+						<RepoChecks
+							onResult={setRepoResult}
+							project={project}
+							waivedFirmware={firmwareMissing && noMicrocontroller}
+						/>
+					)}
+					{/* The Displays week asks for firmware because most display projects drive one from a microcontroller. Some do not, and have no firmware to give: the box is the maker's confirmation, and it takes only that check off the gate. */}
+					{firmwareMissing && (
+						<label
+							className={cx(
+								"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
+								noMicrocontroller ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
+							)}
+							style={{
+								"--sk-color": noMicrocontroller ? "var(--color-violet)" : "var(--color-line)",
+								"--sk-radius": "16px",
+							}}
+						>
+							<input
+								checked={noMicrocontroller}
+								className="sr-only"
+								onChange={() => setNoMicrocontroller(value => !value)}
+								type="checkbox"
+							/>
+							<span
+								aria-hidden="true"
+								className={cx(
+									"mt-[3px] grid size-[18px] shrink-0 place-items-center rounded-[6px] border-2 transition-colors",
+									noMicrocontroller ? "border-transparent bg-violet" : "border-line-strong",
+								)}
+							>
+								{noMicrocontroller && <IconCheck className="text-sm text-white" />}
+							</span>
+							<span className="min-w-0">
+								<span className="block text-[0.95rem] font-extrabold text-navy">My project has no microcontroller</span>
+								<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
+									There is no firmware to include. Tick this to hand the week in without it; a reviewer will see what
+									drives the display instead.
+								</span>
+							</span>
+						</label>
+					)}
 				</div>
 			)}
 

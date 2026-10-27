@@ -39,6 +39,12 @@ export const submitSchema = z
 		 * The maker ticked the box saying they want no parts funding for this project. Design only: a build carries no parts money, so the route refuses it there rather than recording a meaningless flag.
 		 */
 		fundingDeclined: z.boolean().default(false),
+		/**
+		 * The maker ticked the box saying the project has no microcontroller, so there is no firmware to hand in.
+		 *
+		 * Only the Displays week requires firmware, and the route honours this only when that is the one blocking check: every other missing file still refuses, so the box cannot be used to skip the rest of the list.
+		 */
+		noMicrocontroller: z.boolean().default(false),
 		notes: boundedText(4000).optional(),
 		/**
 		 * The maker ticked the box saying they know a cart past the tier's funding is only partly funded and they will cover the rest.

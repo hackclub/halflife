@@ -48,7 +48,12 @@ describe("submitSchema / unsubmitSchema / disputeSchema", () => {
 		const parsed = submitSchema.safeParse({ phase: Phase.DESIGN })
 		expect(parsed.success).toBe(true)
 		if (parsed.success)
-			expect(parsed.data).toMatchObject({ attachmentKeys: [], fundingDeclined: false, partialFundingAccepted: false })
+			expect(parsed.data).toMatchObject({
+				attachmentKeys: [],
+				fundingDeclined: false,
+				noMicrocontroller: false,
+				partialFundingAccepted: false,
+			})
 	})
 
 	test("disputes need a real note", () => {

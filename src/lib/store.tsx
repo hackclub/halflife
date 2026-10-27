@@ -308,6 +308,7 @@ interface Ctx {
 			attachmentKeys?: string[]
 			partialFundingAccepted?: boolean
 			fundingDeclined?: boolean
+			noMicrocontroller?: boolean
 		},
 	): Promise<string | null>
 	/**
@@ -878,6 +879,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				attachmentKeys?: string[]
 				partialFundingAccepted?: boolean
 				fundingDeclined?: boolean
+				noMicrocontroller?: boolean
 			} = {},
 		): Promise<string | null> => {
 			const route = routeOf(id)
@@ -892,6 +894,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						// Only ever sent as true, so a stale tick from a cart that has since shrunk cannot ride along on the next one. Same for a declined grant: the server records what this hand-in said, not what a previous one did.
 						...(extra.partialFundingAccepted ? { partialFundingAccepted: true } : {}),
 						...(extra.fundingDeclined ? { fundingDeclined: true } : {}),
+						...(extra.noMicrocontroller ? { noMicrocontroller: true } : {}),
 					}),
 					headers: { "content-type": "application/json" },
 					method: "POST",
