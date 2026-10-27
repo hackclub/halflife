@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ActivityStrip, DauChart, ProgrammeFilterProvider } from "@/app/components/admin/ActivityCharts"
 import { ActivityShareChart } from "@/app/components/admin/ActivityShareChart"
-import { CHART_H, DayAxis, EDGE, PAD_B, PAD_T, pct } from "@/app/components/admin/chart-geometry"
+import { CHART_H, DayAxis, EDGE, niceTicks, PAD_B, PAD_T, pct } from "@/app/components/admin/chart-geometry"
 import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
@@ -524,11 +524,12 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 		}
 	})
 
-	// One maximum across all three: the comparison between the lines is the chart.
+	// One maximum across all three: the comparison between the lines is the chart. The axis grows to the next round tick above it so the lines share readable gridlines.
 	const maxHours = Math.max(1, ...lines.flatMap(l => l.values))
+	const axis = niceTicks(maxHours)
 
 	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
-	const yFor = (v: number) => PAD_T + plotH - (v / maxHours) * plotH
+	const yFor = (v: number) => PAD_T + plotH - (v / axis.top) * plotH
 	/** One segment per pair of points: a `d` attribute cannot carry the percentage x. */
 	const segments = (values: number[]) =>
 		values.slice(1).map((value, i) => {
@@ -536,8 +537,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 			return { x1: xOf(i), x2: xOf(i + 1), y1: yFor(previous), y2: yFor(value) }
 		})
 
-	const ticks = Array.from({ length: 5 }, (_, i) => (maxHours / 4) * i)
-	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
+	const { ticks } = axis
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
 	const last = days.at(-1)?.day
@@ -583,7 +583,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 								transform: "translateY(-50%)",
 							}}
 						>
-							{fmtHours(roundTick(t)).replace("h", "")}
+							{fmtHours(t).replace("h", "")}
 						</span>
 					))}
 					<span
@@ -795,12 +795,12 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 	const BAR_GAP = clusterW * BAR_GAP_SHARE
 	const barW = (clusterW - (PROJECT_KIND.length - 1) * BAR_GAP) / PROJECT_KIND.length
 
-	// These are counts, so the top is rounded up to a whole number of tick steps: a gridline labelled 9.25 would be nonsense on an axis of projects. The tallest mark is one kind's bar, never the week's four added together – they stand side by side and are never drawn as one column, so sizing to the sum put a week of 280-high bars against a top of 560.
+	// These are counts, so the axis is in whole projects and every gridline is a multiple of the step. The tallest mark is one kind's bar, never the week's four added together – they stand side by side and are never drawn as one column, so sizing to the sum put a week of 280-high bars against a top of 560. Four is the floor, so a near-empty chart still has a grid to read against.
 	const tallest = Math.max(1, ...weeks.flatMap(week => PROJECT_KIND.map(kind => week[kind.key])))
-	const axisMax = Math.max(4, Math.ceil(tallest / 4) * 4)
-	const ticks = Array.from({ length: 5 }, (_, i) => (axisMax / 4) * i)
+	const axis = niceTicks(Math.max(4, tallest), { integer: true })
+	const { ticks } = axis
 
-	const yFor = (v: number) => PAD_T + plotH - (v / axisMax) * plotH
+	const yFor = (v: number) => PAD_T + plotH - (v / axis.top) * plotH
 	const centreOf = (i: number) => EDGE + (i + 0.5) * stride
 
 	return (
@@ -896,14 +896,6 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 	)
 }
 
-/** An axis top a person can read hours off: 1, 2, 2.5 or 5 times a power of ten. */
-function niceHoursMax(max: number): number {
-	if (max <= 0) return 1
-	const magnitude = 10 ** Math.floor(Math.log10(max))
-	for (const step of [1, 2, 2.5, 5]) if (max <= step * magnitude) return step * magnitude
-	return 10 * magnitude
-}
-
 /**
  * One stacked column per week, each split into the four kinds of project.
  *
@@ -922,10 +914,10 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 	const stride = (1 - 2 * EDGE) / weeks.length
 	const barW = 0.62 * stride
 
-	const axisMax = niceHoursMax(Math.max(...totals))
-	const ticks = Array.from({ length: 5 }, (_, i) => (axisMax / 4) * i)
+	const axis = niceTicks(Math.max(...totals))
+	const { ticks } = axis
 
-	const yFor = (v: number) => PAD_T + plotH - (v / axisMax) * plotH
+	const yFor = (v: number) => PAD_T + plotH - (v / axis.top) * plotH
 	const centreOf = (i: number) => EDGE + (i + 0.5) * stride
 
 	return (
@@ -947,7 +939,7 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 								transform: "translateY(-50%)",
 							}}
 						>
-							{fmtInt(t)}
+							{fmtHours(t).replace("h", "")}
 						</span>
 					))}
 					<span

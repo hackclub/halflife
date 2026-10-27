@@ -1,6 +1,6 @@
 "use client"
 import { createContext, type ReactNode, useContext, useMemo, useState } from "react"
-import { CHART_H, DayAxis, EDGE, PAD_B, PAD_T, pct } from "@/app/components/admin/chart-geometry"
+import { CHART_H, DayAxis, EDGE, niceTicks, PAD_B, PAD_T, pct } from "@/app/components/admin/chart-geometry"
 import { EmptyState } from "@/app/components/ui"
 import { fmtInt } from "@/lib/numbers"
 import type { ActiveDay, DayActivity } from "@/lib/queries/admin"
@@ -94,6 +94,9 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 
 	const maxHours = Math.max(1, ...days.map(hoursOf))
 	const maxDevlogs = Math.max(1, ...days.map(devlogsOf))
+	// Each axis grows to the next round tick above its tallest mark, so the gridlines land on multiples a person can read rather than on quarters of a spiky maximum.
+	const hoursAxis = niceTicks(maxHours)
+	const devlogsAxis = niceTicks(maxDevlogs, { integer: !perUser })
 	// The span's own figure, for the legend. On the per-user chart this is the mean of what is drawn rather than a total, so it is divided by the days on the axis – including the quiet ones, since those are plotted too.
 	const sumHours = days.reduce((n, d) => n + hoursOf(d), 0)
 	const sumDevlogs = days.reduce((n, d) => n + devlogsOf(d), 0)
@@ -119,20 +122,17 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 			const previous = at[i] ?? point
 			return { x1: previous.x, x2: point.x, y1: previous.y, y2: point.y }
 		})
-	const hoursSegments = segments(points(hoursOf, maxHours))
-	const devlogsSegments = segments(points(devlogsOf, maxDevlogs))
+	const hoursSegments = segments(points(hoursOf, hoursAxis.top))
+	const devlogsSegments = segments(points(devlogsOf, devlogsAxis.top))
 	/** The fill under the hours line, as a column per day rather than a closed path, for the same reason. */
 	const areaBars = days.map((d, i) => ({
 		width: (i === days.length - 1 ? 1 - EDGE : xOf(i + 1)) - xOf(i),
 		x: xOf(i),
-		y: yFor(hoursOf(d), maxHours),
+		y: yFor(hoursOf(d), hoursAxis.top),
 	}))
 
-	// Five per axis, so both scales are readable. Rounded to something a person would say rather than to the raw maximum, which on a spiky series lands on an unreadable 574.3h.
-	const steps = (max: number) => Array.from({ length: 5 }, (_, i) => (max / 4) * i)
-	const hoursTicks = steps(maxHours)
-	const devlogTicks = steps(maxDevlogs)
-	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
+	const hoursTicks = hoursAxis.ticks
+	const devlogTicks = devlogsAxis.ticks
 
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
@@ -185,11 +185,11 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 								fontVariantNumeric: "tabular-nums",
 								position: "absolute",
 								right: 6,
-								top: yFor(t, maxHours),
+								top: yFor(t, hoursAxis.top),
 								transform: "translateY(-50%)",
 							}}
 						>
-							{fmtHours(roundTick(t)).replace("h", "")}
+							{fmtHours(t).replace("h", "")}
 						</span>
 					))}
 					<span
@@ -225,8 +225,8 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 								strokeWidth="1"
 								x1={pct(EDGE)}
 								x2={pct(1 - EDGE)}
-								y1={yFor(t, maxHours)}
-								y2={yFor(t, maxHours)}
+								y1={yFor(t, hoursAxis.top)}
+								y2={yFor(t, hoursAxis.top)}
 							/>
 						))}
 						{devlogTicks.map((t, i) => (
@@ -237,8 +237,8 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 								strokeWidth="1"
 								x1={pct(EDGE)}
 								x2={pct(1 - EDGE)}
-								y1={yFor(t, maxDevlogs)}
-								y2={yFor(t, maxDevlogs)}
+								y1={yFor(t, devlogsAxis.top)}
+								y2={yFor(t, devlogsAxis.top)}
 							/>
 						))}
 						{areaBars.map((bar, i) => (
@@ -278,7 +278,13 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 							/>
 						))}
 						{days.map((d, i) => (
-							<circle cx={pct(xOf(i))} cy={yFor(hoursOf(d), maxHours)} fill="var(--color-accent)" key={d.day} r="1.6">
+							<circle
+								cx={pct(xOf(i))}
+								cy={yFor(hoursOf(d), hoursAxis.top)}
+								fill="var(--color-accent)"
+								key={d.day}
+								r="1.6"
+							>
 								<title>
 									{perUser
 										? `${d.day}: ${fmtHours(hoursOf(d))} and ${fmtCount(devlogsOf(d))} devlogs per user, across ${fmtInt(d.users)} ${d.users === 1 ? "person" : "people"}`
@@ -301,11 +307,11 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 								fontVariantNumeric: "tabular-nums",
 								left: 6,
 								position: "absolute",
-								top: yFor(t, maxDevlogs),
+								top: yFor(t, devlogsAxis.top),
 								transform: "translateY(-50%)",
 							}}
 						>
-							{fmtCount(roundTick(t))}
+							{fmtCount(t)}
 						</span>
 					))}
 					<span
@@ -358,13 +364,13 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 	const plotH = CHART_H - PAD_T - PAD_B
 
 	const values = days.map(d => d.users)
-	// At least 1, so a stretch with nobody active draws along the baseline rather than dividing by zero.
-	const max = Math.max(1, ...values)
 	const peak = Math.max(...values)
+	// Whole people only: the step is 1, 2, 5 or 10, never a fraction of a person.
+	const axis = niceTicks(peak, { integer: true })
 	const mean = values.reduce((n, v) => n + v, 0) / days.length
 
 	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
-	const yFor = (v: number) => PAD_T + plotH - (v / max) * plotH
+	const yFor = (v: number) => PAD_T + plotH - (v / axis.top) * plotH
 	const at = days.map((d, i) => ({ x: xOf(i), y: yFor(d.users) }))
 	/** One segment per pair of points, because a `d` attribute cannot carry the percentage x. */
 	const segments = at.slice(1).map((point, i) => {
@@ -378,8 +384,8 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 		y: yFor(d.users),
 	}))
 
-	// Five ticks rounded to whole people: a head count has no meaningful fraction, so the axis is in the integers the line is.
-	const ticks = Array.from({ length: 5 }, (_, i) => Math.round((max / 4) * i))
+	// Evenly spaced whole people, from zero to the round top the axis chose.
+	const { ticks } = axis
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
 	const last = days.at(-1)?.day
