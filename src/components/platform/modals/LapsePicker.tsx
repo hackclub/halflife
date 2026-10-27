@@ -1,37 +1,17 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { z } from "zod"
 import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/components/platform/icons"
 import { Button, Chip } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 import { messageOf } from "@/lib/errors"
-
-/** One timelapse as the picker's routes send it. */
-export const LapseTimelapseSchema = z.object({
-	attached: z.boolean(),
-	createdAt: z.number(),
-	durationSeconds: z.number(),
-	hackatimeProject: z.string().nullable(),
-	id: z.string(),
-	processing: z.boolean(),
-	thumbnailUrl: z.string().nullable(),
-	title: z.string(),
-	visibility: z.enum(["PUBLIC", "UNLISTED", "FAILED_PROCESSING"]),
-})
-export type LapseTimelapse = z.infer<typeof LapseTimelapseSchema>
+import { type LapseTimelapse, readLapsePage } from "@/lib/lapse-timelapses"
 
 type Load =
 	| { state: "loading" }
 	| { state: "unlinked" }
 	| { state: "error"; message: string }
 	| { state: "ready"; items: LapseTimelapse[]; nextCursor: string | null }
-
-const LapsePageResponseSchema = z.object({
-	error: z.object({ code: z.string().optional(), message: z.string().optional() }).optional(),
-	nextCursor: z.string().nullable(),
-	timelapses: z.array(LapseTimelapseSchema),
-})
 
 const LAPSE_URL = "https://lapse.hackclub.com"
 
@@ -49,13 +29,11 @@ async function fetchPage(cursor?: string, forSession?: string) {
 		...(forSession ? { forSession } : {}),
 	})
 	const res = await fetch(`/api/lapse/timelapses?${query}`, { cache: "no-store" })
-	const parsed = LapsePageResponseSchema.safeParse(await res.json().catch(() => null))
-	if (!res.ok) {
-		if (parsed.success && parsed.data.error?.code === "LAPSE_NOT_LINKED") return { unlinked: true as const }
-		throw new Error((parsed.success ? parsed.data.error?.message : undefined) ?? "Could not load your timelapses")
-	}
-	if (!parsed.success) throw new Error("Could not load your timelapses")
-	return parsed.data
+	// The body is read as an unknown answer first: a refusal carries `{ error }` and none of the page's fields, so reading it against the page shape is what used to lose both its message and its code.
+	const read = readLapsePage(res.status, await res.json().catch(() => null))
+	if ("error" in read) throw new Error(read.error)
+	if ("unlinked" in read) return { unlinked: true as const }
+	return read.page
 }
 
 /**

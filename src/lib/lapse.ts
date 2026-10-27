@@ -121,7 +121,14 @@ async function call<T>(
 
 	if (res.status === 401 || res.status === 403) throw NOT_LINKED()
 	const parsed = envelopeOf(schema).safeParse(await res.json().catch(() => null))
-	if (!parsed.success) throw new HttpError("LAPSE_UNAVAILABLE", `Lapse returned HTTP ${res.status}`)
+	if (!parsed.success) {
+		// A 200 whose body we cannot read is drift in Lapse's own response, not the user's problem to diagnose: log it here and say so plainly instead of reporting the status, which was 200.
+		console.error(`[lapse] unreadable ${path} response (HTTP ${res.status}):`, parsed.error)
+		throw new HttpError(
+			"LAPSE_UNAVAILABLE",
+			`Lapse sent a response we could not read (HTTP ${res.status}). Try again in a minute`,
+		)
+	}
 	const body = parsed.data
 	if (!body.ok) {
 		if (body.error === "EXPIRED") throw NOT_LINKED()
