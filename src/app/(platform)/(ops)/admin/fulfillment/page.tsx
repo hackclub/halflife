@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
 import { Badge, Button, EmptyState, Field, PageHeader, Panel, Select, Table, TextInput } from "@/app/components/ui"
+import { IconFilter } from "@/app/components/ui/icons"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
@@ -105,7 +106,9 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 							</option>
 						))}
 					</Select>
-					<Button type="submit">Filter</Button>
+					<Button type="submit">
+						<IconFilter /> Filter
+					</Button>
 					<Link className="hl-hint" href="/admin/fulfillment">
 						Reset
 					</Link>

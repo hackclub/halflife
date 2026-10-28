@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Button, Callout, EmptyState, Field, PageHeader, Panel, Select, Table } from "@/app/components/ui"
+import { IconFilter } from "@/app/components/ui/icons"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
@@ -86,7 +87,9 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 							))}
 						</Select>
 					</Field>
-					<Button type="submit">Filter</Button>
+					<Button type="submit">
+						<IconFilter /> Filter
+					</Button>
 					<Link className="hl-hint" href="/admin/uploads">
 						Reset
 					</Link>

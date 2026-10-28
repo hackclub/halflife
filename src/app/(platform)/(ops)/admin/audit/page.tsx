@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Button, EmptyState, PageHeader, Panel, Table, TextInput } from "@/app/components/ui"
+import { IconFilter } from "@/app/components/ui/icons"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
@@ -37,7 +38,9 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 						placeholder="Target id"
 						style={{ maxWidth: "20rem" }}
 					/>
-					<Button type="submit">Filter</Button>
+					<Button type="submit">
+						<IconFilter /> Filter
+					</Button>
 				</form>
 			</Panel>
 
