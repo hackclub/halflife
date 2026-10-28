@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, Select, TextArea, TextInput } from "@/app/components/ui"
 import { errorMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
 import { formatShortDate, toLocalInput } from "@/lib/deadline"
@@ -93,8 +93,7 @@ export function EventForm({
 
 			<div className="hl-row" style={{ alignItems: "flex-end" }}>
 				<Field hint="What participants would call it in Slack." label="What is it">
-					<input
-						className="hl-input"
+					<TextInput
 						maxLength={120}
 						onChange={e => setTitle(e.target.value)}
 						placeholder="Weekly office hours"
@@ -130,17 +129,10 @@ export function EventForm({
 
 			<div className="hl-row" style={{ alignItems: "flex-end" }}>
 				<Field hint="Your own timezone. Stored as an instant." label="Starts">
-					<input
-						className="hl-input"
-						onChange={e => setStartsAt(e.target.value)}
-						required
-						type="datetime-local"
-						value={startsAt}
-					/>
+					<TextInput onChange={e => setStartsAt(e.target.value)} required type="datetime-local" value={startsAt} />
 				</Field>
 				<Field hint="Optional. Leave blank for an open call." label="Ends">
-					<input
-						className="hl-input"
+					<TextInput
 						min={startsAt || undefined}
 						onChange={e => setEndsAt(e.target.value)}
 						type="datetime-local"
@@ -150,13 +142,7 @@ export function EventForm({
 			</div>
 
 			<Field hint="Optional. An agenda, or what to bring." label="Description">
-				<textarea
-					className="hl-textarea"
-					maxLength={2000}
-					onChange={e => setDescription(e.target.value)}
-					rows={3}
-					value={description}
-				/>
+				<TextArea maxLength={2000} onChange={e => setDescription(e.target.value)} rows={3} value={description} />
 			</Field>
 
 			{editing ? (
@@ -170,14 +156,14 @@ export function EventForm({
 					hint="A standing weekly call is one row here, not ten. Each week is still its own occurrence, so one can be moved later."
 					label="Repeat weekly"
 				>
-					<select className="hl-select" onChange={e => setRepeatWeeks(Number(e.target.value))} value={repeatWeeks}>
+					<Select onChange={e => setRepeatWeeks(Number(e.target.value))} value={repeatWeeks}>
 						<option value={1}>Just this once</option>
 						<option value={2}>Every week for 2 weeks</option>
 						<option value={4}>Every week for 4 weeks</option>
 						<option value={6}>Every week for 6 weeks</option>
 						<option value={10}>Every week for all 10 weeks</option>
 						<option value={12}>Every week for 12 weeks</option>
-					</select>
+					</Select>
 				</Field>
 			)}
 

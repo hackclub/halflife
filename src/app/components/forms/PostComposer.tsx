@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { PhoneHandoff } from "@/app/components/forms/PhoneHandoff"
-import { Button, Callout, Field, Panel } from "@/app/components/ui"
+import { Button, Callout, Field, Panel, Select, TextArea, TextInput } from "@/app/components/ui"
 import { errorMessage } from "@/lib/api-error"
 import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 import { uploadFile } from "@/lib/use-handoff"
@@ -119,40 +119,34 @@ export function PostComposer({
 				</Callout>
 			) : (
 				<Field hint="mp4, webm or mov. Or record on your phone above." label="Video">
-					<input accept={VIDEO_ACCEPT} className="hl-input" disabled={busy} ref={fileRef} type="file" />
+					<TextInput accept={VIDEO_ACCEPT} disabled={busy} ref={fileRef} type="file" />
 				</Field>
 			)}
 
 			<Field label="Caption">
-				<textarea
-					className="hl-textarea"
-					disabled={busy}
-					maxLength={2000}
-					onChange={e => setCaption(e.target.value)}
-					value={caption}
-				/>
+				<TextArea disabled={busy} maxLength={2000} onChange={e => setCaption(e.target.value)} value={caption} />
 			</Field>
 
 			<Field label="What kind of reel is this?">
-				<select className="hl-select" disabled={busy} onChange={e => setKind(e.target.value)} value={kind}>
+				<Select disabled={busy} onChange={e => setKind(e.target.value)} value={kind}>
 					{KIND_OPTIONS.map(option => (
 						<option key={option.value} value={option.value}>
 							{option.label}
 						</option>
 					))}
 					{canAnnounce ? <option value="ANNOUNCEMENT">Announcement from HQ</option> : null}
-				</select>
+				</Select>
 			</Field>
 
 			<Field hint="Optional. Idea and progress reels usually are." label="About a project?">
-				<select className="hl-select" disabled={busy} onChange={e => setProjectId(e.target.value)} value={projectId}>
+				<Select disabled={busy} onChange={e => setProjectId(e.target.value)} value={projectId}>
 					<option value="">Not about a project</option>
 					{projects.map(project => (
 						<option key={project.id} value={project.id}>
 							{project.label}
 						</option>
 					))}
-				</select>
+				</Select>
 			</Field>
 
 			{stage === "uploading" ? (

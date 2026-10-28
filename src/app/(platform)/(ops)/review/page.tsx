@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import { Badge, EmptyState, LinkButton, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { Phase } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -34,15 +34,9 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 			</div>
 
 			<div className="hl-row">
-				<Link className="hl-btn" href="/review">
-					All
-				</Link>
-				<Link className="hl-btn" href="/review?phase=DESIGN">
-					Design
-				</Link>
-				<Link className="hl-btn" href="/review?phase=BUILD">
-					Build
-				</Link>
+				<LinkButton href="/review">All</LinkButton>
+				<LinkButton href="/review?phase=DESIGN">Design</LinkButton>
+				<LinkButton href="/review?phase=BUILD">Build</LinkButton>
 			</div>
 
 			<Panel>

@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Badge, EmptyState, Field, PageHeader, Panel, Select, Table, TextInput } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
@@ -82,15 +82,13 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 
 			<Panel>
 				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
-						<span className="hl-label-text">Placed from</span>
-						<input className="hl-input" defaultValue={search.from ?? ""} name="from" type="date" />
-					</label>
-					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
-						<span className="hl-label-text">Placed to</span>
-						<input className="hl-input" defaultValue={search.to ?? ""} name="to" type="date" />
-					</label>
-					<select className="hl-input" defaultValue={filters.method ?? ""} name="method" style={{ maxWidth: "14rem" }}>
+					<Field label="Placed from">
+						<TextInput defaultValue={search.from ?? ""} name="from" type="date" />
+					</Field>
+					<Field label="Placed to">
+						<TextInput defaultValue={search.to ?? ""} name="to" type="date" />
+					</Field>
+					<Select defaultValue={filters.method ?? ""} name="method" style={{ maxWidth: "14rem" }}>
 						<option value="">Any method</option>
 						<option value="NONE">Method not chosen</option>
 						{Object.entries(METHOD_LABELS).map(([value, label]) => (
@@ -98,15 +96,15 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 								{label}
 							</option>
 						))}
-					</select>
-					<select className="hl-input" defaultValue={filters.stage ?? ""} name="stage" style={{ maxWidth: "14rem" }}>
+					</Select>
+					<Select defaultValue={filters.stage ?? ""} name="stage" style={{ maxWidth: "14rem" }}>
 						<option value="">Any stage</option>
 						{Object.entries(STAGE_LABELS).map(([value, label]) => (
 							<option key={value} value={value}>
 								{label}
 							</option>
 						))}
-					</select>
+					</Select>
 					<button className="hl-btn" type="submit">
 						Filter
 					</button>

@@ -1,4 +1,5 @@
-import type { ReactNode } from "react"
+import Link from "next/link"
+import type { ComponentPropsWithRef, ReactNode } from "react"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that know about colour, spacing or type – a page composes these and never writes a raw utility class.
@@ -12,12 +13,26 @@ const variantClass: Record<Variant, string> = {
 	primary: "hl-btn hl-btn--primary",
 }
 
+/** A base class plus whatever the caller adds, without a trailing space when it adds nothing. */
+const withClass = (base: string, extra?: string): string => (extra ? `${base} ${extra}` : base)
+
 export function Button({
 	variant = "default",
 	className,
 	...props
 }: Readonly<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }>) {
-	return <button {...props} className={`${variantClass[variant]} ${className ?? ""}`} />
+	return <button {...props} className={withClass(variantClass[variant], className)} />
+}
+
+/**
+ * A link that is a button. The kit's own `Button` cannot be one: an `<a>` that navigates and a `<button>` that submits are different elements, and hand-writing `className="hl-btn"` on a `<Link>` is how a variant quietly goes missing. Pass the same `variant` here and Next's `Link` keeps the rest.
+ */
+export function LinkButton({
+	variant = "default",
+	className,
+	...props
+}: Readonly<ComponentPropsWithRef<typeof Link> & { variant?: Variant }>) {
+	return <Link {...props} className={withClass(variantClass[variant], className)} />
 }
 
 export function Panel({
@@ -50,7 +65,7 @@ export function Panel({
 }
 
 /**
- * The page title, hung from two straps pinned to the top of the page – the comp's own device, used on every screen.
+ * The page title, hung from two straps pinned to the top of the page – the comp's own device, used on every console screen except the feed and reports, which lead with a heading row over a form or filter.
  *
  * `actions` sit below the board rather than beside it: the sign is centred, and a button floated next to it would pull the composition off axis.
  */
@@ -100,11 +115,6 @@ export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warnin
 	return <div className={`hl-callout ${tone ? `hl-callout--${tone}` : ""}`}>{children}</div>
 }
 
-/**
- * Close / dismiss.
- *
- * Drawn rather than the Unicode ✕: that glyph's weight, size and baseline come from whatever font happens to render it, so it never matches the stroke of anything around it.
- */
 export function Stat({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
 	return (
 		<div className="hl-stat">
@@ -131,6 +141,21 @@ export function Field({ label, hint, children }: Readonly<{ label: string; hint?
 			{hint ? <span className="hl-hint">{hint}</span> : null}
 		</label>
 	)
+}
+
+/*
+ * The controls Field labels. They exist so the input style is applied by constructing the control, not by remembering to add a class next to it – the kit used to leave that to all sixty-odd call sites. `className` is still merged through for the handful that add `hl-mono`.
+ */
+export function TextInput({ className, ...props }: Readonly<ComponentPropsWithRef<"input">>) {
+	return <input {...props} className={withClass("hl-input", className)} />
+}
+
+export function Select({ className, ...props }: Readonly<ComponentPropsWithRef<"select">>) {
+	return <select {...props} className={withClass("hl-select", className)} />
+}
+
+export function TextArea({ className, ...props }: Readonly<ComponentPropsWithRef<"textarea">>) {
+	return <textarea {...props} className={withClass("hl-textarea", className)} />
 }
 
 export function Table({

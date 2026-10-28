@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout } from "@/app/components/ui"
+import { Button, Callout, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 /** Set what one unit of an item costs Hack Club, from the catalogue row. */
@@ -21,9 +21,8 @@ export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; co
 
 	return (
 		<form className="hl-row" onSubmit={submit} style={{ flexWrap: "nowrap", gap: "0.4rem" }}>
-			<input
+			<TextInput
 				aria-label="Cost in USD"
-				className="hl-input"
 				min="0"
 				onChange={e => setValue(e.target.value)}
 				placeholder="not set"

@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, Select, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 const ACTIONS = ["FULFILL", "REJECT", "HOLD"] as const
@@ -23,8 +23,7 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 	return (
 		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
-			<select
-				className="hl-select"
+			<Select
 				onChange={e => {
 					const next = ACTIONS.find(candidate => candidate === e.target.value)
 					if (next) setAction(next)
@@ -34,19 +33,19 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 				<option value="FULFILL">Fulfil</option>
 				<option value="REJECT">Reject and refund</option>
 				<option value="HOLD">Put on hold</option>
-			</select>
+			</Select>
 			{action === "FULFILL" ? (
 				<>
 					<Field label="Carrier">
-						<input className="hl-input" onChange={e => setCarrier(e.target.value)} value={carrier} />
+						<TextInput onChange={e => setCarrier(e.target.value)} value={carrier} />
 					</Field>
 					<Field label="Tracking number">
-						<input className="hl-input" onChange={e => setTracking(e.target.value)} value={tracking} />
+						<TextInput onChange={e => setTracking(e.target.value)} value={tracking} />
 					</Field>
 				</>
 			) : (
 				<Field hint="Shown to the participant." label="Reason">
-					<input className="hl-input" onChange={e => setReason(e.target.value)} required value={reason} />
+					<TextInput onChange={e => setReason(e.target.value)} required value={reason} />
 				</Field>
 			)}
 			<div>

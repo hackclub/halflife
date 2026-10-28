@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, TextInput } from "@/app/components/ui"
 import { DAY_MS } from "@/lib/time"
 import { sendJson, useAction } from "@/lib/use-action"
 
@@ -57,8 +57,7 @@ export function ProgramStartForm({
 				label="Week 1 starts (PCB design)"
 			>
 				<div className="hl-row">
-					<input
-						className="hl-input"
+					<TextInput
 						onChange={e => {
 							setDate(e.target.value)
 							setSaved(false)

@@ -1,6 +1,6 @@
 "use client"
 import { useRef, useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, Select, TextArea, TextInput } from "@/app/components/ui"
 import type { ShopItemCategory } from "@/lib/enums"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -133,8 +133,8 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				}
 				label="Slug"
 			>
-				<input
-					className="hl-input hl-mono"
+				<TextInput
+					className="hl-mono"
 					onChange={e => setForm({ ...form, id: e.target.value })}
 					pattern="[a-z0-9][a-z0-9-]*"
 					readOnly={editing}
@@ -143,24 +143,13 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				/>
 			</Field>
 			<Field label="Name">
-				<input
-					className="hl-input"
-					onChange={e => setForm({ ...form, name: e.target.value })}
-					required
-					value={form.name}
-				/>
+				<TextInput onChange={e => setForm({ ...form, name: e.target.value })} required value={form.name} />
 			</Field>
 			<Field label="Description">
-				<textarea
-					className="hl-textarea"
-					onChange={e => setForm({ ...form, description: e.target.value })}
-					required
-					value={form.description}
-				/>
+				<TextArea onChange={e => setForm({ ...form, description: e.target.value })} required value={form.description} />
 			</Field>
 			<Field hint="Printers are not listed in the shop; everything else is paid for in coins." label="Category">
-				<select
-					className="hl-select"
+				<Select
 					onChange={e => {
 						const picked = CATEGORIES.find(category => category.value === e.target.value)
 						if (picked) setForm({ ...form, category: picked.value })
@@ -172,12 +161,11 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 							{c.label}
 						</option>
 					))}
-				</select>
+				</Select>
 			</Field>
 			<Field hint="Paste an https link, or upload one. Blank for no picture." label="Image">
 				<div className="hl-row" style={{ alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-					<input
-						className="hl-input"
+					<TextInput
 						onChange={e => setForm({ ...form, imageUrl: e.target.value })}
 						placeholder="https://…"
 						style={{ flex: "1 1 16rem" }}
@@ -209,8 +197,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				) : null}
 			</Field>
 			<Field label="Price (coins)">
-				<input
-					className="hl-input"
+				<TextInput
 					min="0"
 					onChange={e => setForm({ ...form, priceCredits: e.target.value })}
 					type="number"
@@ -218,8 +205,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				/>
 			</Field>
 			<Field hint="Per unit, tax and shipping included. Shown on the fulfillment sheet." label="Cost to us (USD)">
-				<input
-					className="hl-input"
+				<TextInput
 					min="0"
 					onChange={e => setForm({ ...form, costUsd: e.target.value })}
 					step="0.01"

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Callout } from "@/app/components/ui"
+import { Callout, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 type Kind = "session" | "hackatime"
@@ -40,9 +40,8 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 			}}
 			style={{ gap: "0.3rem", minWidth: "6rem" }}
 		>
-			<input
+			<TextInput
 				aria-label="Approved hours"
-				className="hl-input"
 				disabled={busy !== null}
 				max={kind === "session" ? 24 : 2000}
 				min={0}
