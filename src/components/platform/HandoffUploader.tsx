@@ -1,6 +1,6 @@
 "use client"
 import { useRef, useState } from "react"
-import { Button, Callout, Field, TextInput } from "@/app/components/ui"
+import { Button, Field, inputClass, Meter } from "@/components/platform/ui"
 import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 import { uploadHandoffFile } from "@/lib/use-handoff"
 
@@ -10,6 +10,8 @@ import { uploadHandoffFile } from "@/lib/use-handoff"
  * `capture="environment"` is what makes this worth building: on a phone it opens the rear camera straight into the native recorder, and hands back the platform's own format – an .mp4 on iOS, which is the one format everything plays. A MediaRecorder implementation here would be more code, worse on iOS, and would produce .webm that a chunk of the audience cannot watch.
  *
  * On a desktop browser the same input degrades to an ordinary file picker, which is a perfectly good fallback.
+ *
+ * Drawn in the platform kit, like the page that mounts it: the hand face on the asides, a real bordered field, the violet committing action and the teal meter are the same furniture a participant meets on the trail.
  */
 export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	const fileRef = useRef<HTMLInputElement>(null)
@@ -46,48 +48,61 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 
 	if (state === "done")
 		return (
-			<div className="hl-stack hl-stack--tight">
-				<Callout>Sent. Go back to your computer to finish the post. You can close this.</Callout>
-			</div>
+			<p
+				className="rounded-xl border-2 border-teal bg-mint/50 px-4 py-3 text-[0.92rem] leading-snug text-teal-ink"
+				role="status"
+			>
+				Sent. Go back to your computer to finish the post. You can close this.
+			</p>
 		)
 
 	return (
-		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
-			{error ? <Callout tone="danger">{error}</Callout> : null}
+		<form className="grid gap-4" onSubmit={submit}>
+			{error ? (
+				<p
+					className="rounded-xl border-2 border-coral bg-coral/10 px-4 py-3 text-[0.92rem] leading-snug font-semibold text-coral-dark"
+					role="alert"
+				>
+					{error}
+				</p>
+			) : null}
 
-			<Field hint="Tap to record, or pick one you already have." label="Video">
-				<TextInput
+			<Field hint="Tap to record, or pick one you already have." id="handoff-video" label="Video">
+				<input
 					accept={VIDEO_ACCEPT}
 					capture="environment"
+					className={inputClass}
 					disabled={state === "uploading"}
+					id="handoff-video"
 					onChange={e => setFileName(e.target.files?.[0]?.name ?? null)}
 					ref={fileRef}
 					type="file"
 				/>
 			</Field>
 
-			{fileName ? <p className="hl-hint">{fileName}</p> : null}
+			{fileName ? <p className="hand text-[0.84rem] text-navy-soft">{fileName}</p> : null}
 
 			{state === "uploading" ? (
-				<div>
-					<progress
-						aria-label="Sending your video"
+				<div className="grid gap-1.5">
+					<Meter
+						label={progress < 1 ? `Sending… ${Math.round(progress * 100)}%` : "Saving it…"}
 						max={1}
-						style={{ height: "0.6rem", width: "100%" }}
-						// No value once everything is sent: the browser draws its own "working" state while the server stores the video.
-						value={progress < 1 ? progress : undefined}
+						tone="teal"
+						value={progress}
 					/>
-					<p className="hl-hint">{progress < 1 ? `Sending… ${Math.round(progress * 100)}%` : "Sent. Saving it…"}</p>
+					<p className="hand text-[0.84rem] text-navy-soft">
+						{progress < 1 ? "Keep this page open until it finishes." : "Sent. Saving it on the server…"}
+					</p>
 				</div>
 			) : null}
 
 			<div>
-				<Button disabled={state === "uploading"} type="submit" variant="primary">
+				<Button disabled={state === "uploading"} full size="lg" type="submit">
 					{state === "uploading" ? "Sending…" : "Send to my computer"}
 				</Button>
 			</div>
 
-			<p className="hl-hint">This link works once, and only for the next few minutes.</p>
+			<p className="hand text-[0.84rem] text-navy-soft">This link works once, and only for the next few minutes.</p>
 		</form>
 	)
 }

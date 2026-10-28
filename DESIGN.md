@@ -60,9 +60,9 @@ colors:
   coral-dark: "#a53131"
   # ── Staff console (src/app/(platform)/ops.css) ─────────────────────────────
   # The platform's earlier system, kept for admin and review. In ops.css these
-  # are plain `--color-*` names on the `.ops-root` wrapper the console and the
-  # phone handoff page render inside; the `ops-` prefix is this document's, so
-  # they cannot be confused with the platform tokens they share names with.
+  # are plain `--color-*` names on the `.ops-root` wrapper the console renders
+  # inside; the `ops-` prefix is this document's, so they cannot be confused
+  # with the platform tokens they share names with.
   ops-surface: "#fcf7f7"
   ops-surface-raised: "#ffffff"
   ops-surface-sunken: "#f2ecec"
@@ -237,7 +237,7 @@ components:
 
 Half Life runs **two visual worlds on purpose**, and the split is the first thing to understand before writing any screen. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything. The platform is where those same teenagers then work, for ten weeks, most days. A world that serves the first badly serves the second, so they were never merged.
 
-There is a third, which is not a world so much as a back room: the staff console under `(ops)` – admin and review – carries the platform's earlier design system in `ops.css`, kept rather than half-translated when the participant platform was rebuilt from the comp. In the CSS its tokens are plain `--color-*` names; this document prefixes them `ops-` so they cannot be mistaken for the platform's. It redefines names the platform also uses (`ink`, `teal`, `mint`, `magenta`), so the stylesheet scopes them to `.ops-root`, the wrapper the console and the phone handoff page render inside: on `:root` they would quietly repaint the trail after a navigation. The stylesheet is plain CSS over the platform's Tailwind, not a second copy of it.
+There is a third, which is not a world so much as a back room: the staff console under `(ops)` – admin and review – carries the platform's earlier design system in `ops.css`, kept rather than half-translated when the participant platform was rebuilt from the comp. In the CSS its tokens are plain `--color-*` names; this document prefixes them `ops-` so they cannot be mistaken for the platform's. It redefines names the platform also uses (`ink`, `teal`, `mint`, `magenta`), so the stylesheet scopes them to `.ops-root`, the wrapper the console renders inside: on `:root` they would quietly repaint the trail after a navigation. The stylesheet is plain CSS over the platform's Tailwind, not a second copy of it. The phone handoff page is a third root layout – public by design, so it cannot sit under the session-gated shell – but it is drawn in the platform's world rather than the console's: the same stylesheet, fonts and filter definitions.
 
 **Landing page – Creative North Star: "The Production Line"**
 
