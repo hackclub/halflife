@@ -6,8 +6,8 @@ import { HANDOFF_TTL_MINUTES, resolveHandoff } from "@/lib/handoff"
 // Never cached: the token is single-use and its validity changes the moment a phone claims it.
 export const dynamic = "force-dynamic"
 
-/** The phone's measure. The sign is flush to the top edge because this page has no header for its straps to tuck under. */
-const pageClass = "mx-auto w-full max-w-xl px-4 pb-12"
+/** The phone's measure. The sign is flush to the top edge because this page has no header for its straps to tuck under; the safe-area inset keeps it below a notch or the status bar rather than under it. */
+const pageClass = "mx-auto w-full max-w-xl px-4 pb-12 pt-[env(safe-area-inset-top)]"
 
 export default async function HandoffPage({ params }: { params: Promise<{ token: string }> }) {
 	const { token } = await params
