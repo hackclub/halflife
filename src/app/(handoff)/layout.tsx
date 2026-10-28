@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
-// The same stylesheet as the platform, so the phone page does not need a second set of tokens to stay in step with.
+// The platform stylesheet, then the console's over it. The console's is the design system this page is drawn in; the platform's is where its one Tailwind entry comes from, so the phone page does not carry a second copy of Tailwind to stay in step.
+import "../(platform)/globals.css"
 import "../(platform)/ops.css"
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export default function HandoffLayout({ children }: Readonly<{ children: React.R
 	return (
 		<html lang="en">
 			<body>
-				<main className="hl-shell">{children}</main>
+				<main className="ops-root hl-shell">{children}</main>
 			</body>
 		</html>
 	)

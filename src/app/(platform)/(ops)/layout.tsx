@@ -1,10 +1,10 @@
 /**
  * The staff and signed-out surfaces: the review queue, the admin console, the login page and the first-checkpoint flow.
  *
- * They carry their own stylesheet. These pages were written against the platform's earlier design system, and `ops.css` is that system, kept whole rather than half-translated. It loads after `globals.css` and redefines four tokens it shares with it (`--color-ink`, `--color-magenta`, `--color-mint`, `--color-teal`), which is why it is scoped to this group instead of the root: loaded globally it would quietly repaint the trail.
+ * They carry their own stylesheet, which is now plain CSS rather than a second Tailwind entry: the platform's root layout above already imports Tailwind, and importing it again here shipped a duplicate preflight and utility layer. `ops.css` scopes its tokens to `.ops-root`, on the wrapper below, so after a client-side navigation out of the console the names it shares with the platform cannot repaint the trail.
  */
 import "../ops.css"
 
 export default function OpsLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-	return children
+	return <div className="ops-root">{children}</div>
 }

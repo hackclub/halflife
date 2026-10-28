@@ -1,14 +1,16 @@
-@import "tailwindcss";
-
 /*
- * The Half-Life design system.
+ * The Half-Life design system for the staff console.
  *
  * Values come from the Figma "platform ui" page – the BRANDING frame (389:1774) for palette and type, and the [ MAIN PAGE ] / [ EXPLORE PAGE ] frames for how they are used. Where the comp is silent (hover, focus, disabled, small screens) the rule is derived from a value it does state.
  *
  * This file and app/components/ui/ are the only places that know about colour, radius or type. A page composes primitives and never writes a raw value.
+ *
+ * Scoped, not global. The `(ops)` group and the phone handoff page load this stylesheet, and it outlives the route that loads it: CSS is not unlinked on a client-side navigation. Its tokens therefore sit on `.ops-root` – the wrapper both surfaces render inside – rather than on `:root`, so the names it shares with the platform (`ink`, `teal`, `mint`, `magenta`) cannot repaint the trail after someone leaves the console.
+ *
+ * There is no `@import "tailwindcss"` and no `@theme` here on purpose. The platform's root layout is already on every one of these pages and is the single Tailwind entry, so importing it again would ship a second preflight and a second utility layer, both of which also define these token names. What follows is plain CSS over that stylesheet: the console's custom properties, then the `.hl-*` classes built on them.
  */
 
-@theme {
+.ops-root {
 	/* ── Palette ───────────────────────────────────────────────────────────── */
 	/* The eight swatches of the BRANDING frame, plus its two large grounds. */
 	--color-surface: #fcf7f7; /* page ground – warm off-white, not pure white */
@@ -65,17 +67,11 @@
 	--font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif;
 	--font-accent: var(--font-comico), "Comic Sans MS", "Chalkboard SE", var(--font-jakarta), sans-serif;
 	--font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-:root {
-	color-scheme: light;
-}
-
-body {
-	margin: 0;
+	min-height: 100dvh;
 	font-family: var(--font-sans);
 	line-height: 1.5;
 	color: var(--color-ink);
+	color-scheme: light;
 	background: var(--color-surface);
 }
 
@@ -83,7 +79,7 @@ body {
  * Layered, not plain: this stylesheet outlives the route that loads it. Navigating from the console to the platform leaves it in the document, and an unlayered `a` rule outranks every Tailwind colour utility on the page it lands on – which is what turned the Doomscroller's white author names and project tags navy. In the base layer it is still the console's default link colour, while a component that names one wins.
  */
 @layer base {
-	a {
+	.ops-root a {
 		color: var(--color-ink-strong);
 	}
 }
@@ -91,27 +87,22 @@ body {
 /*
  * The surfaces we did not draw still carry the design. Left at their defaults these are the browser's blue, and they belong to no design system.
  */
-::selection {
+.ops-root ::selection {
 	color: var(--color-ink-strong);
 	background: var(--color-mint);
 }
 
-input,
-textarea,
-select {
+.ops-root :is(input, textarea, select) {
 	caret-color: var(--color-accent);
 }
 
-* {
+:is(.ops-root, .ops-root *) {
 	scrollbar-color: var(--color-line-soft) transparent;
 	scrollbar-width: thin;
 }
 
 /* Headings inherit the display face and weight rather than the browser's. */
-h1,
-h2,
-h3,
-h4 {
+.ops-root :is(h1, h2, h3, h4) {
 	font-weight: 800;
 	line-height: 1.15;
 	color: var(--color-ink-strong);
@@ -521,13 +512,10 @@ h4 {
 		transform: translateY(1px);
 	}
 
-	/* One visible focus treatment everywhere, since the comp specifies none. */
-	.hl-btn:focus-visible,
-	.hl-input:focus-visible,
-	.hl-textarea:focus-visible,
-	.hl-select:focus-visible,
-	.hl-nav-item:focus-visible,
-	.hl-label:focus-visible {
+	/*
+	 * One ring everywhere, since the comp specifies none: accent, 3px, 2px offset. Broad rather than a list of the console's own classes, so a bare link or a control inside a table is not left wearing the platform's magenta ring from the root layout. This lives in the components layer, one step above that ring's base layer, which is the only reason the console's treatment renders at all.
+	 */
+	:where(a, button, input, textarea, select, [tabindex]):focus-visible {
 		outline: 3px solid var(--color-accent);
 		outline-offset: 2px;
 	}
