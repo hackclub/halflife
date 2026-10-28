@@ -1,5 +1,6 @@
 import Link from "next/link"
 import type { ComponentPropsWithRef, ReactNode } from "react"
+import { HangingSign } from "@/components/sign/HangingSign"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that know about colour, spacing or type – a page composes these and never writes a raw utility class.
@@ -74,27 +75,7 @@ export function PageHeader({
 	subtitle,
 	actions,
 }: Readonly<{ title: string; subtitle?: ReactNode; actions?: ReactNode }>) {
-	return (
-		<header>
-			<div className="hl-sign">
-				<div aria-hidden="true" className="hl-sign-straps">
-					<span className="hl-sign-strap" />
-					<span className="hl-sign-strap" />
-				</div>
-				<div className="hl-sign-board">
-					{/* The tear lives on its own layer so the heading stays clean. */}
-					<div aria-hidden="true" className="hl-sign-tear" />
-					<h1>{title}</h1>
-				</div>
-			</div>
-			{subtitle ? <p className="hl-sign-sub">{subtitle}</p> : null}
-			{actions ? (
-				<div className="hl-row" style={{ justifyContent: "center", marginTop: "1rem" }}>
-					{actions}
-				</div>
-			) : null}
-		</header>
-	)
+	return <HangingSign actions={actions} subtitle={subtitle} surface="console" title={title} />
 }
 
 type BadgeTone = "success" | "warning" | "danger" | "muted" | "access"
