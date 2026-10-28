@@ -73,6 +73,14 @@ describe("console palette", () => {
 		expect(consoleColors["--color-line-soft"]).toBe("var(--color-border)")
 	})
 
+	test("type is inherited from the platform, not declared again", () => {
+		const css = read("../../(platform)/ops.css")
+		const consoleBlock = block(css, ".ops-root")
+		expect(consoleBlock).not.toContain("--font-sans:")
+		expect(consoleBlock).not.toContain("--font-mono:")
+		expect(consoleBlock).toContain("font-family: var(--font-display)")
+	})
+
 	test("only the console's own colours are written as hex", () => {
 		const literals = Object.entries(consoleColors)
 			.filter(([, value]) => /^#[0-9a-f]{6}$/i.test(value))

@@ -53,12 +53,10 @@
 
 	/* ── Type ──────────────────────────────────────────────────────────────── */
 	/*
-	 * Headings and body are both Plus Jakarta Sans: nav items and names in Bold 22, body in Regular 16/22, page titles in ExtraBold.
+	 * Headings and body are both Plus Jakarta Sans: nav items and names in Bold 22, body in Regular 16/22, page titles in ExtraBold. The families themselves are inherited from the platform theme rather than declared again here; `.hl-mono` reads the same inherited mono stack.
 	 */
-	--font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif;
-	--font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 	min-height: 100dvh;
-	font-family: var(--font-sans);
+	font-family: var(--font-display);
 	line-height: 1.5;
 	color: var(--color-ink);
 	color-scheme: light;
