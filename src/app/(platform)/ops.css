@@ -19,7 +19,6 @@
 	--color-border: #cacedd;
 	/* A field's edge, which has to meet 3:1 where a panel's need not: #cacedd is 1.57:1 on a white field. 3.68:1. */
 	--color-field-edge: #86829f;
-	--color-border-strong: #1c1a59;
 
 	--color-ink: #100f30; /* body text */
 	--color-ink-strong: #1c1a59; /* headings, outlines, the brand navy */
@@ -32,40 +31,31 @@
 
 	--color-accent: #52b4d5; /* primary blue */
 	--color-accent-bright: #61cdf1; /* the header sign */
-	--color-accent-media: #51bce1; /* media blocks in the feed */
 	--color-accent-ink: #1c1a59;
 
 	--color-teal: #06ae97;
 	--color-teal-soft: #75d0c9;
 	--color-mint: #aef2dd;
 	--color-magenta: #b21b9b;
-	--color-coin: #fba62f; /* coin counter */
-	--color-flame: #f35757; /* streak counter, danger, the active nav tab */
+	--color-coin: #fba62f; /* the warning callout's rim */
+	--color-flame: #f35757; /* danger: the callout's rim, the admin charts */
 
-	/* Semantic aliases, so primitives read as roles rather than hues. */
-	--color-success: #06ae97;
-	--color-warning: #fba62f;
+	/* Status as text: teal and coin read 2.80 and 1.98:1 on white, so a badge's word takes these inks instead. `danger` stays a whole-colour alias because the admin charts draw with it. */
 	--color-danger: #f35757;
-	/* The status colours as text. Teal, coin and flame read 2.80, 1.98 and 3.33:1 on white, so a badge's word takes these instead. */
 	--color-success-ink: #037365;
 	--color-warning-ink: #8c5507;
 	--color-danger-ink: #c73b3b;
 
 	/* ── Shape ─────────────────────────────────────────────────────────────── */
-	/* The comp uses 4/8/10/14 and a 2px outline on nearly everything. */
-	--radius-control: 4px;
+	/* The comp uses 8/10 and a 2px outline on nearly everything. */
 	--radius-button: 8px;
 	--radius-panel: 10px;
-	--radius-rail: 14px;
 
 	/* ── Type ──────────────────────────────────────────────────────────────── */
 	/*
 	 * Headings and body are both Plus Jakarta Sans: nav items and names in Bold 22, body in Regular 16/22, page titles in ExtraBold.
-	 *
-	 * The accent face is Comico, used only for small uppercase labels ("VIEW MORE", "LOG OUT", "YESTERDAY", "The Doomscroller") and the two numeric counters. It is not on Google Fonts and no licensed file ships here, so it falls back until one does – see the note in layout.tsx.
 	 */
 	--font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif;
-	--font-accent: var(--font-comico), "Comic Sans MS", "Chalkboard SE", var(--font-jakarta), sans-serif;
 	--font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 	min-height: 100dvh;
 	font-family: var(--font-sans);
@@ -118,66 +108,7 @@
 }
 
 @layer components {
-	/* ── App shell ─────────────────────────────────────────────────────────── */
-	/*
-	 * Three columns: the 343px sidebar, the content well, and the 409px Doomscroller rail. The hairline the comp draws down the page at x=425 is the content column's left border, not a separate element.
-	 */
-	.hl-app {
-		display: grid;
-		grid-template-columns: 343px minmax(0, 1fr);
-		gap: 2.4rem;
-		align-items: start;
-		max-width: 1728px;
-		padding: 2.5rem 2.75rem 4rem;
-		margin: 0 auto;
-	}
-	.hl-app--with-rail {
-		grid-template-columns: 343px minmax(0, 1fr) 409px;
-	}
-	.hl-main {
-		min-width: 0;
-		padding-left: 2.4rem;
-		border-left: 1px solid var(--color-border);
-	}
-
-	/* Narrower than the rail, the feed matters more than the rail. Narrower than the sidebar, the nav becomes a strip above the content. */
-	@media (max-width: 1400px) {
-		.hl-app,
-		.hl-app--with-rail {
-			grid-template-columns: 343px minmax(0, 1fr);
-		}
-		.hl-rail {
-			display: none;
-		}
-	}
-	@media (max-width: 900px) {
-		.hl-app,
-		.hl-app--with-rail {
-			grid-template-columns: minmax(0, 1fr);
-			gap: 1.25rem;
-			padding: 1.25rem 1rem 3rem;
-		}
-		.hl-main {
-			padding-left: 0;
-			border-left: 0;
-		}
-		.hl-sidebar {
-			position: static;
-		}
-		/*
-		 * On one column the sidebar is three tall cards of chrome. Leaving it first means scrolling past the whole nav, the printer card and the account card to reach the thing you opened the app for.
-		 */
-		.hl-main {
-			order: -1;
-		}
-	}
-
 	/* ── Cards ─────────────────────────────────────────────────────────────── */
-	.hl-card {
-		padding: 1.4rem 1.5rem;
-		border: 2px solid var(--color-border);
-		border-radius: var(--radius-panel);
-	}
 	.hl-panel {
 		padding: 1.4rem 1.5rem;
 		background: var(--color-surface-raised);
@@ -198,90 +129,6 @@
 	.hl-page-wide {
 		width: calc(100vw - 2.5rem);
 		margin-left: calc(50% - 50vw + 1.25rem);
-	}
-
-	/* ── Sidebar ───────────────────────────────────────────────────────────── */
-	.hl-sidebar {
-		position: sticky;
-		top: 2.5rem;
-		display: flex;
-		flex-direction: column;
-		gap: 1.6rem;
-	}
-	.hl-brand {
-		display: flex;
-		gap: 0.6rem;
-		align-items: center;
-	}
-	.hl-nav-card {
-		position: relative;
-		padding-top: 2.4rem;
-	}
-	/* The red tab riding the top edge of the nav card. */
-	.hl-nav-tab {
-		position: absolute;
-		top: -1rem;
-		left: 6.5rem;
-		width: 102px;
-		height: 33px;
-		background: var(--color-flame);
-		border-radius: var(--radius-control);
-	}
-	.hl-nav-list {
-		display: flex;
-		flex-direction: column;
-		padding: 0;
-		margin: 0;
-		list-style: none;
-	}
-	.hl-nav-item {
-		display: block;
-		padding: 0.55rem 0.25rem;
-		font-size: 1.375rem;
-		font-weight: 700;
-		color: var(--color-ink);
-		text-decoration: none;
-		border-bottom: 2px solid var(--color-border);
-	}
-	.hl-nav-list--wobbly .hl-nav-item,
-	.hl-nav-list li:last-child .hl-nav-item {
-		border-bottom: 0;
-	}
-	/* The comp dims the page you are on rather than highlighting it. */
-	.hl-nav-item--current {
-		opacity: 0.4;
-	}
-	.hl-nav-item:hover {
-		color: var(--color-accent);
-	}
-	.hl-nav-item:active {
-		transform: translateY(1px);
-	}
-
-	/* ── Counters (coins, streak) ──────────────────────────────────────────── */
-	.hl-counters {
-		display: flex;
-		gap: 2rem;
-		align-items: center;
-	}
-	.hl-counter {
-		display: inline-flex;
-		gap: 0.5rem;
-		align-items: center;
-		font-family: var(--font-accent);
-		font-size: 1.875rem;
-		line-height: 1;
-	}
-	.hl-counter--coin {
-		color: var(--color-coin);
-	}
-	.hl-counter--flame {
-		color: var(--color-flame);
-	}
-	.hl-counter-icon {
-		display: block;
-		width: 1.75rem;
-		height: 1.75rem;
 	}
 
 	/* ── The hanging sign ──────────────────────────────────────────────────── */
@@ -371,110 +218,6 @@
 		text-align: center;
 	}
 
-	/*
-	 * The comp stands a gato beside the printer card, overlapping its right edge. It is decoration, so it is out of the accessibility tree and out of the pointer's way.
-	 */
-	.hl-card--mascot {
-		position: relative;
-	}
-	.hl-card-mascot {
-		position: absolute;
-		right: -1.75rem;
-		bottom: -0.5rem;
-		width: 108px;
-		height: auto;
-		pointer-events: none;
-	}
-	@media (max-width: 900px) {
-		.hl-card-mascot {
-			right: 0.5rem;
-			width: 84px;
-		}
-	}
-
-	/* An empty state that says something, rather than a line of grey text. */
-	.hl-empty-art {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		align-items: center;
-		padding: 1.5rem 1rem;
-		color: var(--color-ink-muted);
-		text-align: center;
-	}
-	.hl-empty-art img {
-		width: 132px;
-		height: auto;
-	}
-
-	/* ── Progress ──────────────────────────────────────────────────────────── */
-	.hl-progress {
-		position: relative;
-		height: 19px;
-		overflow: hidden;
-		background: var(--color-mint);
-		border-radius: var(--radius-button);
-	}
-	.hl-progress-fill {
-		height: 100%;
-		background: var(--color-teal);
-		border-radius: var(--radius-button);
-	}
-	.hl-progress-label {
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: var(--color-teal);
-	}
-
-	/* ── Avatars ───────────────────────────────────────────────────────────── */
-	.hl-avatar {
-		display: block;
-		flex: 0 0 auto;
-		width: 53px;
-		height: 53px;
-		object-fit: cover;
-		background: var(--color-ink-strong);
-		border: 2px solid var(--color-surface);
-		border-radius: var(--radius-button);
-	}
-	.hl-avatar--lg {
-		width: 129px;
-		height: 129px;
-	}
-	/* The fallback holds the gato art on the brand navy. */
-	.hl-avatar--fallback {
-		display: grid;
-		place-items: center;
-		overflow: hidden;
-		background: var(--color-teal);
-	}
-	.hl-avatar--fallback img {
-		width: 84%;
-		height: 84%;
-		object-fit: contain;
-	}
-
-	/* Real names include long unbroken ones; the card must not burst. */
-	.hl-account-name {
-		font-size: 1.375rem;
-		font-weight: 700;
-		overflow-wrap: anywhere;
-	}
-
-	/* ── Accent label ──────────────────────────────────────────────────────── */
-	/* "VIEW MORE", "LOG OUT", "YESTERDAY" – Comico, small, tracked out. */
-	.hl-label {
-		font-family: var(--font-accent);
-		font-size: 0.75rem;
-		color: var(--color-accent);
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		text-decoration: none;
-	}
-	.hl-label--muted {
-		color: var(--color-ink-muted);
-	}
-
 	/* ── Buttons ───────────────────────────────────────────────────────────── */
 	.hl-btn {
 		display: inline-flex;
@@ -518,32 +261,6 @@
 	.hl-btn:active:not(:disabled) {
 		filter: brightness(0.9);
 		transform: translateY(1px);
-	}
-
-	/* An icon-only control: the target is the button, not the glyph. */
-	.hl-icon-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 2.25rem;
-		height: 2.25rem;
-		padding: 0;
-		color: var(--color-ink-muted);
-		cursor: pointer;
-		background: none;
-		border: 0;
-		border-radius: var(--radius-control);
-	}
-	.hl-icon-btn:hover {
-		color: var(--color-ink-strong);
-		background: var(--color-surface-sunken);
-	}
-	.hl-icon-btn:active {
-		transform: translateY(1px);
-	}
-	.hl-icon-btn:focus-visible {
-		outline: 3px solid var(--color-accent);
-		outline-offset: 2px;
 	}
 
 	/* ── Fields ────────────────────────────────────────────────────────────── */
@@ -645,123 +362,6 @@
 		color: var(--color-ink-muted);
 	}
 
-	/* ── The week banner ───────────────────────────────────────────────────── */
-	/*
-	 * The comp's banner is painted art with a torn edge, exported from the file rather than reconstructed. Its surround is exactly the page ground (#fcf7f7), so it needs no mask – the tear blends into the page on its own.
-	 *
-	 * Stretched to the container width: the edge is organic enough to take it, and a fixed-width band would letterbox on every screen that is not 676px.
-	 */
-	.hl-banner {
-		position: relative;
-		display: flex;
-		align-items: center;
-		min-height: 115px;
-		/* The torn edge eats into the first ~1rem, so the copy starts inside it. */
-		padding: 1.5rem 2.5rem;
-		color: var(--color-ink-strong);
-		background-image: url("/brand/week-banner.png");
-		background-repeat: no-repeat;
-		background-size: 100% 100%;
-	}
-	.hl-banner-week {
-		margin: 0;
-		font-family: var(--font-accent);
-		font-size: 1.1rem;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-	/* "DESIGN YOUR BREADBOARD COMPUTER" is the longest headline the program can produce; the ceiling is set so it takes two lines rather than three. */
-	.hl-banner-copy {
-		position: relative;
-		z-index: 1;
-		min-width: 0;
-	}
-	.hl-banner-art {
-		flex: 0 0 auto;
-		width: clamp(88px, 12vw, 139px);
-		height: auto;
-		margin-left: auto;
-		/* The art is a sticker with its own pale outline; it needs no shadow. */
-	}
-	@media (max-width: 700px) {
-		/* At this width the headline needs the whole band. */
-		.hl-banner-art {
-			display: none;
-		}
-	}
-	.hl-banner-title {
-		margin: 0.1rem 0 0;
-		font-size: clamp(1.5rem, 2.6vw, 2.5rem);
-		font-weight: 800;
-		line-height: 1.05;
-		text-wrap: balance;
-	}
-
-	/* ── The programme path ───────────────────────────────────────────────── */
-	/*
-	 * Ten weeks as one continuous track. Each week is a section with its own header and lane; the lane's swing and node geometry come from the comp.
-	 */
-	.hl-programme {
-		display: flex;
-		flex-direction: column;
-		gap: 3.5rem;
-		margin-top: 2rem;
-	}
-	.hl-week {
-		scroll-margin-top: 1.5rem;
-	}
-	/* Weeks not yet reached recede without being hidden – the point of the track is that you can see what is coming. */
-	.hl-week--future {
-		opacity: 0.55;
-	}
-	.hl-week--future:hover,
-	.hl-week--future:focus-within {
-		opacity: 1;
-	}
-	.hl-week-head {
-		display: flex;
-		gap: 1rem;
-		align-items: center;
-		padding-bottom: 0.75rem;
-		border-bottom: 2px solid var(--color-line-soft);
-	}
-	.hl-week-art {
-		flex: 0 0 auto;
-		width: 72px;
-		height: auto;
-	}
-	.hl-week-number {
-		margin: 0;
-		font-family: var(--font-accent);
-		font-size: 0.75rem;
-		color: var(--color-ink-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-	.hl-week-title {
-		margin: 0.1rem 0 0;
-		font-size: 1.25rem;
-		font-weight: 800;
-		color: var(--color-ink-strong);
-	}
-	.hl-week--current .hl-week-title {
-		font-size: 1.6rem;
-	}
-	.hl-week-progress {
-		margin: 0.15rem 0 0;
-		font-size: 0.875rem;
-		color: var(--color-ink-muted);
-	}
-
-	.hl-path {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		max-width: 560px;
-		padding: 0;
-		margin: 1.25rem auto 0;
-		list-style: none;
-	}
 	/* ── Staff top bar ─────────────────────────────────────────────────────── */
 	/*
 	 * Review and admin keep a plain strip rather than the participant sidebar. The comp designs neither, and inventing a sidebar for them would be guessing – this at least dresses them in the same palette and outline weight as everything else.
@@ -808,15 +408,9 @@
 		gap: 1rem;
 		align-items: center;
 	}
-	.hl-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(261px, 1fr));
-		gap: 1.5rem;
-	}
 	.hl-scroll {
 		overflow-x: auto;
 	}
-
 	/* ── Tables ────────────────────────────────────────────────────────────── */
 	.hl-table {
 		width: 100%;
@@ -926,136 +520,5 @@
 	}
 	.hl-manage-chevron--open {
 		transform: rotate(180deg);
-	}
-
-	/* ── Day separator ─────────────────────────────────────────────────────── */
-	.hl-daymark {
-		display: flex;
-		gap: 1rem;
-		align-items: center;
-		margin: 0.5rem 0;
-	}
-	.hl-daymark::before,
-	.hl-daymark::after {
-		flex: 1;
-		height: 2px;
-		content: "";
-		background: var(--color-border);
-		border-radius: 2px;
-	}
-	/* Same call as the rail title: a date separator carries information. */
-	.hl-daymark > span {
-		font-family: var(--font-accent);
-		font-size: 1.125rem;
-		color: var(--color-ink-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-	}
-
-	/* ── The Doomscroller rail ─────────────────────────────────────────────── */
-	.hl-rail {
-		position: sticky;
-		top: 2.5rem;
-		padding: 0.9rem;
-		border: 2px solid var(--color-border);
-		border-radius: var(--radius-rail);
-	}
-	.hl-rail-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 0.7rem;
-	}
-	/* The comp sets this in the border grey. That is 1.6:1 – decorative, and this is the panel's name, so it takes the readable muted instead. */
-	.hl-rail-title {
-		margin: 0;
-		font-family: var(--font-accent);
-		font-size: 1.125rem;
-		color: var(--color-ink-muted);
-	}
-	.hl-rail-body {
-		min-height: 20rem;
-		overflow: hidden;
-		background: var(--color-surface-raised);
-		border: 2px solid var(--color-border);
-		border-radius: var(--radius-button);
-		box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.1);
-	}
-
-	/* ── Feed ──────────────────────────────────────────────────────────────── */
-	.hl-feed {
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
-		max-height: 80vh;
-		overflow-y: auto;
-		overscroll-behavior: contain;
-		scroll-snap-type: y mandatory;
-	}
-	.hl-reel {
-		flex: 0 0 auto;
-		overflow: hidden;
-		scroll-snap-align: start;
-		background: var(--color-surface-raised);
-		border: 2px solid var(--color-border);
-		border-radius: var(--radius-panel);
-	}
-	.hl-reel-video {
-		display: block;
-		width: 100%;
-		max-width: 100%;
-		max-height: 60vh;
-		aspect-ratio: 9 / 16;
-		margin-inline: auto;
-		object-fit: contain;
-		background: var(--color-accent-media);
-	}
-	.hl-reel-body {
-		display: flex;
-		flex-direction: column;
-		gap: 0.6rem;
-		padding: 0.9rem 1.1rem 1.1rem;
-	}
-	.hl-reel-meta {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.6rem;
-		align-items: center;
-		font-size: 1rem;
-	}
-	.hl-reel-author {
-		font-size: 1.375rem;
-		font-weight: 700;
-		color: var(--color-ink);
-	}
-	.hl-reel-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.75rem;
-		align-items: center;
-	}
-	.hl-reel-missing {
-		display: grid;
-		place-items: center;
-		width: 100%;
-		max-height: 60vh;
-		aspect-ratio: 9 / 16;
-		padding: 1rem;
-		margin-inline: auto;
-		font-size: 0.9rem;
-		color: var(--color-surface-raised);
-		text-align: center;
-		background: var(--color-accent-media);
-	}
-	.hl-comment {
-		padding-top: 0.6rem;
-		font-size: 0.95rem;
-		border-top: 2px solid var(--color-border);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.hl-feed {
-			scroll-snap-type: none;
-		}
 	}
 }
