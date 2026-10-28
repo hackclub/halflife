@@ -40,6 +40,8 @@ export const API_ERROR_STATUS = {
 	/** A deleted reel has to be re-recorded before anything else moves. */
 	REEL_OWED: 409,
 	SHOP_CLOSED: 409,
+	/** The phase has used all three of its submissions. */
+	SUBMISSION_LIMIT: 409,
 	SUBMISSIONS_CLOSED: 409,
 
 	// 401 / 403 – who you are

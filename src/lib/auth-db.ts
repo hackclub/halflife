@@ -1,6 +1,7 @@
 import "server-only"
 import { Kysely, PostgresDialect } from "kysely"
 import { Pool, types } from "pg"
+import { describeDatabaseError } from "@/lib/db-error"
 
 declare global {
 	// Cached on globalThis so Next's dev-mode module reloading does not open a new pool on every edit.
@@ -38,8 +39,12 @@ const createPool = () => {
 		idleTimeoutMillis: 300_000,
 		max: 5,
 	})
-	// The pool hands a fresh client its first query in order, so the session timezone is set before auth's own statement runs.
+	// An error on an idle client is re-emitted on the pool once pg-pool has dropped that client, and an EventEmitter with no 'error' listener throws – so a database restart used to arrive as `uncaughtException` with the socket, the client and every pg internal in the log. The client listener below has already reported it; this one only stops the re-emit from being fatal.
+	pool.on("error", () => undefined)
 	pool.on("connect", client => {
+		// pg-pool takes its own error listener off a client while it is checked out, so a FATAL from the server – a restart, a failover, an operator terminating the backend – arriving between two statements would be an unhandled 'error' event and end the process. One line, naming the reason; the dead client is removed from the pool when it is released, because pg marks it unqueryable.
+		client.on("error", err => console.error(`[auth] database connection lost: ${describeDatabaseError(err)}`))
+		// The pool hands a fresh client its first query in order, so the session timezone is set before auth's own statement runs.
 		void (async () => {
 			try {
 				await client.query("SET TIME ZONE 'UTC'")

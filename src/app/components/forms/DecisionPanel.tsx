@@ -1,7 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, Select, TextArea, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 interface TierOption {
@@ -77,8 +77,7 @@ export function DecisionPanel({
 			) : null}
 
 			<Field label="Decision">
-				<select
-					className="hl-select"
+				<Select
 					onChange={e => {
 						const next = DECISIONS.find(decision => decision === e.target.value)
 						if (next) setResult(next)
@@ -88,26 +87,25 @@ export function DecisionPanel({
 					<option value="APPROVED">Approve</option>
 					<option value="RETURNED">Send back for changes</option>
 					<option value="REJECTED">Reject</option>
-				</select>
+				</Select>
 			</Field>
 
 			{approvingDesign ? (
 				<Field hint="This sets the parts budget. Required when approving a design." label="Funding tier">
-					<select className="hl-select" onChange={e => setTier(e.target.value)} required value={tier}>
+					<Select onChange={e => setTier(e.target.value)} required value={tier}>
 						<option value="">Choose a tier…</option>
 						{tiers.map(t => (
 							<option key={t.id} value={t.id}>
 								{t.name}: ${t.grantUsd} for parts, submit from {t.fundingHours}h of design time
 							</option>
 						))}
-					</select>
+					</Select>
 				</Field>
 			) : null}
 
 			{result === "APPROVED" ? (
 				<Field hint={`Leave blank to accept the computed ${computedHours}h.`} label="Hours override">
-					<input
-						className="hl-input"
+					<TextInput
 						min="0"
 						onChange={e => setHoursOverride(e.target.value)}
 						placeholder={String(computedHours)}
@@ -119,8 +117,7 @@ export function DecisionPanel({
 			) : null}
 
 			<Field hint="They see this verbatim." label="Feedback to the participant">
-				<textarea
-					className="hl-textarea"
+				<TextArea
 					maxLength={8000}
 					onChange={e => setFeedback(e.target.value)}
 					required={result !== "APPROVED"}
@@ -129,8 +126,7 @@ export function DecisionPanel({
 			</Field>
 
 			<Field hint="Never shown to the participant. Feeds the grant record's justification." label="Internal note">
-				<textarea
-					className="hl-textarea"
+				<TextArea
 					maxLength={8000}
 					onChange={e => setReason(e.target.value)}
 					required={result === "REJECTED"}

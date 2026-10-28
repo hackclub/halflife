@@ -16,7 +16,7 @@ Stasis instead pairs each ledger kind with a `*_REVERSED` twin and cancels by ha
 
 > Do NOT compute this by summing every DESIGN_APPROVED entry: no build approval ever nets out a project-less credit, so a blind sum overcounts forever and hides real spendable bits once the credit has been spent.
 
-Having no reversal code path means there is no reversal code path to get wrong. `pnpm verify:ledger` asserts the property end to end.
+Having no reversal code path means there is no reversal code path to get wrong. `bun run verify:ledger` asserts the property end to end.
 
 ## Credit mutations take a per-user advisory lock
 

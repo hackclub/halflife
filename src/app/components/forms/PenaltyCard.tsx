@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout } from "@/app/components/ui"
+import { Button, Callout, TextArea, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 /** The penalty state as the server page read it, with instants already converted to ISO. */
@@ -85,18 +85,16 @@ export function PenaltyCard({ url, ...onRecord }: Readonly<PenaltySnapshot & { u
 						handDown()
 					}}
 				>
-					<textarea
+					<TextArea
 						aria-label="Penalty reason"
-						className="hl-input"
 						onChange={e => setReason(e.target.value)}
 						placeholder="Why - it goes to the audit trail and the member's record"
 						required
 						rows={2}
 					/>
 					<div className="hl-row">
-						<input
+						<TextInput
 							aria-label="Suspend until"
-							className="hl-input"
 							onChange={e => setUntil(e.target.value)}
 							style={{ maxWidth: "14rem" }}
 							type="datetime-local"

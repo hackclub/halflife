@@ -1,8 +1,8 @@
 {
 	"components": [
 		{
-			"css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-solid{background:#a47cc0;color:#fff;border-color:#7b519b}.ds-btn-solid:hover{background:#7b519b}",
-			"description": "The committing action on a platform screen. White on violet is 3.37:1 — a known failure awaiting a brand decision.",
+			"css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-solid{background:#7b519b;color:#fff;border-color:#613f7b}.ds-btn-solid:hover{background:#613f7b}",
+			"description": "The committing action on a platform screen. The deep violet fill and dark rim are what let a white label read (6.01:1).",
 			"html": "<button class=\"ds-btn ds-btn-solid\">Save entry</button>",
 			"kind": "button",
 			"name": "Solid Button",
@@ -10,7 +10,7 @@
 		},
 		{
 			"css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-outline{background:transparent;color:#1c1a59;border-color:#a47cc0}.ds-btn-outline:hover{background:#ece2f2}",
-			"description": "Secondary actions.",
+			"description": "Secondary actions on the platform.",
 			"html": "<button class=\"ds-btn ds-btn-outline\">Edit details</button>",
 			"kind": "button",
 			"name": "Outline Button",
@@ -18,30 +18,30 @@
 		},
 		{
 			"css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-ghost{background:transparent;color:#4a4785;border-color:transparent}.ds-btn-ghost:hover{color:#1c1a59;background:rgba(0,0,0,.05)}",
-			"description": "Tertiary actions and dismissals.",
+			"description": "Tertiary actions and dismissals on the platform.",
 			"html": "<button class=\"ds-btn ds-btn-ghost\">Cancel</button>",
 			"kind": "button",
 			"name": "Ghost Button",
 			"refersTo": "button-ghost"
 		},
 		{
-			"css": ".ds-chips{display:inline-flex;gap:.5rem}.ds-chip{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;border-radius:999px;padding:.25rem .625rem}.ds-chip-violet{background:#ece2f2;color:#7b519b}.ds-chip-muted{background:rgba(0,0,0,.05);color:#4a4785}",
-			"description": "A fact about the thing it sits on. Two per header at most.",
-			"html": "<span class=\"ds-chips\"><span class=\"ds-chip ds-chip-muted\">PCB</span><span class=\"ds-chip ds-chip-violet\">Tier 2</span></span>",
+			"css": ".ds-chips{display:inline-flex;flex-wrap:wrap;gap:.5rem}.ds-chip{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;border-radius:999px;padding:.25rem .625rem}.ds-chip-violet{background:#ece2f2;color:#7b519b}.ds-chip-muted{background:rgba(0,0,0,.05);color:#4a4785}.ds-chip-sky{background:#cfeaf4;color:#236b85}.ds-chip-teal{background:#aef2dd;color:#037365}.ds-chip-gold{background:#fdf1cc;color:#7f5c07}.ds-chip-coral{background:rgba(243,87,87,.15);color:#a53131}",
+			"description": "A fact about the thing it sits on, in its own pale tone. Two per header at most.",
+			"html": "<span class=\"ds-chips\"><span class=\"ds-chip ds-chip-muted\">PCB</span><span class=\"ds-chip ds-chip-violet\">Tier 2</span><span class=\"ds-chip ds-chip-sky\">Week 3</span><span class=\"ds-chip ds-chip-teal\">Approved</span><span class=\"ds-chip ds-chip-gold\">Setup</span><span class=\"ds-chip ds-chip-coral\">Needs changes</span></span>",
 			"kind": "chip",
 			"name": "Chips",
 			"refersTo": "chip-violet"
 		},
 		{
-			"css": ".ds-field{display:grid;gap:.375rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-field-label{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-input{font:400 .95rem 'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59;background:rgba(0,0,0,.02);border:2px solid #c8c3d6;border-radius:12px;padding:.75rem 1rem;outline:none;transition:border-color .15s,background-color .15s}.ds-input::placeholder{color:#8b87a8}.ds-input:hover{border-color:#9a94b4}.ds-input:focus{border-color:#a47cc0;background:#fff}",
-			"description": "A real 2px border: .sketch cannot draw on a form control.",
-			"html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Project name</span><input class=\"ds-input\" placeholder=\"Give it a name\"></label>",
+			"css": ".ds-field{display:grid;gap:.375rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-field-label{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-field-hint{font:500 .78rem/1.4 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.04em;color:#4a4785}.ds-input{font:400 .95rem 'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59;background:rgba(0,0,0,.02);border:2px solid #86829f;border-radius:12px;padding:.75rem 1rem;outline:none;transition:border-color .15s,background-color .15s}.ds-input::placeholder{color:#676386}.ds-input:hover{border-color:#4a4785}.ds-input:focus{border-color:#a47cc0;background:#fff;outline:3px solid #b21b9b;outline-offset:3px}",
+			"description": "A real 2px field border with a lavender focus: .sketch cannot draw on a form control.",
+			"html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Project name</span><input class=\"ds-input\" placeholder=\"Give it a name\"><span class=\"ds-field-hint\">This is what the reviewers will see.</span></label>",
 			"kind": "input",
 			"name": "Text Field",
 			"refersTo": "input"
 		},
 		{
-			"css": ".ds-panel{position:relative}.ds-panel::before{content:\"\";position:absolute;inset:0;border:2px solid #c8c3d6;border-radius:16px;filter:url(#dsWob);pointer-events:none}.ds-panel{background:#fff;border-radius:16px;padding:1.25rem 1.5rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59}.ds-panel-label{margin:0 0 .5rem;font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-panel-body{margin:0;font-size:.9rem;line-height:1.5}",
+			"css": ".ds-panel{position:relative;background:#fff;border-radius:16px;padding:1.25rem 1.5rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59}.ds-panel::before{content:\"\";position:absolute;inset:0;border:2px solid #c8c3d6;border-radius:16px;filter:url(#dsWob);pointer-events:none}.ds-panel-label{margin:0 0 .5rem;font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-panel-body{margin:0;font-size:.9rem;line-height:1.5}",
 			"description": "The platform's container: white, outlined by a displaced stroke on a pseudo-element. Never shadowed, never nested.",
 			"html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-panel\"><p class=\"ds-panel-label\">Timeline</p><p class=\"ds-panel-body\">Soldered the USB-C port today. The first board shorted, the second one lit up.</p></div>",
 			"kind": "card",
@@ -57,44 +57,60 @@
 			"refersTo": "nav"
 		},
 		{
-			"css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#2e8cae;transform:translateY(9px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#52b4d5;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}",
-			"description": "A checkpoint you can open: sky face on a sky-deep rim.",
-			"html": "<button class=\"ds-puck ds-open\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M12 7v5.4l3.4 2\"/></svg></span></button>",
+			"css": ".ds-pucks{display:flex;gap:1.5rem;align-items:flex-end;flex-wrap:wrap;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-puck-wrap{display:grid;gap:.4rem;justify-items:center}.ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1/.92;border:0;background:none;padding:0;cursor:pointer;transition:transform .22s cubic-bezier(.22,1.18,.36,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:var(--rim);transform:translateY(var(--lift,9px));box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:var(--face);border:5px solid color-mix(in oklab,var(--face) 50%,var(--rim) 50%);box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:active{transform:translateY(0)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}.ds-open{--face:#52b4d5;--rim:#2e8cae}.ds-done{--face:#06ae97;--rim:#048372}.ds-locked{--face:#f4dfc6;--rim:#cdae8a;--lift:7px}.ds-passed{--face:#b3c7c3;--rim:#86a09b;--lift:7px}.ds-puck-label{font:500 .72rem/1.2 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.04em;color:#4a4785}",
+			"description": "The trail's state token: a rim disc beneath a face, with a press that sinks the face onto the rim. Colour is state: sky open, teal done, sand locked, teal-grey passed.",
+			"html": "<div class=\"ds-pucks\"><div class=\"ds-puck-wrap\"><button class=\"ds-puck ds-open\" aria-label=\"Open checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M12 7v5.4l3.4 2\"/></svg></span></button><span class=\"ds-puck-label\">Open</span></div><div class=\"ds-puck-wrap\"><button class=\"ds-puck ds-done\" aria-label=\"Done checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button><span class=\"ds-puck-label\">Done</span></div><div class=\"ds-puck-wrap\"><button class=\"ds-puck ds-locked\" aria-label=\"Locked checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#8a6c4b\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5\"/></svg></span></button><span class=\"ds-puck-label\">Locked</span></div><div class=\"ds-puck-wrap\"><button class=\"ds-puck ds-passed\" aria-label=\"Passed checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#4a4785\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button><span class=\"ds-puck-label\">Passed</span></div></div>",
 			"kind": "custom",
-			"name": "Checkpoint — open",
+			"name": "Checkpoint puck",
 			"refersTo": "puck-open"
 		},
 		{
-			"css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#048372;transform:translateY(9px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#06ae97;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}",
-			"description": "Finished: teal face with a check.",
-			"html": "<button class=\"ds-puck ds-done\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button>",
-			"kind": "custom",
-			"name": "Checkpoint — done",
-			"refersTo": "puck-done"
-		},
-		{
-			"css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#cdae8a;transform:translateY(7px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#f4dfc6;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}",
-			"description": "Not reachable yet: sand, padlock, sunk to a 7px rim. The hover bubble names the one thing in the way.",
-			"html": "<button class=\"ds-puck ds-locked\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#cdae8a\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5\"/></svg></span></button>",
-			"kind": "custom",
-			"name": "Checkpoint — locked",
-			"refersTo": "puck-locked"
-		},
-		{
-			"css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#86a09b;transform:translateY(7px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#b3c7c3;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}",
-			"description": "Its week's Sunday has gone: teal grey, sunk to a 7px rim. 'This week has passed!'",
-			"html": "<button class=\"ds-puck ds-passed\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button>",
-			"kind": "custom",
-			"name": "Checkpoint — passed",
-			"refersTo": "puck-passed"
-		},
-		{
-			"css": ".ds-bubble{position:relative}.ds-bubble::before{content:\"\";position:absolute;inset:0;border:2px solid #048372;border-radius:14px;filter:url(#dsWob);pointer-events:none}.ds-bubble{background:#aef2dd;border-radius:14px;padding:.625rem .875rem;max-width:13rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-bubble-main{display:flex;gap:.375rem;align-items:flex-start;margin:0;font-size:.74rem;font-weight:600;line-height:1.35;color:#1c1a59}.ds-bubble-note{margin:.25rem 0 0;padding-left:1.25rem;font:500 .72rem/1.35 'Shantell Sans','Plus Jakarta Sans',sans-serif;letter-spacing:.04em;color:#4a4785}.ds-bubble-tail{position:absolute;top:100%;left:50%;margin-left:-8px;border:8px solid transparent;border-top:9px solid #aef2dd;border-bottom:0}",
+			"css": ".ds-bubble{position:relative;background:#aef2dd;border-radius:14px;padding:.625rem .875rem;max-width:13rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-bubble::before{content:\"\";position:absolute;inset:0;border:2px solid #048372;border-radius:14px;filter:url(#dsBubbleWob);pointer-events:none}.ds-bubble-main{display:flex;gap:.375rem;align-items:flex-start;margin:0;font-size:.74rem;font-weight:600;line-height:1.35;color:#1c1a59}.ds-bubble-note{margin:.25rem 0 0;padding-left:1.25rem;font:500 .72rem/1.35 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.04em;color:#4a4785}.ds-bubble-tail{position:absolute;top:100%;left:50%;margin-left:-8px;border:8px solid transparent;border-top:9px solid #aef2dd;border-bottom:0}",
 			"description": "The mint bubble over a finished checkpoint. Same shape as the navy 'Start here' callout and the sand lock bubble.",
-			"html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-bubble\"><p class=\"ds-bubble-main\"><svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"#048372\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>You've already completed this checkpoint!</p><p class=\"ds-bubble-note\">click to edit your entry.</p><span class=\"ds-bubble-tail\" aria-hidden=\"true\"></span></div>",
+			"html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsBubbleWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-bubble\"><p class=\"ds-bubble-main\"><svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"#048372\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>You've already completed this checkpoint!</p><p class=\"ds-bubble-note\">click to edit your entry.</p><span class=\"ds-bubble-tail\" aria-hidden=\"true\"></span></div>",
 			"kind": "custom",
 			"name": "Hover Bubble — done",
 			"refersTo": "bubble-done"
+		},
+		{
+			"css": ".ds-sign{display:flex;flex-direction:column;align-items:center;max-width:24rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-sign-straps{display:flex;justify-content:space-between;width:172px}.ds-sign-straps span{width:7px;height:2.25rem;background:#1c1a59;border-bottom-left-radius:6px;border-bottom-right-radius:6px}.ds-sign-board{position:relative;min-width:min(340px,100%);margin-top:-4px;text-align:center}.ds-sign-tear{position:absolute;inset:0;background-color:#fba62f;background-image:repeating-linear-gradient(112deg,transparent 0 38px,rgba(0,0,0,.075) 38px 64px,transparent 64px 104px);border-radius:16px;box-shadow:0 4px 8px rgba(28,26,89,.14),0 20px 40px -20px rgba(28,26,89,.55);filter:url(#dsSignTear)}.ds-sign-title{position:relative;margin:0;padding:.875rem 2.5rem;font:800 clamp(1.6rem,5.2vw,3rem)/1 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-.04em;color:#1c1a59;text-transform:uppercase}.ds-sign-sub{max-width:46ch;margin:1rem auto 0;font:500 .86rem/1.5 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.04em;text-align:center;color:#4a4785}",
+			"description": "Two straps and a torn plaque, one DOM for both worlds. This is the platform skin, in the page's own accent; the console uses the same structure with straight 2px edges.",
+			"html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsSignTear\" x=\"-10%\" y=\"-25%\" width=\"120%\" height=\"150%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.02 0.11\" numOctaves=\"3\" seed=\"11\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"9\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-sign\"><div class=\"ds-sign-straps\" aria-hidden=\"true\"><span></span><span></span></div><div class=\"ds-sign-board\"><div class=\"ds-sign-tear\" aria-hidden=\"true\"></div><h3 class=\"ds-sign-title\">Shop</h3></div><p class=\"ds-sign-sub\">Don't see what you're looking for? Suggest it on the shop items canvas on Slack.</p></div>",
+			"kind": "custom",
+			"name": "Hanging Sign",
+			"refersTo": "page-sign"
+		},
+		{
+			"css": ".ds-cbtn{display:inline-flex;gap:.4rem;align-items:center;justify-content:center;padding:.5rem 1.1rem;font:700 1rem/1.3 'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59;background:#fff;border:2px solid #1c1a59;border-radius:8px;cursor:pointer;transition:background-color .15s,filter .15s,transform .15s}.ds-cbtn:hover{background:#aef2dd}.ds-cbtn:active{transform:translateY(1px);filter:brightness(.9)}.ds-cbtn:focus-visible{outline:3px solid #52b4d5;outline-offset:2px}.ds-cbtn-primary{background:#61cdf1}.ds-cbtn-primary:hover{background:#52b4d5}.ds-cbtn-danger{background:#c73b3b;color:#fff}.ds-cbtn-danger:hover{filter:brightness(.94)}",
+			"description": "The staff console's 8px, 2px-navy button. Primary is sign blue, danger is danger-ink, hover fills mint; link buttons use the same class on a link.",
+			"html": "<div style=\"display:flex;flex-wrap:wrap;gap:.75rem\"><button class=\"ds-cbtn ds-cbtn-primary\">Save</button><button class=\"ds-cbtn\">Cancel</button><button class=\"ds-cbtn ds-cbtn-danger\">Reject</button></div>",
+			"kind": "button",
+			"name": "Console Buttons",
+			"refersTo": "ops-button"
+		},
+		{
+			"css": ".ds-cfield{display:grid;gap:.35rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-cfield-label{font-weight:700;font-size:.95rem;color:#100f30}.ds-cfield-hint{margin:0;font-size:.875rem;color:#696e82}.ds-cinput{width:100%;padding:.6rem .75rem;font:400 .95rem 'Plus Jakarta Sans',system-ui,sans-serif;color:#100f30;background:#fff;border:2px solid #86829f;border-radius:8px;outline:none;transition:border-color .15s}.ds-cinput::placeholder{color:#676386}.ds-cinput:focus-visible{outline:3px solid #52b4d5;outline-offset:2px}",
+			"description": "The console's 8px field, edged in field-edge. Labels are 0.95rem bold, hints are ink-muted.",
+			"html": "<label class=\"ds-cfield\"><span class=\"ds-cfield-label\">Project name</span><input class=\"ds-cinput\" placeholder=\"Give it a name\"><span class=\"ds-cfield-hint\">This is what the reviewers will see.</span></label>",
+			"kind": "input",
+			"name": "Console Field",
+			"refersTo": "ops-input"
+		},
+		{
+			"css": ".ds-badges{display:flex;flex-wrap:wrap;gap:.5rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-badge{display:inline-block;padding:.15rem .6rem;font:700 .75rem/1.4 'Plus Jakarta Sans',system-ui,sans-serif;border:2px solid currentColor;border-radius:999px}.ds-badge-success{color:#037365}.ds-badge-warning{color:#8c5507}.ds-badge-danger{color:#c73b3b}.ds-badge-muted{color:#696e82}.ds-badge-access{color:#1c1a59}",
+			"description": "Status as an outlined pill in its own ink. Access is the console's primary navy, not a status colour.",
+			"html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-badge-success\">approved</span><span class=\"ds-badge ds-badge-warning\">in review</span><span class=\"ds-badge ds-badge-danger\">rejected</span><span class=\"ds-badge ds-badge-muted\">no access</span><span class=\"ds-badge ds-badge-access\">full access</span></div>",
+			"kind": "chip",
+			"name": "Console Badges",
+			"refersTo": "ops-badge"
+		},
+		{
+			"css": ".ds-cpanel{padding:1.4rem 1.5rem;background:#fff;border:2px solid #cacedd;border-radius:10px;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#100f30}.ds-cpanel h4{margin:0 0 .5rem;font-size:1.05rem;color:#1c1a59}.ds-cpanel p{margin:0;font-size:.95rem;line-height:1.5;color:#696e82}",
+			"description": "The console's white 10px panel with a straight 2px ops-border. No wobble; the console's one torn shape is its page sign.",
+			"html": "<div class=\"ds-cpanel\"><h4>Recent reels</h4><p>Every reel anyone has posted, newest first. Hidden reels stay as a record.</p></div>",
+			"kind": "card",
+			"name": "Console Panel",
+			"refersTo": "ops-panel"
 		}
 	],
 	"extensions": {
@@ -234,6 +250,18 @@
 				"displayName": "Sign Blue (staff console)",
 				"role": "primary",
 				"tonalRamp": ["#063646", "#0b5e7a", "#0f86ad", "#14aee1", "#44c4ee", "#7cd5f3", "#b4e7f8", "#e8f8fd"]
+			},
+			"ops-field-edge": {
+				"canonical": "#86829f",
+				"displayName": "Console Field Edge",
+				"role": "neutral",
+				"tonalRamp": ["#24222c", "#3f3c4c", "#5a566c", "#75708c", "#918ca6", "#ada9bd", "#c9c6d5", "#efedf4"]
+			},
+			"ops-ink": {
+				"canonical": "#100f30",
+				"displayName": "Console Ink",
+				"role": "neutral",
+				"tonalRamp": ["#08081a", "#12112e", "#1c1b42", "#262556", "#3f3e73", "#5f5e91", "#8a89ab", "#d9d8e5"]
 			},
 			"orange": {
 				"canonical": "#fba62f",
@@ -376,16 +404,16 @@
 		},
 		"wobble": {
 			"platform": "hl-wobble: feTurbulence baseFrequency 0.018, numOctaves 3, seed 7; feDisplacementMap scale 4.2. hl-wobble-2 (0.022, seed 21, scale 5) and hl-wobble-3 (0.034, 2 octaves, seed 43, scale 3.4) vary neighbours.",
-			"staffConsole": "WobbleBorder: baseFrequency 0.05, 3 octaves, seed 7, scale 2.5; rules 0.06 / scale 1.8 in userSpaceOnUse (a zero-height box needs a user-space filter region).",
+			"staffConsole": "No wobble: console panels, fields and buttons take a real 2px border. Its one torn shape is the hanging sign's plaque, which uses the platform's tear filter.",
 			"tear": "hl-tear: baseFrequency 0.02 0.11, seed 11, scale 9 (week banners, signs). hl-tear-soft: 0.03 0.09, seed 31, scale 5."
 		}
 	},
-	"generatedAt": "2026-09-24T19:56:34.309Z",
+	"generatedAt": "2026-10-28T18:40:52.772Z",
 	"narrative": {
 		"donts": [
 			"Don't mix the two palettes, or put a platform component on a landing page.",
-			"Don't shadow a panel, card, button or field. Shadows belong to things sitting on the paper — pucks, stickers, tape, reels.",
-			"Don't set text a participant must read in line-strong, teal, gold-deep, orange-deep, coral or sky-deep on cream, or white on sky, teal, orange or teal-grey — all below 4.5:1 (see Measured contrast).",
+			"Don't shadow a panel, card, button or field. Shadows belong to things sitting on the paper – pucks, stickers, tape, reels.",
+			"Don't set text a participant must read in line-strong, teal, gold-deep, orange-deep, coral or sky-deep on cream, or white on sky, teal, orange or teal-grey – all below 4.5:1 (see Measured contrast).",
 			"Don't put .sketch on an <input>, <select> or <textarea>; it cannot render there.",
 			"Don't trust --color-hl-yellow*: those variables hold blues.",
 			"Don't set Masterpiece in bold, or use it for anything but the wordmark.",
@@ -406,18 +434,23 @@
 		"keyCharacteristics": [
 			"Two grounds, never mixed: #31222c ink for the landing, #fcf7f7 warm paper for the platform, with a faint 28px graph-paper tooth so the cream reads as paper rather than dimmed white.",
 			"The landing is flat and mostly square; the platform has drawn edges, pucks that sit on a rim, and a few stickers lifted off the page.",
-			"The platform's borders are drawn, not declared: .sketch puts a wobbling marker outline on a pseudo-element so the line never touches the content it frames, and .torn applies the same displacement to a filled shape.",
+			"The platform's borders are drawn, not declared: .sketch puts a wobbling marker outline on a pseudo-element so the line never touches the content it frames, and .torn applies the same displacement to a filled shape – which is how the week banners and page signs get their torn-tape edge.",
 			"Its checkpoint token is the .puck: a rim disc offset beneath a face disc, an ambient shadow under both, and a press that sinks the face onto the rim.",
 			"The platform's primary structure is a progress path, not a dashboard of cards.",
 			"Illustration is the programme's own: a cast of fox and gato characters and five theme paintings, all die-cut stickers with a pale outline.",
 			"Text is navy and navy-soft, never neutral grey; the hand face writes the asides in the margin."
 		],
 		"northStar": "Two worlds: \"The Production Line\" (landing) and \"The Field Notebook\" (platform)",
-		"overview": "Half Life runs two visual worlds on purpose. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything; the platform is where those teenagers then work, for ten weeks, most days. The landing page is a production line drawn as the line itself: flat plates, square-cut bands, no shadows, an ink ground, and a thick band welding each stage to the next. The platform is a field notebook: every outline a drawn ink stroke, the week arriving as torn painted paper, structure expressed as a path you walk rather than a page you read. Even the Doomscroller's reel player is drawn in the notebook's hand rather than as a dark cinema.",
+		"overview": "Half Life runs two visual worlds on purpose, and the split is the first thing to understand before writing any screen. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything. The platform is where those same teenagers then work, for ten weeks, most days. A world that serves the first badly serves the second, so they were never merged.\n\nThere is a third, which is not a world so much as a back room: the staff console under (ops) – admin and review – carries the platform's earlier design system in ops.css, kept rather than half-translated when the participant platform was rebuilt from the comp. In the CSS its tokens are plain --color-* names; this document prefixes them ops- so they cannot be mistaken for the platform's. It redefines names the platform also uses (ink, teal, mint, magenta), so the stylesheet scopes them to .ops-root, the wrapper the console renders inside: on :root they would quietly repaint the trail after a navigation. The stylesheet is plain CSS over the platform's Tailwind, not a second copy of it. Where it shares a hue with the platform it aliases the platform token (--color-accent is var(--color-sky)) rather than copying the hex; only its own ink and unique tones are literals. The phone handoff page is a third root layout – public by design, so it cannot sit under the session-gated shell – but it is drawn in the platform's world rather than the console's: the same stylesheet, fonts and filter definitions.\n\nA ten-week hardware production line, drawn as the line itself. The page reads like control-panel silkscreen laid over a workshop: flat plates, square-cut bands, no shadows, and a thick band that physically welds each stage of the programme to the next. The ground is ink and the informational plates are paper, because this is read on a phone in a bedroom or a school laptop, and the copy deserves the highest-contrast surface on the page. Energetic and workshop-bright rather than sleek – the promise is a soldering iron, not a SaaS trial.\n\nEvery outline is a drawn ink stroke rather than a rectangle: card borders wobble, the week arrives as a band of torn painted paper, and page titles hang from straps on torn plates. It reads as something kept by hand alongside the hardware, which is what journalling and timelapses actually are. Where the landing page is ink-grounded and engineered, the platform is paper-grounded and warm, and its structure is a path you walk rather than a page you read. Even the one screen that borrows a familiar layout – the Doomscroller's reel player – is drawn in the notebook's hand rather than as a dark cinema.",
 		"rules": [
 			{
 				"body": "A token from one world never appears in the other. If a platform screen needs an accent, it is sky, not hl-cyan. The two palettes do not share a single value, and a screen that mixes them belongs to neither.",
 				"name": "The Two Worlds Rule",
+				"section": "colors"
+			},
+			{
+				"body": "A surface is drawn in one kit, not a blend of both. When one component has to appear in both worlds it names the surface it is on and swaps its class set (see DisputeThread); it does not import the other world's primitives. The console aliases the platform's shared hues (--color-accent is var(--color-sky)) and keeps only its own ink and unique tones as literals; src/app/components/ui/ops-tokens.test.ts fails if an alias is pasted back as a hex. The promotion strip's literal fallbacks are guarded the same way.",
+				"name": "The One Kit Per Surface Rule",
 				"section": "colors"
 			},
 			{
@@ -431,7 +464,7 @@
 				"section": "colors"
 			},
 			{
-				"body": "--color-hl-yellow (#A2C4DA) and --color-hl-yellow-pale (#EBF7FF) are blue. The landing was recoloured after those variables were named and the names were never updated. Trust the value, not the name — and rename them before adding anything new that uses them.",
+				"body": "--color-hl-yellow (#A2C4DA) and --color-hl-yellow-pale (#EBF7FF) are blue. The landing was recoloured after those variables were named and the names were never updated, so the carousel cards read as pale blue while the code says yellow. Trust the value, not the name – and rename them before adding anything new that uses them.",
 				"name": "The Misnamed Yellow Rule",
 				"section": "colors"
 			},
@@ -441,32 +474,32 @@
 				"section": "typography"
 			},
 			{
-				"body": "The platform's hand-lettered face sets labels, asides and nothing longer — never a requirement or an instruction someone has to read to finish a task. Shantell Sans stands in for the comp's COMICO, reached everywhere through --font-hand.",
+				"body": "The platform's hand-lettered face sets labels, asides and nothing longer – never a requirement or an instruction someone has to read to finish a task. The comp names COMICO, which is not on Google Fonts and ships no licensed file here; Shantell Sans stands in, loaded in the platform root layout and reached everywhere through --font-hand. Swapping it is that one variable, because no component names a face directly.",
 				"name": "The Hand Is Not Body Rule",
 				"section": "typography"
 			},
 			{
-				"body": "On the landing, Masterpiece is identity, never voice. It sets the wordmark and nothing else, and it is never bold: font-synthesis-weight: none is set for that reason.",
+				"body": "On the landing, Masterpiece is identity, never voice. It sets the wordmark and nothing else – it ships one 400 weight whose strokes overhang their advances (I carries 0.52em of ink on a 0.32em advance), so it is already heavy and a synthesised bold smears it. font-synthesis-weight: none is set for that reason.",
 				"name": "The Brush Bookends Rule",
 				"section": "typography"
 			},
 			{
-				"body": "Ubuntu is not a drop-in for Open Sans: it sets about 3% smaller at the same font-size, and its declared ink box is 1.0984em against Open Sans's 1.2951em. Size the two independently.",
+				"body": "Ubuntu is not a drop-in for Open Sans. Against the same fallback reference Next scales Open Sans to 105.15% and Ubuntu to 102.06%, so Ubuntu sets about 3% smaller at the same font-size, and its declared ink box is 1.0984em against Open Sans's 1.2951em. Size the two independently.",
 				"name": "The Metric Drift Rule",
 				"section": "typography"
 			},
 			{
-				"body": "A panel, card, button or field is separated by a drawn outline and the page ground showing through, never by a shadow. If something needs separating, give it a border and a gap.",
+				"body": "A panel, card, button or field is separated by an outline – drawn on the platform, a 2px rule in the staff console – and the page ground showing through, never by a shadow. If something needs separating, give it a border and a gap.",
 				"name": "The Outline-Not-Shadow Rule",
 				"section": "elevation"
 			},
 			{
-				"body": "A shadow means an object sitting on the notebook — a puck, a sticker, a strip of tape, a reel. If it isn't something you could pick up, it doesn't get one.",
+				"body": "A shadow means an object sitting on the notebook – a puck, a sticker, a strip of tape, a reel. If it isn't something you could pick up, it doesn't get one.",
 				"name": "The Paper-On-Paper Rule",
 				"section": "elevation"
 			},
 			{
-				"body": "A platform border is drawn, not stroked. Use .sketch (or .sketch-2 / .sketch-3, which carry different seeds) rather than a CSS border, and vary which one between adjacent cards. In the staff console the equivalent is .hl-wobbly plus <WobbleBorder/> with a seed prop.",
+				"body": "A platform border is drawn, not stroked. Use .sketch (or .sketch-2 / .sketch-3, which carry different seeds) rather than a CSS border, and vary which one between adjacent cards. Two cards with the same wobble read as a repeated texture, which is the opposite of hand-made. The staff console is the exception: a panel, field or button there takes a real 2px border (ops-border, or field-edge on a field), and only the sign's plaque is torn.",
 				"name": "The Drawn Edge Rule",
 				"section": "shapes"
 			},
@@ -476,7 +509,7 @@
 				"section": "shapes"
 			},
 			{
-				"body": ".sketch draws on a pseudo-element, and <input>, <select> and <textarea> cannot hold one — the outline silently never renders and the field is a white box on a white panel. Fields take a real 2px border instead.",
+				"body": ".sketch draws on a pseudo-element, and <input>, <select> and <textarea> cannot hold one – the outline silently never renders and the field is a white box on a white panel. Fields take a real 2px border instead (see Inputs).",
 				"name": "The No Sketch On Fields Rule",
 				"section": "shapes"
 			}

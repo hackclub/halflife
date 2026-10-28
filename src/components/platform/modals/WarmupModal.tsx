@@ -5,7 +5,7 @@ import { useState } from "react"
 import { WeekPainting } from "@/components/platform/art"
 import { IconArrowRight } from "@/components/platform/icons"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
-import { Button, Field, inputClass, OptionRow } from "@/components/platform/ui"
+import { Button, Field, inputClass, OptionRow, TextInput } from "@/components/platform/ui"
 import { errorMessage } from "@/lib/api-error"
 import { submitFloorFor } from "@/lib/config/printers"
 import { WARMUP_THEME } from "@/lib/config/program"
@@ -102,8 +102,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 			<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 				<div className="grid gap-4">
 					<Field hint="Give it a cool name." id="wu-name" label="Project name">
-						<input
-							className={inputClass}
+						<TextInput
 							id="wu-name"
 							maxLength={120}
 							onChange={e => setName(e.target.value)}

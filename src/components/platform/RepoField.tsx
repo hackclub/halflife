@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react"
 import { IconPencil } from "@/components/platform/icons"
-import { Button, Field, inputClass } from "@/components/platform/ui"
+import { Button, Field, inputClass, TextInput } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 import { displayRepo, validateRepoField } from "@/lib/repo"
 import { README_GUIDE_URL } from "@/lib/routes"
@@ -23,11 +23,10 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange(val
 			id={id}
 			label="Repo link"
 		>
-			<input
+			<TextInput
 				aria-describedby={touched && error ? `${id}-err` : undefined}
 				aria-invalid={(touched && Boolean(error)) || undefined}
 				autoComplete="url"
-				className={inputClass}
 				id={id}
 				inputMode="url"
 				onBlur={() => setTouched(true)}

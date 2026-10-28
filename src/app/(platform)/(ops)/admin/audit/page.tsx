@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Button, EmptyState, PageHeader, Panel, Table, TextInput } from "@/app/components/ui"
+import { IconFilter } from "@/app/components/ui/icons"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
@@ -25,23 +26,21 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 
 			<Panel>
 				<form className="hl-row" method="get">
-					<input
-						className="hl-input"
+					<TextInput
 						defaultValue={action ?? ""}
 						name="action"
 						placeholder="Action, e.g. REVIEW_APPROVE"
 						style={{ maxWidth: "20rem" }}
 					/>
-					<input
-						className="hl-input"
+					<TextInput
 						defaultValue={targetId ?? ""}
 						name="targetId"
 						placeholder="Target id"
 						style={{ maxWidth: "20rem" }}
 					/>
-					<button className="hl-btn" type="submit">
-						Filter
-					</button>
+					<Button type="submit">
+						<IconFilter /> Filter
+					</Button>
 				</form>
 			</Panel>
 

@@ -39,7 +39,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Declare only 1 variable per declaration statement, avoid `const x = 1, y = 2, z = 3`
 - When making large functions that return objects with many functions, consider if this would be more natural as a class with methods instead
 
-None of this should conflict with the formatting or linting rules of Biome.
+None of this should conflict with the formatting or linting rules of Biome or oxlint.
 
 ## TS
 

@@ -147,27 +147,6 @@ body {
 	background-color: var(--color-hl-cyan);
 }
 
-/* The scroll cue. The belt says there is more sideways; this says there is more downward, and it is the one element on the page whose entire meaning is a direction of travel – so it is the one place a loop earns its keep. Slow and small: a 16% nudge over 2.6s reads as a beckon rather than a bouncing toy. On the glyph, never the link box, whose transform is doing the centring. */
-@keyframes hl-scroll-cue {
-	0%,
-	100% {
-		transform: translateY(0);
-	}
-	50% {
-		transform: translateY(16%);
-	}
-}
-
-.hl-scroll-cue {
-	animation: hl-scroll-cue 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.hl-scroll-cue {
-		animation: none;
-	}
-}
-
 /* ─────────────────────────────────────────────────────────────
    Section grounds
 

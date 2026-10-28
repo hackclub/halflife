@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 /**
@@ -49,8 +49,7 @@ export function EmailForm({
 				hint="Their own address, not a forwarding one. Stored exactly as typed, and checked against every other user regardless of capitalisation."
 				label="New email"
 			>
-				<input
-					className="hl-input"
+				<TextInput
 					maxLength={320}
 					onChange={e => setValue(e.target.value)}
 					placeholder="participant@example.com"

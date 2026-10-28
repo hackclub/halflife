@@ -85,9 +85,10 @@ function Marker({ item }: { item: TimelineItem }) {
 	return (
 		<span
 			aria-hidden="true"
-			className={cx("relative z-10 grid size-8 place-items-center rounded-full ring-4 ring-paper", look.tone)}
+			className="relative z-10 grid size-8 place-items-center rounded-full bg-paper ring-4 ring-paper"
 		>
-			{look.icon}
+			{/* The tint is its own layer over an opaque puck: a translucent fill straight onto the container let the rail show through it, drawing a line down the warning icon on a returned week. */}
+			<span className={cx("absolute inset-0 grid place-items-center rounded-full", look.tone)}>{look.icon}</span>
 		</span>
 	)
 }

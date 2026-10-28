@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout } from "@/app/components/ui"
+import { Button, Callout, Select } from "@/app/components/ui"
 import { getThemeDef, THEMES, WARMUP_THEME } from "@/lib/config/program"
 import type { Theme } from "@/lib/enums"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -27,9 +27,8 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 	return (
 		<div className="hl-stack hl-stack--tight">
 			<div className="hl-row">
-				<select
+				<Select
 					aria-label="Move project to theme"
-					className="hl-input"
 					onChange={e => {
 						const picked = OPTIONS.find(t => t.id === e.target.value)
 						if (picked) setValue(picked.id)
@@ -42,7 +41,7 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 							{t.label}
 						</option>
 					))}
-				</select>
+				</Select>
 				<Button disabled={busy !== null || value === current} onClick={save} type="button">
 					{busy ? "Moving…" : "Move"}
 				</Button>

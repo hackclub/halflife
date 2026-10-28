@@ -8,11 +8,12 @@ test("a signed-out visitor gets the landing page", async ({ page }) => {
 	await expect(page.getByPlaceholder("email address").first()).toBeVisible()
 })
 
-test("the login page offers Hack Club sign-in", async ({ page }) => {
+test("a stale /login link lands on the landing page", async ({ page }) => {
 	await page.goto("/login")
 
-	await expect(page.getByRole("heading", { level: 1, name: "Sign in" })).toBeVisible()
-	await expect(page.getByRole("button", { name: "Continue with Hack Club" })).toBeVisible()
+	await expect(page).toHaveURL(`${e2eBaseUrl}/`)
+	await expect(page).toHaveTitle("Half Life by Hack Club")
+	await expect(page.getByRole("link", { name: "log in" })).toBeVisible()
 })
 
 test("the health endpoint reaches the database", async ({ request }) => {

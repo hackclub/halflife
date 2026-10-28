@@ -17,7 +17,7 @@ import { signInWith, useSession } from "@/lib/auth-client"
  *
  * - Below 830 the dateline drops to 3.25rem to clear the flag, and this does what the flag does instead: hangs at `top-1` and stays under 2.52rem tall, so the dateline clears it by the same 11.6px it clears the flag by.
  *
- * Pressing it goes straight to Hack Club's sign-in and comes back to the trail, rather than stopping at the platform's own sign-in page to ask the same question again. Someone already signed in has nothing to sign in to, so for them it is just the way to the trail. It stays a real link to /dashboard underneath, which is where a signed-in visitor opening it in a new tab belongs. If the sign-in could not start, the mark says "try again" and the page stays where it is: nothing on the site sends anyone to /login.
+ * Pressing it goes straight to Hack Club's sign-in and comes back to the trail, rather than stopping at a sign-in page of our own to ask the same question again. Someone already signed in has nothing to sign in to, so for them it is just the way to the trail. It stays a real link to /dashboard underneath, which is where a signed-in visitor opening it in a new tab belongs. If the sign-in could not start, the mark says "try again" and the page stays where it is: there is no separate sign-in screen to send anyone to.
  */
 export default function LoginMark() {
 	const { data: session } = useSession()

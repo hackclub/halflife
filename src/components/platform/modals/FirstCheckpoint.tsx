@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { OnboardingFlow } from "@/app/components/forms/OnboardingFlow"
+import { OnboardingFlow } from "@/components/platform/onboarding/OnboardingFlow"
 import { Button } from "@/components/platform/ui"
 import { OnboardingResponseSchema, type OnboardingView } from "@/lib/onboarding-view"
 import { useStore } from "@/lib/store"
