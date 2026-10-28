@@ -10,12 +10,25 @@ export function PageSign({
 	color,
 	ink,
 	stripe,
+	flush,
 }: {
 	label: string
 	sub?: ReactNode
 	color?: string
 	ink?: string
 	stripe?: string
+	/** For a standalone document with no header above the sign; see `HangingSign`. */
+	flush?: boolean
 }) {
-	return <HangingSign color={color} ink={ink} stripe={stripe} subtitle={sub} surface="platform" title={label} />
+	return (
+		<HangingSign
+			color={color}
+			flush={flush}
+			ink={ink}
+			stripe={stripe}
+			subtitle={sub}
+			surface="platform"
+			title={label}
+		/>
+	)
 }

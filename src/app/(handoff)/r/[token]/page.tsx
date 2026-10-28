@@ -6,8 +6,8 @@ import { HANDOFF_TTL_MINUTES, resolveHandoff } from "@/lib/handoff"
 // Never cached: the token is single-use and its validity changes the moment a phone claims it.
 export const dynamic = "force-dynamic"
 
-/** The phone's measure. The sign's straps run up into the top padding; at desktop widths the sign carries a larger negative top, so the padding grows with it. */
-const pageClass = "mx-auto w-full max-w-xl px-4 pt-8 pb-12 lg:pt-24"
+/** The phone's measure. The sign is flush to the top edge because this page has no header for its straps to tuck under. */
+const pageClass = "mx-auto w-full max-w-xl px-4 pb-12"
 
 export default async function HandoffPage({ params }: { params: Promise<{ token: string }> }) {
 	const { token } = await params
@@ -16,7 +16,7 @@ export default async function HandoffPage({ params }: { params: Promise<{ token:
 	if (!target)
 		return (
 			<main className={pageClass}>
-				<PageSign color="var(--color-coral)" label="LINK EXPIRED" />
+				<PageSign color="var(--color-coral)" flush label="LINK EXPIRED" />
 				<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 					<p className="m-0 text-[0.95rem] leading-relaxed text-navy-soft">
 						Codes last {HANDOFF_TTL_MINUTES} minutes and work once. Generate a new one on your computer and scan it
@@ -30,6 +30,7 @@ export default async function HandoffPage({ params }: { params: Promise<{ token:
 		<main className={pageClass}>
 			<PageSign
 				color="var(--color-sky)"
+				flush
 				label="RECORD A REEL"
 				sub="Your video goes straight to your Half Life account. You don't need to sign in here."
 			/>

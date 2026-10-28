@@ -37,6 +37,7 @@ export function HangingSign({
 	title,
 	subtitle,
 	actions,
+	flush = false,
 	color = "var(--color-orange)",
 	ink = "var(--color-navy)",
 	stripe = "rgba(0,0,0,.075)",
@@ -46,6 +47,10 @@ export function HangingSign({
 	subtitle?: ReactNode
 	/** The console lays actions below the sign; the platform's pages pass none. */
 	actions?: ReactNode
+	/**
+	 * Standalone documents have no header for the straps to tuck under. Flush drops the negative top margin so they start at the page's own top edge instead of leaving a band of ground above them.
+	 */
+	flush?: boolean
 	/** Platform plaque fill. The console's is fixed by `.hl-sign-tear`. */
 	color?: string
 	/** Platform heading colour. */
@@ -55,9 +60,10 @@ export function HangingSign({
 }>) {
 	const skin = SKINS[surface]
 	const platform = surface === "platform"
+	const rootClass = platform && flush ? "relative flex flex-col items-center pb-6" : skin.root
 
 	const sign = (
-		<div className={skin.root}>
+		<div className={rootClass}>
 			<div aria-hidden="true" className={skin.straps}>
 				<span className={skin.strap} />
 				<span className={skin.strap} />
