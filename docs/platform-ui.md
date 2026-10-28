@@ -71,7 +71,7 @@ Brand comes from the Figma file: Plus Jakarta Sans for display, Shantell Sans fo
 
 Filters live in `components/platform/art.tsx` (`SketchDefs`), mounted once in the platform root layout. The artwork itself is imported from `public/art` – the fox and gato stickers, the five week paintings, the printer photographs and the starter renders – and `art.tsx` also holds the components that place it (`Gato`, `WeekPainting`). Icons are a single hand-drawn-adjacent set on a 24px grid at one stroke weight (`components/platform/icons.tsx`).
 
-The staff surfaces under `(ops)` – admin and review – keep this repo's earlier design system in `(platform)/ops.css`. It is plain CSS over the platform's Tailwind, with its tokens scoped to `.ops-root`, and draws straight 2px borders rather than `.sketch` wobble; only its page sign's plaque is torn.
+The staff surfaces under `(ops)` – admin and review – keep this repo's earlier design system in `(platform)/ops.css`. It is plain CSS over the platform's Tailwind, with its tokens scoped to `.ops-root`, and draws straight 2px borders rather than `.sketch` wobble; only its page sign's plaque is torn. Shared hues alias the platform tokens through `var()`; only the console's own ink and unique tones are literals.
 
 ## Responsive
 
