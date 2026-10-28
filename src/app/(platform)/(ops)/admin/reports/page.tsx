@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
-import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import type { ReportReason, ReportStatus } from "@/lib/enums"
@@ -61,22 +61,24 @@ export default async function AdminReportsPage({
 
 	return (
 		<section className="hl-stack">
-			<div className="hl-row" style={{ justifyContent: "space-between" }}>
-				<h1 style={{ margin: 0 }}>Reports</h1>
-				<div className="hl-row">
-					{FILTERS.map(f => (
-						<Link
-							aria-current={f.id === filter || undefined}
-							className="hl-hint"
-							href={f.id === "open" ? "/admin/reports" : `/admin/reports?status=${f.id}`}
-							key={f.id}
-							style={f.id === filter ? { color: "var(--color-ink-strong)", fontWeight: 700 } : undefined}
-						>
-							{f.label} ({f.status === "ALL" ? counts.OPEN + counts.RESOLVED + counts.DISMISSED : counts[f.status]})
-						</Link>
-					))}
-				</div>
-			</div>
+			<PageHeader
+				actions={
+					<div className="hl-row">
+						{FILTERS.map(f => (
+							<Link
+								aria-current={f.id === filter || undefined}
+								className="hl-hint"
+								href={f.id === "open" ? "/admin/reports" : `/admin/reports?status=${f.id}`}
+								key={f.id}
+								style={f.id === filter ? { color: "var(--color-ink-strong)", fontWeight: 700 } : undefined}
+							>
+								{f.label} ({f.status === "ALL" ? counts.OPEN + counts.RESOLVED + counts.DISMISSED : counts[f.status]})
+							</Link>
+						))}
+					</div>
+				}
+				title="Reports"
+			/>
 
 			<Panel title={`${active.label} reports`}>
 				{reports.length === 0 ? (
