@@ -66,7 +66,7 @@ export function Panel({
 }
 
 /**
- * The page title, hung from two straps pinned to the top of the page – the comp's own device, used on every console screen except the feed and reports, which lead with a heading row over a form or filter.
+ * The page title, hung from two straps pinned to the top of the page – the comp's own device, used on every console screen.
  *
  * `actions` sit below the board rather than beside it: the sign is centred, and a button floated next to it would pull the composition off axis.
  */
