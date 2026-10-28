@@ -18,4 +18,4 @@ echo "==> seeding"
 bun run db:seed
 
 echo "==> starting next"
-exec pnpm dev
+exec bun dev
