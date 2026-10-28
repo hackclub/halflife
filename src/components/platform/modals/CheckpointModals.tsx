@@ -2083,13 +2083,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [repoResult, setRepoResult] = useState<RepoCheckResult | null>(null)
 	const [submitting, setSubmitting] = useState(false)
 	const [submitError, setSubmitError] = useState<string | null>(null)
-	// The four things a maker acknowledges before handing a returned phase back. Kept apart so each box is a click of its own; the final one is only honest once the first three stand.
+	// The acknowledgements a maker makes before handing a phase in. The reviewer-note one only exists when a review has sent the phase back; the limit ones apply to every submission, the first included.
 	const [acknowledgedLimit, setAcknowledgedLimit] = useState(false)
 	const [acknowledgedNoMore, setAcknowledgedNoMore] = useState(false)
 	const [acknowledgedFixed, setAcknowledgedFixed] = useState(false)
 	const [acknowledgedAll, setAcknowledgedAll] = useState(false)
-	const acknowledgementsComplete = acknowledgedLimit && acknowledgedNoMore && acknowledgedFixed && acknowledgedAll
-	const acknowledgementsOk = !resubmitting || acknowledgementsComplete
+	const acknowledgementsComplete =
+		acknowledgedLimit && acknowledgedNoMore && acknowledgedAll && (!resubmitting || acknowledgedFixed)
 
 	// The closing reel is a reel like any other and goes on the trail under its own key, so the week's timeline shows it where it happened rather than swallowing it inside the submission.
 	const reelCheckpointId = week.projectId ? `wu-${week.projectId}-reel-submission` : `w${week.id}-reel-submission`
@@ -2175,7 +2175,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					&& descriptionReady
 					&& starterDescriptionReady
 					&& !outOfSubmissions
-					&& acknowledgementsOk
+					&& acknowledgementsComplete
 					&& (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
@@ -2187,7 +2187,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						&& descriptionReady
 						&& starterDescriptionReady
 						&& !outOfSubmissions
-						&& acknowledgementsOk
+						&& acknowledgementsComplete
 
 	/**
 	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
@@ -2200,8 +2200,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (step === 1) return null
 		if (outOfSubmissions)
 			return `All ${SUBMISSION_LIMIT} submissions for this phase are used. Dispute the review or ask a reviewer in Slack.`
-		if (step === total && resubmitting && !acknowledgementsComplete)
-			return "Tick all four acknowledgements above before submitting."
+		if (step === total && !acknowledgementsComplete) return "Tick every acknowledgement above before submitting."
 		// These two block whichever of the later steps is showing.
 		if (tierBlocked)
 			return `Your tier needs ${fmtHours(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
@@ -2925,29 +2924,30 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</Chip>
 					</div>
 
-					{resubmitting && (
-						<div className="mt-6 border-t border-dashed border-line pt-5">
-							<p className="label text-violet-deep">Before you resubmit</p>
-							<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-								All four are required before you can submit.
-							</p>
-							<div className="mt-2.5 grid gap-1">
-								<Acknowledgement checked={acknowledgedLimit} onChange={setAcknowledgedLimit}>
-									I understand that I will only be able to submit this project {SUBMISSION_LIMIT} times.
-								</Acknowledgement>
-								<Acknowledgement checked={acknowledgedNoMore} onChange={setAcknowledgedNoMore}>
-									I understand that after using up my {SUBMISSION_LIMIT} submissions, I will not be able to resubmit
-									this project.
-								</Acknowledgement>
+					<div className="mt-6 border-t border-dashed border-line pt-5">
+						<p className="label text-violet-deep">{resubmitting ? "Before you resubmit" : "Before you submit"}</p>
+						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+							All of these are required before you can submit.
+						</p>
+						<div className="mt-2.5 grid gap-1">
+							<Acknowledgement checked={acknowledgedLimit} onChange={setAcknowledgedLimit}>
+								I understand that I will only be able to submit this project {SUBMISSION_LIMIT} times
+								{resubmitting ? "." : " in the event that it gets returned."}
+							</Acknowledgement>
+							<Acknowledgement checked={acknowledgedNoMore} onChange={setAcknowledgedNoMore}>
+								I understand that after using up my {SUBMISSION_LIMIT} submissions, I will not be able to resubmit this
+								project.
+							</Acknowledgement>
+							{resubmitting && (
 								<Acknowledgement checked={acknowledgedFixed} onChange={setAcknowledgedFixed}>
 									I have fixed all issues mentioned in my project&rsquo;s &ldquo;needs changes&rdquo; note.
 								</Acknowledgement>
-								<Acknowledgement checked={acknowledgedAll} onChange={setAcknowledgedAll}>
-									I understand and have abided by all of the above 3 checkboxes.
-								</Acknowledgement>
-							</div>
+							)}
+							<Acknowledgement checked={acknowledgedAll} onChange={setAcknowledgedAll}>
+								I understand and have abided by all of the above {resubmitting ? "3" : "2"} checkboxes.
+							</Acknowledgement>
 						</div>
-					)}
+					</div>
 				</div>
 			)}
 		</Modal>
