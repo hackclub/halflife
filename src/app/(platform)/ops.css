@@ -109,6 +109,14 @@
 	text-wrap: balance;
 }
 
+/*
+ * The console's ring: accent, 3px, 2px offset (DESIGN.md). Unlayered on purpose, and scoped to the wrapper. The platform's magenta ring in the root stylesheet is unlayered too, and an unlayered declaration beats every layer regardless of specificity – so the console's ring in `@layer components` never rendered, which is why every control here used to focus in magenta. This covers bare links and any control a class list would forget, and `.ops-root` keeps it off platform pages when this stylesheet is still in the document after a client-side navigation out of the console.
+ */
+.ops-root :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+	outline: 3px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
 @layer components {
 	/* ── App shell ─────────────────────────────────────────────────────────── */
 	/*
@@ -510,14 +518,6 @@
 	.hl-btn:active:not(:disabled) {
 		filter: brightness(0.9);
 		transform: translateY(1px);
-	}
-
-	/*
-	 * One ring everywhere, since the comp specifies none: accent, 3px, 2px offset. Broad rather than a list of the console's own classes, so a bare link or a control inside a table is not left wearing the platform's magenta ring from the root layout. This lives in the components layer, one step above that ring's base layer, which is the only reason the console's treatment renders at all.
-	 */
-	:where(a, button, input, textarea, select, [tabindex]):focus-visible {
-		outline: 3px solid var(--color-accent);
-		outline-offset: 2px;
 	}
 
 	/* An icon-only control: the target is the button, not the glyph. */
