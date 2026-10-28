@@ -1,4 +1,4 @@
-import { imageSources } from "@/components/platform/Markdown"
+import { imageSources } from "@/lib/markdown"
 
 interface EntryImages {
 	content: string | null

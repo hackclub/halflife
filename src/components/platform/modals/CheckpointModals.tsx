@@ -19,7 +19,7 @@ import {
 	IconVolumeOff,
 	IconWarning,
 } from "@/components/platform/icons"
-import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
+import { Markdown } from "@/components/platform/Markdown"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
@@ -43,6 +43,7 @@ import { cx } from "@/lib/cx"
 import { formatShortDate } from "@/lib/deadline"
 import { ParticipantGoal } from "@/lib/enums"
 import { type LapseTimelapse, LapseTimelapseSchema } from "@/lib/lapse-timelapses"
+import { countImages, proseLength } from "@/lib/markdown"
 import { round2 } from "@/lib/money"
 import { fmtHours } from "@/lib/numbers"
 import {
