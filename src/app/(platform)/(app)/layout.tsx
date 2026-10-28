@@ -1,5 +1,5 @@
 import { after } from "next/server"
-import { SuspensionBanner } from "@/app/components/platform/SuspensionBanner"
+import { SuspensionBanner } from "@/components/platform/SuspensionBanner"
 import { AppShell } from "@/components/platform/shell/AppShell"
 import { touchActivity } from "@/lib/analytics"
 import { requireSessionPage } from "@/lib/page-guards"
