@@ -1,6 +1,7 @@
 "use client"
 import { useRef, useState } from "react"
-import { Button, Field, Meter, TextInput } from "@/components/platform/ui"
+import { IconCamera } from "@/components/platform/icons"
+import { Button, Field, Meter } from "@/components/platform/ui"
 import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 import { uploadHandoffFile } from "@/lib/use-handoff"
 
@@ -68,18 +69,34 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 			) : null}
 
 			<Field hint="Tap to record, or pick one you already have." id="handoff-video" label="Video">
-				<TextInput
+				{/* The input stays a real file input with the camera hint, but the control on screen is a button: a native file picker's chrome cannot take the platform's type or borders. */}
+				<input
 					accept={VIDEO_ACCEPT}
 					capture="environment"
+					className="sr-only"
 					disabled={state === "uploading"}
 					id="handoff-video"
 					onChange={e => setFileName(e.target.files?.[0]?.name ?? null)}
 					ref={fileRef}
 					type="file"
 				/>
+				<Button
+					disabled={state === "uploading"}
+					full
+					onClick={() => fileRef.current?.click()}
+					size="lg"
+					type="button"
+					variant="outline"
+				>
+					<IconCamera className="text-lg" /> Record or choose
+				</Button>
 			</Field>
 
-			{fileName ? <p className="hand text-[0.84rem] text-navy-soft">{fileName}</p> : null}
+			{fileName ? (
+				<p aria-live="polite" className="hand text-[0.84rem] text-navy-soft">
+					{fileName}
+				</p>
+			) : null}
 
 			{state === "uploading" ? (
 				<div className="grid gap-1.5">
