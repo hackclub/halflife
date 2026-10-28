@@ -53,7 +53,7 @@ Half-Life deploys to **Orchard**, org **YSWS** (`ysws`). Not Vercel, not Coolify
    ]
    ```
 
-   Add it under R2 → the bucket → Settings → CORS Policy, with the production origin (not a wildcard – an empty response to the preflight is what a browser reports as a failed upload). `pnpm verify:uploads` preflights a presigned URL from `NEXT_PUBLIC_APP_URL` and says so if the rule is missing or names another origin.
+   Add it under R2 → the bucket → Settings → CORS Policy, with the production origin (not a wildcard – an empty response to the preflight is what a browser reports as a failed upload). `bun run verify:uploads` preflights a presigned URL from `NEXT_PUBLIC_APP_URL` and says so if the rule is missing or names another origin.
 
 6. **Deploy.**
 

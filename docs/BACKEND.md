@@ -8,7 +8,7 @@ Half Life is a ten-week hardware programme. Participants design five projects an
 
 ## Shape
 
-Next.js 16 App Router, Postgres via Prisma 7, Cloudflare R2 for media, better-auth against Hack Club Auth. One repo, four worlds:
+Next.js 16 App Router, Postgres via Prisma 8, Cloudflare R2 for media, better-auth against Hack Club Auth. One repo, four worlds:
 
 | Route group | What it is |
 | --- | --- |
@@ -75,9 +75,9 @@ Ari (`ari.hackclub.com`, `@hackclub/ari`) is the review surface. Half Life sends
 - **Idempotent.** The `delivery_id` is checked first and recorded only after the work succeeds, so Ari's retries are safe and a failed delivery is retried. `review.requeued` undoes the local status and credit and puts the same ship back in front of reviewers; `review.reverted` does the same but leaves the phase on `update_requested`, because the ship is terminal at Ari and only a fresh hand-in can be reviewed. `review.fraud` flags the maker on a failed verdict; `ship.updated` and unknown events are recorded and ignored.
 - **A 409 `already_queued` is an answer, not a failure.** Ari refuses to replace an open ship but names the ship it found, so `sendSubmissionToAri` records that id on the hand-in instead of retrying forever. This is the recovery for a create whose response was lost, and it stops a ship Ari already has from being invisible to every local count.
 - **The admin ring counts projects, one state each.** `getProjectReviewStatuses` gives every project the single state its card shows (`projectReviewState`: rejected > needs changes > pending > approved) and counts it once, so the ring's total is the number of projects that have been submitted and a project cannot appear in two slices. The ship-level count still exists for the queue: `countAriShips` backs the admin pending figure and `ari-review-counts` mirrors Ari's own board, so the ring and Ari's board answer different questions.
-- **A delivery can be lost, so decisions are also pulled.** The webhook is fire-and-forget: a delivery sent while the endpoint was unregistered, misconfigured or briefly unreachable is gone, and the hand-in sits decided at Ari while Half Life still shows it pending – the admin pending figure then reads hundreds of hand-ins more pending than Ari's own board. `reconcileAriDecisions` (`lib/ari.ts`) asks `ari.ships.status` for each open hand-in and applies any standing decision through the same `finalizeReview` the webhook calls; a ship Ari reports as `reverted` is reset from there too, because a lost revert leaves the phase looking pending forever. `ari-retry` runs a bounded pass every hour, and `pnpm reviews:backfill-ari` (dry run; `--commit` writes) drains a backlog in one go. `status` carries the decision and nothing else – `id`, `external_id`, `version`, `phase`, `decision` – so a replayed decision has no note to store and is recorded with Ari's generic sentence; the approved hours are likewise reconstructed from Half Life's own roll-up, so check the few approvals rather than trusting them blind. Makers are not notified by a bulk replay by default (`--announce` opts in) – mirror the row afterwards with `airtable:backfill-review`.
+- **A delivery can be lost, so decisions are also pulled.** The webhook is fire-and-forget: a delivery sent while the endpoint was unregistered, misconfigured or briefly unreachable is gone, and the hand-in sits decided at Ari while Half Life still shows it pending – the admin pending figure then reads hundreds of hand-ins more pending than Ari's own board. `reconcileAriDecisions` (`lib/ari.ts`) asks `ari.ships.status` for each open hand-in and applies any standing decision through the same `finalizeReview` the webhook calls; a ship Ari reports as `reverted` is reset from there too, because a lost revert leaves the phase looking pending forever. `ari-retry` runs a bounded pass every hour, and `bun run reviews:backfill-ari` (dry run; `--commit` writes) drains a backlog in one go. `status` carries the decision and nothing else – `id`, `external_id`, `version`, `phase`, `decision` – so a replayed decision has no note to store and is recorded with Ari's generic sentence; the approved hours are likewise reconstructed from Half Life's own roll-up, so check the few approvals rather than trusting them blind. Makers are not notified by a bulk replay by default (`--announce` opts in) – mirror the row afterwards with `airtable:backfill-review`.
 - **The phases before a decision are silent, so they are polled.** Ari sends no webhook when a first-pass decision is held for a second pass, nor when a second pass returns it to the queue. The same status pass stores `phase` on `PhaseSubmission.ariStatus` / `ariStatusAt` and mirrors it to `Ari - Review phase`, `Ari - Review phase at` and `Ari - Second pass since` on the Airtable row. `secondPass` and `secondPassReturned` in the job summary count what the poll saw. The confirming organizer is still not exposed: the status response names the phase, not who confirmed or returned the held decision.
-- **A pulled decision gets its reviewer's words back from the webhook.** The note an Ari decision carries travels only in the outbound delivery, so a status pass cannot show it. A decision resent from Ari's review screen arrives as an ordinary delivery, and `adoptStatusPlaceholder` (`lib/ari.ts`) rewrites the placeholder it finds instead of refusing it as already-decided. If the status response is extended to return the final review, `pnpm reviews:repair-ari` (dry run; `--commit` writes) reads each placeholder back from Ari and rewrites the review row, the audit reason, the reviewer and the project's standing comment in one pass; until then it reports every placeholder as `quiet`.
+- **A pulled decision gets its reviewer's words back from the webhook.** The note an Ari decision carries travels only in the outbound delivery, so a status pass cannot show it. A decision resent from Ari's review screen arrives as an ordinary delivery, and `adoptStatusPlaceholder` (`lib/ari.ts`) rewrites the placeholder it finds instead of refusing it as already-decided. If the status response is extended to return the final review, `bun run reviews:repair-ari` (dry run; `--commit` writes) reads each placeholder back from Ari and rewrites the review row, the audit reason, the reviewer and the project's standing comment in one pass; until then it reports every placeholder as `quiet`.
 
 ---
 
@@ -107,7 +107,7 @@ Two things to know before enabling it:
 
 ```bash
 ./dev.sh                  # Postgres in Docker, migrated, seeded, then next dev
-pnpm typecheck && pnpm lint && pnpm build
+bun run typecheck && bun run lint && bun run build
 ```
 
 Local scripts need `DATABASE_URL` in `.env` – every `package.json` script assumes it, and without it Prisma silently falls back to a database named after your shell user.
@@ -116,12 +116,12 @@ Schema changes: edit `prisma/contract.prisma`, then
 
 ```bash
 bun run db:generate
-bun run db:plan -- --name <what_changed>
+bun run db:plan --name <what_changed>
 ```
 
 Review the planned operations, fill any data-transform placeholders, and apply with `bun run db:migrate`. Verify with `bun run db:verify`. The signed marker in `migrations/app/refs/db.json` records which contract hash the database is at; `prisma db sign` adopts a database whose schema already matches.
 
-Restart `bun dev` after generating a new contract. The ORM reads `contract.json` when the process starts, so a running dev server keeps the old field list until it restarts and answers with errors such as `Model "ShopOrder" has no field "cancellationReason"` even though the migration is applied.
+Restart `bun run dev` after generating a new contract. The ORM reads `contract.json` when the process starts, so a running dev server keeps the old field list until it restarts and answers with errors such as `Model "ShopOrder" has no field "cancellationReason"` even though the migration is applied.
 
 ### The checks
 
@@ -152,7 +152,7 @@ Eleven suites. The DB-backed ones write to whatever `DATABASE_URL` points at and
 - **Prisma 7 moved things.** `migrate diff --from-migrations` needs a shadow database; `db execute` no longer takes `--url` (it reads `prisma.config.ts`).
 - **The Docker image does not ship `scripts/`.** `grant-role` and the verify suites cannot run in a pod as-is.
 - **`.env.example` comments live above values, not beside them** – a trailing comment gets copy-pasted into a deployment and a 32-character R2 key becomes 59.
-- **Asset URLs stored in journals have two possible key layouts.** Before the S3 client stopped putting the bucket name in the path, an object landed at `<bucket>/<key>` and its URL was `<origin>/<bucket>/<key>`. Both that and the current `<origin>/<key>` are valid, so `pnpm uploads:backfill-urls` lists the bucket once before rewriting anything rather than assuming one layout. Objects themselves are the other half: `pnpm uploads:migrate-legacy` copies every legacy `<bucket>/<key>` object to `<key>` server-side, which is what makes the keys rows already hold resolve. It leaves the legacy copies unless `--delete-legacy` is passed; run the URL backfill first if those are to go, because a journal may still name the legacy URL, and let mirrored projects sync `JOURNAL.md` once more before deleting.
+- **Asset URLs stored in journals have two possible key layouts.** Before the S3 client stopped putting the bucket name in the path, an object landed at `<bucket>/<key>` and its URL was `<origin>/<bucket>/<key>`. Both that and the current `<origin>/<key>` are valid, so `bun run uploads:backfill-urls` lists the bucket once before rewriting anything rather than assuming one layout. Objects themselves are the other half: `bun run uploads:migrate-legacy` copies every legacy `<bucket>/<key>` object to `<key>` server-side, which is what makes the keys rows already hold resolve. It leaves the legacy copies unless `--delete-legacy` is passed; run the URL backfill first if those are to go, because a journal may still name the legacy URL, and let mirrored projects sync `JOURNAL.md` once more before deleting.
 - **Coins are minted at review approval, not when hours are logged.** The trail moves immediately because the node is the entry, not the payment.
 
 ---
