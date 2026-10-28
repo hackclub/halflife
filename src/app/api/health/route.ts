@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import db from "@/lib/prisma8"
+import db, { describeDatabaseError } from "@/lib/prisma8"
 
 // Orchard's healthcheck and the container's HEALTHCHECK both point here. Touching Postgres means a pod with a dead database is marked unhealthy instead of serving errors for every request.
 export const dynamic = "force-dynamic"
@@ -17,7 +17,8 @@ export async function GET(): Promise<NextResponse> {
 		await db.execute(plan)
 		return NextResponse.json({ ok: true })
 	} catch (err) {
-		console.error("[health] database check failed:", err)
+		// A probe runs every few seconds, so a full error object – cause chain, errno and a minified stack – buries the one fact that matters when the database is down: which address refused, and why.
+		console.error(`[health] database check failed: ${describeDatabaseError(err)}`)
 		return NextResponse.json({ error: "database unreachable", ok: false }, { status: 503 })
 	}
 }
