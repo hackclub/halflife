@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { EmptyState, PageHeader, Panel, Select, statusLabel, Table, TextInput } from "@/app/components/ui"
+import { Button, EmptyState, PageHeader, Panel, Select, statusLabel, Table, TextInput } from "@/app/components/ui"
 import { getThemeDef, THEMES } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { PhaseStatus, Theme } from "@/lib/enums"
@@ -119,9 +119,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 						<input defaultChecked={filters.unstarted} name="unstarted" type="checkbox" value="1" />
 						Include unstarted
 					</label>
-					<button className="hl-btn" type="submit">
-						Search
-					</button>
+					<Button type="submit">Search</Button>
 					<Link className="hl-hint" href="/admin/projects">
 						Reset
 					</Link>

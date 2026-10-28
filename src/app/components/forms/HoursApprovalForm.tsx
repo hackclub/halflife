@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Callout, TextInput } from "@/app/components/ui"
+import { Button, Callout, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 type Kind = "session" | "hackatime"
@@ -50,9 +50,9 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 				type="number"
 				value={value}
 			/>
-			<button className="hl-btn" disabled={busy !== null} type="submit">
+			<Button disabled={busy !== null} type="submit">
 				Save
-			</button>
+			</Button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 		</form>
 	)

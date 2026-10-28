@@ -113,9 +113,9 @@ export function PostComposer({
 			{handoffKey ? (
 				<Callout>
 					Using the video from your phone.{" "}
-					<button className="hl-btn" onClick={() => setHandoffKey(null)} type="button">
+					<Button onClick={() => setHandoffKey(null)} type="button">
 						Use a file instead
-					</button>
+					</Button>
 				</Callout>
 			) : (
 				<Field hint="mp4, webm or mov. Or record on your phone above." label="Video">
