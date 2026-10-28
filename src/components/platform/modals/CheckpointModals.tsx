@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react"
 import { z } from "zod"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import {
@@ -1976,6 +1976,40 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	)
 }
 
+/**
+ * One box a maker has to tick before a resubmission. Styled like the sheet's other confirmations, so a tick reads the same wherever it appears.
+ */
+function Acknowledgement({
+	checked,
+	children,
+	onChange,
+}: {
+	checked: boolean
+	children: ReactNode
+	onChange(checked: boolean): void
+}) {
+	return (
+		<label
+			className={cx(
+				"flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
+				checked ? "bg-violet-pale" : "hover:bg-black/[.03]",
+			)}
+		>
+			<input checked={checked} className="sr-only" onChange={event => onChange(event.target.checked)} type="checkbox" />
+			<span
+				aria-hidden="true"
+				className={cx(
+					"mt-[3px] grid size-[18px] shrink-0 place-items-center rounded-[6px] border-2 transition-colors",
+					checked ? "border-transparent bg-violet" : "border-line-strong",
+				)}
+			>
+				{checked && <IconCheck className="text-sm text-white" />}
+			</span>
+			<span className="min-w-0 text-[0.88rem] leading-snug text-navy">{children}</span>
+		</label>
+	)
+}
+
 export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const {
 		setOpenCheckpoint,
@@ -2049,6 +2083,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [repoResult, setRepoResult] = useState<RepoCheckResult | null>(null)
 	const [submitting, setSubmitting] = useState(false)
 	const [submitError, setSubmitError] = useState<string | null>(null)
+	// The four things a maker acknowledges before handing a returned phase back. Kept apart so each box is a click of its own; the final one is only honest once the first three stand.
+	const [acknowledgedLimit, setAcknowledgedLimit] = useState(false)
+	const [acknowledgedNoMore, setAcknowledgedNoMore] = useState(false)
+	const [acknowledgedFixed, setAcknowledgedFixed] = useState(false)
+	const [acknowledgedAll, setAcknowledgedAll] = useState(false)
+	const acknowledgementsComplete = acknowledgedLimit && acknowledgedNoMore && acknowledgedFixed && acknowledgedAll
+	const acknowledgementsOk = !resubmitting || acknowledgementsComplete
 
 	// The closing reel is a reel like any other and goes on the trail under its own key, so the week's timeline shows it where it happened rather than swallowing it inside the submission.
 	const reelCheckpointId = week.projectId ? `wu-${week.projectId}-reel-submission` : `w${week.id}-reel-submission`
@@ -2134,6 +2175,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					&& descriptionReady
 					&& starterDescriptionReady
 					&& !outOfSubmissions
+					&& acknowledgementsOk
 					&& (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
@@ -2145,6 +2187,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						&& descriptionReady
 						&& starterDescriptionReady
 						&& !outOfSubmissions
+						&& acknowledgementsOk
 
 	/**
 	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
@@ -2157,6 +2200,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (step === 1) return null
 		if (outOfSubmissions)
 			return `All ${SUBMISSION_LIMIT} submissions for this phase are used. Dispute the review or ask a reviewer in Slack.`
+		if (step === total && resubmitting && !acknowledgementsComplete)
+			return "Tick all four acknowledgements above before submitting."
 		// These two block whichever of the later steps is showing.
 		if (tierBlocked)
 			return `Your tier needs ${fmtHours(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
@@ -2879,6 +2924,30 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{clip ? "Video attached" : "Video missing"}
 						</Chip>
 					</div>
+
+					{resubmitting && (
+						<div className="mt-6 border-t border-dashed border-line pt-5">
+							<p className="label text-violet-deep">Before you resubmit</p>
+							<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+								All four are required before you can submit.
+							</p>
+							<div className="mt-2.5 grid gap-1">
+								<Acknowledgement checked={acknowledgedLimit} onChange={setAcknowledgedLimit}>
+									I understand that I will only be able to submit this project {SUBMISSION_LIMIT} times.
+								</Acknowledgement>
+								<Acknowledgement checked={acknowledgedNoMore} onChange={setAcknowledgedNoMore}>
+									I understand that after using up my {SUBMISSION_LIMIT} submissions, I will not be able to resubmit
+									this project.
+								</Acknowledgement>
+								<Acknowledgement checked={acknowledgedFixed} onChange={setAcknowledgedFixed}>
+									I have fixed all issues mentioned in my reviewer&rsquo;s &ldquo;needs changes&rdquo; note.
+								</Acknowledgement>
+								<Acknowledgement checked={acknowledgedAll} onChange={setAcknowledgedAll}>
+									I understand and have abided by the above 3 checkboxes.
+								</Acknowledgement>
+							</div>
+						</div>
+					)}
 				</div>
 			)}
 		</Modal>

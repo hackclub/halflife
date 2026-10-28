@@ -358,8 +358,8 @@ function SubmissionBudgetPanel({ phases }: { phases: ProjectPageData["phases"] }
 				))}
 			</ul>
 			<p className="mt-4 border-t border-dashed border-line pt-3 text-[0.86rem] leading-snug text-navy-soft">
-				<span className="font-semibold text-navy">3 is the limit for each phase.</span> Once a phase reaches its
-				3rd submission, it can&apos;t be reviewed again.
+				<span className="font-semibold text-navy">3 is the limit for each phase.</span> Once a phase reaches its 3rd
+				submission, it can&apos;t be reviewed again.
 			</p>
 		</Panel>
 	)
