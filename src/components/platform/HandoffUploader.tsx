@@ -1,6 +1,6 @@
 "use client"
 import { useRef, useState } from "react"
-import { Button, Field, inputClass, Meter } from "@/components/platform/ui"
+import { Button, Field, Meter, TextInput } from "@/components/platform/ui"
 import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 import { uploadHandoffFile } from "@/lib/use-handoff"
 
@@ -68,10 +68,9 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 			) : null}
 
 			<Field hint="Tap to record, or pick one you already have." id="handoff-video" label="Video">
-				<input
+				<TextInput
 					accept={VIDEO_ACCEPT}
 					capture="environment"
-					className={inputClass}
 					disabled={state === "uploading"}
 					id="handoff-video"
 					onChange={e => setFileName(e.target.files?.[0]?.name ?? null)}

@@ -5,7 +5,7 @@ import { WeekPainting } from "@/components/platform/art"
 import { IconArrowRight } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { ReportButton } from "@/components/platform/report/ReportButton"
-import { Panel } from "@/components/platform/ui"
+import { LinkButton, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
@@ -57,12 +57,9 @@ export function PublicProjectDetail({
 									The maker asked for a second look at the {dispute.phase === "DESIGN" ? "design" : "build"} decision.
 									Open its review thread to answer.
 								</p>
-								<Link
-									className="label inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-gold-deep bg-gold px-5 text-[0.85rem] whitespace-nowrap text-navy transition-[background-color,color,transform,filter] duration-150 hover:brightness-105 active:translate-y-px"
-									href={`/review/${dispute.submissionId}`}
-								>
+								<LinkButton href={`/review/${dispute.submissionId}`} variant="gold">
 									Open the review thread <IconArrowRight className="text-base" />
-								</Link>
+								</LinkButton>
 							</li>
 						))}
 					</ul>

@@ -23,7 +23,16 @@ import { Markdown } from "@/components/platform/Markdown"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
-import { Button, borderedInputClass, Chip, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
+import {
+	Button,
+	borderedInputClass,
+	Chip,
+	Field,
+	inputClass,
+	OptionRow,
+	Panel,
+	TextInput,
+} from "@/components/platform/ui"
 import { errorMessage, refusalMessage } from "@/lib/api-error"
 import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
@@ -1582,10 +1591,9 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						id="reel-caption"
 						label="Caption"
 					>
-						<input
+						<TextInput
 							aria-describedby={postBlocker ? "reel-caption-blocker" : undefined}
 							aria-invalid={!captionReady || undefined}
-							className={inputClass}
 							id="reel-caption"
 							onChange={e => setCaption(e.target.value)}
 							placeholder="routed the whole board without a single ratline left"
@@ -1846,8 +1854,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							</div>
 						)}
 						<Field hint="Give it a cool name." id="np-name" label="Project name">
-							<input
-								className={inputClass}
+							<TextInput
 								id="np-name"
 								onChange={e => setName(e.target.value)}
 								placeholder={`My ${week.theme.toLowerCase()} project`}
