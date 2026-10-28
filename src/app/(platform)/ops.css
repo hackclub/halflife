@@ -7,44 +7,44 @@
  *
  * Scoped, not global. The `(ops)` group loads this stylesheet, and it outlives the route that loads it: CSS is not unlinked on a client-side navigation. Its tokens therefore sit on `.ops-root` – the wrapper the console renders inside – rather than on `:root`, so the names it shares with the platform (`ink`, `teal`, `mint`, `magenta`) cannot repaint the trail after someone leaves the console.
  *
- * There is no `@import "tailwindcss"` and no `@theme` here on purpose. The platform's root layout is already on every one of these pages and is the single Tailwind entry, so importing it again would ship a second preflight and a second utility layer, both of which also define these token names. What follows is plain CSS over that stylesheet: the console's custom properties, then the `.hl-*` classes built on them.
+ * There is no `@import "tailwindcss"` and no `@theme` here on purpose. The platform's root layout is already on every one of these pages and is the single Tailwind entry, so importing it again would ship a second preflight and a second utility layer, both of which also define these token names. What follows is plain CSS over that stylesheet: the console's custom properties, then the `.hl-*` classes built on them. The shared hues among those properties are `var()` aliases of the platform's `:root` tokens, so the platform stylesheet must stay above this one; the console's own ink and unique tones are literals.
  */
 
 .ops-root {
 	/* ── Palette ───────────────────────────────────────────────────────────── */
-	/* The eight swatches of the BRANDING frame, plus its two large grounds. */
-	--color-surface: #fcf7f7; /* page ground – warm off-white, not pure white */
-	--color-surface-raised: #ffffff; /* cards sitting on the ground */
+	/*
+	 * The console's own tones, plus aliases of every hue it shares with the platform. The aliases are `var()` references rather than copied hexes: the platform root layout is always above the console and its `@theme` is on `:root`, so one brand edit reaches both. ops-tokens.test.ts fails if a literal is pasted back in.
+	 */
+	--color-surface: var(--color-cream); /* page ground – warm off-white, not pure white */
+	--color-surface-raised: var(--color-paper); /* cards sitting on the ground */
 	--color-surface-sunken: #f2ecec;
 	--color-border: #cacedd;
-	/* A field's edge, which has to meet 3:1 where a panel's need not: #cacedd is 1.57:1 on a white field. 3.68:1. */
-	--color-field-edge: #86829f;
+	/* A field's edge, which has to meet 3:1 where a panel's need not: `line` is 1.72:1 on a white field. 3.68:1. */
+	--color-field-edge: var(--color-field);
 
-	--color-ink: #100f30; /* body text */
-	--color-ink-strong: #1c1a59; /* headings, outlines, the brand navy */
+	--color-ink: #100f30; /* body text – the one shared name whose value is deliberately its own */
+	--color-ink-strong: var(--color-navy); /* headings, outlines, the brand navy */
 	/*
 	 * The comp's secondary grey is #979bab, which is 2.77:1 on white – below the 4.5:1 body-text floor, and this is read by teenagers on school laptops in bright rooms. Darkened along its own hue (228°) and saturation rather than swapped for a neutral, so it stays the comp's colour: 5.06:1 on white, 4.76:1 on the page ground.
 	 */
 	--color-ink-muted: #696e82;
 	/* The original, kept for the decorative rules and borders that are not text. */
-	--color-line-soft: #cacedd;
+	--color-line-soft: var(--color-border);
 
-	--color-accent: #52b4d5; /* primary blue */
+	--color-accent: var(--color-sky); /* primary blue */
 	--color-accent-bright: #61cdf1; /* the header sign */
-	--color-accent-ink: #1c1a59;
+	--color-accent-ink: var(--color-navy);
 
-	--color-teal: #06ae97;
-	--color-teal-soft: #75d0c9;
-	--color-mint: #aef2dd;
-	--color-magenta: #b21b9b;
-	--color-coin: #fba62f; /* the warning callout's rim */
-	--color-flame: #f35757; /* danger: the callout's rim, the admin charts */
+	/* The console uses the platform's teal, mint and magenta by inheritance. */
+	--color-teal-soft: var(--color-teal-mid);
+	--color-coin: var(--color-orange); /* the warning callout's rim */
+	--color-flame: var(--color-coral); /* danger: the callout's rim, the admin charts */
 
 	/* Status as text: teal and coin read 2.80 and 1.98:1 on white, so a badge's word takes these inks instead. `danger` stays a whole-colour alias because the admin charts draw with it. */
-	--color-danger: #f35757;
-	--color-success-ink: #037365;
-	--color-warning-ink: #8c5507;
-	--color-danger-ink: #c73b3b;
+	--color-danger: var(--color-coral);
+	--color-success-ink: var(--color-teal-ink);
+	--color-warning-ink: var(--color-orange-ink);
+	--color-danger-ink: var(--color-coral-deep);
 
 	/* ── Shape ─────────────────────────────────────────────────────────────── */
 	/* The comp uses 8/10 and a 2px outline on nearly everything. */

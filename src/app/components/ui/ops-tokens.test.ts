@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 
 /**
- * The console palette is a copy of the platform's, not an import of it.
+ * The console palette aliases the platform's shared hues rather than copying them.
  *
- * That is deliberate: the console is the earlier system, and it has to stand on its own rather than resolve its colours through a stylesheet it does not own. The copy has stayed exact for every shared hue, with one intended exception — the console's body ink is `#100f30`, not the platform's `#262a2d` — and this test is what keeps the next brand edit from changing one and forgetting the other.
+ * The alias has to be a `var()` reference, because a copied hex is a second place to change when the brand moves. This test also pins the handful of values that are deliberately the console's own, so a missing or pasted-over alias fails here rather than in one admin screen.
  */
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8")
@@ -29,41 +29,61 @@ function colors(css: string, opener: string): { [_: string]: string } {
 const platform = colors(read("../../(platform)/globals.css"), "@theme")
 const consoleColors = colors(read("../../(platform)/ops.css"), ".ops-root")
 
-/** Platform name → console name, for every value the two palettes share. */
-const SHARED: [string, string][] = [
-	["--color-cream", "--color-surface"],
-	["--color-paper", "--color-surface-raised"],
-	["--color-navy", "--color-ink-strong"],
-	["--color-navy", "--color-accent-ink"],
-	["--color-sky", "--color-accent"],
-	["--color-teal", "--color-teal"],
-	["--color-teal-mid", "--color-teal-soft"],
-	["--color-mint", "--color-mint"],
-	["--color-magenta", "--color-magenta"],
-	["--color-coral", "--color-flame"],
-	["--color-coral", "--color-danger"],
-	["--color-coral-deep", "--color-danger-ink"],
-	["--color-orange", "--color-coin"],
-	["--color-teal-ink", "--color-success-ink"],
-	["--color-orange-ink", "--color-warning-ink"],
-	["--color-field", "--color-field-edge"],
+/** Console token → the platform token it aliases. */
+const ALIASES: [string, string][] = [
+	["--color-surface", "--color-cream"],
+	["--color-surface-raised", "--color-paper"],
+	["--color-ink-strong", "--color-navy"],
+	["--color-accent", "--color-sky"],
+	["--color-accent-ink", "--color-navy"],
+	["--color-field-edge", "--color-field"],
+	["--color-teal-soft", "--color-teal-mid"],
+	["--color-coin", "--color-orange"],
+	["--color-flame", "--color-coral"],
+	["--color-danger", "--color-coral"],
+	["--color-success-ink", "--color-teal-ink"],
+	["--color-warning-ink", "--color-orange-ink"],
+	["--color-danger-ink", "--color-coral-deep"],
+]
+
+/** Shared hues the console takes by inheritance, with no declaration of its own. */
+const INHERITED = ["--color-teal", "--color-mint", "--color-magenta"]
+
+/** The only colours the console writes as hex; everything else is either an alias or inherited. */
+const CONSOLE_ONLY = [
+	"--color-ink",
+	"--color-ink-muted",
+	"--color-surface-sunken",
+	"--color-border",
+	"--color-accent-bright",
 ]
 
 describe("console palette", () => {
-	test.each(SHARED)("%s and %s hold the same value", (platformName, consoleName) => {
+	test.each(ALIASES)("%s aliases %s", (consoleName, platformName) => {
 		expect(platform[platformName]).toBeDefined()
-		expect(consoleColors[consoleName]).toBeDefined()
-		expect(consoleColors[consoleName]).toBe(platform[platformName])
+		expect(consoleColors[consoleName]).toBe(`var(${platformName})`)
+	})
+
+	test.each(INHERITED)("%s is inherited, not redeclared", name => {
+		expect(platform[name]).toBeDefined()
+		expect(consoleColors[name]).toBeUndefined()
+	})
+
+	test("the internal decorative line reuses the console border", () => {
+		expect(consoleColors["--color-line-soft"]).toBe("var(--color-border)")
+	})
+
+	test("only the console's own colours are written as hex", () => {
+		const literals = Object.entries(consoleColors)
+			.filter(([, value]) => /^#[0-9a-f]{6}$/i.test(value))
+			.map(([name]) => name)
+			.toSorted()
+		expect(literals).toEqual(CONSOLE_ONLY.toSorted())
 	})
 
 	// The one name with a value of its own; a copy that silently became the platform's would make console and trail body text identical.
 	test("ink is the console's own colour", () => {
 		expect(consoleColors["--color-ink"]).toBe("#100f30")
 		expect(platform["--color-ink"]).toBe("#262a2d")
-	})
-
-	// Two names for the same edge inside the console itself; a resident of one world, not a cross-world pair.
-	test("the console's border names agree", () => {
-		expect(consoleColors["--color-line-soft"]).toBe(consoleColors["--color-border"])
 	})
 })
