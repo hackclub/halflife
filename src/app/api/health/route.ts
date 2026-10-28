@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import db, { describeDatabaseError } from "@/lib/prisma8"
+import { describeDatabaseError } from "@/lib/db-error"
+import db from "@/lib/prisma8"
 
 // Orchard's healthcheck and the container's HEALTHCHECK both point here. Touching Postgres means a pod with a dead database is marked unhealthy instead of serving errors for every request.
 export const dynamic = "force-dynamic"

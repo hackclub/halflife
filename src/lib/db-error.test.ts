@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { describeDatabaseError } from "@/lib/prisma8"
+import { describeDatabaseError } from "@/lib/db-error"
 
 /** The shape Prisma 8 gives a driver failure: `SqlConnectionError` around the error the socket threw. */
 function connectionError(cause: Error): Error {
@@ -7,9 +7,9 @@ function connectionError(cause: Error): Error {
 }
 
 /**
- * The one line a healthcheck log gets instead of a stack.
+ * The one line a log gets instead of a stack.
  *
- * Pinned on the real failure this was written for – a refused connection to the database's port – because the point is that the address and the reason survive into the log. A change that reverts to `console.error(err)` would print minutes of stack per probe, and one that loses the cause would drop the address.
+ * Pinned on the two failures this was written for – a refused connection to the database's port, and a server that restarted or failed over and terminated its clients – because the point is that the address and the reason survive into the log. A change that reverts to `console.error(err)` would print every pg internal per event, and one that loses the cause would drop the address.
  */
 describe("describeDatabaseError", () => {
 	test("names the address and says nothing is listening on it", () => {
@@ -22,6 +22,20 @@ describe("describeDatabaseError", () => {
 
 		expect(describeDatabaseError(connectionError(cause))).toBe(
 			"connect ECONNREFUSED 10.109.122.116:5432 (ECONNREFUSED) – nothing is listening on that address",
+		)
+	})
+
+	test("reads a pg FATAL, whose SQLSTATE is in code, as a restart rather than a fault", () => {
+		const error = Object.assign(new Error("terminating connection due to administrator command"), {
+			code: "57P01",
+			file: "postgres.c",
+			length: 116,
+			routine: "ProcessInterrupts",
+			severity: "FATAL",
+		})
+
+		expect(describeDatabaseError(error)).toBe(
+			"terminating connection due to administrator command (57P01) – the server ended this connection, as it does on a restart or failover",
 		)
 	})
 
