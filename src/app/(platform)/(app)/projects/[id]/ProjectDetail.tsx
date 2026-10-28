@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { DisputeThread } from "@/app/components/forms/DisputeThread"
+import { DisputeThread } from "@/components/disputes/DisputeThread"
 import { IconBook, IconWarning } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
@@ -426,6 +426,7 @@ function ReviewState({
 								<DisputeThread
 									dispute={p.dispute}
 									replyUrl={`/api/projects/${projectId}/dispute/${p.dispute.id}/messages`}
+									surface="platform"
 									viewer="maker"
 								/>
 							) : null}

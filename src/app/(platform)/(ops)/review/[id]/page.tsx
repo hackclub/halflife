@@ -2,7 +2,6 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { DecisionPanel } from "@/app/components/forms/DecisionPanel"
-import { DisputeThread } from "@/app/components/forms/DisputeThread"
 import { HoursApprovalForm } from "@/app/components/forms/HoursApprovalForm"
 import {
 	Badge,
@@ -15,6 +14,7 @@ import {
 	statusTone,
 	Table,
 } from "@/app/components/ui"
+import { DisputeThread } from "@/components/disputes/DisputeThread"
 import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
@@ -93,6 +93,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 							? `/api/admin/disputes/${submission.dispute.id}/send-back`
 							: undefined
 					}
+					surface="console"
 					viewer="reviewer"
 				/>
 			) : null}
