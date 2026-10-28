@@ -243,7 +243,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 							)}
 							{canSubmit && !hasCover && (
 								<span className="hand text-[0.84rem] text-coral-deep" id="warmup-cover-hint">
-									Upload a photo or screenshot of the project to submit
+									Add a cover image to your project before you can submit
 								</span>
 							)}
 						</div>
@@ -370,12 +370,15 @@ function ReviewState({
 	phases,
 	weekFor,
 	warmup,
+	hasCover,
 }: {
 	projectId: string
 	phases: ProjectPageData["phases"]
 	weekFor(phase: "DESIGN" | "BUILD"): number
 	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
 	warmup: boolean
+	/** No cover image, no hand-in: the same gate the submit sheet and the server hold. */
+	hasCover: boolean
 }) {
 	const { setOpenCheckpoint } = useStore()
 	const [disputing, setDisputing] = useState<"DESIGN" | "BUILD" | null>(null)
@@ -430,15 +433,24 @@ function ReviewState({
 							{negative && (
 								<div className="flex flex-wrap items-center gap-2">
 									{p.status === "update_requested" && remaining > 0 && (
-										<Button
-											onClick={() =>
-												setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
-											}
-											size="sm"
-											variant="solid"
-										>
-											I&apos;ve made these changes, resubmit
-										</Button>
+										<>
+											<Button
+												aria-describedby={hasCover ? undefined : `review-cover-hint-${p.phase}`}
+												disabled={!hasCover}
+												onClick={() =>
+													setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
+												}
+												size="sm"
+												variant="solid"
+											>
+												I&apos;ve made these changes, resubmit
+											</Button>
+											{!hasCover && (
+												<span className="hand text-[0.84rem] text-coral-deep" id={`review-cover-hint-${p.phase}`}>
+													Add a cover image to your project before you can submit
+												</span>
+											)}
+										</>
 									)}
 									{p.status === "update_requested" && remaining === 0 && (
 										<p className="text-[0.88rem] font-semibold leading-snug text-coral-deep">
@@ -476,12 +488,15 @@ function DecisionNotice({
 	projectId,
 	warmup,
 	weekFor,
+	hasCover,
 }: {
 	phases: ProjectPageData["phases"]
 	projectId: string
 	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
 	warmup: boolean
 	weekFor(phase: "DESIGN" | "BUILD"): number
+	/** No cover image, no hand-in: the same gate the submit sheet and the server hold. */
+	hasCover: boolean
 }) {
 	const { setOpenCheckpoint } = useStore()
 	const returned = phases.filter(p => p.status === "update_requested")
@@ -519,14 +534,24 @@ function DecisionNotice({
 									<SubmissionMeter limit={p.submissionLimit} used={p.submissionsUsed} />
 								</div>
 								{remaining > 0 ? (
-									<Button
-										className="mt-3"
-										onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
-										size="sm"
-										variant="gold"
-									>
-										I&apos;ve made these changes, resubmit
-									</Button>
+									<div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+										<Button
+											aria-describedby={hasCover ? undefined : `decision-cover-hint-${p.phase}`}
+											disabled={!hasCover}
+											onClick={() =>
+												setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
+											}
+											size="sm"
+											variant="gold"
+										>
+											I&apos;ve made these changes, resubmit
+										</Button>
+										{!hasCover && (
+											<span className="hand text-[0.84rem] text-gold-ink" id={`decision-cover-hint-${p.phase}`}>
+												Add a cover image to your project before you can submit
+											</span>
+										)}
+									</div>
 								) : (
 									<p className="mt-3 rounded-xl bg-white/60 px-3.5 py-3 text-[0.9rem] leading-relaxed text-navy">
 										You&apos;ve used all {p.submissionLimit} submissions for this phase. It stays returned for now:
@@ -660,7 +685,13 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 			<ProjectBackLink href="/projects" label="All projects" />
 
 			{/* ---------- what a decision asks for, first ---------- */}
-			<DecisionNotice phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
+			<DecisionNotice
+				hasCover={Boolean(project.coverImageKey)}
+				phases={data.phases}
+				projectId={project.id}
+				warmup={warmup}
+				weekFor={weekFor}
+			/>
 
 			{/* ---------- the project itself ---------- */}
 			{/* Sized by its own width, not the viewport's: the rails either side of the page take a different share at every breakpoint, and the header only has room for two columns once it is wide enough for both. Below that the thumbnail leads as a banner, and it is first in the DOM so focus order agrees with what is seen. */}
@@ -739,7 +770,13 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 				<ProjectSection id="review-title" title="Review">
 					<SubmissionBudgetPanel phases={data.phases} />
 					<div className="mt-4">
-						<ReviewState phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
+						<ReviewState
+							hasCover={Boolean(project.coverImageKey)}
+							phases={data.phases}
+							projectId={project.id}
+							warmup={warmup}
+							weekFor={weekFor}
+						/>
 					</div>
 				</ProjectSection>
 			)}
