@@ -303,9 +303,9 @@ function PhaseHours({ phase }: { phase: ProjectPageData["phases"][number] }) {
 }
 
 /**
- * How many of a phase's three submissions are used, said in words and drawn as pips.
+ * How many of a phase's 3 submissions are used, said in words and drawn as pips.
  *
- * The words carry the fact; the pips are a second look for anyone scanning. Filled means used, so the row reads left to right as the three chances go.
+ * The words carry the fact; the pips are a second look for anyone scanning. Filled means used, so the row reads left to right as the 3 chances go.
  */
 function SubmissionMeter({ limit, used }: { limit: number; used: number }) {
 	const exhausted = used >= limit
@@ -342,7 +342,7 @@ function SubmissionBudgetPanel({ phases }: { phases: ProjectPageData["phases"] }
 		<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 			<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 				<h3 className="text-[0.95rem] font-extrabold text-navy">Submissions</h3>
-				<p className="hand text-[0.84rem] text-navy-soft">three per phase, including the first</p>
+				<p className="hand text-[0.84rem] text-navy-soft">3 per phase, including the first</p>
 			</div>
 			<ul className="mt-4 grid gap-3.5">
 				{live.map(phase => (
@@ -358,8 +358,8 @@ function SubmissionBudgetPanel({ phases }: { phases: ProjectPageData["phases"] }
 				))}
 			</ul>
 			<p className="mt-4 border-t border-dashed border-line pt-3 text-[0.86rem] leading-snug text-navy-soft">
-				<span className="font-semibold text-navy">Three is the limit for each phase.</span> Once a phase reaches its
-				third submission, it can&apos;t be reviewed again.
+				<span className="font-semibold text-navy">3 is the limit for each phase.</span> Once a phase reaches its
+				3rd submission, it can&apos;t be reviewed again.
 			</p>
 		</Panel>
 	)
