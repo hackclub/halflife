@@ -1,5 +1,6 @@
 "use client"
-import { Button, Callout } from "@/app/components/ui"
+import { useState } from "react"
+import { Button, Callout, Field, Modal, TextArea } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 /**
@@ -30,21 +31,33 @@ export function ActionButton({
 	reasonPrompt?: string
 }>) {
 	const { busy, error, run } = useAction()
+	const [asking, setAsking] = useState(false)
+	const [reason, setReason] = useState("")
 
-	function submit() {
-		if (confirm && !window.confirm(confirm)) return
-		let payload = body
-		if (reasonPrompt) {
-			const reason = window.prompt(reasonPrompt)?.trim()
-			// A cancelled or empty prompt is a cancelled action, not a request the server should reject for an empty reason.
-			if (!reason) return
-			payload = { reason }
-		}
+	function send(payload: unknown) {
 		void run(
 			"submit",
 			() => sendJson(url, { body: payload, method }),
 			() => onDone?.(),
 		)
+	}
+
+	function submit() {
+		if (confirm && !window.confirm(confirm)) return
+		if (reasonPrompt) {
+			setReason("")
+			setAsking(true)
+			return
+		}
+		send(body)
+	}
+
+	function sendReason() {
+		const trimmed = reason.trim()
+		// A cancelled or empty modal is a cancelled action, not a request the server should reject for an empty reason.
+		if (!trimmed) return
+		setAsking(false)
+		send({ reason: trimmed })
 	}
 
 	return (
@@ -53,6 +66,21 @@ export function ActionButton({
 				{busy ? (pendingLabel ?? "Working…") : label}
 			</Button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
+			{asking && reasonPrompt ? (
+				<Modal onClose={() => setAsking(false)} open title={reasonPrompt}>
+					<Field label="Reason">
+						<TextArea onChange={e => setReason(e.target.value)} rows={4} value={reason} />
+					</Field>
+					<div className="hl-row" style={{ justifyContent: "flex-end" }}>
+						<Button onClick={() => setAsking(false)} type="button">
+							Cancel
+						</Button>
+						<Button disabled={busy !== null || !reason.trim()} onClick={sendReason} type="button" variant="primary">
+							Send
+						</Button>
+					</div>
+				</Modal>
+			) : null}
 		</span>
 	)
 }

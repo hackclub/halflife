@@ -179,3 +179,5 @@ export function statusTone(status: string): BadgeTone {
 export function statusLabel(status: string): string {
 	return status.replaceAll("_", " ")
 }
+
+export { Modal } from "./Modal"

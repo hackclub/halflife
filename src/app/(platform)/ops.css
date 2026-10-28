@@ -263,6 +263,28 @@
 		transform: translateY(1px);
 	}
 
+	/* An icon-only control: the target is the button, not the glyph. */
+	.hl-icon-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		padding: 0;
+		color: var(--color-ink-muted);
+		cursor: pointer;
+		background: none;
+		border: 0;
+		border-radius: var(--radius-button);
+	}
+	.hl-icon-btn:hover {
+		color: var(--color-ink-strong);
+		background: var(--color-surface-sunken);
+	}
+	.hl-icon-btn:active {
+		transform: translateY(1px);
+	}
+
 	/* ── Fields ────────────────────────────────────────────────────────────── */
 	.hl-label-text {
 		display: block;
@@ -360,6 +382,27 @@
 	.hl-stat-label {
 		font-size: 0.78rem;
 		color: var(--color-ink-muted);
+	}
+
+	/* ── Modal ─────────────────────────────────────────────────────────────── */
+	/*
+	 * A native <dialog>, so the browser owns the focus trap, Escape and the top layer. The panel inside is the same white 10px card as every other console surface; the backdrop is the console ink at a third opacity.
+	 */
+	.hl-modal {
+		width: min(34rem, calc(100% - 2rem));
+		max-height: calc(100dvh - 2rem);
+		padding: 0;
+		margin: auto;
+		color: inherit;
+		background: transparent;
+		border: 0;
+	}
+	.hl-modal::backdrop {
+		background: rgb(16 15 48 / 0.38);
+	}
+	.hl-modal > .hl-panel {
+		max-height: calc(100dvh - 2rem);
+		overflow-y: auto;
 	}
 
 	/* ── Staff top bar ─────────────────────────────────────────────────────── */
