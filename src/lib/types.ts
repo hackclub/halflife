@@ -114,6 +114,10 @@ export interface Project {
 	starter: boolean
 	/** Which starter project it is, when it is one. See config/onboarding. */
 	starterProjectId?: string | null
+	/**
+	 * How many submissions each phase has used out of its three. Present once the project has any hand-in on record, so the submit sheet can warn before the server refuses.
+	 */
+	submissions?: { build: number; design: number }
 	/** The chosen cover, a journal image, or a reel frame. See lib/thumbnail. */
 	thumbnail?: ProjectThumbnail | null
 	tier: 1 | 2 | 3

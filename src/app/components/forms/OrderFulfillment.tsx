@@ -1,5 +1,5 @@
 "use client"
-import { Callout } from "@/app/components/ui"
+import { Callout, Select } from "@/app/components/ui"
 import type { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
 import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -28,9 +28,8 @@ export function OrderFulfillment({
 
 	return (
 		<div className="hl-stack hl-stack--tight" style={{ gap: "0.4rem" }}>
-			<select
+			<Select
 				aria-label="Shipping method"
-				className="hl-select"
 				disabled={busy !== null}
 				onChange={e => save({ method: isFulfillmentMethod(e.target.value) ? e.target.value : null })}
 				value={method ?? ""}
@@ -41,10 +40,9 @@ export function OrderFulfillment({
 						{label}
 					</option>
 				))}
-			</select>
-			<select
+			</Select>
+			<Select
 				aria-label="Fulfilment stage"
-				className="hl-select"
 				disabled={busy !== null || cancelled}
 				onChange={e => {
 					if (isFulfillmentStage(e.target.value)) save({ stage: e.target.value })
@@ -59,7 +57,7 @@ export function OrderFulfillment({
 							{label}
 						</option>
 					))}
-			</select>
+			</Select>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 		</div>
 	)

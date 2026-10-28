@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Badge, Button, EmptyState, PageHeader, Panel, Table, TextInput } from "@/app/components/ui"
+import { IconSearch } from "@/app/components/ui/icons"
 import { displayName } from "@/lib/display-name"
 import { penaltyFor } from "@/lib/moderation"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -47,16 +48,15 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
 			<Panel>
 				<form className="hl-row" method="get">
-					<input
-						className="hl-input"
+					<TextInput
 						defaultValue={q ?? ""}
 						name="q"
 						placeholder={includePii ? "Search by name, email or Slack ID" : "Search by name"}
 						style={{ maxWidth: "24rem" }}
 					/>
-					<button className="hl-btn" type="submit">
-						Search
-					</button>
+					<Button type="submit">
+						<IconSearch /> Search
+					</Button>
 				</form>
 			</Panel>
 

@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 export function CreditGrantForm({ canGrant, userId }: Readonly<{ canGrant: boolean; userId: string }>) {
@@ -35,16 +35,10 @@ export function CreditGrantForm({ canGrant, userId }: Readonly<{ canGrant: boole
 				hint={canGrant ? "Negative to claw back." : "Only negative adjustments (clawbacks) until identity is verified."}
 				label="Amount"
 			>
-				<input className="hl-input" onChange={e => setAmount(e.target.value)} required type="number" value={amount} />
+				<TextInput onChange={e => setAmount(e.target.value)} required type="number" value={amount} />
 			</Field>
 			<Field hint="Recorded in the ledger and the audit log." label="Reason">
-				<input
-					className="hl-input"
-					maxLength={1000}
-					onChange={e => setReason(e.target.value)}
-					required
-					value={reason}
-				/>
+				<TextInput maxLength={1000} onChange={e => setReason(e.target.value)} required value={reason} />
 			</Field>
 			<div>
 				<Button disabled={busy !== null || !amount || !reason || blocked} type="submit">

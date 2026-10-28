@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { type ComposerProject, PostComposer } from "@/app/components/forms/PostComposer"
-import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { getThemeDef } from "@/lib/config/program"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
@@ -39,11 +39,10 @@ export default async function AdminFeedPage() {
 
 	return (
 		<section className="hl-stack">
-			<h1>Post to the feed</h1>
-			<p className="hl-hint">
-				Announcements are pinned above every other reel and are only visible to accounts that can manage the feed.
-				Everything else lands in the Doomscroller in the ordinary order.
-			</p>
+			<PageHeader
+				subtitle="Announcements are pinned above every other reel and are only visible to accounts that can manage the feed. Everything else lands in the Doomscroller in the ordinary order."
+				title="Post to the feed"
+			/>
 			<PostComposer canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} projects={options} />
 
 			<Panel title="Recent reels">

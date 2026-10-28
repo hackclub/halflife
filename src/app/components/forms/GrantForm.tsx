@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { z } from "zod"
-import { Button, Callout } from "@/app/components/ui"
+import { Button, Callout, TextInput } from "@/app/components/ui"
 import { sendJsonParsed, useAction } from "@/lib/use-action"
 
 /** What `/grant` answers once it has sent the design's grant, or found one already sent. */
@@ -41,9 +41,8 @@ export function GrantForm({
 
 	return (
 		<span className="hl-stack hl-stack--tight">
-			<input
+			<TextInput
 				aria-label="HCB grant link"
-				className="hl-input"
 				disabled={busy !== null}
 				onChange={e => setGrantUrl(e.target.value)}
 				placeholder="hcb.hackclub.com/grants/…"

@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
-import { Button, Callout } from "@/app/components/ui"
+import { Button, Callout, TextInput } from "@/app/components/ui"
 import { toLocalInput } from "@/lib/deadline"
 import { DAY_MS } from "@/lib/time"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -58,9 +58,8 @@ export function ExtensionForm({
 					if (value) save(new Date(value))
 				}}
 			>
-				<input
+				<TextInput
 					aria-label="Extend until"
-					className="hl-input"
 					onChange={e => setValue(e.target.value)}
 					style={{ maxWidth: "14rem" }}
 					type="datetime-local"

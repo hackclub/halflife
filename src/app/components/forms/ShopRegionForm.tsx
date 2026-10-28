@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 /**
@@ -28,8 +28,8 @@ export function ShopRegionForm() {
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			<div className="hl-row">
 				<Field label="Slug">
-					<input
-						className="hl-input hl-mono"
+					<TextInput
+						className="hl-mono"
 						onChange={e => setId(e.target.value)}
 						pattern="[a-z0-9][a-z0-9-]*"
 						placeholder="eu"
@@ -38,13 +38,7 @@ export function ShopRegionForm() {
 					/>
 				</Field>
 				<Field label="Name">
-					<input
-						className="hl-input"
-						onChange={e => setName(e.target.value)}
-						placeholder="Europe"
-						required
-						value={name}
-					/>
+					<TextInput onChange={e => setName(e.target.value)} placeholder="Europe" required value={name} />
 				</Field>
 			</div>
 			<div>

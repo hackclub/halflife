@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { DisputeThread } from "@/app/components/forms/DisputeThread"
+import { DisputeThread } from "@/components/disputes/DisputeThread"
 import { IconBook, IconWarning } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
@@ -102,8 +102,7 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 				</Button>
 			</div>
 			<p className="hand text-[0.8rem] text-navy-soft">
-				a dispute does not approve the phase or count as a resubmission. It only asks a reviewer to read the review
-				again.
+				a dispute does not approve the phase or count as a submission. It only asks a reviewer to read the review again.
 			</p>
 		</div>
 	)
@@ -244,7 +243,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 							)}
 							{canSubmit && !hasCover && (
 								<span className="hand text-[0.84rem] text-coral-deep" id="warmup-cover-hint">
-									Upload a photo or screenshot of the project to submit
+									Add a cover image to your project before you can submit
 								</span>
 							)}
 						</div>
@@ -303,17 +302,83 @@ function PhaseHours({ phase }: { phase: ProjectPageData["phases"][number] }) {
 	return null
 }
 
+/**
+ * How many of a phase's 3 submissions are used, said in words and drawn as pips.
+ *
+ * The words carry the fact; the pips are a second look for anyone scanning. Filled means used, so the row reads left to right as the 3 chances go.
+ */
+function SubmissionMeter({ limit, used }: { limit: number; used: number }) {
+	const exhausted = used >= limit
+	return (
+		<span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
+			<span aria-hidden="true" className="inline-flex items-center gap-1.5">
+				{Array.from({ length: limit }, (_, index) => (
+					<span
+						className={cx(
+							"size-3.5 rounded-full border-2",
+							index < used ? "border-teal bg-teal" : "border-line-strong bg-transparent",
+						)}
+						key={index}
+					/>
+				))}
+			</span>
+			<span className={cx("text-[0.92rem] font-extrabold tabular-nums", exhausted ? "text-coral-deep" : "text-navy")}>
+				{used} of {limit}
+			</span>
+		</span>
+	)
+}
+
+/**
+ * Every phase's submission budget, in one place above the review record.
+ *
+ * Kept separate from the phase list rather than repeated under each, because the numbers are the same rule for both and reading it twice makes it look like two different limits. It is the first thing in the Review section, so a maker never has to open a submit sheet to find out where they stand.
+ */
+function SubmissionBudgetPanel({ phases }: { phases: ProjectPageData["phases"] }) {
+	// A decided phase has nothing left to spend its budget on, and an approved one reading "3 of 3" would look like a problem rather than a fact. Rejected phases are reopened by staff before they can be submitted again, so only the live ones appear.
+	const live = phases.filter(phase => phase.status !== "approved" && phase.status !== "rejected")
+	if (live.length === 0) return null
+	return (
+		<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
+			<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+				<h3 className="text-[0.95rem] font-extrabold text-navy">Submissions</h3>
+				<p className="hand text-[0.84rem] text-navy-soft">3 per phase, including the first</p>
+			</div>
+			<ul className="mt-4 grid gap-3.5">
+				{live.map(phase => (
+					<li
+						className="grid gap-1.5 border-t border-dashed border-line pt-3.5 first:border-0 first:pt-0"
+						key={phase.phase}
+					>
+						<span className="text-[0.95rem] font-extrabold text-navy">
+							{phase.phase === "DESIGN" ? "Design" : "Build"}
+						</span>
+						<SubmissionMeter limit={phase.submissionLimit} used={phase.submissionsUsed} />
+					</li>
+				))}
+			</ul>
+			<p className="mt-4 border-t border-dashed border-line pt-3 text-[0.86rem] leading-snug text-navy-soft">
+				<span className="font-semibold text-navy">3 is the limit for each phase.</span> Once a phase reaches its 3rd
+				submission, it can&apos;t be reviewed again.
+			</p>
+		</Panel>
+	)
+}
+
 function ReviewState({
 	projectId,
 	phases,
 	weekFor,
 	warmup,
+	hasCover,
 }: {
 	projectId: string
 	phases: ProjectPageData["phases"]
 	weekFor(phase: "DESIGN" | "BUILD"): number
 	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
 	warmup: boolean
+	/** No cover image, no hand-in: the same gate the submit sheet and the server hold. */
+	hasCover: boolean
 }) {
 	const { setOpenCheckpoint } = useStore()
 	const [disputing, setDisputing] = useState<"DESIGN" | "BUILD" | null>(null)
@@ -323,6 +388,7 @@ function ReviewState({
 			<ul className="grid gap-5">
 				{phases.map(p => {
 					const negative = p.status === "update_requested" || p.status === "rejected"
+					const remaining = Math.max(0, p.submissionLimit - p.submissionsUsed)
 					return (
 						<li className="grid gap-2.5" key={p.phase}>
 							<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -360,22 +426,37 @@ function ReviewState({
 								<DisputeThread
 									dispute={p.dispute}
 									replyUrl={`/api/projects/${projectId}/dispute/${p.dispute.id}/messages`}
+									surface="platform"
 									viewer="maker"
 								/>
 							) : null}
 
 							{negative && (
 								<div className="flex flex-wrap items-center gap-2">
-									{p.status === "update_requested" && (
-										<Button
-											onClick={() =>
-												setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
-											}
-											size="sm"
-											variant="solid"
-										>
-											I&apos;ve made these changes, resubmit
-										</Button>
+									{p.status === "update_requested" && remaining > 0 && (
+										<>
+											<Button
+												aria-describedby={hasCover ? undefined : `review-cover-hint-${p.phase}`}
+												disabled={!hasCover}
+												onClick={() =>
+													setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
+												}
+												size="sm"
+												variant="solid"
+											>
+												I&apos;ve made these changes, resubmit
+											</Button>
+											{!hasCover && (
+												<span className="hand text-[0.84rem] text-coral-deep" id={`review-cover-hint-${p.phase}`}>
+													Add a cover image to your project before you can submit
+												</span>
+											)}
+										</>
+									)}
+									{p.status === "update_requested" && remaining === 0 && (
+										<p className="text-[0.88rem] font-semibold leading-snug text-coral-deep">
+											All {p.submissionLimit} submissions are used. Dispute this review or ask a reviewer in Slack.
+										</p>
 									)}
 									{!p.dispute && (
 										<Button onClick={() => setDisputing(p.phase)} size="sm" variant="outline">
@@ -408,12 +489,15 @@ function DecisionNotice({
 	projectId,
 	warmup,
 	weekFor,
+	hasCover,
 }: {
 	phases: ProjectPageData["phases"]
 	projectId: string
 	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
 	warmup: boolean
 	weekFor(phase: "DESIGN" | "BUILD"): number
+	/** No cover image, no hand-in: the same gate the submit sheet and the server hold. */
+	hasCover: boolean
 }) {
 	const { setOpenCheckpoint } = useStore()
 	const returned = phases.filter(p => p.status === "update_requested")
@@ -422,40 +506,64 @@ function DecisionNotice({
 
 	return (
 		<div className="mt-5 grid gap-4">
-			{returned.map(p => (
-				<Panel className="bg-gold-pale/70 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="gold">
-					<div className="flex items-start gap-2.5">
-						<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
-						<div className="min-w-0 flex-1">
-							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
-								{p.phase === "DESIGN" ? "Design" : "Build"} needs changes
-							</p>
-							<div className="mt-1.5">
-								<PhaseHours phase={p} />
+			{returned.map(p => {
+				const remaining = Math.max(0, p.submissionLimit - p.submissionsUsed)
+				return (
+					<Panel className="bg-gold-pale/70 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="gold">
+						<div className="flex items-start gap-2.5">
+							<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
+							<div className="min-w-0 flex-1">
+								<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
+									{p.phase === "DESIGN" ? "Design" : "Build"} needs changes
+								</p>
+								<div className="mt-1.5">
+									<PhaseHours phase={p} />
+								</div>
+								{p.comments ? (
+									// Pre-lined, so a reviewer's own line breaks survive: their note is often a list, and reflowing it into one paragraph loses which request ended and the next began.
+									<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
+										{p.comments}
+									</p>
+								) : (
+									<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">
+										no reason was recorded with this decision. If that looks wrong, dispute it from the Review section
+										below.
+									</p>
+								)}
+								<div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-white/60 px-3.5 py-2.5">
+									<span className="label text-gold-ink">Submissions</span>
+									<SubmissionMeter limit={p.submissionLimit} used={p.submissionsUsed} />
+								</div>
+								{remaining > 0 ? (
+									<div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+										<Button
+											aria-describedby={hasCover ? undefined : `decision-cover-hint-${p.phase}`}
+											disabled={!hasCover}
+											onClick={() =>
+												setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
+											}
+											size="sm"
+											variant="gold"
+										>
+											I&apos;ve made these changes, resubmit
+										</Button>
+										{!hasCover && (
+											<span className="hand text-[0.84rem] text-gold-ink" id={`decision-cover-hint-${p.phase}`}>
+												Add a cover image to your project before you can submit
+											</span>
+										)}
+									</div>
+								) : (
+									<p className="mt-3 rounded-xl bg-white/60 px-3.5 py-3 text-[0.9rem] leading-relaxed text-navy">
+										You&apos;ve used all {p.submissionLimit} submissions for this phase. It stays returned for now:
+										dispute the review below if you think it is wrong, or ask a reviewer in Slack.
+									</p>
+								)}
 							</div>
-							{p.comments ? (
-								// Pre-lined, so a reviewer's own line breaks survive: their note is often a list, and reflowing it into one paragraph loses which request ended and the next began.
-								<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
-									{p.comments}
-								</p>
-							) : (
-								<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">
-									no reason was recorded with this decision. If that looks wrong, dispute it from the Review section
-									below.
-								</p>
-							)}
-							<Button
-								className="mt-3"
-								onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
-								size="sm"
-								variant="gold"
-							>
-								I&apos;ve made these changes, resubmit
-							</Button>
 						</div>
-					</div>
-				</Panel>
-			))}
+					</Panel>
+				)
+			})}
 
 			{rejected.map(p => (
 				<Panel className="bg-coral/10 px-5 py-5 sm:px-6" key={p.phase} radius={20} tone="coral">
@@ -578,7 +686,13 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 			<ProjectBackLink href="/projects" label="All projects" />
 
 			{/* ---------- what a decision asks for, first ---------- */}
-			<DecisionNotice phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
+			<DecisionNotice
+				hasCover={Boolean(project.coverImageKey)}
+				phases={data.phases}
+				projectId={project.id}
+				warmup={warmup}
+				weekFor={weekFor}
+			/>
 
 			{/* ---------- the project itself ---------- */}
 			{/* Sized by its own width, not the viewport's: the rails either side of the page take a different share at every breakpoint, and the header only has room for two columns once it is wide enough for both. Below that the thumbnail leads as a banner, and it is first in the DOM so focus order agrees with what is seen. */}
@@ -655,7 +769,16 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 			{/* ---------- where review stands ---------- */}
 			{data.phases.length > 0 && (
 				<ProjectSection id="review-title" title="Review">
-					<ReviewState phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
+					<SubmissionBudgetPanel phases={data.phases} />
+					<div className="mt-4">
+						<ReviewState
+							hasCover={Boolean(project.coverImageKey)}
+							phases={data.phases}
+							projectId={project.id}
+							warmup={warmup}
+							weekFor={weekFor}
+						/>
+					</div>
 				</ProjectSection>
 			)}
 

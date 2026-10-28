@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { Callout, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Button, Callout, EmptyState, Field, PageHeader, Panel, Select, Table } from "@/app/components/ui"
+import { IconFilter } from "@/app/components/ui/icons"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
@@ -76,20 +77,19 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 
 			<Panel>
 				<form className="hl-row" method="get" style={{ alignItems: "center", flexWrap: "wrap" }}>
-					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
-						<span className="hl-label-text">Folder</span>
-						<select className="hl-input" defaultValue={folder ?? ""} name="folder" style={{ maxWidth: "16rem" }}>
+					<Field label="Folder">
+						<Select defaultValue={folder ?? ""} name="folder" style={{ maxWidth: "16rem" }}>
 							<option value="">All folders</option>
 							{UPLOAD_FOLDERS.map(value => (
 								<option key={value} value={value}>
 									{FOLDER_LABELS[value]}
 								</option>
 							))}
-						</select>
-					</label>
-					<button className="hl-btn" type="submit">
-						Filter
-					</button>
+						</Select>
+					</Field>
+					<Button type="submit">
+						<IconFilter /> Filter
+					</Button>
 					<Link className="hl-hint" href="/admin/uploads">
 						Reset
 					</Link>

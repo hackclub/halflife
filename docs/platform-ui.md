@@ -5,11 +5,11 @@ The logged-in product for [Half Life](https://halflife.hackclub.com): ten weeks 
 Originally built in a separate repository as a front end with no server – dummy data, `localStorage`, and every upload a boolean. It now runs on this repo's Postgres, auth and R2. What follows is the original author's description of the design, with the parts the merge changed marked.
 
 ```bash
-pnpm install
-pnpm dev     # http://localhost:3000
+bun install
+bun run dev     # http://localhost:3000
 ```
 
-Signed out, `/` is the marketing page. Signed in, `proxy.ts` redirects it to the trail at `/dashboard` – two route groups cannot both define `/`, and the landing page has its own root layout and stylesheet.
+Signed out, `/` is the marketing page. Signed in, `proxy.ts` redirects it to the trail at `/dashboard` – two route groups cannot both define `/`, and the landing page has its own root layout and stylesheet. There is no separate sign-in page: the landing's `log in` mark starts Hack Club Auth directly, and a stale `/login` link redirects to `/`.
 
 To replay the first-run experience, clear the ceremony:
 
@@ -24,11 +24,14 @@ That only replays the intro. It cannot un-log a session or un-post a reel: those
 | Route | What it is |
 | --- | --- |
 | `/dashboard` | The checkpoint trail: 10 weeks, week banners, grand prize |
+| `/projects`, `/projects/[id]` | Your projects, and one project's design, journal, submit and reels |
 | `/explore` | Journal feed grouped by day |
-| `/shop` | Coin shop, priced from the budget sheet |
+| `/shop`, `/shop/orders` | Coin shop, priced from the budget sheet, and your orders |
 | `/docs`, `/docs/[slug]` | Five short reference pages |
+| `/display-guides`, `/display-guides/[slug]` | The starter projects' build guides |
 | `/reels` | Your own reels by project, and where you have posted them publicly |
 | `/doomscroller` | Every reel anyone has posted |
+| `/u/[id]` | A participant's public profile |
 
 ## The curriculum
 
@@ -66,9 +69,9 @@ Brand comes from the Figma file: Plus Jakarta Sans for display, Shantell Sans fo
 - **`.sketch`** – a wobbling marker outline drawn on a pseudo-element by an SVG `feTurbulence` + `feDisplacementMap` filter, so every panel border is hand-drawn without touching the content it frames. `.torn` applies the same displacement to a filled shape, which is how the week banners and page signs get their torn-tape edge.
 - **`.puck`** – the checkpoint token: a rim disc behind, a face on top, a real ambient shadow beneath, and a press that sinks the face onto the rim.
 
-Filters live in `components/platform/art.tsx` (`SketchDefs`), mounted once in the platform root layout. Every illustration – the fox, the five week scenes, the printer, the shop objects, the reel backdrops – is authored SVG in that same file. Icons are a single hand-drawn-adjacent set on a 24px grid at one stroke weight (`components/platform/icons.tsx`).
+Filters live in `components/platform/art.tsx` (`SketchDefs`), mounted once in the platform root layout. The artwork itself is imported from `public/art` – the fox and gato stickers, the five week paintings, the printer photographs and the starter renders – and `art.tsx` also holds the components that place it (`Gato`, `WeekPainting`). Icons are a single hand-drawn-adjacent set on a 24px grid at one stroke weight (`components/platform/icons.tsx`).
 
-The staff surfaces under `(ops)` – admin, review, login – keep this repo's earlier design system in `(platform)/ops.css`, whole rather than half-translated.
+The staff surfaces under `(ops)` – admin and review – keep this repo's earlier design system in `(platform)/ops.css`. It is plain CSS over the platform's Tailwind, with its tokens scoped to `.ops-root`, and draws straight 2px borders rather than `.sketch` wobble; only its page sign's plaque is torn. Shared hues alias the platform tokens through `var()`; only the console's own ink and unique tones are literals.
 
 ## Responsive
 

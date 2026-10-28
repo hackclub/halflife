@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { EmptyState, PageHeader, Panel, statusLabel, Table } from "@/app/components/ui"
+import { Button, EmptyState, PageHeader, Panel, Select, statusLabel, Table, TextInput } from "@/app/components/ui"
+import { IconSearch } from "@/app/components/ui/icons"
 import { getThemeDef, THEMES } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { PhaseStatus, Theme } from "@/lib/enums"
@@ -74,14 +75,13 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 
 			<Panel>
 				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-					<input
-						className="hl-input"
+					<TextInput
 						defaultValue={search.q ?? ""}
 						name="q"
 						placeholder="Search projects or owners"
 						style={{ maxWidth: "20rem" }}
 					/>
-					<select className="hl-input" defaultValue={filters.theme ?? ""} name="theme" style={{ maxWidth: "12rem" }}>
+					<Select defaultValue={filters.theme ?? ""} name="theme" style={{ maxWidth: "12rem" }}>
 						<option value="">Any theme</option>
 						{THEMES.map(t => (
 							<option key={t.id} value={t.id}>
@@ -89,44 +89,29 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 							</option>
 						))}
 						<option value={Theme.WARMUP}>Warm Up</option>
-					</select>
-					<select
-						className="hl-input"
-						defaultValue={filters.designStatus ?? ""}
-						name="design"
-						style={{ maxWidth: "12rem" }}
-					>
+					</Select>
+					<Select defaultValue={filters.designStatus ?? ""} name="design" style={{ maxWidth: "12rem" }}>
 						<option value="">Design: any</option>
 						{STATUSES.map(s => (
 							<option key={s} value={s}>
 								Design: {statusLabel(s)}
 							</option>
 						))}
-					</select>
-					<select
-						className="hl-input"
-						defaultValue={filters.buildStatus ?? ""}
-						name="build"
-						style={{ maxWidth: "12rem" }}
-					>
+					</Select>
+					<Select defaultValue={filters.buildStatus ?? ""} name="build" style={{ maxWidth: "12rem" }}>
 						<option value="">Build: any</option>
 						{STATUSES.map(s => (
 							<option key={s} value={s}>
 								Build: {statusLabel(s)}
 							</option>
 						))}
-					</select>
-					<select
-						className="hl-input"
-						defaultValue={filters.tier ? String(filters.tier) : ""}
-						name="tier"
-						style={{ maxWidth: "9rem" }}
-					>
+					</Select>
+					<Select defaultValue={filters.tier ? String(filters.tier) : ""} name="tier" style={{ maxWidth: "9rem" }}>
 						<option value="">Any tier</option>
 						<option value="1">Tier 1</option>
 						<option value="2">Tier 2</option>
 						<option value="3">Tier 3</option>
-					</select>
+					</Select>
 					<label className="hl-row" style={{ gap: "0.35rem" }}>
 						<input defaultChecked={filters.extended} name="extended" type="checkbox" value="1" />
 						Extension running
@@ -135,9 +120,9 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 						<input defaultChecked={filters.unstarted} name="unstarted" type="checkbox" value="1" />
 						Include unstarted
 					</label>
-					<button className="hl-btn" type="submit">
-						Search
-					</button>
+					<Button type="submit">
+						<IconSearch /> Search
+					</Button>
 					<Link className="hl-hint" href="/admin/projects">
 						Reset
 					</Link>

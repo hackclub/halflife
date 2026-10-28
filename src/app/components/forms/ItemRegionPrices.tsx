@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout } from "@/app/components/ui"
+import { Button, Callout, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 /**
@@ -50,9 +50,8 @@ export function ItemRegionPrices({
 									{region.price === null ? `base (${basePrice})` : `override (${region.price})`}
 								</span>
 							</span>
-							<input
+							<TextInput
 								aria-label={`Price in coins for ${region.name}`}
-								className="hl-input"
 								min="0"
 								onChange={e => setValues(v => ({ ...v, [region.id]: e.target.value }))}
 								placeholder={String(basePrice)}

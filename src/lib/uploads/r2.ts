@@ -2,7 +2,8 @@
 import "server-only"
 import { createHash, randomUUID } from "node:crypto"
 import type { S3Client as BunS3Client } from "bun"
-import { HttpError } from "@/lib/errors"
+import { sleep } from "@/lib/concurrency"
+import { HttpError, messageOf } from "@/lib/errors"
 import { isRecord } from "@/lib/unknown"
 
 const DEFAULT_MAX_UPLOAD_BYTES = 104_857_600
@@ -188,11 +189,13 @@ export async function listUploadedObjects(
 	const prefix = opts.prefix ?? ""
 	try {
 		const s3 = await client()
-		const result = await s3.list({
-			continuationToken: opts.cursor || undefined,
-			maxKeys: Math.min(Math.max(opts.limit ?? 100, 1), 1000),
-			prefix: prefix || undefined,
-		})
+		const result = await withBucketRetry(() =>
+			s3.list({
+				continuationToken: opts.cursor || undefined,
+				maxKeys: Math.min(Math.max(opts.limit ?? 100, 1), 1000),
+				prefix: prefix || undefined,
+			}),
+		)
 
 		return {
 			nextCursor: result.isTruncated ? (result.nextContinuationToken ?? null) : null,
@@ -211,7 +214,7 @@ export async function listUploadedObjects(
 			prefix,
 		}
 	} catch (err) {
-		throw asConfigError(err)
+		throw asUploadError(err)
 	}
 }
 
@@ -266,9 +269,9 @@ export function isOwnedKey(userId: string, key: string): boolean {
 export async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
 	try {
 		const s3 = await client()
-		await s3.write(key, body, { type: contentType })
+		await withBucketRetry(() => s3.write(key, body, { type: contentType }))
 	} catch (err) {
-		throw asConfigError(err)
+		throw asUploadError(err)
 	}
 }
 
@@ -299,7 +302,7 @@ export async function presignUpload(key: string, contentType: string): Promise<P
 		const uploadUrl = s3.presign(key, { expiresIn: PRESIGN_TTL_SECONDS, method: "PUT", type: contentType })
 		return { expiresAt: new Date(Date.now() + PRESIGN_TTL_SECONDS * 1000), objectKey: key, uploadUrl }
 	} catch (err) {
-		throw asConfigError(err)
+		throw asUploadError(err)
 	}
 }
 
@@ -321,12 +324,12 @@ function isMissingObject(err: unknown): boolean {
 export async function statObject(key: string): Promise<StoredObjectStat> {
 	try {
 		const s3 = await client()
-		const stat = await s3.stat(key)
+		const stat = await withBucketRetry(() => s3.stat(key))
 		return { size: stat.size, type: stat.type || null }
 	} catch (err) {
 		if (isMissingObject(err))
 			throw new HttpError("VALIDATION_FAILED", "That upload did not arrive. Try sending it again.")
-		throw asConfigError(err)
+		throw asUploadError(err)
 	}
 }
 
@@ -334,11 +337,11 @@ export async function statObject(key: string): Promise<StoredObjectStat> {
 export async function readObjectHead(key: string, bytes: number): Promise<Buffer> {
 	try {
 		const s3 = await client()
-		return Buffer.from(await s3.file(key).slice(0, bytes).arrayBuffer())
+		return Buffer.from(await withBucketRetry(() => s3.file(key).slice(0, bytes).arrayBuffer()))
 	} catch (err) {
 		if (isMissingObject(err))
 			throw new HttpError("VALIDATION_FAILED", "That upload did not arrive. Try sending it again.")
-		throw asConfigError(err)
+		throw asUploadError(err)
 	}
 }
 
@@ -350,32 +353,75 @@ export async function readObjectHead(key: string, bytes: number): Promise<Buffer
 export async function hashObject(key: string): Promise<{ head: Buffer; sha256: string }> {
 	try {
 		const s3 = await client()
-		const reader = s3.file(key).stream().getReader()
-		const hash = createHash("sha256")
-		let head = Buffer.alloc(0)
-		for (;;) {
-			const { done, value } = await reader.read()
-			if (done) break
-			const chunk = Buffer.from(value)
-			hash.update(chunk)
-			if (head.length < 4096) head = Buffer.concat([head, chunk.subarray(0, 4096 - head.length)])
+		// A retry starts the hash over: the bytes from a failed attempt may be half a file, and the digest has to be of the whole object.
+		const readAll = async () => {
+			const reader = s3.file(key).stream().getReader()
+			const hash = createHash("sha256")
+			let head = Buffer.alloc(0)
+			for (;;) {
+				const { done, value } = await reader.read()
+				if (done) break
+				const chunk = Buffer.from(value)
+				hash.update(chunk)
+				if (head.length < 4096) head = Buffer.concat([head, chunk.subarray(0, 4096 - head.length)])
+			}
+			return { head, sha256: hash.digest("hex") }
 		}
-		return { head, sha256: hash.digest("hex") }
+		return await withBucketRetry(readAll)
 	} catch (err) {
 		if (isMissingObject(err))
 			throw new HttpError("VALIDATION_FAILED", "That upload did not arrive. Try sending it again.")
-		throw asConfigError(err)
+		throw asUploadError(err)
 	}
 }
 
 /**
- * Credentials the bucket rejected are an operator problem, not a user one.
+ * The bucket's own answers that mean "the fault is mine, ask again".
  *
- * Without this they surface as an unhandled exception and the participant is told "Something went wrong" – which happened, with a Cloudflare API token pasted into `S3_ACCESS_KEY_ID`, and the phone only found out AFTER the video had been recorded and uploaded. A 503 saying uploads are misconfigured is both true and actionable; the detail stays in the server log, because the message the bucket returns names the credential.
+ * R2's `InternalError` is one of these, and its message already gives the advice – "We encountered an internal error. Please try again." – because the same request a moment later usually succeeds. `SlowDown`, `ServiceUnavailable` and `RequestTimeout` are the same story told at a different moment.
  *
- * Only client-side faults are translated. A network blip or a bucket outage is genuinely transient and should keep its own error and its retry semantics.
+ * Only an `S3Error` qualifies. A network failure reaches the route as some other error and keeps its own retry semantics, because a connection that never opened says nothing about the bucket's health.
  */
-function asConfigError(err: unknown): unknown {
+const TRANSIENT_S3_CODES = new Set(["InternalError", "RequestTimeout", "ServiceUnavailable", "SlowDown"])
+
+/** Long enough for the bucket to move past a bad moment, short enough not to hold the request open while it does. */
+const BUCKET_RETRY_DELAY_MS = 250
+
+/** A bucket fault the caller can do nothing about except try the same request again. */
+export function isTransientS3Error(err: unknown): boolean {
+	if (!isRecord(err) || err.name !== "S3Error") return false
+	if (typeof err.code === "string" && TRANSIENT_S3_CODES.has(err.code)) return true
+	const status = typeof err.status === "number" ? err.status : err.statusCode
+	return typeof status === "number" && status >= 500
+}
+
+/**
+ * Run a bucket call, and once more if the bucket blamed itself.
+ *
+ * Everything this wraps is idempotent – a write to a fixed key, a read, a delete, a listing page – so a second attempt cannot create a second object or skip a page. One retry rather than a loop: the point is to ride out a single bad moment, not to hold the request open against a bucket that is down.
+ *
+ * A recovered moment is not logged. If the retry fails too, `asUploadError` says so in one line.
+ */
+async function withBucketRetry<T>(op: () => Promise<T>): Promise<T> {
+	try {
+		return await op()
+	} catch (err) {
+		if (!isTransientS3Error(err)) throw err
+		await sleep(BUCKET_RETRY_DELAY_MS)
+		return op()
+	}
+}
+
+/**
+ * Turn the bucket's refusals into answers the app can give.
+ *
+ * Credentials it rejected are an operator problem, not a user one. Without this they surface as an unhandled exception and the participant is told "Something went wrong" – which happened, with a Cloudflare API token pasted into `S3_ACCESS_KEY_ID`, and the phone only found out AFTER the video had been recorded and uploaded. A 503 saying uploads are misconfigured is both true and actionable; the detail stays in the server log, because the message the bucket returns names the credential.
+ *
+ * A bucket that is simply having a bad moment is an operator problem too, but a temporary one: by the time this runs it has already been retried once, so the participant gets a 503 that says to send it again instead of a stack trace and "Something went wrong". The log line is the bucket's own message and code, with no trace, because no frame in it would tell an operator anything they could act on.
+ *
+ * Anything left – a missing object, a network blip – keeps its own error and its retry semantics.
+ */
+function asUploadError(err: unknown): unknown {
 	const details = isRecord(err) ? err : null
 	const name = typeof details?.name === "string" ? details.name : undefined
 	const code = typeof details?.code === "string" ? details.code : undefined
@@ -386,12 +432,21 @@ function asConfigError(err: unknown): unknown {
 		&& ["InvalidArgument", "InvalidAccessKeyId", "SignatureDoesNotMatch", "AccessDenied", "NoSuchBucket"].includes(
 			code ?? "",
 		)
-	if (!bunConfigFault && !credentialFault) return err
-	console.error("[uploads] the bucket rejected our credentials:", err)
-	return new HttpError(
-		"NOT_CONFIGURED",
-		"File uploads are misconfigured on this deployment. Nothing you did caused this.",
-	)
+	if (bunConfigFault || credentialFault) {
+		console.error("[uploads] the bucket rejected our credentials:", err)
+		return new HttpError(
+			"NOT_CONFIGURED",
+			"File uploads are misconfigured on this deployment. Nothing you did caused this.",
+		)
+	}
+	if (isTransientS3Error(err)) {
+		console.warn(`[uploads] the bucket is still failing (${code ?? "S3Error"}): ${messageOf(err)}`)
+		return new HttpError(
+			"UNAVAILABLE",
+			"The file store had a problem on its side. Nothing you did caused this – send it again in a moment.",
+		)
+	}
+	return err
 }
 
 /**
@@ -402,9 +457,9 @@ function asConfigError(err: unknown): unknown {
 export async function deleteObject(key: string): Promise<void> {
 	try {
 		const s3 = await client()
-		await s3.delete(key)
+		await withBucketRetry(() => s3.delete(key))
 	} catch (err) {
-		throw asConfigError(err)
+		throw asUploadError(err)
 	}
 }
 

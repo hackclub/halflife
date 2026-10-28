@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, TextInput } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
 export function ProgramSettingsForm({
@@ -53,11 +53,7 @@ export function ProgramSettingsForm({
 			{saved ? <Callout>Saved.</Callout> : null}
 
 			<Field hint="Used for week boundaries and journal dates." label="Timezone">
-				<input
-					className="hl-input"
-					onChange={e => setForm({ ...form, programTimezone: e.target.value })}
-					value={form.programTimezone}
-				/>
+				<TextInput onChange={e => setForm({ ...form, programTimezone: e.target.value })} value={form.programTimezone} />
 			</Field>
 
 			<label className="hl-row" style={{ gap: "0.5rem" }}>
@@ -73,8 +69,7 @@ export function ProgramSettingsForm({
 				hint="Closes submissions at this instant even while the toggle is on. Blank never closes."
 				label="Submissions close (UTC, optional)"
 			>
-				<input
-					className="hl-input"
+				<TextInput
 					onChange={e => setForm({ ...form, submissionsCloseAt: e.target.value || null })}
 					type="datetime-local"
 					value={form.submissionsCloseAt ?? ""}
@@ -94,8 +89,7 @@ export function ProgramSettingsForm({
 				hint="Closes the shop at this instant; the grace window still applies after a review."
 				label="Shop closes (UTC, optional)"
 			>
-				<input
-					className="hl-input"
+				<TextInput
 					onChange={e => setForm({ ...form, shopClosesAt: e.target.value || null })}
 					type="datetime-local"
 					value={form.shopClosesAt ?? ""}
@@ -121,8 +115,7 @@ export function ProgramSettingsForm({
 			</label>
 
 			<Field hint="How long the shop stays open after someone's last review." label="Shop grace days">
-				<input
-					className="hl-input"
+				<TextInput
 					max="90"
 					min="0"
 					onChange={e => setForm({ ...form, shopGraceDays: Number(e.target.value) })}
@@ -132,8 +125,7 @@ export function ProgramSettingsForm({
 			</Field>
 
 			<Field label="Review claim TTL (minutes)">
-				<input
-					className="hl-input"
+				<TextInput
 					max="240"
 					min="5"
 					onChange={e => setForm({ ...form, reviewClaimTtlMinutes: Number(e.target.value) })}

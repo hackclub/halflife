@@ -1,18 +1,10 @@
 import type { ReactNode } from "react"
 import { Button } from "@/app/components/ui"
+import { IconChevronDown } from "@/app/components/ui/icons"
 
 /** The open/closed marker on a Manage button. */
 export function ManageChevron({ open }: { open: boolean }) {
-	return (
-		<svg
-			aria-hidden="true"
-			className={open ? "hl-manage-chevron hl-manage-chevron--open" : "hl-manage-chevron"}
-			fill="none"
-			viewBox="0 0 24 24"
-		>
-			<path d="m6 9 6 6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-		</svg>
-	)
+	return <IconChevronDown className={open ? "hl-manage-chevron hl-manage-chevron--open" : "hl-manage-chevron"} />
 }
 
 /** Opens the controls folded under a project row. */

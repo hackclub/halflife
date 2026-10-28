@@ -337,12 +337,6 @@ body {
 		--puck-face: var(--color-magenta);
 		--puck-rim: #7d0f6c;
 	}
-
-	/* Banking is coin-work, so the bonus node wears the coin colour. */
-	.puck-bonus {
-		--puck-face: var(--color-orange);
-		--puck-rim: var(--color-orange-deep);
-	}
 }
 
 /* ---------- motion ---------- */
@@ -470,11 +464,6 @@ body {
 }
 
 /* ---------- depth ---------- */
-.stack-shadow {
-	box-shadow:
-		0 2px 4px rgba(28, 26, 89, 0.06),
-		0 10px 26px -12px rgba(28, 26, 89, 0.28);
-}
 .lift-shadow {
 	box-shadow:
 		0 3px 6px rgba(28, 26, 89, 0.08),

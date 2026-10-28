@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Callout } from "@/app/components/ui"
+import { Callout, Select, TextInput } from "@/app/components/ui"
 import type { PrinterAwardStatus } from "@/lib/enums"
 import { PRINTER_AWARD_LABELS, PRINTER_AWARD_NEXT } from "@/lib/printer-award"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -50,9 +50,8 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 			}}
 			style={{ gap: "0.4rem", minWidth: "12rem" }}
 		>
-			<select
+			<Select
 				aria-label="Next printer award status"
-				className="hl-select"
 				disabled={busy !== null}
 				onChange={e => {
 					const picked = options.find(option => option === e.target.value)
@@ -66,18 +65,16 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 						{PRINTER_AWARD_LABELS[value]}
 					</option>
 				))}
-			</select>
+			</Select>
 			{next === "SHIPPED" || next === "DELIVERED" ? (
 				<>
-					<input
-						className="hl-input"
+					<TextInput
 						disabled={busy !== null}
 						onChange={e => setTrackingNumber(e.target.value)}
 						placeholder="Tracking number"
 						value={trackingNumber}
 					/>
-					<input
-						className="hl-input"
+					<TextInput
 						disabled={busy !== null}
 						onChange={e => setTrackingCarrier(e.target.value)}
 						placeholder="Carrier"
@@ -86,8 +83,7 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 				</>
 			) : null}
 			{next ? (
-				<input
-					className="hl-input"
+				<TextInput
 					disabled={busy !== null}
 					onChange={e => setNote(e.target.value)}
 					placeholder={next === "REVOKED" ? "Reason (required)" : "Note (optional)"}

@@ -57,7 +57,7 @@ scripts/e2e-db.ts drop, create, migrate, seed
 
 ## Covered today
 
-- The landing page, the login page and `/api/health`.
+- The landing page, the stale `/login` redirect and `/api/health`.
 - A signed-out visitor is redirected from `/dashboard` to the landing page.
 - A forged session cookie is rejected, and `/signed-out` clears it.
 - Participants get a 404 from `/admin` and `/review`; admins see the admin overview and reviewers see the review queue.

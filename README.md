@@ -5,10 +5,15 @@ Hack Club's ten-week hardware programme. One repository, two worlds that are mea
 - **The landing page** (`src/app/(site)`) – the marketing frame, built to the Figma **"landing page (claude)"** (`275:8`) with the palette from **"color scheme"** (`275:222`).
 - **The platform** (`src/app/(platform)`) – the logged-in product: a Duolingo-style trail of checkpoints, a journal, a shop, and the Doomscroller. Documented in [docs/platform-ui.md](./docs/platform-ui.md).
 
-Signed out, `/` is the landing page. Signed in, `proxy.ts` redirects it to the trail at `/dashboard`: two route groups cannot both define `/`, and each has its own root layout and stylesheet. The cookie check there is optimistic and decides nothing that matters – the real session guard is a server component.
+The same app also carries two smaller surfaces:
+
+- **The staff console** (`src/app/(platform)/(ops)`) – admin and review, in the platform's earlier design system (`ops.css`).
+- **The handoff page** (`src/app/(handoff)`) – the public phone upload a QR code opens.
+
+Signed out, `/` is the landing page. Signed in, `proxy.ts` redirects it to the trail at `/dashboard`: two route groups cannot both define `/`, and each has its own root layout and stylesheet. The cookie check there is optimistic and decides nothing that matters – the real session guard is a server component. There is no separate sign-in page: the landing's `log in` mark starts Hack Club Auth directly, and a stale `/login` link redirects to `/`.
 
 ```bash
-pnpm install
+bun install
 ./dev.sh      # Postgres in Docker, migrated and seeded, then next dev
 ```
 
@@ -19,7 +24,7 @@ New here? [docs/BACKEND.md](./docs/BACKEND.md) is the handoff – the shape, the
 ```text
 src/app/(site)/               the landing page
 src/app/(platform)/(app)/     the trail, projects, shop, explore
-src/app/(platform)/(ops)/     admin, review, login – earlier design system
+src/app/(platform)/(ops)/     admin, review – earlier design system
 src/app/(handoff)/            the phone upload page a QR code opens
 src/app/api/                  every write in the product
 src/components/site/          landing sections
@@ -35,12 +40,12 @@ public/art/                   hero painting, scatter photos, comp SVG exports
 ## Checking it still works
 
 ```bash
-pnpm typecheck && pnpm lint && pnpm build
-pnpm verify:ledger      # the economy: two pots, and every printer reachable
-pnpm verify:store       # the database-to-trail mapping
-pnpm verify:onboarding  # the first checkpoint cannot be skipped
-pnpm verify:feed        # moderation actually removes things
-pnpm verify:handoff     # the QR upload token is single-use
+bun run typecheck && bun run lint && bun run build
+bun run verify:ledger      # the economy: two pots, and every printer reachable
+bun run verify:store       # the database-to-trail mapping
+bun run verify:onboarding  # the first checkpoint cannot be skipped
+bun run verify:feed        # moderation actually removes things
+bun run verify:handoff     # the QR upload token is single-use
 ```
 
 The verify scripts write to whatever `DATABASE_URL` points at and clean up after themselves. Point them at a scratch database, never production.
@@ -49,25 +54,18 @@ The verify scripts write to whatever `DATABASE_URL` points at and clean up after
 
 ### 1. The logo
 
-`src/components/wordmark.tsx` sets the wordmark in live type by default. Drop your artwork in `public/brand/` and set one constant:
-
-```ts
-const LOGO_SRC = "/brand/half-life-wordmark.svg";
-const LOGO_ASPECT = 981 / 261; // your file's width ÷ height
-```
-
-The comp reserves a 981 × 261 box. The slot fills its width either way, so nothing else changes.
+`src/components/site/wordmark.tsx` draws the wordmark in live type by default; the hero opts into the painted artwork with `art`. That artwork is imported from `public/art/logo.png`, and its box takes its aspect from the file, so a replacement of any shape needs no measurements – swap the file or change the import and the hero picks it up. The footer keeps live type, because it recolours the wordmark and an imported image's fills cannot take a `color`.
 
 ### 2. The step photos and project photos
 
 Every reserved photo is an `<ImageSlot>` – an ink plate with cyan registration ticks and the artwork's native size printed in it, so an empty slot reads as a deliberate footprint rather than a broken image. Each one tells you its size:
 
-| Where                          | Native size | File                                  |
-| ------------------------------ | ----------- | ------------------------------------- |
-| Step 2 – "get funding…"        | 736 × 155   | `src/components/process.tsx`          |
-| Step 3 – "then spend 5 weeks…" | 736 × 269   | `src/components/process.tsx`          |
-| Step 4 – "get a 3D printer!"   | 736 × 269   | `src/components/process.tsx`          |
-| Carousel cards (×5)            | 329 × 377   | `src/lib/content.ts` → `BUILD_CARDS`  |
+| Where                          | Native size | File                                      |
+| ------------------------------ | ----------- | ----------------------------------------- |
+| Step 2 – "get funding…"        | 736 × 155   | `src/components/site/process.tsx`         |
+| Step 3 – "then spend 5 weeks…" | 736 × 269   | `src/components/site/process.tsx`         |
+| Step 4 – "get a 3D printer!"   | 736 × 269   | `src/components/site/process.tsx`         |
+| Carousel cards (×5)            | 329 × 377   | `src/lib/site/content.ts` → `BUILD_CARDS` |
 
 Replace an `<ImageSlot …/>` with `<Image …/>` in the same wrapper – the box is already the comp's box.
 

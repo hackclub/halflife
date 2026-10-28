@@ -59,10 +59,10 @@ colors:
   teal-dark: "#025a4f"
   coral-dark: "#a53131"
   # ── Staff console (src/app/(platform)/ops.css) ─────────────────────────────
-  # The platform's earlier system, kept whole for admin, review and login. In
-  # ops.css these are plain `--color-*` names scoped to the (ops) route group;
-  # the `ops-` prefix is this document's, so they cannot be confused with the
-  # platform tokens they share names with.
+  # The platform's earlier system, kept for admin and review. In ops.css these
+  # are plain `--color-*` names on the `.ops-root` wrapper the console renders
+  # inside; the `ops-` prefix is this document's, so they cannot be confused
+  # with the platform tokens they share names with.
   ops-surface: "#fcf7f7"
   ops-surface-raised: "#ffffff"
   ops-surface-sunken: "#f2ecec"
@@ -237,7 +237,7 @@ components:
 
 Half Life runs **two visual worlds on purpose**, and the split is the first thing to understand before writing any screen. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything. The platform is where those same teenagers then work, for ten weeks, most days. A world that serves the first badly serves the second, so they were never merged.
 
-There is a third, which is not a world so much as a back room: the staff console under `(ops)` – admin, review, login – carries the platform's earlier design system in `ops.css`, kept whole rather than half-translated when the participant platform was rebuilt from the comp. In the CSS its tokens are plain `--color-*` names; this document prefixes them `ops-` so they cannot be mistaken for the platform's. It redefines names the platform also uses (`ink`, `teal`, `mint`, `magenta`), which is exactly why it is scoped to that route group: loaded globally it would quietly repaint the trail.
+There is a third, which is not a world so much as a back room: the staff console under `(ops)` – admin and review – carries the platform's earlier design system in `ops.css`, kept rather than half-translated when the participant platform was rebuilt from the comp. In the CSS its tokens are plain `--color-*` names; this document prefixes them `ops-` so they cannot be mistaken for the platform's. It redefines names the platform also uses (`ink`, `teal`, `mint`, `magenta`), so the stylesheet scopes them to `.ops-root`, the wrapper the console renders inside: on `:root` they would quietly repaint the trail after a navigation. The stylesheet is plain CSS over the platform's Tailwind, not a second copy of it. Where it shares a hue with the platform it aliases the platform token (`--color-accent` is `var(--color-sky)`) rather than copying the hex; only its own ink and unique tones are literals. The phone handoff page is a third root layout – public by design, so it cannot sit under the session-gated shell – but it is drawn in the platform's world rather than the console's: the same stylesheet, fonts and filter definitions.
 
 **Landing page – Creative North Star: "The Production Line"**
 
@@ -294,6 +294,8 @@ Three palettes. Nothing crosses between the landing and the platform; the staff 
 
 **The Two Worlds Rule.** A token from one world never appears in the other. If a platform screen needs an accent, it is `sky`, not `hl-cyan`. The two palettes do not share a single value, and a screen that mixes them belongs to neither.
 
+**The One Kit Per Surface Rule.** A surface is drawn in one kit, not a blend of both. When one component has to appear in both worlds it names the surface it is on and swaps its class set (see `DisputeThread`); it does not import the other world's primitives. The console aliases the platform's shared hues (`--color-accent` is `var(--color-sky)`) and keeps only its own ink and unique tones as literals; `src/app/components/ui/ops-tokens.test.ts` fails if an alias is pasted back as a hex. The promotion strip's literal fallbacks are guarded the same way.
+
 **The Tinted Secondary Rule.** Secondary text is tinted from its own surface, never neutral grey. The landing derives `hl-ink-soft` as ink at 80% over paper and `hl-paper-soft` as paper at 78% over ink. The platform's secondary text is `navy-soft`, the navy hue lifted until it reads as a second voice.
 
 **The State Colour Rule.** On the trail a puck's colour is its state, and each state owns one hue: sky open, teal done, magenta hand-in, gold setup, sand locked, teal-grey passed. Don't reuse these hues on a puck for anything else.
@@ -321,7 +323,7 @@ Platform, text on cream: navy 14.75:1 · navy-soft 7.82:1 · violet-deep 5.67:1 
 
 ## Typography
 
-**Landing – Display and Tagline:** Ubuntu · **Body:** Open Sans · **Hand:** Masterpiece (the wordmark). **Platform – Display and Body:** Plus Jakarta Sans · **Hand:** Shantell Sans.
+**Landing – Display and Tagline:** Ubuntu · **Body:** Open Sans · **Hand:** Masterpiece (the wordmark). **Platform – Display and Body:** Plus Jakarta Sans · **Hand:** Shantell Sans. **Staff console – Display and Body:** Plus Jakarta Sans, with the browser's mono stack for ids; it has no hand face.
 
 **Character:** The landing pairs a friendly geometric sans for everything that shouts with a neutral workhorse body, and keeps its brush face for the wordmark alone. The platform runs one humanist sans for everything structural and reserves a hand-lettered face for small uppercase labels, margin asides and timestamps – the only place its voice gets loose.
 
@@ -357,6 +359,8 @@ Platform, text on cream: navy 14.75:1 · navy-soft 7.82:1 · violet-deep 5.67:1 
 
 Below lg (1024px) the left rail is gone: a sticky 64px header carries the logo and a Doomscroller link, and a fixed bottom tab bar carries the main destinations.
 
+**Staff console.** A 62rem reading column (`.hl-shell`) under a wrapping top strip of links (`.hl-nav`), with the 2.5rem top inset the hanging sign's straps need. Tables scroll inside their own box; a page or diagram needing more width breaks out with `.hl-page-wide` or `.hl-panel--wide`.
+
 **The trail** swings its checkpoints along a sine (23% amplitude) down a single column. A milestone takes a full stride, and a journal entry a shorter one with a smaller puck, so a long week reads as rhythm rather than a queue. A stride is sized by the node it leaves, never by the one it arrives at, so a tall label never lands on the next puck.
 
 **The Doomscroller** is a page of the platform, not a takeover. Its reel column is exactly as wide as a 9:16 card fits in the frame, less the player strip under it. The actions hang off its right side from md up, with that room reserved, and the comments stand beside it as a panel from xl or rise as a sheet below.
@@ -373,6 +377,8 @@ Rhythm is a small set of stack gaps: 0.75rem tight, 1.5rem standard, 2.4rem betw
 - **Stickers and torn plates** – the logo, week banners, page signs, the grand prize art – carry a soft drop, because they are paper stuck onto paper.
 - **Reel cards** carry the lift shadow, because a video is an object on the desk rather than a region of the page.
 
+**The staff console is flat too.** Its sign plaque is lifted off the page with a drop shadow; nothing else there is raised.
+
 ### Shadow Vocabulary
 
 - **Stack** (`0 2px 4px rgba(28,26,89,.06), 0 10px 26px -12px rgba(28,26,89,.28)`): the lowest lift.
@@ -385,7 +391,7 @@ All shadows are navy-tinted, never black.
 
 ### Named Rules
 
-**The Outline-Not-Shadow Rule.** A panel, card, button or field is separated by a drawn outline and the page ground showing through, never by a shadow. If something needs separating, give it a border and a gap.
+**The Outline-Not-Shadow Rule.** A panel, card, button or field is separated by an outline – drawn on the platform, a 2px rule in the staff console – and the page ground showing through, never by a shadow. If something needs separating, give it a border and a gap.
 
 **The Paper-On-Paper Rule.** A shadow means an object sitting on the notebook – a puck, a sticker, a strip of tape, a reel. If it isn't something you could pick up, it doesn't get one.
 
@@ -401,13 +407,13 @@ All shadows are navy-tinted, never black.
 - **Chips, switches and round controls:** fully round.
 - **Pucks:** circles.
 
-The defining move is not the radius but the **stroke**: every border is a wobbling ink line generated by an SVG turbulence displacement – on the platform a slow wander, roughly 55px between wiggles with about 2px of travel either way, in three seeds so neighbours are not identical tracings. Torn shapes (week banners, page signs, the nav card's tab) use a stretched, rougher noise that tears along their long edge. The staff console's wobble is tighter, about 20px between wiggles.
+The defining move is not the radius but the **stroke**: every border is a wobbling ink line generated by an SVG turbulence displacement – on the platform a slow wander, roughly 55px between wiggles with about 2px of travel either way, in three seeds so neighbours are not identical tracings. Torn shapes (week banners, page signs, the nav card's tab) use a stretched, rougher noise that tears along their long edge. The staff console draws no wobble: its edges are straight 2px rules, and the one torn shape left there is the hanging sign's plaque, which takes the platform's tear filter.
 
 Illustration carries its own shape language: every character and theme painting is a die-cut sticker with a pale outline baked into the art.
 
 ### Named Rules
 
-**The Drawn Edge Rule.** A platform border is drawn, not stroked. Use `.sketch` (or `.sketch-2` / `.sketch-3`, which carry different seeds) rather than a CSS border, and vary which one between adjacent cards. Two cards with the same wobble read as a repeated texture, which is the opposite of hand-made. In the staff console the equivalent is `.hl-wobbly` plus `<WobbleBorder/>` with a `seed` prop.
+**The Drawn Edge Rule.** A platform border is drawn, not stroked. Use `.sketch` (or `.sketch-2` / `.sketch-3`, which carry different seeds) rather than a CSS border, and vary which one between adjacent cards. Two cards with the same wobble read as a repeated texture, which is the opposite of hand-made. The staff console is the exception: a panel, field or button there takes a real 2px border (`ops-border`, or `field-edge` on a field), and only the sign's plaque is torn.
 
 **The Filter Applies To The Edge Rule.** The displacement filter goes on the border element only, never on a container. Filtering an element that holds text drags the text through the same displacement and turns it to mush.
 
@@ -430,17 +436,18 @@ Illustration carries its own shape language: every character and theme painting 
 - **Shape:** 8px radius, 2px navy outline on every variant.
 - **Primary:** sign blue (`#61cdf1`) on navy text, `0.5rem 1.1rem`. Hover deepens to `accent`.
 - **Default:** white ground, navy text and outline. Hover fills mint.
-- **Danger:** flame ground, white text.
+- **Danger:** `danger-ink` (`#c73b3b`) ground with white text – white on flame is 3.33:1, on this 5.10.
 
 ### Focus
 
 - **Platform:** a 3px magenta outline at 3px offset with a 6px radius, on every focusable element.
-- **Staff console:** a 3px `accent` outline at 2px offset.
+- **Staff console:** a 3px `accent` outline at 2px offset, scoped to `.ops-root`.
 
 ### Chips
 
 - A pill of label type on a pale fill in its own tone: violet (tier), muted (theme, neutral facts), sky, teal, gold, coral.
 - They name a fact about the thing they sit on. Two per header at most – a row of chips reads as clutter, and the rest of a project's facts sit in one quiet line of hand text beside them.
+- **Staff console:** a `.hl-badge` – an outlined pill in its status ink, with no tinted fill.
 
 ### Cards / Panels
 
@@ -448,11 +455,13 @@ Illustration carries its own shape language: every character and theme painting 
 - **Background:** white for panels carrying forms, entries or feeds; cream at 60% for rail cards that sit in the chrome.
 - **Padding:** `1.25rem 1.5rem` to `1.75rem`.
 - **Never nested.** A panel inside a panel has no meaning in this system.
+- **Staff console:** `.hl-panel` – 10px radius, a real 2px `ops-border`, white ground.
 
 ### Inputs / Fields
 
 - **Style:** a real 2px `field` border, 12px radius, a barely-there 2% navy wash that turns white on focus. The border moves to `navy-soft` on hover and to violet on focus. Labels sit above in label type in violet-deep. `inputClass` and `borderedInputClass` in `ui.tsx` are this style.
 - **Invalid:** a coral-deep border (`aria-invalid`).
+- **Staff console:** `.hl-input` – 8px radius, a real 2px `field-edge` border, white ground; labels are 0.95rem bold above the control and hints are `ink-muted`.
 
 ### Navigation
 
@@ -462,6 +471,7 @@ Illustration carries its own shape language: every character and theme painting 
   - Other items: semibold navy-soft.
   - Hover: navy.
 - **Below lg:** a bottom tab bar of icon + label cells replaces the sidebar. The current cell is navy, the rest navy-soft.
+- **Staff console:** one wrapping top strip of bold navy links (`.hl-nav`) on white with a 2px `ops-border` under it; no sidebar and no tab bar.
 
 ### The checkpoint path (signature)
 
