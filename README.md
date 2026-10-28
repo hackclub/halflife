@@ -19,7 +19,7 @@ New here? [docs/BACKEND.md](./docs/BACKEND.md) is the handoff – the shape, the
 ```text
 src/app/(site)/               the landing page
 src/app/(platform)/(app)/     the trail, projects, shop, explore
-src/app/(platform)/(ops)/     admin, review, login – earlier design system
+src/app/(platform)/(ops)/     admin, review – earlier design system
 src/app/(handoff)/            the phone upload page a QR code opens
 src/app/api/                  every write in the product
 src/components/site/          landing sections

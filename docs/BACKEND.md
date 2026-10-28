@@ -14,7 +14,7 @@ Next.js 16 App Router, Postgres via Prisma 7, Cloudflare R2 for media, better-au
 | --- | --- |
 | `(site)` | The marketing page. Own root layout and stylesheet. |
 | `(platform)/(app)` | The logged-in product: trail, projects, shop, feed. |
-| `(platform)/(ops)` | Admin, review, login. Carries `ops.css`, the earlier design system. |
+| `(platform)/(ops)` | Admin and review. Carries `ops.css`, the earlier design system. |
 | `(handoff)` | One public page: the phone upload a QR code opens. |
 
 `proxy.ts` redirects `/` to `/dashboard` when a session cookie is present, so a stranger gets the landing page and a participant lands on the trail, which has its own URL. That cookie check is optimistic and decides nothing – `(app)` runs `requireSessionPage()`.

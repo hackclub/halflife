@@ -68,7 +68,7 @@ Brand comes from the Figma file: Plus Jakarta Sans for display, Shantell Sans fo
 
 Filters live in `components/platform/art.tsx` (`SketchDefs`), mounted once in the platform root layout. Every illustration – the fox, the five week scenes, the printer, the shop objects, the reel backdrops – is authored SVG in that same file. Icons are a single hand-drawn-adjacent set on a 24px grid at one stroke weight (`components/platform/icons.tsx`).
 
-The staff surfaces under `(ops)` – admin, review, login – keep this repo's earlier design system in `(platform)/ops.css`, whole rather than half-translated.
+The staff surfaces under `(ops)` – admin and review – keep this repo's earlier design system in `(platform)/ops.css`, kept rather than half-translated.
 
 ## Responsive
 
