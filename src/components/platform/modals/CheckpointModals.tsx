@@ -2940,10 +2940,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									this project.
 								</Acknowledgement>
 								<Acknowledgement checked={acknowledgedFixed} onChange={setAcknowledgedFixed}>
-									I have fixed all issues mentioned in my reviewer&rsquo;s &ldquo;needs changes&rdquo; note.
+									I have fixed all issues mentioned in my project&rsquo;s &ldquo;needs changes&rdquo; note.
 								</Acknowledgement>
 								<Acknowledgement checked={acknowledgedAll} onChange={setAcknowledgedAll}>
-									I understand and have abided by the above 3 checkboxes.
+									I understand and have abided by all of the above 3 checkboxes.
 								</Acknowledgement>
 							</div>
 						</div>
