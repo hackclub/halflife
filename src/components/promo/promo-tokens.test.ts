@@ -14,8 +14,9 @@ function theme(css: string): { [_: string]: string } {
 	const open = css.indexOf("{", start)
 	const end = css.indexOf("\n}", open)
 	const out: { [_: string]: string } = {}
-	for (const m of css.slice(open + 1, end).matchAll(/(--color-[a-z0-9-]+)\s*:\s*(#[0-9a-f]{6});/g)) {
-		if (m[1] && m[2]) out[m[1]] = m[2]
+	for (const match of css.slice(open + 1, end).matchAll(/(--color-[a-z0-9-]+)\s*:\s*(#[0-9a-f]{6});/g)) {
+		const [, name, value] = match
+		if (name && value) out[name] = value
 	}
 	return out
 }
