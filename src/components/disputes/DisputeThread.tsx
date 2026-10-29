@@ -15,13 +15,13 @@ import { sendJson, useAction } from "@/lib/use-action"
 const SKINS = {
 	console: {
 		actions: "hl-row",
-		body: "whitespace-pre-wrap",
+		body: "hl-dispute-body whitespace-pre-wrap",
 		error: "hl-callout hl-callout--danger",
 		form: "hl-stack hl-stack--tight",
 		input: "hl-textarea",
-		item: "hl-stack hl-stack--tight",
+		item: "hl-dispute-item",
 		label: "hl-label-text",
-		list: "hl-stack hl-stack--tight",
+		list: "hl-dispute-list",
 		meta: "hl-hint",
 		outcome: "hl-hint",
 		primary: "hl-btn hl-btn--primary",
