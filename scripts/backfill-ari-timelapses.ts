@@ -13,6 +13,8 @@ import { type AriRefreshTarget, flag, limitArg, phaseArg, refreshAriShip } from 
  *
  * Re-sending is also how an already-sent ship drops Hackatime project names that only a recording carried: Ari counts every named project as time, so a recording's project is evidence for its clip, not hours the maker linked. Useful after the ship builder stopped adding those names; pass `--project <themeProjectId>` to refresh one hand-in.
  *
+ * It is also the repair path for ships sent before the builder netted a journal's claim against the Lapse clips Ari counts. Ari adds a journal's minutes and every clip's duration, so a maker who both devlogged and recorded a sitting was shown twice that time (a 7.9h project read as 17h). A hand-in sent since carries the net figure; an open ship from before is replaced with one by re-running this.
+ *
  * Read-only unless `--commit` is passed.
  *
  * Run with `bun run ari:backfill-timelapses` (dry run), then `bun run ari:backfill-timelapses -- --limit 1 --commit` to prove it on one hand-in. Flags: `--commit`, `--phase design|build`, `--project <themeProjectId>`, `--limit <n>`.

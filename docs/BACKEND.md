@@ -52,7 +52,7 @@ Reels bind to their node by `Post.checkpointKey`, not by counting posts of a kin
 
 **Banking is paced by the printer, not the tier.** A tier decides how many of a design week's hours the project itself eats (`fundingHours`); everything above that banks at the rate the chosen machine needs (`goal.bankedHours`). Every tier banks the same for the same printer. `lib/config/printers.ts` is the budget spreadsheet transcribed – the season must land on each price, and `verify:ledger` checks all eight machines.
 
-**Hours have one implementation.** `rollUpHours()` decides what a phase is worth and both the trail and the reviewer call it. Journal and Hackatime hours are additive; timelapse duration is *not* (it is a recording of hours already claimed).
+**Hours have one implementation.** `rollUpHours()` decides what a phase is worth and both the trail and the reviewer call it. Journal and Hackatime hours are additive; timelapse duration is *not* (it is a recording of hours already claimed). Ari does not share that model – it adds a journal's minutes and the duration of every Lapse clip it pulls – so the ship sends each entry's claim net of the clips Ari will count (`journalMinutes` in lib/ari), and the recorded sitting is credited once.
 
 **Uploads store keys, never URLs**, minted at read time so the bucket can move. Keys are `<folder>/<userId>/<uuid>.<ext>` and are **not secrets** – the feed returns a full video URL for every reel. Anywhere a client hands a key back, check `isOwnedKey()`, or a stranger's timelapse becomes evidence for hours nobody worked.
 
