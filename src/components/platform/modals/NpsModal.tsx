@@ -105,7 +105,7 @@ export function NpsGate() {
 					</legend>
 					<div
 						aria-label="How likely are you to recommend Half Life to a friend?"
-						className="mt-2.5 flex flex-wrap gap-1.5"
+						className="mt-2.5 flex flex-wrap justify-between gap-1.5"
 						role="radiogroup"
 					>
 						{Array.from({ length: 11 }, (_, n) => (
@@ -145,7 +145,11 @@ export function NpsGate() {
 					/>
 				</Field>
 
-				<Field hint="Anything that would make it better (we know review is slow!)." id="nps-improve" label="What could be better? (optional)">
+				<Field
+					hint="Anything that would make it better (we know review is slow!)."
+					id="nps-improve"
+					label="What could be better? (optional)"
+				>
 					<TextArea
 						id="nps-improve"
 						maxLength={2000}
