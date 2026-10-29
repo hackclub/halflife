@@ -428,6 +428,27 @@
 		transform: translateY(1px);
 	}
 
+	/* ── Dispute thread ────────────────────────────────────────────────────── */
+	/*
+	 * A message's meta is its label and its body is the message, so the body sits tight under the label and indented from it, while the gap between messages is the wider interval. That is what groups each meta with its own text instead of giving every line the same rhythm.
+	 */
+	.hl-dispute-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+	.hl-dispute-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+	.hl-dispute-body {
+		padding-left: 0.75rem;
+	}
+
 	/* ── Layout helpers ────────────────────────────────────────────────────── */
 	.hl-shell {
 		max-width: 62rem;

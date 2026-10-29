@@ -95,6 +95,8 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 	const [batchId, setBatchId] = useState<string | null>(null)
 	const [outcomes, setOutcomes] = useState<Outcome[]>([])
 	const [remaining, setRemaining] = useState(0)
+	// The preview refreshes once the run ends and those projects are no longer eligible, so the total is captured here.
+	const [batchTotal, setBatchTotal] = useState(0)
 	const [finished, setFinished] = useState(false)
 	const blocked = blockedReason(preview)
 
@@ -115,6 +117,15 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 				setFinished(true)
 				return { data: result.data, ok: true }
 			}
+			// Nothing was claimed this round, so another request holds the rest. Asking again in a tight loop would only
+			// hammer the route; the batch is resumable once those claims expire.
+			if (result.data.outcomes.length === 0) {
+				setFinished(true)
+				return {
+					message: "The remaining grants are already being processed. Resume this batch in a few minutes.",
+					ok: false,
+				}
+			}
 		}
 		setFinished(true)
 		return {
@@ -126,11 +137,11 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 	function issue() {
 		setConfirming(false)
 		setOutcomes([])
+		setBatchTotal(preview.eligible.length)
 		setRemaining(preview.eligible.length)
 		setFinished(false)
-		void run(
-			"issue",
-			async () => {
+		void run("issue", async () => {
+			try {
 				const created = await sendJsonParsed(Batch, "/api/admin/grant-cards/batches", {
 					body: { fingerprint: preview.fingerprint },
 				})
@@ -138,15 +149,16 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 				setBatchId(created.data.batchId)
 				const processedBatch = await processBatch(created.data.batchId)
 				return processedBatch.ok ? created : processedBatch
-			},
-			() => router.refresh(),
-		)
+			} finally {
+				// Rows may have been paid even when the run ends in an error, so the preview is stale either way.
+				router.refresh()
+			}
+		})
 	}
 
 	const issued = outcomes.filter(outcome => outcome.status === "ISSUED")
 	const amountIssued = issued.reduce((total, outcome) => total + outcome.amountCents, 0)
 	const processed = outcomes.length
-	const total = preview.eligible.length
 
 	return (
 		<div className="hl-stack hl-stack--tight">
@@ -169,7 +181,7 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 			{processed > 0 ? (
 				<div className="hl-stack hl-stack--tight">
 					<p className="hl-hint">
-						{processed} of {total} processed, {formatUsd(amountIssued / 100)} issued
+						{processed} of {batchTotal} processed, {formatUsd(amountIssued / 100)} issued
 						{remaining > 0 ? `, ${remaining} left` : finished ? ", finished" : ""}.
 					</p>
 					{batchId ? (

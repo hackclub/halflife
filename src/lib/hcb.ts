@@ -438,13 +438,22 @@ export function reconcileCardGrantIssue(
 	if (list.kind === "unreadable") return { kind: "ambiguous" }
 
 	const email = expected.email.trim().toLowerCase()
-	const candidates = list.rows.filter(
-		row =>
-			row.amountCents === expected.amountCents
-			&& row.email?.toLowerCase() === email
-			&& row.purpose === expected.purpose,
+	// The marker and amount identify the project's attempt. A row that carries both but no readable owner is not
+	// evidence the attempt was absent: HCB may not render another account's email to this token. Retrying then pays twice.
+	const sameProject = list.rows.filter(
+		row => row.amountCents === expected.amountCents && row.purpose === expected.purpose,
 	)
-	if (candidates.length === 0) return { kind: "absent" }
+	if (sameProject.length === 0) {
+		// Without the marker the row cannot be tied to this project. If HCB returned this amount and owner but dropped
+		// the purpose, the marker itself is unreadable, which is not the same answer as "nothing landed".
+		const unmarked = list.rows.some(
+			row => row.amountCents === expected.amountCents && row.email?.toLowerCase() === email && row.purpose === null,
+		)
+		return unmarked ? { kind: "ambiguous" } : { kind: "absent" }
+	}
+	const candidates = sameProject.filter(row => row.email?.toLowerCase() === email)
+	// Same project and amount under an unreadable or different owner: a human has to look, never a retry.
+	if (candidates.length === 0) return { kind: "ambiguous" }
 
 	const dated: { at: number; id: string }[] = []
 	for (const row of candidates) {

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process"
 import { resolve } from "node:path"
-import { Pool } from "pg"
+import { SQL } from "bun"
+import { bunSqlUrl } from "@/lib/db-url"
 import { e2eDatabaseUrl } from "../e2e/env"
 
 /**
@@ -25,18 +26,18 @@ function programStartDate(): string {
 }
 
 async function main(): Promise<void> {
-	const url = new URL(e2eDatabaseUrl)
+	const url = new URL(bunSqlUrl(e2eDatabaseUrl))
 	const database = url.pathname.replace(/^\//, "")
 	const adminUrl = new URL(url)
 	adminUrl.pathname = "/postgres"
 
 	console.log(`[e2e] recreating ${database} on ${url.host}`)
-	const admin = new Pool({ connectionString: adminUrl.toString() })
+	const admin = new SQL(adminUrl.toString())
 	try {
-		await admin.query(`drop database if exists "${database}" with (force)`)
-		await admin.query(`create database "${database}"`)
+		await admin.unsafe(`drop database if exists "${database}" with (force)`)
+		await admin.unsafe(`create database "${database}"`)
 	} finally {
-		await admin.end()
+		await admin.close()
 	}
 
 	const startDate = programStartDate()
@@ -58,10 +59,10 @@ async function main(): Promise<void> {
  * The production seed intentionally contains no item a fresh participant may buy: every catalogue item is gated on shipping themes, and printers are not sold in the shop. Phase 2 needs one un-gated, affordable item, so it lives only in the E2E database.
  */
 async function prepareShopFixtures(): Promise<void> {
-	const pool = new Pool({ connectionString: e2eDatabaseUrl })
+	const pool = new SQL(bunSqlUrl(e2eDatabaseUrl))
 	try {
-		await pool.query(`update program_settings set "shopOpen" = true, "shopClosesAt" = null where id = 'singleton'`)
-		await pool.query(
+		await pool.unsafe(`update program_settings set "shopOpen" = true, "shopClosesAt" = null where id = 'singleton'`)
+		await pool.unsafe(
 			`insert into shop_item (
 				id, name, description, category, "priceCredits", "maxPerUser",
 				"requiresPrinterQualified", active, "sortOrder", "createdAt", "updatedAt"
@@ -76,7 +77,7 @@ async function prepareShopFixtures(): Promise<void> {
 				active = true`,
 		)
 	} finally {
-		await pool.end()
+		await pool.close()
 	}
 }
 

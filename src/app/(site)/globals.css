@@ -247,10 +247,10 @@ body {
 
 /* Carousel: a native scroll container, so touch, trackpad, keyboard and momentum all come for free – which is what lets the belt carry no controls of its own. It is driven by writing scrollLeft every frame, so scroll-behavior stays instant here. */
 .rail {
+	-ms-overflow-style: none;
 	scroll-behavior: auto;
 	overscroll-behavior-x: contain;
 	scrollbar-width: none;
-	-ms-overflow-style: none;
 }
 
 /* The belt is the only focus stop in its band, and the page's cyan ring falls to 1.77:1 on --color-hl-blue. Ink reads at 5.05:1, and an inset ring keeps a full-bleed scroller's outline from being clipped at the viewport edge. */

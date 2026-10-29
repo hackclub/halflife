@@ -81,20 +81,20 @@
 }
 
 .plate {
-	margin: 0;
 	padding: 0.75rem 1.25rem;
-	border-radius: 0.75rem;
-	corner-shape: bevel;
-	background-color: var(--plate);
-	color: var(--ink);
+	margin: 0;
 	font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
 	/* 3.25rem is the size the line fits the 42rem column on one line at: it measures 11.4em plus the plate's padding. */
 	font-size: clamp(2rem, 8vw, 3.25rem);
 	font-weight: 700;
-	letter-spacing: -0.03em;
 	line-height: 1.05;
+	color: var(--ink);
+	letter-spacing: -0.03em;
 	/* Not `balance`. A fit-content box is as wide as the line could have been, not as the lines it ended up with, so balanced lines leave the plate with a blank strip down its right side. `pretty` fills the first line and keeps the plate on the ink. */
 	text-wrap: pretty;
+	background-color: var(--plate);
+	border-radius: 0.75rem;
+	corner-shape: bevel;
 }
 
 /* The landing's stacked weld, cut short. It leaves the plate at the same 41.78% the landing's header weld does and is sheared before it arrives, so the line visibly runs out above the station it was built to reach. */

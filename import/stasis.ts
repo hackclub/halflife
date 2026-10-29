@@ -17,9 +17,10 @@
  * - PII: emails are anonymised unless --keep-emails, encrypted columns are never read, and third-party ids that would collide with an existing row are dropped rather than failing the import.
  */
 
-import { Pool } from "pg"
+import { SQL } from "bun"
 import { DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor } from "@/lib/config/program"
 import { getTierOrThrow } from "@/lib/config/tiers"
+import { bunSqlUrl } from "@/lib/db-url"
 import {
 	CoinBucket,
 	HoursSource,
@@ -50,7 +51,7 @@ const LIMIT = Number(args.find(a => a.startsWith("--limit="))?.split("=")[1] ?? 
 const KEEP_EMAILS = has("keep-emails")
 const DRY = has("dry-run")
 
-const source = new Pool({ connectionString: sourceUrl })
+const source = new SQL(bunSqlUrl(sourceUrl))
 
 /** A row as the Prisma 8 client's `create` accepts it, typed by the model rather than a generated DTO. */
 type CreateManyInput<M> = M extends { create(input: infer I, ...rest: never[]): unknown } ? I : never
@@ -84,8 +85,8 @@ async function insert<T>(label: string, rows: T[], run: (batch: T[]) => PromiseL
 	return n
 }
 
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- source rows are untyped; the contract is applied as a whole
-const read = async <T>(sql: string): Promise<T[]> => (await source.query(sql)).rows as T[]
+/** The caller names the row type; `SQL.unsafe` returns exactly what the query selects. */
+const read = <T>(sql: string): Promise<T[]> => source.unsafe<T[]>(sql)
 
 /** YYYY-MM-DD in a timezone, matching lib/program.effectiveDateFor. */
 function effectiveDateFor(date: Date, timeZone: string): string {
@@ -748,6 +749,6 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await source.end()
+	await source.close()
 	await db.close()
 }

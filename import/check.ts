@@ -1,11 +1,12 @@
-import { Pool } from "pg"
+import { SQL } from "bun"
+import { bunSqlUrl } from "@/lib/db-url"
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error("DATABASE_URL missing")
-const pool = new Pool({ connectionString: databaseUrl })
+const db = new SQL(bunSqlUrl(databaseUrl))
 
 async function q(label: string, sql: string) {
-	const { rows } = await pool.query<{ [_: string]: unknown }>(sql)
+	const rows = await db.unsafe<{ [_: string]: unknown }[]>(sql)
 	console.log(`\n${label}`)
 	for (const r of rows)
 		console.log(`  ${JSON.stringify(r, (_k, v: unknown) => (typeof v === "bigint" ? Number(v) : v))}`)
@@ -82,5 +83,5 @@ try {
 	console.error(err)
 	process.exitCode = 1
 } finally {
-	await pool.end()
+	await db.close()
 }

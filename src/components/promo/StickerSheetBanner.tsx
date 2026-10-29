@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, useSyncExternalStore } from "react"
+import { getNpsNudgeActive, subscribeNpsNudgeActive } from "@/components/platform/modals/nps-nudge"
 import { cx } from "@/lib/cx"
 import bgArt from "../../../public/art/bg.png"
 import logoArt from "../../../public/brand/logo.png"
@@ -30,6 +31,8 @@ export function StickerSheetBanner({
 }) {
 	const pathname = usePathname()
 	const mode = useSyncExternalStore(subscribePromo, getPromoMode, getServerPromoMode)
+	// The NPS follow-up owns the bottom-right corner while it is up, so the card stands down rather than stacking under it.
+	const npsNudge = useSyncExternalStore(subscribeNpsNudgeActive, getNpsNudgeActive, () => false)
 	const bannerRef = useRef<HTMLElement>(null)
 	const cardCopyRef = useRef<HTMLButtonElement>(null)
 	const pendingFocus = useRef<"banner" | "card" | null>(null)
@@ -52,7 +55,7 @@ export function StickerSheetBanner({
 		}
 	}, [mode])
 
-	if (mode === "hidden" || onDoomscroller) return null
+	if (mode === "hidden" || onDoomscroller || npsNudge) return null
 
 	const card = mode === "card"
 

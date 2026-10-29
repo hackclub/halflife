@@ -14,6 +14,7 @@ import {
 	readOrganizationBalanceCents,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
+import { formatUsd } from "@/lib/money"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
@@ -411,7 +412,8 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 		status: HcbGrantCardStatus.PENDING,
 	})
 		.where(row => or(row.claimedAt.isNull(), row.claimedAt.lt(formatDbTimestamp(cutoff))))
-		.orderBy(row => row.createdAt.asc())
+		// Every row in a batch is inserted in one transaction, so createdAt ties; id keeps the order stable.
+		.orderBy([row => row.createdAt.asc(), row => row.id.asc()])
 		.limit(limit)
 		.select(
 			"amountCents",
@@ -429,6 +431,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 
 	const { ip, userAgent } = await requestInfo()
 	const outcomes: GrantCardOutcome[] = []
+	const titles = new Map<string, string>()
 	const verified = new Map<string, Promise<boolean>>()
 	const isVerified = (userId: string): Promise<boolean> => {
 		const cached = verified.get(userId)
@@ -457,6 +460,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, "Project no longer exists", null))
 			continue
 		}
+		titles.set(project.id, project.title)
 		if (project.designStatus !== PhaseStatus.approved) {
 			await markSkipped(candidate.id, "Design is no longer approved")
 			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, "Design is no longer approved", null))
@@ -560,16 +564,16 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 				purpose,
 			})
 			const responseEmail = grant.email?.trim().toLowerCase()
-			if (!responseEmail || responseEmail !== project.user.email.trim().toLowerCase()) {
-				// The money has moved. Cancel it if HCB will let us, and never let this look like a clean issue.
+			const wrongAmount = grant.amountCents !== amountCents
+			if (wrongAmount || !responseEmail || responseEmail !== project.user.email.trim().toLowerCase()) {
+				// The money has moved. Cancel it if HCB will let us, and never let this look like a clean issue. The grant id
+				// stays in the reason so a cancel HCB refused is still findable after the page is reloaded.
 				await cancelCardGrant(grant.id).catch(() => undefined)
-				await markAmbiguous(
-					candidate.id,
-					"HCB reported a different owner for this grant. Cancel it on HCB and check before retrying",
-				)
-				outcomes.push(
-					toOutcome(candidate, HcbGrantCardStatus.AMBIGUOUS, "HCB reported a different owner for this grant", grant.id),
-				)
+				const reason = wrongAmount
+					? `HCB issued grant ${grant.id} for ${formatUsd(grant.amountCents / 100)} instead of ${formatUsd(amountCents / 100)}. Check it on HCB before retrying`
+					: `HCB reported a different owner for grant ${grant.id}. Cancel it on HCB and check before retrying`
+				await markAmbiguous(candidate.id, reason)
+				outcomes.push(toOutcome(candidate, HcbGrantCardStatus.AMBIGUOUS, reason, grant.id))
 				continue
 			}
 
@@ -638,6 +642,8 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.AMBIGUOUS, message, null))
 		}
 	}
+
+	for (const outcome of outcomes) outcome.title = titles.get(outcome.projectId) ?? outcome.title
 
 	const summary = await refreshBatch(input.batchId)
 	return { batch: summary, outcomes, remaining: await remainingCount(input.batchId) }
@@ -744,6 +750,10 @@ export async function reconcileGrantCard(
 	if (!row) throw new HttpError("NOT_FOUND", "Card grant not found")
 	if (row.status === HcbGrantCardStatus.ISSUED || row.status === HcbGrantCardStatus.CANCELED)
 		return toOutcome(row, row.status, row.error, row.hcbCardGrantId)
+	// A pending row may be in another request's hands right now; reconciling it could race the create and mark it failed
+	// while HCB issues the grant. Only the two states the UI offers can be checked.
+	if (row.status !== HcbGrantCardStatus.AMBIGUOUS && row.status !== HcbGrantCardStatus.FAILED)
+		throw new HttpError("CONFLICT", "Only an ambiguous or failed grant can be checked against HCB")
 
 	const list = await listOrganizationCardGrants()
 	const reconciled = reconcileCardGrantIssue(list, {
@@ -828,7 +838,8 @@ export async function getGrantCardBatch(id: string): Promise<GrantCardBatchDetai
 	const row = await db.orm.public.HcbGrantCardBatch.whereUnique({ id }).first()
 	if (!row) return null
 	const cards = await db.orm.public.HcbGrantCard.where({ batchId: id })
-		.orderBy(card => card.createdAt.asc())
+		// Every row in a batch is inserted in one transaction, so createdAt ties; id keeps the order stable.
+		.orderBy([card => card.createdAt.asc(), card => card.id.asc()])
 		.select("amountCents", "error", "hcbCardGrantId", "id", "status", "themeProjectId")
 		.include("themeProject", project => project.select("title"))
 		.all()
@@ -843,7 +854,10 @@ export async function getGrantCardBatch(id: string): Promise<GrantCardBatchDetai
 }
 
 export async function listGrantCardBatches(limit = 10): Promise<GrantCardBatchSummary[]> {
-	const rows = await db.orm.public.HcbGrantCardBatch.orderBy(batch => batch.createdAt.desc())
+	const rows = await db.orm.public.HcbGrantCardBatch.orderBy([
+		batch => batch.createdAt.desc(),
+		batch => batch.id.desc(),
+	])
 		.limit(limit)
 		.all()
 	return rows.map(toBatchSummary)
