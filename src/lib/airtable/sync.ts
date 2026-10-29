@@ -2,6 +2,7 @@ import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
 import {
 	type AirtableConfig,
+	type AirtableRecord,
 	AirtableRecordSchema,
 	airtableFetch,
 	getAirtableConfig,
@@ -295,13 +296,24 @@ async function deflationColumns(
 	if (approved === null) return {}
 
 	const claimedKey = fieldKey(hoursSelfReported)
-	const row = await withRateLimitRetry("readYswsHours", () =>
-		airtableFetch(
-			AirtableRecordSchema,
-			config,
-			`${encodeURIComponent(YSWS_SUBMISSION.tableId)}/${encodeURIComponent(recordId)}?fields%5B%5D=${encodeURIComponent(claimedKey)}`,
-		),
-	)
+	// The whole row is read, not one field: `fields[]` exists on list-records only, and Airtable refuses a get-record that names it with a 422 rather than ignoring the parameter. The cell is picked out below.
+	let row: AirtableRecord
+	try {
+		row = await withRateLimitRetry("readYswsHours", () =>
+			airtableFetch(
+				AirtableRecordSchema,
+				config,
+				`${encodeURIComponent(YSWS_SUBMISSION.tableId)}/${encodeURIComponent(recordId)}`,
+			),
+		)
+	} catch (err) {
+		// Nothing here can say whether it was deflated, so leave the pair alone rather than clearing a value a person stands behind. The status is written either way.
+		console.error(
+			`[airtable] could not read the self-reported hours on YSWS row ${recordId}; leaving the deflation columns alone:`,
+			err,
+		)
+		return {}
+	}
 	const deflation = deflationFor(approved, numberCell(row.fields[claimedKey]))
 	if (!deflation) return clear
 	return {
@@ -353,16 +365,25 @@ export async function syncReviewDecisionToYsws(
 	const deflationFields: { [_: string]: unknown } = {}
 	let reviewerWritable = false
 	const config = getAirtableConfig()
-	if (config)
+	if (config) {
+		let writable = new Set<string>()
 		try {
-			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, [
+			writable = await existingColumns(config, YSWS_SUBMISSION.tableId, [
 				...Object.values(LOOPS_REVIEW_OVERRIDE),
 				pass1Reviewer.name,
 				overrideHoursSpent.name,
 				deflationField.name,
 			])
-			reviewerWritable = writable.has(pass1Reviewer.name)
-			if (writable.size > 0) {
+		} catch (err) {
+			// A probe failure is not a reason to lose the status; the next decision retries it.
+			console.error(
+				`[airtable] could not check whether the Loops override, reviewer and deflation columns exist; writing the decision for ${themeProjectId} (${phase}) without them:`,
+				err,
+			)
+		}
+		reviewerWritable = writable.has(pass1Reviewer.name)
+		if (writable.size > 0)
+			try {
 				const [project, submission] = await Promise.all([
 					db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
 						.select("approvedHours", "designApprovedHours", "theme", "title")
@@ -379,14 +400,14 @@ export async function syncReviewDecisionToYsws(
 					if (writable.has(overrideHoursSpent.name) && writable.has(deflationField.name))
 						Object.assign(deflationFields, await deflationColumns(config, recordId, project, phase, status, note))
 				}
+			} catch (err) {
+				// The status still lands; this names the extra values that did not.
+				console.error(
+					`[airtable] could not build the Loops override and deflation values for ${themeProjectId} (${phase}); writing the decision without them:`,
+					err,
+				)
 			}
-		} catch (err) {
-			// A probe failure is not a reason to lose the status; the next decision retries it.
-			console.error(
-				"[airtable] could not probe the Loops override, reviewer and deflation columns; writing the decision without them:",
-				err,
-			)
-		}
+	}
 
 	const complete = {
 		...statusField,
