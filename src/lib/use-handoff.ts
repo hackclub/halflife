@@ -2,7 +2,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { errorMessage } from "@/lib/api-error"
-import { postForm, putFile, routeMissing, uploadFailure, uploadFailureFrom } from "@/lib/upload-progress"
+import {
+	postForm,
+	putFile,
+	routeMissing,
+	type UploadFallback,
+	uploadFailure,
+	uploadFailureFrom,
+} from "@/lib/upload-progress"
 
 /**
  * The desktop half of the phone handoff.
@@ -135,12 +142,12 @@ export async function uploadFile(
 	onProgress?: (fraction: number) => void,
 ): Promise<{ objectKey: string; url: string | null }> {
 	const presigned = await presignUpload(file, folder)
-	if (!presigned) return uploadThroughServer(file, folder, onProgress)
+	if (!presigned) return uploadThroughServer(file, folder, onProgress, "no-direct-url")
 
 	const put = await putFile(presigned.uploadUrl, file, onProgress)
 	if (!put.ok) {
 		// Status 0 means the browser never reached the bucket at all – CORS is not set on a deployment that has not had the rule applied yet, or this network blocks it. The slow path still works.
-		if (put.status === 0) return uploadThroughServer(file, folder, onProgress)
+		if (put.status === 0) return uploadThroughServer(file, folder, onProgress, "direct-unreachable")
 		throw new Error(`Storage refused the upload (${put.status}). Try again.`)
 	}
 
@@ -149,7 +156,7 @@ export async function uploadFile(
 		headers: { "content-type": "application/json" },
 		method: "POST",
 	})
-	if (!res.ok) throw new Error(await uploadFailureFrom(res))
+	if (!res.ok) throw new Error(await uploadFailureFrom(res, { stage: "confirm" }))
 
 	const payload = ConfirmedUploadBody.parse(await res.json())
 	return { objectKey: payload.objectKey, url: payload.url ?? null }
@@ -174,7 +181,7 @@ async function presignUpload(file: File, folder: string): Promise<{ objectKey: s
 	if (res.ok) return PresignedUploadBody.parse(await res.json())
 	// Only a deployment that does not have the route falls back; an ordinary refusal (an expired token, say) is the server's answer to show.
 	if (routeMissing(res)) return null
-	throw new Error(await uploadFailureFrom(res))
+	throw new Error(await uploadFailureFrom(res, { stage: "prepare" }))
 }
 
 /** The original path, for a browser that cannot PUT to the bucket. Slow, and still subject to the edge timeout. */
@@ -182,12 +189,13 @@ async function uploadThroughServer(
 	file: File,
 	folder: string,
 	onProgress?: (fraction: number) => void,
+	fallback: UploadFallback = "no-direct-url",
 ): Promise<{ objectKey: string; url: string | null }> {
 	const body = new FormData()
 	body.set("file", file)
 	body.set("folder", folder)
 	const res = await postForm("/api/upload", body, onProgress)
-	if (!res.ok) throw new Error(uploadFailure(res))
+	if (!res.ok) throw new Error(uploadFailure(res, { fallback, stage: "send" }))
 
 	const payload = ConfirmedUploadBody.parse(res.json)
 	return { objectKey: payload.objectKey, url: payload.url ?? null }
@@ -214,14 +222,14 @@ export async function uploadHandoffFile(
 		method: "POST",
 	})
 	if (!res.ok) {
-		if (routeMissing(res)) return uploadHandoffThroughServer(token, file, onProgress)
-		throw new Error(await uploadFailureFrom(res))
+		if (routeMissing(res)) return uploadHandoffThroughServer(token, file, onProgress, "no-direct-url")
+		throw new Error(await uploadFailureFrom(res, { stage: "prepare" }))
 	}
 	const presigned = PresignedUploadBody.parse(await res.json())
 
 	const put = await putFile(presigned.uploadUrl, file, onProgress)
 	if (!put.ok) {
-		if (put.status === 0) return uploadHandoffThroughServer(token, file, onProgress)
+		if (put.status === 0) return uploadHandoffThroughServer(token, file, onProgress, "direct-unreachable")
 		throw new Error(`Storage refused the upload (${put.status}). Try again.`)
 	}
 
@@ -236,19 +244,20 @@ export async function uploadHandoffFile(
 		headers: { "content-type": "application/json" },
 		method: "POST",
 	})
-	if (!confirm.ok) throw new Error(await uploadFailureFrom(confirm))
+	if (!confirm.ok) throw new Error(await uploadFailureFrom(confirm, { stage: "confirm" }))
 }
 
 async function uploadHandoffThroughServer(
 	token: string,
 	file: File,
 	onProgress?: (fraction: number) => void,
+	fallback: UploadFallback = "no-direct-url",
 ): Promise<void> {
 	const body = new FormData()
 	body.append("token", token)
 	body.append("file", file)
 	const res = await postForm("/api/handoff/upload", body, onProgress)
-	if (!res.ok) throw new Error(uploadFailure(res))
+	if (!res.ok) throw new Error(uploadFailure(res, { fallback, stage: "send" }))
 }
 
 /**
