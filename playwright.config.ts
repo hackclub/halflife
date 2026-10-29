@@ -23,7 +23,8 @@ export default defineConfig({
 		video: "retain-on-failure",
 	},
 	webServer: {
-		command: process.env.CI ? "bun run start:e2e" : "bun run dev:e2e",
+		// `--bun` runs `next start` / `next dev` on Bun rather than the `node` its shebang names, so the suite exercises the same runtime as the container image. The Playwright CLI itself is launched with `bun --bun` in CI (see .github/workflows/e2e.yml).
+		command: process.env.CI ? "bun --bun run start:e2e" : "bun --bun run dev:e2e",
 		env: webServerEnv,
 		reuseExistingServer: false,
 		stderr: "pipe",
