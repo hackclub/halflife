@@ -190,8 +190,8 @@ export default async function AdminUserPage({ params }: Props) {
 							data={{
 								approvedHours: project.approvedHours,
 								buildStatus: project.buildStatus,
-								designStatus: project.designStatus,
 								cardGrantSent: project.hcbGrantCards.some(card => card.status === "ISSUED"),
+								designStatus: project.designStatus,
 								extension: project.submissionExtensionUntil?.toISOString() ?? null,
 								grantSent: project.hcbGrantTopUps.length > 0,
 								grantUsd: project.grantUsd,

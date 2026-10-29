@@ -2,14 +2,7 @@ import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
 import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { displayName } from "@/lib/display-name"
-import {
-	HcbGrantCardBatchStatus,
-	HcbGrantCardStatus,
-	PayoutSource,
-	Phase,
-	PhaseStatus,
-	type Theme,
-} from "@/lib/enums"
+import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, type Theme } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
 import { grantCardAmountCents, grantCardFingerprint, grantCardPurpose } from "@/lib/grant-card-policy"
 import { isIdentityVerified } from "@/lib/hca-profile"
@@ -21,7 +14,7 @@ import {
 	readOrganizationBalanceCents,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
-import db, { isUniqueViolation, type DbOrTx } from "@/lib/prisma8"
+import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
@@ -111,9 +104,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 	})
 		.select("bomTaxShippingUsd", "designStatus", "grantUsd", "id", "theme", "title", "userId")
 		.include("bomItems", items => items.select("quantity", "unitCostUsd"))
-		.include("user", user =>
-			user.select("displayName", "email", "fraudFlagged", "id", "name", "verificationStatus"),
-		)
+		.include("user", user => user.select("displayName", "email", "fraudFlagged", "id", "name", "verificationStatus"))
 		.include("hcbGrantCards", cards =>
 			cards
 				.select("id", "status")
@@ -182,10 +173,9 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 		})
 	}
 
-	eligible.sort((a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title))
 	return {
-		eligible,
-		excluded: excluded.sort((a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title)),
+		eligible: eligible.toSorted((a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title)),
+		excluded: excluded.toSorted((a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title)),
 		fingerprint: grantCardFingerprint(
 			eligible.map(row => ({ amountCents: row.amountCents, email: row.email, projectId: row.projectId })),
 		),
@@ -249,8 +239,7 @@ export async function createGrantCardBatch(input: CreateGrantCardBatchInput): Pr
 		const snapshot = await buildPreview(tx)
 		if (snapshot.fingerprint !== input.fingerprint)
 			throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
-		if (snapshot.eligible.length === 0)
-			throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
+		if (snapshot.eligible.length === 0) throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
 
 		const batch = await tx.orm.public.HcbGrantCardBatch.create({
 			createdById: input.admin.id,
@@ -273,8 +262,7 @@ export async function createGrantCardBatch(input: CreateGrantCardBatchInput): Pr
 			)
 		} catch (err) {
 			// A concurrent batch got there first. The partial unique index is what tells us; naming the reason is more useful than a generic conflict.
-			if (isUniqueViolation(err))
-				throw new HttpError("CONFLICT", "Another batch already claimed one of these projects")
+			if (isUniqueViolation(err)) throw new HttpError("CONFLICT", "Another batch already claimed one of these projects")
 			throw err
 		}
 
@@ -516,12 +504,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 					"HCB reported a different owner for this grant. Cancel it on HCB and check before retrying",
 				)
 				outcomes.push(
-					toOutcome(
-						candidate,
-						HcbGrantCardStatus.AMBIGUOUS,
-						"HCB reported a different owner for this grant",
-						grant.id,
-					),
+					toOutcome(candidate, HcbGrantCardStatus.AMBIGUOUS, "HCB reported a different owner for this grant", grant.id),
 				)
 				continue
 			}
@@ -631,14 +614,13 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 		pending: 0,
 		skipped: 0,
 	}
-	for (const row of rows) {
+	for (const row of rows)
 		if (row.status === HcbGrantCardStatus.AMBIGUOUS) counts.ambiguous += 1
 		else if (row.status === HcbGrantCardStatus.CANCELED) counts.canceled += 1
 		else if (row.status === HcbGrantCardStatus.FAILED) counts.failed += 1
 		else if (row.status === HcbGrantCardStatus.ISSUED) counts.issued += 1
 		else if (row.status === HcbGrantCardStatus.SKIPPED) counts.skipped += 1
 		else counts.pending += 1
-	}
 
 	const status =
 		counts.pending > 0
@@ -651,8 +633,7 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 
 	const updated = await db.orm.public.HcbGrantCardBatch.where({ id: batchId }).update({
 		ambiguousCount: counts.ambiguous,
-		completedAt:
-			counts.pending === 0 ? formatDbTimestamp(new Date()) : null,
+		completedAt: counts.pending === 0 ? formatDbTimestamp(new Date()) : null,
 		failedCount: counts.failed,
 		issuedCount: counts.issued,
 		skippedCount: counts.skipped,
@@ -689,7 +670,10 @@ function toBatchSummary(row: {
 }
 
 /** Re-read an ambiguous attempt against HCB. A match is marked issued; no match makes it retryable. */
-export async function reconcileGrantCard(id: string, admin: { email: string | null; id: string }): Promise<GrantCardOutcome> {
+export async function reconcileGrantCard(
+	id: string,
+	admin: { email: string | null; id: string },
+): Promise<GrantCardOutcome> {
 	const row = await db.orm.public.HcbGrantCard.whereUnique({ id }).first()
 	if (!row) throw new HttpError("NOT_FOUND", "Card grant not found")
 	if (row.status === HcbGrantCardStatus.ISSUED || row.status === HcbGrantCardStatus.CANCELED)
@@ -734,7 +718,10 @@ export async function reconcileGrantCard(id: string, admin: { email: string | nu
 }
 
 /** Cancel a live grant and record the refund of its remaining balance. */
-export async function cancelGrantCard(id: string, admin: { email: string | null; id: string }): Promise<GrantCardOutcome> {
+export async function cancelGrantCard(
+	id: string,
+	admin: { email: string | null; id: string },
+): Promise<GrantCardOutcome> {
 	const row = await db.orm.public.HcbGrantCard.whereUnique({ id }).first()
 	if (!row) throw new HttpError("NOT_FOUND", "Card grant not found")
 	if (!row.hcbCardGrantId) throw new HttpError("CONFLICT", "This grant has no HCB id to cancel")
@@ -777,10 +764,11 @@ export async function getGrantCardBatch(id: string): Promise<GrantCardBatchDetai
 		.all()
 	return {
 		...toBatchSummary(row),
-		cards: cards.map(card => ({
-			...toOutcome(card, card.status, card.error, card.hcbCardGrantId),
-			title: card.themeProject?.title ?? "",
-		})),
+		cards: cards.map(card =>
+			Object.assign(toOutcome(card, card.status, card.error, card.hcbCardGrantId), {
+				title: card.themeProject?.title ?? "",
+			}),
+		),
 	}
 }
 

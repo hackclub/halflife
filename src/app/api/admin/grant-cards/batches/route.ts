@@ -9,16 +9,13 @@ import { grantCardBatchSchema } from "@/lib/schemas/admin"
  *
  * The fingerprint is what makes a stale confirmation safe: if any project, amount or email changed since the preview, this refuses rather than issuing a different set.
  */
-export const POST = withWritePermission(
-	Permission.MANAGE_CREDIT,
-	async (req: Request, { gate }: AuthedContext) => {
-		const parsed = await parseBody(req, grantCardBatchSchema)
-		if (parsed.error) return parsed.error
+export const POST = withWritePermission(Permission.MANAGE_CREDIT, async (req: Request, { gate }: AuthedContext) => {
+	const parsed = await parseBody(req, grantCardBatchSchema)
+	if (parsed.error) return parsed.error
 
-		const result = await createGrantCardBatch({
-			admin: { email: gate.user.email, id: gate.user.id },
-			fingerprint: parsed.data.fingerprint,
-		})
-		return ok(result)
-	},
-)
+	const result = await createGrantCardBatch({
+		admin: { email: gate.user.email, id: gate.user.id },
+		fingerprint: parsed.data.fingerprint,
+	})
+	return ok(result)
+})

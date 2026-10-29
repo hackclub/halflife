@@ -183,11 +183,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		themeProjectId: project.id,
 	})
 		.where(card =>
-			card.status.in([
-				HcbGrantCardStatus.PENDING,
-				HcbGrantCardStatus.ISSUED,
-				HcbGrantCardStatus.AMBIGUOUS,
-			]),
+			card.status.in([HcbGrantCardStatus.PENDING, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]),
 		)
 		.first()
 	if (cardGrant)

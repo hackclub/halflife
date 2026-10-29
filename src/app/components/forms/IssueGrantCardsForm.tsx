@@ -26,7 +26,7 @@ const ExclusionRow = z.object({
 	title: z.string(),
 })
 
-const Preview = z.object({
+const PreviewSchema = z.object({
 	balanceCents: z.number().nullable(),
 	balanceError: z.string().nullable(),
 	canIssue: z.boolean(),
@@ -43,7 +43,7 @@ const Batch = z.object({
 	totalCents: z.number(),
 })
 
-const ProcessOutcome = z.object({
+const ProcessOutcomeSchema = z.object({
 	amountCents: z.number(),
 	error: z.string().nullable(),
 	hcbCardGrantId: z.string().nullable(),
@@ -55,12 +55,12 @@ const ProcessOutcome = z.object({
 
 const ProcessResult = z.object({
 	batch: z.object({ id: z.string() }),
-	outcomes: z.array(ProcessOutcome),
+	outcomes: z.array(ProcessOutcomeSchema),
 	remaining: z.number(),
 })
 
-type Preview = z.infer<typeof Preview>
-type ProcessOutcome = z.infer<typeof ProcessOutcome>
+type PreviewData = z.infer<typeof PreviewSchema>
+type Outcome = z.infer<typeof ProcessOutcomeSchema>
 
 const STATUS_TONE: { [_: string]: "success" | "warning" | "danger" | "muted" } = {
 	AMBIGUOUS: "warning",
@@ -75,8 +75,9 @@ function statusLabel(status: string): string {
 }
 
 /** What the preview is missing, in words an admin can act on. */
-function blockedReason(preview: Preview): string | null {
-	if (preview.payoutSource !== "HCB") return "Payout source is still Airtable. Switch it to HCB card grants in Program settings."
+function blockedReason(preview: PreviewData): string | null {
+	if (preview.payoutSource !== "HCB")
+		return "Payout source is still Airtable. Switch it to HCB card grants in Program settings."
 	if (!preview.configured) return "HCB is not configured on this deployment."
 	if (preview.balanceCents === null) return preview.balanceError ?? "HCB balance could not be read."
 	if (preview.eligible.length === 0) return "No approved project is ready for a card grant."
@@ -85,13 +86,13 @@ function blockedReason(preview: Preview): string | null {
 	return null
 }
 
-export function IssueGrantCardsForm({ initial }: Readonly<{ initial: Preview }>) {
+export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData }>) {
 	const router = useRouter()
 	const { busy, error, run } = useAction()
-	const [preview] = useState(initial)
+	const preview = initial
 	const [confirming, setConfirming] = useState(false)
 	const [batchId, setBatchId] = useState<string | null>(null)
-	const [outcomes, setOutcomes] = useState<ProcessOutcome[]>([])
+	const [outcomes, setOutcomes] = useState<Outcome[]>([])
 	const [remaining, setRemaining] = useState(0)
 	const [finished, setFinished] = useState(false)
 	const blocked = blockedReason(preview)

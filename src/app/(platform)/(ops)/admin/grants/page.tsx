@@ -32,24 +32,21 @@ export default async function AdminGrantsPage() {
 			<div className="hl-row">
 				<Stat label="Ready to issue" value={preview.eligible.length} />
 				<Stat label="Batch total" value={formatUsd(preview.totalCents / 100)} />
-				<Stat
-					label="HCB balance"
-					value={preview.balanceCents === null ? "-" : formatUsd(preview.balanceCents / 100)}
-				/>
+				<Stat label="HCB balance" value={preview.balanceCents === null ? "-" : formatUsd(preview.balanceCents / 100)} />
 				<Stat label="Payout source" value={preview.payoutSource === PayoutSource.HCB ? "HCB" : "Airtable"} />
 			</div>
 
 			<Panel title="Payout source">
 				{preview.payoutSource === PayoutSource.HCB ? (
 					<p className="hl-hint" style={{ margin: 0 }}>
-						HCB owns payouts. Airtable rows are still written for review and Loops, with a zero requested funding so
-						the YSWS pipeline cannot pay the same project again.
+						HCB owns payouts. Airtable rows are still written for review and Loops, with a zero requested funding so the
+						YSWS pipeline cannot pay the same project again.
 					</p>
 				) : (
 					<p className="hl-hint" style={{ margin: 0 }}>
 						Payouts are still set to Airtable, so card issuing is locked. Change the source in{" "}
-						<Link href="/admin/program">Program settings</Link> once the YSWS pipeline is paused and existing
-						approved rows have been made non-payable.
+						<Link href="/admin/program">Program settings</Link> once the YSWS pipeline is paused and existing approved
+						rows have been made non-payable.
 					</p>
 				)}
 				{preview.balanceError ? <p className="hl-hint hl-mono">{preview.balanceError}</p> : null}
@@ -67,9 +64,7 @@ export default async function AdminGrantsPage() {
 						{preview.eligible.map(row => (
 							<tr key={row.projectId}>
 								<td>
-									<Link href={`/admin/users/${row.ownerId}#project-${row.projectId}`}>
-										{row.title || "Untitled"}
-									</Link>
+									<Link href={`/admin/users/${row.ownerId}#project-${row.projectId}`}>{row.title || "Untitled"}</Link>
 									<div className="hl-hint hl-mono">{row.projectId}</div>
 								</td>
 								<td>{row.ownerName}</td>

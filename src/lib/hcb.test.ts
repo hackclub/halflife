@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { type CardGrantExpectation, type HcbCardGrantSummary, type HcbCardGrantList, reconcileCardGrantIssue } from "@/lib/hcb"
+import {
+	type CardGrantExpectation,
+	type HcbCardGrantList,
+	type HcbCardGrantSummary,
+	reconcileCardGrantIssue,
+} from "@/lib/hcb"
 
 const attemptedAt = new Date("2026-10-29T12:00:00.000Z")
 const expected: CardGrantExpectation = {
@@ -39,15 +44,13 @@ describe("reconcileCardGrantIssue", () => {
 	})
 
 	test("a grant from before the attempt is not this attempt", () => {
-		expect(
-			reconcileCardGrantIssue(listed([grant({ createdAt: "2026-10-29T11:00:00.000Z" })]), expected),
-		).toEqual({ kind: "absent" })
+		expect(reconcileCardGrantIssue(listed([grant({ createdAt: "2026-10-29T11:00:00.000Z" })]), expected)).toEqual({
+			kind: "absent",
+		})
 	})
 
 	test("two matching grants are ambiguous, never a double click", () => {
-		expect(
-			reconcileCardGrantIssue(listed([grant(), grant({ id: "cdg_2" })]), expected),
-		).toEqual({ kind: "ambiguous" })
+		expect(reconcileCardGrantIssue(listed([grant(), grant({ id: "cdg_2" })]), expected)).toEqual({ kind: "ambiguous" })
 	})
 
 	test("an unreadable list fails closed", () => {

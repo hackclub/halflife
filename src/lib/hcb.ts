@@ -420,10 +420,10 @@ export const CARD_GRANT_SKEW_MS = 5 * 60_000
 
 export interface CardGrantExpectation {
 	amountCents: number
+	attemptedAt: Date
 	email: string
 	/** The stable `HL:<projectId>` marker written into `purpose`. */
 	purpose: string
-	attemptedAt: Date
 }
 
 /**
@@ -455,7 +455,7 @@ export function reconcileCardGrantIssue(
 
 	const after = expected.attemptedAt.getTime() - CARD_GRANT_SKEW_MS
 	const inWindow = dated.filter(row => row.at >= after)
-	if (inWindow.length === 1) return { kind: "landed", grantId: inWindow[0]?.id ?? "" }
+	if (inWindow.length === 1) return { grantId: inWindow[0]?.id ?? "", kind: "landed" }
 	if (inWindow.length > 1) return { kind: "ambiguous" }
 	return { kind: "absent" }
 }

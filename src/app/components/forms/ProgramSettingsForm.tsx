@@ -4,6 +4,9 @@ import { Button, Callout, Field, Select, TextInput } from "@/app/components/ui"
 import { PayoutSource } from "@/lib/enums"
 import { sendJson, useAction } from "@/lib/use-action"
 
+const isPayoutSource = (value: string): value is PayoutSource =>
+	value === PayoutSource.AIRTABLE || value === PayoutSource.HCB
+
 export function ProgramSettingsForm({
 	initial,
 }: Readonly<{
@@ -104,7 +107,10 @@ export function ProgramSettingsForm({
 				label="Payout source"
 			>
 				<Select
-					onChange={e => setForm({ ...form, payoutSource: e.target.value as PayoutSource })}
+					onChange={e => {
+						const source = e.target.value
+						if (isPayoutSource(source)) setForm({ ...form, payoutSource: source })
+					}}
 					value={form.payoutSource}
 				>
 					<option value={PayoutSource.AIRTABLE}>Airtable / YSWS pipeline</option>

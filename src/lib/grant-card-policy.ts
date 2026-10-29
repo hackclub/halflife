@@ -11,10 +11,7 @@ import { bomTotalUsd, type PricedLine } from "@/lib/bom-policy"
 export const GRANT_CARD_MARKER_PREFIX = "HL:"
 
 /** What a card grant pays: the BOM total in cents, tax and shipping included. */
-export function grantCardAmountCents(
-	items: readonly PricedLine[],
-	taxShippingUsd: number | null | undefined,
-): number {
+export function grantCardAmountCents(items: readonly PricedLine[], taxShippingUsd: number | null | undefined): number {
 	if (items.length === 0) return 0
 	return Math.round(bomTotalUsd(items, taxShippingUsd) * 100)
 }
@@ -25,9 +22,11 @@ export function grantCardPurpose(projectId: string): string {
 }
 
 /** A fingerprint of exactly what a preview offered, so a stale confirmation cannot issue a different amount. */
-export function grantCardFingerprint(rows: readonly { amountCents: number; email: string; projectId: string }[]): string {
+export function grantCardFingerprint(
+	rows: readonly { amountCents: number; email: string; projectId: string }[],
+): string {
 	const ordered = rows
 		.map(row => `${row.projectId}:${row.amountCents}:${row.email.trim().toLowerCase()}`)
-		.sort((a, b) => a.localeCompare(b))
+		.toSorted((a, b) => a.localeCompare(b))
 	return createHash("sha256").update(ordered.join("\n")).digest("hex")
 }

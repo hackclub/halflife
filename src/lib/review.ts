@@ -539,9 +539,7 @@ export async function unapprovePhase(
 				phase: Phase.DESIGN,
 				themeProjectId,
 			})
-				.where(card =>
-					card.status.in([HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]),
-				)
+				.where(card => card.status.in([HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]))
 				.select("id")
 				.first()
 			if (cardGrant)
