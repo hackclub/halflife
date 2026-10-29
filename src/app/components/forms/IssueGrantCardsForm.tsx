@@ -115,6 +115,15 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 				setFinished(true)
 				return { data: result.data, ok: true }
 			}
+			// Nothing was claimed this round, so another request holds the rest. Asking again in a tight loop would only
+			// hammer the route; the batch is resumable once those claims expire.
+			if (result.data.outcomes.length === 0) {
+				setFinished(true)
+				return {
+					message: "The remaining grants are already being processed. Resume this batch in a few minutes.",
+					ok: false,
+				}
+			}
 		}
 		setFinished(true)
 		return {
@@ -128,9 +137,8 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 		setOutcomes([])
 		setRemaining(preview.eligible.length)
 		setFinished(false)
-		void run(
-			"issue",
-			async () => {
+		void run("issue", async () => {
+			try {
 				const created = await sendJsonParsed(Batch, "/api/admin/grant-cards/batches", {
 					body: { fingerprint: preview.fingerprint },
 				})
@@ -138,9 +146,11 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 				setBatchId(created.data.batchId)
 				const processedBatch = await processBatch(created.data.batchId)
 				return processedBatch.ok ? created : processedBatch
-			},
-			() => router.refresh(),
-		)
+			} finally {
+				// Rows may have been paid even when the run ends in an error, so the preview is stale either way.
+				router.refresh()
+			}
+		})
 	}
 
 	const issued = outcomes.filter(outcome => outcome.status === "ISSUED")
