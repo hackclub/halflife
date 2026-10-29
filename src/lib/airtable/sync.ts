@@ -1,6 +1,13 @@
 import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
-import { getAirtableConfig } from "@/lib/airtable/client"
+import {
+	type AirtableConfig,
+	AirtableRecordSchema,
+	airtableFetch,
+	getAirtableConfig,
+	withRateLimitRetry,
+} from "@/lib/airtable/client"
+import { deflationFor, deflationJustification, numberCell } from "@/lib/airtable/deflation"
 import { existingColumns } from "@/lib/airtable/field-probe"
 import { justificationValues, timelapseLinks } from "@/lib/airtable/justification"
 import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
@@ -264,6 +271,46 @@ export async function syncSubmissionToYsws(
 }
 
 /**
+ * The two deflation columns for a decision: the approved hours when they fall short of the row's own claim, or a cleared pair when they do not.
+ *
+ * The claimed figure is read from the row rather than recomputed here. It is the number the payout pipeline will actually fall back to, and it is the number the override exists to replace – recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
+ *
+ * An approved row whose frozen hours are missing is left alone: nothing here can say whether it was deflated, and clearing a value a person may have entered is worse than leaving it. A non-approved row is cleared, because an override that outlived its approval would keep paying hours nobody is standing behind.
+ */
+async function deflationColumns(
+	config: AirtableConfig,
+	recordId: string,
+	project: { approvedHours: number | null; designApprovedHours: number | null },
+	phase: Phase,
+	status: string,
+	note: string | null,
+): Promise<{ [_: string]: unknown }> {
+	const { deflationJustification: justificationField, hoursSelfReported, overrideHoursSpent } = YSWS_SUBMISSION.fields
+	const overrideKey = fieldKey(overrideHoursSpent)
+	const justificationKey = fieldKey(justificationField)
+	const clear = { [overrideKey]: null, [justificationKey]: "" }
+	if (status !== YSWS_REVIEW_STATUS.approved) return clear
+
+	const approved = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
+	if (approved === null) return {}
+
+	const claimedKey = fieldKey(hoursSelfReported)
+	const row = await withRateLimitRetry("readYswsHours", () =>
+		airtableFetch(
+			AirtableRecordSchema,
+			config,
+			`${encodeURIComponent(YSWS_SUBMISSION.tableId)}/${encodeURIComponent(recordId)}?fields%5B%5D=${encodeURIComponent(claimedKey)}`,
+		),
+	)
+	const deflation = deflationFor(approved, numberCell(row.fields[claimedKey]))
+	if (!deflation) return clear
+	return {
+		[overrideKey]: deflation.approvedHours,
+		[justificationKey]: deflationJustification(deflation, note),
+	}
+}
+
+/**
  * Move a submission's row on to the decision Ari just reached: the status Loops triggers on, the reviewer's note the email quotes, and the project and week that decision is about.
  *
  * The email-tools poller only forwards a `Loops - …` field when the value on that row changed. The row's `Loops - halfLifeProjectName` and `Loops - halfLifeProjectWeek` are written at submit and never change on a decision, so the poller never re-sends them; the contact keeps whatever was submitted most recently. The `Loops - Override - …` columns are separate fields, so writing them here is a change the poller forwards, and email-tools maps them onto the same contact property with its override strategy. The status trigger and the project it names then arrive in one contact update.
@@ -272,7 +319,7 @@ export async function syncSubmissionToYsws(
  *
  * Best-effort, and only ever after the fact: the review is already committed in Postgres by the time this runs, so a base that is briefly unreachable must not throw and turn a decided submission into one Ari redelivers. No row is not a failure either – a submission written before this sync existed has no record id, and one taken back has none any more.
  *
- * The status, note, first-pass reviewer and overrides are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides, then status alone, then the note and the reviewer. Each failure is named.
+ * The status, note, first-pass reviewer, overrides and any deflation are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides + hours, then status alone, then the note and the reviewer. Each failure is named.
  *
  * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the decision (the first of Ari's two passes). Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
  */
@@ -289,14 +336,21 @@ export async function syncReviewDecisionToYsws(
 	const recordId = await lastRecordId(themeProjectId, phase)
 	if (!recordId) return { reason: "no_row", updated: false }
 
-	const { pass1Reviewer, reviewStatus, reviewerNotes } = YSWS_SUBMISSION.fields
+	const {
+		deflationJustification: deflationField,
+		overrideHoursSpent,
+		pass1Reviewer,
+		reviewStatus,
+		reviewerNotes,
+	} = YSWS_SUBMISSION.fields
 	const statusField = { [fieldKey(reviewStatus)]: status }
 	const noteField = { [fieldKey(reviewerNotes)]: note ?? "" }
 	// Undefined leaves the column alone, for a caller that only knows about the status (the older review backfill). Null clears it, for a decision that no longer stands.
 	const reviewerField = reviewerEmail === undefined ? null : { [fieldKey(pass1Reviewer)]: reviewerEmail ?? "" }
 
-	// The override and reviewer columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
+	// The override, reviewer and deflation columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
 	const overrides: { [_: string]: unknown } = {}
+	const deflationFields: { [_: string]: unknown } = {}
 	let reviewerWritable = false
 	const config = getAirtableConfig()
 	if (config)
@@ -304,11 +358,15 @@ export async function syncReviewDecisionToYsws(
 			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, [
 				...Object.values(LOOPS_REVIEW_OVERRIDE),
 				pass1Reviewer.name,
+				overrideHoursSpent.name,
+				deflationField.name,
 			])
 			reviewerWritable = writable.has(pass1Reviewer.name)
 			if (writable.size > 0) {
 				const [project, submission] = await Promise.all([
-					db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).select("theme", "title").first(),
+					db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+						.select("approvedHours", "designApprovedHours", "theme", "title")
+						.first(),
 					db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
 						.orderBy(row => row.createdAt.desc())
 						.select("scheduledWeek")
@@ -318,12 +376,14 @@ export async function syncReviewDecisionToYsws(
 					const week = submission?.scheduledWeek ?? scheduledWeekFor(project.theme, phase)
 					const values = reviewOverrideValues(projectDisplayTitle(project), week)
 					for (const [field, value] of Object.entries(values)) if (writable.has(field)) overrides[field] = value
+					if (writable.has(overrideHoursSpent.name) && writable.has(deflationField.name))
+						Object.assign(deflationFields, await deflationColumns(config, recordId, project, phase, status, note))
 				}
 			}
 		} catch (err) {
 			// A probe failure is not a reason to lose the status; the next decision retries it.
 			console.error(
-				"[airtable] could not probe the Loops override and reviewer columns; writing the decision without them:",
+				"[airtable] could not probe the Loops override, reviewer and deflation columns; writing the decision without them:",
 				err,
 			)
 		}
@@ -333,12 +393,13 @@ export async function syncReviewDecisionToYsws(
 		...noteField,
 		...(reviewerWritable && reviewerField ? reviewerField : {}),
 		...overrides,
+		...deflationFields,
 	}
 	const moved = await updateYswsRecord(recordId, complete)
 	if (moved.ok) return { updated: true }
 
-	// The complete write was refused. Keep the status load-bearing, and keep the overrides with it so the email can still name the project.
-	const core = await updateYswsRecord(recordId, { ...statusField, ...overrides })
+	// The complete write was refused. Keep the status load-bearing, and keep the overrides and hours with it so the email can still name the project and the payout still sees the cut.
+	const core = await updateYswsRecord(recordId, { ...statusField, ...overrides, ...deflationFields })
 	if (!core.ok) {
 		const statusOnly = await updateYswsRecord(recordId, statusField)
 		if (!statusOnly.ok) return { reason: statusOnly.reason, updated: false }

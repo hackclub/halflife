@@ -199,6 +199,24 @@ bun --conditions=react-server scripts/backfill-airtable-reviewers.ts --commit
 
 It only writes that one column, leaves status and notes alone (so it triggers no Loops email), and clears the address on a phase whose current state no longer matches the review that was standing. Run it where `DATABASE_URL` points at the real database.
 
+### Deflation columns
+
+A review may approve fewer hours than the maker's `Hours spent (self reported)`. The payout pipeline does not read the review, so it pays the self-reported figure unless the approved one lands on the row:
+
+- `Optional - Override Hours Spent` – a number field. The approved hours, written only when they are below the claim.
+- `Justification - Deflation Justification` – a long text field. The amounts cut plus the reviewer's note when one was written.
+
+`syncReviewDecisionToYsws` (`src/lib/airtable/sync.ts`) writes both in the same patch as the status, note, reviewer and Loops overrides, and clears both when a later decision withdraws the approval. The claimed figure is read from the row itself, so the override always replaces the number the base would otherwise pay. The app probes for both columns and skips them when absent.
+
+Rows decided before this landed are filled by:
+
+```bash
+bun --conditions=react-server scripts/backfill-airtable-deflation.ts
+bun --conditions=react-server scripts/backfill-airtable-deflation.ts --commit
+```
+
+It only touches approved rows, reports how many had nothing cut, and leaves a row alone when no frozen approved figure can be found. Run it where `DATABASE_URL` points at the real database.
+
 ### Ari phase columns
 
 Ari sends no webhook when a first-pass decision is held for a second pass, nor when a second pass returns it to the queue. `ari-retry` reads `ari.ships.status` for every open ship, stores a changed phase on `PhaseSubmission.ariStatus` / `ariStatusAt`, and mirrors it to three columns on `YSWS Project Submission`:

@@ -3,6 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
+		"airtable:backfill-deflation": "bun --conditions=react-server scripts/backfill-airtable-deflation.ts",
 		"airtable:backfill-justification": "bun --conditions=react-server scripts/backfill-airtable-justification.ts",
 		"airtable:backfill-project-week": "bun --conditions=react-server scripts/backfill-airtable-project-week.ts",
 		"airtable:backfill-review": "bun --conditions=react-server scripts/backfill-airtable-review.ts",
