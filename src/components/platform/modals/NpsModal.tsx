@@ -161,7 +161,7 @@ export function NpsGate() {
 					onClose={() => {}}
 					open
 				>
-					<ModalTitle sub="Quick check-in before you carry on – just the one question, and then the dashboard is yours.">
+					<ModalTitle sub="Quick check-in before you carry on – just the one question, and then you can get back to the dashboard.">
 						How is Half Life going?
 					</ModalTitle>
 
@@ -183,7 +183,7 @@ export function NpsGate() {
 										"grid size-10 place-items-center rounded-xl border-2 text-[0.95rem] font-extrabold tabular-nums transition-colors",
 										draft === n
 											? "border-coral-deep bg-coral-deep text-white"
-											: "border-field bg-black/[.02] text-navy hover:border-navy-soft",
+											: "border-field bg-black/2 text-navy hover:border-navy-soft",
 									)}
 									key={n}
 									onClick={() => setDraft(n)}
