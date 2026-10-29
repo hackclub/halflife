@@ -30,7 +30,7 @@ describe("firmwareWaiverCovers", () => {
 
 describe("readmeBomTable", () => {
 	test("finds a table whose separator cells use one or two dashes, as GitHub renders them", () => {
-		const readme = [
+		const md = [
 			"## BOM",
 			"",
 			"| PART | QTY | UNIT | TOTAL | SOURCE |",
@@ -38,11 +38,11 @@ describe("readmeBomTable", () => {
 			"| PLA filament | 1 | $8.21 | $8.21 | https://example.com/pla |",
 			"| Glue gun | 1 | $2.20 | $2.20 | https://example.com/glue |",
 		].join("\n")
-		expect(readmeBomTable(readme)).toEqual({ rows: 2 })
+		expect(readmeBomTable(md)).toEqual({ rows: 2 })
 	})
 
 	test("counts the rows below the header and stops at the end of the table", () => {
-		const readme = [
+		const md = [
 			"| Part | Price |",
 			"| --- | --- |",
 			"| Motor | $2 |",
@@ -50,36 +50,36 @@ describe("readmeBomTable", () => {
 			"",
 			"Prose after the table.",
 		].join("\n")
-		expect(readmeBomTable(readme)).toEqual({ rows: 2 })
+		expect(readmeBomTable(md)).toEqual({ rows: 2 })
 	})
 
 	test("needs at least the minimum number of rows", () => {
-		const readme = ["| Part | Price |", "| --- | --- |", "| Motor | $2 |"].join("\n")
-		expect(readmeBomTable(readme, 2)).toBeNull()
+		const md = ["| Part | Price |", "| --- | --- |", "| Motor | $2 |"].join("\n")
+		expect(readmeBomTable(md, 2)).toBeNull()
 	})
 
 	test("ignores a table with no part-like or price-like column", () => {
-		const readme = ["| Pin | GPIO |", "| --- | --- |", "| 1 | 4 |"].join("\n")
-		expect(readmeBomTable(readme)).toBeNull()
+		const md = ["| Pin | GPIO |", "| --- | --- |", "| 1 | 4 |"].join("\n")
+		expect(readmeBomTable(md)).toBeNull()
 	})
 
 	test("ignores a table pasted inside a fenced code block", () => {
-		const readme = ["```", "| Part | Price |", "| --- | --- |", "| Motor | $2 |", "```"].join("\n")
-		expect(readmeBomTable(readme)).toBeNull()
+		const md = ["```", "| Part | Price |", "| --- | --- |", "| Motor | $2 |", "```"].join("\n")
+		expect(readmeBomTable(md)).toBeNull()
 	})
 
 	test("does not read a horizontal rule as a table", () => {
-		const readme = ["Part | Price", "---", "Motor | $2"].join("\n")
-		expect(readmeBomTable(readme)).toBeNull()
+		const md = ["Part | Price", "---", "Motor | $2"].join("\n")
+		expect(readmeBomTable(md)).toBeNull()
 	})
 
 	test("finds an HTML BOM table", () => {
-		const readme = [
+		const md = [
 			"<table>",
 			"<tr><th>Part</th><th>Price</th></tr>",
 			"<tr><td>Motor</td><td>$2</td></tr>",
 			"</table>",
 		].join("\n")
-		expect(readmeBomTable(readme)).toEqual({ rows: 1 })
+		expect(readmeBomTable(md)).toEqual({ rows: 1 })
 	})
 })
