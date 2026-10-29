@@ -38,7 +38,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Half Life sends each submitted (project, phase) as an Ari "ship" and receives its decisions back as signed webhooks. The decision is applied through the same `finalizeReview` a human console reviewer calls, so the trail, the ledger and the grant all move exactly once, whether a person or Ari decided. The only difference is attribution: an Ari decision has no Half Life user, so `SubmissionReview.reviewerId` is null and the audit row names Ari instead.
  *
- * Ari owns the decision, and it is mirrored into the participant-facing side of Half Life (status, hours, coins, printer qualification). The one thing written back to Airtable is the decision itself – `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes`, which Loops reads to email the maker, plus `Optional - Override Hours Spent` and `Justification - Deflation Justification` when Ari approved fewer hours than the row claims. A decision writes nothing to the base on its own, so all of it is put on the row here (see `mirrorReviewDecision`).
+ * Ari owns the decision, and it is mirrored into the participant-facing side of Half Life (status, hours, coins, printer qualification). The one thing written back to Airtable is the decision itself – `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes`, which Loops reads to email the maker, `Optional - Override Hours Spent` and `Justification - Deflation Justification` when Ari approved fewer hours than the row claims, and `Justification - Alternate Tracking Method` when the row has no Hackatime or Lapse evidence. A decision writes nothing to the base on its own, so all of it is put on the row here (see `mirrorReviewDecision`).
  *
  * Everything here no-ops when the three ARI_* secrets are unset, so local dev and any deployment that has not been onboarded to Ari behave as before.
  */
@@ -115,6 +115,36 @@ async function buildDemoUrl(userId: string, buildWeek: number): Promise<string |
 const emptyTimelapseSession = (timelapses: number): string =>
 	`[This is an empty work session with ${timelapses} timelapse${timelapses === 1 ? "" : "s"} attached.]`
 
+/** One journal entry, as far as Ari's time accounting cares. */
+export interface JournalTimeSource {
+	hoursClaimed: number
+	hoursSource: HoursSource
+	timelapses: readonly {
+		coveredSeconds: number | null
+		externalId: string | null
+		hackatimeProject: string | null
+		provider: string
+	}[]
+}
+
+/**
+ * The minutes a journal entry contributes to Ari, net of the recordings attached to it.
+ *
+ * Ari adds its time sources together: a journal entry's minutes and the duration of every Lapse clip it pulls for the ship's Hackatime projects. A clip attached to an entry is a recording *of* that sitting, so sending the entry's full claim as well counts the same work twice – the maker who logged 7h53 and recorded 7h53 was shown as 17h on Ari. The recorded part is taken off the claim here, floored at zero: what the clip does not cover is still the maker's own figure. Ari counts a clip only when it is a Lapse recording under one of the projects this ship names, so an R2 upload or a clip tracked under another project is evidence only and stays in the claim.
+ *
+ * A HACKATIME_TRACKED entry contributes nothing: its minutes arrive through the project link, which Ari dedupes against the same clips itself.
+ */
+export function journalMinutes(session: JournalTimeSource, countedProjects: ReadonlySet<string>): number {
+	if (session.hoursSource === HoursSource.HACKATIME_TRACKED) return 0
+	const claimedSeconds = Math.max(0, Math.round(session.hoursClaimed * 60 * 60))
+	const recordedSeconds = session.timelapses.reduce((sum, t) => {
+		if (t.provider !== "lapse" || !t.externalId || !t.hackatimeProject) return sum
+		if (!countedProjects.has(t.hackatimeProject)) return sum
+		return sum + Math.max(0, Math.round(t.coveredSeconds ?? 0))
+	}, 0)
+	return Math.min(1440, Math.round(Math.max(0, claimedSeconds - recordedSeconds) / 60))
+}
+
 /**
  * Whether an entry carries no words of its own, leaving only the title column's "Work session" placeholder.
  *
@@ -143,7 +173,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 				.orderBy(session => session.createdAt.asc())
 				.select("content", "createdAt", "hoursClaimed", "hoursSource", "title")
 				.include("timelapses", timelapse =>
-					timelapse.select("externalId", "hackatimeProject", "objectKey", "playbackUrl", "provider"),
+					timelapse.select("coveredSeconds", "externalId", "hackatimeProject", "objectKey", "playbackUrl", "provider"),
 				),
 		)
 		.first()
@@ -170,6 +200,10 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 
 	const def = getThemeDef(project.theme)
 
+	// Only projects the maker attached are named here: everything in `hackatime_projects` is time Ari counts, and a recording's `hackatimeProject` is whatever Hackatime happened to be tracking when it was filmed, not a link the maker made to this entry. The recording still travels as evidence through the clip links in its journal below.
+	const hackatimeProjects = [...new Set(project.hackatimeLinks.map(l => l.hackatimeProject))].slice(0, 50)
+	const countedProjects = new Set(hackatimeProjects)
+
 	const journals = project.workSessions.slice(-200).map(session => {
 		const clips = session.timelapses.flatMap(t => {
 			const url =
@@ -188,11 +222,8 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 			{
 				// `createdAt` is a Prisma 8 `TimestampString`, so it reads as `2026-10-22 14:25:05.757` – a space where the `T` belongs and no zone. Ari validates `journals[].at` as a date string and refuses that form (422 `invalid_payload: journals.at`), so convert it to a real Date and let the SDK send ISO text.
 				at: parseDbTimestamp(session.createdAt),
-				// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see.
-				minutes:
-					session.hoursSource === HoursSource.HACKATIME_TRACKED
-						? 0
-						: Math.min(1440, Math.max(0, Math.round(session.hoursClaimed * 60))),
+				// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see. A clip Ari counts is taken off the claim so the same sitting is not counted twice (see journalMinutes).
+				minutes: journalMinutes(session, countedProjects),
 				text: body,
 			},
 			// Ari has no field for a journal's own attachments: its Lapse tile pulls clips per Hackatime project. Linking each recording in the entry keeps it attached to the journal it backs even when that pull has nothing to match (no Hackatime id, or a project Lapse never named), so a reviewer never opens an entry with no evidence in it.
@@ -212,8 +243,6 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	const isUpdate = phaseSubmissions.some(s => s.resolvedAt !== null)
 	const demoUrl = phase === Phase.BUILD ? await buildDemoUrl(project.userId, def.buildWeek) : null
 	const hasTimelapse = project.workSessions.some(s => s.timelapses.length > 0)
-	// Only projects the maker attached are named here: everything in `hackatime_projects` is time Ari counts, and a recording's `hackatimeProject` is whatever Hackatime happened to be tracking when it was filmed, not a link the maker made to this entry. The recording still travels as evidence through the clip links in its journal below.
-	const hackatimeProjects = [...new Set(project.hackatimeLinks.map(l => l.hackatimeProject))].slice(0, 50)
 
 	const input: AriShipInput = {
 		// Ari rejects an empty description. Week one's onboarding allows one, and submissions made before that was enforced would otherwise fail every retry, so fall back to the title rather than throw: the title is always present and is a truer description than a placeholder would be.

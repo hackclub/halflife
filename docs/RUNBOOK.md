@@ -237,6 +237,21 @@ bun --conditions=react-server scripts/backfill-airtable-deflation.ts --commit
 
 It only touches approved rows, reports how many had nothing cut, and leaves a row alone when no frozen approved figure can be found. Run it where `DATABASE_URL` points at the real database.
 
+### Alternate tracking method
+
+`Justification - Alternate Tracking Method` explains the hours when there is no Hackatime id, no Hackatime projects and no Lapse links to follow. The live write fills it at hand-in from the devlog entries (`N devlog entries, Xh claimed`), then an approval replaces it with the same facts plus the reviewer's own reasoning.
+
+Ari's current review does not collect a dedicated devlog-evidence field. The closest current data is the reviewer's internal audit note (`review.audit_note`), which Ari requires on approvals and Half Life stores as `SubmissionReview.reason`. The legacy `time_evidence` and `hours_reasoning` fields, which were exactly this explanation, are no longer collected and are only sent for old reviews that are confirmed or resent.
+
+The existing justification backfill fills the column where it is empty, using the standing review's audit note when the decision still matches the phase:
+
+```bash
+bun --conditions=react-server scripts/backfill-airtable-justification.ts
+bun --conditions=react-server scripts/backfill-airtable-justification.ts --commit
+```
+
+It leaves a cell that already holds something alone and writes nothing when the row has Hackatime or Lapse evidence. Run it where `DATABASE_URL` points at the real database.
+
 ### Ari phase columns
 
 Ari sends no webhook when a first-pass decision is held for a second pass, nor when a second pass returns it to the queue. `ari-retry` reads `ari.ships.status` for every open ship, stores a changed phase on `PhaseSubmission.ariStatus` / `ariStatusAt`, and mirrors it to three columns on `YSWS Project Submission`:
@@ -283,11 +298,19 @@ Triage by the status code in the step log, because they mean different things:
 - **`504`** – not a job problem and not a dead app. Cloudflare timed out at ~100s; see **Cloudflare kills anything over ~100 seconds**.
 - **`curl: command not found`** – the step is `type: "script"`. It has to be `type: "app"`.
 
+**Someone sees "That upload took too long"** – there are three causes, and the rest of the message names which one:
+
+- **"went through our server" or "could not reach our storage directly"** – the browser could not PUT straight to R2, so it used the old form route and the edge killed it at ~100s. Run `bun run verify:uploads`: a missing or wrong-origin CORS rule makes every upload take this path, and fixing the rule (see **Create the R2 bucket**) is the real fix. If the CORS check passes, that person's network is blocking the bucket; another network, or a smaller clip, is the workaround.
+- **"get the upload ready"** – `/api/upload/presign` or `/api/handoff/presign` timed out before any bytes were sent. That is the origin or the database, not the file or the bucket; check pod and database health, then retry.
+- **"check it"** – the bytes landed, but `/api/upload/confirm` or `/api/handoff/confirm` timed out while reading what R2 stored (a picture is hashed in full; a video only gets its header read). Retrying is safe – an image reuses its content-hash key, and a failed confirm leaves at most an orphaned video object. If it repeats, check R2 latency and the confirm route's logs.
+
 **Stop participant writes right now** – flip *Submissions open* off at `/admin/program`. It is a database row with an audit trail, deliberately not an env var: stasis put this in `SUBMISSIONS_CLOSED`, nobody flipped it in the dashboard, and submissions stayed open for two weeks after the event ended. Reviews and the shop stay up.
 
 **Helpers can't close tickets** – both "Mark as helped" buttons fail closed on membership of the private tickets channel (`SLACK_TICKETS_CHANNEL_ID`). If someone in `#half-life-tickets` is refused, read the app logs for `mark_helped`: `unreadable member list … missing_scope (needed groups:read)` means the manifest's `groups:read` scope was never applied – re-import `slack-app-manifest.yml` (Features → App Manifest → Save), reinstall the app to the workspace, and invite the bot into the private tickets channel. `channel_not_found` / `not_in_channel` means the bot itself is not in that channel – invite it. If there is no error line and the clicker is refused, compare the logged channel id against the channel's real id in Slack – the env var may point at a different (e.g. recreated) channel than the one the helpers sit in.
 
 **A grant row never reached Airtable** – `/admin/program` lists them with a retry button, and `/admin/audit?action=AIRTABLE_SYNC_FAILURE` has the errors. The `airtable-retry` job does the same sweep hourly.
+
+**An open Ari ship shows a maker's time twice** – Ari adds a journal entry's minutes to the duration of every Lapse clip it pulls, so before the ship builder netted the two a maker who devlogged and recorded the same sitting was shown both (a 7.9h project read as 17h). New sends carry the net figure; ships already in Ari keep the old one until replaced. `bun --conditions=react-server scripts/backfill-ari-timelapses.ts` lists every in-review hand-in with a timelapse and `--commit` withdraws and re-sends each one, or pass `--project <themeProjectId>` for one. Decided ships cannot be replaced – Ari has no update-in-place – but a resubmission is rebuilt with the net figure.
 
 **A project was returned before the return-extension existed** – a return now writes a week onto the returned project's `submissionExtensionUntil`, but only on the decision itself, so a project already sitting on "needs changes" from before keeps the old window and its maker may be unable to hand the fix in. `bun --conditions=react-server scripts/backfill-return-extensions.ts` reports every such project (dry run) and `--commit` gives each the same week, `reviews:backfill-return-extensions` being the same thing by name. It skips any project with an extension already running and is safe to re-run. Run it where `DATABASE_URL` points at the real database.
 

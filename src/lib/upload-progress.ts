@@ -78,22 +78,54 @@ export function postForm(
 	return promise
 }
 
+/** Which request failed, so a timeout can say what actually ran out of time. */
+export type UploadStage = "prepare" | "confirm" | "send"
+
+/**
+ * Why the bytes are taking the slow path through this origin.
+ *
+ * A direct PUT can be unavailable for reasons worth telling apart: the browser could not reach the bucket (usually CORS not applied, or a network that blocks it), or the deployment could not mint a URL at all (an older build, or an image on plain HTTP with no WebCrypto). Both fall back to the form route, but only the first is something another network might solve.
+ */
+export type UploadFallback = "direct-unreachable" | "no-direct-url"
+
+export interface UploadFailureContext {
+	fallback?: UploadFallback
+	stage: UploadStage
+}
+
+/** Most callers are the form route, where the body itself ran out of time. */
+const SEND_FAILURE: UploadFailureContext = Object.freeze({ stage: "send" })
+
 /**
  * What a failed upload should say.
  *
- * 524 is Cloudflare giving up on the origin while a body is still arriving; it is not the bucket's fault and there is nothing to retry into, so the advice is to send less or get a better connection. The JSON body of an ordinary API failure is prose the server already wrote for a person, so that wins when it exists.
+ * 524 is Cloudflare giving up on the origin while a body is still arriving, and 504 is a gateway doing the same; neither is the bucket's fault, and there is nothing to retry into. Which of the three requests timed out changes the advice: before the file is sent, its size is irrelevant; after it has arrived, sending anything again is the wrong move; and only a body that had to take the slow path through the origin is helped by a shorter clip. The JSON body of an ordinary API failure is prose the server already wrote for a person, so that wins whenever it exists.
  */
-export function uploadFailure(res: UploadResponse): string {
-	if (res.status === 524 || res.status === 504)
-		return "That upload took too long. Try a shorter clip or a smaller picture, or move somewhere with a better connection."
-	return errorMessage(res.json, `Upload failed (${res.status})`)
+export function uploadFailure(res: UploadResponse, context: UploadFailureContext = SEND_FAILURE): string {
+	const serverMessage = errorMessage(res.json, "")
+	if (serverMessage) return serverMessage
+	if (res.status === 524 || res.status === 504) return uploadTimeout(res.status, context)
+	return `Upload failed (${res.status})`
+}
+
+function uploadTimeout(status: number, context: UploadFailureContext): string {
+	if (context.stage === "prepare")
+		return `The server took too long to get the upload ready (HTTP ${status}). Your file was not sent – try again in a moment.`
+	if (context.stage === "confirm")
+		return `The file was sent, but the server took too long to check it (HTTP ${status}). Try again in a moment – if it keeps happening, tell us.`
+	if (context.fallback === "direct-unreachable")
+		return `That upload took too long (HTTP ${status}). Your browser could not reach our file store directly, so the file went through our server and ran out of time. Try a different connection, or send a shorter clip or a smaller picture.`
+	return `That upload took too long (HTTP ${status}). It went through our server rather than straight to the file store, so a slow connection can run out of time. Try a shorter clip or a smaller picture, or try again somewhere with a better connection.`
 }
 
 /** The same message, for a `fetch` response whose body has not been read yet. */
-export async function uploadFailureFrom(response: Response): Promise<string> {
+export async function uploadFailureFrom(
+	response: Response,
+	context: UploadFailureContext = SEND_FAILURE,
+): Promise<string> {
 	// A 524 from the edge is HTML, and `json()` on it would throw rather than tell us anything.
 	const json: unknown = await response.json().catch(() => null)
-	return uploadFailure({ json, ok: response.ok, status: response.status })
+	return uploadFailure({ json, ok: response.ok, status: response.status }, context)
 }
 
 /**

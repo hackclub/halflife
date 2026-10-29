@@ -490,6 +490,62 @@ async function bodies() {
 	check("ari · rejects junk", parseAriExternalId("not-an-id") === null)
 	check("ari · rejects empty project", parseAriExternalId(":design") === null)
 
+	/* ── 5a. Ari's journal time is net of the recording ───────────────────── */
+	//
+	// Ari adds a journal's minutes and the duration of every Lapse clip it pulls for the ship's Hackatime projects. A clip attached to an entry records that same sitting, so sending the full claim as well counted it twice – a 7.9h project read as 17h. Only a clip Ari will actually count is taken off, and never below zero.
+	const { journalMinutes } = await import("../src/lib/ari")
+	const { HoursSource } = await import("../src/lib/enums")
+	const { MANUAL, HACKATIME_TRACKED } = HoursSource
+	const counted = new Set(["The Track"])
+	const clip = (
+		over: Partial<{
+			coveredSeconds: number | null
+			externalId: string | null
+			hackatimeProject: string | null
+			provider: string
+		}> = {},
+	) => ({
+		coveredSeconds: 3600,
+		externalId: "clip_1" as string | null,
+		hackatimeProject: "The Track" as string | null,
+		provider: "lapse",
+		...over,
+	})
+	check(
+		"ari · a fully recorded entry claims no devlog minutes",
+		journalMinutes({ hoursClaimed: 2, hoursSource: MANUAL, timelapses: [clip({ coveredSeconds: 7200 })] }, counted)
+			=== 0,
+	)
+	check(
+		"ari · only the unrecorded part of an entry is claimed",
+		journalMinutes({ hoursClaimed: 2, hoursSource: MANUAL, timelapses: [clip()] }, counted) === 60,
+	)
+	check(
+		"ari · a clip shorter than the claim leaves the rest",
+		journalMinutes({ hoursClaimed: 1.5, hoursSource: MANUAL, timelapses: [clip({ coveredSeconds: 1800 })] }, counted)
+			=== 60,
+	)
+	check(
+		"ari · a clip under another project is evidence only",
+		journalMinutes({ hoursClaimed: 1, hoursSource: MANUAL, timelapses: [clip({ hackatimeProject: "Other" })] }, counted)
+			=== 60,
+	)
+	check(
+		"ari · an R2 upload is evidence only",
+		journalMinutes(
+			{
+				hoursClaimed: 1,
+				hoursSource: MANUAL,
+				timelapses: [clip({ externalId: null, provider: "r2" })],
+			},
+			counted,
+		) === 60,
+	)
+	check(
+		"ari · a tracked entry contributes nothing",
+		journalMinutes({ hoursClaimed: 2, hoursSource: HACKATIME_TRACKED, timelapses: [clip()] }, counted) === 0,
+	)
+
 	/* ── 5b. Which hand-ins are pending at Ari ─────────────────────────────── */
 	//
 	// What the hourly retry job replays and what the admin Retry button offers: in-review phases whose NEWEST open submission has no ariSubmissionId.

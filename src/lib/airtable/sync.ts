@@ -2,6 +2,7 @@ import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
 import {
 	type AirtableConfig,
+	type AirtableRecord,
 	AirtableRecordSchema,
 	airtableFetch,
 	getAirtableConfig,
@@ -9,12 +10,12 @@ import {
 } from "@/lib/airtable/client"
 import { deflationFor, deflationJustification, numberCell } from "@/lib/airtable/deflation"
 import { existingColumns } from "@/lib/airtable/field-probe"
-import { justificationValues, timelapseLinks } from "@/lib/airtable/justification"
+import { alternateTrackingJustification, justificationValues, timelapseLinks } from "@/lib/airtable/justification"
 import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
-import { PayoutSource, Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
+import { HoursSource, PayoutSource, Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
 import { lockKey } from "@/lib/locks"
@@ -147,7 +148,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 			sessions
 				.where({ deletedAt: null, phase })
 				.orderBy(session => session.createdAt.asc())
-				.select("content", "createdAt", "effectiveDate", "hoursClaimed", "title")
+				.select("content", "createdAt", "effectiveDate", "hoursClaimed", "hoursSource", "title")
 				.include("timelapses", timelapse => timelapse.select("externalId", "objectKey", "playbackUrl", "provider")),
 		)
 		.first()
@@ -184,6 +185,20 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const tier = project.tier ?? project.requestedTier
 	const journalUrl = await findRepoFile(project.githubRepo, /(^|\/)journal\.md$/i)
 	const cover = publicUrlFor(project.coverImageKey)
+	const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+
+	// The alternate method only exists when there is no tracked evidence to name. It is written at hand-in so the row is never handed to a reviewer without one, and the decision mirror replaces it with the reviewer's own reasoning. An approved row is left alone here: an admin refresh must not overwrite what a reviewer wrote.
+	const hasTrackedEvidence = Boolean(user.hackatimeUserId) || project.hackatimeLinks.length > 0 || lapseLinks.length > 0
+	const alternateTracking =
+		phaseStatus !== PhaseStatus.in_review
+			? undefined
+			: hasTrackedEvidence
+				? ""
+				: alternateTrackingJustification({
+						claimedHours: breakdown.journalHoursClaimed,
+						entryCount: project.workSessions.filter(s => s.hoursSource !== HoursSource.HACKATIME_TRACKED).length,
+						reviewerText: null,
+					})
 
 	const justification = justificationValues(
 		{
@@ -208,6 +223,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		...(pii.birthday ? { birthday: pii.birthday } : {}),
 		addressLine1: pii.line1 ?? "",
 		addressLine2: pii.line2 ?? "",
+		alternateTracking,
 		city: pii.city ?? "",
 		country: pii.country ?? "",
 		description: project.description ?? "",
@@ -226,7 +242,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		// The parts are funded once, at design. A build asks for no new money, so its row says $0 rather than repeating the design's request.
 		// Under HCB the base is evidence rather than the payer: a zero here is what stops the YSWS pipeline paying a project Half Life has already funded by card grant.
 		requestedFunding: phase === Phase.DESIGN && settings.payoutSource === PayoutSource.AIRTABLE ? bomTotal : 0,
-		reviewStatus: reviewStatusFor(phase === Phase.DESIGN ? project.designStatus : project.buildStatus),
+		reviewStatus: reviewStatusFor(phaseStatus),
 		slackId: user.slackId ?? "",
 		stage: phase === Phase.DESIGN ? "Design" : "Build",
 		// `starterProjectId` is the one place the choice is kept: set when a starter is taken and cleared when the idea is written over with their own (see lib/onboarding). So the checkbox is `!== null`, derived rather than stored, and a project that left the starter behind reads as `false` here like any other.
@@ -271,44 +287,100 @@ export async function syncSubmissionToYsws(
 	)
 }
 
+/** The cells the decision mirror needs from a submission's row. */
+interface ReviewRowValues {
+	hackatimeId: string
+	hackatimeProjects: string
+	lapseLinks: string
+	selfReportedHours: number | null
+}
+
+/** A text cell, trimmed: Airtable omits an empty one entirely and may hand a formula back as text. */
+const textCell = (value: unknown): string => (typeof value === "string" ? value.trim() : "")
+
+/**
+ * The row cells a decision needs, read once so deflation and alternate tracking share a request.
+ *
+ * The whole row is read, not a field list: `fields[]` exists on list-records only, and Airtable refuses a get-record that names it with a 422 rather than ignoring the parameter.
+ *
+ * A read that fails returns null rather than throwing. Nothing here can then say whether a row was deflated or what its tracking columns hold, so the status and note are still written and the extra columns are left as they were.
+ */
+async function readReviewRow(config: AirtableConfig, recordId: string): Promise<ReviewRowValues | null> {
+	const { hackatimeId, hackatimeProjects, hoursSelfReported, lapseLinks } = YSWS_SUBMISSION.fields
+	let row: AirtableRecord
+	try {
+		row = await withRateLimitRetry("readYswsReviewRow", () =>
+			airtableFetch(
+				AirtableRecordSchema,
+				config,
+				`${encodeURIComponent(YSWS_SUBMISSION.tableId)}/${encodeURIComponent(recordId)}`,
+			),
+		)
+	} catch (err) {
+		console.error(
+			`[airtable] could not read YSWS row ${recordId}; leaving the deflation and alternate-tracking columns alone:`,
+			err,
+		)
+		return null
+	}
+	const cell = (field: { id: string; name: string }) => row.fields[fieldKey(field)]
+	return {
+		hackatimeId: textCell(cell(hackatimeId)),
+		hackatimeProjects: textCell(cell(hackatimeProjects)),
+		lapseLinks: textCell(cell(lapseLinks)),
+		selfReportedHours: numberCell(cell(hoursSelfReported)),
+	}
+}
+
 /**
  * The two deflation columns for a decision: the approved hours when they fall short of the row's own claim, or a cleared pair when they do not.
  *
- * The claimed figure is read from the row rather than recomputed here. It is the number the payout pipeline will actually fall back to, and it is the number the override exists to replace – recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
+ * The claimed figure comes from the row rather than being recomputed here. It is the number the payout pipeline will actually fall back to, and it is the number the override exists to replace – recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
  *
  * An approved row whose frozen hours are missing is left alone: nothing here can say whether it was deflated, and clearing a value a person may have entered is worse than leaving it. A non-approved row is cleared, because an override that outlived its approval would keep paying hours nobody is standing behind.
  */
-async function deflationColumns(
-	config: AirtableConfig,
-	recordId: string,
+function deflationColumns(
 	project: { approvedHours: number | null; designApprovedHours: number | null },
 	phase: Phase,
 	status: string,
 	note: string | null,
-): Promise<{ [_: string]: unknown }> {
-	const { deflationJustification: justificationField, hoursSelfReported, overrideHoursSpent } = YSWS_SUBMISSION.fields
+	row: ReviewRowValues | null,
+): { [_: string]: unknown } {
+	const { deflationJustification: justificationField, overrideHoursSpent } = YSWS_SUBMISSION.fields
 	const overrideKey = fieldKey(overrideHoursSpent)
 	const justificationKey = fieldKey(justificationField)
 	const clear = { [overrideKey]: null, [justificationKey]: "" }
 	if (status !== YSWS_REVIEW_STATUS.approved) return clear
+	// The row could not be read, so nothing here can say whether it was deflated.
+	if (!row) return {}
 
 	const approved = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
 	if (approved === null) return {}
 
-	const claimedKey = fieldKey(hoursSelfReported)
-	const row = await withRateLimitRetry("readYswsHours", () =>
-		airtableFetch(
-			AirtableRecordSchema,
-			config,
-			`${encodeURIComponent(YSWS_SUBMISSION.tableId)}/${encodeURIComponent(recordId)}?fields%5B%5D=${encodeURIComponent(claimedKey)}`,
-		),
-	)
-	const deflation = deflationFor(approved, numberCell(row.fields[claimedKey]))
+	const deflation = deflationFor(approved, row.selfReportedHours)
 	if (!deflation) return clear
 	return {
 		[overrideKey]: deflation.approvedHours,
 		[justificationKey]: deflationJustification(deflation, note),
 	}
+}
+
+/**
+ * The `Justification - Alternate Tracking Method` column for a decision.
+ *
+ * Only an approval is written: it is the justification of hours that were paid, and an earlier review's reasoning should not be erased by a return, a reopen or a reset that has nothing new to say. When the row has since gained Hackatime or Lapse evidence the column is cleared, because the alternate method it described is no longer the one the hours rest on.
+ */
+function alternateTrackingColumns(
+	status: string,
+	row: ReviewRowValues | null,
+	reviewerText: string | null,
+	entryCount: number,
+	claimedHours: number | null,
+): { [_: string]: unknown } {
+	if (status !== YSWS_REVIEW_STATUS.approved || !row) return {}
+	const key = fieldKey(YSWS_SUBMISSION.fields.alternateTracking)
+	if ([row.hackatimeId, row.hackatimeProjects, row.lapseLinks].some(value => value !== "")) return { [key]: "" }
+	return { [key]: alternateTrackingJustification({ claimedHours, entryCount, reviewerText }) }
 }
 
 /**
@@ -320,7 +392,7 @@ async function deflationColumns(
  *
  * Best-effort, and only ever after the fact: the review is already committed in Postgres by the time this runs, so a base that is briefly unreachable must not throw and turn a decided submission into one Ari redelivers. No row is not a failure either – a submission written before this sync existed has no record id, and one taken back has none any more.
  *
- * The status, note, first-pass reviewer, overrides and any deflation are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides + hours, then status alone, then the note and the reviewer. Each failure is named.
+ * The status, note, first-pass reviewer, overrides, deflation and alternate-tracking justification are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides + hours, then status alone, then the note and the reviewer. Each failure is named.
  *
  * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the decision (the first of Ari's two passes). Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
  */
@@ -338,6 +410,7 @@ export async function syncReviewDecisionToYsws(
 	if (!recordId) return { reason: "no_row", updated: false }
 
 	const {
+		alternateTracking: alternateTrackingField,
 		deflationJustification: deflationField,
 		overrideHoursSpent,
 		pass1Reviewer,
@@ -349,21 +422,34 @@ export async function syncReviewDecisionToYsws(
 	// Undefined leaves the column alone, for a caller that only knows about the status (the older review backfill). Null clears it, for a decision that no longer stands.
 	const reviewerField = reviewerEmail === undefined ? null : { [fieldKey(pass1Reviewer)]: reviewerEmail ?? "" }
 
-	// The override, reviewer and deflation columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
+	// The override, reviewer, deflation and alternate-tracking columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
 	const overrides: { [_: string]: unknown } = {}
 	const deflationFields: { [_: string]: unknown } = {}
+	const alternateFields: { [_: string]: unknown } = {}
 	let reviewerWritable = false
 	const config = getAirtableConfig()
-	if (config)
+	if (config) {
+		let writable = new Set<string>()
 		try {
-			const writable = await existingColumns(config, YSWS_SUBMISSION.tableId, [
+			writable = await existingColumns(config, YSWS_SUBMISSION.tableId, [
 				...Object.values(LOOPS_REVIEW_OVERRIDE),
 				pass1Reviewer.name,
 				overrideHoursSpent.name,
 				deflationField.name,
+				alternateTrackingField.name,
 			])
-			reviewerWritable = writable.has(pass1Reviewer.name)
-			if (writable.size > 0) {
+		} catch (err) {
+			// A probe failure is not a reason to lose the status; the next decision retries it.
+			console.error(
+				`[airtable] could not check whether the Loops override, reviewer and justification columns exist; writing the decision for ${themeProjectId} (${phase}) without them:`,
+				err,
+			)
+		}
+		reviewerWritable = writable.has(pass1Reviewer.name)
+		const hasDeflationColumns = writable.has(overrideHoursSpent.name) && writable.has(deflationField.name)
+		const hasAlternateColumn = writable.has(alternateTrackingField.name)
+		if (writable.size > 0)
+			try {
 				const [project, submission] = await Promise.all([
 					db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
 						.select("approvedHours", "designApprovedHours", "theme", "title")
@@ -371,23 +457,58 @@ export async function syncReviewDecisionToYsws(
 					db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
 						.orderBy(row => row.createdAt.desc())
 						.select("scheduledWeek")
+						.include("reviews", reviews =>
+							reviews
+								.where({ invalidated: false })
+								.orderBy(review => review.createdAt.desc())
+								.select("feedback", "reason"),
+						)
 						.first(),
 				])
 				if (project) {
 					const week = submission?.scheduledWeek ?? scheduledWeekFor(project.theme, phase)
 					const values = reviewOverrideValues(projectDisplayTitle(project), week)
 					for (const [field, value] of Object.entries(values)) if (writable.has(field)) overrides[field] = value
-					if (writable.has(overrideHoursSpent.name) && writable.has(deflationField.name))
-						Object.assign(deflationFields, await deflationColumns(config, recordId, project, phase, status, note))
+
+					const row =
+						status === YSWS_REVIEW_STATUS.approved && (hasDeflationColumns || hasAlternateColumn)
+							? await readReviewRow(config, recordId)
+							: null
+					const reviewerText = submission?.reviews[0]?.reason?.trim() || note
+					if (hasDeflationColumns) Object.assign(deflationFields, deflationColumns(project, phase, status, note, row))
+					if (hasAlternateColumn) {
+						const devlogOnly =
+							row !== null
+							&& !row.hackatimeId
+							&& !row.hackatimeProjects
+							&& !row.lapseLinks
+							&& status === YSWS_REVIEW_STATUS.approved
+						const devlogSessions = devlogOnly
+							? await db.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
+									.select("hoursClaimed", "hoursSource")
+									.all()
+							: []
+						const manual = devlogSessions.filter(s => s.hoursSource !== HoursSource.HACKATIME_TRACKED)
+						Object.assign(
+							alternateFields,
+							alternateTrackingColumns(
+								status,
+								row,
+								reviewerText,
+								manual.length,
+								row?.selfReportedHours ?? round2(manual.reduce((sum, s) => sum + s.hoursClaimed, 0)),
+							),
+						)
+					}
 				}
+			} catch (err) {
+				// The status still lands; this names the extra values that did not.
+				console.error(
+					`[airtable] could not build the Loops override and justification values for ${themeProjectId} (${phase}); writing the decision without them:`,
+					err,
+				)
 			}
-		} catch (err) {
-			// A probe failure is not a reason to lose the status; the next decision retries it.
-			console.error(
-				"[airtable] could not probe the Loops override, reviewer and deflation columns; writing the decision without them:",
-				err,
-			)
-		}
+	}
 
 	const complete = {
 		...statusField,
@@ -395,12 +516,18 @@ export async function syncReviewDecisionToYsws(
 		...(reviewerWritable && reviewerField ? reviewerField : {}),
 		...overrides,
 		...deflationFields,
+		...alternateFields,
 	}
 	const moved = await updateYswsRecord(recordId, complete)
 	if (moved.ok) return { updated: true }
 
-	// The complete write was refused. Keep the status load-bearing, and keep the overrides and hours with it so the email can still name the project and the payout still sees the cut.
-	const core = await updateYswsRecord(recordId, { ...statusField, ...overrides, ...deflationFields })
+	// The complete write was refused. Keep the status load-bearing, and keep the overrides, hours and alternate-tracking justification with it so the email can still name the project and the payout still sees the cut.
+	const core = await updateYswsRecord(recordId, {
+		...statusField,
+		...overrides,
+		...deflationFields,
+		...alternateFields,
+	})
 	if (!core.ok) {
 		const statusOnly = await updateYswsRecord(recordId, statusField)
 		if (!statusOnly.ok) return { reason: statusOnly.reason, updated: false }
