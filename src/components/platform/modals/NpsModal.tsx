@@ -145,7 +145,11 @@ export function NpsGate() {
 					/>
 				</Field>
 
-				<Field hint="Anything that would make it better (we know review is slow!)." id="nps-improve" label="What could be better? (optional)">
+				<Field
+					hint="Anything that would make it better (we know review is slow!)."
+					id="nps-improve"
+					label="What could be better? (optional)"
+				>
 					<TextArea
 						id="nps-improve"
 						maxLength={2000}
