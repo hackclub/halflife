@@ -22,13 +22,10 @@ declare global {
  */
 const BUILD_TIME_DATABASE_URL = "postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
-/** PostgreSQL's OID for `timestamp without time zone`. */
-const TIMESTAMP_OID = 1114
-
 const parseUtcTimestamp = (value: string): Date => new Date(`${value.replace(" ", "T")}Z`)
 
-// pg reads `timestamp without time zone` as local time by default; the schema stores every instant as UTC, so the parser is replaced for this process.
-types.setTypeParser(TIMESTAMP_OID, parseUtcTimestamp)
+// pg reads `timestamp without time zone` as local time by default; the schema stores every instant as UTC, so the parser is replaced for this process. `builtins.TIMESTAMP` is PostgreSQL's OID for that type (1114).
+types.setTypeParser(types.builtins.TIMESTAMP, parseUtcTimestamp)
 
 const createPool = () => {
 	const connectionString = process.env.DATABASE_URL
