@@ -1,8 +1,9 @@
 import { SQL } from "bun"
+import { bunSqlUrl } from "@/lib/db-url"
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error("DATABASE_URL missing")
-const db = new SQL(databaseUrl)
+const db = new SQL(bunSqlUrl(databaseUrl))
 
 async function q(label: string, sql: string) {
 	const rows = await db.unsafe<{ [_: string]: unknown }[]>(sql)

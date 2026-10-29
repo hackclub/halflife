@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process"
 import { resolve } from "node:path"
 import { SQL } from "bun"
+import { bunSqlUrl } from "@/lib/db-url"
 import { e2eDatabaseUrl } from "../e2e/env"
 
 /**
@@ -25,7 +26,7 @@ function programStartDate(): string {
 }
 
 async function main(): Promise<void> {
-	const url = new URL(e2eDatabaseUrl)
+	const url = new URL(bunSqlUrl(e2eDatabaseUrl))
 	const database = url.pathname.replace(/^\//, "")
 	const adminUrl = new URL(url)
 	adminUrl.pathname = "/postgres"
@@ -58,7 +59,7 @@ async function main(): Promise<void> {
  * The production seed intentionally contains no item a fresh participant may buy: every catalogue item is gated on shipping themes, and printers are not sold in the shop. Phase 2 needs one un-gated, affordable item, so it lives only in the E2E database.
  */
 async function prepareShopFixtures(): Promise<void> {
-	const pool = new SQL(e2eDatabaseUrl)
+	const pool = new SQL(bunSqlUrl(e2eDatabaseUrl))
 	try {
 		await pool.unsafe(`update program_settings set "shopOpen" = true, "shopClosesAt" = null where id = 'singleton'`)
 		await pool.unsafe(

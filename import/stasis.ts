@@ -20,6 +20,7 @@
 import { SQL } from "bun"
 import { DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor } from "@/lib/config/program"
 import { getTierOrThrow } from "@/lib/config/tiers"
+import { bunSqlUrl } from "@/lib/db-url"
 import {
 	CoinBucket,
 	HoursSource,
@@ -50,7 +51,7 @@ const LIMIT = Number(args.find(a => a.startsWith("--limit="))?.split("=")[1] ?? 
 const KEEP_EMAILS = has("keep-emails")
 const DRY = has("dry-run")
 
-const source = new SQL(sourceUrl)
+const source = new SQL(bunSqlUrl(sourceUrl))
 
 /** A row as the Prisma 8 client's `create` accepts it, typed by the model rather than a generated DTO. */
 type CreateManyInput<M> = M extends { create(input: infer I, ...rest: never[]): unknown } ? I : never

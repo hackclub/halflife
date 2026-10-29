@@ -1,8 +1,9 @@
 import { SQL } from "bun"
+import { bunSqlUrl } from "@/lib/db-url"
 
 const url = process.env.DB_URL
 if (!url) throw new Error("DB_URL missing from import/.env")
-const source = new SQL(url)
+const source = new SQL(bunSqlUrl(url))
 
 const TABLES = process.argv.slice(2)
 if (TABLES.length === 0) throw new Error("usage: bun --env-file=import/.env import/dump.ts <table> [table...]")
