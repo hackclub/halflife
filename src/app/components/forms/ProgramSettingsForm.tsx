@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
-import { Button, Callout, Field, TextInput } from "@/app/components/ui"
+import { Button, Callout, Field, Select, TextInput } from "@/app/components/ui"
+import { PayoutSource } from "@/lib/enums"
 import { sendJson, useAction } from "@/lib/use-action"
 
 export function ProgramSettingsForm({
@@ -15,6 +16,7 @@ export function ProgramSettingsForm({
 		shopGraceDays: number
 		reviewClaimTtlMinutes: number
 		airtableSyncEnabled: boolean
+		payoutSource: PayoutSource
 		repoSyncEnabled: boolean
 	}
 }>) {
@@ -32,6 +34,7 @@ export function ProgramSettingsForm({
 					// The start date has its own form (ProgramStartForm): moving it moves every week's lock, so it is not something to change in passing.
 					body: {
 						airtableSyncEnabled: form.airtableSyncEnabled,
+						payoutSource: form.payoutSource,
 						programTimezone: form.programTimezone,
 						repoSyncEnabled: form.repoSyncEnabled,
 						reviewClaimTtlMinutes: form.reviewClaimTtlMinutes,
@@ -94,6 +97,19 @@ export function ProgramSettingsForm({
 					type="datetime-local"
 					value={form.shopClosesAt ?? ""}
 				/>
+			</Field>
+
+			<Field
+				hint="Which system pays makers. Airtable keeps the submission evidence and Loops columns either way; under HCB its Requested funding column is written as zero so the YSWS pipeline cannot pay twice."
+				label="Payout source"
+			>
+				<Select
+					onChange={e => setForm({ ...form, payoutSource: e.target.value as PayoutSource })}
+					value={form.payoutSource}
+				>
+					<option value={PayoutSource.AIRTABLE}>Airtable / YSWS pipeline</option>
+					<option value={PayoutSource.HCB}>HCB card grants</option>
+				</Select>
 			</Field>
 
 			<label className="hl-row" style={{ gap: "0.5rem" }}>

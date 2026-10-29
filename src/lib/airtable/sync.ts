@@ -14,7 +14,7 @@ import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUB
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
-import { Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
+import { Phase, PhaseStatus, PayoutSource, ReviewResult } from "@/lib/enums"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
 import { lockKey } from "@/lib/locks"
@@ -224,7 +224,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		projectName: project.title,
 		projectWeek: projectWeekLabel(week) ?? undefined,
 		// The parts are funded once, at design. A build asks for no new money, so its row says $0 rather than repeating the design's request.
-		requestedFunding: phase === Phase.DESIGN ? bomTotal : 0,
+		// Under HCB the base is evidence rather than the payer: a zero here is what stops the YSWS pipeline paying a project Half Life has already funded by card grant.
+		requestedFunding: phase === Phase.DESIGN && settings.payoutSource === PayoutSource.AIRTABLE ? bomTotal : 0,
 		reviewStatus: reviewStatusFor(phase === Phase.DESIGN ? project.designStatus : project.buildStatus),
 		slackId: user.slackId ?? "",
 		stage: phase === Phase.DESIGN ? "Design" : "Build",

@@ -73,6 +73,7 @@ namespace public {
     activityDays                UserDay[]
     activityWeeks               UserWeek[]
     disputeMessages             ReviewDisputeMessage[]
+    hcbGrantCards               HcbGrantCard[]
     hcbGrantTopUps              HcbGrantTopUp[]
     ledgerEntries               LedgerEntry[]
     postComments                PostComment[]
@@ -203,6 +204,7 @@ namespace public {
     deletedById              String?
     bomItems                 BomItem[]
     hackatimeLinks           HackatimeLink[]
+    hcbGrantCards            HcbGrantCard[]
     hcbGrantTopUps           HcbGrantTopUp[]
     ledgerEntries            LedgerEntry[]
     posts                    Post[]
@@ -405,6 +407,56 @@ namespace public {
     @@index([userId, themeProjectId, phase], map: "hcb_grant_topup_userId_themeProjectId_phase_key", unique: true)
     @@index([grantHashid], map: "hcb_grant_topup_grantHashid_key", unique: true)
     @@map("hcb_grant_topup")
+  }
+
+  model HcbGrantCardBatch {
+    id             String                  @id @onCreate(cuid(2))
+    status         pg.enum(HcbGrantCardBatchStatus) @default("PROCESSING")
+    fingerprint    String
+    totalCents     Int
+    issuedCount    Int                     @default(0)
+    failedCount    Int                     @default(0)
+    ambiguousCount Int                     @default(0)
+    skippedCount   Int                     @default(0)
+    createdById    String?
+    createdAt      TimestampString(3)      @default(now())
+    completedAt    TimestampString(3)?
+    cards          HcbGrantCard[]
+
+    @@map("hcb_grant_card_batch")
+  }
+
+  model HcbGrantCard {
+    id             String                @id @onCreate(cuid(2))
+    batchId        String
+    userId         String
+    themeProjectId String
+    phase          pg.enum(Phase)        @default("DESIGN")
+    email          String
+    amountCents    Int
+    grantUsdCents  Int?
+    bomLineCount   Int?
+    status         pg.enum(HcbGrantCardStatus) @default("PENDING")
+    hcbCardGrantId String?
+    hcbStatus      String?
+    cardId         String?
+    disbursementId String?
+    purpose        String?
+    error          String?
+    claimedAt      TimestampString(3)?
+    issuedAt       TimestampString(3)?
+    canceledAt     TimestampString(3)?
+    supersededAt   TimestampString(3)?
+    createdAt      TimestampString(3)    @default(now())
+    batch          HcbGrantCardBatch     @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_grant_card_batchId_status_idx")
+    user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+    themeProject   ThemeProject          @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([themeProjectId, phase], map: "hcb_grant_card_project_phase_live_key", unique: true, where: sql`("supersededAt" IS NULL AND "status" IN ('PENDING'::"HcbGrantCardStatus", 'ISSUED'::"HcbGrantCardStatus", 'AMBIGUOUS'::"HcbGrantCardStatus"))`)
+    @@index([hcbCardGrantId], map: "hcb_grant_card_hcbCardGrantId_key", unique: true)
+    @@index([batchId, status], map: "hcb_grant_card_batchId_status_idx")
+    @@index([userId, status], map: "hcb_grant_card_userId_status_idx")
+    @@map("hcb_grant_card")
   }
 
   model HelpTicket {
@@ -625,6 +677,7 @@ namespace public {
     shopGraceDays         Int                 @default(7)
     reviewClaimTtlMinutes Int                 @default(45)
     airtableSyncEnabled   Boolean             @default(true)
+    payoutSource          pg.enum(PayoutSource) @default("AIRTABLE")
     repoSyncEnabled       Boolean             @default(true)
     updatedAt             TimestampString(3)  @onCreate(now()) @onUpdate(now())
     updatedById           String?
@@ -1205,10 +1258,34 @@ namespace public {
     ADMIN_BAN_USER = "ADMIN_BAN_USER"
     ADMIN_UNBAN_USER = "ADMIN_UNBAN_USER"
     USER_CANCEL_ORDER = "USER_CANCEL_ORDER"
+    ADMIN_ISSUE_GRANT_CARD = "ADMIN_ISSUE_GRANT_CARD"
+    ADMIN_CREATE_GRANT_CARD_BATCH = "ADMIN_CREATE_GRANT_CARD_BATCH"
+    ADMIN_CANCEL_GRANT_CARD = "ADMIN_CANCEL_GRANT_CARD"
   }
 
   native_enum ReviewDisputeOutcome {
     upheld = "upheld"
     stood = "stood"
+  }
+
+  native_enum PayoutSource {
+    AIRTABLE = "AIRTABLE"
+    HCB = "HCB"
+  }
+
+  native_enum HcbGrantCardStatus {
+    PENDING = "PENDING"
+    ISSUED = "ISSUED"
+    FAILED = "FAILED"
+    AMBIGUOUS = "AMBIGUOUS"
+    SKIPPED = "SKIPPED"
+    CANCELED = "CANCELED"
+  }
+
+  native_enum HcbGrantCardBatchStatus {
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
   }
 }
