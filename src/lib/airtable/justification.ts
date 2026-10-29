@@ -9,9 +9,9 @@ import { publicUrlFor } from "@/lib/uploads/r2"
 /**
  * The `Justification - …` columns of a submission row, and the text behind them.
  *
- * Three of the four are evidence the maker produced – their Hackatime identity, the Hackatime projects they tracked time in, and the timelapses they recorded – and the fourth is the account of what they actually built. They sit together on the row because the pipeline merges them into one justification blob (`Automation - Unified Justification`), where the evidence lands under `[HACKATIME]` and the account under `[SPECIFIC TECHNICAL FEATURES]`. A row with an empty account gives the pipeline an empty blob, which is why the fourth column is written from the maker's own work rather than left to the pipeline, and why it is the one column that is always present – see `NO_FEATURES_RECORDED`.
+ * Three of the five are evidence the maker produced – their Hackatime identity, the Hackatime projects they tracked time in, and the timelapses they recorded – one is the account of what they actually built, and the last is the method the hours rest on when there is neither Hackatime nor Lapse evidence to point at. They sit together on the row because the pipeline merges them into one justification blob (`Automation - Unified Justification`), where the evidence lands under `[HACKATIME]` and the account under `[SPECIFIC TECHNICAL FEATURES]`. A row with an empty account gives the pipeline an empty blob, which is why the account is written from the maker's own work rather than left to the pipeline, and why it is the one column that is always present – see `NO_FEATURES_RECORDED`.
  *
- * Everything here is the maker's words: the description they wrote, the parts they listed, the journal entries they kept. Nothing a reviewer said is in it, because this is the maker's justification of their own hours, not the reviewer's note on them.
+ * Everything a maker wrote is kept as the maker's words: the description they wrote, the parts they listed, the journal entries they kept. The alternate-tracking column is the exception: when devlogs are the only evidence, the reviewer's own reasoning is the part that says how those entries account for the hours, so it is the one justification a reviewer's words belong in (see `alternateTrackingJustification`).
  */
 
 /** One journal entry, as far as a justification cares. */
@@ -55,13 +55,16 @@ export interface JustificationSource {
 }
 
 /**
- * The values for the four columns, with an evidence column left out entirely when we have nothing to put in it.
+ * The values for the justification columns, with an evidence column left out entirely when we have nothing to put in it.
  *
  * An evidence column is written with what we hold and left alone when we hold nothing. A blank written over one erases the only record of it, and for the pre-season rows Half Life imported, the Lapse links came from the form and were never handed to Postgres as timelapses – so a blank there would destroy evidence the base is the only place to find.
  *
  * `specificTechnicalFeatures` is the exception: it is never omitted. The pipeline's merged blob has a `[SPECIFIC TECHNICAL FEATURES]` section whether or not we fill it, and a grant reviewer reads that section first – an empty one is a submission with no account of what was built. Every row therefore carries the maker's text, or the marker in `NO_FEATURES_RECORDED` when they left nothing to say.
+ *
+ * `alternateTracking` is filled only when there is no Hackatime or Lapse evidence to point at. See `alternateTrackingJustification` for what it says and when.
  */
 export interface JustificationValues {
+	alternateTracking?: string
 	hackatimeId?: string
 	hackatimeProjects?: string
 	lapseLinks?: string
@@ -146,7 +149,7 @@ export function specificTechnicalFeatures(source: JustificationSource, phase: Ph
 }
 
 /**
- * The four `Justification - …` columns for a submission.
+ * The maker-provided `Justification - …` columns for a submission.
  *
  * The Hackatime projects carry the week they were tracked in, because a project name on its own does not say which of the ten weeks it belonged to – and the reviewer's own reading of the hours depends on that.
  */
@@ -165,6 +168,34 @@ export function justificationValues(
 		...(source.lapseLinks.length > 0 ? { lapseLinks: source.lapseLinks.join(", ") } : {}),
 		specificTechnicalFeatures: features || NO_FEATURES_RECORDED,
 	}
+}
+
+/** What a reviewer needs to know when there is no Hackatime or Lapse evidence to follow. */
+export interface AlternateTrackingSource {
+	/** The hours those entries claim, as the row's `Hours spent (self reported)` states them. */
+	claimedHours: number | null
+	/** The manual journal entries behind the claim. A HACKATIME_TRACKED entry claims no time of its own and is not counted. */
+	entryCount: number
+	/** The reviewer's own explanation of how the entries account for the time, when one was recorded. */
+	reviewerText: string | null
+}
+
+/**
+ * The `Justification - Alternate Tracking Method` text.
+ *
+ * The pipeline has nothing to follow when a ship has neither Hackatime projects nor Lapse links, so this column is where a grant reviewer is told what the time actually rests on. The count and the claimed hours come from the submission itself; the reviewer's reasoning, when they left any, is appended because that is the part that says how the devlogs line up with the time rather than merely that they exist.
+ *
+ * Ari's current review sends the reviewer's reasoning as `audit_note`, which Half Life stores on the review; the legacy `time_evidence` and `hours_reasoning` fields are no longer collected, so the audit note is the best source available.
+ */
+export function alternateTrackingJustification(source: AlternateTrackingSource): string {
+	const entries = Math.max(0, Math.floor(source.entryCount))
+	const claimed = source.claimedHours === null ? "" : ` (${fmtHours(source.claimedHours)} claimed)`
+	const method =
+		entries > 0
+			? `The time comes from ${entries} devlog ${entries === 1 ? "entry" : "entries"}${claimed}.`
+			: "No devlog entries were recorded either."
+	const reviewer = source.reviewerText?.trim()
+	return `No Hackatime projects or Lapse timelapses were linked. ${method}${reviewer ? ` Reviewer's justification: ${reviewer}` : ""}`
 }
 
 /** One line of the parts list, or nothing for a line with no name on it. */

@@ -237,6 +237,21 @@ bun --conditions=react-server scripts/backfill-airtable-deflation.ts --commit
 
 It only touches approved rows, reports how many had nothing cut, and leaves a row alone when no frozen approved figure can be found. Run it where `DATABASE_URL` points at the real database.
 
+### Alternate tracking method
+
+`Justification - Alternate Tracking Method` explains the hours when there is no Hackatime id, no Hackatime projects and no Lapse links to follow. The live write fills it at hand-in from the devlog entries (`N devlog entries, Xh claimed`), then an approval replaces it with the same facts plus the reviewer's own reasoning.
+
+Ari's current review does not collect a dedicated devlog-evidence field. The closest current data is the reviewer's internal audit note (`review.audit_note`), which Ari requires on approvals and Half Life stores as `SubmissionReview.reason`. The legacy `time_evidence` and `hours_reasoning` fields, which were exactly this explanation, are no longer collected and are only sent for old reviews that are confirmed or resent.
+
+The existing justification backfill fills the column where it is empty, using the standing review's audit note when the decision still matches the phase:
+
+```bash
+bun --conditions=react-server scripts/backfill-airtable-justification.ts
+bun --conditions=react-server scripts/backfill-airtable-justification.ts --commit
+```
+
+It leaves a cell that already holds something alone and writes nothing when the row has Hackatime or Lapse evidence. Run it where `DATABASE_URL` points at the real database.
+
 ### Ari phase columns
 
 Ari sends no webhook when a first-pass decision is held for a second pass, nor when a second pass returns it to the queue. `ari-retry` reads `ari.ships.status` for every open ship, stores a changed phase on `PhaseSubmission.ariStatus` / `ariStatusAt`, and mirrors it to three columns on `YSWS Project Submission`:

@@ -95,6 +95,25 @@ export async function withRateLimitRetry<T>(
 		}
 }
 
+/**
+ * The detail Airtable's error envelope carries, for the error's own message.
+ *
+ * `Airtable 422 on <path>` alone sends the reader to the stack trace and the raw body to learn why, and the body is logged as an unread object. The type and message are short and name the difference between a column it did not recognise and a parameter it does not accept at all, so they belong in the message. The raw body stays on the error for callers that match on it.
+ */
+function refusalDetail(body: string): string {
+	try {
+		const parsed = z
+			.object({ error: z.object({ message: z.string(), type: z.string().optional() }) })
+			.safeParse(JSON.parse(body))
+		if (!parsed.success) return ""
+		const { message, type } = parsed.data.error
+		return `: ${type ? `${type} – ${message}` : message}`
+	} catch {
+		// Not JSON: a proxy page or a body cut short says nothing worth quoting.
+		return ""
+	}
+}
+
 export async function airtableFetch<S extends z.ZodType>(
 	schema: S,
 	config: AirtableConfig,
@@ -115,7 +134,7 @@ export async function airtableFetch<S extends z.ZodType>(
 	})
 	if (!res.ok) {
 		const body = await res.text().catch(() => "")
-		throw new AirtableError(`Airtable ${res.status} on ${path}`, res.status, body)
+		throw new AirtableError(`Airtable ${res.status} on ${path}${refusalDetail(body)}`, res.status, body)
 	}
 	return schema.parse(await res.json())
 }
