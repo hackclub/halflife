@@ -1,7 +1,19 @@
-import { AirtableListSchema, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
+import {
+	AirtableListSchema,
+	type AirtableRecord,
+	airtableFetch,
+	getAirtableConfig,
+	withRateLimitRetry,
+} from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
-import { type JustificationValues, justificationValues, timelapseLinks } from "../src/lib/airtable/justification"
-import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
+import {
+	type JustificationValues,
+	justificationValues,
+	NO_FEATURES_RECORDED,
+	specificTechnicalFeatures,
+	timelapseLinks,
+} from "../src/lib/airtable/justification"
+import { type FieldDef, fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
 import { AuditAction, Phase } from "../src/lib/enums"
@@ -15,13 +27,13 @@ import { parseDbTimestamp } from "../src/lib/time"
  *
  * Four columns carry a submission's evidence: the maker's Hackatime id, the Hackatime projects they tracked time in, the timelapses they recorded, and the account of what they actually built. The pipeline merges them into one blob on the row (`Automation - Unified Justification`), so a column left empty is a gap in the justification a grant reviewer reads.
  *
- * Two of the four are routinely empty on the rows already in the base. `Justification - Specific Technical Features` was never written at all – the column exists and nothing in Half Life filled it – so the pipeline's merged blob has an empty `[SPECIFIC TECHNICAL FEATURES]` section on every row. `Justification - Lapse Links, comma-separated` is empty on the rows whose timelapses were attached after the row was written, and on the rows whose maker never recorded one.
+ * Rows written before the technical-features column was wired up are missing that column in particular: it existed in the base before `justificationValues` filled it, so every row from before that change has an empty `[SPECIFIC TECHNICAL FEATURES]` section. That column is required on every row, so this fills it even when the maker left nothing to build it from (see `NO_FEATURES_RECORDED`). The other three are evidence the maker may genuinely not have: no Hackatime account, no linked project, no recording. Those are only written when we hold something.
  *
  * This replays the state Postgres already holds onto the rows that are missing a column, using the same builder the live write uses (see `justificationValues` in lib/airtable/justification), so a backfilled cell and a freshly written one cannot disagree.
  *
  * Only a column the base is missing is written. A column that already holds something is left exactly as it is: it is evidence, and on the pre-season rows the form filled it in and Postgres never received it, so overwriting it with our own answer would destroy the only record. A row is therefore never rewritten wholesale, only completed.
  *
- * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. A row in the base that Half Life never wrote or imported has no project behind it and nothing to fill it from – the report says how many those are, and the warm-up import on /admin/program is what turns them into local projects.
+ * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. A row with no project behind it – one the warm-up import has not reached yet, say – has no parts or journal to add, but its own `Description` is still the maker's account: the technical-features column is completed from it so no row is left without one. Everything else on such a row is left alone.
  *
  * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-justification.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
@@ -36,16 +48,37 @@ const COLUMNS = {
 	specificTechnicalFeatures: YSWS_SUBMISSION.fields.specificTechnicalFeatures,
 }
 
+/** Columns read for the rows that have no local project; they are never written. */
+const READ_ONLY = {
+	description: YSWS_SUBMISSION.fields.description,
+	projectName: YSWS_SUBMISSION.fields.projectName,
+	stage: YSWS_SUBMISSION.fields.stage,
+}
+
 /** A string cell, or "" when Airtable has nothing there. */
 const text = (value: unknown): string => (typeof value === "string" ? value : "")
 
+/** A field's value, however the response keyed it: by name unless the caller asked for ids. */
+const cell = (record: AirtableRecord, field: FieldDef): string =>
+	text(record.fields[field.name] ?? record.fields[field.id])
+
+/** What the base holds for one row, as far as this backfill cares. */
+interface RowSnapshot {
+	cells: Map<string, string>
+	description: string
+	stage: string
+	title: string
+}
+
 /** Every row's current justification columns, by record id. */
-async function currentColumns(
+async function currentRows(
 	config: NonNullable<ReturnType<typeof getAirtableConfig>>,
 	keys: Map<string, string>,
-): Promise<Map<string, Map<string, string>>> {
-	const byId = new Map<string, Map<string, string>>()
-	const fieldsQs = [...keys.values()].map(k => `fields%5B%5D=${encodeURIComponent(k)}`).join("&")
+): Promise<Map<string, RowSnapshot>> {
+	const byId = new Map<string, RowSnapshot>()
+	const fieldsQs = [...keys.values(), ...Object.values(READ_ONLY).map(field => field.name)]
+		.map(field => `fields%5B%5D=${encodeURIComponent(field)}`)
+		.join("&")
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listYswsJustification", () =>
@@ -56,9 +89,14 @@ async function currentColumns(
 			),
 		)
 		for (const record of page.records) {
-			const row = new Map<string, string>()
-			for (const [key, field] of keys) row.set(key, text(record.fields[field]))
-			byId.set(record.id, row)
+			const cells = new Map<string, string>()
+			for (const [key, field] of Object.entries(COLUMNS)) cells.set(key, cell(record, field))
+			byId.set(record.id, {
+				cells,
+				description: cell(record, READ_ONLY.description),
+				stage: cell(record, READ_ONLY.stage),
+				title: cell(record, READ_ONLY.projectName),
+			})
 		}
 		;({ offset } = page)
 	} while (offset)
@@ -83,6 +121,7 @@ async function main() {
 
 	const keys = new Map<string, string>()
 	for (const [key, field] of Object.entries(COLUMNS)) keys.set(key, fieldKey(field))
+	const featuresKey = keys.get("specificTechnicalFeatures") ?? YSWS_SUBMISSION.fields.specificTechnicalFeatures.name
 
 	const projects = await db.orm.public.ThemeProject.select("description", "id", "theme", "title")
 		.include("bomItems", items => items.select("name", "purpose", "quantity"))
@@ -136,7 +175,7 @@ async function main() {
 		}
 
 	// Only the cells the base is missing are written: a cell that already holds something is left as it is.
-	const current = await currentColumns(config, keys)
+	const current = await currentRows(config, keys)
 	const updates: { fields: { [_: string]: string }; phase: Phase; recordId: string; title: string }[] = []
 	const missing = new Map<string, number>()
 	for (const key of Object.keys(COLUMNS)) missing.set(key, 0)
@@ -152,7 +191,7 @@ async function main() {
 		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		for (const [key, value] of Object.entries(target.values) as [string, string | undefined][]) {
 			if (value === undefined) continue
-			if (row.get(key)) continue
+			if (row.cells.get(key)) continue
 			fields[keys.get(key) ?? key] = value
 			missing.set(key, (missing.get(key) ?? 0) + 1)
 		}
@@ -163,16 +202,43 @@ async function main() {
 		updates.push({ fields, phase: target.phase, recordId: target.recordId, title: target.title })
 	}
 
+	// A row with no project still gets its technical features, from the account the maker wrote on the row itself. Nothing else on it is touched: without a project there is no parts list, journal or Hackatime link to add.
+	const targeted = new Set(targets.map(target => target.recordId))
+	let fromRow = 0
+	for (const [recordId, row] of current) {
+		if (targeted.has(recordId)) continue
+		if (row.cells.get("specificTechnicalFeatures")) continue
+		const phase = row.stage === "Build" ? Phase.BUILD : Phase.DESIGN
+		const features = specificTechnicalFeatures(
+			{
+				bomItems: [],
+				description: row.description || null,
+				hackatimeProjects: [],
+				hackatimeUserId: null,
+				lapseLinks: [],
+				workSessions: [],
+			},
+			phase,
+		)
+		updates.push({
+			fields: { [featuresKey]: features || NO_FEATURES_RECORDED },
+			phase,
+			recordId,
+			title: row.title,
+		})
+		fromRow++
+	}
+
+	const withProject = targets.filter(target => current.has(target.recordId)).length
 	console.log(
-		`Projects: ${projects.length}; Airtable rows in the base: ${current.size}; rows with a project behind them: ${targets.length} (${withoutRow} phase(s) never written, ${gone} row(s) since deleted)`,
+		`Projects: ${projects.length}; Airtable rows in the base: ${current.size}; rows with a project behind them: ${withProject} (${withoutRow} phase(s) never written, ${gone} row(s) since deleted)`,
 	)
 	console.log(`aligned: ${aligned}, to update: ${updates.length}`)
 	for (const [key, field] of Object.entries(COLUMNS))
 		console.log(`  ${field.name}: ${missing.get(key) ?? 0} cell(s) to fill`)
-	const unreachable = current.size - targets.length
-	if (unreachable > 0)
+	if (fromRow > 0)
 		console.log(
-			`${unreachable} row(s) in the base have no project behind them; the warm-up import on /admin/program is what gives them one`,
+			`  ${fromRow} row(s) with no project: the technical features are completed from the row's own Description`,
 		)
 	for (const update of updates.slice(0, 10))
 		console.log(`  ${update.phase}  ${update.title}  →  ${Object.keys(update.fields).join(", ")}`)

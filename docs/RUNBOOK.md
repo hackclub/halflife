@@ -184,6 +184,26 @@ Set them up in this order, or the first poll after the fields appear will do a f
 
 The app skips the columns when they are absent, so a base without them keeps working as before.
 
+### Justification columns
+
+Four columns on `YSWS Project Submission` carry the maker's evidence, which the pipeline merges into `Automation - Unified Justification`:
+
+- `Justification - Submitter Hackatime ID`
+- `Justification - Hackatime Project Name(s) + Date Range(s)`
+- `Justification - Lapse Links, comma-separated`
+- `Justification - Specific Technical Features`
+
+`syncSubmissionToYsws` (`src/lib/airtable/sync.ts`) writes them at submit from `justificationValues` (`src/lib/airtable/justification.ts`). The first three are written only when there is something to write – a maker may have no Hackatime account, linked project or recording, and a blank would erase evidence the base alone holds. The technical-features column is always written, with a marker when nothing was recorded, because the pipeline gives every row a `[SPECIFIC TECHNICAL FEATURES]` section.
+
+Rows written before that landed are completed by:
+
+```bash
+bun --conditions=react-server scripts/backfill-airtable-justification.ts
+bun --conditions=react-server scripts/backfill-airtable-justification.ts --commit
+```
+
+It only fills cells that are empty, so a value already on the row is never overwritten. A row with a local project gets the full description, parts list and work log; one with no project (an unimported pre-season row) gets its technical features from its own `Description`. Run it where `DATABASE_URL` points at the real database, so the rows that do have a project get the richer text.
+
 ### Reviewer columns on the review rows
 
 `Pass 1 reviewer` is a single-line text field on `YSWS Project Submission`. The live mirror fills it from the address Ari puts in the decision (`review.reviewer.email`, stored on the review as `reviewerEmail`).

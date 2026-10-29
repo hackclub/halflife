@@ -216,7 +216,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 			const ref = repoRefFromLink(project.githubRepo)
 			return ref?.forge.id === "github" ? ref.ownerPath : ""
 		})(),
-		// The `Justification - …` columns, spread rather than listed: a column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification).
+		// The `Justification - …` columns, spread rather than listed: an evidence column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification). The technical-features column is always in here, because the pipeline reads it into every row.
 		...justification,
 		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
 		journalUrl: journalUrl ?? "",

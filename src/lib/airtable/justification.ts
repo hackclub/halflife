@@ -9,7 +9,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
 /**
  * The `Justification - …` columns of a submission row, and the text behind them.
  *
- * Three of the four are evidence the maker produced – their Hackatime identity, the Hackatime projects they tracked time in, and the timelapses they recorded – and the fourth is the account of what they actually built. They sit together on the row because the pipeline merges them into one justification blob (`Automation - Unified Justification`), where the evidence lands under `[HACKATIME]` and the account under `[SPECIFIC TECHNICAL FEATURES]`. A row with an empty account gives the pipeline an empty blob, which is why the fourth column is written from the maker's own work rather than left to the pipeline.
+ * Three of the four are evidence the maker produced – their Hackatime identity, the Hackatime projects they tracked time in, and the timelapses they recorded – and the fourth is the account of what they actually built. They sit together on the row because the pipeline merges them into one justification blob (`Automation - Unified Justification`), where the evidence lands under `[HACKATIME]` and the account under `[SPECIFIC TECHNICAL FEATURES]`. A row with an empty account gives the pipeline an empty blob, which is why the fourth column is written from the maker's own work rather than left to the pipeline, and why it is the one column that is always present – see `NO_FEATURES_RECORDED`.
  *
  * Everything here is the maker's words: the description they wrote, the parts they listed, the journal entries they kept. Nothing a reviewer said is in it, because this is the maker's justification of their own hours, not the reviewer's note on them.
  */
@@ -55,19 +55,28 @@ export interface JustificationSource {
 }
 
 /**
- * The values for the four columns, with a column left out entirely when we have nothing to put in it.
+ * The values for the four columns, with an evidence column left out entirely when we have nothing to put in it.
  *
- * A justification column is written with what we hold and left alone when we hold nothing. A blank written over one erases the only record of it, and for the pre-season rows Half Life imported, the Lapse links came from the form and were never handed to Postgres as timelapses – so a blank there would destroy evidence the base is the only place to find.
+ * An evidence column is written with what we hold and left alone when we hold nothing. A blank written over one erases the only record of it, and for the pre-season rows Half Life imported, the Lapse links came from the form and were never handed to Postgres as timelapses – so a blank there would destroy evidence the base is the only place to find.
+ *
+ * `specificTechnicalFeatures` is the exception: it is never omitted. The pipeline's merged blob has a `[SPECIFIC TECHNICAL FEATURES]` section whether or not we fill it, and a grant reviewer reads that section first – an empty one is a submission with no account of what was built. Every row therefore carries the maker's text, or the marker in `NO_FEATURES_RECORDED` when they left nothing to say.
  */
 export interface JustificationValues {
 	hackatimeId?: string
 	hackatimeProjects?: string
 	lapseLinks?: string
-	specificTechnicalFeatures?: string
+	specificTechnicalFeatures: string
 }
 
 /** The most text worth sending. A reviewer reads a summary of the work, not a journal dump. */
 const MAX_CHARS = 8_000
+
+/**
+ * What the technical-features column says when the maker left nothing to build it from.
+ *
+ * The column is loaded into the pipeline's `[SPECIFIC TECHNICAL FEATURES]` section on every row, and a section with nothing under it reads as a gap rather than as "nothing was recorded". A submission cannot normally reach here – the submit gate refuses a project with no description – so this is the guarantee for an imported or historical row rather than a common answer.
+ */
+export const NO_FEATURES_RECORDED = "No technical description or build log was recorded for this submission."
 
 /** How much of one journal entry is quoted. */
 const EXCERPT_CHARS = 300
@@ -154,7 +163,7 @@ export function justificationValues(
 		...(source.hackatimeUserId ? { hackatimeId: source.hackatimeUserId } : {}),
 		...(projects.length > 0 ? { hackatimeProjects: projects.join(", ") } : {}),
 		...(source.lapseLinks.length > 0 ? { lapseLinks: source.lapseLinks.join(", ") } : {}),
-		...(features ? { specificTechnicalFeatures: features } : {}),
+		specificTechnicalFeatures: features || NO_FEATURES_RECORDED,
 	}
 }
 

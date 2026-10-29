@@ -1582,7 +1582,7 @@ async function bodies() {
 	/* ── 6d. The Airtable justification columns ─────────────────────────────── */
 	//
 	// The `Justification - …` columns on a submission row are the evidence a grant reviewer reads, and the pipeline merges them into one blob on the row. Two things about them are pinned here, because both fail silently: a column we have nothing for must be left OUT of the payload rather than written blank (a blank erases the only record of evidence the base holds – the Lapse links on the pre-season rows came from the form and were never given to Postgres), and the technical-features text must not repeat the description it already quotes.
-	const { justificationValues, specificTechnicalFeatures, timelapseLinks } = await import(
+	const { justificationValues, NO_FEATURES_RECORDED, specificTechnicalFeatures, timelapseLinks } = await import(
 		"../src/lib/airtable/justification"
 	)
 	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/lib/enums")
@@ -1681,7 +1681,7 @@ async function bodies() {
 		check("justification · the Lapse links are written", values.lapseLinks === source.lapseLinks[0])
 		check("justification · the technical features are written", values.specificTechnicalFeatures === features)
 
-		// The rule that keeps a re-sync from destroying evidence: a column we have nothing for is left out of the payload, not written as an empty string. Airtable treats an empty string as "clear this cell".
+		// The rule that keeps a re-sync from destroying evidence: an evidence column we have nothing for is left out of the payload, not written as an empty string. Airtable treats an empty string as "clear this cell". The technical-features column is the exception – the pipeline always makes a `[SPECIFIC TECHNICAL FEATURES]` section for it, so the row always carries something.
 		const bare = justificationValues(
 			{
 				bomItems: [],
@@ -1693,7 +1693,12 @@ async function bodies() {
 			},
 			{ eventStart: new Date("2026-10-05T00:00:00.000Z"), phase: JustPhase.BUILD, theme: JustTheme.PCB },
 		)
-		check("justification · an empty column is omitted, not blanked", Object.keys(bare).length === 0)
+		check("justification · an empty evidence column is omitted, not blanked", Object.keys(bare).length === 1)
+		check(
+			"justification · the technical features are never omitted",
+			bare.specificTechnicalFeatures === NO_FEATURES_RECORDED,
+			bare.specificTechnicalFeatures,
+		)
 		check(
 			"justification · a column with nothing in it is not an empty string",
 			Object.values(bare).every(value => value !== ""),
