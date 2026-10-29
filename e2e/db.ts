@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
-import { Pool } from "pg"
+import { SQL } from "bun"
+import { bunSqlUrl } from "@/lib/db-url"
 import { e2eDatabaseUrl } from "./env"
 
 /**
@@ -93,10 +94,17 @@ export interface E2eProgramSettingsRow {
 
 const ONBOARDING_COMPLETE_STEP = 7
 
-const pool = new Pool({ connectionString: e2eDatabaseUrl })
+const pool = new SQL(bunSqlUrl(e2eDatabaseUrl))
 
 /** The format the app writes into `timestamp(3)` columns. */
 const dbTimestamp = (date: Date): string => date.toISOString().replace("T", " ").replace("Z", "")
+
+/**
+ * A same-realm copy of a result set.
+ *
+ * Bun returns rows as an array whose prototype is `SQLResultArray`, not `Array.prototype`, and Playwright's `toEqual` throws a `TypeError` on one instead of reporting a diff. Copying keeps an empty result comparable to a literal `[]`.
+ */
+const plainRows = <T>(rows: T[]): T[] => Array.from(rows)
 
 /**
  * Insert one participant and one live session. The returned token is the raw token; `sessionCookie` signs it.
@@ -111,7 +119,7 @@ export async function seedUser(options: SeedUserOptions = {}): Promise<SeededUse
 	const verified = options.verified ?? true
 	const now = dbTimestamp(new Date())
 
-	await pool.query(
+	await pool.unsafe(
 		`insert into "user" (
 			id, email, name, "emailVerified", "verificationStatus", "onboardingStep",
 			"onboardingCompletedAt", "joinedProgramAt", "hardwareExperience", "participantGoal",
@@ -131,21 +139,21 @@ export async function seedUser(options: SeedUserOptions = {}): Promise<SeededUse
 		],
 	)
 
-	await pool.query(
+	await pool.unsafe(
 		`insert into session (id, token, "expiresAt", "userId", "createdAt", "updatedAt", "ipAddress", "userAgent")
 		values ($1, $2, now() + interval '7 days', $3, now(), now(), '127.0.0.1', 'e2e')`,
 		[randomUUID(), token, id],
 	)
 
 	if (options.role)
-		await pool.query(`insert into user_role (id, "userId", role, "grantedBy") values ($1, $2, $3::"Role", 'e2e')`, [
+		await pool.unsafe(`insert into user_role (id, "userId", role, "grantedBy") values ($1, $2, $3::"Role", 'e2e')`, [
 			randomUUID(),
 			id,
 			options.role,
 		])
 
 	if (options.coins)
-		await pool.query(
+		await pool.unsafe(
 			`insert into ledger_entry (
 				id, "userId", kind, bucket, amount, "balanceBefore", "balanceAfter", note, "createdAt"
 			) values ($1, $2, 'ADMIN_ADJUSTMENT'::"LedgerKind", 'SPENDABLE'::"CoinBucket", $3, 0, $3, 'e2e seed', now())`,
@@ -157,30 +165,28 @@ export async function seedUser(options: SeedUserOptions = {}): Promise<SeededUse
 
 /** Remove a user and everything cascading from it. */
 export async function deleteUser(id: string): Promise<void> {
-	await pool.query(`delete from "user" where id = $1`, [id])
+	await pool.unsafe(`delete from "user" where id = $1`, [id])
 }
 
 /** The persisted half of the onboarding state, read back rather than inferred from the modal closing. */
 export async function readUser(id: string): Promise<E2eUserRow | null> {
-	const { rows } = await pool.query(
+	const rows = await pool.unsafe<E2eUserRow[]>(
 		`select "hardwareExperience", "onboardingCompletedAt", "onboardingStep", timezone, "verificationStatus"
 		from "user" where id = $1`,
 		[id],
 	)
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	return (rows[0] as E2eUserRow | undefined) ?? null
+	return rows[0] ?? null
 }
 
 export async function readProjects(userId: string): Promise<E2eProjectRow[]> {
-	const { rows } = await pool.query(
+	const rows = await pool.unsafe<E2eProjectRow[]>(
 		`select id, title, description, "requestedTier", "starterProjectId", theme, "designStatus"
 		from theme_project
 		where "userId" = $1 and "deletedAt" is null
 		order by "createdAt" asc`,
 		[userId],
 	)
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	return rows as E2eProjectRow[]
+	return plainRows(rows)
 }
 
 /**
@@ -190,7 +196,7 @@ export async function readProjects(userId: string): Promise<E2eProjectRow[]> {
  */
 export async function seedProject(userId: string, theme = "PCB"): Promise<string> {
 	const id = randomUUID()
-	await pool.query(
+	await pool.unsafe(
 		`insert into theme_project (id, "userId", theme, title, "createdAt", "updatedAt")
 		values ($1, $2, $3::"Theme", $4, now(), now())`,
 		[id, userId, theme, theme],
@@ -206,13 +212,13 @@ export async function seedProject(userId: string, theme = "PCB"): Promise<string
 export async function seedReelsWithComment(userId: string): Promise<string[]> {
 	const postIds = [randomUUID(), randomUUID()]
 	for (const id of postIds)
-		await pool.query(
+		await pool.unsafe(
 			`insert into post (id, "userId", caption, "objectKey", status, "createdAt", "updatedAt")
 			values ($1, $2, 'e2e reel', 'e2e/reel.mp4', 'PUBLISHED'::"PostStatus", now(), now())`,
 			[id, userId],
 		)
 
-	await pool.query(
+	await pool.unsafe(
 		`insert into post_comment (id, "postId", "userId", body, "createdAt", "updatedAt")
 		values ($1, $2, $3, 'e2e comment', now(), now())`,
 		[randomUUID(), postIds[0], userId],
@@ -224,7 +230,7 @@ export async function seedReelsWithComment(userId: string): Promise<string[]> {
 /** What a ban's bulk hide did to the member's reels and comments, read back from the rows rather than the card. */
 export async function readModerationRows(userId: string): Promise<E2eModerationRows> {
 	const [posts, comments] = await Promise.all([
-		pool.query(
+		pool.unsafe<Pick<E2eModerationRows, "postsHidden" | "postsPublished" | "postsStamped">[]>(
 			`select
 				count(*) filter (where "hiddenAt" is not null)::int as "postsHidden",
 				count(*) filter (where status = 'PUBLISHED'::"PostStatus")::int as "postsPublished",
@@ -232,7 +238,7 @@ export async function readModerationRows(userId: string): Promise<E2eModerationR
 			from post where "userId" = $1`,
 			[userId],
 		),
-		pool.query(
+		pool.unsafe<Pick<E2eModerationRows, "commentsHidden" | "commentsStamped">[]>(
 			`select
 				count(*) filter (where "hiddenAt" is not null)::int as "commentsHidden",
 				count(*) filter (where "hiddenByBanAt" is not null)::int as "commentsStamped"
@@ -241,32 +247,28 @@ export async function readModerationRows(userId: string): Promise<E2eModerationR
 		),
 	])
 
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	const postRow = posts.rows[0] as Pick<E2eModerationRows, "postsHidden" | "postsPublished" | "postsStamped">
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	const commentRow = comments.rows[0] as Pick<E2eModerationRows, "commentsHidden" | "commentsStamped">
+	const postRow = posts[0] ?? { postsHidden: 0, postsPublished: 0, postsStamped: 0 }
+	const commentRow = comments[0] ?? { commentsHidden: 0, commentsStamped: 0 }
 	return { ...commentRow, ...postRow }
 }
 
 /** Coins in one bucket. The purchase debit is one row, so a sum is the balance the page shows. */
 export async function readBalance(userId: string, bucket: "BANKED" | "SPENDABLE" = "SPENDABLE"): Promise<number> {
-	const { rows } = await pool.query(
+	const rows = await pool.unsafe<{ balance: number }[]>(
 		`select coalesce(sum(amount), 0)::int as balance from ledger_entry where "userId" = $1 and bucket = $2::"CoinBucket"`,
 		[userId, bucket],
 	)
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	return (rows[0] as { balance: number }).balance
+	return rows[0]?.balance ?? 0
 }
 
 export async function readShopOrders(userId: string): Promise<E2eShopOrderRow[]> {
-	const { rows } = await pool.query(
+	const rows = await pool.unsafe<E2eShopOrderRow[]>(
 		`select id, "shopItemId", quantity, "unitCredits", "totalCredits", status
 		from shop_order where "userId" = $1
 		order by "placedAt" asc`,
 		[userId],
 	)
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	return rows as E2eShopOrderRow[]
+	return plainRows(rows)
 }
 
 /**
@@ -285,7 +287,7 @@ export async function seedSubmission(): Promise<{
 	const submissionId = randomUUID()
 	const projectTitle = `E2E Review Project ${projectId.slice(0, 8)}`
 
-	await pool.query(
+	await pool.unsafe(
 		`insert into theme_project (
 			id, "userId", theme, title, description, "designStatus", "buildStatus",
 			"repoSyncEnabled", "createdAt", "updatedAt"
@@ -296,7 +298,7 @@ export async function seedSubmission(): Promise<{
 		[projectId, user.id, projectTitle],
 	)
 
-	await pool.query(
+	await pool.unsafe(
 		`insert into phase_submission (id, "themeProjectId", phase, "submittedInWeek", "onTime", "createdAt")
 		values ($1, $2, 'DESIGN'::"Phase", 1, true, now())`,
 		[submissionId, projectId],
@@ -306,45 +308,41 @@ export async function seedSubmission(): Promise<{
 }
 
 export async function readSubmission(id: string): Promise<E2eSubmissionRow | null> {
-	const { rows } = await pool.query(
+	const rows = await pool.unsafe<E2eSubmissionRow[]>(
 		`select id, "themeProjectId", phase, "resolvedAt", "resolvedResult", "createdAt"
 		from phase_submission where id = $1`,
 		[id],
 	)
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	return (rows[0] as E2eSubmissionRow | undefined) ?? null
+	return rows[0] ?? null
 }
 
 export async function readSubmissionReviews(submissionId: string): Promise<E2eSubmissionReviewRow[]> {
-	const { rows } = await pool.query(
+	const rows = await pool.unsafe<E2eSubmissionReviewRow[]>(
 		`select id, result, feedback, reason, "reviewerId"
 		from submission_review where "submissionId" = $1
 		order by "createdAt" desc`,
 		[submissionId],
 	)
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	return rows as E2eSubmissionReviewRow[]
+	return plainRows(rows)
 }
 
 export async function readAudit(action: string): Promise<E2eAuditRow | null> {
-	const { rows } = await pool.query(
+	const rows = await pool.unsafe<E2eAuditRow[]>(
 		`select action, "actorEmail", metadata, "createdAt"
 		from audit_log where action = $1::"AuditAction"
 		order by "createdAt" desc limit 1`,
 		[action],
 	)
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	return (rows[0] as E2eAuditRow | undefined) ?? null
+	return rows[0] ?? null
 }
 
 export async function readProgramSettings(): Promise<E2eProgramSettingsRow | null> {
-	const { rows } = await pool.query(
+	const rows = await pool.unsafe<E2eProgramSettingsRow[]>(
 		`select "programTimezone", "shopOpen", "submissionsOpen" from program_settings where id = 'singleton'`,
 	)
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- e2e harness row; the SQL select defines this shape
-	return (rows[0] as E2eProgramSettingsRow | undefined) ?? null
+	return rows[0] ?? null
 }
 
 export async function closeDb(): Promise<void> {
-	await pool.end()
+	await pool.close()
 }

@@ -61,7 +61,7 @@ jobs:
             - run: bun install --frozen-lockfile
             # The Prisma contract is gitignored; the build and the database helpers need it emitted first. `--bun` keeps every CLI in the script (Prisma included) on Bun rather than the `node` its shebang names.
             - run: bun --bun run db:generate
-            - run: bunx playwright install --with-deps chromium
+            - run: bun --bun x playwright install --with-deps chromium
 
             - name: Create and seed the test database
               run: bun run e2e:db
@@ -73,8 +73,8 @@ jobs:
               run: bun --bun run build
 
             - name: Run Playwright
-              # `--bun` runs the Playwright CLI and its workers on Bun; without it the bin's `node` shebang wins.
-              run: bun --bun run test:e2e:only
+              # The `test:e2e*` scripts run the CLI with `bun --bun x`, so the harness (and `e2e/db.ts`, which uses Bun.SQL) is on Bun here and on a laptop.
+              run: bun run test:e2e:only
 
             - name: Upload failure artifacts
               if: failure()
