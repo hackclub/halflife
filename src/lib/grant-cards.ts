@@ -412,7 +412,8 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 		status: HcbGrantCardStatus.PENDING,
 	})
 		.where(row => or(row.claimedAt.isNull(), row.claimedAt.lt(formatDbTimestamp(cutoff))))
-		.orderBy(row => row.createdAt.asc())
+		// Every row in a batch is inserted in one transaction, so createdAt ties; id keeps the order stable.
+		.orderBy([row => row.createdAt.asc(), row => row.id.asc()])
 		.limit(limit)
 		.select(
 			"amountCents",
@@ -837,7 +838,8 @@ export async function getGrantCardBatch(id: string): Promise<GrantCardBatchDetai
 	const row = await db.orm.public.HcbGrantCardBatch.whereUnique({ id }).first()
 	if (!row) return null
 	const cards = await db.orm.public.HcbGrantCard.where({ batchId: id })
-		.orderBy(card => card.createdAt.asc())
+		// Every row in a batch is inserted in one transaction, so createdAt ties; id keeps the order stable.
+		.orderBy([card => card.createdAt.asc(), card => card.id.asc()])
 		.select("amountCents", "error", "hcbCardGrantId", "id", "status", "themeProjectId")
 		.include("themeProject", project => project.select("title"))
 		.all()
@@ -852,7 +854,10 @@ export async function getGrantCardBatch(id: string): Promise<GrantCardBatchDetai
 }
 
 export async function listGrantCardBatches(limit = 10): Promise<GrantCardBatchSummary[]> {
-	const rows = await db.orm.public.HcbGrantCardBatch.orderBy(batch => batch.createdAt.desc())
+	const rows = await db.orm.public.HcbGrantCardBatch.orderBy([
+		batch => batch.createdAt.desc(),
+		batch => batch.id.desc(),
+	])
 		.limit(limit)
 		.all()
 	return rows.map(toBatchSummary)
