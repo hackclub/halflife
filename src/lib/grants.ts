@@ -1,6 +1,6 @@
 import "server-only"
 import { AuditAction, logAudit, logAuditTx, requestInfo } from "@/lib/audit"
-import { Phase, PhaseStatus } from "@/lib/enums"
+import { HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {
@@ -14,6 +14,7 @@ import {
 	verifiesGrantOwner,
 } from "@/lib/hcb"
 import db, { isUniqueViolation } from "@/lib/prisma8"
+import { getProgramSettings } from "@/lib/program"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
@@ -153,6 +154,15 @@ export interface SendGrantResult {
 export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult> {
 	if (!isHcbConfigured()) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
 
+	// Card grants are the payer now. Keeping the top-up path open would be a second way to pay a project, and the
+	// only thing standing between that and a double payment is an admin noticing the old form.
+	const settings = await getProgramSettings()
+	if (settings.payoutSource !== PayoutSource.AIRTABLE)
+		throw new HttpError(
+			"CONFLICT",
+			"Payouts are set to HCB card grants. Issue the grant from the Grant cards page instead of topping up a card",
+		)
+
 	// The design approval is the funding decision, and the idempotency key includes the phase – accepting BUILD would send the same frozen grant a second time under a key of its own.
 	if (input.phase !== Phase.DESIGN)
 		throw new HttpError("VALIDATION_FAILED", "A grant is only sent for an approved design")
@@ -167,6 +177,20 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	if (!project?.user) throw new HttpError("NOT_FOUND", "Project not found")
 	if (project.designStatus !== PhaseStatus.approved || !project.grantUsd)
 		throw new HttpError("CONFLICT", "A grant is only due on an approved design")
+
+	const cardGrant = await db.orm.public.HcbGrantCard.where({
+		phase: Phase.DESIGN,
+		themeProjectId: project.id,
+	})
+		.where(card =>
+			card.status.in([HcbGrantCardStatus.PENDING, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]),
+		)
+		.first()
+	if (cardGrant)
+		throw new HttpError(
+			"CONFLICT",
+			"A card grant has already been issued for this project. Use the Grant cards page instead of a top-up",
+		)
 
 	// A grant is money, so the maker has to have cleared HCA's identity check before any of it is sent. Asked before the HCB row is claimed or the card is read, so an unverified account never starts a payout that would then have to be unwound. `isIdentityVerified` refreshes a stale stored status from HCA and never throws, so an HCA outage refuses rather than pays.
 	if (!(await isIdentityVerified(project.userId)))

@@ -8,12 +8,14 @@ import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
+import { PayoutSource } from "@/lib/enums"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { isHcbConfigured } from "@/lib/hcb"
 import { penaltyFor } from "@/lib/moderation"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePermission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
+import { getProgramSettings } from "@/lib/program"
 import { getUserDetail } from "@/lib/queries/admin"
 import { parseDbTimestamp } from "@/lib/time"
 import { ThemedProjectRow } from "./ThemedProjectRow"
@@ -42,7 +44,10 @@ export default async function AdminUserPage({ params }: Props) {
 	const canManageUsers = hasPermission(roles, Permission.MANAGE_USERS)
 	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
-	const canSendGrant = canManageCredit && isHcbConfigured() && identityVerified
+	const settings = await getProgramSettings()
+	// Airtable is the old payer; under HCB a manual top-up would be a second way to pay the same project.
+	const canSendGrant =
+		canManageCredit && isHcbConfigured() && identityVerified && settings.payoutSource === PayoutSource.AIRTABLE
 	// Banning and suspending are the ADMIN seat specifically: the same blast radius as reversing a role grant, reached through the same panel.
 	const isAdmin = hasRole(roles, Role.ADMIN)
 	const penalties = isAdmin
@@ -158,9 +163,11 @@ export default async function AdminUserPage({ params }: Props) {
 			<Panel title="Themed projects" wide>
 				{canManageCredit && isHcbConfigured() && (
 					<p className="hl-hint" style={{ marginTop: 0 }}>
-						{identityVerified
-							? "Sending a grant tops up the maker's HCB card grant directly. It is a manual fallback (the payout pipeline is the normal path) and can only be sent once per project."
-							: "Grants are locked until this maker verifies their identity at identity.hackclub.com."}
+						{settings.payoutSource === PayoutSource.HCB
+							? "HCB card grants are issued in bulk from the Grant cards page. A project shows its card grant here once it has been issued."
+							: identityVerified
+								? "Sending a grant tops up the maker's HCB card grant directly. It is the old payout fallback and can only be sent once per project."
+								: "Grants are locked until this maker verifies their identity at identity.hackclub.com."}
 					</p>
 				)}
 				<Table
@@ -183,6 +190,7 @@ export default async function AdminUserPage({ params }: Props) {
 							data={{
 								approvedHours: project.approvedHours,
 								buildStatus: project.buildStatus,
+								cardGrantSent: project.hcbGrantCards.some(card => card.status === "ISSUED"),
 								designStatus: project.designStatus,
 								extension: project.submissionExtensionUntil?.toISOString() ?? null,
 								grantSent: project.hcbGrantTopUps.length > 0,

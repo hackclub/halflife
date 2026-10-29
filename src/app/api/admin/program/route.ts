@@ -46,6 +46,7 @@ export const PATCH = withWritePermission(Permission.MANAGE_PROGRAM, async (req: 
 			after: {
 				airtableSyncEnabled: settings.airtableSyncEnabled,
 				eventStartDate: settings.eventStartDate,
+				payoutSource: settings.payoutSource,
 				repoSyncEnabled: settings.repoSyncEnabled,
 				shopOpen: settings.shopOpen,
 				submissionsOpen: settings.submissionsOpen,
@@ -53,6 +54,7 @@ export const PATCH = withWritePermission(Permission.MANAGE_PROGRAM, async (req: 
 			before: {
 				airtableSyncEnabled: before.airtableSyncEnabled,
 				eventStartDate: before.eventStartDate.toISOString(),
+				payoutSource: before.payoutSource,
 				repoSyncEnabled: before.repoSyncEnabled,
 				shopOpen: before.shopOpen,
 				submissionsOpen: before.submissionsOpen,

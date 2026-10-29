@@ -15,6 +15,7 @@ import type { Theme } from "@/lib/enums"
 export interface ThemedProjectRowData {
 	approvedHours: number | null
 	buildStatus: string
+	cardGrantSent: boolean
 	designStatus: string
 	/** ISO string, so the extension form edits the same instant the server holds. */
 	extension: string | null
@@ -63,7 +64,8 @@ export function ThemedProjectRow({
 				<td>{data.tier ?? "-"}</td>
 				<td>
 					{data.grantUsd !== null ? `$${data.grantUsd}` : "-"}
-					{data.grantSent ? <div className="hl-hint">sent</div> : null}
+					{data.cardGrantSent ? <div className="hl-hint">card grant issued</div> : null}
+					{data.grantSent ? <div className="hl-hint">top-up sent</div> : null}
 				</td>
 				<td className="hl-mono">{data.approvedHours ?? "-"}</td>
 				<td style={{ minWidth: "13rem" }}>

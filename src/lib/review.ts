@@ -6,7 +6,16 @@ import { getThemeDef, THEME_COMPLETION_BONUS } from "@/lib/config/program"
 import { ENTRY_TIER, getTierOrThrow, isTierId, tierForHours } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
-import { CoinBucket, LedgerKind, Phase, PhaseStatus, ReviewPass, ReviewResult, Theme } from "@/lib/enums"
+import {
+	CoinBucket,
+	HcbGrantCardStatus,
+	LedgerKind,
+	Phase,
+	PhaseStatus,
+	ReviewPass,
+	ReviewResult,
+	Theme,
+} from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
@@ -522,6 +531,21 @@ export async function unapprovePhase(
 				throw new HttpError(
 					"CONFLICT",
 					"A grant send is in flight for this design. Wait for it to finish before un-approving",
+				)
+
+			// A card grant is money that has already moved. Un-approving the design would leave the maker funded for work
+			// that no longer stands, so the refund has to be a deliberate cancellation first.
+			const cardGrant = await tx.orm.public.HcbGrantCard.where({
+				phase: Phase.DESIGN,
+				themeProjectId,
+			})
+				.where(card => card.status.in([HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]))
+				.select("id")
+				.first()
+			if (cardGrant)
+				throw new HttpError(
+					"CONFLICT",
+					"A card grant has already been issued for this design. Cancel it on the Grant cards page before un-approving",
 				)
 		}
 
