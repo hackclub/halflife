@@ -6,6 +6,7 @@ import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { parseDbTimestamp } from "@/lib/time"
+import { AuditRow } from "./AuditRow"
 
 export const dynamic = "force-dynamic"
 
@@ -20,8 +21,15 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 
 	const { items, nextCursor } = await listAuditLog({ action, cursor, limit: 50, targetId })
 
+	// The next page keeps every filter; only the cursor moves.
+	const nextParams = new URLSearchParams(
+		Object.entries({ action, cursor: nextCursor ?? undefined, targetId }).filter(
+			(e): e is [string, string] => typeof e[1] === "string" && e[1] !== "",
+		),
+	)
+
 	return (
-		<div className="hl-stack">
+		<div className="hl-stack hl-page-wide">
 			<PageHeader subtitle="Every mutation, with what it changed from and to." title="Audit log" />
 
 			<Panel>
@@ -48,30 +56,29 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 				{items.length === 0 ? (
 					<EmptyState>Nothing recorded yet.</EmptyState>
 				) : (
-					<Table head={["When", "Action", "Actor", "Target", "Detail"]}>
+					<Table className="hl-table--roomy" head={["When", "Action", "Actor", "Target", "Detail", "Actions"]}>
 						{items.map(entry => (
-							<tr key={entry.id}>
-								<td className="hl-mono">{parseDbTimestamp(entry.createdAt).toLocaleString()}</td>
-								<td className="hl-mono">{entry.action}</td>
-								<td className="hl-hint">{entry.actorEmail ?? entry.actorId ?? "system"}</td>
-								<td className="hl-mono">
-									{entry.targetType}
-									{entry.targetId ? <div className="hl-hint">{entry.targetId}</div> : null}
-								</td>
-								<td className="hl-hint" style={{ maxWidth: "28rem", wordBreak: "break-word" }}>
-									{entry.metadata ? JSON.stringify(entry.metadata) : ""}
-								</td>
-							</tr>
+							<AuditRow
+								data={{
+									action: entry.action,
+									actorEmail: entry.actorEmail,
+									actorId: entry.actorId,
+									actorIp: entry.actorIp,
+									actorUserAgent: entry.actorUserAgent,
+									createdAt: parseDbTimestamp(entry.createdAt).toLocaleString(),
+									id: entry.id,
+									metadata: entry.metadata,
+									targetId: entry.targetId,
+									targetType: entry.targetType,
+								}}
+								key={entry.id}
+							/>
 						))}
 					</Table>
 				)}
 				{nextCursor ? (
 					<p>
-						<Link
-							href={`/admin/audit?${action ? `action=${action}&` : ""}${targetId ? `targetId=${targetId}&` : ""}cursor=${nextCursor}`}
-						>
-							Next page
-						</Link>
+						<Link href={`/admin/audit?${nextParams.toString()}`}>Next page</Link>
 					</p>
 				) : null}
 			</Panel>

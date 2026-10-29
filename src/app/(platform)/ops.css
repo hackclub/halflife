@@ -521,6 +521,8 @@
 		color: var(--color-ink-strong);
 	}
 	.hl-manage-row > td {
+		/* A long value in a panel (a user agent, a URL) must wrap inside the table rather than widen it: a cell that contributes no intrinsic width takes the width of the columns it spans. */
+		max-width: 0;
 		padding: 0;
 		background: var(--color-surface-sunken);
 	}
@@ -561,5 +563,94 @@
 	}
 	.hl-manage-chevron--open {
 		transform: rotate(180deg);
+	}
+
+	/* ── Audit payload ─────────────────────────────────────────────────────── */
+	/*
+	 * A closed audit row answers "what changed" at a glance: up to three changed fields, one per line. The full payload and the request that made it open in the panel under the row.
+	 */
+	.hl-audit-summary {
+		display: grid;
+		gap: 0.2rem;
+		padding: 0;
+		margin: 0;
+		font-size: 0.8rem;
+		overflow-wrap: anywhere;
+		list-style: none;
+	}
+	.hl-audit-summary li {
+		display: flex;
+		gap: 0.35rem;
+	}
+	.hl-audit-summary-key {
+		flex: none;
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		color: var(--color-ink-muted);
+	}
+	.hl-audit-summary-more {
+		font-size: 0.72rem;
+		color: var(--color-ink-muted);
+	}
+	/* The audit sections carry more prose than a project's controls, so each column gets a wider floor. */
+	.hl-audit-panel {
+		grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+	}
+	.hl-audit-diff {
+		width: 100%;
+		font-size: 0.78rem;
+		border-collapse: collapse;
+	}
+	.hl-audit-diff th,
+	.hl-audit-diff td {
+		padding: 0.3rem 0.5rem;
+		vertical-align: top;
+		text-align: left;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.hl-audit-diff thead th {
+		font-size: 0.7rem;
+		font-weight: 700;
+		color: var(--color-ink-muted);
+	}
+	.hl-audit-diff tbody th {
+		font-family: var(--font-mono);
+		font-weight: 400;
+		color: var(--color-ink-muted);
+		white-space: nowrap;
+	}
+	.hl-audit-diff tr:last-child th,
+	.hl-audit-diff tr:last-child td {
+		border-bottom: 0;
+	}
+	/* JSON values keep their line breaks when indented, and a long unbroken id or URL wraps instead of widening the panel. */
+	.hl-audit-value {
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+	}
+	.hl-audit-json {
+		max-height: 18rem;
+		padding: 0.6rem 0.7rem;
+		margin: 0;
+		overflow: auto;
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		line-height: 1.5;
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+		background: var(--color-surface-raised);
+		border: 2px solid var(--color-border);
+		border-radius: var(--radius-button);
+	}
+	.hl-audit-raw summary {
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: var(--color-accent-ink);
+		cursor: pointer;
+	}
+	.hl-audit-raw[open] summary {
+		margin-bottom: 0.5rem;
 	}
 }
