@@ -94,7 +94,7 @@ export function NpsGate() {
 			onClose={() => {}}
 			open
 		>
-			<ModalTitle sub="Quick check-in before you carry on – it takes less than a minute, and the dashboard is waiting right behind it.">
+			<ModalTitle sub="Quick check-in before you carry on – it should take less than a minute, and then you can get back to the dashboard.">
 				How is Half Life going?
 			</ModalTitle>
 
@@ -139,13 +139,13 @@ export function NpsGate() {
 						id="nps-doing-well"
 						maxLength={2000}
 						onChange={e => setDoingWell(e.target.value)}
-						placeholder="The trail, the reels, the people…"
+						placeholder="The trail, the reels, the guides…"
 						rows={3}
 						value={doingWell}
 					/>
 				</Field>
 
-				<Field hint="Anything that would make it better." id="nps-improve" label="What could be better? (optional)">
+				<Field hint="Anything that would make it better (we know review is slow!)." id="nps-improve" label="What could be better? (optional)">
 					<TextArea
 						id="nps-improve"
 						maxLength={2000}
@@ -157,7 +157,7 @@ export function NpsGate() {
 				</Field>
 
 				<Field
-					hint="A friend, school, social media…"
+					hint="A friend, Slack, an email, social media…"
 					id="nps-hear"
 					label="How did you hear about Half Life? (optional)"
 				>
