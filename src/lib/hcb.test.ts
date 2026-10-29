@@ -62,4 +62,18 @@ describe("reconcileCardGrantIssue", () => {
 			kind: "ambiguous",
 		})
 	})
+
+	test("a grant whose owner HCB would not name is ambiguous, never absent", () => {
+		expect(reconcileCardGrantIssue(listed([grant({ email: null })]), expected)).toEqual({ kind: "ambiguous" })
+	})
+
+	test("this project's marker under a different owner is ambiguous", () => {
+		expect(reconcileCardGrantIssue(listed([grant({ email: "someone@example.com" })]), expected)).toEqual({
+			kind: "ambiguous",
+		})
+	})
+
+	test("a matching amount and owner without the marker is ambiguous", () => {
+		expect(reconcileCardGrantIssue(listed([grant({ purpose: null })]), expected)).toEqual({ kind: "ambiguous" })
+	})
 })
