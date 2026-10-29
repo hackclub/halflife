@@ -204,7 +204,7 @@ export function NpsGate() {
 
 			{showNudge && !textsOpen && (
 				<Panel
-					className="fixed right-3 bottom-[calc(env(safe-area-inset-bottom,0px)+5.4rem)] z-[60] w-[min(20rem,calc(100vw-1.5rem))] p-4 pr-11 lg:bottom-6 lg:right-6"
+					className="fixed right-3 bottom-[calc(env(safe-area-inset-bottom,0px)+5.4rem)] z-[60] w-[min(20rem,calc(100vw-1.5rem))] bg-cream p-4 pr-11 shadow-[0_3px_6px_rgba(28,26,89,.12),0_18px_40px_-16px_rgba(28,26,89,.55)] lg:right-6 lg:bottom-6"
 					radius={16}
 				>
 					<p className="label text-coral-deep">Quick follow-up</p>
