@@ -33,14 +33,16 @@ export async function deleteBlockReason(
 	if (project.grantEmittedAt) return "A funded project can't be deleted"
 
 	const dbOrTx = client ?? db
-	const [ledger, topUps, disputes] = await Promise.all([
+	const [ledger, topUps, cards, disputes] = await Promise.all([
 		dbOrTx.orm.public.LedgerEntry.where({ themeProjectId: project.id }).aggregate(a => ({ count: a.count() })),
 		dbOrTx.orm.public.HcbGrantTopUp.where({ themeProjectId: project.id }).aggregate(a => ({ count: a.count() })),
+		dbOrTx.orm.public.HcbGrantCard.where({ themeProjectId: project.id }).aggregate(a => ({ count: a.count() })),
 		dbOrTx.orm.public.ReviewDispute.where({ resolvedAt: null })
 			.where(dispute => dispute.submission.some(submission => submission.themeProjectId.eq(project.id)))
 			.aggregate(a => ({ count: a.count() })),
 	])
-	if (ledger.count > 0 || topUps.count > 0) return "This project has earned coins or funding, so it can't be deleted"
+	if (ledger.count > 0 || topUps.count > 0 || cards.count > 0)
+		return "This project has earned coins or funding, so it can't be deleted"
 	if (disputes.count > 0) return "A reviewer is still taking a second look, so it can't be deleted yet"
 	return null
 }

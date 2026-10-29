@@ -83,23 +83,27 @@ Ari (`ari.hackclub.com`, `@hackclub/ari`) is the review surface. Half Life sends
 
 ## Payouts
 
-**The Airtable/YSWS pipeline owns payouts.** Approval mints coins and freezes `grantUsd`, and the Design row Half Life writes to `YSWS Project Submission` is what the payout team pays from. Nothing in the app pays a maker automatically.
+**`ProgramSettings.payoutSource` decides who pays.** Under `AIRTABLE`, approval mints coins and freezes `grantUsd`, and the Design row Half Life writes to `YSWS Project Submission` is what the payout team pays from. Under `HCB`, Airtable stays the submission and Loops surface but its `Requested funding` column is written as zero, and `/admin/grants` issues HCB card grants instead. The Airtable pipeline must be paused before the source changes; two payers is a double payment.
 
-`/admin/users/[id]` has a **manual fallback**: a "Send grant" action that tops up a maker's HCB card grant directly (`lib/hcb.ts`, `lib/grants.ts`). It is deliberately narrow:
+### HCB card grants
 
-- only on an **approved design**, for the frozen `grantUsd`;
-- only for a maker whose **Hack Club identity is verified** – checked fresh with HCA before anything is claimed or sent, and the same rule refuses a positive manual credit adjustment in `/admin/users/[id]` (a clawback is still allowed);
-- **once per (user, project, design)** – `HcbGrantTopUp` has a unique key and the row is claimed before HCB is called, so a double-click cannot pay twice;
-- **once per card** – the grant hashid is unique, so two projects (or two makers) pointing at the same HCB card cannot each pay it;
-- **the card is checked against the maker before it is paid** – the top-up moves the money as it answers, so a grant that belongs to somebody else cannot be caught afterwards;
-- a failed attempt records its error and may be retried; one in flight may not;
-- it needs `MANAGE_CREDIT`, not `REVIEW_SUBMISSIONS`.
+`/admin/grants` issues one HCB card grant per approved design, for the **BOM total** (`bomTotalUsd`, including tax and shipping), not `grantUsd`. It needs `MANAGE_CREDIT`.
 
-Two things to know before enabling it:
+- the preview and the batch are the same query; a SHA-256 fingerprint over `projectId:amountCents:email` means a stale confirmation cannot issue a different set;
+- `HcbGrantCard` has a partial unique index on `(themeProjectId, phase)` for `PENDING`, `ISSUED` and `AMBIGUOUS`, so two batches or two tabs cannot create two live grants;
+- a row is claimed with a compare-and-set before HCB is called, and each request processes a small chunk;
+- a lost response is reconciled against `GET /organizations/{slug}/card_grants` by email, amount and the `HL:<projectId>` marker in `purpose`. Only a known absence may retry;
+- an owner mismatch cancels the grant and leaves it `AMBIGUOUS`; a reconciliation with several matches does the same;
+- every issue writes `ADMIN_ISSUE_GRANT_CARD` with the HCB grant id in the same transaction as the `ISSUED` row;
+- un-approving a design is refused while a live card grant exists; cancel it first.
 
-- **It can double-pay alongside the pipeline.** The unique key only prevents a second send *within Half Life*; it knows nothing about what the pipeline has already paid.
+The legacy `/admin/users/[id]` "Send grant" top-up (`lib/grants.ts`, `HcbGrantTopUp`) remains as history and is refused whenever the payout source is HCB. Under `AIRTABLE` it is still the old manual fallback, with the same approved-design, identity and owner checks.
+
+### HCB configuration
+
 - **The HCB v3 API is read-only.** Grants go through the authenticated **v4** API. Set `HCB_ORG_SLUG` plus either a static `HCB_ACCESS_TOKEN` or the refresh-token flow. HCB rotates the refresh token, and an env var cannot be rewritten, so the production path is to persist it (a credentials row or a secret store); with the env flow the token is good for the life of a process.
 - **The token has to be able to read the maker's email.** The owner check compares the card's owner with the maker's address, and HCB only renders another account's email to a token that may read it (`pii`, or an admin in their org). A token that cannot will refuse every grant with "HCB would not say who that grant belongs to". `HCB_VERIFY_GRANT_OWNER=false` turns the check off for such a deployment; the payment then goes ahead and the audit row records that nobody checked whose card it was.
+- **Scopes:** `card_grants:write` to issue and cancel, and enough organisation read access to reconcile and preflight the balance.
 
 ---
 

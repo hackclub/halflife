@@ -23,12 +23,32 @@ const TokenBody = z.object({
 	refresh_token: z.string().optional(),
 })
 const CardGrantBody = z.object({
-	disbursements: z.array(z.object({ transaction_id: z.string().nullish() })).optional(),
+	amount_cents: z.number().optional(),
+	card_id: z.string().nullish(),
+	created_at: z.string().nullish(),
+	disbursements: z
+		.array(
+			z.object({
+				id: z.string().nullish(),
+				transaction_id: z.string().nullish(),
+			}),
+		)
+		.optional(),
+	email: z.string().nullish(),
+	id: z.string().optional(),
+	purpose: z.string().nullish(),
+	status: z.string().optional(),
 	user: z.object({ email: z.string().nullish() }).nullish(),
 })
 
 function base(): string {
 	return (process.env.HCB_BASE_URL ?? DEFAULT_BASE).replace(/\/$/, "")
+}
+
+function orgSlug(): string {
+	const slug = process.env.HCB_ORG_SLUG
+	if (!slug) throw new HttpError("NOT_CONFIGURED", "HCB_ORG_SLUG is not set")
+	return slug
 }
 
 export function isHcbConfigured(): boolean {
@@ -263,6 +283,179 @@ export function reconcileDisbursement(
 	const after = attemptedAt.getTime() - TOPUP_SKEW_MS
 	const inWindow = dated.filter(d => d.at >= after)
 	if (inWindow.length === 1) return { kind: "landed", transactionId: inWindow[0]?.transactionId ?? null }
+	if (inWindow.length > 1) return { kind: "ambiguous" }
+	return { kind: "absent" }
+}
+
+/** A card grant as the organisation list and the create response describe it. */
+export interface HcbCardGrantSummary {
+	amountCents: number
+	cardId: string | null
+	createdAt: string | null
+	email: string | null
+	id: string
+	purpose: string | null
+	status: string | null
+}
+
+const ListedCardGrantBody = CardGrantBody.extend({
+	amount_cents: z.number(),
+	id: z.string(),
+})
+
+function toCardGrantSummary(data: z.infer<typeof ListedCardGrantBody>): HcbCardGrantSummary {
+	return {
+		amountCents: data.amount_cents,
+		cardId: data.card_id ?? null,
+		createdAt: data.created_at ?? null,
+		email: readOwnerEmail(data.user) ?? readOwnerEmail({ email: data.email }),
+		id: data.id,
+		purpose: data.purpose ?? null,
+		status: data.status ?? null,
+	}
+}
+
+export type HcbCardGrantList = { kind: "listed"; rows: HcbCardGrantSummary[] } | { kind: "unreadable" }
+
+/**
+ * Every card grant the organisation has issued, newest first.
+ *
+ * This is the only way to find out whether a create whose response was lost actually landed, so an unreadable payload fails closed: “I could not read the list” must never be treated as “there is no match”.
+ */
+export async function listOrganizationCardGrants(): Promise<HcbCardGrantList> {
+	const res = await hcbFetch(
+		`/api/v4/organizations/${encodeURIComponent(orgSlug())}/card_grants?expand=disbursements,user`,
+	)
+	if (!res.ok) {
+		const body = await res.text().catch(() => "")
+		throw new HttpError("INTERNAL", `HCB refused to list card grants (${res.status})`, { detail: body.slice(0, 300) })
+	}
+
+	const data: unknown = await res.json().catch(() => null)
+	if (!Array.isArray(data)) return { kind: "unreadable" }
+
+	const rows: HcbCardGrantSummary[] = []
+	for (const entry of data) {
+		const parsed = ListedCardGrantBody.safeParse(entry)
+		if (!parsed.success) return { kind: "unreadable" }
+		rows.push(toCardGrantSummary(parsed.data))
+	}
+	return { kind: "listed", rows }
+}
+
+export interface CreateCardGrantInput {
+	amountCents: number
+	email: string
+	instructions: string
+	inviteMessage: string
+	/** Carries the project marker used to reconcile a lost response. */
+	purpose: string
+}
+
+/**
+ * Issue a card grant from the organisation's balance.
+ *
+ * A recipient with no HCB account gets an invitation; `cardId` stays null until they activate it, so a null card is a successfully issued grant rather than a failure.
+ */
+export async function createCardGrant(input: CreateCardGrantInput): Promise<HcbCardGrantSummary> {
+	const res = await hcbFetch(`/api/v4/organizations/${encodeURIComponent(orgSlug())}/card_grants`, {
+		body: JSON.stringify({
+			amount_cents: input.amountCents,
+			email: input.email,
+			instructions: input.instructions,
+			invite_message: input.inviteMessage,
+			purpose: input.purpose,
+		}),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+		timeoutMs: 20_000,
+	})
+	if (!res.ok) {
+		const body = await res.text().catch(() => "")
+		throw new HttpError("INTERNAL", `HCB refused the card grant (${res.status})`, {
+			detail: body.slice(0, 300),
+			hcbStatus: res.status,
+		})
+	}
+
+	const parsed = ListedCardGrantBody.safeParse(await res.json().catch(() => null))
+	if (!parsed.success)
+		throw new HttpError("INTERNAL", "HCB returned a card grant Half Life could not read", {
+			detail: z.treeifyError(parsed.error),
+		})
+	return toCardGrantSummary(parsed.data)
+}
+
+/** The organisation's spendable balance, in cents. */
+export async function readOrganizationBalanceCents(): Promise<number> {
+	const res = await hcbFetch(`/api/v4/organizations/${encodeURIComponent(orgSlug())}`)
+	if (!res.ok) {
+		const body = await res.text().catch(() => "")
+		throw new HttpError("INTERNAL", `HCB refused to read the organisation (${res.status})`, {
+			detail: body.slice(0, 300),
+		})
+	}
+
+	const data: unknown = await res.json().catch(() => null)
+	if (!isRecord(data) || typeof data.balance_cents !== "number")
+		throw new HttpError("INTERNAL", "HCB did not say the organisation's balance")
+	return data.balance_cents
+}
+
+/** Cancel a grant, returning its remaining balance to the organisation. */
+export async function cancelCardGrant(grantId: string): Promise<void> {
+	const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantId)}/cancel`, {
+		method: "POST",
+	})
+	if (!res.ok) {
+		const body = await res.text().catch(() => "")
+		throw new HttpError("INTERNAL", `HCB refused to cancel the card grant (${res.status})`, {
+			detail: body.slice(0, 300),
+		})
+	}
+}
+
+/** Allowance for clock skew between our attempt time and HCB's record. */
+export const CARD_GRANT_SKEW_MS = 5 * 60_000
+
+export interface CardGrantExpectation {
+	amountCents: number
+	attemptedAt: Date
+	email: string
+	/** The stable `HL:<projectId>` marker written into `purpose`. */
+	purpose: string
+}
+
+/**
+ * Decide whether a card grant whose response was lost actually landed.
+ *
+ * A single matching grant at or after the attempt is evidence it did. Several in the window, a candidate with no usable timestamp, or a payload that could not be read at all is not something to guess about: an unnecessary retry creates a second card, and a skipped one leaves the maker unpaid.
+ */
+export function reconcileCardGrantIssue(
+	list: HcbCardGrantList,
+	expected: CardGrantExpectation,
+): { kind: "landed"; grantId: string } | { kind: "absent" } | { kind: "ambiguous" } {
+	if (list.kind === "unreadable") return { kind: "ambiguous" }
+
+	const email = expected.email.trim().toLowerCase()
+	const candidates = list.rows.filter(
+		row =>
+			row.amountCents === expected.amountCents
+			&& row.email?.toLowerCase() === email
+			&& row.purpose === expected.purpose,
+	)
+	if (candidates.length === 0) return { kind: "absent" }
+
+	const dated: { at: number; id: string }[] = []
+	for (const row of candidates) {
+		const at = row.createdAt ? Date.parse(row.createdAt) : Number.NaN
+		if (!Number.isFinite(at)) return { kind: "ambiguous" }
+		dated.push({ at, id: row.id })
+	}
+
+	const after = expected.attemptedAt.getTime() - CARD_GRANT_SKEW_MS
+	const inWindow = dated.filter(row => row.at >= after)
+	if (inWindow.length === 1) return { grantId: inWindow[0]?.id ?? "", kind: "landed" }
 	if (inWindow.length > 1) return { kind: "ambiguous" }
 	return { kind: "absent" }
 }

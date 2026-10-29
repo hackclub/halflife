@@ -105,6 +105,7 @@ export default async function AdminProgramPage() {
 				<ProgramSettingsForm
 					initial={{
 						airtableSyncEnabled: settings.airtableSyncEnabled,
+						payoutSource: settings.payoutSource,
 						programTimezone: settings.programTimezone,
 						repoSyncEnabled: settings.repoSyncEnabled,
 						reviewClaimTtlMinutes: settings.reviewClaimTtlMinutes,

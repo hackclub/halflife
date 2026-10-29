@@ -19,7 +19,9 @@ type Members<N extends keyof ValueSets> = ValueSets[N] extends { readonly values
 export const AuditAction = {
 	ADMIN_ADJUST_CREDIT: "ADMIN_ADJUST_CREDIT",
 	ADMIN_BAN_USER: "ADMIN_BAN_USER",
+	ADMIN_CANCEL_GRANT_CARD: "ADMIN_CANCEL_GRANT_CARD",
 	ADMIN_CHANGE_EMAIL: "ADMIN_CHANGE_EMAIL",
+	ADMIN_CREATE_GRANT_CARD_BATCH: "ADMIN_CREATE_GRANT_CARD_BATCH",
 	ADMIN_CREATE_PROGRAM_EVENT: "ADMIN_CREATE_PROGRAM_EVENT",
 	ADMIN_CREATE_SHOP_ITEM: "ADMIN_CREATE_SHOP_ITEM",
 	ADMIN_CREATE_SHOP_REGION: "ADMIN_CREATE_SHOP_REGION",
@@ -33,6 +35,7 @@ export const AuditAction = {
 	ADMIN_HIDE_COMMENT: "ADMIN_HIDE_COMMENT",
 	ADMIN_HIDE_POST: "ADMIN_HIDE_POST",
 	ADMIN_IMPORT_AIRTABLE_PROJECT: "ADMIN_IMPORT_AIRTABLE_PROJECT",
+	ADMIN_ISSUE_GRANT_CARD: "ADMIN_ISSUE_GRANT_CARD",
 	ADMIN_MOVE_PROJECT: "ADMIN_MOVE_PROJECT",
 	ADMIN_PIN_POST: "ADMIN_PIN_POST",
 	ADMIN_REJECT_ORDER: "ADMIN_REJECT_ORDER",
@@ -132,6 +135,26 @@ export const HardwareExperience = {
 
 export type HardwareExperience = (typeof HardwareExperience)[keyof typeof HardwareExperience]
 
+export const HcbGrantCardBatchStatus = {
+	COMPLETED: "COMPLETED",
+	FAILED: "FAILED",
+	PARTIAL: "PARTIAL",
+	PROCESSING: "PROCESSING",
+} as const satisfies { [K in Members<"HcbGrantCardBatchStatus">]: K }
+
+export type HcbGrantCardBatchStatus = (typeof HcbGrantCardBatchStatus)[keyof typeof HcbGrantCardBatchStatus]
+
+export const HcbGrantCardStatus = {
+	AMBIGUOUS: "AMBIGUOUS",
+	CANCELED: "CANCELED",
+	FAILED: "FAILED",
+	ISSUED: "ISSUED",
+	PENDING: "PENDING",
+	SKIPPED: "SKIPPED",
+} as const satisfies { [K in Members<"HcbGrantCardStatus">]: K }
+
+export type HcbGrantCardStatus = (typeof HcbGrantCardStatus)[keyof typeof HcbGrantCardStatus]
+
 export const HoursSource = {
 	HACKATIME_TRACKED: "HACKATIME_TRACKED",
 	MANUAL: "MANUAL",
@@ -169,6 +192,13 @@ export const ParticipantGoal = {
 } as const satisfies { [K in Members<"ParticipantGoal">]: K }
 
 export type ParticipantGoal = (typeof ParticipantGoal)[keyof typeof ParticipantGoal]
+
+export const PayoutSource = {
+	AIRTABLE: "AIRTABLE",
+	HCB: "HCB",
+} as const satisfies { [K in Members<"PayoutSource">]: K }
+
+export type PayoutSource = (typeof PayoutSource)[keyof typeof PayoutSource]
 
 export const Phase = {
 	BUILD: "BUILD",
