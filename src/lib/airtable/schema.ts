@@ -142,6 +142,11 @@ export const RSVP = {
 		// `signupPage` used to sit here as `Loops - halfLifeSignUpPage`. Pruned: the base has no such column and never did, and the `Loops - …` family in it is Loops-owned and date-shaped (`halfLifeSignUpAt`, `halfLifeLastLoginAt`, `halfLifeReferralNumber`), so this was a column that was planned and never created rather than one whose spelling had drifted. Left in the map, it cost a probe per deploy to keep learning that.
 		finishedAccountCreation: f<boolean>("fldRsvpFinished", "Finished Account Creation"),
 		firstName: f<string>("fldRsvpFirstName", "First Name"),
+		howDoingWell: f<string>("fldRsvpHowDoingWell", "howDoingWell"),
+		howHear: f<string>("fldRsvpHowHear", "howHear"),
+		howImprove: f<string>("fldRsvpHowImprove", "howImprove"),
+		// NPS follow-up, written from the dashboard's blocking prompt (see lib/airtable/nps). The score is the gate: a row holding a number has answered, and the prompt stays up until it does. The three text answers ride along and may be empty.
+		howLikelyRecommend: f<number>("fldRsvpHowLikelyRecommend", "howLikelyRecommend"),
 		// Lowercase too, and this map said `IP` for as long as it has existed: the probe could never find it, so every row that went through the drain lost its address while the landing's own direct write (lib/site/signups) kept it. The base has the column; only the spelling was wrong.
 		ip: f<string>("fldRsvpIp", "ip"),
 		lastName: f<string>("fldRsvpLastName", "Last Name"),
