@@ -452,7 +452,7 @@ namespace public {
     user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
     themeProject   ThemeProject          @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
 
-    @@index([themeProjectId, phase], map: "hcb_grant_card_project_phase_live_key", unique: true, where: sql`("supersededAt" IS NULL AND "status" IN ('PENDING'::"HcbGrantCardStatus", 'ISSUED'::"HcbGrantCardStatus", 'AMBIGUOUS'::"HcbGrantCardStatus"))`)
+    @@index([themeProjectId, phase], name: "hcb_grant_card_project_phase_live_key", unique: true, where: sql`("supersededAt" IS NULL AND "status" IN ('PENDING'::"HcbGrantCardStatus", 'ISSUED'::"HcbGrantCardStatus", 'AMBIGUOUS'::"HcbGrantCardStatus"))`)
     @@index([hcbCardGrantId], map: "hcb_grant_card_hcbCardGrantId_key", unique: true)
     @@index([batchId, status], map: "hcb_grant_card_batchId_status_idx")
     @@index([userId, status], map: "hcb_grant_card_userId_status_idx")

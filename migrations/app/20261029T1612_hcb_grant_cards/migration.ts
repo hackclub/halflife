@@ -1,8 +1,8 @@
 #!/usr/bin/env -S bun
-import type { Contract as End } from '../../snapshots/136af8db6add7286ba856bc8fcd2ab389ce14d69ecc28878951bb9d13f4b1152/contract';
-import endContract from '../../snapshots/136af8db6add7286ba856bc8fcd2ab389ce14d69ecc28878951bb9d13f4b1152/contract.json' with { type: 'json' };
 import type { Contract as Start } from '../../snapshots/8fc2beff87e71f16f8d3d2e856b084ad5f264ad98d511b2dc5947dae1a538e7d/contract';
 import startContract from '../../snapshots/8fc2beff87e71f16f8d3d2e856b084ad5f264ad98d511b2dc5947dae1a538e7d/contract.json' with { type: 'json' };
+import type { Contract as End } from '../../snapshots/f3fc2e8af8c37a08c413e4179e5e2c539bc789e9173ae038cdc16ab1a0c1a0e4/contract';
+import endContract from '../../snapshots/f3fc2e8af8c37a08c413e4179e5e2c539bc789e9173ae038cdc16ab1a0c1a0e4/contract.json' with { type: 'json' };
 import {
   Migration,
   MigrationCLI,
@@ -166,7 +166,7 @@ export default class M extends Migration<Start, End> {
       this.createIndex({
         schema: 'public',
         table: 'hcb_grant_card',
-        index: 'hcb_grant_card_project_phase_live_key',
+        index: 'hcb_grant_card_project_phase_live_key_0605fbc3',
         columns: ['themeProjectId', 'phase'],
         extras: {
           where: sql`("supersededAt" IS NULL AND "status" IN ('PENDING'::"HcbGrantCardStatus", 'ISSUED'::"HcbGrantCardStatus", 'AMBIGUOUS'::"HcbGrantCardStatus"))`,

@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'136af8db6add7286ba856bc8fcd2ab389ce14d69ecc28878951bb9d13f4b1152'>;
+  StorageHashBase<'f3fc2e8af8c37a08c413e4179e5e2c539bc789e9173ae038cdc16ab1a0c1a0e4'>;
 export type ExecutionHash =
   ExecutionHashBase<'6d6e2f0c896d44d4e6c03ac3a2031b3c1cab276d1b2c3f41b43022d0ac6fc0a1'>;
 export type ProfileHash =
@@ -2826,7 +2826,8 @@ type ContractBase = Omit<
                   readonly unique: true;
                 },
                 {
-                  readonly name: 'hcb_grant_card_project_phase_live_key';
+                  readonly name: 'hcb_grant_card_project_phase_live_key_0605fbc3';
+                  readonly prefix: 'hcb_grant_card_project_phase_live_key';
                   readonly columns: readonly ['themeProjectId', 'phase'];
                   readonly where: '("supersededAt" IS NULL AND "status" IN (\'PENDING\'::"HcbGrantCardStatus", \'ISSUED\'::"HcbGrantCardStatus", \'AMBIGUOUS\'::"HcbGrantCardStatus"))';
                   readonly unique: true;
