@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { z } from "zod"
@@ -143,7 +144,6 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 	}
 
 	const issued = outcomes.filter(outcome => outcome.status === "ISSUED")
-	const failed = outcomes.filter(outcome => outcome.status === "FAILED" || outcome.status === "AMBIGUOUS")
 	const amountIssued = issued.reduce((total, outcome) => total + outcome.amountCents, 0)
 	const processed = outcomes.length
 	const total = preview.eligible.length
@@ -172,23 +172,24 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 						{processed} of {total} processed, {formatUsd(amountIssued / 100)} issued
 						{remaining > 0 ? `, ${remaining} left` : finished ? ", finished" : ""}.
 					</p>
-					{issued.length > 0 || failed.length > 0 ? (
-						<Table head={["Project", "Amount", "Status", "HCB grant", "Error"]}>
-							{outcomes
-								.filter(outcome => outcome.status !== "SKIPPED")
-								.map(outcome => (
-									<tr key={outcome.id}>
-										<td>{outcome.title || outcome.projectId}</td>
-										<td className="hl-mono">{formatUsd(outcome.amountCents / 100)}</td>
-										<td>
-											<Badge tone={STATUS_TONE[outcome.status] ?? "muted"}>{statusLabel(outcome.status)}</Badge>
-										</td>
-										<td className="hl-mono">{outcome.hcbCardGrantId ?? "-"}</td>
-										<td className="hl-hint">{outcome.error ?? "-"}</td>
-									</tr>
-								))}
-						</Table>
+					{batchId ? (
+						<p className="hl-hint">
+							<Link href={`/admin/grants/${batchId}`}>Open the full batch</Link>
+						</p>
 					) : null}
+					<Table head={["Project", "Amount", "Status", "HCB grant", "Error"]}>
+						{outcomes.map(outcome => (
+							<tr key={outcome.id}>
+								<td>{outcome.title || outcome.projectId}</td>
+								<td className="hl-mono">{formatUsd(outcome.amountCents / 100)}</td>
+								<td>
+									<Badge tone={STATUS_TONE[outcome.status] ?? "muted"}>{statusLabel(outcome.status)}</Badge>
+								</td>
+								<td className="hl-mono">{outcome.hcbCardGrantId ?? "-"}</td>
+								<td className="hl-hint">{outcome.error ?? "-"}</td>
+							</tr>
+						))}
+					</Table>
 				</div>
 			) : null}
 

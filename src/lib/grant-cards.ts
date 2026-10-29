@@ -232,6 +232,9 @@ export async function createGrantCardBatch(input: CreateGrantCardBatchInput): Pr
 	if (current.eligible.length === 0) throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
 	if (current.fingerprint !== input.fingerprint)
 		throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
+	const balanceCents = await readOrganizationBalanceCents()
+	if (current.totalCents > balanceCents)
+		throw new HttpError("CONFLICT", "The batch costs more than the HCB balance. Nothing was created")
 
 	const { ip, userAgent } = await requestInfo()
 	const result = await db.transaction(async tx => {
@@ -410,7 +413,18 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 		.where(row => or(row.claimedAt.isNull(), row.claimedAt.lt(formatDbTimestamp(cutoff))))
 		.orderBy(row => row.createdAt.asc())
 		.limit(limit)
-		.select("amountCents", "batchId", "bomLineCount", "createdAt", "email", "id", "purpose", "themeProjectId", "userId")
+		.select(
+			"amountCents",
+			"batchId",
+			"bomLineCount",
+			"claimedAt",
+			"createdAt",
+			"email",
+			"id",
+			"purpose",
+			"themeProjectId",
+			"userId",
+		)
 		.all()
 
 	const { ip, userAgent } = await requestInfo()
@@ -487,6 +501,56 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 		}
 
 		const purpose = grantCardPurpose(project.id)
+
+		// A row that was claimed earlier is a previous attempt, not a fresh one. It may have committed at HCB and lost
+		// its response, so find out before sending again. Only an attempt known to be absent may proceed to create.
+		if (candidate.claimedAt !== null) {
+			const previous = await listOrganizationCardGrants().catch(() => null)
+			if (!previous) {
+				await markAmbiguous(candidate.id, "The earlier attempt could not be checked against HCB")
+				outcomes.push(
+					toOutcome(
+						candidate,
+						HcbGrantCardStatus.AMBIGUOUS,
+						"The earlier attempt could not be checked against HCB",
+						null,
+					),
+				)
+				continue
+			}
+			const reconciled = reconcileCardGrantIssue(previous, {
+				amountCents,
+				attemptedAt: parseDbTimestamp(candidate.claimedAt),
+				email: project.user.email,
+				purpose,
+			})
+			if (reconciled.kind === "landed") {
+				const grant = previous.kind === "listed" ? previous.rows.find(row => row.id === reconciled.grantId) : undefined
+				if (grant) {
+					await markIssued(
+						{ amountCents, batchId: candidate.batchId, id: candidate.id, projectId: project.id, purpose },
+						{ cardId: grant.cardId, id: grant.id, status: grant.status },
+						input.admin,
+						{ ip, userAgent },
+					)
+					outcomes.push(toOutcome(candidate, HcbGrantCardStatus.ISSUED, null, grant.id))
+					continue
+				}
+			}
+			if (reconciled.kind === "ambiguous") {
+				await markAmbiguous(candidate.id, "The earlier attempt may have created a grant. Check HCB before retrying")
+				outcomes.push(
+					toOutcome(
+						candidate,
+						HcbGrantCardStatus.AMBIGUOUS,
+						"The earlier attempt may have created a grant. Check HCB before retrying",
+						null,
+					),
+				)
+				continue
+			}
+		}
+
 		try {
 			const grant = await createCardGrant({
 				amountCents,
@@ -541,7 +605,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			}
 			const reconciled = reconcileCardGrantIssue(list, {
 				amountCents,
-				attemptedAt: parseDbTimestamp(candidate.createdAt),
+				attemptedAt: parseDbTimestamp(candidate.claimedAt ?? candidate.createdAt),
 				email: project.user.email,
 				purpose,
 			})
@@ -605,6 +669,8 @@ async function remainingCount(batchId: string): Promise<number> {
 }
 
 async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
+	const batch = await db.orm.public.HcbGrantCardBatch.whereUnique({ id: batchId }).first()
+	if (!batch) throw new HttpError("NOT_FOUND", "Grant card batch not found")
 	const rows = await db.orm.public.HcbGrantCard.where({ batchId }).select("status").all()
 	const counts = {
 		ambiguous: 0,
@@ -633,7 +699,7 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 
 	const updated = await db.orm.public.HcbGrantCardBatch.where({ id: batchId }).update({
 		ambiguousCount: counts.ambiguous,
-		completedAt: counts.pending === 0 ? formatDbTimestamp(new Date()) : null,
+		completedAt: counts.pending === 0 ? (batch.completedAt ?? formatDbTimestamp(new Date())) : null,
 		failedCount: counts.failed,
 		issuedCount: counts.issued,
 		skippedCount: counts.skipped,
