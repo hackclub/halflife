@@ -14,6 +14,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 		Permission.VIEW_UPLOADS,
 		Permission.MANAGE_PROGRAM,
 		Permission.MANAGE_FEED,
+		Permission.MANAGE_CREDIT,
 	)
 
 	return (
@@ -29,6 +30,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 							<Link href="/admin/referrals">Referrals</Link>
 						</>
 					) : null}
+					{hasPermission(roles, Permission.MANAGE_CREDIT) ? <Link href="/admin/grants">Grants</Link> : null}
 					{hasPermission(roles, Permission.MANAGE_SHOP) ? <Link href="/admin/shop">Shop</Link> : null}
 					{hasPermission(roles, Permission.FULFILL_ORDERS) ? <Link href="/admin/fulfillment">Fulfillment</Link> : null}
 					{hasPermission(roles, Permission.MANAGE_PROGRAM) ? <Link href="/admin/program">Program</Link> : null}

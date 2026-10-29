@@ -289,6 +289,7 @@ export interface UserDetail {
 		designSpendableCoins: number | null
 		designStatus: Models.public_ThemeProject["designStatus"]
 		grantUsd: number | null
+		hcbGrantCards: { id: string; status: string }[]
 		hcbGrantTopUps: { id: string }[]
 		id: string
 		submissionExtensionUntil: Date | null
@@ -366,6 +367,12 @@ export async function getUserDetail(
 					"title",
 				)
 				.where({ deletedAt: null })
+				.include("hcbGrantCards", cards =>
+					cards
+						.select("id", "status")
+						.where({ phase: "DESIGN" })
+						.where(card => card.supersededAt.isNull()),
+				)
 				.include("hcbGrantTopUps", topUps =>
 					topUps
 						.select("id")
