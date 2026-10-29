@@ -13,16 +13,20 @@ import { existingColumns } from "@/lib/airtable/field-probe"
 import { recordDirectSignup } from "@/lib/airtable/rsvp"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 import db from "@/lib/prisma8"
-import type { NpsSubmit } from "@/lib/schemas/nps"
+import type { NpsTextsSubmit } from "@/lib/schemas/nps"
 
-/** The four NPS columns, as the table names them. */
+/** The score column, as the table names it. */
 const SCORE = () => fieldKey(RSVP.fields.howLikelyRecommend)
-const NPS_COLUMNS = () => [
-	fieldKey(RSVP.fields.howLikelyRecommend),
+
+/** The three text columns, as the table names them. */
+const TEXT_COLUMNS = () => [
 	fieldKey(RSVP.fields.howDoingWell),
 	fieldKey(RSVP.fields.howImprove),
 	fieldKey(RSVP.fields.howHear),
 ]
+
+/** The four NPS columns, as the table names them. */
+const NPS_COLUMNS = () => [SCORE(), ...TEXT_COLUMNS()]
 
 const fieldsQs = (cols: readonly string[]) => cols.map(c => `fields%5B%5D=${encodeURIComponent(c)}`).join("&")
 
@@ -76,42 +80,44 @@ export async function findSignupRecord(userId: string): Promise<AirtableRecord |
 	return byEmail.records[0] ?? null
 }
 
-export type NpsStatus = { completed: boolean } | { skipped: string }
+export type NpsState = { score: number | null; textsDone: boolean } | { skipped: string }
+
+/** Whether the answered text is anything at all: whitespace alone is not feedback. */
+const hasText = (value: unknown): boolean => typeof value === "string" && value.trim().length > 0
 
 /**
- * Whether the blocking prompt has been answered. A row holding a score number – 0 counts – is done; anything else is not. Skipped rather than blocking when Airtable is unconfigured or the base predates the columns, so a half-built base never parks every user behind a form that cannot save.
+ * Where the caller stands in the two-step flow. The score gates the dashboard; the texts only decide the corner nudge. A row holding a score number – 0 counts – has answered the first step, and a row holding any text has answered the second. Skipped rather than blocking when Airtable is unconfigured or the base predates the columns, so a half-built base never parks anyone behind a form that cannot save – and a base without the text columns reads the second step as done, so nobody is nudged for answers that cannot be stored.
  */
-export async function readNpsStatus(userId: string): Promise<NpsStatus> {
+export async function readNpsState(userId: string): Promise<NpsState> {
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
-	const cols = NPS_COLUMNS()
-	const writable = await existingColumns(config, RSVP_TABLE_ID, cols)
+	const writable = await existingColumns(config, RSVP_TABLE_ID, NPS_COLUMNS())
 	if (!writable.has(SCORE())) return { skipped: "no_column" }
+	const textsWritable = TEXT_COLUMNS().some(c => writable.has(c))
 	const row = await findSignupRecord(userId)
-	if (!row) return { completed: false }
-	return { completed: typeof row.fields[SCORE()] === "number" }
+	if (!row) return { score: null, textsDone: !textsWritable }
+	const score = row.fields[SCORE()]
+	return {
+		score: typeof score === "number" ? score : null,
+		textsDone: !textsWritable || TEXT_COLUMNS().some(c => hasText(row.fields[c])),
+	}
 }
 
 /**
- * Save the answers onto the caller's Signups row. Updates the row in place when one is found; otherwise creates it keyed on the account email, so someone with no landing row is still unblocked by answering. Only columns the table actually has are sent, and the buffer remembers a row this creates for the record-id join.
+ * PATCH the caller's Signups row, creating it keyed on the account email when they have no landing row, so someone without one is still unblocked by answering. Only columns the table actually has are sent, and the buffer remembers a row this creates for the record-id join.
  */
-export async function writeNps(userId: string, values: NpsSubmit): Promise<{ updated: boolean } | { skipped: string }> {
+async function patchSignupRow(
+	userId: string,
+	fields: { [_: string]: unknown },
+	operation: string,
+): Promise<{ updated: boolean } | { skipped: string }> {
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
-	const cols = NPS_COLUMNS()
-	const writable = await existingColumns(config, RSVP_TABLE_ID, cols)
-	const fields: { [_: string]: unknown } = {
-		[fieldKey(RSVP.fields.howDoingWell)]: values.howDoingWell?.trim() ? values.howDoingWell.trim() : undefined,
-		[fieldKey(RSVP.fields.howHear)]: values.howHear?.trim() ? values.howHear.trim() : undefined,
-		[fieldKey(RSVP.fields.howImprove)]: values.howImprove?.trim() ? values.howImprove.trim() : undefined,
-		[fieldKey(RSVP.fields.howLikelyRecommend)]: values.howLikelyRecommend,
-	}
-	for (const key of Object.keys(fields)) if (fields[key] === undefined || !writable.has(key)) delete fields[key]
 	if (Object.keys(fields).length === 0) return { skipped: "no_column" }
 
 	const row = await findSignupRecord(userId)
 	if (row) {
-		await withRateLimitRetry("updateNpsSignup", () =>
+		await withRateLimitRetry(operation, () =>
 			airtableFetch(AirtableListSchema, config, encodeURIComponent(RSVP_TABLE_ID), {
 				body: JSON.stringify({ records: [{ fields, id: row.id }], typecast: false }),
 				method: "PATCH",
@@ -123,7 +129,7 @@ export async function writeNps(userId: string, values: NpsSubmit): Promise<{ upd
 	const email = await userEmail(userId)
 	if (!email) return { skipped: "no_user" }
 	const created = await withRateLimitRetry(
-		"createNpsSignup",
+		`${operation}Create`,
 		() =>
 			airtableFetch(AirtableUpsertSchema, config, encodeURIComponent(RSVP_TABLE_ID), {
 				body: JSON.stringify({
@@ -138,4 +144,36 @@ export async function writeNps(userId: string, values: NpsSubmit): Promise<{ upd
 	const recordId = created.records[0]?.id
 	if (recordId) await recordDirectSignup({ email, recordId, userId })
 	return { updated: true }
+}
+
+/** Save the score – the blocking first step. */
+export async function writeNpsScore(
+	userId: string,
+	score: number,
+): Promise<{ updated: boolean } | { skipped: string }> {
+	const config = getAirtableConfig()
+	if (!config) return { skipped: "not_configured" }
+	const writable = await existingColumns(config, RSVP_TABLE_ID, [SCORE()])
+	if (!writable.has(SCORE())) return { skipped: "no_column" }
+	return patchSignupRow(userId, { [SCORE()]: score }, "updateNpsScore")
+}
+
+/**
+ * Save the follow-up texts – the unblocking second step. Blank answers are dropped before the write, so an all-empty submit is a successful no-op: the device that sent it counts the step as answered, and a row that gains any text stops the nudge everywhere.
+ */
+export async function writeNpsTexts(
+	userId: string,
+	values: NpsTextsSubmit,
+): Promise<{ updated: boolean } | { skipped: string }> {
+	const config = getAirtableConfig()
+	if (!config) return { skipped: "not_configured" }
+	const writable = await existingColumns(config, RSVP_TABLE_ID, TEXT_COLUMNS())
+	const fields: { [_: string]: unknown } = {
+		[fieldKey(RSVP.fields.howDoingWell)]: values.howDoingWell?.trim() ? values.howDoingWell.trim() : undefined,
+		[fieldKey(RSVP.fields.howHear)]: values.howHear?.trim() ? values.howHear.trim() : undefined,
+		[fieldKey(RSVP.fields.howImprove)]: values.howImprove?.trim() ? values.howImprove.trim() : undefined,
+	}
+	for (const key of Object.keys(fields)) if (fields[key] === undefined || !writable.has(key)) delete fields[key]
+	if (Object.keys(fields).length === 0) return { updated: true }
+	return patchSignupRow(userId, fields, "updateNpsTexts")
 }

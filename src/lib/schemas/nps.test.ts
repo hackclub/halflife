@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { npsSubmitSchema } from "@/lib/schemas/nps"
+import { npsSubmitSchema, npsTextsSubmitSchema } from "@/lib/schemas/nps"
 
 describe("npsSubmitSchema", () => {
 	test("accepts a score alone", () => {
@@ -29,5 +29,19 @@ describe("npsSubmitSchema", () => {
 		expect(npsSubmitSchema.safeParse({ howLikelyRecommend: -1 }).success).toBe(false)
 		expect(npsSubmitSchema.safeParse({ howLikelyRecommend: 11 }).success).toBe(false)
 		expect(npsSubmitSchema.safeParse({ howLikelyRecommend: 7.5 }).success).toBe(false)
+	})
+})
+
+describe("npsTextsSubmitSchema", () => {
+	test("accepts an empty follow-up – nothing to add still counts as sent", () => {
+		expect(npsTextsSubmitSchema.safeParse({}).success).toBe(true)
+	})
+
+	test("accepts partial answers", () => {
+		expect(npsTextsSubmitSchema.safeParse({ howHear: "A friend" }).success).toBe(true)
+	})
+
+	test("rejects a score – that belongs to the first step", () => {
+		expect(npsTextsSubmitSchema.safeParse({ howLikelyRecommend: 9 }).success).toBe(false)
 	})
 })

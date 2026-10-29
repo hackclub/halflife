@@ -2,9 +2,7 @@ import { z } from "zod"
 import { boundedText } from "@/lib/schemas/common"
 
 /**
- * The dashboard's NPS follow-up, mirroring the four columns on the Signups table.
- *
- * Only the 0-10 score is required: the prompt is answered once a score is on the row, and the three text answers ride along and may be empty. Trimmed before the length check so whitespace alone is not an answer.
+ * The dashboard NPS score, asked first and blocking. The three text answers ride along optionally and are also asked again later, unblocking, from the corner nudge.
  */
 export const npsSubmitSchema = z
 	.object({
@@ -16,3 +14,16 @@ export const npsSubmitSchema = z
 	.strict()
 
 export type NpsSubmit = z.output<typeof npsSubmitSchema>
+
+/**
+ * The follow-up texts, asked after the score from the corner nudge. All optional and possibly all empty – sending nothing to add still counts as answered on the device that sent it.
+ */
+export const npsTextsSubmitSchema = z
+	.object({
+		howDoingWell: boundedText(2000).optional().nullable(),
+		howHear: boundedText(2000).optional().nullable(),
+		howImprove: boundedText(2000).optional().nullable(),
+	})
+	.strict()
+
+export type NpsTextsSubmit = z.output<typeof npsTextsSubmitSchema>
