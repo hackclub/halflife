@@ -95,6 +95,8 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 	const [batchId, setBatchId] = useState<string | null>(null)
 	const [outcomes, setOutcomes] = useState<Outcome[]>([])
 	const [remaining, setRemaining] = useState(0)
+	// The preview refreshes once the run ends and those projects are no longer eligible, so the total is captured here.
+	const [batchTotal, setBatchTotal] = useState(0)
 	const [finished, setFinished] = useState(false)
 	const blocked = blockedReason(preview)
 
@@ -135,6 +137,7 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 	function issue() {
 		setConfirming(false)
 		setOutcomes([])
+		setBatchTotal(preview.eligible.length)
 		setRemaining(preview.eligible.length)
 		setFinished(false)
 		void run("issue", async () => {
@@ -156,7 +159,6 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 	const issued = outcomes.filter(outcome => outcome.status === "ISSUED")
 	const amountIssued = issued.reduce((total, outcome) => total + outcome.amountCents, 0)
 	const processed = outcomes.length
-	const total = preview.eligible.length
 
 	return (
 		<div className="hl-stack hl-stack--tight">
@@ -179,7 +181,7 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 			{processed > 0 ? (
 				<div className="hl-stack hl-stack--tight">
 					<p className="hl-hint">
-						{processed} of {total} processed, {formatUsd(amountIssued / 100)} issued
+						{processed} of {batchTotal} processed, {formatUsd(amountIssued / 100)} issued
 						{remaining > 0 ? `, ${remaining} left` : finished ? ", finished" : ""}.
 					</p>
 					{batchId ? (
