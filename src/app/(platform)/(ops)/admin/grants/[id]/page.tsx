@@ -54,6 +54,7 @@ export default async function GrantCardBatchPage({ params }: Props) {
 				</p>
 				{remaining > 0 ? (
 					<ActionButton
+						body={{}}
 						label="Resume batch"
 						pendingLabel="Resuming…"
 						url={`/api/admin/grant-cards/batches/${batch.id}/process`}

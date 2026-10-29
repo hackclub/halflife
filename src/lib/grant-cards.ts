@@ -768,13 +768,16 @@ export async function reconcileGrantCard(
 			admin,
 			{ ip, userAgent },
 		)
+		await refreshBatch(row.batchId)
 		return toOutcome(row, HcbGrantCardStatus.ISSUED, null, grant.id)
 	}
 	if (reconciled.kind === "absent") {
 		await markFailed(row.id, "No matching grant landed. It is safe to retry")
+		await refreshBatch(row.batchId)
 		return toOutcome(row, HcbGrantCardStatus.FAILED, "No matching grant landed. It is safe to retry", null)
 	}
 	await markAmbiguous(row.id, "More than one matching grant, or HCB could not be read. Check HCB before retrying")
+	await refreshBatch(row.batchId)
 	return toOutcome(
 		row,
 		HcbGrantCardStatus.AMBIGUOUS,
@@ -813,6 +816,7 @@ export async function cancelGrantCard(
 			userAgent,
 		})
 	})
+	await refreshBatch(row.batchId)
 	return toOutcome(row, HcbGrantCardStatus.CANCELED, null, row.hcbCardGrantId)
 }
 
