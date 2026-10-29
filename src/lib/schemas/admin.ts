@@ -1,6 +1,7 @@
 import { z } from "zod"
 import {
 	EventColour,
+	PayoutSource,
 	Phase,
 	PrinterAwardStatus,
 	Role,
@@ -47,6 +48,12 @@ export const grantSchema = z
 		phase: z.literal(Phase.DESIGN),
 	})
 	.strict()
+
+/** The fingerprint a preview returned; the batch may only pay exactly that snapshot. */
+export const grantCardBatchSchema = z.object({ fingerprint: boundedText(64, 64) }).strict()
+
+/** How many card grants one process call may attempt. */
+export const grantCardProcessSchema = z.object({ limit: z.number().int().min(1).max(20).optional() }).strict()
 
 export const creditAdjustSchema = z
 	.object({
@@ -239,6 +246,7 @@ export const programSettingsSchema = z
 	.object({
 		airtableSyncEnabled: z.boolean().optional(),
 		eventStartDate: z.coerce.date().optional(),
+		payoutSource: z.enum(PayoutSource).optional(),
 		/**
 		 * The program's own IANA zone, e.g. "America/New_York".
 		 *

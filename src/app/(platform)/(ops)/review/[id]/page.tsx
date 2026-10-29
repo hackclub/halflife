@@ -15,10 +15,12 @@ import {
 	Table,
 } from "@/app/components/ui"
 import { DisputeThread } from "@/components/disputes/DisputeThread"
+import { bomTotalUsd, partsFunding } from "@/lib/bom-policy"
 import { submitFloorFor } from "@/lib/config/printers"
-import { TIERS } from "@/lib/config/tiers"
+import { getTier, TIERS } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
 import { lapseTimelapseUrl } from "@/lib/lapse"
+import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { getSubmissionDetail } from "@/lib/queries/review"
@@ -43,6 +45,24 @@ export default async function ReviewDetailPage({ params }: Props) {
 	const { submission, breakdown, claimLive } = detail
 	const project = submission.themeProject
 	const claimedByMe = claimLive && submission.claim?.reviewerId === user.id
+
+	// The parts list is what a design approval's money is asked against, so the total is read the same way the maker's page and the submit gate read it. An approved design's actual grant is the cap a reviewer is really comparing against – including a grant of zero when the maker declined parts money – and before that it is the tier they asked for.
+	const tierId = project.tier ?? project.requestedTier
+	const tier = tierId === null ? undefined : getTier(tierId)
+	const bomTotal = bomTotalUsd(detail.bom, detail.bomTaxShippingUsd)
+	const bomCapUsd = project.grantUsd ?? tier?.grantUsd ?? null
+	const bomFunding = bomCapUsd === null ? null : partsFunding(bomTotal, bomCapUsd)
+	const bomFundingLabel =
+		bomCapUsd === null
+			? null
+			: `${formatUsd(bomCapUsd)} ${tier ? `${tier.name} grant${project.tier === null ? " they asked for" : ""}` : "grant"}`
+	// One sentence for the money, so the total reads the same way here as it does on the maker's page: what the list costs, what the tier funds, and who pays the difference.
+	const bomFundingNote =
+		bomFunding === null || bomFundingLabel === null
+			? `${formatUsd(bomTotal)}, tax and shipping included.`
+			: bomFunding.shortfallUsd > 0
+				? `${formatUsd(bomTotal)} against the ${bomFundingLabel}, so ${formatUsd(bomFunding.shortfallUsd)} of the parts is the maker's own money.`
+				: `${formatUsd(bomTotal)} of the ${bomFundingLabel}.`
 
 	return (
 		<div className="hl-stack">
@@ -183,6 +203,62 @@ export default async function ReviewDetailPage({ params }: Props) {
 						<strong>Submission note:</strong> {submission.notes}
 					</Callout>
 				) : null}
+			</Panel>
+
+			{/*
+			 * The parts list is what a design approval's money is asked against. Without it a reviewer only has the repo's CSV, which need not match the cart the tier was agreed on. Read-only here: the list is locked while a phase is in review, and final once the design is approved.
+			 */}
+			<Panel
+				actions={
+					detail.bom.length > 0 ? (
+						<Badge tone={bomFunding && bomFunding.shortfallUsd > 0 ? "warning" : "muted"}>{formatUsd(bomTotal)}</Badge>
+					) : null
+				}
+				title="Bill of materials"
+			>
+				{detail.bom.length === 0 ? (
+					<EmptyState>No parts listed, so there is nothing to price against the tier.</EmptyState>
+				) : (
+					<>
+						<Table head={["Part", "Qty", "Unit", "Total", "Vendor"]}>
+							{detail.bom.map(line => (
+								<tr key={line.id}>
+									<td>
+										<span className="hl-entity-name">{line.name}</span>
+										{line.purpose ? <div className="hl-hint">{line.purpose}</div> : null}
+									</td>
+									<td className="hl-mono">{line.quantity}</td>
+									<td className="hl-mono">{formatUsd(line.unitCostUsd)}</td>
+									<td className="hl-mono">{formatUsd(line.quantity * line.unitCostUsd)}</td>
+									<td>
+										{line.link ? (
+											<a href={line.link} rel="noreferrer" target="_blank">
+												{line.vendor ?? "link"}
+											</a>
+										) : (
+											(line.vendor ?? "-")
+										)}
+									</td>
+								</tr>
+							))}
+							<tr>
+								<td colSpan={3}>Tax &amp; shipping</td>
+								<td className="hl-mono">{formatUsd(detail.bomTaxShippingUsd)}</td>
+								<td />
+							</tr>
+							<tr>
+								<td className="hl-entity-name" colSpan={3}>
+									Total
+								</td>
+								<td className="hl-mono">
+									<strong>{formatUsd(bomTotal)}</strong>
+								</td>
+								<td />
+							</tr>
+						</Table>
+						<p className="hl-hint">{bomFundingNote}</p>
+					</>
+				)}
 			</Panel>
 
 			<Panel title="Work log">

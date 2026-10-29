@@ -3,7 +3,7 @@ import { or } from "@prisma/orm-postgres/orm-client"
 import { cache } from "react"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
-import { PhaseStatus } from "@/lib/enums"
+import { type PayoutSource, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import db from "@/lib/prisma8"
 import {
@@ -20,6 +20,7 @@ export interface ProgramSettings {
 	airtableSyncEnabled: boolean
 	eventStartDate: Date
 	id: string
+	payoutSource: PayoutSource
 	programTimezone: string
 	repoSyncEnabled: boolean
 	reviewClaimTtlMinutes: number
@@ -36,6 +37,7 @@ function toProgramSettings(row: Models.public_ProgramSettings): ProgramSettings 
 		airtableSyncEnabled: row.airtableSyncEnabled,
 		eventStartDate: parseDbTimestamp(row.eventStartDate),
 		id: row.id,
+		payoutSource: row.payoutSource,
 		programTimezone: row.programTimezone,
 		repoSyncEnabled: row.repoSyncEnabled,
 		reviewClaimTtlMinutes: row.reviewClaimTtlMinutes,

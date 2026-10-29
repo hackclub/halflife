@@ -28,12 +28,13 @@ export function ManageRow({
 	id,
 	open,
 	columns = 6,
-}: Readonly<{ children: ReactNode; id: string; open: boolean; columns?: number }>) {
+	className,
+}: Readonly<{ children: ReactNode; className?: string; id: string; open: boolean; columns?: number }>) {
 	if (!open) return null
 	return (
 		<tr className="hl-manage-row" id={id}>
 			<td colSpan={columns}>
-				<div className="hl-manage-panel">{children}</div>
+				<div className={className ? `hl-manage-panel ${className}` : "hl-manage-panel"}>{children}</div>
 			</td>
 		</tr>
 	)
