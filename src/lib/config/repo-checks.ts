@@ -188,8 +188,12 @@ export function firmwareWaiverCovers(theme: Theme, blocking: readonly { key: str
 const BOM_PART_COLUMN = /\b(?:part|component|item|description|material|product)\b/
 const BOM_PRICE_COLUMN = /\b(?:price|cost|link|url|supplier|vendor|total|amount)\b/
 
-/** A Markdown table's separator row: three or more dashes per column, with optional alignment colons. */
-const TABLE_SEPARATOR = /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/
+/**
+ * A Markdown table's separator row: one or more dashes per column, with optional alignment colons.
+ *
+ * GFM asks for at least one dash, not three, so `| --: |` is a real right-aligned column and GitHub renders it as one. Requiring three rejected those tables as if the README had no BOM.
+ */
+const TABLE_SEPARATOR = /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$/
 
 /** The cells of a Markdown table row, lowercased, with the outer pipes removed. */
 function tableCells(line: string): string[] {
