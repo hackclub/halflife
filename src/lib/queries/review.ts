@@ -1,5 +1,6 @@
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
+import { type BomLine, listBom } from "@/lib/bom"
 import { getThemeDef, projectDisplayTitle } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { Phase } from "@/lib/enums"
@@ -226,6 +227,12 @@ export type ReviewLink = ReturnType<typeof parseLinkRow>
 
 /** Everything the review page renders for one submission. */
 export interface SubmissionDetailView {
+	/**
+	 * The parts list the design week's funding is asked against. Frozen while a phase is in review, so what a reviewer reads here is what the decision is priced from.
+	 */
+	bom: BomLine[]
+	/** The order-wide tax and shipping line, zero until set. */
+	bomTaxShippingUsd: number
 	breakdown: HoursBreakdown
 	claimLive: boolean
 	coverImageUrl: string | null
@@ -262,11 +269,12 @@ export async function getSubmissionDetail(
 		maker.fraudFlagged = false
 	}
 
-	const [breakdown, sessions, links, priorReviews] = await Promise.all([
+	const [breakdown, sessions, links, priorReviews, bom] = await Promise.all([
 		getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
 		loadSessions(row.phase, row.themeProjectId),
 		loadLinks(row.phase, row.themeProjectId),
 		loadPriorReviews(row.themeProjectId),
+		listBom(row.themeProjectId),
 	])
 	const parsed = parseSubmissionRow(row)
 	if (!parsed.themeProject?.user) return null
@@ -276,6 +284,8 @@ export async function getSubmissionDetail(
 	}
 
 	return {
+		bom,
+		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
 		breakdown,
 		claimLive: submission.claim !== null && submission.claim.expiresAt.getTime() > Date.now(),
 		coverImageUrl: publicUrlFor(project.coverImageKey),
