@@ -184,6 +184,26 @@ Set them up in this order, or the first poll after the fields appear will do a f
 
 The app skips the columns when they are absent, so a base without them keeps working as before.
 
+### Justification columns
+
+Four columns on `YSWS Project Submission` carry the maker's evidence, which the pipeline merges into `Automation - Unified Justification`:
+
+- `Justification - Submitter Hackatime ID`
+- `Justification - Hackatime Project Name(s) + Date Range(s)`
+- `Justification - Lapse Links, comma-separated`
+- `Justification - Specific Technical Features`
+
+`syncSubmissionToYsws` (`src/lib/airtable/sync.ts`) writes them at submit from `justificationValues` (`src/lib/airtable/justification.ts`). The first three are written only when there is something to write – a maker may have no Hackatime account, linked project or recording, and a blank would erase evidence the base alone holds. The technical-features column is always written, with a marker when nothing was recorded, because the pipeline gives every row a `[SPECIFIC TECHNICAL FEATURES]` section.
+
+Rows written before that landed are completed by:
+
+```bash
+bun --conditions=react-server scripts/backfill-airtable-justification.ts
+bun --conditions=react-server scripts/backfill-airtable-justification.ts --commit
+```
+
+It only fills cells that are empty, so a value already on the row is never overwritten. A row with a local project gets the full description, parts list and work log; one with no project (an unimported pre-season row) gets its technical features from its own `Description`. Run it where `DATABASE_URL` points at the real database, so the rows that do have a project get the richer text.
+
 ### Reviewer columns on the review rows
 
 `Pass 1 reviewer` is a single-line text field on `YSWS Project Submission`. The live mirror fills it from the address Ari puts in the decision (`review.reviewer.email`, stored on the review as `reviewerEmail`).
@@ -268,6 +288,8 @@ Triage by the status code in the step log, because they mean different things:
 **Helpers can't close tickets** – both "Mark as helped" buttons fail closed on membership of the private tickets channel (`SLACK_TICKETS_CHANNEL_ID`). If someone in `#half-life-tickets` is refused, read the app logs for `mark_helped`: `unreadable member list … missing_scope (needed groups:read)` means the manifest's `groups:read` scope was never applied – re-import `slack-app-manifest.yml` (Features → App Manifest → Save), reinstall the app to the workspace, and invite the bot into the private tickets channel. `channel_not_found` / `not_in_channel` means the bot itself is not in that channel – invite it. If there is no error line and the clicker is refused, compare the logged channel id against the channel's real id in Slack – the env var may point at a different (e.g. recreated) channel than the one the helpers sit in.
 
 **A grant row never reached Airtable** – `/admin/program` lists them with a retry button, and `/admin/audit?action=AIRTABLE_SYNC_FAILURE` has the errors. The `airtable-retry` job does the same sweep hourly.
+
+**An open Ari ship shows a maker's time twice** – Ari adds a journal entry's minutes to the duration of every Lapse clip it pulls, so before the ship builder netted the two a maker who devlogged and recorded the same sitting was shown both (a 7.9h project read as 17h). New sends carry the net figure; ships already in Ari keep the old one until replaced. `bun --conditions=react-server scripts/backfill-ari-timelapses.ts` lists every in-review hand-in with a timelapse and `--commit` withdraws and re-sends each one, or pass `--project <themeProjectId>` for one. Decided ships cannot be replaced – Ari has no update-in-place – but a resubmission is rebuilt with the net figure.
 
 **A project was returned before the return-extension existed** – a return now writes a week onto the returned project's `submissionExtensionUntil`, but only on the decision itself, so a project already sitting on "needs changes" from before keeps the old window and its maker may be unable to hand the fix in. `bun --conditions=react-server scripts/backfill-return-extensions.ts` reports every such project (dry run) and `--commit` gives each the same week, `reviews:backfill-return-extensions` being the same thing by name. It skips any project with an extension already running and is safe to re-run. Run it where `DATABASE_URL` points at the real database.
 
