@@ -249,7 +249,7 @@ export function NpsGate() {
 					onClose={() => setTextsOpen(false)}
 					open
 				>
-					<ModalTitle sub="Anything you want to add – all three are optional, and sending it blank counts too.">
+					<ModalTitle sub="Anything you want to add. All fields are optional. No pressure, you can grill us if you want.">
 						Tell us more
 					</ModalTitle>
 
@@ -265,7 +265,7 @@ export function NpsGate() {
 							/>
 						</Field>
 
-						<Field hint="Anything that would make it better." id="nps-improve" label="What could be better?">
+						<Field hint="Anything we can do? (we know review is slow!)" id="nps-improve" label="What could be better?">
 							<TextArea
 								id="nps-improve"
 								maxLength={2000}
