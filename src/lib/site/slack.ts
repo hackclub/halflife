@@ -1,5 +1,6 @@
 import crypto from "node:crypto"
 import { z } from "zod"
+import { readBoundedText } from "@/lib/api"
 
 /**
  * Slack Web API + request verification.
@@ -418,4 +419,25 @@ export function verifySlackRequest(rawBody: string, timestamp: string | null, si
 	const a = Buffer.from(expected, "utf8")
 	const b = Buffer.from(signature, "utf8")
 	return a.length === b.length && crypto.timingSafeEqual(a, b)
+}
+
+export type VerifiedSlackRequest = { ok: true; rawBody: string } | { ok: false; status: 413 | 401 }
+
+/**
+ * Read and verify a Slack request in one step, for both the Events and Interactivity endpoints.
+ *
+ * The body is bounded before verification: an unsigned caller must not decide how much memory the HMAC read may spend. Keeping the two steps together is what stops a route from reading the body first and verifying it later, or forgetting the check altogether.
+ *
+ * A refusal carries the status to answer with – 413 for an over-sized body, 401 for a bad signature – while the route keeps its own body shape, which differs between the two endpoints.
+ */
+export async function readVerifiedSlackRequest(request: Request): Promise<VerifiedSlackRequest> {
+	const rawBody = await readBoundedText(request)
+	if (rawBody === null) return { ok: false, status: 413 }
+
+	const verified = verifySlackRequest(
+		rawBody,
+		request.headers.get("x-slack-request-timestamp"),
+		request.headers.get("x-slack-signature"),
+	)
+	return verified ? { ok: true, rawBody } : { ok: false, status: 401 }
 }

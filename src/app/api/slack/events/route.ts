@@ -1,6 +1,5 @@
 import { after, NextResponse } from "next/server"
 import { z } from "zod"
-import { readBoundedText } from "@/lib/api"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import {
 	addReaction,
@@ -8,8 +7,8 @@ import {
 	getPermalink,
 	inviteToChannel,
 	postMessage,
+	readVerifiedSlackRequest,
 	type SlackBlock,
-	verifySlackRequest,
 } from "@/lib/site/slack"
 import { countPriorHelpTickets, rememberHelpTicket } from "@/lib/site/ticket-store"
 import {
@@ -232,16 +231,9 @@ async function claimDelivery(
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-	// Bounded before verification: an unsigned caller must not decide how much memory the HMAC read may spend.
-	const rawBody = await readBoundedText(request)
-	if (rawBody === null) return NextResponse.json({ ok: false }, { status: 413 })
-
-	const verified = verifySlackRequest(
-		rawBody,
-		request.headers.get("x-slack-request-timestamp"),
-		request.headers.get("x-slack-signature"),
-	)
-	if (!verified) return NextResponse.json({ ok: false }, { status: 401 })
+	const slackRequest = await readVerifiedSlackRequest(request)
+	if (!slackRequest.ok) return NextResponse.json({ ok: false }, { status: slackRequest.status })
+	const { rawBody } = slackRequest
 
 	let body: z.infer<typeof EventCallbackSchema>
 	try {
