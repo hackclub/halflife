@@ -1,7 +1,17 @@
 import Link from "next/link"
 import { ActivityStrip, DauChart, ProgrammeFilterProvider } from "@/app/components/admin/ActivityCharts"
 import { ActivityShareChart } from "@/app/components/admin/ActivityShareChart"
-import { CHART_H, DayAxis, EDGE, niceTicks, PAD_B, PAD_T, pct } from "@/app/components/admin/chart-geometry"
+import {
+	CHART_H,
+	DayAxis,
+	EDGE,
+	GridLines,
+	niceTicks,
+	PAD_B,
+	PAD_T,
+	pct,
+	YAxis,
+} from "@/app/components/admin/chart-geometry"
 import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
@@ -570,38 +580,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 				))}
 			</p>
 			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
-				<div style={{ height: `${CHART_H}px`, position: "relative", width: "3.1rem" }}>
-					{ticks.map((t, i) => (
-						<span
-							aria-hidden="true"
-							key={`g${i}`}
-							style={{
-								color: "var(--color-accent-ink)",
-								fontSize: "0.65rem",
-								fontVariantNumeric: "tabular-nums",
-								position: "absolute",
-								right: 6,
-								top: yFor(t),
-								transform: "translateY(-50%)",
-							}}
-						>
-							{fmtHours(t).replace("h", "")}
-						</span>
-					))}
-					<span
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							fontSize: "0.6rem",
-							lineHeight: 1,
-							position: "absolute",
-							right: 6,
-							top: -1,
-						}}
-					>
-						h
-					</span>
-				</div>
+				<YAxis caption="h" format={t => fmtHours(t).replace("h", "")} ticks={ticks} yFor={yFor} />
 
 				<div>
 					<svg
@@ -613,17 +592,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 						style={{ display: "block" }}
 						width="100%"
 					>
-						{ticks.map((t, i) => (
-							<line
-								key={`gg${i}`}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
-								x1={pct(EDGE)}
-								x2={pct(1 - EDGE)}
-								y1={yFor(t)}
-								y2={yFor(t)}
-							/>
-						))}
+						<GridLines ticks={ticks} yFor={yFor} />
 						{lines.map(line =>
 							segments(line.values).map((segment, i) => (
 								<line
@@ -809,38 +778,7 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 		<div>
 			<ProjectKindLegend />
 			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
-				<div style={{ height: `${CHART_H}px`, position: "relative", width: "3.1rem" }}>
-					{ticks.map((t, i) => (
-						<span
-							aria-hidden="true"
-							key={`p${i}`}
-							style={{
-								color: "var(--color-accent-ink)",
-								fontSize: "0.65rem",
-								fontVariantNumeric: "tabular-nums",
-								position: "absolute",
-								right: 6,
-								top: yFor(t),
-								transform: "translateY(-50%)",
-							}}
-						>
-							{fmtInt(t)}
-						</span>
-					))}
-					<span
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							fontSize: "0.6rem",
-							lineHeight: 1,
-							position: "absolute",
-							right: 6,
-							top: -1,
-						}}
-					>
-						projects
-					</span>
-				</div>
+				<YAxis caption="projects" format={fmtInt} ticks={ticks} yFor={yFor} />
 
 				<div>
 					<svg
@@ -852,17 +790,7 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 						style={{ display: "block" }}
 						width="100%"
 					>
-						{ticks.map((t, i) => (
-							<line
-								key={`pg${i}`}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
-								x1={pct(EDGE)}
-								x2={pct(1 - EDGE)}
-								y1={yFor(t)}
-								y2={yFor(t)}
-							/>
-						))}
+						<GridLines ticks={ticks} yFor={yFor} />
 						{weeks.map((week, i) =>
 							PROJECT_KIND.map((kind, k) => {
 								const count = week[kind.key]
@@ -926,38 +854,7 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 		<div>
 			<ProjectKindLegend />
 			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
-				<div style={{ height: `${CHART_H}px`, position: "relative", width: "3.1rem" }}>
-					{ticks.map((t, i) => (
-						<span
-							aria-hidden="true"
-							key={`h${i}`}
-							style={{
-								color: "var(--color-accent-ink)",
-								fontSize: "0.65rem",
-								fontVariantNumeric: "tabular-nums",
-								position: "absolute",
-								right: 6,
-								top: yFor(t),
-								transform: "translateY(-50%)",
-							}}
-						>
-							{fmtHours(t).replace("h", "")}
-						</span>
-					))}
-					<span
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							fontSize: "0.6rem",
-							lineHeight: 1,
-							position: "absolute",
-							right: 6,
-							top: -1,
-						}}
-					>
-						hours
-					</span>
-				</div>
+				<YAxis caption="hours" format={t => fmtHours(t).replace("h", "")} ticks={ticks} yFor={yFor} />
 
 				<div>
 					<svg
@@ -969,17 +866,7 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 						style={{ display: "block" }}
 						width="100%"
 					>
-						{ticks.map((t, i) => (
-							<line
-								key={`hg${i}`}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
-								x1={pct(EDGE)}
-								x2={pct(1 - EDGE)}
-								y1={yFor(t)}
-								y2={yFor(t)}
-							/>
-						))}
+						<GridLines ticks={ticks} yFor={yFor} />
 						{weeks.map((week, i) => {
 							// Stacked from the floor up in legend order, so a segment's colour is findable without reading the tooltip. Each rect spans its own band of the stack: the running total before it is the bottom edge, after it the top.
 							let stacked = 0

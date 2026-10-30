@@ -3,6 +3,7 @@ import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
 import { SketchDefs } from "@/components/platform/art"
 import { platformFontVariables } from "@/components/platform/fonts"
 import { PromoBootScript } from "@/components/promo/PromoBootScript"
+import { WorldGuard } from "@/components/WorldGuard"
 import "./globals.css"
 
 /**
@@ -30,7 +31,8 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 				<PlausibleAnalytics />
 				<PromoBootScript />
 			</head>
-			<body>
+			<body data-world="platform">
+				<WorldGuard world="platform" />
 				<SketchDefs />
 				{children}
 			</body>

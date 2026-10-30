@@ -470,7 +470,7 @@ Illustration carries its own shape language: every character and theme painting 
   - Current: extra-bold navy with a coral dot at the end.
   - Other items: semibold navy-soft.
   - Hover: navy.
-- **Below lg:** a bottom tab bar of icon + label cells replaces the sidebar. The current cell is navy, the rest navy-soft.
+- **Below lg:** a bottom tab bar of icon + label cells replaces the sidebar. The current cell is navy, the rest navy-soft. The account card has no room in that row, so an avatar in the header opens the same account actions as a small menu: the profile link and log out.
 - **Staff console:** one wrapping top strip of bold navy links (`.hl-nav`) on white with a 2px `ops-border` under it; no sidebar and no tab bar.
 
 ### The checkpoint path (signature)
@@ -486,6 +486,7 @@ A week opens with its setup (the gold questionnaire in week 1, the project form 
 - **Locked:** sand face with a padlock, sunk to a 7px rim. Hovering shows a sand bubble naming the one thing in the way.
 - **Passed:** teal-grey face, sunk to a 7px rim, for every node of a week whose Sunday has gone. Hovering says "This week has passed!". Only its Submit stays open.
 - **Connectors:** 7px dots in `line-strong` at 45%, sampled along the sine, splitting straight into each arm of a fork.
+- **Return:** once the current week's banner has left the viewport, a floating arrow at the bottom left points back toward it – up when later weeks are in front, down when earlier ones are. It jumps to the week, not the checkpoint; the checkpoint is already the page's landing.
 - **Halfway:** a mint "Halfway! Now it's time to build" pill divides the design weeks from the build weeks. The trail ends on the printer the participant is saving for.
 
 The three bubbles – navy callout, sand lock and mint done – are one shape: a 14px-radius drawn bubble with a pointer, hanging where the callout hangs. They never appear together on one node.

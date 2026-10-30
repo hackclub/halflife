@@ -1,13 +1,17 @@
 import { describe, expect, test } from "bun:test"
 import {
+	addWeeksInZone,
 	calendarDay,
 	calendarDayNumber,
+	DAY_MS,
 	eachDayBetween,
 	effectiveDateFor,
 	formatDbTimestamp,
 	parseDbTimestamp,
+	parseNullableTimestamp,
 	parseTimestampFields,
 	utcCalendarDay,
+	zonedWallTime,
 } from "@/lib/time"
 
 describe("parseDbTimestamp / formatDbTimestamp", () => {
@@ -19,6 +23,11 @@ describe("parseDbTimestamp / formatDbTimestamp", () => {
 
 	test("reads DB text as UTC rather than local time", () => {
 		expect(parseDbTimestamp("2026-01-01 00:00:00.000").toISOString()).toBe("2026-01-01T00:00:00.000Z")
+	})
+
+	test("keeps a null nullable column null", () => {
+		expect(parseNullableTimestamp(null)).toBeNull()
+		expect(parseNullableTimestamp("2026-01-01 00:00:00.000")?.toISOString()).toBe("2026-01-01T00:00:00.000Z")
 	})
 })
 
@@ -57,6 +66,34 @@ describe("parseTimestampFields", () => {
 	test("maps non-string values to null, keeping nullability", () => {
 		const row = parseTimestampFields({ at: null as string | null }, ["at"] as const)
 		expect(row.at).toBeNull()
+	})
+})
+
+describe("zonedWallTime", () => {
+	test("resolves a wall-clock midnight through the zone's offset", () => {
+		// New York is UTC-5 in January and UTC-4 in July.
+		expect(zonedWallTime(Date.UTC(2026, 0, 15), "America/New_York").toISOString()).toBe("2026-01-15T05:00:00.000Z")
+		expect(zonedWallTime(Date.UTC(2026, 6, 15), "America/New_York").toISOString()).toBe("2026-07-15T04:00:00.000Z")
+	})
+
+	test("reads the offset at the target side of a daylight-saving change", () => {
+		// US clocks spring forward on 2026-03-08, so its midnight is still EST.
+		expect(zonedWallTime(Date.UTC(2026, 2, 8), "America/New_York").toISOString()).toBe("2026-03-08T05:00:00.000Z")
+	})
+})
+
+describe("addWeeksInZone", () => {
+	test("keeps the wall-clock time across a daylight-saving change", () => {
+		// 7pm on 2026-10-25 in New York is EDT; a week later the clocks are back on EST.
+		const before = new Date("2026-10-25T23:00:00Z")
+		const after = addWeeksInZone(before, 1, "America/New_York")
+		expect(after.toISOString()).toBe("2026-11-02T00:00:00.000Z")
+		expect(after.getTime() - before.getTime()).toBe(7 * DAY_MS + 60 * 60 * 1000)
+	})
+
+	test("leaves the moment alone for a zero-week shift", () => {
+		const at = new Date("2026-01-01T12:00:00Z")
+		expect(addWeeksInZone(at, 0, "Asia/Tokyo")).toBe(at)
 	})
 })
 

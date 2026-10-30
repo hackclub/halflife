@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { HardLink } from "@/components/site/HardLink"
 
 /**
  * The screen a banned account reaches.
@@ -15,9 +15,9 @@ export default function BannedPage() {
 				This account can no longer access Half Life. If you believe this is a mistake, get in touch with the Half Life
 				team.
 			</p>
-			<Link className="mt-6 underline underline-offset-4" href="/">
+			<HardLink className="mt-6 underline underline-offset-4" href="/">
 				Back to the landing page
-			</Link>
+			</HardLink>
 		</main>
 	)
 }

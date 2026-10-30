@@ -17,7 +17,7 @@ import {
 import { formatUsd } from "@/lib/money"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
 /**
@@ -729,7 +729,7 @@ function toBatchSummary(row: {
 }): GrantCardBatchSummary {
 	return {
 		ambiguousCount: row.ambiguousCount,
-		completedAt: row.completedAt === null ? null : parseDbTimestamp(row.completedAt),
+		completedAt: parseNullableTimestamp(row.completedAt),
 		createdAt: parseDbTimestamp(row.createdAt),
 		createdById: row.createdById,
 		failedCount: row.failedCount,

@@ -8,7 +8,7 @@ import { isIdentityVerified } from "@/lib/hca-profile"
 import { decryptUserPII, encryptPII, isPiiConfigured } from "@/lib/pii"
 import { canMovePrinterAward, PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import db, { type DbOrTx } from "@/lib/prisma8"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 export interface ThemeProgress {
 	build: boolean
@@ -274,14 +274,13 @@ export async function updatePrinterAwardStatus(
 		.firstOrThrow()
 	if (!updated.user) throw new HttpError("NOT_FOUND", "Printer award not found")
 	const { encryptedAddress, user, ...rest } = updated
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	return Object.assign(rest, {
-		addressLockedAt: parseNullable(rest.addressLockedAt),
+		addressLockedAt: parseNullableTimestamp(rest.addressLockedAt),
 		addressOnFile: encryptedAddress !== "",
-		deliveredAt: parseNullable(rest.deliveredAt),
+		deliveredAt: parseNullableTimestamp(rest.deliveredAt),
 		qualifiedAt: parseDbTimestamp(rest.qualifiedAt),
-		revokedAt: parseNullable(rest.revokedAt),
-		shippedAt: parseNullable(rest.shippedAt),
+		revokedAt: parseNullableTimestamp(rest.revokedAt),
+		shippedAt: parseNullableTimestamp(rest.shippedAt),
 		user,
 	})
 }

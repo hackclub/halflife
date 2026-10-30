@@ -1,15 +1,14 @@
 import { after, NextResponse } from "next/server"
 import { z } from "zod"
-import { readBoundedText } from "@/lib/api"
 import {
 	addReaction,
 	checkChannelMembership,
 	getThreadReplies,
 	postMessage,
+	readVerifiedSlackRequest,
 	removeReaction,
 	type SlackBlock,
 	updateMessage,
-	verifySlackRequest,
 } from "@/lib/site/slack"
 import { countPriorHelpTickets, reopenHelpTicket, resolveHelpTicket } from "@/lib/site/ticket-store"
 import {
@@ -447,16 +446,9 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-	// Bounded before verification: an unsigned caller must not decide how much memory the HMAC read may spend.
-	const rawBody = await readBoundedText(request)
-	if (rawBody === null) return NextResponse.json({ ok: false }, { status: 413 })
-
-	const verified = verifySlackRequest(
-		rawBody,
-		request.headers.get("x-slack-request-timestamp"),
-		request.headers.get("x-slack-signature"),
-	)
-	if (!verified) return NextResponse.json({ ok: false }, { status: 401 })
+	const slackRequest = await readVerifiedSlackRequest(request)
+	if (!slackRequest.ok) return NextResponse.json({ ok: false }, { status: slackRequest.status })
+	const { rawBody } = slackRequest
 
 	// Interactivity payloads arrive form-encoded with the JSON under `payload`. The first thing Slack sends to a newly saved Request URL is a `url_verification` challenge, and it arrives the same way.
 	const form = new URLSearchParams(rawBody)

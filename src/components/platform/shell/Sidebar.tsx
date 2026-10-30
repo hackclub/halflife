@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconClock, IconLogout } from "@/components/platform/icons"
@@ -19,7 +19,7 @@ export const NAV = [
 	{ href: PLATFORM_HOME, label: "Home", tourId: "nav-home" },
 	{ href: "/doomscroller", label: "Doomscroller", tourId: "nav-doomscroller" },
 	{ href: "/projects", label: "Projects", tourId: "nav-projects" },
-	{ href: "/reels", label: "Manage Reels", tourId: "nav-reels" },
+	{ href: "/reels", label: "My Reels", tourId: "nav-reels" },
 	{ href: "/explore", label: "Explore", tourId: "nav-explore" },
 	{ href: "/shop", label: "Shop", tourId: "nav-shop" },
 	{ href: "/docs", label: "Docs", tourId: "nav-docs" },
@@ -33,7 +33,6 @@ export const TAB_NAV = NAV.filter(item => item.href !== "/doomscroller")
 export function Sidebar({ className }: { className?: string }) {
 	const pathname = usePathname()
 	const { reset, viewer } = useStore()
-	const router = useRouter()
 	const [signingOut, setSigningOut] = useState(false)
 
 	return (
@@ -107,8 +106,9 @@ export function Sidebar({ className }: { className?: string }) {
 							setSigningOut(true)
 							try {
 								await signOut()
-								router.push("/")
-								router.refresh()
+								// A full document load across the two root layouts: a client navigation can leave the
+								// landing stylesheet in front of the platform's, painting the trail in the wrong world.
+								window.location.assign("/")
 							} finally {
 								setSigningOut(false)
 							}

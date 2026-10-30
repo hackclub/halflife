@@ -18,7 +18,7 @@ import {
 } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
 import db, { type DbOrTx } from "@/lib/prisma8"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 export interface HoursBreakdown {
 	/** journalHours + hackatimeHours. The reviewer's default. */
@@ -93,7 +93,7 @@ export async function getHoursBreakdown(
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 		for (const t of s.timelapses) {
 			timelapseSeconds += t.coveredSeconds ?? 0
-			const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
+			const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
 			if (window) journalWindows.push(window)
 		}
 		journalHours += s.hoursApproved ?? s.hoursClaimed
@@ -252,7 +252,7 @@ async function elsewhereRecordings(
 		.all()
 	const windows: RecordedWindow[] = []
 	for (const t of rows) {
-		const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
+		const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
 		if (window) windows.push({ hackatimeProject: t.hackatimeProject, window })
 	}
 	return windows
@@ -285,7 +285,7 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 
 		const ownWindows = sessions.flatMap(s =>
 			s.timelapses.flatMap(t => {
-				const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
+				const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
 				return window ? [window] : []
 			}),
 		)
@@ -360,7 +360,7 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 		const list = windowsByPhase.get(k) ?? []
 		const made = recordingsByUser.get(s.themeProject.userId) ?? []
 		for (const t of s.timelapses) {
-			const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
+			const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
 			if (!window) continue
 			list.push(window)
 			made.push({ hackatimeProject: t.hackatimeProject, window })

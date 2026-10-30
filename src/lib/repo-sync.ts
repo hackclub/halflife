@@ -16,7 +16,7 @@ import {
 	renderBom,
 	renderJournal,
 } from "@/lib/repo-sync-files"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
  * The repo sync: what actually runs when a project's devlogs or parts list need to land in its repository.
@@ -417,7 +417,7 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 		linkedForges: accounts.filter(a => a.accessToken).map(a => a.providerId),
 		projectRepo: project.githubRepo,
 		repo: ref ? repoRefToUrl(ref) : (target ?? null),
-		syncedAt: project.repoSyncedAt === null ? null : parseDbTimestamp(project.repoSyncedAt).getTime(),
+		syncedAt: parseNullableTimestamp(project.repoSyncedAt)?.getTime() ?? null,
 		syncRepoDiffers: differs,
 	}
 }

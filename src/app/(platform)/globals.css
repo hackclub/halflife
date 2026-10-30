@@ -473,6 +473,23 @@ body {
 	filter: drop-shadow(0 3px 2px rgba(28, 26, 89, 0.16)) drop-shadow(0 9px 13px rgba(28, 26, 89, 0.13));
 }
 
+/* The trail's jump back to the current week. Bottom-left on a phone, clear of the tab bar; on desktop it steps past the fixed left rail so it does not sit over the nav or account card. */
+.current-week-jump {
+	bottom: 5rem;
+	left: 1rem;
+}
+@media (min-width: 1024px) {
+	.current-week-jump {
+		bottom: 1.5rem;
+		left: 262px;
+	}
+}
+@media (min-width: 1280px) {
+	.current-week-jump {
+		left: 302px;
+	}
+}
+
 /* The Doomscroller's reel column measures its own height, so the arrows beside it can step aside when it is too short to hold them above the actions – which depends on the frame, not on the window. */
 .doom-stage {
 	container: doom-stage / size;

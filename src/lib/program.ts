@@ -12,7 +12,9 @@ import {
 	effectiveDateFor,
 	formatDbTimestamp,
 	parseDbTimestamp,
+	parseNullableTimestamp,
 	utcCalendarDay,
+	zonedWallTime,
 } from "@/lib/time"
 
 /** The program settings row, with timestamps as Dates. Parsed from the PostgreSQL text Prisma 8 returns. */
@@ -41,10 +43,10 @@ function toProgramSettings(row: Models.public_ProgramSettings): ProgramSettings 
 		programTimezone: row.programTimezone,
 		repoSyncEnabled: row.repoSyncEnabled,
 		reviewClaimTtlMinutes: row.reviewClaimTtlMinutes,
-		shopClosesAt: row.shopClosesAt === null ? null : parseDbTimestamp(row.shopClosesAt),
+		shopClosesAt: parseNullableTimestamp(row.shopClosesAt),
 		shopGraceDays: row.shopGraceDays,
 		shopOpen: row.shopOpen,
-		submissionsCloseAt: row.submissionsCloseAt === null ? null : parseDbTimestamp(row.submissionsCloseAt),
+		submissionsCloseAt: parseNullableTimestamp(row.submissionsCloseAt),
 		submissionsOpen: row.submissionsOpen,
 		updatedAt: parseDbTimestamp(row.updatedAt),
 	}
@@ -118,14 +120,6 @@ export function startOfDay(at: Date, timeZone: string): Date {
 	return zonedWallTime(Date.UTC(Number(year), Number(month) - 1, Number(day)), timeZone)
 }
 
-/**
- * The instant a wall-clock time (written as if it were UTC) happens in `timeZone`. Corrected by the zone's offset at that instant, then once more in case the first guess landed on the other side of a daylight-saving change.
- */
-function zonedWallTime(wall: number, timeZone: string): Date {
-	const first = wall - zoneOffsetMs(wall, timeZone)
-	return new Date(wall - zoneOffsetMs(first, timeZone))
-}
-
 /** How far before midnight a week closes: the deadline is 11:59 PM, not 12:00 AM. */
 const CLOSE_BEFORE_MIDNIGHT_MS = 60 * 1000
 
@@ -160,23 +154,6 @@ export async function assertWeekStarted(week: number): Promise<void> {
 			"WEEK_NOT_STARTED",
 			`Week ${week} opens on ${formatProgramDate(opensAt, settings.programTimezone)}.`,
 		)
-}
-
-/** How far ahead of UTC a timezone's wall clock is at an instant, in ms. */
-function zoneOffsetMs(at: number, timeZone: string): number {
-	const parts = new Intl.DateTimeFormat("en-US", {
-		day: "numeric",
-		hour: "numeric",
-		hourCycle: "h23",
-		minute: "numeric",
-		month: "numeric",
-		second: "numeric",
-		timeZone,
-		year: "numeric",
-	}).formatToParts(new Date(at))
-	const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(p => p.type === type)?.value ?? 0)
-	const wall = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"))
-	return wall - (at - (at % 1000))
 }
 
 /**
@@ -353,8 +330,8 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 		settings,
 		{
 			awaitingReview: awaitingReview.count,
-			buildReviewedAt: lastReview.buildReviewedAt === null ? null : parseDbTimestamp(lastReview.buildReviewedAt),
-			designReviewedAt: lastReview.designReviewedAt === null ? null : parseDbTimestamp(lastReview.designReviewedAt),
+			buildReviewedAt: parseNullableTimestamp(lastReview.buildReviewedAt),
+			designReviewedAt: parseNullableTimestamp(lastReview.designReviewedAt),
 		},
 		now,
 	)

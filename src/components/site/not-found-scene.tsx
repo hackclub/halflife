@@ -1,6 +1,5 @@
-import Link from "next/link"
-
 import { siteFontVariables } from "@/components/site/fonts"
+import { HardLink } from "@/components/site/HardLink"
 import { MissingPath } from "@/components/site/missing-path"
 import { PLATFORM_HOME } from "@/lib/routes"
 import { BRAND } from "@/lib/site/content"
@@ -22,9 +21,9 @@ export function NotFoundScene() {
 	return (
 		<main className={`${styles.scene} ${siteFontVariables}`}>
 			<div className={styles.column}>
-				<Link className={styles.wordmark} href="/">
+				<HardLink className={styles.wordmark} href="/">
 					{BRAND.name.toLowerCase()}
-				</Link>
+				</HardLink>
 
 				<div className={styles.head}>
 					<h1 className={styles.plate}>this page isn&rsquo;t on the map</h1>
@@ -65,12 +64,12 @@ export function NotFoundScene() {
 				</section>
 
 				<nav aria-label="Ways back" className={styles.actions}>
-					<Link className={styles.primary} href={PLATFORM_HOME}>
+					<HardLink className={styles.primary} href={PLATFORM_HOME}>
 						back to your map
-					</Link>
-					<Link className={styles.secondary} href="/">
+					</HardLink>
+					<HardLink className={styles.secondary} href="/">
 						{BRAND.name.toLowerCase()} home
-					</Link>
+					</HardLink>
 				</nav>
 			</div>
 		</main>

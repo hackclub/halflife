@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 export default function HandoffLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<html className={platformFontVariables} lang="en">
-			<body>
+			<body data-world="platform">
 				<SketchDefs />
 				{children}
 			</body>

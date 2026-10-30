@@ -2,7 +2,7 @@ import { Ari } from "@hackclub/ari"
 import { countAriShips } from "../src/lib/ari-counts"
 import { Phase, PhaseStatus, ReviewPass, ReviewResult } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
-import { parseDbTimestamp } from "../src/lib/time"
+import { parseDbTimestamp, parseNullableTimestamp } from "../src/lib/time"
 
 /**
  * Why the admin review ring and Ari's own board disagree, ship by ship.
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
 			id: submission.id,
 			phase: submission.phase,
 			phaseStatus: submission.phase === Phase.DESIGN ? project.designStatus : project.buildStatus,
-			resolvedAt: submission.resolvedAt === null ? null : parseDbTimestamp(submission.resolvedAt),
+			resolvedAt: parseNullableTimestamp(submission.resolvedAt),
 			result:
 				submission.reviews[0]?.result
 				?? submission.resolvedResult

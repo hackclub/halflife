@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 export default function GlobalNotFound() {
 	return (
 		<html lang="en">
-			<body>
+			<body data-world="site">
 				<NotFoundScene />
 			</body>
 		</html>

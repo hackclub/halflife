@@ -47,12 +47,18 @@ export function NpsGate() {
 			try {
 				const res = await fetch("/api/me/nps", { cache: "no-store" })
 				const payload: unknown = await res.json().catch(() => null)
-				if (cancelled || !res.ok || !isRecord(payload)) return
+				if (cancelled) return
+				// A status that could not be read is not "no score": treating it as one parks the user behind a modal that cannot be dismissed or saved. Skipping the prompt is the failure mode that leaves the dashboard usable.
+				if (!res.ok || !isRecord(payload)) {
+					setSkipped(true)
+					return
+				}
 				if (typeof payload.skipped === "string") setSkipped(true)
 				if (typeof payload.score === "number") setScore(payload.score)
 				if (payload.textsDone === true) setTextsDone(true)
 			} catch {
-				// Unreachable status never blocks: a prompt that cannot load its state must not park the user.
+				// Unreachable status never blocks, for the reason above.
+				if (!cancelled) setSkipped(true)
 			} finally {
 				if (!cancelled) setLoaded(true)
 			}

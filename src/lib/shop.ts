@@ -19,7 +19,7 @@ import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/progr
 import { countryOfTimezone } from "@/lib/regions"
 import { sanitize } from "@/lib/sanitize"
 import { canCancelOrder, cancelBlockedReason } from "@/lib/shop-order"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
  * The catalogue row as a participant sees it.
@@ -85,59 +85,12 @@ export const shopOrderPublicFields = [
  *
  * What the buyer wrote about the order. Staff are the ones who fulfil it, so it is theirs to read; the buyer's own view above leaves it out, because it is a note to staff rather than part of the order's state.
  */
-export const shopOrderStaffFields = [
-	"cancellationReason",
-	"cancelledAt",
-	"fulfilledAt",
-	"fulfillmentMethod",
-	"fulfillmentStage",
-	"fulfillmentUpdatedAt",
-	"heldAt",
-	"holdReason",
-	"id",
-	"itemNameSnapshot",
-	"orderNumber",
-	"placedAt",
-	"quantity",
-	"rejectedAt",
-	"rejectionReason",
-	"shopItemId",
-	"status",
-	"totalCredits",
-	"trackingCarrier",
-	"trackingNumber",
-	"unitCostUsd",
-	"unitCredits",
-	"userId",
-] as const
+export const shopOrderStaffFields = [...shopOrderPublicFields, "unitCostUsd", "userId"] as const
 
 /** One staff-view row as Prisma 8 reads it: timestamps stay text until each reader parses them. */
-export type ShopOrderStaffRow = Pick<
-	Models.public_ShopOrder,
-	| "cancellationReason"
-	| "cancelledAt"
-	| "fulfilledAt"
-	| "fulfillmentMethod"
-	| "fulfillmentStage"
-	| "fulfillmentUpdatedAt"
-	| "heldAt"
-	| "holdReason"
-	| "id"
-	| "itemNameSnapshot"
-	| "orderNumber"
-	| "placedAt"
-	| "quantity"
-	| "rejectedAt"
-	| "rejectionReason"
-	| "shopItemId"
-	| "status"
-	| "totalCredits"
-	| "trackingCarrier"
-	| "trackingNumber"
-	| "unitCostUsd"
-	| "unitCredits"
-	| "userId"
-> & { notes: { authorId: string; body: string; createdAt: string }[] }
+export type ShopOrderStaffRow = Pick<Models.public_ShopOrder, (typeof shopOrderStaffFields)[number]> & {
+	notes: { authorId: string; body: string; createdAt: string }[]
+}
 
 export interface ShopOrderStaffView
 	extends Omit<
@@ -154,16 +107,15 @@ export interface ShopOrderStaffView
 }
 
 export function toShopOrderStaffView(row: ShopOrderStaffRow): ShopOrderStaffView {
-	const parse = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	return {
 		...row,
-		cancelledAt: parse(row.cancelledAt),
-		fulfilledAt: parse(row.fulfilledAt),
-		fulfillmentUpdatedAt: parse(row.fulfillmentUpdatedAt),
-		heldAt: parse(row.heldAt),
+		cancelledAt: parseNullableTimestamp(row.cancelledAt),
+		fulfilledAt: parseNullableTimestamp(row.fulfilledAt),
+		fulfillmentUpdatedAt: parseNullableTimestamp(row.fulfillmentUpdatedAt),
+		heldAt: parseNullableTimestamp(row.heldAt),
 		notes: row.notes.map(note => ({ ...note, createdAt: parseDbTimestamp(note.createdAt) })),
 		placedAt: parseDbTimestamp(row.placedAt),
-		rejectedAt: parse(row.rejectedAt),
+		rejectedAt: parseNullableTimestamp(row.rejectedAt),
 	}
 }
 
@@ -306,15 +258,14 @@ export async function getShopItemsFor(userId: string): Promise<{
 type ShopOrderPublicRow = Pick<Models.public_ShopOrder, (typeof shopOrderPublicFields)[number]>
 
 export function toShopOrderPublic(row: ShopOrderPublicRow): ShopOrderPublic {
-	const parse = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	return {
 		...row,
-		cancelledAt: parse(row.cancelledAt),
-		fulfilledAt: parse(row.fulfilledAt),
-		fulfillmentUpdatedAt: parse(row.fulfillmentUpdatedAt),
-		heldAt: parse(row.heldAt),
+		cancelledAt: parseNullableTimestamp(row.cancelledAt),
+		fulfilledAt: parseNullableTimestamp(row.fulfilledAt),
+		fulfillmentUpdatedAt: parseNullableTimestamp(row.fulfillmentUpdatedAt),
+		heldAt: parseNullableTimestamp(row.heldAt),
 		placedAt: parseDbTimestamp(row.placedAt),
-		rejectedAt: parse(row.rejectedAt),
+		rejectedAt: parseNullableTimestamp(row.rejectedAt),
 	}
 }
 
@@ -394,8 +345,8 @@ export async function purchase(
 			])
 			const grace = shopGraceAccess(settings, {
 				awaitingReview: awaitingReview.count,
-				buildReviewedAt: lastReview.buildReviewedAt === null ? null : parseDbTimestamp(lastReview.buildReviewedAt),
-				designReviewedAt: lastReview.designReviewedAt === null ? null : parseDbTimestamp(lastReview.designReviewedAt),
+				buildReviewedAt: parseNullableTimestamp(lastReview.buildReviewedAt),
+				designReviewedAt: parseNullableTimestamp(lastReview.designReviewedAt),
 			})
 			if (!grace.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		}

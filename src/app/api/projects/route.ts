@@ -10,7 +10,7 @@ import db from "@/lib/prisma8"
 import { assertWeekStarted } from "@/lib/program"
 import { ensureThemeProject } from "@/lib/provisioning"
 import { withFields } from "@/lib/rows"
-import { parseDbTimestamp } from "@/lib/time"
+import { parseNullableTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -49,7 +49,7 @@ export const GET = withSession(async (_req: Request, { gate }) => {
 		withFields(session, {
 			timelapses: session.timelapses.map(timelapse =>
 				withFields(timelapse, {
-					recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+					recordedAt: parseNullableTimestamp(timelapse.recordedAt),
 				}),
 			),
 		}),

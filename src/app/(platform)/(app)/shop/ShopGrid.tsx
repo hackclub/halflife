@@ -117,7 +117,7 @@ export function ShopGrid({
 
 	return (
 		<>
-			<div className="mb-4 flex justify-end">
+			<div className="mb-3 flex justify-end">
 				<Link
 					className="label rounded-full border-2 border-line px-4 py-1.5 text-navy-soft transition-colors hover:border-navy hover:text-navy"
 					href="/shop/orders"
@@ -125,88 +125,111 @@ export function ShopGrid({
 					Your orders
 				</Link>
 			</div>
-			{regions.length > 0 && (
-				<div className="mb-5 flex flex-wrap items-center justify-center gap-2">
-					<label className="label text-navy-soft" htmlFor="shop-region">
-						Prices for
+
+			{/* One toolbar rather than a row per control: on a phone the category chips become a select, and the two remaining selects share a row, so the shelves start two rows sooner. From sm the chips return, and the selects stay on the right whether they fit beside them or wrap to a line of their own. */}
+			<div className="mb-6 grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+				<div className="flex min-w-0 items-center gap-2">
+					<label className="label shrink-0 text-navy-soft" htmlFor="shop-category">
+						Show
 					</label>
 					<select
-						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy disabled:opacity-60"
-						disabled={savingRegion}
-						id="shop-region"
-						onChange={e => {
-							const next = e.target.value === "" ? null : e.target.value
-							setSavingRegion(true)
-							setError(null)
-							void (async () => {
-								try {
-									const res = await fetch("/api/shop/region", {
-										body: JSON.stringify({ regionId: next }),
-										headers: { "content-type": "application/json" },
-										method: "PUT",
-									})
-									if (!res.ok) {
-										setError(errorMessage(await res.json().catch(() => null), "That region did not save"))
-										return
-									}
-									router.refresh()
-								} catch {
-									setError("That region did not save")
-								} finally {
-									setSavingRegion(false)
-								}
-							})()
-						}}
-						value={regionId ?? ""}
+						className="label min-w-0 flex-1 rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy sm:hidden"
+						id="shop-category"
+						onChange={e => setCat(e.target.value)}
+						value={cat}
 					>
-						<option value="">Default pricing</option>
-						{regions.map(r => (
-							<option key={r.id} value={r.id}>
-								{r.name}
+						{CATEGORIES.map(({ label: c }) => (
+							<option key={c} value={c}>
+								{c}
 							</option>
 						))}
 					</select>
-				</div>
-			)}
-			<div className="mb-6 flex flex-wrap items-center justify-center gap-3 sm:justify-between">
-				<div className="flex flex-wrap items-center justify-center gap-2">
-					{CATEGORIES.map(({ label: c }) => (
-						<button
-							aria-pressed={cat === c}
-							className={cx(
-								"label rounded-full border-2 px-4 py-1.5 transition-colors",
-								cat === c
-									? "border-navy bg-navy text-white"
-									: "border-line text-navy-soft hover:border-navy hover:text-navy",
-							)}
-							key={c}
-							onClick={() => setCat(c)}
-							type="button"
-						>
-							{c}
-						</button>
-					))}
+					<div className="hidden flex-wrap items-center gap-2 sm:flex">
+						{CATEGORIES.map(({ label: c }) => (
+							<button
+								aria-pressed={cat === c}
+								className={cx(
+									"label rounded-full border-2 px-4 py-1.5 transition-colors",
+									cat === c
+										? "border-navy bg-navy text-white"
+										: "border-line text-navy-soft hover:border-navy hover:text-navy",
+								)}
+								key={c}
+								onClick={() => setCat(c)}
+								type="button"
+							>
+								{c}
+							</button>
+						))}
+					</div>
 				</div>
 
-				<div className="flex items-center gap-2">
-					<label className="label text-navy-soft" htmlFor="shop-sort">
-						Sort by
-					</label>
-					<select
-						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy"
-						id="shop-sort"
-						onChange={e => {
-							const picked = SORTS.find(option => option.value === e.target.value)
-							if (picked) setSort(picked.value)
-						}}
-						value={sort}
+				<div className={cx("grid gap-2 sm:ml-auto sm:flex sm:items-center", regions.length > 0 && "grid-cols-2")}>
+					{regions.length > 0 && (
+						<label
+							className="label flex min-w-0 flex-col items-start gap-1 text-navy-soft sm:flex-row sm:items-center sm:gap-2"
+							htmlFor="shop-region"
+						>
+							Prices for
+							<select
+								className="label w-full rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy disabled:opacity-60 sm:w-auto"
+								disabled={savingRegion}
+								id="shop-region"
+								onChange={e => {
+									const next = e.target.value === "" ? null : e.target.value
+									setSavingRegion(true)
+									setError(null)
+									void (async () => {
+										try {
+											const res = await fetch("/api/shop/region", {
+												body: JSON.stringify({ regionId: next }),
+												headers: { "content-type": "application/json" },
+												method: "PUT",
+											})
+											if (!res.ok) {
+												setError(errorMessage(await res.json().catch(() => null), "That region did not save"))
+												return
+											}
+											router.refresh()
+										} catch {
+											setError("That region did not save")
+										} finally {
+											setSavingRegion(false)
+										}
+									})()
+								}}
+								value={regionId ?? ""}
+							>
+								<option value="">Default pricing</option>
+								{regions.map(r => (
+									<option key={r.id} value={r.id}>
+										{r.name}
+									</option>
+								))}
+							</select>
+						</label>
+					)}
+					<label
+						className="label flex min-w-0 flex-col items-start gap-1 text-navy-soft sm:flex-row sm:items-center sm:gap-2"
+						htmlFor="shop-sort"
 					>
-						{SORTS.map(({ label: l, value: v }) => (
-							<option key={v} value={v}>
-								{l}
-							</option>
-						))}
-					</select>
+						Sort
+						<select
+							className="label w-full rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy sm:w-auto"
+							id="shop-sort"
+							onChange={e => {
+								const picked = SORTS.find(option => option.value === e.target.value)
+								if (picked) setSort(picked.value)
+							}}
+							value={sort}
+						>
+							{SORTS.map(({ label: l, value: v }) => (
+								<option key={v} value={v}>
+									{l}
+								</option>
+							))}
+						</select>
+					</label>
 				</div>
 			</div>
 

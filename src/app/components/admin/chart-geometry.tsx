@@ -72,6 +72,95 @@ export function niceTicks(
 }
 
 /**
+ * The horizontal gridlines a chart draws from its axis, one per tick.
+ *
+ * `dashed` is for a second series on its own scale, so the two grids can be told apart where they cross.
+ */
+export const GridLines = ({
+	ticks,
+	yFor,
+	dashed = false,
+}: {
+	dashed?: boolean
+	ticks: readonly number[]
+	yFor(tick: number): number
+}) => (
+	<>
+		{ticks.map((tick, i) => (
+			<line
+				key={i}
+				stroke="var(--color-line-soft)"
+				strokeDasharray={dashed ? "2 3" : undefined}
+				strokeWidth="1"
+				x1={pct(EDGE)}
+				x2={pct(1 - EDGE)}
+				y1={yFor(tick)}
+				y2={yFor(tick)}
+			/>
+		))}
+	</>
+)
+
+/**
+ * The tick labels down one side of a chart, each placed at the exact pixel its gridline sits on.
+ *
+ * The width is the column it takes beside the plot, and the caption sits above the top tick's band rather than on it. A right-hand axis is the second series' own scale, which is why its labels take the other side and its own colour.
+ */
+export const YAxis = ({
+	caption,
+	colour = "var(--color-accent-ink)",
+	format,
+	side = "left",
+	ticks,
+	width = "3.1rem",
+	yFor,
+}: {
+	caption: string
+	colour?: string
+	format(tick: number): string
+	side?: "left" | "right"
+	ticks: readonly number[]
+	width?: string
+	yFor(tick: number): number
+}) => {
+	const edge = side === "left" ? { right: 6 } : { left: 6 }
+	return (
+		<div style={{ height: `${CHART_H}px`, position: "relative", width }}>
+			{ticks.map((tick, i) => (
+				<span
+					aria-hidden="true"
+					key={i}
+					style={{
+						color: colour,
+						fontSize: "0.65rem",
+						fontVariantNumeric: "tabular-nums",
+						position: "absolute",
+						top: yFor(tick),
+						transform: "translateY(-50%)",
+						...edge,
+					}}
+				>
+					{format(tick)}
+				</span>
+			))}
+			<span
+				aria-hidden="true"
+				style={{
+					color: "var(--color-ink-muted)",
+					fontSize: "0.6rem",
+					lineHeight: 1,
+					position: "absolute",
+					top: -1,
+					...edge,
+				}}
+			>
+				{caption}
+			</span>
+		</div>
+	)
+}
+
+/**
  * The day labels under a time-series plot, one printed label per block so a long season does not squeeze "MM-DD" into a few pixels.
  */
 export const DayAxis = ({ days, labelEvery }: { days: readonly { day: string }[]; labelEvery: number }) => (

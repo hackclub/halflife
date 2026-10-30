@@ -95,6 +95,73 @@ function draftOf(line: BomLine): Draft {
  *
  * Tax and shipping close the table as one fixed line for the whole order. It has an amount and nothing else – no edit form and no remove – because every order has it, even at zero.
  */
+/** One parts line, read-only until the maker presses edit or remove. */
+function BomLineRow({
+	editing,
+	line,
+	locked,
+	onEdit,
+	onRemove,
+	saving,
+}: {
+	editing: boolean
+	line: BomLine
+	locked: string | null
+	onEdit(line: BomLine): void
+	onRemove(line: BomLine): void
+	saving: boolean
+}) {
+	return (
+		<tr className={cx("border-b border-dashed border-line/60 align-top", editing && "bg-violet-pale/50")}>
+			<td className="py-2.5 pr-3">
+				<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{line.name}</span>
+				{line.purpose && <span className="block text-[0.8rem] leading-snug text-navy-soft">{line.purpose}</span>}
+			</td>
+			<td className="px-3 py-2.5 tabular-nums">{line.quantity}</td>
+			<td className="px-3 py-2.5 tabular-nums">{formatUsd(line.unitCostUsd)}</td>
+			<td className="px-3 py-2.5 font-semibold text-navy tabular-nums">
+				{formatUsd(line.quantity * line.unitCostUsd)}
+			</td>
+			<td className="hand px-3 py-2.5 text-navy-soft">
+				{line.link ? (
+					<a
+						className="underline decoration-line-strong underline-offset-4 hover:text-navy hover:decoration-violet"
+						href={line.link}
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						{line.vendor || "link"}
+					</a>
+				) : (
+					line.vendor || "-"
+				)}
+			</td>
+			{!locked && (
+				<td className="py-1.5 pl-2 whitespace-nowrap">
+					<button
+						aria-label={`Edit ${line.name}`}
+						className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
+						disabled={saving}
+						onClick={() => onEdit(line)}
+						type="button"
+					>
+						<IconPencil className="text-sm" />
+					</button>
+					<button
+						aria-label={`Remove ${line.name}`}
+						className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep"
+						disabled={saving}
+						onClick={() => onRemove(line)}
+						type="button"
+					>
+						<IconX className="text-sm" />
+					</button>
+				</td>
+			)}
+		</tr>
+	)
+}
+
 export function BomEditor({
 	projectId,
 	items: initial,
@@ -382,59 +449,15 @@ export function BomEditor({
 							</tr>
 						)}
 						{items.map(l => (
-							<tr
-								className={cx(
-									"border-b border-dashed border-line/60 align-top",
-									editing === l.id && "bg-violet-pale/50",
-								)}
+							<BomLineRow
+								editing={editing === l.id}
 								key={l.id}
-							>
-								<td className="py-2.5 pr-3">
-									<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
-									{l.purpose && <span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>}
-								</td>
-								<td className="px-3 py-2.5 tabular-nums">{l.quantity}</td>
-								<td className="px-3 py-2.5 tabular-nums">{formatUsd(l.unitCostUsd)}</td>
-								<td className="px-3 py-2.5 font-semibold text-navy tabular-nums">
-									{formatUsd(l.quantity * l.unitCostUsd)}
-								</td>
-								<td className="hand px-3 py-2.5 text-navy-soft">
-									{l.link ? (
-										<a
-											className="underline decoration-line-strong underline-offset-4 hover:text-navy hover:decoration-violet"
-											href={l.link}
-											rel="noopener noreferrer"
-											target="_blank"
-										>
-											{l.vendor || "link"}
-										</a>
-									) : (
-										l.vendor || "-"
-									)}
-								</td>
-								{!locked && (
-									<td className="py-1.5 pl-2 whitespace-nowrap">
-										<button
-											aria-label={`Edit ${l.name}`}
-											className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
-											disabled={saving}
-											onClick={() => open(l)}
-											type="button"
-										>
-											<IconPencil className="text-sm" />
-										</button>
-										<button
-											aria-label={`Remove ${l.name}`}
-											className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep"
-											disabled={saving}
-											onClick={() => remove(l)}
-											type="button"
-										>
-											<IconX className="text-sm" />
-										</button>
-									</td>
-								)}
-							</tr>
+								line={l}
+								locked={locked}
+								onEdit={open}
+								onRemove={remove}
+								saving={saving}
+							/>
 						))}
 					</tbody>
 					<tfoot>

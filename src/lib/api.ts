@@ -184,6 +184,40 @@ export async function parseUploadForm(
 	}
 }
 
+type BoundedBody = { body: ArrayBuffer; reason?: never } | { body?: never; reason: "TOO_LARGE" | "UNREADABLE" }
+
+/**
+ * Read a request body into memory without letting the caller decide how much memory that spends.
+ *
+ * Content-Length is checked first (cheap, and what a normal client sends), then the stream is counted as it is read, so a chunked body cannot skip the check by omitting the header. Shared by the upload and webhook readers below, so the two cannot disagree about what the cap means.
+ */
+async function readBodyWithCap(request: Request, maxBytes: number): Promise<BoundedBody> {
+	const declared = Number(request.headers.get("content-length") ?? "")
+	if (Number.isFinite(declared) && declared > maxBytes) return { reason: "TOO_LARGE" }
+
+	const { body } = request
+	if (!body) return { body: new ArrayBuffer(0) }
+
+	const reader = body.getReader()
+	const chunks: Uint8Array[] = []
+	let total = 0
+	try {
+		for (;;) {
+			const { done, value } = await reader.read()
+			if (done) break
+			total += value.byteLength
+			if (total > maxBytes) {
+				await reader.cancel().catch(() => undefined)
+				return { reason: "TOO_LARGE" }
+			}
+			chunks.push(value)
+		}
+	} catch {
+		return { reason: "UNREADABLE" }
+	}
+	return { body: new Uint8Array(Buffer.concat(chunks)).buffer }
+}
+
 /**
  * The parse itself, with the cap applied while the body streams in.
  *
@@ -194,36 +228,13 @@ async function bufferUploadForm(request: Request, maxFileBytes: number): Promise
 	const tooLarge = () => fail("VALIDATION_FAILED", `That upload is larger than ${maxFileBytes} bytes`)
 	const invalid = () => fail("INVALID_BODY", "Expected a multipart form")
 
-	const declared = Number(request.headers.get("content-length") ?? "")
-	if (Number.isFinite(declared) && declared > cap) return { error: tooLarge() }
+	const read = await readBodyWithCap(request, cap)
+	if (!read.body) return { error: read.reason === "TOO_LARGE" ? tooLarge() : invalid() }
 
-	const { body } = request
-	if (!body) return { error: invalid() }
-
-	const reader = body.getReader()
-	const chunks: Uint8Array[] = []
-	let total = 0
-	try {
-		for (;;) {
-			const { done, value } = await reader.read()
-			if (done) break
-			total += value.byteLength
-			if (total > cap) {
-				await reader.cancel().catch(() => undefined)
-				return { error: tooLarge() }
-			}
-			chunks.push(value)
-		}
-	} catch {
-		return { error: invalid() }
-	}
-
-	// Rebuild a request so the runtime's multipart parser does the parsing rather than hand-rolling boundaries. The chunks are released first: from here on only the joined buffer is needed, and the two together would be twice the body for nothing.
-	const joined = Buffer.concat(chunks)
-	chunks.length = 0
+	// Rebuild a request so the runtime's multipart parser does the parsing rather than hand-rolling boundaries.
 	const headers = new Headers(request.headers)
 	headers.delete("content-length")
-	const buffered = new Request(request.url, { body: joined, headers, method: "POST" })
+	const buffered = new Request(request.url, { body: read.body, headers, method: "POST" })
 	const form = await buffered.formData().catch(() => null)
 	return form ? { data: form } : { error: invalid() }
 }
@@ -253,29 +264,8 @@ export async function readBoundedText(
 	request: Request,
 	maxBytes: number = MAX_WEBHOOK_BODY_BYTES,
 ): Promise<string | null> {
-	const declared = Number(request.headers.get("content-length") ?? "")
-	if (Number.isFinite(declared) && declared > maxBytes) return null
-
-	const { body } = request
-	if (!body) return ""
-	const reader = body.getReader()
-	const chunks: Uint8Array[] = []
-	let total = 0
-	try {
-		for (;;) {
-			const { done, value } = await reader.read()
-			if (done) break
-			total += value.byteLength
-			if (total > maxBytes) {
-				await reader.cancel().catch(() => undefined)
-				return null
-			}
-			chunks.push(value)
-		}
-	} catch {
-		return null
-	}
-	return Buffer.concat(chunks).toString("utf-8")
+	const read = await readBodyWithCap(request, maxBytes)
+	return read.body ? new TextDecoder().decode(read.body) : null
 }
 
 /**

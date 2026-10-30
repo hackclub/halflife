@@ -3,6 +3,7 @@ import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
 import { PromoBootScript } from "@/components/promo/PromoBootScript"
 import { StickerSheetBanner } from "@/components/promo/StickerSheetBanner"
 import { siteFontVariables } from "@/components/site/fonts"
+import { WorldGuard } from "@/components/WorldGuard"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -28,7 +29,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 				<PlausibleAnalytics />
 				<PromoBootScript />
 			</head>
-			<body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">
+			<body className="min-h-full flex flex-col bg-hl-ink text-hl-paper" data-world="site">
+				<WorldGuard world="site" />
 				<a
 					className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:bg-hl-cyan focus:px-4 focus:py-2 focus:font-semibold focus:text-hl-ink"
 					href="#how-it-works"

@@ -13,7 +13,7 @@ import { getRepoSyncState, type RepoSyncState } from "@/lib/repo-sync"
 import { submissionBudget } from "@/lib/resubmissions"
 import { withFields } from "@/lib/rows"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
-import { parseDbTimestamp } from "@/lib/time"
+import { parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -255,17 +255,16 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 	if (!fetched) return null
 
 	// Prisma 8 reads timestamps as PostgreSQL text; everything below works in Dates.
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	const project = {
 		...fetched,
-		buildReviewedAt: parseNullable(fetched.buildReviewedAt),
-		designReviewedAt: parseNullable(fetched.designReviewedAt),
-		grantEmittedAt: parseNullable(fetched.grantEmittedAt),
+		buildReviewedAt: parseNullableTimestamp(fetched.buildReviewedAt),
+		designReviewedAt: parseNullableTimestamp(fetched.designReviewedAt),
+		grantEmittedAt: parseNullableTimestamp(fetched.grantEmittedAt),
 		posts: fetched.posts.map(
 			(post): ProjectPostRow =>
 				withFields(post, {
 					createdAt: parseDbTimestamp(post.createdAt),
-					publishedAt: parseNullable(post.publishedAt),
+					publishedAt: parseNullableTimestamp(post.publishedAt),
 				}),
 		),
 		submissions: fetched.submissions.map(submission => ({
@@ -279,10 +278,10 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 							...message,
 							createdAt: parseDbTimestamp(message.createdAt),
 						})),
-						resolvedAt: parseNullable(submission.dispute.resolvedAt),
+						resolvedAt: parseNullableTimestamp(submission.dispute.resolvedAt),
 					}
 				: null,
-			resolvedAt: parseNullable(submission.resolvedAt),
+			resolvedAt: parseNullableTimestamp(submission.resolvedAt),
 		})),
 		workSessions: fetched.workSessions.map(
 			(session): ProjectSessionRow => withFields(session, { createdAt: parseDbTimestamp(session.createdAt) }),
@@ -476,14 +475,13 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 	// A row nobody has started is a placeholder made at sign-up, not a project.
 	if (!fetched?.user) return null
 	const { user, ...rest } = fetched
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	const project = {
 		...rest,
 		posts: fetched.posts.map(
 			(post): ProjectPostRow =>
 				withFields(post, {
 					createdAt: parseDbTimestamp(post.createdAt),
-					publishedAt: parseNullable(post.publishedAt),
+					publishedAt: parseNullableTimestamp(post.publishedAt),
 				}),
 		),
 		user,
