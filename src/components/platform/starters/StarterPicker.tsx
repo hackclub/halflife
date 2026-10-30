@@ -141,7 +141,7 @@ export function StarterPicker({ initial }: { initial: string }) {
 									/>
 									<span
 										className={cx(
-											"absolute bottom-2 left-2 max-w-[calc(100%-1rem)] rounded-md px-1.5 py-0.5 text-left text-[0.78rem] leading-tight font-extrabold",
+											"absolute bottom-2 left-2 max-w-[calc(100%_-_1rem)] rounded-md px-1.5 py-0.5 text-left text-[0.78rem] leading-tight font-extrabold",
 											on ? "bg-violet-deep text-white" : "bg-white/90 text-navy",
 										)}
 									>
