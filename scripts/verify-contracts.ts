@@ -26,6 +26,9 @@ import type { JournalEntry } from "../src/lib/repo-sync-files"
 process.env.NEXT_PUBLIC_APP_URL ??= "https://halflife.hackclub.com"
 
 let failures = 0
+
+/** A stable project id for the pure checks below. */
+const me = "cmu7848ge00004ku8jx1dqi92"
 function check(label: string, ok: boolean, detail = "") {
 	if (!ok) failures++
 	console.log(`${ok ? "PASS" : "FAIL"}  ${label}${ok || !detail ? "" : `: ${detail}`}`)
@@ -335,6 +338,37 @@ async function bodies() {
 		Object.keys(overrides).every(field => field.startsWith("Loops - Override - ")),
 	)
 
+	await checkFetchRetry()
+	await checkUploadKeys()
+	await checkVideoSignatures()
+	await checkAriExternalIds()
+	await checkAriJournalTime()
+	await checkAriPending()
+	await checkAriCounts()
+	await checkReviewStages()
+	await checkReviewDecision()
+	await checkHcb()
+	await checkHackatimeSeconds()
+	await checkHackatimeSpans()
+	await checkPrinterAwards()
+	await checkJournalImages()
+	await checkRepoFiles()
+	await checkBomCsv()
+	await checkCountdown()
+	await checkRepoRefs()
+	await checkTickets()
+	await checkJustification()
+
+	for (const [name, schema, body] of cases) {
+		const parsed = schema.safeParse(body)
+		check(
+			`body · ${name}`,
+			parsed.success,
+			parsed.success ? "" : parsed.error.issues.map(i => `${i.path.join(".") || "(root)"} ${i.message}`).join("; "),
+		)
+	}
+}
+async function checkFetchRetry(): Promise<void> {
 	/* ── 2b. fetchWithRetry ─────────────────────────────────────────────────── */
 	//
 	// A transient failure at an identity endpoint used to abort an OAuth callback with a raw TimeoutError. The retry is the fix, and these pin the parts that matter: it retries what is worth retrying, leaves a 4xx alone, gives up after the retries, and never leaks an oversized body into memory.
@@ -413,12 +447,13 @@ async function bodies() {
 			}
 		})()
 	}
+}
 
+async function checkUploadKeys(): Promise<void> {
 	/* ── 3. Upload key ownership ───────────────────────────────────────────── */
 	//
 	// Keys are not secrets: the feed returns a full video URL for every reel, so any participant can read another's key. Every place a client hands one back has to check it, or a stranger's timelapse becomes evidence for hours nobody worked.
-	const { isOwnedKey, isVideoBytes } = await import("../src/lib/uploads/r2")
-	const me = "cmu7848ge00004ku8jx1dqi92"
+	const { isOwnedKey } = await import("../src/lib/uploads/r2")
 	const you = "cmu99999900004ku8jx1dqi92"
 	const keyCases: [string, boolean][] = [
 		[`posts/${me}/a.mp4`, true],
@@ -434,7 +469,10 @@ async function bodies() {
 	]
 	for (const [key, owned] of keyCases)
 		check(`key · ${key || "(empty)"} ${owned ? "is mine" : "is not mine"}`, isOwnedKey(me, key) === owned)
+}
 
+async function checkVideoSignatures(): Promise<void> {
+	const { isVideoBytes } = await import("../src/lib/uploads/r2")
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
 	// A MIME type and an extension are only claims; the bytes decide. The `ftyp` box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a video one – otherwise a still image renamed `.mp4` becomes a reel.
@@ -474,7 +512,9 @@ async function bodies() {
 	]
 	for (const [name, bytes, isVideo] of videoCases)
 		check(`bytes · ${name} ${isVideo ? "is video" : "is not video"}`, isVideoBytes(bytes) === isVideo)
+}
 
+async function checkAriExternalIds(): Promise<void> {
 	/* ── 5. Ari external ids ───────────────────────────────────────────────── */
 	//
 	// One Ari ship per (project, phase), so the external id has to survive a round trip for a webhook to find the right submission.
@@ -489,7 +529,9 @@ async function bodies() {
 	check("ari · project id survives", parseAriExternalId(ariDesign)?.themeProjectId === me)
 	check("ari · rejects junk", parseAriExternalId("not-an-id") === null)
 	check("ari · rejects empty project", parseAriExternalId(":design") === null)
+}
 
+async function checkAriJournalTime(): Promise<void> {
 	/* ── 5a. Ari's journal time is net of the recording ───────────────────── */
 	//
 	// Ari adds a journal's minutes and the duration of every Lapse clip it pulls for the ship's Hackatime projects. A clip attached to an entry records that same sitting, so sending the full claim as well counted it twice – a 7.9h project read as 17h. Only a clip Ari will actually count is taken off, and never below zero.
@@ -545,7 +587,10 @@ async function bodies() {
 		"ari · a tracked entry contributes nothing",
 		journalMinutes({ hoursClaimed: 2, hoursSource: HACKATIME_TRACKED, timelapses: [clip()] }, counted) === 0,
 	)
+}
 
+async function checkAriPending(): Promise<void> {
+	const { Phase } = await import("../src/lib/enums")
 	/* ── 5b. Which hand-ins are pending at Ari ─────────────────────────────── */
 	//
 	// What the hourly retry job replays and what the admin Retry button offers: in-review phases whose NEWEST open submission has no ariSubmissionId.
@@ -590,7 +635,11 @@ async function bodies() {
 	}
 	check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
 	check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
+}
 
+async function checkAriCounts(): Promise<void> {
+	const { Phase, PhaseStatus } = await import("../src/lib/enums")
+	const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
 	/* ── 5b-iii. Ari's board, counted as Ari counts ────────────────────────── */
 	//
 	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
@@ -654,7 +703,10 @@ async function bodies() {
 		])
 		check("ari · counts: one ship id counts once", counts.rejected === 1, JSON.stringify(counts))
 	}
+}
 
+async function checkReviewStages(): Promise<void> {
+	const { PhaseStatus } = await import("../src/lib/enums")
 	/* ── 5b-iv. The reviewer-activity ring, one state per project ──────────── */
 	//
 	// The ring counts projects, not ships: a project with two phases or a resubmission must land in exactly one slice, so its total is the number of projects submitted. The state is the same one the projects grid colours a card from, so the ring and the cards cannot disagree.
@@ -679,7 +731,9 @@ async function bodies() {
 		"review ring · a project that never left draft is in no slice",
 		projectReviewState(PhaseStatus.draft, PhaseStatus.draft) === "not_started",
 	)
+}
 
+async function checkReviewDecision(): Promise<void> {
 	/* ── 5b-ii. The decision standing on a ship ────────────────────────────── */
 	//
 	// What the reconciliation applies when a webhook delivery never arrived. Ari's decision vocabulary ("changes") and its event name ("review.changes") are the two halves that could drift apart silently, and a decided ship must never be read from a phase that is not final.
@@ -709,7 +763,9 @@ async function bodies() {
 		"ari · standing: reviewed with no decision is not a decision",
 		standingDecision({ decision: null, phase: "reviewed" }) === null,
 	)
+}
 
+async function checkHcb(): Promise<void> {
 	/* ── 5c. HCB disbursement reconciliation ──────────────────────────────── */
 	//
 	// The one path that decides whether a timed-out top-up is re-sent. An unreadable payload must be ambiguous, never absent: "nothing landed" is the state that pays twice.
@@ -747,7 +803,9 @@ async function bodies() {
 		"hcb · an unparseable timestamp is ambiguous",
 		reconcileDisbursement(listed(row(3000, "not-a-date")), 3000, attemptedAt).kind === "ambiguous",
 	)
+}
 
+async function checkHackatimeSeconds(): Promise<void> {
 	/* ── 5d. Hackatime project seconds ─────────────────────────────────────── */
 	//
 	// Approval reads this live, so the difference between "genuinely zero" and "Hackatime no longer lists that project" decides whether someone is paid zero silently or the decision is refused.
@@ -777,7 +835,9 @@ async function bodies() {
 
 	const nullBody = projectSecondsFrom(null, "firmware")
 	check("hackatime · a null body is stale", nullBody.stale && !nullBody.notFound)
+}
 
+async function checkHackatimeSpans(): Promise<void> {
 	/* ── 5d-ii. Hackatime spans, and the overlap arithmetic ────────────────── */
 	//
 	// Someone who codes with Hackatime running and records a Lapse timelapse of the same sitting had it counted twice: once by the journal entry, once by the linked project. These decide how much comes off, so the boundaries are the whole risk – an off-by-one here is somebody underpaid.
@@ -1127,7 +1187,9 @@ async function bodies() {
 			&& fetchWindow.toSeconds === 1_700_010_600 + 3600,
 	)
 	check("overlap · no recordings means no window to fetch", spanWindowFor([]) === null)
+}
 
+async function checkPrinterAwards(): Promise<void> {
 	/* ── 5e. Printer award transitions ─────────────────────────────────────── */
 	const { canMovePrinterAward } = await import("../src/lib/printer-award")
 	check(
@@ -1141,7 +1203,9 @@ async function bodies() {
 	)
 	check("printer · revoked is final", !canMovePrinterAward("REVOKED", "PACKING"))
 	check("printer · a shipped award can still be delivered", canMovePrinterAward("SHIPPED", "DELIVERED"))
+}
 
+async function checkJournalImages(): Promise<void> {
 	/* ── 6. Journal image count ─────────────────────────────────────────────── */
 	//
 	// The evidence bar counts pictures, so the same picture pasted twice must count once – otherwise one image copied down an entry clears it.
@@ -1157,7 +1221,9 @@ async function bodies() {
 	]
 	for (const [source, expected] of imageCases)
 		check(`images · "${source.slice(0, 40)}" → ${expected}`, countImages(source) === expected)
+}
 
+async function checkRepoFiles(): Promise<void> {
 	/* ── 6b. Repo sync file rendering ───────────────────────────────────────── */
 	//
 	// These files land in a maker's own repository, so their contents are the one thing a person actually reads there. What the checks pin: the two paths the control promises, entries ordered oldest first (a devlog reads forward), the totals the project page shows, and the corrected value of an edited entry rather than the original – the whole reason the file is regenerated rather than appended to.
@@ -1436,7 +1502,9 @@ async function bodies() {
 			!usesStarterDefaultDescription("unknown", starbie?.description ?? ""),
 		)
 	}
+}
 
+async function checkBomCsv(): Promise<void> {
 	/* ── 6bb. Reading a BOM CSV out of a repo ───────────────────────────────── */
 	//
 	// A maker's repo carries whatever their tool exported, so the importer is pinned on the shapes that actually turn up: a hand-kept spreadsheet whose price column says `Rs. 1300 (~ $15)`, a KiCad export with a commented preamble and a comma inside a quoted description, and a link column that holds `JLCPCB` as often as a URL.
@@ -1486,7 +1554,9 @@ async function bodies() {
 			capped.lines.length === 1 && capped.skipped.some(s => s.reason === "beyond the parts-list limit"),
 		)
 	}
+}
 
+async function checkCountdown(): Promise<void> {
 	/* ── 6bbb. The landing page's week-1 countdown ──────────────────────────── */
 	//
 	// The countdown is the one place a wrong number is visible to every visitor, and the arithmetic is the only part of it that can silently be wrong – the clock and the markup are not worth pinning. A span carries down the units rather than being recomputed from the total, so 90 minutes is 1h 30m and never 1h 90m; a moment already past clamps to zero rather than counting negative.
@@ -1522,7 +1592,9 @@ async function bodies() {
 			countdownParts(59_999).seconds === 59 && countdownParts(59_999).minutes === 0,
 		)
 	}
+}
 
+async function checkRepoRefs(): Promise<void> {
 	/* ── 6c. Repo references, across forges ─────────────────────────────────── */
 	//
 	// Three shapes reach the sync and all have to work. `githubRepo` on a project is a full URL; `repoSyncRepo` – the repo the sync is pinned to – is a full URL now too, but a row written before that change holds a bare `owner/name` with no host. They went through one parser that assumed a URL, so `new URL("owner/name")` read `owner` as the HOSTNAME, never matched github.com, and refused every enable with "Pick a GitHub repo". The bare form is now resolved against a named forge (the caller's), and both forms are pinned here so the columns cannot drift apart again.
@@ -1566,7 +1638,9 @@ async function bodies() {
 		for (const [label, input] of rejectCases)
 			check(`repo-ref · ${label} is refused`, parseRepoRef(input, { forge: FORGES.github }) === null)
 	}
+}
 
+async function checkTickets(): Promise<void> {
 	/* ── 6d. Ticket message buttons, resolve and reopen ─────────────────────── */
 	//
 	// A resolved thread message carries exactly one way back (the reopen button), and resolving strips every action block so a stale button can never act twice. Reopening restores the two resolution buttons with the fresh mirror reference. Pinned because the button values are the only state the stateless Slack flow has – a dropped field strands the ticket.
@@ -1634,7 +1708,9 @@ async function bodies() {
 			restoredValues.length === 2 && restoredValues.every(v => v.includes("777.888")),
 		)
 	}
+}
 
+async function checkJustification(): Promise<void> {
 	/* ── 6d. The Airtable justification columns ─────────────────────────────── */
 	//
 	// The `Justification - …` columns on a submission row are the evidence a grant reviewer reads, and the pipeline merges them into one blob on the row. Two things about them are pinned here, because both fail silently: a column we have nothing for must be left OUT of the payload rather than written blank (a blank erases the only record of evidence the base holds – the Lapse links on the pre-season rows came from the form and were never given to Postgres), and the technical-features text must not repeat the description it already quotes.
@@ -1770,15 +1846,6 @@ async function bodies() {
 			"justification · an older timelapse is watched where it was put",
 			timelapseLinks([{ externalId: null, objectKey: null, playbackUrl: "https://cdn.test/a.mp4", provider: "r2" }])[0]
 				=== "https://cdn.test/a.mp4",
-		)
-	}
-
-	for (const [name, schema, body] of cases) {
-		const parsed = schema.safeParse(body)
-		check(
-			`body · ${name}`,
-			parsed.success,
-			parsed.success ? "" : parsed.error.issues.map(i => `${i.path.join(".") || "(root)"} ${i.message}`).join("; "),
 		)
 	}
 }
