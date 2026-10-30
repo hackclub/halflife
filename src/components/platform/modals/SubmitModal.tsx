@@ -216,6 +216,150 @@ function SubmissionAcknowledgements({
 	)
 }
 
+/**
+ * The tier picker and the agreement a cart over that tier's funding needs.
+ *
+ * The hours gate a tier, the cart decides whether its money covers the parts, and those are two different questions. The picker leads with the first because a tier the maker has not worked the hours for is not an option at all.
+ */
+function TierPicker({
+	bomOverCap,
+	bomTotal,
+	funding,
+	goal,
+	hours,
+	partialFunding,
+	selectedTier,
+	setAcceptsPartialFunding,
+	setDeclinedFunding,
+	setTier,
+	tier,
+	tierFloor,
+	tierShort,
+}: {
+	bomOverCap: boolean
+	bomTotal: number
+	funding: { shortfallUsd: number; totalUsd: number }
+	goal: { name: string }
+	hours: number
+	partialFunding: boolean
+	selectedTier: { grantUsd: number; name: string }
+	setAcceptsPartialFunding(value: boolean): void
+	setDeclinedFunding(value: boolean): void
+	setTier(tier: 1 | 2 | 3): void
+	tier: 1 | 2 | 3
+	tierFloor(fundingHours: number): number
+	tierShort(fundingHours: number): number
+}) {
+	return (
+		<div className="mt-8 border-t border-dashed border-line pt-6">
+			<p className="label mb-2 text-magenta">Finalise your tier</p>
+			<p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
+				Find out which tier you&apos;re eligible for! Your current goal is a{" "}
+				<span className="font-bold text-navy">{goal.name}</span> and you have{" "}
+				<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span> logged this week.
+			</p>
+			<div className="grid gap-2.5 sm:grid-cols-3">
+				{TIERS.map(t => {
+					const on = tier === t.id
+					const over = bomTotal > t.grantUsd
+					const short = tierShort(t.fundingHours)
+					return (
+						<button
+							aria-pressed={on}
+							className={cx(
+								"sketch rounded-2xl px-4 py-3 text-left transition-colors",
+								short > 0
+									? "cursor-not-allowed bg-black/[.03]"
+									: on
+										? "bg-violet-pale"
+										: "bg-white hover:bg-black/[.03]",
+							)}
+							// A tier you have not worked the hours for is not an option, so it does not behave like one.
+							disabled={short > 0}
+							key={t.id}
+							onClick={() => setTier(t.id)}
+							style={{
+								"--sk-color": on ? "var(--color-violet)" : "var(--color-line)",
+								"--sk-radius": "16px",
+							}}
+							type="button"
+						>
+							<span className={cx("block text-[0.95rem] font-extrabold", short > 0 ? "text-navy-soft" : "text-navy")}>
+								Tier {t.id}
+							</span>
+							<span className={cx("hand block text-[0.86rem]", short > 0 ? "text-navy-soft" : "text-teal-ink")}>
+								${t.grantUsd} for parts
+							</span>
+
+							{/* The hours are the gate, so they lead. The cart only says whether the money fits inside the tier once the tier is actually available to you. */}
+							<span
+								className={cx(
+									"mt-1 block text-[0.76rem] leading-snug",
+									short > 0 ? "text-coral-deep" : "text-navy-soft",
+								)}
+							>
+								{short > 0
+									? `Opens at ${fmtHours(tierFloor(t.fundingHours))} of design time, ${fmtHours(short)} to go`
+									: `Every hour past this tier's ${t.fundingHours}h earns 5 spendable coins`}
+							</span>
+							{short === 0 && over && (
+								<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
+									{bomTotal > t.grantUsd + BOM_MARGIN_USD
+										? `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)}, so only $${t.grantUsd} of it is funded and you have to agree to that below`
+										: `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)}, but within the $${BOM_MARGIN_USD} margin, so you can still submit`}
+								</span>
+							)}
+						</button>
+					)
+				})}
+			</div>
+
+			{/* A cart past the tier's funding still hands in, as a grant that covers part of it – so the box saying so is a requirement rather than a note, and the shortfall is named in dollars rather than left to be found later. It sits under the tier picker because it is that choice it is about, and it disappears the moment a tier that covers the cart is picked. */}
+			{bomOverCap && (
+				<label
+					className={cx(
+						"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
+						partialFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
+					)}
+					style={{
+						"--sk-color": partialFunding ? "var(--color-violet)" : "var(--color-line)",
+						"--sk-radius": "16px",
+					}}
+				>
+					<input
+						checked={partialFunding}
+						className="sr-only"
+						onChange={e => {
+							setAcceptsPartialFunding(e.target.checked)
+							if (e.target.checked) setDeclinedFunding(false)
+						}}
+						type="checkbox"
+					/>
+					<span
+						aria-hidden="true"
+						className={cx(
+							"mt-[3px] grid size-[18px] shrink-0 place-items-center rounded-[6px] border-2 transition-colors",
+							partialFunding ? "border-transparent bg-violet" : "border-line-strong",
+						)}
+					>
+						{partialFunding && <IconCheck className="text-sm text-white" />}
+					</span>
+					<span className="min-w-0">
+						<span className="block text-[0.95rem] font-extrabold text-navy">
+							I understand this project gets partial funding
+						</span>
+						<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
+							Your parts list is ${funding.totalUsd.toFixed(2)} and {selectedTier.name} funds ${selectedTier.grantUsd},
+							so ${funding.shortfallUsd.toFixed(2)} of it is yours to pay. Tick this to hand the week in anyway. A
+							reviewer can still move you up a tier, but that shortfall is yours unless they do.
+						</span>
+					</span>
+				</label>
+			)}
+		</div>
+	)
+}
+
 export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const {
 		setOpenCheckpoint,
@@ -801,115 +945,21 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</div>
 					)}
 
-					<div className="mt-8 border-t border-dashed border-line pt-6">
-						<p className="label mb-2 text-magenta">Finalise your tier</p>
-						<p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
-							Find out which tier you&apos;re eligible for! Your current goal is a{" "}
-							<span className="font-bold text-navy">{goal.name}</span> and you have{" "}
-							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span> logged this week.
-						</p>
-						<div className="grid gap-2.5 sm:grid-cols-3">
-							{TIERS.map(t => {
-								const on = tier === t.id
-								const over = bomTotal > t.grantUsd
-								const short = tierShort(t.fundingHours)
-								return (
-									<button
-										aria-pressed={on}
-										className={cx(
-											"sketch rounded-2xl px-4 py-3 text-left transition-colors",
-											short > 0
-												? "cursor-not-allowed bg-black/[.03]"
-												: on
-													? "bg-violet-pale"
-													: "bg-white hover:bg-black/[.03]",
-										)}
-										// A tier you have not worked the hours for is not an option, so it does not behave like one.
-										disabled={short > 0}
-										key={t.id}
-										onClick={() => setTier(t.id)}
-										style={{
-											"--sk-color": on ? "var(--color-violet)" : "var(--color-line)",
-											"--sk-radius": "16px",
-										}}
-										type="button"
-									>
-										<span
-											className={cx("block text-[0.95rem] font-extrabold", short > 0 ? "text-navy-soft" : "text-navy")}
-										>
-											Tier {t.id}
-										</span>
-										<span className={cx("hand block text-[0.86rem]", short > 0 ? "text-navy-soft" : "text-teal-ink")}>
-											${t.grantUsd} for parts
-										</span>
-
-										{/* The hours are the gate, so they lead. The cart only says whether the money fits inside the tier once the tier is actually available to you. */}
-										<span
-											className={cx(
-												"mt-1 block text-[0.76rem] leading-snug",
-												short > 0 ? "text-coral-deep" : "text-navy-soft",
-											)}
-										>
-											{short > 0
-												? `Opens at ${fmtHours(tierFloor(t.fundingHours))} of design time, ${fmtHours(short)} to go`
-												: `Every hour past this tier's ${t.fundingHours}h earns 5 spendable coins`}
-										</span>
-										{short === 0 && over && (
-											<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
-												{bomTotal > t.grantUsd + BOM_MARGIN_USD
-													? `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)}, so only $${t.grantUsd} of it is funded and you have to agree to that below`
-													: `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)}, but within the $${BOM_MARGIN_USD} margin, so you can still submit`}
-											</span>
-										)}
-									</button>
-								)
-							})}
-						</div>
-
-						{/* A cart past the tier's funding still hands in, as a grant that covers part of it – so the box saying so is a requirement rather than a note, and the shortfall is named in dollars rather than left to be found later. It sits under the tier picker because it is that choice it is about, and it disappears the moment a tier that covers the cart is picked. */}
-						{bomOverCap && (
-							<label
-								className={cx(
-									"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
-									partialFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
-								)}
-								style={{
-									"--sk-color": partialFunding ? "var(--color-violet)" : "var(--color-line)",
-									"--sk-radius": "16px",
-								}}
-							>
-								<input
-									checked={partialFunding}
-									className="sr-only"
-									onChange={e => {
-										setAcceptsPartialFunding(e.target.checked)
-										if (e.target.checked) setDeclinedFunding(false)
-									}}
-									type="checkbox"
-								/>
-								<span
-									aria-hidden="true"
-									className={cx(
-										"mt-[3px] grid size-[18px] shrink-0 place-items-center rounded-[6px] border-2 transition-colors",
-										partialFunding ? "border-transparent bg-violet" : "border-line-strong",
-									)}
-								>
-									{partialFunding && <IconCheck className="text-sm text-white" />}
-								</span>
-								<span className="min-w-0">
-									<span className="block text-[0.95rem] font-extrabold text-navy">
-										I understand this project gets partial funding
-									</span>
-									<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
-										Your parts list is ${funding.totalUsd.toFixed(2)} and {selectedTier.name} funds $
-										{selectedTier.grantUsd}, so ${funding.shortfallUsd.toFixed(2)} of it is yours to pay. Tick this to
-										hand the week in anyway. A reviewer can still move you up a tier, but that shortfall is yours unless
-										they do.
-									</span>
-								</span>
-							</label>
-						)}
-					</div>
+					<TierPicker
+						bomOverCap={bomOverCap}
+						bomTotal={bomTotal}
+						funding={funding}
+						goal={goal}
+						hours={hours}
+						partialFunding={partialFunding}
+						selectedTier={selectedTier}
+						setAcceptsPartialFunding={setAcceptsPartialFunding}
+						setDeclinedFunding={setDeclinedFunding}
+						setTier={setTier}
+						tier={tier}
+						tierFloor={tierFloor}
+						tierShort={tierShort}
+					/>
 				</div>
 			)}
 
