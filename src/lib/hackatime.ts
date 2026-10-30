@@ -157,13 +157,23 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 		if (!res.ok) return []
 		const parsed = StatsProjectsBody.safeParse(await res.json())
 		if (!parsed.success) return []
-		return (parsed.data.data?.projects ?? []).map(p => ({
-			name: p.name,
-			totalSeconds: p.total_seconds,
-		}))
+		return projectsByName(parsed.data.data?.projects ?? [])
 	} catch {
 		return []
 	}
+}
+
+/**
+ * One entry per project name, with the time under that name added together.
+ *
+ * Hackatime's stats endpoint can report two projects under one name – it does for "Other" – and a link is stored by name, so the two are one clock here. Merging them also keeps the picker to one option per link, rather than two indistinguishable choices that React would give the same key.
+ */
+export function projectsByName(
+	projects: { name: string; total_seconds: number }[],
+): { name: string; totalSeconds: number }[] {
+	const merged = new Map<string, number>()
+	for (const project of projects) merged.set(project.name, (merged.get(project.name) ?? 0) + project.total_seconds)
+	return [...merged].map(([name, totalSeconds]) => ({ name, totalSeconds }))
 }
 
 /**
