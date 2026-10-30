@@ -25,9 +25,11 @@ export default function LoginMark() {
 	const [failed, setFailed] = useState(false)
 
 	async function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
-		// Signed in already, or a modified click (new tab, and so on): let the link do what links do.
-		if (session || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+		// A modified click (new tab, and so on) is the browser's to handle.
+		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
 		e.preventDefault()
+		// Already signed in: cross into the platform with a full load, so its stylesheet replaces the landing's rather than queueing behind it.
+		if (session) return window.location.assign("/dashboard")
 		if (starting) return
 		setStarting(true)
 		try {
@@ -51,7 +53,6 @@ export default function LoginMark() {
 			className="absolute top-1 right-1 z-20 bg-hl-ink px-3.5 py-1.5 font-display font-bold leading-snug text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan aria-busy:text-hl-cyan min-[830px]:top-3 min-[830px]:right-3 min-[830px]:px-5 min-[830px]:py-2.5"
 			href="/dashboard"
 			onClick={e => signIn(e)}
-			// Not prefetched: most people who see this mark are not signed in, and the dashboard they would be sent to is a redirect for them.
 			prefetch={false}
 			style={{ fontSize: "clamp(0.875rem, 3.6vw, 1rem)" }}
 		>

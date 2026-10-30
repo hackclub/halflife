@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconLogout } from "@/components/platform/icons"
@@ -17,7 +16,6 @@ import { useStore } from "@/lib/store"
  */
 export function AccountMenu({ className }: { className?: string }) {
 	const { viewer } = useStore()
-	const router = useRouter()
 	const [open, setOpen] = useState(false)
 	const [signingOut, setSigningOut] = useState(false)
 	const root = useRef<HTMLDivElement>(null)
@@ -75,8 +73,7 @@ export function AccountMenu({ className }: { className?: string }) {
 							try {
 								await signOut()
 								setOpen(false)
-								router.push("/")
-								router.refresh()
+								window.location.assign("/")
 							} finally {
 								setSigningOut(false)
 							}

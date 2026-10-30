@@ -18,7 +18,9 @@ export const viewport: Viewport = {
 export default function BannedLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html className={`${siteFontVariables} h-full antialiased`} lang="en">
-			<body className="flex min-h-full flex-col bg-hl-ink text-hl-paper">{children}</body>
+			<body className="flex min-h-full flex-col bg-hl-ink text-hl-paper" data-world="site">
+				{children}
+			</body>
 		</html>
 	)
 }
