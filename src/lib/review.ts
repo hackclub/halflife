@@ -23,7 +23,7 @@ import { statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
-import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { DAY_MS, formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 // ─── Claim locks ─────────────────────────────────────────────────────────────
 
@@ -95,6 +95,19 @@ export const RETURN_EXTENSION_MS = 7 * DAY_MS
 /** A returned phase's extension: at least a week from now, kept at whichever is later than what is already on record. */
 export function returnExtensionUntil(current: Date | null | undefined, now: Date = new Date()): Date {
 	return new Date(Math.max(now.getTime() + RETURN_EXTENSION_MS, current?.getTime() ?? 0))
+}
+
+/**
+ * The column update that puts a week's extension on a project, from the project's own current value.
+ *
+ * The three paths that return work – a reviewer's return, an admin's un-approval and a reopen – all write the same later-of-the-two date, so a second return during the extension does not shorten it.
+ */
+function extensionUpdate(project: { submissionExtensionUntil: string | null }): { submissionExtensionUntil: string } {
+	return {
+		submissionExtensionUntil: formatDbTimestamp(
+			returnExtensionUntil(parseNullableTimestamp(project.submissionExtensionUntil)),
+		),
+	}
 }
 
 export interface FinalizeInput {
@@ -362,15 +375,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 							: {}),
 					}),
 			// A return is the one state a maker is expected to act on, so it carries the time to act: a week from the return, on the project rather than the account, so only this project's week reopens. A backlog replay turns this off with the notice it also skips.
-			...(input.result === ReviewResult.RETURNED && input.grantExtension !== false
-				? {
-						submissionExtensionUntil: formatDbTimestamp(
-							returnExtensionUntil(
-								project.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null,
-							),
-						),
-					}
-				: {}),
+			...(input.result === ReviewResult.RETURNED && input.grantExtension !== false ? extensionUpdate(project) : {}),
 		}
 
 		await tx.orm.public.ThemeProject.where({ id: project.id }).update(projectUpdate)
@@ -577,15 +582,7 @@ export async function unapprovePhase(
 						buildReviewComments: reason,
 						buildStatus: PhaseStatus.update_requested,
 					}),
-			...(options.grantExtension
-				? {
-						submissionExtensionUntil: formatDbTimestamp(
-							returnExtensionUntil(
-								project.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null,
-							),
-						),
-					}
-				: {}),
+			...(options.grantExtension ? extensionUpdate(project) : {}),
 		})
 
 		// Each reversal reports what it could not take back, so the audit row can say how much of the grant the maker had already spent. The number is in the ledger row's own note as well.
@@ -694,15 +691,7 @@ export async function reopenPhase(
 			...(phase === Phase.DESIGN
 				? { designReviewComments: reason, designStatus: PhaseStatus.update_requested }
 				: { buildReviewComments: reason, buildStatus: PhaseStatus.update_requested }),
-			...(options.grantExtension
-				? {
-						submissionExtensionUntil: formatDbTimestamp(
-							returnExtensionUntil(
-								project.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null,
-							),
-						),
-					}
-				: {}),
+			...(options.grantExtension ? extensionUpdate(project) : {}),
 		})
 	if (reopened !== 1) throw new HttpError("CONFLICT", "That phase moved while it was being reopened")
 
