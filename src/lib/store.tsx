@@ -5,15 +5,13 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { z } from "zod"
 import { errorMessage } from "@/lib/api-error"
 import { ParticipantGoal } from "@/lib/enums"
-import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
-import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
-import { ENTRY_TIER, getTier } from "./config/tiers"
-import { BUILD_HOURS, checkpointsFor, WEEK_META } from "./curriculum"
-import { formatDeadline } from "./deadline"
+import { COINS_PER_HOUR, type PrinterGoal, printerById } from "./config/printers"
+import { DESIGN_WEEKS } from "./config/program"
 import { round2 } from "./money"
 import type { StoreSnapshot } from "./queries/store"
 import { DEFAULT_SESSION_TITLE } from "./schemas/session"
-import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from "./types"
+import { type CheckpointState, deriveTrail, EMPTY } from "./trail"
+import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types"
 
 /**
  * The trail's store, backed by the database.
@@ -37,20 +35,6 @@ export type IntroPhase =
 	| "checkpoint" // the six-step onboarding modal is open
 	| "tour" // spotlight each tab in turn
 	| "done"
-
-export interface CheckpointState {
-	/** Reel / submit checkpoints record how many artefacts were attached. */
-	artefacts: number
-	/** When it was completed, epoch ms. Undefined on saves written before this. */
-	at?: number
-	/** A reel's caption, kept so the project timeline can show what was posted. */
-	caption?: string
-	done: boolean
-	/** Every saved journal session in this checkpoint, newest last. */
-	log: SessionLog[]
-	/** Journal checkpoints accumulate minutes toward their target. */
-	minutes: number
-}
 
 /**
  * What the browser owns: the first-run ceremony, and nothing else.
@@ -89,67 +73,6 @@ const LinkSyncRepoBody = z.object({ githubRepo: z.string().nullish() })
  * The admin lock bypass. Kept apart from the ceremony so "Replay the intro", which clears that, leaves it alone.
  */
 const BYPASS_KEY = "halflife.bypass-locks"
-
-const EMPTY: CheckpointState = { artefacts: 0, done: false, log: [], minutes: 0 }
-
-/** What a checkpoint on a passed week says when it is hovered. */
-export const PASSED_REASON = "This week has passed!"
-
-/**
- * Week 1's idea reel is optional: it sits beside the first devlog entry as a choice rather than gating it. The trail still lists it, and it stays postable, but nothing past the fork ever waits on it – so every gate below reads predecessors with this id filtered out.
- */
-export const WEEK1_IDEA_REEL_ID = "w1-reel-idea"
-const withoutOptionalIdea = (list: Checkpoint[]) => list.filter(c => c.id !== WEEK1_IDEA_REEL_ID)
-
-/**
- * A warm-up project's own week: a chain of entries with one live one waiting, then its single submit, keyed `wu-<project id>-…` because a maker may hold several warm-ups and none of them has a week number. The same tier floors as a season week, since it is handed in the same way.
- */
-function warmupWeek(project: Project, build: boolean, isDone: (id: string) => boolean): Week {
-	const key = (suffix: string) => `wu-${project.id}-${suffix}`
-	const tier = getTier(project.tier) ?? ENTRY_TIER
-	const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
-	const meta: WeekMeta = {
-		accent: "var(--color-violet-pale)",
-		accentDeep: "var(--color-violet-deep)",
-		examples: [],
-		fullName: "Warm-up project",
-		headline: "WARM UP",
-		id: WARMUP_WEEK_ID,
-		phase: build ? "build" : "design",
-		primer: "",
-		summary: "Any hardware project, before week 1 opens.",
-		theme: WARMUP_THEME.label,
-	}
-	let written = 0
-	while (isDone(key(`entry-${written + 1}`))) written += 1
-	const entries: Checkpoint[] = Array.from({ length: written + 1 }, (_, i) => ({
-		blurb: "Journal your progress with pictures and screenshots!",
-		entryTarget: 1,
-		id: key(`entry-${i + 1}`),
-		kind: "journal",
-		title: `Entry ${i + 1}`,
-		weekId: WARMUP_WEEK_ID,
-	}))
-	return {
-		...meta,
-		checkpoints: [
-			...entries,
-			{
-				blurb: "Submit your warm-up project.",
-				id: key("submit"),
-				kind: "submit",
-				title: build ? "Submit your build" : "Submit your design",
-				weekId: WARMUP_WEEK_ID,
-			},
-		],
-		earnFrom: build ? 0 : tier.fundingHours,
-		fundingHours: build ? BUILD_HOURS : tier.fundingHours,
-		projectId: project.id,
-		submitHours,
-		targetHours: submitHours,
-		tier: tier.id,
-	}
-}
 
 function seededCeremony(): Ceremony {
 	return { doomscrollerOpen: true, phase: "cinematic", version: 4 }
@@ -405,70 +328,37 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		return () => window.clearTimeout(t)
 	}, [facts.weekClosesAt, facts.weekOpensAt, facts.warmups, now])
 
-	const weekPassed = useCallback(
-		(weekId: number) => {
-			const closesAt = facts.weekClosesAt[weekId]
-			return closesAt !== undefined && now >= closesAt
-		},
-		[facts.weekClosesAt, now],
-	)
-
-	const weekStarted = useCallback(
-		(weekId: number) => {
-			const opensAt = facts.weekOpensAt[weekId]
-			return opensAt === undefined || now >= opensAt
-		},
-		[facts.weekOpensAt, now],
-	)
-
-	const dayLabel = useCallback(
-		(at: number) =>
-			new Date(at).toLocaleDateString("en-US", {
-				day: "numeric",
-				month: "long",
-				timeZone: facts.programTimezone,
-				weekday: "long",
-			}),
-		[facts.programTimezone],
-	)
-	const weekOpensOn = useCallback(
-		(weekId: number) => {
-			const at = facts.weekOpensAt[weekId]
-			return at === undefined ? null : dayLabel(at)
-		},
-		[facts.weekOpensAt, dayLabel],
-	)
-	const weekDeadline = useCallback(
-		(weekId: number) => {
-			const at = facts.weekClosesAt[weekId]
-			return at === undefined ? null : formatDeadline(at, facts.programTimezone)
-		},
-		[facts.weekClosesAt, facts.programTimezone],
-	)
-	const weekClosesAtMs = useCallback(
-		(weekId: number) => {
-			const at = facts.weekClosesAt[weekId]
-			return at === undefined ? null : at
-		},
-		[facts.weekClosesAt],
-	)
-	const weekExtension = useCallback((weekId: number) => facts.weekExtensions[weekId] ?? null, [facts.weekExtensions])
-	const warmupDeadline = formatDeadline(facts.warmupsCloseAt, facts.programTimezone)
-
-	/** Where a week stands with review: draft, in_review, update_requested, approved or rejected. */
-	const phaseStatusOf = useCallback(
-		(weekId: number) => facts.phaseStatusByWeek[weekId] ?? "draft",
-		[facts.phaseStatusByWeek],
-	)
-
-	// Handed in – in review, or decided. A week sent back for changes is open again, because fixing it is the point of sending it back.
-	const weekSubmitted = useCallback(
-		(weekId: number) => {
-			const status = facts.phaseStatusByWeek[weekId]
-			return status === "in_review" || status === "approved" || status === "rejected"
-		},
-		[facts.phaseStatusByWeek],
-	)
+	const trail = useMemo(() => deriveTrail(facts, now), [facts, now])
+	const {
+		allCheckpoints,
+		currentCheckpointId,
+		deadlineOf,
+		hoursOf,
+		isHeld,
+		isPassed,
+		isUnlocked,
+		lockReason,
+		overlapUnchecked,
+		passedOf,
+		pendingCoins,
+		phaseStatusOf,
+		stateOf,
+		statusOf,
+		totalHours,
+		warmupDeadline,
+		warmupWeekOf,
+		weekClosesAtMs,
+		weekDeadline,
+		weekExtension,
+		weekHours,
+		weekOf,
+		weekOfCheckpoint,
+		weekOpensOn,
+		weekPassed,
+		weekStarted,
+		weekSubmitted,
+		weeks,
+	} = trail
 
 	const [ceremony, setCeremony] = useState<Ceremony>(seededCeremony)
 	const [hydrated, setHydrated] = useState(false)
@@ -1038,101 +928,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		return null
 	}, [router])
 
-	const save = facts
-
-	// Saves written before a field existed would otherwise hand back a record with holes in it, so every read is filled out from EMPTY.
-	const stateOf = useCallback((id: string): CheckpointState => ({ ...EMPTY, ...save.progress[id] }), [save.progress])
-
-	// A build week inherits the tier of the design week it is building. A week nobody has started yet borrows the last tier picked, so the trail shows a believable shape instead of lurching when the project is finally created.
-	const tierForWeek = useCallback(
-		(weekId: number): 1 | 2 | 3 => {
-			const designWeek = weekId > 5 ? weekId - 5 : weekId
-			const own = save.projects.find(p => p.weekId === designWeek)
-			if (own) return own.tier
-			return save.projects.at(-1)?.tier ?? recommendedTier(save.experience)
-		},
-		[save.projects, save.experience],
-	)
-
-	// The printer you are saving for sets how many hours a week you need to earn, and that number is the same on every tier – the tier only decides how many funded hours sit underneath it.
-	const goal = printerById(save.goalId)
-
-	/**
-	 * The minutes behind each written devlog in a week, with the time that did not arrive through one – Hackatime, a reviewer's adjustment – folded onto the last of them.
-	 *
-	 * That is where it belongs: it is the work done since that devlog, so the entry the next progress reel answers to is the one it landed on. Folded rather than added at the week level because tracked hours on their own, before anything has been written up, are not a reel anyone has something to show – so a week with no entry yet still runs on entries alone.
-	 *
-	 * One array, read both by the placement of the reels (`checkpointsFor` walks it) and by the gate that unlocks them, because a trail that places a reel on one entry and opens it on another is a trail that has said two things at once.
-	 */
-	const writtenMinutes = useCallback(
-		(weekId: number): number[] => {
-			const written: number[] = []
-			for (;;) {
-				const entry = save.progress[`w${weekId}-entry-${written.length + 1}`]
-				if (!entry?.done) break
-				written.push(entry.minutes)
-			}
-			const offBook = facts.offBookHours[weekId] ?? 0
-			// Only onto a devlog that exists: a week with nothing written keeps its reel clock on entries alone.
-			const last = written.length - 1
-			if (last >= 0 && offBook > 0) written[last] = (written[last] ?? 0) + offBook * 60
-			return written
-		},
-		[save.progress, facts.offBookHours],
-	)
-
-	const weeks = useMemo<Week[]>(
-		() =>
-			WEEK_META.map(meta => {
-				const tierId = tierForWeek(meta.id)
-				const tier = getTier(tierId) ?? ENTRY_TIER
-				const build = meta.phase === "build"
-				// Column 5 is the tier-1 week and is already floored to a flat 10 hours, so every other tier is that plus the extra hours its grant funds.
-				const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)
-				// The same ask at the cheapest machine's pace: the least a week can be worth and still leave a printer at the end of the season.
-				const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
-				return Object.assign({}, meta, {
-					checkpoints: checkpointsFor(
-						meta,
-						// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
-						writtenMinutes(meta.id),
-						cid => save.progress[cid]?.done ?? false,
-						submitHours,
-						// Onboarding made week one's project and it has since been deleted: `projects` only lists live, named ones.
-						meta.id === 1
-							&& (save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false)
-							&& !save.projects.some(p => p.weekId === 1),
-					),
-					// Build-week hours all bank; the grant paid for the design week.
-					earnFrom: build ? 0 : tier.fundingHours,
-					fundingHours: build ? BUILD_HOURS : tier.fundingHours,
-					submitHours,
-					targetHours: target,
-					tier: tierId,
-				})
-			}),
-		[tierForWeek, goal, writtenMinutes, save.progress, save.projects],
-	)
-
-	// Each warm-up, as a week of its own that the trail never draws.
-	const warmupWeeks = useMemo<Week[]>(
-		() =>
-			save.projects.flatMap(project => {
-				const info = facts.warmups[project.id]
-				if (project.weekId !== WARMUP_WEEK_ID || !info) return []
-				return [warmupWeek(project, info.phase === "build", id => save.progress[id]?.done ?? false)]
-			}),
-		[save.projects, facts.warmups, save.progress],
-	)
-
-	// Every checkpoint a modal can open, the warm-ups' included. The trail itself draws `weeks` only.
-	const allCheckpoints = useMemo(() => [...weeks, ...warmupWeeks].flatMap(w => w.checkpoints), [weeks, warmupWeeks])
-
-	const warmupWeekOf = useCallback(
-		(projectId: string) => warmupWeeks.find(w => w.projectId === projectId) ?? null,
-		[warmupWeeks],
-	)
-
 	/**
 	 * One saved journal: the entry, the time claimed, and the evidence for it.
 	 *
@@ -1246,266 +1041,11 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[routeOf, facts.progress, router],
 	)
 
-	const weekOf = useCallback(
-		(weekId: number): Week => {
-			const week = weeks.find(w => w.id === weekId) ?? weeks[0]
-			// The curriculum is a compile-time constant with ten weeks in it, so an empty list is a broken build rather than a state to render around.
-			if (!week) throw new Error("The curriculum has no weeks in it")
-			return week
-		},
-		[weeks],
-	)
-
-	/**
-	 * What a week is worth, for the gates that ask what it is worth rather than what its devlogs carry: Submit's floor and the pace math.
-	 *
-	 * Journalled entries plus whatever arrived another way – Hackatime link time, and any hours a reviewer adjusted – and unlike `reelHours` below it counts the off-book half even in a week with nothing written, because Submit and the coins are owed for the work rather than for the write-up of it.
-	 */
-	const weekHours = useCallback(
-		(weekId: number) => {
-			const week = weeks.find(w => w.id === weekId)
-			if (!week) return 0
-			const mins = week.checkpoints.reduce((n, c) => n + (facts.progress[c.id]?.minutes ?? 0), 0)
-			return mins / 60 + (facts.offBookHours[weekId] ?? 0)
-		},
-		[weeks, facts.progress, facts.offBookHours],
-	)
-
-	const overlapUnchecked = useCallback(
-		(weekId: number) => facts.overlapUncheckedWeeks.includes(weekId),
-		[facts.overlapUncheckedWeeks],
-	)
-
-	/**
-	 * Hours on the reel clock: what the written devlogs carry, the last of them including the time tracked since it was written.
-	 *
-	 * The very same array the reels are placed on, so a reel cannot be placed after one entry and opened by another. `weekHours` is the same figure for any week that has been written up, and differs only in the case it must: a week with nothing written yet, where tracked hours count towards Submit and towards the coins but no reel is due, because there is no devlog for it to answer to.
-	 */
-	const reelHours = useCallback(
-		(weekId: number) => writtenMinutes(weekId).reduce((n, m) => n + m, 0) / 60,
-		[writtenMinutes],
-	)
-
-	// The same questions asked of a week object, so a sheet can serve a warm-up (which has no week number of its own) as readily as a season week.
-	const weekOfCheckpoint = useCallback(
-		(checkpoint: Checkpoint): Week =>
-			warmupWeeks.find(w => w.checkpoints.some(c => c.id === checkpoint.id)) ?? weekOf(checkpoint.weekId),
-		[warmupWeeks, weekOf],
-	)
-	const hoursOf = useCallback(
-		(week: Week): number => {
-			if (!week.projectId) return weekHours(week.id)
-			const mins = week.checkpoints.reduce((n, c) => n + (facts.progress[c.id]?.minutes ?? 0), 0)
-			return mins / 60 + (facts.warmups[week.projectId]?.offBookHours ?? 0)
-		},
-		[weekHours, facts.progress, facts.warmups],
-	)
-	/**
-	 * Everything logged, as one number: every season week's hours plus every warm-up's. A warm-up has no week of its own, so it is found by project and read through `hoursOf`; the season weeks go through `weekHours`. Both already fold in the time that did not come from an entry (Hackatime, a reviewer's adjustment), which is what makes this "journalled and tracked" rather than entries alone.
-	 */
-	const totalHours = useMemo(
-		() =>
-			weeks.reduce((n, w) => n + weekHours(w.id), 0)
-			+ save.projects.reduce((n, p) => {
-				const week = p.weekId === WARMUP_WEEK_ID ? warmupWeekOf(p.id) : null
-				return week ? n + hoursOf(week) : n
-			}, 0),
-		[weeks, weekHours, save.projects, warmupWeekOf, hoursOf],
-	)
-	const passedOf = useCallback(
-		(week: Week): boolean => {
-			if (!week.projectId) return weekPassed(week.id)
-			const closesAt = facts.warmups[week.projectId]?.closesAt
-			return closesAt !== undefined && now >= closesAt
-		},
-		[weekPassed, facts.warmups, now],
-	)
-	const deadlineOf = useCallback(
-		(week: Week): string | null => {
-			if (!week.projectId) return weekDeadline(week.id)
-			const closesAt = facts.warmups[week.projectId]?.closesAt
-			return closesAt === undefined ? null : formatDeadline(closesAt, facts.programTimezone)
-		},
-		[weekDeadline, facts.warmups, facts.programTimezone],
-	)
-	const statusOf = useCallback(
-		(week: Week): string => {
-			if (!week.projectId) return phaseStatusOf(week.id)
-			const project = save.projects.find(p => p.id === week.projectId)
-			return (week.phase === "build" ? project?.buildStatus : project?.designStatus) ?? "draft"
-		},
-		[phaseStatusOf, save.projects],
-	)
-
-	/**
-	 * What the unreviewed weeks are on course to earn, at the ledger's own rule: every hour past the week's funded block (all of a build week's) at COINS_PER_HOUR. Approved weeks are skipped because their coins are already minted, rejected ones because they will never mint. It is a projection – a reviewer can still adjust the hours – which is why it only feeds the pace warning and never the balance anyone can spend.
-	 */
-	const pendingCoins = useCallback(
-		(weekId: number) =>
-			weeks
-				.filter(w => w.id <= weekId)
-				.reduce((n, w) => {
-					const status = facts.phaseStatusByWeek[w.id]
-					if (status === "approved" || status === "rejected") return n
-					return n + Math.max(0, weekHours(w.id) - w.earnFrom) * COINS_PER_HOUR
-				}, 0),
-		[weeks, facts.phaseStatusByWeek, weekHours],
-	)
-
-	/**
-	 * Whether a checkpoint is shut because its week ran out of time.
-	 *
-	 * Every node on a passed week is, done or not, with two exceptions: the Submit that still owes the week's hand-in, and a setup nobody has done yet – a late joiner still has to come in through the front door. A Submit with nothing logged behind it passes with the rest, because the server refuses an empty hand-in and there is nothing left to do about that.
-	 */
-	const isPassed = useCallback(
-		(id: string): boolean => {
-			const week = [...weeks, ...warmupWeeks].find(w => w.checkpoints.some(c => c.id === id))
-			const self = week?.checkpoints.find(c => c.id === id)
-			if (!week || !self || !passedOf(week)) return false
-			const done = save.progress[id]?.done ?? false
-			if (self.kind === "onboarding" && !done) return false
-			if (self.kind === "submit" && !done && hoursOf(week) > 0) return false
-			return true
-		},
-		[weeks, warmupWeeks, passedOf, save.progress, hoursOf],
-	)
-
-	/**
-	 * Whether a checkpoint waits on a deleted reel.
-	 *
-	 * Deleting the last reel on a checkpoint reopens it, and until it is posted again every other checkpoint is held – done ones included, so the map shows plainly that one thing is owed. The server holds the same line (lib/reel-gate), and only ever reports a reel owed while its week can still take one, so the hold always has a way out.
-	 */
-	const isHeld = useCallback(
-		(id: string): boolean => facts.owedReels.length > 0 && !facts.owedReels.includes(id),
-		[facts.owedReels],
-	)
-
-	/**
-	 * Weeks do not hold each other. A week opens on its Monday whatever the week before it did, so a maker who never handed one in can still start the next – the clock is the only thing that orders them.
-	 *
-	 * It used to be otherwise: an unhanded-in week kept the next shut until it was submitted. That dead-ended anyone who could not reach that week's floor – the tier is the maker's own choice, and a week below its floor cannot be handed in at all – and it also punished asking for an extension, which is granted precisely when a maker is behind. Nothing is lost by not waiting: a passed week's Submit stays open for anyone who does reach the floor, so late work can still go in.
-	 *
-	 * What does still break the sequence:
-	 *
-	 * - a week that has passed is shut, all but the Submit it still owes – which opens whatever the hours say, since no more can be logged;
-	 *
-	 * - anything on the clock (the milestone reels, and Submit itself) opens on the week's hours, so a half-written entry never traps you and the choice to wrap up is always live. Everything else unlocks in order, as it always has – except week 1's idea reel, which is the optional arm of the opening fork and never holds anything shut (see WEEK1_IDEA_REEL_ID).
-	 */
-	const isUnlocked = useCallback(
-		(id: string): boolean => {
-			// The owed reel is the way out, so it opens whatever else is true – including a week that has since closed while this tab held a stale snapshot. Checking `isPassed` first dead-mapped the whole trail until the page was reloaded and the server stopped reporting the debt.
-			if (facts.owedReels.includes(id)) return true
-			if (isPassed(id)) return false
-			if (isHeld(id)) return false
-			const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
-			const wi = weeks.findIndex(w => w.checkpoints.some(c => c.id === id))
-			if (wi === -1) return false
-			// Nothing on a week opens before its Monday, Get started included.
-			const opening = weeks[wi]
-			if (opening && !weekStarted(opening.id)) return false
-
-			const week = weeks[wi]
-			const list = week?.checkpoints ?? []
-			const i = list.findIndex(c => c.id === id)
-			const self = list[i]
-			if (!week || !self) return false
-
-			if (self.kind === "submit" && weekPassed(week.id)) return true
-
-			if (self.atHours !== undefined) {
-				// A progress reel is earned by the hours the devlogs carry, tracked time included once the week has been written up (see `reelHours`); Submit and "Keep working" read what the week is worth in total. Only progress reels carry atHours besides those two, so `kind` is the whole distinction.
-				const hours = self.kind === "reel" ? reelHours(week.id) : weekHours(week.id)
-				// Unwritten entries never block a milestone – the clock does. Neither does a milestone that is not due yet: the reel waiting at 30h cannot hold up a Submit that opened at 23.76h.
-				//
-				// "Keep working" rides this rule too, at atHours 0. A reel that has come due is the cadence asking to be paid before the week runs on; letting the fork's other arm open around it would make every progress reel skippable forever.
-				//
-				// Week 1's idea reel is the exception: it is the optional arm of the opening fork, so it never holds the clock's milestones or Submit shut, whichever arm the maker took.
-				const gates = withoutOptionalIdea(list.slice(0, i)).filter(
-					c => c.kind !== "journal" && (c.atHours ?? 0) <= hours,
-				)
-				return gates.every(done) && hours >= self.atHours
-			}
-
-			return withoutOptionalIdea(list.slice(0, i)).every(done)
-		},
-		[isPassed, isHeld, facts.owedReels, weekPassed, weekStarted, weeks, save.progress, weekHours, reelHours],
-	)
-
 	// What the trail lets you click. An admin bypassing the locks, all of them or one node, can open anything; the server still has the last word on whatever is saved from a node opened that way. "Start here" keeps to the real rules above.
 	const isOpen = useCallback(
 		(id: string) => bypassLocks || (facts.viewer.isAdmin && bypassed.includes(id)) || isUnlocked(id),
 		[bypassLocks, facts.viewer.isAdmin, bypassed, isUnlocked],
 	)
-
-	/**
-	 * Why a checkpoint is shut, in the maker's terms. Null when it is open.
-	 *
-	 * It walks the same rules as isUnlocked, in the same order, and lives next to it so the two cannot drift: a trail that says one thing and does another is worse than a trail that says nothing. Each branch names the one thing standing in the way rather than listing everything outstanding – only the first is actionable anyway.
-	 */
-	const lockReason = useCallback(
-		(id: string): string | null => {
-			// Titles are node names, so they keep their capital. The verb follows the kind: you post a reel, you finish everything else.
-			const firstFinish = (c: Checkpoint) => (c.kind === "reel" ? `Post ${c.title} first.` : `Finish ${c.title} first.`)
-
-			if (isUnlocked(id)) return null
-			if (isPassed(id)) return PASSED_REASON
-			if (isHeld(id)) {
-				const [owedId] = facts.owedReels
-				const owed = weeks.flatMap(w => w.checkpoints).find(c => c.id === owedId)
-				return owed ? `Re-record ${owed.title} first. You deleted it.` : "Re-record the reel you deleted first."
-			}
-
-			const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
-			const wi = weeks.findIndex(w => w.checkpoints.some(c => c.id === id))
-			if (wi === -1) return null
-
-			const opening = weeks[wi]
-			if (opening && !weekStarted(opening.id)) {
-				const day = weekOpensOn(opening.id)
-				return day ? `Week ${opening.id} opens ${day}.` : `Week ${opening.id} has not opened yet.`
-			}
-
-			const week = weeks[wi]
-			const list = week?.checkpoints ?? []
-			const i = list.findIndex(c => c.id === id)
-			const self = list[i]
-			if (!week || !self) return null
-
-			if (self.atHours !== undefined) {
-				const hours = self.kind === "reel" ? reelHours(week.id) : weekHours(week.id)
-				const owed = withoutOptionalIdea(list.slice(0, i)).find(
-					c => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
-				)
-				if (owed) return firstFinish(owed)
-				const toGo = round2(self.atHours - hours)
-				return `Opens at ${self.atHours}h logged this week (${toGo}h to go).`
-			}
-
-			const blocker = withoutOptionalIdea(list.slice(0, i)).find(c => !done(c))
-			return blocker ? firstFinish(blocker) : null
-		},
-		[
-			isUnlocked,
-			isPassed,
-			isHeld,
-			facts.owedReels,
-			weekStarted,
-			weekOpensOn,
-			weeks,
-			save.progress,
-			weekHours,
-			reelHours,
-		],
-	)
-
-	const currentCheckpointId = useMemo(() => {
-		// Once the first devlog is written the opening fork is settled on the skip arm, so the unposted idea reel stops being the trail's answer to "where next" – it stays open as an extra, not as the current.
-		const skipSettled = save.progress["w1-entry-1"]?.done ?? false
-		const next = allCheckpoints.find(
-			c => !(save.progress[c.id]?.done ?? false) && isUnlocked(c.id) && !(skipSettled && c.id === WEEK1_IDEA_REEL_ID),
-		)
-		return next?.id ?? null
-	}, [allCheckpoints, save.progress, isUnlocked])
 
 	// The context value is rebuilt only when one of its members changes, so it keeps its identity across the re-renders the provider takes for reasons of its own. Without that, every consumer of the store re-renders on every navigation, because the provider re-renders with the layout.
 	const value = useMemo<Ctx>(
@@ -1685,11 +1225,4 @@ export function weekListPhrase(weeks: readonly number[]): string {
 	if (parts.length === 0) return "No weeks"
 	if (parts.length === 1) return `Week ${parts[0]}`
 	return `Weeks ${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`
-}
-
-/** Recommended tier from the onboarding experience answer. */
-export function recommendedTier(e: Experience | null): 1 | 2 | 3 {
-	if (e === "lots") return 3
-	if (e === "some") return 2
-	return 1
 }
