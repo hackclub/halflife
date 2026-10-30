@@ -31,7 +31,7 @@ export function DisplayGuidesSheet() {
 				</ul>
 
 				<p className="hand mt-5 text-center text-[0.86rem] leading-relaxed text-navy-soft">
-					3-8 hours each, with parts lists, wiring, code and a finished project to aim for
+					3-8 hours each, with parts lists, wiring, code, and a finished project to aim for
 				</p>
 			</div>
 		</section>
