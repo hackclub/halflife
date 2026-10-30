@@ -1,7 +1,17 @@
 "use client"
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react"
 import { weeklyAverages } from "@/app/components/admin/activity-weeks"
-import { CHART_H, DayAxis, EDGE, niceTicks, PAD_B, PAD_T, pct } from "@/app/components/admin/chart-geometry"
+import {
+	CHART_H,
+	DayAxis,
+	EDGE,
+	GridLines,
+	niceTicks,
+	PAD_B,
+	PAD_T,
+	pct,
+	YAxis,
+} from "@/app/components/admin/chart-geometry"
 import { EmptyState } from "@/app/components/ui"
 import { fmtInt } from "@/lib/numbers"
 import type { ActiveDay, DayActivity } from "@/lib/queries/admin"
@@ -175,39 +185,12 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 			</p>
 			{/* The two scale columns are grid siblings of the chart, so they share its row. Each label is placed at the exact pixel its gridline sits on, so the two scales read off one row rather than eyeballed. */}
 			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto" }}>
-				<div style={{ height: `${CHART_H}px`, position: "relative", width: "3.1rem" }}>
-					{hoursTicks.map((t, i) => (
-						<span
-							aria-hidden="true"
-							key={`hl${i}`}
-							style={{
-								color: "var(--color-accent-ink)",
-								fontSize: "0.65rem",
-								fontVariantNumeric: "tabular-nums",
-								position: "absolute",
-								right: 6,
-								top: yFor(t, hoursAxis.top),
-								transform: "translateY(-50%)",
-							}}
-						>
-							{fmtHours(t).replace("h", "")}
-						</span>
-					))}
-					<span
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							fontSize: "0.6rem",
-							// Pinned so the caption's box is its own height rather than an inherited line-height's: the band below it is what keeps it clear of the top tick label, and that budget has to be knowable.
-							lineHeight: 1,
-							position: "absolute",
-							right: 6,
-							top: -1,
-						}}
-					>
-						h
-					</span>
-				</div>
+				<YAxis
+					caption="h"
+					format={t => fmtHours(t).replace("h", "")}
+					ticks={hoursTicks}
+					yFor={t => yFor(t, hoursAxis.top)}
+				/>
 
 				<div>
 					<svg
@@ -219,29 +202,8 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 						style={{ display: "block" }}
 						width="100%"
 					>
-						{hoursTicks.map((t, i) => (
-							<line
-								key={`hg${i}`}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
-								x1={pct(EDGE)}
-								x2={pct(1 - EDGE)}
-								y1={yFor(t, hoursAxis.top)}
-								y2={yFor(t, hoursAxis.top)}
-							/>
-						))}
-						{devlogTicks.map((t, i) => (
-							<line
-								key={`dg${i}`}
-								stroke="var(--color-line-soft)"
-								strokeDasharray="2 3"
-								strokeWidth="1"
-								x1={pct(EDGE)}
-								x2={pct(1 - EDGE)}
-								y1={yFor(t, devlogsAxis.top)}
-								y2={yFor(t, devlogsAxis.top)}
-							/>
-						))}
+						<GridLines ticks={hoursTicks} yFor={t => yFor(t, hoursAxis.top)} />
+						<GridLines dashed ticks={devlogTicks} yFor={t => yFor(t, devlogsAxis.top)} />
 						{areaBars.map((bar, i) => (
 							<rect
 								fill="var(--color-accent)"
@@ -297,39 +259,15 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 					<DayAxis days={days} labelEvery={labelEvery} />
 				</div>
 
-				<div style={{ height: `${CHART_H}px`, position: "relative", width: "3.4rem" }}>
-					{devlogTicks.map((t, i) => (
-						<span
-							aria-hidden="true"
-							key={`dl${i}`}
-							style={{
-								color: "var(--color-magenta)",
-								fontSize: "0.65rem",
-								fontVariantNumeric: "tabular-nums",
-								left: 6,
-								position: "absolute",
-								top: yFor(t, devlogsAxis.top),
-								transform: "translateY(-50%)",
-							}}
-						>
-							{fmtCount(t)}
-						</span>
-					))}
-					<span
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							fontSize: "0.6rem",
-							left: 6,
-							// The same pinned box as the hours caption: one band, two captions, both meant to clear the tick.
-							lineHeight: 1,
-							position: "absolute",
-							top: -1,
-						}}
-					>
-						devlogs
-					</span>
-				</div>
+				<YAxis
+					caption="devlogs"
+					colour="var(--color-magenta)"
+					format={fmtCount}
+					side="right"
+					ticks={devlogTicks}
+					width="3.4rem"
+					yFor={t => yFor(t, devlogsAxis.top)}
+				/>
 			</div>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
 				Dashed is devlogs against the right axis, solid is hours against the left; each is scaled to its own maximum, so
@@ -465,38 +403,14 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 			</p>
 			{/* One scale column, pinned to the chart's own row so each label sits on the gridline it names. */}
 			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
-				<div style={{ height: `${CHART_H}px`, position: "relative", width: "2.6rem" }}>
-					{ticks.map((t, i) => (
-						<span
-							aria-hidden="true"
-							key={`t${i}`}
-							style={{
-								color: "var(--color-teal-ink)",
-								fontSize: "0.65rem",
-								fontVariantNumeric: "tabular-nums",
-								position: "absolute",
-								right: 6,
-								top: yFor(t),
-								transform: "translateY(-50%)",
-							}}
-						>
-							{fmtInt(t)}
-						</span>
-					))}
-					<span
-						aria-hidden="true"
-						style={{
-							color: "var(--color-ink-muted)",
-							fontSize: "0.6rem",
-							lineHeight: 1,
-							position: "absolute",
-							right: 6,
-							top: -1,
-						}}
-					>
-						users
-					</span>
-				</div>
+				<YAxis
+					caption="users"
+					colour="var(--color-teal-ink)"
+					format={fmtInt}
+					ticks={ticks}
+					width="2.6rem"
+					yFor={yFor}
+				/>
 
 				<div>
 					<svg
@@ -520,17 +434,7 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 								<title>{`${weekName(bar.week, bar.from, bar.to)}: ${bar.label} active users a day on average`}</title>
 							</rect>
 						))}
-						{ticks.map((t, i) => (
-							<line
-								key={`g${i}`}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
-								x1={pct(EDGE)}
-								x2={pct(1 - EDGE)}
-								y1={yFor(t)}
-								y2={yFor(t)}
-							/>
-						))}
+						<GridLines ticks={ticks} yFor={yFor} />
 						{segments.map((segment, i) => (
 							<line
 								key={`l${i}`}
