@@ -85,59 +85,12 @@ export const shopOrderPublicFields = [
  *
  * What the buyer wrote about the order. Staff are the ones who fulfil it, so it is theirs to read; the buyer's own view above leaves it out, because it is a note to staff rather than part of the order's state.
  */
-export const shopOrderStaffFields = [
-	"cancellationReason",
-	"cancelledAt",
-	"fulfilledAt",
-	"fulfillmentMethod",
-	"fulfillmentStage",
-	"fulfillmentUpdatedAt",
-	"heldAt",
-	"holdReason",
-	"id",
-	"itemNameSnapshot",
-	"orderNumber",
-	"placedAt",
-	"quantity",
-	"rejectedAt",
-	"rejectionReason",
-	"shopItemId",
-	"status",
-	"totalCredits",
-	"trackingCarrier",
-	"trackingNumber",
-	"unitCostUsd",
-	"unitCredits",
-	"userId",
-] as const
+export const shopOrderStaffFields = [...shopOrderPublicFields, "unitCostUsd", "userId"] as const
 
 /** One staff-view row as Prisma 8 reads it: timestamps stay text until each reader parses them. */
-export type ShopOrderStaffRow = Pick<
-	Models.public_ShopOrder,
-	| "cancellationReason"
-	| "cancelledAt"
-	| "fulfilledAt"
-	| "fulfillmentMethod"
-	| "fulfillmentStage"
-	| "fulfillmentUpdatedAt"
-	| "heldAt"
-	| "holdReason"
-	| "id"
-	| "itemNameSnapshot"
-	| "orderNumber"
-	| "placedAt"
-	| "quantity"
-	| "rejectedAt"
-	| "rejectionReason"
-	| "shopItemId"
-	| "status"
-	| "totalCredits"
-	| "trackingCarrier"
-	| "trackingNumber"
-	| "unitCostUsd"
-	| "unitCredits"
-	| "userId"
-> & { notes: { authorId: string; body: string; createdAt: string }[] }
+export type ShopOrderStaffRow = Pick<Models.public_ShopOrder, (typeof shopOrderStaffFields)[number]> & {
+	notes: { authorId: string; body: string; createdAt: string }[]
+}
 
 export interface ShopOrderStaffView
 	extends Omit<
