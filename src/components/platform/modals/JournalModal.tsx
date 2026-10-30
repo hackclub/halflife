@@ -19,7 +19,7 @@ import { fmtHours } from "@/lib/numbers"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { useStore } from "@/lib/store"
-import type { Checkpoint } from "@/lib/types"
+import type { Checkpoint, Week } from "@/lib/types"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import {
 	altFor,
@@ -41,6 +41,90 @@ import {
 } from "./checkpoint-shared"
 import { fmtDuration, LapsePicker } from "./LapsePicker"
 import { Modal, ModalTitle } from "./Modal"
+
+/** The journal sheet's footer: why the button is greyed, or what saving will do, and the save itself. */
+function JournalFooter({
+	chasingPrinter,
+	editing,
+	missing,
+	ok,
+	save,
+	saveError,
+	saving,
+	showGoal,
+	toFloor,
+	toGoal,
+	uploading,
+	week,
+	weeklyGoalCoins,
+}: {
+	chasingPrinter: boolean
+	editing: boolean
+	missing: string | null
+	ok: boolean
+	save(): void
+	saveError: string | null
+	saving: boolean
+	showGoal: boolean
+	toFloor: number
+	toGoal: number
+	uploading: number
+	week: Week
+	weeklyGoalCoins: number
+}) {
+	return (
+		<>
+			<div className="mr-auto flex min-w-[min(100%,16rem)] flex-1 items-center gap-3">
+				{missing || saveError ? (
+					<IconWarning className="shrink-0 text-lg text-coral" />
+				) : (
+					<IconClock className="shrink-0 text-lg text-navy-soft" />
+				)}
+				<p
+					className={cx(
+						"hand min-w-0 flex-1 text-[0.76rem] leading-snug",
+						missing || saveError ? "text-coral-deep" : "text-navy-soft",
+					)}
+					role={saveError ? "alert" : undefined}
+				>
+					{saveError ? (
+						saveError
+					) : uploading > 0 ? (
+						`Uploading ${uploading === 1 ? "an image" : `${uploading} images`}…`
+					) : missing ? (
+						missing
+					) : editing ? (
+						"Saving replaces this entry. It keeps its place on the map."
+					) : toFloor > 0 ? (
+						<>
+							{fmtHours(toFloor)} more before you can {week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
+							{showGoal ? (
+								<>
+									, and {fmtHours(toGoal)} more if you want to reach your goal of{" "}
+									<strong className="rounded bg-gold-pale px-1 text-gold-ink">{weeklyGoalCoins} coins</strong> per week.
+								</>
+							) : !chasingPrinter ? (
+								<>
+									. Every hour past the minimum earns{" "}
+									<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> per hour.
+								</>
+							) : (
+								"."
+							)}
+						</>
+					) : (
+						"Submit your project when it's done!"
+					)}
+				</p>
+			</div>
+
+			<Button disabled={!ok || saving || uploading > 0} onClick={() => save()} variant="solid">
+				{saving ? "Saving…" : editing ? "Save changes" : "Finish"}{" "}
+				{editing ? <IconCheck className="text-base" /> : <IconArrowRight className="text-base" />}
+			</Button>
+		</>
+	)
+}
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const {
@@ -404,58 +488,21 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			accent="var(--color-violet)"
 			eyebrow={`${weekName(week)} · ${checkpoint.title}`}
 			footer={
-				<>
-					<div className="mr-auto flex min-w-[min(100%,16rem)] flex-1 items-center gap-3">
-						{missing || saveError ? (
-							<IconWarning className="shrink-0 text-lg text-coral" />
-						) : (
-							<IconClock className="shrink-0 text-lg text-navy-soft" />
-						)}
-						<p
-							className={cx(
-								"hand min-w-0 flex-1 text-[0.76rem] leading-snug",
-								missing || saveError ? "text-coral-deep" : "text-navy-soft",
-							)}
-							role={saveError ? "alert" : undefined}
-						>
-							{saveError ? (
-								saveError
-							) : uploading > 0 ? (
-								`Uploading ${uploading === 1 ? "an image" : `${uploading} images`}…`
-							) : missing ? (
-								missing
-							) : editing ? (
-								"Saving replaces this entry. It keeps its place on the map."
-							) : toFloor > 0 ? (
-								<>
-									{fmtHours(toFloor)} more before you can{" "}
-									{week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
-									{showGoal ? (
-										<>
-											, and {fmtHours(toGoal)} more if you want to reach your goal of{" "}
-											<strong className="rounded bg-gold-pale px-1 text-gold-ink">{weeklyGoalCoins} coins</strong> per
-											week.
-										</>
-									) : !chasingPrinter ? (
-										<>
-											. Every hour past the minimum earns{" "}
-											<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> per hour.
-										</>
-									) : (
-										"."
-									)}
-								</>
-							) : (
-								"Submit your project when it's done!"
-							)}
-						</p>
-					</div>
-
-					<Button disabled={!ok || saving || uploading > 0} onClick={() => save()} variant="solid">
-						{saving ? "Saving…" : editing ? "Save changes" : "Finish"}{" "}
-						{editing ? <IconCheck className="text-base" /> : <IconArrowRight className="text-base" />}
-					</Button>
-				</>
+				<JournalFooter
+					chasingPrinter={chasingPrinter}
+					editing={editing}
+					missing={missing}
+					ok={ok}
+					save={save}
+					saveError={saveError}
+					saving={saving}
+					showGoal={showGoal}
+					toFloor={toFloor}
+					toGoal={toGoal}
+					uploading={uploading}
+					week={week}
+					weeklyGoalCoins={weeklyGoalCoins}
+				/>
 			}
 			onClose={() => setOpenCheckpoint(null)}
 			open
