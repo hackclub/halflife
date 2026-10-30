@@ -470,7 +470,7 @@ Illustration carries its own shape language: every character and theme painting 
   - Current: extra-bold navy with a coral dot at the end.
   - Other items: semibold navy-soft.
   - Hover: navy.
-- **Below lg:** a bottom tab bar of icon + label cells replaces the sidebar. The current cell is navy, the rest navy-soft.
+- **Below lg:** a bottom tab bar of icon + label cells replaces the sidebar. The current cell is navy, the rest navy-soft. The account card has no room in that row, so an avatar in the header opens the same account actions as a small menu: the profile link and log out.
 - **Staff console:** one wrapping top strip of bold navy links (`.hl-nav`) on white with a 2px `ops-border` under it; no sidebar and no tab bar.
 
 ### The checkpoint path (signature)

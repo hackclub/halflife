@@ -15,6 +15,7 @@ import {
 	IconFlame,
 	IconHome,
 	IconPencil,
+	IconPlay,
 	IconTrophy,
 } from "@/components/platform/icons"
 import { GoalModal } from "@/components/platform/modals/GoalModal"
@@ -26,6 +27,7 @@ import type { CalendarEvent } from "@/lib/events"
 import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import logoArt from "../../../../public/art/logo.png"
+import { AccountMenu } from "./AccountMenu"
 import { DoomscrollerFeed } from "./Doomscroller"
 import { GoalTracker } from "./GoalTracker"
 import { Sidebar, TAB_NAV } from "./Sidebar"
@@ -238,6 +240,7 @@ export function AppShell({
 									type="button"
 								>
 									<IconTrophy className="text-base" />
+									<span className="hidden md:inline">Goal</span>
 								</button>
 								<Link
 									aria-label="Doomscroller"
@@ -246,7 +249,8 @@ export function AppShell({
 									href="/doomscroller"
 									title="Doomscroller"
 								>
-									<IconFilm className="text-base" />
+									<IconPlay className="text-base" />
+									<span className="hidden md:inline">Doomscroller</span>
 								</Link>
 							</>
 						)}
@@ -255,6 +259,9 @@ export function AppShell({
 						<EventScheduleButton events={events} timeZone={programTimezone} />
 
 						<StatCluster />
+
+						{/* The rail owns the account on a desktop; on a phone this is the only way to a profile or to signing out. */}
+						<AccountMenu className="lg:hidden" />
 					</header>
 
 					<div className="flex min-w-0 flex-1">

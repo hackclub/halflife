@@ -19,7 +19,7 @@ export const NAV = [
 	{ href: PLATFORM_HOME, label: "Home", tourId: "nav-home" },
 	{ href: "/doomscroller", label: "Doomscroller", tourId: "nav-doomscroller" },
 	{ href: "/projects", label: "Projects", tourId: "nav-projects" },
-	{ href: "/reels", label: "Manage Reels", tourId: "nav-reels" },
+	{ href: "/reels", label: "My Reels", tourId: "nav-reels" },
 	{ href: "/explore", label: "Explore", tourId: "nav-explore" },
 	{ href: "/shop", label: "Shop", tourId: "nav-shop" },
 	{ href: "/docs", label: "Docs", tourId: "nav-docs" },
