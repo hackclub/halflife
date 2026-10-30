@@ -13,6 +13,7 @@ import {
 	IconPlay,
 	IconUpload,
 } from "@/components/platform/icons"
+import { CurrentWeekButton } from "@/components/platform/path/CurrentWeekButton"
 import { WeekCountdown } from "@/components/platform/path/WeekCountdown"
 import { Chip, onAccent, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
@@ -631,7 +632,7 @@ export function CheckpointPath() {
 			}}
 		>
 			{weeks.map((week, wi) => (
-				<section aria-labelledby={`week-${week.id}`} key={week.id}>
+				<section aria-labelledby={`week-${week.id}`} data-week={week.id} key={week.id}>
 					{wi === 5 && <PhaseDivider />}
 					<h3 className="sr-only" id={`week-${week.id}`}>
 						Week {week.id}: {week.fullName}
@@ -642,6 +643,7 @@ export function CheckpointPath() {
 					<WeekCountdown week={week} />
 				</section>
 			))}
+			<CurrentWeekButton />
 			<GrandPrize />
 		</div>
 	)
