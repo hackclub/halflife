@@ -20,7 +20,7 @@ import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { projectUpdateSchema } from "@/lib/schemas/project"
 import { recomputeStreak } from "@/lib/streak"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 interface Params {
@@ -52,42 +52,41 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	])
 
 	// Prisma 8 reads timestamps as PostgreSQL text; the page works in Dates, so parse them at the boundary.
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	const parseList = <T extends { createdAt: string }>(
 		rows: readonly T[],
 	): (Omit<T, "createdAt"> & { createdAt: Date })[] =>
 		rows.map(r => withFields(r, { createdAt: parseDbTimestamp(r.createdAt) }))
 	const project = withFields(row, {
-		approvedHoursAt: parseNullable(row.approvedHoursAt),
-		buildReviewedAt: parseNullable(row.buildReviewedAt),
+		approvedHoursAt: parseNullableTimestamp(row.approvedHoursAt),
+		buildReviewedAt: parseNullableTimestamp(row.buildReviewedAt),
 		createdAt: parseDbTimestamp(row.createdAt),
-		deletedAt: parseNullable(row.deletedAt),
-		designApprovedHoursAt: parseNullable(row.designApprovedHoursAt),
-		designReviewedAt: parseNullable(row.designReviewedAt),
-		grantEmittedAt: parseNullable(row.grantEmittedAt),
+		deletedAt: parseNullableTimestamp(row.deletedAt),
+		designApprovedHoursAt: parseNullableTimestamp(row.designApprovedHoursAt),
+		designReviewedAt: parseNullableTimestamp(row.designReviewedAt),
+		grantEmittedAt: parseNullableTimestamp(row.grantEmittedAt),
 		hackatimeLinks: row.hackatimeLinks.map(link =>
 			withFields(link, {
-				cachedAt: parseNullable(link.cachedAt),
+				cachedAt: parseNullableTimestamp(link.cachedAt),
 				createdAt: parseDbTimestamp(link.createdAt),
-				reviewedAt: parseNullable(link.reviewedAt),
-				spansFetchedAt: parseNullable(link.spansFetchedAt),
+				reviewedAt: parseNullableTimestamp(link.reviewedAt),
+				spansFetchedAt: parseNullableTimestamp(link.spansFetchedAt),
 			}),
 		),
-		namedAt: parseNullable(row.namedAt),
-		submissionExtensionUntil: parseNullable(row.submissionExtensionUntil),
+		namedAt: parseNullableTimestamp(row.namedAt),
+		submissionExtensionUntil: parseNullableTimestamp(row.submissionExtensionUntil),
 		submissions: parseList(row.submissions).map(submission =>
-			withFields(submission, { resolvedAt: parseNullable(submission.resolvedAt) }),
+			withFields(submission, { resolvedAt: parseNullableTimestamp(submission.resolvedAt) }),
 		),
 		updatedAt: parseDbTimestamp(row.updatedAt),
 		workSessions: parseList(row.workSessions).map(session =>
 			withFields(session, {
-				deletedAt: parseNullable(session.deletedAt),
+				deletedAt: parseNullableTimestamp(session.deletedAt),
 				media: parseList(session.media).map(m => withFields(m, { url: publicUrlFor(m.objectKey) })),
-				reviewedAt: parseNullable(session.reviewedAt),
+				reviewedAt: parseNullableTimestamp(session.reviewedAt),
 				timelapses: session.timelapses.map(timelapse =>
 					withFields(timelapse, {
 						createdAt: parseDbTimestamp(timelapse.createdAt),
-						recordedAt: parseNullable(timelapse.recordedAt),
+						recordedAt: parseNullableTimestamp(timelapse.recordedAt),
 					}),
 				),
 			}),

@@ -23,7 +23,7 @@ import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionUpdateSchema } from "@/lib/schemas/session"
 import { reconcileSessionTimelapses } from "@/lib/session-timelapses"
 import { recomputeStreak } from "@/lib/streak"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 interface Params {
 	params: Promise<{ id: string; sessionId: string }>
@@ -54,7 +54,6 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	const loaded = await loadOwned(gate.user.id, id, sessionId)
 	if (!loaded?.themeProject) return fail("NOT_FOUND", "Session not found")
 	const session = { ...loaded, themeProject: loaded.themeProject }
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
@@ -163,8 +162,8 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 		session: {
 			...updated,
 			createdAt: parseDbTimestamp(updated.createdAt),
-			deletedAt: parseNullable(updated.deletedAt),
-			reviewedAt: parseNullable(updated.reviewedAt),
+			deletedAt: parseNullableTimestamp(updated.deletedAt),
+			reviewedAt: parseNullableTimestamp(updated.reviewedAt),
 		},
 	})
 })

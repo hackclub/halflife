@@ -31,7 +31,7 @@ import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
 import { stampSessionTiming } from "@/lib/submissions"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
@@ -51,8 +51,8 @@ const parseSessionDates = <T extends { createdAt: string; deletedAt: string | nu
 } => ({
 	...session,
 	createdAt: parseDbTimestamp(session.createdAt),
-	deletedAt: session.deletedAt === null ? null : parseDbTimestamp(session.deletedAt),
-	reviewedAt: session.reviewedAt === null ? null : parseDbTimestamp(session.reviewedAt),
+	deletedAt: parseNullableTimestamp(session.deletedAt),
+	reviewedAt: parseNullableTimestamp(session.reviewedAt),
 })
 
 export const GET = withSession(async (req: NextRequest, { params, gate }: Params & AuthedContext) => {
@@ -94,7 +94,7 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 				timelapses: s.timelapses.map(t =>
 					withFields(t, {
 						createdAt: parseDbTimestamp(t.createdAt),
-						recordedAt: t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt),
+						recordedAt: parseNullableTimestamp(t.recordedAt),
 					}),
 				),
 			}),

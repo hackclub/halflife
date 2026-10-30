@@ -8,6 +8,7 @@ import {
 	effectiveDateFor,
 	formatDbTimestamp,
 	parseDbTimestamp,
+	parseNullableTimestamp,
 	parseTimestampFields,
 	utcCalendarDay,
 	zonedWallTime,
@@ -22,6 +23,11 @@ describe("parseDbTimestamp / formatDbTimestamp", () => {
 
 	test("reads DB text as UTC rather than local time", () => {
 		expect(parseDbTimestamp("2026-01-01 00:00:00.000").toISOString()).toBe("2026-01-01T00:00:00.000Z")
+	})
+
+	test("keeps a null nullable column null", () => {
+		expect(parseNullableTimestamp(null)).toBeNull()
+		expect(parseNullableTimestamp("2026-01-01 00:00:00.000")?.toISOString()).toBe("2026-01-01T00:00:00.000Z")
 	})
 })
 

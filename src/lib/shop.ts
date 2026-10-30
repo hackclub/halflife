@@ -19,7 +19,7 @@ import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/progr
 import { countryOfTimezone } from "@/lib/regions"
 import { sanitize } from "@/lib/sanitize"
 import { canCancelOrder, cancelBlockedReason } from "@/lib/shop-order"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
  * The catalogue row as a participant sees it.
@@ -107,16 +107,15 @@ export interface ShopOrderStaffView
 }
 
 export function toShopOrderStaffView(row: ShopOrderStaffRow): ShopOrderStaffView {
-	const parse = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	return {
 		...row,
-		cancelledAt: parse(row.cancelledAt),
-		fulfilledAt: parse(row.fulfilledAt),
-		fulfillmentUpdatedAt: parse(row.fulfillmentUpdatedAt),
-		heldAt: parse(row.heldAt),
+		cancelledAt: parseNullableTimestamp(row.cancelledAt),
+		fulfilledAt: parseNullableTimestamp(row.fulfilledAt),
+		fulfillmentUpdatedAt: parseNullableTimestamp(row.fulfillmentUpdatedAt),
+		heldAt: parseNullableTimestamp(row.heldAt),
 		notes: row.notes.map(note => ({ ...note, createdAt: parseDbTimestamp(note.createdAt) })),
 		placedAt: parseDbTimestamp(row.placedAt),
-		rejectedAt: parse(row.rejectedAt),
+		rejectedAt: parseNullableTimestamp(row.rejectedAt),
 	}
 }
 
@@ -259,15 +258,14 @@ export async function getShopItemsFor(userId: string): Promise<{
 type ShopOrderPublicRow = Pick<Models.public_ShopOrder, (typeof shopOrderPublicFields)[number]>
 
 export function toShopOrderPublic(row: ShopOrderPublicRow): ShopOrderPublic {
-	const parse = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	return {
 		...row,
-		cancelledAt: parse(row.cancelledAt),
-		fulfilledAt: parse(row.fulfilledAt),
-		fulfillmentUpdatedAt: parse(row.fulfillmentUpdatedAt),
-		heldAt: parse(row.heldAt),
+		cancelledAt: parseNullableTimestamp(row.cancelledAt),
+		fulfilledAt: parseNullableTimestamp(row.fulfilledAt),
+		fulfillmentUpdatedAt: parseNullableTimestamp(row.fulfillmentUpdatedAt),
+		heldAt: parseNullableTimestamp(row.heldAt),
 		placedAt: parseDbTimestamp(row.placedAt),
-		rejectedAt: parse(row.rejectedAt),
+		rejectedAt: parseNullableTimestamp(row.rejectedAt),
 	}
 }
 
@@ -347,8 +345,8 @@ export async function purchase(
 			])
 			const grace = shopGraceAccess(settings, {
 				awaitingReview: awaitingReview.count,
-				buildReviewedAt: lastReview.buildReviewedAt === null ? null : parseDbTimestamp(lastReview.buildReviewedAt),
-				designReviewedAt: lastReview.designReviewedAt === null ? null : parseDbTimestamp(lastReview.designReviewedAt),
+				buildReviewedAt: parseNullableTimestamp(lastReview.buildReviewedAt),
+				designReviewedAt: parseNullableTimestamp(lastReview.designReviewedAt),
 			})
 			if (!grace.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		}

@@ -11,7 +11,7 @@ import db, { type DbOrTx } from "@/lib/prisma8"
 import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@/lib/program"
 import { sanitize } from "@/lib/sanitize"
 import { recomputeStreak } from "@/lib/streak"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { deleteObject, isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -79,7 +79,7 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
 						title: post.themeProject.title,
 					}
 				: null,
-		publishedAt: post.publishedAt === null ? null : parseDbTimestamp(post.publishedAt),
+		publishedAt: parseNullableTimestamp(post.publishedAt),
 		thumbnailUrl: publicUrlFor(post.thumbnailKey),
 		// Keys are stored, never URLs, so the bucket or CDN can move without rewriting a single row. The URL is minted here, at read time.
 		videoUrl: publicUrlFor(post.objectKey),
@@ -185,7 +185,7 @@ export async function getFeed(
 		leading: leading.map(p => toFeedItem(p, likedIds)),
 		nextCursor:
 			rows.length > opts.limit && last
-				? encodeCursor({ at: last.publishedAt === null ? null : parseDbTimestamp(last.publishedAt), id: last.id })
+				? encodeCursor({ at: parseNullableTimestamp(last.publishedAt), id: last.id })
 				: null,
 	}
 }

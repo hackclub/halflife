@@ -5,7 +5,7 @@ import { withSession } from "@/lib/guards"
 import { permissionsFor } from "@/lib/permissions"
 import { getPrinterQualification } from "@/lib/printer"
 import db from "@/lib/prisma8"
-import { parseDbTimestamp } from "@/lib/time"
+import { parseNullableTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -45,8 +45,7 @@ export const GET = withSession(async (_req: Request, { gate }) => {
 					...user,
 					hackatimeLinked: Boolean(user.hackatimeUserId),
 					image: avatarUrl(user),
-					submissionExtensionUntil:
-						user.submissionExtensionUntil === null ? null : parseDbTimestamp(user.submissionExtensionUntil),
+					submissionExtensionUntil: parseNullableTimestamp(user.submissionExtensionUntil),
 				}
 			: user,
 	})

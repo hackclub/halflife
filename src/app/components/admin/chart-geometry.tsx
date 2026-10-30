@@ -83,7 +83,7 @@ export const GridLines = ({
 }: {
 	dashed?: boolean
 	ticks: readonly number[]
-	yFor: (tick: number) => number
+	yFor(tick: number): number
 }) => (
 	<>
 		{ticks.map((tick, i) => (
@@ -117,11 +117,11 @@ export const YAxis = ({
 }: {
 	caption: string
 	colour?: string
-	format: (tick: number) => string
+	format(tick: number): string
 	side?: "left" | "right"
 	ticks: readonly number[]
 	width?: string
-	yFor: (tick: number) => number
+	yFor(tick: number): number
 }) => {
 	const edge = side === "left" ? { right: 6 } : { left: 6 }
 	return (

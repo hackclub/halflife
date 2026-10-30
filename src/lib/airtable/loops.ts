@@ -14,7 +14,7 @@ import { scheduledWeekFor, THEMES } from "@/lib/config/program"
 import { HoursSource, Phase } from "@/lib/enums"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { withFields } from "@/lib/rows"
-import { parseDbTimestamp } from "@/lib/time"
+import { parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
  * The Loops properties on the `Signups` table: what Loops emails people from.
@@ -92,12 +92,11 @@ async function loopsValues(): Promise<LoopsValues[]> {
 				),
 		)
 		.all()
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	const users = userRows.map(user =>
 		withFields(user, {
-			lastActiveAt: parseNullable(user.lastActiveAt),
-			lastLoginAt: parseNullable(user.lastLoginAt),
-			onboardingCompletedAt: parseNullable(user.onboardingCompletedAt),
+			lastActiveAt: parseNullableTimestamp(user.lastActiveAt),
+			lastLoginAt: parseNullableTimestamp(user.lastLoginAt),
+			onboardingCompletedAt: parseNullableTimestamp(user.onboardingCompletedAt),
 			themeProjects: user.themeProjects.map(project =>
 				withFields(project, {
 					workSessions: project.workSessions.map(session =>

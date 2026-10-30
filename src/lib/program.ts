@@ -12,6 +12,7 @@ import {
 	effectiveDateFor,
 	formatDbTimestamp,
 	parseDbTimestamp,
+	parseNullableTimestamp,
 	utcCalendarDay,
 	zonedWallTime,
 } from "@/lib/time"
@@ -42,10 +43,10 @@ function toProgramSettings(row: Models.public_ProgramSettings): ProgramSettings 
 		programTimezone: row.programTimezone,
 		repoSyncEnabled: row.repoSyncEnabled,
 		reviewClaimTtlMinutes: row.reviewClaimTtlMinutes,
-		shopClosesAt: row.shopClosesAt === null ? null : parseDbTimestamp(row.shopClosesAt),
+		shopClosesAt: parseNullableTimestamp(row.shopClosesAt),
 		shopGraceDays: row.shopGraceDays,
 		shopOpen: row.shopOpen,
-		submissionsCloseAt: row.submissionsCloseAt === null ? null : parseDbTimestamp(row.submissionsCloseAt),
+		submissionsCloseAt: parseNullableTimestamp(row.submissionsCloseAt),
 		submissionsOpen: row.submissionsOpen,
 		updatedAt: parseDbTimestamp(row.updatedAt),
 	}
@@ -329,8 +330,8 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 		settings,
 		{
 			awaitingReview: awaitingReview.count,
-			buildReviewedAt: lastReview.buildReviewedAt === null ? null : parseDbTimestamp(lastReview.buildReviewedAt),
-			designReviewedAt: lastReview.designReviewedAt === null ? null : parseDbTimestamp(lastReview.designReviewedAt),
+			buildReviewedAt: parseNullableTimestamp(lastReview.buildReviewedAt),
+			designReviewedAt: parseNullableTimestamp(lastReview.designReviewedAt),
 		},
 		now,
 	)

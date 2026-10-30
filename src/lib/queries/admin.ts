@@ -37,7 +37,7 @@ import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/l
 import { projectReviewState } from "@/lib/review-state"
 import { withFields } from "@/lib/rows"
 import { containsPattern } from "@/lib/text"
-import { eachDayBetween, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { eachDayBetween, formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
 export interface DirectoryUser {
@@ -228,8 +228,7 @@ export async function listProjects(
 			githubRepo: row.githubRepo,
 			id: row.id,
 			requestedTier: row.requestedTier,
-			submissionExtensionUntil:
-				row.submissionExtensionUntil === null ? null : parseDbTimestamp(row.submissionExtensionUntil),
+			submissionExtensionUntil: parseNullableTimestamp(row.submissionExtensionUntil),
 			theme: row.theme,
 			tier: row.tier,
 			title: row.title,
@@ -240,8 +239,7 @@ export async function listProjects(
 				id: row.user.id,
 				name: row.user.name,
 				slackId: row.user.slackId,
-				submissionExtensionUntil:
-					row.user.submissionExtensionUntil === null ? null : parseDbTimestamp(row.user.submissionExtensionUntil),
+				submissionExtensionUntil: parseNullableTimestamp(row.user.submissionExtensionUntil),
 			},
 		}
 	})
@@ -382,7 +380,6 @@ export async function getUserDetail(
 		)
 		.first()
 	if (!row) return null
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	const user: UserDetail = {
 		createdAt: parseDbTimestamp(row.createdAt),
 		displayName: row.displayName,
@@ -390,25 +387,25 @@ export async function getUserDetail(
 		fraudFlagged: row.fraudFlagged,
 		hackatimeUserId: row.hackatimeUserId,
 		id: row.id,
-		joinedProgramAt: parseNullable(row.joinedProgramAt),
+		joinedProgramAt: parseNullableTimestamp(row.joinedProgramAt),
 		name: row.name,
 		printerAward: row.printerAward
 			? {
 					...row.printerAward,
-					addressLockedAt: parseNullable(row.printerAward.addressLockedAt),
-					deliveredAt: parseNullable(row.printerAward.deliveredAt),
+					addressLockedAt: parseNullableTimestamp(row.printerAward.addressLockedAt),
+					deliveredAt: parseNullableTimestamp(row.printerAward.deliveredAt),
 					qualifiedAt: parseDbTimestamp(row.printerAward.qualifiedAt),
-					revokedAt: parseNullable(row.printerAward.revokedAt),
-					shippedAt: parseNullable(row.printerAward.shippedAt),
+					revokedAt: parseNullableTimestamp(row.printerAward.revokedAt),
+					shippedAt: parseNullableTimestamp(row.printerAward.shippedAt),
 				}
 			: null,
 		roles: row.roles,
 		slackDisplayName: row.slackDisplayName,
 		slackId: row.slackId,
-		submissionExtensionUntil: parseNullable(row.submissionExtensionUntil),
+		submissionExtensionUntil: parseNullableTimestamp(row.submissionExtensionUntil),
 		themeProjects: row.themeProjects.map(project => ({
 			...project,
-			submissionExtensionUntil: parseNullable(project.submissionExtensionUntil),
+			submissionExtensionUntil: parseNullableTimestamp(project.submissionExtensionUntil),
 		})),
 		verificationStatus: row.verificationStatus,
 	}
@@ -528,11 +525,11 @@ export async function listOrders(opts: {
 		if (!row.shopItem) throw new Error(`order ${row.id} has no item`)
 		if (!row.user) throw new Error(`order ${row.id} has no buyer`)
 		return {
-			fulfilledAt: row.fulfilledAt === null ? null : parseDbTimestamp(row.fulfilledAt),
+			fulfilledAt: parseNullableTimestamp(row.fulfilledAt),
 			fulfillmentMethod: row.fulfillmentMethod,
 			fulfillmentStage: row.fulfillmentStage,
-			fulfillmentUpdatedAt: row.fulfillmentUpdatedAt === null ? null : parseDbTimestamp(row.fulfillmentUpdatedAt),
-			heldAt: row.heldAt === null ? null : parseDbTimestamp(row.heldAt),
+			fulfillmentUpdatedAt: parseNullableTimestamp(row.fulfillmentUpdatedAt),
+			heldAt: parseNullableTimestamp(row.heldAt),
 			holdReason: row.holdReason,
 			id: row.id,
 			itemNameSnapshot: row.itemNameSnapshot,
@@ -544,7 +541,7 @@ export async function listOrders(opts: {
 			orderNumber: row.orderNumber,
 			placedAt: parseDbTimestamp(row.placedAt),
 			quantity: row.quantity,
-			rejectedAt: row.rejectedAt === null ? null : parseDbTimestamp(row.rejectedAt),
+			rejectedAt: parseNullableTimestamp(row.rejectedAt),
 			rejectionReason: row.rejectionReason,
 			shopItem: row.shopItem,
 			shopItemId: row.shopItemId,
@@ -726,9 +723,9 @@ export async function listFulfillmentOrders(
 		// Orders from before the item had a cost fall back to today's.
 		const unit = unitCostUsd ?? shopItem.costUsd
 		return Object.assign(order, {
-			cancelledAt: order.cancelledAt === null ? null : parseDbTimestamp(order.cancelledAt),
+			cancelledAt: parseNullableTimestamp(order.cancelledAt),
 			country: safeDecrypt(user.encryptedAddressCountry),
-			fulfilledAt: order.fulfilledAt === null ? null : parseDbTimestamp(order.fulfilledAt),
+			fulfilledAt: parseNullableTimestamp(order.fulfilledAt),
 			fulfillmentStage: fulfillmentStageOf(order),
 			totalUsd: unit === null ? null : unit * order.quantity,
 			user: { id: user.id, name: displayName(user) },
@@ -816,12 +813,12 @@ export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]>
 	return rows.map(({ encryptedAddress, user, ...award }) => {
 		if (!user) throw new Error(`printer award ${award.id} has no user`)
 		return Object.assign(award, {
-			addressLockedAt: award.addressLockedAt === null ? null : parseDbTimestamp(award.addressLockedAt),
+			addressLockedAt: parseNullableTimestamp(award.addressLockedAt),
 			addressOnFile: encryptedAddress !== "",
-			deliveredAt: award.deliveredAt === null ? null : parseDbTimestamp(award.deliveredAt),
+			deliveredAt: parseNullableTimestamp(award.deliveredAt),
 			qualifiedAt: parseDbTimestamp(award.qualifiedAt),
-			revokedAt: award.revokedAt === null ? null : parseDbTimestamp(award.revokedAt),
-			shippedAt: award.shippedAt === null ? null : parseDbTimestamp(award.shippedAt),
+			revokedAt: parseNullableTimestamp(award.revokedAt),
+			shippedAt: parseNullableTimestamp(award.shippedAt),
 			user,
 		})
 	})
@@ -855,11 +852,11 @@ export async function listRecentPostsForModeration(limit = 25): Promise<Moderate
 		return {
 			caption: post.caption,
 			createdAt: parseDbTimestamp(post.createdAt),
-			hiddenAt: post.hiddenAt === null ? null : parseDbTimestamp(post.hiddenAt),
+			hiddenAt: parseNullableTimestamp(post.hiddenAt),
 			hiddenReason: post.hiddenReason,
 			id: post.id,
 			kind: post.kind,
-			publishedAt: post.publishedAt === null ? null : parseDbTimestamp(post.publishedAt),
+			publishedAt: parseNullableTimestamp(post.publishedAt),
 			themeProject: post.themeProject,
 			user: post.user,
 		}
@@ -895,7 +892,7 @@ export async function listRecentCommentsForModeration(limit = 25): Promise<Moder
 		return {
 			body: comment.body,
 			createdAt: parseDbTimestamp(comment.createdAt),
-			hiddenAt: comment.hiddenAt === null ? null : parseDbTimestamp(comment.hiddenAt),
+			hiddenAt: parseNullableTimestamp(comment.hiddenAt),
 			hiddenReason: comment.hiddenReason,
 			id: comment.id,
 			post: comment.post,
@@ -1341,7 +1338,7 @@ async function loadRegionInputs() {
 				themeProject,
 				timelapses: session.timelapses.map(timelapse =>
 					withFields(timelapse, {
-						recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+						recordedAt: parseNullableTimestamp(timelapse.recordedAt),
 					}),
 				),
 			})
@@ -1904,7 +1901,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		for (const s of project.workSessions) {
 			if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 			for (const t of s.timelapses) {
-				const window = timelapseWindow(t.recordedAt === null ? null : parseDbTimestamp(t.recordedAt), t.coveredSeconds)
+				const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
 				if (window) made.push({ hackatimeProject: t.hackatimeProject, window })
 			}
 		}
@@ -1923,7 +1920,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 					withFields(session, {
 						timelapses: session.timelapses.map(timelapse =>
 							withFields(timelapse, {
-								recordedAt: timelapse.recordedAt === null ? null : parseDbTimestamp(timelapse.recordedAt),
+								recordedAt: parseNullableTimestamp(timelapse.recordedAt),
 							}),
 						),
 					}),

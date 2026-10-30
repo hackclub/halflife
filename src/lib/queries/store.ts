@@ -31,7 +31,7 @@ import { submissionBudget } from "@/lib/resubmissions"
 import { withFields } from "@/lib/rows"
 import { streakAsOf } from "@/lib/streak"
 import { projectThumbnail } from "@/lib/thumbnail"
-import { parseDbTimestamp } from "@/lib/time"
+import { parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import type { Experience, Project, SessionLog } from "@/lib/types"
 import { publicUrlFor } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
@@ -145,7 +145,6 @@ function weekOf(themeIndex: number, phase: Phase): number {
 }
 
 export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	const [userRow, projectRows, sessionRows, linkRows, postRows, submissionRows, balances, settings, owedReels, roles] =
 		await Promise.all([
 			db.orm.public.User.whereUnique({ id: userId })
@@ -231,17 +230,17 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
 	// Prisma 8 reads timestamps as PostgreSQL text; everything below works in Dates.
 	const user = withFields(userRow, {
-		onboardingCompletedAt: parseNullable(userRow.onboardingCompletedAt),
-		submissionExtensionUntil: parseNullable(userRow.submissionExtensionUntil),
+		onboardingCompletedAt: parseNullableTimestamp(userRow.onboardingCompletedAt),
+		submissionExtensionUntil: parseNullableTimestamp(userRow.submissionExtensionUntil),
 	})
 	const projects = projectRows.map(project =>
-		withFields(project, { submissionExtensionUntil: parseNullable(project.submissionExtensionUntil) }),
+		withFields(project, { submissionExtensionUntil: parseNullableTimestamp(project.submissionExtensionUntil) }),
 	)
 	const sessions = sessionRows.map(session =>
 		withFields(session, {
 			createdAt: parseDbTimestamp(session.createdAt),
 			timelapses: session.timelapses.map(timelapse =>
-				withFields(timelapse, { recordedAt: parseNullable(timelapse.recordedAt) }),
+				withFields(timelapse, { recordedAt: parseNullableTimestamp(timelapse.recordedAt) }),
 			),
 		}),
 	)

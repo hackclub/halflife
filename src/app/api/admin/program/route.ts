@@ -5,7 +5,7 @@ import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { programSettingsSchema } from "@/lib/schemas/admin"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -30,7 +30,7 @@ export const PATCH = withWritePermission(Permission.MANAGE_PROGRAM, async (req: 
 		updatedById: gate.user.id,
 	})
 	if (!row) return fail("NOT_FOUND", "Settings not found")
-	const iso = (value: string | null): string | null => (value === null ? null : parseDbTimestamp(value).toISOString())
+	const iso = (value: string | null): string | null => parseNullableTimestamp(value)?.toISOString() ?? null
 	const settings = {
 		...row,
 		eventStartDate: parseDbTimestamp(row.eventStartDate).toISOString(),

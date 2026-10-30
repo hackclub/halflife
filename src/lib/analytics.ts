@@ -7,7 +7,7 @@ import { pctOf } from "@/lib/numbers"
 import db, { type DbOrTx } from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
-import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { DAY_MS, formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
  * Analytics time markers: when each step of a person's journey happened.
@@ -434,7 +434,6 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 		else pots.spendable += amount
 		balances.set(row.userId, pots)
 	}
-	const parseNullable = (value: string | null): Date | null => (value === null ? null : parseDbTimestamp(value))
 	const out: UserAnalyticsRow[] = []
 	for (const u of users) {
 		const pots = balances.get(u.id) ?? { banked: 0, spendable: 0 }
@@ -445,24 +444,24 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 			// The stored column is a cache only correct as of the last devlog or reel; an export that reads it directly calls a lapsed run current.
 			currentStreak: streakAsOf(u, today),
 			email: u.email,
-			firstChecksPassedAt: parseNullable(u.firstChecksPassedAt),
-			firstProjectAt: parseNullable(u.firstProjectAt),
-			firstReelAt: parseNullable(u.firstReelAt),
-			firstSubmissionAt: parseNullable(u.firstSubmissionAt),
-			lastActiveAt: parseNullable(u.lastActiveAt),
-			lastLoginAt: parseNullable(u.lastLoginAt),
-			lastSubmissionAt: parseNullable(u.lastSubmissionAt),
+			firstChecksPassedAt: parseNullableTimestamp(u.firstChecksPassedAt),
+			firstProjectAt: parseNullableTimestamp(u.firstProjectAt),
+			firstReelAt: parseNullableTimestamp(u.firstReelAt),
+			firstSubmissionAt: parseNullableTimestamp(u.firstSubmissionAt),
+			lastActiveAt: parseNullableTimestamp(u.lastActiveAt),
+			lastLoginAt: parseNullableTimestamp(u.lastLoginAt),
+			lastSubmissionAt: parseNullableTimestamp(u.lastSubmissionAt),
 			longestStreak: u.longestStreak,
-			onboardedAt: parseNullable(u.onboardingCompletedAt),
+			onboardedAt: parseNullableTimestamp(u.onboardingCompletedAt),
 			signedUpAt: parseDbTimestamp(u.createdAt),
 			totalHours: round2(u.activityWeeks.reduce((n, w) => n + w.hours, 0)),
 			userId: u.id,
 			weeks: u.activityWeeks.map(({ week, hours, reached1hAt, reached5hAt, reached10hAt, reached20hAt }) => ({
 				hours,
-				reached1hAt: parseNullable(reached1hAt),
-				reached5hAt: parseNullable(reached5hAt),
-				reached10hAt: parseNullable(reached10hAt),
-				reached20hAt: parseNullable(reached20hAt),
+				reached1hAt: parseNullableTimestamp(reached1hAt),
+				reached5hAt: parseNullableTimestamp(reached5hAt),
+				reached10hAt: parseNullableTimestamp(reached10hAt),
+				reached20hAt: parseNullableTimestamp(reached20hAt),
 				week,
 			})),
 		})

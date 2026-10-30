@@ -18,6 +18,10 @@ export const parseDbTimestamp = (value: string): Date => new Date(`${value.repla
 /** A Date as the text a Prisma 8 `TimestampString(3)` field accepts. */
 export const formatDbTimestamp = (date: Date): string => date.toISOString().replace("T", " ").replace("Z", "")
 
+/** A nullable Prisma 8 timestamp column as a Date, or null when the column is null. */
+export const parseNullableTimestamp = (value: string | null): Date | null =>
+	value === null ? null : parseDbTimestamp(value)
+
 /** A timestamp column's runtime type after parsing: `Date` for a required column, `Date | null` for a nullable one. */
 type ParsedTimestamp<T> = T extends string ? Date : T extends string | null ? Date | null : never
 

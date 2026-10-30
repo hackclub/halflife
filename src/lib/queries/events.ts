@@ -1,7 +1,7 @@
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import type { CalendarEvent } from "@/lib/events"
 import db from "@/lib/prisma8"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
  * The programme calendar's read paths.
@@ -13,7 +13,7 @@ import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 const toCalendarEvent = (event: Models.public_ProgramEvent): CalendarEvent => ({
 	colour: event.colour,
 	description: event.description,
-	endsAt: event.endsAt === null ? null : parseDbTimestamp(event.endsAt),
+	endsAt: parseNullableTimestamp(event.endsAt),
 	id: event.id,
 	published: event.published,
 	seriesId: event.seriesId,
