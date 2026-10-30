@@ -26,7 +26,7 @@ export function AccountMenu({ className }: { className?: string }) {
 	useEffect(() => {
 		if (!open) return
 		const closeOnPress = (event: PointerEvent) => {
-			const {target} = event
+			const { target } = event
 			if (target instanceof Node && root.current && !root.current.contains(target)) setOpen(false)
 		}
 		const closeOnEscape = (event: KeyboardEvent) => {
