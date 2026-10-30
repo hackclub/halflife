@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { type ReactNode, useEffect, useMemo, useState } from "react"
 import {
 	IconArrowRight,
 	IconCamera,
@@ -32,6 +32,189 @@ import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { Modal, ModalTitle } from "./Modal"
 import { RepoChecks } from "./RepoChecks"
 import { type SubmissionReel, SubmissionReelPicker } from "./SubmissionReelPicker"
+
+/**
+ * A blocker or warning above the step body.
+ *
+ * Every one of these is the same sketch box, icon, title and prose; only the colour and the words differ. Kept as one component so a change to the shape of a notice – the margin, the radius, the type – lands on all of them at once.
+ */
+function SubmitNotice({
+	children,
+	icon,
+	title,
+	tone = "coral",
+}: {
+	children: ReactNode
+	icon: ReactNode
+	title: ReactNode
+	/** `gold` is the softer notice: a resubmission that still has attempts left. */
+	tone?: "coral" | "gold"
+}) {
+	const gold = tone === "gold"
+	return (
+		<div
+			className={cx(
+				"sketch mb-5 flex items-start gap-3 rounded-2xl px-5 py-4",
+				gold ? "bg-gold-pale/70" : "bg-coral/10",
+			)}
+			style={{
+				"--sk-color": gold ? "var(--color-gold-deep)" : "var(--color-coral)",
+				"--sk-radius": "16px",
+			}}
+		>
+			{icon}
+			<div className="min-w-0">
+				<p className={cx("text-[0.95rem] leading-snug font-extrabold", gold ? "text-navy" : "text-coral-dark")}>
+					{title}
+				</p>
+				<div className="mt-1 text-[0.85rem] leading-snug text-navy-soft">{children}</div>
+			</div>
+		</div>
+	)
+}
+
+/**
+ * The project's parts list as it will be handed in, with the running total beneath it.
+ *
+ * Read-only here on purpose: the list is edited on the project page, so what the sheet shows is what the maker kept there when they opened it.
+ */
+function BomTable({
+	bom,
+	bomError,
+	bomTotal,
+}: {
+	bom: { items: BomLine[]; taxShippingUsd: number } | null
+	bomError: string | null
+	bomTotal: number
+}) {
+	return (
+		<Panel className="overflow-hidden bg-white" radius={18} tone="line">
+			{bomError ? (
+				<p className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep" role="alert">
+					{bomError}
+				</p>
+			) : !bom ? (
+				<p aria-live="polite" className="hand px-4 py-5 text-[0.88rem] text-navy-soft">
+					reading your parts list…
+				</p>
+			) : (
+				<div className="overflow-x-auto">
+					<table className="w-full min-w-120 text-left text-[0.86rem]">
+						<thead>
+							<tr className="border-b border-dashed border-line">
+								{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
+									<th className="label px-4 py-2.5 text-navy-soft" key={h} scope="col">
+										{h}
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{bom.items.length === 0 && (
+								<tr className="border-b border-dashed border-line/60">
+									<td className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep" colSpan={5}>
+										no parts listed yet. Add them on the project page (or decline funding below) before you submit this.
+									</td>
+								</tr>
+							)}
+							{bom.items.map(l => (
+								<tr className="border-b border-dashed border-line/60 align-top" key={l.id}>
+									<td className="px-4 py-2.5">
+										<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
+										{l.purpose && <span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>}
+									</td>
+									<td className="px-4 py-2.5 tabular-nums">{l.quantity}</td>
+									<td className="px-4 py-2.5 tabular-nums">${l.unitCostUsd.toFixed(2)}</td>
+									<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
+										${(l.quantity * l.unitCostUsd).toFixed(2)}
+									</td>
+									<td className="hand px-4 py-2.5 text-navy-soft">
+										{l.link ? (
+											<a
+												className="underline decoration-line-strong underline-offset-4 hover:text-navy"
+												href={l.link}
+												rel="noopener noreferrer"
+												target="_blank"
+											>
+												{l.vendor || "link"}
+											</a>
+										) : (
+											l.vendor || "-"
+										)}
+									</td>
+								</tr>
+							))}
+							<tr>
+								<td className="px-4 py-2.5">
+									<span className="block font-semibold text-navy">Tax &amp; shipping</span>
+									<span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
+								</td>
+								<td className="px-4 py-2.5 text-navy-soft">-</td>
+								<td className="px-4 py-2.5 text-navy-soft">-</td>
+								<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">${bom.taxShippingUsd.toFixed(2)}</td>
+								<td />
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			)}
+			<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-cream px-4 py-3">
+				<span className="label text-navy-soft">Cart total</span>
+				<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
+			</div>
+		</Panel>
+	)
+}
+
+/** The checkboxes a maker clears before handing in, including the extra one a resubmission carries. */
+function SubmissionAcknowledgements({
+	acknowledgedAll,
+	acknowledgedFixed,
+	acknowledgedLimit,
+	acknowledgedNoMore,
+	resubmitting,
+	setAcknowledgedAll,
+	setAcknowledgedFixed,
+	setAcknowledgedLimit,
+	setAcknowledgedNoMore,
+}: {
+	acknowledgedAll: boolean
+	acknowledgedFixed: boolean
+	acknowledgedLimit: boolean
+	acknowledgedNoMore: boolean
+	resubmitting: boolean
+	setAcknowledgedAll(value: boolean): void
+	setAcknowledgedFixed(value: boolean): void
+	setAcknowledgedLimit(value: boolean): void
+	setAcknowledgedNoMore(value: boolean): void
+}) {
+	return (
+		<div className="mt-6 border-t border-dashed border-line pt-5">
+			<p className="label text-violet-deep">{resubmitting ? "Before you resubmit" : "Before you submit"}</p>
+			<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+				All of these are required before you can submit.
+			</p>
+			<div className="mt-2.5 grid gap-1">
+				<Acknowledgement checked={acknowledgedLimit} onChange={setAcknowledgedLimit}>
+					I understand that I will only be able to submit this project {SUBMISSION_LIMIT} times
+					{resubmitting ? "." : " in the event that it gets returned."}
+				</Acknowledgement>
+				<Acknowledgement checked={acknowledgedNoMore} onChange={setAcknowledgedNoMore}>
+					I understand that after using up my {SUBMISSION_LIMIT} submissions, I will not be able to resubmit this
+					project.
+				</Acknowledgement>
+				{resubmitting && (
+					<Acknowledgement checked={acknowledgedFixed} onChange={setAcknowledgedFixed}>
+						I have fixed all issues mentioned in my project&rsquo;s &ldquo;needs changes&rdquo; note.
+					</Acknowledgement>
+				)}
+				<Acknowledgement checked={acknowledgedAll} onChange={setAcknowledgedAll}>
+					I understand and have abided by all of the above {resubmitting ? "3" : "2"} checkboxes.
+				</Acknowledgement>
+			</div>
+		</div>
+	)
+}
 
 export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const {
@@ -367,151 +550,106 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			size="lg"
 		>
 			{resubmitting && (
-				<div
-					className={cx(
-						"sketch mb-5 flex items-start gap-3 rounded-2xl px-5 py-4",
-						outOfSubmissions ? "bg-coral/10" : "bg-gold-pale/70",
-					)}
-					style={{
-						"--sk-color": outOfSubmissions ? "var(--color-coral)" : "var(--color-gold-deep)",
-						"--sk-radius": "16px",
-					}}
+				<SubmitNotice
+					icon={
+						<IconWarning
+							className={cx("mt-0.5 shrink-0 text-xl", outOfSubmissions ? "text-coral-deep" : "text-gold-ink")}
+						/>
+					}
+					title={
+						outOfSubmissions
+							? `All ${SUBMISSION_LIMIT} submissions for this phase are used.`
+							: `Submission ${submissionsUsed + 1} of ${SUBMISSION_LIMIT} for this phase`
+					}
+					tone={outOfSubmissions ? "coral" : "gold"}
 				>
-					<IconWarning
-						className={cx("mt-0.5 shrink-0 text-xl", outOfSubmissions ? "text-coral-deep" : "text-gold-ink")}
-					/>
-					<div className="min-w-0">
-						<p
-							className={cx(
-								"text-[0.95rem] leading-snug font-extrabold",
-								outOfSubmissions ? "text-coral-dark" : "text-navy",
-							)}
+					{outOfSubmissions
+						? "It stays returned for now. Dispute the review or ask a reviewer in Slack; you cannot submit it again. "
+						: submissionsLeft === 1
+							? "This is your last one. If it comes back needing changes again, you cannot submit it. "
+							: `${submissionsLeft - 1} left after this one. `}
+					{project && (
+						<Link
+							className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+							href={`/projects/${project.id}`}
+							onClick={() => setOpenCheckpoint(null)}
 						>
-							{outOfSubmissions
-								? `All ${SUBMISSION_LIMIT} submissions for this phase are used.`
-								: `Submission ${submissionsUsed + 1} of ${SUBMISSION_LIMIT} for this phase`}
-						</p>
-						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							{outOfSubmissions
-								? "It stays returned for now. Dispute the review or ask a reviewer in Slack; you cannot submit it again. "
-								: submissionsLeft === 1
-									? "This is your last one. If it comes back needing changes again, you cannot submit it. "
-									: `${submissionsLeft - 1} left after this one. `}
-							{project && (
-								<Link
-									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-									href={`/projects/${project.id}`}
-									onClick={() => setOpenCheckpoint(null)}
-								>
-									Go to project page
-								</Link>
-							)}
-						</p>
-					</div>
-				</div>
+							Go to project page
+						</Link>
+					)}
+				</SubmitNotice>
 			)}
 
 			{/* On every step, not just the last one: a maker who is short on hours should find that out before working through the checklist, not after. It warns and does not block – the hours needed for a printer at all are the trail's gate, and this is the gap to the one they chose. */}
 			{!hasCover && (
-				<div
-					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
+				<SubmitNotice
+					icon={<IconCamera className="mt-0.5 shrink-0 text-xl text-coral-deep" />}
+					title={project ? `${project.name} needs a cover image.` : "Your project needs a cover image."}
 				>
-					<IconCamera className="mt-0.5 shrink-0 text-xl text-coral-deep" />
-					<div className="min-w-0">
-						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
-							{project ? `${project.name} needs a cover image.` : "Your project needs a cover image."}
-						</p>
-						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Upload a photo or screenshot of the project on that project&apos;s page before you can submit. Covers are
-							per project, so a cover uploaded elsewhere does not count.{" "}
-							{project && (
-								<Link
-									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-									href={`/projects/${project.id}`}
-									onClick={() => setOpenCheckpoint(null)}
-								>
-									Go to project page
-								</Link>
-							)}
-						</p>
-					</div>
-				</div>
+					Upload a photo or screenshot of the project on that project&apos;s page before you can submit. Covers are per
+					project, so a cover uploaded elsewhere does not count.{" "}
+					{project && (
+						<Link
+							className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+							href={`/projects/${project.id}`}
+							onClick={() => setOpenCheckpoint(null)}
+						>
+							Go to project page
+						</Link>
+					)}
+				</SubmitNotice>
 			)}
 
 			{!descriptionReady && (
-				<div
-					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
+				<SubmitNotice
+					icon={<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />}
+					title={project ? `${project.name} needs a longer description.` : "Your project needs a longer description."}
 				>
-					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
-					<div className="min-w-0">
-						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
-							{project ? `${project.name} needs a longer description.` : "Your project needs a longer description."}
-						</p>
-						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							A reviewer decides from the description, so it needs at least {MIN_PROJECT_DESCRIPTION_CHARS} characters.
-							You have {descriptionLength}.{" "}
-							{project && (
-								<Link
-									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-									href={`/projects/${project.id}`}
-									onClick={() => setOpenCheckpoint(null)}
-								>
-									Edit the description
-								</Link>
-							)}
-						</p>
-					</div>
-				</div>
+					A reviewer decides from the description, so it needs at least {MIN_PROJECT_DESCRIPTION_CHARS} characters. You
+					have {descriptionLength}.{" "}
+					{project && (
+						<Link
+							className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+							href={`/projects/${project.id}`}
+							onClick={() => setOpenCheckpoint(null)}
+						>
+							Edit the description
+						</Link>
+					)}
+				</SubmitNotice>
 			)}
 
 			{!starterDescriptionReady && (
-				<div
-					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
+				<SubmitNotice
+					icon={<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />}
+					title={
+						project
+							? `${project.name} still has the starter's description.`
+							: "This project still has the starter's description."
+					}
 				>
-					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
-					<div className="min-w-0">
-						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
-							{project
-								? `${project.name} still has the starter's description.`
-								: "This project still has the starter's description."}
-						</p>
-						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Write your own description. Say what you changed, why you made it, and what makes it yours.{" "}
-							{project && (
-								<Link
-									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-									href={`/projects/${project.id}`}
-									onClick={() => setOpenCheckpoint(null)}
-								>
-									Edit the description
-								</Link>
-							)}
-						</p>
-					</div>
-				</div>
+					Write your own description. Say what you changed, why you made it, and what makes it yours.{" "}
+					{project && (
+						<Link
+							className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+							href={`/projects/${project.id}`}
+							onClick={() => setOpenCheckpoint(null)}
+						>
+							Edit the description
+						</Link>
+					)}
+				</SubmitNotice>
 			)}
 
 			{owed > 0 && (
-				<div
-					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
-					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" }}
+				<SubmitNotice
+					icon={<IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />}
+					title="You're a little behind on your printer goal."
 				>
-					<IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
-					<div className="min-w-0">
-						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
-							You&apos;re a little behind on your printer goal.
-						</p>
-						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Spend some more time on it! You are <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
-							{owed === 1 ? "coin" : "coins"} behind the pace for a{" "}
-							<span className="font-bold text-navy">{goal.name}</span>. You can still submit it, and a bigger week later
-							makes it up.
-						</p>
-					</div>
-				</div>
+					Spend some more time on it! You are <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
+					{owed === 1 ? "coin" : "coins"} behind the pace for a <span className="font-bold text-navy">{goal.name}</span>
+					. You can still submit it, and a bigger week later makes it up.
+				</SubmitNotice>
 			)}
 
 			{step === 1 && (
@@ -586,86 +724,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					{/* Declined funding hides the parts list and its edit note – there is nothing to check. */}
 					{!fundingDeclined && (
 						<>
-							<Panel className="overflow-hidden bg-white" radius={18} tone="line">
-								{bomError ? (
-									<p className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep" role="alert">
-										{bomError}
-									</p>
-								) : !bom ? (
-									<p aria-live="polite" className="hand px-4 py-5 text-[0.88rem] text-navy-soft">
-										reading your parts list…
-									</p>
-								) : (
-									<div className="overflow-x-auto">
-										<table className="w-full min-w-120 text-left text-[0.86rem]">
-											<thead>
-												<tr className="border-b border-dashed border-line">
-													{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
-														<th className="label px-4 py-2.5 text-navy-soft" key={h} scope="col">
-															{h}
-														</th>
-													))}
-												</tr>
-											</thead>
-											<tbody>
-												{bom.items.length === 0 && (
-													<tr className="border-b border-dashed border-line/60">
-														<td className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep" colSpan={5}>
-															no parts listed yet. Add them on the project page (or decline funding below) before you
-															submit this.
-														</td>
-													</tr>
-												)}
-												{bom.items.map(l => (
-													<tr className="border-b border-dashed border-line/60 align-top" key={l.id}>
-														<td className="px-4 py-2.5">
-															<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
-															{l.purpose && (
-																<span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>
-															)}
-														</td>
-														<td className="px-4 py-2.5 tabular-nums">{l.quantity}</td>
-														<td className="px-4 py-2.5 tabular-nums">${l.unitCostUsd.toFixed(2)}</td>
-														<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
-															${(l.quantity * l.unitCostUsd).toFixed(2)}
-														</td>
-														<td className="hand px-4 py-2.5 text-navy-soft">
-															{l.link ? (
-																<a
-																	className="underline decoration-line-strong underline-offset-4 hover:text-navy"
-																	href={l.link}
-																	rel="noopener noreferrer"
-																	target="_blank"
-																>
-																	{l.vendor || "link"}
-																</a>
-															) : (
-																l.vendor || "-"
-															)}
-														</td>
-													</tr>
-												))}
-												<tr>
-													<td className="px-4 py-2.5">
-														<span className="block font-semibold text-navy">Tax &amp; shipping</span>
-														<span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
-													</td>
-													<td className="px-4 py-2.5 text-navy-soft">-</td>
-													<td className="px-4 py-2.5 text-navy-soft">-</td>
-													<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
-														${bom.taxShippingUsd.toFixed(2)}
-													</td>
-													<td />
-												</tr>
-											</tbody>
-										</table>
-									</div>
-								)}
-								<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-cream px-4 py-3">
-									<span className="label text-navy-soft">Cart total</span>
-									<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
-								</div>
-							</Panel>
+							<BomTable bom={bom} bomError={bomError} bomTotal={bomTotal} />
 							{/* One place to change the list: the project page. The sheet reads it, so what is handed in is what the maker kept there. */}
 							{project && (
 								<p className="hand mt-2 text-[0.82rem] text-navy-soft">
@@ -947,30 +1006,17 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</Chip>
 					</div>
 
-					<div className="mt-6 border-t border-dashed border-line pt-5">
-						<p className="label text-violet-deep">{resubmitting ? "Before you resubmit" : "Before you submit"}</p>
-						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							All of these are required before you can submit.
-						</p>
-						<div className="mt-2.5 grid gap-1">
-							<Acknowledgement checked={acknowledgedLimit} onChange={setAcknowledgedLimit}>
-								I understand that I will only be able to submit this project {SUBMISSION_LIMIT} times
-								{resubmitting ? "." : " in the event that it gets returned."}
-							</Acknowledgement>
-							<Acknowledgement checked={acknowledgedNoMore} onChange={setAcknowledgedNoMore}>
-								I understand that after using up my {SUBMISSION_LIMIT} submissions, I will not be able to resubmit this
-								project.
-							</Acknowledgement>
-							{resubmitting && (
-								<Acknowledgement checked={acknowledgedFixed} onChange={setAcknowledgedFixed}>
-									I have fixed all issues mentioned in my project&rsquo;s &ldquo;needs changes&rdquo; note.
-								</Acknowledgement>
-							)}
-							<Acknowledgement checked={acknowledgedAll} onChange={setAcknowledgedAll}>
-								I understand and have abided by all of the above {resubmitting ? "3" : "2"} checkboxes.
-							</Acknowledgement>
-						</div>
-					</div>
+					<SubmissionAcknowledgements
+						acknowledgedAll={acknowledgedAll}
+						acknowledgedFixed={acknowledgedFixed}
+						acknowledgedLimit={acknowledgedLimit}
+						acknowledgedNoMore={acknowledgedNoMore}
+						resubmitting={resubmitting}
+						setAcknowledgedAll={setAcknowledgedAll}
+						setAcknowledgedFixed={setAcknowledgedFixed}
+						setAcknowledgedLimit={setAcknowledgedLimit}
+						setAcknowledgedNoMore={setAcknowledgedNoMore}
+					/>
 				</div>
 			)}
 		</Modal>
