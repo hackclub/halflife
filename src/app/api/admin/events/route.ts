@@ -5,7 +5,7 @@ import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { getProgramSettings, startOfDay } from "@/lib/program"
 import { programEventCreateSchema } from "@/lib/schemas/admin"
-import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { addWeeksInZone, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -34,10 +34,10 @@ export const POST = withWritePermission(Permission.MANAGE_PROGRAM, async (req: R
 				colour: fields.colour,
 				createdById: gate.user.id,
 				description: fields.description ?? null,
-				endsAt: fields.endsAt ? formatDbTimestamp(addWeeks(fields.endsAt, week, programTimezone)) : null,
+				endsAt: fields.endsAt ? formatDbTimestamp(addWeeksInZone(fields.endsAt, week, programTimezone)) : null,
 				published: fields.published,
 				seriesId,
-				startsAt: formatDbTimestamp(addWeeks(fields.startsAt, week, programTimezone)),
+				startsAt: formatDbTimestamp(addWeeksInZone(fields.startsAt, week, programTimezone)),
 				title: fields.title,
 			})
 			rows.push({ id: created.id, startsAt: parseDbTimestamp(created.startsAt) })
@@ -67,41 +67,6 @@ export const POST = withWritePermission(Permission.MANAGE_PROGRAM, async (req: R
 
 	return ok({ events, seriesId }, { status: 201 })
 })
-
-/**
- * `weeks` calendar weeks after `at`, keeping the wall-clock time in `timeZone`.
- *
- * A plain `+ 7 * 86_400_000` would be an hour out for every occurrence after a daylight-saving change – which for a programme running autumn to winter is most of them, and it would quietly move the weekly call an hour without anyone noticing. So the shift is applied to the calendar fields and resolved back through the zone's offset at the *target* date, correcting once more in case the first guess landed on the other side of a transition. The same two-pass adjustment `lib/program.ts` uses for a week's boundaries.
- */
-function addWeeks(at: Date, weeks: number, timeZone: string): Date {
-	if (weeks === 0) return at
-	const [year, month, day, hour, minute, second] = wallFields(at, timeZone)
-	// Date.UTC normalises an overflowing day, so adding the weeks to the day number is a month arithmetic for us – and it lands on the same weekday, which is the entire point of counting in weeks rather than days.
-	const wall = Date.UTC(year, month, day + weeks * 7, hour, minute, second)
-	const first = wall - zoneOffsetMs(wall, timeZone)
-	return new Date(wall - zoneOffsetMs(first, timeZone))
-}
-
-/** A moment's calendar fields in `timeZone`, ordered for `Date.UTC`. */
-function wallFields(at: Date, timeZone: string): [number, number, number, number, number, number] {
-	const parts = new Intl.DateTimeFormat("en-US", {
-		day: "numeric",
-		hour: "numeric",
-		hourCycle: "h23",
-		minute: "numeric",
-		month: "numeric",
-		second: "numeric",
-		timeZone,
-		year: "numeric",
-	}).formatToParts(at)
-	const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(p => p.type === type)?.value ?? 0)
-	return [value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second")]
-}
-
-function zoneOffsetMs(at: number, timeZone: string): number {
-	const wall = Date.UTC(...wallFields(new Date(at), timeZone))
-	return wall - (at - (at % 1000))
-}
 
 export const DELETE = withWritePermission(Permission.MANAGE_PROGRAM, async (_req: Request, { gate }) => {
 	const { programTimezone } = await getProgramSettings()

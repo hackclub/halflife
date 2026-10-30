@@ -67,6 +67,50 @@ export function utcCalendarDay(at: Date): number {
 	return Math.floor(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()) / DAY_MS)
 }
 
+/** A moment's calendar fields in `timeZone`, ordered for `Date.UTC`. */
+export function wallClockFields(at: Date, timeZone: string): [number, number, number, number, number, number] {
+	const parts = new Intl.DateTimeFormat("en-US", {
+		day: "numeric",
+		hour: "numeric",
+		hourCycle: "h23",
+		minute: "numeric",
+		month: "numeric",
+		second: "numeric",
+		timeZone,
+		year: "numeric",
+	}).formatToParts(at)
+	const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(part => part.type === type)?.value ?? 0)
+	return [value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second")]
+}
+
+/** How far ahead of UTC a timezone's wall clock is at an instant, in ms. */
+export function zoneOffsetMs(at: number, timeZone: string): number {
+	const wall = Date.UTC(...wallClockFields(new Date(at), timeZone))
+	return wall - (at - (at % 1000))
+}
+
+/**
+ * The instant a wall-clock time (written as if it were UTC) happens in `timeZone`.
+ *
+ * Corrected by the zone's offset at that instant, then once more in case the first guess landed on the other side of a daylight-saving change.
+ */
+export function zonedWallTime(wall: number, timeZone: string): Date {
+	const first = wall - zoneOffsetMs(wall, timeZone)
+	return new Date(wall - zoneOffsetMs(first, timeZone))
+}
+
+/**
+ * `weeks` calendar weeks after `at`, keeping the wall-clock time in `timeZone`.
+ *
+ * A plain `+ 7 * 86_400_000` would be an hour out for every occurrence after a daylight-saving change – which for a programme running autumn to winter is most of them, and it would quietly move a weekly call an hour without anyone noticing. Shifting the calendar fields instead resolves through the target date's offset, so a 7pm call stays at 7pm.
+ */
+export function addWeeksInZone(at: Date, weeks: number, timeZone: string): Date {
+	if (weeks === 0) return at
+	const [year, month, day, hour, minute, second] = wallClockFields(at, timeZone)
+	// Date.UTC normalises an overflowing day, so adding the weeks to the day number is month arithmetic for us – and it lands on the same weekday, which is the entire point of counting in weeks rather than days.
+	return zonedWallTime(Date.UTC(year, month, day + weeks * 7, hour, minute, second), timeZone)
+}
+
 /** Every `YYYY-MM-DD` from `first` to `last`, inclusive, for filling the gaps in a daily series. */
 export function eachDayBetween(first: string, last: string): string[] {
 	const out: string[] = []
