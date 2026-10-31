@@ -212,7 +212,12 @@ interface Ctx {
 	 * Set or clear a project's repo link. Resolves to null once saved, or to the server's reason for refusing (a phase in review, say), so an inline editor can say so instead of quietly reverting.
 	 */
 	setProjectRepo(id: string, url: string | null): Promise<string | null>
-	setProjectTier(id: string, tier: 1 | 2 | 3): void
+	/**
+	 * Save the tier the maker is asking for. Resolves to null once saved, or to the server's reason for refusing.
+	 *
+	 * The submit sheet awaits this before handing the phase in: the server prices the parts list and gates the hours against the stored request, so a hand-in sent before the request lands is read at the previous tier.
+	 */
+	setProjectTier(id: string, tier: 1 | 2 | 3): Promise<string | null>
 	/** Show the share prompt after a hand-in, or clear it. */
 	setSharePost(share: SharePost | null): void
 	setTourStep(n: number): void
@@ -638,18 +643,28 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	const setProjectTier = useCallback(
-		(id: string, tier: 1 | 2 | 3) => {
+		async (id: string, tier: 1 | 2 | 3): Promise<string | null> => {
 			setFacts(f => ({
 				...f,
 				projects: f.projects.map(p => (p.id === id ? { ...p, tier } : p)),
 			}))
-			void (async () => {
-				try {
-					await send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH")
-				} finally {
-					router.refresh()
-				}
-			})()
+			let res: Response
+			try {
+				res = await fetch(`/api/projects/${id}`, {
+					body: JSON.stringify({ requestedTier: tier }),
+					headers: { "content-type": "application/json" },
+					method: "PATCH",
+				})
+			} catch {
+				router.refresh()
+				return "Could not reach the server. Try again."
+			}
+			router.refresh()
+			if (!res.ok) {
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "That tier did not save. Try again.")
+			}
+			return null
 		},
 		[router],
 	)

@@ -577,13 +577,20 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	/**
 	 * Handing a week in, in the order the pieces depend on each other.
 	 *
-	 * The tier first, because it is what the reviewer will be deciding against. Then the closing reel, awaited, so the submission a reviewer opens – and the YSWS row written just after it, which looks the reel up – already has the video rather than one arriving behind it. It is posted once: a retry after a refused hand-in reuses it. The submission last, and only once it has gone through is the reel offered for posting online.
+	 * The tier first, awaited, because it is what the reviewer will be deciding against and what the server prices the parts list and gates the hours on. Fire-and-forget here used to let the hand-in reach the gate before the request had landed, so a tier picked in this sheet was still read at the previous one – a Tier 2 cart refused against Tier 1's grant. Then the closing reel, awaited, so the submission a reviewer opens – and the YSWS row written just after it, which looks the reel up – already has the video rather than one arriving behind it. It is posted once: a retry after a refused hand-in reuses it. The submission last, and only once it has gone through is the reel offered for posting online.
 	 */
 	async function submit() {
 		if (submitting) return
 		setSubmitting(true)
 		setSubmitError(null)
-		if (project) setProjectTier(project.id, tier)
+		if (project) {
+			const refusedTier = await setProjectTier(project.id, tier)
+			if (refusedTier) {
+				setSubmitting(false)
+				setSubmitError(refusedTier)
+				return
+			}
+		}
 		let postId = closingPostId
 		if (clip && !postId) {
 			const posted = await postReel(reelCheckpointId, closingCaption, clip)
