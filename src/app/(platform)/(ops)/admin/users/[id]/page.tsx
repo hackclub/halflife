@@ -7,8 +7,9 @@ import { PenaltyCard } from "@/app/components/forms/PenaltyCard"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
+import { projectTierId } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
-import { PayoutSource } from "@/lib/enums"
+import { PayoutSource, PhaseStatus } from "@/lib/enums"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { isHcbConfigured } from "@/lib/hcb"
 import { penaltyFor } from "@/lib/moderation"
@@ -194,11 +195,12 @@ export default async function AdminUserPage({ params }: Props) {
 								designStatus: project.designStatus,
 								extension: project.submissionExtensionUntil?.toISOString() ?? null,
 								grantSent: project.hcbGrantTopUps.length > 0,
-								grantUsd: project.grantUsd,
+								// A grant is decided with the design, so one on an undecided project is an artefact of an import rather than money owed.
+								grantUsd: project.designStatus === PhaseStatus.approved ? project.grantUsd : null,
 								id: project.id,
 								theme: project.theme,
 								themeLabel: getThemeDef(project.theme).label,
-								tier: project.tier,
+								tier: projectTierId(project),
 								title: project.title,
 							}}
 							key={project.id}

@@ -1,4 +1,4 @@
-import { Theme } from "@/lib/enums"
+import { PhaseStatus, Theme } from "@/lib/enums"
 
 /**
  * Funding tiers.
@@ -145,4 +145,24 @@ export function isTierId(id: unknown): id is TierId {
 export function tierForHours(hours: number): Tier | null {
 	const affordable = TIERS.filter(t => hours >= t.fundingHours)
 	return affordable.at(-1) ?? null
+}
+
+/**
+ * The tier a project is priced and gated against, out of the two columns that can carry one.
+ *
+ * `tier` is the reviewer's decision at design approval, and is written only there. `requestedTier` is the maker's ask until then, and the API refuses to write anything else. So the decision leads once the design is approved and the ask leads before it.
+ *
+ * Reading `tier` first on an unapproved project lets anything that wrote it early shadow the ask. The Stasis import did exactly that: it copied the old platform's tier onto every row it moved, approved or not, so an imported draft sits at Tier 1 with a Tier 2 request on top – and every gate, price and grant read the Tier 1 it never asked for, refusing a cart Tier 2 covers and naming Tier 1's grant while the maker's project says Tier 2.
+ */
+export function projectTierId(project: {
+	designStatus: PhaseStatus
+	requestedTier: number | null
+	tier: number | null
+}): TierId {
+	// The first column in precedence order that actually holds a tier. A null, or a number no tier has, falls through to the next rather than to Tier 1 by itself.
+	const order =
+		project.designStatus === PhaseStatus.approved
+			? [project.tier, project.requestedTier]
+			: [project.requestedTier, project.tier]
+	return order.find(isTierId) ?? ENTRY_TIER.id
 }

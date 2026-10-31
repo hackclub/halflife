@@ -2,7 +2,7 @@ import "server-only"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { bomTotalUsd, type PartsFunding, partsFunding } from "@/lib/bom-policy"
 import type { BomLine } from "@/lib/bom-schema"
-import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
+import { ENTRY_TIER, getTier, projectTierId } from "@/lib/config/tiers"
 import { Phase, PhaseStatus } from "@/lib/enums"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
@@ -25,13 +25,13 @@ export type { BomLine } from "@/lib/bom-schema"
  *
  * The submit gate's side of the rule in `lib/bom-policy`, and deliberately not the sheet's: the numbers here are the ones the maker is bound by, worked out from the stored cart and the stored tier request rather than from whatever was on screen when they pressed submit.
  *
- * `requestedTier` is the maker's ask and `tier` the reviewer's decision, so a project whose design is already approved is priced against what was actually paid out. A build never asks for parts money, so its total is nothing and it can never need agreeing to anything.
+ * The tier comes from `projectTierId`, which is the maker's request until the design is approved and the reviewer's decision after – never a `tier` value written before a decision, which is what imported rows carry. A build never asks for parts money, so its total is nothing and it can never need agreeing to anything.
  */
 export async function partsFundingFor(
-	project: Pick<Models.public_ThemeProject, "id" | "tier" | "requestedTier" | "bomTaxShippingUsd">,
+	project: Pick<Models.public_ThemeProject, "designStatus" | "id" | "tier" | "requestedTier" | "bomTaxShippingUsd">,
 	phase: Phase,
 ): Promise<PartsFunding> {
-	const capUsd = getTier(project.tier ?? project.requestedTier ?? ENTRY_TIER.id)?.grantUsd ?? ENTRY_TIER.grantUsd
+	const capUsd = getTier(projectTierId(project))?.grantUsd ?? ENTRY_TIER.grantUsd
 	if (phase !== Phase.DESIGN) return partsFunding(0, capUsd)
 	const items = await db.orm.public.BomItem.where({ themeProjectId: project.id })
 		.select("quantity", "unitCostUsd")

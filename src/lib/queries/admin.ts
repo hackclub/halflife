@@ -6,7 +6,7 @@ import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
 import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { getTier, isTierId } from "@/lib/config/tiers"
+import { getTier, isTierId, projectTierId } from "@/lib/config/tiers"
 import { type Balances, getBalances, type LedgerEntryRow } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import {
@@ -195,7 +195,17 @@ export async function listProjects(
 		)
 	if (tier !== undefined)
 		filtered = filtered.where(project =>
-			or(project.tier.eq(tier), and(project.requestedTier.eq(tier), project.tier.isNull())),
+			// `projectTierId`'s rule in SQL: the reviewer's tier once the design is approved, the maker's request before that. Filtering on `tier` alone would list `tier` values written before any decision, so a maker who moved from an imported Tier 1 to a Tier 2 request would be filed under Tier 1.
+			or(
+				and(
+					project.designStatus.eq(PhaseStatus.approved),
+					or(project.tier.eq(tier), and(project.tier.isNull(), project.requestedTier.eq(tier))),
+				),
+				and(
+					project.designStatus.notIn([PhaseStatus.approved]),
+					or(project.requestedTier.eq(tier), and(project.requestedTier.isNull(), project.tier.eq(tier))),
+				),
+			),
 		)
 	const position = readCursor(opts.cursor)
 	// The directory is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
@@ -290,6 +300,7 @@ export interface UserDetail {
 		hcbGrantCards: { id: string; status: string }[]
 		hcbGrantTopUps: { id: string }[]
 		id: string
+		requestedTier: number | null
 		submissionExtensionUntil: Date | null
 		theme: Models.public_ThemeProject["theme"]
 		tier: number | null
@@ -359,6 +370,7 @@ export async function getUserDetail(
 					"designStatus",
 					"grantUsd",
 					"id",
+					"requestedTier",
 					"submissionExtensionUntil",
 					"theme",
 					"tier",
@@ -1785,15 +1797,16 @@ export interface WeekProjectCluster {
  *
  * A starter is its own column rather than a tier: picking one locks the request to Tier 1, so counting it as a custom tier-1 would make the two indistinguishable, and which of them a week is funding is exactly the question.
  *
- * The tier is `tier ?? requestedTier` – the reviewer's once they have set one, the maker's ask until then – the same resolution `lib/bom` and the admin project filters use. Null is only legal alongside a starter, which returned above, so anything left over is a tier-1 request.
+ * The tier is `projectTierId`'s: the reviewer's decision once the design is approved, the maker's ask before that. Null resolves to a tier-1 request.
  */
 function projectColumn(project: {
+	designStatus: PhaseStatus
 	starterProjectId: string | null
 	tier: number | null
 	requestedTier: number | null
 }): "starter" | "tier1" | "tier2" | "tier3" {
 	if (project.starterProjectId) return "starter"
-	const tier = project.tier ?? project.requestedTier
+	const tier = projectTierId(project)
 	if (tier === 2) return "tier2"
 	if (tier === 3) return "tier3"
 	return "tier1"
@@ -1879,7 +1892,7 @@ export interface WeekHoursCluster {
 export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
 		.where(project => project.namedAt.isNotNull())
-		.select("requestedTier", "starterProjectId", "theme", "tier", "userId")
+		.select("designStatus", "requestedTier", "starterProjectId", "theme", "tier", "userId")
 		.include("hackatimeLinks", links =>
 			links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
 		)

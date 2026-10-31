@@ -10,6 +10,7 @@ import {
 	TOTAL_WEEKS,
 	WARMUP_WEEK_ID,
 } from "@/lib/config/program"
+import { projectTierId } from "@/lib/config/tiers"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { HardwareExperience, HoursSource, type ParticipantGoal, Phase, PhaseStatus, Role, Theme } from "@/lib/enums"
@@ -297,8 +298,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
 			// Week one's project comes into existence through the first checkpoint rather than a project form, so the node that stands for it is different and is already recorded above. A warm-up has no such node at all.
 			if (phase === Phase.DESIGN && week !== undefined && week > 1) {
-				const tier = project.tier ?? project.requestedTier
-				if (project.title && project.description && tier)
+				// Whether a tier has been chosen at all, rather than which one: the project node is about the form being filled in, and a tier written before a decision still counts as one having been chosen.
+				const tierChosen = project.requestedTier !== null || project.tier !== null
+				if (project.title && project.description && tierChosen)
 					progress[id("project")] = {
 						artefacts: 0,
 						done: true,
@@ -429,7 +431,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		projects: projects.flatMap(project => {
 			const warmup = project.theme === Theme.WARMUP
 			const themeIndex = THEMES.findIndex(t => t.id === project.theme)
-			const tier = project.tier ?? project.requestedTier
+			const tier = projectTierId(project)
 			// The row is made when its checkpoint is opened, before anything is decided about it. A project is started once it has been named or described, or has left draft; `tier` alone is not the signal, because a project can be submitted and rejected without a requested tier (the submit path falls back to Tier 1) and it has to stay visible with that rejection.
 			const started =
 				project.namedAt !== null
@@ -463,7 +465,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 								videoUrl: publicUrlFor(p.objectKey),
 							})),
 					),
-					tier: clampTier(tier ?? 1),
+					tier,
 					weekId: warmup ? WARMUP_WEEK_ID : weekOf(themeIndex, Phase.DESIGN),
 				},
 			]
@@ -491,8 +493,4 @@ interface SessionRow {
 /** What a reviewer accepted, falling back to what was claimed. */
 function minutesOf(session: SessionRow): number {
 	return Math.round((session.hoursApproved ?? session.hoursClaimed) * 60)
-}
-
-function clampTier(tier: number): 1 | 2 | 3 {
-	return tier === 2 || tier === 3 ? tier : 1
 }

@@ -27,7 +27,7 @@ import {
 	LedgerKind,
 	type MediaType,
 	Phase,
-	type PhaseStatus,
+	PhaseStatus,
 	ReviewPass,
 	type ReviewResult,
 	Role,
@@ -379,6 +379,8 @@ async function importProjects(userIds: Set<string>): Promise<{
 			const theme = THEME_ORDER[i]
 			if (!theme) continue
 			const tier = p.tier && p.tier >= 1 && p.tier <= 3 ? p.tier : null
+			// `tier` and `grantUsd` are the reviewer's decision, written on a design approval and nowhere else. The old platform let a maker choose the tier up front, so copying it onto every row would shadow the request here: an imported draft would sit at Tier 1 while its maker asks for Tier 2, and every price and gate would keep reading Tier 1 (see `projectTierId`). The choice still comes across, as `requestedTier`.
+			const decided = p.designStatus === PhaseStatus.approved
 			ids.add(p.id)
 			userIdOf.set(p.id, userId)
 			themeOf.set(p.id, theme)
@@ -398,14 +400,14 @@ async function importProjects(userIds: Set<string>): Promise<{
 				designReviewedById: p.designReviewedBy,
 				designStatus: p.designStatus,
 				githubRepo: p.githubRepo,
-				grantUsd: tier ? getTierOrThrow(tier).grantUsd : null,
+				grantUsd: decided && tier ? getTierOrThrow(tier).grantUsd : null,
 				id: p.id,
 				namedAt: p.createdAt,
 				requestedTier: tier,
 				starterProjectId: p.starterProjectId,
 				submissionExtensionUntil: p.submissionExtensionUntil,
 				theme,
-				tier,
+				tier: decided ? tier : null,
 				title: p.title,
 				userId,
 			})

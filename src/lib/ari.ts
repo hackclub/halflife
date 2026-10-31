@@ -566,14 +566,14 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 				? ReviewResult.RETURNED
 				: ReviewResult.REJECTED
 
-	// A design approval is also the funding decision: it sets the tier and the parts grant. Ari reviews the work, not the money, so the tier is the one the maker asked for – never invented here.
+	// A design approval is also the funding decision: it sets the tier and the parts grant. Ari reviews the work, not the money, so the tier is the one the maker asked for – never invented here, and never whatever `tier` a pre-decision write left behind (imported rows carry one; see `projectTierId`).
 	let tier: number | null = null
 	let grantUsdOverride: number | null = null
 	if (result === ReviewResult.APPROVED && phase === Phase.DESIGN) {
 		const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
 			.select("requestedTier", "tier")
 			.first()
-		const chosen = project?.tier ?? project?.requestedTier ?? null
+		const chosen = project?.requestedTier ?? project?.tier ?? null
 		if (!chosen || !isTierId(chosen)) {
 			await ignored(event, "design approved but no valid funding tier is set", event.external_id)
 			return

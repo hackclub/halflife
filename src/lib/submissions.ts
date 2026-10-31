@@ -7,7 +7,7 @@ import { usesStarterDefaultDescription } from "@/lib/config/onboarding"
 import { submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
 import { firmwareWaiverCovers } from "@/lib/config/repo-checks"
-import { ENTRY_TIER, getTierOrThrow } from "@/lib/config/tiers"
+import { getTierOrThrow, projectTierId } from "@/lib/config/tiers"
 import { lockUserCredit } from "@/lib/currency"
 import { Phase, PhaseStatus, ReviewResult, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
@@ -164,7 +164,8 @@ export async function submitPhase(
 
 	// A tier's funded block is the floor a design week is handed in on, and until now that floor lived only in the submit sheet. It is the gate the tier promises: a tier-3 request funds twenty hours and a hundred dollars of parts, so it cannot be handed in on an hour of work. The client refuses a tier below its floor; this is the same rule held by the server, so a request that bypasses the sheet cannot buy a grant with less work than the grant is for.
 	if (phase === Phase.DESIGN) {
-		const tierId = project.tier ?? project.requestedTier ?? ENTRY_TIER.id
+		// The maker's request, not a `tier` written before a decision: on an imported project the import's copy of the old platform's tier sits there and would gate a Tier 2 request at Tier 1's floor. See `projectTierId`.
+		const tierId = projectTierId(project)
 		const floor = submitFloorFor(getTierOrThrow(tierId).fundingHours)
 		if (breakdown.effectiveHours < floor)
 			throw new HttpError(
