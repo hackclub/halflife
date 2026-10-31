@@ -185,8 +185,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	let { tier } = project
 	if (approving && phase === Phase.DESIGN) {
-		// The tier's dollars are parts money, so the decision lands here – before the participant starts building – not at build approval.
-		const chosen = input.tier ?? project.tier
+		// The tier's dollars are parts money, so the decision lands here – before the participant starts building – not at build approval. A reviewer who did not name one leaves the maker's request standing; `tier` can hold a value written before any decision (imported rows do), so it is the last resort rather than the first.
+		const chosen = input.tier ?? project.requestedTier ?? project.tier
 		if (!isTierId(chosen)) throw new HttpError("VALIDATION_FAILED", "Assign a funding tier when approving a design")
 		tier = chosen
 	}

@@ -3,6 +3,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { listBom } from "@/lib/bom"
 import { sleep } from "@/lib/concurrency"
 import { getThemeDef, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { projectTierId } from "@/lib/config/tiers"
 import { Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { ALL_FORGES } from "@/lib/forge"
@@ -188,7 +189,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 		const isWarmup = project.theme === Theme.WARMUP
 		const themeDef = getThemeDef(project.theme)
 		const weekId = isWarmup ? WARMUP_WEEK_ID : themeDef.designWeek
-		const tier = project.tier ?? project.requestedTier ?? 1
+		const tier = projectTierId(project)
 
 		const meta = {
 			description: project.description,

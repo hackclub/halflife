@@ -15,6 +15,7 @@ import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUB
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
+import { projectTierId } from "@/lib/config/tiers"
 import { HoursSource, PayoutSource, Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
@@ -182,7 +183,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const lapseLinks = timelapseLinks(project.workSessions.flatMap(s => s.timelapses))
 
 	const [firstName, ...rest] = (user.name ?? "").trim().split(/\s+/)
-	const tier = project.tier ?? project.requestedTier
+	const tier = projectTierId(project)
 	const journalUrl = await findRepoFile(project.githubRepo, /(^|\/)journal\.md$/i)
 	const cover = publicUrlFor(project.coverImageKey)
 	const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus

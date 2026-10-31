@@ -17,8 +17,9 @@ import {
 import { DisputeThread } from "@/components/disputes/DisputeThread"
 import { bomTotalUsd, partsFunding } from "@/lib/bom-policy"
 import { submitFloorFor } from "@/lib/config/printers"
-import { getTier, TIERS } from "@/lib/config/tiers"
+import { getTierOrThrow, projectTierId, TIERS } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
+import { PhaseStatus } from "@/lib/enums"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -47,22 +48,19 @@ export default async function ReviewDetailPage({ params }: Props) {
 	const claimedByMe = claimLive && submission.claim?.reviewerId === user.id
 
 	// The parts list is what a design approval's money is asked against, so the total is read the same way the maker's page and the submit gate read it. An approved design's actual grant is the cap a reviewer is really comparing against – including a grant of zero when the maker declined parts money – and before that it is the tier they asked for.
-	const tierId = project.tier ?? project.requestedTier
-	const tier = tierId === null ? undefined : getTier(tierId)
+	const tierId = projectTierId(project)
+	const tier = getTierOrThrow(tierId)
+	const decided = project.designStatus === PhaseStatus.approved
 	const bomTotal = bomTotalUsd(detail.bom, detail.bomTaxShippingUsd)
-	const bomCapUsd = project.grantUsd ?? tier?.grantUsd ?? null
-	const bomFunding = bomCapUsd === null ? null : partsFunding(bomTotal, bomCapUsd)
-	const bomFundingLabel =
-		bomCapUsd === null
-			? null
-			: `${formatUsd(bomCapUsd)} ${tier ? `${tier.name} grant${project.tier === null ? " they asked for" : ""}` : "grant"}`
+	// A grant amount on a design that has not been decided is not a decision, so before approval the cap is the asked-for tier's grant – an imported row can carry the old platform's `grantUsd` next to a request that has since moved.
+	const bomCapUsd = decided ? (project.grantUsd ?? tier.grantUsd) : tier.grantUsd
+	const bomFunding = partsFunding(bomTotal, bomCapUsd)
+	const bomFundingLabel = `${formatUsd(bomCapUsd)} ${tier.name} grant${decided ? "" : " they asked for"}`
 	// One sentence for the money, so the total reads the same way here as it does on the maker's page: what the list costs, what the tier funds, and who pays the difference.
 	const bomFundingNote =
-		bomFunding === null || bomFundingLabel === null
-			? `${formatUsd(bomTotal)}, tax and shipping included.`
-			: bomFunding.shortfallUsd > 0
-				? `${formatUsd(bomTotal)} against the ${bomFundingLabel}, so ${formatUsd(bomFunding.shortfallUsd)} of the parts is the maker's own money.`
-				: `${formatUsd(bomTotal)} of the ${bomFundingLabel}.`
+		bomFunding.shortfallUsd > 0
+			? `${formatUsd(bomTotal)} against the ${bomFundingLabel}, so ${formatUsd(bomFunding.shortfallUsd)} of the parts is the maker's own money.`
+			: `${formatUsd(bomTotal)} of the ${bomFundingLabel}.`
 
 	return (
 		<div className="hl-stack">
@@ -379,7 +377,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 					<DecisionPanel
 						claimedByMe={claimedByMe}
 						computedHours={breakdown.computedTotal}
-						currentTier={project.tier}
+						currentTier={tierId}
 						phase={submission.phase}
 						submissionId={id}
 						tiers={TIERS.map(t => ({
