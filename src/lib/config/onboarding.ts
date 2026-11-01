@@ -207,8 +207,6 @@ export const STARTER_MODIFICATION_NOTE =
  * The comp branches this on the answer to question one – "If beginner: information about PCBs, else: example projects" – so both halves are here and the step picks one.
  */
 export interface WeekIntro {
-	/** Shown to everyone else, in place of the primer. */
-	readonly examples: readonly string[]
 	readonly headline: string
 	readonly kicker: string
 	/** Shown to FIRST_TIME and A_LITTLE. */
@@ -218,7 +216,6 @@ export interface WeekIntro {
 
 export const WEEK_INTROS = [
 	{
-		examples: ["A PCB keychain!", "A flight controller!", "A devboard from your favorite microcontroller!"],
 		headline: "DESIGN YOUR PCB",
 		kicker: "Printed Circuit Board Week",
 		primer:
@@ -231,7 +228,7 @@ export function weekIntroFor(theme: Theme): WeekIntro | undefined {
 	return WEEK_INTROS.find(w => w.theme === theme)
 }
 
-/** Whether step two should show the primer rather than the examples. */
+/** Whether onboarding treats this maker as new to hardware. No answer counts as new, unlike `seesStarterProjects`. */
 export function isBeginner(experience: HardwareExperience | null): boolean {
 	return (
 		experience === HardwareExperience.FIRST_TIME || experience === HardwareExperience.A_LITTLE || experience === null

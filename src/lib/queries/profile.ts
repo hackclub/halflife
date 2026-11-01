@@ -1,6 +1,6 @@
 import "server-only"
 import { avatarUrl } from "@/lib/avatar"
-import { getThemeDef } from "@/lib/config/program"
+import { getThemeDef, participantThemeLabel } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { displayName } from "@/lib/display-name"
 import { HoursSource, Phase, PostStatus, Theme } from "@/lib/enums"
@@ -155,7 +155,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 			hours,
 			id: p.id,
 			painting: warmup ? "Warm Up" : (week?.theme ?? "PCB"),
-			themeLabel: def.label,
+			themeLabel: participantThemeLabel(p.theme),
 			thumbnail: projectThumbnail(
 				publicUrlFor(p.coverImageKey),
 				p.workSessions.map(s => ({ content: s.content, createdAt: parseDbTimestamp(s.createdAt) })),

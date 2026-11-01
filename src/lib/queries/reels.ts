@@ -1,5 +1,5 @@
 import "server-only"
-import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
+import { DESIGN_WEEKS, participantThemeLabel, THEMES } from "@/lib/config/program"
 import { progressReelHours } from "@/lib/curriculum"
 import { Phase, type PhaseStatus, PostStatus, type PublicReelPlatform } from "@/lib/enums"
 import db from "@/lib/prisma8"
@@ -98,13 +98,14 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 		const project = p.themeProject && !p.themeProject.deletedAt ? p.themeProject : null
 		const key = project?.id ?? "none"
 		if (!groups.has(key)) {
-			const theme = project ? THEMES.find(t => t.id === project.theme) : undefined
+			const theme =
+				project && THEMES.some(t => t.id === project.theme) ? participantThemeLabel(project.theme) : undefined
 			groups.set(key, {
 				project: project
 					? {
 							id: project.id,
-							theme: theme?.label ?? project.theme,
-							title: project.title || theme?.label || "Untitled project",
+							theme: theme ?? project.theme,
+							title: project.title || theme || "Untitled project",
 						}
 					: null,
 				reels: [],
@@ -133,7 +134,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 	// Projects in trail order, so PCB reads before CAD whatever was posted last; reels outside any project come after them.
 	const order = (g: MyReelGroup) => {
 		if (!g.project) return Number.MAX_SAFE_INTEGER
-		const i = THEMES.findIndex(t => t.label === g.project?.theme)
+		const i = THEMES.findIndex(t => participantThemeLabel(t.id) === g.project?.theme)
 		return i === -1 ? THEMES.length : i
 	}
 	return [...groups.values()].toSorted((a, b) => order(a) - order(b))

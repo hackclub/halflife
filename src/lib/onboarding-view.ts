@@ -67,7 +67,6 @@ export interface OnboardingView {
 		kicker: string
 		headline: string
 		primer: string
-		examples: readonly string[]
 	} | null
 }
 
@@ -117,7 +116,6 @@ export const OnboardingViewSchema: z.ZodType<OnboardingView> = z.object({
 	),
 	weekIntro: z
 		.object({
-			examples: z.array(z.string()),
 			headline: z.string(),
 			kicker: z.string(),
 			painting: z.string(),
@@ -139,10 +137,9 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 	const themeIndex = THEMES.findIndex(t => t.id === state.theme)
 	const meta = WEEK_META[themeIndex]
 	const custom = weekIntroFor(state.theme)
-	// The curriculum's own copy for the theme, with week one's shorter intro kept where it has one. A late joiner onboarded into Music gets Music's primer, examples and painting rather than PCB's.
+	// The curriculum's own copy for the theme, with week one's shorter intro kept where it has one. A late joiner onboarded into Music gets Music's primer and painting rather than PCB's.
 	const intro = meta
 		? {
-				examples: [...(custom?.examples ?? meta.examples)],
 				headline: custom?.headline ?? meta.headline,
 				kicker: custom?.kicker ?? meta.fullName,
 				painting: meta.theme,
@@ -182,6 +179,6 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 			name: tier.name,
 			showcase: [...(tier.showcase[Theme.PCB] ?? [])],
 		})),
-		weekIntro: intro ? { ...intro, examples: [...intro.examples] } : null,
+		weekIntro: intro,
 	}
 }

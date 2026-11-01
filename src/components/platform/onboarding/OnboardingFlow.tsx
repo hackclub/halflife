@@ -225,20 +225,6 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 								sizes="(min-width: 640px) 120px, 84px"
 								theme={view.weekIntro.painting}
 							/>
-							<div className="min-w-0 flex-1 space-y-2">
-								{view.beginner ? (
-									<p className="max-w-[62ch] text-[0.92rem] leading-relaxed text-navy-soft" />
-								) : (
-									<>
-										<p className="text-[0.92rem] text-navy-soft">Some places to start, if you want one:</p>
-										<ul className="list-disc space-y-1 pl-5 text-[0.9rem] text-navy-soft">
-											{view.weekIntro.examples.map(example => (
-												<li key={example}>{example}</li>
-											))}
-										</ul>
-									</>
-								)}
-							</div>
 						</div>
 
 						{view.beginner && view.starterProjects.length > 0 ? (

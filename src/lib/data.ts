@@ -1,3 +1,4 @@
+import { isFreestyle } from "./config/freestyle"
 import { EXAMPLE_JOURNAL_URL, README_GUIDE_URL } from "./routes"
 import type { DocArticle } from "./types"
 
@@ -187,14 +188,17 @@ export const DOCS: DocArticle[] = [
 			},
 			{
 				heading: "Your repo",
-				list: [
-					"Every week: a public repo, with a README that has enough text and photos in it.",
-					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), a bom.csv, and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a BOM table in the README.",
-					"CAD week: editable CAD files (.step, .f3d, .fcstd, .sldprt). Tinkercad, OpenSCAD, Blender and STL-only exports are not accepted as the source. Recommended: printable models (.stl, .3mf) and a BOM table in the README.",
-					"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
-					"Displays week: firmware or code. Recommended: a schematic.",
-					"Breadboard computer week: a schematic (KiCad, Logisim or Digital).",
-				],
+				// A getter so week 5's line is named the way participants see that week when the page is read (see config/freestyle).
+				get list() {
+					return [
+						"Every week: a public repo, with a README that has enough text and photos in it.",
+						"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), a bom.csv, and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a BOM table in the README.",
+						"CAD week: editable CAD files (.step, .f3d, .fcstd, .sldprt). Tinkercad, OpenSCAD, Blender and STL-only exports are not accepted as the source. Recommended: printable models (.stl, .3mf) and a BOM table in the README.",
+						"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
+						"Displays week: firmware or code. Recommended: a schematic.",
+						`${isFreestyle() ? "Freestyle" : "Breadboard computer"} week: nothing beyond the README and photos. Recommended: PCB design files, CAD source files and firmware, whichever your project has.`,
+					]
+				},
 				paragraphs: [
 					"The submit sheet checks your repo before it lets you submit. A missing README, a README with too little text or too few photos, or a missing required file blocks the submit and tells you what to add. Recommended files, including a BOM table in the README, are flagged but never block.",
 				],
