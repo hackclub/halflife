@@ -2,7 +2,7 @@ import "server-only"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { listBom } from "@/lib/bom"
 import { sleep } from "@/lib/concurrency"
-import { getThemeDef, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { getThemeDef, participantThemeLabel, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
@@ -196,9 +196,9 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 			id: project.id,
 			isWarmup,
 			repoUrl: project.githubRepo,
-			themeLabel: themeDef.label,
+			themeLabel: participantThemeLabel(project.theme),
 			tier,
-			title: project.title || themeDef.label,
+			title: project.title || participantThemeLabel(project.theme),
 			weekId,
 		}
 

@@ -1,7 +1,7 @@
 import "server-only"
 import { and, not } from "@prisma/orm-postgres/orm-client"
 import { avatarUrl } from "@/lib/avatar"
-import { getThemeDef } from "@/lib/config/program"
+import { participantThemeLabel } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -80,7 +80,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 				session.hoursSource === "HACKATIME_TRACKED"
 					? 0
 					: Math.round((session.hoursApproved ?? session.hoursClaimed) * 60),
-			project: project.title || getThemeDef(project.theme).label,
+			project: project.title || participantThemeLabel(project.theme),
 			projectId: project.id,
 			// Expired against today, so a run that ended weeks ago reads 0 rather than the number it reached before it broke.
 			streak: streakAsOf(project.user, today),

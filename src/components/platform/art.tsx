@@ -101,6 +101,8 @@ const WEEK_PAINTINGS: Partial<{ [_: string]: StaticImageData }> = {
 	"Breadboard computer": breadboardPainting,
 	CAD: cadPainting,
 	Displays: displayPainting,
+	// Freestyle week has no theme to paint either, so it gets the same "your own idea" Gato as the warm-up.
+	Freestyle: gatoSchematic,
 	Music: musicPainting,
 	PCB: pcbPainting,
 	// The warm-up has no theme to paint. It is "your own idea", which is the Gato that stands for that on onboarding's custom-project card.

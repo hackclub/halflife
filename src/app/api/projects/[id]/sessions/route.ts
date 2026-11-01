@@ -18,6 +18,7 @@ import {
 	effectiveWeekClose,
 	getProgramSettings,
 	getSubmissionAccess,
+	ignoresSchedule,
 	isPhaseDecided,
 	isWeekOpen,
 	SUBMISSIONS_CLOSED_MESSAGE,
@@ -126,7 +127,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		return fail("VALIDATION_FAILED", "Entries on a warm-up project go on the phase it is submitted as")
 
 	const week = scheduledWeekFor(project.theme, data.phase)
-	await assertWeekStarted(week)
+	await assertWeekStarted(week, gate.user.id)
 	if (!(await isWeekOpen(gate.user.id, id, week))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 	const phaseStatus = statusFor(project, data.phase)
@@ -190,7 +191,8 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 			weekUser?.submissionExtensionUntil ? parseDbTimestamp(weekUser.submissionExtensionUntil) : null,
 			current?.submissionExtensionUntil ? parseDbTimestamp(current.submissionExtensionUntil) : null,
 		)
-		if (new Date() >= closesAt) throw new HttpError("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
+		if (new Date() >= closesAt && !(await ignoresSchedule(gate.user.id)))
+			throw new HttpError("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 		// One person cannot work more than 24 hours in a day. Self-reported (MANUAL) claims are capped per effective date across all of the maker's live projects, so ten 15-hour entries in a minute are refused. Tracked entries are excluded: their time is verified by Hackatime, not self-reported. Counted inside the transaction, so two parallel submits cannot each pass against the same total.
 		if (data.hoursSource === HoursSource.MANUAL) {

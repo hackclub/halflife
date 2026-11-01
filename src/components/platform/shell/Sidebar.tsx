@@ -130,6 +130,7 @@ export function Sidebar({ className }: { className?: string }) {
 
 			{viewer.isAdmin && <RedoOnboarding />}
 			{viewer.isAdmin && <BypassLocks />}
+			{viewer.isAdmin && <PreviewFreestyle />}
 		</div>
 	)
 }
@@ -174,6 +175,28 @@ function BypassLocks() {
 			type="button"
 		>
 			{bypassLocks ? "Relock checkpoints" : "Bypass checkpoint locks"}{" "}
+			<span className="label ml-1 text-[0.6rem] no-underline">admin</span>
+		</button>
+	)
+}
+
+/**
+ * Admins only: see week 5 as participants will from midnight on its first day, when Breadboard Computer becomes Freestyle. It changes the words, not the clock – pair it with the lock bypass to open week 5's checkpoints, and the week's own project form, before it starts.
+ */
+function PreviewFreestyle() {
+	const { previewFreestyle, setPreviewFreestyle } = useStore()
+
+	return (
+		<button
+			aria-pressed={previewFreestyle}
+			className={cx(
+				"hand -mt-3 self-start text-[0.76rem] underline decoration-dashed underline-offset-4 transition-colors",
+				previewFreestyle ? "font-semibold text-coral-dark hover:text-navy" : "text-navy-faint hover:text-navy",
+			)}
+			onClick={() => setPreviewFreestyle(!previewFreestyle)}
+			type="button"
+		>
+			{previewFreestyle ? "Stop previewing freestyle" : "Preview freestyle (from midnight)"}{" "}
 			<span className="label ml-1 text-[0.6rem] no-underline">admin</span>
 		</button>
 	)

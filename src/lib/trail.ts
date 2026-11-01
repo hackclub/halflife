@@ -50,7 +50,6 @@ function warmupWeek(project: Project, build: boolean, isDone: (id: string) => bo
 	const meta: WeekMeta = {
 		accent: "var(--color-violet-pale)",
 		accentDeep: "var(--color-violet-deep)",
-		examples: [],
 		fullName: "Warm-up project",
 		headline: "WARM UP",
 		id: WARMUP_WEEK_ID,
@@ -140,13 +139,14 @@ export function deriveTrail(save: StoreSnapshot, now: number): Trail {
 		return opensAt === undefined || now >= opensAt
 	}
 
+	// `Intl.DateTimeFormat` for the same reason as `formatDeadline`: a browser's `toLocaleDateString` can hold a stale offset across a clock change.
 	const dayLabel = (at: number) =>
-		new Date(at).toLocaleDateString("en-US", {
+		new Intl.DateTimeFormat("en-US", {
 			day: "numeric",
 			month: "long",
 			timeZone: save.programTimezone,
 			weekday: "long",
-		})
+		}).format(at)
 	const weekOpensOn = (weekId: number) => {
 		const at = save.weekOpensAt[weekId]
 		return at === undefined ? null : dayLabel(at)

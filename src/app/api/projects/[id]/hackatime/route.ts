@@ -2,7 +2,7 @@ import { and } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
+import { participantProjectTitle, scheduledWeekFor } from "@/lib/config/program"
 import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
@@ -56,7 +56,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
 
-	await assertWeekStarted(scheduledWeekFor(project.theme, parsed.data.phase))
+	await assertWeekStarted(scheduledWeekFor(project.theme, parsed.data.phase), gate.user.id)
 
 	// Linking adds hours to the phase, and the decision recomputes those hours live, so an in-review phase is frozen for this too – not only a decided one.
 	const phaseStatus = statusFor(project, parsed.data.phase)
@@ -97,7 +97,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	if (other?.themeProject)
 		return fail(
 			"CONFLICT",
-			`That Hackatime project is already linked to "${projectDisplayTitle(other.themeProject)}". One tracked project can back only one project, because its hours would otherwise count twice. Unlink it there first, or link a different Hackatime project.`,
+			`That Hackatime project is already linked to "${participantProjectTitle(other.themeProject)}". One tracked project can back only one project, because its hours would otherwise count twice. Unlink it there first, or link a different Hackatime project.`,
 		)
 
 	// Scoped to the phase's scheduled week: the endpoint's default is the project's all-time total, and linking that total on every theme and warm-up paid one block of work many times over. Warm-ups (week 0) have no week to scope to and keep the all-time total, with the cross-project check above as the guard.

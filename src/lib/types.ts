@@ -52,8 +52,6 @@ export interface SessionLog {
 export interface WeekMeta {
 	accent: string
 	accentDeep: string
-	/** Example projects shown to experienced makers instead of the primer. */
-	examples: string[]
 	/** Long-form name, e.g. Printed Circuit Board Week. */
 	fullName: string
 	/** The banner headline, e.g. DESIGN YOUR PCB. */
