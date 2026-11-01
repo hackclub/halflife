@@ -3,14 +3,16 @@ import { avatarUrl } from "@/lib/avatar"
 import { getThemeDef } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { displayName } from "@/lib/display-name"
-import { PostStatus, Theme } from "@/lib/enums"
+import { HoursSource, Phase, PostStatus, Theme } from "@/lib/enums"
 import { type FeedItem, getCreatorReels } from "@/lib/feed"
+import { rollUpHours } from "@/lib/hours"
+import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
-import { parseDbTimestamp } from "@/lib/time"
+import { parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -25,7 +27,7 @@ export interface ProfileProject {
 	/** The scene colour behind a project that has no picture of its own. */
 	accent: string
 	entries: number
-	/** Journalled hours – tracked entries contribute zero, as they do everywhere. */
+	/** What the project is worth: journalled entries plus linked Hackatime time, frozen once a review has landed. The same figure the projects grid and the project page show. */
 	hours: number
 	id: string
 	/** The key `WeekPainting` knows the scene by, e.g. "PCB", "Breadboard computer". */
@@ -58,7 +60,7 @@ export interface ProfileData {
 export const PROFILE_REELS = 24
 
 export async function getProfile(userId: string, viewerId: string): Promise<ProfileData | null> {
-	const [user, projects, reels, counts, settings] = await Promise.all([
+	const [user, projectRows, reels, counts, settings] = await Promise.all([
 		db.orm.public.User.whereUnique({ id: userId })
 			.select(
 				"createdAt",
@@ -72,20 +74,23 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 				"slackId",
 			)
 			.first(),
+		// Every live project, named or not. Only named ones are shown, but a recording made before a project was named still takes part in the Hackatime overlap check below, exactly as it does in the trail's own snapshot.
 		db.orm.public.ThemeProject.where({ deletedAt: null, userId })
-			.where(project => project.namedAt.isNotNull())
-			.where(project => project.title.neq(""))
-			.select("coverImageKey", "id", "theme", "title")
+			.select("approvedHours", "coverImageKey", "designApprovedHours", "id", "namedAt", "theme", "title")
 			.include("posts", posts =>
 				posts
 					.select("createdAt", "objectKey", "thumbnailKey")
 					.where({ deletedAt: null })
 					.where(post => post.status.eq(PostStatus.PUBLISHED)),
 			)
+			.include("hackatimeLinks", links =>
+				links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
+			)
 			.include("workSessions", sessions =>
 				sessions
-					.select("content", "createdAt", "hoursApproved", "hoursClaimed", "hoursSource")
-					.where({ deletedAt: null }),
+					.select("content", "createdAt", "hoursApproved", "hoursClaimed", "hoursSource", "phase")
+					.where({ deletedAt: null })
+					.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt")),
 			)
 			.all(),
 		getCreatorReels(userId, viewerId, PROFILE_REELS),
@@ -95,6 +100,21 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		getProgramSettings(),
 	])
 	if (!user) return null
+
+	// A row is made when its checkpoint is opened, before the project has a name. An unnamed one is not a project anybody started, so it stays off the list.
+	const projects = projectRows.filter(project => project.namedAt !== null && project.title !== "")
+
+	// Every recording this maker has, whatever project or phase it was attached to. A link finds the ones made under its own project by the name the recording carried, so a clip journalled in one week is deduplicated against a link on another – the same rule the ledger and the trail use.
+	const recordings: RecordedWindow[] = projectRows
+		.flatMap(project => project.workSessions)
+		.flatMap(session =>
+			session.hoursSource === HoursSource.HACKATIME_TRACKED
+				? []
+				: session.timelapses.flatMap(timelapse => {
+						const window = timelapseWindow(parseNullableTimestamp(timelapse.recordedAt), timelapse.coveredSeconds)
+						return window ? [{ hackatimeProject: timelapse.hackatimeProject, window }] : []
+					}),
+		)
 
 	const today = effectiveDateFor(new Date(), settings.programTimezone)
 
@@ -109,13 +129,30 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		const def = getThemeDef(p.theme)
 		const warmup = p.theme === Theme.WARMUP
 		const week = WEEK_META.find(w => w.id === def.designWeek)
-		// A tracked entry's time arrives through its Hackatime link, so it adds nothing to the journalled number here either.
-		const journal = p.workSessions.filter(s => s.hoursSource !== "HACKATIME_TRACKED")
-		const hours = journal.reduce((n, s) => n + (s.hoursApproved ?? s.hoursClaimed), 0)
+		// The same accounting the projects grid, the sidebar total and the project page read: journalled entries at the reviewer's hours, linked Hackatime time, and a reviewer's frozen total once a phase is decided. Reading the journal alone here made a project's hours drop the moment it was opened from a profile rather than the trail.
+		const phaseHours = (phase: Phase) =>
+			rollUpHours(
+				p.workSessions
+					.filter(session => session.phase === phase)
+					.map(session => ({
+						hoursApproved: session.hoursApproved,
+						hoursClaimed: session.hoursClaimed,
+						hoursSource: session.hoursSource,
+						timelapses: session.timelapses.map(timelapse => ({
+							coveredSeconds: timelapse.coveredSeconds,
+							hackatimeProject: timelapse.hackatimeProject,
+							recordedAt: parseNullableTimestamp(timelapse.recordedAt),
+						})),
+					})),
+				p.hackatimeLinks.filter(link => link.phase === phase),
+				phase === Phase.DESIGN ? p.designApprovedHours : p.approvedHours,
+				recordings,
+			).effectiveHours
+		const hours = round2(phaseHours(Phase.DESIGN) + phaseHours(Phase.BUILD))
 		return {
 			accent: warmup ? "var(--color-violet-pale)" : (week?.accent ?? "var(--color-violet-pale)"),
 			entries: p.workSessions.length,
-			hours: round2(hours),
+			hours,
 			id: p.id,
 			painting: warmup ? "Warm Up" : (week?.theme ?? "PCB"),
 			themeLabel: def.label,
