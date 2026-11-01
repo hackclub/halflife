@@ -339,9 +339,16 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 	return capReadme(await res.text())
 }
 
-/** Markdown or HTML images. Global so the README can be counted as well as tested. */
+/**
+ * Markdown or HTML images. Global so the README can be counted as well as tested.
+ *
+ * The destination and the HTML tag both allow line breaks. Makers write images by hand, and a long
+ * path often ends up split from its closing bracket (`![board](assets/board.png` then `)` on the next
+ * line) or an `<img>` tag is spread over several lines. GitHub still renders those, so the check has
+ * to count them too rather than telling a maker their README has no photos.
+ */
 const README_IMAGE =
-	/!\[[^\]\n]{0,1000}\]\([^)\n]{0,2000}\)|!\[[^\]\n]{0,1000}\]\[[^\]\n]{0,1000}\]|<img\b[^>\n]{0,5000}>/gi
+	/!\[[^\]\n]{0,1000}\]\([^)]{0,2000}\)|!\[[^\]\n]{0,1000}\]\[[^\]\n]{0,1000}\]|<img\b[^>]{0,5000}>/gi
 const README_MIN_CHARS = 200
 const README_MIN_IMAGES = 2
 const README_MIN_LINES = 3
@@ -369,7 +376,7 @@ function scannableReadme(readme: string): string {
 }
 
 /** How many images the README embeds. */
-function readmeImageCount(readme: string): number {
+export function readmeImageCount(readme: string): number {
 	return [...scannableReadme(readme).matchAll(README_IMAGE)].length
 }
 
