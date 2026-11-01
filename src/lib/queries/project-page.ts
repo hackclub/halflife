@@ -1,9 +1,12 @@
 import "server-only"
+import { and } from "@prisma/orm-postgres/orm-client"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { HoursSource, Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/lib/enums"
+import { rollUpHours } from "@/lib/hours"
+import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
@@ -422,6 +425,8 @@ export interface PublicProjectData {
 	description: string
 	/** The project's own repo link, as the maker saved it, or null until they add one. */
 	githubRepo: string | null
+	/** What the project is worth, on the same accounting as the owner's page and their profile. */
+	hours: number
 	id: string
 	thumbnail: ProjectThumbnail | null
 	timeline: TimelineItem[]
@@ -454,11 +459,23 @@ export async function getOpenDisputesForProject(projectId: string): Promise<Proj
 export async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {
 	const fetched = await db.orm.public.ThemeProject.where({ deletedAt: null, id })
 		.where(project => project.namedAt.isNotNull())
-		.select("coverImageKey", "description", "githubRepo", "id", "theme", "title")
+		.select(
+			"approvedHours",
+			"coverImageKey",
+			"description",
+			"designApprovedHours",
+			"githubRepo",
+			"id",
+			"theme",
+			"title",
+		)
 		.include("posts", posts =>
 			posts
 				.select("caption", "createdAt", "id", "objectKey", "publishedAt", "status", "thumbnailKey")
 				.where({ deletedAt: null, status: PostStatus.PUBLISHED }),
+		)
+		.include("hackatimeLinks", links =>
+			links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
 		)
 		.include("user", user => user.select("displayName", "id", "name"))
 		.include("workSessions", sessions =>
@@ -467,7 +484,17 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 				.where({ deletedAt: null })
 				.include("timelapses", timelapse =>
 					timelapse
-						.select("coveredSeconds", "externalId", "id", "objectKey", "playbackUrl", "provider", "thumbnailUrl")
+						.select(
+							"coveredSeconds",
+							"externalId",
+							"hackatimeProject",
+							"id",
+							"objectKey",
+							"playbackUrl",
+							"provider",
+							"recordedAt",
+							"thumbnailUrl",
+						)
 						.orderBy(t => t.createdAt.asc()),
 				),
 		)
@@ -490,6 +517,45 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		),
 	}
 
+	// The owner's recordings across every project, so a link here is deduplicated against a clip journalled on another week exactly as it is on their own page. Reading only this project's entries would count the same sitting twice whenever the clip was logged elsewhere.
+	const ownerSessions = await db.orm.public.WorkSession.where({ deletedAt: null })
+		.where(session =>
+			session.themeProject.some(ownerProject => and(ownerProject.deletedAt.isNull(), ownerProject.userId.eq(user.id))),
+		)
+		.select("hoursSource")
+		.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
+		.all()
+	const recordings: RecordedWindow[] = ownerSessions.flatMap(session =>
+		session.hoursSource === HoursSource.HACKATIME_TRACKED
+			? []
+			: session.timelapses.flatMap(timelapse => {
+					const window = timelapseWindow(parseNullableTimestamp(timelapse.recordedAt), timelapse.coveredSeconds)
+					return window ? [{ hackatimeProject: timelapse.hackatimeProject, window }] : []
+				}),
+	)
+
+	// The same total the owner's page and their profile show. A visitor reading only the journal entries would see a
+	// different number from the one beside the same project on the maker's profile, which is the discrepancy this answers.
+	const phaseHours = (phase: Phase) =>
+		rollUpHours(
+			fetched.workSessions
+				.filter(session => session.phase === phase)
+				.map(session => ({
+					hoursApproved: session.hoursApproved,
+					hoursClaimed: session.hoursClaimed,
+					hoursSource: session.hoursSource,
+					timelapses: session.timelapses.map(timelapse => ({
+						coveredSeconds: timelapse.coveredSeconds,
+						hackatimeProject: timelapse.hackatimeProject,
+						recordedAt: parseNullableTimestamp(timelapse.recordedAt),
+					})),
+				})),
+			fetched.hackatimeLinks.filter(link => link.phase === phase),
+			phase === Phase.DESIGN ? fetched.designApprovedHours : fetched.approvedHours,
+			recordings,
+		).effectiveHours
+	const hours = round2(phaseHours(Phase.DESIGN) + phaseHours(Phase.BUILD))
+
 	const themeIndex = THEMES.findIndex(t => t.id === project.theme)
 	const timeline = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)].toSorted(
 		(a, b) => b.at - a.at || b.id.localeCompare(a.id),
@@ -500,6 +566,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		authorId: project.user.id,
 		description: project.description ?? "",
 		githubRepo: project.githubRepo,
+		hours,
 		id: project.id,
 		thumbnail: projectThumbnail(
 			publicUrlFor(project.coverImageKey),

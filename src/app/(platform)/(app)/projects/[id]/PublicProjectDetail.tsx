@@ -39,7 +39,6 @@ export function PublicProjectDetail({
 		warmup ? WARMUP_WEEK_ID : phase === "DESIGN" ? data.weekId : buildWeekId
 
 	const sessions = data.timeline.flatMap(t => (t.kind === "session" ? [t] : []))
-	const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
 
 	return (
 		<div className="mx-auto w-full max-w-240 px-4 pt-6 pb-10 sm:px-8">
@@ -115,7 +114,7 @@ export function PublicProjectDetail({
 						<ProjectFacts
 							buildWeekId={buildWeekId}
 							entries={sessions.length}
-							hours={hours}
+							hours={data.hours}
 							repo={data.githubRepo}
 							theme={week?.theme ?? "PCB"}
 							warmup={warmup}
