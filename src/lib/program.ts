@@ -3,8 +3,9 @@ import { or } from "@prisma/orm-postgres/orm-client"
 import { cache } from "react"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
-import { type PayoutSource, PhaseStatus } from "@/lib/enums"
+import { type PayoutSource, PhaseStatus, Role } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import { getUserRoles, hasRole } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import {
 	calendarDayNumber,
@@ -143,10 +144,11 @@ export function weekOpensAt(settings: Pick<ProgramSettings, "eventStartDate" | "
 /**
  * Refuse work on a curriculum week that has not opened. Nothing on the trail can be started early, the first checkpoint included; the client locks the same weeks, and this is what holds when a request goes around it.
  *
- * Week 0 is the warm-up, which is not scheduled and never waits.
+ * Week 0 is the warm-up, which is not scheduled and never waits. Admins never wait either (see `ignoresSchedule`).
  */
-export async function assertWeekStarted(week: number): Promise<void> {
+export async function assertWeekStarted(week: number, userId: string): Promise<void> {
 	if (week < 1) return
+	if (await ignoresSchedule(userId)) return
 	const settings = await getProgramSettings()
 	const opensAt = weekOpensAt(settings, week)
 	if (new Date() < opensAt)
@@ -155,6 +157,15 @@ export async function assertWeekStarted(week: number): Promise<void> {
 			`Week ${week} opens on ${formatProgramDate(opensAt, settings.programTimezone)}.`,
 		)
 }
+
+/**
+ * Whether the calendar is waived for this user: true for admins, who can do any checkpoint whenever they want – before its week opens, after it has passed, and while submissions are switched off – so staff can walk the whole trail to test it or to help someone. It pairs with the sidebar's lock bypass, which opens the checkpoints in the browser; this is what lets the writes behind them land.
+ *
+ * Only timing is waived. Hour floors, repo checks, owed reels, review state and everything else a write answers to still apply. Read once per request, because one write can pass through several of these gates.
+ */
+export const ignoresSchedule = cache(
+	async (userId: string): Promise<boolean> => hasRole(await getUserRoles(userId), Role.ADMIN),
+)
 
 /**
  * When a week closes for one participant's project: its scheduled close, or later if either extension column says so. The same two overrides that reopen submissions reopen a passed week, so an admin granting more time has one lever to pull rather than two.
@@ -170,6 +181,7 @@ export const WEEK_CLOSED_MESSAGE =
  * Whether work can still be logged against a project's week. Passed weeks can still be submitted – that is the whole point of closing them – but not added to, edited or trimmed.
  */
 export async function isWeekOpen(userId: string, themeProjectId: string, week: number): Promise<boolean> {
+	if (await ignoresSchedule(userId)) return true
 	const [settings, user, project] = await Promise.all([
 		getProgramSettings(),
 		db.orm.public.User.whereUnique({ id: userId }).select("submissionExtensionUntil").first(),
@@ -199,7 +211,13 @@ export function formatProgramDate(date: Date, timeZone: string): string {
 
 // ─── Access gates ────────────────────────────────────────────────────────────
 
-export type SubmissionAccessReason = "OPEN" | "USER_EXTENSION" | "PROJECT_EXTENSION" | "CLOSED" | "NOT_STARTED"
+export type SubmissionAccessReason =
+	| "OPEN"
+	| "USER_EXTENSION"
+	| "PROJECT_EXTENSION"
+	| "ADMIN"
+	| "CLOSED"
+	| "NOT_STARTED"
 
 export interface SubmissionAccess {
 	closesAt: Date | null
@@ -250,6 +268,14 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 			extensionUntil: projectExt,
 			open: true,
 			reason: "PROJECT_EXTENSION",
+		}
+
+	if (await ignoresSchedule(userId))
+		return {
+			closesAt: settings.submissionsCloseAt,
+			extensionUntil: null,
+			open: true,
+			reason: "ADMIN",
 		}
 
 	return {
