@@ -541,7 +541,9 @@ export type CoinSplit = {
  *
  * Two layers and the order matters:
  *
- * [0, fundingHours)   → dollars, not coins. The parts grant; it buys the BOM. [fundingHours, ∞)   → spendable coins, 5 per hour.
+ * [0, fundedHours)   → dollars, not coins. The parts grant; it buys the BOM. [fundedHours, ∞)   → spendable coins, 5 per hour.
+ *
+ * `fundedHours` is the block the grant actually bought, and the tier's own hours by default. A declined grant buys no parts, so no hours are spoken for and every approved hour pays 5 coins – turning the money down must not also forfeit the work the tier would have funded.
  *
  * The printer on the wall no longer sizes any of this: a tier decides how many hours the project itself eats, and everything past that is simply earned. What a machine asks per week is still paced in ./config/printers.ts, but that pace is guidance the goal tracker reads – warnings, never a second pot of money.
  *
@@ -549,10 +551,9 @@ export type CoinSplit = {
  *
  * Minted coins are capped, because `approvedHours` can come from a reviewer typing into a box and a fat-fingered 1000 should not mint five thousand coins.
  */
-export function designCoinsFor(tierId: number, approvedHours: number): CoinSplit {
+export function designCoinsFor(tierId: number, approvedHours: number, opts: { fundedHours?: number } = {}): CoinSplit {
 	const tier = getTierOrThrow(tierId)
-	const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
-	const spendable = earnCoins(beyondFunding)
+	const spendable = earnCoins(Math.max(0, approvedHours - (opts.fundedHours ?? tier.fundingHours)))
 	return { banked: 0, spendable, total: spendable }
 }
 

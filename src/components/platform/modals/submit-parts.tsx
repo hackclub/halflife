@@ -196,6 +196,7 @@ export function TierPicker({
 	bomOverCap,
 	bomTotal,
 	funding,
+	fundingDeclined,
 	goal,
 	hours,
 	partialFunding,
@@ -210,6 +211,7 @@ export function TierPicker({
 	bomOverCap: boolean
 	bomTotal: number
 	funding: { shortfallUsd: number; totalUsd: number }
+	fundingDeclined: boolean
 	goal: { name: string }
 	hours: number
 	partialFunding: boolean
@@ -259,7 +261,7 @@ export function TierPicker({
 								Tier {t.id}
 							</span>
 							<span className={cx("hand block text-[0.86rem]", short > 0 ? "text-navy-soft" : "text-teal-ink")}>
-								${t.grantUsd} for parts
+								{fundingDeclined ? "no parts grant" : `$${t.grantUsd} for parts`}
 							</span>
 
 							{/* The hours are the gate, so they lead. The cart only says whether the money fits inside the tier once the tier is actually available to you. */}
@@ -271,9 +273,12 @@ export function TierPicker({
 							>
 								{short > 0
 									? `Opens at ${fmtHours(tierFloor(t.fundingHours))} of design time, ${fmtHours(short)} to go`
-									: `Every hour past this tier's ${t.fundingHours}h earns 5 spendable coins`}
+									: fundingDeclined
+										? // No grant means no funded block: every logged hour pays, including the ones the tier's money would have bought.
+											"Every logged hour earns 5 spendable coins"
+										: `Every hour past this tier's ${t.fundingHours}h earns 5 spendable coins`}
 							</span>
-							{short === 0 && over && (
+							{short === 0 && over && !fundingDeclined && (
 								<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
 									{bomTotal > t.grantUsd + BOM_MARGIN_USD
 										? `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)}, so only $${t.grantUsd} of it is funded and you have to agree to that below`
@@ -285,8 +290,8 @@ export function TierPicker({
 				})}
 			</div>
 
-			{/* A cart past the tier's funding still hands in, as a grant that covers part of it – so the box saying so is a requirement rather than a note, and the shortfall is named in dollars rather than left to be found later. It sits under the tier picker because it is that choice it is about, and it disappears the moment a tier that covers the cart is picked. */}
-			{bomOverCap && (
+			{/* A cart past the tier's funding still hands in, as a grant that covers part of it – so the box saying so is a requirement rather than a note, and the shortfall is named in dollars rather than left to be found later. It sits under the tier picker because it is that choice it is about, and it disappears the moment a tier that covers the cart is picked. Declining makes the whole cart theirs, so there is no shortfall to agree to. */}
+			{bomOverCap && !fundingDeclined && (
 				<label
 					className={cx(
 						"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",

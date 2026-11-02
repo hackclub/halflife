@@ -285,7 +285,8 @@ export function PartsStep({ sheet }: { sheet: SubmitSheet }) {
 						<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
 							{bomEmpty
 								? "Submit with an empty parts list. No carts, no order. We'll double-check before you submit."
-								: "Your parts list stays for the reviewer to see, but approving it orders no grant, so fund the build yourself. We'll double-check before you submit."}
+								: "Your parts list stays for the reviewer to see, but approving it orders no grant, so fund the build yourself. We'll double-check before you submit."}{" "}
+							Your hours still earn 5 coins each, including the ones the grant would have paid for.
 						</span>
 					</span>
 				</label>
@@ -320,6 +321,7 @@ export function PartsStep({ sheet }: { sheet: SubmitSheet }) {
 				bomOverCap={bomOverCap}
 				bomTotal={bomTotal}
 				funding={funding}
+				fundingDeclined={fundingDeclined}
 				goal={goal}
 				hours={hours}
 				partialFunding={partialFunding}

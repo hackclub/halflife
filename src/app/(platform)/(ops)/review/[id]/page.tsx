@@ -186,7 +186,8 @@ export default async function ReviewDetailPage({ params }: Props) {
 				{submission.fundingDeclined && (
 					<Callout tone="info">
 						<strong>Funding declined.</strong> They asked for no parts money on this project, so approving it grants $0
-						unless you set an explicit override. Their hours still earn coins as usual. Only the grant is off.
+						unless you set an explicit override. Their hours still earn coins, and because no hours are spent on parts,
+						all of them do – 5 each, not only the ones past the tier&apos;s funded block.
 					</Callout>
 				)}
 				{submission.noMicrocontroller && (

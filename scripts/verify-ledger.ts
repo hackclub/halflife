@@ -181,6 +181,11 @@ async function main() {
 	const tier3 = designCoinsFor(3, 25)
 	check("tier does not change what earns", tier3.spendable, design.spendable)
 
+	// Declining the grant removes the funded block rather than the hours in it: no parts money means no hours are spoken for, so all 11 pay at the same rate as the five above Tier 1's line.
+	const declined = designCoinsFor(1, 11, { fundedHours: 0 })
+	check("a declined grant mints nothing locked", declined.banked, 0)
+	check("a declined grant pays the funded hours too", declined.spendable, 55)
+
 	// The whole point of the catalogue: a season worked at a goal's own pace has to actually buy that goal. Five design weeks at its banking rate, plus five build weeks of BUILD_HOURS, must clear the price.
 	//
 	// This is the check that would have caught the economy this replaced, where the documented minimum path minted 175 coins and the cheapest machine that exists cost 219.
@@ -259,6 +264,46 @@ async function main() {
 	await purchase(saver.id, printerItem.id, 1)
 	check("a printer purchase empties the balance", await saverSpendable(), 0)
 	check("and leaves nothing locked either", await saverBanked(), 0)
+
+	// ── A declined grant ──────────────────────────────────────────────────────
+	//
+	// The route, not only the arithmetic: declining the parts money must still pay for the hours that money would have bought. 11h at Tier 1 is 55 coins when declined – every hour – against 25 when funded, where only the five above the six funded hours earn.
+	const declinedProject = await db.orm.public.ThemeProject.create({
+		description: "A bracket handed in with no parts funding.",
+		designStatus: PhaseStatus.in_review,
+		theme: Theme.SYNTH,
+		title: "Ledger check declined bracket",
+		userId: saver.id,
+	})
+	await db.orm.public.WorkSession.create({
+		effectiveDate: "2026-09-17",
+		hoursClaimed: 11,
+		phase: Phase.DESIGN,
+		themeProjectId: declinedProject.id,
+		title: "Modelling",
+	})
+	const declinedSubmission = await db.orm.public.PhaseSubmission.create({
+		fundingDeclined: true,
+		phase: Phase.DESIGN,
+		themeProjectId: declinedProject.id,
+	})
+	const declinedOutcome = await finalizeReview({
+		feedback: "Approved with funding declined.",
+		reason: "11h of modelling, no parts money asked for.",
+		result: ReviewResult.APPROVED,
+		reviewerEmail: reviewer.email,
+		reviewerId: reviewer.id,
+		reviewerName: reviewer.name,
+		submissionId: declinedSubmission.id,
+		tier: 1,
+	})
+	check("a declined grant pays no dollars", declinedOutcome.grantUsd, 0)
+	check("a declined grant pays every approved hour", declinedOutcome.coins?.spendable, 55)
+	check("a declined grant lands spendable", await saverSpendable(), 55)
+	const declinedReview = await db.orm.public.SubmissionReview.where({ submissionId: declinedSubmission.id })
+		.select("frozenFundingHours")
+		.first()
+	check("a declined grant freezes an empty funded block", declinedReview?.frozenFundingHours, 0)
 
 	// Clean up so the script is re-runnable. Order matters: SubmissionReview restricts deleting its reviewer, so the participant (whose projects cascade down to those reviews) has to go first.
 	await db.orm.public.User.where({ id: participant.id }).delete()
