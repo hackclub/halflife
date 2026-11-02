@@ -8,6 +8,7 @@ import { Avatar } from "@/components/platform/Avatar"
 import { IconClock, IconLogout } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
 import { signOut } from "@/lib/auth-client"
+import { freestyleIsLive } from "@/lib/config/freestyle"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import { PLATFORM_HOME } from "@/lib/routes"
@@ -130,7 +131,7 @@ export function Sidebar({ className }: { className?: string }) {
 
 			{viewer.isAdmin && <RedoOnboarding />}
 			{viewer.isAdmin && <BypassLocks />}
-			{viewer.isAdmin && <PreviewFreestyle />}
+			{viewer.isAdmin && !freestyleIsLive() && <PreviewFreestyle />}
 		</div>
 	)
 }

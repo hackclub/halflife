@@ -306,9 +306,9 @@ function FreestyleIntro(): React.JSX.Element {
 			<p className="max-w-[62ch] text-[0.95rem] leading-relaxed text-navy-soft">
 				This week, we&apos;ve decided to give Half Lifers <em className="font-bold text-navy">complete control</em> over
 				their project. If you still want to make a breadboard computer this week, go ahead! But you&apos;re not
-				restricted to. Half Life is all about getting more teenagers to become hardware experts, and building your own
-				custom project is the first step. But if you&apos;re still hesitant, don&apos;t worry, we have some guides that
-				you can use to come up with your next project.
+				restricted to it. Half Life is all about getting more teenagers to become hardware experts, and building your
+				own custom project is the first step. And if you&apos;re still stuck for an idea, these guides are a good place
+				to start.
 			</p>
 
 			{/* Always open, two by two at every width: four short names fit a phone's two columns, and wrap rather than truncate when they do not. */}

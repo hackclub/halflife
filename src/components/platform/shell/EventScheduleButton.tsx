@@ -71,28 +71,28 @@ export function EventScheduleButton({
 				type="button"
 			>
 				<IconClock className={cx("text-base", live && "text-coral")} />
-				{/* Visually hidden on a phone, where the row has no room for it, but never `display: none`: the countdown is the button's only label there, so it stays in the accessibility tree. */}
-				<span className="sr-only sm:not-sr-only">
+				{/* Visually hidden on a phone, where the row has no room for it, but never `display: none`: the countdown is the button's only label there, so it stays in the accessibility tree. With nothing scheduled the words are the whole button, so they stay visible at every width and the placeholder dash is left out. */}
+				<span className={next === null ? undefined : "sr-only sm:not-sr-only"}>
 					{next === null ? "No events" : live ? "Happening now" : "Next event in"}
 				</span>
 				{/* One fixed-width slot, so the pill does not change width between the placeholder and the count – or as the digits roll over. Narrower on a phone, where the row is counted out to the pixel. */}
-				<span className="min-w-[5ch] text-right text-[0.72rem] font-extrabold tabular-nums text-navy sm:min-w-[9ch] sm:text-[0.78rem]">
-					{next === null ? (
-						"-"
-					) : now === null ? (
-						<>
-							--:--
-							<span className="hidden sm:inline">:--</span>
-						</>
-					) : live ? (
-						"live"
-					) : (
-						<>
-							{clock}
-							<span className="hidden sm:inline">:{pad2(parts.seconds)}</span>
-						</>
-					)}
-				</span>
+				{next !== null && (
+					<span className="min-w-[5ch] text-right text-[0.72rem] font-extrabold tabular-nums text-navy sm:min-w-[9ch] sm:text-[0.78rem]">
+						{now === null ? (
+							<>
+								--:--
+								<span className="hidden sm:inline">:--</span>
+							</>
+						) : live ? (
+							"live"
+						) : (
+							<>
+								{clock}
+								<span className="hidden sm:inline">:{pad2(parts.seconds)}</span>
+							</>
+						)}
+					</span>
+				)}
 			</button>
 
 			<EventCalendar events={events} onClose={() => setOpen(false)} open={open} timeZone={viewerZone} />

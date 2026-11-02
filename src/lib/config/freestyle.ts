@@ -27,6 +27,9 @@ export function setFreestylePreview(on: boolean): void {
 /** Whether participants see week 5 as freestyle at `at`: from midnight on its first day, or now for an admin previewing it. */
 export const isFreestyle = (at: Date = new Date()): boolean => previewing || at >= FREESTYLE_STARTS_AT
 
+/** Whether the freestyle copy is live for everyone. The admin preview only has a job before this, so the control that turns it on is hidden from then. */
+export const freestyleIsLive = (at: Date = new Date()): boolean => at >= FREESTYLE_STARTS_AT
+
 export interface FreestyleGuide {
 	readonly title: string
 	readonly url: string
