@@ -3,7 +3,7 @@ import { isOnshapeLink, ONSHAPE_REPO_ERROR } from "@/lib/repo"
 import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
 
 /**
- * A project's repo link. Any http(s) host is a repo – Codeberg and a self-hosted forge are repos too – except Onshape, which is a single CAD document: that belongs in the project's demo links, where a reviewer opens it, not in the field the repo checks read as source.
+ * A project's repo link. Any http(s) host is a repo – Codeberg and a self-hosted forge are repos too – except Onshape, which is a single CAD document: that belongs in the project's README or demo links, where a reviewer opens it, not in the field the repo checks read as source.
  */
 export const projectRepoUrl = httpsUrl.refine(v => !isOnshapeLink(v), ONSHAPE_REPO_ERROR)
 

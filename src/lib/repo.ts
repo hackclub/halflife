@@ -1,5 +1,6 @@
 /** What the repo field says when someone pastes an Onshape document into it. */
-export const ONSHAPE_REPO_ERROR = "That is an Onshape link, not a repo. Add it as a demo link instead."
+export const ONSHAPE_REPO_ERROR =
+	"That is an Onshape link, not a repo. Add it in your README or as a demo link instead."
 
 /**
  * Whether a hostname belongs to Onshape, subdomains included (`cad.onshape.com`).
@@ -26,7 +27,7 @@ export function isOnshapeLink(input: string): boolean {
 /** A URL or bare host in prose: a description or a journal entry is not a URL field. */
 const LINK_IN_TEXT = /https?:\/\/[^\s<>"'`)\]]+|(?:[a-z\d-]+\.)+[a-z]{2,}(?:\/[^\s<>"'`)\]]*)?/gi
 
-/** Whether prose mentions an Onshape document – the description check, where the link arrives in a sentence rather than a URL field. */
+/** Whether prose mentions an Onshape document – the prose checks, where the link arrives in a description or a README rather than a URL field. */
 export function containsOnshapeLink(text: string): boolean {
 	return [...text.matchAll(LINK_IN_TEXT)].some(([url]) => isOnshapeLink(url ?? ""))
 }

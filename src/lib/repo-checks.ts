@@ -446,21 +446,27 @@ function artifactLinkUrls(links: unknown): string[] {
  * The recommendation a repo with a STEP file earns.
  *
  * `.step` is accepted as CAD source, but it is a neutral export rather than the editable original: a reviewer cannot open it in Fusion and change the model. A repo that carries one should also carry the native file or a link to the Onshape document, so the check passes when any of those is present and warns when STEP is all there is. Null for a repo with no STEP file, which is most of them.
+ *
+ * The link may sit in the project description, the README or the demo links; the last two travel with the repo, which is where a reviewer opens the model.
  */
 export function stepSourceCheck(input: {
 	artifactLinks?: unknown
 	description?: string | null
 	paths: readonly string[]
+	readme?: string | null
 }): RepoCheck | null {
 	const stepFiles = input.paths.filter(p => STEP_EXTENSIONS.some(ext => p.endsWith(ext)))
 	if (stepFiles.length === 0) return null
 
 	const nativeFiles = input.paths.filter(p => NATIVE_CAD_EXTENSIONS.some(ext => p.endsWith(ext)))
 	const inDescription = input.description ? containsOnshapeLink(input.description) : false
+	// The same scan bound every README check runs under, so a pathological README cannot make this regex expensive.
+	const inReadme = input.readme ? containsOnshapeLink(scannableReadme(input.readme)) : false
 	const inDemoLinks = artifactLinkUrls(input.artifactLinks).some(url => isOnshapeLink(url))
 	const alternatives = [
 		...(nativeFiles.length > 0 ? [sample(nativeFiles)] : []),
 		...(inDescription ? ["a link in the description"] : []),
+		...(inReadme ? ["a link in the README"] : []),
 		...(inDemoLinks ? ["a link in the demo URL"] : []),
 	]
 
@@ -473,7 +479,7 @@ export function stepSourceCheck(input: {
 			}
 		: {
 				detail:
-					"A .step file is a neutral export, not the editable original. Add at least one of: a Fusion .f3d, a .f3z, an Onshape link in your project description, or an Onshape link in your demo URL. Do not put the Onshape link in the repo URL.",
+					"A .step file is a neutral export, not the editable original. Add at least one of: a Fusion .f3d, a .f3z, an Onshape link in your project description, an Onshape link in your README, or an Onshape link in your demo URL. Do not put the Onshape link in the repo URL.",
 				key: "cad_editable",
 				label: "STEP needs the editable source",
 				status: "warn",
@@ -670,6 +676,7 @@ export async function checkRepo(
 		artifactLinks: project.artifactLinks,
 		description: project.description,
 		paths: snap.paths,
+		readme,
 	})
 	if (step) checks.push(step)
 
