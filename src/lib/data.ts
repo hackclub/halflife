@@ -34,7 +34,7 @@ export const DOCS: DocArticle[] = [
 				heading: "What you get",
 				paragraphs: [
 					"Every project gets parts funding for its tier: $30, $65, or $100; higher tiers require more hours to earn funding. Working more time on your project beyond your tier earns coins, which you can spend in the shop. That is, once the funding for your chosen tier has been achieved, every extra approved hour earns 5 coins.",
-					"If you finish all 10 weeks then a 3D printer is shipped to you. You can change your printer at any time: pick it as your goal and work toward it through the season. Earn enough coins every week and the entry-level printer is guaranteed; go further and you can aim for bigger prizes.",
+					"If you finish all 10 weeks, a 3D printer is shipped to you. You can change your printer at any time: pick it as your goal and work toward it through the season. Earn enough coins every week and the entry-level printer is guaranteed; go further and you can aim for bigger prizes.",
 				],
 			},
 		],
@@ -176,17 +176,17 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 			{
-				heading: "AI Usage, Project Quality, and Originality",
+				heading: "AI usage, project quality, and originality",
 				list: [
-					"You may not use AI to generate any graphics used in the final github repo.",
+					"You may not use AI to generate any graphics used in the final GitHub repo.",
 					"You may use AI to help with coding, up to ~30% of code can be generated, the majority should still be your own work.",
 					"Journals and your README cannot be written with the help of AI.",
 					"Your project should be polished, something you'd be proud to show to others, and something that you can potentially sell as a product!",
-					"Copied designs, stolen project files, and more will result in a rejection and potential ban from Half life and Hack Club as a whole",
+					"Copied designs, stolen project files, and more will result in a rejection and a potential ban from Half Life and Hack Club as a whole",
 					"Projects should be original, with most parts being designed by you. That means depending on the week, you cannot for example buy a kit, or use only premade modules for a project",
 					"If you take a starter project, write your own project description. The starter's default description blocks submission, so say what you changed and why it is yours.",
 				],
-				paragraphs: ["Failure to meet the below expectations may result in your project rejected"],
+				paragraphs: ["Failure to meet the below expectations may result in your project being rejected."],
 			},
 			{
 				heading: "Your repo",
