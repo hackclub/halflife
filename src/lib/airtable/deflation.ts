@@ -41,12 +41,26 @@ export function deflationFor(approvedHours: number | null, claimedHours: number 
 }
 
 /**
+ * The explanation a deflation justification quotes: Ari's dedicated deflation reason when the decision carried one, else the review's internal note.
+ *
+ * The note to the maker is deliberately not a parameter. That note is written to `Loops - halfLifeReviewerNotes` and emailed; quoting it in the audit column put encouragement and unrelated feedback there (see `deflationJustification`).
+ */
+export function deflationReasonText(
+	deflationReason: string | null | undefined,
+	reviewReason: string | null | undefined,
+): string | null {
+	return deflationReason?.trim() || reviewReason?.trim() || null
+}
+
+/**
  * The `Justification - Deflation Justification` text.
  *
- * The amounts are always stated, because they are the part no one can reconstruct later without both columns, and the reviewer's own note is appended when there is one – it is usually the actual reason, and the column is read by whoever audits the payout.
+ * The amounts are always stated, because they are the part no one can reconstruct later without both columns, and the reviewer's reason is appended when there is one – it is usually the actual reason, and the column is read by whoever audits the payout.
+ *
+ * `reason` is the reviewer's justification for the cut, never the note to the maker. That note is written to `Loops - halfLifeReviewerNotes` and emailed to the maker; quoting it here put encouragement ("great work!") and unrelated feedback into the audit trail, where it says nothing about why the hours came down.
  */
-export function deflationJustification(deflation: Deflation, note: string | null | undefined): string {
+export function deflationJustification(deflation: Deflation, reason: string | null | undefined): string {
 	const summary = `Deflated from ${fmtHours(deflation.claimedHours)} claimed to ${fmtHours(deflation.approvedHours)} approved (${fmtHours(deflation.removedHours)} removed).`
-	const reason = note?.trim()
-	return reason ? `${summary} ${reason}` : summary
+	const text = reason?.trim()
+	return text ? `${summary} ${text}` : summary
 }
