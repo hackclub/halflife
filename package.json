@@ -15,6 +15,7 @@
 		"ari:backfill-timelapses": "bun --conditions=react-server scripts/backfill-ari-timelapses.ts",
 		"ari:resend-all": "bun scripts/ari-resend-all.ts",
 		"ari:review-counts": "bun --conditions=react-server scripts/ari-review-counts.ts",
+		"backfill:declined-funding-coins": "bun --conditions=react-server scripts/backfill-declined-funding-coins.ts",
 		"build": "next build",
 		"db:deploy": "prisma db migrate",
 		"db:generate": "prisma contract emit && bun scripts/generate-enums.ts && biome check --write src/lib/enums.ts",
