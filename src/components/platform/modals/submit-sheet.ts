@@ -8,7 +8,6 @@ import { usesStarterDefaultDescription } from "@/lib/config/onboarding"
 import { type PrinterGoal, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER, getTier, type Tier } from "@/lib/config/tiers"
-import { fmtHours } from "@/lib/numbers"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { SUBMISSION_LIMIT } from "@/lib/resubmissions"
 import { useStore } from "@/lib/store"
@@ -16,6 +15,7 @@ import type { Checkpoint, Project, Week } from "@/lib/types"
 import { BomResponseSchema, isWeeksProject, weekName } from "./checkpoint-shared"
 import type { UploadedImage } from "./ImageUploads"
 import type { SubmissionReel } from "./SubmissionReelPicker"
+import { canAdvance as canAdvanceFrom, nextBlocker as nextBlockerFor, type SubmitGates } from "./submit-gates"
 
 export interface SubmitSheet {
 	acknowledgedAll: boolean
@@ -250,63 +250,29 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 	const starterDescriptionBlocker =
 		"Replace the starter project's default description with your own. Say what you changed, why you made it, and what makes it yours."
 
-	const canAdvance = Boolean(
-		step === 1
-			? repoReady
-			: isBuild
-				? clip
-					&& descriptionReady
-					&& starterDescriptionReady
-					&& !outOfSubmissions
-					&& acknowledgementsComplete
-					&& (works === "yes" || (works === "no" && writeup.trim().length >= 40))
-				: step === 2
-					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
-						(carts.length > 0 || fundingDeclined) && !tierBlocked && fundingOk
-					: clip
-						&& !tierBlocked
-						&& fundingOk
-						&& hasCover
-						&& descriptionReady
-						&& starterDescriptionReady
-						&& !outOfSubmissions
-						&& acknowledgementsComplete,
-	)
-
-	/**
-	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
-	 *
-	 * The button has always been disabled for exactly these reasons; what it never did was say which one was in the way, so a maker missing a cart screenshot met a dead Next with nothing on screen to explain it. The branches mirror `canAdvance` above step for step – a line here while the button is live would be worse than the silence it replaced.
-	 *
-	 * Step 1 keeps its own pair of lines at the foot: the repo check has a "still running" state the others do not. The cover banner at the top of the body is repeated here on purpose – it is a long scroll away from the button it blocks.
-	 */
-	function nextBlocker(): string | null {
-		if (step === 1) return null
-		if (outOfSubmissions)
-			return `All ${SUBMISSION_LIMIT} submissions for this phase are used. Dispute the review or ask a reviewer in Slack.`
-		if (step === total && !acknowledgementsComplete) return "Tick every acknowledgement above before submitting."
-		// These two block whichever of the later steps is showing.
-		if (tierBlocked)
-			return `Your tier needs ${fmtHours(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
-		if (!fundingOk) return "Tick the box agreeing to cover the part of the cart the grant does not."
-		if (isBuild)
-			return !clip
-				? "Record your demo video to carry on."
-				: works === "no" && writeup.trim().length < 40
-					? "Say what needs to change in a sentence or two."
-					: !descriptionReady
-						? descriptionBlocker
-						: !starterDescriptionReady
-							? starterDescriptionBlocker
-							: null
-		if (step === 2)
-			return carts.length === 0 && !fundingDeclined ? "Add a screenshot of your cart above to carry on." : null
-		if (!clip) return "Record your closing reel to carry on."
-		if (!hasCover) return "Add a cover image to your project before you can submit."
-		if (!descriptionReady) return descriptionBlocker
-		if (!starterDescriptionReady) return starterDescriptionBlocker
-		return null
+	const gates: SubmitGates = {
+		acknowledgementsComplete,
+		carts: carts.length,
+		clip,
+		descriptionBlocker,
+		descriptionReady,
+		fundingDeclined,
+		fundingOk,
+		hasCover,
+		isBuild,
+		outOfSubmissions,
+		repoReady,
+		starterDescriptionBlocker,
+		starterDescriptionReady,
+		step,
+		tierBlocked,
+		tierShortHours: tierShort(selectedTier.fundingHours),
+		total,
+		works,
+		writeup,
 	}
+	const canAdvance = canAdvanceFrom(gates)
+	const nextBlocker = () => nextBlockerFor(gates)
 
 	/**
 	 * Handing a week in, in the order the pieces depend on each other.
