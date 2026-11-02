@@ -1,4 +1,4 @@
-import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
+import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
 import { ENTRY_TIER, getTier } from "./config/tiers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "./curriculum"
@@ -128,6 +128,233 @@ export interface Trail {
 	weeks: Week[]
 }
 
+/**
+ * The minutes behind each written devlog in a week, with the time that did not arrive through one – Hackatime, a reviewer's adjustment – folded onto the last of them.
+ *
+ * That is where it belongs: it is the work done since that devlog, so the entry the next progress reel answers to is the one it landed on. Folded rather than added at the week level because tracked hours on their own, before anything has been written up, are not a reel anyone has something to show – so a week with no entry yet still runs on entries alone.
+ *
+ * One array, read both by the placement of the reels (`checkpointsFor` walks it) and by the gate that unlocks them, because a trail that places a reel on one entry and opens it on another is a trail that has said two things at once.
+ */
+function writtenMinutes(save: StoreSnapshot, weekId: number): number[] {
+	const written: number[] = []
+	for (;;) {
+		const entry = save.progress[`w${weekId}-entry-${written.length + 1}`]
+		if (!entry?.done) break
+		written.push(entry.minutes)
+	}
+	const offBook = save.offBookHours[weekId] ?? 0
+	// Only onto a devlog that exists: a week with nothing written keeps its reel clock on entries alone.
+	const last = written.length - 1
+	if (last >= 0 && offBook > 0) written[last] = (written[last] ?? 0) + offBook * 60
+	return written
+}
+
+/**
+ * The season's ten weeks, shaped from the curriculum and the snapshot.
+ *
+ * The tier decides how much money sits under a week and how many hours it asks for. A build week inherits the tier of the design week it is building; a week nobody has started yet borrows the last tier picked, so the trail shows a believable shape instead of lurching when the project is finally created.
+ */
+function seasonWeeks(save: StoreSnapshot, goal: PrinterGoal): Week[] {
+	const tierForWeek = (weekId: number): 1 | 2 | 3 => {
+		const designWeek = weekId > DESIGN_WEEKS ? weekId - DESIGN_WEEKS : weekId
+		const own = save.projects.find(p => p.weekId === designWeek)
+		if (own) return own.tier
+		return save.projects.at(-1)?.tier ?? recommendedTier(save.experience)
+	}
+
+	return WEEK_META.map(meta => {
+		const tierId = tierForWeek(meta.id)
+		const tier = getTier(tierId) ?? ENTRY_TIER
+		const build = meta.phase === "build"
+		// Column 5 is the tier-1 week and is already floored to a flat 10 hours, so every other tier is that plus the extra hours its grant funds.
+		const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)
+		// The same ask at the cheapest machine's pace: the least a week can be worth and still leave a printer at the end of the season.
+		const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
+		return Object.assign({}, meta, {
+			checkpoints: checkpointsFor(
+				meta,
+				// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
+				writtenMinutes(save, meta.id),
+				cid => save.progress[cid]?.done ?? false,
+				submitHours,
+				// Onboarding made week one's project and it has since been deleted: `projects` only lists live, named ones.
+				meta.id === 1
+					&& (save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false)
+					&& !save.projects.some(p => p.weekId === 1),
+			),
+			// Build-week hours all bank; the grant paid for the design week.
+			earnFrom: build ? 0 : tier.fundingHours,
+			fundingHours: build ? BUILD_HOURS : tier.fundingHours,
+			submitHours,
+			targetHours: target,
+			tier: tierId,
+		})
+	})
+}
+
+/** Each warm-up, as a week of its own that the trail never draws. */
+function warmupWeeksFrom(save: StoreSnapshot): Week[] {
+	return save.projects.flatMap(project => {
+		const info = save.warmups[project.id]
+		if (project.weekId !== WARMUP_WEEK_ID || !info) return []
+		return [warmupWeek(project, info.phase === "build", id => save.progress[id]?.done ?? false)]
+	})
+}
+
+/** Journalled minutes plus whatever arrived another way, for one season week. */
+function weekHoursOf(save: StoreSnapshot, weeks: Week[], weekId: number): number {
+	const week = weeks.find(w => w.id === weekId)
+	if (!week) return 0
+	const mins = week.checkpoints.reduce((n, c) => n + (save.progress[c.id]?.minutes ?? 0), 0)
+	return mins / 60 + (save.offBookHours[weekId] ?? 0)
+}
+
+/**
+ * The same total for a single week object, so a sheet can serve a warm-up (which has no week number of its own) as readily as a season week.
+ */
+function hoursOfWeek(save: StoreSnapshot, weeks: Week[], week: Week): number {
+	if (!week.projectId) return weekHoursOf(save, weeks, week.id)
+	const mins = week.checkpoints.reduce((n, c) => n + (save.progress[c.id]?.minutes ?? 0), 0)
+	return mins / 60 + (save.warmups[week.projectId]?.offBookHours ?? 0)
+}
+
+/**
+ * The facts the lock rules read.
+ *
+ * Built once by `deriveTrail` and handed to `isPassed`, `isUnlocked` and `lockReason` so the three cannot work from a different reading of the same week. The functions themselves live outside the derivation to keep the shape of the trail separate from its gates.
+ */
+interface TrailGate {
+	hoursOf(week: Week): number
+	passedOf(week: Week): boolean
+	reelHours(weekId: number): number
+	save: StoreSnapshot
+	warmupWeeks: Week[]
+	weekHours(weekId: number): number
+	weekOpensOn(weekId: number): string | null
+	weekPassed(weekId: number): boolean
+	weekStarted(weekId: number): boolean
+	weeks: Week[]
+}
+
+/**
+ * Whether a checkpoint is shut because its week ran out of time.
+ *
+ * Every node on a passed week is, done or not, with two exceptions: the Submit that still owes the week's hand-in, and a setup nobody has done yet – a late joiner still has to come in through the front door. A Submit with nothing logged behind it passes with the rest, because the server refuses an empty hand-in and there is nothing left to do about that.
+ */
+function passedIn(gate: TrailGate, id: string): boolean {
+	const week = [...gate.weeks, ...gate.warmupWeeks].find(w => w.checkpoints.some(c => c.id === id))
+	const self = week?.checkpoints.find(c => c.id === id)
+	if (!week || !self || !gate.passedOf(week)) return false
+	const done = gate.save.progress[id]?.done ?? false
+	if (self.kind === "onboarding" && !done) return false
+	if (self.kind === "submit" && !done && gate.hoursOf(week) > 0) return false
+	return true
+}
+
+/**
+ * Whether a checkpoint waits on a deleted reel.
+ *
+ * Deleting the last reel on a checkpoint reopens it, and until it is posted again every other checkpoint is held – done ones included, so the map shows plainly that one thing is owed. The server holds the same line (lib/reel-gate), and only ever reports a reel owed while its week can still take one, so the hold always has a way out.
+ */
+function heldIn(save: StoreSnapshot, id: string): boolean {
+	return save.owedReels.length > 0 && !save.owedReels.includes(id)
+}
+
+/**
+ * Weeks do not hold each other. A week opens on its Monday whatever the week before it did, so a maker who never handed one in can still start the next – the clock is the only thing that orders them.
+ *
+ * It used to be otherwise: an unhanded-in week kept the next shut until it was submitted. That dead-ended anyone who could not reach that week's floor – the tier is the maker's own choice, and a week below its floor cannot be handed in at all – and it also punished asking for an extension, which is granted precisely when a maker is behind. Nothing is lost by not waiting: a passed week's Submit stays open for anyone who does reach the floor, so late work can still go in.
+ *
+ * What does still break the sequence:
+ *
+ * - a week that has passed is shut, all but the Submit it still owes – which opens whatever the hours say, since no more can be logged;
+ *
+ * - anything on the clock (the milestone reels, and Submit itself) opens on the week's hours, so a half-written entry never traps you and the choice to wrap up is always live. Everything else unlocks in order, as it always has – except week 1's idea reel, which is the optional arm of the opening fork and never holds anything shut (see WEEK1_IDEA_REEL_ID).
+ */
+function unlockedIn(gate: TrailGate, id: string): boolean {
+	const { save, weeks } = gate
+	// The owed reel is the way out, so it opens whatever else is true – including a week that has since closed while this tab held a stale snapshot. Checking `passedIn` first dead-mapped the whole trail until the page was reloaded and the server stopped reporting the debt.
+	if (save.owedReels.includes(id)) return true
+	if (passedIn(gate, id)) return false
+	if (heldIn(save, id)) return false
+	const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
+	const wi = weeks.findIndex(w => w.checkpoints.some(c => c.id === id))
+	if (wi === -1) return false
+	// Nothing on a week opens before its Monday, Get started included.
+	const opening = weeks[wi]
+	if (opening && !gate.weekStarted(opening.id)) return false
+
+	const week = weeks[wi]
+	const list = week?.checkpoints ?? []
+	const i = list.findIndex(c => c.id === id)
+	const self = list[i]
+	if (!week || !self) return false
+
+	if (self.kind === "submit" && gate.weekPassed(week.id)) return true
+
+	if (self.atHours !== undefined) {
+		// A progress reel is earned by the hours the devlogs carry, tracked time included once the week has been written up (see `reelHours`); Submit and "Keep working" read what the week is worth in total. Only progress reels carry atHours besides those two, so `kind` is the whole distinction.
+		const hours = self.kind === "reel" ? gate.reelHours(week.id) : gate.weekHours(week.id)
+		// Unwritten entries never block a milestone – the clock does. Neither does a milestone that is not due yet: the reel waiting at 30h cannot hold up a Submit that opened at 23.76h.
+		//
+		// "Keep working" rides this rule too, at atHours 0. A reel that has come due is the cadence asking to be paid before the week runs on; letting the fork's other arm open around it would make every progress reel skippable forever.
+		//
+		// Week 1's idea reel is the exception: it is the optional arm of the opening fork, so it never holds the clock's milestones or Submit shut, whichever arm the maker took.
+		const gates = withoutOptionalIdea(list.slice(0, i)).filter(c => c.kind !== "journal" && (c.atHours ?? 0) <= hours)
+		return gates.every(done) && hours >= self.atHours
+	}
+
+	return withoutOptionalIdea(list.slice(0, i)).every(done)
+}
+
+/**
+ * Why a checkpoint is shut, in the maker's terms. Null when it is open.
+ *
+ * It walks the same rules as unlockedIn, in the same order, and lives next to it so the two cannot drift: a trail that says one thing and does another is worse than a trail that says nothing. Each branch names the one thing standing in the way rather than listing everything outstanding – only the first is actionable anyway.
+ */
+function lockReasonIn(gate: TrailGate, id: string): string | null {
+	const { save, weeks } = gate
+	// Titles are node names, so they keep their capital. The verb follows the kind: you post a reel, you finish everything else.
+	const firstFinish = (c: Checkpoint) => (c.kind === "reel" ? `Post ${c.title} first.` : `Finish ${c.title} first.`)
+
+	if (unlockedIn(gate, id)) return null
+	if (passedIn(gate, id)) return PASSED_REASON
+	if (heldIn(save, id)) {
+		const [owedId] = save.owedReels
+		const owed = weeks.flatMap(w => w.checkpoints).find(c => c.id === owedId)
+		return owed ? `Re-record ${owed.title} first. You deleted it.` : "Re-record the reel you deleted first."
+	}
+
+	const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
+	const wi = weeks.findIndex(w => w.checkpoints.some(c => c.id === id))
+	if (wi === -1) return null
+
+	const opening = weeks[wi]
+	if (opening && !gate.weekStarted(opening.id)) {
+		const day = gate.weekOpensOn(opening.id)
+		return day ? `Week ${opening.id} opens ${day}.` : `Week ${opening.id} has not opened yet.`
+	}
+
+	const week = weeks[wi]
+	const list = week?.checkpoints ?? []
+	const i = list.findIndex(c => c.id === id)
+	const self = list[i]
+	if (!week || !self) return null
+
+	if (self.atHours !== undefined) {
+		const hours = self.kind === "reel" ? gate.reelHours(week.id) : gate.weekHours(week.id)
+		const owed = withoutOptionalIdea(list.slice(0, i)).find(
+			c => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
+		)
+		if (owed) return firstFinish(owed)
+		const toGo = round2(self.atHours - hours)
+		return `Opens at ${self.atHours}h logged this week (${toGo}h to go).`
+	}
+
+	const blocker = withoutOptionalIdea(list.slice(0, i)).find(c => !done(c))
+	return blocker ? firstFinish(blocker) : null
+}
+
 export function deriveTrail(save: StoreSnapshot, now: number): Trail {
 	const weekPassed = (weekId: number) => {
 		const closesAt = save.weekClosesAt[weekId]
@@ -171,73 +398,12 @@ export function deriveTrail(save: StoreSnapshot, now: number): Trail {
 	// Saves written before a field existed would otherwise hand back a record with holes in it, so every read is filled out from EMPTY.
 	const stateOf = (id: string): CheckpointState => ({ ...EMPTY, ...save.progress[id] })
 
-	// A build week inherits the tier of the design week it is building. A week nobody has started yet borrows the last tier picked, so the trail shows a believable shape instead of lurching when the project is finally created.
-	const tierForWeek = (weekId: number): 1 | 2 | 3 => {
-		const designWeek = weekId > DESIGN_WEEKS ? weekId - DESIGN_WEEKS : weekId
-		const own = save.projects.find(p => p.weekId === designWeek)
-		if (own) return own.tier
-		return save.projects.at(-1)?.tier ?? recommendedTier(save.experience)
-	}
-
 	// The printer you are saving for sets how many hours a week you need to earn, and that number is the same on every tier – the tier only decides how many funded hours sit underneath it.
 	const goal = printerById(save.goalId)
 
-	/**
-	 * The minutes behind each written devlog in a week, with the time that did not arrive through one – Hackatime, a reviewer's adjustment – folded onto the last of them.
-	 *
-	 * That is where it belongs: it is the work done since that devlog, so the entry the next progress reel answers to is the one it landed on. Folded rather than added at the week level because tracked hours on their own, before anything has been written up, are not a reel anyone has something to show – so a week with no entry yet still runs on entries alone.
-	 *
-	 * One array, read both by the placement of the reels (`checkpointsFor` walks it) and by the gate that unlocks them, because a trail that places a reel on one entry and opens it on another is a trail that has said two things at once.
-	 */
-	const writtenMinutes = (weekId: number): number[] => {
-		const written: number[] = []
-		for (;;) {
-			const entry = save.progress[`w${weekId}-entry-${written.length + 1}`]
-			if (!entry?.done) break
-			written.push(entry.minutes)
-		}
-		const offBook = save.offBookHours[weekId] ?? 0
-		// Only onto a devlog that exists: a week with nothing written keeps its reel clock on entries alone.
-		const last = written.length - 1
-		if (last >= 0 && offBook > 0) written[last] = (written[last] ?? 0) + offBook * 60
-		return written
-	}
+	const weeks = seasonWeeks(save, goal)
 
-	const weeks: Week[] = WEEK_META.map(meta => {
-		const tierId = tierForWeek(meta.id)
-		const tier = getTier(tierId) ?? ENTRY_TIER
-		const build = meta.phase === "build"
-		// Column 5 is the tier-1 week and is already floored to a flat 10 hours, so every other tier is that plus the extra hours its grant funds.
-		const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)
-		// The same ask at the cheapest machine's pace: the least a week can be worth and still leave a printer at the end of the season.
-		const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
-		return Object.assign({}, meta, {
-			checkpoints: checkpointsFor(
-				meta,
-				// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
-				writtenMinutes(meta.id),
-				cid => save.progress[cid]?.done ?? false,
-				submitHours,
-				// Onboarding made week one's project and it has since been deleted: `projects` only lists live, named ones.
-				meta.id === 1
-					&& (save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false)
-					&& !save.projects.some(p => p.weekId === 1),
-			),
-			// Build-week hours all bank; the grant paid for the design week.
-			earnFrom: build ? 0 : tier.fundingHours,
-			fundingHours: build ? BUILD_HOURS : tier.fundingHours,
-			submitHours,
-			targetHours: target,
-			tier: tierId,
-		})
-	})
-
-	// Each warm-up, as a week of its own that the trail never draws.
-	const warmupWeeks: Week[] = save.projects.flatMap(project => {
-		const info = save.warmups[project.id]
-		if (project.weekId !== WARMUP_WEEK_ID || !info) return []
-		return [warmupWeek(project, info.phase === "build", id => save.progress[id]?.done ?? false)]
-	})
+	const warmupWeeks = warmupWeeksFrom(save)
 
 	// Every checkpoint a modal can open, the warm-ups' included. The trail itself draws `weeks` only.
 	const allCheckpoints = [...weeks, ...warmupWeeks].flatMap(w => w.checkpoints)
@@ -256,12 +422,7 @@ export function deriveTrail(save: StoreSnapshot, now: number): Trail {
 	 *
 	 * Journalled entries plus whatever arrived another way – Hackatime link time, and any hours a reviewer adjusted – and unlike `reelHours` below it counts the off-book half even in a week with nothing written, because Submit and the coins are owed for the work rather than for the write-up of it.
 	 */
-	const weekHours = (weekId: number) => {
-		const week = weeks.find(w => w.id === weekId)
-		if (!week) return 0
-		const mins = week.checkpoints.reduce((n, c) => n + (save.progress[c.id]?.minutes ?? 0), 0)
-		return mins / 60 + (save.offBookHours[weekId] ?? 0)
-	}
+	const weekHours = (weekId: number): number => weekHoursOf(save, weeks, weekId)
 
 	const overlapUnchecked = (weekId: number) => save.overlapUncheckedWeeks.includes(weekId)
 
@@ -270,16 +431,11 @@ export function deriveTrail(save: StoreSnapshot, now: number): Trail {
 	 *
 	 * The very same array the reels are placed on, so a reel cannot be placed after one entry and opened by another. `weekHours` is the same figure for any week that has been written up, and differs only in the case it must: a week with nothing written yet, where tracked hours count towards Submit and towards the coins but no reel is due, because there is no devlog for it to answer to.
 	 */
-	const reelHours = (weekId: number) => writtenMinutes(weekId).reduce((n, m) => n + m, 0) / 60
+	const reelHours = (weekId: number): number => writtenMinutes(save, weekId).reduce((n, m) => n + m, 0) / 60
 
-	// The same questions asked of a week object, so a sheet can serve a warm-up (which has no week number of its own) as readily as a season week.
 	const weekOfCheckpoint = (checkpoint: Checkpoint): Week =>
 		warmupWeeks.find(w => w.checkpoints.some(c => c.id === checkpoint.id)) ?? weekOf(checkpoint.weekId)
-	const hoursOf = (week: Week): number => {
-		if (!week.projectId) return weekHours(week.id)
-		const mins = week.checkpoints.reduce((n, c) => n + (save.progress[c.id]?.minutes ?? 0), 0)
-		return mins / 60 + (save.warmups[week.projectId]?.offBookHours ?? 0)
-	}
+	const hoursOf = (week: Week): number => hoursOfWeek(save, weeks, week)
 	/**
 	 * Everything logged, as one number: every season week's hours plus every warm-up's. A warm-up has no week of its own, so it is found by project and read through `hoursOf`; the season weeks go through `weekHours`. Both already fold in the time that did not come from an entry (Hackatime, a reviewer's adjustment), which is what makes this "journalled and tracked" rather than entries alone.
 	 */
@@ -305,6 +461,20 @@ export function deriveTrail(save: StoreSnapshot, now: number): Trail {
 		return (week.phase === "build" ? project?.buildStatus : project?.designStatus) ?? "draft"
 	}
 
+	// The gates read one shared set of facts, so a week cannot be open to one of them and shut to another.
+	const gate: TrailGate = {
+		hoursOf,
+		passedOf,
+		reelHours,
+		save,
+		warmupWeeks,
+		weekHours,
+		weekOpensOn,
+		weekPassed,
+		weekStarted,
+		weeks,
+	}
+
 	/**
 	 * What the unreviewed weeks are on course to earn, at the ledger's own rule: every hour past the week's funded block (all of a build week's) at COINS_PER_HOUR. Approved weeks are skipped because their coins are already minted, rejected ones because they will never mint. It is a projection – a reviewer can still adjust the hours – which is why it only feeds the pace warning and never the balance anyone can spend.
 	 */
@@ -317,120 +487,10 @@ export function deriveTrail(save: StoreSnapshot, now: number): Trail {
 				return n + Math.max(0, weekHours(w.id) - w.earnFrom) * COINS_PER_HOUR
 			}, 0)
 
-	/**
-	 * Whether a checkpoint is shut because its week ran out of time.
-	 *
-	 * Every node on a passed week is, done or not, with two exceptions: the Submit that still owes the week's hand-in, and a setup nobody has done yet – a late joiner still has to come in through the front door. A Submit with nothing logged behind it passes with the rest, because the server refuses an empty hand-in and there is nothing left to do about that.
-	 */
-	const isPassed = (id: string): boolean => {
-		const week = [...weeks, ...warmupWeeks].find(w => w.checkpoints.some(c => c.id === id))
-		const self = week?.checkpoints.find(c => c.id === id)
-		if (!week || !self || !passedOf(week)) return false
-		const done = save.progress[id]?.done ?? false
-		if (self.kind === "onboarding" && !done) return false
-		if (self.kind === "submit" && !done && hoursOf(week) > 0) return false
-		return true
-	}
-
-	/**
-	 * Whether a checkpoint waits on a deleted reel.
-	 *
-	 * Deleting the last reel on a checkpoint reopens it, and until it is posted again every other checkpoint is held – done ones included, so the map shows plainly that one thing is owed. The server holds the same line (lib/reel-gate), and only ever reports a reel owed while its week can still take one, so the hold always has a way out.
-	 */
-	const isHeld = (id: string): boolean => save.owedReels.length > 0 && !save.owedReels.includes(id)
-
-	/**
-	 * Weeks do not hold each other. A week opens on its Monday whatever the week before it did, so a maker who never handed one in can still start the next – the clock is the only thing that orders them.
-	 *
-	 * It used to be otherwise: an unhanded-in week kept the next shut until it was submitted. That dead-ended anyone who could not reach that week's floor – the tier is the maker's own choice, and a week below its floor cannot be handed in at all – and it also punished asking for an extension, which is granted precisely when a maker is behind. Nothing is lost by not waiting: a passed week's Submit stays open for anyone who does reach the floor, so late work can still go in.
-	 *
-	 * What does still break the sequence:
-	 *
-	 * - a week that has passed is shut, all but the Submit it still owes – which opens whatever the hours say, since no more can be logged;
-	 *
-	 * - anything on the clock (the milestone reels, and Submit itself) opens on the week's hours, so a half-written entry never traps you and the choice to wrap up is always live. Everything else unlocks in order, as it always has – except week 1's idea reel, which is the optional arm of the opening fork and never holds anything shut (see WEEK1_IDEA_REEL_ID).
-	 */
-	const isUnlocked = (id: string): boolean => {
-		// The owed reel is the way out, so it opens whatever else is true – including a week that has since closed while this tab held a stale snapshot. Checking `isPassed` first dead-mapped the whole trail until the page was reloaded and the server stopped reporting the debt.
-		if (save.owedReels.includes(id)) return true
-		if (isPassed(id)) return false
-		if (isHeld(id)) return false
-		const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
-		const wi = weeks.findIndex(w => w.checkpoints.some(c => c.id === id))
-		if (wi === -1) return false
-		// Nothing on a week opens before its Monday, Get started included.
-		const opening = weeks[wi]
-		if (opening && !weekStarted(opening.id)) return false
-
-		const week = weeks[wi]
-		const list = week?.checkpoints ?? []
-		const i = list.findIndex(c => c.id === id)
-		const self = list[i]
-		if (!week || !self) return false
-
-		if (self.kind === "submit" && weekPassed(week.id)) return true
-
-		if (self.atHours !== undefined) {
-			// A progress reel is earned by the hours the devlogs carry, tracked time included once the week has been written up (see `reelHours`); Submit and "Keep working" read what the week is worth in total. Only progress reels carry atHours besides those two, so `kind` is the whole distinction.
-			const hours = self.kind === "reel" ? reelHours(week.id) : weekHours(week.id)
-			// Unwritten entries never block a milestone – the clock does. Neither does a milestone that is not due yet: the reel waiting at 30h cannot hold up a Submit that opened at 23.76h.
-			//
-			// "Keep working" rides this rule too, at atHours 0. A reel that has come due is the cadence asking to be paid before the week runs on; letting the fork's other arm open around it would make every progress reel skippable forever.
-			//
-			// Week 1's idea reel is the exception: it is the optional arm of the opening fork, so it never holds the clock's milestones or Submit shut, whichever arm the maker took.
-			const gates = withoutOptionalIdea(list.slice(0, i)).filter(c => c.kind !== "journal" && (c.atHours ?? 0) <= hours)
-			return gates.every(done) && hours >= self.atHours
-		}
-
-		return withoutOptionalIdea(list.slice(0, i)).every(done)
-	}
-
-	/**
-	 * Why a checkpoint is shut, in the maker's terms. Null when it is open.
-	 *
-	 * It walks the same rules as isUnlocked, in the same order, and lives next to it so the two cannot drift: a trail that says one thing and does another is worse than a trail that says nothing. Each branch names the one thing standing in the way rather than listing everything outstanding – only the first is actionable anyway.
-	 */
-	const lockReason = (id: string): string | null => {
-		// Titles are node names, so they keep their capital. The verb follows the kind: you post a reel, you finish everything else.
-		const firstFinish = (c: Checkpoint) => (c.kind === "reel" ? `Post ${c.title} first.` : `Finish ${c.title} first.`)
-
-		if (isUnlocked(id)) return null
-		if (isPassed(id)) return PASSED_REASON
-		if (isHeld(id)) {
-			const [owedId] = save.owedReels
-			const owed = weeks.flatMap(w => w.checkpoints).find(c => c.id === owedId)
-			return owed ? `Re-record ${owed.title} first. You deleted it.` : "Re-record the reel you deleted first."
-		}
-
-		const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
-		const wi = weeks.findIndex(w => w.checkpoints.some(c => c.id === id))
-		if (wi === -1) return null
-
-		const opening = weeks[wi]
-		if (opening && !weekStarted(opening.id)) {
-			const day = weekOpensOn(opening.id)
-			return day ? `Week ${opening.id} opens ${day}.` : `Week ${opening.id} has not opened yet.`
-		}
-
-		const week = weeks[wi]
-		const list = week?.checkpoints ?? []
-		const i = list.findIndex(c => c.id === id)
-		const self = list[i]
-		if (!week || !self) return null
-
-		if (self.atHours !== undefined) {
-			const hours = self.kind === "reel" ? reelHours(week.id) : weekHours(week.id)
-			const owed = withoutOptionalIdea(list.slice(0, i)).find(
-				c => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
-			)
-			if (owed) return firstFinish(owed)
-			const toGo = round2(self.atHours - hours)
-			return `Opens at ${self.atHours}h logged this week (${toGo}h to go).`
-		}
-
-		const blocker = withoutOptionalIdea(list.slice(0, i)).find(c => !done(c))
-		return blocker ? firstFinish(blocker) : null
-	}
+	const isPassed = (id: string): boolean => passedIn(gate, id)
+	const isHeld = (id: string): boolean => heldIn(save, id)
+	const isUnlocked = (id: string): boolean => unlockedIn(gate, id)
+	const lockReason = (id: string): string | null => lockReasonIn(gate, id)
 
 	// Once the first devlog is written the opening fork is settled on the skip arm, so the unposted idea reel stops being the trail's answer to "where next" – it stays open as an extra, not as the current.
 	const skipSettled = save.progress["w1-entry-1"]?.done ?? false
