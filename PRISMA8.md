@@ -17,13 +17,15 @@ Prisma 8 is not a drop-in major upgrade of the Prisma 7 client. It replaces the 
 
 | Piece | State |
 | --- | --- |
-| Prisma 8 CLI | `prisma@8.0.0-rc.27`, config `prisma.config.ts` |
-| Prisma 8 runtime | `@prisma/orm-postgres@8.0.0-rc.20` |
+| Prisma 8 CLI | `prisma@8.0.0-rc.29`, config `prisma.config.ts` |
+| Prisma 8 runtime | `@prisma/orm-postgres@8.0.0-rc.22` |
 | Contract source | `prisma/contract.prisma` – the schema of record |
 | Contract artifacts | `src/app/generated/prisma8/contract.json` and `contract.d.ts` (gitignored with the rest of `src/app/generated`) |
 | Migration state | `migrations/app/refs/db.json` + content-addressed snapshots under `migrations/snapshots/` |
 | Verification | `bun run p8:verify` exercises the admin, review, feed and shop read paths |
 | Auth | better-auth on its Kysely adapter with its own UTC-pinned `pg` pool (`src/lib/auth-db.ts`); the Prisma adapter is gone with the v7 client |
+
+Both Prisma versions are pinned exactly rather than with `^`, and `overrides` forces `@prisma/orm-toolchain` to the runtime's version. Prerelease semver ranks `8.0.0-rc.9-dev.79` above `8.0.0-rc.29`, because a non-numeric identifier outranks a numeric one, so a caret range lets `bun update` walk back to the older rc.9 dev build. The pin also keeps every `@prisma/orm-*` package on one version, which Prisma 8 refuses to run without.
 
 ### Commands
 
