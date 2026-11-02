@@ -1,9 +1,12 @@
 import { and } from "@prisma/orm-postgres/orm-client"
+import { after } from "next/server"
+import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
+import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
 import { markProjectCreated, recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { starterProjectsFor } from "@/lib/config/onboarding"
-import { getThemeDef } from "@/lib/config/program"
+import { getThemeDef, scheduledWeekFor } from "@/lib/config/program"
 import { Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
@@ -19,6 +22,7 @@ import { deleteBlockReason } from "@/lib/project-delete"
 import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { projectUpdateSchema } from "@/lib/schemas/project"
+import { trackSideEffect } from "@/lib/side-effects"
 import { recomputeStreak } from "@/lib/streak"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
@@ -237,6 +241,17 @@ export const DELETE = withWriteSession(async (_req: Request, { params, gate }: P
 		.select("weekNumber")
 		.all()
 
+	// A soft delete leaves the submission rows in place, so the reviewer-facing rows they own have to be found here: a rejected or returned hand-in is exactly the kind that may be deleted, and its row would otherwise outlive the project while the maker's week box clears.
+	const submissions = await db.orm.public.PhaseSubmission.where({ themeProjectId: id })
+		.select("phase", "scheduledWeek")
+		.all()
+	const submittedPhases = [...new Set(submissions.map(submission => submission.phase))]
+	const submittedWeeks = [
+		...new Set(
+			submissions.map(submission => submission.scheduledWeek ?? scheduledWeekFor(project.theme, submission.phase)),
+		),
+	].filter(week => week >= 1 && week <= 10)
+
 	const deleted = await db.transaction(async tx => {
 		// Re-read the project and its block status inside the transaction, so a grant, top-up, or dispute committing in the window is caught before the soft delete rather than after.
 		const fresh = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
@@ -281,6 +296,32 @@ export const DELETE = withWriteSession(async (_req: Request, { params, gate }: P
 		metadata: { theme: project.theme, title: project.title },
 		targetId: id,
 		targetType: "ThemeProject",
+	})
+
+	// Its submission rows go with it, the same way unsubmit removes them: a row pointing at a project that no longer exists is a ghost in the reviewer table, and it is what makes one maker look like two Week 1 submitters after they delete and start again.
+	after(async () => {
+		for (const phase of submittedPhases)
+			await trackSideEffect(
+				"airtable",
+				{
+					actorEmail: gate.user.email,
+					actorId: gate.user.id,
+					metadata: { phase, removed: true },
+					targetId: id,
+					targetType: "ThemeProject",
+				},
+				() => removeSubmissionFromYsws(id, phase),
+			)
+	})
+
+	// Recompute the week boxes from what is left rather than forcing them false: another live hand-in for the same week keeps its tick, and the hourly sync heals anything this misses.
+	after(async () => {
+		for (const week of submittedWeeks)
+			try {
+				await syncLoopsWeekSubmitted(gate.user.id, week)
+			} catch (err) {
+				console.error("[delete] loops submitted tick failed:", err)
+			}
 	})
 
 	for (const { weekNumber } of weeks) await recomputeWeek(gate.user.id, weekNumber)
