@@ -1,6 +1,6 @@
 import { EmptyState } from "@/app/components/ui"
 import { fmtInt } from "@/lib/numbers"
-import type { ActivityShare } from "@/lib/queries/admin"
+import type { ActivityShare } from "@/lib/queries/admin-flow"
 
 /**
  * One stable colour per activity, plus grey for the finishers who did none of them. The Sankey assigns its colours by box order, so these do not promise to match it – the axis names are this chart's legend.

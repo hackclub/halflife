@@ -266,12 +266,13 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			}
 		}
 
-		// Both phases mint coins, by different rules. A design pays out only above its tier's funded hours; a build has no funded block, so every hour pays. Either way every coin is spendable on anything.
+		// Both phases mint coins, by different rules. A design pays out only above the hours its grant bought – a declined grant (or a zero override) buys none, so every hour pays. A build has no funded block, so every hour pays. Either way every coin is spendable on anything.
+		const fundedHours = (grantUsd ?? 0) > 0 && tier ? getTierOrThrow(tier).fundingHours : 0
 		const coins: CoinSplit | null =
 			approving && approvedHours !== null
 				? phase === Phase.DESIGN
 					? tier
-						? designCoinsFor(tier, approvedHours)
+						? designCoinsFor(tier, approvedHours, { fundedHours })
 						: null
 					: buildCoinsFor(approvedHours)
 				: null
@@ -293,7 +294,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			frozenBankedCoins: coins?.banked ?? null,
 			frozenBankHours: goal.paceHours,
 			frozenEntryCount: breakdown.journalEntryCount,
-			frozenFundingHours: tierDef?.fundingHours ?? null,
+			// The funded block the payout was measured against, which is what makes the frozen coins reproducible. A declined grant buys no parts, so it leaves an empty block and every approved hour paid.
+			frozenFundingHours: tierDef ? fundedHours : null,
 			frozenGrantUsd: grantUsd,
 			frozenHackatimeHours: breakdown.hackatimeHours,
 			// Freeze what the reviewer was looking at. The tier table is expected to change mid-program, so without these there is no way to reconstruct why anyone was paid what they were paid.
@@ -389,7 +391,9 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				kind: LedgerKind.DESIGN_BANKED_HOURS,
 				note:
 					approving && tierDef
-						? `${approvedHours}h approved: ${tierDef.fundingHours}h funded at $${tierDef.grantUsd}, ${coins?.spendable ?? 0} coins spendable`
+						? fundedHours === 0
+							? `${approvedHours}h approved with no parts grant: every hour pays, ${coins?.spendable ?? 0} coins spendable`
+							: `${approvedHours}h approved: ${fundedHours}h funded at $${tierDef.grantUsd}, ${coins?.spendable ?? 0} coins spendable`
 						: "Design approval withdrawn",
 				target: approving ? (coins?.banked ?? 0) : 0,
 				themeProjectId: project.id,
@@ -400,7 +404,9 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				kind: LedgerKind.DESIGN_EXCESS_HOURS,
 				note:
 					approving && tierDef
-						? `Hours beyond Tier ${tier}'s ${tierDef.fundingHours}h funded, spendable on anything`
+						? fundedHours === 0
+							? "Every approved hour, spendable on anything (no parts grant)"
+							: `Hours beyond Tier ${tier}'s ${fundedHours}h funded, spendable on anything`
 						: "Design approval withdrawn",
 				target: approving ? (coins?.spendable ?? 0) : 0,
 				themeProjectId: project.id,

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
 import { IconArrowRight, IconCheck, IconClock, IconEye, IconUpload, IconWarning } from "@/components/platform/icons"
 import { Markdown } from "@/components/platform/Markdown"
@@ -12,33 +12,16 @@ import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { ParticipantGoal } from "@/lib/enums"
-import type { LapseTimelapse } from "@/lib/lapse-timelapses"
 import { countImages, proseLength } from "@/lib/markdown"
-import { round2 } from "@/lib/money"
 import { fmtHours } from "@/lib/numbers"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
-import {
-	altFor,
-	clampToContentLimit,
-	cleanBodyForAutosave,
-	clearJournalAutosave,
-	draftKey,
-	droppedImages,
-	type ImageSource,
-	isWeeksProject,
-	LapseResolveBodySchema,
-	peekJournalTrip,
-	readJournalAutosave,
-	stashJournalDraft,
-	storeImage,
-	weekName,
-	withoutPlaceholder,
-	writeJournalAutosave,
-} from "./checkpoint-shared"
+import { cleanBodyForAutosave, isWeeksProject, stashJournalDraft, weekName } from "./checkpoint-shared"
+import { useJournalDraft } from "./journal-draft"
+import { useJournalImages } from "./journal-images"
 import { fmtDuration, LapsePicker } from "./LapsePicker"
 import { Modal, ModalTitle } from "./Modal"
 
@@ -147,147 +130,35 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		const saved = stateOf(checkpoint.id)
 		return saved.done ? saved.log[0] : undefined
 	})
-	const editing = existing !== undefined
 
-	// A Lapse sign-in leaves the page and comes back: that trip's draft is restored once. Anything else typed is autosaved to this browser and restored next time the sheet opens, so clicking out cannot lose it. A saved entry clears it. Peeked (not taken) during render so StrictMode's double-invoked initializer cannot consume it before state is set.
-	// oxlint-disable-next-line react/hook-use-state
-	const [draft] = useState(() => peekJournalTrip(checkpoint.id) ?? readJournalAutosave(checkpoint.id))
-	const draftRestored = draft != null
+	const {
+		body,
+		clipsTouchedRef,
+		clearDraft,
+		discardDraft,
+		draftRestored,
+		editing,
+		hasUnsavedWork,
+		hoursText,
+		legacyBump,
+		legacyKept,
+		picked,
+		pinned,
+		preview,
+		setBody,
+		setHoursText,
+		setPicked,
+		setPinned,
+		setPreview,
+		setTab,
+		tab,
+	} = useJournalDraft(checkpoint.id, existing)
 
-	// An edit re-opens the picker with this entry's clips selected: Lapse clips that still verify resolve into items, ones Lapse no longer vouches for stay pinned by id, and older non-Lapse uploads stay untouched. The resolve below seeds all three; a returning draft already holds the working set.
-	const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? [])
-	const [pinned, setPinned] = useState<string[]>(draft?.pinned ?? [])
-	const [legacyKept, setLegacyKept] = useState<string[]>(draft?.legacy ?? [])
-	// The last-saved clip set, for telling a real change from the seed – and for putting the seed back on "Discard draft".
-	const [clipSeed, setClipSeed] = useState<{ picked: LapseTimelapse[]; pinned: string[] }>({
-		picked: [],
-		pinned: [],
-	})
-	// Resolve runs once per open; anything the maker toggles after that wins over the seed, whenever it lands.
-	const seededRef = useRef(false)
-	const clipsTouchedRef = useRef(
-		(draft?.picked.length ?? 0) > 0 || (draft?.pinned?.length ?? 0) > 0 || (draft?.legacy?.length ?? 0) > 0,
-	)
+	const { addJournalImages, dragHandlers, dragging, entry, imageError, uploading } = useJournalImages({ body, setBody })
 
-	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
-	// The Lapse timelapses backing this session (clip state lives above, with the seed it resolves from). A draft is cut to the box's own ceiling: autosave wrote whatever was typed, including entries past a limit the server refuses, so a draft from before `maxLength` existed restores to something that can be typed on and saved. The saved entry is not cut, because it came from the server and is already within bounds.
-	const [body, setBody] = useState(draft ? clampToContentLimit(draft.body) : (existing?.body ?? ""))
-	const [preview, setPreview] = useState(false)
-	// Free text, not a number: a controlled number input that coerces as you type eats the decimal point the moment you reach for "1.5".
-	const [hoursText, setHoursText] = useState(
-		draft?.hoursText ?? (existing ? String(round2(existing.minutes / 60)) : ""),
-	)
+	const imageInput = useRef<HTMLInputElement>(null)
 	const [saving, setSaving] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
-	const imageInput = useRef<HTMLInputElement>(null)
-	const entry = useRef<HTMLTextAreaElement>(null)
-	// Images still on their way up. Each one holds a placeholder in the entry until its link comes back, and Finish waits for all of them.
-	const [uploading, setUploading] = useState(0)
-	const [imageError, setImageError] = useState<string | null>(null)
-	// Files being dragged over the sheet. Counted, because every child the drag crosses fires its own enter and leave.
-	const [dragging, setDragging] = useState(false)
-	const dragDepth = useRef(0)
-	const placeholderSeq = useRef(0)
-
-	// Autosave: every keystroke lands in this browser, so closing the sheet, reloading, or navigating away cannot lose it. Empty sheets and edits matching the saved entry keep no draft; a saved entry clears it.
-	const baselineBody = existing?.body ?? ""
-	// In the box's own arithmetic, once the seed below restates it: the box holds what the timelapses do not cover, so the baseline moves with it.
-	const [baselineHours, setBaselineHours] = useState(existing ? String(round2(existing.minutes / 60)) : "")
-	// An entry logged under the old arithmetic whose old total does not cover its resolved timelapses: restating the box clamps it at zero and the total grows on open. Named on screen rather than silently absorbed, so a typo fix never quietly logs extra hours.
-	const [legacyBump, setLegacyBump] = useState<{ from: number; lapse: number } | null>(null)
-	// The trip draft has been restored into state: consume it so it cannot resurrect an entry days later. Autosave below keeps it from here on.
-	useEffect(() => {
-		try {
-			window.sessionStorage.removeItem(draftKey(checkpoint.id))
-		} catch {
-			// Storage off.
-		}
-	}, [checkpoint.id])
-
-	// Seed the picker's working set from what the entry was saved with. The seed never overwrites anything already picked – a returning draft, or a toggle that beat the read back, always wins.
-	useEffect(() => {
-		if (!editing || !existing || existing.clips.length === 0 || seededRef.current) return
-		let live = true
-		void (async () => {
-			let seed: { picked: LapseTimelapse[]; pinned: string[] } = { picked: [], pinned: [] }
-			let legacy: string[] = []
-			try {
-				const query = new URLSearchParams({ forSession: existing.id, ids: existing.clips.join(",") })
-				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
-				const parsed = LapseResolveBodySchema.safeParse(await res.json().catch(() => null))
-				if (!res.ok || !parsed.success) throw new Error("unresolvable")
-				const payload = parsed.data
-				seed = { picked: payload.resolved ?? [], pinned: payload.pinned ?? [] }
-				legacy = payload.legacy ?? []
-				// Anything the resolve did not account for stays attached by id. Without this a clip the endpoint declined to read – it reads a bounded number – would fall out of the working set, and saving the edit would take it off the entry for good.
-				const accounted = new Set([...seed.picked.map(t => t.id), ...seed.pinned, ...legacy])
-				for (const id of existing.clips) if (!accounted.has(id)) seed.pinned.push(id)
-			} catch {
-				// Lapse unreachable or unlinked: keep every stored ref by id. The server preserves what is already attached, so an edit that touches the words drops nothing.
-				seed = { picked: [], pinned: existing.clips }
-			}
-			if (!live) return
-			seededRef.current = true
-			setClipSeed(seed)
-			setLegacyKept(legacy)
-			if (!clipsTouchedRef.current) {
-				setPicked(seed.picked)
-				setPinned(seed.pinned)
-				// The saved figure was logged under the old arithmetic, so restate the box as the part the timelapses do not cover: the total is unchanged unless the maker edits it. The baseline moves with the box – autosave, discard and "matches saved" all compare against it, and leaving it at the old total would restore that total as a residual on discard and count the timelapses twice.
-				const seedLapseHours = Math.round((seed.picked.reduce((n, t) => n + t.durationSeconds, 0) / 3600) * 100) / 100
-				if (seedLapseHours > 0) {
-					const baseHours = round2(existing.minutes / 60)
-					const restated = String(Math.max(0, Math.round((baseHours - seedLapseHours) * 100) / 100))
-					setHoursText(restated)
-					setBaselineHours(restated)
-					if (seedLapseHours > baseHours) setLegacyBump({ from: baseHours, lapse: seedLapseHours })
-				}
-			}
-		})()
-		return () => {
-			live = false
-		}
-		// `existing` is the entry this sheet opened on: it never changes mid-edit.
-	}, [editing, existing, checkpoint.id])
-	useEffect(() => {
-		const cleanBody = cleanBodyForAutosave(body)
-		const hasContent =
-			cleanBody.trim() !== ""
-			|| hoursText.trim() !== ""
-			|| picked.length > 0
-			|| pinned.length > 0
-			|| (!editing && tab !== "journal")
-		// Clips compare as sets against the seed: reordering a pick is not a change.
-		const workingIds = [...picked.map(t => t.id), ...pinned].toSorted()
-		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].toSorted()
-		const clipsMatch = workingIds.length === seedIds.length && workingIds.every((id, i) => seedIds[i] === id)
-		const matchesSaved = editing && cleanBody === baselineBody && hoursText === baselineHours && clipsMatch
-		if (!hasContent || matchesSaved) {
-			writeJournalAutosave(checkpoint.id, null)
-			return
-		}
-		writeJournalAutosave(checkpoint.id, { body: cleanBody, hoursText, legacy: legacyKept, picked, pinned, tab })
-	}, [checkpoint.id, tab, body, hoursText, picked, pinned, legacyKept, clipSeed, editing, baselineBody, baselineHours])
-
-	const hasUnsavedWork =
-		cleanBodyForAutosave(body).trim() !== "" || hoursText.trim() !== "" || picked.length > 0 || pinned.length > 0
-
-	function discardDraft() {
-		if (editing) {
-			setBody(baselineBody)
-			setHoursText(baselineHours)
-			// Back to the last-saved clips – and anything toggled after that stops counting as touched, so a seed still in flight lands clean.
-			setPicked(clipSeed.picked)
-			setPinned(clipSeed.pinned)
-			clipsTouchedRef.current = false
-		} else {
-			setBody("")
-			setHoursText("")
-			setPicked([])
-		}
-		setTab("journal")
-		writeJournalAutosave(checkpoint.id, null)
-	}
 
 	// The fallback is for a season sheet opened before its project row landed; it must never pick the warm-up project, which has no season week.
 	const project =
@@ -353,7 +224,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setSaving(false)
 			if (refused) setSaveError(refused)
 			else {
-				clearJournalAutosave(checkpoint.id)
+				clearDraft()
 				setOpenCheckpoint(null)
 			}
 			return
@@ -366,7 +237,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setSaveError(refused)
 			return
 		}
-		clearJournalAutosave(checkpoint.id)
+		clearDraft()
 		complete(checkpoint.id)
 		setOpenCheckpoint(null)
 	}
@@ -382,106 +253,6 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		})
 		await linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
 	}
-
-	/**
-	 * Put images into the entry where the cursor is – picked, dropped or pasted, the same way (after Stasis's session form). Each goes in first as a placeholder, `![Uploading name…](uploading:n)`, which no renderer or image count accepts, and is swapped for its CDN link once the upload lands; a failed one is taken back out. One at a time, because uploads are rate-limited per account.
-	 */
-	async function addJournalImages(sources: Iterable<ImageSource>) {
-		const all = Array.from(sources)
-		const images = all.filter(s => !(s instanceof File) || s.type.startsWith("image/"))
-		const notices: string[] = []
-		if (images.length < all.length) notices.push("Only images can go in an entry, so the rest were left out.")
-
-		// Each image a paragraph of its own, wherever in the text it lands.
-		const at = entry.current?.selectionEnd ?? body.length
-		const before = body.slice(0, at)
-		const after = body.slice(at)
-		const lead = !before.trim() || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n"
-		const trail = !after || after.startsWith("\n") ? "" : "\n\n"
-
-		// As many as fit, in the order they were given. A picture costs more characters once its link is back than while it is still uploading, so this is the first of two asks about room, not the last.
-		const items: { source: ImageSource; alt: string; placeholder: string }[] = []
-		let block = ""
-		for (const source of images) {
-			const alt = altFor(source)
-			placeholderSeq.current += 1
-			const placeholder = `![Uploading ${alt}…](uploading:${placeholderSeq.current})`
-			const piece = items.length === 0 ? lead + placeholder : `\n\n${placeholder}`
-			if (before.length + (block + piece).length + trail.length + after.length > MAX_SESSION_CONTENT) break
-			block += piece
-			items.push({ alt, placeholder, source })
-		}
-		const short = images.length - items.length
-		if (short > 0)
-			notices.push(`This entry is full, so ${short === 1 ? "one image was" : `${short} images were`} left out.`)
-		setImageError(notices.length > 0 ? notices.join(" ") : null)
-		if (items.length === 0) return
-
-		setBody(clampToContentLimit(before + block + trail + after))
-		requestAnimationFrame(() => {
-			const caret = before.length + block.length
-			entry.current?.setSelectionRange(caret, caret)
-		})
-
-		setUploading(n => n + items.length)
-		for (const item of items)
-			try {
-				const { url } = await storeImage(item.source)
-				if (!url) throw new Error("Image uploads need a public URL before they can be added here")
-				const markdown = `![${item.alt}](${url})`
-				// The second ask about room. A picture is left out whole rather than the entry cut short – the tail of an entry is somebody's writing, and half an image reads worse than none of it.
-				if (!roomFor(item.placeholder, markdown)) {
-					swapPlaceholder(item.placeholder, null)
-					setImageError(`This entry is full, so "${item.alt}" was left out.`)
-					continue
-				}
-				swapPlaceholder(item.placeholder, markdown)
-			} catch (err) {
-				swapPlaceholder(item.placeholder, null)
-				setImageError(err instanceof Error ? err.message : "The image did not upload")
-			} finally {
-				setUploading(n => n - 1)
-			}
-	}
-
-	/**
-	 * Whether `markdown` still fits once it stands in for `placeholder`.
-	 *
-	 * Read off the box rather than `body`, which is the render this handler was made in and has not moved since: the uploads run one at a time, so the box has caught up by the time a link lands and `body` has not.
-	 */
-	function roomFor(placeholder: string, markdown: string): boolean {
-		const current = entry.current?.value ?? body
-		return current.length - placeholder.length + markdown.length <= MAX_SESSION_CONTENT
-	}
-
-	/**
-	 * Replace a placeholder with its link, or take it out (`null`), without moving the caret of someone who kept typing while it uploaded: setting a textarea's value sends the caret to the end, so it is put back, shifted by however much the text before it grew or shrank.
-	 */
-	function swapPlaceholder(placeholder: string, replacement: string | null) {
-		const el = entry.current
-		const keep =
-			el && document.activeElement === el
-				? { at: el.value.indexOf(placeholder), end: el.selectionEnd, length: el.value.length, start: el.selectionStart }
-				: null
-		setBody(current => {
-			const next =
-				replacement === null ? withoutPlaceholder(current, placeholder) : current.replace(placeholder, replacement)
-			// The backstop under `roomFor`: should a link land against a box that moved underneath it, the entry is still not left longer than the server will take.
-			return clampToContentLimit(next)
-		})
-		if (!keep || keep.at < 0) return
-		requestAnimationFrame(() => {
-			const box = entry.current
-			if (!box) return
-			const delta = box.value.length - keep.length
-			const move = (p: number) => (p > keep.at ? p + delta : p)
-			box.setSelectionRange(move(keep.start), move(keep.end))
-		})
-	}
-
-	// A drag that could be carrying an image: files, or a picture dragged off another page, which comes as markup and an address rather than a file. Dragging a selection around the entry is plain text, and not ours.
-	const mightBeImage = (e: React.DragEvent) =>
-		["Files", "text/html", "text/uri-list"].some(t => e.dataTransfer.types.includes(t))
 
 	return (
 		<Modal
@@ -562,33 +333,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 			{tab === "journal" ? (
 				// The whole sheet takes a drop, not just the box: a picture let go an inch off the textarea would otherwise open in the tab and take the unsaved entry with it.
-				// biome-ignore lint/a11y/noStaticElementInteractions: a drop target, not a control; dragging is not a keyboard gesture, and the sheet stays reachable through its fields.
-				<div
-					onDragEnter={e => {
-						if (!mightBeImage(e)) return
-						e.preventDefault()
-						dragDepth.current += 1
-						setDragging(true)
-					}}
-					onDragLeave={e => {
-						if (!mightBeImage(e)) return
-						dragDepth.current = Math.max(0, dragDepth.current - 1)
-						if (dragDepth.current === 0) setDragging(false)
-					}}
-					onDragOver={e => {
-						if (mightBeImage(e)) e.preventDefault()
-					}}
-					onDrop={e => {
-						dragDepth.current = 0
-						setDragging(false)
-						const found = droppedImages(e.dataTransfer)
-						const files = Array.from(e.dataTransfer.files)
-						// A link or some text is not an image: left to the textarea, which drops it in as text. Files are always caught, images or not, so a PDF let go over the sheet cannot open in the tab and take the unsaved entry with it.
-						if (found.length === 0 && files.length === 0) return
-						e.preventDefault()
-						void addJournalImages(found.length > 0 ? found : files)
-					}}
-				>
+				<div {...dragHandlers}>
 					{editing ? (
 						<ModalTitle subWide>Edit this entry</ModalTitle>
 					) : (

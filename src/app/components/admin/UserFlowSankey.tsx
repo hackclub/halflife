@@ -1,7 +1,7 @@
 "use client"
 import { EmptyState } from "@/app/components/ui"
 import { fmtInt as fmt } from "@/lib/numbers"
-import type { SankeyDiagram, SankeyNode } from "@/lib/queries/admin"
+import type { SankeyDiagram, SankeyNode } from "@/lib/queries/admin-flow"
 
 /**
  * The journey as a Sankey: stages left to right, one box per group of users, and a ribbon per route people actually took between two boxes.

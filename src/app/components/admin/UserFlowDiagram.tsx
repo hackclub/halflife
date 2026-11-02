@@ -4,7 +4,8 @@ import { UserFlowFunnel } from "@/app/components/admin/UserFlowFunnel"
 import { UserFlowSankey } from "@/app/components/admin/UserFlowSankey"
 import { UserFlowWeekly } from "@/app/components/admin/UserFlowWeekly"
 import { Panel } from "@/app/components/ui"
-import type { FlowStep, SankeyDiagram, WeekFlowStep } from "@/lib/queries/admin"
+import type { FlowStep, WeekFlowStep } from "@/lib/queries/admin"
+import type { SankeyDiagram } from "@/lib/queries/admin-flow"
 
 /**
  * Three ways of reading the same participant journey.

@@ -3,90 +3,23 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useId, useRef, useState } from "react"
-import { z } from "zod"
 import { IconArrowDown, IconPencil, IconPlus, IconX } from "@/components/platform/icons"
-import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
-import { Button, inputClass } from "@/components/platform/ui"
+import { Button } from "@/components/platform/ui"
 import { BOM_MARGIN_USD, bomTotalUsd } from "@/lib/bom-policy"
-import { type BomLine, BomLineSchema } from "@/lib/bom-schema"
+import type { BomLine } from "@/lib/bom-schema"
 import { cx } from "@/lib/cx"
 import { formatUsd, round2 } from "@/lib/money"
-
-/** What the import route reports after reading the repo's CSV. */
-const ImportPreviewSchema = z.object({
-	/** Lines already on the page, so the copy can offer add vs replace. */
-	existing: z.number(),
-	lines: z.array(
-		z.object({
-			link: z.string().nullable(),
-			name: z.string(),
-			purpose: z.string().nullable(),
-			quantity: z.number(),
-			unitCostUsd: z.number(),
-			vendor: z.string().nullable(),
-		}),
-	),
-	path: z.string(),
-	skipped: z.array(z.object({ name: z.string(), reason: z.string(), row: z.number() })),
-})
-type ImportPreview = z.infer<typeof ImportPreviewSchema>
-
-/** The BOM routes' success payload, plus the error envelope they share. */
-const BomPayloadSchema = z.object({
-	error: z
-		.object({
-			code: z.string().optional(),
-			details: z.object({ properties: z.record(z.string(), z.unknown()).optional() }).optional(),
-			message: z.string().optional(),
-		})
-		.optional(),
-	items: z.array(BomLineSchema).optional(),
-	taxShippingUsd: z.number().optional(),
-})
-
-interface Draft {
-	link: string
-	name: string
-	purpose: string
-	quantity: string
-	unitCostUsd: string
-	vendor: string
-}
-
-const FIELD_NAMES: Record<keyof Draft, string> = {
-	link: "Link",
-	name: "Part",
-	purpose: "What it's for",
-	quantity: "Qty",
-	unitCostUsd: "Unit $",
-	vendor: "Vendor",
-}
-
-/** "Fill out the required fields", naming the ones that are missing. */
-function requiredMessage(fields: (keyof Draft)[]) {
-	return `Fill out the required fields: ${fields.map(k => FIELD_NAMES[k]).join(", ")}.`
-}
-
-const EMPTY: Draft = { link: "", name: "", purpose: "", quantity: "1", unitCostUsd: "", vendor: "" }
-
-/**
- * Pasted prices often carry a `$` (`$12.50`) or commas (`1,299.99`), which `Number` would reject. Strip them so pasting just works.
- */
-function parsePrice(value: string): number {
-	const cleaned = value.replaceAll("$", "").replaceAll(",", "").trim()
-	return cleaned ? Number(cleaned) : Number.NaN
-}
-
-function draftOf(line: BomLine): Draft {
-	return {
-		link: line.link ?? "",
-		name: line.name,
-		purpose: line.purpose ?? "",
-		quantity: String(line.quantity),
-		unitCostUsd: line.unitCostUsd ? String(line.unitCostUsd) : "",
-		vendor: line.vendor ?? "",
-	}
-}
+import { BomImportDialog } from "./BomImportDialog"
+import { BomLineForm } from "./BomLineForm"
+import {
+	BomPayloadSchema,
+	type Draft,
+	draftOf,
+	EMPTY,
+	FIELD_NAMES,
+	parsePrice,
+	requiredMessage,
+} from "./bom-editor-model"
 
 /**
  * The parts list, kept here rather than typed out at submission time.
@@ -179,7 +112,6 @@ export function BomEditor({
 	grantUsd: number
 }) {
 	const router = useRouter()
-	const id = useId()
 	const [items, setItems] = useState(initial)
 	// null: form closed. "new": adding. Otherwise the id of the line being edited.
 	const [editing, setEditing] = useState<string | null>(null)
@@ -194,10 +126,6 @@ export function BomEditor({
 
 	// The repo import, kept apart from the line form: it is one read, a preview, and one confirm, not a field-by-field edit.
 	const [importOpen, setImportOpen] = useState(false)
-	const [importLoading, setImportLoading] = useState(false)
-	const [importing, setImporting] = useState(false)
-	const [importError, setImportError] = useState<string | null>(null)
-	const [preview, setPreview] = useState<ImportPreview | null>(null)
 
 	// The same arithmetic the submit gate reads, so the number warning here is the number being held to there.
 	const total = bomTotalUsd(items, taxShipping)
@@ -300,66 +228,15 @@ export function BomEditor({
 		if (done && editing === line.id) setEditing(null)
 	}
 
-	/** Open the dialog and read the repo, so the preview is ready when it shows. */
-	async function openImport() {
-		setImportOpen(true)
-		setPreview(null)
-		setImportError(null)
-		setImportLoading(true)
-		try {
-			const res = await fetch(`/api/projects/${projectId}/bom/import`, {
-				body: JSON.stringify({ apply: false }),
-				headers: { "content-type": "application/json" },
-				method: "POST",
+	function changeDraft(key: keyof Draft, value: string) {
+		setDraft(d => ({ ...d, [key]: value }))
+		if (error) setError(null)
+		if (invalid.has(key))
+			setInvalid(s => {
+				const next = new Set(s)
+				next.delete(key)
+				return next
 			})
-			const raw: unknown = await res.json().catch(() => null)
-			const parsed = BomPayloadSchema.safeParse(raw)
-			if (!res.ok) {
-				setImportError(
-					(parsed.success ? parsed.data.error?.message : undefined) ?? "Could not read the repo. Try again.",
-				)
-				return
-			}
-			const parsedPreview = ImportPreviewSchema.safeParse(raw)
-			if (!parsedPreview.success) {
-				setImportError("The server's answer was not in the expected shape. Try again.")
-				return
-			}
-			setPreview(parsedPreview.data)
-		} catch {
-			setImportError("Could not reach the server. Try again.")
-		} finally {
-			setImportLoading(false)
-		}
-	}
-
-	async function applyImport(replace: boolean) {
-		setImporting(true)
-		setImportError(null)
-		try {
-			const res = await fetch(`/api/projects/${projectId}/bom/import`, {
-				body: JSON.stringify({ apply: true, replace }),
-				headers: { "content-type": "application/json" },
-				method: "POST",
-			})
-			const raw: unknown = await res.json().catch(() => null)
-			const parsed = BomPayloadSchema.safeParse(raw)
-			if (!res.ok) {
-				setImportError((parsed.success ? parsed.data.error?.message : undefined) ?? "That did not save. Try again.")
-				return
-			}
-			if (!parsed.success) {
-				setImportError("The server's answer was not in the expected shape. Try again.")
-				return
-			}
-			setItems(parsed.data.items ?? [])
-			setImportOpen(false)
-			router.refresh()
-		} catch {
-			setImportError("Could not reach the server. Try again.")
-		} finally {
-			setImporting(false)
-		}
 	}
 
 	async function saveTaxShipping(value: number) {
@@ -392,27 +269,6 @@ export function BomEditor({
 			setSaving(false)
 		}
 	}
-
-	const field = (key: keyof Draft) => ({
-		"aria-invalid": invalid.has(key) || undefined,
-		// A red border rather than a ring. `inputClass` carries its own border now, so the invalid colour is `!`: two border colours in one layer are settled by whichever Tailwind happens to emit last.
-		className: cx(inputClass, "py-2 text-[0.88rem]", invalid.has(key) && "border-coral-deep! bg-coral/5"),
-		id: `${id}-${key}`,
-		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-			// Strip a pasted `$` straight off the price field, so what the maker sees is what saves.
-			const value = key === "unitCostUsd" ? e.target.value.replaceAll("$", "") : e.target.value
-			setDraft(d => ({ ...d, [key]: value }))
-			if (error) setError(null)
-			if (invalid.has(key))
-				setInvalid(s => {
-					const next = new Set(s)
-					next.delete(key)
-					return next
-				})
-		},
-		required: true,
-		value: draft[key],
-	})
 
 	return (
 		<div>
@@ -493,7 +349,7 @@ export function BomEditor({
 						<Button onClick={() => open("new")} size="sm" variant="outline">
 							<IconPlus className="text-base" /> Add a part
 						</Button>
-						<Button disabled={saving || importLoading} onClick={() => openImport()} size="sm" variant="ghost">
+						<Button disabled={saving || importOpen} onClick={() => setImportOpen(true)} size="sm" variant="ghost">
 							<IconArrowDown className="text-base" /> Import from repo
 						</Button>
 					</div>
@@ -503,66 +359,18 @@ export function BomEditor({
 			{locked && <p className="hand mt-2 text-[0.84rem] text-navy-soft">{locked}.</p>}
 
 			{!locked && editing !== null && (
-				<form
-					className="mt-4 grid gap-3 rounded-2xl bg-black/[.03] p-4"
-					noValidate
-					onKeyDown={e => {
-						if (e.key === "Escape") setEditing(null)
-					}}
-					onSubmit={e => {
-						e.preventDefault()
-						void save()
-					}}
-				>
-					<p className="text-[0.9rem] font-extrabold text-navy">
-						{editing === "new" ? "Add a part" : `Edit ${items.find(l => l.id === editing)?.name ?? "part"}`}
-					</p>
-					<p className="-mt-2 text-[0.8rem] text-navy-soft">
-						You can lump all of your passive components together (LEDs, resistors, diodes, transistors, etc) into one
-						BOM entry. Prices are in US dollars (USD); the minimum cost for an item is $0.01.
-					</p>
-					<div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-						<label className="grid gap-1">
-							<span className="label text-violet-deep">Part</span>
-							<input {...field("name")} maxLength={120} placeholder="ESP32-C3 SuperMini" ref={nameInput} />
-						</label>
-						<label className="grid gap-1">
-							<span className="label text-violet-deep">What it&apos;s for</span>
-							<input {...field("purpose")} maxLength={200} placeholder="Wi-Fi and the main loop" />
-						</label>
-					</div>
-					<div className="grid grid-cols-2 gap-3 sm:grid-cols-[5rem_7rem_minmax(0,1fr)_minmax(0,1.5fr)]">
-						<label className="grid gap-1">
-							<span className="label text-violet-deep">Qty</span>
-							<input {...field("quantity")} inputMode="numeric" />
-						</label>
-						<label className="grid gap-1">
-							<span className="label text-violet-deep">Unit $</span>
-							<input {...field("unitCostUsd")} inputMode="decimal" placeholder="0.00" />
-						</label>
-						<label className="grid gap-1">
-							<span className="label text-violet-deep">Vendor</span>
-							<input {...field("vendor")} maxLength={80} placeholder="LCSC" />
-						</label>
-						<label className="grid gap-1">
-							<span className="label text-violet-deep">Link</span>
-							<input {...field("link")} inputMode="url" placeholder="lcsc.com/product-detail/…" spellCheck={false} />
-						</label>
-					</div>
-					{error && (
-						<p className="text-[0.82rem] font-semibold text-coral-deep" role="alert">
-							{error}
-						</p>
-					)}
-					<div className="flex flex-wrap gap-2">
-						<Button disabled={saving} size="sm" type="submit" variant="solid">
-							{saving ? "Saving…" : editing === "new" ? "Add part" : "Save"}
-						</Button>
-						<Button disabled={saving} onClick={() => setEditing(null)} size="sm" type="button" variant="ghost">
-							{editing === "new" ? "Done" : "Cancel"}
-						</Button>
-					</div>
-				</form>
+				<BomLineForm
+					draft={draft}
+					editing={editing}
+					error={error}
+					invalid={invalid}
+					items={items}
+					nameInput={nameInput}
+					onCancel={() => setEditing(null)}
+					onChange={changeDraft}
+					onSave={() => void save()}
+					saving={saving}
+				/>
 			)}
 			{error && editing === null && (
 				<p className="mt-2 text-[0.82rem] font-semibold text-coral-deep" role="alert">
@@ -570,116 +378,15 @@ export function BomEditor({
 				</p>
 			)}
 
-			<Modal
-				dismissible={!importing}
-				footer={
-					preview && preview.lines.length > 0 ? (
-						<>
-							<Button disabled={importing} onClick={() => setImportOpen(false)} size="sm" variant="ghost">
-								Cancel
-							</Button>
-							{preview.existing > 0 && (
-								<Button disabled={importing} onClick={() => applyImport(false)} size="sm" variant="outline">
-									{importing ? "Adding…" : `Add ${preview.lines.length} to my list`}
-								</Button>
-							)}
-							<Button disabled={importing} onClick={() => applyImport(true)} size="sm" variant="solid">
-								{importing
-									? "Importing…"
-									: preview.existing > 0
-										? `Replace with ${preview.lines.length}`
-										: `Import ${preview.lines.length} ${preview.lines.length === 1 ? "part" : "parts"}`}
-							</Button>
-						</>
-					) : (
-						<Button disabled={importing} onClick={() => setImportOpen(false)} size="sm" variant="ghost">
-							Close
-						</Button>
-					)
-				}
+			<BomImportDialog
 				onClose={() => setImportOpen(false)}
+				onImported={next => {
+					setItems(next)
+					router.refresh()
+				}}
 				open={importOpen}
-				size="lg"
-			>
-				<ModalTitle sub="Read from the bom*.csv in your project's repo, so parts you have listed once are not typed in again.">
-					Import parts from your repo
-				</ModalTitle>
-
-				{importLoading ? (
-					<p aria-live="polite" className="hand text-[0.9rem] text-navy-soft">
-						reading your repo…
-					</p>
-				) : importError ? (
-					<p className="text-[0.88rem] font-semibold text-coral-deep" role="alert">
-						{importError}
-					</p>
-				) : preview ? (
-					<div className="grid gap-4">
-						{preview.lines.length === 0 ? (
-							<p className="text-[0.9rem] leading-relaxed text-navy-soft">
-								No importable parts were found in <code className="hand text-navy">{preview.path}</code>.
-							</p>
-						) : (
-							<>
-								<p className="text-[0.9rem] leading-relaxed text-navy-soft">
-									Read {preview.lines.length} {preview.lines.length === 1 ? "part" : "parts"} from{" "}
-									<code className="hand text-navy">{preview.path}</code>. What the file did not say is left blank, so
-									open each line and add a purpose, and a vendor and price a reviewer can check.
-								</p>
-								{preview.existing > 0 && (
-									<p className="hand text-[0.84rem] text-navy-soft">
-										your list already has {preview.existing}. Adding keeps them; replacing clears them first.
-									</p>
-								)}
-								<div className="-mx-1 max-h-[42vh] overflow-auto px-1">
-									<table className="w-full min-w-110 text-left text-[0.85rem]">
-										<thead>
-											<tr className="border-b border-dashed border-line">
-												{["Part", "Qty", "Unit", "Vendor"].map(h => (
-													<th className="label px-3 py-2 text-navy-soft first:pl-0" key={h} scope="col">
-														{h}
-													</th>
-												))}
-											</tr>
-										</thead>
-										<tbody>
-											{preview.lines.map((l, i) => (
-												<tr className="border-b border-dashed border-line/60 align-top" key={`${l.name}-${i}`}>
-													<td className="py-2 pr-3">
-														<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
-													</td>
-													<td className="px-3 py-2 tabular-nums">{l.quantity}</td>
-													<td className="px-3 py-2 tabular-nums">
-														{l.unitCostUsd > 0 ? (
-															formatUsd(l.unitCostUsd)
-														) : (
-															<span className="text-coral-deep">no price</span>
-														)}
-													</td>
-													<td className="hand px-3 py-2 text-navy-soft">{l.vendor || "-"}</td>
-												</tr>
-											))}
-										</tbody>
-									</table>
-								</div>
-							</>
-						)}
-
-						{preview.skipped.length > 0 && (
-							<div className="rounded-xl bg-black/[.03] px-3.5 py-3">
-								<p className="label text-violet-deep">Skipped {preview.skipped.length}</p>
-								<ul className="mt-1.5 grid gap-1">
-									{preview.skipped.map(s => (
-										<li className="text-[0.82rem] leading-snug text-navy-soft" key={s.row}>
-											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span>: {s.reason}
-										</li>
-									))}
-								</ul>
-							</div>
-						)}
-					</div>
-				) : null}
-			</Modal>
+				projectId={projectId}
+			/>
 		</div>
 	)
 }
