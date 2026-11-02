@@ -8,7 +8,7 @@ import {
 	getAirtableConfig,
 	withRateLimitRetry,
 } from "@/lib/airtable/client"
-import { deflationFor, deflationJustification, numberCell } from "@/lib/airtable/deflation"
+import { deflationFor, deflationJustification, deflationReasonText, numberCell } from "@/lib/airtable/deflation"
 import { existingColumns } from "@/lib/airtable/field-probe"
 import { alternateTrackingJustification, justificationValues, timelapseLinks } from "@/lib/airtable/justification"
 import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
@@ -338,13 +338,15 @@ async function readReviewRow(config: AirtableConfig, recordId: string): Promise<
  *
  * The claimed figure comes from the row rather than being recomputed here. It is the number the payout pipeline will actually fall back to, and it is the number the override exists to replace – recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
  *
+ * `reason` is the reviewer's justification for the cut – Ari's own deflation reason when it carried one, else the review's internal note – and never the note to the maker, which has its own column and is quoted in the email.
+ *
  * An approved row whose frozen hours are missing is left alone: nothing here can say whether it was deflated, and clearing a value a person may have entered is worse than leaving it. A non-approved row is cleared, because an override that outlived its approval would keep paying hours nobody is standing behind.
  */
 function deflationColumns(
 	project: { approvedHours: number | null; designApprovedHours: number | null },
 	phase: Phase,
 	status: string,
-	note: string | null,
+	reason: string | null,
 	row: ReviewRowValues | null,
 ): { [_: string]: unknown } {
 	const { deflationJustification: justificationField, overrideHoursSpent } = YSWS_SUBMISSION.fields
@@ -362,7 +364,7 @@ function deflationColumns(
 	if (!deflation) return clear
 	return {
 		[overrideKey]: deflation.approvedHours,
-		[justificationKey]: deflationJustification(deflation, note),
+		[justificationKey]: deflationJustification(deflation, reason),
 	}
 }
 
@@ -396,6 +398,8 @@ function alternateTrackingColumns(
  * The status, note, first-pass reviewer, overrides, deflation and alternate-tracking justification are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides + hours, then status alone, then the note and the reviewer. Each failure is named.
  *
  * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the decision (the first of Ari's two passes). Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
+ *
+ * `deflationReason` is Ari's `review.justification.deflation_reason`: the reviewer's own account of why they approved fewer hours than the row claims. It is preferred for `Justification - Deflation Justification`; without it that column falls back to the review's internal reason. The maker-facing note is never used there – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it says nothing about the cut.
  */
 export async function syncReviewDecisionToYsws(
 	themeProjectId: string,
@@ -403,6 +407,7 @@ export async function syncReviewDecisionToYsws(
 	status: string,
 	note: string | null,
 	reviewerEmail?: string | null,
+	deflationReason?: string | null,
 ): Promise<{ updated: boolean; reason?: string; noteFailed?: string; reviewerFailed?: string }> {
 	const settings = await getProgramSettings()
 	if (!settings.airtableSyncEnabled) return { reason: "sync_disabled", updated: false }
@@ -462,7 +467,7 @@ export async function syncReviewDecisionToYsws(
 							reviews
 								.where({ invalidated: false })
 								.orderBy(review => review.createdAt.desc())
-								.select("feedback", "reason"),
+								.select("reason"),
 						)
 						.first(),
 				])
@@ -475,8 +480,13 @@ export async function syncReviewDecisionToYsws(
 						status === YSWS_REVIEW_STATUS.approved && (hasDeflationColumns || hasAlternateColumn)
 							? await readReviewRow(config, recordId)
 							: null
-					const reviewerText = submission?.reviews[0]?.reason?.trim() || note
-					if (hasDeflationColumns) Object.assign(deflationFields, deflationColumns(project, phase, status, note, row))
+					// The review's internal note, which is the reviewer's own reasoning rather than the words they sent the maker. It is the fallback for both justification columns.
+					const reviewReason = submission?.reviews[0]?.reason?.trim() || null
+					const reviewerText = reviewReason || note
+					// Ari's dedicated deflation reason when the decision carried one; never the maker's note, which is quoted in the email and says nothing about why hours came down.
+					const justificationReason = deflationReasonText(deflationReason, reviewReason)
+					if (hasDeflationColumns)
+						Object.assign(deflationFields, deflationColumns(project, phase, status, justificationReason, row))
 					if (hasAlternateColumn) {
 						const devlogOnly =
 							row !== null
@@ -545,7 +555,7 @@ export async function syncReviewDecisionToYsws(
 /**
  * Put a decision on the submission's Airtable row, for Loops, and log whatever did not land.
  *
- * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column.
+ * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is Ari's dedicated justification for a cut, which is preferred over the review's internal note in the deflation column.
  *
  * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. On the Ari path that is load-bearing – a throw becomes a 5xx and a redelivery of a decision that has already been applied.
  */
@@ -555,8 +565,9 @@ export async function mirrorReviewDecision(
 	status: string,
 	note: string | null,
 	reviewerEmail?: string | null,
+	deflationReason?: string | null,
 ): Promise<void> {
-	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note, reviewerEmail)
+	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note, reviewerEmail, deflationReason)
 	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
 	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
 		console.error(

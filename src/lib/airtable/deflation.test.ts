@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { deflationFor, deflationJustification, numberCell } from "@/lib/airtable/deflation"
+import { deflationFor, deflationJustification, deflationReasonText, numberCell } from "@/lib/airtable/deflation"
 
 describe("deflationFor", () => {
 	test("reports the gap when a review approves fewer hours than the row claims", () => {
@@ -37,6 +37,22 @@ describe("deflationJustification", () => {
 		expect(deflationJustification(deflation, "  The Starbie cap is 10h.  ")).toBe(
 			"Deflated from 17.5h claimed to 10h approved (7.5h removed). The Starbie cap is 10h.",
 		)
+	})
+})
+
+describe("deflationReasonText", () => {
+	test("prefers Ari's own deflation reason", () => {
+		expect(deflationReasonText("  Capped at 10h.  ", "The repo looks good.")).toBe("Capped at 10h.")
+	})
+
+	test("falls back to the review's internal note", () => {
+		expect(deflationReasonText(null, "  The Starbie cap is 10h.  ")).toBe("The Starbie cap is 10h.")
+	})
+
+	test("treats a blank reason as absent", () => {
+		expect(deflationReasonText("   ", "The Starbie cap is 10h.")).toBe("The Starbie cap is 10h.")
+		expect(deflationReasonText("", "")).toBeNull()
+		expect(deflationReasonText(undefined, undefined)).toBeNull()
 	})
 })
 

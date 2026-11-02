@@ -10,8 +10,7 @@ import { columnExists } from "../src/lib/airtable/field-probe"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
-import { defaultFeedback } from "../src/lib/ari"
-import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/lib/enums"
+import { AuditAction, Phase, PhaseStatus } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 
 /**
@@ -21,6 +20,8 @@ import db from "../src/lib/prisma8"
  *
  * The claimed figure is the row's own `Hours spent (self reported)`, because that is the number the override replaces. The approved figure is the phase's frozen hours on ThemeProject (`designApprovedHours`/`approvedHours`), falling back to the standing review's frozen value for a decision old enough to predate the project column. A row with neither is reported as unknown rather than guessed at.
  *
+ * The explanation is the standing review's internal `reason` – the reviewer's own audit note – and never the project's review comments, which are the note the maker was sent. An older run of this script quoted those comments, so rows it filled carry encouragement in their justification; running it again replaces that text with the reason.
+ *
  * Only approved rows are touched. A row that is back in review, returned or rejected is left alone: nothing here can say whether the hours it holds were meant to stay, and the live mirror clears them when that decision is made.
  *
  * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-deflation.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
@@ -29,11 +30,9 @@ import db from "../src/lib/prisma8"
 const commit = process.argv.includes("--commit")
 
 interface StandingReview {
-	feedback: string
 	frozenApprovedHours: number | null
 	hoursOverride: number | null
-	result: ReviewResult
-	reviewerId: string | null
+	reason: string | null
 }
 
 interface CurrentRow {
@@ -80,18 +79,6 @@ async function currentRows(
 	return byId
 }
 
-/**
- * The note the justification should quote, or null when the review left none.
- *
- * Ari's generic fallback is stored as the project's review comment when the reviewer wrote nothing. It is not a reason, and the live mirror deliberately keeps it out of the row, so it is recognised here the same way `noteFor` in the review backfill does.
- */
-function reasonFor(comments: string | null, review: StandingReview | undefined): string | null {
-	const note = comments?.trim() ?? ""
-	if (!note) return null
-	if (review?.reviewerId === null && note === defaultFeedback(review.result)) return null
-	return note
-}
-
 async function main() {
 	const config = getAirtableConfig()
 	if (!config) {
@@ -109,16 +96,7 @@ async function main() {
 		}
 
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
-		.select(
-			"approvedHours",
-			"buildReviewComments",
-			"buildStatus",
-			"designApprovedHours",
-			"designReviewComments",
-			"designStatus",
-			"id",
-			"title",
-		)
+		.select("approvedHours", "buildStatus", "designApprovedHours", "designStatus", "id", "title")
 		.all()
 	if (projects.length === 0) {
 		console.log("No projects; nothing to backfill.")
@@ -136,7 +114,7 @@ async function main() {
 	const reviews = await db.orm.public.SubmissionReview.where({ invalidated: false })
 		.where(review => review.submission.some(submission => submission.themeProjectId.in(projects.map(p => p.id))))
 		.orderBy(review => review.createdAt.desc())
-		.select("feedback", "frozenApprovedHours", "hoursOverride", "result", "reviewerId")
+		.select("frozenApprovedHours", "hoursOverride", "reason")
 		.include("submission", submission => submission.select("phase", "themeProjectId"))
 		.all()
 	const standing = new Map<string, StandingReview>()
@@ -195,10 +173,7 @@ async function main() {
 				continue
 			}
 			const fields = {
-				[keys.justification]: deflationJustification(
-					deflation,
-					reasonFor(design ? project.designReviewComments : project.buildReviewComments, review),
-				),
+				[keys.justification]: deflationJustification(deflation, review?.reason ?? null),
 				[keys.override]: deflation.approvedHours,
 			}
 			if (

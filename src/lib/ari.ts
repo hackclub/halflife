@@ -38,7 +38,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Half Life sends each submitted (project, phase) as an Ari "ship" and receives its decisions back as signed webhooks. The decision is applied through the same `finalizeReview` a human console reviewer calls, so the trail, the ledger and the grant all move exactly once, whether a person or Ari decided. The only difference is attribution: an Ari decision has no Half Life user, so `SubmissionReview.reviewerId` is null and the audit row names Ari instead.
  *
- * Ari owns the decision, and it is mirrored into the participant-facing side of Half Life (status, hours, coins, printer qualification). The one thing written back to Airtable is the decision itself – `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes`, which Loops reads to email the maker, `Optional - Override Hours Spent` and `Justification - Deflation Justification` when Ari approved fewer hours than the row claims, and `Justification - Alternate Tracking Method` when the row has no Hackatime or Lapse evidence. A decision writes nothing to the base on its own, so all of it is put on the row here (see `mirrorReviewDecision`).
+ * Ari owns the decision, and it is mirrored into the participant-facing side of Half Life (status, hours, coins, printer qualification). The one thing written back to Airtable is the decision itself – `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes`, which Loops reads to email the maker, `Optional - Override Hours Spent` and `Justification - Deflation Justification` when Ari approved fewer hours than the row claims, and `Justification - Alternate Tracking Method` when the row has no Hackatime or Lapse evidence. The deflation column carries Ari's `justification.deflation_reason` (or the review's audit note when the decision carries none), not the note to the maker: that note is encouragement and feedback, and it has its own column. A decision writes nothing to the base on its own, so all of it is put on the row here (see `mirrorReviewDecision`).
  *
  * Everything here no-ops when the three ARI_* secrets are unset, so local dev and any deployment that has not been onboarded to Ari behave as before.
  */
@@ -689,6 +689,8 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 			reviewStatusForResult(result),
 			makerNote,
 			event.review.reviewer?.email ?? null,
+			// Ari's own deflation reason, which is what belongs in the audit column; the maker note above is for the email and `Loops - halfLifeReviewerNotes`.
+			event.review.justification?.deflation_reason ?? null,
 		)
 
 	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
