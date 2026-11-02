@@ -164,7 +164,8 @@ export const THEME_REPO_REQUIREMENTS: Record<
 	[Theme.CAD]: { bomTable: { minRows: 1 }, recommended: ["cadModel"], required: ["cadSource"] },
 	[Theme.SYNTH]: { recommended: ["firmware"], required: ["logicSchematic"] },
 	[Theme.DISPLAYS]: { recommended: ["logicSchematic"], required: ["firmware"] },
-	[Theme.BREADBOARD_COMPUTER]: { recommended: [], required: ["logicSchematic"] },
+	// Week 5 is freestyle, so its project could be a board, a printed part, code, or all three. The checks look for each and flag what is missing, but none of them blocks: requiring all three would refuse a project that is only ever one of them.
+	[Theme.BREADBOARD_COMPUTER]: { recommended: ["pcbSource", "cadSource", "firmware"], required: [] },
 	// A warm-up project is any hardware project, so nothing over and above the README and photos every hand-in owes (see lib/repo-checks) is demanded of its repo.
 	[Theme.WARMUP]: { recommended: [], required: [] },
 }

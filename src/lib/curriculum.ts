@@ -1,3 +1,4 @@
+import { isFreestyle } from "./config/freestyle"
 import type { Checkpoint, Phase, WeekMeta } from "./types"
 
 /**
@@ -16,11 +17,66 @@ interface ThemeSeed {
 	accentDeep: string
 	buildHeadline: string
 	designHeadline: string
-	examples: string[]
 	fullName: string
 	primer: string
 	summary: string
 	theme: string
+}
+
+const BREADBOARD_SEED: ThemeSeed = {
+	accent: "var(--color-violet)",
+	accentDeep: "var(--color-violet-deep)",
+	buildHeadline: "BUILD YOUR COMPUTER",
+	designHeadline: "DESIGN YOUR COMPUTER",
+	fullName: "Breadboard Computer Week",
+	primer:
+		"Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer: slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
+	summary: "Plan your circuit! Simulate some gates!",
+	theme: "Breadboard computer",
+}
+
+/** Week 5 once it is freestyle: no theme, so the copy is about choosing your own project. `theme` is also the key `WeekPainting` finds its picture by. */
+const FREESTYLE_SEED: ThemeSeed = {
+	...BREADBOARD_SEED,
+	buildHeadline: "BUILD YOUR CUSTOM",
+	designHeadline: "DESIGN YOUR OWN",
+	fullName: "Freestyle Week",
+	primer: "No theme this week! If you still want to build a breadboard computer, go ahead!",
+	summary: "No constraints! Make whatever you want!",
+	theme: "Freestyle",
+}
+
+/**
+ * Week 5's seed, read field by field at the moment it is asked for rather than once at load. A page left open over midnight, or a server that started before it, then turns freestyle on the stroke of it instead of on the next deploy.
+ */
+function week5Seed(): ThemeSeed {
+	const now = (): ThemeSeed => (isFreestyle() ? FREESTYLE_SEED : BREADBOARD_SEED)
+	return {
+		get accent() {
+			return now().accent
+		},
+		get accentDeep() {
+			return now().accentDeep
+		},
+		get buildHeadline() {
+			return now().buildHeadline
+		},
+		get designHeadline() {
+			return now().designHeadline
+		},
+		get fullName() {
+			return now().fullName
+		},
+		get primer() {
+			return now().primer
+		},
+		get summary() {
+			return now().summary
+		},
+		get theme() {
+			return now().theme
+		},
+	}
 }
 
 const THEMES: ThemeSeed[] = [
@@ -29,12 +85,6 @@ const THEMES: ThemeSeed[] = [
 		accentDeep: "var(--color-sky-deep)",
 		buildHeadline: "BUILD YOUR PCB",
 		designHeadline: "DESIGN YOUR PCB",
-		examples: [
-			"A macropad with hot-swap sockets and per-key LEDs",
-			"An ESP32 dev board with a built-in battery charger",
-			"A USB-C power delivery trigger you can set with a dial",
-			"A badge PCB shaped like your handle, with blinky eyes",
-		],
 		fullName: "Printed Circuit Board Week",
 		primer:
 			"A PCB is the flat green (or purple, or black) board inside every piece of electronics. Copper lines etched onto it replace the messy wires you would otherwise solder by hand. You will draw a schematic (a diagram of which part connects to which), then lay those parts out on a board and let the software route copper between them. At the end you export a set of Gerber files and a real factory turns them into a board you can hold.",
@@ -46,12 +96,6 @@ const THEMES: ThemeSeed[] = [
 		accentDeep: "var(--color-teal-deep)",
 		buildHeadline: "PRINT YOUR PART",
 		designHeadline: "MODEL YOUR PART",
-		examples: [
-			// "An enclosure for the PCB you designed in week 1", // cant do this one
-			"A desk arm that clamps a phone at eye height",
-			"A parametric spool holder that fits any spool width",
-			"A mechanical keyboard case with a gasket mount",
-		],
 		fullName: "Computer Aided Design Week",
 		primer:
 			"CAD is drawing an object as a solid with exact dimensions instead of a sketch. You start from a 2D sketch, pull it into 3D, then cut and round it until it is the shape you want. The hard part is not the software. It is tolerance: a hole modelled at exactly 3mm will not fit a 3mm screw once the printer squishes plastic into it.",
@@ -63,12 +107,6 @@ const THEMES: ThemeSeed[] = [
 		accentDeep: "#7d0f6c",
 		buildHeadline: "WIRE YOUR INSTRUMENT",
 		designHeadline: "DESIGN YOUR INSTRUMENT",
-		examples: [
-			"A 555-based drone machine with three detuned oscillators",
-			"A MIDI controller with velocity-sensitive pads",
-			"A Eurorack-format LFO module in 4HP",
-			"A pocket sampler that records to an SD card",
-		],
 		fullName: "Music Week",
 		primer:
 			"Music week is circuits that turn voltage into sound. The simplest instrument is an oscillator (a circuit that flips a pin on and off fast enough to hear) plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
@@ -80,64 +118,69 @@ const THEMES: ThemeSeed[] = [
 		accentDeep: "var(--color-orange-deep)",
 		buildHeadline: "DRIVE YOUR DISPLAY",
 		designHeadline: "DESIGN WITH DISPLAYS",
-		examples: [
-			"An e-paper name badge that updates over Bluetooth",
-			"A 32x32 LED matrix that mirrors your now-playing track",
-			"A split-flap display driven by stepper motors",
-			"A tiny OLED wristwatch with a custom watchface",
-		],
 		fullName: "Displays Week",
 		primer:
 			"Displays are the fastest way to make a project feel finished. E-paper sips power and holds an image with none. OLED is crisp and tiny. LED matrices are bright enough to read across a room. Each one talks a different protocol (SPI, I2C, or raw shift registers), and the driver you pick decides how much of your microcontroller is left over for anything else.",
 		summary: "TFT? OLED? Nixie tubes? Neopixels? LED matrices?",
 		theme: "Displays",
 	},
-	{
-		accent: "var(--color-violet)",
-		accentDeep: "var(--color-violet-deep)",
-		buildHeadline: "BUILD YOUR COMPUTER",
-		designHeadline: "DESIGN YOUR COMPUTER",
-		examples: [
-			"An 8-bit SAP-1 computer across four breadboards",
-			"A 4-bit ALU with carry-lookahead you can single-step",
-			"A relay-based adder you can hear compute",
-			"A programmable clock module with manual step mode",
-		],
-		fullName: "Breadboard Computer Week",
-		primer:
-			"Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer: slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
-		summary: "Plan your circuit! Simulate some gates!",
-		theme: "Breadboard computer",
-	},
+	week5Seed(),
 ]
 
 const cp = (c: Checkpoint): Checkpoint => c
 
 /** Every week's fixed half – everything that does not depend on the tier. */
 export const WEEK_META: WeekMeta[] = [
+	// Getters, so week 5's text is read from its seed whenever a week is asked for (see `week5Seed`).
 	...THEMES.map((seed, i) => ({
-		accent: seed.accent,
-		accentDeep: seed.accentDeep,
-		examples: seed.examples,
-		fullName: seed.fullName,
-		headline: seed.designHeadline,
+		get accent() {
+			return seed.accent
+		},
+		get accentDeep() {
+			return seed.accentDeep
+		},
+		get fullName() {
+			return seed.fullName
+		},
+		get headline() {
+			return seed.designHeadline
+		},
 		id: i + 1,
 		phase: "design" as Phase,
-		primer: seed.primer,
-		summary: seed.summary,
-		theme: seed.theme,
+		get primer() {
+			return seed.primer
+		},
+		get summary() {
+			return seed.summary
+		},
+		get theme() {
+			return seed.theme
+		},
 	})),
 	...THEMES.map((seed, i) => ({
-		accent: seed.accent,
-		accentDeep: seed.accentDeep,
-		examples: seed.examples,
-		fullName: `${seed.fullName} (Build)`,
-		headline: seed.buildHeadline,
+		get accent() {
+			return seed.accent
+		},
+		get accentDeep() {
+			return seed.accentDeep
+		},
+		get fullName() {
+			return `${seed.fullName} (Build)`
+		},
+		get headline() {
+			return seed.buildHeadline
+		},
 		id: i + 6,
 		phase: "build" as Phase,
-		primer: seed.primer,
-		summary: `Assemble the ${seed.theme.toLowerCase()} project you designed in week ${i + 1}.`,
-		theme: seed.theme,
+		get primer() {
+			return seed.primer
+		},
+		get summary() {
+			return `Assemble the ${seed.theme.toLowerCase()} project you designed in week ${i + 1}.`
+		},
+		get theme() {
+			return seed.theme
+		},
 	})),
 ]
 

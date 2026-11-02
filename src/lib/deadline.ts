@@ -2,11 +2,13 @@
  * A deadline as people read one, e.g. "Sunday, October 5 at 11:59 PM", in the program's timezone.
  *
  * Pure, so the server's messages and the client's trail print it the same way.
+ *
+ * Through `Intl.DateTimeFormat` rather than `toLocaleDateString`/`toLocaleTimeString`. A Chrome left open across the clocks going back keeps the old offset for the `toLocale*` methods even with a `timeZone` given, so on 1 November 2026 it printed the 11:59 PM close as 12:59 AM Monday and the trail failed to hydrate against the server's correct text. `Intl.DateTimeFormat` in the same browser read the zone's rules afresh and was right.
  */
 export function formatDeadline(at: Date | number, timeZone: string, style: "long" | "short" = "long"): string {
 	const shown = new Date(at)
-	const day = shown.toLocaleDateString("en-US", { day: "numeric", month: style, timeZone, weekday: style })
-	const time = shown.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone })
+	const day = new Intl.DateTimeFormat("en-US", { day: "numeric", month: style, timeZone, weekday: style }).format(shown)
+	const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(shown)
 	return `${day} at ${time}`
 }
 

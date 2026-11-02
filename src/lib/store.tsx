@@ -5,6 +5,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { z } from "zod"
 import { errorMessage } from "@/lib/api-error"
 import { ParticipantGoal } from "@/lib/enums"
+import { setFreestylePreview } from "./config/freestyle"
 import { COINS_PER_HOUR, type PrinterGoal, printerById } from "./config/printers"
 import { DESIGN_WEEKS } from "./config/program"
 import { round2 } from "./money"
@@ -73,6 +74,9 @@ const LinkSyncRepoBody = z.object({ githubRepo: z.string().nullish() })
  * The admin lock bypass. Kept apart from the ceremony so "Replay the intro", which clears that, leaves it alone.
  */
 const BYPASS_KEY = "halflife.bypass-locks"
+
+/** The admin freestyle preview, kept on the same terms as the lock bypass. */
+const FREESTYLE_PREVIEW_KEY = "halflife.preview-freestyle"
 
 function seededCeremony(): Ceremony {
 	return { doomscrollerOpen: true, phase: "cinematic", version: 4 }
@@ -189,6 +193,10 @@ interface Ctx {
 	 * Resolves to the new post's id, or to the reason it did not land. The reason is the server's own rather than a guess: a maker held up by an owed reel, or by an upload the server will not accept, used to be told their connection had failed, with no way to work out why.
 	 */
 	postReel(id: string, caption: string, objectKey: string): Promise<PostReelResult>
+	/**
+	 * Admins only: week 5's participant copy as it reads from midnight on its first day, when Breadboard Computer becomes Freestyle, shown now. Only what this browser renders changes; pages the server writes out switch at midnight itself. Always false for anyone else.
+	 */
+	previewFreestyle: boolean
 	/** The whole balance. Every coin counts toward the printer goal. */
 	printerFund: number
 	progress: { [_: string]: CheckpointState }
@@ -208,6 +216,7 @@ interface Ctx {
 	setParticipantGoal(goal: ParticipantGoal, printerGoalId?: string): Promise<string | null>
 
 	setPhase(p: IntroPhase): void
+	setPreviewFreestyle(on: boolean): void
 	/**
 	 * Set or clear a project's repo link. Resolves to null once saved, or to the server's reason for refusing (a phase in review, say), so an inline editor can say so instead of quietly reverting.
 	 */
@@ -372,6 +381,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const [tourStep, setTourStep] = useState(0)
 	const [reducedMotion, setReducedMotion] = useState(false)
 	const [bypassing, setBypassing] = useState(false)
+	const [previewingFreestyle, setPreviewingFreestyle] = useState(false)
 	// Single checkpoints an admin opened past their locks. Held in memory only: it is for checking one node, not a setting to come back to.
 	const [bypassed, setBypassed] = useState<string[]>([])
 
@@ -405,14 +415,17 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			/* storage unavailable – run from the seed */
 		}
 		let bypass = false
+		let freestyle = false
 		try {
 			bypass = window.localStorage.getItem(BYPASS_KEY) === "1"
+			freestyle = window.localStorage.getItem(FREESTYLE_PREVIEW_KEY) === "1"
 		} catch {
 			/* storage unavailable – the trail stays locked */
 		}
 		// hydrating from localStorage
 		if (next) setCeremony(next)
 		if (bypass) setBypassing(true)
+		if (freestyle) setPreviewingFreestyle(true)
 		setHydrated(true)
 	}, [])
 
@@ -427,6 +440,26 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	}, [])
 	// Read by role, not by storage alone: a flag left behind on a shared browser, or by an admin since demoted, opens nothing.
 	const bypassLocks = facts.viewer.isAdmin && bypassing
+
+	const setPreviewFreestyle = useCallback((on: boolean) => {
+		setPreviewingFreestyle(on)
+		try {
+			if (on) window.localStorage.setItem(FREESTYLE_PREVIEW_KEY, "1")
+			else window.localStorage.removeItem(FREESTYLE_PREVIEW_KEY)
+		} catch {
+			/* private mode – it lasts the session */
+		}
+	}, [])
+	// By role as well, like the bypass.
+	const previewFreestyle = facts.viewer.isAdmin && previewingFreestyle
+	const appliedFreestylePreview = useRef(false)
+	useEffect(() => {
+		if (appliedFreestylePreview.current === previewFreestyle) return
+		appliedFreestylePreview.current = previewFreestyle
+		setFreestylePreview(previewFreestyle)
+		// The weeks are derived from the clock, so moving it on is what has them read week 5's copy again with the flag in place.
+		setNow(Date.now())
+	}, [previewFreestyle])
 
 	const bypassCheckpoint = useCallback(
 		(id: string) => setBypassed(list => (list.includes(id) ? list : [...list, id])),
@@ -1093,6 +1126,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			phase,
 			phaseStatusOf,
 			postReel,
+			previewFreestyle,
 			// A printer can be paid for out of either pot, so the goal tracker reads the total. Everything else in the shop takes `coins` alone.
 			printerFund: facts.coins + facts.bankedCoins,
 			redoOnboarding,
@@ -1103,6 +1137,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			setOpenCheckpoint,
 			setParticipantGoal,
 			setPhase,
+			setPreviewFreestyle,
 			setProjectRepo,
 			setProjectTier,
 			setSharePost,
@@ -1158,10 +1193,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			phase,
 			phaseStatusOf,
 			postReel,
+			previewFreestyle,
 			redoOnboarding,
 			reducedMotion,
 			reset,
 			setBypassLocks,
+			setPreviewFreestyle,
 			setDoomscroller,
 			setOpenCheckpoint,
 			setParticipantGoal,

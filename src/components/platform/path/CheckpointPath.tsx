@@ -18,7 +18,9 @@ import { WeekCountdown } from "@/components/platform/path/WeekCountdown"
 import { Chip, onAccent, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { printerById } from "@/lib/config/printers"
+import { THEMES } from "@/lib/config/program"
 import { cx } from "@/lib/cx"
+import { Theme } from "@/lib/enums"
 import { fmtHours } from "@/lib/numbers"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
@@ -514,11 +516,15 @@ function GhostNode({ top, left }: { top: string; left: string }) {
  *
  * Only a starter whose id is still in the config has one: imported starters predate the config and carry no guide URL, so they show nothing rather than a dead link. Same rule as the project page.
  */
+const SYNTH_DESIGN_WEEK = THEMES.find(t => t.id === Theme.SYNTH)?.designWeek
+
 function StarterGuideBanner({ week }: { week: Week }) {
 	const { projects, stateOf } = useStore()
 	const submitted = stateOf(`w${week.id}-submit`).done
 	// A build week inherits its design week's project, exactly as the project modal's week matching does.
 	const designWeekId = week.phase === "build" ? week.id - 5 : week.id
+	// Synth's design week and its build week go without the banner.
+	if (designWeekId === SYNTH_DESIGN_WEEK) return null
 	const project = projects.find(p => p.weekId === designWeekId)
 	const starter = project?.starterProjectId ? getStarterProject(project.starterProjectId) : undefined
 	if (submitted || !starter || !project) return null

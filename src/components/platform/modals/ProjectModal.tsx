@@ -5,6 +5,7 @@ import { IconArrowRight, IconCheck, IconWarning } from "@/components/platform/ic
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, Field, inputClass, OptionRow, TextInput } from "@/components/platform/ui"
+import { FREESTYLE_GUIDES, FREESTYLE_WEEK, isFreestyle } from "@/lib/config/freestyle"
 import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { submitFloorFor } from "@/lib/config/printers"
 import { THEMES } from "@/lib/config/program"
@@ -43,7 +44,13 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [pick, setPick] = useState<string | null | undefined>(
 		existing ? (existing.starterProjectId ?? null) : undefined,
 	)
-	const [stage, setStage] = useState<"choose" | "details">(starters.length > 0 ? "choose" : "details")
+	// Freestyle week opens on its own page first, except when an admin redoes a form that was already filled in.
+	const freestyle = week.id === FREESTYLE_WEEK && isFreestyle()
+	const firstStage = starters.length > 0 ? "choose" : "details"
+	const [stage, setStage] = useState<"intro" | "choose" | "details">(
+		freestyle && !existing?.name ? "intro" : firstStage,
+	)
+	const backStage = starters.length > 0 ? "choose" : freestyle ? "intro" : null
 	const takeStarter = (s: (typeof starters)[number]) => {
 		setPick(s.id)
 	}
@@ -71,8 +78,13 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			eyebrow={`Week ${week.id} · ${week.fullName}`}
 			footer={
 				<>
-					{stage === "details" && starters.length > 0 && (
-						<Button className="mr-auto" onClick={() => setStage("choose")} type="button" variant="outline">
+					{stage === "intro" && (
+						<Button onClick={() => setStage(firstStage)} variant="solid">
+							Make my project <IconArrowRight className="text-base" />
+						</Button>
+					)}
+					{stage === "details" && backStage && (
+						<Button className="mr-auto" onClick={() => setStage(backStage)} type="button" variant="outline">
 							Back
 						</Button>
 					)}
@@ -110,7 +122,11 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			open
 			size="lg"
 		>
-			<ModalTitle sub={week.summary}>{week.headline}</ModalTitle>
+			{stage === "intro" ? (
+				<ModalTitle>Week 5: Freestyle!</ModalTitle>
+			) : (
+				<ModalTitle sub={week.summary}>{week.headline}</ModalTitle>
+			)}
 
 			{/* Starting a week with weeks already behind you is when the printer's fine print matters, and about the last moment it is any use: the coins being paced toward come from approved weeks, and some of those have gone. Only somebody saving for a machine hears it – a funding-only maker has no prize to fall short of. */}
 			{pace.printer && pace.missedWeeks.length > 0 && (
@@ -134,7 +150,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</div>
 			)}
 
-			{stage === "choose" ? (
+			{stage === "intro" ? (
+				<FreestyleIntro />
+			) : stage === "choose" ? (
 				<div className="grid gap-3 sm:grid-cols-2">
 					{starters.length > 0 && <p className="col-span-full label mb-2 text-left text-violet-deep">Step 1 / 2</p>}
 					{starters.map(s => (
@@ -222,7 +240,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								className={cx(inputClass, "resize-none")}
 								id="np-desc"
 								onChange={e => setDesc(e.target.value)}
-								placeholder={selectedStarter ? selectedStarter.description : week.examples[0]}
+								placeholder={selectedStarter ? selectedStarter.description : "A few sentences on what it does and how."}
 								rows={3}
 								value={desc}
 							/>
@@ -278,5 +296,48 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</div>
 			)}
 		</Modal>
+	)
+}
+
+/** Freestyle week's first page: no theme this week, some guides for finding an idea, and a push for the last design week. */
+function FreestyleIntro(): React.JSX.Element {
+	return (
+		<div className="grid gap-5">
+			<p className="max-w-[62ch] text-[0.95rem] leading-relaxed text-navy-soft">
+				This week, we&apos;ve decided to give Half Lifers <em className="font-bold text-navy">complete control</em> over
+				their project. If you still want to make a breadboard computer this week, go ahead! But you&apos;re not
+				restricted to. Half Life is all about getting more teenagers to become hardware experts, and building your own
+				custom project is the first step. But if you&apos;re still hesitant, don&apos;t worry, we have some guides that
+				you can use to come up with your next project.
+			</p>
+
+			{/* Always open, two by two at every width: four short names fit a phone's two columns, and wrap rather than truncate when they do not. */}
+			<ul aria-label="Project guides" className="grid grid-cols-2 gap-2">
+				{FREESTYLE_GUIDES.map(g => (
+					<li className="flex" key={g.url}>
+						<a
+							className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border-2 border-line bg-white px-4 py-3 text-[0.92rem] leading-snug font-bold text-navy transition-colors hover:border-violet hover:bg-violet-pale"
+							href={g.url}
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							{g.title}
+							<span className="sr-only"> (opens in a new tab)</span>
+							<IconArrowRight aria-hidden="true" className="shrink-0 text-base text-violet-deep" />
+						</a>
+					</li>
+				))}
+			</ul>
+
+			<div
+				className="sketch grid gap-1 rounded-2xl bg-gold px-5 py-6 text-center"
+				style={{ "--sk-color": "var(--color-gold-deep)", "--sk-radius": "16px" }}
+			>
+				<p className="text-[1.6rem] leading-tight font-extrabold tracking-[-0.02em] text-navy sm:text-[2.1rem]">
+					IT&apos;S THE LAST DESIGN WEEK!
+				</p>
+				<p className="text-[1.25rem] leading-tight font-extrabold text-navy sm:text-[1.5rem]">YOU GOT THIS!</p>
+			</div>
+		</div>
 	)
 }

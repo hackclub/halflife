@@ -1,7 +1,7 @@
 import { and } from "@prisma/orm-postgres/orm-client"
 import { z } from "zod"
 import { fail, ok, parseBody } from "@/lib/api"
-import { getThemeDef, themeForDesignWeek } from "@/lib/config/program"
+import { getThemeDef, participantThemeLabel, themeForDesignWeek } from "@/lib/config/program"
 import { HoursSource, Phase } from "@/lib/enums"
 import { withSession, withWriteSession } from "@/lib/guards"
 import { rollUpHours } from "@/lib/hours"
@@ -87,7 +87,7 @@ export const GET = withSession(async (_req: Request, { gate }) => {
 			grantUsd: project.grantUsd,
 			hours: { build, design },
 			id: project.id,
-			label: def.label,
+			label: participantThemeLabel(project.theme),
 			slug: def.slug,
 			theme: project.theme,
 			tier: project.tier,
@@ -111,7 +111,7 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 
 	const theme = themeForDesignWeek(parsed.data.weekId)
 	if (!theme) return fail("VALIDATION_FAILED", "That week does not start a project")
-	await assertWeekStarted(parsed.data.weekId)
+	await assertWeekStarted(parsed.data.weekId, gate.user.id)
 
 	const project = await ensureThemeProject(gate.user.id, theme)
 	return ok({ id: project.id }, { status: 201 })

@@ -6,6 +6,7 @@ import { Avatar } from "@/components/platform/Avatar"
 import { Gato, PrinterPhoto, WeekPainting } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin, IconFilm, IconLock, IconPlay, IconUpload } from "@/components/platform/icons"
 import { Button, onAccent } from "@/components/platform/ui"
+import { isFreestyle } from "@/lib/config/freestyle"
 import { MIN_HOURS_PER_WEEK, type PrinterGoal, printerById } from "@/lib/config/printers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
@@ -109,7 +110,8 @@ const SCRIPT: { fromWeek: number; fromDepth: number; line(goal: string): string 
 	{
 		fromDepth: 0,
 		fromWeek: 3,
-		line: () => "Weeks 1 to 5, you design: a PCB, a 3D model, an instrument, a display and a breadboard computer.",
+		line: () =>
+			`Weeks 1 to 5, you design: a PCB, a 3D model, an instrument, a display and ${isFreestyle() ? "a project of your own" : "a breadboard computer"}.`,
 	},
 	{
 		fromDepth: 0,
@@ -299,36 +301,40 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]> }) {
 	return (
 		<div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
-			{WEEKS.map((week, i) => (
-				<div
-					className="absolute top-0 left-1/2"
-					key={week.id}
-					ref={el => {
-						refs.current[i] = el
-					}}
-					style={{
-						display: "none",
-						height: BANNER_H,
-						marginLeft: -380,
-						transformOrigin: "center top",
-						width: 760,
-					}}
-				>
-					{/* The tear belongs to the plaque, never to the type. `.torn` is a displacement filter, so on a container it drags the glyphs about with the edges – and this one is re-scaled every frame by the camera, which rasterises the filtered result at one size and stretches it to another. The real trail's banner separates them the same way. */}
-					<span aria-hidden="true" className="torn absolute inset-0 rounded" style={{ background: week.accent }} />
-					<div className="relative flex h-full items-center gap-4 px-6" style={{ color: onAccent(week.accent).text }}>
-						<div className="min-w-0 flex-1">
-							<p className="label">
-								Week {week.id}/10 · {week.phase === "design" ? "Design" : "Build"}
-							</p>
-							<p className="mt-0.5 truncate text-[1.6rem] leading-none font-extrabold tracking-[-0.025em]">
-								{week.headline}
-							</p>
+			{/* The words come from `WEEK_META` at render rather than from `WEEKS`, which copied them at load, so week 5 reads freestyle from the moment it is. */}
+			{WEEKS.map((plotted, i) => {
+				const week = WEEK_META[i] ?? plotted
+				return (
+					<div
+						className="absolute top-0 left-1/2"
+						key={week.id}
+						ref={el => {
+							refs.current[i] = el
+						}}
+						style={{
+							display: "none",
+							height: BANNER_H,
+							marginLeft: -380,
+							transformOrigin: "center top",
+							width: 760,
+						}}
+					>
+						{/* The tear belongs to the plaque, never to the type. `.torn` is a displacement filter, so on a container it drags the glyphs about with the edges – and this one is re-scaled every frame by the camera, which rasterises the filtered result at one size and stretches it to another. The real trail's banner separates them the same way. */}
+						<span aria-hidden="true" className="torn absolute inset-0 rounded" style={{ background: week.accent }} />
+						<div className="relative flex h-full items-center gap-4 px-6" style={{ color: onAccent(week.accent).text }}>
+							<div className="min-w-0 flex-1">
+								<p className="label">
+									Week {week.id}/10 · {week.phase === "design" ? "Design" : "Build"}
+								</p>
+								<p className="mt-0.5 truncate text-[1.6rem] leading-none font-extrabold tracking-[-0.025em]">
+									{week.headline}
+								</p>
+							</div>
+							<WeekPainting alt="" className="sticker-shadow size-14 shrink-0" sizes="112px" theme={week.theme} />
 						</div>
-						<WeekPainting alt="" className="sticker-shadow size-14 shrink-0" sizes="112px" theme={week.theme} />
 					</div>
-				</div>
-			))}
+				)
+			})}
 		</div>
 	)
 }

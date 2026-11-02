@@ -6,6 +6,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { WARMUP_THEME } from "@/lib/config/program"
 import { Phase } from "@/lib/enums"
 import { withWriteSession } from "@/lib/guards"
+import { ignoresSchedule } from "@/lib/program"
 import { createWarmupProject } from "@/lib/provisioning"
 import { boundedText, phaseSchema } from "@/lib/schemas/common"
 import { projectRepoUrl } from "@/lib/schemas/project"
@@ -37,7 +38,8 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const { data } = parsed
 
 	const window = await warmupCreationWindow()
-	if (!window.open) return fail("CONFLICT", `Warm-up projects closed ${window.closesOn}.`)
+	if (!window.open && !(await ignoresSchedule(gate.user.id)))
+		return fail("CONFLICT", `Warm-up projects closed ${window.closesOn}.`)
 
 	const project = await createWarmupProject({
 		description: data.description?.trim() || null,

@@ -20,6 +20,7 @@ import {
 	effectiveDateFor,
 	getProgramSettings,
 	getSubmissionAccess,
+	ignoresSchedule,
 	type ProgramSettings,
 	SUBMISSIONS_CLOSED_MESSAGE,
 	weekNumberForDate,
@@ -114,7 +115,7 @@ export async function submitPhase(
 
 	const access = await getSubmissionAccess(userId, themeProjectId)
 	if (!access.open) throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
-	await assertWeekStarted(scheduledWeekFor(project.theme, phase))
+	await assertWeekStarted(scheduledWeekFor(project.theme, phase), userId)
 
 	const submissionRows = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
 		.select("createdAt", "phase")
@@ -241,8 +242,9 @@ export async function submitPhase(
 			accessProject?.submissionExtensionUntil,
 			new Date(),
 		)
-		if (!stillOpen) throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
-		await assertWeekStarted(scheduledWeekFor(project.theme, phase))
+		if (!stillOpen && !(await ignoresSchedule(userId)))
+			throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+		await assertWeekStarted(scheduledWeekFor(project.theme, phase), userId)
 
 		// The budget is re-read on the transaction client for the same reason as the gate: a hand-in that landed between the pre-check and this write must be part of the count. The conditional claim below is what actually serialises two submits; this is the refusal that says why.
 		if (accessProject && statusFor(accessProject, phase) === PhaseStatus.update_requested) {

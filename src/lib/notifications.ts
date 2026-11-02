@@ -2,7 +2,7 @@ import "server-only"
 import { projectUrl, reviewUrl } from "@/lib/app-url"
 import { ariReviewUrl } from "@/lib/ari-url"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { projectDisplayTitle } from "@/lib/config/program"
+import { participantProjectTitle } from "@/lib/config/program"
 import { Phase, ReviewResult } from "@/lib/enums"
 import type { InputJsonObject } from "@/lib/json"
 import db from "@/lib/prisma8"
@@ -211,7 +211,7 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 		.first()
 	if (!project?.user) return
 
-	const title = projectDisplayTitle(project)
+	const title = participantProjectTitle(project)
 	// A return grants the project a week, so its message can name the day the maker can resubmit through. Formatted in the program's timezone, the same one the dashboard's own deadlines use, rather than the server's.
 	const resubmitBy =
 		notice.result === ReviewResult.RETURNED && project.submissionExtensionUntil
@@ -260,7 +260,7 @@ export async function notifyShipFailed(input: { themeProjectId: string; phase: P
 			.first()
 		if (!project?.user) return
 
-		const title = projectDisplayTitle(project)
+		const title = participantProjectTitle(project)
 		const message = shipFailedMessage({ phase: input.phase, reason: input.reason, title })
 
 		await deliverToMaker({
@@ -395,7 +395,7 @@ export async function notifyDisputeReply(input: { body: string; phase: Phase; th
 			meta: { phase: input.phase },
 			note: input.body,
 			phase: input.phase,
-			prose: [`A reviewer replied to your dispute on the ${phase} for ${projectDisplayTitle(project)}.`],
+			prose: [`A reviewer replied to your dispute on the ${phase} for ${participantProjectTitle(project)}.`],
 			slackId: project.user.slackId,
 			themeProjectId: input.themeProjectId,
 		})

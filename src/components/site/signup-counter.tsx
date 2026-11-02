@@ -64,7 +64,7 @@ export default function SignupCounter({ className = "", style }: { className?: s
 						{fmtInt(count)}
 					</span>{" "}
 					<span className="align-middle font-display" style={{ fontSize: "0.75em" }}>
-						people have signed up
+						teenagers have signed up
 					</span>
 				</>
 			)}

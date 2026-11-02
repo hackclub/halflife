@@ -16,7 +16,6 @@ export interface Tier {
 	readonly detail: string
 	/** The time a tier's build takes, as onboarding shows it beside the grant. */
 	readonly estimate: string
-	readonly examples: readonly string[]
 	/** Hours the grant covers. These buy parts, not coins. */
 	readonly fundingHours: number
 	/** Grant paid through the YSWS pipeline, in whole USD. */
@@ -44,7 +43,6 @@ export const TIERS = [
 		detail:
 			"The right pick if this is your first board, model or circuit. Parts are cheap, the scope is one evening of soldering, and nothing here needs a tool you do not already have.",
 		estimate: "~10-15h",
-		examples: ["Simple 2-layer breakout board", "Single-part printed enclosure"],
 		fundingHours: 6,
 		grantUsd: 30,
 		id: 1,
@@ -74,7 +72,6 @@ export const TIERS = [
 		detail:
 			"For a project with a real enclosure, a handful of ICs, or a part you have to wait on. Most people land here by week three.",
 		estimate: "~16-23h",
-		examples: ["4-layer board with an MCU", "Multi-part mechanism"],
 		fundingHours: 13,
 		grantUsd: 65,
 		id: 2,
@@ -99,7 +96,6 @@ export const TIERS = [
 		detail:
 			"Four-layer boards, motorised anything, or a build that needs two revisions to work. Pick this only if you have shipped something before.",
 		estimate: "~24h+",
-		examples: ["Polyphonic instrument voice card", "Full breadboard CPU"],
 		fundingHours: 20,
 		grantUsd: 100,
 		id: 3,

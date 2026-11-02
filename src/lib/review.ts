@@ -2,7 +2,7 @@ import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
-import { getThemeDef, THEME_COMPLETION_BONUS } from "@/lib/config/program"
+import { participantThemeLabel, THEME_COMPLETION_BONUS } from "@/lib/config/program"
 import { ENTRY_TIER, getTierOrThrow, isTierId, tierForHours } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
@@ -430,7 +430,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			await reconcileGrant(tx, {
 				createdById: input.reviewerId,
 				kind: LedgerKind.THEME_COMPLETION_BONUS,
-				note: `${getThemeDef(project.theme).label} shipped`,
+				// The maker reads this note in their coin history, so it names the week the way they see it.
+				note: `${participantThemeLabel(project.theme)} shipped`,
 				// Season themes only: warm-up projects are pre-season practice, not a shipped theme, and paying the completion bonus on them mints 25 coins per warm-up hand-in.
 				target: approving && project.theme !== Theme.WARMUP ? THEME_COMPLETION_BONUS : 0,
 				themeProjectId: project.id,

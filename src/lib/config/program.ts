@@ -1,3 +1,4 @@
+import { FREESTYLE_BLURB, FREESTYLE_LABEL, isFreestyle } from "@/lib/config/freestyle"
 import { Phase, Theme } from "@/lib/enums"
 
 /**
@@ -159,6 +160,20 @@ export function getThemeDef(theme: Theme): ThemeDef {
 	if (!def) throw new Error(`Unknown theme: ${theme}`)
 	return def
 }
+
+/**
+ * A theme's name as participants read it. The same as `label`, except that Breadboard Computer reads as Freestyle from the start of week 5 (see config/freestyle). Admin and review screens keep `label`, which is what the theme is still called underneath.
+ */
+export const participantThemeLabel = (theme: Theme): string =>
+	theme === Theme.BREADBOARD_COMPUTER && isFreestyle() ? FREESTYLE_LABEL : getThemeDef(theme).label
+
+/** `projectDisplayTitle` for a message the maker reads: a blank title falls back to the week's name as they see it. */
+export const participantProjectTitle = (project: { title: string; theme: Theme }): string =>
+	project.title.trim() || participantThemeLabel(project.theme)
+
+/** A theme's one-line description as participants read it, renamed on the same terms as `participantThemeLabel`. */
+export const participantThemeBlurb = (theme: Theme): string =>
+	theme === Theme.BREADBOARD_COMPUTER && isFreestyle() ? FREESTYLE_BLURB : getThemeDef(theme).blurb
 
 /**
  * What to call a project in front of somebody else.

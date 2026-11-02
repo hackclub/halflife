@@ -20,7 +20,7 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 	if (parsed.error) return parsed.error
 
 	// Get started is week 1's first checkpoint, so it waits for week 1 too. The intro and the tab tour do not: they are the browser's, and play for a new account whatever the date.
-	await assertWeekStarted(1)
+	await assertWeekStarted(1, gate.user.id)
 
 	const result = await submitStep(gate.user.id, parsed.data)
 
