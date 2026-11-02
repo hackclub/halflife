@@ -144,19 +144,21 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Coins",
 				list: [
-					"Design week: your tier's funded hours pay for your parts and earn no coins. Past them, approved time banks toward your printer goal (how much depends on the printer you picked), and anything beyond that is yours to spend.",
-					"Build week: nothing is funded, so every hour earns coins: the first 5 bank toward your printer goal, and the rest are yours to spend.",
-					"Each submission is capped at 250 spendable coins (50 hours).",
+					"Design week: your tier's funded hours pay for your parts and earn no coins. Every approved hour past them earns 5 coins.",
+					"If you decline parts funding, no hours are spent on parts, so every approved hour earns 5 coins.",
+					"Build week: nothing is funded, so every hour earns 5 coins.",
+					"Every coin is spendable on anything: your printer goal, or the shop.",
+					"Each submission is capped at 250 coins (50 hours).",
 					"Ship a theme (design and build both approved): 25 bonus coins to spend.",
 				],
 				paragraphs: [
-					"Coins track how far you go past what your project needs. The hours your tier funds pay for parts and earn no coins. Coins are earned at 5 per hour, but only after that tier's funding is achieved. They fill your printer goal before the rest is yours to spend in the shop.",
+					"Coins track the work you do beyond what your project needs. Coins are earned at 5 per approved hour, but only after that tier's funding is achieved – or from the first hour if you decline the funding.",
 				],
 			},
 			{
 				heading: "How do coins work?",
 				paragraphs: [
-					"Each week, you'll recieve coins from your approved projects. You can spend those coins in the shop OR on your printer!",
+					"Each week, you'll receive coins from your approved projects. There is one balance: spend it in the shop or put it toward your printer, whichever you like.",
 				],
 			},
 		],
@@ -193,7 +195,7 @@ export const DOCS: DocArticle[] = [
 					return [
 						"Every week: a public repo, with a README that has enough text and photos in it.",
 						"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), a bom.csv, and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a BOM table in the README.",
-						"CAD week: editable CAD files (.step, .f3d, .fcstd, .sldprt). Tinkercad, OpenSCAD, Blender and STL-only exports are not accepted as the source. Recommended: printable models (.stl, .3mf) and a BOM table in the README.",
+						"CAD week: an editable source (.f3d, .f3z, .fcstd, .sldprt, .sldasm) or an Onshape link in your README, project description or demo links. A .step export on its own is accepted but flagged, because a reviewer cannot edit it. Tinkercad, OpenSCAD, Blender and STL-only exports are not accepted as the source. Recommended: printable models (.stl, .3mf) and a BOM table in the README.",
 						"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
 						"Displays week: firmware or code. Recommended: a schematic.",
 						`${isFreestyle() ? "Freestyle" : "Breadboard computer"} week: nothing beyond the README and photos. Recommended: PCB design files, CAD source files and firmware, whichever your project has.`,
@@ -221,7 +223,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Source files, not exports",
 				paragraphs: [
-					"Upload the files someone would need to change your design, not just look at it. A PDF of a schematic is not a schematic, and an STL is not a CAD model. For the CAD week, Tinkercad, OpenSCAD and Blender are not accepted as the final source: export an editable file from Fusion, Onshape, FreeCAD or SolidWorks. Keep the repo organised in folders, with firmware, libraries and anything you referenced alongside it.",
+					"Upload the files someone would need to change your design, not just look at it. A PDF of a schematic is not a schematic, and an STL is not a CAD model. For the CAD week, Tinkercad, OpenSCAD and Blender are not accepted as the final source: export an editable file from Fusion, FreeCAD or SolidWorks, or link the Onshape document from your README, project description or demo links. Keep the repo organised in folders, with firmware, libraries and anything you referenced alongside it.",
 				],
 			},
 			{
