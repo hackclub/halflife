@@ -674,4 +674,32 @@
 	.hl-audit-raw[open] summary {
 		margin-bottom: 0.5rem;
 	}
+
+	/* ── Scheduled jobs ────────────────────────────────────────────────────── */
+	/*
+	 * A job's result is a handful of counters, not a document. Laid out as wrapping key/value pairs, the numbers line up down the column and the table stays a table; a nested payload keeps the JSON block above instead.
+	 */
+	.hl-sync-result {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.15rem 0.9rem;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+	.hl-sync-result li {
+		display: flex;
+		gap: 0.3rem;
+		align-items: baseline;
+	}
+	.hl-sync-key {
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		color: var(--color-ink-muted);
+	}
+	.hl-sync-value {
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		overflow-wrap: anywhere;
+	}
 }

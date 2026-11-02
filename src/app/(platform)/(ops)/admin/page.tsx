@@ -327,13 +327,51 @@ export default async function AdminOverviewPage() {
 							<tr key={run.syncKey}>
 								<td className="hl-mono">{run.syncKey}</td>
 								<td className="hl-mono">{run.lastRunAt.toLocaleString()}</td>
-								<td className="hl-hint">{JSON.stringify(run.result)}</td>
+								<td>
+									<SyncResult result={run.result} />
+								</td>
 							</tr>
 						))}
 					</Table>
 				)}
 			</Panel>
 		</div>
+	)
+}
+
+/** A value as a job records it: plain, so a flag reads `false` rather than `"false"` behind JSON quotes. */
+function scalarText(value: unknown): string {
+	if (value === null || value === undefined) return "—"
+	if (typeof value === "string") return value
+	if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value)
+	return JSON.stringify(value) ?? "—"
+}
+
+/**
+ * A job's result as the counters it actually holds.
+ *
+ * Every scheduled job records a flat object – `scanned`, `updated`, `failed`, `degraded` – and the one-line JSON dump made a reader pick the numbers out of brackets, quotes and commas. Here the keys are small mono labels and the values sit beside them, wrapping down the cell instead of forcing the panel sideways. A job that ever records something nested falls back to indented JSON, so nothing is hidden behind a summary.
+ */
+function SyncResult({ result }: Readonly<{ result: unknown }>) {
+	if (result === null || result === undefined) return <span className="hl-muted">—</span>
+	if (typeof result !== "object") return <span className="hl-mono">{scalarText(result)}</span>
+
+	const entries = Object.entries(result)
+	if (entries.length === 0) return <span className="hl-muted">—</span>
+
+	// An array or a nested object is a payload, not a set of counters, so it keeps the shape JSON gives it.
+	if (Array.isArray(result) || entries.some(([, value]) => value !== null && typeof value === "object"))
+		return <pre className="hl-audit-json">{JSON.stringify(result, null, 2)}</pre>
+
+	return (
+		<ul className="hl-sync-result">
+			{entries.map(([key, value]) => (
+				<li key={key}>
+					<span className="hl-sync-key">{key}</span>
+					<span className="hl-sync-value">{scalarText(value)}</span>
+				</li>
+			))}
+		</ul>
 	)
 }
 
