@@ -35,13 +35,13 @@ import {
 	getProjectsByWeek,
 	getReviewerStats,
 	getUserFlowFunnel,
-	getUserFlowSankey,
 	getUserFlowWeekly,
 	getVerificationStats,
 	type HoursDistribution,
 	type WeekHoursCluster,
 	type WeekProjectCluster,
 } from "@/lib/queries/admin"
+import { getUserFlowSankey } from "@/lib/queries/admin-flow"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
 export const dynamic = "force-dynamic"

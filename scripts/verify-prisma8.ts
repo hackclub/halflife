@@ -14,7 +14,6 @@ import {
 	getProjectsByWeek,
 	getReviewerStats,
 	getUserFlowFunnel,
-	getUserFlowSankey,
 	getUserFlowWeekly,
 	getVerificationStats,
 	listAuditLog,
@@ -28,6 +27,7 @@ import {
 	listRecentPublicReels,
 	listUsers,
 } from "@/lib/queries/admin"
+import { getUserFlowSankey } from "@/lib/queries/admin-flow"
 import { getJournalFeed } from "@/lib/queries/community"
 import { listAllEvents, listUpcomingEvents } from "@/lib/queries/events"
 import { getProfile } from "@/lib/queries/profile"
