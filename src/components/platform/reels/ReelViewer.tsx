@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { IconVolumeOff } from "@/components/platform/icons"
 import type { FeedItem } from "@/lib/feed"
-import { prefersStill } from "@/lib/reduced-motion"
 import { useStore } from "@/lib/store"
 import { type FeedPosition, readPosition, savePosition } from "./feedPosition"
 import { ReelActions } from "./ReelActions"
@@ -11,19 +10,7 @@ import { ReelCommentsPanel } from "./ReelCommentsPanel"
 import { type SlideHandle, StageSlide } from "./StageSlide"
 import { useFeed } from "./useFeed"
 import { RATES, usePlayerPrefs } from "./usePlayerPrefs"
-
-/**
- * The glide between reels: quick off the mark and settling into place, so the next reel arrives rather than appears. Long enough to read as one card handing over to the next, short enough that flicking through a dozen never feels like waiting on the page.
- */
-const GLIDE_MS = 360
-const glideEase = (t: number) => 1 - (1 - t) ** 4
-
-/** How far a wheel has to travel, in pixels, before it counts as a flick. */
-const WHEEL_FLICK = 24
-/**
- * A trackpad keeps sending wheel events for a second or so after the fingers lift. One gesture is everything up to a gap this long, and it moves one reel however much momentum it carries – the way a swipe on a phone does.
- */
-const WHEEL_GESTURE_GAP_MS = 180
+import { useReelNavigation } from "./useReelNavigation"
 
 /** How close to the end of what is loaded the next page is asked for. */
 const PREFETCH_AHEAD = 3
@@ -42,17 +29,6 @@ const MOUNTED_EITHER_SIDE = 2
 const COMMENTS_BESIDE = "(min-width: 80rem)"
 
 /**
- * Whether `from` sits in something that scrolls vertically on its own, which a wheel over it should move rather than the reel. Whether or not it has hit its end: a list that suddenly changes the reel when you reach its bottom is a surprise, not a convenience.
- */
-function scrollsItself(from: Element): boolean {
-	for (let el: Element | null = from; el && el !== document.body; el = el.parentElement) {
-		const { overflowY } = getComputedStyle(el)
-		if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight) return true
-	}
-	return false
-}
-
-/**
  * The Doomscroller: one reel at a time, as a page of the platform.
  *
  * Laid out after the reel player people already know – the reel in a tall column with its player underneath, the arrows and the actions beside it, and the conversation in a panel alongside – but drawn in the field notebook's hand: cream ground, drawn round buttons, paper panels. What is on a slide moves with the slide when you scroll; the actions stay where your hand is and change to the reel in front of you.
@@ -61,14 +37,6 @@ function scrollsItself(from: Element): boolean {
  */
 export function ReelViewer() {
 	const { viewer } = useStore()
-	const stage = useRef<HTMLElement>(null)
-	const scroller = useRef<HTMLDivElement>(null)
-	const slides = useRef<(HTMLElement | null)[]>([])
-	const [index, setIndex] = useState(0)
-	// The observer reports asynchronously, so two quick presses would both read the same stale index. Navigation moves this cursor immediately instead.
-	const cursor = useRef(0)
-	// The glide in progress, if any. While it runs the scroll position is ours, not the reader's, so the scroll handler leaves the cursor alone.
-	const glide = useRef<number | null>(null)
 
 	const [prefs, setPrefs] = usePlayerPrefs()
 	// Muted because the browser refused sound, as opposed to by choice. Kept apart so a refusal on one visit is not remembered as a preference.
@@ -106,120 +74,8 @@ export function ReelViewer() {
 	const landOn = useRef<number | null>(null)
 	// The reels plus the slide at the end: the sign-off, or "loading more".
 	const last = feed.items.length
+	const { index, landOnSlide, registerSlide, scroller, setCursor, setIndex, stage, step } = useReelNavigation(last)
 	const current: FeedItem | undefined = restoring ? undefined : feed.items[index]
-
-	// Animated by hand rather than with `behavior: "smooth"`: inside a mandatory-snap container the smooth form is dropped outright by some engines, which left the controls doing nothing at all. Snapping is lifted for the length of the glide – otherwise the container fights every frame back to the nearest slide – and restored once it lands on one.
-	const glideTo = useCallback((to: number) => {
-		const box = scroller.current
-		if (!box) return
-		if (glide.current !== null) cancelAnimationFrame(glide.current)
-		const from = box.scrollTop
-		if (prefersStill() || Math.abs(to - from) < 1) {
-			glide.current = null
-			box.style.scrollSnapType = ""
-			box.scrollTop = to
-			return
-		}
-		box.style.scrollSnapType = "none"
-		const t0 = performance.now()
-		const frame = (now: number) => {
-			const t = Math.min(1, (now - t0) / GLIDE_MS)
-			box.scrollTop = from + (to - from) * glideEase(t)
-			if (t < 1) {
-				glide.current = requestAnimationFrame(frame)
-				return
-			}
-			glide.current = null
-			box.style.scrollSnapType = ""
-		}
-		glide.current = requestAnimationFrame(frame)
-	}, [])
-
-	useEffect(
-		() => () => {
-			if (glide.current !== null) cancelAnimationFrame(glide.current)
-		},
-		[],
-	)
-
-	const goTo = useCallback(
-		(i: number) => {
-			const target = slides.current[i]
-			if (!target) return
-			cursor.current = i
-			setIndex(i)
-			glideTo(target.offsetTop)
-		},
-		[glideTo],
-	)
-
-	const step = useCallback(
-		(dir: 1 | -1) => goTo(Math.max(0, Math.min(slides.current.length - 1, cursor.current + dir))),
-		[goTo],
-	)
-
-	// Scrolling by hand is the other way the cursor moves. Every slide is exactly the height of the frame, so the scroll position is the index – no observer needed, and no threshold to get wrong.
-	useEffect(() => {
-		const box = scroller.current
-		if (!box) return
-		const onScroll = () => {
-			if (glide.current !== null) return
-			const n = Math.max(0, Math.min(last, Math.round(box.scrollTop / box.clientHeight)))
-			if (n === cursor.current) return
-			cursor.current = n
-			setIndex(n)
-		}
-		// A thumb landing mid-glide takes over from it on the spot, rather than wrestling the animation for the next few frames.
-		const onTouch = () => {
-			if (glide.current === null) return
-			cancelAnimationFrame(glide.current)
-			glide.current = null
-			box.style.scrollSnapType = ""
-		}
-		box.addEventListener("scroll", onScroll, { passive: true })
-		box.addEventListener("touchstart", onTouch, { passive: true })
-		return () => {
-			box.removeEventListener("scroll", onScroll)
-			box.removeEventListener("touchstart", onTouch)
-		}
-	}, [last])
-
-	// One flick, one reel. Left to itself a mouse wheel lurches between snap points and a trackpad's momentum sails past three reels at once; taking the wheel over is what makes a desktop feel like a thumb on a phone. Heard on the whole window, not just the reel, so a flick anywhere on the page moves it – except over something that scrolls on its own.
-	useEffect(() => {
-		const box = stage.current
-		if (!box) return
-		let travelled = 0
-		let spent = false
-		let quiet = 0
-		const onWheel = (e: WheelEvent) => {
-			// Pinch-zoom arrives as a ctrl-wheel, and sideways is somebody else's.
-			if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
-			// The comments sheet or a checkpoint modal over the page has the wheel.
-			if (document.querySelector("[role='dialog']")) return
-			const target = e.target instanceof Element ? e.target : null
-			// An opened caption scrolls itself.
-			if (target?.closest("[data-own-scroll]")) return
-			// Off the reel, anything with its own scroll keeps it: the comments beside the reel, a sidebar taller than the window.
-			if (target && !box.contains(target) && scrollsItself(target)) return
-			e.preventDefault()
-			window.clearTimeout(quiet)
-			quiet = window.setTimeout(() => {
-				spent = false
-				travelled = 0
-			}, WHEEL_GESTURE_GAP_MS)
-			if (spent) return
-			// Line-mode wheels (Firefox on some mice) report lines, not pixels.
-			travelled += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
-			if (Math.abs(travelled) < WHEEL_FLICK) return
-			spent = true
-			step(travelled > 0 ? 1 : -1)
-		}
-		window.addEventListener("wheel", onWheel, { passive: false })
-		return () => {
-			window.removeEventListener("wheel", onWheel)
-			window.clearTimeout(quiet)
-		}
-	}, [step])
 
 	// Where to land after mount. A reel card's link carries a reel id, which wins over the saved position; otherwise it is wherever they left off. Storage after mount, because the server has none and rendered without it.
 	useEffect(() => {
@@ -245,7 +101,7 @@ export function ReelViewer() {
 		const at = unseenLead ? -1 : items.findIndex(r => r.id === resume.id)
 		if (at >= 0) {
 			landOn.current = at
-			cursor.current = at
+			setCursor(at)
 			setIndex(at)
 			if (isDeep && deepLink.current?.comments) setPendingComments(true)
 			setResume(null)
@@ -272,11 +128,10 @@ export function ReelViewer() {
 	// Before paint, so the first frame with slides in it is already theirs.
 	useLayoutEffect(() => {
 		if (restoring || landOn.current === null) return
-		const box = scroller.current
-		const target = slides.current[landOn.current]
+		const at = landOn.current
 		landOn.current = null
-		if (box && target) box.scrollTop = target.offsetTop
-	}, [restoring])
+		landOnSlide(at)
+	}, [restoring, landOnSlide])
 
 	// Remembered as they go, not on leaving: a closed tab gets no last word.
 	const currentId = current?.id
@@ -370,7 +225,7 @@ export function ReelViewer() {
 							inert={i !== index}
 							key={reel.id}
 							ref={el => {
-								slides.current[i] = el
+								registerSlide(i, el)
 							}}
 						>
 							{Math.abs(i - index) <= MOUNTED_EITHER_SIDE ? (
@@ -398,7 +253,7 @@ export function ReelViewer() {
 							className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
 							data-slide={last}
 							ref={el => {
-								slides.current[last] = el
+								registerSlide(last, el)
 							}}
 						>
 							{feed.error ? (
