@@ -145,7 +145,12 @@ function weekOf(themeIndex: number, phase: Phase): number {
 	return phase === Phase.DESIGN ? themeIndex + 1 : themeIndex + 1 + DESIGN_WEEKS
 }
 
-export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
+/**
+ * Every row the snapshot is assembled from, read in one round trip.
+ *
+ * The reads themselves are documented where they are made; this function only knows the order they resolve in, so the assembly below can stay about what the trail does with them.
+ */
+async function loadStoreRows(userId: string) {
 	const [userRow, projectRows, sessionRows, linkRows, postRows, submissionRows, balances, settings, owedReels, roles] =
 		await Promise.all([
 			db.orm.public.User.whereUnique({ id: userId })
@@ -228,6 +233,67 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			getOwedReelKeys(userId),
 			getUserRoles(userId),
 		])
+
+	return {
+		balances,
+		linkRows,
+		owedReels,
+		postRows,
+		projectRows,
+		roles,
+		sessionRows,
+		settings,
+		submissionRows,
+		userRow,
+	}
+}
+
+/**
+ * When each week opens and closes, with the participant's extension and the week's own applied.
+ *
+ * Which close an extension pushed out, and whose it is: a project extension only reaches its own week; the account's reaches every week, so a later week's countdown would otherwise read as that week's own close.
+ */
+function weekWindows(
+	settings: Awaited<ReturnType<typeof getProgramSettings>>,
+	userExtensionUntil: Date | null,
+	projectExtensionUntil: (week: number) => Date | null,
+): {
+	closes: { [_: number]: number }
+	opens: { [_: number]: number }
+	weekExtensions: { [_: number]: "account" | "project" }
+} {
+	const closes: { [_: number]: number } = {}
+	const opens: { [_: number]: number } = {}
+	const weekExtensions: { [_: number]: "account" | "project" } = {}
+	for (let week = 1; week <= TOTAL_WEEKS; week += 1) {
+		opens[week] = weekOpensAt(settings, week).getTime()
+		const scheduled = weekClosesAt(settings, week).getTime()
+		const projectExtension = projectExtensionUntil(week)?.getTime() ?? null
+		const close = effectiveWeekClose(
+			new Date(scheduled),
+			userExtensionUntil,
+			projectExtension === null ? null : new Date(projectExtension),
+		).getTime()
+		closes[week] = close
+		if (close > scheduled)
+			weekExtensions[week] = projectExtension !== null && projectExtension === close ? "project" : "account"
+	}
+	return { closes, opens, weekExtensions }
+}
+
+export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
+	const {
+		balances,
+		linkRows,
+		owedReels,
+		postRows,
+		projectRows,
+		roles,
+		sessionRows,
+		settings,
+		submissionRows,
+		userRow,
+	} = await loadStoreRows(userId)
 
 	// Prisma 8 reads timestamps as PostgreSQL text; everything below works in Dates.
 	const user = withFields(userRow, {
@@ -392,25 +458,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
 	}
 
-	const closes: { [_: number]: number } = {}
-	const opens: { [_: number]: number } = {}
-	// Which of those closes an extension pushed out, and whose it is. A project extension only reaches its own week; the account's reaches every week, so a later week's countdown would otherwise read as that week's own close.
-	const weekExtensions: { [_: number]: "account" | "project" } = {}
-	for (let week = 1; week <= TOTAL_WEEKS; week += 1) {
-		opens[week] = weekOpensAt(settings, week).getTime()
+	const { closes, opens, weekExtensions } = weekWindows(settings, user.submissionExtensionUntil, week => {
 		const theme = scheduleForWeek(week)?.theme.id
-		const project = theme ? byTheme.get(theme) : undefined
-		const scheduled = weekClosesAt(settings, week).getTime()
-		const projectExtension = project?.submissionExtensionUntil?.getTime() ?? null
-		const close = effectiveWeekClose(
-			new Date(scheduled),
-			user.submissionExtensionUntil,
-			project?.submissionExtensionUntil,
-		).getTime()
-		closes[week] = close
-		if (close > scheduled)
-			weekExtensions[week] = projectExtension !== null && projectExtension === close ? "project" : "account"
-	}
+		return theme ? (byTheme.get(theme)?.submissionExtensionUntil ?? null) : null
+	})
 
 	return {
 		bankedCoins: balances.banked,

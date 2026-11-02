@@ -1,14 +1,16 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
-import { IconFilm, IconPause, IconPlay, IconVolume, IconVolumeOff } from "@/components/platform/icons"
+import { IconFilm, IconPlay, IconVolume, IconVolumeOff } from "@/components/platform/icons"
 import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { prefersStill } from "@/lib/reduced-motion"
 import { ago, clock } from "./format"
-import { notePlaying, noteStopped, playExclusive, sendLike } from "./ReelCard"
+import { sendLike } from "./ReelCard"
+import { StagePlayer } from "./StagePlayer"
+import { useSlidePlayer } from "./useSlidePlayer"
 
 /** Two taps closer together than this, and near enough each other, are one like. */
 const DOUBLE_TAP_MS = 280
@@ -59,79 +61,18 @@ export function StageSlide({
 	/** Hands the page this slide's controls while it is the current one. */
 	register(handle: SlideHandle | null): void
 }) {
-	const video = useRef<HTMLVideoElement>(null)
-	const fill = useRef<HTMLDivElement>(null)
 	const bursts = useRef<HTMLDivElement>(null)
 	const caption = useRef<HTMLParagraphElement>(null)
-	const [playing, setPlaying] = useState(false)
-	const [time, setTime] = useState({ now: 0, total: reel.durationSeconds ?? 0 })
 	const [expanded, setExpanded] = useState(false)
 	const [clamped, setClamped] = useState(false)
-	const counted = useRef(false)
 	const tap = useRef<{ t: number; x: number; y: number } | null>(null)
 	const pendingToggle = useRef(0)
+	const player = useSlidePlayer({ active, muted, onAutoMuted, rate, reel, register })
+	const { fill, playing, time, toggle, video } = player
 
 	const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT"
 	// Portrait fills the card edge to edge; anything wider is letterboxed in it, so a landscape clip is shown whole rather than cropped to a strip.
 	const portrait = !reel.width || !reel.height || reel.height >= reel.width
-
-	// `muted` as a prop is not reflected after mount in React, so both are set on the element directly.
-	useEffect(() => {
-		const el = video.current
-		if (!el) return
-		el.muted = muted
-		el.playbackRate = rate
-	}, [muted, rate])
-
-	useEffect(() => {
-		const el = video.current
-		if (!el) return
-		if (!active) {
-			el.pause()
-			return
-		}
-		// Arriving is asking to watch – except for anyone who has asked for less motion, who gets the play button instead of a video that starts moving.
-		if (prefersStill()) return
-		el.currentTime = 0
-		let cancelled = false
-		void (async () => {
-			const ok = await playExclusive(el)
-			if (ok || cancelled || el.muted) return
-			// Sound before the reader has touched the page is the browser's to refuse, and it does. Muted playback it always allows, so the reel plays silently and the page offers the sound back.
-			el.muted = true
-			onAutoMuted()
-			await playExclusive(el)
-		})()
-		return () => {
-			cancelled = true
-		}
-	}, [active, onAutoMuted])
-
-	// Smooth rather than stepped: `timeupdate` fires four times a second, which makes a thin bar visibly tick. Only the playing slide pays for a frame loop.
-	useEffect(() => {
-		if (!active || !playing) return
-		let raf = 0
-		const tick = () => {
-			const el = video.current
-			if (el && fill.current && el.duration) fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`
-			raf = requestAnimationFrame(tick)
-		}
-		raf = requestAnimationFrame(tick)
-		return () => cancelAnimationFrame(raf)
-	}, [active, playing])
-
-	const toggle = useCallback(() => {
-		const el = video.current
-		if (!el || !reel.videoUrl) return
-		if (el.paused) void playExclusive(el)
-		else el.pause()
-	}, [reel.videoUrl])
-
-	useEffect(() => {
-		if (!active) return
-		register({ toggle })
-		return () => register(null)
-	}, [active, register, toggle])
 
 	// Whether the caption runs past its lines, so "more" only appears when there is more. Measured, because a character count cannot know the font.
 	useLayoutEffect(() => {
@@ -143,21 +84,6 @@ export function StageSlide({
 		ro.observe(el)
 		return () => ro.disconnect()
 	}, [reel.caption, expanded])
-
-	// The clock, the bar while it is not being driven by the frame loop, and the view. A view is a second of actual playback, not an arrival that a quick flick scrolled straight past – once per slide; the server counts once per person.
-	function onTime() {
-		const el = video.current
-		if (!el) return
-		setTime({ now: el.currentTime, total: el.duration || reel.durationSeconds || 0 })
-		if (!playing && fill.current && el.duration)
-			fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`
-		if (counted.current) return
-		let watched = 0
-		for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i)
-		if (watched < 1) return
-		counted.current = true
-		void fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
-	}
 
 	/** The heart that says a double tap landed, where it landed. */
 	function burst(clientX: number, clientY: number) {
@@ -218,16 +144,6 @@ export function StageSlide({
 
 	useEffect(() => () => window.clearTimeout(pendingToggle.current), [])
 
-	function seekTo(clientX: number, track: HTMLElement) {
-		const el = video.current
-		if (!el?.duration) return
-		const box = track.getBoundingClientRect()
-		const f = Math.min(1, Math.max(0, (clientX - box.left) / box.width))
-		el.currentTime = f * el.duration
-		if (fill.current) fill.current.style.transform = `scaleX(${f})`
-		setTime({ now: el.currentTime, total: el.duration })
-	}
-
 	const who = reel.author.name ?? "A maker"
 
 	return (
@@ -242,16 +158,10 @@ export function StageSlide({
 						onEnded={() => {
 							if (autoScroll && active) onEnded()
 						}}
-						onLoadedMetadata={e => setTime({ now: e.currentTarget.currentTime, total: e.currentTarget.duration })}
-						onPause={e => {
-							noteStopped(e.currentTarget)
-							setPlaying(false)
-						}}
-						onPlay={e => {
-							notePlaying(e.currentTarget)
-							setPlaying(true)
-						}}
-						onTimeUpdate={onTime}
+						onLoadedMetadata={player.handleLoadedMetadata}
+						onPause={player.handlePause}
+						onPlay={player.handlePlay}
+						onTimeUpdate={player.handleTime}
 						playsInline
 						poster={reel.thumbnailUrl ?? undefined}
 						// The reel on screen is worth buffering ahead; its mounted neighbours fetch just enough to show a first frame, which is what makes a swipe land on a picture rather than a blank card.
@@ -375,10 +285,10 @@ export function StageSlide({
 					}}
 					onPointerDown={e => {
 						e.currentTarget.setPointerCapture(e.pointerId)
-						seekTo(e.clientX, e.currentTarget)
+						player.seekTo(e.clientX, e.currentTarget)
 					}}
 					onPointerMove={e => {
-						if (e.currentTarget.hasPointerCapture(e.pointerId)) seekTo(e.clientX, e.currentTarget)
+						if (e.currentTarget.hasPointerCapture(e.pointerId)) player.seekTo(e.clientX, e.currentTarget)
 					}}
 					role="slider"
 					tabIndex={reel.videoUrl ? 0 : -1}
@@ -390,82 +300,16 @@ export function StageSlide({
 			</article>
 
 			{/* ---------- the player ---------- */}
-			{/* Sized by the reel column, not the window: as the column narrows, auto-scroll goes first and speed second; play, the clock and the sound always stay. */}
-			<div className="@container mt-2.5 hidden h-10 shrink-0 items-center gap-2.5 text-navy md:flex">
-				<RoundControl disabled={!reel.videoUrl} label={playing ? "Pause" : "Play"} onClick={toggle}>
-					{playing ? <IconPause className="text-[1rem]" /> : <IconPlay className="ml-0.5 text-[1.05rem]" />}
-				</RoundControl>
-				<p className="hand text-[0.8rem] text-navy-soft tabular-nums">
-					{clock(time.now)} / {clock(time.total)}
-				</p>
-
-				<div className="ml-auto flex items-center gap-2">
-					<button
-						aria-checked={autoScroll}
-						className="hidden items-center gap-2 rounded-full py-1 pr-1 pl-1.5 transition-colors hover:bg-black/5 @xs:flex"
-						onClick={onToggleAutoScroll}
-						role="switch"
-						title="Move on to the next reel when this one ends"
-						type="button"
-					>
-						<span className="label text-navy-soft">Auto</span>
-						<span
-							aria-hidden="true"
-							className={cx(
-								"relative h-5 w-9 rounded-full border-2 transition-colors duration-200",
-								autoScroll ? "border-teal-deep bg-teal" : "border-line-strong bg-paper",
-							)}
-						>
-							<span
-								className={cx(
-									"absolute top-px left-px size-3.5 rounded-full transition-[transform,background-color] duration-200 ease-[cubic-bezier(.16,1,.3,1)]",
-									autoScroll ? "translate-x-4 bg-white" : "bg-line-strong",
-								)}
-							/>
-						</span>
-					</button>
-					<button
-						aria-label={`Playback speed ${rate} times. Change speed.`}
-						className="label hidden min-w-12 rounded-full bg-black/5 px-2.5 py-1.5 text-navy-soft tabular-nums transition-colors hover:bg-sky-pale hover:text-sky-ink @2xs:inline-block"
-						onClick={onCycleRate}
-						type="button"
-					>
-						{rate.toFixed(1)}x
-					</button>
-					<RoundControl label={muted ? "Turn sound on" : "Mute"} onClick={onToggleMute} pressed={muted}>
-						{muted ? <IconVolumeOff className="text-[1.1rem]" /> : <IconVolume className="text-[1.1rem]" />}
-					</RoundControl>
-				</div>
-			</div>
+			<StagePlayer
+				autoScroll={autoScroll}
+				hasVideo={Boolean(reel.videoUrl)}
+				muted={muted}
+				onCycleRate={onCycleRate}
+				onToggleAutoScroll={onToggleAutoScroll}
+				onToggleMute={onToggleMute}
+				player={player}
+				rate={rate}
+			/>
 		</div>
-	)
-}
-
-/** A small drawn round button, the player strip's one control shape. */
-function RoundControl({
-	label,
-	onClick,
-	disabled,
-	pressed,
-	children,
-}: {
-	label: string
-	onClick(): void
-	disabled?: boolean
-	pressed?: boolean
-	children: React.ReactNode
-}) {
-	return (
-		<button
-			aria-label={label}
-			aria-pressed={pressed}
-			className="sketch grid size-9 place-items-center rounded-full bg-paper text-navy transition-colors hover:bg-mint hover:text-teal-ink disabled:cursor-not-allowed disabled:text-navy-faint"
-			disabled={disabled}
-			onClick={onClick}
-			style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "999px" }}
-			type="button"
-		>
-			{children}
-		</button>
 	)
 }

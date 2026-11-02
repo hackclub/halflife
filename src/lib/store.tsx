@@ -1,13 +1,12 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
-import { z } from "zod"
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { errorMessage } from "@/lib/api-error"
 import { ParticipantGoal } from "@/lib/enums"
-import { setFreestylePreview } from "./config/freestyle"
 import { COINS_PER_HOUR, type PrinterGoal, printerById } from "./config/printers"
 import type { StoreSnapshot } from "./queries/store"
+import { type IntroPhase, useStoreCeremony } from "./store-ceremony"
 import { useProjectWrites } from "./store-project-writes"
 import { type SubmitExtras, type UnsubmitTarget, useStoreWrites } from "./store-writes"
 import { type CheckpointState, deriveTrail } from "./trail"
@@ -28,55 +27,6 @@ import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types"
  *
  * Every mutation posts to the API and then asks Next to re-render the layout, which reloads the snapshot. Each one also patches local state first, because a round trip to Postgres between clicking a node and seeing it fill is long enough to feel broken – and if the request fails the refresh puts the truth back.
  */
-
-export type IntroPhase =
-	| "cinematic" // the fly-through
-	| "aim" // spotlight on the first checkpoint
-	| "checkpoint" // the six-step onboarding modal is open
-	| "tour" // spotlight each tab in turn
-	| "done"
-
-/**
- * What the browser owns: the first-run ceremony, and nothing else.
- *
- * Kept apart from the facts deliberately. If any of this lived on the server, signing in on a second device would drop you into the middle of a tab tour you had already finished, and a schema migration would be needed to change the order of the intro.
- */
-interface Ceremony {
-	doomscrollerOpen: boolean
-	phase: IntroPhase
-	/**
-	 * Set by "Replay the intro". Without it the server's word that onboarding is done forces the phase straight back to "done", so the replay cleared the ceremony and then showed nothing. Optional so saves written before it existed read as false.
-	 */
-	replaying?: boolean
-	/**
-	 * Set once the tab tour has been finished or skipped. Before week 1 opens a new account gets the intro and the tour but not the Get started checkpoint, so it meets that checkpoint later, and finishing it must not walk the tour a second time. Optional so older saves read as not toured.
-	 */
-	toured?: boolean
-	version: 4
-}
-
-const KEY = "halflife.ceremony.v4"
-
-/** The saved ceremony and the API bodies this file reads. Parsed, so a stale or hand-edited localStorage row cannot reach the trail as a wrong shape. */
-const CeremonySave = z.object({
-	doomscrollerOpen: z.boolean().optional(),
-	phase: z.enum(["cinematic", "aim", "checkpoint", "tour", "done"]).optional(),
-	replaying: z.boolean().optional(),
-	toured: z.boolean().optional(),
-	version: z.literal(4),
-})
-
-/**
- * The admin lock bypass. Kept apart from the ceremony so "Replay the intro", which clears that, leaves it alone.
- */
-const BYPASS_KEY = "halflife.bypass-locks"
-
-/** The admin freestyle preview, kept on the same terms as the lock bypass. */
-const FREESTYLE_PREVIEW_KEY = "halflife.preview-freestyle"
-
-function seededCeremony(): Ceremony {
-	return { doomscrollerOpen: true, phase: "cinematic", version: 4 }
-}
 
 /** The details a maker can change on their own project, all optional. */
 export interface ProjectPatch {
@@ -343,142 +293,32 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		weeks,
 	} = trail
 
-	const [ceremony, setCeremony] = useState<Ceremony>(seededCeremony)
-	const [hydrated, setHydrated] = useState(false)
 	const [openCheckpoint, setOpenCheckpoint] = useState<string | null>(null)
 	const [sharePost, setSharePost] = useState<SharePost | null>(null)
 	const [tourStep, setTourStep] = useState(0)
-	const [reducedMotion, setReducedMotion] = useState(false)
-	const [bypassing, setBypassing] = useState(false)
-	const [previewingFreestyle, setPreviewingFreestyle] = useState(false)
-	// Single checkpoints an admin opened past their locks. Held in memory only: it is for checking one node, not a setting to come back to.
-	const [bypassed, setBypassed] = useState<string[]>([])
-
-	useEffect(() => {
-		const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
-		const sync = () => setReducedMotion(mq.matches)
-		sync()
-		mq.addEventListener("change", sync)
-		return () => mq.removeEventListener("change", sync)
-	}, [])
-
-	// Reading the persisted ceremony is exactly the external-system sync an effect is for: it cannot run during render without breaking SSR hydration, since the server has no localStorage and must render the seeded state.
-	useEffect(() => {
-		let next: Ceremony | null = null
-		try {
-			const raw = window.localStorage.getItem(KEY)
-			if (raw) {
-				const parsed = CeremonySave.safeParse(JSON.parse(raw))
-				if (parsed.success) {
-					const seed = seededCeremony()
-					next = {
-						doomscrollerOpen: parsed.data.doomscrollerOpen ?? seed.doomscrollerOpen,
-						phase: parsed.data.phase ?? seed.phase,
-						replaying: parsed.data.replaying ?? seed.replaying,
-						toured: parsed.data.toured ?? seed.toured,
-						version: 4,
-					}
-				}
-			}
-		} catch {
-			/* storage unavailable – run from the seed */
-		}
-		let bypass = false
-		let freestyle = false
-		try {
-			bypass = window.localStorage.getItem(BYPASS_KEY) === "1"
-			freestyle = window.localStorage.getItem(FREESTYLE_PREVIEW_KEY) === "1"
-		} catch {
-			/* storage unavailable – the trail stays locked */
-		}
-		// hydrating from localStorage
-		if (next) setCeremony(next)
-		if (bypass) setBypassing(true)
-		if (freestyle) setPreviewingFreestyle(true)
-		setHydrated(true)
-	}, [])
-
-	const setBypassLocks = useCallback((on: boolean) => {
-		setBypassing(on)
-		try {
-			if (on) window.localStorage.setItem(BYPASS_KEY, "1")
-			else window.localStorage.removeItem(BYPASS_KEY)
-		} catch {
-			/* private mode – it lasts the session */
-		}
-	}, [])
-	// Read by role, not by storage alone: a flag left behind on a shared browser, or by an admin since demoted, opens nothing.
-	const bypassLocks = facts.viewer.isAdmin && bypassing
-
-	const setPreviewFreestyle = useCallback((on: boolean) => {
-		setPreviewingFreestyle(on)
-		try {
-			if (on) window.localStorage.setItem(FREESTYLE_PREVIEW_KEY, "1")
-			else window.localStorage.removeItem(FREESTYLE_PREVIEW_KEY)
-		} catch {
-			/* private mode – it lasts the session */
-		}
-	}, [])
-	// By role as well, like the bypass.
-	const previewFreestyle = facts.viewer.isAdmin && previewingFreestyle
-	const appliedFreestylePreview = useRef(false)
-	useEffect(() => {
-		if (appliedFreestylePreview.current === previewFreestyle) return
-		appliedFreestylePreview.current = previewFreestyle
-		setFreestylePreview(previewFreestyle)
-		// The weeks are derived from the clock, so moving it on is what has them read week 5's copy again with the flag in place.
-		setNow(Date.now())
-	}, [previewFreestyle])
-
-	const bypassCheckpoint = useCallback(
-		(id: string) => setBypassed(list => (list.includes(id) ? list : [...list, id])),
-		[],
-	)
-
-	useEffect(() => {
-		if (!hydrated) return
-		try {
-			window.localStorage.setItem(KEY, JSON.stringify(ceremony))
-		} catch {
-			/* quota or private mode – the session still works, it just will not persist */
-		}
-	}, [ceremony, hydrated])
-
-	// Someone who has already finished the first checkpoint must never be shown the intro again, whatever a stale or cleared localStorage says. The server is what knows, so it gets the final word – unless they asked for it back. A replay plays the cinematic and the tab tour and goes nowhere near the setup checkpoint: its answers are taken once, and the server refuses a second set, so "aim" and "checkpoint" go straight on to the tour.
-	//
-	// Before week 1 opens, Get started is shut, so the intro goes from the fly-through straight to the tab tour: "aim" (the spotlight on that checkpoint) and "checkpoint" (its modal) have nothing to point at.
-	const phase: IntroPhase = !facts.onboardingDone
-		? !weekStarted(1) && (ceremony.phase === "aim" || ceremony.phase === "checkpoint")
-			? ceremony.toured
-				? "done"
-				: "tour"
-			: ceremony.phase
-		: ceremony.replaying
-			? ceremony.phase === "aim" || ceremony.phase === "checkpoint"
-				? "tour"
-				: ceremony.phase
-			: ceremony.phase === "tour"
-				? "tour"
-				: "done"
-
-	const setPhase = useCallback(
-		(next: IntroPhase) =>
-			setCeremony(c => {
-				// The tour plays once. Someone who took it while week 1 was shut finishes Get started straight onto the trail, not into it again.
-				const nextPhase = next === "tour" && c.toured && !c.replaying ? "done" : next
-				return {
-					...c,
-					phase: nextPhase,
-					// Finishing or skipping ends the replay, so a later sign-in does not start it again.
-					replaying: phase === "done" ? false : c.replaying,
-				}
-			}),
-		[],
-	)
-
-	const finishTour = useCallback(() => setCeremony(c => ({ ...c, phase: "done", replaying: false, toured: true })), [])
-
-	const setDoomscroller = useCallback((doomscrollerOpen: boolean) => setCeremony(c => ({ ...c, doomscrollerOpen })), [])
+	const refreshWeeks = useCallback(() => setNow(Date.now()), [])
+	const ceremony = useStoreCeremony({
+		isAdmin: facts.viewer.isAdmin,
+		onboardingDone: facts.onboardingDone,
+		onFreestylePreviewChange: refreshWeeks,
+		weekOneStarted: weekStarted(1),
+	})
+	const {
+		bypassCheckpoint,
+		bypassLocks,
+		finishTour,
+		hydrated,
+		isBypassed,
+		phase,
+		previewFreestyle,
+		reducedMotion,
+		resetCeremony,
+		reseedCeremony,
+		setBypassLocks,
+		setDoomscroller,
+		setPhase,
+		setPreviewFreestyle,
+	} = ceremony
 
 	/**
 	 * Replay the first run.
@@ -486,15 +326,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * Ceremony only. It cannot un-log a session or un-post a reel, and pretending otherwise would be the more surprising behaviour: the trail comes back exactly as it was, with the intro playing over it.
 	 */
 	const reset = useCallback(() => {
-		try {
-			window.localStorage.removeItem(KEY)
-		} catch {
-			/* nothing to clear */
-		}
-		setCeremony({ ...seededCeremony(), replaying: true })
+		resetCeremony()
 		setTourStep(0)
 		setOpenCheckpoint(null)
-	}, [])
+	}, [resetCeremony])
 
 	/**
 	 * The full redo, for admins checking the flow. The server clears the answers first; only then is the ceremony reseeded, and without `replaying`, so once the refreshed snapshot says onboarding is not done the intro runs on into the setup checkpoint as it would for someone new.
@@ -510,23 +345,18 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			const payload: unknown = await res.json().catch(() => null)
 			return errorMessage(payload, `Could not reset onboarding (${res.status})`)
 		}
-		try {
-			window.localStorage.removeItem(KEY)
-		} catch {
-			/* nothing to clear */
-		}
 		setFacts(f => ({ ...f, onboardingDone: false }))
-		setCeremony(seededCeremony())
+		reseedCeremony()
 		setTourStep(0)
 		setOpenCheckpoint(null)
 		router.refresh()
 		return null
-	}, [router])
+	}, [reseedCeremony, router])
 
 	// What the trail lets you click. An admin bypassing the locks, all of them or one node, can open anything; the server still has the last word on whatever is saved from a node opened that way. "Start here" keeps to the real rules above.
 	const isOpen = useCallback(
-		(id: string) => bypassLocks || (facts.viewer.isAdmin && bypassed.includes(id)) || isUnlocked(id),
-		[bypassLocks, facts.viewer.isAdmin, bypassed, isUnlocked],
+		(id: string) => bypassLocks || isBypassed(id) || isUnlocked(id),
+		[bypassLocks, isBypassed, isUnlocked],
 	)
 
 	const { addProject, ensureProject, linkSyncRepoToProject, setProjectRepo, setProjectTier, updateProject } =

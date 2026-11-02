@@ -1376,7 +1376,7 @@ async function checkRepoFiles(): Promise<void> {
 			REPO_FILE_KINDS.cadSource.missing.includes("not accepted as the source"),
 		)
 
-		// A STEP file passes the CAD source check, but it is not the editable original. The recommendation is a warning, and only when STEP is all there is: a native Fusion file or an Onshape link in the description or demo links answers it.
+		// A STEP file passes the CAD source check, but it is not the editable original. The recommendation is a warning, and only when STEP is all there is: a native Fusion file or an Onshape link in the description, README or demo links answers it.
 		const { stepSourceCheck } = await import("../src/lib/repo-checks")
 		const stepRepo = { paths: ["cad/enclosure.step", "README.md"] }
 		const stepOnly = stepSourceCheck(stepRepo)
@@ -1402,11 +1402,22 @@ async function checkRepoFiles(): Promise<void> {
 				=== "pass",
 		)
 		check(
+			"repo-checks · an Onshape link in the README satisfies the recommendation",
+			stepSourceCheck({
+				...stepRepo,
+				readme: "# Enclosure\n\nModel: https://cad.onshape.com/documents/abc/w/def",
+			})?.status === "pass",
+		)
+		check(
 			"repo-checks · an Onshape link in the demo links satisfies the recommendation",
 			stepSourceCheck({
 				...stepRepo,
 				artifactLinks: [{ label: "Demo", url: "https://cad.onshape.com/documents/abc" }],
 			})?.status === "pass",
+		)
+		check(
+			"repo-checks · a README without an Onshape link does not satisfy the recommendation",
+			stepSourceCheck({ ...stepRepo, readme: "# Enclosure\n\nA box with a lid." })?.status === "warn",
 		)
 		check(
 			"repo-checks · a lookalike host does not satisfy the recommendation",
