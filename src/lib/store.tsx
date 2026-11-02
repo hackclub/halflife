@@ -8,6 +8,7 @@ import { ParticipantGoal } from "@/lib/enums"
 import { setFreestylePreview } from "./config/freestyle"
 import { COINS_PER_HOUR, type PrinterGoal, printerById } from "./config/printers"
 import type { StoreSnapshot } from "./queries/store"
+import { useProjectWrites } from "./store-project-writes"
 import { type SubmitExtras, type UnsubmitTarget, useStoreWrites } from "./store-writes"
 import { type CheckpointState, deriveTrail } from "./trail"
 import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types"
@@ -528,21 +529,18 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[bypassLocks, facts.viewer.isAdmin, bypassed, isUnlocked],
 	)
 
+	const { addProject, ensureProject, linkSyncRepoToProject, setProjectRepo, setProjectTier, updateProject } =
+		useProjectWrites({ facts, router, setFacts })
+
 	const {
-		addProject,
 		complete,
 		editSession,
-		ensureProject,
 		finishOnboarding,
-		linkSyncRepoToProject,
 		logSession,
 		postReel,
 		setParticipantGoal,
-		setProjectRepo,
-		setProjectTier,
 		submitPhase,
 		unsubmitPhase,
-		updateProject,
 	} = useStoreWrites({ facts, router, setFacts })
 
 	// The context value is rebuilt only when one of its members changes, so it keeps its identity across the re-renders the provider takes for reasons of its own. Without that, every consumer of the store re-renders on every navigation, because the provider re-renders with the layout.
