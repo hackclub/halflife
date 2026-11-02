@@ -62,7 +62,7 @@ export function ProjectsGrid() {
 		<>
 			{anyReviewState && (
 				<div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[0.78rem] text-navy-soft">
-					<span className="label text-line-strong">Review</span>
+					<span className="label text-navy-faint">Review</span>
 					<Legend className="bg-teal" label="Approved" />
 					<Legend className="bg-sky" label="In review" />
 					<Legend className="bg-orange" label="Needs changes" />
@@ -141,7 +141,7 @@ export function ProjectsGrid() {
 												<IconFilm className="text-sm" /> {stats.reels}
 											</span>
 											{stats.started > 0 && (
-												<span className="hand ml-auto text-[0.76rem] text-line-strong">{fmtDate(stats.started)}</span>
+												<span className="hand ml-auto text-[0.76rem] text-navy-faint">{fmtDate(stats.started)}</span>
 											)}
 										</span>
 									)}

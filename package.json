@@ -9,6 +9,7 @@
 		"airtable:backfill-review": "bun --conditions=react-server scripts/backfill-airtable-review.ts",
 		"airtable:backfill-reviewers": "bun --conditions=react-server scripts/backfill-airtable-reviewers.ts",
 		"airtable:backfill-starters": "bun --conditions=react-server scripts/backfill-airtable-starters.ts",
+		"airtable:reconcile-weeks": "bun --conditions=react-server scripts/reconcile-airtable-weeks.ts",
 		"analytics:backfill": "bun --conditions=react-server scripts/backfill-analytics.ts",
 		"ari:audit-log": "bun scripts/ari-audit-log.ts",
 		"ari:backfill-empty-journals": "bun --conditions=react-server scripts/backfill-ari-empty-journals.ts",

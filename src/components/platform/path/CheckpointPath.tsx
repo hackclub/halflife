@@ -504,7 +504,11 @@ function GhostNode({ top, left }: { top: string; left: string }) {
 					···
 				</span>
 			</span>
-			<p aria-hidden="true" className="hand mt-2 text-center text-[0.64rem] leading-tight text-navy-faint">
+			{/* Wider than the dashed puck so the line reads across rather than stacking one word per row on a phone. */}
+			<p
+				aria-hidden="true"
+				className="hand mt-2 w-max max-w-[7rem] text-center text-[0.64rem] leading-tight text-navy-faint"
+			>
 				the trail grows here
 			</p>
 		</div>

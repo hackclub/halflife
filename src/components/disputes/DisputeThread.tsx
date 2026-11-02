@@ -152,7 +152,7 @@ export function DisputeThread({
 									act(
 										"sendBack",
 										sendBackUrl,
-										"Send this hand-in back for a fresh review? The current decision is undone and the ship returns to Ari's queue.",
+										"Send this submission back for a fresh review? The current decision is undone and the ship returns to Ari's queue.",
 									)
 								}
 								type="button"

@@ -75,7 +75,7 @@ export function SubmissionReelPicker({
 		<div className="mt-4">
 			<p className="label text-navy-soft">Already filmed this week?</p>
 			<p className="mt-1 text-[0.82rem] leading-snug text-navy-soft">
-				Handing this week in again? Pick the reel you posted for it before, rather than recording the same one twice.
+				Submitting this week again? Pick the reel you posted for it before, rather than recording the same one twice.
 			</p>
 			<ul className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
 				{reels.map(reel => {

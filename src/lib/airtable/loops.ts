@@ -200,7 +200,7 @@ export function resolveSignupRow(
  *
  * `RsvpBuffer.airtableRecordId` is the Airtable record for a signup this app drained, and `RsvpBuffer.userId` is whose it is. Together they are an exact mapping that costs one indexed read and needs no column added to the base.
  */
-async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
+export async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 	const byRecordId = new Map<string, AirtableRecord>()
 	const rows = await db.orm.public.RsvpBuffer.where(row => row.airtableRecordId.isNotNull())
 		.where(row => row.userId.isNotNull())
@@ -263,6 +263,28 @@ async function persistRecordLinks(
 	return linked
 }
 
+/** Every record of the Signups table carrying the requested columns. */
+export async function listSignupRecords(
+	config: NonNullable<ReturnType<typeof getAirtableConfig>>,
+	fields: string[],
+): Promise<AirtableRecord[]> {
+	const fieldsQs = fields.map(f => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
+	const records: AirtableRecord[] = []
+	let offset: string | undefined
+	do {
+		const page = await withRateLimitRetry("listSignups", () =>
+			airtableFetch(
+				AirtableListSchema,
+				config,
+				`${encodeURIComponent(TABLE)}?pageSize=100${fieldsQs ? `&${fieldsQs}` : ""}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
+			),
+		)
+		records.push(...page.records)
+		;({ offset } = page)
+	} while (offset)
+	return records
+}
+
 /** Every row of the table, indexed by every key available. */
 async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfig>>) {
 	const byEmail = new Map<string, AirtableRecord>()
@@ -278,26 +300,14 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 	]
 	const writable = await existingColumns(config, TABLE, all)
 	const want = all.filter(c => writable.has(c))
-	const fieldsQs = want.map(f => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
-	let offset: string | undefined
-	do {
-		const page = await withRateLimitRetry("listSignups", () =>
-			airtableFetch(
-				AirtableListSchema,
-				config,
-				`${encodeURIComponent(TABLE)}?pageSize=100${fieldsQs ? `&${fieldsQs}` : ""}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
-			),
-		)
-		for (const r of page.records) {
-			const email = r.fields[LOOPS_FIELDS.email]
-			// First row wins if the list has the same address twice.
-			if (typeof email === "string" && !byEmail.has(email.trim().toLowerCase()))
-				byEmail.set(email.trim().toLowerCase(), r)
-			const userId = r.fields[LOOPS_FIELDS.userId]
-			if (typeof userId === "string" && !byUserId.has(userId.trim())) byUserId.set(userId.trim(), r)
-		}
-		;({ offset } = page)
-	} while (offset)
+	for (const r of await listSignupRecords(config, want)) {
+		const email = r.fields[LOOPS_FIELDS.email]
+		// First row wins if the list has the same address twice.
+		if (typeof email === "string" && !byEmail.has(email.trim().toLowerCase()))
+			byEmail.set(email.trim().toLowerCase(), r)
+		const userId = r.fields[LOOPS_FIELDS.userId]
+		if (typeof userId === "string" && !byUserId.has(userId.trim())) byUserId.set(userId.trim(), r)
+	}
 	return { byEmail, byUserId, writable }
 }
 
@@ -431,8 +441,8 @@ export async function syncLoopsWeekSubmitted(
 	const user = await db.orm.public.User.whereUnique({ id: userId }).select("email").first()
 	if (!user) return { skipped: "no_user" }
 
-	// Recomputed, not forced: submit lands with the row present (true), unsubmit lands with it deleted (false unless another hand-in for the same week stands).
-	const projects = await db.orm.public.ThemeProject.where({ userId })
+	// Recomputed, not forced: submit lands with the row present (true), unsubmit lands with it deleted (false unless another hand-in for the same week stands). Only live projects count, matching `loopsValues` and the hourly sync: a deleted project's hand-ins are gone from the maker's view, so they must not keep the box ticked after the project is deleted.
+	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null, userId })
 		.select("theme")
 		.include("submissions", submissions => submissions.select("phase", "scheduledWeek"))
 		.all()
