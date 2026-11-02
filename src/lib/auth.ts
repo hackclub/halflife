@@ -39,12 +39,16 @@ function linkOnlyEmail(provider: "hackatime" | "lapse" | "github" | "gitlab", id
 	return `${provider}-${id.replaceAll(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
 }
 
-/** The identity payloads the link-only providers return. Parsed, because the id in each decides which account a link lands on. */
+/**
+ * The identity payloads the link-only providers return. Parsed, because the id in each decides which account a link lands on.
+ *
+ * Hackatime sends `null`, not an omitted key, for an identity it has no value for: an account with no GitHub or Slack connected answers `{"github_username": null, "slack_id": null}`. `.optional()` accepts only `undefined`, so those fields are `.nullish()`, and the name falls back to the id.
+ */
 const HackatimeMeBody = z.object({
-	emails: z.array(z.string()).optional(),
-	github_username: z.string().optional(),
+	emails: z.array(z.string()).nullish(),
+	github_username: z.string().nullish(),
 	id: z.union([z.number(), z.string()]),
-	slack_id: z.string().optional(),
+	slack_id: z.string().nullish(),
 })
 const LapseMeBody = z.object({
 	data: z
