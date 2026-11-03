@@ -34,7 +34,7 @@
         "eslint-config-next": "16.3.8",
         "oxlint": "^1.90.0",
         "oxlint-tsgolint": "^7.0.2005",
-        "prisma": "8.0.0-rc.29",
+        "prisma": "^8.0.0-rc.30",
         "tailwindcss": "^4.3.3",
         "typescript": "~6.0.3",
       },
@@ -541,9 +541,9 @@
 
     "@prisma/cli-engine": ["@prisma/cli-engine@0.9.0", "", { "dependencies": { "@clack/prompts": "1.5.0", "@stricli/core": "1.3.0", "arktype": "^2.2.7", "c12": "3.3.4", "colorette": "^2.0.20", "package-manager-detector": "1.8.0", "string-width": "^8.2.1" }, "peerDependencies": { "@prisma/management-api-sdk": "^1.55.0" } }, "sha512-M53Xx/KiPQ02iT8FXT2c9X+3fVgMVfWK/emf/tq+jRNFi7b0Ffwaeo1yz8XS4UKOza5DaKRwMs+K8U44z9corg=="],
 
-    "@prisma/composer": ["@prisma/composer@0.35.0", "", { "dependencies": { "@effect/sql-d1": "4.0.3", "@effect/sql-sqlite-do": "4.0.3", "@effect/vitest": "4.0.3", "@prisma/management-api-sdk": "^1.80.0", "@standard-schema/spec": "^1.1.0", "alchemy": "2.0.0-beta.83", "arktype": "^2.2.3", "cross-spawn": "^7.0.6", "effect": "4.0.3", "esbuild": "^0.28.1" } }, "sha512-qQZY57p6JpnJxiuZ/EWxC2VBJIW3UqA7FCbuCRCh2coecojDAPhEQ4NaBac7JhpFJxWZpsaXmzGznF5sX53lSQ=="],
+    "@prisma/composer": ["@prisma/composer@0.36.0", "", { "dependencies": { "@effect/sql-d1": "4.0.3", "@effect/sql-sqlite-do": "4.0.3", "@effect/vitest": "4.0.3", "@prisma/management-api-sdk": "^1.80.0", "@standard-schema/spec": "^1.1.0", "alchemy": "2.0.0-beta.83", "arktype": "^2.2.3", "cross-spawn": "^7.0.6", "effect": "4.0.3", "esbuild": "^0.28.1" } }, "sha512-Wcf/HrQG6xx35xBcxjFU8UCkuvsMFPWe5QEBGn7dZcf5h35iFIB5jbE88NeKU9RKf+klvR939w1mHnKRWvx7TQ=="],
 
-    "@prisma/composer-cli": ["@prisma/composer-cli@0.35.0", "", { "dependencies": { "@prisma/composer": "0.35.0", "@prisma/management-api-sdk": "^1.80.0", "alchemy": "2.0.0-beta.83", "cross-spawn": "^7.0.6", "effect": "4.0.3", "esbuild": "^0.28.1" }, "peerDependencies": { "@prisma/cli-engine": "0.9.0" } }, "sha512-CjWQzfx5AjTYnAoLpF/zxlQgIUvDsnydb4kl79XiwoxeAqd7mLnedecFFHL7AQAoJRmohGkDft5WDPvMnuGR0Q=="],
+    "@prisma/composer-cli": ["@prisma/composer-cli@0.36.0", "", { "dependencies": { "@prisma/composer": "0.36.0", "@prisma/management-api-sdk": "^1.80.0", "alchemy": "2.0.0-beta.83", "cross-spawn": "^7.0.6", "effect": "4.0.3", "esbuild": "^0.28.1" }, "peerDependencies": { "@prisma/cli-engine": "0.9.0" } }, "sha512-nqRp6CvCyW5uCnM+5jAbqDJ0QnIUblUTjB4mevIW+icwPLXka3qR2K/RpDC5Hg+C111A6emmo1L0kREbOpNVmw=="],
 
     "@prisma/compute-sdk": ["@prisma/compute-sdk@0.43.0", "", { "dependencies": { "@vercel/nft": "^1.10.2", "better-result": "^2.7.0", "jiti": "^2.7.0", "magicast": "^0.5.3", "picomatch": "^4.0.4", "tar-stream": "^3.1.8", "tiny-invariant": "1.3.3", "ws": "^8.20.0", "yaml": "^2.8.2" }, "peerDependencies": { "@prisma/management-api-sdk": "^1.69.0" } }, "sha512-q5Tf5hpDFZmcS4eNeH7IU8OnavToP9h4NsrDXjW7uIZf/pjaQIWItQJi9DZHPkH8n/SvT/oHQrmzPsJ9NPW/hg=="],
 
@@ -1469,7 +1469,7 @@
 
     "pretty-ms": ["pretty-ms@9.3.1", "", { "dependencies": { "parse-ms": "^4.0.0" } }, "sha512-HzMy3Geq23nVALD/M2LliU+F+M+gVNsvkQWWqeBZ8HDiCgzo6YPJ/Omrmtq24EFrIsk0a3EkQGEd7bDOo+IhGA=="],
 
-    "prisma": ["prisma@8.0.0-rc.29", "", { "dependencies": { "@manypkg/tools": "^2.1.2", "@prisma/cli-engine": "0.9.0", "@prisma/composer-cli": "0.35.0", "@prisma/compute-sdk": "0.43.0", "@prisma/management-api-sdk": "1.80.0", "@prisma/orm-toolchain": "8.0.0-rc.21", "@vercel/detect-agent": "^1.2.3", "better-result": "^2.9.2", "cross-spawn": "^7.0.6", "dotenv": "^17.4.2", "execa": "^9.6.1", "open": "^11.0.0" }, "bin": { "prisma": "./dist/prisma.js" } }, "sha512-8QlqV7EWsQONZIQWu0FdwauhdmXdLmbpD4us6MW/B4BXd+aI74Ro53OSit9QlAjHXQEVUTY4AqmDqSqprAdM7g=="],
+    "prisma": ["prisma@8.0.0-rc.30", "", { "dependencies": { "@manypkg/tools": "^2.1.2", "@prisma/cli-engine": "0.9.0", "@prisma/composer-cli": "0.36.0", "@prisma/compute-sdk": "0.43.0", "@prisma/management-api-sdk": "1.80.0", "@prisma/orm-toolchain": "8.0.0-rc.22", "@vercel/detect-agent": "^1.2.3", "better-result": "^2.9.2", "cross-spawn": "^7.0.6", "dotenv": "^17.4.2", "execa": "^9.6.1", "open": "^11.0.0" }, "bin": { "prisma": "./dist/prisma.js" } }, "sha512-hBP8yuDeWugLjbi33TmFgz2zLbDVIpZ2LYuonQuXiXB1FxHg2NqcSVKv+8tZ/JB46UVpxb0nV/X+rATlWUd8DQ=="],
 
     "promise-limit": ["promise-limit@2.7.0", "", {}, "sha512-7nJ6v5lnJsXwGprnGXga4wx6d1POjvi5Qmf1ivTRxTjH4Z/9Czja/UCMLVmB9N93GeWOU93XaFaEt6jbuoagNw=="],
 
