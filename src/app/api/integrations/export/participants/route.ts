@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { z } from "zod"
 import { ok, parseQuery } from "@/lib/api"
-import { getThemeDef } from "@/lib/config/program"
+import { themeLabel } from "@/lib/config/program"
 import { withExportRoute } from "@/lib/integration-route"
 import { type CursorOrderOf, pageResult, paginationQuery, readCursor } from "@/lib/pagination"
 import db from "@/lib/prisma8"
@@ -70,7 +70,7 @@ export const GET = withExportRoute(async (req: NextRequest, gate) => {
 			createdAt: u.createdAt,
 			id: u.id,
 			name: u.name,
-			themeProjects: u.themeProjects.map(p => withFields(p, { themeLabel: getThemeDef(p.theme).label })),
+			themeProjects: u.themeProjects.map(p => withFields(p, { themeLabel: themeLabel(p.theme) })),
 			updatedAt: u.updatedAt,
 			verificationStatus: u.verificationStatus,
 			...(internal ? { email: u.email, slackId: u.slackId } : {}),

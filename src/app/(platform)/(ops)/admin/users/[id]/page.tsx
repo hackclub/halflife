@@ -6,7 +6,7 @@ import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { PenaltyCard } from "@/app/components/forms/PenaltyCard"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
-import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
+import { CREDIT_NAME_PLURAL, themeLabel } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
 import { PayoutSource, PhaseStatus } from "@/lib/enums"
@@ -199,7 +199,7 @@ export default async function AdminUserPage({ params }: Props) {
 								grantUsd: project.designStatus === PhaseStatus.approved ? project.grantUsd : null,
 								id: project.id,
 								theme: project.theme,
-								themeLabel: getThemeDef(project.theme).label,
+								themeLabel: themeLabel(project.theme),
 								tier: projectTierId(project),
 								title: project.title,
 							}}

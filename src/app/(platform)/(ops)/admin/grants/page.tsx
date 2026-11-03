@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { IssueGrantCardsForm } from "@/app/components/forms/IssueGrantCardsForm"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
-import { getThemeDef } from "@/lib/config/program"
+import { themeLabel } from "@/lib/config/program"
 import { HcbGrantCardBatchStatus, PayoutSource } from "@/lib/enums"
 import { listGrantCardBatches, previewCardGrants } from "@/lib/grant-cards"
 import { formatUsd } from "@/lib/money"
@@ -68,7 +68,7 @@ export default async function AdminGrantsPage() {
 									<div className="hl-hint hl-mono">{row.projectId}</div>
 								</td>
 								<td>{row.ownerName}</td>
-								<td>{getThemeDef(row.theme).label}</td>
+								<td>{themeLabel(row.theme)}</td>
 								<td className="hl-mono">{formatUsd(row.amountCents / 100)}</td>
 								<td className="hl-mono">{row.bomLineCount}</td>
 								<td className="hl-mono">{row.grantUsd === null ? "-" : formatUsd(row.grantUsd)}</td>

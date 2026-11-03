@@ -1,6 +1,6 @@
 import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
-import { THEMES } from "@/lib/config/program"
+import { THEMES, themeLabel } from "@/lib/config/program"
 import { PhaseStatus, ReviewPass, type Theme } from "@/lib/enums"
 import db from "@/lib/prisma8"
 import { currentWeekNumber } from "@/lib/program"
@@ -139,7 +139,7 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 
 	return started
 		.map(theme => ({
-			label: theme.label,
+			label: themeLabel(theme.id),
 			reviewed: reviewed.get(theme.id)?.size ?? 0,
 			total: totals.get(theme.id) ?? 0,
 			week: theme.designWeek,

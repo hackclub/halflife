@@ -1,7 +1,7 @@
 import { and } from "@prisma/orm-postgres/orm-client"
 import { z } from "zod"
 import { fail, ok, parseBody } from "@/lib/api"
-import { getThemeDef, participantThemeLabel, themeForDesignWeek } from "@/lib/config/program"
+import { getThemeDef, themeForDesignWeek, themeLabel } from "@/lib/config/program"
 import { HoursSource, Phase } from "@/lib/enums"
 import { withSession, withWriteSession } from "@/lib/guards"
 import { rollUpHours } from "@/lib/hours"
@@ -87,7 +87,7 @@ export const GET = withSession(async (_req: Request, { gate }) => {
 			grantUsd: project.grantUsd,
 			hours: { build, design },
 			id: project.id,
-			label: participantThemeLabel(project.theme),
+			label: themeLabel(project.theme),
 			slug: def.slug,
 			theme: project.theme,
 			tier: project.tier,

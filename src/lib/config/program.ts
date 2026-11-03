@@ -162,26 +162,26 @@ export function getThemeDef(theme: Theme): ThemeDef {
 }
 
 /**
- * A theme's name as participants read it. The same as `label`, except that Breadboard Computer reads as Freestyle from the start of week 5 (see config/freestyle). Admin and review screens keep `label`, which is what the theme is still called underneath.
+ * A theme's name as the programme shows it, on every surface – the trail, the staff console, the review queue and the exports alike. The same as `label`, except that Breadboard Computer reads as Freestyle from the start of week 5 (see config/freestyle). `label` stays the stored name, which is what the database and the theme enum still call it.
  */
-export const participantThemeLabel = (theme: Theme): string =>
+export const themeLabel = (theme: Theme): string =>
 	theme === Theme.BREADBOARD_COMPUTER && isFreestyle() ? FREESTYLE_LABEL : getThemeDef(theme).label
 
 /** `projectDisplayTitle` for a message the maker reads: a blank title falls back to the week's name as they see it. */
 export const participantProjectTitle = (project: { title: string; theme: Theme }): string =>
-	project.title.trim() || participantThemeLabel(project.theme)
+	project.title.trim() || themeLabel(project.theme)
 
-/** A theme's one-line description as participants read it, renamed on the same terms as `participantThemeLabel`. */
+/** A theme's one-line description as participants read it, renamed on the same terms as `themeLabel`. */
 export const participantThemeBlurb = (theme: Theme): string =>
 	theme === Theme.BREADBOARD_COMPUTER && isFreestyle() ? FREESTYLE_BLURB : getThemeDef(theme).blurb
 
 /**
  * What to call a project in front of somebody else.
  *
- * A maker may leave the title blank, and a blank title is not a name – so every notice, dispute thread and review queue row falls back to the week's own label. It was written out four times, and the copy in `airtable/sync` is the dangerous kind: a fallback that differs by one word reads as a different project rather than as a bug.
+ * A maker may leave the title blank, and a blank title is not a name – so every notice, dispute thread and review queue row falls back to the week's own name. It was written out four times, and the copy in `airtable/sync` is the dangerous kind: a fallback that differs by one word reads as a different project rather than as a bug.
  */
 export function projectDisplayTitle(project: { title: string; theme: Theme }): string {
-	return project.title.trim() || getThemeDef(project.theme).label
+	return project.title.trim() || themeLabel(project.theme)
 }
 
 /** The theme and phase a given program week is scheduled for. */

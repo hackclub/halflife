@@ -10,7 +10,7 @@ import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
 import { ariWebhookUrl, findUnsyncedAriSubmissions, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
-import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
+import { scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { formatDeadline } from "@/lib/deadline"
 import { Phase } from "@/lib/enums"
@@ -52,7 +52,7 @@ export default async function AdminProgramPage() {
 		const day = { day: "numeric", month: "short", timeZone: settings.programTimezone, weekday: "short" } as const
 		return {
 			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
-			label: slot ? `${slot.theme.label} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "-",
+			label: slot ? `${themeLabel(slot.theme.id)} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "-",
 			runs: range
 				? `${range.start.toLocaleDateString("en-US", day)} - ${range.end.toLocaleDateString("en-US", day)}`
 				: "-",

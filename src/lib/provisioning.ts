@@ -1,6 +1,6 @@
 import "server-only"
 import type { Models } from "@/app/generated/prisma8/contract.d"
-import { MAX_WARMUP_PROJECTS, participantThemeLabel, THEMES } from "@/lib/config/program"
+import { MAX_WARMUP_PROJECTS, THEMES, themeLabel } from "@/lib/config/program"
 import { type Phase, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { lockKey } from "@/lib/locks"
@@ -40,7 +40,7 @@ export async function ensureThemeProject(userId: string, theme: Theme): Promise<
 	if (existing) return existing
 
 	// The row is the participant's own project, so it starts out named the way they see the week.
-	await db.orm.public.ThemeProject.createAll([{ theme, title: participantThemeLabel(theme), userId }], {
+	await db.orm.public.ThemeProject.createAll([{ theme, title: themeLabel(theme), userId }], {
 		onConflict: "skip",
 	})
 	return db.orm.public.ThemeProject.where({ deletedAt: null, theme, userId }).firstOrThrow()

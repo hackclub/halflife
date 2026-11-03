@@ -5,7 +5,14 @@ import { isActiveDay } from "@/lib/analytics"
 import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, stepIndexOf } from "@/lib/config/onboarding"
-import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
+import {
+	scheduledWeekFor,
+	scheduleForWeek,
+	TOTAL_WEEKS,
+	themeLabel,
+	WARMUP_THEME,
+	WARMUP_WEEK_ID,
+} from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { type Balances, getBalances, type LedgerEntryRow } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
@@ -1225,7 +1232,7 @@ export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
 		return {
 			count,
 			hint: scheduled
-				? `${scheduled.theme.label} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
+				? `${themeLabel(scheduled.theme.id)} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
 				: "No theme scheduled",
 			label: `Week ${week}`,
 			ofSignupsPct: pctOf(count, signups.count),
@@ -1827,7 +1834,11 @@ function weekSlots(): WeekSlot[] {
 	const slots: WeekSlot[] = [{ label: WARMUP_THEME.label, phase: null, week: WARMUP_WEEK_ID }]
 	for (let week = 1; week <= TOTAL_WEEKS; week++) {
 		const scheduled = scheduleForWeek(week)
-		slots.push({ label: scheduled ? scheduled.theme.label : `Week ${week}`, phase: scheduled?.phase ?? null, week })
+		slots.push({
+			label: scheduled ? themeLabel(scheduled.theme.id) : `Week ${week}`,
+			phase: scheduled?.phase ?? null,
+			week,
+		})
 	}
 	return slots
 }

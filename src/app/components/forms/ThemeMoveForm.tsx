@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { Button, Callout, Select } from "@/app/components/ui"
-import { getThemeDef, THEMES, WARMUP_THEME } from "@/lib/config/program"
+import { THEMES, themeLabel, WARMUP_THEME } from "@/lib/config/program"
 import type { Theme } from "@/lib/enums"
 import { sendJson, useAction } from "@/lib/use-action"
 
@@ -16,8 +16,8 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 
 	function save() {
 		if (value === current) return
-		const from = getThemeDef(current).label
-		const to = getThemeDef(value).label
+		const from = themeLabel(current)
+		const to = themeLabel(value)
 		if (!window.confirm(`Move this project from ${from} to ${to}? Its reviews and grant move with it.`)) return
 		void run("save", () =>
 			sendJson(`/api/admin/theme-projects/${projectId}`, { body: { theme: value }, method: "PATCH" }),
@@ -38,7 +38,7 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 				>
 					{OPTIONS.map(t => (
 						<option key={t.id} value={t.id}>
-							{t.label}
+							{themeLabel(t.id)}
 						</option>
 					))}
 				</Select>

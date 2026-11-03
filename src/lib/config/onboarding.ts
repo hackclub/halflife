@@ -115,7 +115,7 @@ export const STARTER_PROJECTS = [
 		id: "starbie",
 		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
 		repoUrl: "https://github.com/SharKingStudios/Starbie",
-		// Week one's starter, offered only in its own week. Breadboard Computer has no starter yet, so that week offers none: listing Starbie for it would hand out the week-one guide under a different theme.
+		// Week one's starter, offered only in its own week. Week 5 (freestyle) has no starter, so that week offers none: listing Starbie for it would hand out the week-one guide under a different theme.
 		themes: [Theme.PCB],
 		title: "Starbie",
 	},
