@@ -1,12 +1,6 @@
 import { ok, withRoute } from "@/lib/api"
 import { submitFloorFor } from "@/lib/config/printers"
-import {
-	participantThemeBlurb,
-	participantThemeLabel,
-	scheduleForWeek,
-	THEMES,
-	TOTAL_WEEKS,
-} from "@/lib/config/program"
+import { participantThemeBlurb, scheduleForWeek, THEMES, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange, weekOpensAt } from "@/lib/program"
 
@@ -29,7 +23,7 @@ export const GET = withRoute(async () => {
 			blurb: participantThemeBlurb(t.id),
 			buildWeek: t.buildWeek,
 			designWeek: t.designWeek,
-			label: participantThemeLabel(t.id),
+			label: themeLabel(t.id),
 			slug: t.slug,
 		})),
 		tiers: TIERS.map(t => ({

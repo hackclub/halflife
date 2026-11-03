@@ -20,7 +20,7 @@ import type { Week } from "@/lib/types"
  *
  * - **Ends cleanly.** At zero the store's own week timer flips `weekPassed` (store.tsx re-arms its clock for the next boundary), the gate above closes and the plate goes away – rather than counting up into negative days, which is what a tab left open overnight would otherwise show.
  *
- * - **Says whose deadline it is.** A week can be open past its own Sunday because of an extension, and the extension's target week is not always the week the plate sits under: an account-wide extension reaches every week, so a later week's plate would otherwise name a day that is not its own Sunday. When the deadline is an extension the plate says so – the week's own project's by name, the account's as "your extension" – rather than claiming the week closes then.
+ * - **Says whose deadline it is.** A week can be open past its own Sunday because of an extension, and the extension's target week is not always the week the plate sits under: an account-wide extension reaches every week, so a later week's plate would otherwise name a day that is not its own Sunday. When the deadline is an extension the plate says so – the week's own project's or the week's own by name, the account's as "your extension" – rather than claiming the week closes then.
  *
  * The figures are split into units rather than printed as one string so each is its own column with its label beneath, the figure-leads/words-follow shape the site's countdown uses. They are hidden from a screen reader, which gets the same count in words plus the deadline itself rather than four numbers changing every second.
  */
@@ -49,7 +49,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 	const { text, pill } = onAccent(week.accent)
 
 	const label =
-		extension === "project"
+		extension === "project" || extension === "week"
 			? `Week ${week.id} extension ends in`
 			: extension === "account"
 				? "Your extension ends in"

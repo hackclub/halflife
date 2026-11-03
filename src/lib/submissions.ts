@@ -89,14 +89,17 @@ function accessOpenOnClient(
 	settings: Pick<ProgramSettings, "submissionsOpen" | "submissionsCloseAt"> | null,
 	userExtension: string | null | undefined,
 	projectExtension: string | null | undefined,
+	weekExtension: string | null | undefined,
 	now: Date,
 ): boolean {
 	const userExt = userExtension ? parseDbTimestamp(userExtension) : null
 	const projectExt = projectExtension ? parseDbTimestamp(projectExtension) : null
+	const weekExt = weekExtension ? parseDbTimestamp(weekExtension) : null
 	if (!settings) return false
 	if (settings.submissionsOpen && (!settings.submissionsCloseAt || settings.submissionsCloseAt > now)) return true
 	if (userExt && userExt > now) return true
 	if (projectExt && projectExt > now) return true
+	if (weekExt && weekExt > now) return true
 	return false
 }
 
@@ -222,11 +225,14 @@ export async function submitPhase(
 
 	return db.transaction(async tx => {
 		// The gate is re-read on the transaction client: `getProgramSettings` caches the settings row for this request, so the pre-check above cannot see a submissions toggle, and a week can start or close between it and this write. Either would otherwise file a submission into a closed week.
-		const [accessSettings, accessUser, accessProject] = await Promise.all([
+		const [accessSettings, accessUser, accessProject, accessWeek] = await Promise.all([
 			tx.orm.public.ProgramSettings.whereUnique({ id: "singleton" }).first(),
 			tx.orm.public.User.whereUnique({ id: userId }).select("submissionExtensionUntil").first(),
 			tx.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
 				.select("buildStatus", "designStatus", "submissionExtensionUntil")
+				.first(),
+			tx.orm.public.WeekExtension.whereUnique({ userId, week: scheduledWeek })
+				.select("submissionExtensionUntil")
 				.first(),
 		])
 		const stillOpen = accessOpenOnClient(
@@ -240,6 +246,7 @@ export async function submitPhase(
 				: null,
 			accessUser?.submissionExtensionUntil,
 			accessProject?.submissionExtensionUntil,
+			accessWeek?.submissionExtensionUntil,
 			new Date(),
 		)
 		if (!stillOpen && !(await ignoresSchedule(userId)))

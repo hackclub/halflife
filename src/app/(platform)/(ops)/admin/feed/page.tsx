@@ -2,7 +2,7 @@ import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { type ComposerProject, PostComposer } from "@/app/components/forms/PostComposer"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
-import { getThemeDef } from "@/lib/config/program"
+import { themeLabel } from "@/lib/config/program"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -34,7 +34,7 @@ export default async function AdminFeedPage() {
 
 	const options: ComposerProject[] = projects.map(project => ({
 		id: project.id,
-		label: project.title || getThemeDef(project.theme).label,
+		label: project.title || themeLabel(project.theme),
 	}))
 
 	return (

@@ -5,7 +5,14 @@ import { isActiveDay } from "@/lib/analytics"
 import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, stepIndexOf } from "@/lib/config/onboarding"
-import { scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
+import {
+	scheduledWeekFor,
+	scheduleForWeek,
+	TOTAL_WEEKS,
+	themeLabel,
+	WARMUP_THEME,
+	WARMUP_WEEK_ID,
+} from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { type Balances, getBalances, type LedgerEntryRow } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
@@ -306,6 +313,7 @@ export interface UserDetail {
 		title: string
 	}[]
 	verificationStatus: string | null
+	weekExtensions: { submissionExtensionUntil: Date; week: number }[]
 }
 
 /** The 25 most recent orders on the user page: number, item, credit total and status only. */
@@ -389,6 +397,9 @@ export async function getUserDetail(
 						.where(topUp => topUp.sentAt.isNotNull()),
 				),
 		)
+		.include("weekExtensions", extensions =>
+			extensions.select("submissionExtensionUntil", "week").orderBy(extension => extension.week.asc()),
+		)
 		.first()
 	if (!row) return null
 	const user: UserDetail = {
@@ -419,6 +430,10 @@ export async function getUserDetail(
 			submissionExtensionUntil: parseNullableTimestamp(project.submissionExtensionUntil),
 		})),
 		verificationStatus: row.verificationStatus,
+		weekExtensions: row.weekExtensions.map(extension => ({
+			submissionExtensionUntil: parseDbTimestamp(extension.submissionExtensionUntil),
+			week: extension.week,
+		})),
 	}
 
 	// Ledger, balances and order history only leave the server for ADMIN/AUDITOR – a FULFILLER (shipping role) needs the fulfilment sheet, not someone's full credit history. Stripped callers get the profile with contact/risk fields redacted and empty money sections.
@@ -1225,7 +1240,7 @@ export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
 		return {
 			count,
 			hint: scheduled
-				? `${scheduled.theme.label} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
+				? `${themeLabel(scheduled.theme.id)} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
 				: "No theme scheduled",
 			label: `Week ${week}`,
 			ofSignupsPct: pctOf(count, signups.count),
@@ -1827,7 +1842,11 @@ function weekSlots(): WeekSlot[] {
 	const slots: WeekSlot[] = [{ label: WARMUP_THEME.label, phase: null, week: WARMUP_WEEK_ID }]
 	for (let week = 1; week <= TOTAL_WEEKS; week++) {
 		const scheduled = scheduleForWeek(week)
-		slots.push({ label: scheduled ? scheduled.theme.label : `Week ${week}`, phase: scheduled?.phase ?? null, week })
+		slots.push({
+			label: scheduled ? themeLabel(scheduled.theme.id) : `Week ${week}`,
+			phase: scheduled?.phase ?? null,
+			week,
+		})
 	}
 	return slots
 }

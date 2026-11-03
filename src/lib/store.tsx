@@ -211,9 +211,9 @@ interface Ctx {
 	/** When a week stops taking work, e.g. "Sunday, October 5 at 11:59 PM", its extension included. */
 	weekDeadline(weekId: number): string | null
 	/**
-	 * Whose extension a week's countdown is racing, when it is racing one: `"project"` for the week's own project's, `"account"` for the participant's own – which covers every week at once – or null when the week closes on its own.
+	 * Whose extension a week's countdown is racing, when it is racing one: `"project"` for the week's own project's, `"week"` for one granted to the week itself, `"account"` for the participant's own – which covers every week at once – or null when the week closes on its own.
 	 */
-	weekExtension(weekId: number): "account" | "project" | null
+	weekExtension(weekId: number): "account" | "project" | "week" | null
 	/** Hours logged across every session checkpoint in a week. */
 	weekHours(weekId: number): number
 	weekOf(weekId: number): Week

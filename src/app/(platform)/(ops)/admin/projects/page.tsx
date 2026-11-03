@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Button, EmptyState, PageHeader, Panel, Select, statusLabel, Table, TextInput } from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
-import { getThemeDef, THEMES } from "@/lib/config/program"
+import { THEMES, themeLabel } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { PhaseStatus, Theme } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -85,7 +85,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 						<option value="">Any theme</option>
 						{THEMES.map(t => (
 							<option key={t.id} value={t.id}>
-								{t.label}
+								{themeLabel(t.id)}
 							</option>
 						))}
 						<option value={Theme.WARMUP}>Warm Up</option>
@@ -157,7 +157,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										ownerName: displayName(project.user) ?? "-",
 										requestedTier: project.requestedTier,
 										theme: project.theme,
-										themeLabel: getThemeDef(project.theme).label,
+										themeLabel: themeLabel(project.theme),
 										tier: project.tier,
 										title: project.title,
 										userExtension,

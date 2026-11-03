@@ -117,7 +117,7 @@ export interface Trail {
 	warmupWeekOf(projectId: string): Week | null
 	weekClosesAtMs(weekId: number): number | null
 	weekDeadline(weekId: number): string | null
-	weekExtension(weekId: number): "account" | "project" | null
+	weekExtension(weekId: number): "account" | "project" | "week" | null
 	weekHours(weekId: number): number
 	weekOf(weekId: number): Week
 	weekOfCheckpoint(checkpoint: Checkpoint): Week

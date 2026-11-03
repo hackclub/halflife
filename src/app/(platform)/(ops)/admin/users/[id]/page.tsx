@@ -6,10 +6,10 @@ import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { PenaltyCard } from "@/app/components/forms/PenaltyCard"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
-import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
+import { CREDIT_NAME_PLURAL, scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
-import { PayoutSource, PhaseStatus } from "@/lib/enums"
+import { PayoutSource, Phase, PhaseStatus } from "@/lib/enums"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { isHcbConfigured } from "@/lib/hcb"
 import { penaltyFor } from "@/lib/moderation"
@@ -20,6 +20,7 @@ import { getProgramSettings } from "@/lib/program"
 import { getUserDetail } from "@/lib/queries/admin"
 import { parseDbTimestamp } from "@/lib/time"
 import { ThemedProjectRow } from "./ThemedProjectRow"
+import { WeekExtensionForm } from "./WeekExtensionForm"
 
 export const dynamic = "force-dynamic"
 
@@ -72,6 +73,23 @@ export default async function AdminUserPage({ params }: Props) {
 	// Which penalty is on right now. An expired suspension still has its end timestamp on the row, so the timestamps alone cannot decide whether to show a badge.
 	const penalty = penalties ? penaltyFor(penalties.bannedAt, penalties.suspendedUntil) : "none"
 
+	const weekExtensionByWeek = new Map(user.weekExtensions.map(extension => [extension.week, extension]))
+	const now = new Date()
+	const weekExtensionOptions = Array.from({ length: TOTAL_WEEKS }, (_, index) => {
+		const week = index + 1
+		const slot = scheduleForWeek(week)
+		const extension = weekExtensionByWeek.get(week)
+		const state = extension ? (extension.submissionExtensionUntil > now ? " · extended" : " · expired") : ""
+		const label = slot
+			? `Week ${week} – ${themeLabel(slot.theme.id)} ${slot.phase === Phase.DESIGN ? "design" : "build"}`
+			: `Week ${week}`
+		return {
+			current: extension?.submissionExtensionUntil.toISOString() ?? null,
+			label: `${label}${state}`,
+			week,
+		}
+	})
+
 	return (
 		<div className="hl-stack">
 			<PageHeader
@@ -117,12 +135,23 @@ export default async function AdminUserPage({ params }: Props) {
 				<Panel title="Extension">
 					<p className="hl-hint" style={{ marginTop: 0 }}>
 						Covers every project they own: passed weeks take journal entries again, and work can be submitted past a
-						global close. For one project only, use its row below.
+						global close. For one project only, use its row below; for one week, including a week with no project yet,
+						use the week extension below.
 					</p>
 					<ExtensionForm
 						current={user.submissionExtensionUntil?.toISOString() ?? null}
 						url={`/api/admin/users/${id}`}
 					/>
+				</Panel>
+			) : null}
+
+			{canManageUsers ? (
+				<Panel title="Week extension">
+					<p className="hl-hint" style={{ marginTop: 0 }}>
+						Give one week more time, including a week they have not started and so have no project row for. The
+						extension stays on the week and covers its project once they begin it.
+					</p>
+					<WeekExtensionForm options={weekExtensionOptions} urlPrefix={`/api/admin/users/${id}/weeks`} />
 				</Panel>
 			) : null}
 
@@ -199,7 +228,7 @@ export default async function AdminUserPage({ params }: Props) {
 								grantUsd: project.designStatus === PhaseStatus.approved ? project.grantUsd : null,
 								id: project.id,
 								theme: project.theme,
-								themeLabel: getThemeDef(project.theme).label,
+								themeLabel: themeLabel(project.theme),
 								tier: projectTierId(project),
 								title: project.title,
 							}}

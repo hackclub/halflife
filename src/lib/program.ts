@@ -2,8 +2,8 @@ import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
 import { cache } from "react"
 import type { Models } from "@/app/generated/prisma8/contract.d"
-import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
-import { type PayoutSource, PhaseStatus, Role } from "@/lib/enums"
+import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor, TOTAL_WEEKS } from "@/lib/config/program"
+import { type PayoutSource, Phase, PhaseStatus, Role } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { getUserRoles, hasRole } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -182,15 +182,17 @@ export const WEEK_CLOSED_MESSAGE =
  */
 export async function isWeekOpen(userId: string, themeProjectId: string, week: number): Promise<boolean> {
 	if (await ignoresSchedule(userId)) return true
-	const [settings, user, project] = await Promise.all([
+	const [settings, user, project, weekExtension] = await Promise.all([
 		getProgramSettings(),
 		db.orm.public.User.whereUnique({ id: userId }).select("submissionExtensionUntil").first(),
 		db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).select("submissionExtensionUntil").first(),
+		db.orm.public.WeekExtension.whereUnique({ userId, week }).select("submissionExtensionUntil").first(),
 	])
 	const closesAt = effectiveWeekClose(
 		weekClosesAt(settings, week),
 		user?.submissionExtensionUntil ? parseDbTimestamp(user.submissionExtensionUntil) : null,
 		project?.submissionExtensionUntil ? parseDbTimestamp(project.submissionExtensionUntil) : null,
+		weekExtension?.submissionExtensionUntil ? parseDbTimestamp(weekExtension.submissionExtensionUntil) : null,
 	)
 	return new Date() < closesAt
 }
@@ -215,6 +217,7 @@ export type SubmissionAccessReason =
 	| "OPEN"
 	| "USER_EXTENSION"
 	| "PROJECT_EXTENSION"
+	| "WEEK_EXTENSION"
 	| "ADMIN"
 	| "CLOSED"
 	| "NOT_STARTED"
@@ -229,7 +232,7 @@ export interface SubmissionAccess {
 /**
  * Whether this participant may still write to this project.
  *
- * Two levels of override, both as columns rather than manual database surgery: a per-user one covering everything they do, and a per-project one. Either being in the future opens the gate.
+ * Three levels of override, all as rows rather than manual database surgery: a per-user one covering everything they do, a per-project one, and a per-week one that can be granted before the week's project exists. Any being in the future opens the gate. The week one reaches either of the project's two weeks, because a grant written for a week the maker had not started still has to cover the project once they begin it.
  */
 export async function getSubmissionAccess(userId: string, themeProjectId?: string): Promise<SubmissionAccess> {
 	const now = new Date()
@@ -237,7 +240,9 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 		getProgramSettings(),
 		db.orm.public.User.whereUnique({ id: userId }).select("submissionExtensionUntil").first(),
 		themeProjectId
-			? db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).select("submissionExtensionUntil").first()
+			? db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+					.select("submissionExtensionUntil", "theme")
+					.first()
 			: Promise.resolve(null),
 	])
 
@@ -269,6 +274,25 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 			open: true,
 			reason: "PROJECT_EXTENSION",
 		}
+
+	if (project) {
+		const weeks = [scheduledWeekFor(project.theme, Phase.DESIGN), scheduledWeekFor(project.theme, Phase.BUILD)]
+		const weekRows = await db.orm.public.WeekExtension.where({ userId })
+			.where(row => row.week.in(weeks))
+			.select("submissionExtensionUntil")
+			.all()
+		const weekExt = weekRows.reduce<Date | null>((latest, row) => {
+			const until = parseDbTimestamp(row.submissionExtensionUntil)
+			return latest === null || until > latest ? until : latest
+		}, null)
+		if (weekExt && weekExt > now)
+			return {
+				closesAt: settings.submissionsCloseAt,
+				extensionUntil: weekExt,
+				open: true,
+				reason: "WEEK_EXTENSION",
+			}
+	}
 
 	if (await ignoresSchedule(userId))
 		return {

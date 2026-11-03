@@ -20,6 +20,7 @@ import {
 	shopRegionUpdateSchema,
 	subscribeSchema,
 	userFlagsSchema,
+	weekExtensionSchema,
 } from "@/lib/schemas/admin"
 
 const validItem = {
@@ -43,6 +44,12 @@ describe("roleChangeSchema / userFlagsSchema / projectExtensionSchema", () => {
 		expect(projectExtensionSchema.safeParse({}).success).toBe(false)
 		expect(projectExtensionSchema.safeParse({ theme: "PCB" }).success).toBe(true)
 		expect(projectExtensionSchema.safeParse({ extra: 1 }).success).toBe(false)
+	})
+
+	test("a week extension is a date or an explicit clear", () => {
+		expect(weekExtensionSchema.safeParse({ submissionExtensionUntil: "2026-12-01T00:00:00.000Z" }).success).toBe(true)
+		expect(weekExtensionSchema.safeParse({ submissionExtensionUntil: null }).success).toBe(true)
+		expect(weekExtensionSchema.safeParse({}).success).toBe(false)
 	})
 
 	test("dispute replies cannot be blank", () => {

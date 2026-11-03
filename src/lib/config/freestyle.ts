@@ -1,7 +1,7 @@
 /**
  * Week 5 is freestyle: no set theme and no dedicated starter project, so making a project that week opens on a page that says so before the form.
  *
- * The theme underneath is still Breadboard Computer – it is what the database, the review queue and the admin screens call it – and only what participants read is renamed. The rename switches itself on at `FREESTYLE_STARTS_AT` rather than shipping in a deploy, so nobody has to be awake at midnight to release it.
+ * The theme underneath is still Breadboard Computer – it is what the database and the theme enum call it – and only what people read is renamed. The rename switches itself on at `FREESTYLE_STARTS_AT` rather than shipping in a deploy, so nobody has to be awake at midnight to release it. The trail, the staff console and the review queue all read the name through `themeLabel`, so they stay in step.
  */
 export const FREESTYLE_WEEK = 5
 

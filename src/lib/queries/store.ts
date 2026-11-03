@@ -124,9 +124,9 @@ export interface StoreSnapshot {
 	 */
 	weekClosesAt: { [_: number]: number }
 	/**
-	 * Which weeks are racing an extension rather than their own Sunday, and whose: `"project"` when that week's own project carries it, `"account"` when the participant's own extension covers it – and that one reaches every week at once, which is exactly what makes a countdown on a later week look like it names the wrong day. Weeks that close on their own are absent.
+	 * Which weeks are racing an extension rather than their own Sunday, and whose: `"project"` when that week's own project carries it, `"week"` when the week itself was granted one before its project existed, `"account"` when the participant's own extension covers it – and that one reaches every week at once, which is exactly what makes a countdown on a later week look like it names the wrong day. Weeks that close on their own are absent.
 	 */
-	weekExtensions: { [_: number]: "account" | "project" }
+	weekExtensions: { [_: number]: "account" | "project" | "week" }
 	/**
 	 * When each trail week starts taking work, epoch ms: midnight at the start of its Monday in the program timezone. Nothing on a week opens before it, the first checkpoint included, and the server refuses the same writes.
 	 */
@@ -151,88 +151,100 @@ function weekOf(themeIndex: number, phase: Phase): number {
  * The reads themselves are documented where they are made; this function only knows the order they resolve in, so the assembly below can stay about what the trail does with them.
  */
 async function loadStoreRows(userId: string) {
-	const [userRow, projectRows, sessionRows, linkRows, postRows, submissionRows, balances, settings, owedReels, roles] =
-		await Promise.all([
-			db.orm.public.User.whereUnique({ id: userId })
-				.select(
-					"currentStreak",
-					"displayName",
-					"hardwareExperience",
-					"id",
-					"image",
-					"lastStreakDate",
-					"name",
-					"onboardingCompletedAt",
-					"participantGoal",
-					"printerGoalId",
-					"slackId",
-					"submissionExtensionUntil",
-				)
-				.firstOrThrow(),
-			db.orm.public.ThemeProject.where({ deletedAt: null, userId })
-				.select(
-					"approvedHours",
-					"buildStatus",
-					"coverImageKey",
-					"description",
-					"designApprovedHours",
-					"designStatus",
-					"githubRepo",
-					"id",
-					"namedAt",
-					"requestedTier",
-					"starterProjectId",
-					"submissionExtensionUntil",
-					"theme",
-					"tier",
-					"title",
-					"warmupPhase",
-				)
-				.all(),
-			// Ordered, because the trail's Nth entry node IS the Nth session written.
-			db.orm.public.WorkSession.where({ deletedAt: null })
-				.where(session =>
-					session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
-				)
-				.orderBy([session => session.createdAt.asc(), session => session.id.asc()])
-				.select(
-					"content",
-					"createdAt",
-					"hoursApproved",
-					"hoursClaimed",
-					"hoursSource",
-					"id",
-					"phase",
-					"themeProjectId",
-					"title",
-				)
-				.include("media", media => media.select("objectKey"))
-				.include("timelapses", timelapse =>
-					timelapse.select("coveredSeconds", "externalId", "hackatimeProject", "objectKey", "recordedAt"),
-				)
-				.all(),
-			db.orm.public.HackatimeLink.where(link =>
-				link.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+	const [
+		userRow,
+		projectRows,
+		sessionRows,
+		linkRows,
+		postRows,
+		submissionRows,
+		balances,
+		settings,
+		owedReels,
+		roles,
+		weekExtensionRows,
+	] = await Promise.all([
+		db.orm.public.User.whereUnique({ id: userId })
+			.select(
+				"currentStreak",
+				"displayName",
+				"hardwareExperience",
+				"id",
+				"image",
+				"lastStreakDate",
+				"name",
+				"onboardingCompletedAt",
+				"participantGoal",
+				"printerGoalId",
+				"slackId",
+				"submissionExtensionUntil",
 			)
-				// cachedSpans comes along because `rollUpHours` is what the ledger uses, and a trail that reported a different Hackatime total from the one a reviewer approves is the disagreement this file already warns about – the same minutes must not be payable twice on one screen and once off it.
-				.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase", "themeProjectId")
-				.all(),
-			db.orm.public.Post.where({ deletedAt: null, userId })
-				.orderBy(post => post.createdAt.asc())
-				.select("caption", "checkpointKey", "createdAt", "objectKey", "themeProjectId", "thumbnailKey")
-				.all(),
-			db.orm.public.PhaseSubmission.where(submission =>
-				submission.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+			.firstOrThrow(),
+		db.orm.public.ThemeProject.where({ deletedAt: null, userId })
+			.select(
+				"approvedHours",
+				"buildStatus",
+				"coverImageKey",
+				"description",
+				"designApprovedHours",
+				"designStatus",
+				"githubRepo",
+				"id",
+				"namedAt",
+				"requestedTier",
+				"starterProjectId",
+				"submissionExtensionUntil",
+				"theme",
+				"tier",
+				"title",
+				"warmupPhase",
 			)
-				.orderBy(submission => submission.createdAt.asc())
-				.select("createdAt", "phase", "themeProjectId")
-				.all(),
-			// Not in a transaction: this is a read for display, and BEGIN and COMMIT are two more round trips to a database ~110ms away from a laptop – the slowest part of the whole snapshot. Spending still reads its balance inside the transaction that spends it.
-			getBalances(db, userId),
-			getProgramSettings(),
-			getOwedReelKeys(userId),
-			getUserRoles(userId),
-		])
+			.all(),
+		// Ordered, because the trail's Nth entry node IS the Nth session written.
+		db.orm.public.WorkSession.where({ deletedAt: null })
+			.where(session =>
+				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+			)
+			.orderBy([session => session.createdAt.asc(), session => session.id.asc()])
+			.select(
+				"content",
+				"createdAt",
+				"hoursApproved",
+				"hoursClaimed",
+				"hoursSource",
+				"id",
+				"phase",
+				"themeProjectId",
+				"title",
+			)
+			.include("media", media => media.select("objectKey"))
+			.include("timelapses", timelapse =>
+				timelapse.select("coveredSeconds", "externalId", "hackatimeProject", "objectKey", "recordedAt"),
+			)
+			.all(),
+		db.orm.public.HackatimeLink.where(link =>
+			link.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+		)
+			// cachedSpans comes along because `rollUpHours` is what the ledger uses, and a trail that reported a different Hackatime total from the one a reviewer approves is the disagreement this file already warns about – the same minutes must not be payable twice on one screen and once off it.
+			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase", "themeProjectId")
+			.all(),
+		db.orm.public.Post.where({ deletedAt: null, userId })
+			.orderBy(post => post.createdAt.asc())
+			.select("caption", "checkpointKey", "createdAt", "objectKey", "themeProjectId", "thumbnailKey")
+			.all(),
+		db.orm.public.PhaseSubmission.where(submission =>
+			submission.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
+		)
+			.orderBy(submission => submission.createdAt.asc())
+			.select("createdAt", "phase", "themeProjectId")
+			.all(),
+		// Not in a transaction: this is a read for display, and BEGIN and COMMIT are two more round trips to a database ~110ms away from a laptop – the slowest part of the whole snapshot. Spending still reads its balance inside the transaction that spends it.
+		getBalances(db, userId),
+		getProgramSettings(),
+		getOwedReelKeys(userId),
+		getUserRoles(userId),
+		db.orm.public.WeekExtension.where({ userId }).select("submissionExtensionUntil", "week").all(),
+	])
 
 	return {
 		balances,
@@ -245,38 +257,44 @@ async function loadStoreRows(userId: string) {
 		settings,
 		submissionRows,
 		userRow,
+		weekExtensionRows,
 	}
 }
 
 /**
- * When each week opens and closes, with the participant's extension and the week's own applied.
+ * When each week opens and closes, with the participant's extension, the week's own project's and the week itself applied.
  *
- * Which close an extension pushed out, and whose it is: a project extension only reaches its own week; the account's reaches every week, so a later week's countdown would otherwise read as that week's own close.
+ * Which close an extension pushed out, and whose it is: a project extension only reaches its own week; a week extension reaches the week it names, whether or not that week's project exists yet; the account's reaches every week, so a later week's countdown would otherwise read as that week's own close.
  */
 function weekWindows(
 	settings: Awaited<ReturnType<typeof getProgramSettings>>,
 	userExtensionUntil: Date | null,
 	projectExtensionUntil: (week: number) => Date | null,
+	weekExtensionUntil: (week: number) => Date | null,
 ): {
 	closes: { [_: number]: number }
 	opens: { [_: number]: number }
-	weekExtensions: { [_: number]: "account" | "project" }
+	weekExtensions: { [_: number]: "account" | "project" | "week" }
 } {
 	const closes: { [_: number]: number } = {}
 	const opens: { [_: number]: number } = {}
-	const weekExtensions: { [_: number]: "account" | "project" } = {}
+	const weekExtensions: { [_: number]: "account" | "project" | "week" } = {}
 	for (let week = 1; week <= TOTAL_WEEKS; week += 1) {
 		opens[week] = weekOpensAt(settings, week).getTime()
 		const scheduled = weekClosesAt(settings, week).getTime()
 		const projectExtension = projectExtensionUntil(week)?.getTime() ?? null
+		const weekExtension = weekExtensionUntil(week)?.getTime() ?? null
 		const close = effectiveWeekClose(
 			new Date(scheduled),
 			userExtensionUntil,
 			projectExtension === null ? null : new Date(projectExtension),
+			weekExtension === null ? null : new Date(weekExtension),
 		).getTime()
 		closes[week] = close
 		if (close > scheduled)
-			weekExtensions[week] = projectExtension !== null && projectExtension === close ? "project" : "account"
+			if (projectExtension !== null && projectExtension === close) weekExtensions[week] = "project"
+			else if (weekExtension !== null && weekExtension === close) weekExtensions[week] = "week"
+			else weekExtensions[week] = "account"
 	}
 	return { closes, opens, weekExtensions }
 }
@@ -293,6 +311,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		settings,
 		submissionRows,
 		userRow,
+		weekExtensionRows,
 	} = await loadStoreRows(userId)
 
 	// Prisma 8 reads timestamps as PostgreSQL text; everything below works in Dates.
@@ -302,6 +321,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	})
 	const projects = projectRows.map(project =>
 		withFields(project, { submissionExtensionUntil: parseNullableTimestamp(project.submissionExtensionUntil) }),
+	)
+	const weekExtensionByWeek = new Map(
+		weekExtensionRows.map(row => [row.week, parseDbTimestamp(row.submissionExtensionUntil)]),
 	)
 	const sessions = sessionRows.map(session =>
 		withFields(session, {
@@ -458,10 +480,15 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
 	}
 
-	const { closes, opens, weekExtensions } = weekWindows(settings, user.submissionExtensionUntil, week => {
-		const theme = scheduleForWeek(week)?.theme.id
-		return theme ? (byTheme.get(theme)?.submissionExtensionUntil ?? null) : null
-	})
+	const { closes, opens, weekExtensions } = weekWindows(
+		settings,
+		user.submissionExtensionUntil,
+		week => {
+			const theme = scheduleForWeek(week)?.theme.id
+			return theme ? (byTheme.get(theme)?.submissionExtensionUntil ?? null) : null
+		},
+		week => weekExtensionByWeek.get(week) ?? null,
+	)
 
 	return {
 		bankedCoins: balances.banked,

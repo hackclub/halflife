@@ -1,7 +1,7 @@
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
 import { type BomLine, listBom } from "@/lib/bom"
-import { getThemeDef, projectDisplayTitle } from "@/lib/config/program"
+import { projectDisplayTitle, themeLabel } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { Phase } from "@/lib/enums"
 import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
@@ -89,7 +89,7 @@ export async function getReviewQueue(opts: {
 				projectTitle: project.title,
 				submittedAt: parseDbTimestamp(row.createdAt),
 				submittedInWeek: row.submittedInWeek,
-				themeLabel: getThemeDef(project.theme).label,
+				themeLabel: themeLabel(project.theme),
 				themeProjectId: project.id,
 				tier: project.tier,
 			}
@@ -293,7 +293,7 @@ export async function getSubmissionDetail(
 		priorReviews: priorReviews.map(parsePriorReviewRow),
 		sessions: sessions.map(parseSessionRow),
 		submission,
-		themeLabel: getThemeDef(project.theme).label,
+		themeLabel: themeLabel(project.theme),
 	}
 }
 
@@ -345,7 +345,7 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 			phase: submission.phase,
 			projectTitle: projectDisplayTitle(project),
 			submissionId: submission.id,
-			themeLabel: getThemeDef(project.theme).label,
+			themeLabel: themeLabel(project.theme),
 			themeProjectId: project.id,
 		}
 	})

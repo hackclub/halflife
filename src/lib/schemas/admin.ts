@@ -37,6 +37,9 @@ export const projectExtensionSchema = z
 	.strict()
 	.refine(b => b.submissionExtensionUntil !== undefined || b.theme !== undefined, "Nothing to change")
 
+/** One program week's extension. A null clears it, which deletes the row rather than storing an expired date. */
+export const weekExtensionSchema = z.object({ submissionExtensionUntil: z.coerce.date().nullable() }).strict()
+
 /** A reply in a dispute thread. Required and non-empty: a blank reply answers nothing. */
 export const disputeMessageSchema = z.object({ body: boundedText(2000, 1) }).strict()
 

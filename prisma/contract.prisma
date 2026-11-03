@@ -1,6 +1,5 @@
 // use prisma-8
 // Printed from a copy of prisma/schema.prisma with the partial-index predicates and index sort directions Prisma 8 refuses removed. Field and relation names must stay in sync with the Prisma 7 schema until migrations move over.
-
 namespace public {
   model ShopRegion {
     id        String                @id
@@ -72,6 +71,7 @@ namespace public {
     accounts                    Account[]
     activityDays                UserDay[]
     activityWeeks               UserWeek[]
+    weekExtensions              WeekExtension[]
     disputeMessages             ReviewDisputeMessage[]
     hcbGrantCards               HcbGrantCard[]
     hcbGrantTopUps              HcbGrantTopUp[]
@@ -285,20 +285,20 @@ namespace public {
   }
 
   model PostComment {
-    id           String              @id @onCreate(cuid(2))
-    postId       String
-    userId       String
-    body         String
-    hiddenAt     TimestampString(3)?
-    hiddenById   String?
-    hiddenReason String?
+    id            String              @id @onCreate(cuid(2))
+    postId        String
+    userId        String
+    body          String
+    hiddenAt      TimestampString(3)?
+    hiddenById    String?
+    hiddenReason  String?
     hiddenByBanAt TimestampString(3)?
-    createdAt    TimestampString(3)  @default(now())
-    updatedAt    TimestampString(3)  @onCreate(now()) @onUpdate(now())
-    deletedAt    TimestampString(3)?
-    reports      ContentReport[]
-    post         Post                @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "post_comment_postId_createdAt_idx")
-    user         User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    createdAt     TimestampString(3)  @default(now())
+    updatedAt     TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    deletedAt     TimestampString(3)?
+    reports       ContentReport[]
+    post          Post                @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "post_comment_postId_createdAt_idx")
+    user          User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
     @@index([postId, createdAt], map: "post_comment_postId_createdAt_idx")
     @@index([userId], map: "post_comment_userId_idx")
@@ -410,16 +410,16 @@ namespace public {
   }
 
   model HcbGrantCardBatch {
-    id             String                  @id @onCreate(cuid(2))
+    id             String                           @id @onCreate(cuid(2))
     status         pg.enum(HcbGrantCardBatchStatus) @default("PROCESSING")
     fingerprint    String
     totalCents     Int
-    issuedCount    Int                     @default(0)
-    failedCount    Int                     @default(0)
-    ambiguousCount Int                     @default(0)
-    skippedCount   Int                     @default(0)
+    issuedCount    Int                              @default(0)
+    failedCount    Int                              @default(0)
+    ambiguousCount Int                              @default(0)
+    skippedCount   Int                              @default(0)
     createdById    String?
-    createdAt      TimestampString(3)      @default(now())
+    createdAt      TimestampString(3)               @default(now())
     completedAt    TimestampString(3)?
     cards          HcbGrantCard[]
 
@@ -427,11 +427,11 @@ namespace public {
   }
 
   model HcbGrantCard {
-    id             String                @id @onCreate(cuid(2))
+    id             String                      @id @onCreate(cuid(2))
     batchId        String
     userId         String
     themeProjectId String
-    phase          pg.enum(Phase)        @default("DESIGN")
+    phase          pg.enum(Phase)              @default("DESIGN")
     email          String
     amountCents    Int
     grantUsdCents  Int?
@@ -447,10 +447,10 @@ namespace public {
     issuedAt       TimestampString(3)?
     canceledAt     TimestampString(3)?
     supersededAt   TimestampString(3)?
-    createdAt      TimestampString(3)    @default(now())
-    batch          HcbGrantCardBatch     @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_grant_card_batchId_status_idx")
-    user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
-    themeProject   ThemeProject          @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+    createdAt      TimestampString(3)          @default(now())
+    batch          HcbGrantCardBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_grant_card_batchId_status_idx")
+    user           User                        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+    themeProject   ThemeProject                @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
 
     @@index([themeProjectId, phase], name: "hcb_grant_card_project_phase_live_key", unique: true, where: sql`("supersededAt" IS NULL AND "status" IN ('PENDING'::"HcbGrantCardStatus", 'ISSUED'::"HcbGrantCardStatus", 'AMBIGUOUS'::"HcbGrantCardStatus"))`)
     @@index([hcbCardGrantId], map: "hcb_grant_card_hcbCardGrantId_key", unique: true)
@@ -667,19 +667,19 @@ namespace public {
   }
 
   model ProgramSettings {
-    id                    String              @id @default("singleton")
+    id                    String                @id @default("singleton")
     eventStartDate        TimestampString(3)
-    programTimezone       String              @default("America/New_York")
-    submissionsOpen       Boolean             @default(true)
+    programTimezone       String                @default("America/New_York")
+    submissionsOpen       Boolean               @default(true)
     submissionsCloseAt    TimestampString(3)?
-    shopOpen              Boolean             @default(false)
+    shopOpen              Boolean               @default(false)
     shopClosesAt          TimestampString(3)?
-    shopGraceDays         Int                 @default(7)
-    reviewClaimTtlMinutes Int                 @default(45)
-    airtableSyncEnabled   Boolean             @default(true)
+    shopGraceDays         Int                   @default(7)
+    reviewClaimTtlMinutes Int                   @default(45)
+    airtableSyncEnabled   Boolean               @default(true)
     payoutSource          pg.enum(PayoutSource) @default("AIRTABLE")
-    repoSyncEnabled       Boolean             @default(true)
-    updatedAt             TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    repoSyncEnabled       Boolean               @default(true)
+    updatedAt             TimestampString(3)    @onCreate(now()) @onUpdate(now())
     updatedById           String?
 
     @@map("program_settings")
@@ -989,6 +989,21 @@ namespace public {
     @@id([userId, week])
     @@index([week], map: "user_week_week_idx")
     @@map("user_week")
+  }
+
+  // Time granted on one program week, stored apart from the project it will be used on.
+  //
+  // A participant who never started a week has no ThemeProject row for it, and an admin still needs to give them longer on that week – asking them to open a project first so there is somewhere to hang the extension would turn the extension into a reason to start. The row is keyed by week rather than by theme so it can be written before the project exists and read by the week gates directly; once a project does exist, isWeekOpen reads this row alongside the project's own extension.
+  model WeekExtension {
+    userId                   String
+    week                     Int
+    submissionExtensionUntil TimestampString(3)
+    createdAt                TimestampString(3) @default(now())
+    updatedAt                TimestampString(3) @onCreate(now()) @onUpdate(now())
+    user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@id([userId, week])
+    @@map("week_extension")
   }
 
   model Verification {
