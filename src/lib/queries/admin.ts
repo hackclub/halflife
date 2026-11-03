@@ -313,6 +313,7 @@ export interface UserDetail {
 		title: string
 	}[]
 	verificationStatus: string | null
+	weekExtensions: { submissionExtensionUntil: Date; week: number }[]
 }
 
 /** The 25 most recent orders on the user page: number, item, credit total and status only. */
@@ -396,6 +397,9 @@ export async function getUserDetail(
 						.where(topUp => topUp.sentAt.isNotNull()),
 				),
 		)
+		.include("weekExtensions", extensions =>
+			extensions.select("submissionExtensionUntil", "week").orderBy(extension => extension.week.asc()),
+		)
 		.first()
 	if (!row) return null
 	const user: UserDetail = {
@@ -426,6 +430,10 @@ export async function getUserDetail(
 			submissionExtensionUntil: parseNullableTimestamp(project.submissionExtensionUntil),
 		})),
 		verificationStatus: row.verificationStatus,
+		weekExtensions: row.weekExtensions.map(extension => ({
+			submissionExtensionUntil: parseDbTimestamp(extension.submissionExtensionUntil),
+			week: extension.week,
+		})),
 	}
 
 	// Ledger, balances and order history only leave the server for ADMIN/AUDITOR – a FULFILLER (shipping role) needs the fulfilment sheet, not someone's full credit history. Stripped callers get the profile with contact/risk fields redacted and empty money sections.

@@ -72,6 +72,7 @@ namespace public {
     accounts                    Account[]
     activityDays                UserDay[]
     activityWeeks               UserWeek[]
+    weekExtensions              WeekExtension[]
     disputeMessages             ReviewDisputeMessage[]
     hcbGrantCards               HcbGrantCard[]
     hcbGrantTopUps              HcbGrantTopUp[]
@@ -989,6 +990,21 @@ namespace public {
     @@id([userId, week])
     @@index([week], map: "user_week_week_idx")
     @@map("user_week")
+  }
+
+  // Time granted on one program week, stored apart from the project it will be used on.
+  //
+  // A participant who never started a week has no ThemeProject row for it, and an admin still needs to give them longer on that week – asking them to open a project first so there is somewhere to hang the extension would turn the extension into a reason to start. The row is keyed by week rather than by theme so it can be written before the project exists and read by the week gates directly; once a project does exist, isWeekOpen reads this row alongside the project's own extension.
+  model WeekExtension {
+    userId                   String
+    week                     Int
+    submissionExtensionUntil TimestampString(3)
+    createdAt                TimestampString(3) @default(now())
+    updatedAt                TimestampString(3) @onCreate(now()) @onUpdate(now())
+    user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@id([userId, week])
+    @@map("week_extension")
   }
 
   model Verification {
