@@ -12,7 +12,7 @@ Teenagers in Hack Club's Half Life programme, many of whom have never built hard
 
 ## Product Purpose
 
-Half Life is Hack Club's ten-week hardware programme. Each of the first five weeks has a theme – PCBs, CAD, Music, Displays, Breadboard Computer – and participants design a project in that theme, then build it in the matching build week (weeks 6-10). They journal their hours and post reels as they go, and approved work earns coins toward a 3D printer. Success is a participant shipping real hardware every theme.
+Half Life is Hack Club's ten-week hardware programme. The first five weeks are design weeks – PCBs, CAD, Music, Displays, then a freestyle week where participants pick their own project – and each is built for real in the matching build week (weeks 6-10). They journal their hours and post reels as they go, and approved work earns coins toward a 3D printer. Success is a participant shipping real hardware every week.
 
 ## Positioning
 
@@ -42,7 +42,7 @@ A Duolingo-style trail of checkpoints through real hardware work: each week is a
 
 ## Evidence on Hand
 
-- Week theme paintings: `public/art/weeks/` (PCB, cad, music, display, breadboard).
+- Week theme paintings: `public/art/weeks/` (PCB, cad, music, display). Week 5 is freestyle, so its painting is the Gato schematic the warm-up uses.
 - Starter renders: `public/art/starters/` (starbie, merbl, midi).
 - Display guide content and 26 freely licensed Wikimedia Commons photos (credited) from the "A Beginner's Guide to Displays" doc.
 - Reference Hack Club guides the voice follows: Pathfinder, Hermes, Blueprint MIDI, Starbie, MIDI keypad.

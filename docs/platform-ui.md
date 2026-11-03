@@ -38,7 +38,7 @@ That only replays the intro. It cannot un-log a session or un-post a reel: those
 `src/lib/curriculum.ts` is the single source of truth for the programme shape, and it encodes the Checkpoint framework exactly:
 
 - **Week 1 (PCB, design)** – onboarding → a fork of idea reel or first journal (the reel is optional) → journal to the hours target → progress reel → submit (files, BOM/cart/tier, closing reel).
-- **Design weeks 2-5** (CAD, music, displays, breadboard computer) – project creation with tier selection → idea reel → journal → reel → journal → reel → submit.
+- **Design weeks 2-5** (CAD, music, displays, freestyle) – project creation with tier selection → idea reel → journal → reel → journal → reel → submit.
 - **Build weeks 6-10** – the same five themes, built for real, ending in a submission that wants a 30-60 second video of the thing working, or an honest write-up of what needs to change.
 
 Every journal entry is its own node, so the trail is as long as the work actually was, and progress reels land at the entry where the clock crossed their mark – five hours into a design week and every ten after that, two and a half into a build and every five after that. Past the week's submit floor the trail forks rather than continuing: one more session, or wrap the week up.
