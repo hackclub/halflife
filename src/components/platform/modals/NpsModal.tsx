@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { IconX } from "@/components/platform/icons"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { setNpsNudgeActive } from "@/components/platform/modals/nps-nudge"
 import { Button, Field, Panel, TextArea } from "@/components/platform/ui"
@@ -11,13 +10,16 @@ import { isRecord } from "@/lib/unknown"
 
 const SCORE_HINT = ["Not at all likely", "", "", "", "", "", "", "", "", "", "Extremely likely"]
 
-/** Dismissing the nudge is per device, like the rest of the ceremony in the store: a fresh laptop asks again. */
-const NUDGE_DISMISSED_KEY = "nps-texts-dismissed"
+/** Submitting the follow-up is per device, like the rest of the ceremony in the store: a fresh laptop asks again. The nudge itself cannot be dismissed – it only goes once the follow-up is sent. */
+const NUDGE_SUBMITTED_KEY = "nps-texts-submitted"
+
+/** The key older builds wrote when the nudge could be dismissed; it no longer hides anything, so it is cleared on sight. */
+const LEGACY_NUDGE_DISMISSED_KEY = "nps-texts-dismissed"
 
 /**
  * The NPS flow in two steps, so the dashboard never opens with a wall of fields.
  *
- * The score is the gate: a blocking modal with only the 0-10 picker, and nothing behind it reachable until a score is saved. Once the score is in, the dashboard opens and a small card takes the sticker promotion's corner – opening it shows the three optional text fields, dismissing it leaves them unasked on this device, and any text on the row stops the nudge everywhere.
+ * The score is the gate: a blocking modal with only the 0-10 picker, and nothing behind it reachable until a score is saved. Once the score is in, the dashboard opens and a small card takes the sticker promotion's corner – opening it shows the three optional text fields. The card cannot be dismissed: it only goes once the follow-up is submitted (on this device) or the row gains any text (everywhere). Closing the follow-up without sending it leaves the card up.
  */
 export function NpsGate() {
 	const [loaded, setLoaded] = useState(false)
@@ -28,7 +30,6 @@ export function NpsGate() {
 	const [savingScore, setSavingScore] = useState(false)
 	const [scoreError, setScoreError] = useState<string | null>(null)
 	const [textsOpen, setTextsOpen] = useState(false)
-	const [dismissed, setDismissed] = useState(false)
 	const [submitted, setSubmitted] = useState(false)
 	const [doingWell, setDoingWell] = useState("")
 	const [improve, setImprove] = useState("")
@@ -40,7 +41,9 @@ export function NpsGate() {
 		let cancelled = false
 		void (async () => {
 			try {
-				if (window.localStorage.getItem(NUDGE_DISMISSED_KEY) === "1") setDismissed(true)
+				// A nudge dismissed by an older build must come back, so the legacy key is dropped rather than read.
+				window.localStorage.removeItem(LEGACY_NUDGE_DISMISSED_KEY)
+				if (window.localStorage.getItem(NUDGE_SUBMITTED_KEY) === "1") setSubmitted(true)
 			} catch {
 				// A locked-down store keeps the nudge: failing closed here would silence feedback with no say.
 			}
@@ -69,7 +72,7 @@ export function NpsGate() {
 	}, [])
 
 	const needsScore = loaded && !skipped && score === null
-	const showNudge = loaded && !skipped && score !== null && !textsDone && !dismissed && !submitted
+	const showNudge = loaded && !skipped && score !== null && !textsDone && !submitted
 
 	// While the nudge is up it owns the sticker promotion's corner, so the banner stands down.
 	useEffect(() => {
@@ -100,15 +103,6 @@ export function NpsGate() {
 		}
 	}
 
-	function dismissNudge() {
-		try {
-			window.localStorage.setItem(NUDGE_DISMISSED_KEY, "1")
-		} catch {
-			// Private mode keeps the nudge for the session; still hide it now.
-		}
-		setDismissed(true)
-	}
-
 	async function submitTexts() {
 		if (savingTexts) return
 		setSavingTexts(true)
@@ -129,9 +123,9 @@ export function NpsGate() {
 				return
 			}
 			try {
-				window.localStorage.setItem(NUDGE_DISMISSED_KEY, "1")
+				window.localStorage.setItem(NUDGE_SUBMITTED_KEY, "1")
 			} catch {
-				// See dismissNudge.
+				// Private mode forgets the submit across reloads; the nudge still goes for this session.
 			}
 			setSubmitted(true)
 			setTextsOpen(false)
@@ -210,7 +204,7 @@ export function NpsGate() {
 
 			{showNudge && !textsOpen && (
 				<Panel
-					className="fixed right-3 bottom-[calc(env(safe-area-inset-bottom,0px)+5.4rem)] z-[60] w-[min(20rem,calc(100vw-1.5rem))] bg-cream p-4 pr-11 shadow-[0_3px_6px_rgba(28,26,89,.12),0_18px_40px_-16px_rgba(28,26,89,.55)] lg:right-6 lg:bottom-6"
+					className="fixed right-3 bottom-[calc(env(safe-area-inset-bottom,0px)+5.4rem)] z-[60] w-[min(20rem,calc(100vw-1.5rem))] bg-cream p-4 shadow-[0_3px_6px_rgba(28,26,89,.12),0_18px_40px_-16px_rgba(28,26,89,.55)] lg:right-6 lg:bottom-6"
 					radius={16}
 				>
 					<p className="label text-coral-deep">Quick follow-up</p>
@@ -221,15 +215,6 @@ export function NpsGate() {
 					<Button className="mt-3" onClick={() => setTextsOpen(true)} size="sm" variant="solid">
 						Share feedback
 					</Button>
-					<button
-						aria-label="Dismiss the feedback nudge"
-						className="absolute top-2.5 right-2.5 grid size-7 place-items-center rounded-lg text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
-						onClick={dismissNudge}
-						title="Dismiss"
-						type="button"
-					>
-						<IconX className="text-sm" />
-					</button>
 				</Panel>
 			)}
 
