@@ -19,6 +19,8 @@ import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
+import { isReviewConfigured } from "@/lib/review-platform"
+import { sendSubmissionToReview } from "@/lib/review-shadow"
 import { trackSideEffect } from "@/lib/side-effects"
 import { escapeLikePattern } from "@/lib/text"
 import { formatDbTimestamp } from "@/lib/time"
@@ -51,6 +53,8 @@ export interface WarmupImportOutcome {
 	/** Why it was skipped or failed, in an operator's terms. */
 	reason: string | null
 	recordId: string
+	/** What the shadow Review send did, when the row got as far as one. */
+	review: "sent" | "failed" | "not_configured" | "not_attempted"
 	status: "imported" | "already_imported" | "skipped" | "failed"
 	themeProjectId: string | null
 	userId: string | null
@@ -63,6 +67,7 @@ export interface WarmupImportSummary {
 	fetched: number
 	imported: number
 	outcomes: WarmupImportOutcome[]
+	reviewSent: number
 	skipped: number
 	table: string
 }
@@ -458,6 +463,26 @@ async function sendToAri(
 	return result ? "sent" : "failed"
 }
 
+async function sendToReview(
+	themeProjectId: string,
+	phase: Phase,
+	actor: ImportActor,
+): Promise<WarmupImportOutcome["review"]> {
+	if (!isReviewConfigured()) return "not_configured"
+	const result = await trackSideEffect(
+		"review",
+		{
+			actorEmail: actor.email,
+			actorId: actor.id,
+			metadata: { phase, shadow: true, warmupImport: true },
+			targetId: themeProjectId,
+			targetType: "ThemeProject",
+		},
+		() => sendSubmissionToReview(themeProjectId, phase),
+	)
+	return result ? "sent" : "failed"
+}
+
 /**
  * Import every warm-up row that has not been imported yet.
  *
@@ -481,6 +506,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 			email: null,
 			reason: null,
 			recordId: record.id,
+			review: "not_attempted",
 			status: "failed",
 			themeProjectId: null,
 			userId: null,
@@ -518,6 +544,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 					if (key) await db.orm.public.ThemeProject.where({ id: result.themeProjectId }).update({ coverImageKey: key })
 				}
 				outcome.ari = await sendToAri(result.themeProjectId, parsed.row.phase, actor)
+				outcome.review = await sendToReview(result.themeProjectId, parsed.row.phase, actor)
 			}
 
 			outcomes.push(outcome)
@@ -539,6 +566,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 		fetched: records.length,
 		imported: count("imported"),
 		outcomes,
+		reviewSent: outcomes.filter(o => o.review === "sent").length,
 		skipped: count("skipped"),
 		table: YSWS_SUBMISSION.tableId,
 	}

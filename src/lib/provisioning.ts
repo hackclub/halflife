@@ -29,6 +29,7 @@ export type ThemeProjectRow = Omit<
 	| "bomItems"
 	| "repoSyncRuns"
 	| "reports"
+	| "reviewShips"
 >
 
 export async function ensureThemeProject(userId: string, theme: Theme): Promise<ThemeProjectRow> {

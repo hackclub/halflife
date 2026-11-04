@@ -71,9 +71,13 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 
 	const load = useCallback(async () => {
 		try {
+			const projectsQuery = new URLSearchParams({
+				phase: phase === "build" ? "BUILD" : "DESIGN",
+				projectId,
+			})
 			const [linksRes, projectsRes] = await Promise.all([
 				fetch(`/api/projects/${projectId}/hackatime`, { cache: "no-store" }),
-				fetch("/api/hackatime/projects", { cache: "no-store" }),
+				fetch(`/api/hackatime/projects?${projectsQuery}`, { cache: "no-store" }),
 			])
 			try {
 				setLinks((await read(LinkPageSchema, linksRes)).links)
@@ -98,7 +102,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			setAccount({ state: "error" })
 			setError("Could not reach Hackatime. Check your connection and try again.")
 		}
-	}, [projectId])
+	}, [phase, projectId])
 
 	/** Retry after a total load failure: show the spinner again, then re-fetch. */
 	const retry = useCallback(() => {

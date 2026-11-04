@@ -34,14 +34,16 @@ const StatsProjectsBody = z.object({
  * Read one project's seconds out of a Hackatime stats response.
  *
  * Pure so the contract can be pinned without a network: a project that is present with zero seconds is the ONLY live zero. A name missing from a successfully fetched list means the project was renamed or deleted, and reporting zero for it would silently underpay the hand-in the number is about. A response with no usable project list is stale too – a shape change must not look like "nothing logged".
+ *
+ * Hackatime can list two projects under one name – it does for "Other" – and a link is stored by name, so their time is one clock and is added together. That is the same merge the picker does in `projectsByName`; reading only the first match here would make the linked figure smaller than the option the maker picked.
  */
 export function projectSecondsFrom(body: unknown, project: string): HackatimeFetch {
 	const data = isRecord(body) ? body.data : null
 	const projects = isRecord(data) ? data.projects : null
 	if (!Array.isArray(projects)) return { error: "Hackatime returned no project list", seconds: 0, stale: true }
 
-	const match = projects.find((p): p is { [_: string]: unknown } => isRecord(p) && p.name === project)
-	if (!match)
+	const matches = projects.filter((p): p is { [_: string]: unknown } => isRecord(p) && p.name === project)
+	if (matches.length === 0)
 		return {
 			error: `Hackatime does not list a project named "${project}"`,
 			notFound: true,
@@ -49,8 +51,11 @@ export function projectSecondsFrom(body: unknown, project: string): HackatimeFet
 			stale: true,
 		}
 
-	const total = match.total_seconds
-	const seconds = typeof total === "number" && Number.isFinite(total) ? Math.max(0, total) : 0
+	let seconds = 0
+	for (const match of matches) {
+		const total = match.total_seconds
+		if (typeof total === "number" && Number.isFinite(total)) seconds += Math.max(0, total)
+	}
 	return { seconds, stale: false }
 }
 
@@ -149,10 +154,22 @@ export async function fetchProjectSpans(
 	}
 }
 
-export async function listUserProjects(hackatimeUserId: string): Promise<{ name: string; totalSeconds: number }[]> {
+/**
+ * The project list for the picker, scoped to a phase's week when one is given.
+ *
+ * The picker has to quote the same number the link will store: without the window it shows the project's all-time total while the link counts only its scheduled week, so the option and the linked row disagree the moment somebody picks it.
+ */
+export async function listUserProjects(
+	hackatimeUserId: string,
+	window?: { fromSeconds: number; toSeconds: number },
+): Promise<{ name: string; totalSeconds: number }[]> {
 	try {
 		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
 		url.searchParams.set("features", "projects")
+		if (window) {
+			url.searchParams.set("start_date", new Date(window.fromSeconds * 1000).toISOString())
+			url.searchParams.set("end_date", new Date(window.toSeconds * 1000).toISOString())
+		}
 		const res = await fetchWithRetry(url, { cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) })
 		if (!res.ok) return []
 		const parsed = StatsProjectsBody.safeParse(await res.json())

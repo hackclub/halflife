@@ -10,6 +10,7 @@ const ImportOutcomeSchema = z.object({
 	email: z.string().nullable(),
 	reason: z.string().nullable(),
 	recordId: z.string(),
+	review: z.enum(["sent", "failed", "not_configured", "not_attempted"]),
 	status: z.enum(["imported", "already_imported", "skipped", "failed"]),
 	themeProjectId: z.string().nullable(),
 })
@@ -22,6 +23,7 @@ const ImportSummarySchema = z.object({
 	fetched: z.number(),
 	imported: z.number(),
 	outcomes: z.array(ImportOutcomeSchema),
+	reviewSent: z.number(),
 	skipped: z.number(),
 	table: z.string(),
 })
@@ -39,6 +41,13 @@ const ARI_LABEL: Record<ImportOutcome["ari"], string> = {
 	not_attempted: "",
 	not_configured: "Ari not configured",
 	sent: "sent to Ari",
+}
+
+const REVIEW_LABEL: Record<ImportOutcome["review"], string> = {
+	failed: "Review send failed",
+	not_attempted: "",
+	not_configured: "Review not configured",
+	sent: "copied to Review",
 }
 
 /**
@@ -102,6 +111,7 @@ export function AirtableImportForm({
 						{ariConfigured
 							? `${summary.ariSent} sent to Ari; the rest are listed under “Submissions that never reached Ari”.`
 							: "Ari is not configured here, so those sends wait for the retry job."}
+						{summary.reviewSent > 0 ? ` ${summary.reviewSent} also copied to Review.` : ""}
 					</p>
 					{problems.length > 0 ? (
 						<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
@@ -111,6 +121,7 @@ export function AirtableImportForm({
 									{outcome.email ? ` · ${outcome.email}` : ""} · {STATUS_LABEL[outcome.status]}
 									{outcome.reason ? `: ${outcome.reason}` : ""}
 									{ARI_LABEL[outcome.ari] ? ` (${ARI_LABEL[outcome.ari]})` : ""}
+									{REVIEW_LABEL[outcome.review] ? ` (${REVIEW_LABEL[outcome.review]})` : ""}
 								</li>
 							))}
 						</ul>
