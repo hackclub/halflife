@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
+import { BOM_MARGIN_USD, bomTotalUsd, fundingAgreementMissing, partsFunding } from "@/lib/bom-policy"
 
 describe("bomTotalUsd", () => {
 	test("sums lines plus one flat tax/shipping charge", () => {
@@ -30,5 +30,23 @@ describe("partsFunding", () => {
 		const out = partsFunding(40, 30)
 		expect(out.needsAgreement).toBe(true)
 		expect(out.shortfallUsd).toBe(10)
+	})
+})
+
+describe("fundingAgreementMissing", () => {
+	const over = partsFunding(40, 30)
+	const under = partsFunding(25, 30)
+
+	test("a cart within budget is never missing an agreement", () => {
+		expect(fundingAgreementMissing(under, { fundingDeclined: false, partialFundingAccepted: false })).toBe(false)
+	})
+
+	test("an over-budget cart needs one until partial funding is accepted", () => {
+		expect(fundingAgreementMissing(over, { fundingDeclined: false, partialFundingAccepted: false })).toBe(true)
+		expect(fundingAgreementMissing(over, { fundingDeclined: false, partialFundingAccepted: true })).toBe(false)
+	})
+
+	test("declining the grant clears it too: the whole cart is the maker's", () => {
+		expect(fundingAgreementMissing(over, { fundingDeclined: true, partialFundingAccepted: false })).toBe(false)
 	})
 })

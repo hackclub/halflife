@@ -3,6 +3,7 @@ import { and } from "@prisma/orm-postgres/orm-client"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { markChecksPassed } from "@/lib/analytics"
 import { partsFundingFor } from "@/lib/bom"
+import { fundingAgreementMissing } from "@/lib/bom-policy"
 import { usesStarterDefaultDescription } from "@/lib/config/onboarding"
 import { submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
@@ -202,12 +203,12 @@ export async function submitPhase(
 	// The checks that gate a submission came back green, or their one waivable failure was waived by the maker. The stamp used to sit on the advisory preflight GET, which made it a GET that wrote – a cross-site top-level navigation carries the session cookie, so any site could stamp a participant's funnel marker by linking them at it. Here it sits behind the POST that hands a phase in, so the marker is written when the maker actually tries to submit, and the admin funnel's "repo checks passed" step means what its hint says: the checks that ran for a submission were satisfied.
 	await markChecksPassed(userId)
 
-	// A cart past the tier's funding is not a refusal, it is a grant that covers part of it – which is something the maker has to agree to rather than something this route infers. The numbers come from the database and never from the sheet: a list edited in another tab, or a tier request changed since the page was opened, decide what the maker is agreeing to.
+	// A cart past the tier's funding is not a refusal, it is a grant that covers part of it – which is something the maker has to agree to rather than something this route infers. Declining the grant is the other way out: the whole cart is theirs, so there is no shortfall to agree to. The numbers come from the database and never from the sheet: a list edited in another tab, or a tier request changed since the page was opened, decide what the maker is agreeing to.
 	const funding = await partsFundingFor(project, phase)
-	if (funding.needsAgreement && !partialFundingAccepted)
+	if (fundingAgreementMissing(funding, { fundingDeclined, partialFundingAccepted }))
 		throw new HttpError(
 			"UNPROCESSABLE",
-			`Your parts list is $${funding.totalUsd.toFixed(2)} and this tier funds $${funding.capUsd}, so $${funding.shortfallUsd.toFixed(2)} of it is yours to pay. Confirm you understand that before submitting.`,
+			`Your parts list is $${funding.totalUsd.toFixed(2)} and this tier funds $${funding.capUsd}, so $${funding.shortfallUsd.toFixed(2)} of it is yours to pay. Confirm you understand that before submitting, or decline parts funding.`,
 			{ details: funding },
 		)
 
