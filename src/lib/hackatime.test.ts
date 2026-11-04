@@ -1,5 +1,25 @@
 import { describe, expect, test } from "bun:test"
-import { projectsByName } from "@/lib/hackatime"
+import { projectSecondsFrom, projectsByName } from "@/lib/hackatime"
+
+describe("projectSecondsFrom", () => {
+	test("adds every entry Hackatime lists under one name", () => {
+		const body = {
+			data: {
+				projects: [
+					{ name: "Other", total_seconds: 1260 },
+					{ name: "stasis", total_seconds: 3600 },
+					{ name: "Other", total_seconds: 540 },
+				],
+			},
+		}
+		expect(projectSecondsFrom(body, "Other")).toEqual({ seconds: 1800, stale: false })
+	})
+
+	test("a name missing from the list is not a fresh zero", () => {
+		const body = { data: { projects: [{ name: "stasis", total_seconds: 3600 }] } }
+		expect(projectSecondsFrom(body, "Other")).toMatchObject({ notFound: true, seconds: 0, stale: true })
+	})
+})
 
 describe("projectsByName", () => {
 	test("keeps one entry per project name, adding the time under it", () => {
