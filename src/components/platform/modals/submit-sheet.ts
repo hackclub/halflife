@@ -2,7 +2,7 @@
 
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react"
 import { errorMessage, refusalMessage } from "@/lib/api-error"
-import { bomTotalUsd, partsFunding } from "@/lib/bom-policy"
+import { bomTotalUsd, fundingAgreementMissing, partsFunding } from "@/lib/bom-policy"
 import type { BomLine } from "@/lib/bom-schema"
 import { usesStarterDefaultDescription } from "@/lib/config/onboarding"
 import { type PrinterGoal, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
@@ -226,8 +226,11 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 	const fundingDeclined = !isBuild && declinedFunding && bom !== null
 	// Same reading for the partial-funding box: honoured only while the cart is actually over, so raising the tier or editing the parts list back under it retires the tick on its own. Declining wins over agreeing: no funding means nothing to agree to.
 	const partialFunding = bomOverCap && acceptsPartialFunding && !fundingDeclined
-	// The gate needs the agreement only when there is something to agree to: under budget there is nothing, and declined means no grant at all.
-	const fundingOk = fundingDeclined || !bomOverCap || acceptsPartialFunding
+	// The gate needs the agreement only when there is something to agree to: under budget there is nothing, and declined means no grant at all. The rule is shared with the route, so the sheet cannot offer a way out the server refuses.
+	const fundingOk = !fundingAgreementMissing(funding, {
+		fundingDeclined,
+		partialFundingAccepted: acceptsPartialFunding,
+	})
 
 	// The Displays week requires firmware, but a project with no microcontroller has none to give. That check is waivable only when it is the one thing missing; every other blocking failure still holds the sheet.
 	const firmwareMissing =

@@ -46,3 +46,15 @@ export function partsFunding(totalUsd: number, capUsd: number): PartsFunding {
 	const shortfallUsd = Math.max(0, round2(totalUsd - capUsd))
 	return { capUsd, needsAgreement: shortfallUsd > BOM_MARGIN_USD, shortfallUsd, totalUsd }
 }
+
+/**
+ * Whether an over-budget cart still needs the maker's acknowledgement before it can be handed in.
+ *
+ * There are two ways to clear it: accepting a grant that covers only part of the cart, or declining the grant entirely. Declining makes the whole cart the maker's own money, so there is no shortfall to agree to – the sheet has always treated it that way, and the route must too, or a maker who takes the way out the sheet offers is refused at the button.
+ */
+export function fundingAgreementMissing(
+	funding: Pick<PartsFunding, "needsAgreement">,
+	options: { fundingDeclined: boolean; partialFundingAccepted: boolean },
+): boolean {
+	return funding.needsAgreement && !options.fundingDeclined && !options.partialFundingAccepted
+}
