@@ -1,5 +1,7 @@
 import "server-only"
+import { cachedAirtableWalk } from "@/lib/airtable/cache"
 import {
+	type AirtableConfig,
 	AirtableListSchema,
 	type AirtableRecord,
 	AirtableRecordSchema,
@@ -11,7 +13,8 @@ import {
 } from "@/lib/airtable/client"
 import { existingColumns } from "@/lib/airtable/field-probe"
 import { recordDirectSignup } from "@/lib/airtable/rsvp"
-import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
+import { fieldKey, formulaRef, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
+import { type NpsSummary, summariseNps } from "@/lib/nps"
 import db from "@/lib/prisma8"
 import type { NpsTextsSubmit } from "@/lib/schemas/nps"
 
@@ -29,6 +32,52 @@ const TEXT_COLUMNS = () => [
 const NPS_COLUMNS = () => [SCORE(), ...TEXT_COLUMNS()]
 
 const fieldsQs = (cols: readonly string[]) => cols.map(c => `fields%5B%5D=${encodeURIComponent(c)}`).join("&")
+
+/** Airtable's page size, and the walk's memory bound. */
+const PAGE_SIZE = 100
+
+/**
+ * The programme's current Net Promoter Score.
+ *
+ * Read from the same Signups rows the dashboard prompt writes to, listening only to those holding a score so the walk is over the answers rather than the whole mailing list. Every answer counts once, and the score is calculated by `summariseNps`.
+ *
+ * Null means "cannot answer" rather than "nobody has answered": a base without the score column, or an Airtable that is unconfigured or unreachable. That distinction is why the walk does not throw – a broken read should leave the panel saying it is unavailable, not take the overview down with it.
+ *
+ * Cached for a minute by `cachedAirtableWalk`, so opening the overview repeatedly does not walk the list on every load. The prompt's own answer is written immediately; this is the programme-wide reading that trails it by at most that cache window.
+ */
+export const getProgrammeNps = cachedAirtableWalk(walkNpsScores)
+
+async function walkNpsScores(config: AirtableConfig): Promise<NpsSummary | null> {
+	const scoreField = SCORE()
+	// `filterByFormula` cannot use field ids, unlike the `fields[]` narrowing above.
+	const scoreRef = formulaRef(RSVP.fields.howLikelyRecommend)
+	try {
+		const writable = await existingColumns(config, RSVP_TABLE_ID, [scoreField])
+		if (!writable.has(scoreField)) return null
+
+		const scores: number[] = []
+		let offset: string | undefined
+		do {
+			const query = `pageSize=${PAGE_SIZE}&${fieldsQs([scoreField])}&filterByFormula=${encodeURIComponent(
+				`NOT(${scoreRef} = BLANK())`,
+			)}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`
+			const page = await withRateLimitRetry("getProgrammeNps", () =>
+				airtableFetch(AirtableListSchema, config, `${encodeURIComponent(RSVP_TABLE_ID)}?${query}`),
+			)
+			for (const record of page.records) {
+				// The API keys `fields` by column name unless `returnFieldsByFieldId` is asked for, and this walk never asks; reading the id as a fallback keeps it working if that ever changes.
+				const score =
+					record.fields[RSVP.fields.howLikelyRecommend.name] ?? record.fields[RSVP.fields.howLikelyRecommend.id]
+				if (typeof score === "number") scores.push(score)
+			}
+			;({ offset } = page)
+		} while (offset)
+		return summariseNps(scores)
+	} catch (err) {
+		console.warn("[nps] could not read the programme's scores:", err)
+		return null
+	}
+}
 
 async function userEmail(userId: string): Promise<string | null> {
 	const user = await db.orm.public.User.whereUnique({ id: userId }).select("email").first()

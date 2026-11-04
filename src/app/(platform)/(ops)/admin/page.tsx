@@ -14,6 +14,7 @@ import {
 } from "@/app/components/admin/chart-geometry"
 import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import { getProgrammeNps } from "@/lib/airtable/nps"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { type ParticipantGoal, Phase, type ReviewResult } from "@/lib/enums"
 import { fmtInt } from "@/lib/numbers"
@@ -51,6 +52,9 @@ const fmtHours = (h: number) => `${h.toLocaleString("en-US", { maximumFractionDi
 /** A share of a whole. One decimal, because the small bands are where the comparison is worth making. */
 const fmtPct = (share: number) => `${(share * 100).toFixed(1)}%`
 
+/** An NPS keeps its sign, so a positive score reads as positive rather than as an unsigned count. */
+const fmtNps = (score: number | null) => (score === null ? "-" : score > 0 ? `+${score}` : String(score))
+
 /** Outcome wording, the same one a maker is told in lib/notifications. */
 const RESULT_LABEL: Record<ReviewResult, string> = {
 	APPROVED: "Approved",
@@ -69,6 +73,7 @@ export default async function AdminOverviewPage() {
 
 	const [
 		counters,
+		nps,
 		syncs,
 		flow,
 		sankeyData,
@@ -88,6 +93,7 @@ export default async function AdminOverviewPage() {
 		settings,
 	] = await Promise.all([
 		getAdminCounters(),
+		getProgrammeNps(),
 		getLatestSyncRuns([
 			"hackatime",
 			"airtable_ysws",
@@ -130,6 +136,49 @@ export default async function AdminOverviewPage() {
 				<Stat label="Active today" value={activeUsers.today} />
 				<Stat label="Printers earned" value={counters.shipped} />
 			</div>
+
+			<Panel
+				actions={
+					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
+						from the dashboard prompt
+					</span>
+				}
+				title="Net Promoter Score"
+			>
+				{nps === null ? (
+					<EmptyState>NPS is unavailable: Airtable is not configured or did not answer.</EmptyState>
+				) : nps.responses === 0 ? (
+					<EmptyState>Nobody has answered the NPS question yet.</EmptyState>
+				) : (
+					<div
+						style={{
+							alignItems: "center",
+							display: "flex",
+							flexWrap: "wrap",
+							gap: "1.5rem",
+							justifyContent: "space-between",
+						}}
+					>
+						<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
+						<ShareDonut
+							centerLabel="responses"
+							colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)"]}
+							empty="No NPS answers yet."
+							measure="NPS answers"
+							rows={[
+								{ label: "Promoters (9-10)", value: nps.promoters },
+								{ label: "Passives (7-8)", value: nps.passives },
+								{ label: "Detractors (0-6)", value: nps.detractors },
+							]}
+						/>
+					</div>
+				)}
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus the
+					detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from the same
+					Signups table the dashboard&apos;s prompt writes to, cached for a minute.
+				</p>
+			</Panel>
 
 			<Panel
 				actions={
