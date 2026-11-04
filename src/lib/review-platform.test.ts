@@ -4,6 +4,7 @@ import { once } from "node:events"
 import { createServer, type IncomingHttpHeaders, type Server } from "node:http"
 import { alreadyQueuedReviewShip, createReviewShip, ReviewApiError, terminalReviewFailure } from "@/lib/review-platform"
 import type { ReviewShipInput } from "@/lib/review-ship"
+import { isRecord } from "@/lib/unknown"
 
 const input: ReviewShipInput = {
 	description: "A board",
@@ -49,7 +50,7 @@ let port = 0
 beforeAll(async () => {
 	server = createServer(async (request, res) => {
 		let body = ""
-		for await (const chunk of request) body += chunk.toString("utf8")
+		for await (const chunk of request as AsyncIterable<Buffer>) body += chunk.toString("utf8")
 		seen.push({ body, headers: request.headers, url: request.url ?? "" })
 		res.writeHead(response.status, { "content-type": "application/json" })
 		res.end(JSON.stringify(response.body))
@@ -58,7 +59,8 @@ beforeAll(async () => {
 	await once(server, "listening")
 	const address = server.address()
 	if (address === null || typeof address === "string") throw new Error("test server has no port")
-	port = address.port
+	const { port: listeningPort } = address
+	port = listeningPort
 })
 
 beforeEach(() => {
@@ -88,7 +90,7 @@ describe("createReviewShip", () => {
 		expect(created).toEqual({ id: "sub_1", status: "accepted", version: 1 })
 		expect(seen).toHaveLength(1)
 
-		const request = seen[0]
+		const [request] = seen
 		if (!request) throw new Error("no request")
 		const timestamp = request.headers["x-ari-timestamp"]
 		const signature = request.headers["x-ari-signature"]
@@ -98,23 +100,24 @@ describe("createReviewShip", () => {
 
 	test("sends a stable delivery id derived from the exact body", async () => {
 		await createReviewShip(input)
-		const request = seen[0]
+		const [request] = seen
 		if (!request) throw new Error("no request")
 		expect(request.headers["x-ari-delivery-id"]).toBe(`hl-${createHash("sha256").update(request.body).digest("hex")}`)
 	})
 
 	test("scopes the delivery id to the local submission so a resubmission is a new delivery", async () => {
 		await createReviewShip(input, "sub_local")
-		const request = seen[0]
+		const [request] = seen
 		if (!request) throw new Error("no request")
 		expect(request.headers["x-ari-delivery-id"]).toMatch(/^hl-sub_local-[0-9a-f]{16}$/)
 	})
 
 	test("carries the nested meta Review needs", async () => {
 		await createReviewShip(input)
-		const parsed = JSON.parse(seen[0]?.body ?? "{}") as { meta?: { bom?: unknown[]; hours?: unknown } }
-		expect(parsed.meta?.bom).toHaveLength(1)
-		expect(parsed.meta?.hours).toBeDefined()
+		const parsed: unknown = JSON.parse(seen[0]?.body ?? "{}")
+		if (!isRecord(parsed) || !isRecord(parsed.meta)) throw new Error("response has no meta")
+		expect(parsed.meta.bom).toHaveLength(1)
+		expect(parsed.meta.hours).toBeDefined()
 	})
 
 	test("returns the version from a conflict", async () => {
