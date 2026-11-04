@@ -2,7 +2,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { createHash, createHmac } from "node:crypto"
 import { once } from "node:events"
 import { createServer, type IncomingHttpHeaders, type Server } from "node:http"
-import type { AddressInfo } from "node:net"
 import { alreadyQueuedReviewShip, createReviewShip, ReviewApiError, terminalReviewFailure } from "@/lib/review-platform"
 import type { ReviewShipInput } from "@/lib/review-ship"
 
@@ -57,7 +56,9 @@ beforeAll(async () => {
 	})
 	server.listen(0, "127.0.0.1")
 	await once(server, "listening")
-	port = (server.address() as AddressInfo).port
+	const address = server.address()
+	if (address === null || typeof address === "string") throw new Error("test server has no port")
+	port = address.port
 })
 
 beforeEach(() => {
@@ -91,7 +92,7 @@ describe("createReviewShip", () => {
 		if (!request) throw new Error("no request")
 		const timestamp = request.headers["x-ari-timestamp"]
 		const signature = request.headers["x-ari-signature"]
-		expect(typeof timestamp).toBe("string")
+		if (typeof timestamp !== "string") throw new Error("timestamp header missing")
 		expect(signature).toBe(createHmac("sha256", "test-secret").update(`${timestamp}.${request.body}`).digest("hex"))
 	})
 
