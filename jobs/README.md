@@ -1,6 +1,6 @@
 # Orchard jobs
 
-Step definitions for the nine scheduled jobs, plus the `orchard job` commands that create them. `docs/RUNBOOK.md` has the jobs table; this directory is what actually recreates them.
+Step definitions for the ten scheduled jobs, plus the `orchard job` commands that create them. `docs/RUNBOOK.md` has the jobs table; this directory is what actually recreates them.
 
 Every job is a single `app` step pointed at the Half-Life deployment, so the command runs inside the app image with the deployment's own environment. `INTEGRATION_API_KEY` is already there – no job duplicates it.
 
@@ -23,6 +23,7 @@ Repeat per job with the cron from the table below. To change an existing job's s
 | `hackatime-sync` | `*/15 * * * *` | public ingress |
 | `airtable-retry` | `17 * * * *` | public ingress |
 | `ari-retry` | `23 * * * *` | public ingress |
+| `review-retry` | `37 * * * *` | public ingress |
 | `loops-sync` | `41 * * * *` | cluster-internal |
 | `printer-reconcile` | `0 8 * * *` | public ingress |
 | `slack-ticket-summary` | `0 9 * * *` | public ingress |

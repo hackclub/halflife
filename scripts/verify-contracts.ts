@@ -3,6 +3,7 @@ import { join, relative } from "node:path"
 import type { z } from "zod"
 import type { ReviewResult as AriReviewResult } from "../src/lib/enums"
 import type { JournalEntry } from "../src/lib/repo-sync-files"
+import type { ReviewShipInput } from "../src/lib/review-ship"
 
 /**
  * The contract between the browser and the API.
@@ -345,6 +346,7 @@ async function bodies() {
 	await checkAriJournalTime()
 	await checkAriPending()
 	await checkAriCounts()
+	await checkReviewShadow()
 	await checkReviewStages()
 	await checkReviewDecision()
 	await checkHcb()
@@ -703,6 +705,74 @@ async function checkAriCounts(): Promise<void> {
 		])
 		check("ari · counts: one ship id counts once", counts.rejected === 1, JSON.stringify(counts))
 	}
+}
+
+async function checkReviewShadow(): Promise<void> {
+	const { Phase, PhaseStatus } = await import("../src/lib/enums")
+	/* ── 5b-iii. The Review shadow lifecycle ───────────────────────────────── */
+	//
+	// Review holds one open ship per external id, just like Ari. A resubmission therefore has to replace the old copy, and a ship Review has already decided must never be sent back into the shadow queue.
+	const { selectPendingReviewShips } = await import("../src/lib/review-pending")
+	const { toAriShipInput } = await import("../src/lib/review-ship")
+	const project = { buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" }
+	const submission = {
+		createdAt: new Date("2026-11-01T10:00:00Z"),
+		id: "s1",
+		phase: Phase.DESIGN,
+		themeProjectId: "p1",
+	}
+	const ship = (over: Partial<Parameters<typeof selectPendingReviewShips>[2][number]> = {}) => ({
+		closedAt: null,
+		decision: null,
+		lastError: null,
+		lastSubmissionId: "s1",
+		phase: Phase.DESIGN,
+		remoteId: "sub_1",
+		themeProjectId: "p1",
+		...over,
+	})
+
+	check("review · pending: no ship", selectPendingReviewShips([project], [submission], []).length === 1)
+	check("review · pending: healthy ship", selectPendingReviewShips([project], [submission], [ship()]).length === 0)
+	check(
+		"review · pending: older ship is replaced",
+		selectPendingReviewShips([project], [submission], [ship({ lastSubmissionId: "s0" })]).length === 1,
+	)
+	check(
+		"review · pending: a decided ship is not resent",
+		selectPendingReviewShips([project], [submission], [ship({ closedAt: new Date(), decision: "approved" })]).length
+			=== 0,
+	)
+	check(
+		"review · pending: a closed ship is resent while the phase is in review",
+		selectPendingReviewShips([project], [submission], [ship({ closedAt: new Date() })]).length === 1,
+	)
+
+	const input: ReviewShipInput = {
+		description: "A board",
+		evidence: ["commits", "devlog"],
+		external_id: "p1:design",
+		maker: { email: "maker@example.com", name: "Maker", slack_id: "U1" },
+		meta: {
+			bom: [{ name: "RP2040", qty: 1, unit_usd: 1.2 }],
+			hours: { claimed_seconds: 3600, hackatime_seconds: 0, journal_seconds: 3600, timelapse_seconds: 0 },
+			phase: "design" as const,
+			prior_reviews: [],
+			program: "half-life",
+			requested_tier: 1,
+			submission_notes: null,
+			theme: "pcb",
+			week: 1,
+		},
+		repo_url: "https://github.com/maker/board",
+		thumbnail_url: "https://example.com/board.png",
+		title: "Board",
+		track: "hardware" as const,
+	}
+	const ari = toAriShipInput(input)
+	const meta = ari.meta ?? {}
+	check("review · Ari meta stays flat", !("bom" in meta) && !("hours" in meta))
+	check("review · Ari keeps the requested tier", meta.requested_tier === 1)
 }
 
 async function checkReviewStages(): Promise<void> {

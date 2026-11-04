@@ -10,6 +10,7 @@ export type SyncKey =
 	| "airtable_rsvp"
 	| "airtable_loops"
 	| "ari_ship"
+	| "review_ship"
 	| "claim_sweep"
 	| "printer_reconcile"
 	| "help_ticket_summary"
