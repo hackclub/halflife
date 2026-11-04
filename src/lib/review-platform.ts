@@ -151,7 +151,7 @@ export async function getReviewParity(): Promise<ReviewParity> {
 
 async function reviewRequest(
 	path: string,
-	init: { auth: "bearer" | "signature"; body?: string; method: "GET" | "POST" },
+	init: { auth: "bearer" | "signature"; body?: string; deliveryId?: string; method: "GET" | "POST" },
 ): Promise<unknown> {
 	const url = new URL(path, `${reviewBaseUrl()}/`)
 	const headers = new Headers({ Accept: "application/json" })
@@ -162,7 +162,7 @@ async function reviewRequest(
 		headers.set("Content-Type", "application/json")
 		headers.set("X-Ari-Timestamp", timestamp)
 		// Stable for the exact bytes, different for a changed body. Review records the id before it reads the ship, so a retry of the same send is a duplicate rather than a second version, while a resubmission after a project edit is a new delivery.
-		headers.set("X-Ari-Delivery-Id", `hl-${createHash("sha256").update(init.body).digest("hex")}`)
+		headers.set("X-Ari-Delivery-Id", init.deliveryId ?? `hl-${createHash("sha256").update(init.body).digest("hex")}`)
 		headers.set("X-Ari-Signature", reviewSignature(required("REVIEW_SIGNING_SECRET"), timestamp, init.body))
 	}
 
@@ -207,8 +207,12 @@ async function reviewRequest(
 	return parsed
 }
 
-/** Create a ship. A 409 `already_queued` is expected and names the open ship; `alreadyQueuedReviewShip` reads it. */
-export async function createReviewShip(input: ReviewShipInput): Promise<ReviewShipCreated> {
+/**
+ * Create a ship. A 409 `already_queued` is expected and names the open ship; `alreadyQueuedReviewShip` reads it.
+ *
+ * The delivery id is scoped to the local submission and the exact body. A retry of the same hand-in is a duplicate; a resubmission is a new local submission and therefore a new id, even when the maker changed nothing. A bare body hash is not enough: after a withdraw, re-creating the same bytes would be treated as the delivery that was already processed and would not create version 2.
+ */
+export async function createReviewShip(input: ReviewShipInput, submissionId?: string): Promise<ReviewShipCreated> {
 	const body = JSON.stringify(input)
 	const bytes = new TextEncoder().encode(body).byteLength
 	if (bytes > MAX_REVIEW_PAYLOAD_BYTES)
@@ -217,9 +221,11 @@ export async function createReviewShip(input: ReviewShipInput): Promise<ReviewSh
 			`This submission is ${Math.ceil(bytes / (1024 * 1024))} MB, above Review's ${MAX_REVIEW_PAYLOAD_BYTES / (1024 * 1024)} MB limit`,
 		)
 
+	const hash = createHash("sha256").update(body).digest("hex").slice(0, 16)
 	const response = await reviewRequest(`/api/ingest/${encodeURIComponent(required("REVIEW_PROGRAM"))}`, {
 		auth: "signature",
 		body,
+		deliveryId: submissionId ? `hl-${submissionId}-${hash}` : undefined,
 		method: "POST",
 	})
 	return createResponseSchema.parse(response)

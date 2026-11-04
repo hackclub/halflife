@@ -102,6 +102,13 @@ describe("createReviewShip", () => {
 		expect(request.headers["x-ari-delivery-id"]).toBe(`hl-${createHash("sha256").update(request.body).digest("hex")}`)
 	})
 
+	test("scopes the delivery id to the local submission so a resubmission is a new delivery", async () => {
+		await createReviewShip(input, "sub_local")
+		const request = seen[0]
+		if (!request) throw new Error("no request")
+		expect(request.headers["x-ari-delivery-id"]).toMatch(/^hl-sub_local-[0-9a-f]{16}$/)
+	})
+
 	test("carries the nested meta Review needs", async () => {
 		await createReviewShip(input)
 		const parsed = JSON.parse(seen[0]?.body ?? "{}") as { meta?: { bom?: unknown[]; hours?: unknown } }

@@ -144,7 +144,7 @@ export async function sendSubmissionToReview(themeProjectId: string, phase: Phas
 			await withdrawRow(existing)
 		}
 
-		const created: ReviewShipCreated = await createReviewShip(input)
+		const created: ReviewShipCreated = await createReviewShip(input, submissionId)
 		await recordShip({
 			externalId: input.external_id,
 			lastSubmissionId: submissionId,
@@ -162,7 +162,7 @@ export async function sendSubmissionToReview(themeProjectId: string, phase: Phas
 			if (existing?.remoteId && (existing.remoteId !== queued.id || existing.lastSubmissionId !== submissionId))
 				try {
 					await withdrawRow(existing)
-					const retried = await createReviewShip(input)
+					const retried = await createReviewShip(input, submissionId)
 					await recordShip({
 						externalId: input.external_id,
 						lastSubmissionId: submissionId,

@@ -770,8 +770,9 @@ async function checkReviewShadow(): Promise<void> {
 		track: "hardware" as const,
 	}
 	const ari = toAriShipInput(input)
-	check("review · Ari meta stays flat", !("bom" in ari.meta) && !("hours" in ari.meta))
-	check("review · Ari keeps the requested tier", ari.meta.requested_tier === 1)
+	const meta = ari.meta ?? {}
+	check("review · Ari meta stays flat", !("bom" in meta) && !("hours" in meta))
+	check("review · Ari keeps the requested tier", meta.requested_tier === 1)
 }
 
 async function checkReviewStages(): Promise<void> {
