@@ -81,6 +81,17 @@ Ari (`ari.hackclub.com`, `@hackclub/ari`) is the review surface. Half Life sends
 
 ---
 
+## Reviewing with Review (shadow)
+
+The new Review platform can run beside Ari as a read-only shadow. The initial integration does not change who decides: Ari still owns every decision, every grant and every maker notice.
+
+- **`lib/review-platform.ts`** speaks Review's Ari-compatible edge directly. It signs `timestamp.body` (the delivery id is not in the inbound signature) and sends the nested `meta.bom`, `meta.hours`, `meta.prior_reviews`, `meta.requested_tier` and `meta.grant_cap_cents` that the Ari SDK refuses.
+- **`lib/review-ship.ts`** builds one ship; `toAriShipInput` flattens it back to exactly Ari's payload. The two providers cannot drift into different answers to "what was handed in".
+- **`lib/review-shadow.ts`** owns the lifecycle. `ReviewShip` is a separate row keyed by `(themeProjectId, phase)` because `unsubmitPhase` deletes the local submission; the mapping has to survive that. A resubmission withdraws the stale Review copy and creates the next version. `review-retry` closes copies whose phase has left review, so the shadow queue cannot fill with ships Ari has already decided.
+- **Read-only.** Review runs with `REVIEW_SHADOW=1`: claim, heartbeat, release, draft, decision and send-back return `409 shadow_mode`, and no outbox row is written. Half Life's review client never calls `finalizeReview`, so a Review event cannot move credit, Airtable or a maker notification.
+- **Failures.** A shadow failure is an audit row (`REVIEW_SYNC_FAILURE`) and a `ReviewShip.lastError`, not a participant-visible problem. It is replayed by `POST /api/integrations/review-retry` or the admin Retry button.
+- **Parity.** `bun run review:parity` compares the open queues, claimed hours, BOM totals and check summaries through Review's machine parity feed. `bun run review:backfill --commit` copies the currently open queue once.
+
 ## Payouts
 
 **`ProgramSettings.payoutSource` decides who pays.** Under `AIRTABLE`, approval mints coins and freezes `grantUsd`, and the Design row Half Life writes to `YSWS Project Submission` is what the payout team pays from. Under `HCB`, Airtable stays the submission and Loops surface but its `Requested funding` column is written as zero, and `/admin/grants` issues HCB card grants instead. The Airtable pipeline must be paused before the source changes; two payers is a double payment.
