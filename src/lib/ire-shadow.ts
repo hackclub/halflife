@@ -125,7 +125,11 @@ async function withdrawRow(row: IreShipRow): Promise<"not_queued" | "withdrawn">
  *
  * Ire holds at most one open ship per external id. In shadow mode its ships are not decided, so a resubmission would otherwise hit `already_queued` on the previous version forever. The `IreShip` row survives the local submission being deleted on unsubmit, which is why the mapping lives there rather than on `PhaseSubmission`.
  */
-export async function sendSubmissionToIre(themeProjectId: string, phase: Phase): Promise<SendIreResult> {
+export async function sendSubmissionToIre(
+	themeProjectId: string,
+	phase: Phase,
+	opts?: { verify?: boolean },
+): Promise<SendIreResult> {
 	if (!isIreConfigured()) return { skipped: "not_configured" }
 
 	const { input, submissionId } = await buildReviewShipInput(themeProjectId, phase)
@@ -134,15 +138,25 @@ export async function sendSubmissionToIre(themeProjectId: string, phase: Phase):
 	const existing = (await db.orm.public.IreShip.where({ phase, themeProjectId }).first()) as IreShipRow | null
 
 	try {
-		if (existing?.remoteId && existing.closedAt === null) {
-			if (existing.lastSubmissionId === submissionId)
-				return {
-					id: existing.remoteId,
-					status: "duplicate",
-					...(existing.version === null ? {} : { version: existing.version }),
-				}
-			await withdrawRow(existing)
-		}
+		if (existing?.remoteId && existing.closedAt === null)
+			if (existing.lastSubmissionId === submissionId) {
+				// A healthy row normally means Ire has the ship. A full resend does not trust the row: Ire may have
+				// lost it (a wiped shadow database, an operator withdraw), in which case falling through recreates it.
+				if (!opts?.verify)
+					return {
+						id: existing.remoteId,
+						status: "duplicate",
+						...(existing.version === null ? {} : { version: existing.version }),
+					}
+
+				const live = await getIreShip(ireExternalId(themeProjectId, phase))
+				if (live)
+					return {
+						id: existing.remoteId,
+						status: "duplicate",
+						...(existing.version === null ? {} : { version: existing.version }),
+					}
+			} else await withdrawRow(existing)
 
 		const created: IreShipCreated = await createIreShip(input, submissionId)
 		await recordShip({

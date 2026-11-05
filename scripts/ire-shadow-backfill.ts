@@ -11,6 +11,7 @@ import { trackSideEffect } from "../src/lib/side-effects"
  * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/ire-shadow-backfill.ts [--commit] [--limit=N] [--all]`.
  *
  * `--all` resends every undecided hand-in in review, not just the ones missing a healthy ship. Healthy ships resolve as duplicates without new versions; decided ships are never resent.
+ * In `--all` mode each healthy-looking row is verified against Ire first, so ships Ire lost (a wiped shadow database, an operator withdraw) are recreated instead of trusted blindly.
  */
 
 const commit = process.argv.includes("--commit")
@@ -45,8 +46,9 @@ async function main() {
 		return
 	}
 
+	let accepted = 0
+	let duplicates = 0
 	let failed = 0
-	let sent = 0
 	for (const item of pending) {
 		const result = await trackSideEffect(
 			"ire",
@@ -56,13 +58,15 @@ async function main() {
 				targetId: item.themeProjectId,
 				targetType: "ThemeProject",
 			},
-			() => sendSubmissionToIre(item.themeProjectId, item.phase),
+			() => sendSubmissionToIre(item.themeProjectId, item.phase, all ? { verify: true } : undefined),
 		)
-		if (result) sent++
-		else failed++
+		if (!result) failed++
+		else if ("skipped" in result) failed++
+		else if (result.status === "accepted") accepted++
+		else duplicates++
 	}
 
-	console.log(`sent ${sent}, failed ${failed}`)
+	console.log(`accepted ${accepted}, duplicates ${duplicates}, failed ${failed}`)
 	if (failed > 0) process.exitCode = 1
 }
 
