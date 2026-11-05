@@ -59,6 +59,15 @@ describe("selectPendingIreShips", () => {
 		).toEqual([])
 	})
 
+	test("resendAll includes healthy ships but never decided ones", () => {
+		expect(selectPendingIreShips([project], [submission], [ship()], { resendAll: true })).toHaveLength(1)
+		expect(
+			selectPendingIreShips([project], [submission], [ship({ closedAt: new Date(), decision: "approved" })], {
+				resendAll: true,
+			}),
+		).toEqual([])
+	})
+
 	test("a phase that has left review is not pending", () => {
 		expect(
 			selectPendingIreShips(

@@ -1,5 +1,5 @@
 import { isIreConfigured } from "../src/lib/ire-platform"
-import { findUnsyncedIreSubmissions, sendSubmissionToIre } from "../src/lib/ire-shadow"
+import { findAllOpenIreSubmissions, findUnsyncedIreSubmissions, sendSubmissionToIre } from "../src/lib/ire-shadow"
 import db from "../src/lib/prisma8"
 import { trackSideEffect } from "../src/lib/side-effects"
 
@@ -8,10 +8,13 @@ import { trackSideEffect } from "../src/lib/side-effects"
  *
  * The deploy path sends every new submission, but the queue that existed when Ire was connected has to be replayed once. Only the newest open submission per phase is sent: older rows are history, and `meta.prior_reviews` carries what a reviewer needs from them. Re-running is safe; Ire returns the open ship as `already_queued` and the send path adopts it.
  *
- * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/ire-shadow-backfill.ts [--commit] [--limit=N]`.
+ * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/ire-shadow-backfill.ts [--commit] [--limit=N] [--all]`.
+ *
+ * `--all` resends every undecided hand-in in review, not just the ones missing a healthy ship. Healthy ships resolve as duplicates without new versions; decided ships are never resent.
  */
 
 const commit = process.argv.includes("--commit")
+const all = process.argv.includes("--all")
 const limitArg = process.argv.find(arg => arg.startsWith("--limit="))
 const limit = limitArg ? Number(limitArg.slice("--limit=".length)) : undefined
 
@@ -25,8 +28,15 @@ async function main() {
 		process.exit(1)
 	}
 
-	const pending = (await findUnsyncedIreSubmissions()).slice(0, limit ?? undefined)
-	console.log(`${pending.length} hand-in(s) have no healthy shadow ship in Ire`)
+	const pending = (await (all ? findAllOpenIreSubmissions() : findUnsyncedIreSubmissions())).slice(
+		0,
+		limit ?? undefined,
+	)
+	console.log(
+		all
+			? `${pending.length} open hand-in(s) will be resent to Ire`
+			: `${pending.length} hand-in(s) have no healthy shadow ship in Ire`,
+	)
 	for (const item of pending)
 		console.log(`  ${item.themeProjectId}:${item.phase}${item.reason ? ` - ${item.reason}` : ""}`)
 

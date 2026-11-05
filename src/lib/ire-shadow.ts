@@ -276,13 +276,28 @@ export async function closeResolvedIreShips(opts: { limit?: number } = {}): Prom
 
 /** Replay the shadow sends that never reached Ire, with the reason the last attempt gave. */
 export async function findUnsyncedIreSubmissions(): Promise<PendingIreShipItem[]> {
-	if (!isIreConfigured()) return []
+	const { projects, ships, submissions } = await fetchIreResendContext()
+	if (projects.length === 0) return []
+
+	return selectPendingIreShips(projects, submissions, ships)
+}
+
+/** Every undecided hand-in currently in review, for operator-driven full resends. Healthy ships resolve as duplicates without new versions. */
+export async function findAllOpenIreSubmissions(): Promise<PendingIreShipItem[]> {
+	const { projects, ships, submissions } = await fetchIreResendContext()
+	if (projects.length === 0) return []
+
+	return selectPendingIreShips(projects, submissions, ships, { resendAll: true })
+}
+
+async function fetchIreResendContext() {
+	if (!isIreConfigured()) return { projects: [], ships: [], submissions: [] }
 
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
 		.where(project => or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)))
 		.select("buildStatus", "designStatus", "id")
 		.all()
-	if (projects.length === 0) return []
+	if (projects.length === 0) return { projects: [], ships: [], submissions: [] }
 
 	const ids = projects.map(project => project.id)
 	const [submissions, ships] = await Promise.all([
@@ -296,15 +311,9 @@ export async function findUnsyncedIreSubmissions(): Promise<PendingIreShipItem[]
 			.all(),
 	])
 
-	return selectPendingIreShips(
+	return {
 		projects,
-		submissions.map(submission => ({
-			createdAt: new Date(submission.createdAt),
-			id: submission.id,
-			phase: submission.phase,
-			themeProjectId: submission.themeProjectId,
-		})),
-		ships.map(ship => ({
+		ships: ships.map(ship => ({
 			closedAt: ship.closedAt === null ? null : new Date(ship.closedAt),
 			decision: ship.decision,
 			lastError: ship.lastError,
@@ -313,7 +322,13 @@ export async function findUnsyncedIreSubmissions(): Promise<PendingIreShipItem[]
 			remoteId: ship.remoteId,
 			themeProjectId: ship.themeProjectId,
 		})),
-	)
+		submissions: submissions.map(submission => ({
+			createdAt: new Date(submission.createdAt),
+			id: submission.id,
+			phase: submission.phase,
+			themeProjectId: submission.themeProjectId,
+		})),
+	}
 }
 
 /** What a status refresh changed. */

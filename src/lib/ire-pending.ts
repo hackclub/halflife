@@ -42,6 +42,7 @@ export function selectPendingIreShips(
 	projects: readonly PendingIreProject[],
 	submissions: readonly PendingIreSubmission[],
 	ships: readonly PendingIreShip[],
+	opts?: { resendAll?: boolean },
 ): PendingIreShipItem[] {
 	// The newest open submission per (project, phase) is the one a reviewer would be looking at, so an older row cannot make its phase look sent.
 	const newest = new Map<string, PendingIreSubmission>()
@@ -62,8 +63,9 @@ export function selectPendingIreShips(
 			if (!submission) continue
 			const ship = byPhase.get(`${project.id}:${phase}`)
 			// A decision means Ire has already finished this ship, even if a row was closed by a later lifecycle pass. Never send a decided hand-in back into the shadow queue.
+			if (ship?.decision && ship.lastSubmissionId === submission.id) continue
 			const sent = typeof ship?.remoteId === "string" && (ship.closedAt === null || ship.decision !== null)
-			if (sent && ship.lastSubmissionId === submission.id) continue
+			if (!opts?.resendAll && sent && ship.lastSubmissionId === submission.id) continue
 			out.push({ phase, reason: ship?.lastError ?? null, themeProjectId: project.id })
 		}
 
