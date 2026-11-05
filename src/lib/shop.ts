@@ -306,10 +306,7 @@ export async function purchase(
 
 	// Spending is where identity is asked for. It used to be asked at submit, which turned the last step of a finished week into a wall for anyone who had not got round to verifying – and the shop is the one thing money and a shipping address are actually behind. Checked before the transaction rather than inside it: it is the buyer's own state, read fresh, and nothing concurrent here can undo it.
 	if (!(await isIdentityVerified(userId)))
-		throw new HttpError(
-			"NOT_VERIFIED",
-			"Identity verification is required to buy things. Verify at auth.hackclub.com.",
-		)
+		throw new HttpError("NOT_VERIFIED", "Identity verification is required to buy things. Verify at auth.hackclub.com.")
 
 	const item = await db.orm.public.ShopItem.whereUnique({ id: shopItemId }).first()
 	if (!item?.active) throw new HttpError("NOT_FOUND", "Item not found")
