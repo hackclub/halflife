@@ -211,7 +211,7 @@ namespace public {
     publicReels              PublicReel[]
     reports                  ContentReport[]
     repoSyncRuns             RepoSyncRun[]
-    reviewShips              ReviewShip[]
+    ireShips              IreShip[]
     submissions              PhaseSubmission[]
     workSessions             WorkSession[]
     user                     User                 @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -600,7 +600,7 @@ namespace public {
   }
 
   /// One current ship in the external Review platform for a project phase. It is deliberately not a column on PhaseSubmission: unsubmit deletes that row, and a failed withdrawal still has to be replayable.
-  model ReviewShip {
+  model IreShip {
     id               String             @id @onCreate(cuid(2))
     themeProjectId   String
     phase            pg.enum(Phase)
@@ -617,10 +617,10 @@ namespace public {
     updatedAt        TimestampString(3) @onCreate(now()) @onUpdate(now())
     themeProject     ThemeProject       @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
 
-    @@index([themeProjectId, phase], map: "review_ship_themeProjectId_phase_key", unique: true)
-    @@index([remoteId], map: "review_ship_remoteId_key", unique: true)
-    @@index([closedAt], map: "review_ship_closedAt_idx")
-    @@map("review_ship")
+    @@index([themeProjectId, phase], map: "ire_ship_themeProjectId_phase_key", unique: true)
+    @@index([remoteId], map: "ire_ship_remoteId_key", unique: true)
+    @@index([closedAt], map: "ire_ship_closedAt_idx")
+    @@map("ire_ship")
   }
 
   model PostLike {
@@ -1301,8 +1301,8 @@ namespace public {
     ADMIN_ISSUE_GRANT_CARD = "ADMIN_ISSUE_GRANT_CARD"
     ADMIN_CREATE_GRANT_CARD_BATCH = "ADMIN_CREATE_GRANT_CARD_BATCH"
     ADMIN_CANCEL_GRANT_CARD = "ADMIN_CANCEL_GRANT_CARD"
-    REVIEW_SYNC_SUCCESS = "REVIEW_SYNC_SUCCESS"
-    REVIEW_SYNC_FAILURE = "REVIEW_SYNC_FAILURE"
+    IRE_SYNC_SUCCESS = "IRE_SYNC_SUCCESS"
+    IRE_SYNC_FAILURE = "IRE_SYNC_FAILURE"
   }
 
   native_enum ReviewDisputeOutcome {

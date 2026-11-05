@@ -1,14 +1,14 @@
+import { isIreConfigured } from "../src/lib/ire-platform"
+import { findUnsyncedIreSubmissions, sendSubmissionToIre } from "../src/lib/ire-shadow"
 import db from "../src/lib/prisma8"
-import { isReviewConfigured } from "../src/lib/review-platform"
-import { findUnsyncedReviewSubmissions, sendSubmissionToReview } from "../src/lib/review-shadow"
 import { trackSideEffect } from "../src/lib/side-effects"
 
 /**
- * Copy the currently open hand-ins into Review.
+ * Copy the currently open hand-ins into Ire.
  *
- * The deploy path sends every new submission, but the queue that existed when Review was connected has to be replayed once. Only the newest open submission per phase is sent: older rows are history, and `meta.prior_reviews` carries what a reviewer needs from them. Re-running is safe; Review returns the open ship as `already_queued` and the send path adopts it.
+ * The deploy path sends every new submission, but the queue that existed when Ire was connected has to be replayed once. Only the newest open submission per phase is sent: older rows are history, and `meta.prior_reviews` carries what a reviewer needs from them. Re-running is safe; Ire returns the open ship as `already_queued` and the send path adopts it.
  *
- * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/review-shadow-backfill.ts [--commit] [--limit=N]`.
+ * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/ire-shadow-backfill.ts [--commit] [--limit=N]`.
  */
 
 const commit = process.argv.includes("--commit")
@@ -16,8 +16,8 @@ const limitArg = process.argv.find(arg => arg.startsWith("--limit="))
 const limit = limitArg ? Number(limitArg.slice("--limit=".length)) : undefined
 
 async function main() {
-	if (!isReviewConfigured()) {
-		console.error("Set REVIEW_API_URL, REVIEW_PROGRAM and REVIEW_SIGNING_SECRET before backfilling.")
+	if (!isIreConfigured()) {
+		console.error("Set IRE_API_URL, IRE_PROGRAM and IRE_SIGNING_SECRET before backfilling.")
 		process.exit(1)
 	}
 	if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
@@ -25,8 +25,8 @@ async function main() {
 		process.exit(1)
 	}
 
-	const pending = (await findUnsyncedReviewSubmissions()).slice(0, limit ?? undefined)
-	console.log(`${pending.length} hand-in(s) have no healthy shadow ship in Review`)
+	const pending = (await findUnsyncedIreSubmissions()).slice(0, limit ?? undefined)
+	console.log(`${pending.length} hand-in(s) have no healthy shadow ship in Ire`)
 	for (const item of pending)
 		console.log(`  ${item.themeProjectId}:${item.phase}${item.reason ? ` - ${item.reason}` : ""}`)
 
@@ -39,14 +39,14 @@ async function main() {
 	let sent = 0
 	for (const item of pending) {
 		const result = await trackSideEffect(
-			"review",
+			"ire",
 			{
 				actorId: null,
 				metadata: { backfill: true, phase: item.phase, shadow: true },
 				targetId: item.themeProjectId,
 				targetType: "ThemeProject",
 			},
-			() => sendSubmissionToReview(item.themeProjectId, item.phase),
+			() => sendSubmissionToIre(item.themeProjectId, item.phase),
 		)
 		if (result) sent++
 		else failed++

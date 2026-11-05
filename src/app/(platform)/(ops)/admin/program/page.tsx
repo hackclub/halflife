@@ -14,26 +14,26 @@ import { scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { formatDeadline } from "@/lib/deadline"
 import { Phase } from "@/lib/enums"
+import { ireMode, ireWebhookUrl, isIreConfigured } from "@/lib/ire-platform"
+import { findUnsyncedIreSubmissions } from "@/lib/ire-shadow"
+import { ireQueueUrl } from "@/lib/ire-url"
 import { configuredOrigin } from "@/lib/origin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange, weekOpensAt } from "@/lib/program"
 import { getOpenDisputes } from "@/lib/queries/review"
-import { isReviewConfigured, reviewMode, reviewWebhookUrl } from "@/lib/review-platform"
-import { findUnsyncedReviewSubmissions } from "@/lib/review-shadow"
-import { reviewQueueUrl } from "@/lib/review-url"
 
 export const dynamic = "force-dynamic"
 
 export default async function AdminProgramPage() {
 	await requirePermissionPage(Permission.MANAGE_PROGRAM)
 
-	const [settings, week, unsynced, unsyncedAri, unsyncedReview, disputes] = await Promise.all([
+	const [settings, week, unsynced, unsyncedAri, unsyncedIre, disputes] = await Promise.all([
 		getProgramSettings(),
 		currentWeekNumber(),
 		findUnsyncedSubmissions(),
 		findUnsyncedAriSubmissions(),
-		findUnsyncedReviewSubmissions(),
+		findUnsyncedIreSubmissions(),
 		getOpenDisputes(),
 	])
 
@@ -43,9 +43,9 @@ export default async function AdminProgramPage() {
 	const ariSending = isAriConfigured()
 	const ariReceiving = isAriWebhookConfigured()
 	const airtableReady = getAirtableConfig() !== null
-	const reviewSending = isReviewConfigured()
-	const reviewCallbackUrl = origin && reviewSending ? reviewWebhookUrl(origin) : null
-	const reviewQueue = reviewQueueUrl()
+	const ireSending = isIreConfigured()
+	const ireCallbackUrl = origin && ireSending ? ireWebhookUrl(origin) : null
+	const ireQueue = ireQueueUrl()
 
 	const startYmd = settings.eventStartDate.toISOString().slice(0, 10)
 	const now = new Date()
@@ -263,52 +263,50 @@ export default async function AdminProgramPage() {
 				</Table>
 			</Panel>
 
-			<Panel title="Review shadow integration">
+			<Panel title="Ire shadow integration">
 				<p className="hl-hint">
-					Half Life sends every hand-in to Review as a shadow copy while Ari remains the decision surface. The copy is
-					read-only: reviewers cannot claim or decide it, and nothing Review does can write credit, Airtable or a maker
+					Half Life sends every hand-in to Ire as a shadow copy while Ari remains the decision surface. The copy is
+					read-only: Ire reviewers cannot claim or decide it, and nothing Ire does can write credit, Airtable or a maker
 					notification. When a phase leaves review, the hourly job withdraws its copy.
 				</p>
 				<Table head={["Setting", "Value", "Status"]}>
 					<tr>
 						<td>Mode</td>
-						<td className="hl-mono">REVIEW_MODE</td>
+						<td className="hl-mono">IRE_MODE</td>
 						<td>
-							<Badge tone={reviewMode() === "shadow" ? "warning" : "success"}>{reviewMode()}</Badge>
+							<Badge tone={ireMode() === "shadow" ? "warning" : "success"}>{ireMode()}</Badge>
 						</td>
 					</tr>
 					<tr>
 						<td>Sending ships</td>
-						<td className="hl-mono">REVIEW_API_URL · REVIEW_PROGRAM · REVIEW_SIGNING_SECRET</td>
+						<td className="hl-mono">IRE_API_URL · IRE_PROGRAM · IRE_SIGNING_SECRET</td>
 						<td>
-							<Badge tone={reviewSending ? "success" : "muted"}>
-								{reviewSending ? "configured" : "not configured"}
-							</Badge>
+							<Badge tone={ireSending ? "success" : "muted"}>{ireSending ? "configured" : "not configured"}</Badge>
 						</td>
 					</tr>
 					<tr>
 						<td>Callback URL</td>
-						{reviewCallbackUrl ? (
+						{ireCallbackUrl ? (
 							<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-								{reviewCallbackUrl}
+								{ireCallbackUrl}
 							</td>
 						) : (
-							<td className="hl-hint">Set the public app URL and the Review secrets to show a callback URL</td>
+							<td className="hl-hint">Set the public app URL and the Ire secrets to show a callback URL</td>
 						)}
 						<td>
-							<Badge tone={reviewCallbackUrl ? "muted" : "warning"}>
-								{reviewCallbackUrl ? "ready for the live phase" : "not configured"}
+							<Badge tone={ireCallbackUrl ? "muted" : "warning"}>
+								{ireCallbackUrl ? "ready for the live phase" : "not configured"}
 							</Badge>
 						</td>
 					</tr>
 					<tr>
 						<td>Queue</td>
-						{reviewQueue ? (
+						{ireQueue ? (
 							<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-								<Link href={reviewQueue}>{reviewQueue}</Link>
+								<Link href={ireQueue}>{ireQueue}</Link>
 							</td>
 						) : (
-							<td className="hl-hint">Set REVIEW_API_URL or REVIEW_BASE to link the queue</td>
+							<td className="hl-hint">Set IRE_API_URL or IRE_BASE to link the queue</td>
 						)}
 						<td>
 							<Badge tone="muted">shadow</Badge>
@@ -316,21 +314,21 @@ export default async function AdminProgramPage() {
 					</tr>
 					<tr>
 						<td>Failed sends and closes</td>
-						<td className="hl-mono">POST /api/integrations/review-retry</td>
+						<td className="hl-mono">POST /api/integrations/ire-retry</td>
 						<td>
 							<Badge tone="muted">hourly job</Badge>
 						</td>
 					</tr>
 				</Table>
 
-				{!reviewSending ? (
-					<EmptyState>Review is not configured on this deployment, so nothing is copied there.</EmptyState>
-				) : unsyncedReview.length === 0 ? (
-					<EmptyState>Every submission awaiting review has a healthy shadow copy in Review.</EmptyState>
+				{!ireSending ? (
+					<EmptyState>Ire is not configured on this deployment, so nothing is copied there.</EmptyState>
+				) : unsyncedIre.length === 0 ? (
+					<EmptyState>Every submission awaiting review has a healthy shadow copy in Ire.</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", "Why it is stuck", ""]}>
-						{unsyncedReview.map(item => (
-							<tr key={`review-${item.themeProjectId}-${item.phase}`}>
+						{unsyncedIre.map(item => (
+							<tr key={`ire-${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
 								<td className="hand">{item.reason ?? "Not sent yet. The hourly job will pick it up."}</td>
@@ -338,7 +336,7 @@ export default async function AdminProgramPage() {
 									<ActionButton
 										body={{ phase: item.phase }}
 										label="Retry"
-										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-review`}
+										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ire`}
 									/>
 								</td>
 							</tr>

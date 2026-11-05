@@ -13,14 +13,14 @@ import { AuditAction, logAuditTx } from "@/lib/audit"
 import { TIERS } from "@/lib/config/tiers"
 import { HoursSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import { isIreConfigured } from "@/lib/ire-platform"
+import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
-import { isReviewConfigured } from "@/lib/review-platform"
-import { sendSubmissionToReview } from "@/lib/review-shadow"
 import { trackSideEffect } from "@/lib/side-effects"
 import { escapeLikePattern } from "@/lib/text"
 import { formatDbTimestamp } from "@/lib/time"
@@ -50,11 +50,11 @@ export interface WarmupImportOutcome {
 	/** What the Ari send did, when the row got as far as one. */
 	ari: "sent" | "failed" | "not_configured" | "not_attempted"
 	email: string | null
+	/** What the shadow Ire send did, when the row got as far as one. */
+	ire: "sent" | "failed" | "not_configured" | "not_attempted"
 	/** Why it was skipped or failed, in an operator's terms. */
 	reason: string | null
 	recordId: string
-	/** What the shadow Review send did, when the row got as far as one. */
-	review: "sent" | "failed" | "not_configured" | "not_attempted"
 	status: "imported" | "already_imported" | "skipped" | "failed"
 	themeProjectId: string | null
 	userId: string | null
@@ -66,8 +66,8 @@ export interface WarmupImportSummary {
 	failed: number
 	fetched: number
 	imported: number
+	ireSent: number
 	outcomes: WarmupImportOutcome[]
-	reviewSent: number
 	skipped: number
 	table: string
 }
@@ -463,14 +463,14 @@ async function sendToAri(
 	return result ? "sent" : "failed"
 }
 
-async function sendToReview(
+async function sendToIre(
 	themeProjectId: string,
 	phase: Phase,
 	actor: ImportActor,
-): Promise<WarmupImportOutcome["review"]> {
-	if (!isReviewConfigured()) return "not_configured"
+): Promise<WarmupImportOutcome["ire"]> {
+	if (!isIreConfigured()) return "not_configured"
 	const result = await trackSideEffect(
-		"review",
+		"ire",
 		{
 			actorEmail: actor.email,
 			actorId: actor.id,
@@ -478,7 +478,7 @@ async function sendToReview(
 			targetId: themeProjectId,
 			targetType: "ThemeProject",
 		},
-		() => sendSubmissionToReview(themeProjectId, phase),
+		() => sendSubmissionToIre(themeProjectId, phase),
 	)
 	return result ? "sent" : "failed"
 }
@@ -504,9 +504,9 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 		const base: WarmupImportOutcome = {
 			ari: "not_attempted",
 			email: null,
+			ire: "not_attempted",
 			reason: null,
 			recordId: record.id,
-			review: "not_attempted",
 			status: "failed",
 			themeProjectId: null,
 			userId: null,
@@ -544,7 +544,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 					if (key) await db.orm.public.ThemeProject.where({ id: result.themeProjectId }).update({ coverImageKey: key })
 				}
 				outcome.ari = await sendToAri(result.themeProjectId, parsed.row.phase, actor)
-				outcome.review = await sendToReview(result.themeProjectId, parsed.row.phase, actor)
+				outcome.ire = await sendToIre(result.themeProjectId, parsed.row.phase, actor)
 			}
 
 			outcomes.push(outcome)
@@ -565,8 +565,8 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 		failed: count("failed"),
 		fetched: records.length,
 		imported: count("imported"),
+		ireSent: outcomes.filter(o => o.ire === "sent").length,
 		outcomes,
-		reviewSent: outcomes.filter(o => o.review === "sent").length,
 		skipped: count("skipped"),
 		table: YSWS_SUBMISSION.tableId,
 	}

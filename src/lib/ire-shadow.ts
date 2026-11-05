@@ -3,33 +3,33 @@ import { or } from "@prisma/orm-postgres/orm-client"
 import { ariExternalId } from "@/lib/ari-id"
 import { type Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import { type PendingIreShipItem, selectPendingIreShips } from "@/lib/ire-pending"
+import {
+	alreadyQueuedIreShip,
+	createIreShip,
+	getIreShip,
+	type IreShipCreated,
+	isIreConfigured,
+	terminalIreFailure,
+	withdrawIreShip,
+} from "@/lib/ire-platform"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
-import { type PendingReviewShipItem, selectPendingReviewShips } from "@/lib/review-pending"
-import {
-	alreadyQueuedReviewShip,
-	createReviewShip,
-	getReviewShip,
-	isReviewConfigured,
-	type ReviewShipCreated,
-	terminalReviewFailure,
-	withdrawReviewShip,
-} from "@/lib/review-platform"
 import { buildReviewShipInput } from "@/lib/review-ship"
 import { formatDbTimestamp } from "@/lib/time"
 
 /**
- * The shadow copy of a hand-in in Review.
+ * The shadow copy of a hand-in in Ire.
  *
- * Ari owns the decision; Review only observes. This module keeps the observed copy current: send it, close it when the local phase moves on, replace it when the maker hands in a new version, and record why a send failed. Nothing here applies a decision, writes credit, mirrors Airtable or notifies a maker.
+ * Ari owns the decision; Ire only observes. This module keeps the observed copy current: send it, close it when the local phase moves on, replace it when the maker hands in a new version, and record why a send failed. Nothing here applies a decision, writes credit, mirrors Airtable or notifies a maker.
  */
 
-export type SendReviewResult =
+export type SendIreResult =
 	| { skipped: "not_configured" }
 	| { id: string; status: "accepted" | "duplicate"; version?: number }
 
-/** The row a Review ship is currently linked to, as the lifecycle checks need it. */
-export interface ReviewShipRow {
+/** The row an Ire ship is currently linked to, as the lifecycle checks need it. */
+export interface IreShipRow {
 	closedAt: string | null
 	decision: string | null
 	externalId: string
@@ -69,37 +69,37 @@ async function recordShip(input: {
 		syncedAt,
 		version: input.version ?? null,
 	}
-	const existing = await db.orm.public.ReviewShip.where({
+	const existing = await db.orm.public.IreShip.where({
 		phase: input.phase,
 		themeProjectId: input.themeProjectId,
 	})
 		.select("id")
 		.first()
 	if (existing) {
-		await db.orm.public.ReviewShip.where({ id: existing.id }).update(fields)
+		await db.orm.public.IreShip.where({ id: existing.id }).update(fields)
 		return
 	}
 	try {
-		await db.orm.public.ReviewShip.create({ ...fields, phase: input.phase, themeProjectId: input.themeProjectId })
+		await db.orm.public.IreShip.create({ ...fields, phase: input.phase, themeProjectId: input.themeProjectId })
 	} catch (err) {
 		// Two senders can race the first create. The unique index keeps one row; write this result over the winner.
-		const raced = await db.orm.public.ReviewShip.where({
+		const raced = await db.orm.public.IreShip.where({
 			phase: input.phase,
 			themeProjectId: input.themeProjectId,
 		})
 			.select("id")
 			.first()
 		if (!raced) throw err
-		await db.orm.public.ReviewShip.where({ id: raced.id }).update(fields)
+		await db.orm.public.IreShip.where({ id: raced.id }).update(fields)
 	}
 }
 
 async function recordError(themeProjectId: string, phase: Phase, reason: string): Promise<void> {
 	try {
-		const existing = await db.orm.public.ReviewShip.where({ phase, themeProjectId }).select("id").first()
-		if (existing) await db.orm.public.ReviewShip.where({ id: existing.id }).update({ lastError: reason })
+		const existing = await db.orm.public.IreShip.where({ phase, themeProjectId }).select("id").first()
+		if (existing) await db.orm.public.IreShip.where({ id: existing.id }).update({ lastError: reason })
 		else
-			await db.orm.public.ReviewShip.create({
+			await db.orm.public.IreShip.create({
 				externalId: ariExternalId(themeProjectId, phase),
 				lastError: reason,
 				phase,
@@ -110,9 +110,9 @@ async function recordError(themeProjectId: string, phase: Phase, reason: string)
 	}
 }
 
-async function withdrawRow(row: ReviewShipRow): Promise<"not_queued" | "withdrawn"> {
-	const result = await withdrawReviewShip(row.externalId)
-	await db.orm.public.ReviewShip.where({ id: row.id }).update({
+async function withdrawRow(row: IreShipRow): Promise<"not_queued" | "withdrawn"> {
+	const result = await withdrawIreShip(row.externalId)
+	await db.orm.public.IreShip.where({ id: row.id }).update({
 		closedAt: nowText(),
 		lastError: null,
 		status: result.status,
@@ -121,17 +121,17 @@ async function withdrawRow(row: ReviewShipRow): Promise<"not_queued" | "withdraw
 }
 
 /**
- * Send a hand-in to Review, replacing a stale open copy when the maker has handed in again.
+ * Send a hand-in to Ire, replacing a stale open copy when the maker has handed in again.
  *
- * Review holds at most one open ship per external id. In shadow mode its ships are not decided, so a resubmission would otherwise hit `already_queued` on the previous version forever. The `ReviewShip` row survives the local submission being deleted on unsubmit, which is why the mapping lives there rather than on `PhaseSubmission`.
+ * Ire holds at most one open ship per external id. In shadow mode its ships are not decided, so a resubmission would otherwise hit `already_queued` on the previous version forever. The `IreShip` row survives the local submission being deleted on unsubmit, which is why the mapping lives there rather than on `PhaseSubmission`.
  */
-export async function sendSubmissionToReview(themeProjectId: string, phase: Phase): Promise<SendReviewResult> {
-	if (!isReviewConfigured()) return { skipped: "not_configured" }
+export async function sendSubmissionToIre(themeProjectId: string, phase: Phase): Promise<SendIreResult> {
+	if (!isIreConfigured()) return { skipped: "not_configured" }
 
 	const { input, submissionId } = await buildReviewShipInput(themeProjectId, phase)
 	if (!submissionId) throw new HttpError("NOT_SUBMITTED", "This phase has no open submission to send to review")
 
-	const existing = (await db.orm.public.ReviewShip.where({ phase, themeProjectId }).first()) as ReviewShipRow | null
+	const existing = (await db.orm.public.IreShip.where({ phase, themeProjectId }).first()) as IreShipRow | null
 
 	try {
 		if (existing?.remoteId && existing.closedAt === null) {
@@ -144,7 +144,7 @@ export async function sendSubmissionToReview(themeProjectId: string, phase: Phas
 			await withdrawRow(existing)
 		}
 
-		const created: ReviewShipCreated = await createReviewShip(input, submissionId)
+		const created: IreShipCreated = await createIreShip(input, submissionId)
 		await recordShip({
 			externalId: input.external_id,
 			lastSubmissionId: submissionId,
@@ -156,13 +156,13 @@ export async function sendSubmissionToReview(themeProjectId: string, phase: Phas
 		})
 		return created
 	} catch (err) {
-		const queued = alreadyQueuedReviewShip(err)
+		const queued = alreadyQueuedIreShip(err)
 		if (queued) {
 			// The open ship is one we do not have on record, or one whose withdraw raced this create. A single withdraw-and-retry clears the stale copy; if it fails, the error is recorded and the next run retries.
 			if (existing?.remoteId && (existing.remoteId !== queued.id || existing.lastSubmissionId !== submissionId))
 				try {
 					await withdrawRow(existing)
-					const retried = await createReviewShip(input, submissionId)
+					const retried = await createIreShip(input, submissionId)
 					await recordShip({
 						externalId: input.external_id,
 						lastSubmissionId: submissionId,
@@ -175,12 +175,12 @@ export async function sendSubmissionToReview(themeProjectId: string, phase: Phas
 					return retried
 				} catch (retryErr) {
 					const reason =
-						terminalReviewFailure(retryErr) ?? (retryErr instanceof Error ? retryErr.message : String(retryErr))
+						terminalIreFailure(retryErr) ?? (retryErr instanceof Error ? retryErr.message : String(retryErr))
 					await recordError(themeProjectId, phase, reason)
 					throw retryErr
 				}
 
-			// A response lost on the way back is the ship Review already has. Adopting it stops an hourly retry that can never succeed.
+			// A response lost on the way back is the ship Ire already has. Adopting it stops an hourly retry that can never succeed.
 			await recordShip({
 				externalId: input.external_id,
 				lastSubmissionId: submissionId,
@@ -197,24 +197,24 @@ export async function sendSubmissionToReview(themeProjectId: string, phase: Phas
 			}
 		}
 
-		const reason = terminalReviewFailure(err) ?? (err instanceof Error ? err.message : String(err))
+		const reason = terminalIreFailure(err) ?? (err instanceof Error ? err.message : String(err))
 		await recordError(themeProjectId, phase, reason)
 		throw err
 	}
 }
 
-/** Withdraw an open hand-in from Review. A ship that is already gone is success. */
-export async function withdrawSubmissionFromReview(
+/** Withdraw an open hand-in from Ire. A ship that is already gone is success. */
+export async function withdrawSubmissionFromIre(
 	themeProjectId: string,
 	phase: Phase,
 ): Promise<{ skipped: "not_configured" } | { id: string | null; status: "not_queued" | "withdrawn" }> {
-	if (!isReviewConfigured()) return { skipped: "not_configured" }
+	if (!isIreConfigured()) return { skipped: "not_configured" }
 
-	const existing = (await db.orm.public.ReviewShip.where({ phase, themeProjectId }).first()) as ReviewShipRow | null
+	const existing = (await db.orm.public.IreShip.where({ phase, themeProjectId }).first()) as IreShipRow | null
 	try {
-		const result = await withdrawReviewShip(ariExternalId(themeProjectId, phase))
+		const result = await withdrawIreShip(ariExternalId(themeProjectId, phase))
 		if (existing)
-			await db.orm.public.ReviewShip.where({ id: existing.id }).update({
+			await db.orm.public.IreShip.where({ id: existing.id }).update({
 				closedAt: nowText(),
 				lastError: null,
 				status: result.status,
@@ -222,14 +222,14 @@ export async function withdrawSubmissionFromReview(
 		return result
 	} catch (err) {
 		const reason = err instanceof Error ? err.message : String(err)
-		if (existing) await db.orm.public.ReviewShip.where({ id: existing.id }).update({ lastError: reason })
+		if (existing) await db.orm.public.IreShip.where({ id: existing.id }).update({ lastError: reason })
 		else await recordError(themeProjectId, phase, reason)
 		throw err
 	}
 }
 
 /** What a close pass did. */
-export interface ReviewCloseSummary {
+export interface IreCloseSummary {
 	checked: number
 	closed: number
 	failed: number
@@ -239,13 +239,13 @@ export interface ReviewCloseSummary {
 /**
  * Close the shadow copies of hand-ins whose local phase has left review.
  *
- * The submit path withdraws a stale copy before creating the next version, so this is the belt to that braces: it also catches an Ari decision, a console decision, an admin revert and an unsubmit whose withdrawal failed while Review was down. A ship with a newer open submission is skipped here; that path owns the replace.
+ * The submit path withdraws a stale copy before creating the next version, so this is the belt to that braces: it also catches an Ari decision, a console decision, an admin revert and an unsubmit whose withdrawal failed while Ire was down. A ship with a newer open submission is skipped here; that path owns the replace.
  */
-export async function closeResolvedReviewShips(opts: { limit?: number } = {}): Promise<ReviewCloseSummary> {
-	const summary: ReviewCloseSummary = { checked: 0, closed: 0, failed: 0, skipped: 0 }
-	if (!isReviewConfigured()) return summary
+export async function closeResolvedIreShips(opts: { limit?: number } = {}): Promise<IreCloseSummary> {
+	const summary: IreCloseSummary = { checked: 0, closed: 0, failed: 0, skipped: 0 }
+	if (!isIreConfigured()) return summary
 
-	const rows = await db.orm.public.ReviewShip.where({ closedAt: null })
+	const rows = await db.orm.public.IreShip.where({ closedAt: null })
 		.where(row => row.remoteId.isNotNull())
 		.orderBy(row => row.createdAt.asc())
 		.limit(opts.limit ?? 100)
@@ -267,16 +267,16 @@ export async function closeResolvedReviewShips(opts: { limit?: number } = {}): P
 		} catch (err) {
 			summary.failed += 1
 			const reason = err instanceof Error ? err.message : String(err)
-			await db.orm.public.ReviewShip.where({ id: row.id }).update({ lastError: reason })
+			await db.orm.public.IreShip.where({ id: row.id }).update({ lastError: reason })
 		}
 	}
 
 	return summary
 }
 
-/** Replay the shadow sends that never reached Review, with the reason the last attempt gave. */
-export async function findUnsyncedReviewSubmissions(): Promise<PendingReviewShipItem[]> {
-	if (!isReviewConfigured()) return []
+/** Replay the shadow sends that never reached Ire, with the reason the last attempt gave. */
+export async function findUnsyncedIreSubmissions(): Promise<PendingIreShipItem[]> {
+	if (!isIreConfigured()) return []
 
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null })
 		.where(project => or(project.designStatus.eq(PhaseStatus.in_review), project.buildStatus.eq(PhaseStatus.in_review)))
@@ -291,12 +291,12 @@ export async function findUnsyncedReviewSubmissions(): Promise<PendingReviewShip
 			.orderBy(submission => submission.createdAt.asc())
 			.select("createdAt", "id", "phase", "themeProjectId")
 			.all(),
-		db.orm.public.ReviewShip.where(ship => ship.themeProjectId.in(ids))
+		db.orm.public.IreShip.where(ship => ship.themeProjectId.in(ids))
 			.select("closedAt", "decision", "lastError", "lastSubmissionId", "phase", "remoteId", "themeProjectId")
 			.all(),
 	])
 
-	return selectPendingReviewShips(
+	return selectPendingIreShips(
 		projects,
 		submissions.map(submission => ({
 			createdAt: new Date(submission.createdAt),
@@ -317,7 +317,7 @@ export async function findUnsyncedReviewSubmissions(): Promise<PendingReviewShip
 }
 
 /** What a status refresh changed. */
-export interface ReviewStatusSummary {
+export interface IreStatusSummary {
 	checked: number
 	failed: number
 	missing: number
@@ -325,29 +325,29 @@ export interface ReviewStatusSummary {
 }
 
 /**
- * Verify the open shadow ships still exist, and record the phase Review reports for the ones that do.
+ * Verify the open shadow ships still exist, and record the phase Ire reports for the ones that do.
  *
  * The send response can be lost, and a ship can be withdrawn by an operator. A missing or withdrawn ship clears its remote id so the next pending pass sends it again; a live one keeps its version and phase current. This never reads or applies a decision.
  */
-export async function refreshOpenReviewShips(opts: { limit?: number } = {}): Promise<ReviewStatusSummary> {
-	const summary: ReviewStatusSummary = { checked: 0, failed: 0, missing: 0, updated: 0 }
-	if (!isReviewConfigured()) return summary
+export async function refreshOpenIreShips(opts: { limit?: number } = {}): Promise<IreStatusSummary> {
+	const summary: IreStatusSummary = { checked: 0, failed: 0, missing: 0, updated: 0 }
+	if (!isIreConfigured()) return summary
 
-	const rows = (await db.orm.public.ReviewShip.where({ closedAt: null })
+	const rows = (await db.orm.public.IreShip.where({ closedAt: null })
 		.where(row => row.remoteId.isNotNull())
 		.orderBy(row => row.updatedAt.asc())
 		.limit(opts.limit ?? 50)
-		.all()) as ReviewShipRow[]
+		.all()) as IreShipRow[]
 
 	for (const row of rows) {
 		summary.checked += 1
 		try {
-			const status = await getReviewShip(row.externalId)
+			const status = await getIreShip(row.externalId)
 			if (!status || status.phase === "withdrawn" || status.phase === "reverted") {
 				summary.missing += 1
-				await db.orm.public.ReviewShip.where({ id: row.id }).update({
+				await db.orm.public.IreShip.where({ id: row.id }).update({
 					closedAt: nowText(),
-					lastError: status ? `Review reported this ship as ${status.phase}` : "Review no longer knows this ship",
+					lastError: status ? `Ire reported this ship as ${status.phase}` : "Ire no longer knows this ship",
 					remoteId: null,
 					status: status?.phase ?? "missing",
 					version: null,
@@ -355,7 +355,7 @@ export async function refreshOpenReviewShips(opts: { limit?: number } = {}): Pro
 				continue
 			}
 			summary.updated += 1
-			await db.orm.public.ReviewShip.where({ id: row.id }).update({
+			await db.orm.public.IreShip.where({ id: row.id }).update({
 				decision: status.decision,
 				lastError: null,
 				status: status.phase,
@@ -364,7 +364,7 @@ export async function refreshOpenReviewShips(opts: { limit?: number } = {}): Pro
 		} catch (err) {
 			summary.failed += 1
 			const reason = err instanceof Error ? err.message : String(err)
-			await db.orm.public.ReviewShip.where({ id: row.id }).update({ lastError: reason })
+			await db.orm.public.IreShip.where({ id: row.id }).update({ lastError: reason })
 		}
 	}
 
@@ -372,12 +372,12 @@ export async function refreshOpenReviewShips(opts: { limit?: number } = {}): Pro
 }
 
 /** The external id for a project phase, matching the one Half Life sends to Ari. */
-export function reviewExternalId(themeProjectId: string, phase: Phase): string {
+export function ireExternalId(themeProjectId: string, phase: Phase): string {
 	return ariExternalId(themeProjectId, phase)
 }
 
 /** A helper for the admin page and tests: the current row, if any. */
-export async function getReviewShipRow(themeProjectId: string, phase: Phase): Promise<ReviewShipRow | null> {
-	const row = await db.orm.public.ReviewShip.where({ phase, themeProjectId }).first()
+export async function getIreShipRow(themeProjectId: string, phase: Phase): Promise<IreShipRow | null> {
+	const row = await db.orm.public.IreShip.where({ phase, themeProjectId }).first()
 	return row
 }

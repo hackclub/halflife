@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { createHash, createHmac } from "node:crypto"
 import { once } from "node:events"
 import { createServer, type IncomingHttpHeaders, type Server } from "node:http"
-import { alreadyQueuedReviewShip, createReviewShip, ReviewApiError, terminalReviewFailure } from "@/lib/review-platform"
+import { alreadyQueuedIreShip, createIreShip, IreApiError, terminalIreFailure } from "@/lib/ire-platform"
 import type { ReviewShipInput } from "@/lib/review-ship"
 import { isRecord } from "@/lib/unknown"
 
@@ -30,10 +30,10 @@ const input: ReviewShipInput = {
 }
 
 const previous = {
-	api: process.env.REVIEW_API_URL,
-	mode: process.env.REVIEW_MODE,
-	program: process.env.REVIEW_PROGRAM,
-	secret: process.env.REVIEW_SIGNING_SECRET,
+	api: process.env.IRE_API_URL,
+	mode: process.env.IRE_MODE,
+	program: process.env.IRE_PROGRAM,
+	secret: process.env.IRE_SIGNING_SECRET,
 }
 
 interface Seen {
@@ -66,27 +66,27 @@ beforeAll(async () => {
 beforeEach(() => {
 	seen = []
 	response = { body: { id: "sub_1", status: "accepted", version: 1 }, status: 201 }
-	process.env.REVIEW_API_URL = `http://127.0.0.1:${port}`
-	process.env.REVIEW_MODE = "shadow"
-	process.env.REVIEW_PROGRAM = "half-life"
-	process.env.REVIEW_SIGNING_SECRET = "test-secret"
+	process.env.IRE_API_URL = `http://127.0.0.1:${port}`
+	process.env.IRE_MODE = "shadow"
+	process.env.IRE_PROGRAM = "half-life"
+	process.env.IRE_SIGNING_SECRET = "test-secret"
 })
 
 afterAll(() => {
 	server.close()
-	if (previous.api === undefined) delete process.env.REVIEW_API_URL
-	else process.env.REVIEW_API_URL = previous.api
-	if (previous.mode === undefined) delete process.env.REVIEW_MODE
-	else process.env.REVIEW_MODE = previous.mode
-	if (previous.program === undefined) delete process.env.REVIEW_PROGRAM
-	else process.env.REVIEW_PROGRAM = previous.program
-	if (previous.secret === undefined) delete process.env.REVIEW_SIGNING_SECRET
-	else process.env.REVIEW_SIGNING_SECRET = previous.secret
+	if (previous.api === undefined) delete process.env.IRE_API_URL
+	else process.env.IRE_API_URL = previous.api
+	if (previous.mode === undefined) delete process.env.IRE_MODE
+	else process.env.IRE_MODE = previous.mode
+	if (previous.program === undefined) delete process.env.IRE_PROGRAM
+	else process.env.IRE_PROGRAM = previous.program
+	if (previous.secret === undefined) delete process.env.IRE_SIGNING_SECRET
+	else process.env.IRE_SIGNING_SECRET = previous.secret
 })
 
-describe("createReviewShip", () => {
-	test("signs timestamp.body with the Review secret", async () => {
-		const created = await createReviewShip(input)
+describe("createIreShip", () => {
+	test("signs timestamp.body with the Ire secret", async () => {
+		const created = await createIreShip(input)
 		expect(created).toEqual({ id: "sub_1", status: "accepted", version: 1 })
 		expect(seen).toHaveLength(1)
 
@@ -99,21 +99,21 @@ describe("createReviewShip", () => {
 	})
 
 	test("sends a stable delivery id derived from the exact body", async () => {
-		await createReviewShip(input)
+		await createIreShip(input)
 		const [request] = seen
 		if (!request) throw new Error("no request")
 		expect(request.headers["x-ari-delivery-id"]).toBe(`hl-${createHash("sha256").update(request.body).digest("hex")}`)
 	})
 
 	test("scopes the delivery id to the local submission so a resubmission is a new delivery", async () => {
-		await createReviewShip(input, "sub_local")
+		await createIreShip(input, "sub_local")
 		const [request] = seen
 		if (!request) throw new Error("no request")
 		expect(request.headers["x-ari-delivery-id"]).toMatch(/^hl-sub_local-[0-9a-f]{16}$/)
 	})
 
-	test("carries the nested meta Review needs", async () => {
-		await createReviewShip(input)
+	test("carries the nested meta Ire needs", async () => {
+		await createIreShip(input)
 		const parsed: unknown = JSON.parse(seen[0]?.body ?? "{}")
 		if (!isRecord(parsed) || !isRecord(parsed.meta)) throw new Error("response has no meta")
 		expect(parsed.meta.bom).toHaveLength(1)
@@ -123,23 +123,23 @@ describe("createReviewShip", () => {
 	test("returns the version from a conflict", async () => {
 		response = { body: { error: "already_queued", id: "sub_2", version: 2 }, status: 409 }
 		try {
-			await createReviewShip(input)
+			await createIreShip(input)
 			throw new Error("expected a conflict")
 		} catch (err) {
-			expect(alreadyQueuedReviewShip(err)).toEqual({ id: "sub_2", version: 2 })
-			expect(terminalReviewFailure(err)).toBeNull()
+			expect(alreadyQueuedIreShip(err)).toEqual({ id: "sub_2", version: 2 })
+			expect(terminalIreFailure(err)).toBeNull()
 		}
 	})
 })
 
 describe("errors", () => {
 	test("a 422 is terminal", () => {
-		const err = new ReviewApiError(422, "invalid", "bad field", "meta.bom")
-		expect(terminalReviewFailure(err)).toBe("bad field")
+		const err = new IreApiError(422, "invalid", "bad field", "meta.bom")
+		expect(terminalIreFailure(err)).toBe("bad field")
 	})
 
 	test("a timeout is not terminal", () => {
-		expect(terminalReviewFailure(new ReviewApiError(0, "unavailable", "offline"))).toBeNull()
-		expect(terminalReviewFailure(new ReviewApiError(503, "api_error", "down"))).toBeNull()
+		expect(terminalIreFailure(new IreApiError(0, "unavailable", "offline"))).toBeNull()
+		expect(terminalIreFailure(new IreApiError(503, "api_error", "down"))).toBeNull()
 	})
 })

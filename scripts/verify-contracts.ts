@@ -346,7 +346,7 @@ async function bodies() {
 	await checkAriJournalTime()
 	await checkAriPending()
 	await checkAriCounts()
-	await checkReviewShadow()
+	await checkIreShadow()
 	await checkReviewStages()
 	await checkReviewDecision()
 	await checkHcb()
@@ -707,12 +707,12 @@ async function checkAriCounts(): Promise<void> {
 	}
 }
 
-async function checkReviewShadow(): Promise<void> {
+async function checkIreShadow(): Promise<void> {
 	const { Phase, PhaseStatus } = await import("../src/lib/enums")
-	/* ── 5b-iii. The Review shadow lifecycle ───────────────────────────────── */
+	/* ── 5b-iii. The Ire shadow lifecycle ───────────────────────────────── */
 	//
-	// Review holds one open ship per external id, just like Ari. A resubmission therefore has to replace the old copy, and a ship Review has already decided must never be sent back into the shadow queue.
-	const { selectPendingReviewShips } = await import("../src/lib/review-pending")
+	// Ire holds one open ship per external id, just like Ari. A resubmission therefore has to replace the old copy, and a ship Ire has already decided must never be sent back into the shadow queue.
+	const { selectPendingIreShips } = await import("../src/lib/ire-pending")
 	const { toAriShipInput } = await import("../src/lib/review-ship")
 	const project = { buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" }
 	const submission = {
@@ -721,7 +721,7 @@ async function checkReviewShadow(): Promise<void> {
 		phase: Phase.DESIGN,
 		themeProjectId: "p1",
 	}
-	const ship = (over: Partial<Parameters<typeof selectPendingReviewShips>[2][number]> = {}) => ({
+	const ship = (over: Partial<Parameters<typeof selectPendingIreShips>[2][number]> = {}) => ({
 		closedAt: null,
 		decision: null,
 		lastError: null,
@@ -732,20 +732,19 @@ async function checkReviewShadow(): Promise<void> {
 		...over,
 	})
 
-	check("review · pending: no ship", selectPendingReviewShips([project], [submission], []).length === 1)
-	check("review · pending: healthy ship", selectPendingReviewShips([project], [submission], [ship()]).length === 0)
+	check("ire · pending: no ship", selectPendingIreShips([project], [submission], []).length === 1)
+	check("ire · pending: healthy ship", selectPendingIreShips([project], [submission], [ship()]).length === 0)
 	check(
-		"review · pending: older ship is replaced",
-		selectPendingReviewShips([project], [submission], [ship({ lastSubmissionId: "s0" })]).length === 1,
+		"ire · pending: older ship is replaced",
+		selectPendingIreShips([project], [submission], [ship({ lastSubmissionId: "s0" })]).length === 1,
 	)
 	check(
-		"review · pending: a decided ship is not resent",
-		selectPendingReviewShips([project], [submission], [ship({ closedAt: new Date(), decision: "approved" })]).length
-			=== 0,
+		"ire · pending: a decided ship is not resent",
+		selectPendingIreShips([project], [submission], [ship({ closedAt: new Date(), decision: "approved" })]).length === 0,
 	)
 	check(
-		"review · pending: a closed ship is resent while the phase is in review",
-		selectPendingReviewShips([project], [submission], [ship({ closedAt: new Date() })]).length === 1,
+		"ire · pending: a closed ship is resent while the phase is in review",
+		selectPendingIreShips([project], [submission], [ship({ closedAt: new Date() })]).length === 1,
 	)
 
 	const input: ReviewShipInput = {

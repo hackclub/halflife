@@ -5,9 +5,9 @@ import { sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { Phase, PhaseStatus, ReviewDisputeOutcome } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import { isIreConfigured } from "@/lib/ire-platform"
+import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import db from "@/lib/prisma8"
-import { isReviewConfigured } from "@/lib/review-platform"
-import { sendSubmissionToReview } from "@/lib/review-shadow"
 import { trackSideEffect } from "@/lib/side-effects"
 import { formatDbTimestamp } from "@/lib/time"
 
@@ -128,9 +128,9 @@ export async function sendDisputedPhaseBack(
 	)
 
 	// The upheld dispute puts the hand-in back in front of reviewers, so the shadow copy follows it there too.
-	if (isReviewConfigured())
+	if (isIreConfigured())
 		await trackSideEffect(
-			"review",
+			"ire",
 			{
 				actorEmail: reviewerEmail,
 				actorId: reviewerId,
@@ -138,6 +138,6 @@ export async function sendDisputedPhaseBack(
 				targetId: themeProjectId,
 				targetType: "ThemeProject",
 			},
-			() => sendSubmissionToReview(themeProjectId, phase),
+			() => sendSubmissionToIre(themeProjectId, phase),
 		)
 }

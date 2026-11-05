@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { readBoundedText } from "@/lib/api"
 import { parseAriExternalId } from "@/lib/ari-id"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { isReviewWebhookConfigured } from "@/lib/review-platform"
+import { isIreWebhookConfigured } from "@/lib/ire-platform"
 
 // Signature checks need Node's Web Crypto, not the edge runtime.
 export const runtime = "nodejs"
@@ -11,18 +11,18 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
 /**
- * Review's inbound webhook.
+ * Ire's inbound webhook.
  *
- * Review signs `timestamp.delivery_id.body` with the same envelope Ari uses, so the SDK verifies it before this handler runs. In the read-only integration every event is recorded and ignored: Review must not move credit, Airtable or a maker notice while Ari owns decisions. When the live phase arrives this is where the provider-aware decision path will branch.
+ * Ire signs `timestamp.delivery_id.body` with the same envelope Ari uses, so the SDK verifies it before this handler runs. In the read-only integration every event is recorded and ignored: Ire must not move credit, Airtable or a maker notice while Ari owns decisions. When the live phase arrives this is where the provider-aware decision path will branch.
  */
 type Handler = (request: Request) => Promise<Response>
 
 let handler: Handler | null = null
 
 export async function POST(request: Request): Promise<Response> {
-	const secret = process.env.REVIEW_WEBHOOK_SECRET
-	if (!isReviewWebhookConfigured() || !secret)
-		return NextResponse.json({ error: "Review is not configured on this deployment" }, { status: 503 })
+	const secret = process.env.IRE_WEBHOOK_SECRET
+	if (!isIreWebhookConfigured() || !secret)
+		return NextResponse.json({ error: "Ire is not configured on this deployment" }, { status: 503 })
 
 	handler ??= createWebhookHandler({
 		async on_event(event, context) {
@@ -33,7 +33,7 @@ export async function POST(request: Request): Promise<Response> {
 					deliveryId: context.delivery_id,
 					event: event.event,
 					...(event.event === "unknown" ? { eventName: event.event_name } : {}),
-					provider: "review",
+					provider: "ire",
 					reason: "shadow read-only integration",
 				},
 				targetId: externalId ? (parseAriExternalId(externalId)?.themeProjectId ?? null) : null,
