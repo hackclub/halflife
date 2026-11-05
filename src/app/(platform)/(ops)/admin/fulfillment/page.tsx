@@ -138,7 +138,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 
 			<Panel title="Printers earned">
 				{awards.length === 0 ? (
-					<EmptyState>Nobody has shipped all five themes yet.</EmptyState>
+					<EmptyState>Nobody has shipped all five projects yet.</EmptyState>
 				) : (
 					<Table
 						className="hl-table--roomy"
@@ -177,7 +177,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					</Table>
 				)}
 				<p className="hl-hint">
-					A printer is earned by shipping all five themes; the address is snapshotted from the participant&apos;s HCA
+					A printer is earned by shipping all five projects; the address is snapshotted from the participant&apos;s HCA
 					profile when it is locked, so later edits there cannot move a package already being packed.
 				</p>
 			</Panel>

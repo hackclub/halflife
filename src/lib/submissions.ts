@@ -76,7 +76,7 @@ export function canSubmitPhase(
 	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft)
 		return {
 			code: "PHASE_LOCKED",
-			message: "Submit your design for this theme before submitting the build",
+			message: "Submit this project's design before submitting the build",
 			ok: false,
 		}
 

@@ -104,7 +104,7 @@ export default async function AdminUserPage({ params }: Props) {
 			<div className="hl-row">
 				<Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={balances.spendable} />
 				<Stat label="Printer fund" value={balances.banked} />
-				<Stat label="Themes shipped" value={`${printer.shippedCount} / ${printer.required}`} />
+				<Stat label="Projects shipped" value={`${printer.shippedCount} / ${printer.required}`} />
 				<Stat label="Verified" value={user.verificationStatus ?? "unknown"} />
 			</div>
 
