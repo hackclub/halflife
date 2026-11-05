@@ -23,7 +23,13 @@ export function contentSecurityPolicy(): string {
 		// Cachet answers some people with a redirect to Gravatar or GitHub rather than a Slack CDN URL.
 		"https://secure.gravatar.com",
 		"https://*.gravatar.com",
+		// Gravatar serves its default avatars (including Slack's own `ava_*` fallbacks) with a 302 to Photon, Automattic's image CDN (`i[0-2].wp.com/<original-host>/<path>?ssl=1`). The browser follows that second hop, so the Photon hosts have to be listed or those faces stay blocked. Photon fetches the origin server-side, so an arbitrary origin behind it learns of a view but never sees a reader's IP – the same trade-off as the CDNs above.
+		"https://i0.wp.com",
+		"https://i1.wp.com",
+		"https://i2.wp.com",
 		"https://avatars.githubusercontent.com",
+		// Cachet's own bucket, which backs the stable redirect for people with no Slack picture on file (e.g. `l4-bucket.dunkirk.sh`). The browser follows that hop, so the registrable domain has to be listed, not just the Cachet origin added below.
+		"https://*.dunkirk.sh",
 		// Lapse's public delivery host, which serves timelapse thumbnails and playback.
 		"https://lapse-hackclub.link",
 		"https://*.lapse-hackclub.link",
