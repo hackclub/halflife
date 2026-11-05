@@ -209,7 +209,7 @@ export async function updatePrinterAwardStatus(
 		if (!(await isIdentityVerified(award.userId)))
 			throw new HttpError(
 				"NOT_VERIFIED",
-				"This maker's identity is not verified, so the address cannot be locked. Ask them to verify at identity.hackclub.com.",
+				"This maker's identity is not verified, so the address cannot be locked. Ask them to verify at auth.hackclub.com.",
 			)
 		const pii = isPiiConfigured() ? decryptUserPII(award.user) : null
 		const street = [pii?.line1, pii?.line2].filter((part): part is string => Boolean(part?.trim())).join("\n")

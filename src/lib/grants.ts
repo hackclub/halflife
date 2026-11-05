@@ -196,7 +196,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	if (!(await isIdentityVerified(project.userId)))
 		throw new HttpError(
 			"NOT_VERIFIED",
-			"This maker's identity is not verified, so no grant can be sent. Ask them to verify at identity.hackclub.com.",
+			"This maker's identity is not verified, so no grant can be sent. Ask them to verify at auth.hackclub.com.",
 		)
 
 	// Flagged accounts receive nothing until an admin clears them: their submissions are already blocked, and the grant is the payout those submissions would have earned. Checked before the HCB row is claimed, like the identity check above.

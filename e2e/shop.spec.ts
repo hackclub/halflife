@@ -16,7 +16,7 @@ test("a participant confirms their mailing address before buying", async ({ open
 	await expect(dialog).toBeVisible()
 	await expect(dialog.getByRole("link", { name: "Open Hack Club Auth" })).toHaveAttribute(
 		"href",
-		"https://identity.hackclub.com",
+		"https://auth.hackclub.com",
 	)
 
 	// Nothing is ordered until the maker ticks that they have checked the address.

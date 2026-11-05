@@ -58,7 +58,7 @@ export function OrderConfirmDialog({
 
 			<div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
 				<LinkButton
-					href="https://identity.hackclub.com"
+					href="https://auth.hackclub.com"
 					rel="noopener noreferrer"
 					size="sm"
 					target="_blank"
