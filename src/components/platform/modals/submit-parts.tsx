@@ -7,7 +7,7 @@ import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/numbers"
 import { SUBMISSION_LIMIT } from "@/lib/resubmissions"
-import { Acknowledgement } from "./checkpoint-shared"
+import { Acknowledgement } from "./Acknowledgement"
 
 /**
  * A blocker or warning above the step body.

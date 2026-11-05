@@ -3,7 +3,7 @@ import { expect, test } from "./fixtures"
 
 const itemName = "E2E Test Item"
 
-test("a participant can buy an affordable item", async ({ openAs }) => {
+test("a participant confirms their mailing address before buying", async ({ openAs }) => {
 	const { page, user } = await openAs({ coins: 130 })
 	await page.goto("/shop")
 
@@ -11,6 +11,22 @@ test("a participant can buy an affordable item", async ({ openAs }) => {
 	await expect(item).toBeVisible()
 	await item.hover()
 	await item.getByRole("button", { name: "Buy" }).click()
+
+	const dialog = page.getByRole("dialog", { name: "Check your mailing address" })
+	await expect(dialog).toBeVisible()
+	await expect(dialog.getByRole("link", { name: "Open Hack Club Auth" })).toHaveAttribute(
+		"href",
+		"https://identity.hackclub.com",
+	)
+
+	// Nothing is ordered until the maker ticks that they have checked the address.
+	expect(await readShopOrders(user.id)).toEqual([])
+	const place = dialog.getByRole("button", { name: "Place order" })
+	await expect(place).toBeDisabled()
+
+	await dialog.getByText(/checked my mailing address/i).click()
+	await expect(place).toBeEnabled()
+	await place.click()
 
 	// The fixture item allows five per person, so a successful first order leaves the card offering another rather than showing the at-limit "Ordered" link.
 	await expect(item.getByRole("button", { name: "Order another" })).toBeVisible({ timeout: 15_000 })
@@ -21,6 +37,24 @@ test("a participant can buy an affordable item", async ({ openAs }) => {
 	expect(orders[0]?.quantity).toBe(1)
 	expect(orders[0]?.totalCredits).toBe(60)
 	expect(await readBalance(user.id)).toBe(70)
+})
+
+test("dismissing the address check places no order", async ({ openAs }) => {
+	const { page, user } = await openAs({ coins: 130 })
+	await page.goto("/shop")
+
+	const item = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: itemName }) })
+	await expect(item).toBeVisible()
+	await item.hover()
+	await item.getByRole("button", { name: "Buy" }).click()
+
+	const dialog = page.getByRole("dialog", { name: "Check your mailing address" })
+	await expect(dialog).toBeVisible()
+	await dialog.getByRole("button", { name: "Not yet" }).click()
+	await expect(dialog).toHaveCount(0)
+
+	expect(await readShopOrders(user.id)).toEqual([])
+	expect(await readBalance(user.id)).toBe(130)
 })
 
 test("an unaffordable item refuses the purchase", async ({ openAs }) => {
