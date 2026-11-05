@@ -1,7 +1,7 @@
 /**
- * Whether the NPS corner nudge is on screen, so the sticker promotion can get out of its way.
+ * Whether the NPS follow-up is on screen, so the sticker promotion can get out of its way.
  *
- * The banner lives in the app shell and the nudge lives on the dashboard page, so a module-level flag with subscribers is how the two meet – the same shape as the promo's own mode store, but session-only: the nudge stays until the follow-up is submitted on this device, while a fresh laptop asks again.
+ * The banner lives in the app shell and the follow-up lives on the dashboard page, so a module-level flag with subscribers is how the two meet – the same shape as the promo's own mode store.
  */
 let nudgeActive = false
 

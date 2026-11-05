@@ -7,6 +7,7 @@ import { errorCode, errorMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
 import type { ShopItemView } from "@/lib/shop"
 import { useStore } from "@/lib/store"
+import { OrderConfirmDialog } from "./OrderConfirmDialog"
 import { ShopItemCard } from "./ShopItemCard"
 
 /**
@@ -46,6 +47,8 @@ export function ShopGrid({
 	const [cat, setCat] = useState<string>("All")
 	const [sort, setSort] = useState<Sort>("default")
 	const [busy, setBusy] = useState<string | null>(null)
+	// The item waiting on an address confirmation. Kept here rather than in the card so only one dialog can be open at a time.
+	const [confirming, setConfirming] = useState<ShopItemView | null>(null)
 	// A refusal to buy belongs to the item it was about, not to the top of a long shelf: the maker is looking at that card.
 	const [itemError, setItemError] = useState<{ code?: string; id: string; message: string } | null>(null)
 	const [error, setError] = useState<string | null>(null)
@@ -111,6 +114,21 @@ export function ShopGrid({
 		} finally {
 			setBusy(null)
 		}
+	}
+
+	/**
+	 * Buying is gated on a mailing address the maker has checked, but the address is never shown: it lives encrypted on their Hack Club account, so the dialog links there instead of asking the server to decrypt it into this page.
+	 */
+	function askToBuy(item: ShopItemView) {
+		if (busy) return
+		setConfirming(item)
+	}
+
+	function placeOrder() {
+		if (!confirming) return
+		const item = confirming
+		setConfirming(null)
+		void buy(item)
 	}
 
 	return (
@@ -247,7 +265,7 @@ export function ShopGrid({
 						item={item}
 						itemError={itemError}
 						key={item.id}
-						onBuy={buy}
+						onBuy={askToBuy}
 						printerFund={printerFund}
 					/>
 				))}
@@ -256,6 +274,10 @@ export function ShopGrid({
 			<p className="hand mt-8 text-center text-[0.86rem] text-navy-soft">
 				you have <span className="font-bold text-orange-ink tabular-nums">{printerFund}</span> coins.
 			</p>
+
+			{confirming && (
+				<OrderConfirmDialog item={confirming} onCancel={() => setConfirming(null)} onConfirm={placeOrder} />
+			)}
 		</>
 	)
 }

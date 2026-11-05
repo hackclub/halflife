@@ -308,7 +308,7 @@ export async function purchase(
 	if (!(await isIdentityVerified(userId)))
 		throw new HttpError(
 			"NOT_VERIFIED",
-			"Identity verification is required to buy things. Verify at identity.hackclub.com.",
+			"Identity verification is required to buy things. Verify at auth.hackclub.com.",
 		)
 
 	const item = await db.orm.public.ShopItem.whereUnique({ id: shopItemId }).first()

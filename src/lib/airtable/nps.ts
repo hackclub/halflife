@@ -135,7 +135,7 @@ export type NpsState = { score: number | null; textsDone: boolean } | { skipped:
 const hasText = (value: unknown): boolean => typeof value === "string" && value.trim().length > 0
 
 /**
- * Where the caller stands in the two-step flow. The score gates the dashboard; the texts only decide the corner nudge. A row holding a score number – 0 counts – has answered the first step, and a row holding any text has answered the second. Skipped rather than blocking when Airtable is unconfigured or the base predates the columns, so a half-built base never parks anyone behind a form that cannot save – and a base without the text columns reads the second step as done, so nobody is nudged for answers that cannot be stored.
+ * Where the caller stands in the two-step flow. The score gates the dashboard, and the texts keep the follow-up modal up until at least one of them is saved. A row holding a score number – 0 counts – has answered the first step, and a row holding any text has answered the second. Skipped rather than blocking when Airtable is unconfigured or the base predates the columns, so a half-built base never parks anyone behind a form that cannot save – and a base without the text columns reads the second step as done, so nobody is asked for answers that cannot be stored.
  */
 export async function readNpsState(userId: string): Promise<NpsState> {
 	const config = getAirtableConfig()
@@ -208,7 +208,7 @@ export async function writeNpsScore(
 }
 
 /**
- * Save the follow-up texts – the unblocking second step. Blank answers are dropped before the write, so an all-empty submit is a successful no-op: the device that sent it counts the step as answered, and a row that gains any text stops the nudge everywhere.
+ * Save the follow-up texts and any revised score. Blank answers are dropped before the write, so an all-empty submit is a successful no-op; the form requires at least one answer, but the endpoint itself still accepts an empty body.
  */
 export async function writeNpsTexts(
 	userId: string,
@@ -216,12 +216,15 @@ export async function writeNpsTexts(
 ): Promise<{ updated: boolean } | { skipped: string }> {
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
-	const writable = await existingColumns(config, RSVP_TABLE_ID, TEXT_COLUMNS())
+	const columns = values.howLikelyRecommend !== undefined ? [...TEXT_COLUMNS(), SCORE()] : TEXT_COLUMNS()
+	const writable = await existingColumns(config, RSVP_TABLE_ID, columns)
 	const fields: { [_: string]: unknown } = {
 		[fieldKey(RSVP.fields.howDoingWell)]: values.howDoingWell?.trim() ? values.howDoingWell.trim() : undefined,
 		[fieldKey(RSVP.fields.howHear)]: values.howHear?.trim() ? values.howHear.trim() : undefined,
 		[fieldKey(RSVP.fields.howImprove)]: values.howImprove?.trim() ? values.howImprove.trim() : undefined,
+		...(values.howLikelyRecommend !== undefined ? { [SCORE()]: values.howLikelyRecommend } : {}),
 	}
+	if (values.howLikelyRecommend !== undefined && !writable.has(SCORE())) return { skipped: "no_column" }
 	for (const key of Object.keys(fields)) if (fields[key] === undefined || !writable.has(key)) delete fields[key]
 	if (Object.keys(fields).length === 0) return { updated: true }
 	return patchSignupRow(userId, fields, "updateNpsTexts")

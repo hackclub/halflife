@@ -197,7 +197,7 @@ export default async function AdminUserPage({ params }: Props) {
 							? "HCB card grants are issued in bulk from the Grant cards page. A project shows its card grant here once it has been issued."
 							: identityVerified
 								? "Sending a grant tops up the maker's HCB card grant directly. It is the old payout fallback and can only be sent once per project."
-								: "Grants are locked until this maker verifies their identity at identity.hackclub.com."}
+								: "Grants are locked until this maker verifies their identity at auth.hackclub.com."}
 					</p>
 				)}
 				<Table

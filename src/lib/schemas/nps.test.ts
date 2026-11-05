@@ -41,7 +41,13 @@ describe("npsTextsSubmitSchema", () => {
 		expect(npsTextsSubmitSchema.safeParse({ howHear: "A friend" }).success).toBe(true)
 	})
 
-	test("rejects a score – that belongs to the first step", () => {
-		expect(npsTextsSubmitSchema.safeParse({ howLikelyRecommend: 9 }).success).toBe(false)
+	test("accepts a revised score alongside the texts", () => {
+		expect(npsTextsSubmitSchema.safeParse({ howHear: "A friend", howLikelyRecommend: 9 }).success).toBe(true)
+	})
+
+	test("rejects out-of-range scores", () => {
+		expect(npsTextsSubmitSchema.safeParse({ howLikelyRecommend: -1 }).success).toBe(false)
+		expect(npsTextsSubmitSchema.safeParse({ howLikelyRecommend: 11 }).success).toBe(false)
+		expect(npsTextsSubmitSchema.safeParse({ howLikelyRecommend: 7.5 }).success).toBe(false)
 	})
 })

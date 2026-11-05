@@ -5,7 +5,7 @@ import { npsTextsSubmitSchema } from "@/lib/schemas/nps"
 
 export const dynamic = "force-dynamic"
 
-/** Save the NPS follow-up texts – the unblocking second step, sent from the corner nudge. All three answers may be empty. */
+/** Save the NPS follow-up texts and any revised score – the blocking second step. The form requires at least one text, though the endpoint still accepts an empty body. */
 export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, npsTextsSubmitSchema)
 	if (parsed.error) return parsed.error

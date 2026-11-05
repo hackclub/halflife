@@ -20,7 +20,7 @@ export const POST = withWritePermission(Permission.MANAGE_CREDIT, async (req: Re
 	if (amount > 0 && !(await isIdentityVerified(userId)))
 		return fail(
 			"NOT_VERIFIED",
-			"Coins can only be granted to a maker whose identity is verified. Ask them to verify at identity.hackclub.com, or make a negative adjustment to claw credit back.",
+			"Coins can only be granted to a maker whose identity is verified. Ask them to verify at auth.hackclub.com, or make a negative adjustment to claw credit back.",
 		)
 
 	// Read here rather than inside the transaction: `headers()` is request-scoped, and the audit row has to carry the address and browser of the admin who made the adjustment.
