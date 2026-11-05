@@ -143,8 +143,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
 							week. A <span className="font-bold text-navy">{pace.printer.name}</span> asks about{" "}
 							<span className="font-bold text-navy tabular-nums">{pace.perWeekCoins}</span> coins every design week, so
-							you may not be eligible for it, because the bigger prizes need all 5 themes finished. A bigger week later
-							can make some of it up.
+							you may not be eligible for it, because the bigger prizes need all 5 projects finished. A bigger week
+							later can make some of it up.
 						</p>
 					</div>
 				</div>

@@ -86,30 +86,44 @@ export const printerAwardUpdateSchema = z
 	})
 	.strict()
 
+/** A shop item's fields with no defaults, so the create and update schemas can each decide what an absent field means. */
+const shopItemFields = Object.freeze({
+	active: z.boolean(),
+	category: z.enum(ShopItemCategory),
+	/** Dollars, rounded to the cent on write. */
+	costUsd: z.number().min(0).max(100_000).nullable().optional(),
+	description: boundedText(2000, 1),
+	id: z
+		.string()
+		.trim()
+		.min(1)
+		.max(64)
+		.regex(/^[a-z0-9][a-z0-9-]*$/, "Lowercase letters, digits and hyphens"),
+	imageUrl: httpsUrl.nullable().optional(),
+	maxPerUser: z.number().int().min(0),
+	name: boundedText(120, 1),
+	priceCredits: z.number().int().min(0).max(1_000_000),
+	requiresPrinterQualified: z.boolean(),
+	sortOrder: z.number().int(),
+	stock: z.number().int().min(0).nullable(),
+})
+
 export const shopItemSchema = z
 	.object({
-		active: z.boolean().default(true),
-		category: z.enum(ShopItemCategory).default("PRINTER_UPGRADE"),
-		/** Dollars, rounded to the cent on write. */
-		costUsd: z.number().min(0).max(100_000).nullable().optional(),
-		description: boundedText(2000, 1),
-		id: z
-			.string()
-			.trim()
-			.min(1)
-			.max(64)
-			.regex(/^[a-z0-9][a-z0-9-]*$/, "Lowercase letters, digits and hyphens"),
-		imageUrl: httpsUrl.nullable().optional(),
-		maxPerUser: z.number().int().min(0).default(1),
-		name: boundedText(120, 1),
-		priceCredits: z.number().int().min(0).max(1_000_000),
-		requiresPrinterQualified: z.boolean().default(true),
-		sortOrder: z.number().int().default(0),
-		stock: z.number().int().min(0).nullable().default(null),
+		...shopItemFields,
+		active: shopItemFields.active.default(true),
+		category: shopItemFields.category.default("PRINTER_UPGRADE"),
+		maxPerUser: shopItemFields.maxPerUser.default(1),
+		requiresPrinterQualified: shopItemFields.requiresPrinterQualified.default(true),
+		sortOrder: shopItemFields.sortOrder.default(0),
+		stock: shopItemFields.stock.default(null),
 	})
 	.strict()
 
-export const shopItemUpdateSchema = shopItemSchema.partial().omit({ id: true }).strict()
+/**
+ * An edit changes only the fields it sends. Built from the default-free fields rather than `shopItemSchema.partial()`: a default survives `.partial()`, so a price-only edit used to come back with `requiresPrinterQualified: true`, `category: "PRINTER_UPGRADE"` and `maxPerUser: 1`, and quietly locked and recategorised the item.
+ */
+export const shopItemUpdateSchema = z.object(shopItemFields).omit({ id: true }).partial().strict()
 
 /**
  * A sales region: a hand-assigned slug (it appears in analytics and has to survive a rename) and a display name.

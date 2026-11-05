@@ -104,6 +104,13 @@ describe("shopItemSchema / shopItemUpdateSchema", () => {
 		expect(shopItemUpdateSchema.safeParse({ id: "x" }).success).toBe(false)
 		expect(shopItemUpdateSchema.safeParse({}).success).toBe(true)
 	})
+
+	test("an update carries only the fields it was sent, never the create defaults", () => {
+		// A price-only edit once came back with requiresPrinterQualified: true and category: PRINTER_UPGRADE, which locked every edited item behind the printer qualification.
+		const parsed = shopItemUpdateSchema.safeParse({ priceCredits: 19 })
+		expect(parsed.success).toBe(true)
+		if (parsed.success) expect(parsed.data).toEqual({ priceCredits: 19 })
+	})
 })
 
 describe("shop regions and pricing", () => {
