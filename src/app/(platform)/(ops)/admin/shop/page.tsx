@@ -52,7 +52,7 @@ export default async function AdminShopPage() {
 									<ItemCostField costUsd={item.costUsd} itemId={item.id} />
 								</td>
 								<td>{item.stock ?? "∞"}</td>
-								<td>{item.requiresPrinterQualified ? "all 5 themes" : "no"}</td>
+								<td>{item.requiresPrinterQualified ? "all 5 projects" : "no"}</td>
 								<td>
 									<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
 								</td>

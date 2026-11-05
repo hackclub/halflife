@@ -219,7 +219,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					onChange={e => setForm({ ...form, requiresPrinterQualified: e.target.checked })}
 					type="checkbox"
 				/>
-				<span>Requires all five themes shipped</span>
+				<span>Requires all five projects shipped</span>
 			</label>
 			<div>
 				<Button disabled={busy !== null || uploading} type="submit" variant="primary">
