@@ -8,8 +8,8 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { refreshLinkCache } from "@/lib/hackatime"
 import db from "@/lib/prisma8"
-import { isReviewConfigured } from "@/lib/review-platform"
-import { sendSubmissionToReview } from "@/lib/review-shadow"
+import { isIreConfigured } from "@/lib/ire-platform"
+import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { submitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -97,7 +97,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		})
 
 	// A shadow copy for Review. Ari remains authoritative; this exists so Review's checks and queue can be compared against Ari before any decision moves. No maker notice on failure: the maker never asked for a second review.
-	if (isReviewConfigured())
+	if (isIreConfigured())
 		after(async () => {
 			await trackSideEffect(
 				"review",
@@ -108,7 +108,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 					targetId: id,
 					targetType: "ThemeProject",
 				},
-				() => sendSubmissionToReview(id, parsed.data.phase),
+				() => sendSubmissionToIre(id, parsed.data.phase),
 			)
 		})
 

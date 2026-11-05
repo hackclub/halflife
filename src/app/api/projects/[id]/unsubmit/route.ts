@@ -7,8 +7,8 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
-import { isReviewConfigured } from "@/lib/review-platform"
-import { withdrawSubmissionFromReview } from "@/lib/review-shadow"
+import { isIreConfigured } from "@/lib/ire-platform"
+import { withdrawSubmissionFromIre } from "@/lib/ire-shadow"
 import { unsubmitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
 import { unsubmitPhase } from "@/lib/submissions"
@@ -75,8 +75,8 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 			)
 		})
 
-	// The shadow copy has the same problem, and its failure is replayable from the ReviewShip row even though the local submission was just deleted.
-	if (isReviewConfigured())
+	// The shadow copy has the same problem, and its failure is replayable from the IreShip row even though the local submission was just deleted.
+	if (isIreConfigured())
 		after(async () => {
 			await trackSideEffect(
 				"review",
@@ -87,7 +87,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 					targetId: id,
 					targetType: "ThemeProject",
 				},
-				() => withdrawSubmissionFromReview(id, parsed.data.phase),
+				() => withdrawSubmissionFromIre(id, parsed.data.phase),
 			)
 		})
 

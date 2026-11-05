@@ -3,14 +3,14 @@ import { ariExternalId, parseAriExternalId } from "../src/lib/ari-id"
 import { PhaseStatus } from "../src/lib/enums"
 import { getHoursBreakdown } from "../src/lib/hours"
 import db from "../src/lib/prisma8"
-import { getReviewParity, isReviewConfigured } from "../src/lib/review-platform"
+import { getIreParity, isIreConfigured } from "../src/lib/ire-platform"
 
 /**
  * Compare Half Life's open queue with Review's shadow queue.
  *
  * The read-only parity feed gives the external id, version, claimed hours, BOM total and check summary for every open ship. This prints the hand-ins Review is missing, the ships Review holds that Half Life no longer counts, and the per-ship numbers that disagree. It never writes and never applies a decision.
  *
- * Run with `bun --conditions=react-server scripts/review-parity.ts [--limit=50]`.
+ * Run with `bun --conditions=react-server scripts/ire-parity.ts [--limit=50]`.
  */
 
 function formatHours(seconds: number): string {
@@ -18,8 +18,8 @@ function formatHours(seconds: number): string {
 }
 
 async function main() {
-	if (!isReviewConfigured()) {
-		console.error("Set REVIEW_API_URL, REVIEW_PROGRAM and REVIEW_SIGNING_SECRET before comparing.")
+	if (!isIreConfigured()) {
+		console.error("Set IRE_API_URL, IRE_PROGRAM and IRE_SIGNING_SECRET before comparing.")
 		process.exit(1)
 	}
 
@@ -51,8 +51,8 @@ async function main() {
 		if (!current || submission.createdAt > current.createdAt) newest.set(key, submission)
 	}
 
-	const parity = await getReviewParity()
-	const reviewShips = new Map(parity.ships.map(ship => [ship.externalId, ship]))
+	const parity = await getIreParity()
+	const ireShips = new Map(parity.ships.map(ship => [ship.externalId, ship]))
 	const local = [...newest.values()].slice(0, limit)
 
 	console.log(
@@ -65,7 +65,7 @@ async function main() {
 		const project = projects.find(row => row.id === submission.themeProjectId)
 		if (!project) continue
 		const externalId = ariExternalId(submission.themeProjectId, submission.phase)
-		const ship = reviewShips.get(externalId)
+		const ship = ireShips.get(externalId)
 		if (!ship) {
 			console.log(`missing in Review  ${externalId} (${project.title})`)
 			differences++

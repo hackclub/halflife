@@ -19,8 +19,8 @@ import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
-import { isReviewConfigured } from "@/lib/review-platform"
-import { sendSubmissionToReview } from "@/lib/review-shadow"
+import { isIreConfigured } from "@/lib/ire-platform"
+import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import { trackSideEffect } from "@/lib/side-effects"
 import { escapeLikePattern } from "@/lib/text"
 import { formatDbTimestamp } from "@/lib/time"
@@ -468,7 +468,7 @@ async function sendToReview(
 	phase: Phase,
 	actor: ImportActor,
 ): Promise<WarmupImportOutcome["review"]> {
-	if (!isReviewConfigured()) return "not_configured"
+	if (!isIreConfigured()) return "not_configured"
 	const result = await trackSideEffect(
 		"review",
 		{
@@ -478,7 +478,7 @@ async function sendToReview(
 			targetId: themeProjectId,
 			targetType: "ThemeProject",
 		},
-		() => sendSubmissionToReview(themeProjectId, phase),
+		() => sendSubmissionToIre(themeProjectId, phase),
 	)
 	return result ? "sent" : "failed"
 }

@@ -23,7 +23,7 @@ Repeat per job with the cron from the table below. To change an existing job's s
 | `hackatime-sync` | `*/15 * * * *` | public ingress |
 | `airtable-retry` | `17 * * * *` | public ingress |
 | `ari-retry` | `23 * * * *` | public ingress |
-| `review-retry` | `37 * * * *` | public ingress |
+| `ire-retry` | `37 * * * *` | public ingress |
 | `loops-sync` | `41 * * * *` | cluster-internal |
 | `printer-reconcile` | `0 8 * * *` | public ingress |
 | `slack-ticket-summary` | `0 9 * * *` | public ingress |

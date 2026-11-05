@@ -73,15 +73,15 @@ export async function trackSideEffect<T>(
 				targetType: ctx.targetType,
 			})
 		else if (kind === "review" && !skipped)
-			// The ReviewShip row is the durable link; this is the operator's trace that the shadow send happened.
+			// The IreShip row is the durable link; this is the operator's trace that the shadow send happened.
 			await logAudit({
-				action: AuditAction.REVIEW_SYNC_SUCCESS,
+				action: AuditAction.IRE_SYNC_SUCCESS,
 				actorEmail: ctx.actorEmail,
 				actorId: ctx.actorId,
 				metadata: {
 					...metadataObject(ctx.metadata),
 					...(result && typeof result === "object" && "id" in result && typeof result.id === "string"
-						? { reviewSubmissionId: result.id }
+						? { ireSubmissionId: result.id }
 						: {}),
 				},
 				targetId: ctx.targetId,
@@ -102,7 +102,7 @@ export async function trackSideEffect<T>(
 					: kind === "ari"
 						? AuditAction.ARI_SYNC_FAILURE
 						: kind === "review"
-							? AuditAction.REVIEW_SYNC_FAILURE
+							? AuditAction.IRE_SYNC_FAILURE
 							: AuditAction.NOTIFICATION_FAILURE,
 			actorEmail: ctx.actorEmail,
 			actorId: ctx.actorId,

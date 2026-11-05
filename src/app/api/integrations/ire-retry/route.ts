@@ -1,13 +1,13 @@
 import type { NextRequest } from "next/server"
 import { ok } from "@/lib/api"
 import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
-import { isReviewConfigured } from "@/lib/review-platform"
+import { isIreConfigured } from "@/lib/ire-platform"
 import {
-	closeResolvedReviewShips,
-	findUnsyncedReviewSubmissions,
-	refreshOpenReviewShips,
-	sendSubmissionToReview,
-} from "@/lib/review-shadow"
+	closeResolvedIreShips,
+	findUnsyncedIreSubmissions,
+	refreshOpenIreShips,
+	sendSubmissionToIre,
+} from "@/lib/ire-shadow"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
@@ -22,11 +22,11 @@ export const maxDuration = 300
  */
 export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const dryRun = wantsDryRun(req)
-	const pending = await findUnsyncedReviewSubmissions()
+	const pending = await findUnsyncedIreSubmissions()
 
 	if (dryRun) return ok({ dryRun: true, pending })
 
-	const status = await refreshOpenReviewShips({ limit: 50 })
+	const status = await refreshOpenIreShips({ limit: 50 })
 
 	let failed = 0
 	let skipped = 0
@@ -40,14 +40,14 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 				targetId: item.themeProjectId,
 				targetType: "ThemeProject",
 			},
-			() => sendSubmissionToReview(item.themeProjectId, item.phase),
+			() => sendSubmissionToIre(item.themeProjectId, item.phase),
 		)
 		if (!result) failed++
 		else if ("skipped" in result) skipped++
 		else synced++
 	}
 
-	const close = await closeResolvedReviewShips({ limit: 100 })
+	const close = await closeResolvedIreShips({ limit: 100 })
 
 	const summary = {
 		attempted: pending.length,
@@ -62,6 +62,6 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		statusFailed: status.failed,
 		synced,
 	}
-	if (isReviewConfigured()) await recordSyncRun("review_ship", summary)
+	if (isIreConfigured()) await recordSyncRun("ire_ship", summary)
 	return ok(summary)
 })
