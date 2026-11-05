@@ -206,7 +206,7 @@ bun --conditions=react-server scripts/backfill-airtable-justification.ts
 bun --conditions=react-server scripts/backfill-airtable-justification.ts --commit
 ```
 
-It only fills cells that are empty, so a value already on the row is never overwritten. A row with a local project gets the full description, parts list and work log; one with no project (an unimported pre-season row) gets its technical features from its own `Description`. Run it where `DATABASE_URL` points at the real database, so the rows that do have a project get the richer text.
+It only fills cells that are empty, so a value already on the row is never overwritten. A row with a local project gets the full description, parts list and work log; one with no project (an unimported pre-season row) gets its technical features from its own `Description`. It also restores `Justification - Additional Justification` from the standing review's internal reason. Run it where `DATABASE_URL` points at the real database, so the rows that do have a project get the richer text.
 
 ### Reviewer columns on the review rows
 
