@@ -6,9 +6,9 @@ import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
-import db from "@/lib/prisma8"
 import { isIreConfigured } from "@/lib/ire-platform"
 import { withdrawSubmissionFromIre } from "@/lib/ire-shadow"
+import db from "@/lib/prisma8"
 import { unsubmitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
 import { unsubmitPhase } from "@/lib/submissions"
@@ -79,7 +79,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	if (isIreConfigured())
 		after(async () => {
 			await trackSideEffect(
-				"review",
+				"ire",
 				{
 					actorEmail: gate.user.email,
 					actorId: gate.user.id,

@@ -26,7 +26,7 @@ function metadataObject(value: InputJsonValue | undefined): InputJsonObject {
  * The reviewer never sees these failures – the audit log is the operational signal an admin queries to spot a regression, and the recovery route (`POST /api/admin/theme-projects/[id]/sync-to-airtable`) is how they fix it.
  */
 export async function trackSideEffect<T>(
-	kind: "airtable" | "slack" | "ari" | "review",
+	kind: "airtable" | "slack" | "ari" | "ire",
 	ctx: SideEffectContext,
 	fn: () => Promise<T>,
 	opts: {
@@ -72,7 +72,7 @@ export async function trackSideEffect<T>(
 				targetId: ctx.targetId,
 				targetType: ctx.targetType,
 			})
-		else if (kind === "review" && !skipped)
+		else if (kind === "ire" && !skipped)
 			// The IreShip row is the durable link; this is the operator's trace that the shadow send happened.
 			await logAudit({
 				action: AuditAction.IRE_SYNC_SUCCESS,
@@ -101,7 +101,7 @@ export async function trackSideEffect<T>(
 					? AuditAction.AIRTABLE_SYNC_FAILURE
 					: kind === "ari"
 						? AuditAction.ARI_SYNC_FAILURE
-						: kind === "review"
+						: kind === "ire"
 							? AuditAction.IRE_SYNC_FAILURE
 							: AuditAction.NOTIFICATION_FAILURE,
 			actorEmail: ctx.actorEmail,

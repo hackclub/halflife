@@ -3,10 +3,10 @@ import { createHash, createHmac } from "node:crypto"
 import { once } from "node:events"
 import { createServer, type IncomingHttpHeaders, type Server } from "node:http"
 import { alreadyQueuedIreShip, createIreShip, IreApiError, terminalIreFailure } from "@/lib/ire-platform"
-import type { IreShipInput } from "@/lib/review-ship"
+import type { ReviewShipInput } from "@/lib/review-ship"
 import { isRecord } from "@/lib/unknown"
 
-const input: IreShipInput = {
+const input: ReviewShipInput = {
 	description: "A board",
 	evidence: ["commits", "devlog"],
 	external_id: "proj:design",
@@ -85,7 +85,7 @@ afterAll(() => {
 })
 
 describe("createIreShip", () => {
-	test("signs timestamp.body with the Review secret", async () => {
+	test("signs timestamp.body with the Ire secret", async () => {
 		const created = await createIreShip(input)
 		expect(created).toEqual({ id: "sub_1", status: "accepted", version: 1 })
 		expect(seen).toHaveLength(1)
@@ -112,7 +112,7 @@ describe("createIreShip", () => {
 		expect(request.headers["x-ari-delivery-id"]).toMatch(/^hl-sub_local-[0-9a-f]{16}$/)
 	})
 
-	test("carries the nested meta Review needs", async () => {
+	test("carries the nested meta Ire needs", async () => {
 		await createIreShip(input)
 		const parsed: unknown = JSON.parse(seen[0]?.body ?? "{}")
 		if (!isRecord(parsed) || !isRecord(parsed.meta)) throw new Error("response has no meta")

@@ -14,14 +14,14 @@ import { scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { formatDeadline } from "@/lib/deadline"
 import { Phase } from "@/lib/enums"
+import { ireMode, ireWebhookUrl, isIreConfigured } from "@/lib/ire-platform"
+import { findUnsyncedIreSubmissions } from "@/lib/ire-shadow"
+import { ireQueueUrl } from "@/lib/ire-url"
 import { configuredOrigin } from "@/lib/origin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange, weekOpensAt } from "@/lib/program"
 import { getOpenDisputes } from "@/lib/queries/review"
-import { isIreConfigured, ireMode, ireWebhookUrl } from "@/lib/ire-platform"
-import { findUnsyncedIreSubmissions } from "@/lib/ire-shadow"
-import { ireQueueUrl } from "@/lib/ire-url"
 
 export const dynamic = "force-dynamic"
 
@@ -263,10 +263,10 @@ export default async function AdminProgramPage() {
 				</Table>
 			</Panel>
 
-			<Panel title="Review shadow integration">
+			<Panel title="Ire shadow integration">
 				<p className="hl-hint">
-					Half Life sends every hand-in to Review as a shadow copy while Ari remains the decision surface. The copy is
-					read-only: reviewers cannot claim or decide it, and nothing Review does can write credit, Airtable or a maker
+					Half Life sends every hand-in to Ire as a shadow copy while Ari remains the decision surface. The copy is
+					read-only: Ire reviewers cannot claim or decide it, and nothing Ire does can write credit, Airtable or a maker
 					notification. When a phase leaves review, the hourly job withdraws its copy.
 				</p>
 				<Table head={["Setting", "Value", "Status"]}>
@@ -281,9 +281,7 @@ export default async function AdminProgramPage() {
 						<td>Sending ships</td>
 						<td className="hl-mono">IRE_API_URL · IRE_PROGRAM · IRE_SIGNING_SECRET</td>
 						<td>
-							<Badge tone={ireSending ? "success" : "muted"}>
-								{ireSending ? "configured" : "not configured"}
-							</Badge>
+							<Badge tone={ireSending ? "success" : "muted"}>{ireSending ? "configured" : "not configured"}</Badge>
 						</td>
 					</tr>
 					<tr>
@@ -293,7 +291,7 @@ export default async function AdminProgramPage() {
 								{ireCallbackUrl}
 							</td>
 						) : (
-							<td className="hl-hint">Set the public app URL and the Review secrets to show a callback URL</td>
+							<td className="hl-hint">Set the public app URL and the Ire secrets to show a callback URL</td>
 						)}
 						<td>
 							<Badge tone={ireCallbackUrl ? "muted" : "warning"}>
@@ -324,13 +322,13 @@ export default async function AdminProgramPage() {
 				</Table>
 
 				{!ireSending ? (
-					<EmptyState>Review is not configured on this deployment, so nothing is copied there.</EmptyState>
+					<EmptyState>Ire is not configured on this deployment, so nothing is copied there.</EmptyState>
 				) : unsyncedIre.length === 0 ? (
-					<EmptyState>Every submission awaiting review has a healthy shadow copy in Review.</EmptyState>
+					<EmptyState>Every submission awaiting review has a healthy shadow copy in Ire.</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", "Why it is stuck", ""]}>
 						{unsyncedIre.map(item => (
-							<tr key={`review-${item.themeProjectId}-${item.phase}`}>
+							<tr key={`ire-${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
 								<td className="hand">{item.reason ?? "Not sent yet. The hourly job will pick it up."}</td>

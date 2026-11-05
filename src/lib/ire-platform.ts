@@ -2,18 +2,18 @@ import "server-only"
 import { createHash, createHmac } from "node:crypto"
 import { z } from "zod"
 import { HttpError } from "@/lib/errors"
-import type { IreShipInput } from "@/lib/review-ship"
+import type { ReviewShipInput } from "@/lib/review-ship"
 import { isRecord } from "@/lib/unknown"
 
 /**
- * The Review platform, spoken directly rather than through the Ari SDK.
+ * The Ire platform, spoken directly rather than through the Ari SDK.
  *
- * The wire format is Ari's, but the SDK refuses the nested `meta` Review needs for its BOM, hours and prior-review panels. This client signs `timestamp.body`, which is what Review's own documentation asks new senders for, and keeps the Review credentials entirely separate from Ari's so both can run side by side.
+ * The wire format is Ari's, but the SDK refuses the nested `meta` Ire needs for its BOM, hours and prior-review panels. This client signs `timestamp.body`, which is what Ire's own documentation asks new senders for, and keeps the Ire credentials entirely separate from Ari's so both can run side by side.
  */
 
 const IRE_TIMEOUT_MS = 20_000
 
-/** Review accepts 16 MiB. Refuse before the network so the operator gets a named limit rather than a bare 413. */
+/** Ire accepts 16 MiB. Refuse before the network so the operator gets a named limit rather than a bare 413. */
 export const MAX_IRE_PAYLOAD_BYTES = 16 * 1024 * 1024
 
 export type IreMode = "shadow" | "live"
@@ -45,7 +45,7 @@ export function isIreWebhookConfigured(): boolean {
 	return Boolean(process.env.IRE_WEBHOOK_SECRET)
 }
 
-/** Shadow is the safe default: a deployment that omits the flag must never apply a Review decision. */
+/** Shadow is the safe default: a deployment that omits the flag must never apply an Ire decision. */
 export function ireMode(): IreMode {
 	return process.env.IRE_MODE?.trim().toLowerCase() === "live" ? "live" : "shadow"
 }
@@ -58,7 +58,7 @@ export function ireWebUrl(): string {
 	return (process.env.IRE_BASE ?? process.env.IRE_API_URL ?? "").trim().replace(/\/$/, "")
 }
 
-/** The absolute webhook URL to register in the Review programme settings. */
+/** The absolute webhook URL to register in the Ire programme settings. */
 export function ireWebhookUrl(originFallback = ""): string {
 	const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? originFallback).replace(/\/$/, "")
 	return `${base}/api/integrations/ire/webhook`
@@ -140,7 +140,7 @@ export interface IreParity {
 	ships: IreParityShip[]
 }
 
-/** The read-only open-queue feed Review exposes for shadow comparison. */
+/** The read-only open-queue feed Ire exposes for shadow comparison. */
 export async function getIreParity(): Promise<IreParity> {
 	const response = await ireRequest(`/api/v1/programs/${encodeURIComponent(required("IRE_PROGRAM"))}/parity`, {
 		auth: "bearer",
@@ -161,7 +161,7 @@ async function ireRequest(
 		const timestamp = Math.floor(Date.now() / 1000).toString()
 		headers.set("Content-Type", "application/json")
 		headers.set("X-Ari-Timestamp", timestamp)
-		// Stable for the exact bytes, different for a changed body. Review records the id before it reads the ship, so a retry of the same send is a duplicate rather than a second version, while a resubmission after a project edit is a new delivery.
+		// Stable for the exact bytes, different for a changed body. Ire records the id before it reads the ship, so a retry of the same send is a duplicate rather than a second version, while a resubmission after a project edit is a new delivery.
 		headers.set("X-Ari-Delivery-Id", init.deliveryId ?? `hl-${createHash("sha256").update(init.body).digest("hex")}`)
 		headers.set("X-Ari-Signature", ireSignature(required("IRE_SIGNING_SECRET"), timestamp, init.body))
 	}
@@ -177,7 +177,7 @@ async function ireRequest(
 		})
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
-		throw new IreApiError(0, "unavailable", `Review could not be reached: ${message}`)
+		throw new IreApiError(0, "unavailable", `Ire could not be reached: ${message}`)
 	}
 
 	const text = await response.text()
@@ -186,7 +186,7 @@ async function ireRequest(
 		try {
 			parsed = JSON.parse(text)
 		} catch {
-			throw new IreApiError(response.status, "unreadable_response", "Review returned a body that is not JSON")
+			throw new IreApiError(response.status, "unreadable_response", "Ire returned a body that is not JSON")
 		}
 
 	if (!response.ok) {
@@ -200,7 +200,7 @@ async function ireRequest(
 		const message =
 			isRecord(parsed) && typeof parsed.error === "string"
 				? parsed.error
-				: `Review request failed with status ${response.status}`
+				: `Ire request failed with status ${response.status}`
 		throw new IreApiError(response.status, code, message, field, parsed)
 	}
 
@@ -212,13 +212,13 @@ async function ireRequest(
  *
  * The delivery id is scoped to the local submission and the exact body. A retry of the same hand-in is a duplicate; a resubmission is a new local submission and therefore a new id, even when the maker changed nothing. A bare body hash is not enough: after a withdraw, re-creating the same bytes would be treated as the delivery that was already processed and would not create version 2.
  */
-export async function createIreShip(input: IreShipInput, submissionId?: string): Promise<IreShipCreated> {
+export async function createIreShip(input: ReviewShipInput, submissionId?: string): Promise<IreShipCreated> {
 	const body = JSON.stringify(input)
 	const bytes = new TextEncoder().encode(body).byteLength
 	if (bytes > MAX_IRE_PAYLOAD_BYTES)
 		throw new HttpError(
 			"UNPROCESSABLE",
-			`This submission is ${Math.ceil(bytes / (1024 * 1024))} MB, above Review's ${MAX_IRE_PAYLOAD_BYTES / (1024 * 1024)} MB limit`,
+			`This submission is ${Math.ceil(bytes / (1024 * 1024))} MB, above Ire's ${MAX_IRE_PAYLOAD_BYTES / (1024 * 1024)} MB limit`,
 		)
 
 	const hash = createHash("sha256").update(body).digest("hex").slice(0, 16)
@@ -248,7 +248,7 @@ export async function withdrawIreShip(externalId: string): Promise<IreWithdrawRe
 	}
 }
 
-/** Read one ship, or null when Review has never heard of it. */
+/** Read one ship, or null when Ire has never heard of it. */
 export async function getIreShip(externalId: string): Promise<IreShipStatus | null> {
 	try {
 		const response = await ireRequest(

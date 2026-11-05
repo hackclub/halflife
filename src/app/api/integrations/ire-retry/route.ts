@@ -14,11 +14,11 @@ import { recordSyncRun } from "@/lib/sync-run-log"
 export const maxDuration = 300
 
 /**
- * Keep the shadow queue in Review honest.
+ * Keep the shadow queue in Ire honest.
  *
  * Three jobs in one pass: refresh the open ships so a lost response or an operator's withdraw is noticed, replay the hand-ins that have no healthy ship, and close the copies whose local phase has left review. The local phase is authoritative; nothing here applies a decision, writes credit, mirrors Airtable or notifies a maker.
  *
- * `?dryRun=true` reports what is pending without writing. The route is separate from `ari-retry` so a Review outage cannot delay an Ari retry.
+ * `?dryRun=true` reports what is pending without writing. The route is separate from `ari-retry` so an Ire outage cannot delay an Ari retry.
  */
 export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const dryRun = wantsDryRun(req)
@@ -33,7 +33,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	let synced = 0
 	for (const item of pending) {
 		const result = await trackSideEffect(
-			"review",
+			"ire",
 			{
 				actorId: null,
 				metadata: { phase: item.phase, retry: true, shadow: true },

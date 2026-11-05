@@ -53,7 +53,7 @@ describe("selectPendingIreShips", () => {
 		expect(selectPendingIreShips([project], [submission], [ship({ closedAt: new Date() })])).toHaveLength(1)
 	})
 
-	test("a ship Review has already decided is never resent", () => {
+	test("a ship Ire has already decided is never resent", () => {
 		expect(
 			selectPendingIreShips([project], [submission], [ship({ closedAt: new Date(), decision: "approved" })]),
 		).toEqual([])

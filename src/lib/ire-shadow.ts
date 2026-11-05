@@ -3,32 +3,32 @@ import { or } from "@prisma/orm-postgres/orm-client"
 import { ariExternalId } from "@/lib/ari-id"
 import { type Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { statusFor } from "@/lib/phase"
-import db from "@/lib/prisma8"
 import { type PendingIreShipItem, selectPendingIreShips } from "@/lib/ire-pending"
 import {
 	alreadyQueuedIreShip,
 	createIreShip,
 	getIreShip,
-	isIreConfigured,
 	type IreShipCreated,
+	isIreConfigured,
 	terminalIreFailure,
 	withdrawIreShip,
 } from "@/lib/ire-platform"
-import { buildIreShipInput } from "@/lib/review-ship"
+import { statusFor } from "@/lib/phase"
+import db from "@/lib/prisma8"
+import { buildReviewShipInput } from "@/lib/review-ship"
 import { formatDbTimestamp } from "@/lib/time"
 
 /**
- * The shadow copy of a hand-in in Review.
+ * The shadow copy of a hand-in in Ire.
  *
- * Ari owns the decision; Review only observes. This module keeps the observed copy current: send it, close it when the local phase moves on, replace it when the maker hands in a new version, and record why a send failed. Nothing here applies a decision, writes credit, mirrors Airtable or notifies a maker.
+ * Ari owns the decision; Ire only observes. This module keeps the observed copy current: send it, close it when the local phase moves on, replace it when the maker hands in a new version, and record why a send failed. Nothing here applies a decision, writes credit, mirrors Airtable or notifies a maker.
  */
 
 export type SendIreResult =
 	| { skipped: "not_configured" }
 	| { id: string; status: "accepted" | "duplicate"; version?: number }
 
-/** The row a Review ship is currently linked to, as the lifecycle checks need it. */
+/** The row an Ire ship is currently linked to, as the lifecycle checks need it. */
 export interface IreShipRow {
 	closedAt: string | null
 	decision: string | null
@@ -121,14 +121,14 @@ async function withdrawRow(row: IreShipRow): Promise<"not_queued" | "withdrawn">
 }
 
 /**
- * Send a hand-in to Review, replacing a stale open copy when the maker has handed in again.
+ * Send a hand-in to Ire, replacing a stale open copy when the maker has handed in again.
  *
- * Review holds at most one open ship per external id. In shadow mode its ships are not decided, so a resubmission would otherwise hit `already_queued` on the previous version forever. The `IreShip` row survives the local submission being deleted on unsubmit, which is why the mapping lives there rather than on `PhaseSubmission`.
+ * Ire holds at most one open ship per external id. In shadow mode its ships are not decided, so a resubmission would otherwise hit `already_queued` on the previous version forever. The `IreShip` row survives the local submission being deleted on unsubmit, which is why the mapping lives there rather than on `PhaseSubmission`.
  */
 export async function sendSubmissionToIre(themeProjectId: string, phase: Phase): Promise<SendIreResult> {
 	if (!isIreConfigured()) return { skipped: "not_configured" }
 
-	const { input, submissionId } = await buildIreShipInput(themeProjectId, phase)
+	const { input, submissionId } = await buildReviewShipInput(themeProjectId, phase)
 	if (!submissionId) throw new HttpError("NOT_SUBMITTED", "This phase has no open submission to send to review")
 
 	const existing = (await db.orm.public.IreShip.where({ phase, themeProjectId }).first()) as IreShipRow | null
@@ -180,7 +180,7 @@ export async function sendSubmissionToIre(themeProjectId: string, phase: Phase):
 					throw retryErr
 				}
 
-			// A response lost on the way back is the ship Review already has. Adopting it stops an hourly retry that can never succeed.
+			// A response lost on the way back is the ship Ire already has. Adopting it stops an hourly retry that can never succeed.
 			await recordShip({
 				externalId: input.external_id,
 				lastSubmissionId: submissionId,
@@ -203,7 +203,7 @@ export async function sendSubmissionToIre(themeProjectId: string, phase: Phase):
 	}
 }
 
-/** Withdraw an open hand-in from Review. A ship that is already gone is success. */
+/** Withdraw an open hand-in from Ire. A ship that is already gone is success. */
 export async function withdrawSubmissionFromIre(
 	themeProjectId: string,
 	phase: Phase,
@@ -239,7 +239,7 @@ export interface IreCloseSummary {
 /**
  * Close the shadow copies of hand-ins whose local phase has left review.
  *
- * The submit path withdraws a stale copy before creating the next version, so this is the belt to that braces: it also catches an Ari decision, a console decision, an admin revert and an unsubmit whose withdrawal failed while Review was down. A ship with a newer open submission is skipped here; that path owns the replace.
+ * The submit path withdraws a stale copy before creating the next version, so this is the belt to that braces: it also catches an Ari decision, a console decision, an admin revert and an unsubmit whose withdrawal failed while Ire was down. A ship with a newer open submission is skipped here; that path owns the replace.
  */
 export async function closeResolvedIreShips(opts: { limit?: number } = {}): Promise<IreCloseSummary> {
 	const summary: IreCloseSummary = { checked: 0, closed: 0, failed: 0, skipped: 0 }
@@ -274,7 +274,7 @@ export async function closeResolvedIreShips(opts: { limit?: number } = {}): Prom
 	return summary
 }
 
-/** Replay the shadow sends that never reached Review, with the reason the last attempt gave. */
+/** Replay the shadow sends that never reached Ire, with the reason the last attempt gave. */
 export async function findUnsyncedIreSubmissions(): Promise<PendingIreShipItem[]> {
 	if (!isIreConfigured()) return []
 
@@ -325,7 +325,7 @@ export interface IreStatusSummary {
 }
 
 /**
- * Verify the open shadow ships still exist, and record the phase Review reports for the ones that do.
+ * Verify the open shadow ships still exist, and record the phase Ire reports for the ones that do.
  *
  * The send response can be lost, and a ship can be withdrawn by an operator. A missing or withdrawn ship clears its remote id so the next pending pass sends it again; a live one keeps its version and phase current. This never reads or applies a decision.
  */
@@ -347,7 +347,7 @@ export async function refreshOpenIreShips(opts: { limit?: number } = {}): Promis
 				summary.missing += 1
 				await db.orm.public.IreShip.where({ id: row.id }).update({
 					closedAt: nowText(),
-					lastError: status ? `Review reported this ship as ${status.phase}` : "Review no longer knows this ship",
+					lastError: status ? `Ire reported this ship as ${status.phase}` : "Ire no longer knows this ship",
 					remoteId: null,
 					status: status?.phase ?? "missing",
 					version: null,

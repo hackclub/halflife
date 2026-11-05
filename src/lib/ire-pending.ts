@@ -2,9 +2,9 @@ import { Phase, PhaseStatus } from "@/lib/enums"
 import { statusFor } from "@/lib/phase"
 
 /**
- * Which (project, phase) hand-ins have no healthy shadow ship in Review.
+ * Which (project, phase) hand-ins have no healthy shadow ship in Ire.
  *
- * Pure so `verify:contracts` can pin the rules without a database. This decides what the hourly `ire-retry` job replays and what the admin panel offers a manual retry for; getting it wrong either leaves a hand-in absent from the shadow queue or resends one Review already has.
+ * Pure so `verify:contracts` can pin the rules without a database. This decides what the hourly `ire-retry` job replays and what the admin panel offers a manual retry for; getting it wrong either leaves a hand-in absent from the shadow queue or resends one Ire already has.
  *
  * A ship is pending when there is no row at all, when the row has no remote id (a failed first send), when the row was closed (withdrawn, usually because an earlier hand-in was withdrawn or resolved), or when the row belongs to an older hand-in than the newest open submission. The last case is a resubmission: the send path withdraws the stale copy and creates the next version.
  */
@@ -61,7 +61,7 @@ export function selectPendingIreShips(
 			const submission = newest.get(`${project.id}:${phase}`)
 			if (!submission) continue
 			const ship = byPhase.get(`${project.id}:${phase}`)
-			// A decision means Review has already finished this ship, even if a row was closed by a later lifecycle pass. Never send a decided hand-in back into the shadow queue.
+			// A decision means Ire has already finished this ship, even if a row was closed by a later lifecycle pass. Never send a decided hand-in back into the shadow queue.
 			const sent = typeof ship?.remoteId === "string" && (ship.closedAt === null || ship.decision !== null)
 			if (sent && ship.lastSubmissionId === submission.id) continue
 			out.push({ phase, reason: ship?.lastError ?? null, themeProjectId: project.id })

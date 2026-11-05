@@ -2,13 +2,13 @@ import { or } from "@prisma/orm-postgres/orm-client"
 import { ariExternalId, parseAriExternalId } from "../src/lib/ari-id"
 import { PhaseStatus } from "../src/lib/enums"
 import { getHoursBreakdown } from "../src/lib/hours"
-import db from "../src/lib/prisma8"
 import { getIreParity, isIreConfigured } from "../src/lib/ire-platform"
+import db from "../src/lib/prisma8"
 
 /**
- * Compare Half Life's open queue with Review's shadow queue.
+ * Compare Half Life's open queue with Ire's shadow queue.
  *
- * The read-only parity feed gives the external id, version, claimed hours, BOM total and check summary for every open ship. This prints the hand-ins Review is missing, the ships Review holds that Half Life no longer counts, and the per-ship numbers that disagree. It never writes and never applies a decision.
+ * The read-only parity feed gives the external id, version, claimed hours, BOM total and check summary for every open ship. This prints the hand-ins Ire is missing, the ships Ire holds that Half Life no longer counts, and the per-ship numbers that disagree. It never writes and never applies a decision.
  *
  * Run with `bun --conditions=react-server scripts/ire-parity.ts [--limit=50]`.
  */
@@ -56,7 +56,7 @@ async function main() {
 	const local = [...newest.values()].slice(0, limit)
 
 	console.log(
-		`Review ${parity.ships.length} open ship(s) at ${parity.generatedAt}; Half Life ${newest.size} open hand-in(s)`,
+		`Ire ${parity.ships.length} open ship(s) at ${parity.generatedAt}; Half Life ${newest.size} open hand-in(s)`,
 	)
 	console.log(`Comparing ${local.length} hand-in(s)\n`)
 
@@ -67,7 +67,7 @@ async function main() {
 		const externalId = ariExternalId(submission.themeProjectId, submission.phase)
 		const ship = ireShips.get(externalId)
 		if (!ship) {
-			console.log(`missing in Review  ${externalId} (${project.title})`)
+			console.log(`missing in Ire     ${externalId} (${project.title})`)
 			differences++
 			continue
 		}
@@ -95,7 +95,7 @@ async function main() {
 		const parsed = parseAriExternalId(ship.externalId)
 		if (!parsed) continue
 		if (!newest.has(`${parsed.themeProjectId}:${parsed.phase}`)) {
-			console.log(`extra in Review    ${ship.externalId} (v${ship.version}, ${ship.status})`)
+			console.log(`extra in Ire       ${ship.externalId} (v${ship.version}, ${ship.status})`)
 			differences++
 		}
 	}

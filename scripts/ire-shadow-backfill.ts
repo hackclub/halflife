@@ -1,12 +1,12 @@
-import db from "../src/lib/prisma8"
 import { isIreConfigured } from "../src/lib/ire-platform"
 import { findUnsyncedIreSubmissions, sendSubmissionToIre } from "../src/lib/ire-shadow"
+import db from "../src/lib/prisma8"
 import { trackSideEffect } from "../src/lib/side-effects"
 
 /**
- * Copy the currently open hand-ins into Review.
+ * Copy the currently open hand-ins into Ire.
  *
- * The deploy path sends every new submission, but the queue that existed when Review was connected has to be replayed once. Only the newest open submission per phase is sent: older rows are history, and `meta.prior_reviews` carries what a reviewer needs from them. Re-running is safe; Review returns the open ship as `already_queued` and the send path adopts it.
+ * The deploy path sends every new submission, but the queue that existed when Ire was connected has to be replayed once. Only the newest open submission per phase is sent: older rows are history, and `meta.prior_reviews` carries what a reviewer needs from them. Re-running is safe; Ire returns the open ship as `already_queued` and the send path adopts it.
  *
  * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/ire-shadow-backfill.ts [--commit] [--limit=N]`.
  */
@@ -26,7 +26,7 @@ async function main() {
 	}
 
 	const pending = (await findUnsyncedIreSubmissions()).slice(0, limit ?? undefined)
-	console.log(`${pending.length} hand-in(s) have no healthy shadow ship in Review`)
+	console.log(`${pending.length} hand-in(s) have no healthy shadow ship in Ire`)
 	for (const item of pending)
 		console.log(`  ${item.themeProjectId}:${item.phase}${item.reason ? ` - ${item.reason}` : ""}`)
 
@@ -39,7 +39,7 @@ async function main() {
 	let sent = 0
 	for (const item of pending) {
 		const result = await trackSideEffect(
-			"review",
+			"ire",
 			{
 				actorId: null,
 				metadata: { backfill: true, phase: item.phase, shadow: true },
