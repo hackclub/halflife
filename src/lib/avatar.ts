@@ -14,8 +14,13 @@ const CACHET_BASE = (process.env.CACHET_BASE_URL ?? "https://cachet.dunkirk.sh")
  */
 function allowedAvatarHost(hostname: string): boolean {
 	const host = hostname.toLowerCase()
-	if (host.endsWith(".slack-edge.com")) return true
-	if (host.endsWith(".hackclub.com") || host.endsWith(".hackclub-assets.com")) return true
+	if (host === "slack-edge.com" || host.endsWith(".slack-edge.com")) return true
+	if (host === "hackclub.com" || host.endsWith(".hackclub.com")) return true
+	if (host === "hackclub-assets.com" || host.endsWith(".hackclub-assets.com")) return true
+	if (host === "dunkirk.sh" || host.endsWith(".dunkirk.sh")) return true
+	// Identity CDNs, matching the img-src allowlist in lib/csp: Cachet redirects here for some people, and an HCA fallback image may name them directly.
+	if (host.endsWith(".gravatar.com")) return true
+	if (host === "avatars.githubusercontent.com") return true
 	if (process.env.NEXT_PUBLIC_UPLOAD_HOST?.toLowerCase() === host) return true
 	try {
 		return new URL(CACHET_BASE).hostname === host
@@ -24,13 +29,32 @@ function allowedAvatarHost(hostname: string): boolean {
 	}
 }
 
+/**
+ * Unwrap a Photon URL (`i[0-2].wp.com/<original-host>/<path>`) back to the origin it proxies. Photon is what Gravatar 302s its default avatars through, so an HCA `image` that names one is a Slack/Gravatar face behind one hop, not an arbitrary host. Returning the origin keeps the browser off Automattic's CDN entirely; an origin that would not be allowed directly still falls back to the initial.
+ */
+function unwrapPhoton(url: URL): URL {
+	if (!/^i[0-2]\.wp\.com$/i.test(url.hostname)) return url
+	const [, originalHost, ...rest] = url.pathname.split("/")
+	if (!originalHost) return url
+	try {
+		const original = new URL(`https://${originalHost}/${rest.join("/")}`)
+		return original.protocol === "https:" ? original : url
+	} catch {
+		return url
+	}
+}
+
 export function avatarUrl(user: { slackId?: string | null; image?: string | null } | null | undefined): string | null {
 	if (!user) return null
 	if (user.slackId) return `${CACHET_BASE}/users/${encodeURIComponent(user.slackId)}/r`
 	if (!user.image) return null
 	try {
-		const url = new URL(user.image)
-		return url.protocol === "https:" && allowedAvatarHost(url.hostname) ? user.image : null
+		const parsed = new URL(user.image)
+		if (/^i[0-2]\.wp\.com$/i.test(parsed.hostname)) {
+			const url = unwrapPhoton(parsed)
+			return url.protocol === "https:" && allowedAvatarHost(url.hostname) ? url.toString() : null
+		}
+		return parsed.protocol === "https:" && allowedAvatarHost(parsed.hostname) ? user.image : null
 	} catch {
 		return null
 	}
