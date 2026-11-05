@@ -181,7 +181,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		&& project.theme !== Theme.WARMUP
 		&& project.designStatus !== PhaseStatus.approved
 	)
-		throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
+		throw new HttpError("DESIGN_NOT_APPROVED", "Approve this project's design before approving the build")
 
 	let { tier } = project
 	if (approving && phase === Phase.DESIGN) {
@@ -244,7 +244,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				.select("designStatus", "theme")
 				.first()
 			if (design?.theme !== Theme.WARMUP && design?.designStatus !== PhaseStatus.approved)
-				throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
+				throw new HttpError("DESIGN_NOT_APPROVED", "Approve this project's design before approving the build")
 		}
 
 		// The hours, read under the lock rather than before it. The hours-approval route takes this same lock before it rewrites a session or a link, so a batch that rewrote them while this decision was waiting for Hackatime is already in this read, and one still waiting cannot commit until this decision has. The total the decision freezes is the total the rows hold at the moment it is made.

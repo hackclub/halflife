@@ -218,14 +218,14 @@ export function GoalModal({
 							<>
 								<span className="font-extrabold">A printer is earned, not guaranteed.</span>{" "}
 								{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
-								week, so you may not earn enough coins for a {goal.name}. The bigger prizes need all five themes
+								week, so you may not earn enough coins for a {goal.name}. The bigger prizes need all five projects
 								finished, too.
 							</>
 						) : (
 							<>
 								<span className="font-extrabold">A printer is earned, not guaranteed.</span> {goal.name} asks about{" "}
 								{Math.round(goal.paceHours * 5)} coins every design week, so matching that pace each week is what earns
-								it. The bigger prizes need all five themes finished, too.
+								it. The bigger prizes need all five projects finished, too.
 							</>
 						)}
 					</div>

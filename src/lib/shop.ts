@@ -215,7 +215,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 
 		if (item.requiresPrinterQualified && !qualification.qualified) {
 			locked = true
-			lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
+			lockReason = `Ship all ${qualification.required} projects to unlock (${qualification.shippedCount} so far)`
 		} else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
 			locked = true
 			lockReason = "You already have this"
@@ -320,7 +320,7 @@ export async function purchase(
 	if (item.requiresPrinterQualified) {
 		const qualification = await getPrinterQualification(userId)
 		if (!qualification.qualified)
-			throw new HttpError("ITEM_LOCKED", `Ship all ${qualification.required} themes to unlock this`)
+			throw new HttpError("ITEM_LOCKED", `Ship all ${qualification.required} projects to unlock this`)
 	}
 
 	return db.transaction(async tx => {

@@ -35,7 +35,8 @@ export function ShopItemCard({
 		<Panel as="li" className="group flex flex-col overflow-hidden bg-paper" radius={20} tone="line">
 			{/* The action lives under the photo on a phone and lifts onto it from sm, where a hover reveals it. A phone has no hover, so an overlaid button is always showing – and "not enough coins" over a small shelf image covered a third of the thing being bought. */}
 			<div className="relative">
-				<div className="relative grid aspect-[4/3] place-items-center bg-cream/70 p-3">
+				{/* Capped at 30vh so a wide card cannot grow a towering photo; the image stays object-contain inside it, so it shrinks to fit rather than being cropped. */}
+				<div className="relative grid aspect-[4/3] max-h-[30vh] place-items-center bg-cream/70 p-3">
 					{/* The photo staff set on the item; until there is one, gato minding a box of parts, so the shelf never shows a hole. */}
 					{item.imageUrl ? (
 						// staff paste any host into the item's image field

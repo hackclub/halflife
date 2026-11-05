@@ -149,7 +149,7 @@ export const DOCS: DocArticle[] = [
 					"Build week: nothing is funded, so every hour earns 5 coins.",
 					"Every coin is spendable on anything: your printer goal, or the shop.",
 					"Each submission is capped at 250 coins (50 hours).",
-					"Ship a theme (design and build both approved): 25 bonus coins to spend.",
+					"Ship a project (design and build both approved): 25 bonus coins to spend.",
 				],
 				paragraphs: [
 					"Coins track the work you do beyond what your project needs. Coins are earned at 5 per approved hour, but only after that tier's funding is achieved – or from the first hour if you decline the funding.",
