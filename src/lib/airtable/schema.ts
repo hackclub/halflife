@@ -41,6 +41,8 @@ export function formulaRef(field: FieldDef): string {
  */
 export const YSWS_SUBMISSION = {
 	fields: {
+		// The reviewer's internal note on the standing decision – Ari's "Justification notes" field, sent as `review.audit_note` and stored on the review as `reason`. The pipeline merges it into `Automation - Unified Justification` with the evidence columns, so it is written when a decision is mirrored and cleared when the row no longer has one (see `syncReviewDecisionToYsws` in lib/airtable/sync).
+		additionalJustification: f<string>("fldYswsAdditionalJustification", "Justification - Additional Justification"),
 		addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
 		addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
 		// How the hours were tracked when there is no Hackatime or Lapse evidence to point at. Written from the devlog entries at hand-in and refined with the reviewer's own reasoning at the decision (see lib/airtable/justification).

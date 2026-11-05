@@ -217,6 +217,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	)
 
 	const fields = toFields(YSWS_SUBMISSION.fields, {
+		// The reviewer's note belongs to the decision in front of the row. A new hand-in has none, so a re-submission clears the previous review's notes along with its status; an approved row is left alone, because an admin refresh must not erase what the reviewer wrote.
+		additionalJustification: phaseStatus === PhaseStatus.in_review ? "" : undefined,
 		codeUrl: project.githubRepo ?? "",
 		email: user.email,
 		firstName: firstName ?? "",
@@ -400,6 +402,8 @@ function alternateTrackingColumns(
  * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the decision (the first of Ari's two passes). Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
  *
  * `deflationReason` is Ari's `review.justification.deflation_reason`: the reviewer's own account of why they approved fewer hours than the row claims. It is preferred for `Justification - Deflation Justification`; without it that column falls back to the review's internal reason. The maker-facing note is never used there – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it says nothing about the cut.
+ *
+ * The review's internal reason is also written to `Justification - Additional Justification`, which is where the pipeline reads Ari's "Justification notes" (`review.audit_note`) from. `justificationNotes` is that note; undefined leaves the column alone (an older caller), null clears it for a decision that no longer stands.
  */
 export async function syncReviewDecisionToYsws(
 	themeProjectId: string,
@@ -408,6 +412,7 @@ export async function syncReviewDecisionToYsws(
 	note: string | null,
 	reviewerEmail?: string | null,
 	deflationReason?: string | null,
+	justificationNotes?: string | null,
 ): Promise<{ updated: boolean; reason?: string; noteFailed?: string; reviewerFailed?: string }> {
 	const settings = await getProgramSettings()
 	if (!settings.airtableSyncEnabled) return { reason: "sync_disabled", updated: false }
@@ -416,6 +421,7 @@ export async function syncReviewDecisionToYsws(
 	if (!recordId) return { reason: "no_row", updated: false }
 
 	const {
+		additionalJustification,
 		alternateTracking: alternateTrackingField,
 		deflationJustification: deflationField,
 		overrideHoursSpent,
@@ -428,10 +434,11 @@ export async function syncReviewDecisionToYsws(
 	// Undefined leaves the column alone, for a caller that only knows about the status (the older review backfill). Null clears it, for a decision that no longer stands.
 	const reviewerField = reviewerEmail === undefined ? null : { [fieldKey(pass1Reviewer)]: reviewerEmail ?? "" }
 
-	// The override, reviewer, deflation and alternate-tracking columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
+	// The override, reviewer and justification columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
 	const overrides: { [_: string]: unknown } = {}
 	const deflationFields: { [_: string]: unknown } = {}
 	const alternateFields: { [_: string]: unknown } = {}
+	const additionalFields: { [_: string]: unknown } = {}
 	let reviewerWritable = false
 	const config = getAirtableConfig()
 	if (config) {
@@ -443,6 +450,7 @@ export async function syncReviewDecisionToYsws(
 				overrideHoursSpent.name,
 				deflationField.name,
 				alternateTrackingField.name,
+				additionalJustification.name,
 			])
 		} catch (err) {
 			// A probe failure is not a reason to lose the status; the next decision retries it.
@@ -454,6 +462,9 @@ export async function syncReviewDecisionToYsws(
 		reviewerWritable = writable.has(pass1Reviewer.name)
 		const hasDeflationColumns = writable.has(overrideHoursSpent.name) && writable.has(deflationField.name)
 		const hasAlternateColumn = writable.has(alternateTrackingField.name)
+		// The reviewer's "Justification notes", written verbatim. Undefined is a caller that does not know the column; null or blank clears it, so a reversal or a decision with no note cannot leave the previous review's words on the row.
+		if (writable.has(additionalJustification.name) && justificationNotes !== undefined)
+			additionalFields[fieldKey(additionalJustification)] = justificationNotes?.trim() ?? ""
 		if (writable.size > 0)
 			try {
 				const [project, submission] = await Promise.all([
@@ -480,7 +491,7 @@ export async function syncReviewDecisionToYsws(
 						status === YSWS_REVIEW_STATUS.approved && (hasDeflationColumns || hasAlternateColumn)
 							? await readReviewRow(config, recordId)
 							: null
-					// The review's internal note, which is the reviewer's own reasoning rather than the words they sent the maker. It is the fallback for both justification columns.
+					// The review's internal note, which is the reviewer's own reasoning rather than the words they sent the maker. It is Ari's `audit_note` – the "Justification notes" field – and the fallback for both justification columns.
 					const reviewReason = submission?.reviews[0]?.reason?.trim() || null
 					const reviewerText = reviewReason || note
 					// Ari's dedicated deflation reason when the decision carried one; never the maker's note, which is quoted in the email and says nothing about why hours came down.
@@ -528,16 +539,18 @@ export async function syncReviewDecisionToYsws(
 		...overrides,
 		...deflationFields,
 		...alternateFields,
+		...additionalFields,
 	}
 	const moved = await updateYswsRecord(recordId, complete)
 	if (moved.ok) return { updated: true }
 
-	// The complete write was refused. Keep the status load-bearing, and keep the overrides, hours and alternate-tracking justification with it so the email can still name the project and the payout still sees the cut.
+	// The complete write was refused. Keep the status load-bearing, and keep the overrides, hours and justification columns with it so the email can still name the project and the payout still sees the cut.
 	const core = await updateYswsRecord(recordId, {
 		...statusField,
 		...overrides,
 		...deflationFields,
 		...alternateFields,
+		...additionalFields,
 	})
 	if (!core.ok) {
 		const statusOnly = await updateYswsRecord(recordId, statusField)
@@ -555,7 +568,7 @@ export async function syncReviewDecisionToYsws(
 /**
  * Put a decision on the submission's Airtable row, for Loops, and log whatever did not land.
  *
- * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is Ari's dedicated justification for a cut, which is preferred over the review's internal note in the deflation column.
+ * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is Ari's dedicated justification for a cut, which is preferred over the review's internal note in the deflation column. `justificationNotes` is Ari's "Justification notes" (`review.audit_note`), written to `Justification - Additional Justification`; omit it to leave that column alone, or pass null to clear it.
  *
  * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. On the Ari path that is load-bearing – a throw becomes a 5xx and a redelivery of a decision that has already been applied.
  */
@@ -566,8 +579,17 @@ export async function mirrorReviewDecision(
 	note: string | null,
 	reviewerEmail?: string | null,
 	deflationReason?: string | null,
+	justificationNotes?: string | null,
 ): Promise<void> {
-	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note, reviewerEmail, deflationReason)
+	const mirrored = await syncReviewDecisionToYsws(
+		themeProjectId,
+		phase,
+		status,
+		note,
+		reviewerEmail,
+		deflationReason,
+		justificationNotes,
+	)
 	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
 	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
 		console.error(

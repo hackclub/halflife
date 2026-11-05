@@ -48,12 +48,14 @@ export const POST = withWritePermission(
 		}
 
 		const feedback = sanitize(body.feedback ?? "")
+		// The reviewer's internal note, which is the console's equivalent of Ari's "Justification notes".
+		const reason = "reason" in body ? sanitizeOptional(body.reason) : null
 
 		const outcome = await finalizeReview({
 			feedback,
 			grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
 			hoursOverride: "hoursOverride" in body ? (body.hoursOverride ?? null) : null,
-			reason: "reason" in body ? sanitizeOptional(body.reason) : null,
+			reason,
 			result: body.result,
 			reviewerEmail: gate.user.email,
 			reviewerId: gate.user.id,
@@ -71,6 +73,8 @@ export const POST = withWritePermission(
 				reviewStatusForResult(outcome.result),
 				feedback || null,
 				gate.user.email,
+				null,
+				reason,
 			)
 			await notifyReviewOutcome({
 				decidedBy: "console",

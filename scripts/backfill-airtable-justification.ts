@@ -27,11 +27,11 @@ import { parseDbTimestamp } from "../src/lib/time"
 /**
  * Fill the `Justification - …` columns on the submission rows that are missing them.
  *
- * Five columns carry a submission's evidence: the maker's Hackatime id, the Hackatime projects they tracked time in, the timelapses they recorded, the account of what they actually built, and – when there is neither Hackatime nor Lapse evidence – the devlog-based method the hours rest on. The pipeline merges them into one blob on the row (`Automation - Unified Justification`), so a column left empty is a gap in the justification a grant reviewer reads.
+ * Five columns carry a submission's evidence: the maker's Hackatime id, the Hackatime projects they tracked time in, the timelapses they recorded, the account of what they actually built, and – when there is neither Hackatime nor Lapse evidence – the devlog-based method the hours rest on. A sixth, `Justification - Additional Justification`, carries the reviewer's own note on the standing decision – Ari's "Justification notes" (`review.audit_note`, stored as `SubmissionReview.reason`). The pipeline merges them into one blob on the row (`Automation - Unified Justification`), so a column left empty is a gap in the justification a grant reviewer reads.
  *
  * Rows written before the technical-features column was wired up are missing that column in particular: it existed in the base before `justificationValues` filled it, so every row from before that change has an empty `[SPECIFIC TECHNICAL FEATURES]` section. That column is required on every row, so this fills it even when the maker left nothing to build it from (see `NO_FEATURES_RECORDED`). The alternate-tracking column is filled only when the row has no Hackatime id, no Hackatime projects and no Lapse links; the other evidence columns are only written when we hold something.
  *
- * This replays the state Postgres already holds onto the rows that are missing a column, using the same builder the live write uses (see `justificationValues` in lib/airtable/justification), so a backfilled cell and a freshly written one cannot disagree. The reviewer's reasoning for the alternate method is the standing decision's audit note (`SubmissionReview.reason`), which is where Ari now puts the explanation that used to live in its legacy `time_evidence` and `hours_reasoning` fields.
+ * This replays the state Postgres already holds onto the rows that are missing a column, using the same builder the live write uses (see `justificationValues` in lib/airtable/justification), so a backfilled cell and a freshly written one cannot disagree. The reviewer's reasoning for the alternate method is the standing decision's audit note (`SubmissionReview.reason`), which is where Ari now puts the explanation that used to live in its legacy `time_evidence` and `hours_reasoning` fields. The same note fills `Justification - Additional Justification`, because that is Ari's "Justification notes" field, when the standing decision still matches the row's state.
  *
  * Only a column the base is missing is written. A column that already holds something is left exactly as it is: it is evidence, and on the pre-season rows the form filled it in and Postgres never received it, so overwriting it with our own answer would destroy the only record. A row is therefore never rewritten wholesale, only completed.
  *
@@ -44,6 +44,7 @@ const commit = process.argv.includes("--commit")
 
 /** The columns this backfill fills, by the key `justificationValues` returns each one under. */
 const COLUMNS = {
+	additionalJustification: YSWS_SUBMISSION.fields.additionalJustification,
 	alternateTracking: YSWS_SUBMISSION.fields.alternateTracking,
 	hackatimeId: YSWS_SUBMISSION.fields.hackatimeId,
 	hackatimeProjects: YSWS_SUBMISSION.fields.hackatimeProjects,
@@ -196,7 +197,12 @@ async function main() {
 		if (!standing.has(key)) standing.set(key, review)
 	}
 
-	const targets: { phase: Phase; recordId: string; title: string; values: JustificationValues }[] = []
+	const targets: {
+		phase: Phase
+		recordId: string
+		title: string
+		values: JustificationValues & { additionalJustification?: string }
+	}[] = []
 	let withoutRow = 0
 	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
@@ -210,7 +216,7 @@ async function main() {
 			const hackatimeProjects = project.hackatimeLinks.filter(l => l.phase === phase).map(l => l.hackatimeProject)
 			const hackatimeUserId = project.user?.hackatimeUserId ?? null
 			const lapseLinks = timelapseLinks(sessions.flatMap(s => s.timelapses))
-			const values = justificationValues(
+			const values: JustificationValues & { additionalJustification?: string } = justificationValues(
 				{
 					bomItems: project.bomItems,
 					description: project.description,
@@ -223,10 +229,10 @@ async function main() {
 			)
 			// The alternate method is only the method when there is nothing tracked to name.
 			const hasTrackedEvidence = Boolean(hackatimeUserId) || hackatimeProjects.length > 0 || lapseLinks.length > 0
+			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+			const review = standing.get(`${project.id}:${phase}`)
+			const matches = review && reviewStatusForResult(review.result) === reviewStatusFor(status)
 			if (!hasTrackedEvidence) {
-				const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-				const review = standing.get(`${project.id}:${phase}`)
-				const matches = review && reviewStatusForResult(review.result) === reviewStatusFor(status)
 				const manual = phaseSessions.filter(s => s.hoursSource !== HoursSource.HACKATIME_TRACKED)
 				values.alternateTracking = alternateTrackingJustification({
 					claimedHours: manual.reduce((sum, session) => sum + session.hoursClaimed, 0),
@@ -234,6 +240,9 @@ async function main() {
 					reviewerText: matches && status === PhaseStatus.approved ? reviewerReason(review) : null,
 				})
 			}
+			// The reviewer's "Justification notes" on the decision that still stands. Only the internal reason is quoted: the maker-facing feedback is a different column, and a review with no reason left no justification notes to restore.
+			const notes = matches ? review.reason?.trim() : null
+			if (notes) values.additionalJustification = notes
 			targets.push({ phase, recordId, title: project.title, values })
 		}
 

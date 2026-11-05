@@ -113,8 +113,8 @@ export async function sendDisputedPhaseBack(
 		targetType: "ReviewDispute",
 	})
 
-	// The row follows the phase back to review; Loops triggers on decisions, so Pending Review sends nothing.
-	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(PhaseStatus.in_review), null, null)
+	// The row follows the phase back to review; Loops triggers on decisions, so Pending Review sends nothing. The reviewer's justification is cleared with the decision it belonged to.
+	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(PhaseStatus.in_review), null, null, null, null)
 	await trackSideEffect(
 		"ari",
 		{
