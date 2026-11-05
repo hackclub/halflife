@@ -197,6 +197,8 @@ Four columns on `YSWS Project Submission` carry the maker's evidence, which the 
 
 `syncSubmissionToYsws` (`src/lib/airtable/sync.ts`) writes them at submit from `justificationValues` (`src/lib/airtable/justification.ts`). The first three are written only when there is something to write – a maker may have no Hackatime account, linked project or recording, and a blank would erase evidence the base alone holds. The technical-features column is always written, with a marker when nothing was recorded, because the pipeline gives every row a `[SPECIFIC TECHNICAL FEATURES]` section.
 
+`Justification - Additional Justification` is the reviewer's own note on the decision that stands – Ari's "Justification notes" field, sent as `review.audit_note` and stored on the review as `SubmissionReview.reason`. The decision mirror writes it with the status, clears it when a later decision withdraws the approval, and clears it on a re-submission so the row never quotes a review it no longer holds. A row still in review, or decided by a console reviewer with no reason, leaves it blank.
+
 Rows written before that landed are completed by:
 
 ```bash
