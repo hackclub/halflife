@@ -2,6 +2,7 @@ import "server-only"
 import { createHash, createHmac } from "node:crypto"
 import { z } from "zod"
 import { HttpError } from "@/lib/errors"
+import type { IreImportResult, IreImportShip } from "@/lib/ire-import"
 import type { ReviewShipInput } from "@/lib/review-ship"
 import { isRecord } from "@/lib/unknown"
 
@@ -140,6 +141,23 @@ export interface IreParity {
 	ships: IreParityShip[]
 }
 
+const importResultSchema = z.object({
+	failed: z.array(z.object({ error: z.string().min(1), external_id: z.string() })),
+	imported: z.number().int().nonnegative(),
+	skipped: z.number().int().nonnegative(),
+})
+
+/** Backfill ships Ari already decided. The endpoint skips decided ships, so a retried batch is safe. */
+export async function importReviewedShips(ships: IreImportShip[]): Promise<IreImportResult> {
+	const response = await ireRequest(`/api/v1/programs/${encodeURIComponent(required("IRE_PROGRAM"))}/import-reviewed`, {
+		auth: "bearer",
+		body: JSON.stringify({ ships }),
+		method: "POST",
+	})
+
+	return importResultSchema.parse(response)
+}
+
 /** The read-only open-queue feed Ire exposes for shadow comparison. */
 export async function getIreParity(): Promise<IreParity> {
 	const response = await ireRequest(`/api/v1/programs/${encodeURIComponent(required("IRE_PROGRAM"))}/parity`, {
@@ -156,10 +174,11 @@ async function ireRequest(
 	const url = new URL(path, `${ireBaseUrl()}/`)
 	const headers = new Headers({ Accept: "application/json" })
 
+	if (init.body !== undefined) headers.set("Content-Type", "application/json")
+
 	if (init.auth === "bearer") headers.set("Authorization", `Bearer ${required("IRE_SIGNING_SECRET")}`)
 	else if (init.body !== undefined) {
 		const timestamp = Math.floor(Date.now() / 1000).toString()
-		headers.set("Content-Type", "application/json")
 		headers.set("X-Ari-Timestamp", timestamp)
 		// Stable for the exact bytes, different for a changed body. Ire records the id before it reads the ship, so a retry of the same send is a duplicate rather than a second version, while a resubmission after a project edit is a new delivery.
 		headers.set("X-Ari-Delivery-Id", init.deliveryId ?? `hl-${createHash("sha256").update(init.body).digest("hex")}`)

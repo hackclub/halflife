@@ -145,6 +145,10 @@ Test plan
 • Bad Ire HMAC, 5xx and timeout: audit row, retry, no maker DM.
 • Shadow webhook (if enabled): verified, recorded, ignored, no finalizeReview.
 
+Backfilling reviews
+
+Ari's decisions already live in Half Life's `submission_review` rows, so no Ari access is needed. `bun run ire:backfill-reviewed` reads the newest resolved hand-in per project and phase, builds the ship with the normal builder and maps the review history onto Ire's `import-reviewed` endpoint. It is a dry run unless `--commit` is passed; `--limit=N` caps the pass and `--ari-only` keeps it to decisions Ari made. Re-running is safe because Ire skips ships that are already decided.
+
 Rollback
 
 Unset the IRE_* variables. All new code paths no-op, the new table stays empty or historical, and Ari remains the only decision path. Because the initial design dual-sends, Ari already has every ship and every decision, so there is no replay step and no database edit.

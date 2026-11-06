@@ -185,7 +185,11 @@ export function toAriShipInput(input: ReviewShipInput): AriShipInput {
 	}
 }
 
-async function buildReviewShipInput(themeProjectId: string, phase: Phase): Promise<ReviewShipBundle> {
+async function buildReviewShipInput(
+	themeProjectId: string,
+	phase: Phase,
+	opts: { allowResolved?: boolean } = {},
+): Promise<ReviewShipBundle> {
 	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
 		.include("bomItems", items =>
 			items
@@ -210,8 +214,9 @@ async function buildReviewShipInput(themeProjectId: string, phase: Phase): Promi
 	if (!project?.user) throw new HttpError("NOT_FOUND", "Project not found")
 
 	// A retry job snapshots what is pending and sends later; the maker can have unsubmitted in between. The row the decision would land on is gone, so sending would leave an untracked ship in the review queue.
+	// The reviewed backfill builds ships whose phase has already been decided, so it opts out of the in-review guard.
 	const phaseStatus = statusFor(project, phase)
-	if (phaseStatus !== PhaseStatus.in_review)
+	if (phaseStatus !== PhaseStatus.in_review && !opts.allowResolved)
 		throw new HttpError("NOT_SUBMITTED", "This phase is no longer awaiting review, so there is no ship to send")
 
 	const { user } = project
