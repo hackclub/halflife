@@ -10,15 +10,14 @@ import {
 import { and, or } from "@prisma/orm-postgres/orm-client"
 import { z } from "zod"
 import { mirrorAriPhaseToYsws, mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
+import { approvedHoursFrom } from "@/lib/ari-hours"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
 import { type StandingDecision, standingDecision } from "@/lib/ari-standing"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { MAX_APPROVED_HOURS } from "@/lib/config/program"
 import { isTierId, tierForHours } from "@/lib/config/tiers"
 import { Phase, PhaseStatus, ReviewResult, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { round2 } from "@/lib/money"
 import { notifyReviewOutcome, notifyShipFailed } from "@/lib/notifications"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
@@ -248,31 +247,6 @@ type UnknownEvent = Extract<AriWebhookEvent, { event: "unknown" }>
 
 function ariReviewerLabel(review: AriReview): string {
 	return review.reviewer?.email ?? "Ari"
-}
-
-/**
- * Ari's approved time is authoritative; fall back to its minutes breakdown.
- *
- * Bounded at MAX_APPROVED_HOURS, the same ceiling the console's hours override has. The number is not a display value: it is frozen onto the project and the review, and it is what the coins are minted from, so an hour count that can be posted by a machine must not be able to mint an absurd figure. A figure outside the bound is treated as no figure at all – the decision is then paid on the hours Half Life computed, rather than on a number nothing in the programme could have produced.
- */
-function approvedHoursFrom(review: AriReview): number | null {
-	if (
-		typeof review.approved_hours === "number"
-		&& Number.isFinite(review.approved_hours)
-		&& review.approved_hours >= 0
-		&& review.approved_hours <= MAX_APPROVED_HOURS
-	)
-		return round2(review.approved_hours)
-
-	if (
-		typeof review.approved_minutes === "number"
-		&& Number.isFinite(review.approved_minutes)
-		&& review.approved_minutes >= 0
-		&& review.approved_minutes <= MAX_APPROVED_HOURS * 60
-	)
-		return round2(review.approved_minutes / 60)
-
-	return null
 }
 
 /**
