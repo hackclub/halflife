@@ -185,11 +185,16 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		const weekUser = await tx.orm.public.User.whereUnique({ id: gate.user.id })
 			.select("submissionExtensionUntil")
 			.first()
+		// The same three overrides the gate above reads. Without the week's own row here, an admin grant that covers a week with no project row yet passes the fast check and is then refused inside the transaction as "week closed", so the entry never lands.
+		const weekExtension = await tx.orm.public.WeekExtension.whereUnique({ userId: gate.user.id, week })
+			.select("submissionExtensionUntil")
+			.first()
 		const settings = await getProgramSettings()
 		const closesAt = effectiveWeekClose(
 			weekClosesAt(settings, week),
 			weekUser?.submissionExtensionUntil ? parseDbTimestamp(weekUser.submissionExtensionUntil) : null,
 			current?.submissionExtensionUntil ? parseDbTimestamp(current.submissionExtensionUntil) : null,
+			weekExtension?.submissionExtensionUntil ? parseDbTimestamp(weekExtension.submissionExtensionUntil) : null,
 		)
 		if (new Date() >= closesAt && !(await ignoresSchedule(gate.user.id)))
 			throw new HttpError("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
