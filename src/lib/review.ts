@@ -128,6 +128,10 @@ export interface FinalizeInput {
 	reviewerId: string | null
 	reviewerName: string | null
 	submissionId: string
+	/**
+	 * Ari's `review.justification.technical_features`: the reviewer's own account of what the project has that accounts for the hours. Kept on the review so the Airtable mirror and its backfills can put it in `Justification - Specific Technical Features` without replaying the webhook.
+	 */
+	technicalFeatures?: string | null
 	/** Required on a design approval. */
 	tier?: number | null
 }
@@ -314,6 +318,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			reviewerId: input.reviewerId,
 			reviewerName: input.reviewerName,
 			submissionId: input.submissionId,
+			technicalFeatures: input.technicalFeatures ?? null,
 			tierOverride: input.tier ?? null,
 		})
 
