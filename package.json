@@ -16,6 +16,7 @@
 		"ari:backfill-timelapses": "bun --conditions=react-server scripts/backfill-ari-timelapses.ts",
 		"ari:resend-all": "bun scripts/ari-resend-all.ts",
 		"ari:review-counts": "bun --conditions=react-server scripts/ari-review-counts.ts",
+		"audit:approved-coins": "bun --conditions=react-server scripts/audit-approved-coins.ts",
 		"backfill:declined-funding-coins": "bun --conditions=react-server scripts/backfill-declined-funding-coins.ts",
 		"backfill:zero-hours-coins": "bun --conditions=react-server scripts/backfill-zero-hours-coins.ts",
 		"build": "next build",
