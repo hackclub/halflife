@@ -11,7 +11,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Three of the five are evidence the maker produced – their Hackatime identity, the Hackatime projects they tracked time in, and the timelapses they recorded – one is the account of what they actually built, and the last is the method the hours rest on when there is neither Hackatime nor Lapse evidence to point at. They sit together on the row because the pipeline merges them into one justification blob (`Automation - Unified Justification`), where the evidence lands under `[HACKATIME]` and the account under `[SPECIFIC TECHNICAL FEATURES]`. A row with an empty account gives the pipeline an empty blob, which is why the account is written from the maker's own work rather than left to the pipeline, and why it is the one column that is always present – see `NO_FEATURES_RECORDED`.
  *
- * Everything a maker wrote is kept as the maker's words: the description they wrote, the parts they listed, the journal entries they kept. The alternate-tracking column is the exception: when devlogs are the only evidence, the reviewer's own reasoning is the part that says how those entries account for the hours, so it is the one justification a reviewer's words belong in (see `alternateTrackingJustification`).
+ * Everything a maker wrote is kept as the maker's words: the description they wrote, the parts they listed, the journal entries they kept. A reviewer's words belong in the separate columns for them: their technical features are added to the specific-features column under their own heading (see `withReviewerTechnicalFeatures`), and their note on the decision is written to `Justification - Additional Justification`. The alternate-tracking column stays a statement of the method, not a review note.
  */
 
 /** One journal entry, as far as a justification cares. */
@@ -176,16 +176,12 @@ export interface AlternateTrackingSource {
 	claimedHours: number | null
 	/** The manual journal entries behind the claim. A HACKATIME_TRACKED entry claims no time of its own and is not counted. */
 	entryCount: number
-	/** The reviewer's own explanation of how the entries account for the time, when one was recorded. */
-	reviewerText: string | null
 }
 
 /**
  * The `Justification - Alternate Tracking Method` text.
  *
- * The pipeline has nothing to follow when a ship has neither Hackatime projects nor Lapse links, so this column is where a grant reviewer is told what the time actually rests on. The count and the claimed hours come from the submission itself; the reviewer's reasoning, when they left any, is appended because that is the part that says how the devlogs line up with the time rather than merely that they exist.
- *
- * Ari's current review sends the reviewer's reasoning as `audit_note`, which Half Life stores on the review; the legacy `time_evidence` and `hours_reasoning` fields are no longer collected, so the audit note is the best source available.
+ * The pipeline has nothing to follow when a ship has neither Hackatime projects nor Lapse links, so this column is where a grant reviewer is told what the time actually rests on. The count and the claimed hours come from the submission itself. The reviewer's technical features are not part of this: they describe the work rather than the tracking method, and belong in `Justification - Specific Technical Features` (see `withReviewerTechnicalFeatures`).
  */
 export function alternateTrackingJustification(source: AlternateTrackingSource): string {
 	const entries = Math.max(0, Math.floor(source.entryCount))
@@ -194,8 +190,31 @@ export function alternateTrackingJustification(source: AlternateTrackingSource):
 		entries > 0
 			? `The time comes from ${entries} devlog ${entries === 1 ? "entry" : "entries"}${claimed}.`
 			: "No devlog entries were recorded either."
-	const reviewer = source.reviewerText?.trim()
-	return `No Hackatime projects or Lapse timelapses were linked. ${method}${reviewer ? ` Reviewer's justification: ${reviewer}` : ""}`
+	return `No Hackatime projects or Lapse timelapses were linked. ${method}`
+}
+
+/** The heading the reviewer's own account of the build is added under. */
+export const REVIEWER_FEATURES_SECTION = "[REVIEWER'S TECHNICAL FEATURES]"
+
+/**
+ * The technical-features cell with the reviewer's account added under its own heading.
+ *
+ * Ari's `review.justification.technical_features` says what the project has that accounts for the hours, and that belongs beside the maker's own account rather than instead of it. The section is replaced rather than appended again, so a re-decision cannot duplicate it; an empty reviewer text removes it, which is how a reversal takes the reviewer's claim off a row while leaving the maker's words intact.
+ */
+export function withReviewerTechnicalFeatures(makerText: string, reviewerText: string | null): string {
+	const base = stripReviewerTechnicalFeatures(makerText)
+	const reviewer = reviewerText?.trim()
+	if (!reviewer) return base
+	return base ? `${base}\n\n${REVIEWER_FEATURES_SECTION}\n${reviewer}` : `${REVIEWER_FEATURES_SECTION}\n${reviewer}`
+}
+
+/** The technical-features cell without the reviewer's section, when it carries one. */
+export function stripReviewerTechnicalFeatures(text: string): string {
+	const marker = `\n\n${REVIEWER_FEATURES_SECTION}`
+	const index = text.lastIndexOf(marker)
+	if (index !== -1) return text.slice(0, index)
+	if (text.startsWith(REVIEWER_FEATURES_SECTION)) return ""
+	return text
 }
 
 /** One line of the parts list, or nothing for a line with no name on it. */
