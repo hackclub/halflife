@@ -39,6 +39,7 @@
 		"import:dump": "bun --env-file=import/.env import/dump.ts",
 		"import:stasis": "bun --env-file=import/.env --env-file=.env import/stasis.ts",
 		"ire:backfill": "bun --conditions=react-server scripts/ire-shadow-backfill.ts",
+		"ire:backfill-reviewed": "bun --conditions=react-server scripts/ire-reviewed-backfill.ts",
 		"ire:parity": "bun --conditions=react-server scripts/ire-parity.ts",
 		"lint": "oxlint; biome check",
 		"lint:fix": "oxlint --fix; biome check --fix",
