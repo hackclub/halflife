@@ -13,11 +13,11 @@ import {
 	NO_FEATURES_RECORDED,
 	specificTechnicalFeatures,
 	timelapseLinks,
+	withReviewerTechnicalFeatures,
 } from "../src/lib/airtable/justification"
 import { type FieldDef, fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents, reviewStatusFor, reviewStatusForResult } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
-import { defaultFeedback } from "../src/lib/ari"
 import { AuditAction, HoursSource, Phase, PhaseStatus, type ReviewResult } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 import { getProgramSettings } from "../src/lib/program"
@@ -31,9 +31,9 @@ import { parseDbTimestamp } from "../src/lib/time"
  *
  * Rows written before the technical-features column was wired up are missing that column in particular: it existed in the base before `justificationValues` filled it, so every row from before that change has an empty `[SPECIFIC TECHNICAL FEATURES]` section. That column is required on every row, so this fills it even when the maker left nothing to build it from (see `NO_FEATURES_RECORDED`). The alternate-tracking column is filled only when the row has no Hackatime id, no Hackatime projects and no Lapse links; the other evidence columns are only written when we hold something.
  *
- * This replays the state Postgres already holds onto the rows that are missing a column, using the same builder the live write uses (see `justificationValues` in lib/airtable/justification), so a backfilled cell and a freshly written one cannot disagree. The reviewer's reasoning for the alternate method is the standing decision's audit note (`SubmissionReview.reason`), which is where Ari now puts the explanation that used to live in its legacy `time_evidence` and `hours_reasoning` fields. The same note fills `Justification - Additional Justification`, because that is Ari's "Justification notes" field, when the standing decision still matches the row's state.
+ * This replays the state Postgres already holds onto the rows that are missing a column, using the same builder the live write uses (see `justificationValues` in lib/airtable/justification), so a backfilled cell and a freshly written one cannot disagree. The standing decision's technical features (`SubmissionReview.technicalFeatures`, Ari's `review.justification.technical_features`) are added to the specific-features column under the reviewer's heading. Its audit note (`SubmissionReview.reason`) fills `Justification - Additional Justification`, because that is Ari's "Justification notes" field, when the standing decision still matches the row's state; that note is never put in the alternate-tracking column, which states the method rather than the reviewer's reasoning.
  *
- * Only a column the base is missing is written. A column that already holds something is left exactly as it is: it is evidence, and on the pre-season rows the form filled it in and Postgres never received it, so overwriting it with our own answer would destroy the only record. A row is therefore never rewritten wholesale, only completed.
+ * Only a column the base is missing is written, with one exception: the reviewer's section can be added beside an existing maker account in the technical-features column, because it is a distinct section and the maker's text is never replaced. A column that already holds something is otherwise left exactly as it is: it is evidence, and on the pre-season rows the form filled it in and Postgres never received it, so overwriting it with our own answer would destroy the only record. A row is therefore never rewritten wholesale, only completed.
  *
  * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. A row with no project behind it – one the warm-up import has not reached yet, say – has no parts or journal to add, but its own `Description` is still the maker's account: the technical-features column is completed from it so no row is left without one. Everything else on such a row is left alone.
  *
@@ -74,27 +74,11 @@ interface RowSnapshot {
 	title: string
 }
 
-/** The decision that still holds for a phase, as far as the alternate-tracking reasoning needs it. */
+/** The decision that still holds for a phase, as far as the justification columns need it. */
 interface StandingReview {
-	feedback: string
 	reason: string | null
 	result: ReviewResult
-	reviewerId: string | null
-}
-
-/**
- * The reviewer's own explanation of the hours, or null when there is none worth quoting.
- *
- * Ari stores its required internal audit note on the review as `reason`; that is the current field that says how the evidence supports the time. The maker-facing note is the fallback for decisions recorded before the audit note existed, but Ari's generic fallback ("Approved by Ari.") is not a reason and is recognised and skipped.
- */
-function reviewerReason(review: StandingReview | undefined): string | null {
-	if (!review) return null
-	const reason = review.reason?.trim()
-	if (reason) return reason
-	const feedback = review.feedback.trim()
-	if (!feedback) return null
-	if (review.reviewerId === null && feedback === defaultFeedback(review.result)) return null
-	return feedback
+	technicalFeatures: string | null
 }
 
 /** Every row's current justification columns, by record id. */
@@ -186,7 +170,7 @@ async function main() {
 	const reviews = await db.orm.public.SubmissionReview.where({ invalidated: false })
 		.where(review => review.submission.some(submission => submission.themeProjectId.in(projects.map(p => p.id))))
 		.orderBy(review => review.createdAt.desc())
-		.select("feedback", "reason", "result", "reviewerId")
+		.select("reason", "result", "technicalFeatures")
 		.include("submission", submission => submission.select("phase", "themeProjectId"))
 		.all()
 	const standing = new Map<string, StandingReview>()
@@ -200,6 +184,7 @@ async function main() {
 	const targets: {
 		phase: Phase
 		recordId: string
+		reviewerFeatures: string | null
 		title: string
 		values: JustificationValues & { additionalJustification?: string }
 	}[] = []
@@ -237,16 +222,23 @@ async function main() {
 				values.alternateTracking = alternateTrackingJustification({
 					claimedHours: manual.reduce((sum, session) => sum + session.hoursClaimed, 0),
 					entryCount: manual.length,
-					reviewerText: matches && status === PhaseStatus.approved ? reviewerReason(review) : null,
 				})
 			}
+			// The reviewer's technical features belong beside the maker's account, not in the alternate-tracking method.
+			const reviewerFeatures =
+				matches && status === PhaseStatus.approved ? (review?.technicalFeatures?.trim() ?? null) : null
+			if (reviewerFeatures)
+				values.specificTechnicalFeatures = withReviewerTechnicalFeatures(
+					values.specificTechnicalFeatures,
+					reviewerFeatures,
+				)
 			// The reviewer's "Justification notes" on the decision that still stands. Only the internal reason is quoted: the maker-facing feedback is a different column, and a review with no reason left no justification notes to restore.
 			const notes = matches ? review.reason?.trim() : null
 			if (notes) values.additionalJustification = notes
-			targets.push({ phase, recordId, title: project.title, values })
+			targets.push({ phase, recordId, reviewerFeatures, title: project.title, values })
 		}
 
-	// Only the cells the base is missing are written: a cell that already holds something is left as it is.
+	// A column that already holds something is normally left as it is. The one exception is the reviewer's section of the technical-features cell: it can be added beside an existing maker account without touching that account.
 	const current = await currentRows(config, keys)
 	const updates: { fields: { [_: string]: string }; phase: Phase; recordId: string; title: string }[] = []
 	const missing = new Map<string, number>()
@@ -263,9 +255,21 @@ async function main() {
 		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		for (const [key, value] of Object.entries(target.values) as [string, string | undefined][]) {
 			if (value === undefined) continue
+			// The technical-features cell is handled below: an existing maker account can still be missing the reviewer's section, and only that section may be added.
+			if (key === "specificTechnicalFeatures") continue
 			if (row.cells.get(key)) continue
 			fields[keys.get(key) ?? key] = value
 			missing.set(key, (missing.get(key) ?? 0) + 1)
+		}
+		const currentFeatures = row.cells.get("specificTechnicalFeatures") ?? ""
+		const desiredFeatures = currentFeatures
+			? target.reviewerFeatures
+				? withReviewerTechnicalFeatures(currentFeatures, target.reviewerFeatures)
+				: currentFeatures
+			: target.values.specificTechnicalFeatures
+		if (desiredFeatures !== currentFeatures) {
+			fields[featuresKey] = desiredFeatures
+			missing.set("specificTechnicalFeatures", (missing.get("specificTechnicalFeatures") ?? 0) + 1)
 		}
 		if (Object.keys(fields).length === 0) {
 			aligned++

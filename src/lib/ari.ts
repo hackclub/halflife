@@ -32,7 +32,7 @@ import { isRecord } from "@/lib/unknown"
  *
  * Half Life sends each submitted (project, phase) as an Ari "ship" and receives its decisions back as signed webhooks. The decision is applied through the same `finalizeReview` a human console reviewer calls, so the trail, the ledger and the grant all move exactly once, whether a person or Ari decided. The only difference is attribution: an Ari decision has no Half Life user, so `SubmissionReview.reviewerId` is null and the audit row names Ari instead.
  *
- * Ari owns the decision, and it is mirrored into the participant-facing side of Half Life (status, hours, coins, printer qualification). The one thing written back to Airtable is the decision itself – `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes`, which Loops reads to email the maker, `Optional - Override Hours Spent` and `Justification - Deflation Justification` when Ari approved fewer hours than the row claims, `Justification - Alternate Tracking Method` when the row has no Hackatime or Lapse evidence, and `Justification - Additional Justification` from the reviewer's "Justification notes" (`review.audit_note`). The deflation column carries Ari's `justification.deflation_reason` (or the review's audit note when the decision carries none), not the note to the maker: that note is encouragement and feedback, and it has its own column. A decision writes nothing to the base on its own, so all of it is put on the row here (see `mirrorReviewDecision`).
+ * Ari owns the decision, and it is mirrored into the participant-facing side of Half Life (status, hours, coins, printer qualification). The one thing written back to Airtable is the decision itself – `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes`, which Loops reads to email the maker, `Optional - Override Hours Spent` and `Justification - Deflation Justification` when Ari approved fewer hours than the row claims, `Justification - Alternate Tracking Method` when the row has no Hackatime or Lapse evidence, `Justification - Specific Technical Features` from the reviewer's technical features (`review.justification.technical_features`, added under the maker's account), and `Justification - Additional Justification` from the reviewer's "Justification notes" (`review.audit_note`). The deflation column carries Ari's `justification.deflation_reason` (or the review's audit note when the decision carries none), not the note to the maker: that note is encouragement and feedback, and it has its own column. A decision writes nothing to the base on its own, so all of it is put on the row here (see `mirrorReviewDecision`).
  *
  * Everything here no-ops when the three ARI_* secrets are unset, so local dev and any deployment that has not been onboarded to Ari behave as before.
  */
@@ -386,12 +386,15 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 			grantExtension: opts.announce !== false,
 			grantUsdOverride,
 			hoursOverride: approvedHoursFrom(event.review),
+			// Ari's "Justification notes": the reviewer's internal note, written to Additional Justification.
 			reason: event.review.audit_note ?? null,
 			result,
 			reviewerEmail: event.review.reviewer?.email ?? null,
 			reviewerId: null,
 			reviewerName: ariReviewerLabel(event.review),
 			submissionId: submission.id,
+			// What the reviewer said the project has that accounts for the hours. It goes in the specific-features column, never the alternate-tracking method.
+			technicalFeatures: event.review.justification?.technical_features?.trim() || null,
 			tier,
 		})
 	} catch (err) {
@@ -404,6 +407,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 				result,
 				reviewerEmail: event.review.reviewer?.email ?? null,
 				submissionId: submission.id,
+				technicalFeatures: event.review.justification?.technical_features?.trim() || null,
 				themeProjectId,
 			})
 			if (adopted) {
@@ -719,6 +723,7 @@ export interface ReconcileSummary {
 interface AriShipStatusWithReview extends AriShipStatus {
 	review?: {
 		audit_note?: string | null
+		justification?: { technical_features?: string | null } | null
 		note_to_maker?: string
 		reviewer?: { email?: string | null } | null
 	} | null
@@ -734,7 +739,12 @@ function decisionEventFromStatus(status: AriShipStatusWithReview, standing: Stan
 	const maker = { email: "", name: "", slack_id: null }
 	const note = status.review?.note_to_maker?.trim() ?? ""
 	const reviewerEmail = status.review?.reviewer?.email ?? null
-	const review = { note_to_maker: note, reviewer: reviewerEmail ? { email: reviewerEmail, slack_id: null } : null }
+	const technicalFeatures = status.review?.justification?.technical_features?.trim()
+	const review = {
+		note_to_maker: note,
+		reviewer: reviewerEmail ? { email: reviewerEmail, slack_id: null } : null,
+		...(technicalFeatures ? { justification: { technical_features: technicalFeatures } } : {}),
+	}
 	const ship = {
 		authors: [],
 		demo_url: null,
@@ -948,6 +958,7 @@ async function adoptStatusPlaceholder(input: {
 	result: ReviewResult
 	reviewerEmail: string | null
 	submissionId: string
+	technicalFeatures: string | null
 	themeProjectId: string
 }): Promise<boolean> {
 	const review = await db.orm.public.SubmissionReview.where({
@@ -967,6 +978,7 @@ async function adoptStatusPlaceholder(input: {
 		result: input.result,
 		reviewerEmail: input.reviewerEmail,
 		reviewId: review.id,
+		technicalFeatures: input.technicalFeatures,
 		themeProjectId: input.themeProjectId,
 	})
 	return true
@@ -984,6 +996,7 @@ async function writeStatusReviewNote(input: {
 	result: ReviewResult
 	reviewId: string
 	reviewerEmail: string | null
+	technicalFeatures: string | null
 	themeProjectId: string
 }): Promise<void> {
 	await db.transaction(async tx => {
@@ -993,6 +1006,7 @@ async function writeStatusReviewNote(input: {
 			reviewerEmail: input.reviewerEmail,
 			// Ari names a decision by the reviewer's address, so the label follows the address exactly as the webhook path does (see `ariReviewerLabel`).
 			reviewerName: input.reviewerEmail ?? "Ari",
+			technicalFeatures: input.technicalFeatures,
 		})
 
 		const project = await tx.orm.public.ThemeProject.whereUnique({ id: input.themeProjectId })
@@ -1069,6 +1083,7 @@ export async function repairStatusDecisions(opts: { commit?: boolean; limit?: nu
 			result: review.result,
 			reviewerEmail: status.review?.reviewer?.email ?? null,
 			reviewId: review.id,
+			technicalFeatures: status.review?.justification?.technical_features?.trim() || null,
 			themeProjectId,
 		})
 		summary.repaired += 1

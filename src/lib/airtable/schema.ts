@@ -45,7 +45,7 @@ export const YSWS_SUBMISSION = {
 		additionalJustification: f<string>("fldYswsAdditionalJustification", "Justification - Additional Justification"),
 		addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
 		addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
-		// How the hours were tracked when there is no Hackatime or Lapse evidence to point at. Written from the devlog entries at hand-in and refined with the reviewer's own reasoning at the decision (see lib/airtable/justification).
+		// How the hours were tracked when there is no Hackatime or Lapse evidence to point at. Written from the devlog entries at hand-in and kept that way at the decision; the reviewer's technical features and audit note have their own columns (see lib/airtable/justification).
 		alternateTracking: f<string>("fldYswsAlternateTracking", "Justification - Alternate Tracking Method"),
 		// What Ari says the ship is doing right now. Filled by the `ari-retry` status poll because Ari sends no webhook when a decision is held for its second pass or returned from one. A single-line text field, not a select: a new phase on Ari's side must not need an option created here before the write lands.
 		ariReviewPhase: f<string>("fldYswsAriReviewPhase", "Ari - Review phase"),
@@ -86,7 +86,7 @@ export const YSWS_SUBMISSION = {
 		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
 		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
 		slackId: f<string>("fldYswsSlackId", "Slack ID"),
-		// The maker's own account of what they built: the description they wrote, the parts they listed, the work they logged. The pipeline merges it with the other `Justification - …` columns into one blob (see lib/airtable/justification), and an empty column here is an empty blob there.
+		// The maker's own account of what they built: the description they wrote, the parts they listed, the work they logged. An approval adds the reviewer's technical features from Ari under a `[REVIEWER'S TECHNICAL FEATURES]` heading. The pipeline merges it with the other `Justification - …` columns into one blob (see lib/airtable/justification), and an empty column here is an empty blob there.
 		specificTechnicalFeatures: f<string>(
 			"fldYswsSpecificTechnicalFeatures",
 			"Justification - Specific Technical Features",

@@ -197,7 +197,7 @@ Four columns on `YSWS Project Submission` carry the maker's evidence, which the 
 
 `syncSubmissionToYsws` (`src/lib/airtable/sync.ts`) writes them at submit from `justificationValues` (`src/lib/airtable/justification.ts`). The first three are written only when there is something to write – a maker may have no Hackatime account, linked project or recording, and a blank would erase evidence the base alone holds. The technical-features column is always written, with a marker when nothing was recorded, because the pipeline gives every row a `[SPECIFIC TECHNICAL FEATURES]` section.
 
-`Justification - Additional Justification` is the reviewer's own note on the decision that stands – Ari's "Justification notes" field, sent as `review.audit_note` and stored on the review as `SubmissionReview.reason`. The decision mirror writes it with the status, clears it when a later decision withdraws the approval, and clears it on a re-submission so the row never quotes a review it no longer holds. A row still in review, or decided by a console reviewer with no reason, leaves it blank.
+Ari's reviewer fills two separate fields, and they go to two separate columns. `review.justification.technical_features` is the reviewer's account of what the project has that accounts for the hours: it is added to `Justification - Specific Technical Features` under a `[REVIEWER'S TECHNICAL FEATURES]` heading, under the maker's own account, and removed when the decision no longer stands. `review.audit_note` – Ari's "Justification notes" field – is the reviewer's own note on the decision: it is written to `Justification - Additional Justification`, stored on the review as `SubmissionReview.reason`, cleared when a later decision withdraws the approval, and cleared on a re-submission so the row never quotes a review it no longer holds. A row still in review, or decided by a console reviewer with no reason, leaves it blank. Neither field is written to `Justification - Alternate Tracking Method`.
 
 Rows written before that landed are completed by:
 
@@ -206,7 +206,7 @@ bun --conditions=react-server scripts/backfill-airtable-justification.ts
 bun --conditions=react-server scripts/backfill-airtable-justification.ts --commit
 ```
 
-It only fills cells that are empty, so a value already on the row is never overwritten. A row with a local project gets the full description, parts list and work log; one with no project (an unimported pre-season row) gets its technical features from its own `Description`. It also restores `Justification - Additional Justification` from the standing review's internal reason. Run it where `DATABASE_URL` points at the real database, so the rows that do have a project get the richer text.
+It only fills cells that are empty, so a value already on the row is never overwritten. A row with a local project gets the full description, parts list and work log; one with no project (an unimported pre-season row) gets its technical features from its own `Description`. When the standing decision still matches the phase, it also adds the reviewer's technical features from `SubmissionReview.technicalFeatures` under the reviewer heading and restores `Justification - Additional Justification` from the standing review's internal reason. Run it where `DATABASE_URL` points at the real database, so the rows that do have a project get the richer text.
 
 ### Reviewer columns on the review rows
 
@@ -243,11 +243,9 @@ It only touches approved rows, reports how many had nothing cut, and leaves a ro
 
 ### Alternate tracking method
 
-`Justification - Alternate Tracking Method` explains the hours when there is no Hackatime id, no Hackatime projects and no Lapse links to follow. The live write fills it at hand-in from the devlog entries (`N devlog entries, Xh claimed`), then an approval replaces it with the same facts plus the reviewer's own reasoning.
+`Justification - Alternate Tracking Method` explains the hours when there is no Hackatime id, no Hackatime projects and no Lapse links to follow. The live write fills it at hand-in from the devlog entries (`N devlog entries, Xh claimed`), and an approval keeps those same facts. It deliberately does not carry the reviewer's technical features or audit note: those describe the work and the decision, not how the hours were tracked. Ari's dedicated `review.justification.technical_features` goes to `Justification - Specific Technical Features`, and its `review.audit_note` goes to `Justification - Additional Justification`.
 
-Ari's current review does not collect a dedicated devlog-evidence field. The closest current data is the reviewer's internal audit note (`review.audit_note`), which Ari requires on approvals and Half Life stores as `SubmissionReview.reason`. The legacy `time_evidence` and `hours_reasoning` fields, which were exactly this explanation, are no longer collected and are only sent for old reviews that are confirmed or resent.
-
-The existing justification backfill fills the column where it is empty, using the standing review's audit note when the decision still matches the phase:
+The existing justification backfill fills the column where it is empty:
 
 ```bash
 bun --conditions=react-server scripts/backfill-airtable-justification.ts

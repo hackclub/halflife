@@ -10,7 +10,13 @@ import {
 } from "@/lib/airtable/client"
 import { deflationFor, deflationJustification, deflationReasonText, numberCell } from "@/lib/airtable/deflation"
 import { existingColumns } from "@/lib/airtable/field-probe"
-import { alternateTrackingJustification, justificationValues, timelapseLinks } from "@/lib/airtable/justification"
+import {
+	alternateTrackingJustification,
+	justificationValues,
+	stripReviewerTechnicalFeatures,
+	timelapseLinks,
+	withReviewerTechnicalFeatures,
+} from "@/lib/airtable/justification"
 import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
@@ -188,7 +194,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const cover = publicUrlFor(project.coverImageKey)
 	const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 
-	// The alternate method only exists when there is no tracked evidence to name. It is written at hand-in so the row is never handed to a reviewer without one, and the decision mirror replaces it with the reviewer's own reasoning. An approved row is left alone here: an admin refresh must not overwrite what a reviewer wrote.
+	// The alternate method only exists when there is no tracked evidence to name. It is written at hand-in so the row is never handed to a reviewer without one. An approved row is left alone here: an admin refresh must not overwrite what a reviewer wrote.
 	const hasTrackedEvidence = Boolean(user.hackatimeUserId) || project.hackatimeLinks.length > 0 || lapseLinks.length > 0
 	const alternateTracking =
 		phaseStatus !== PhaseStatus.in_review
@@ -198,7 +204,6 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 				: alternateTrackingJustification({
 						claimedHours: breakdown.journalHoursClaimed,
 						entryCount: project.workSessions.filter(s => s.hoursSource !== HoursSource.HACKATIME_TRACKED).length,
-						reviewerText: null,
 					})
 
 	const justification = justificationValues(
@@ -235,7 +240,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 			const ref = repoRefFromLink(project.githubRepo)
 			return ref?.forge.id === "github" ? ref.ownerPath : ""
 		})(),
-		// The `Justification - …` columns, spread rather than listed: an evidence column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification). The technical-features column is always in here, because the pipeline reads it into every row.
+		// The `Justification - …` columns, spread rather than listed: an evidence column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification). The technical-features column is always in here, because the pipeline reads it into every row – except on an approved row, where it may carry the reviewer's section from the decision and a refresh must not erase it.
 		...justification,
 		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
 		journalUrl: journalUrl ?? "",
@@ -247,6 +252,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		requestedFunding: phase === Phase.DESIGN && settings.payoutSource === PayoutSource.AIRTABLE ? bomTotal : 0,
 		reviewStatus: reviewStatusFor(phaseStatus),
 		slackId: user.slackId ?? "",
+		specificTechnicalFeatures:
+			phaseStatus === PhaseStatus.approved ? undefined : justification.specificTechnicalFeatures,
 		stage: phase === Phase.DESIGN ? "Design" : "Build",
 		// `starterProjectId` is the one place the choice is kept: set when a starter is taken and cleared when the idea is written over with their own (see lib/onboarding). So the checkbox is `!== null`, derived rather than stored, and a project that left the starter behind reads as `false` here like any other.
 		starterProject: project.starterProjectId !== null,
@@ -296,20 +303,22 @@ interface ReviewRowValues {
 	hackatimeProjects: string
 	lapseLinks: string
 	selfReportedHours: number | null
+	specificTechnicalFeatures: string
 }
 
 /** A text cell, trimmed: Airtable omits an empty one entirely and may hand a formula back as text. */
 const textCell = (value: unknown): string => (typeof value === "string" ? value.trim() : "")
 
 /**
- * The row cells a decision needs, read once so deflation and alternate tracking share a request.
+ * The row cells a decision needs, read once so deflation, alternate tracking and the reviewer's technical-features section share a request.
  *
  * The whole row is read, not a field list: `fields[]` exists on list-records only, and Airtable refuses a get-record that names it with a 422 rather than ignoring the parameter.
  *
  * A read that fails returns null rather than throwing. Nothing here can then say whether a row was deflated or what its tracking columns hold, so the status and note are still written and the extra columns are left as they were.
  */
 async function readReviewRow(config: AirtableConfig, recordId: string): Promise<ReviewRowValues | null> {
-	const { hackatimeId, hackatimeProjects, hoursSelfReported, lapseLinks } = YSWS_SUBMISSION.fields
+	const { hackatimeId, hackatimeProjects, hoursSelfReported, lapseLinks, specificTechnicalFeatures } =
+		YSWS_SUBMISSION.fields
 	let row: AirtableRecord
 	try {
 		row = await withRateLimitRetry("readYswsReviewRow", () =>
@@ -321,7 +330,7 @@ async function readReviewRow(config: AirtableConfig, recordId: string): Promise<
 		)
 	} catch (err) {
 		console.error(
-			`[airtable] could not read YSWS row ${recordId}; leaving the deflation and alternate-tracking columns alone:`,
+			`[airtable] could not read YSWS row ${recordId}; leaving the deflation, alternate-tracking and specific-features columns alone:`,
 			err,
 		)
 		return null
@@ -332,6 +341,7 @@ async function readReviewRow(config: AirtableConfig, recordId: string): Promise<
 		hackatimeProjects: textCell(cell(hackatimeProjects)),
 		lapseLinks: textCell(cell(lapseLinks)),
 		selfReportedHours: numberCell(cell(hoursSelfReported)),
+		specificTechnicalFeatures: textCell(cell(specificTechnicalFeatures)),
 	}
 }
 
@@ -373,19 +383,18 @@ function deflationColumns(
 /**
  * The `Justification - Alternate Tracking Method` column for a decision.
  *
- * Only an approval is written: it is the justification of hours that were paid, and an earlier review's reasoning should not be erased by a return, a reopen or a reset that has nothing new to say. When the row has since gained Hackatime or Lapse evidence the column is cleared, because the alternate method it described is no longer the one the hours rest on.
+ * Only an approval is written: it is the justification of hours that were paid, and an earlier review's method should not be erased by a return, a reopen or a reset that has nothing new to say. When the row has since gained Hackatime or Lapse evidence the column is cleared, because the alternate method it described is no longer the one the hours rest on. The reviewer's reasoning is not put here: it says what the work is, not how the hours were tracked, and belongs in the specific-features and additional-justification columns instead.
  */
 function alternateTrackingColumns(
 	status: string,
 	row: ReviewRowValues | null,
-	reviewerText: string | null,
 	entryCount: number,
 	claimedHours: number | null,
 ): { [_: string]: unknown } {
 	if (status !== YSWS_REVIEW_STATUS.approved || !row) return {}
 	const key = fieldKey(YSWS_SUBMISSION.fields.alternateTracking)
 	if ([row.hackatimeId, row.hackatimeProjects, row.lapseLinks].some(value => value !== "")) return { [key]: "" }
-	return { [key]: alternateTrackingJustification({ claimedHours, entryCount, reviewerText }) }
+	return { [key]: alternateTrackingJustification({ claimedHours, entryCount }) }
 }
 
 /**
@@ -397,13 +406,15 @@ function alternateTrackingColumns(
  *
  * Best-effort, and only ever after the fact: the review is already committed in Postgres by the time this runs, so a base that is briefly unreachable must not throw and turn a decided submission into one Ari redelivers. No row is not a failure either – a submission written before this sync existed has no record id, and one taken back has none any more.
  *
- * The status, note, first-pass reviewer, overrides, deflation and alternate-tracking justification are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides + hours, then status alone, then the note and the reviewer. Each failure is named.
+ * The status, note, first-pass reviewer, overrides, deflation, alternate-tracking and specific-features values are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides + hours, then status alone, then the note and the reviewer. Each failure is named.
  *
  * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the decision (the first of Ari's two passes). Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
  *
  * `deflationReason` is Ari's `review.justification.deflation_reason`: the reviewer's own account of why they approved fewer hours than the row claims. It is preferred for `Justification - Deflation Justification`; without it that column falls back to the review's internal reason. The maker-facing note is never used there – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it says nothing about the cut.
  *
  * The review's internal reason is also written to `Justification - Additional Justification`, which is where the pipeline reads Ari's "Justification notes" (`review.audit_note`) from. `justificationNotes` is that note; undefined leaves the column alone (an older caller), null clears it for a decision that no longer stands.
+ *
+ * The reviewer's technical features come from the standing review (`SubmissionReview.technicalFeatures`, Ari's `review.justification.technical_features`). On an approval they are added to `Justification - Specific Technical Features` under their own heading, beside the maker's account; a decision that no longer stands removes that section and leaves the maker's words intact. They are never written to `Justification - Alternate Tracking Method`, which says how the hours were tracked rather than what the project is.
  */
 export async function syncReviewDecisionToYsws(
 	themeProjectId: string,
@@ -428,6 +439,7 @@ export async function syncReviewDecisionToYsws(
 		pass1Reviewer,
 		reviewStatus,
 		reviewerNotes,
+		specificTechnicalFeatures: specificFeaturesField,
 	} = YSWS_SUBMISSION.fields
 	const statusField = { [fieldKey(reviewStatus)]: status }
 	const noteField = { [fieldKey(reviewerNotes)]: note ?? "" }
@@ -439,6 +451,7 @@ export async function syncReviewDecisionToYsws(
 	const deflationFields: { [_: string]: unknown } = {}
 	const alternateFields: { [_: string]: unknown } = {}
 	const additionalFields: { [_: string]: unknown } = {}
+	const specificFields: { [_: string]: unknown } = {}
 	let reviewerWritable = false
 	const config = getAirtableConfig()
 	if (config) {
@@ -451,6 +464,7 @@ export async function syncReviewDecisionToYsws(
 				deflationField.name,
 				alternateTrackingField.name,
 				additionalJustification.name,
+				specificFeaturesField.name,
 			])
 		} catch (err) {
 			// A probe failure is not a reason to lose the status; the next decision retries it.
@@ -462,6 +476,7 @@ export async function syncReviewDecisionToYsws(
 		reviewerWritable = writable.has(pass1Reviewer.name)
 		const hasDeflationColumns = writable.has(overrideHoursSpent.name) && writable.has(deflationField.name)
 		const hasAlternateColumn = writable.has(alternateTrackingField.name)
+		const hasSpecificColumn = writable.has(specificFeaturesField.name)
 		// The reviewer's "Justification notes", written verbatim. Undefined is a caller that does not know the column; null or blank clears it, so a reversal or a decision with no note cannot leave the previous review's words on the row.
 		if (writable.has(additionalJustification.name) && justificationNotes !== undefined)
 			additionalFields[fieldKey(additionalJustification)] = justificationNotes?.trim() ?? ""
@@ -478,7 +493,7 @@ export async function syncReviewDecisionToYsws(
 							reviews
 								.where({ invalidated: false })
 								.orderBy(review => review.createdAt.desc())
-								.select("reason"),
+								.select("reason", "technicalFeatures"),
 						)
 						.first(),
 				])
@@ -488,16 +503,24 @@ export async function syncReviewDecisionToYsws(
 					for (const [field, value] of Object.entries(values)) if (writable.has(field)) overrides[field] = value
 
 					const row =
-						status === YSWS_REVIEW_STATUS.approved && (hasDeflationColumns || hasAlternateColumn)
+						hasSpecificColumn || (status === YSWS_REVIEW_STATUS.approved && (hasDeflationColumns || hasAlternateColumn))
 							? await readReviewRow(config, recordId)
 							: null
-					// The review's internal note, which is the reviewer's own reasoning rather than the words they sent the maker. It is Ari's `audit_note` – the "Justification notes" field – and the fallback for both justification columns.
+					// The review's internal note, which is the reviewer's own reasoning rather than the words they sent the maker. It is Ari's `audit_note` – the "Justification notes" field – and the fallback for the deflation column.
 					const reviewReason = submission?.reviews[0]?.reason?.trim() || null
-					const reviewerText = reviewReason || note
+					// Ari's `review.justification.technical_features`: what the reviewer said the project has that accounts for the hours. It belongs beside the maker's account in the specific-features column, not in the alternate-tracking method.
+					const reviewerFeatures = submission?.reviews[0]?.technicalFeatures?.trim() || null
 					// Ari's dedicated deflation reason when the decision carried one; never the maker's note, which is quoted in the email and says nothing about why hours came down.
 					const justificationReason = deflationReasonText(deflationReason, reviewReason)
 					if (hasDeflationColumns)
 						Object.assign(deflationFields, deflationColumns(project, phase, status, justificationReason, row))
+					if (hasSpecificColumn && row) {
+						const features =
+							status === YSWS_REVIEW_STATUS.approved
+								? withReviewerTechnicalFeatures(row.specificTechnicalFeatures, reviewerFeatures)
+								: stripReviewerTechnicalFeatures(row.specificTechnicalFeatures)
+						if (features !== row.specificTechnicalFeatures) specificFields[fieldKey(specificFeaturesField)] = features
+					}
 					if (hasAlternateColumn) {
 						const devlogOnly =
 							row !== null
@@ -516,7 +539,6 @@ export async function syncReviewDecisionToYsws(
 							alternateTrackingColumns(
 								status,
 								row,
-								reviewerText,
 								manual.length,
 								row?.selfReportedHours ?? round2(manual.reduce((sum, s) => sum + s.hoursClaimed, 0)),
 							),
@@ -540,6 +562,7 @@ export async function syncReviewDecisionToYsws(
 		...deflationFields,
 		...alternateFields,
 		...additionalFields,
+		...specificFields,
 	}
 	const moved = await updateYswsRecord(recordId, complete)
 	if (moved.ok) return { updated: true }
@@ -551,6 +574,7 @@ export async function syncReviewDecisionToYsws(
 		...deflationFields,
 		...alternateFields,
 		...additionalFields,
+		...specificFields,
 	})
 	if (!core.ok) {
 		const statusOnly = await updateYswsRecord(recordId, statusField)
