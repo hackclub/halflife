@@ -17,6 +17,7 @@
 		"ari:resend-all": "bun scripts/ari-resend-all.ts",
 		"ari:review-counts": "bun --conditions=react-server scripts/ari-review-counts.ts",
 		"backfill:declined-funding-coins": "bun --conditions=react-server scripts/backfill-declined-funding-coins.ts",
+		"backfill:zero-hours-coins": "bun --conditions=react-server scripts/backfill-zero-hours-coins.ts",
 		"build": "next build",
 		"db:deploy": "prisma db migrate",
 		"db:generate": "prisma contract emit && bun scripts/generate-enums.ts && biome check --write src/lib/enums.ts",
