@@ -1,0 +1,363 @@
+[
+  {
+    "id": "addNativeEnumValue.AuditAction.ADMIN_CREATE_GRANT_CARD_EXPORT",
+    "label": "Add value \"ADMIN_CREATE_GRANT_CARD_EXPORT\" to enum type \"AuditAction\"",
+    "summary": "Adds value \"ADMIN_CREATE_GRANT_CARD_EXPORT\" to enum type \"AuditAction\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "AuditAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"AuditAction\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"AuditAction\""
+        }
+      },
+      {
+        "description": "ensure value \"ADMIN_CREATE_GRANT_CARD_EXPORT\" is absent from enum type \"AuditAction\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_CREATE_GRANT_CARD_EXPORT"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"ADMIN_CREATE_GRANT_CARD_EXPORT\" in enum type \"AuditAction\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"ADMIN_CREATE_GRANT_CARD_EXPORT\" to enum type \"AuditAction\"",
+        "sql": "ALTER TYPE \"public\".\"AuditAction\" ADD VALUE 'ADMIN_CREATE_GRANT_CARD_EXPORT'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"ADMIN_CREATE_GRANT_CARD_EXPORT\" exists on enum type \"AuditAction\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "AuditAction",
+          "ADMIN_CREATE_GRANT_CARD_EXPORT"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"ADMIN_CREATE_GRANT_CARD_EXPORT\" in enum type \"AuditAction\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.hcb_card_grant_export_batch",
+    "label": "Create table \"hcb_card_grant_export_batch\"",
+    "summary": "Creates table \"hcb_card_grant_export_batch\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "hcb_card_grant_export_batch"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"hcb_card_grant_export_batch\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_card_grant_export_batch\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"hcb_card_grant_export_batch\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"hcb_card_grant_export_batch\"",
+        "sql": "CREATE TABLE \"public\".\"hcb_card_grant_export_batch\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"createdById\" text,\n  \"fingerprint\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"totalCents\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"hcb_card_grant_export_batch\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_card_grant_export_batch\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"hcb_card_grant_export_batch\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.hcb_card_grant_export_row",
+    "label": "Create table \"hcb_card_grant_export_row\"",
+    "summary": "Creates table \"hcb_card_grant_export_row\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "hcb_card_grant_export_row"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"hcb_card_grant_export_row\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_card_grant_export_row\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"hcb_card_grant_export_row\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"hcb_card_grant_export_row\"",
+        "sql": "CREATE TABLE \"public\".\"hcb_card_grant_export_row\" (\n  \"amountCents\" int4 NOT NULL,\n  \"batchId\" text NOT NULL,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"themeProjectId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"hcb_card_grant_export_row\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_card_grant_export_row\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"hcb_card_grant_export_row\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "index.hcb_card_grant_export_row.hcb_card_grant_export_row_batchId_idx",
+    "label": "Create index \"hcb_card_grant_export_row_batchId_idx\" on \"hcb_card_grant_export_row\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "hcb_card_grant_export_row_batchId_idx",
+        "table": "hcb_card_grant_export_row"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"hcb_card_grant_export_row_batchId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_card_grant_export_row_batchId_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"hcb_card_grant_export_row_batchId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"hcb_card_grant_export_row_batchId_idx\"",
+        "sql": "CREATE INDEX \"hcb_card_grant_export_row_batchId_idx\" ON \"public\".\"hcb_card_grant_export_row\" (\"batchId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"hcb_card_grant_export_row_batchId_idx\" exists on \"hcb_card_grant_export_row\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_card_grant_export_row_batchId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"hcb_card_grant_export_row\"",
+          "btree",
+          "[\"batchId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.hcb_card_grant_export_row.hcb_card_grant_export_row_project_key",
+    "label": "Create index \"hcb_card_grant_export_row_project_key\" on \"hcb_card_grant_export_row\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "hcb_card_grant_export_row_project_key",
+        "table": "hcb_card_grant_export_row"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"hcb_card_grant_export_row_project_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_card_grant_export_row_project_key\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"hcb_card_grant_export_row_project_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"hcb_card_grant_export_row_project_key\"",
+        "sql": "CREATE UNIQUE INDEX \"hcb_card_grant_export_row_project_key\" ON \"public\".\"hcb_card_grant_export_row\" (\"themeProjectId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"hcb_card_grant_export_row_project_key\" exists on \"hcb_card_grant_export_row\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_card_grant_export_row_project_key\"",
+          "i",
+          "I",
+          "\"public\".\"hcb_card_grant_export_row\"",
+          "btree",
+          "[\"themeProjectId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.hcb_card_grant_export_row.hcb_card_grant_export_row_batchId_fkey",
+    "label": "Add foreign key \"hcb_card_grant_export_row_batchId_fkey\" on \"hcb_card_grant_export_row\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "hcb_card_grant_export_row_batchId_fkey",
+        "table": "hcb_card_grant_export_row"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"hcb_card_grant_export_row_batchId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "hcb_card_grant_export_row_batchId_fkey",
+          "public",
+          "\"public\".\"hcb_card_grant_export_row\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"hcb_card_grant_export_row_batchId_fkey\" on \"hcb_card_grant_export_row\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"hcb_card_grant_export_row_batchId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"hcb_card_grant_export_row\"\nADD CONSTRAINT \"hcb_card_grant_export_row_batchId_fkey\"\nFOREIGN KEY (\"batchId\")\nREFERENCES \"public\".\"hcb_card_grant_export_batch\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"hcb_card_grant_export_row_batchId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "hcb_card_grant_export_row_batchId_fkey",
+          "public",
+          "\"public\".\"hcb_card_grant_export_row\"",
+          "f",
+          "[\"batchId\"]",
+          "\"public\".\"hcb_card_grant_export_batch\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.hcb_card_grant_export_row.hcb_card_grant_export_row_themeProjectId_fkey",
+    "label": "Add foreign key \"hcb_card_grant_export_row_themeProjectId_fkey\" on \"hcb_card_grant_export_row\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "hcb_card_grant_export_row_themeProjectId_fkey",
+        "table": "hcb_card_grant_export_row"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"hcb_card_grant_export_row_themeProjectId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "hcb_card_grant_export_row_themeProjectId_fkey",
+          "public",
+          "\"public\".\"hcb_card_grant_export_row\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"hcb_card_grant_export_row_themeProjectId_fkey\" on \"hcb_card_grant_export_row\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"hcb_card_grant_export_row_themeProjectId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"hcb_card_grant_export_row\"\nADD CONSTRAINT \"hcb_card_grant_export_row_themeProjectId_fkey\"\nFOREIGN KEY (\"themeProjectId\")\nREFERENCES \"public\".\"theme_project\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"hcb_card_grant_export_row_themeProjectId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "hcb_card_grant_export_row_themeProjectId_fkey",
+          "public",
+          "\"public\".\"hcb_card_grant_export_row\"",
+          "f",
+          "[\"themeProjectId\"]",
+          "\"public\".\"theme_project\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  }
+]

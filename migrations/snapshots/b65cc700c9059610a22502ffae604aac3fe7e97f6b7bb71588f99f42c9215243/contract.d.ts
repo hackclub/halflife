@@ -1744,6 +1744,7 @@ export namespace Models {
     warmupPhase: FieldOutputTypes['public']['ThemeProject']['warmupPhase'];
     bomItems: public_BomItem[];
     hackatimeLinks: public_HackatimeLink[];
+    hcbCardGrantExports: public_HcbCardGrantExportRow[];
     hcbGrantCards: public_HcbGrantCard[];
     hcbGrantTopUps: public_HcbGrantTopUp[];
     ireShips: public_IreShip[];
@@ -1758,6 +1759,7 @@ export namespace Models {
     readonly [RelationKeys]?:
       | 'bomItems'
       | 'hackatimeLinks'
+      | 'hcbCardGrantExports'
       | 'hcbGrantCards'
       | 'hcbGrantTopUps'
       | 'ireShips'
@@ -12505,6 +12507,17 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'HackatimeLink';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['themeProjectId'];
+                };
+              };
+              readonly hcbCardGrantExports: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'HcbCardGrantExportRow';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
