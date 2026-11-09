@@ -40,7 +40,7 @@ export function grantCardPurpose(projectId: string, origin: string | null): stri
 
 /** What the maker is told the money is for. Shared by the v4 create and the CSV import row. */
 export function grantCardInstructions(title: string): string {
-	return `Parts funding for ${title || "your Half Life project"}.`
+	return `Parts funding for ${title || "your Half Life project"}`
 }
 
 /** The message HCB shows when it invites the maker to accept the card. Shared by the v4 create and the CSV row. */

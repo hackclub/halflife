@@ -124,7 +124,7 @@ Content-Type: application/json
   "amount_cents": 3050,
   "email": "maker@example.com",
   "purpose": "Half Life parts – https://halflife.hackclub.com/projects/<projectId>",
-  "instructions": "Parts funding for <project title>.",
+  "instructions": "Parts funding for <project title>",
   "invite_message": "Your Half Life parts grant is ready."
 }
 ```
