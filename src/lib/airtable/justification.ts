@@ -9,7 +9,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
 /**
  * The `Justification - …` columns of a submission row, and the text behind them.
  *
- * Four are the evidence the maker's work produced – their Hackatime identity, the Hackatime projects they tracked time in, the timelapses they recorded, and, only when there is neither Hackatime nor Lapse evidence to follow, the devlog method the hours rest on. A sixth is the reviewer's own account of what the project has that accounts for the hours – Ari's `technical_features`, written verbatim. The pipeline merges those columns into one blob (`Automation - Unified Justification`). No journal text is copied into any of them: a decision's maker-facing feedback lives in the Loops status columns, and the journal dump this used to quote was never the reviewer's words anyway.
+ * Four are the evidence the maker's work produced – their Hackatime identity, the Hackatime projects they tracked time in, the timelapses they recorded, and – when there is neither Hackatime nor Lapse evidence – the devlog method the hours rest on. A sixth is the reviewer's own account of what the project has that accounts for the hours – Ari's `technical_features`, written verbatim (or the marker below when the reviewer wrote nothing there). The pipeline merges those columns into one blob (`Automation - Unified Justification`). No journal text is copied into any of them: a decision's maker-facing feedback lives in the Loops status columns, and the journal dump this used to quote was never the reviewer's words anyway.
  */
 
 /** One journal entry, as far as a justification cares. */
@@ -57,16 +57,23 @@ export interface JustificationSource {
  *
  * An evidence column is written with what we hold and left alone when we hold nothing. A blank written over one erases the only record of it, and for the pre-season rows Half Life imported, the Lapse links came from the form and were never handed to Postgres as timelapses – so a blank there would destroy evidence the base is the only place to find.
  *
- * The reviewer's technical features are never in here: they arrive with the decision, so the decision mirror writes them (see `reviewerTechnicalFeaturesCell`), and a column nobody has decided on yet simply holds nothing for it.
- *
- * `alternateTracking` is filled only when there is no Hackatime or Lapse evidence to point at. See `alternateTrackingJustification` for what it says and when.
+ * `specificTechnicalFeatures` is the exception: it is never empty once a project sits in the base. The marker stands in until a decision fills Ari's box with the reviewer's words – see `reviewerTechnicalFeaturesCell`.
  */
 export interface JustificationValues {
 	alternateTracking?: string
 	hackatimeId?: string
 	hackatimeProjects?: string
 	lapseLinks?: string
+	specificTechnicalFeatures: string
 }
+
+/**
+ * What the technical-features column says when the reviewer's box was left empty.
+ *
+ * Once a project is in the base the pipeline's `[SPECIFIC TECHNICAL FEATURES]` section is always read, so an
+ * empty one reads as a gap rather than as "nothing was recorded".
+ */
+export const NO_FEATURES_RECORDED = "No technical features were recorded for this submission."
 
 /** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
@@ -103,6 +110,7 @@ export function justificationValues(
 		...(source.hackatimeUserId ? { hackatimeId: source.hackatimeUserId } : {}),
 		...(projects.length > 0 ? { hackatimeProjects: projects.join(", ") } : {}),
 		...(source.lapseLinks.length > 0 ? { lapseLinks: source.lapseLinks.join(", ") } : {}),
+		specificTechnicalFeatures: NO_FEATURES_RECORDED,
 	}
 }
 
@@ -131,10 +139,9 @@ export function alternateTrackingJustification(source: AlternateTrackingSource):
 
 /**
  * The `Justification - Specific Technical Features` cell: Ari's `review.justification.technical_features`, the
- * reviewer's own account of what the project has that accounts for the hours – and nothing else. It replaced a
- * cell that began as the maker's description, parts list and every journal entry, which made the reviewer's words
- * indistinguishable from the maker's journal.
+ * reviewer's own account of what the project has that accounts for the hours – and nothing else. An empty box
+ * writes the marker, so a project never sits blank in the base.
  */
 export function reviewerTechnicalFeaturesCell(reviewerText: string | null): string {
-	return reviewerText?.trim() ?? ""
+	return reviewerText?.trim() || NO_FEATURES_RECORDED
 }

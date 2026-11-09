@@ -239,7 +239,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 			const ref = repoRefFromLink(project.githubRepo)
 			return ref?.forge.id === "github" ? ref.ownerPath : ""
 		})(),
-		// The `Justification - …` columns, spread rather than listed: an evidence column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification). The technical-features column is written only by the decision mirror – a reviewer's words there at decision time – never from a maker's account.
+		// The `Justification - …` columns, spread rather than listed: an evidence column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification). A row still in review carries the no-features marker there; an approved row keeps what the decision wrote, because a refresh must not erase the reviewer's box.
 		...justification,
 		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
 		journalUrl: journalUrl ?? "",
@@ -251,6 +251,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		requestedFunding: phase === Phase.DESIGN && settings.payoutSource === PayoutSource.AIRTABLE ? bomTotal : 0,
 		reviewStatus: reviewStatusFor(phaseStatus),
 		slackId: user.slackId ?? "",
+		specificTechnicalFeatures:
+			phaseStatus === PhaseStatus.approved ? undefined : justification.specificTechnicalFeatures,
 		stage: phase === Phase.DESIGN ? "Design" : "Build",
 		// `starterProjectId` is the one place the choice is kept: set when a starter is taken and cleared when the idea is written over with their own (see lib/onboarding). So the checkbox is `!== null`, derived rather than stored, and a project that left the starter behind reads as `false` here like any other.
 		starterProject: project.starterProjectId !== null,

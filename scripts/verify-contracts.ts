@@ -1794,7 +1794,7 @@ async function checkJustification(): Promise<void> {
 	/* ── 6d. The Airtable justification columns ─────────────────────────────── */
 	//
 	// The `Justification - …` columns on a submission row are the evidence a grant reviewer reads, and the pipeline merges them into one blob on the row. Two things about them are pinned here, because both fail silently: a column we have nothing for must be left OUT of the payload rather than written blank (a blank erases the only record of evidence the base holds – the Lapse links on the pre-season rows came from the form and were never given to Postgres), and the technical-features column carries only the reviewer's technical-features box, never a dump of maker journal text.
-	const { justificationValues, reviewerTechnicalFeaturesCell, timelapseLinks } = await import(
+	const { justificationValues, NO_FEATURES_RECORDED, reviewerTechnicalFeaturesCell, timelapseLinks } = await import(
 		"../src/lib/airtable/justification"
 	)
 	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/lib/enums")
@@ -1822,7 +1822,11 @@ async function checkJustification(): Promise<void> {
 			"justification · the technical features are the reviewer's own words",
 			reviewerTechnicalFeaturesCell("  KiCad PCB.  ") === "KiCad PCB.",
 		)
-		check("justification · no reviewer words writes an empty cell", reviewerTechnicalFeaturesCell(null) === "")
+		check(
+			"justification · no reviewer words writes the never-empty marker",
+			reviewerTechnicalFeaturesCell(null) === NO_FEATURES_RECORDED,
+			reviewerTechnicalFeaturesCell(null),
+		)
 
 		const values = justificationValues(source, {
 			eventStart: new Date("2026-10-05T00:00:00.000Z"),
@@ -1849,7 +1853,11 @@ async function checkJustification(): Promise<void> {
 			},
 			{ eventStart: new Date("2026-10-05T00:00:00.000Z"), phase: JustPhase.BUILD, theme: JustTheme.PCB },
 		)
-		check("justification · an empty evidence column is omitted, not blanked", Object.keys(bare).length === 0)
+		check(
+			"justification · an empty evidence column is omitted, not blanked",
+			Object.keys(bare).length === 1 && bare.specificTechnicalFeatures === NO_FEATURES_RECORDED,
+			bare.specificTechnicalFeatures,
+		)
 
 		// A Lapse recording is watched on Lapse by its own id; an older upload is watched where it was put.
 		check(

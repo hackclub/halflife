@@ -124,11 +124,13 @@ async function withdrawRow(row: IreShipRow): Promise<"not_queued" | "withdrawn">
  * Send a hand-in to Ire, replacing a stale open copy when the maker has handed in again.
  *
  * Ire holds at most one open ship per external id. In shadow mode its ships are not decided, so a resubmission would otherwise hit `already_queued` on the previous version forever. The `IreShip` row survives the local submission being deleted on unsubmit, which is why the mapping lives there rather than on `PhaseSubmission`.
+ *
+ * `resend` withdraws and re-creates even a healthy ship for the same submission, so a payload change (for example a new `submitted_at` field) reaches Ire as a new version.
  */
 export async function sendSubmissionToIre(
 	themeProjectId: string,
 	phase: Phase,
-	opts?: { verify?: boolean },
+	opts?: { resend?: boolean; verify?: boolean },
 ): Promise<SendIreResult> {
 	if (!isIreConfigured()) return { skipped: "not_configured" }
 
@@ -139,24 +141,27 @@ export async function sendSubmissionToIre(
 
 	try {
 		if (existing?.remoteId && existing.closedAt === null)
-			if (existing.lastSubmissionId === submissionId) {
-				// A healthy row normally means Ire has the ship. A full resend does not trust the row: Ire may have
-				// lost it (a wiped shadow database, an operator withdraw), in which case falling through recreates it.
-				if (!opts?.verify)
+			if (existing.lastSubmissionId === submissionId)
+				if (opts?.resend)
+					// A healthy row normally means Ire has the ship. A forced resend withdraws and re-creates it so a
+					// payload change reaches Ire; a verified full resend only recreates ships Ire has lost.
+					await withdrawRow(existing)
+				else if (!opts?.verify)
 					return {
 						id: existing.remoteId,
 						status: "duplicate",
 						...(existing.version === null ? {} : { version: existing.version }),
 					}
-
-				const live = await getIreShip(ireExternalId(themeProjectId, phase))
-				if (live)
-					return {
-						id: existing.remoteId,
-						status: "duplicate",
-						...(existing.version === null ? {} : { version: existing.version }),
-					}
-			} else await withdrawRow(existing)
+				else {
+					const live = await getIreShip(ireExternalId(themeProjectId, phase))
+					if (live)
+						return {
+							id: existing.remoteId,
+							status: "duplicate",
+							...(existing.version === null ? {} : { version: existing.version }),
+						}
+				}
+			else await withdrawRow(existing)
 
 		const created: IreShipCreated = await createIreShip(input, submissionId)
 		await recordShip({
