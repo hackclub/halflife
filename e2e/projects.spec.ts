@@ -1,6 +1,6 @@
 import { sessionCookie } from "./auth"
-import { expect, test } from "./fixtures"
 import { seedApprovedProject, seedProject, seedUser } from "./db"
+import { expect, test } from "./fixtures"
 
 /**
  * The grant-card purpose links to here, so a maker or anyone they forward it to must always land on the project –
