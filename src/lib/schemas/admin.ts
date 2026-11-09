@@ -55,6 +55,9 @@ export const grantSchema = z
 /** The fingerprint a preview returned; the batch may only pay exactly that snapshot. */
 export const grantCardBatchSchema = z.object({ fingerprint: boundedText(64, 64) }).strict()
 
+/** The fingerprint a preview returned; the CSV may only hold exactly that snapshot. */
+export const grantCardExportSchema = z.object({ fingerprint: boundedText(64, 64) }).strict()
+
 /** How many card grants one process call may attempt. */
 export const grantCardProcessSchema = z.object({ limit: z.number().int().min(1).max(20).optional() }).strict()
 
