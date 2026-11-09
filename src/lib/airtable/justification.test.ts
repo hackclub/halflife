@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-	alternateTrackingJustification,
-	REVIEWER_FEATURES_SECTION,
-	stripReviewerTechnicalFeatures,
-	withReviewerTechnicalFeatures,
-} from "@/lib/airtable/justification"
+import { alternateTrackingJustification, reviewerTechnicalFeaturesCell } from "@/lib/airtable/justification"
 
 describe("alternateTrackingJustification", () => {
 	test("names the devlogs as the method and the hours they claim", () => {
@@ -26,38 +21,15 @@ describe("alternateTrackingJustification", () => {
 	})
 })
 
-describe("withReviewerTechnicalFeatures", () => {
-	test("keeps the maker's account and adds the reviewer's under its own heading", () => {
-		expect(withReviewerTechnicalFeatures("A macropad with 8 keys.", "KiCad PCB and QMK firmware.")).toBe(
-			`A macropad with 8 keys.\n\n${REVIEWER_FEATURES_SECTION}\nKiCad PCB and QMK firmware.`,
-		)
+describe("reviewerTechnicalFeaturesCell", () => {
+	test("writes the reviewer's own account, and nothing else", () => {
+		expect(reviewerTechnicalFeaturesCell("KiCad PCB and QMK firmware.")).toBe("KiCad PCB and QMK firmware.")
+		expect(reviewerTechnicalFeaturesCell("  KiCad PCB and QMK firmware.  ")).toBe("KiCad PCB and QMK firmware.")
 	})
 
-	test("replaces an earlier reviewer section instead of duplicating it", () => {
-		const first = withReviewerTechnicalFeatures("Built from a kit.", "First account.")
-		expect(withReviewerTechnicalFeatures(first, "Second account.")).toBe(
-			`Built from a kit.\n\n${REVIEWER_FEATURES_SECTION}\nSecond account.`,
-		)
-	})
-
-	test("removes the reviewer section when a decision no longer stands", () => {
-		const withSection = withReviewerTechnicalFeatures("Built from a kit.", "Reviewer account.")
-		expect(withReviewerTechnicalFeatures(withSection, null)).toBe("Built from a kit.")
-	})
-
-	test("adds the reviewer section to an empty maker account", () => {
-		expect(withReviewerTechnicalFeatures("", "Reviewer account.")).toBe(
-			`${REVIEWER_FEATURES_SECTION}\nReviewer account.`,
-		)
-	})
-})
-
-describe("stripReviewerTechnicalFeatures", () => {
-	test("leaves a maker's text alone when it has no reviewer section", () => {
-		expect(stripReviewerTechnicalFeatures("A maker's account.")).toBe("A maker's account.")
-	})
-
-	test("removes a reviewer section from the start of the cell", () => {
-		expect(stripReviewerTechnicalFeatures(`${REVIEWER_FEATURES_SECTION}\nReviewer account.`)).toBe("")
+	test("empty or absent reviewer text writes an empty cell", () => {
+		expect(reviewerTechnicalFeaturesCell("")).toBe("")
+		expect(reviewerTechnicalFeaturesCell("   ")).toBe("")
+		expect(reviewerTechnicalFeaturesCell(null)).toBe("")
 	})
 })
