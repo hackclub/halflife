@@ -1853,7 +1853,11 @@ async function checkJustification(): Promise<void> {
 			},
 			{ eventStart: new Date("2026-10-05T00:00:00.000Z"), phase: JustPhase.BUILD, theme: JustTheme.PCB },
 		)
-		check("justification · an empty evidence column is omitted, not blanked", Object.keys(bare).length === 0)
+		check(
+			"justification · an empty evidence column is omitted, not blanked",
+			Object.keys(bare).length === 1 && bare.specificTechnicalFeatures === NO_FEATURES_RECORDED,
+			bare.specificTechnicalFeatures,
+		)
 
 		// A Lapse recording is watched on Lapse by its own id; an older upload is watched where it was put.
 		check(
