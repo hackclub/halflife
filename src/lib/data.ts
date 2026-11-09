@@ -172,7 +172,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What shipping means",
 				paragraphs: [
-					"Shipping is making your project something other people can open, understand and rebuild. A project that only exists on your laptop has not shipped, and a reviewer cannot approve what they cannot see. The week's work lives in a public repo, and the repo is the first thing a reviewer opens.",
+					"Shipping is making your project something other people can open, understand and rebuild (that means a public repo!). A project that only exists on your laptop has not shipped, and a reviewer cannot approve what they cannot see.",
 				],
 			},
 			{
