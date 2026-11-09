@@ -1,5 +1,8 @@
 import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
+import { getAirtableConfig } from "@/lib/airtable/client"
+import { recordIdsFromSyncEvents } from "@/lib/airtable/sync"
+import { readUnifiedSubmitted } from "@/lib/airtable/ysws"
 import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { displayName } from "@/lib/display-name"
 import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, type Theme } from "@/lib/enums"
@@ -184,14 +187,62 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 		})
 	}
 
+	const gated = await applyUnifiedGate(client, eligible, excluded)
+
 	return {
-		eligible: eligible.toSorted((a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title)),
-		excluded: excluded.toSorted((a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title)),
-		fingerprint: grantCardFingerprint(
-			eligible.map(row => ({ amountCents: row.amountCents, email: row.email, projectId: row.projectId })),
+		eligible: gated.eligible.toSorted(
+			(a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title),
 		),
-		totalCents: eligible.reduce((total, row) => total + row.amountCents, 0),
+		excluded: gated.excluded.toSorted(
+			(a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title),
+		),
+		fingerprint: grantCardFingerprint(
+			gated.eligible.map(row => ({ amountCents: row.amountCents, email: row.email, projectId: row.projectId })),
+		),
+		totalCents: gated.eligible.reduce((total, row) => total + row.amountCents, 0),
 	}
+}
+
+/**
+ * Keep only the rows in the unified database.
+ *
+ * A project reaches the unified base through the pipeline, and the only evidence here is `Automation - First
+ * Submitted At` on the design's YSWS row (see `readUnifiedSubmitted`). This runs after the local checks, so the
+ * Airtable reads only cover projects that are otherwise ready to pay. It fails closed: a project that cannot be
+ * proved to be in the unified database is excluded either way, with the reason naming why.
+ */
+async function applyUnifiedGate(
+	client: DbOrTx,
+	eligible: GrantCardProjectRow[],
+	excluded: GrantCardExclusion[],
+): Promise<{ eligible: GrantCardProjectRow[]; excluded: GrantCardExclusion[] }> {
+	if (eligible.length === 0 || !getAirtableConfig()) return { eligible, excluded }
+
+	const events = await client.orm.public.AuditLog.where({ action: "AIRTABLE_SYNC_SUCCESS" })
+		.where(entry => entry.targetId.in(eligible.map(row => row.projectId)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
+	const recordIds = recordIdsFromSyncEvents(events)
+	const recordIdOf = (row: GrantCardProjectRow) => recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
+	const submitted = await readUnifiedSubmitted(eligible.map(recordIdOf).filter((id): id is string => Boolean(id)))
+
+	const kept: GrantCardProjectRow[] = []
+	const gone = [...excluded]
+	for (const row of eligible) {
+		const recordId = recordIdOf(row)
+		if (submitted && recordId && submitted.has(recordId)) {
+			kept.push(row)
+			continue
+		}
+		gone.push({
+			ownerName: row.ownerName,
+			projectId: row.projectId,
+			reason: submitted ? "Not in the unified database" : "Could not check the unified database",
+			title: row.title,
+		})
+	}
+	return { eligible: kept, excluded: gone }
 }
 
 /** Everything the admin needs to decide whether to press the button. */

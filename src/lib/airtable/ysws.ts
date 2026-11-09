@@ -7,6 +7,7 @@ import {
 	AirtableListSchema,
 	AirtableRecordSchema,
 	airtableFetch,
+	chunk,
 	escapeAirtableValue,
 	getAirtableConfig,
 	withRateLimitRetry,
@@ -234,4 +235,45 @@ export async function deleteUnifiedRecords(
 
 		throw err
 	}
+}
+
+/**
+ * Which of these YSWS rows have reached the unified base, by `Automation - First Submitted At` being non-empty.
+ *
+ * Half Life never writes that column – the pipeline is what puts a row in the unified base – so a non-empty value
+ * is the only evidence a project is in the unified database, and card issuance is gated on it. One list per fifty
+ * ids keeps the formula under the per-request limit without one request per project; the empty case is a free
+ * no-op rather than a request the base would answer with an error.
+ *
+ * Null means the check could not run at all (unconfigured or unreadable): the caller decides what that costs,
+ * and for grant issuance it costs the money – a project that cannot prove it is in the unified database is not
+ * paid, never paid because the check had a bad day.
+ */
+export async function readUnifiedSubmitted(recordIds: readonly string[]): Promise<Set<string> | null> {
+	const config = getAirtableConfig()
+	if (!config) return null
+	if (recordIds.length === 0) return new Set()
+
+	const { firstSubmittedAt } = YSWS_SUBMISSION.fields
+	const submitted = new Set<string>()
+	try {
+		for (const part of chunk([...recordIds], 50)) {
+			const formula = `OR(${part.map(id => `RECORD_ID()='${escapeAirtableValue(id)}'`).join(",")})`
+			const result = await withRateLimitRetry("readYswsUnifiedSubmitted", () =>
+				airtableFetch(
+					AirtableListSchema,
+					config,
+					`${YSWS_SUBMISSION.tableId}?maxRecords=${part.length}&fields[]=${encodeURIComponent(fieldKey(firstSubmittedAt))}&filterByFormula=${encodeURIComponent(formula)}`,
+				),
+			)
+			for (const record of result.records ?? []) {
+				const value = record.fields[firstSubmittedAt.name]
+				if (typeof value === "string" && value.trim().length > 0) submitted.add(record.id)
+			}
+		}
+	} catch (err) {
+		console.error("[airtable] could not read unified submission for grant preview:", err)
+		return null
+	}
+	return submitted
 }
