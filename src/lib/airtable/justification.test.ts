@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { alternateTrackingJustification, reviewerTechnicalFeaturesCell } from "@/lib/airtable/justification"
+import {
+	alternateTrackingJustification,
+	NO_FEATURES_RECORDED,
+	reviewerTechnicalFeaturesCell,
+} from "@/lib/airtable/justification"
 
 describe("alternateTrackingJustification", () => {
 	test("names the devlogs as the method and the hours they claim", () => {
@@ -27,9 +31,9 @@ describe("reviewerTechnicalFeaturesCell", () => {
 		expect(reviewerTechnicalFeaturesCell("  KiCad PCB and QMK firmware.  ")).toBe("KiCad PCB and QMK firmware.")
 	})
 
-	test("empty or absent reviewer text writes an empty cell", () => {
-		expect(reviewerTechnicalFeaturesCell("")).toBe("")
-		expect(reviewerTechnicalFeaturesCell("   ")).toBe("")
-		expect(reviewerTechnicalFeaturesCell(null)).toBe("")
+	test("empty or absent reviewer text writes the never-empty marker", () => {
+		expect(reviewerTechnicalFeaturesCell("")).toBe(NO_FEATURES_RECORDED)
+		expect(reviewerTechnicalFeaturesCell("   ")).toBe(NO_FEATURES_RECORDED)
+		expect(reviewerTechnicalFeaturesCell(null)).toBe(NO_FEATURES_RECORDED)
 	})
 })
