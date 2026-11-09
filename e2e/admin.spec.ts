@@ -16,10 +16,16 @@ test("an admin can change program settings and see the audit entry", async ({ op
 	if (next) await submissions.check()
 	else await submissions.uncheck()
 
+	const payoutSource = form.getByLabel("Payout source")
+	const nextSource = (await readProgramSettings())?.payoutSource === "HCB" ? "AIRTABLE" : "HCB"
+	await payoutSource.selectOption(nextSource)
+
 	await form.getByRole("button", { name: "Save settings" }).click()
 	await expect(page.getByText("Saved.", { exact: true })).toBeVisible({ timeout: 15_000 })
 
-	expect((await readProgramSettings())?.submissionsOpen).toBe(next)
+	const settings = await readProgramSettings()
+	expect(settings?.submissionsOpen).toBe(next)
+	expect(settings?.payoutSource).toBe(nextSource)
 
 	const audit = await readAudit("ADMIN_UPDATE_PROGRAM_SETTINGS")
 	expect(audit?.actorEmail).toBe(user.email)

@@ -87,6 +87,7 @@ export interface E2eModerationRows {
 }
 
 export interface E2eProgramSettingsRow {
+	payoutSource: string
 	programTimezone: string
 	shopOpen: boolean
 	submissionsOpen: boolean
@@ -338,7 +339,7 @@ export async function readAudit(action: string): Promise<E2eAuditRow | null> {
 
 export async function readProgramSettings(): Promise<E2eProgramSettingsRow | null> {
 	const rows = await pool.unsafe<E2eProgramSettingsRow[]>(
-		`select "programTimezone", "shopOpen", "submissionsOpen" from program_settings where id = 'singleton'`,
+		`select "payoutSource", "programTimezone", "shopOpen", "submissionsOpen" from program_settings where id = 'singleton'`,
 	)
 	return rows[0] ?? null
 }

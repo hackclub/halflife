@@ -99,6 +99,7 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 	const [batchTotal, setBatchTotal] = useState(0)
 	const [finished, setFinished] = useState(false)
 	const blocked = blockedReason(preview)
+	const blockedByPayoutSource = preview.payoutSource !== "HCB"
 
 	async function processBatch(id: string): Promise<SendResult<unknown>> {
 		for (let round = 0; round < 200; round++) {
@@ -163,7 +164,17 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 	return (
 		<div className="hl-stack hl-stack--tight">
 			{error ? <Callout tone="danger">{error}</Callout> : null}
-			{blocked ? <Callout tone="warning">{blocked}</Callout> : null}
+			{blocked ? (
+				<Callout tone="warning">
+					{blocked}
+					{blockedByPayoutSource ? (
+						<>
+							{" "}
+							<Link href="/admin/program">Open Program settings</Link>
+						</>
+					) : null}
+				</Callout>
+			) : null}
 
 			<div className="hl-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
 				<Button disabled={busy !== null || blocked !== null} onClick={() => setConfirming(true)} variant="primary">
