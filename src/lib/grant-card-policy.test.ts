@@ -11,8 +11,11 @@ describe("grant card policy", () => {
 		expect(grantCardAmountCents([], 12)).toBe(0)
 	})
 
-	test("the purpose carries a stable project marker", () => {
-		expect(grantCardPurpose("prj_123")).toBe("Half Life parts – HL:prj_123")
+	test("the purpose is the project link when an origin is known, the marker form when there is none", () => {
+		expect(grantCardPurpose("prj_123", "https://halflife.hackclub.com")).toBe(
+			"Half Life parts – https://halflife.hackclub.com/projects/prj_123",
+		)
+		expect(grantCardPurpose("prj_123", null)).toBe("Half Life parts – HL:prj_123")
 	})
 
 	test("the fingerprint ignores order but notices a changed amount or email", () => {

@@ -65,7 +65,7 @@ test("an admin can generate and re-download an HCB grant CSV", async ({ openAs }
 	expect(download.suggestedFilename()).toMatch(/^hcb-card-grants-.+\.csv$/)
 	const firstBody = await readFile(await download.path(), "utf-8")
 	expect(firstBody).toContain(maker.email)
-	expect(firstBody).toContain(`HL:${projectId}`)
+	expect(firstBody).toContain(`Half Life parts – http://localhost:3100/projects/${projectId}`)
 
 	// The file was frozen at generation: our row is in the database and the project is out of the next preview.
 	const recorded = await readGrantExports()
@@ -77,9 +77,13 @@ test("an admin can generate and re-download an HCB grant CSV", async ({ openAs }
 	await expect(page.getByText("Already in an HCB CSV import").first()).toBeVisible()
 
 	// The history entry re-downloads the exact file.
+	const exportRow = page
+		.getByRole("row")
+		.filter({ hasText: recorded[0]?.batchId ?? "" })
+		.first()
 	const [again] = await Promise.all([
 		page.waitForEvent("download"),
-		page.getByRole("link", { name: "Download CSV" }).click(),
+		exportRow.getByRole("link", { name: "Download CSV" }).click(),
 	])
 	expect(await readFile(await again.path(), "utf-8")).toBe(firstBody)
 })

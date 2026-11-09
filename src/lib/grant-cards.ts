@@ -25,6 +25,7 @@ import {
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
 import { formatUsd } from "@/lib/money"
+import { configuredOrigin } from "@/lib/origin"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
@@ -320,7 +321,7 @@ export async function createGrantCardBatch(input: CreateGrantCardBatchInput): Pr
 					email: row.email,
 					grantUsdCents: row.grantUsd === null ? null : Math.round(row.grantUsd * 100),
 					phase: Phase.DESIGN,
-					purpose: grantCardPurpose(row.projectId),
+					purpose: grantCardPurpose(row.projectId, configuredOrigin()),
 					themeProjectId: row.projectId,
 					userId: row.ownerId,
 				})),
@@ -441,6 +442,7 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 				projectId: row.projectId,
 				title: row.title,
 			})),
+			configuredOrigin(),
 		),
 		filename: `hcb-card-grants-${result.batchId}.csv`,
 		totalCents: result.totalCents,
@@ -484,6 +486,7 @@ export async function grantCardExportCsv(batchId: string): Promise<{ csv: string
 				projectId: row.themeProjectId,
 				title: row.themeProject?.title ?? "",
 			})),
+			configuredOrigin(),
 		),
 		filename: `hcb-card-grants-${batchId}.csv`,
 	}
@@ -703,7 +706,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			continue
 		}
 
-		const purpose = grantCardPurpose(project.id)
+		const purpose = grantCardPurpose(project.id, configuredOrigin())
 
 		// A row that was claimed earlier is a previous attempt, not a fresh one. It may have committed at HCB and lost
 		// its response, so find out before sending again. Only an attempt known to be absent may proceed to create.
@@ -959,7 +962,7 @@ export async function reconcileGrantCard(
 		amountCents: row.amountCents,
 		attemptedAt: parseDbTimestamp(row.claimedAt ?? row.createdAt),
 		email: row.email,
-		purpose: row.purpose ?? grantCardPurpose(row.themeProjectId),
+		purpose: row.purpose ?? grantCardPurpose(row.themeProjectId, configuredOrigin()),
 	})
 	if (reconciled.kind === "landed") {
 		const grant = list.kind === "listed" ? list.rows.find(candidate => candidate.id === reconciled.grantId) : undefined

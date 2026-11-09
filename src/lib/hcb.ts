@@ -422,8 +422,21 @@ export interface CardGrantExpectation {
 	amountCents: number
 	attemptedAt: Date
 	email: string
-	/** The stable `HL:<projectId>` marker written into `purpose`. */
+	/** What the create sent: now the project link, before this the `HL:<projectId>` marker. */
 	purpose: string
+}
+
+/**
+ * Whether a listed grant's purpose is the one an attempt sent.
+ *
+ * Grants issued before purpose became a project link carry the marker form, and re-checking one of those under
+ * the new equality only would read it as "nothing landed" and pay it twice. The link form ends with the id, so
+ * the legacy form is derived only for that direction.
+ */
+export function purposeMatches(listed: string | null, expected: string): boolean {
+	if (listed === expected) return true
+	const projectId = /\/projects\/([\w-]+)$/.exec(expected)?.[1]
+	return projectId !== undefined && listed === `Half Life parts – HL:${projectId}`
 }
 
 /**
@@ -438,14 +451,16 @@ export function reconcileCardGrantIssue(
 	if (list.kind === "unreadable") return { kind: "ambiguous" }
 
 	const email = expected.email.trim().toLowerCase()
-	// The marker and amount identify the project's attempt. A row that carries both but no readable owner is not
-	// evidence the attempt was absent: HCB may not render another account's email to this token. Retrying then pays twice.
+	// The link and amount identify the project's attempt; an attempt that started on the marker form still
+	// reconciles, so a lost response on the deploy that switched cannot retry into a second card.
+	// A row that carries both but no readable owner is not evidence the attempt was absent: HCB may not render
+	// another account's email to this token. Retrying then pays twice.
 	const sameProject = list.rows.filter(
-		row => row.amountCents === expected.amountCents && row.purpose === expected.purpose,
+		row => row.amountCents === expected.amountCents && purposeMatches(row.purpose, expected.purpose),
 	)
 	if (sameProject.length === 0) {
-		// Without the marker the row cannot be tied to this project. If HCB returned this amount and owner but dropped
-		// the purpose, the marker itself is unreadable, which is not the same answer as "nothing landed".
+		// Without a purpose the row cannot be tied to this project. If HCB returned this amount and owner but
+		// dropped the purpose, the link itself is unreadable, which is not the same answer as "nothing landed".
 		const unmarked = list.rows.some(
 			row => row.amountCents === expected.amountCents && row.email?.toLowerCase() === email && row.purpose === null,
 		)

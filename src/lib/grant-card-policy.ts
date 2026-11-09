@@ -16,14 +16,31 @@ export function grantCardAmountCents(items: readonly PricedLine[], taxShippingUs
 	return Math.round(bomTotalUsd(items, taxShippingUsd) * 100)
 }
 
-/** The stable purpose stored on HCB, used to reconcile an attempt against the organisation's grants. */
-export function grantCardPurpose(projectId: string): string {
-	return `Half Life parts – ${GRANT_CARD_MARKER_PREFIX}${projectId}`
+/**
+ * The link Half Life points the recipient at: the origin the deployment was built with, so a dev server stays on
+ * dev and staging stays off the live site.
+ */
+export function grantCardProjectUrl(projectId: string, origin: string | null): string | null {
+	if (!origin) return null
+	return `${origin.replace(/\/$/, "")}/projects/${projectId}`
+}
+
+/**
+ * The purpose stored on HCB.
+ *
+ * Once the deployment names an origin it is the maker's own project link – the recipient and anyone reading the
+ * grant in HCB see where it is for, rather than an internal marker. The marker stands in when there is no origin
+ * to link to. Equality is what the reconciler uses to spot a lost create, so both callers and the matcher must
+ * come through here.
+ */
+export function grantCardPurpose(projectId: string, origin: string | null): string {
+	const url = grantCardProjectUrl(projectId, origin)
+	return `Half Life parts – ${url ?? `${GRANT_CARD_MARKER_PREFIX}${projectId}`}`
 }
 
 /** What the maker is told the money is for. Shared by the v4 create and the CSV import row. */
 export function grantCardInstructions(title: string): string {
-	return `Parts funding for ${title || "your Half Life project"}.`
+	return `Parts funding for ${title || "your Half Life project"}`
 }
 
 /** The message HCB shows when it invites the maker to accept the card. Shared by the v4 create and the CSV row. */
