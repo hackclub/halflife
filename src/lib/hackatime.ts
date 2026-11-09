@@ -5,8 +5,8 @@ import type { Phase, Theme } from "@/lib/enums"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import type { HackatimeSpan } from "@/lib/hours-overlap"
 import db from "@/lib/prisma8"
-import { getProgramSettings, weekDateRange } from "@/lib/program"
-import { formatDbTimestamp } from "@/lib/time"
+import { effectiveWeekClose, getProgramSettings, weekClosesAt, weekDateRange } from "@/lib/program"
+import { formatDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
 const BASE = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
@@ -193,21 +193,67 @@ export function projectsByName(
 	return [...merged].map(([name, totalSeconds]) => ({ name, totalSeconds }))
 }
 
+export interface PhaseWeekExtensions {
+	projectUntil?: Date | null
+	userUntil?: Date | null
+	weekUntil?: Date | null
+}
+
 /**
- * The seconds window a phase's Hackatime link counts: its scheduled week, midnight to 11:59 PM in the program timezone.
+ * The seconds window a Hackatime link counts, `[fromSeconds, toSeconds]`, in the program timezone.
  *
- * One block of tracked time must not back two phases' minimums, so a link counts the week it belongs to rather than the project's all-time total. Null for unscheduled phases (warm-up, week 0): there is no week to scope to, so callers fall back to the all-time total with the cross-project uniqueness check as the remaining guard.
+ * Pure version of `phaseWeekWindow`'s arithmetic: the scheduled week start, and the earliest close an extension
+ * pushes past. Kept apart so the window rule itself can be pinned without a database.
+ */
+export function phaseWeekWindowSeconds(
+	settings: { eventStartDate: Date; programTimezone: string },
+	theme: Theme,
+	phase: Phase,
+	extensions: PhaseWeekExtensions,
+): { fromSeconds: number; toSeconds: number } | null {
+	const week = scheduledWeekFor(theme, phase)
+	if (week < 1) return null
+	const range = weekDateRange(settings, week)
+	if (!range) return null
+	// Never narrower than the scheduled close: a granted extension only widens the window.
+	const close = effectiveWeekClose(
+		weekClosesAt(settings, week),
+		extensions.userUntil,
+		extensions.projectUntil,
+		extensions.weekUntil,
+	)
+	return { fromSeconds: Math.floor(range.start.getTime() / 1000), toSeconds: Math.floor(close.getTime() / 1000) }
+}
+
+/**
+ * The seconds window a phase's Hackatime link counts, extensions included when they apply.
+ *
+ * The picker's prices and a replayed link both come from here, so a maker whose extension runs past the scheduled
+ * Sunday sees the same tracked hours when the maker picks, when the cache refreshes and when the decision freezes
+ * them. Without a user/project to look extensions up for, the scheduled window alone stands.
  */
 export async function phaseWeekWindow(
 	theme: Theme,
 	phase: Phase,
+	userId?: string,
+	projectId?: string,
 ): Promise<{ fromSeconds: number; toSeconds: number } | null> {
-	const week = scheduledWeekFor(theme, phase)
-	if (week < 1) return null
 	const settings = await getProgramSettings()
-	const range = weekDateRange(settings, week)
-	if (!range) return null
-	return { fromSeconds: Math.floor(range.start.getTime() / 1000), toSeconds: Math.floor(range.end.getTime() / 1000) }
+	if (!userId || !projectId) return phaseWeekWindowSeconds(settings, theme, phase, {})
+	const [user, project, weekExtension] = await Promise.all([
+		db.orm.public.User.whereUnique({ id: userId }).select("submissionExtensionUntil").first(),
+		db.orm.public.ThemeProject.whereUnique({ id: projectId }).select("submissionExtensionUntil").first(),
+		db.orm.public.WeekExtension.whereUnique({ userId, week: scheduledWeekFor(theme, phase) })
+			.select("submissionExtensionUntil")
+			.first(),
+	])
+	return phaseWeekWindowSeconds(settings, theme, phase, {
+		projectUntil: project?.submissionExtensionUntil ? parseNullableTimestamp(project.submissionExtensionUntil) : null,
+		userUntil: user?.submissionExtensionUntil ? parseNullableTimestamp(user.submissionExtensionUntil) : null,
+		weekUntil: weekExtension?.submissionExtensionUntil
+			? parseNullableTimestamp(weekExtension.submissionExtensionUntil)
+			: null,
+	})
 }
 
 /** Refresh one link's cached total. Used by the sync job and on demand. */
@@ -222,7 +268,12 @@ export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> 
 		return { error: "user has no linked Hackatime account", seconds: link.cachedSeconds ?? 0, stale: true }
 
 	// Week-scoped, like every other read of a link's seconds: caching the all-time total here would reintroduce the double-count the link route scopes out, one sync run later.
-	const window = await phaseWeekWindow(link.themeProject.theme, link.phase)
+	const window = await phaseWeekWindow(
+		link.themeProject.theme,
+		link.phase,
+		link.themeProject.userId,
+		link.themeProjectId,
+	)
 	const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject, window ?? undefined)
 	if (result.stale) {
 		await db.orm.public.HackatimeLink.where({ id: linkId }).update({

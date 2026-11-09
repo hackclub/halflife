@@ -36,6 +36,6 @@ export const GET = withSession(async (req: NextRequest, { gate }) => {
 		.first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
-	const window = await phaseWeekWindow(project.theme, query.data.phase)
+	const window = await phaseWeekWindow(project.theme, query.data.phase, gate.user.id, query.data.projectId)
 	return ok({ projects: await listUserProjects(user.hackatimeUserId, window ?? undefined) })
 })

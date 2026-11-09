@@ -100,8 +100,8 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 			`That Hackatime project is already linked to "${participantProjectTitle(other.themeProject)}". One tracked project can back only one project, because its hours would otherwise count twice. Unlink it there first, or link a different Hackatime project.`,
 		)
 
-	// Scoped to the phase's scheduled week: the endpoint's default is the project's all-time total, and linking that total on every theme and warm-up paid one block of work many times over. Warm-ups (week 0) have no week to scope to and keep the all-time total, with the cross-project check above as the guard.
-	const window = await phaseWeekWindow(project.theme, parsed.data.phase)
+	// Scoped to the phase's week as extended by any extension the maker was granted: another project's total swallowed whole would pay one block many times over, so the scope and the unique-name check are the two rules between a quick link and an accidental double-count.
+	const window = await phaseWeekWindow(project.theme, parsed.data.phase, gate.user.id, id)
 	const fetched = await fetchProjectSeconds(
 		project.user.hackatimeUserId,
 		parsed.data.hackatimeProject,
