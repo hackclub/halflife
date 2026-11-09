@@ -6,29 +6,44 @@ describe("grant card CSV", () => {
 		expect(GRANT_CARD_CSV_HEADER.join(",")).toBe(
 			"email,amount_cents,purpose,instructions,one_time_use,pre_authorization_required,invite_message,merchant_lock,category_lock,keyword_lock,banned_merchants,banned_categories",
 		)
-		expect(grantCardCsv([])).toBe(`${GRANT_CARD_CSV_HEADER.join(",")}\n`)
+		expect(grantCardCsv([], null)).toBe(`${GRANT_CARD_CSV_HEADER.join(",")}\n`)
 	})
 
 	test("maps a row onto the template's columns", () => {
-		expect(grantCardCsv([{ amountCents: 1250, email: "maker@example.com", projectId: "prj_1", title: "Bloom" }])).toBe(
+		expect(
+			grantCardCsv([{ amountCents: 1250, email: "maker@example.com", projectId: "prj_1", title: "Bloom" }], null),
+		).toBe(
 			`${GRANT_CARD_CSV_HEADER.join(",")}\n`
 				+ "maker@example.com,1250,Half Life parts – HL:prj_1,Parts funding for Bloom.,false,false,Your Half Life parts grant is ready. Accept it to get your card.,,,,,\n",
 		)
 	})
 
+	test("the purpose reads as a project link when an origin is known", () => {
+		expect(
+			grantCardCsv(
+				[{ amountCents: 1250, email: "maker@example.com", projectId: "prj_1", title: "Bloom" }],
+				"https://halflife.hackclub.com",
+			),
+		).toContain("Half Life parts – https://halflife.hackclub.com/projects/prj_1")
+	})
+
 	test("quotes a title that holds a comma or quote so no column shifts", () => {
-		const csv = grantCardCsv([
-			{ amountCents: 500, email: "m@example.com", projectId: "p2", title: 'Gadget, the "deluxe"' },
-		])
+		const csv = grantCardCsv(
+			[{ amountCents: 500, email: "m@example.com", projectId: "p2", title: 'Gadget, the "deluxe"' }],
+			null,
+		)
 		const [, line] = csv.split("\n")
 		expect(line).toContain('"Parts funding for Gadget, the ""deluxe""."')
 	})
 
 	test("keeps one row per project in the order it was prepared", () => {
-		const csv = grantCardCsv([
-			{ amountCents: 100, email: "a@example.com", projectId: "p1", title: "First" },
-			{ amountCents: 200, email: "b@example.com", projectId: "p2", title: "Second" },
-		])
+		const csv = grantCardCsv(
+			[
+				{ amountCents: 100, email: "a@example.com", projectId: "p1", title: "First" },
+				{ amountCents: 200, email: "b@example.com", projectId: "p2", title: "Second" },
+			],
+			null,
+		)
 		const lines = csv.trimEnd().split("\n")
 		expect(lines).toHaveLength(3)
 		expect(lines[1]).toStartWith("a@example.com,100,")

@@ -48,13 +48,13 @@ function quoteField(field: string): string {
  * `pre_authorization_required` stay false), so there are no locks or banned lists: the line is one grant, called
  * with the same words the v4 create would send.
  */
-export function grantCardCsv(rows: readonly GrantCardCsvRow[]): string {
+export function grantCardCsv(rows: readonly GrantCardCsvRow[], origin: string | null): string {
 	const lines = [GRANT_CARD_CSV_HEADER.join(",")]
 	for (const row of rows) {
 		const fields = [
 			row.email,
 			String(row.amountCents),
-			grantCardPurpose(row.projectId),
+			grantCardPurpose(row.projectId, origin),
 			grantCardInstructions(row.title),
 			"false",
 			"false",
