@@ -14,6 +14,9 @@ import db from "../src/lib/prisma8"
  *
  * - `FUNDED_BLOCK` – a design approved at or below its tier's funded hours. Those hours buy
  *   parts and earn no coins by design; coins start above the block.
+ * - `OVERPAID_DECLINED` – an over-read past a stale expectation: the maker declined parts funding, so every
+ *   approved hour pays, and the declined-funding backfill rounded the ledger to that full payout while the
+ *   frozen decision still subtracts the tier block the live path used to charge. Not extra money.
  * - `ZERO_HOURS` – approved with 0h despite logged work. The live path now fixes this; the
  *   backfill script repairs the ones that already landed.
  * - `SHORT` – the decision says coins were earned but the ledger holds less. This is the
@@ -43,7 +46,7 @@ async function main() {
 		.all()
 
 	const submissions = await db.orm.public.PhaseSubmission.where({ resolvedResult: ReviewResult.APPROVED })
-		.select("id", "phase", "themeProjectId")
+		.select("fundingDeclined", "id", "phase", "themeProjectId")
 		.include("reviews", review =>
 			review.select(
 				"createdAt",
@@ -64,6 +67,7 @@ async function main() {
 
 	interface Decision {
 		createdAt: string
+		fundingDeclined: boolean
 		hoursOverride: number | null
 		review: {
 			frozenApprovedHours: number | null
@@ -86,6 +90,7 @@ async function main() {
 			if (!current || review.createdAt > current.createdAt)
 				decisions.set(key, {
 					createdAt: review.createdAt,
+					fundingDeclined: submission.fundingDeclined,
 					hoursOverride: review.hoursOverride,
 					review,
 					reviewerId: review.reviewerId,
@@ -146,6 +151,8 @@ async function main() {
 				expected = designCoinsFor(tierRow.id, hours, { fundedHours }).spendable
 			} else expected = buildCoinsFor(hours).spendable + (project.theme === Theme.WARMUP ? 0 : THEME_COMPLETION_BONUS)
 
+			// A design submitted with declined funding has no funded block to subtract, so every approved hour pays. Earlier decisions still carry the tier block the live path used to subtract, and the declined-funding backfill rounded those ledgers to the full payout – those read as overpaid against a stale expectation, not as extra money.
+			const declinedFunding = decision.fundingDeclined
 			const reason =
 				expected === 0
 					? hours === 0 && frozenWork > 0
@@ -156,7 +163,9 @@ async function main() {
 					: paid < expected
 						? "SHORT"
 						: paid > expected
-							? "OVERPAID"
+							? declinedFunding && fundedHours > 0
+								? "OVERPAID_DECLINED"
+								: "OVERPAID"
 							: "OK"
 
 			counts[reason] = (counts[reason] ?? 0) + 1
@@ -166,8 +175,14 @@ async function main() {
 				phase === Phase.DESIGN
 					? `design, ${hours}h approved, ${fundedHours}h funded at tier ${tier} ($${grantUsd} grant)`
 					: `build, ${hours}h approved`
+			const tail =
+				decision.hoursOverride === 0
+					? ", recorded with a 0h override"
+					: reason === "OVERPAID_DECLINED"
+						? ", declined parts funding: paid in full, the stale frozen decision still subtracts the tier block"
+						: ""
 			rows.push(
-				`${project.user?.email ?? project.userId} · ${project.title}: ${detail}; expected ${expected}, ledger ${paid} – ${reason}${decision.hoursOverride === 0 ? ", recorded with a 0h override" : ""}`,
+				`${project.user?.email ?? project.userId} · ${project.title}: ${detail}; expected ${expected}, ledger ${paid} – ${reason}${tail}`,
 			)
 		}
 
