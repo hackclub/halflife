@@ -460,6 +460,37 @@ namespace public {
     @@map("hcb_grant_card")
   }
 
+  /// One generated HCB import CSV: a snapshot handed to the org's CSV upload rather than the v4 API.
+  ///
+  /// Generation feels like a payment (these projects drop out of future previews), so the snapshot is frozen the
+  /// same way a card batch is: fingerprint + atomic rows, audited as one action.
+  model HcbCardGrantExportBatch {
+    id          String                    @id @onCreate(cuid(2))
+    fingerprint String
+    totalCents  Int
+    createdById String?
+    createdAt   TimestampString(3)        @default(now())
+    rows        HcbCardGrantExportRow[]
+
+    @@map("hcb_card_grant_export_batch")
+  }
+
+  /// One card in a generated CSV. A project appears here at most once ever: a second export would pay it twice.
+  model HcbCardGrantExportRow {
+    id             String                   @id @onCreate(cuid(2))
+    batchId        String
+    themeProjectId String
+    email          String
+    amountCents    Int
+    createdAt      TimestampString(3)       @default(now())
+    batch          HcbCardGrantExportBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_card_grant_export_row_batchId_idx")
+    themeProject   ThemeProject             @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([themeProjectId], map: "hcb_card_grant_export_row_project_key", unique: true)
+    @@index([batchId], map: "hcb_card_grant_export_row_batchId_idx")
+    @@map("hcb_card_grant_export_row")
+  }
+
   model HelpTicket {
     id            String              @id @onCreate(cuid(2))
     authorSlackId String
@@ -1304,6 +1335,7 @@ namespace public {
     ADMIN_CANCEL_GRANT_CARD = "ADMIN_CANCEL_GRANT_CARD"
     IRE_SYNC_SUCCESS = "IRE_SYNC_SUCCESS"
     IRE_SYNC_FAILURE = "IRE_SYNC_FAILURE"
+    ADMIN_CREATE_GRANT_CARD_EXPORT = "ADMIN_CREATE_GRANT_CARD_EXPORT"
   }
 
   native_enum ReviewDisputeOutcome {
