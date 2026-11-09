@@ -104,7 +104,7 @@ The Ire platform can run beside Ari as a read-only shadow. The initial integrati
 - the preview and the batch are the same query; a SHA-256 fingerprint over `projectId:amountCents:email` means a stale confirmation cannot issue a different set;
 - `HcbGrantCard` has a partial unique index on `(themeProjectId, phase)` for `PENDING`, `ISSUED` and `AMBIGUOUS`, so two batches or two tabs cannot create two live grants;
 - a row is claimed with a compare-and-set before HCB is called, and each request processes a small chunk;
-- a lost response is reconciled against `GET /organizations/{slug}/card_grants` by email, amount and the project link in `purpose`. Only a known absence may retry;
+- a lost response is reconciled against `GET /organizations/{slug}/card_grants` by email, amount and the constant purpose. Only a known absence may retry;
 - an owner mismatch cancels the grant and leaves it `AMBIGUOUS`; a reconciliation with several matches does the same;
 - every issue writes `ADMIN_ISSUE_GRANT_CARD` with the HCB grant id in the same transaction as the `ISSUED` row;
 - un-approving a design is refused while a live card grant exists; cancel it first.

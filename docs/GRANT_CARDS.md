@@ -123,8 +123,8 @@ Content-Type: application/json
 {
   "amount_cents": 3050,
   "email": "maker@example.com",
-  "purpose": "Half Life parts – https://halflife.hackclub.com/projects/<projectId>",
-  "instructions": "Parts funding for <project title>",
+  "purpose": "Half Life parts",
+  "instructions": "Parts for <project title> – https://halflife.hackclub.com/projects/<projectId>",
   "invite_message": "Your Half Life parts grant is ready."
 }
 ```
@@ -153,11 +153,13 @@ The docs are community-maintained, so treat the HCB source as the final authorit
 
 - `amount_cents` – the BOM total in cents.
 - `email` – the maker’s HCA email.
-- `purpose` – the maker's own project link when the deployment names an origin:
-  `Half Life parts – https://halflife.hackclub.com/projects/<projectId>`.
-  Used for reconciliation: a lost create is matched back against this on the organisation's grant list. It falls back
-  to the marker form `Half Life parts – HL:<projectId>` where there is no origin to link to, and an attempt that went
-  out on the marker form still reconciles after the switch.
+- `purpose` – the constant `Half Life parts`: HCB caps a purpose at 30 characters, so the project cannot ride
+  there. Reconciliation matches on it being the same constant, and which project a row belongs to is read from the
+  instructions instead – a lost create is matched back against email, amount and the same constant, and in that
+  light a maker with several same-sized grants within the window reads as a genuine ambiguity rather than a
+  retry.
+- `instructions` – `Parts for <project title> – https://halflife.hackclub.com/projects/<projectId>`, the maker's
+  own project link. Where the deployment names no origin it is just `Parts for <project title>`.
 - `instructions` – human-readable, names the project.
 - `invite_message` – shown in the HCB invitation email.
 - No merchant lock, category lock, keyword lock, one-time use or pre-authorisation in v1.

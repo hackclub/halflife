@@ -10,6 +10,9 @@ import { bomTotalUsd, type PricedLine } from "@/lib/bom-policy"
 /** The prefix that makes a grant findable after a create whose response was lost. */
 export const GRANT_CARD_MARKER_PREFIX = "HL:"
 
+/** The most HCB fits in a purpose, so whatever else goes in has to. */
+export const GRANT_CARD_PURPOSE = "Half Life parts"
+
 /** What a card grant pays: the BOM total in cents, tax and shipping included. */
 export function grantCardAmountCents(items: readonly PricedLine[], taxShippingUsd: number | null | undefined): number {
 	if (items.length === 0) return 0
@@ -26,21 +29,18 @@ export function grantCardProjectUrl(projectId: string, origin: string | null): s
 }
 
 /**
- * The purpose stored on HCB.
- *
- * Once the deployment names an origin it is the maker's own project link – the recipient and anyone reading the
- * grant in HCB see where it is for, rather than an internal marker. The marker stands in when there is no origin
- * to link to. Equality is what the reconciler uses to spot a lost create, so both callers and the matcher must
- * come through here.
+ * The purpose stored on HCB: short enough for the import's column, and the same words on every card. What says
+ * which project it is for moves to the instructions instead – the reconciler matches on equality here, so the
+ * discrimination rides with the amount and the recipient, never with the purpose.
  */
-export function grantCardPurpose(projectId: string, origin: string | null): string {
-	const url = grantCardProjectUrl(projectId, origin)
-	return `Half Life parts – ${url ?? `${GRANT_CARD_MARKER_PREFIX}${projectId}`}`
+export function grantCardPurpose(): string {
+	return GRANT_CARD_PURPOSE
 }
 
 /** What the maker is told the money is for. Shared by the v4 create and the CSV import row. */
-export function grantCardInstructions(title: string): string {
-	return `Parts funding for ${title || "your Half Life project"}`
+export function grantCardInstructions(title: string, projectId: string, origin: string | null): string {
+	const url = grantCardProjectUrl(projectId, origin)
+	return `Parts for ${title || "your Half Life project"}${url ? ` – ${url}` : ""}`
 }
 
 /** The message HCB shows when it invites the maker to accept the card. Shared by the v4 create and the CSV row. */

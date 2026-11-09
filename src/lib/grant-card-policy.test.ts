@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { grantCardAmountCents, grantCardFingerprint, grantCardPurpose } from "@/lib/grant-card-policy"
+import {
+	grantCardAmountCents,
+	grantCardFingerprint,
+	grantCardInstructions,
+	grantCardPurpose,
+} from "@/lib/grant-card-policy"
 
 describe("grant card policy", () => {
 	test("pays the BOM total, including tax and shipping", () => {
@@ -11,11 +16,16 @@ describe("grant card policy", () => {
 		expect(grantCardAmountCents([], 12)).toBe(0)
 	})
 
-	test("the purpose is the project link when an origin is known, the marker form when there is none", () => {
-		expect(grantCardPurpose("prj_123", "https://halflife.hackclub.com")).toBe(
-			"Half Life parts – https://halflife.hackclub.com/projects/prj_123",
+	test("the purpose is the short constant HCB fits in a row", () => {
+		expect(grantCardPurpose()).toBe("Half Life parts")
+		expect(grantCardPurpose().length).toBeLessThanOrEqual(30)
+	})
+
+	test("the instructions name the project and carry its link when an origin is known", () => {
+		expect(grantCardInstructions("Bloom", "prj_1", "https://halflife.hackclub.com")).toBe(
+			"Parts for Bloom – https://halflife.hackclub.com/projects/prj_1",
 		)
-		expect(grantCardPurpose("prj_123", null)).toBe("Half Life parts – HL:prj_123")
+		expect(grantCardInstructions("Bloom", "prj_1", null)).toBe("Parts for Bloom")
 	})
 
 	test("the fingerprint ignores order but notices a changed amount or email", () => {
