@@ -74,7 +74,7 @@ test("an admin can generate and re-download an HCB grant CSV", async ({ openAs }
 	expect(mine?.batchId).toBe(download.suggestedFilename().replace("hcb-card-grants-", "").replace(".csv", ""))
 
 	await page.goto("/admin/grants")
-	await expect(page.getByText("Already in an HCB CSV import")).toBeVisible()
+	await expect(page.getByText("Already in an HCB CSV import").first()).toBeVisible()
 
 	// The history entry re-downloads the exact file.
 	const [again] = await Promise.all([

@@ -48,8 +48,10 @@ const deadEndpoint = "http://127.0.0.1:9"
  * Values here win over the checkout's `.env` because Next only fills in variables that are still undefined. That is why integrations are listed explicitly with dead values rather than left out: leaving one out would let the real `.env` value through.
  */
 export const webServerEnv: { [_: string]: string } = {
-	AIRTABLE_API_KEY: "e2e-disabled",
-	AIRTABLE_BASE_ID: "e2e-disabled",
+	// Empty rather than dead: `getAirtableConfig` treats empty as absent, which is what lets the grant-card
+	// preview's unified-database check skip instead of failing every card in this environment.
+	AIRTABLE_API_KEY: "",
+	AIRTABLE_BASE_ID: "",
 	AIRTABLE_RSVP_TABLE_ID: "e2e-disabled",
 	AIRTABLE_TABLE_NAME: "e2e-disabled",
 	AIRTABLE_UNIFIED_APPROVED_TABLE: "e2e-disabled",
