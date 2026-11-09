@@ -1,9 +1,10 @@
 import Link from "next/link"
+import { ExportGrantCardsCsvForm } from "@/app/components/forms/ExportGrantCardsCsvForm"
 import { IssueGrantCardsForm } from "@/app/components/forms/IssueGrantCardsForm"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { themeLabel } from "@/lib/config/program"
 import { HcbGrantCardBatchStatus, PayoutSource } from "@/lib/enums"
-import { listGrantCardBatches, previewCardGrants } from "@/lib/grant-cards"
+import { listGrantCardBatches, listGrantCardExports, previewCardGrants } from "@/lib/grant-cards"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -20,7 +21,11 @@ const BATCH_TONE: { [_: string]: "success" | "warning" | "danger" | "muted" } = 
 export default async function AdminGrantsPage() {
 	await requirePermissionPage(Permission.MANAGE_CREDIT)
 
-	const [preview, batches] = await Promise.all([previewCardGrants(), listGrantCardBatches(20)])
+	const [preview, batches, csvExports] = await Promise.all([
+		previewCardGrants(),
+		listGrantCardBatches(20),
+		listGrantCardExports(20),
+	])
 
 	return (
 		<div className="hl-stack hl-page-wide">
@@ -54,6 +59,41 @@ export default async function AdminGrantsPage() {
 
 			<Panel title="Issue card grants">
 				<IssueGrantCardsForm initial={preview} />
+			</Panel>
+
+			<Panel title="HCB CSV import">
+				<p className="hl-hint">
+					No HCB API token? Generate an import file instead: it carries the same ready projects and amounts, and
+					uploading it on HCB creates the cards there.
+				</p>
+				<ExportGrantCardsCsvForm
+					initial={{
+						eligibleCount: preview.eligible.length,
+						fingerprint: preview.fingerprint,
+						payoutSource: preview.payoutSource,
+						totalCents: preview.totalCents,
+					}}
+				/>
+			</Panel>
+
+			<Panel title="Generated CSV files" wide>
+				{csvExports.length === 0 ? (
+					<EmptyState>No import file has been generated yet.</EmptyState>
+				) : (
+					<Table head={["File", "Generated", "Cards", "Total", ""]}>
+						{csvExports.map(csvExport => (
+							<tr key={csvExport.batchId}>
+								<td className="hl-mono">{csvExport.batchId}</td>
+								<td>{csvExport.createdAt.toLocaleString()}</td>
+								<td className="hl-mono">{csvExport.count}</td>
+								<td className="hl-mono">{formatUsd(csvExport.totalCents / 100)}</td>
+								<td>
+									<a href={`/api/admin/grant-cards/exports/${csvExport.batchId}/download`}>Download CSV</a>
+								</td>
+							</tr>
+						))}
+					</Table>
+				)}
 			</Panel>
 
 			<Panel title="Ready projects" wide>
