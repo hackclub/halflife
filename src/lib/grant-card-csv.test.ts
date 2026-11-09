@@ -14,17 +14,17 @@ describe("grant card CSV", () => {
 			grantCardCsv([{ amountCents: 1250, email: "maker@example.com", projectId: "prj_1", title: "Bloom" }], null),
 		).toBe(
 			`${GRANT_CARD_CSV_HEADER.join(",")}\n`
-				+ "maker@example.com,1250,Half Life parts – HL:prj_1,Parts funding for Bloom,false,false,Your Half Life parts grant is ready. Accept it to get your card.,,,,,\n",
+				+ "maker@example.com,1250,Half Life parts,Parts for Bloom,false,false,Your Half Life parts grant is ready. Accept it to get your card.,,,,,\n",
 		)
 	})
 
-	test("the purpose reads as a project link when an origin is known", () => {
+	test("the instructions carry the project link when an origin is known", () => {
 		expect(
 			grantCardCsv(
 				[{ amountCents: 1250, email: "maker@example.com", projectId: "prj_1", title: "Bloom" }],
 				"https://halflife.hackclub.com",
 			),
-		).toContain("Half Life parts – https://halflife.hackclub.com/projects/prj_1")
+		).toContain("Parts for Bloom – https://halflife.hackclub.com/projects/prj_1")
 	})
 
 	test("quotes a title that holds a comma or quote so no column shifts", () => {
@@ -33,7 +33,7 @@ describe("grant card CSV", () => {
 			null,
 		)
 		const [, line] = csv.split("\n")
-		expect(line).toContain('"Parts funding for Gadget, the ""deluxe"""')
+		expect(line).toContain('"Parts for Gadget, the ""deluxe"""')
 	})
 
 	test("keeps one row per project in the order it was prepared", () => {
