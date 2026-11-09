@@ -62,6 +62,8 @@ export const YSWS_SUBMISSION = {
 		description: f<string>("fldYswsDescription", "Description"),
 		email: f<string>("fldYswsEmail", "Email"),
 		firstName: f<string>("fldYswsFirstName", "First Name"),
+		// Stamped by the pipeline the first time the row reaches the unified base; empty for a row that never has. The only evidence a project is in the unified database, so the grant preview reads it back and only pays those (see `readUnifiedSubmitted` in lib/airtable/ysws).
+		firstSubmittedAt: f<string>("fldYswsFirstSubmittedAt", "Automation - First Submitted At"),
 		githubUsername: f<string>("fldYswsGithubUsername", "GitHub Username"),
 		hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
 		hackatimeProjects: f<string>(

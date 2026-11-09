@@ -21,6 +21,14 @@ export function grantCardPurpose(projectId: string): string {
 	return `Half Life parts – ${GRANT_CARD_MARKER_PREFIX}${projectId}`
 }
 
+/** What the maker is told the money is for. Shared by the v4 create and the CSV import row. */
+export function grantCardInstructions(title: string): string {
+	return `Parts funding for ${title || "your Half Life project"}.`
+}
+
+/** The message HCB shows when it invites the maker to accept the card. Shared by the v4 create and the CSV row. */
+export const GRANT_CARD_INVITE_MESSAGE = "Your Half Life parts grant is ready. Accept it to get your card."
+
 /** A fingerprint of exactly what a preview offered, so a stale confirmation cannot issue a different amount. */
 export function grantCardFingerprint(
 	rows: readonly { amountCents: number; email: string; projectId: string }[],

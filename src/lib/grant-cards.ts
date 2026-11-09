@@ -1,10 +1,20 @@
 import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
+import { getAirtableConfig } from "@/lib/airtable/client"
+import { recordIdsFromSyncEvents } from "@/lib/airtable/sync"
+import { readUnifiedSubmitted } from "@/lib/airtable/ysws"
 import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { displayName } from "@/lib/display-name"
 import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, type Theme } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
-import { grantCardAmountCents, grantCardFingerprint, grantCardPurpose } from "@/lib/grant-card-policy"
+import { grantCardCsv } from "@/lib/grant-card-csv"
+import {
+	GRANT_CARD_INVITE_MESSAGE,
+	grantCardAmountCents,
+	grantCardFingerprint,
+	grantCardInstructions,
+	grantCardPurpose,
+} from "@/lib/grant-card-policy"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {
 	cancelCardGrant,
@@ -118,6 +128,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 				.where({ phase: Phase.DESIGN })
 				.where(topUp => topUp.sentAt.isNotNull()),
 		)
+		.include("hcbCardGrantExports", exports => exports.select("id"))
 		.all()
 
 	const eligible: GrantCardProjectRow[] = []
@@ -147,9 +158,11 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 					? "Identity is not verified"
 					: row.hcbGrantTopUps.length > 0
 						? "Already paid by HCB top-up"
-						: liveCard
-							? "Card grant already issued or awaiting reconciliation"
-							: null
+						: row.hcbCardGrantExports.length > 0
+							? "Already in an HCB CSV import"
+							: liveCard
+								? "Card grant already issued or awaiting reconciliation"
+								: null
 		if (reason) {
 			excluded.push({ ownerName, projectId: row.id, reason, title: row.title })
 			continue
@@ -174,14 +187,62 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 		})
 	}
 
+	const gated = await applyUnifiedGate(client, eligible, excluded)
+
 	return {
-		eligible: eligible.toSorted((a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title)),
-		excluded: excluded.toSorted((a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title)),
-		fingerprint: grantCardFingerprint(
-			eligible.map(row => ({ amountCents: row.amountCents, email: row.email, projectId: row.projectId })),
+		eligible: gated.eligible.toSorted(
+			(a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title),
 		),
-		totalCents: eligible.reduce((total, row) => total + row.amountCents, 0),
+		excluded: gated.excluded.toSorted(
+			(a, b) => a.ownerName.localeCompare(b.ownerName) || a.title.localeCompare(b.title),
+		),
+		fingerprint: grantCardFingerprint(
+			gated.eligible.map(row => ({ amountCents: row.amountCents, email: row.email, projectId: row.projectId })),
+		),
+		totalCents: gated.eligible.reduce((total, row) => total + row.amountCents, 0),
 	}
+}
+
+/**
+ * Keep only the rows in the unified database.
+ *
+ * A project reaches the unified base through the pipeline, and the only evidence here is `Automation - First
+ * Submitted At` on the design's YSWS row (see `readUnifiedSubmitted`). This runs after the local checks, so the
+ * Airtable reads only cover projects that are otherwise ready to pay. It fails closed: a project that cannot be
+ * proved to be in the unified database is excluded either way, with the reason naming why.
+ */
+async function applyUnifiedGate(
+	client: DbOrTx,
+	eligible: GrantCardProjectRow[],
+	excluded: GrantCardExclusion[],
+): Promise<{ eligible: GrantCardProjectRow[]; excluded: GrantCardExclusion[] }> {
+	if (eligible.length === 0 || !getAirtableConfig()) return { eligible, excluded }
+
+	const events = await client.orm.public.AuditLog.where({ action: "AIRTABLE_SYNC_SUCCESS" })
+		.where(entry => entry.targetId.in(eligible.map(row => row.projectId)))
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
+	const recordIds = recordIdsFromSyncEvents(events)
+	const recordIdOf = (row: GrantCardProjectRow) => recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
+	const submitted = await readUnifiedSubmitted(eligible.map(recordIdOf).filter((id): id is string => Boolean(id)))
+
+	const kept: GrantCardProjectRow[] = []
+	const gone = [...excluded]
+	for (const row of eligible) {
+		const recordId = recordIdOf(row)
+		if (submitted && recordId && submitted.has(recordId)) {
+			kept.push(row)
+			continue
+		}
+		gone.push({
+			ownerName: row.ownerName,
+			projectId: row.projectId,
+			reason: submitted ? "Not in the unified database" : "Could not check the unified database",
+			title: row.title,
+		})
+	}
+	return { eligible: kept, excluded: gone }
 }
 
 /** Everything the admin needs to decide whether to press the button. */
@@ -288,6 +349,144 @@ export async function createGrantCardBatch(input: CreateGrantCardBatchInput): Pr
 	})
 
 	return result
+}
+
+export interface CreateGrantCardExportInput {
+	admin: { email: string | null; id: string }
+	fingerprint: string
+}
+
+export interface GrantCardExportSummary {
+	batchId: string
+	count: number
+	createdAt: Date
+	totalCents: number
+}
+
+/**
+ * Freeze a preview into an import file.
+ *
+ * The upload is half the payment: HCB creates the cards, Half Life only records which projects were in the file.
+ * It is frozen the same way a batch is (fingerprint + atomic rows, audited as one action) so the file can be
+ * re-downloaded exactly, and a project can never land in two of them – the unique index refuses that.
+ */
+export async function createGrantCardExportBatch(input: CreateGrantCardExportInput): Promise<{
+	batchId: string
+	csv: string
+	filename: string
+	totalCents: number
+}> {
+	const settings = await getProgramSettings()
+	if (settings.payoutSource !== PayoutSource.HCB)
+		throw new HttpError("CONFLICT", "Payouts are not set to HCB card grants")
+
+	const current = await buildPreview(db)
+	if (current.eligible.length === 0) throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
+	if (current.fingerprint !== input.fingerprint)
+		throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
+
+	const { ip, userAgent } = await requestInfo()
+	const result = await db.transaction(async tx => {
+		// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through.
+		const txPreview = await buildPreview(tx)
+		if (txPreview.fingerprint !== input.fingerprint)
+			throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
+		if (txPreview.eligible.length === 0)
+			throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
+
+		const batch = await tx.orm.public.HcbCardGrantExportBatch.create({
+			createdById: input.admin.id,
+			fingerprint: txPreview.fingerprint,
+			totalCents: txPreview.totalCents,
+		})
+		try {
+			await tx.orm.public.HcbCardGrantExportRow.createAll(
+				txPreview.eligible.map(row => ({
+					amountCents: row.amountCents,
+					batchId: batch.id,
+					email: row.email,
+					themeProjectId: row.projectId,
+				})),
+			)
+		} catch (err) {
+			// The unique index is what tells us; naming the reason is more useful than a generic conflict.
+			if (isUniqueViolation(err))
+				throw new HttpError("CONFLICT", "Another export already claimed one of these projects")
+			throw err
+		}
+
+		await logAuditTx(tx, {
+			action: AuditAction.ADMIN_CREATE_GRANT_CARD_EXPORT,
+			actorEmail: input.admin.email,
+			actorId: input.admin.id,
+			ip,
+			metadata: {
+				count: txPreview.eligible.length,
+				fingerprint: txPreview.fingerprint,
+				totalCents: txPreview.totalCents,
+			},
+			targetId: batch.id,
+			targetType: "HcbCardGrantExportBatch",
+			userAgent,
+		})
+		return { batchId: batch.id, eligible: txPreview.eligible, totalCents: txPreview.totalCents }
+	})
+
+	return {
+		batchId: result.batchId,
+		csv: grantCardCsv(
+			result.eligible.map(row => ({
+				amountCents: row.amountCents,
+				email: row.email,
+				projectId: row.projectId,
+				title: row.title,
+			})),
+		),
+		filename: `hcb-card-grants-${result.batchId}.csv`,
+		totalCents: result.totalCents,
+	}
+}
+
+/** The most recent import files. Read-only history: the rows are the record of what each file held. */
+export async function listGrantCardExports(limit: number): Promise<GrantCardExportSummary[]> {
+	const batches = await db.orm.public.HcbCardGrantExportBatch.where({})
+		.orderBy(row => row.createdAt.desc())
+		.limit(limit)
+		.all()
+	if (batches.length === 0) return []
+	const rows = await db.orm.public.HcbCardGrantExportRow.where(row => row.batchId.in(batches.map(b => b.id)))
+		.select("batchId")
+		.all()
+	const counts = new Map<string, number>()
+	for (const row of rows) counts.set(row.batchId, (counts.get(row.batchId) ?? 0) + 1)
+	return batches.map(batch => ({
+		batchId: batch.id,
+		count: counts.get(batch.id) ?? 0,
+		createdAt: parseDbTimestamp(batch.createdAt),
+		totalCents: batch.totalCents,
+	}))
+}
+
+/** Rebuild the file a generated export held, or null if there is no such export. */
+export async function grantCardExportCsv(batchId: string): Promise<{ csv: string; filename: string } | null> {
+	const rows = await db.orm.public.HcbCardGrantExportRow.where({ batchId })
+		.include("themeProject", project => project.select("title"))
+		// The batch inserted its rows in one transaction, so createdAt ties; id keeps the order stable.
+		.orderBy([row => row.createdAt.asc(), row => row.id.asc()])
+		.select("amountCents", "email", "themeProjectId")
+		.all()
+	if (rows.length === 0) return null
+	return {
+		csv: grantCardCsv(
+			rows.map(row => ({
+				amountCents: row.amountCents,
+				email: row.email,
+				projectId: row.themeProjectId,
+				title: row.themeProject?.title ?? "",
+			})),
+		),
+		filename: `hcb-card-grants-${batchId}.csv`,
+	}
 }
 
 export interface ProcessGrantCardBatchInput {
@@ -559,8 +758,8 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			const grant = await createCardGrant({
 				amountCents,
 				email: project.user.email,
-				instructions: `Parts funding for ${project.title || "your Half Life project"}.`,
-				inviteMessage: "Your Half Life parts grant is ready. Accept it to get your card.",
+				instructions: grantCardInstructions(project.title),
+				inviteMessage: GRANT_CARD_INVITE_MESSAGE,
 				purpose,
 			})
 			const responseEmail = grant.email?.trim().toLowerCase()

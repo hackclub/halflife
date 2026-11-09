@@ -20,6 +20,7 @@ export type ThemeProjectRow = Omit<
 	| "posts"
 	| "workSessions"
 	| "submissions"
+	| "hcbCardGrantExports"
 	| "hcbGrantCards"
 	| "hcbGrantTopUps"
 	| "hackatimeLinks"

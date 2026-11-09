@@ -35,12 +35,14 @@ export function ShopItemCard({
 		<Panel as="li" className="group flex flex-col overflow-hidden bg-paper" radius={20} tone="line">
 			{/* The action lives under the photo on a phone and lifts onto it from sm, where a hover reveals it. A phone has no hover, so an overlaid button is always showing – and "not enough coins" over a small shelf image covered a third of the thing being bought. */}
 			<div className="relative">
-				{/* Capped at 30vh so a wide card cannot grow a towering photo; the image stays object-contain inside it, so it shrinks to fit rather than being cropped. */}
-				<div className="relative grid aspect-[4/3] max-h-[30vh] place-items-center bg-cream/70 p-3">
+				{/* Capped at 30vh so a wide card cannot grow a towering photo; the image stays object-contain inside it, so it shrinks to fit rather than being cropped.
+				 *
+				 * The single track is `minmax(0, 1fr)` and the box clips. With an `auto` row, the image's `h-full` resolved against a row that grew to the photo's own height, so a square or portrait photo ran out of the 4:3 box and, the box being positioned, painted over the name and description under it. */}
+				<div className="relative grid aspect-[4/3] max-h-[30vh] grid-cols-1 grid-rows-1 place-items-center overflow-hidden bg-cream/70 p-3">
 					{/* The photo staff set on the item; until there is one, gato minding a box of parts, so the shelf never shows a hole. */}
 					{item.imageUrl ? (
 						// staff paste any host into the item's image field
-						<img alt="" className="h-full w-full object-contain" loading="lazy" src={item.imageUrl} />
+						<img alt="" className="h-full min-h-0 w-full min-w-0 object-contain" loading="lazy" src={item.imageUrl} />
 					) : (
 						<Gato className="sticker-shadow h-full w-auto max-w-full" pose="box" sizes="200px" />
 					)}
