@@ -458,14 +458,16 @@ export async function getOpenDisputesForProject(projectId: string): Promise<Proj
 
 export async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {
 	const fetched = await db.orm.public.ThemeProject.where({ deletedAt: null, id })
-		.where(project => project.namedAt.isNotNull())
 		.select(
 			"approvedHours",
+			"buildStatus",
 			"coverImageKey",
 			"description",
 			"designApprovedHours",
+			"designStatus",
 			"githubRepo",
 			"id",
+			"namedAt",
 			"theme",
 			"title",
 		)
@@ -499,8 +501,16 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 				),
 		)
 		.first()
-	// A row nobody has started is a placeholder made at sign-up, not a project.
+	// A row nobody has started is a placeholder made at sign-up, not a project – the same test the trail uses when
+	// it lists projects, rather than the analytics stamp: a submitted and approved project is started even if the
+	// stamp never landed, and anyone holding a grant-card link to it should not land on "No such project".
 	if (!fetched?.user) return null
+	const started =
+		fetched.namedAt !== null
+		|| Boolean(fetched.description?.trim())
+		|| fetched.designStatus !== PhaseStatus.draft
+		|| fetched.buildStatus !== PhaseStatus.draft
+	if (!started) return null
 	const { user, ...rest } = fetched
 	const project = {
 		...rest,
