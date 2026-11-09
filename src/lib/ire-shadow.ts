@@ -141,10 +141,11 @@ export async function sendSubmissionToIre(
 
 	try {
 		if (existing?.remoteId && existing.closedAt === null)
-			if (existing.lastSubmissionId === submissionId) 
-				// A healthy row normally means Ire has the ship. A forced resend withdraws and re-creates it so a
-				// payload change reaches Ire; a verified full resend only recreates ships Ire has lost.
-				if (opts?.resend) await withdrawRow(existing)
+			if (existing.lastSubmissionId === submissionId)
+				if (opts?.resend)
+					// A healthy row normally means Ire has the ship. A forced resend withdraws and re-creates it so a
+					// payload change reaches Ire; a verified full resend only recreates ships Ire has lost.
+					await withdrawRow(existing)
 				else if (!opts?.verify)
 					return {
 						id: existing.remoteId,
@@ -160,7 +161,7 @@ export async function sendSubmissionToIre(
 							...(existing.version === null ? {} : { version: existing.version }),
 						}
 				}
-			 else await withdrawRow(existing)
+			else await withdrawRow(existing)
 
 		const created: IreShipCreated = await createIreShip(input, submissionId)
 		await recordShip({
