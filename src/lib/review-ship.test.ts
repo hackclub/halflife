@@ -20,6 +20,7 @@ const input: ReviewShipInput = {
 		week: 1,
 	},
 	repo_url: "https://github.com/maker/board",
+	submitted_at: "2026-10-22T14:25:05.757Z",
 	thumbnail_url: "https://example.com/board.png",
 	title: "Board",
 	track: "hardware",
@@ -39,6 +40,12 @@ describe("toAriShipInput", () => {
 		expect(ari.meta).not.toHaveProperty("bom")
 		expect(ari.meta).not.toHaveProperty("hours")
 		expect(ari.meta).not.toHaveProperty("prior_reviews")
+	})
+
+	test("strips submitted_at, which is only for Ire", () => {
+		const ari = toAriShipInput(input)
+		expect("submitted_at" in ari).toBe(false)
+		expect(input.submitted_at).toBe("2026-10-22T14:25:05.757Z")
 	})
 
 	test("leaves the rest of the ship untouched", () => {

@@ -85,6 +85,8 @@ export interface ReviewShipInput {
 	maker: ReviewMaker
 	meta: ReviewShipMeta
 	repo_url: string
+	/** When the maker handed this phase in (the open submission's creation time), as ISO 8601. Ire uses it for "time since submitted"; Ari does not take it. */
+	submitted_at?: string
 	thumbnail_url: string
 	title: string
 	track: "hardware"
@@ -170,19 +172,20 @@ export function isWordlessJournal(content: string | null, title: string): boolea
 	return !sanitize(content ?? "") && (!storedTitle || storedTitle === DEFAULT_SESSION_TITLE)
 }
 
-/** The exact Ari payload, with the nested Review-only meta removed. */
+/** The exact Ari payload, with the nested Review-only meta and Ire-only fields removed. */
 export function toAriShipInput(input: ReviewShipInput): AriShipInput {
+	const { submitted_at: _submittedAt, ...rest } = input
 	return {
-		...input,
+		...rest,
 		meta: {
-			phase: input.meta.phase,
-			program: input.meta.program,
-			requested_tier: input.meta.requested_tier,
-			submission_notes: input.meta.submission_notes,
-			theme: input.meta.theme,
-			week: input.meta.week,
+			phase: rest.meta.phase,
+			program: rest.meta.program,
+			requested_tier: rest.meta.requested_tier,
+			submission_notes: rest.meta.submission_notes,
+			theme: rest.meta.theme,
+			week: rest.meta.week,
 		},
-	}
+	} as AriShipInput
 }
 
 async function buildReviewShipInput(
@@ -198,7 +201,9 @@ async function buildReviewShipInput(
 		)
 		.include("hackatimeLinks", links => links.where({ phase }).select("hackatimeProject"))
 		.include("submissions", submissions =>
-			submissions.orderBy(submission => submission.createdAt.desc()).select("id", "notes", "phase", "resolvedAt"),
+			submissions
+				.orderBy(submission => submission.createdAt.desc())
+				.select("createdAt", "id", "notes", "phase", "resolvedAt"),
 		)
 		.include("user", user => user.select("email", "hackatimeUserId", "name", "slackId"))
 		.include("workSessions", sessions =>
@@ -275,6 +280,7 @@ async function buildReviewShipInput(
 
 	const phaseSubmissions = project.submissions.filter(s => s.phase === phase)
 	const openSubmission = phaseSubmissions.find(s => s.resolvedAt === null) ?? phaseSubmissions[0] ?? null
+	const submittedAt = openSubmission ? parseDbTimestamp(openSubmission.createdAt).toISOString() : undefined
 	const isUpdate = phaseSubmissions.some(s => s.resolvedAt !== null)
 	const demoUrl = phase === Phase.BUILD ? await buildDemoUrl(project.userId, def.buildWeek) : null
 	const hasTimelapse = project.workSessions.some(s => s.timelapses.length > 0)
@@ -315,6 +321,7 @@ async function buildReviewShipInput(
 			// No `program_hours`: Half Life's time is exactly the journals and Hackatime projects below, which the provider counts itself. Reporting the same hours as program-provided time would make it count them twice.
 		},
 		repo_url: repoUrl,
+		...(submittedAt ? { submitted_at: submittedAt } : {}),
 		thumbnail_url: thumbnailFor(project.coverImageKey, def.slug),
 		title: project.title,
 		// Half Life is a hardware programme, so a demo video is optional.
