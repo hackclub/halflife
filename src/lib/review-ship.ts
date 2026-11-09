@@ -185,7 +185,7 @@ export function toAriShipInput(input: ReviewShipInput): AriShipInput {
 			theme: rest.meta.theme,
 			week: rest.meta.week,
 		},
-	} as AriShipInput
+	}
 }
 
 async function buildReviewShipInput(
