@@ -8,14 +8,16 @@ import { trackSideEffect } from "../src/lib/side-effects"
  *
  * The deploy path sends every new submission, but the queue that existed when Ire was connected has to be replayed once. Only the newest open submission per phase is sent: older rows are history, and `meta.prior_reviews` carries what a reviewer needs from them. Re-running is safe; Ire returns the open ship as `already_queued` and the send path adopts it.
  *
- * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/ire-shadow-backfill.ts [--commit] [--limit=N] [--all]`.
+ * Read-only unless `--commit`. Run with `bun --conditions=react-server scripts/ire-shadow-backfill.ts [--commit] [--limit=N] [--all] [--resend]`.
  *
  * `--all` resends every undecided hand-in in review, not just the ones missing a healthy ship. Healthy ships resolve as duplicates without new versions; decided ships are never resent.
  * In `--all` mode each healthy-looking row is verified against Ire first, so ships Ire lost (a wiped shadow database, an operator withdraw) are recreated instead of trusted blindly.
+ * `--resend` withdraws and re-creates every undecided open ship, even healthy ones, so a payload change (for example `submitted_at`) reaches Ire as a new version. Use it to backfill submission dates after deploying the payload change.
  */
 
 const commit = process.argv.includes("--commit")
 const all = process.argv.includes("--all")
+const resend = process.argv.includes("--resend")
 const limitArg = process.argv.find(arg => arg.startsWith("--limit="))
 const limit = limitArg ? Number(limitArg.slice("--limit=".length)) : undefined
 
@@ -29,14 +31,17 @@ async function main() {
 		process.exit(1)
 	}
 
-	const pending = (await (all ? findAllOpenIreSubmissions() : findUnsyncedIreSubmissions())).slice(
+	const scopeAll = all || resend
+	const pending = (await (scopeAll ? findAllOpenIreSubmissions() : findUnsyncedIreSubmissions())).slice(
 		0,
 		limit ?? undefined,
 	)
 	console.log(
-		all
-			? `${pending.length} open hand-in(s) will be resent to Ire`
-			: `${pending.length} hand-in(s) have no healthy shadow ship in Ire`,
+		resend
+			? `${pending.length} open hand-in(s) will be withdrawn and re-created to backfill payload changes`
+			: all
+				? `${pending.length} open hand-in(s) will be resent to Ire`
+				: `${pending.length} hand-in(s) have no healthy shadow ship in Ire`,
 	)
 	for (const item of pending)
 		console.log(`  ${item.themeProjectId}:${item.phase}${item.reason ? ` - ${item.reason}` : ""}`)
@@ -54,11 +59,16 @@ async function main() {
 			"ire",
 			{
 				actorId: null,
-				metadata: { backfill: true, phase: item.phase, shadow: true },
+				metadata: { backfill: true, phase: item.phase, resend, shadow: true },
 				targetId: item.themeProjectId,
 				targetType: "ThemeProject",
 			},
-			() => sendSubmissionToIre(item.themeProjectId, item.phase, all ? { verify: true } : undefined),
+			() =>
+				sendSubmissionToIre(
+					item.themeProjectId,
+					item.phase,
+					resend ? { resend: true } : all ? { verify: true } : undefined,
+				),
 		)
 		if (!result) failed++
 		else if ("skipped" in result) failed++
