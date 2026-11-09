@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { projectSecondsFrom, projectsByName } from "@/lib/hackatime"
+import { Phase, Theme } from "@/lib/enums"
+import { phaseWeekWindowSeconds, projectSecondsFrom, projectsByName } from "@/lib/hackatime"
 
 describe("projectSecondsFrom", () => {
 	test("adds every entry Hackatime lists under one name", () => {
@@ -45,5 +46,47 @@ describe("projectsByName", () => {
 			{ name: "b", totalSeconds: 2 },
 			{ name: "a", totalSeconds: 1 },
 		])
+	})
+})
+
+describe("phaseWeekWindowSeconds", () => {
+	const monday = new Date("2026-09-14T00:00:00Z")
+	const settings = { eventStartDate: monday, programTimezone: "UTC" }
+
+	test("the start is the Monday the week opens on, and the end is Sunday 11:59PM", () => {
+		expect(phaseWeekWindowSeconds(settings, Theme.PCB, Phase.DESIGN, {})).toEqual({
+			fromSeconds: 1789344000,
+			toSeconds: 1789948740,
+		})
+	})
+
+	test("a phase with no week in the calendar has no window", () => {
+		expect(phaseWeekWindowSeconds(settings, Theme.WARMUP, Phase.DESIGN, {})).toBeNull()
+	})
+
+	test("an extension past the scheduled Sunday widens the window", () => {
+		expect(
+			phaseWeekWindowSeconds(settings, Theme.PCB, Phase.DESIGN, {
+				userUntil: new Date("2026-09-24T23:59:00Z"),
+			}),
+		).toEqual({ fromSeconds: 1789344000, toSeconds: 1790294340 })
+	})
+
+	test("an extension that is shorter than the scheduled close does not shrink it", () => {
+		expect(
+			phaseWeekWindowSeconds(settings, Theme.PCB, Phase.DESIGN, {
+				projectUntil: new Date("2026-09-15T23:59:00Z"),
+			}),
+		).toEqual({ fromSeconds: 1789344000, toSeconds: 1789948740 })
+	})
+
+	test("the latest of the three extensions wins", () => {
+		expect(
+			phaseWeekWindowSeconds(settings, Theme.PCB, Phase.DESIGN, {
+				projectUntil: new Date("2026-09-24T23:59:00Z"),
+				userUntil: new Date("2026-09-22T23:59:00Z"),
+				weekUntil: new Date("2026-09-21T23:59:00Z"),
+			}),
+		).toEqual({ fromSeconds: 1789344000, toSeconds: 1790294340 })
 	})
 })

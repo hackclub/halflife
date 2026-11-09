@@ -107,7 +107,10 @@ export async function getHoursBreakdown(
 	if (project && !project.user) throw new Error(`project ${themeProjectId} has no owner`)
 	const hackatimeUserId = project?.user?.hackatimeUserId ?? null
 	// Week-scoped like the link route: the live re-read must answer the same question the link was created with, or a refresh would silently swap the week's hours for the all-time total. Warm-ups keep the all-time total (no week to scope to).
-	const liveWindow = live && hackatimeUserId && project ? await phaseWeekWindow(project.theme, phase) : null
+	const liveWindow =
+		live && hackatimeUserId && project
+			? await phaseWeekWindow(project.theme, phase, project.userId, themeProjectId)
+			: null
 	// This maker's recordings on their OTHER projects and phases, fetched only when there is a link to deduplicate against – the only time they can matter. A clip attached in one week carries tracked time that may have been linked on another week's project, and the recording's own `hackatimeProject` is what pairs the two.
 	const elsewhere =
 		links.length === 0 || !project ? [] : await elsewhereRecordings(client, project.userId, themeProjectId, phase)
