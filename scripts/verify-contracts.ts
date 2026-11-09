@@ -1793,8 +1793,8 @@ async function checkTickets(): Promise<void> {
 async function checkJustification(): Promise<void> {
 	/* ── 6d. The Airtable justification columns ─────────────────────────────── */
 	//
-	// The `Justification - …` columns on a submission row are the evidence a grant reviewer reads, and the pipeline merges them into one blob on the row. Two things about them are pinned here, because both fail silently: a column we have nothing for must be left OUT of the payload rather than written blank (a blank erases the only record of evidence the base holds – the Lapse links on the pre-season rows came from the form and were never given to Postgres), and the technical-features text must not repeat the description it already quotes.
-	const { justificationValues, NO_FEATURES_RECORDED, specificTechnicalFeatures, timelapseLinks } = await import(
+	// The `Justification - …` columns on a submission row are the evidence a grant reviewer reads, and the pipeline merges them into one blob on the row. Two things about them are pinned here, because both fail silently: a column we have nothing for must be left OUT of the payload rather than written blank (a blank erases the only record of evidence the base holds – the Lapse links on the pre-season rows came from the form and were never given to Postgres), and the technical-features column carries only the reviewer's technical-features box, never a dump of maker journal text.
+	const { justificationValues, reviewerTechnicalFeaturesCell, timelapseLinks } = await import(
 		"../src/lib/airtable/justification"
 	)
 	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/lib/enums")
@@ -1817,67 +1817,12 @@ async function checkJustification(): Promise<void> {
 			],
 		}
 
-		const features = specificTechnicalFeatures(source, JustPhase.DESIGN)
-		check("justification · the description is the first thing said", features.startsWith(description))
-		check("justification · a part carries its purpose", features.includes("- PLA filament: the case itself (×2)"))
-		check("justification · the work log is in it", features.includes("- Modelling: 3h (2026-10-06)"))
-		check("justification · the log is headed for the phase", features.includes("Design log:"))
-
-		// A warm-up row's one session holds the description and the links that came with it, so quoting it would only repeat the description above it.
-		const warmup = {
-			...source,
-			workSessions: [
-				{
-					content: `${description}\n\nJournal: https://example.test/j.md\n\nPlayable: https://example.test/p\n\nTimelapse: https://lapse.hackclub.com/timelapse/abc`,
-					createdAt: new Date("2026-09-28T10:00:00Z"),
-					effectiveDate: "2026-09-28",
-					hoursClaimed: 15,
-					title: "Moonboard case (warm-up submission)",
-				},
-			],
-		}
-		const warmupFeatures = specificTechnicalFeatures(warmup, JustPhase.BUILD)
+		// The reviewer's cell is their own box contents, trimmed, and nothing about the build is copied there.
 		check(
-			"justification · a warm-up session does not repeat the description",
-			warmupFeatures.split(description).length === 2,
-			"the description appears twice",
+			"justification · the technical features are the reviewer's own words",
+			reviewerTechnicalFeaturesCell("  KiCad PCB.  ") === "KiCad PCB.",
 		)
-		check("justification · a warm-up session still names the work", warmupFeatures.includes("warm-up submission"))
-		check("justification · a build's log is headed for the phase", warmupFeatures.includes("Build log:"))
-
-		// A maker's own entry that opens with "Journal:" is their words, not one of the import's link lines.
-		const journalish = specificTechnicalFeatures(
-			{
-				...source,
-				workSessions: [
-					{
-						content: "Journal: the flux finally took.",
-						createdAt: new Date("2026-10-06T10:00:00Z"),
-						effectiveDate: "2026-10-06",
-						hoursClaimed: 1,
-						title: "Soldering",
-					},
-				],
-			},
-			JustPhase.DESIGN,
-		)
-		check("justification · a maker's own journal line is quoted", journalish.includes("the flux finally took."))
-
-		// Nothing at all is nothing, not a heading with nothing under it.
-		check(
-			"justification · an empty project says nothing",
-			specificTechnicalFeatures(
-				{
-					bomItems: [],
-					description: null,
-					hackatimeProjects: [],
-					hackatimeUserId: null,
-					lapseLinks: [],
-					workSessions: [],
-				},
-				JustPhase.BUILD,
-			) === "",
-		)
+		check("justification · no reviewer words writes an empty cell", reviewerTechnicalFeaturesCell(null) === "")
 
 		const values = justificationValues(source, {
 			eventStart: new Date("2026-10-05T00:00:00.000Z"),
@@ -1891,9 +1836,8 @@ async function checkJustification(): Promise<void> {
 			values.hackatimeProjects,
 		)
 		check("justification · the Lapse links are written", values.lapseLinks === source.lapseLinks[0])
-		check("justification · the technical features are written", values.specificTechnicalFeatures === features)
 
-		// The rule that keeps a re-sync from destroying evidence: an evidence column we have nothing for is left out of the payload, not written as an empty string. Airtable treats an empty string as "clear this cell". The technical-features column is the exception – the pipeline always makes a `[SPECIFIC TECHNICAL FEATURES]` section for it, so the row always carries something.
+		// The rule that keeps a re-sync from destroying evidence: an evidence column we have nothing for is left out of the payload, not written as an empty string. Airtable treats an empty string as "clear this cell".
 		const bare = justificationValues(
 			{
 				bomItems: [],
@@ -1905,16 +1849,7 @@ async function checkJustification(): Promise<void> {
 			},
 			{ eventStart: new Date("2026-10-05T00:00:00.000Z"), phase: JustPhase.BUILD, theme: JustTheme.PCB },
 		)
-		check("justification · an empty evidence column is omitted, not blanked", Object.keys(bare).length === 1)
-		check(
-			"justification · the technical features are never omitted",
-			bare.specificTechnicalFeatures === NO_FEATURES_RECORDED,
-			bare.specificTechnicalFeatures,
-		)
-		check(
-			"justification · a column with nothing in it is not an empty string",
-			Object.values(bare).every(value => value !== ""),
-		)
+		check("justification · an empty evidence column is omitted, not blanked", Object.keys(bare).length === 0)
 
 		// A Lapse recording is watched on Lapse by its own id; an older upload is watched where it was put.
 		check(

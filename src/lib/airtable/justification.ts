@@ -2,16 +2,14 @@ import { fmtHours } from "@/lib/numbers"
 import { DAY_MS } from "@/lib/time"
 import "server-only"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { Phase, type Theme } from "@/lib/enums"
+import type { Phase, Theme } from "@/lib/enums"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
  * The `Justification - …` columns of a submission row, and the text behind them.
  *
- * Three of the five are evidence the maker produced – their Hackatime identity, the Hackatime projects they tracked time in, and the timelapses they recorded – one is the account of what they actually built, and the last is the method the hours rest on when there is neither Hackatime nor Lapse evidence to point at. They sit together on the row because the pipeline merges them into one justification blob (`Automation - Unified Justification`), where the evidence lands under `[HACKATIME]` and the account under `[SPECIFIC TECHNICAL FEATURES]`. A row with an empty account gives the pipeline an empty blob, which is why the account is written from the maker's own work rather than left to the pipeline, and why it is the one column that is always present – see `NO_FEATURES_RECORDED`.
- *
- * Everything a maker wrote is kept as the maker's words: the description they wrote, the parts they listed, the journal entries they kept. A reviewer's words belong in the separate columns for them: their technical features are added to the specific-features column under their own heading (see `withReviewerTechnicalFeatures`), and their note on the decision is written to `Justification - Additional Justification`. The alternate-tracking column stays a statement of the method, not a review note.
+ * Four are the evidence the maker's work produced – their Hackatime identity, the Hackatime projects they tracked time in, the timelapses they recorded, and, only when there is neither Hackatime nor Lapse evidence to follow, the devlog method the hours rest on. A sixth is the reviewer's own account of what the project has that accounts for the hours – Ari's `technical_features`, written verbatim. The pipeline merges those columns into one blob (`Automation - Unified Justification`). No journal text is copied into any of them: a decision's maker-facing feedback lives in the Loops status columns, and the journal dump this used to quote was never the reviewer's words anyway.
  */
 
 /** One journal entry, as far as a justification cares. */
@@ -59,7 +57,7 @@ export interface JustificationSource {
  *
  * An evidence column is written with what we hold and left alone when we hold nothing. A blank written over one erases the only record of it, and for the pre-season rows Half Life imported, the Lapse links came from the form and were never handed to Postgres as timelapses – so a blank there would destroy evidence the base is the only place to find.
  *
- * `specificTechnicalFeatures` is the exception: it is never omitted. The pipeline's merged blob has a `[SPECIFIC TECHNICAL FEATURES]` section whether or not we fill it, and a grant reviewer reads that section first – an empty one is a submission with no account of what was built. Every row therefore carries the maker's text, or the marker in `NO_FEATURES_RECORDED` when they left nothing to say.
+ * The reviewer's technical features are never in here: they arrive with the decision, so the decision mirror writes them (see `reviewerTechnicalFeaturesCell`), and a column nobody has decided on yet simply holds nothing for it.
  *
  * `alternateTracking` is filled only when there is no Hackatime or Lapse evidence to point at. See `alternateTrackingJustification` for what it says and when.
  */
@@ -68,35 +66,7 @@ export interface JustificationValues {
 	hackatimeId?: string
 	hackatimeProjects?: string
 	lapseLinks?: string
-	specificTechnicalFeatures: string
 }
-
-/** The most text worth sending. A reviewer reads a summary of the work, not a journal dump. */
-const MAX_CHARS = 8_000
-
-/**
- * What the technical-features column says when the maker left nothing to build it from.
- *
- * The column is loaded into the pipeline's `[SPECIFIC TECHNICAL FEATURES]` section on every row, and a section with nothing under it reads as a gap rather than as "nothing was recorded". A submission cannot normally reach here – the submit gate refuses a project with no description – so this is the guarantee for an imported or historical row rather than a common answer.
- */
-export const NO_FEATURES_RECORDED = "No technical description or build log was recorded for this submission."
-
-/** How much of one journal entry is quoted. */
-const EXCERPT_CHARS = 300
-
-/**
- * The lines the warm-up import folds into a session's text.
- *
- * The pre-season form's submission was turned into one session carrying the description and the links that came with it, so quoting that session would only repeat what the description above it already says. Only a link counts as one of those: a maker's own journal entry that opens with "Journal:" is their words and stays.
- */
-const EVIDENCE_LINE = /^(journal|playable|timelapse)\s*:\s*(https?:\/\/\S+|N\/?A)$/i
-
-/**
- * How much of the description's opening has to match before an entry counts as the description.
- *
- * A maker who edits their project description after the pre-season import leaves the old one in the session's text, and it is quoted as a journal entry unless it is recognised as the description it was.
- */
-const OPENING_CHARS = 40
 
 /** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
@@ -117,38 +87,6 @@ export function timelapseLinks(timelapses: readonly JustificationTimelapse[]): s
 }
 
 /**
- * The `Justification - Specific Technical Features` text: what the project is, what it is made of, and what was worked on.
- *
- * The description is the maker's own account and the parts are the concrete build, so together they answer "what is this, technically". The log adds what was actually done and how long it took, which is the part a reviewer cannot get from the repo.
- */
-export function specificTechnicalFeatures(source: JustificationSource, phase: Phase): string {
-	const description = source.description?.trim() ?? ""
-	const parts = source.bomItems.map(partLine).filter((line): line is string => line !== null)
-	const entries = source.workSessions
-		.map(session => sessionLine(session, description))
-		.filter((line): line is string => line !== null)
-
-	const heading = phase === Phase.DESIGN ? "Design log" : "Build log"
-	const build = (log: string[]) =>
-		[
-			description,
-			parts.length > 0 ? `Parts:\n${parts.join("\n")}` : null,
-			log.length > 0 ? `${heading}:\n${log.join("\n")}` : null,
-		]
-			.filter((section): section is string => Boolean(section))
-			.join("\n\n")
-
-	// The log goes first when the text is too long: the description and the parts are the answer, and a shortened log still says what was worked on.
-	let log = entries
-	let text = build(log)
-	while (text.length > MAX_CHARS && log.length > 0) {
-		log = log.slice(1)
-		text = build(log)
-	}
-	return text.length > MAX_CHARS ? `${text.slice(0, MAX_CHARS).trimEnd()}…` : text
-}
-
-/**
  * The maker-provided `Justification - …` columns for a submission.
  *
  * The Hackatime projects carry the week they were tracked in, because a project name on its own does not say which of the ten weeks it belonged to – and the reviewer's own reading of the hours depends on that.
@@ -161,12 +99,10 @@ export function justificationValues(
 	const start = new Date(opts.eventStart.getTime() + (week - 1) * 7 * DAY_MS)
 	const end = new Date(start.getTime() + 6 * DAY_MS)
 	const projects = source.hackatimeProjects.map(name => `${name} (${ymd(start)} to ${ymd(end)})`)
-	const features = specificTechnicalFeatures(source, opts.phase)
 	return {
 		...(source.hackatimeUserId ? { hackatimeId: source.hackatimeUserId } : {}),
 		...(projects.length > 0 ? { hackatimeProjects: projects.join(", ") } : {}),
 		...(source.lapseLinks.length > 0 ? { lapseLinks: source.lapseLinks.join(", ") } : {}),
-		specificTechnicalFeatures: features || NO_FEATURES_RECORDED,
 	}
 }
 
@@ -181,7 +117,7 @@ export interface AlternateTrackingSource {
 /**
  * The `Justification - Alternate Tracking Method` text.
  *
- * The pipeline has nothing to follow when a ship has neither Hackatime projects nor Lapse links, so this column is where a grant reviewer is told what the time actually rests on. The count and the claimed hours come from the submission itself. The reviewer's technical features are not part of this: they describe the work rather than the tracking method, and belong in `Justification - Specific Technical Features` (see `withReviewerTechnicalFeatures`).
+ * The pipeline has nothing to follow when a ship has neither Hackatime projects nor Lapse links, so this column is where a grant reviewer is told what the time actually rests on. The count and the claimed hours come from the submission itself. The reviewer's technical features are not part of this: they describe the work rather than the tracking method, and belong in `Justification - Specific Technical Features` (see `reviewerTechnicalFeaturesCell`).
  */
 export function alternateTrackingJustification(source: AlternateTrackingSource): string {
 	const entries = Math.max(0, Math.floor(source.entryCount))
@@ -193,67 +129,12 @@ export function alternateTrackingJustification(source: AlternateTrackingSource):
 	return `No Hackatime projects or Lapse timelapses were linked. ${method}`
 }
 
-/** The heading the reviewer's own account of the build is added under. */
-export const REVIEWER_FEATURES_SECTION = "[REVIEWER'S TECHNICAL FEATURES]"
-
 /**
- * The technical-features cell with the reviewer's account added under its own heading.
- *
- * Ari's `review.justification.technical_features` says what the project has that accounts for the hours, and that belongs beside the maker's own account rather than instead of it. The section is replaced rather than appended again, so a re-decision cannot duplicate it; an empty reviewer text removes it, which is how a reversal takes the reviewer's claim off a row while leaving the maker's words intact.
+ * The `Justification - Specific Technical Features` cell: Ari's `review.justification.technical_features`, the
+ * reviewer's own account of what the project has that accounts for the hours – and nothing else. It replaced a
+ * cell that began as the maker's description, parts list and every journal entry, which made the reviewer's words
+ * indistinguishable from the maker's journal.
  */
-export function withReviewerTechnicalFeatures(makerText: string, reviewerText: string | null): string {
-	const base = stripReviewerTechnicalFeatures(makerText)
-	const reviewer = reviewerText?.trim()
-	if (!reviewer) return base
-	return base ? `${base}\n\n${REVIEWER_FEATURES_SECTION}\n${reviewer}` : `${REVIEWER_FEATURES_SECTION}\n${reviewer}`
-}
-
-/** The technical-features cell without the reviewer's section, when it carries one. */
-export function stripReviewerTechnicalFeatures(text: string): string {
-	const marker = `\n\n${REVIEWER_FEATURES_SECTION}`
-	const index = text.lastIndexOf(marker)
-	if (index !== -1) return text.slice(0, index)
-	if (text.startsWith(REVIEWER_FEATURES_SECTION)) return ""
-	return text
-}
-
-/** One line of the parts list, or nothing for a line with no name on it. */
-function partLine(part: JustificationPart): string | null {
-	const name = part.name.trim()
-	if (!name) return null
-	const purpose = part.purpose?.trim() ?? ""
-	const quantity = part.quantity > 1 ? ` (×${part.quantity})` : ""
-	return `- ${name}${purpose ? `: ${purpose}` : ""}${quantity}`
-}
-
-/** One journal entry, as a line of the log, or nothing for an entry with no title. */
-function sessionLine(session: JustificationSession, description: string): string | null {
-	const title = session.title.trim()
-	if (!title) return null
-	const date = session.effectiveDate?.trim() || ymd(session.createdAt)
-	const head = `- ${title}: ${fmtHours(session.hoursClaimed)}${date ? ` (${date})` : ""}`
-	const excerpt = sessionExcerpt(session.content, description)
-	return excerpt ? `${head}\n  ${excerpt}` : head
-}
-
-/**
- * The maker's own words for one sitting, or nothing when the entry only repeats what is already said.
- *
- * The warm-up import folds the description and the links that came with it into a single session's text, so quoting that session would only repeat the description above it.
- */
-function sessionExcerpt(content: string | null, description: string): string | null {
-	const text = content?.trim()
-	if (!text) return null
-	const kept = text
-		.split("\n")
-		.map(line => line.trim())
-		.filter(line => line && !EVIDENCE_LINE.test(line))
-		.join("\n")
-		.replace(description, "")
-		.trim()
-	if (!kept) return null
-	// An entry that opens with the description's own words is the description, not something new: the warm-up import folded it in, and a maker who has since edited their description leaves the old one behind.
-	const opening = description.trim().slice(0, OPENING_CHARS)
-	if (opening.length >= OPENING_CHARS && kept.startsWith(opening)) return null
-	return kept.length > EXCERPT_CHARS ? `${kept.slice(0, EXCERPT_CHARS).trimEnd()}…` : kept
+export function reviewerTechnicalFeaturesCell(reviewerText: string | null): string {
+	return reviewerText?.trim() ?? ""
 }

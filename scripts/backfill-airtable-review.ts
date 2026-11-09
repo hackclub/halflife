@@ -1,5 +1,6 @@
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
+import { reviewerTechnicalFeaturesCell } from "../src/lib/airtable/justification"
 import { currentReviewColumns } from "../src/lib/airtable/review-columns"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents, reviewStatusFor } from "../src/lib/airtable/sync"
@@ -9,15 +10,15 @@ import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/lib/e
 import db from "../src/lib/prisma8"
 
 /**
- * Fill `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes` on the submission rows written before the mirror existed.
+ * Fill `Loops - halfLifeReviewStatus`, `Loops - halfLifeReviewerNotes` and `Justification - Specific Technical Features` on the submission rows written before the mirror existed.
  *
- * A row is created at hand-in, as "Pending Review", and a decision reaches the base only through `mirrorReviewDecision` (lib/airtable/sync): Ari's webhook or the review console writes the status and the reviewer's note onto the submission's row, and Loops emails the maker from there. Every row handled since that mirror landed carries both columns; the rows already in the base do not, and this replays the state Postgres already holds onto them.
+ * A row is created at hand-in, as "Pending Review", and a decision reaches the base only through `mirrorReviewDecision` (lib/airtable/sync): Ari's webhook or the review console writes the status, the reviewer's note and their technical features onto the submission's row, and Loops emails the maker from there. Every row handled since that mirror landed carries all three columns; the rows already in the base do not, and this replays the state Postgres already holds onto them.
  *
- * The status is `reviewStatusFor` of the phase – the same mapping every write uses, so the column cannot disagree with the state it mirrors. The note is the project's standing review comment (`designReviewComments`/`buildReviewComments`), which is the string the live mirror writes for a console decision and for a reversal alike. Two cases need more than the comment:
+ * The status is `reviewStatusFor` of the phase – the same mapping every write uses, so the column cannot disagree with the state it mirrors. The note is the project's standing review comment (`designReviewComments`/`buildReviewComments`), which is the string the live mirror writes for a console decision and for a reversal alike. The technical features are Ari's `review.justification.technical_features` on the standing review, written verbatim as the cell – nothing of the maker's own account is ever copied into it. Two cases need more than the comment:
  *
  * - An Ari decision that carried no note is stored as Ari's generic fallback (`defaultFeedback`), because the review row and the project page always need something to show, but the raw note was never kept. The mirror deliberately writes an empty column rather than that fallback, so the standing decision is read too and the note cleared instead of quoting a sentence the maker already read as the headline.
  *
- * - A phase still in review has no decision to quote, so its note is cleared whichever comment last touched the row.
+ * - A phase still in review has no decision to quote, so its note is cleared whichever comment last touched the row. A phase still in review is never quoted for its technical features either: with no decision to stand on, the box is empty and the row keeps whatever was recorded for it.
  *
  * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. Rows whose columns already agree are left alone, so a second run writes nothing.
  *
@@ -28,11 +29,12 @@ import db from "../src/lib/prisma8"
 
 const commit = process.argv.includes("--commit")
 
-/** The decision that still holds for a phase, as far as the note reconstruction needs it. */
+/** The decision that still holds for a phase, as far as the note and technical-features reconstructions need it. */
 interface StandingReview {
 	feedback: string
 	result: ReviewResult
 	reviewerId: string | null
+	technicalFeatures: string | null
 }
 
 /**
@@ -57,6 +59,7 @@ async function main() {
 
 	const statusField = YSWS_SUBMISSION.fields.reviewStatus
 	const notesField = YSWS_SUBMISSION.fields.reviewerNotes
+	const featuresField = YSWS_SUBMISSION.fields.specificTechnicalFeatures
 	// Probed by name, because `columnExists` reads Airtable's `UNKNOWN_FIELD_NAME` refusal; written by `fieldKey`, which is the id once the base is written by id.
 	for (const field of [statusField, notesField])
 		if (!(await columnExists(config, YSWS_SUBMISSION.tableId, field.name))) {
@@ -65,9 +68,9 @@ async function main() {
 			)
 			process.exit(1)
 		}
-
 	const statusKey = fieldKey(statusField)
 	const notesKey = fieldKey(notesField)
+	const featuresKey = fieldKey(featuresField)
 
 	const projects = await db.orm.public.ThemeProject.select(
 		"buildReviewComments",
@@ -93,7 +96,7 @@ async function main() {
 	const reviews = await db.orm.public.SubmissionReview.where({ invalidated: false })
 		.where(review => review.submission.some(submission => submission.themeProjectId.in(projects.map(p => p.id))))
 		.orderBy(review => review.createdAt.desc())
-		.select("feedback", "result", "reviewerId")
+		.select("feedback", "result", "reviewerId", "technicalFeatures")
 		.include("submission", submission => submission.select("phase", "themeProjectId"))
 		.all()
 	const standing = new Map<string, StandingReview>()
@@ -105,7 +108,14 @@ async function main() {
 		if (!standing.has(key)) standing.set(key, review)
 	}
 
-	const targets: { note: string; phase: Phase; recordId: string; status: string; title: string }[] = []
+	const targets: {
+		features: string | null
+		note: string
+		phase: Phase
+		recordId: string
+		status: string
+		title: string
+	}[] = []
 	let withoutRow = 0
 	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
@@ -117,6 +127,13 @@ async function main() {
 			const design = phase === Phase.DESIGN
 			const status = design ? project.designStatus : project.buildStatus
 			targets.push({
+				// The column carries only the reviewer's own technical-features box once a decision stands. A phase
+				// still in review has no decision to quote, so its technical-features cell is left exactly as it
+				// was – nothing more was recorded for it than the maker's earlier account of the work.
+				features:
+					status === PhaseStatus.in_review
+						? null
+						: reviewerTechnicalFeaturesCell(standing.get(`${project.id}:${phase}`)?.technicalFeatures ?? null),
 				note: noteFor(
 					design ? project.designReviewComments : project.buildReviewComments,
 					status,
@@ -129,7 +146,8 @@ async function main() {
 			})
 		}
 
-	// Only rows the base disagrees with are written: a decided row that already carries both columns is left untouched.
+	// Only rows the base disagrees with are written: a decided row that already carries status, note and the
+	// reviewer's technical features is left untouched.
 	const current = await currentReviewColumns(config)
 	const updates: typeof targets = []
 	let aligned = 0
@@ -140,7 +158,7 @@ async function main() {
 			gone++
 			continue
 		}
-		if (row.note === t.note && row.status === t.status) {
+		if (row.note === t.note && row.status === t.status && (t.features === null || row.features === t.features)) {
 			aligned++
 			continue
 		}
@@ -179,6 +197,17 @@ async function main() {
 		if (!noted.ok && noted.reason !== "row_gone") {
 			noteFailed++
 			console.error(`  ${t.phase}  ${t.title} (${t.recordId}) moved but the note failed: ${noted.reason}`)
+		}
+		// Third, where a decision stands: the reviewer's own technical-features box, written verbatim. A phase
+		// in review has no decision to quote for it and keeps exactly what was recorded.
+		if (t.features !== null) {
+			const featured = await updateYswsRecord(t.recordId, { [featuresKey]: t.features })
+			if (!featured.ok && featured.reason !== "row_gone") {
+				noteFailed++
+				console.error(
+					`  ${t.phase}  ${t.title} (${t.recordId}) moved but the technical features failed: ${featured.reason}`,
+				)
+			}
 		}
 		updated++
 	}

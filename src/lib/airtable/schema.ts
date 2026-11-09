@@ -88,7 +88,10 @@ export const YSWS_SUBMISSION = {
 		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
 		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
 		slackId: f<string>("fldYswsSlackId", "Slack ID"),
-		// The maker's own account of what they built: the description they wrote, the parts they listed, the work they logged. An approval adds the reviewer's technical features from Ari under a `[REVIEWER'S TECHNICAL FEATURES]` heading. The pipeline merges it with the other `Justification - …` columns into one blob (see lib/airtable/justification), and an empty column here is an empty blob there.
+		// The reviewer's own account of the build, from Ari's `technical_features`, written verbatim at decision
+		// time. This column never holds the maker's account, journal or parts list – it carries what Ari returns
+		// and nothing else. The pipeline merges it with the other `Justification - …` columns into one blob (see
+		// lib/airtable/justification).
 		specificTechnicalFeatures: f<string>(
 			"fldYswsSpecificTechnicalFeatures",
 			"Justification - Specific Technical Features",
