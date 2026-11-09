@@ -206,6 +206,40 @@ export async function seedProject(userId: string, theme = "PCB"): Promise<string
 }
 
 /**
+ * An approved design with one priced parts line worth $2, so payout previews have something to pay. The design
+ * state and the approved tier's grant are what card issuance reads; the BOM total is what it pays.
+ */
+export async function seedApprovedProject(userId: string): Promise<string> {
+	const id = randomUUID()
+	await pool.unsafe(
+		`insert into theme_project (id, "userId", theme, title, "designStatus", "grantUsd", "bomTaxShippingUsd", "createdAt", "updatedAt")
+		values ($1, $2, 'PCB'::"Theme", 'E2E payout', 'approved'::"PhaseStatus", 100, 0, now(), now())`,
+		[id, userId],
+	)
+	await pool.unsafe(
+		`insert into bom_item (id, "themeProjectId", name, quantity, "unitCostUsd", "sortOrder", "createdAt", "updatedAt")
+		values ($1, $2, 'Part', 1, 2, 0, now(), now())`,
+		[randomUUID(), id],
+	)
+	return id
+}
+
+export interface E2eGrantExportRow {
+	amountCents: number
+	batchId: string
+	email: string
+	themeProjectId: string
+}
+
+/** The rows inside generated HCB import files, read back rather than inferred from the file. */
+export async function readGrantExports(): Promise<E2eGrantExportRow[]> {
+	const rows = await pool.unsafe<E2eGrantExportRow[]>(
+		`select "amountCents", "batchId", email, "themeProjectId" from hcb_card_grant_export_row`,
+	)
+	return plainRows(rows)
+}
+
+/**
  * Two published reels and one comment by the same member.
  *
  * Two reels rather than one on purpose: a bulk hide that quietly updates only a single row still passes with one post to hide, which is exactly the bug this seeds against.
