@@ -1,0 +1,62 @@
+[
+  {
+    "id": "column.public.submission_review.technicalFeatures",
+    "label": "Add column \"technicalFeatures\" to \"submission_review\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "technicalFeatures",
+        "table": "submission_review"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"technicalFeatures\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "technicalFeatures"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"technicalFeatures\" on \"submission_review\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"technicalFeatures\"",
+        "sql": "ALTER TABLE \"public\".\"submission_review\" ADD COLUMN \"technicalFeatures\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"technicalFeatures\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "technicalFeatures"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"technicalFeatures\" on \"submission_review\""
+        }
+      },
+      {
+        "description": "verify column \"technicalFeatures\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "technicalFeatures",
+          "text"
+        ]
+      }
+    ]
+  }
+]

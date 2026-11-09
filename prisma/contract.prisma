@@ -919,6 +919,7 @@ namespace public {
     result                 pg.enum(ReviewResult)
     feedback               String
     reason                 String?
+    technicalFeatures      String?
     invalidated            Boolean               @default(false)
     invalidatedAt          TimestampString(3)?
     hoursOverride          Float?
