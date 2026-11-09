@@ -10,15 +10,12 @@ import {
 	alternateTrackingJustification,
 	type JustificationValues,
 	justificationValues,
-	NO_FEATURES_RECORDED,
-	specificTechnicalFeatures,
 	timelapseLinks,
-	withReviewerTechnicalFeatures,
 } from "../src/lib/airtable/justification"
 import { type FieldDef, fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents, reviewStatusFor, reviewStatusForResult } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
-import { AuditAction, HoursSource, Phase, PhaseStatus, type ReviewResult } from "../src/lib/enums"
+import { AuditAction, HoursSource, Phase, type ReviewResult } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 import { getProgramSettings } from "../src/lib/program"
 import { withFields } from "../src/lib/rows"
@@ -27,15 +24,15 @@ import { parseDbTimestamp } from "../src/lib/time"
 /**
  * Fill the `Justification - …` columns on the submission rows that are missing them.
  *
- * Five columns carry a submission's evidence: the maker's Hackatime id, the Hackatime projects they tracked time in, the timelapses they recorded, the account of what they actually built, and – when there is neither Hackatime nor Lapse evidence – the devlog-based method the hours rest on. A sixth, `Justification - Additional Justification`, carries the reviewer's own note on the standing decision – Ari's "Justification notes" (`review.audit_note`, stored as `SubmissionReview.reason`). The pipeline merges them into one blob on the row (`Automation - Unified Justification`), so a column left empty is a gap in the justification a grant reviewer reads.
+ * Five columns carry a submission's evidence: the maker's Hackatime id, the Hackatime projects they tracked time in, the timelapses they recorded, the reviewer's own note on the standing decision – Ari's "Justification notes" (`review.audit_note`, stored as `SubmissionReview.reason`), which is `Justification - Additional Justification` – and, when there is neither Hackatime nor Lapse evidence, the devlog-based method the hours rest on. The pipeline merges them into one blob on the row (`Automation - Unified Justification`), so a column left empty is a gap in the justification a grant reviewer reads.
  *
- * Rows written before the technical-features column was wired up are missing that column in particular: it existed in the base before `justificationValues` filled it, so every row from before that change has an empty `[SPECIFIC TECHNICAL FEATURES]` section. That column is required on every row, so this fills it even when the maker left nothing to build it from (see `NO_FEATURES_RECORDED`). The alternate-tracking column is filled only when the row has no Hackatime id, no Hackatime projects and no Lapse links; the other evidence columns are only written when we hold something.
+ * The specific technical features column is not this script's job: it now carries only the reviewer's technical-features box, written verbatim at decision time (see `syncReviewDecisionToYsws`), never a maker's account or a journal dump. Rows written by earlier behaviour still hold other text there, and this script leaves them exactly as they are rather than clearing text it did not write: the decided rows get the reviewer's words from the decision replay in `backfill-airtable-review.ts`, so the evidence is never destroyed twice over. The alternate-tracking column is filled only when the row has no Hackatime id, no Hackatime projects and no Lapse links; the other evidence columns are only written when we hold something.
  *
- * This replays the state Postgres already holds onto the rows that are missing a column, using the same builder the live write uses (see `justificationValues` in lib/airtable/justification), so a backfilled cell and a freshly written one cannot disagree. The standing decision's technical features (`SubmissionReview.technicalFeatures`, Ari's `review.justification.technical_features`) are added to the specific-features column under the reviewer's heading. Its audit note (`SubmissionReview.reason`) fills `Justification - Additional Justification`, because that is Ari's "Justification notes" field, when the standing decision still matches the row's state; that note is never put in the alternate-tracking column, which states the method rather than the reviewer's reasoning.
+ * This replays the state Postgres already holds onto the rows that are missing a column, using the same builder the live write uses (see `justificationValues` in lib/airtable/justification), so a backfilled cell and a freshly written one cannot disagree. The standing decision's audit note (`SubmissionReview.reason`) fills `Justification - Additional Justification`, because that is Ari's "Justification notes" field, when the standing decision still matches the row's state; that note is never put in the alternate-tracking column, which states the method rather than the reviewer's reasoning.
  *
- * Only a column the base is missing is written, with one exception: the reviewer's section can be added beside an existing maker account in the technical-features column, because it is a distinct section and the maker's text is never replaced. A column that already holds something is otherwise left exactly as it is: it is evidence, and on the pre-season rows the form filled it in and Postgres never received it, so overwriting it with our own answer would destroy the only record. A row is therefore never rewritten wholesale, only completed.
+ * Only a column the base is missing is written. A column that already holds something is left exactly as it is: it is evidence, and on the pre-season rows the form filled it in and Postgres never received it, so overwriting it with our own answer would destroy the only record. A row is therefore never rewritten wholesale, only completed.
  *
- * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. A row with no project behind it – one the warm-up import has not reached yet, say – has no parts or journal to add, but its own `Description` is still the maker's account: the technical-features column is completed from it so no row is left without one. Everything else on such a row is left alone.
+ * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. Rows with no project behind them are left entirely alone now: there is no account in Postgres to check against their `Description`, and nothing held here can say whether the base's own account of it is the real one.
  *
  * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-justification.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
@@ -49,14 +46,6 @@ const COLUMNS = {
 	hackatimeId: YSWS_SUBMISSION.fields.hackatimeId,
 	hackatimeProjects: YSWS_SUBMISSION.fields.hackatimeProjects,
 	lapseLinks: YSWS_SUBMISSION.fields.lapseLinks,
-	specificTechnicalFeatures: YSWS_SUBMISSION.fields.specificTechnicalFeatures,
-}
-
-/** Columns read for the rows that have no local project; they are never written. */
-const READ_ONLY = {
-	description: YSWS_SUBMISSION.fields.description,
-	projectName: YSWS_SUBMISSION.fields.projectName,
-	stage: YSWS_SUBMISSION.fields.stage,
 }
 
 /** A string cell, or "" when Airtable has nothing there. */
@@ -69,26 +58,21 @@ const cell = (record: AirtableRecord, field: FieldDef): string =>
 /** What the base holds for one row, as far as this backfill cares. */
 interface RowSnapshot {
 	cells: Map<string, string>
-	description: string
-	stage: string
-	title: string
 }
 
 /** The decision that still holds for a phase, as far as the justification columns need it. */
 interface StandingReview {
 	reason: string | null
 	result: ReviewResult
-	technicalFeatures: string | null
 }
 
 /** Every row's current justification columns, by record id. */
 async function currentRows(
 	config: NonNullable<ReturnType<typeof getAirtableConfig>>,
-	keys: Map<string, string>,
 ): Promise<Map<string, RowSnapshot>> {
 	const byId = new Map<string, RowSnapshot>()
-	const fieldsQs = [...keys.values(), ...Object.values(READ_ONLY).map(field => field.name)]
-		.map(field => `fields%5B%5D=${encodeURIComponent(field)}`)
+	const fieldsQs = Object.values(COLUMNS)
+		.map(field => `fields%5B%5D=${encodeURIComponent(field.name)}`)
 		.join("&")
 	let offset: string | undefined
 	do {
@@ -102,18 +86,12 @@ async function currentRows(
 		for (const record of page.records) {
 			const cells = new Map<string, string>()
 			for (const [key, field] of Object.entries(COLUMNS)) cells.set(key, cell(record, field))
-			byId.set(record.id, {
-				cells,
-				description: cell(record, READ_ONLY.description),
-				stage: cell(record, READ_ONLY.stage),
-				title: cell(record, READ_ONLY.projectName),
-			})
+			byId.set(record.id, { cells })
 		}
 		;({ offset } = page)
 	} while (offset)
 	return byId
 }
-
 async function main() {
 	const config = getAirtableConfig()
 	if (!config) {
@@ -132,7 +110,6 @@ async function main() {
 
 	const keys = new Map<string, string>()
 	for (const [key, field] of Object.entries(COLUMNS)) keys.set(key, fieldKey(field))
-	const featuresKey = keys.get("specificTechnicalFeatures") ?? YSWS_SUBMISSION.fields.specificTechnicalFeatures.name
 
 	const projects = await db.orm.public.ThemeProject.select(
 		"buildStatus",
@@ -184,7 +161,6 @@ async function main() {
 	const targets: {
 		phase: Phase
 		recordId: string
-		reviewerFeatures: string | null
 		title: string
 		values: JustificationValues & { additionalJustification?: string }
 	}[] = []
@@ -224,22 +200,18 @@ async function main() {
 					entryCount: manual.length,
 				})
 			}
-			// The reviewer's technical features belong beside the maker's account, not in the alternate-tracking method.
-			const reviewerFeatures =
-				matches && status === PhaseStatus.approved ? (review?.technicalFeatures?.trim() ?? null) : null
-			if (reviewerFeatures)
-				values.specificTechnicalFeatures = withReviewerTechnicalFeatures(
-					values.specificTechnicalFeatures,
-					reviewerFeatures,
-				)
-			// The reviewer's "Justification notes" on the decision that still stands. Only the internal reason is quoted: the maker-facing feedback is a different column, and a review with no reason left no justification notes to restore.
+			// The reviewer's "Justification notes" on the decision that still stands. Only the internal reason is
+			// quoted: the maker-facing feedback is a different column, and a review with no reason left no
+			// justification notes to restore.
 			const notes = matches ? review.reason?.trim() : null
 			if (notes) values.additionalJustification = notes
-			targets.push({ phase, recordId, reviewerFeatures, title: project.title, values })
+			targets.push({ phase, recordId, title: project.title, values })
 		}
 
-	// A column that already holds something is normally left as it is. The one exception is the reviewer's section of the technical-features cell: it can be added beside an existing maker account without touching that account.
-	const current = await currentRows(config, keys)
+	// A column that already holds something is left exactly as it is: it is evidence, and on the pre-season rows
+	// the form filled it in and Postgres never received it, so overwriting it with our own answer would destroy
+	// the only record.
+	const current = await currentRows(config)
 	const updates: { fields: { [_: string]: string }; phase: Phase; recordId: string; title: string }[] = []
 	const missing = new Map<string, number>()
 	for (const key of Object.keys(COLUMNS)) missing.set(key, 0)
@@ -255,54 +227,15 @@ async function main() {
 		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		for (const [key, value] of Object.entries(target.values) as [string, string | undefined][]) {
 			if (value === undefined) continue
-			// The technical-features cell is handled below: an existing maker account can still be missing the reviewer's section, and only that section may be added.
-			if (key === "specificTechnicalFeatures") continue
 			if (row.cells.get(key)) continue
 			fields[keys.get(key) ?? key] = value
 			missing.set(key, (missing.get(key) ?? 0) + 1)
-		}
-		const currentFeatures = row.cells.get("specificTechnicalFeatures") ?? ""
-		const desiredFeatures = currentFeatures
-			? target.reviewerFeatures
-				? withReviewerTechnicalFeatures(currentFeatures, target.reviewerFeatures)
-				: currentFeatures
-			: target.values.specificTechnicalFeatures
-		if (desiredFeatures !== currentFeatures) {
-			fields[featuresKey] = desiredFeatures
-			missing.set("specificTechnicalFeatures", (missing.get("specificTechnicalFeatures") ?? 0) + 1)
 		}
 		if (Object.keys(fields).length === 0) {
 			aligned++
 			continue
 		}
 		updates.push({ fields, phase: target.phase, recordId: target.recordId, title: target.title })
-	}
-
-	// A row with no project still gets its technical features, from the account the maker wrote on the row itself. Nothing else on it is touched: without a project there is no parts list, journal or Hackatime link to add.
-	const targeted = new Set(targets.map(target => target.recordId))
-	let fromRow = 0
-	for (const [recordId, row] of current) {
-		if (targeted.has(recordId)) continue
-		if (row.cells.get("specificTechnicalFeatures")) continue
-		const phase = row.stage === "Build" ? Phase.BUILD : Phase.DESIGN
-		const features = specificTechnicalFeatures(
-			{
-				bomItems: [],
-				description: row.description || null,
-				hackatimeProjects: [],
-				hackatimeUserId: null,
-				lapseLinks: [],
-				workSessions: [],
-			},
-			phase,
-		)
-		updates.push({
-			fields: { [featuresKey]: features || NO_FEATURES_RECORDED },
-			phase,
-			recordId,
-			title: row.title,
-		})
-		fromRow++
 	}
 
 	const withProject = targets.filter(target => current.has(target.recordId)).length
@@ -312,10 +245,6 @@ async function main() {
 	console.log(`aligned: ${aligned}, to update: ${updates.length}`)
 	for (const [key, field] of Object.entries(COLUMNS))
 		console.log(`  ${field.name}: ${missing.get(key) ?? 0} cell(s) to fill`)
-	if (fromRow > 0)
-		console.log(
-			`  ${fromRow} row(s) with no project: the technical features are completed from the row's own Description`,
-		)
 	for (const update of updates.slice(0, 10))
 		console.log(`  ${update.phase}  ${update.title}  →  ${Object.keys(update.fields).join(", ")}`)
 	if (updates.length > 10) console.log(`  …and ${updates.length - 10} more`)

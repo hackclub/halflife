@@ -195,9 +195,9 @@ Four columns on `YSWS Project Submission` carry the maker's evidence, which the 
 - `Justification - Lapse Links, comma-separated`
 - `Justification - Specific Technical Features`
 
-`syncSubmissionToYsws` (`src/lib/airtable/sync.ts`) writes them at submit from `justificationValues` (`src/lib/airtable/justification.ts`). The first three are written only when there is something to write – a maker may have no Hackatime account, linked project or recording, and a blank would erase evidence the base alone holds. The technical-features column is always written, with a marker when nothing was recorded, because the pipeline gives every row a `[SPECIFIC TECHNICAL FEATURES]` section.
+`syncSubmissionToYsws` (`src/lib/airtable/sync.ts`) writes them at submit from `justificationValues` (`src/lib/airtable/justification.ts`). The first three are written only when there is something to write – a maker may have no Hackatime account, linked project or recording, and a blank would erase evidence the base alone holds. `Justification - Specific Technical Features` is not one of them; the decision mirror writes the reviewer's technical-features box there at decision time, and nothing else writes it.
 
-Ari's reviewer fills two separate fields, and they go to two separate columns. `review.justification.technical_features` is the reviewer's account of what the project has that accounts for the hours: it is added to `Justification - Specific Technical Features` under a `[REVIEWER'S TECHNICAL FEATURES]` heading, under the maker's own account, and removed when the decision no longer stands. `review.audit_note` – Ari's "Justification notes" field – is the reviewer's own note on the decision: it is written to `Justification - Additional Justification`, stored on the review as `SubmissionReview.reason`, cleared when a later decision withdraws the approval, and cleared on a re-submission so the row never quotes a review it no longer holds. A row still in review, or decided by a console reviewer with no reason, leaves it blank. Neither field is written to `Justification - Alternate Tracking Method`.
+Ari's reviewer fills two separate fields, and they go to two separate columns. `review.justification.technical_features` is the reviewer's account of what the project has that accounts for the hours: it is written alone to `Justification - Specific Technical Features`, verbatim, and a decision without one writes an empty cell. `review.audit_note` – Ari's "Justification notes" field – is the reviewer's own note on the decision: it is written to `Justification - Additional Justification`, stored on the review as `SubmissionReview.reason`, cleared when a later decision withdraws the approval, and cleared on a re-submission so the row never quotes a review it no longer holds. A row still in review, or decided by a console reviewer with no reason, leaves it blank. Neither field is written to `Justification - Alternate Tracking Method`.
 
 Rows written before that landed are completed by:
 
@@ -206,7 +206,7 @@ bun --conditions=react-server scripts/backfill-airtable-justification.ts
 bun --conditions=react-server scripts/backfill-airtable-justification.ts --commit
 ```
 
-It only fills cells that are empty, so a value already on the row is never overwritten. A row with a local project gets the full description, parts list and work log; one with no project (an unimported pre-season row) gets its technical features from its own `Description`. When the standing decision still matches the phase, it also adds the reviewer's technical features from `SubmissionReview.technicalFeatures` under the reviewer heading and restores `Justification - Additional Justification` from the standing review's internal reason. Run it where `DATABASE_URL` points at the real database, so the rows that do have a project get the richer text.
+It only fills cells that are empty, so a value already on the row is never overwritten. It no longer writes `Justification - Specific Technical Features`: that column carries only the reviewer's technical-features box now (see below), so rows decided under the old behaviour keep their old text until the decision replay rewrites them. Run it where `DATABASE_URL` points at the real database, so the rows that do have a project get the richer text.
 
 ### Reviewer columns on the review rows
 
@@ -222,6 +222,16 @@ bun --conditions=react-server scripts/backfill-airtable-reviewers.ts --commit
 ```
 
 It only writes that one column, leaves status and notes alone (so it triggers no Loops email), and clears the address on a phase whose current state no longer matches the review that was standing. Run it where `DATABASE_URL` points at the real database.
+
+### The technical-features column, for the existing rows
+
+`Justification - Specific Technical Features` used to be written at hand-in as the maker's description, parts list and journal log, with the reviewer features added under their own heading at decision time. It now carries only Ari's reviewer technical-features box, written verbatim. Rows written under the old behaviour still hold the earlier account; the decided rows are brought in line by replaying their standing decisions:
+
+```bash
+bun --conditions=react-server scripts/backfill-airtable-review.ts --commit
+```
+
+It rewrites each decided row's `Justification - Specific Technical Features` with the reviewer's box alone, or an empty cell where none was recorded. It runs against the live base, so the first pass is worth reading carefully before adding `--commit`.
 
 ### Deflation columns
 
