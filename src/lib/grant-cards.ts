@@ -4,7 +4,13 @@ import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { displayName } from "@/lib/display-name"
 import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, type Theme } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
-import { grantCardAmountCents, grantCardFingerprint, grantCardPurpose } from "@/lib/grant-card-policy"
+import {
+	GRANT_CARD_INVITE_MESSAGE,
+	grantCardAmountCents,
+	grantCardFingerprint,
+	grantCardInstructions,
+	grantCardPurpose,
+} from "@/lib/grant-card-policy"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {
 	cancelCardGrant,
@@ -559,8 +565,8 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			const grant = await createCardGrant({
 				amountCents,
 				email: project.user.email,
-				instructions: `Parts funding for ${project.title || "your Half Life project"}.`,
-				inviteMessage: "Your Half Life parts grant is ready. Accept it to get your card.",
+				instructions: grantCardInstructions(project.title),
+				inviteMessage: GRANT_CARD_INVITE_MESSAGE,
 				purpose,
 			})
 			const responseEmail = grant.email?.trim().toLowerCase()
