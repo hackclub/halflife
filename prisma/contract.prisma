@@ -204,6 +204,7 @@ namespace public {
     deletedById              String?
     bomItems                 BomItem[]
     hackatimeLinks           HackatimeLink[]
+    hcbCardGrantExports      HcbCardGrantExportRow[]
     hcbGrantCards            HcbGrantCard[]
     hcbGrantTopUps           HcbGrantTopUp[]
     ledgerEntries            LedgerEntry[]
