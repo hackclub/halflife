@@ -123,7 +123,7 @@ Content-Type: application/json
 {
   "amount_cents": 3050,
   "email": "maker@example.com",
-  "purpose": "Half Life parts – HL:<projectId>",
+  "purpose": "Half Life parts – https://halflife.hackclub.com/projects/<projectId>",
   "instructions": "Parts funding for <project title>.",
   "invite_message": "Your Half Life parts grant is ready."
 }
@@ -153,8 +153,11 @@ The docs are community-maintained, so treat the HCB source as the final authorit
 
 - `amount_cents` – the BOM total in cents.
 - `email` – the maker’s HCA email.
-- `purpose` – stable marker used for reconciliation:
-  `Half Life parts – HL:<projectId>`.
+- `purpose` – the maker's own project link when the deployment names an origin:
+  `Half Life parts – https://halflife.hackclub.com/projects/<projectId>`.
+  Used for reconciliation: a lost create is matched back against this on the organisation's grant list. It falls back
+  to the marker form `Half Life parts – HL:<projectId>` where there is no origin to link to, and an attempt that went
+  out on the marker form still reconciles after the switch.
 - `instructions` – human-readable, names the project.
 - `invite_message` – shown in the HCB invitation email.
 - No merchant lock, category lock, keyword lock, one-time use or pre-authorisation in v1.
@@ -341,7 +344,7 @@ Do not auto-retry the POST.
 On timeout, network failure or 5xx:
 
 1. Call `listOrganizationCardGrants()`.
-2. Match on email, amount, purpose marker and `created_at` no earlier than the attempt minus five minutes.
+2. Match on email, amount, purpose and `created_at` no earlier than the attempt minus five minutes.
 3. Exactly one match: mark `ISSUED` and record the HCB id.
 4. No match: mark `FAILED`, retryable.
 5. More than one match, a missing timestamp or an unreadable list: mark `AMBIGUOUS`.
