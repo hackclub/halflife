@@ -53,24 +53,25 @@ test("an admin can generate and re-download an HCB grant CSV", async ({ openAs }
 	await expect(page.getByText("Saved.", { exact: true })).toBeVisible({ timeout: 15_000 })
 
 	await page.goto("/admin/grants")
-	const generate = page.getByRole("button", { name: "Generate CSV for 1 card grants" })
+	// The count is not pinned to one: a retried run leaves its own project behind with the rest.
+	const generate = page.getByRole("button", { name: /Generate CSV for \d+ card grants/ })
 	await expect(generate).toBeEnabled()
 	await generate.click()
 
 	const [download] = await Promise.all([
 		page.waitForEvent("download"),
-		page.getByRole("button", { name: "Generate 1 grants" }).click(),
+		page.getByRole("button", { name: /^Generate \d+ grants$/ }).click(),
 	])
 	expect(download.suggestedFilename()).toMatch(/^hcb-card-grants-.+\.csv$/)
 	const firstBody = await readFile(await download.path(), "utf-8")
 	expect(firstBody).toContain(maker.email)
 	expect(firstBody).toContain(`HL:${projectId}`)
 
-	// The file was frozen at generation: the rows are in the database and the project is out of the next preview.
+	// The file was frozen at generation: our row is in the database and the project is out of the next preview.
 	const recorded = await readGrantExports()
-	expect(recorded).toHaveLength(1)
-	expect(recorded[0]).toMatchObject({ amountCents: 200, email: maker.email, themeProjectId: projectId })
-	expect(recorded[0]?.batchId).toBe(download.suggestedFilename().replace("hcb-card-grants-", "").replace(".csv", ""))
+	const mine = recorded.find(row => row.themeProjectId === projectId)
+	expect(mine).toMatchObject({ amountCents: 200, email: maker.email, themeProjectId: projectId })
+	expect(mine?.batchId).toBe(download.suggestedFilename().replace("hcb-card-grants-", "").replace(".csv", ""))
 
 	await page.goto("/admin/grants")
 	await expect(page.getByText("Already in an HCB CSV import")).toBeVisible()
