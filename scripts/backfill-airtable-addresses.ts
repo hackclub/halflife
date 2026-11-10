@@ -14,6 +14,7 @@ import { AuditAction, type Phase } from "../src/lib/enums"
 import { PULL_PII, syncHcaProfile } from "../src/lib/hca-profile"
 import { decryptUserPII, isPiiConfigured } from "../src/lib/pii"
 import db from "../src/lib/prisma8"
+import { phaseSchema } from "../src/lib/schemas/common"
 
 /**
  * Fill blank address fields on `YSWS Project Submission` rows from the maker's current address.
@@ -177,8 +178,13 @@ async function main() {
 		process.exit(1)
 	}
 
-	const keys = Object.fromEntries(ADDRESS_FIELDS.map(([key, field]) => [key, fieldKey(field)])) as {
-		[_ in AddressKey]: string
+	const keys: { [_ in AddressKey]: string } = {
+		addressLine1: fieldKey(YSWS_SUBMISSION.fields.addressLine1),
+		addressLine2: fieldKey(YSWS_SUBMISSION.fields.addressLine2),
+		city: fieldKey(YSWS_SUBMISSION.fields.city),
+		country: fieldKey(YSWS_SUBMISSION.fields.country),
+		state: fieldKey(YSWS_SUBMISSION.fields.state),
+		zip: fieldKey(YSWS_SUBMISSION.fields.zip),
 	}
 
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null }).select("id", "title", "userId").all()
@@ -242,7 +248,13 @@ async function main() {
 	let fieldsToFill = 0
 
 	for (const [phaseKey, recordId] of records.entries()) {
-		const [projectId, phase] = phaseKey.split(":") as [string, Phase]
+		// The key is `${submissionId}:${phase}`, but the phase half arrives via audit metadata and was never validated there – skip a row whose phase is not a real one rather than filing it under a phase that does not exist.
+		const separator = phaseKey.indexOf(":")
+		if (separator === -1) continue
+		const parsedPhase = phaseSchema.safeParse(phaseKey.slice(separator + 1))
+		if (!parsedPhase.success) continue
+		const projectId = phaseKey.slice(0, separator)
+		const phase = parsedPhase.data
 		const row = current.get(recordId)
 		if (!row) {
 			gone++
