@@ -225,12 +225,11 @@ async function main() {
 			state: pii.state?.trim() ?? "",
 			zip: pii.zip?.trim() ?? "",
 		}
-		const hasAny = Object.values(address).some(Boolean)
 		const hasRequired = REQUIRED_KEYS.every(key => address[key])
 		infoByUser.set(userId, { address, reason: hasRequired ? null : await diagnoseUser(userId, false) })
 	}
 	// Diagnose partial addresses too (missing required fields only; line2 alone is not partial).
-	for (const [userId, info] of infoByUser.entries()) {
+	for (const info of infoByUser.values()) {
 		const hasRequired = REQUIRED_KEYS.every(key => info.address[key])
 		if (!hasRequired && !info.reason)
 			info.reason = "Partial address on file: some fields are missing from the stored/HCA address."
@@ -289,10 +288,9 @@ async function main() {
 		const fields: { [_: string]: string } = {}
 		const filledByBackfill: AddressKey[] = []
 		for (const key of blank) {
-			if (address[key]) {
-				fields[keys[key]] = address[key]
-				filledByBackfill.push(key)
-			}
+			if (!address[key]) continue
+			fields[keys[key]] = address[key]
+			filledByBackfill.push(key)
 		}
 		const stillBlank = requiredBlank.filter(key => !address[key])
 		const missingValue = stillBlank
@@ -308,7 +306,7 @@ async function main() {
 			})
 		}
 
-		if (stillBlank.length > 0) {
+		if (stillBlank.length > 0)
 			missing.push({
 				blankInAirtable: requiredBlank,
 				filledByBackfill: filledByBackfill.filter(key => key !== "addressLine2"),
@@ -321,7 +319,6 @@ async function main() {
 				title: titleByProject.get(projectId) ?? projectId,
 				userId,
 			})
-		}
 	}
 
 	console.log(

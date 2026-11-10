@@ -203,7 +203,9 @@ export async function sendSubmissionToIre(
 		})
 		if (ireLive() && submissionId)
 			// A hand-in that reached Ire is not stuck: clear the failure marker so a later failure earns a fresh notice.
-			await db.orm.public.PhaseSubmission.where({ id: submissionId }).update({ ariShipError: null }).catch(() => undefined)
+			await db.orm.public.PhaseSubmission.where({ id: submissionId })
+				.update({ ariShipError: null })
+				.catch(() => undefined)
 		return created
 	} catch (err) {
 		const queued = alreadyQueuedIreShip(err)

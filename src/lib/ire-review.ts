@@ -7,7 +7,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { isTierId, tierForHours } from "@/lib/config/tiers"
 import { Phase, PhaseStatus, ReviewResult, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { getIreShip, isIreConfigured } from "@/lib/ire-platform"
+import { getIreShip, type IreShipStatus, isIreConfigured } from "@/lib/ire-platform"
 import { notifyReviewOutcome } from "@/lib/notifications"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
@@ -84,14 +84,13 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	const { themeProjectId, phase } = parsed
 
 	// Prefer the row this ship was actually sent for. A withdraw-and-resubmit reuses the same external id, so a decision for the withdrawn ship must not be applied to the newer hand-in.
-	const shipRow = await db.orm.public.IreShip.where({ phase, themeProjectId }).select(
-		"lastSubmissionId",
-		"remoteId",
-	).first()
+	const shipRow = await db.orm.public.IreShip.where({ phase, themeProjectId })
+		.select("lastSubmissionId", "remoteId")
+		.first()
 	const open = shipRow?.lastSubmissionId
 		? await db.orm.public.PhaseSubmission.where({ id: shipRow.lastSubmissionId })
-			.select("ariStatus", "id", "resolvedAt")
-			.first()
+				.select("ariStatus", "id", "resolvedAt")
+				.first()
 		: null
 	const fallback = await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
 		.orderBy(submission => submission.createdAt.desc())
@@ -140,7 +139,10 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 			.select("designStatus", "theme")
 			.first()
 		if (project?.theme !== Theme.WARMUP && project?.designStatus !== PhaseStatus.approved)
-			throw new HttpError("DESIGN_NOT_APPROVED", "Waiting for the design approval before this build approval can be applied")
+			throw new HttpError(
+				"DESIGN_NOT_APPROVED",
+				"Waiting for the design approval before this build approval can be applied",
+			)
 	}
 
 	await db.orm.public.ReviewClaim.where({ submissionId: submission.id }).deleteAndCount()
@@ -277,8 +279,8 @@ async function applyReset(event: ResetInput): Promise<void> {
 	await db.transaction(async tx => {
 		await tx.orm.public.SubmissionReview.where({ invalidated: false })
 			.where(review =>
-				review.submission.some(submission =>
-					submission.phase.eq(phase) && submission.themeProjectId.eq(themeProjectId),
+				review.submission.some(
+					submission => submission.phase.eq(phase) && submission.themeProjectId.eq(themeProjectId),
 				),
 			)
 			.updateAndCount({ invalidated: true, invalidatedAt: nowText })
@@ -416,7 +418,13 @@ export async function applyIreWebhook(event: AriWebhookEvent, deliveryId: string
 		if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED")
 			await logAudit({
 				action: AuditAction.ARI_WEBHOOK_IGNORED,
-				metadata: { deferred: true, event: event.event, externalId, provider: "ire", reason: "deferred: design not approved" },
+				metadata: {
+					deferred: true,
+					event: event.event,
+					externalId,
+					provider: "ire",
+					reason: "deferred: design not approved",
+				},
 				targetId: externalId ? (parseAriExternalId(externalId)?.themeProjectId ?? null) : null,
 				targetType: "ThemeProject",
 			})
@@ -468,8 +476,10 @@ function syntheticDecision(
 		title: "",
 		track: "hardware" as const,
 	}
-	if (decision === "approved") return { decision, event: "review.approved", external_id: externalId, id, maker, review, ship }
-	if (decision === "changes") return { decision, event: "review.changes", external_id: externalId, id, maker, review, ship }
+	if (decision === "approved")
+		return { decision, event: "review.approved", external_id: externalId, id, maker, review, ship }
+	if (decision === "changes")
+		return { decision, event: "review.changes", external_id: externalId, id, maker, review, ship }
 	return { decision, event: "review.rejected", external_id: externalId, id, maker, review, ship }
 }
 
@@ -519,7 +529,7 @@ export async function reconcileIreDecisions(
 
 	for (const row of open) {
 		summary.checked += 1
-		let status
+		let status: IreShipStatus | null
 		try {
 			status = await getIreShip(row.externalId)
 		} catch (err) {
@@ -600,10 +610,7 @@ export async function reconcileIreDecisions(
 				continue
 			}
 			summary.failed += 1
-			console.error(
-				`[ire] reconcile: could not apply ${status.decision} for ${row.themeProjectId}:${row.phase}`,
-				err,
-			)
+			console.error(`[ire] reconcile: could not apply ${status.decision} for ${row.themeProjectId}:${row.phase}`, err)
 		}
 	}
 
