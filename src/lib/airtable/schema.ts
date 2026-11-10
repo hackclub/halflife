@@ -74,7 +74,7 @@ export const YSWS_SUBMISSION = {
 		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
 		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
 		lastName: f<string>("fldYswsLastName", "Last Name"),
-		// The approved hours when a review cut the claimed total. Left blank when nothing was cut, so the payout pipeline falls back to `Hours spent (self reported)`; cleared on a reversal so a stale figure cannot outlive its approval.
+		// The hours figure the payout pipeline reads for an approved row. When a review cut the claimed total it holds the approved hours; otherwise it holds the claimed (self-reported) hours, so it is never blank for an approved submission. Cleared on a reversal so a stale figure cannot outlive its approval.
 		overrideHoursSpent: f<number>("fldYswsOverrideHoursSpent", "Optional - Override Hours Spent"),
 		// The reviewer whose decision the webhook carries as `review.reviewer.email`. Half Life stores that address on the review (`SubmissionReview.reviewerEmail`), and the same mirror that moves the status fills this column from it. Ari names no one for its second pass – the organizer who confirms a held decision exists only in Ari's internal activity log – so this is the only reviewer column.
 		pass1Reviewer: f<string>("fldYswsPass1Reviewer", "Pass 1 reviewer"),

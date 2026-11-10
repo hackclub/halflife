@@ -237,7 +237,7 @@ It rewrites each decided row's `Justification - Specific Technical Features` wit
 
 A review may approve fewer hours than the maker's `Hours spent (self reported)`. The payout pipeline does not read the review, so it pays the self-reported figure unless the approved one lands on the row:
 
-- `Optional - Override Hours Spent` – a number field. The approved hours, written only when they are below the claim.
+- `Optional - Override Hours Spent` – a number field. For approved rows, the approved hours when they are below the claim, else the claimed (self-reported) hours. Never left blank for an approved submission.
 - `Justification - Deflation Justification` – a long text field. The amounts cut plus the reviewer's reason for the cut when one was recorded: Ari's `justification.deflation_reason` when the decision carries it, else the review's internal audit note. The note to the maker is not used here – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it often says nothing about the cut.
 
 `syncReviewDecisionToYsws` (`src/lib/airtable/sync.ts`) writes both in the same patch as the status, note, reviewer and Loops overrides, and clears both when a later decision withdraws the approval. The claimed figure is read from the row itself, so the override always replaces the number the base would otherwise pay. The app probes for both columns and skips them when absent.

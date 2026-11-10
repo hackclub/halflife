@@ -342,13 +342,13 @@ async function readReviewRow(config: AirtableConfig, recordId: string): Promise<
 }
 
 /**
- * The two deflation columns for a decision: the approved hours when they fall short of the row's own claim, or a cleared pair when they do not.
+ * The hours-override and deflation-justification columns for a decision.
  *
- * The claimed figure comes from the row rather than being recomputed here. It is the number the payout pipeline will actually fall back to, and it is the number the override exists to replace – recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
+ * The payout pipeline reads `Optional - Override Hours Spent` for approved rows, so it must never be blank: when a review cut the claimed total, it holds the approved hours; otherwise it holds the claimed (self-reported) hours from the row. The claimed figure comes from the row rather than being recomputed here, because it is the number the base already shows and recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
  *
- * `reason` is the reviewer's justification for the cut – Ari's own deflation reason when it carried one, else the review's internal note – and never the note to the maker, which has its own column and is quoted in the email.
+ * `Justification - Deflation Justification` is only written when hours were cut. `reason` is the reviewer's justification for the cut – Ari's own deflation reason when it carried one, else the review's internal note – and never the note to the maker, which has its own column and is quoted in the email.
  *
- * An approved row whose frozen hours are missing is left alone: nothing here can say whether it was deflated, and clearing a value a person may have entered is worse than leaving it. A non-approved row is cleared, because an override that outlived its approval would keep paying hours nobody is standing behind.
+ * An approved row whose frozen hours are missing is left alone: nothing here can say what figure to put. A non-approved row is cleared, because an override that outlived its approval would keep paying hours nobody is standing behind.
  */
 function deflationColumns(
 	project: { approvedHours: number | null; designApprovedHours: number | null },
@@ -362,18 +362,20 @@ function deflationColumns(
 	const justificationKey = fieldKey(justificationField)
 	const clear = { [overrideKey]: null, [justificationKey]: "" }
 	if (status !== YSWS_REVIEW_STATUS.approved) return clear
-	// The row could not be read, so nothing here can say whether it was deflated.
+	// The row could not be read, so nothing here can say what figure to write.
 	if (!row) return {}
 
 	const approved = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
 	if (approved === null) return {}
 
 	const deflation = deflationFor(approved, row.selfReportedHours)
-	if (!deflation) return clear
-	return {
-		[overrideKey]: deflation.approvedHours,
-		[justificationKey]: deflationJustification(deflation, reason),
-	}
+	if (deflation)
+		return {
+			[overrideKey]: deflation.approvedHours,
+			[justificationKey]: deflationJustification(deflation, reason),
+		}
+	const claimed = row.selfReportedHours ?? round2(approved)
+	return { [overrideKey]: claimed, [justificationKey]: "" }
 }
 
 /**
