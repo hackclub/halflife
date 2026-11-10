@@ -28,6 +28,17 @@ export interface ReviewJournal {
 	markdown?: string
 	minutes: number
 	text: string
+	/** Ire-only: the recordings backing this entry, for display and per-clip deflation. Stripped for Ari. */
+	timelapses?: ReviewTimelapse[]
+}
+
+/** One recording backing a journal entry, in Ire's ingest shape. */
+export interface ReviewTimelapse {
+	coveredSeconds?: number
+	externalId?: string
+	provider?: string
+	thumbnailUrl?: string
+	url?: string
 }
 
 export interface ReviewMaker {
