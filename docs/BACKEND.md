@@ -84,7 +84,6 @@ Ari (`ari.hackclub.com`, `@hackclub/ari`) is the review surface. Half Life sends
 ## Reviewing with Ire (shadow)
 
 The Ire platform can run beside Ari as a read-only shadow. The initial integration does not change who decides: Ari still owns every decision, every grant and every maker notice.
-
 - **`lib/ire-platform.ts`** speaks Ire's Ari-compatible edge directly. It signs `timestamp.body` (the delivery id is not in the inbound signature) and sends the nested `meta.bom`, `meta.hours`, `meta.prior_reviews`, `meta.requested_tier` and `meta.grant_cap_cents` that the Ari SDK refuses.
 - **`lib/review-ship.ts`** builds one ship; `toAriShipInput` flattens it back to exactly Ari's payload. The two providers cannot drift into different answers to "what was handed in".
 - **`lib/ire-shadow.ts`** owns the lifecycle. `IreShip` is a separate row keyed by `(themeProjectId, phase)` because `unsubmitPhase` deletes the local submission; the mapping has to survive that. A resubmission withdraws the stale Ire copy and creates the next version. `ire-retry` closes copies whose phase has left review, so the shadow queue cannot fill with ships Ari has already decided.
@@ -92,6 +91,12 @@ The Ire platform can run beside Ari as a read-only shadow. The initial integrati
 - **Inbound.** `POST /api/integrations/ire/webhook` verifies `IRE_WEBHOOK_SECRET` and records every delivery as `ARI_WEBHOOK_IGNORED` with `provider: "ire"`; it is a shadow receiver, not a decision path. The admin panel shows the URL for the later live phase.
 - **Failures.** A shadow failure is an audit row (`IRE_SYNC_FAILURE`) and an `IreShip.lastError`, not a participant-visible problem. It is replayed by `POST /api/integrations/ire-retry` or the admin Retry button.
 - **Parity.** `bun run ire:parity` compares the open queues, claimed hours, BOM totals and check summaries through Ire's machine parity feed. `bun run ire:backfill --commit` copies the currently open queue once.
+
+## Reviewing with Ire (live)
+
+Setting `IRE_MODE=live` makes Ire own review: submit, unsubmit, dispute requeues and warm-up imports send to Ire exclusively, and `POST /api/integrations/ire/webhook` applies decisions through the same `finalizeReview` Ari uses, attributed to Ire (`decidedBy: "ire"`, `"Approved by Ire."` fallback). `ire-retry` additionally reconciles standing Ire decisions the webhook never delivered, quietly. A build approved before its design is deferred – the webhook rethrows for redelivery and the reconcile applies it once the design lands. Send failures notify the maker once per stuck hand-in through the existing `shipError` marker. Decisions are mirrored into the `ari*` columns on `PhaseSubmission` so admin counts, Airtable and audit queries keep working until those columns are renamed; `IreShip` remains the source of truth for which remote ship a phase holds.
+
+Cutover: run `ire:parity` until queue counts match, `ire:backfill --commit` for the open queue, `ire:backfill-reviewed --commit` for decided history, point Ire at the webhook URL with `IRE_SHADOW=0`, then set `IRE_MODE=live`. Rollback is setting it back to `shadow` – Ari still holds every ship it was sent while dual-sending.
 
 ## Payouts
 

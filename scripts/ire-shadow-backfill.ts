@@ -1,4 +1,4 @@
-import { isIreConfigured } from "../src/lib/ire-platform"
+import { ireLive, isIreConfigured } from "../src/lib/ire-platform"
 import { findAllOpenIreSubmissions, findUnsyncedIreSubmissions, sendSubmissionToIre } from "../src/lib/ire-shadow"
 import db from "../src/lib/prisma8"
 import { trackSideEffect } from "../src/lib/side-effects"
@@ -59,7 +59,7 @@ async function main() {
 			"ire",
 			{
 				actorId: null,
-				metadata: { backfill: true, phase: item.phase, resend, shadow: true },
+				metadata: { backfill: true, live: ireLive(), phase: item.phase, resend },
 				targetId: item.themeProjectId,
 				targetType: "ThemeProject",
 			},

@@ -51,6 +51,11 @@ export function ireMode(): IreMode {
 	return process.env.IRE_MODE?.trim().toLowerCase() === "live" ? "live" : "shadow"
 }
 
+/** Whether Ire owns review on this deployment: configured and explicitly switched to live. */
+export function ireLive(): boolean {
+	return ireMode() === "live" && isIreConfigured()
+}
+
 export function ireBaseUrl(): string {
 	return required("IRE_API_URL").replace(/\/$/, "")
 }

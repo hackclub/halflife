@@ -13,7 +13,7 @@ import { AuditAction, logAuditTx } from "@/lib/audit"
 import { TIERS } from "@/lib/config/tiers"
 import { HoursSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { isIreConfigured } from "@/lib/ire-platform"
+import { ireLive, isIreConfigured } from "@/lib/ire-platform"
 import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"
@@ -448,6 +448,8 @@ async function sendToAri(
 	phase: Phase,
 	actor: ImportActor,
 ): Promise<WarmupImportOutcome["ari"]> {
+	// In live mode Ire owns review and the Ari send is skipped, not failed.
+	if (ireLive()) return "not_attempted"
 	if (!isAriConfigured()) return "not_configured"
 	const result = await trackSideEffect(
 		"ari",
@@ -474,7 +476,7 @@ async function sendToIre(
 		{
 			actorEmail: actor.email,
 			actorId: actor.id,
-			metadata: { phase, shadow: true, warmupImport: true },
+			metadata: { live: ireLive(), phase, warmupImport: true },
 			targetId: themeProjectId,
 			targetType: "ThemeProject",
 		},
