@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server"
 import { ok } from "@/lib/api"
 import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
-import { isIreConfigured } from "@/lib/ire-platform"
+import { ireMode, isIreConfigured } from "@/lib/ire-platform"
+import { reconcileIreDecisions } from "@/lib/ire-review"
 import {
 	closeResolvedIreShips,
 	findUnsyncedIreSubmissions,
@@ -14,9 +15,9 @@ import { recordSyncRun } from "@/lib/sync-run-log"
 export const maxDuration = 300
 
 /**
- * Keep the shadow queue in Ire honest.
+ * Keep the Ire queue honest.
  *
- * Three jobs in one pass: refresh the open ships so a lost response or an operator's withdraw is noticed, replay the hand-ins that have no healthy ship, and close the copies whose local phase has left review. The local phase is authoritative; nothing here applies a decision, writes credit, mirrors Airtable or notifies a maker.
+ * Four jobs in one pass: refresh the open ships so a lost response or an operator's withdraw is noticed, replay the hand-ins that have no healthy ship, close the copies whose local phase has left review, and – in live mode only – reconcile standing Ire decisions the webhook never delivered. The local phase is authoritative for the first three; the reconcile applies decisions through `finalizeReview`, quietly, like Ari's.
  *
  * `?dryRun=true` reports what is pending without writing. The route is separate from `ari-retry` so an Ire outage cannot delay an Ari retry.
  */
@@ -36,7 +37,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 			"ire",
 			{
 				actorId: null,
-				metadata: { phase: item.phase, retry: true, shadow: true },
+				metadata: { live: ireMode() === "live", phase: item.phase, retry: true },
 				targetId: item.themeProjectId,
 				targetType: "ThemeProject",
 			},
@@ -49,6 +50,19 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 
 	const close = await closeResolvedIreShips({ limit: 100 })
 
+	// Missed decisions: a delivery the webhook never received leaves a hand-in open here while Ire has decided it. Live mode only – in shadow Ire never decides, and nothing here may move credit. Bounded, shuffled and quiet.
+	let reconciled = 0
+	let reconciledApplied = 0
+	let reconciledDecided = 0
+	let reconciledReverted = 0
+	if (isIreConfigured() && ireMode() === "live") {
+		const result = await reconcileIreDecisions({ announce: false, commit: true, limit: 150 })
+		reconciled = result.checked
+		reconciledApplied = result.applied
+		reconciledDecided = result.decided
+		reconciledReverted = result.reverted
+	}
+
 	const summary = {
 		attempted: pending.length,
 		closeChecked: close.checked,
@@ -57,6 +71,10 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		closeSkipped: close.skipped,
 		failed,
 		missing: status.missing,
+		reconciled,
+		reconciledApplied,
+		reconciledDecided,
+		reconciledReverted,
 		skipped,
 		statusChecked: status.checked,
 		statusFailed: status.failed,

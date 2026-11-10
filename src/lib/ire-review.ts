@@ -7,12 +7,12 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { isTierId, tierForHours } from "@/lib/config/tiers"
 import { Phase, PhaseStatus, ReviewResult, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import { getIreShip, isIreConfigured } from "@/lib/ire-platform"
 import { notifyReviewOutcome } from "@/lib/notifications"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
 import { formatDbTimestamp } from "@/lib/time"
-import { isRecord } from "@/lib/unknown"
 
 /**
  * Ire's live decision path.
@@ -392,9 +392,16 @@ export async function applyStoredIreEvent(event: AriWebhookEvent): Promise<void>
 /**
  * Apply one verified Ire webhook delivery.
  *
- * Mirrors `applyAriWebhook`: the delivery id is checked first and recorded
- * only after the work succeeds. A build approval that arrives before its
- * design is stored whole and replayed by `ire-retry`.
+ * Idempotent: the delivery id is checked first and recorded only after the
+ * work succeeds, so a redelivery (same id) is a no-op. A decision the state
+ * is not ready for (build approved before its design) is rethrown so Ire
+ * redelivers it; the hourly reconcile pass also picks it up once the design
+ * lands, so nothing depends on Ire's redelivery window outlasting the wait.
+ * Deferred deliveries are deliberately NOT stored: unlike the Ari path,
+ * this table is shared and has no provider column, so a stored Ire event
+ * would be replayed by `ari-retry` through the wrong decision path.
+ *
+ * Errors are rethrown so the route answers non-2xx.
  */
 export async function applyIreWebhook(event: AriWebhookEvent, deliveryId: string): Promise<void> {
 	const seen = await db.orm.public.AriWebhookDelivery.where({ deliveryId }).select("id").first()
@@ -406,23 +413,13 @@ export async function applyIreWebhook(event: AriWebhookEvent, deliveryId: string
 	try {
 		await applyEvent(event)
 	} catch (err) {
-		if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") {
-			const payload = isRecord(event) ? { ...event } : {}
-			await db.orm.public.AriWebhookDelivery.create({
-				ariSubmissionId: typeof ireSubmissionId === "string" ? ireSubmissionId : null,
-				deliveryId,
-				event: event.event,
-				externalId,
-				payload,
-			})
+		if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED")
 			await logAudit({
 				action: AuditAction.ARI_WEBHOOK_IGNORED,
 				metadata: { deferred: true, event: event.event, externalId, provider: "ire", reason: "deferred: design not approved" },
 				targetId: externalId ? (parseAriExternalId(externalId)?.themeProjectId ?? null) : null,
 				targetType: "ThemeProject",
 			})
-			return
-		}
 		throw err
 	}
 
@@ -432,4 +429,183 @@ export async function applyIreWebhook(event: AriWebhookEvent, deliveryId: string
 		event: event.event,
 		externalId,
 	})
+}
+
+// ─── Reconciliation ──────────────────────────────────────────────────────────
+
+/** What a reconcile pass did. */
+export interface IreReconcileSummary {
+	applied: number
+	checked: number
+	decided: number
+	deferred: number
+	failed: number
+	missing: number
+	pending: number
+	phaseUpdated: number
+	reverted: number
+	skipped: number
+}
+
+function syntheticDecision(
+	decision: "approved" | "changes" | "rejected",
+	externalId: string,
+	id: string,
+): DecisionEvent {
+	const maker = { email: "", name: "", slack_id: null }
+	// A status poll carries the decision but no review, so the decision is
+	// recorded with the generic sentence – the same recovery shape as Ari's
+	// `decisionEventFromStatus`. A later webhook delivery carrying the
+	// reviewer's words still lands through the normal path.
+	const review = { note_to_maker: "", reviewer: null }
+	const ship = {
+		authors: [],
+		demo_url: null,
+		description: null,
+		hackatime_projects: [],
+		repo_url: "",
+		thumbnail_url: null,
+		title: "",
+		track: "hardware" as const,
+	}
+	if (decision === "approved") return { decision, event: "review.approved", external_id: externalId, id, maker, review, ship }
+	if (decision === "changes") return { decision, event: "review.changes", external_id: externalId, id, maker, review, ship }
+	return { decision, event: "review.rejected", external_id: externalId, id, maker, review, ship }
+}
+
+/**
+ * Replay decisions Ire holds but the webhook never delivered.
+ *
+ * The live-mode counterpart of `reconcileAriDecisions` and the safety net
+ * for deferred builds: the webhook is fire-and-forget, so a delivery sent
+ * while the endpoint was unregistered or unreachable is gone, while the
+ * ship still carries its result. Candidates are the open `IreShip` rows
+ * whose local phase is still in review; a capped run takes only the first
+ * `limit` of them in shuffled order so no ship starves behind the others.
+ * Quiet by default – a catch-up run must not become a flood of late DMs.
+ */
+export async function reconcileIreDecisions(
+	opts: { announce?: boolean; commit?: boolean; limit?: number } = {},
+): Promise<IreReconcileSummary> {
+	const summary: IreReconcileSummary = {
+		applied: 0,
+		checked: 0,
+		decided: 0,
+		deferred: 0,
+		failed: 0,
+		missing: 0,
+		pending: 0,
+		phaseUpdated: 0,
+		reverted: 0,
+		skipped: 0,
+	}
+	if (!isIreConfigured()) return summary
+
+	const rows = await db.orm.public.IreShip.where({ closedAt: null })
+		.where(row => row.remoteId.isNotNull())
+		.orderBy(row => row.updatedAt.asc())
+		.include("themeProject", project => project.select("buildStatus", "deletedAt", "designStatus"))
+		.limit(opts.limit ?? 2000)
+		.all()
+	const open = rows
+		.filter(row => {
+			const project = row.themeProject
+			return project && project.deletedAt === null && statusFor(project, row.phase) === PhaseStatus.in_review
+		})
+		.map(value => ({ order: Math.random(), value }))
+		.toSorted((a, b) => a.order - b.order)
+		.slice(0, opts.limit ?? 2000)
+		.map(entry => entry.value)
+
+	for (const row of open) {
+		summary.checked += 1
+		let status
+		try {
+			status = await getIreShip(row.externalId)
+		} catch (err) {
+			summary.failed += 1
+			console.error(`[ire] reconcile: status failed for ${row.themeProjectId}:${row.phase}`, err)
+			continue
+		}
+
+		if (!status || status.phase === "withdrawn") {
+			summary.missing += 1
+			if (opts.commit)
+				await db.orm.public.IreShip.where({ id: row.id }).update({
+					closedAt: formatDbTimestamp(new Date()),
+					lastError: status ? `Ire reported this ship as ${status.phase}` : "Ire no longer knows this ship",
+					remoteId: null,
+					status: status?.phase ?? "missing",
+					version: null,
+				})
+			continue
+		}
+
+		// Only the ship this row was sent as says anything about its phase.
+		if (row.remoteId === status.id && opts.commit) {
+			const current = (await db.orm.public.IreShip.where({ id: row.id }).select("status").first())?.status ?? null
+			if (current !== status.phase) {
+				await db.orm.public.IreShip.where({ id: row.id }).update({
+					decision: status.decision,
+					lastError: null,
+					status: status.phase,
+					syncedAt: formatDbTimestamp(new Date()),
+					version: status.version,
+				})
+				summary.phaseUpdated += 1
+			}
+		}
+
+		if (status.phase === "reverted") {
+			summary.reverted += 1
+			if (row.remoteId !== status.id) {
+				summary.skipped += 1
+				continue
+			}
+			if (!opts.commit) continue
+			try {
+				await applyReset({ event: "review.reverted", external_id: status.externalId, id: status.id })
+				summary.applied += 1
+			} catch (err) {
+				summary.failed += 1
+				console.error(`[ire] reconcile: could not apply the revert for ${row.themeProjectId}:${row.phase}`, err)
+			}
+			continue
+		}
+
+		if (status.phase !== "reviewed" || !status.decision) {
+			summary.pending += 1
+			continue
+		}
+		if (status.decision !== "approved" && status.decision !== "changes" && status.decision !== "rejected") {
+			summary.pending += 1
+			continue
+		}
+		summary.decided += 1
+		if (!opts.commit) continue
+
+		if (row.remoteId !== status.id) {
+			summary.skipped += 1
+			continue
+		}
+
+		try {
+			await applyDecision(syntheticDecision(status.decision, status.externalId, status.id), {
+				announce: opts.announce === true,
+			})
+			summary.applied += 1
+		} catch (err) {
+			if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") {
+				summary.deferred += 1
+				continue
+			}
+			summary.failed += 1
+			console.error(
+				`[ire] reconcile: could not apply ${status.decision} for ${row.themeProjectId}:${row.phase}`,
+				err,
+			)
+		}
+	}
+
+	return summary
 }
