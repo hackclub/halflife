@@ -2,7 +2,7 @@ import { not } from "@prisma/orm-postgres/orm-client"
 import { starterProjectsFor } from "../src/lib/config/onboarding"
 import { displayName } from "../src/lib/display-name"
 import { HcbGrantCardStatus, Phase, PhaseStatus, Theme } from "../src/lib/enums"
-import { readCardGrantSpend } from "../src/lib/hcb"
+import { listOrganizationCardGrants, readCardGrantSpend } from "../src/lib/hcb"
 import db from "../src/lib/prisma8"
 
 /**
@@ -14,7 +14,13 @@ import db from "../src/lib/prisma8"
  * - its design was approved, since the grant is emitted by the design approval;
  * - a grant was issued for it: `grantEmittedAt` is set and `grantUsd` is above zero.
  *
- * The grant card is the project's live design card grant (`ISSUED`, not superseded). "spent" is `yes` when HCB reports card spend above zero, `no` when it reports zero, and `unknown` when HCB does not say. A project with no issued card grant shows `no card`, and a card HCB refuses to read shows `error`. Read-only, and safe to run against production:
+ * A design grant reaches HCB in one of three ways (see `lib/grant-cards`), and each is checked in turn:
+ *
+ * - an API card grant: a live `HcbGrantCard` (`ISSUED`, not superseded), which has a link;
+ * - a top-up into an existing card grant: a sent `HcbGrantTopUp`, whose `grantHashid` is the card grant's id, so it has a link too;
+ * - a CSV import: an `HcbCardGrantExportRow`. HCB creates that card from the CSV and we keep no id for it, so the row is matched to HCB's own card grant list by email and amount. A row that matches no grant, or more than one, is reported on its row rather than guessed at.
+ *
+ * "spent" is `yes` when HCB reports card spend above zero, `no` when it reports zero, and `unknown` when HCB does not say. A project with no grant card shows `no card`, and a card HCB refuses to read shows `error`. Read-only, and safe to run against production:
  *
  *   bun --conditions=react-server scripts/week-1-starter-grant-holders.ts
  *   bun --conditions=react-server scripts/week-1-starter-grant-holders.ts > week-1-grant-holders.tsv
@@ -27,14 +33,13 @@ function oneLine(value: string): string {
 	return value.replaceAll(/[\t\r\n]+/g, " ").trim()
 }
 
-interface SpendReading {
+interface CardReading {
 	grantLink: string
 	spent: string
 }
 
-/** Read the card's spend from HCB, one card at a time. A failed read is reported on its row, not allowed to stop the list. */
-async function spendFor(hashid: string | null): Promise<SpendReading> {
-	if (!hashid) return { grantLink: "-", spent: "no card" }
+/** Read the card's spend from HCB. A failed read is reported on its row, not allowed to stop the list. */
+async function readingFor(hashid: string): Promise<CardReading> {
 	const grantLink = `https://hcb.hackclub.com/grants/${hashid}`
 	try {
 		const spend = await readCardGrantSpend(hashid)
@@ -59,23 +64,62 @@ async function main(): Promise<void> {
 		.select("id", "userId")
 		.include("user", user => user.select("displayName", "email", "name"))
 		.all()
+	const projectIds = projects.map(project => project.id)
 
 	const cards = await db.orm.public.HcbGrantCard.where({ phase: Phase.DESIGN, status: HcbGrantCardStatus.ISSUED })
 		.where(card => card.supersededAt.isNull())
-		.where(card => card.themeProjectId.in(projects.map(project => project.id)))
+		.where(card => card.themeProjectId.in(projectIds))
 		.select("hcbCardGrantId", "themeProjectId")
 		.all()
-	const hashidByProject = new Map(cards.map(card => [card.themeProjectId, card.hcbCardGrantId]))
+	const topUps = await db.orm.public.HcbGrantTopUp.where({ phase: Phase.DESIGN })
+		.where(topUp => topUp.sentAt.isNotNull())
+		.where(topUp => topUp.themeProjectId.in(projectIds))
+		.select("grantHashid", "themeProjectId")
+		.all()
+	const csvRows = await db.orm.public.HcbCardGrantExportRow.where(row => row.themeProjectId.in(projectIds))
+		.select("amountCents", "email", "themeProjectId")
+		.all()
+
+	const hashidByProject = new Map<string, string>()
+	for (const card of cards) if (card.hcbCardGrantId) hashidByProject.set(card.themeProjectId, card.hcbCardGrantId)
+	for (const topUp of topUps)
+		if (!hashidByProject.has(topUp.themeProjectId)) hashidByProject.set(topUp.themeProjectId, topUp.grantHashid)
+
+	// A CSV import keeps no HCB id, so each row is matched to HCB's own list of card grants by email and amount.
+	const csvByProject = new Map(csvRows.map(row => [row.themeProjectId, row]))
+	const unmatchedCsv = [...csvByProject.values()].filter(row => !hashidByProject.has(row.themeProjectId))
+	const hcbGrants = unmatchedCsv.length > 0 ? await listOrganizationCardGrants() : null
+	if (hcbGrants?.kind === "unreadable") throw new Error("HCB returned a card grant list this script cannot read")
+
+	const csvReadings = new Map<string, CardReading>()
+	for (const row of unmatchedCsv) {
+		const email = row.email.trim().toLowerCase()
+		const matches = (hcbGrants?.rows ?? []).filter(
+			grant => grant.email?.trim().toLowerCase() === email && grant.amountCents === row.amountCents,
+		)
+		if (matches.length === 1 && matches[0]) {
+			hashidByProject.set(row.themeProjectId, matches[0].id)
+			continue
+		}
+		const spent =
+			matches.length === 0
+				? "no HCB card grant found for this CSV row"
+				: `ambiguous: ${matches.length} HCB card grants match`
+		csvReadings.set(row.themeProjectId, { grantLink: "-", spent })
+	}
 
 	const rows: { email: string; grantLink: string; name: string; spent: string }[] = []
 	for (const project of projects) {
 		if (!project.user) continue
-		const { grantLink, spent } = await spendFor(hashidByProject.get(project.id) ?? null)
+		const hashid = hashidByProject.get(project.id)
+		const reading = hashid
+			? await readingFor(hashid)
+			: (csvReadings.get(project.id) ?? { grantLink: "-", spent: "no card" })
 		rows.push({
 			email: project.user.email,
-			grantLink,
+			grantLink: reading.grantLink,
 			name: displayName(project.user, "(no name)"),
-			spent,
+			spent: reading.spent,
 		})
 	}
 
@@ -83,7 +127,7 @@ async function main(): Promise<void> {
 	for (const row of rows) console.log([oneLine(row.name), oneLine(row.email), row.grantLink, row.spent].join("\t"))
 
 	console.error(
-		`${rows.length} project(s) with an approved Week 1 starter and an issued grant, ${cards.length} with an issued card grant`,
+		`${rows.length} project(s) with an approved Week 1 starter and an issued grant, ${hashidByProject.size} with a card grant on HCB`,
 	)
 }
 
