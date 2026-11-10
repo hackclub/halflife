@@ -2,7 +2,13 @@ import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
 import { cache } from "react"
 import type { Models } from "@/app/generated/prisma8/contract.d"
-import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor, TOTAL_WEEKS } from "@/lib/config/program"
+import {
+	DEFAULT_EVENT_START_DATE,
+	DEFAULT_PROGRAM_TIMEZONE,
+	DESIGN_WEEKS,
+	scheduledWeekFor,
+	TOTAL_WEEKS,
+} from "@/lib/config/program"
 import { type PayoutSource, Phase, PhaseStatus, Role } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { getUserRoles, hasRole } from "@/lib/permissions"
@@ -126,19 +132,25 @@ const CLOSE_BEFORE_MIDNIGHT_MS = 60 * 1000
 
 /**
  * The moment a program week stops taking work: 11:59 PM on its last day, in the program's timezone. Anything at 11:59 or later is refused; the minute to midnight belongs to no week.
+ *
+ * Build weeks run as one block: every week after the design weeks closes together when the last week closes, so makers can build in any order across the back half. Design weeks still close one at a time.
  */
 export function weekClosesAt(
 	settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
 	week: number,
 ): Date {
-	return new Date(midnightAfterWeek(settings, week).getTime() - CLOSE_BEFORE_MIDNIGHT_MS)
+	const lastDay = week > DESIGN_WEEKS && week <= TOTAL_WEEKS ? TOTAL_WEEKS : week
+	return new Date(midnightAfterWeek(settings, lastDay).getTime() - CLOSE_BEFORE_MIDNIGHT_MS)
 }
 
 /**
  * The moment a program week starts taking work: midnight at the start of its Monday in the program's timezone, a minute after the week before it closes. Week 1's is the program's first midnight.
+ *
+ * The build block opens together: every week after the design weeks opens when the first build week opens. Week 0 is the warm-up, which is not scheduled and never waits.
  */
 export function weekOpensAt(settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">, week: number): Date {
-	return midnightAfterWeek(settings, week - 1)
+	const firstDay = week > DESIGN_WEEKS && week <= TOTAL_WEEKS ? DESIGN_WEEKS : week - 1
+	return midnightAfterWeek(settings, firstDay)
 }
 
 /**
