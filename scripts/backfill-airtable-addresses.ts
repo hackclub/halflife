@@ -10,7 +10,7 @@ import {
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
-import { AuditAction, Phase } from "../src/lib/enums"
+import { AuditAction, type Phase } from "../src/lib/enums"
 import { PULL_PII, syncHcaProfile } from "../src/lib/hca-profile"
 import { decryptUserPII, isPiiConfigured } from "../src/lib/pii"
 import db from "../src/lib/prisma8"
@@ -156,9 +156,16 @@ async function diagnoseUser(userId: string, hasAnyAddress: boolean): Promise<str
 				|| user.encryptedAddressZip
 				|| user.encryptedAddressCountry),
 	)
-	if (!hasEncrypted) reasons.push("No encrypted address stored in DB after HCA refresh (HCA returned no address, token/sync unavailable, or PII not pulled)")
-	else if (!isPiiConfigured()) reasons.push("Encrypted address exists but PII_ENCRYPTION_KEY is not configured for decryption")
-	else reasons.push("Encrypted address exists but decryption yielded no address (wrong/missing/rotated PII key or malformed payload; check [pii] logs)")
+	if (!hasEncrypted)
+		reasons.push(
+			"No encrypted address stored in DB after HCA refresh (HCA returned no address, token/sync unavailable, or PII not pulled)",
+		)
+	else if (!isPiiConfigured())
+		reasons.push("Encrypted address exists but PII_ENCRYPTION_KEY is not configured for decryption")
+	else
+		reasons.push(
+			"Encrypted address exists but decryption yielded no address (wrong/missing/rotated PII key or malformed payload; check [pii] logs)",
+		)
 
 	return reasons.join("; ")
 }
@@ -170,9 +177,9 @@ async function main() {
 		process.exit(1)
 	}
 
-	const keys = Object.fromEntries(
-		ADDRESS_FIELDS.map(([key, field]) => [key, fieldKey(field)]),
-	) as { [_ in AddressKey]: string }
+	const keys = Object.fromEntries(ADDRESS_FIELDS.map(([key, field]) => [key, fieldKey(field)])) as {
+		[_ in AddressKey]: string
+	}
 
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null }).select("id", "title", "userId").all()
 	if (projects.length === 0) {
