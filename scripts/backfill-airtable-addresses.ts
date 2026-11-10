@@ -38,6 +38,9 @@ const ADDRESS_FIELDS = [
 
 type AddressKey = (typeof ADDRESS_FIELDS)[number][0]
 
+/** Address Line 2 (apt/suite) is optional; a blank there is normal and not a missing address. */
+const REQUIRED_KEYS: AddressKey[] = ADDRESS_FIELDS.map(([key]) => key).filter(key => key !== "addressLine2")
+
 interface CurrentRow {
 	addressLine1: string
 	addressLine2: string
@@ -79,6 +82,10 @@ function textCell(value: unknown): string {
 
 function blankAddressFields(row: CurrentRow): AddressKey[] {
 	return ADDRESS_FIELDS.map(([key]) => key).filter(key => !row[key])
+}
+
+function blankRequiredFields(row: CurrentRow): AddressKey[] {
+	return REQUIRED_KEYS.filter(key => !row[key])
 }
 
 /** The current address cells for every row in the submission table, read once. */
@@ -212,13 +219,14 @@ async function main() {
 			zip: pii.zip?.trim() ?? "",
 		}
 		const hasAny = Object.values(address).some(Boolean)
-		infoByUser.set(userId, { address, reason: hasAny ? null : await diagnoseUser(userId, false) })
+		const hasRequired = REQUIRED_KEYS.every(key => address[key])
+		infoByUser.set(userId, { address, reason: hasRequired ? null : await diagnoseUser(userId, false) })
 	}
-	// Diagnose partial addresses too.
+	// Diagnose partial addresses too (missing required fields only; line2 alone is not partial).
 	for (const [userId, info] of infoByUser.entries()) {
-		const hasAny = Object.values(info.address).some(Boolean)
-		const hasAll = Object.values(info.address).every(Boolean)
-		if (hasAny && !hasAll) info.reason = "Partial address on file: some fields are missing from the stored/HCA address."
+		const hasRequired = REQUIRED_KEYS.every(key => info.address[key])
+		if (!hasRequired && !info.reason)
+			info.reason = "Partial address on file: some fields are missing from the stored/HCA address."
 	}
 
 	const updates: Target[] = []
@@ -235,11 +243,24 @@ async function main() {
 			continue
 		}
 		const blank = blankAddressFields(row)
-		if (blank.length === 0) {
+		const requiredBlank = blankRequiredFields(row)
+		const userId = ownerByProject.get(projectId)
+		if (requiredBlank.length === 0) {
 			complete++
+			// Still fill an available line2 opportunistically, but the row is not missing.
+			const line2 = userId && !row.addressLine2 ? (infoByUser.get(userId)?.address.addressLine2 ?? "") : ""
+			if (line2) {
+				fieldsToFill += 1
+				updates.push({
+					fields: { [keys.addressLine2]: line2 },
+					phase,
+					recordId,
+					title: titleByProject.get(projectId) ?? projectId,
+					userId: userId ?? "",
+				})
+			}
 			continue
 		}
-		const userId = ownerByProject.get(projectId)
 		if (!userId) {
 			missing.push({
 				blankInAirtable: blank,
@@ -266,7 +287,7 @@ async function main() {
 				filledByBackfill.push(key)
 			}
 		}
-		const stillBlank = blank.filter(key => !address[key])
+		const stillBlank = requiredBlank.filter(key => !address[key])
 		const missingValue = stillBlank
 
 		if (filledByBackfill.length > 0) {
@@ -282,8 +303,8 @@ async function main() {
 
 		if (stillBlank.length > 0) {
 			missing.push({
-				blankInAirtable: blank,
-				filledByBackfill,
+				blankInAirtable: requiredBlank,
+				filledByBackfill: filledByBackfill.filter(key => key !== "addressLine2"),
 				missingValue,
 				phase,
 				projectId,
