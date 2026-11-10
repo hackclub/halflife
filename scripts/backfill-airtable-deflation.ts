@@ -14,13 +14,13 @@ import { AuditAction, Phase, PhaseStatus } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 
 /**
- * Fill `Optional - Override Hours Spent` and `Justification - Deflation Justification` on rows whose review approved fewer hours than the row claims.
+ * Fill `Optional - Override Hours Spent` for approved Airtable rows, and `Justification - Deflation Justification` when a review cut the claimed total.
  *
- * The live mirror writes both columns from the decision itself (see `syncReviewDecisionToYsws` in lib/airtable/sync). Rows decided before it did have neither, and the payout pipeline therefore still pays the self-reported figure even though a reviewer cut it. This replays what Postgres holds onto those rows.
+ * The live mirror writes these from the decision itself (see `syncReviewDecisionToYsws` in lib/airtable/sync). `Optional - Override Hours Spent` is required by the payout pipeline and must never be blank for an approved row: it holds the approved hours when the review cut the claim, else the claimed (self-reported) hours from the row. `Justification - Deflation Justification` is only written when hours were cut.
  *
- * The claimed figure is the row's own `Hours spent (self reported)`, because that is the number the override replaces. The approved figure is the phase's frozen hours on ThemeProject (`designApprovedHours`/`approvedHours`), falling back to the standing review's frozen value for a decision old enough to predate the project column. A row with neither is reported as unknown rather than guessed at.
+ * The claimed figure is the row's own `Hours spent (self reported)`, because that is the number the base already shows. The approved figure is the phase's frozen hours on ThemeProject (`designApprovedHours`/`approvedHours`), falling back to the standing review's frozen value for a decision old enough to predate the project column. A row with no frozen approved hours is reported as unknown rather than guessed at.
  *
- * The explanation is the standing review's internal `reason` – the reviewer's own audit note – and never the project's review comments, which are the note the maker was sent. An older run of this script quoted those comments, so rows it filled carry encouragement in their justification; running it again replaces that text with the reason.
+ * The deflation explanation is the standing review's internal `reason` – the reviewer's own audit note – and never the project's review comments, which are the note the maker was sent.
  *
  * Only approved rows are touched. A row that is back in review, returned or rejected is left alone: nothing here can say whether the hours it holds were meant to stay, and the live mirror clears them when that decision is made.
  *
@@ -136,7 +136,8 @@ async function main() {
 	let withoutRow = 0
 	let notApproved = 0
 	let unknown = 0
-	let noDeflation = 0
+	let deflated = 0
+	let claimed = 0
 	let aligned = 0
 	let gone = 0
 	for (const project of projects)
@@ -168,16 +169,19 @@ async function main() {
 				continue
 			}
 			const deflation = deflationFor(approved, row.selfReportedHours)
-			if (!deflation) {
-				noDeflation++
-				continue
-			}
-			const fields = {
-				[keys.justification]: deflationJustification(deflation, review?.reason ?? null),
-				[keys.override]: deflation.approvedHours,
-			}
+			const fields = deflation
+				? {
+						[keys.justification]: deflationJustification(deflation, review?.reason ?? null),
+						[keys.override]: deflation.approvedHours,
+					}
+				: {
+						[keys.justification]: "",
+						[keys.override]: row.selfReportedHours ?? Math.round(approved * 100) / 100,
+					}
+			if (deflation) deflated++
+			else claimed++
 			if (
-				row.overrideHoursSpent === deflation.approvedHours
+				row.overrideHoursSpent === fields[keys.override]
 				&& row.deflationJustification === fields[keys.justification]
 			) {
 				aligned++
@@ -190,7 +194,7 @@ async function main() {
 		`Projects: ${projects.length}; Airtable rows: ${projects.length * 2} (${withoutRow} phase(s) never written, ${gone} row(s) since deleted)`,
 	)
 	console.log(
-		`deflated: ${aligned + updates.length} (already correct: ${aligned}, to fill: ${updates.length}); not approved: ${notApproved}, approved with no frozen hours: ${unknown}, approved with nothing cut: ${noDeflation}`,
+		`approved rows needing an override: ${aligned + updates.length} (already correct: ${aligned}, to fill: ${updates.length}; deflated: ${deflated}, claimed hours: ${claimed}); not approved: ${notApproved}, approved with no frozen hours: ${unknown}`,
 	)
 	for (const target of updates.slice(0, 10))
 		console.log(
@@ -199,7 +203,7 @@ async function main() {
 	if (updates.length > 10) console.log(`  …and ${updates.length - 10} more`)
 
 	if (!commit) {
-		console.log("Dry run. Pass --commit to write the deflation columns on these rows.")
+		console.log("Dry run. Pass --commit to write the override hours columns on these rows.")
 		return
 	}
 

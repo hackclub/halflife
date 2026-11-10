@@ -4,12 +4,12 @@ import { fmtHours } from "@/lib/numbers"
 /**
  * The hour cut a review made, and the text that explains it.
  *
- * A review approves a number of hours, and the base keeps the maker's own figure in `Hours spent (self reported)`. When the approved number is lower, the difference is a deflation: the payout pipeline cannot see it unless the approved figure is put in `Optional - Override Hours Spent`, and a person cannot audit it unless the reason is in `Justification - Deflation Justification`.
+ * A review approves a number of hours, and the base keeps the maker's own figure in `Hours spent (self reported)`. The payout pipeline reads `Optional - Override Hours Spent` for approved rows, so it is always filled: with the approved hours when they are lower than the claim (a deflation), and with the claimed hours otherwise. When there is a deflation, `Justification - Deflation Justification` explains why.
  *
  * Pure on purpose: the live mirror and the backfill both use these, and a test can pin the boundary between "rounded away" and "a real cut" without a base or a database.
  */
 export interface Deflation {
-	/** The figure written to `Optional - Override Hours Spent`. */
+	/** The approved hours, written to `Optional - Override Hours Spent` when a review cut the claim. */
 	approvedHours: number
 	/** The figure the row's own `Hours spent (self reported)` holds. */
 	claimedHours: number
