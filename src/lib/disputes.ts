@@ -5,7 +5,7 @@ import { sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { Phase, PhaseStatus, ReviewDisputeOutcome } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { isIreConfigured } from "@/lib/ire-platform"
+import { isIreConfigured, ireLive } from "@/lib/ire-platform"
 import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import db from "@/lib/prisma8"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -115,6 +115,22 @@ export async function sendDisputedPhaseBack(
 
 	// The row follows the phase back to review; Loops triggers on decisions, so Pending Review sends nothing. The reviewer's justification is cleared with the decision it belonged to.
 	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(PhaseStatus.in_review), null, null, null, null)
+	if (ireLive()) {
+		// Ire owns the queue: the decided ship is closed, so the resend creates the next version.
+		if (isIreConfigured())
+			await trackSideEffect(
+				"ire",
+				{
+					actorEmail: reviewerEmail,
+					actorId: reviewerId,
+					metadata: { disputeId, live: true, phase },
+					targetId: themeProjectId,
+					targetType: "ThemeProject",
+				},
+				() => sendSubmissionToIre(themeProjectId, phase),
+			)
+		return
+	}
 	await trackSideEffect(
 		"ari",
 		{

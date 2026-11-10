@@ -9,10 +9,12 @@ import {
 	createIreShip,
 	getIreShip,
 	type IreShipCreated,
+	ireLive,
 	isIreConfigured,
 	terminalIreFailure,
 	withdrawIreShip,
 } from "@/lib/ire-platform"
+import { notifyShipFailed } from "@/lib/notifications"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { buildReviewShipInput } from "@/lib/review-ship"
@@ -110,6 +112,32 @@ async function recordError(themeProjectId: string, phase: Phase, reason: string)
 	}
 }
 
+/**
+ * Tell the maker their hand-in cannot reach review, once per stuck hand-in.
+ *
+ * Live mode only: in shadow the maker never asked for a second review, so a
+ * shadow failure stays an audit row. Reuses the `ariShipError` marker (and
+ * the project page's `shipError` readout) so the existing once-per-stuck
+ * logic and display keep working until those columns are renamed.
+ */
+async function noteIreFailure(themeProjectId: string, phase: Phase, reason: string): Promise<void> {
+	try {
+		const submission = await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
+			.orderBy(row => row.createdAt.desc())
+			.select("ariShipError", "id")
+			.first()
+		if (!submission) return
+
+		const firstTime = submission.ariShipError === null
+		await db.orm.public.PhaseSubmission.where({ id: submission.id }).update({ ariShipError: reason })
+		if (!firstTime) return
+
+		await notifyShipFailed({ phase, reason, themeProjectId })
+	} catch (err) {
+		console.error(`[ire] could not record the ship failure for ${themeProjectId}:`, err)
+	}
+}
+
 async function withdrawRow(row: IreShipRow): Promise<"not_queued" | "withdrawn"> {
 	const result = await withdrawIreShip(row.externalId)
 	await db.orm.public.IreShip.where({ id: row.id }).update({
@@ -173,6 +201,9 @@ export async function sendSubmissionToIre(
 			themeProjectId,
 			version: created.version,
 		})
+		if (ireLive() && submissionId)
+			// A hand-in that reached Ire is not stuck: clear the failure marker so a later failure earns a fresh notice.
+			await db.orm.public.PhaseSubmission.where({ id: submissionId }).update({ ariShipError: null }).catch(() => undefined)
 		return created
 	} catch (err) {
 		const queued = alreadyQueuedIreShip(err)
@@ -196,6 +227,8 @@ export async function sendSubmissionToIre(
 					const reason =
 						terminalIreFailure(retryErr) ?? (retryErr instanceof Error ? retryErr.message : String(retryErr))
 					await recordError(themeProjectId, phase, reason)
+					const terminal = terminalIreFailure(retryErr)
+					if (terminal && ireLive()) await noteIreFailure(themeProjectId, phase, terminal)
 					throw retryErr
 				}
 
@@ -218,6 +251,8 @@ export async function sendSubmissionToIre(
 
 		const reason = terminalIreFailure(err) ?? (err instanceof Error ? err.message : String(err))
 		await recordError(themeProjectId, phase, reason)
+		const terminal = terminalIreFailure(err)
+		if (terminal && ireLive()) await noteIreFailure(themeProjectId, phase, terminal)
 		throw err
 	}
 }

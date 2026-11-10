@@ -6,7 +6,7 @@ import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
-import { isIreConfigured } from "@/lib/ire-platform"
+import { isIreConfigured, ireLive } from "@/lib/ire-platform"
 import { withdrawSubmissionFromIre } from "@/lib/ire-shadow"
 import db from "@/lib/prisma8"
 import { unsubmitSchema } from "@/lib/schemas/project"
@@ -59,37 +59,54 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		}
 	})
 
-	// Withdraw it from Ari too, or its queue keeps a hand-in that no longer exists in Half Life.
-	if (isAriConfigured())
-		after(async () => {
-			await trackSideEffect(
-				"ari",
-				{
-					actorEmail: gate.user.email,
-					actorId: gate.user.id,
-					metadata: { phase: parsed.data.phase, withdrawn: true },
-					targetId: id,
-					targetType: "ThemeProject",
-				},
-				() => withdrawSubmissionFromAri(id, parsed.data.phase),
-			)
-		})
+	// Withdraw it from review too, or the queue keeps a hand-in that no longer exists in Half Life. In live mode Ire is the only queue; otherwise both the Ari ship and the shadow copy are withdrawn.
+	if (ireLive()) {
+		if (isIreConfigured())
+			after(async () => {
+				await trackSideEffect(
+					"ire",
+					{
+						actorEmail: gate.user.email,
+						actorId: gate.user.id,
+						metadata: { live: true, phase: parsed.data.phase, withdrawn: true },
+						targetId: id,
+						targetType: "ThemeProject",
+					},
+					() => withdrawSubmissionFromIre(id, parsed.data.phase),
+				)
+			})
+	} else {
+		if (isAriConfigured())
+			after(async () => {
+				await trackSideEffect(
+					"ari",
+					{
+						actorEmail: gate.user.email,
+						actorId: gate.user.id,
+						metadata: { phase: parsed.data.phase, withdrawn: true },
+						targetId: id,
+						targetType: "ThemeProject",
+					},
+					() => withdrawSubmissionFromAri(id, parsed.data.phase),
+				)
+			})
 
-	// The shadow copy has the same problem, and its failure is replayable from the IreShip row even though the local submission was just deleted.
-	if (isIreConfigured())
-		after(async () => {
-			await trackSideEffect(
-				"ire",
-				{
-					actorEmail: gate.user.email,
-					actorId: gate.user.id,
-					metadata: { phase: parsed.data.phase, withdrawn: true },
-					targetId: id,
-					targetType: "ThemeProject",
-				},
-				() => withdrawSubmissionFromIre(id, parsed.data.phase),
-			)
-		})
+		// The shadow copy has the same problem, and its failure is replayable from the IreShip row even though the local submission was just deleted.
+		if (isIreConfigured())
+			after(async () => {
+				await trackSideEffect(
+					"ire",
+					{
+						actorEmail: gate.user.email,
+						actorId: gate.user.id,
+						metadata: { phase: parsed.data.phase, withdrawn: true },
+						targetId: id,
+						targetType: "ThemeProject",
+					},
+					() => withdrawSubmissionFromIre(id, parsed.data.phase),
+				)
+			})
+	}
 
 	return ok({ ok: true })
 })

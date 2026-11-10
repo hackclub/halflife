@@ -7,7 +7,7 @@ import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { refreshLinkCache } from "@/lib/hackatime"
-import { isIreConfigured } from "@/lib/ire-platform"
+import { isIreConfigured, ireLive } from "@/lib/ire-platform"
 import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import db from "@/lib/prisma8"
 import { sanitizeOptional } from "@/lib/sanitize"
@@ -80,37 +80,53 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		}
 	})
 
-	// And into Ari, which reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without Ari secrets logs no noise; a failure lands in the audit log and /api/integrations/ari-retry.
-	if (isAriConfigured())
-		after(async () => {
-			await trackSideEffect(
-				"ari",
-				{
-					actorEmail: gate.user.email,
-					actorId: gate.user.id,
-					metadata: { phase: parsed.data.phase },
-					targetId: id,
-					targetType: "ThemeProject",
-				},
-				() => sendSubmissionToAri(id, parsed.data.phase),
-			)
-		})
-
-	// A shadow copy for Ire. Ari remains authoritative; this exists so Ire's checks and queue can be compared against Ari before any decision moves. No maker notice on failure: the maker never asked for a second review.
-	if (isIreConfigured())
+	// And into review. In live mode Ire owns the decision, so the hand-in goes there exclusively; otherwise Ari reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without review secrets logs no noise; a failure lands in the audit log and the retry route.
+	if (ireLive())
 		after(async () => {
 			await trackSideEffect(
 				"ire",
 				{
 					actorEmail: gate.user.email,
 					actorId: gate.user.id,
-					metadata: { phase: parsed.data.phase, shadow: true },
+					metadata: { live: true, phase: parsed.data.phase },
 					targetId: id,
 					targetType: "ThemeProject",
 				},
 				() => sendSubmissionToIre(id, parsed.data.phase),
 			)
 		})
+	else {
+		if (isAriConfigured())
+			after(async () => {
+				await trackSideEffect(
+					"ari",
+					{
+						actorEmail: gate.user.email,
+						actorId: gate.user.id,
+						metadata: { phase: parsed.data.phase },
+						targetId: id,
+						targetType: "ThemeProject",
+					},
+					() => sendSubmissionToAri(id, parsed.data.phase),
+				)
+			})
+
+		// A shadow copy for Ire. Ari remains authoritative; this exists so Ire's checks and queue can be compared against Ari before any decision moves. No maker notice on failure: the maker never asked for a second review.
+		if (isIreConfigured())
+			after(async () => {
+				await trackSideEffect(
+					"ire",
+					{
+						actorEmail: gate.user.email,
+						actorId: gate.user.id,
+						metadata: { phase: parsed.data.phase, shadow: true },
+						targetId: id,
+						targetType: "ThemeProject",
+					},
+					() => sendSubmissionToIre(id, parsed.data.phase),
+				)
+			})
+	}
 
 	// Warm the Hackatime cache now so the reviewer opens a page with fresh numbers instead of waiting on the API. The participant does not need to wait for it.
 	after(async () => {
