@@ -263,11 +263,11 @@ export default async function AdminProgramPage() {
 				</Table>
 			</Panel>
 
-			<Panel title="Ire shadow integration">
+			<Panel title={`Ire ${ireMode() === "live" ? "live" : "shadow"} integration`}>
 				<p className="hl-hint">
-					Half Life sends every hand-in to Ire as a shadow copy while Ari remains the decision surface. The copy is
-					read-only: Ire reviewers cannot claim or decide it, and nothing Ire does can write credit, Airtable or a maker
-					notification. When a phase leaves review, the hourly job withdraws its copy.
+					{ireMode() === "live"
+						? "Ire owns review on this deployment: hand-ins go to Ire exclusively and its decisions apply through finalizeReview. The hourly job replays missed sends and reconciles standing decisions the webhook never delivered."
+						: "Half Life sends every hand-in to Ire as a shadow copy while Ari remains the decision surface. The copy is read-only: Ire reviewers cannot claim or decide it, and nothing Ire does can write credit, Airtable or a maker notification. When a phase leaves review, the hourly job withdraws its copy."}
 				</p>
 				<Table head={["Setting", "Value", "Status"]}>
 					<tr>
@@ -309,7 +309,9 @@ export default async function AdminProgramPage() {
 							<td className="hl-hint">Set IRE_API_URL or IRE_BASE to link the queue</td>
 						)}
 						<td>
-							<Badge tone="muted">shadow</Badge>
+							<Badge tone={ireMode() === "live" ? "success" : "muted"}>
+								{ireMode() === "live" ? "live" : "shadow"}
+							</Badge>
 						</td>
 					</tr>
 					<tr>
@@ -322,9 +324,13 @@ export default async function AdminProgramPage() {
 				</Table>
 
 				{!ireSending ? (
-					<EmptyState>Ire is not configured on this deployment, so nothing is copied there.</EmptyState>
+					<EmptyState>Ire is not configured on this deployment, so nothing is sent there.</EmptyState>
 				) : unsyncedIre.length === 0 ? (
-					<EmptyState>Every submission awaiting review has a healthy shadow copy in Ire.</EmptyState>
+					<EmptyState>
+						{ireMode() === "live"
+							? "Every submission awaiting review has a healthy ship in Ire."
+							: "Every submission awaiting review has a healthy shadow copy in Ire."}
+					</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", "Why it is stuck", ""]}>
 						{unsyncedIre.map(item => (
