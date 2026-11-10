@@ -336,16 +336,16 @@ async function disputeContext(
 	}
 }
 
-async function ireUrlFor(themeProjectId: string | null, phase: string | null): Promise<string | null> {
+async function ireUrlFor(themeProjectId: string | null, phase: Phase | null): Promise<string | null> {
 	if (!themeProjectId || !phase) return null
 	try {
 		const row = await db.orm.public.IreShip.where({
-			phase: phase as Phase,
+			phase,
 			themeProjectId,
 		})
 			.select("remoteId")
 			.first()
-		const remoteId = (row as { remoteId: string | null } | null)?.remoteId ?? null
+		const remoteId = row?.remoteId ?? null
 		return remoteId ? ireSubmissionUrl(remoteId) : null
 	} catch {
 		return null

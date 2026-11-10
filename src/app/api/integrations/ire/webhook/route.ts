@@ -3,7 +3,8 @@ import { NextResponse } from "next/server"
 import { readBoundedText } from "@/lib/api"
 import { parseAriExternalId } from "@/lib/ari-id"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { isIreWebhookConfigured } from "@/lib/ire-platform"
+import { ireMode, isIreWebhookConfigured } from "@/lib/ire-platform"
+import { applyIreWebhook } from "@/lib/ire-review"
 
 // Signature checks need Node's Web Crypto, not the edge runtime.
 export const runtime = "nodejs"
@@ -13,7 +14,7 @@ export const maxDuration = 60
 /**
  * Ire's inbound webhook.
  *
- * Ire signs `timestamp.delivery_id.body` with the same envelope Ari uses, so the SDK verifies it before this handler runs. In the read-only integration every event is recorded and ignored: Ire must not move credit, Airtable or a maker notice while Ari owns decisions. When the live phase arrives this is where the provider-aware decision path will branch.
+ * Ire signs `timestamp.delivery_id.body` with the same envelope Ari uses, so the SDK verifies it before this handler runs. In shadow mode every event is recorded and ignored: Ire must not move credit, Airtable or a maker notice while Ari owns decisions. In live mode (`IRE_MODE=live`) decisions apply through the same `finalizeReview` the Ari path uses, attributed to Ire.
  */
 type Handler = (request: Request) => Promise<Response>
 
@@ -26,6 +27,10 @@ export async function POST(request: Request): Promise<Response> {
 
 	handler ??= createWebhookHandler({
 		async on_event(event, context) {
+			if (ireMode() === "live") {
+				await applyIreWebhook(event, context.delivery_id)
+				return
+			}
 			const externalId = "external_id" in event ? event.external_id : null
 			await logAudit({
 				action: AuditAction.ARI_WEBHOOK_IGNORED,
