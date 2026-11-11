@@ -170,6 +170,18 @@
 .field__textarea { min-height: 8rem; resize: vertical; }
 .field__textarea--tall { min-height: 16rem; }
 .field__textarea--line { min-height: calc(2.5em + 2 * var(--border-ui)); }
+.field__preview {
+  max-height: 24rem;
+  overflow: auto;
+  padding: 0.55em 0.7em;
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--panel-ink);
+  border: var(--border-ui) dashed var(--panel-ink);
+}
 .field__input--no-spin { appearance: textfield; }
 .field__input--no-spin::-webkit-inner-spin-button, .field__input--no-spin::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .field__affix { position: relative; }

@@ -19,6 +19,8 @@ const tierSchema = z
 export const decisionSchema = z.discriminatedUnion("result", [
 	z
 		.object({
+			/** Why the approved hours are below the claim, for the Airtable `Justification - Deflation Justification` column. Ari sends the same thing as `justification.deflation_reason`; without it that column quotes the internal note. */
+			deflationReason: boundedText(2000).optional(),
 			feedback: boundedText(8000).default(""),
 			grantUsdOverride: z.number().int().min(0).max(500).optional(),
 			hoursOverride: z.number().min(0).max(MAX_APPROVED_HOURS).optional(),

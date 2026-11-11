@@ -1,5 +1,7 @@
 "use client"
 
+import type { JustificationRow, JustificationRowMissing } from "@/lib/airtable/unified-justification"
+
 /**
  * The review platform's writes, all through routes that already exist.
  *
@@ -34,7 +36,7 @@ function firstDetail(details: unknown): string | null {
 
 export async function request<T = unknown>(
 	url: string,
-	init: { body?: unknown; keepalive?: boolean; method?: "POST" | "DELETE" | "PATCH" } = {},
+	init: { body?: unknown; keepalive?: boolean; method?: "GET" | "POST" | "DELETE" | "PATCH" } = {},
 ): Promise<T> {
 	let response: Response
 	try {
@@ -95,6 +97,7 @@ export const saveSessionHours = (
 
 export type DecisionBody =
 	| {
+			deflationReason?: string
 			feedback: string
 			grantUsdOverride?: number
 			hoursOverride?: number
@@ -108,6 +111,12 @@ export type DecisionBody =
 
 export const decide = (submissionId: string, body: DecisionBody): Promise<unknown> =>
 	request(`/api/review/submissions/${encodeURIComponent(submissionId)}/decision`, { body })
+
+/** The submission's Airtable row as an approval would find it, for the unified-justification preview. */
+export const justificationRow = (
+	submissionId: string,
+): Promise<{ missing: JustificationRowMissing | null; row: JustificationRow }> =>
+	request(`/api/reviews/${encodeURIComponent(submissionId)}/justification`, { method: "GET" })
 
 export const overrideDecision = (
 	projectId: string,

@@ -50,6 +50,8 @@ export const POST = withWritePermission(
 		const feedback = sanitize(body.feedback ?? "")
 		// The reviewer's internal note, which is the console's equivalent of Ari's "Justification notes".
 		const reason = "reason" in body ? sanitizeOptional(body.reason) : null
+		// Ari's `justification.deflation_reason`: why the hours came down, kept out of the internal note so the deflation column says only that.
+		const deflationReason = "deflationReason" in body ? sanitizeOptional(body.deflationReason) : null
 
 		const outcome = await finalizeReview({
 			feedback,
@@ -74,7 +76,7 @@ export const POST = withWritePermission(
 				reviewStatusForResult(outcome.result),
 				feedback || null,
 				gate.user.email,
-				null,
+				deflationReason,
 				reason,
 			)
 			await notifyReviewOutcome({
