@@ -24,14 +24,18 @@ import db from "../src/lib/prisma8"
  *
  *   bun --conditions=react-server scripts/week-1-starter-grant-holders.ts
  *   bun --conditions=react-server scripts/week-1-starter-grant-holders.ts > week-1-grant-holders.tsv
+ *   bun --conditions=react-server scripts/week-1-starter-grant-holders.ts --no-hcb
  *
- * Needs `HCB_ORG_SLUG` and either `HCB_ACCESS_TOKEN` or the refresh-token set, as the app does. The count goes to stderr so a redirected file holds only the rows.
+ * Needs `HCB_ORG_SLUG` and either `HCB_ACCESS_TOKEN` or the refresh-token set, as the app does. `--no-hcb` skips every HCB call, so it needs only the database: links for API card grants and top-ups are still printed, while spend and CSV-imported cards are marked as needing HCB auth. The count goes to stderr so a redirected file holds only the rows.
  */
 
 /** Tabs and newlines would break the one-line-per-project shape. */
 function oneLine(value: string): string {
 	return value.replaceAll(/[\t\r\n]+/g, " ").trim()
 }
+
+/** Set by `--no-hcb`: the script reads the database only and never calls HCB. */
+const noHcb = process.argv.slice(2).includes("--no-hcb")
 
 interface CardReading {
 	grantLink: string
@@ -41,6 +45,7 @@ interface CardReading {
 /** Read the card's spend from HCB. A failed read is reported on its row, not allowed to stop the list. */
 async function readingFor(hashid: string): Promise<CardReading> {
 	const grantLink = `https://hcb.hackclub.com/grants/${hashid}`
+	if (noHcb) return { grantLink, spent: "needs HCB auth" }
 	try {
 		const spend = await readCardGrantSpend(hashid)
 		const spentCents =
@@ -88,11 +93,15 @@ async function main(): Promise<void> {
 	// A CSV import keeps no HCB id, so each row is matched to HCB's own list of card grants by email and amount.
 	const csvByProject = new Map(csvRows.map(row => [row.themeProjectId, row]))
 	const unmatchedCsv = [...csvByProject.values()].filter(row => !hashidByProject.has(row.themeProjectId))
-	const hcbGrants = unmatchedCsv.length > 0 ? await listOrganizationCardGrants() : null
+	const hcbGrants = unmatchedCsv.length > 0 && !noHcb ? await listOrganizationCardGrants() : null
 	if (hcbGrants?.kind === "unreadable") throw new Error("HCB returned a card grant list this script cannot read")
 
 	const csvReadings = new Map<string, CardReading>()
 	for (const row of unmatchedCsv) {
+		if (noHcb) {
+			csvReadings.set(row.themeProjectId, { grantLink: "-", spent: "needs HCB auth (CSV import)" })
+			continue
+		}
 		const email = row.email.trim().toLowerCase()
 		const matches = (hcbGrants?.rows ?? []).filter(
 			grant => grant.email?.trim().toLowerCase() === email && grant.amountCents === row.amountCents,
