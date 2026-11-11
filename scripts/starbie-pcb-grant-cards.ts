@@ -1,5 +1,9 @@
 import { readFileSync } from "node:fs"
+import { starterProjectsFor } from "../src/lib/config/onboarding"
+import { Theme } from "../src/lib/enums"
 import { GRANT_CARD_CSV_HEADER, quoteField } from "../src/lib/grant-card-csv"
+import { grantCardProjectUrl } from "../src/lib/grant-card-policy"
+import { configuredOrigin } from "../src/lib/origin"
 import { safeDecrypt } from "../src/lib/pii"
 import db from "../src/lib/prisma8"
 import { countryOfTimezone } from "../src/lib/regions"
@@ -10,6 +14,8 @@ import { countryOfTimezone } from "../src/lib/regions"
  * Takes a list of email addresses, as arguments or on stdin (separated by spaces, commas or newlines), and prints a CSV in the format of `card_grants_template.csv` for HCB's bulk import. Every row is $10 (1000 cents), one-time-use off and no locks, with the purpose "Starbie PCB" and the invite message "Order your Starbie PCB! Your Starbie kit will arrive soon."
  *
  * Makers whose location is India, Pakistan, Egypt or Morocco are left out. The location is the country of the user's timezone (`countryOfTimezone`, the same mapping the admin country breakdown uses), and also the decrypted address country where one is held. Either one matching excludes the maker.
+ *
+ * The instructions end with a link to the maker's Starbie project (`/projects/<id>` on the configured origin, as in `grantCardProjectUrl`). A maker with no Starbie project is still printed, without a link, and reported on stderr; so is a run with no configured origin.
  *
  * An address not found in the database is not printed, and neither is a maker who appears twice. Both are reported on stderr, as are the excluded makers, so nothing is dropped silently.
  *
@@ -22,7 +28,7 @@ import { countryOfTimezone } from "../src/lib/regions"
 const EXCLUDED_COUNTRIES: ReadonlySet<string> = new Set(["India", "Pakistan", "Egypt", "Morocco"])
 const AMOUNT_CENTS = 1000
 const PURPOSE = "Starbie PCB"
-const INSTRUCTIONS = "Only spend this on a PCB for your Starbie kit."
+const INSTRUCTIONS = "Only spend this on a PCB for your Starbie kit"
 const INVITE_MESSAGE = "Order your Starbie PCB! Your Starbie kit will arrive soon."
 
 /** The addresses as typed, one per person: duplicates differing only in case are read as the same maker. */
@@ -46,10 +52,23 @@ async function main(): Promise<void> {
 		.all()
 	const byEmail = new Map(users.map(user => [user.email.toLowerCase(), user]))
 
+	const starterIds = starterProjectsFor(Theme.PCB).map(starter => starter.id)
+	const starterProjects = await db.orm.public.ThemeProject.where({ deletedAt: null })
+		.where(project => project.userId.in(users.map(user => user.id)))
+		.where(project => project.starterProjectId.in(starterIds))
+		.select("id", "userId")
+		.all()
+	const projectByUser = new Map(starterProjects.map(project => [project.userId, project.id]))
+
+	const origin = configuredOrigin()
+	if (!origin)
+		console.error("NEXT_PUBLIC_APP_URL and BETTER_AUTH_URL are unset, so instructions will have no project link")
+
 	const lines = [GRANT_CARD_CSV_HEADER.join(",")]
 	let included = 0
 	const missing: string[] = []
 	const excluded: string[] = []
+	const noProject: string[] = []
 	for (const email of emails) {
 		const user = byEmail.get(email.toLowerCase())
 		if (!user) {
@@ -65,11 +84,15 @@ async function main(): Promise<void> {
 			continue
 		}
 		included += 1
+		const projectId = projectByUser.get(user.id)
+		if (!projectId) noProject.push(email)
+		const link = projectId ? grantCardProjectUrl(projectId, origin) : null
+		const instructions = link ? `${INSTRUCTIONS} – ${link}` : INSTRUCTIONS
 		const fields = [
 			user.email,
 			String(AMOUNT_CENTS),
 			PURPOSE,
-			INSTRUCTIONS,
+			instructions,
 			"false",
 			"false",
 			INVITE_MESSAGE,
@@ -83,6 +106,7 @@ async function main(): Promise<void> {
 	}
 
 	process.stdout.write(`${lines.join("\n")}\n`)
+	for (const email of noProject) console.error(`no Starbie project, so no link: ${email}`)
 	for (const email of missing) console.error(`not found: ${email}`)
 	for (const entry of excluded) console.error(`excluded (India, Pakistan, Egypt or Morocco): ${entry}`)
 	console.error(`${included} card(s) written, ${excluded.length} excluded, ${missing.length} not found`)
