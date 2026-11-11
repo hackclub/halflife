@@ -1,3 +1,4 @@
+import { BOM_MARGIN_USD } from "../src/lib/bom-policy"
 import { displayName } from "../src/lib/display-name"
 import { HcbGrantCardStatus, Phase } from "../src/lib/enums"
 import { grantCardCapUsd } from "../src/lib/grant-card-policy"
@@ -18,6 +19,8 @@ import db from "../src/lib/prisma8"
  *
  *   bun --conditions=react-server scripts/over-cap-grant-cards.ts
  *   bun --conditions=react-server scripts/over-cap-grant-cards.ts > over-cap.tsv
+ *
+ * Columns, tab-separated: source, maker, email, project, amount sent, maximum, amount over, within margin, link. `within margin` is `yes` when the card is no more than the BOM margin (`BOM_MARGIN_USD`, $3) over its maximum. That margin lets a maker submit a parts list over their tier. It does not raise the grant, so a card over it is still over its maximum; the column only shows how far.
  *
  * A project with no tier has no maximum, so every card on it is listed as `no tier`. The summary goes to stderr.
  */
@@ -89,6 +92,7 @@ async function main(): Promise<void> {
 		const link = card.hashid ? `https://hcb.hackclub.com/grants/${card.hashid}` : "-"
 		const cap = capCents === null ? "no tier" : dollars(capCents)
 		const excess = capCents === null ? "n/a" : dollars(overBy)
+		const withinMargin = capCents === null ? "n/a" : overBy <= Math.round(BOM_MARGIN_USD * 100) ? "yes" : "no"
 		lines.push(
 			[
 				card.source,
@@ -98,6 +102,7 @@ async function main(): Promise<void> {
 				dollars(card.amountCents),
 				cap,
 				excess,
+				withinMargin,
 				link,
 			].join("\t"),
 		)
