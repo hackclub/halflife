@@ -1,0 +1,147 @@
+/* ==========================================================================
+   Fabricate — the cutting mat
+   A self-healing mat rebuilt in CSS rather than shipped as the Figma raster:
+   crisp at any size, themeable, ~2KB instead of ~100KB.
+
+   Measured from the Figma render: base #0a2b26, 1px #1e5c52 gridlines on a
+   uniform 69.5px pitch (no minor subdivisions), starting 56px in from the
+   left where the numbered ruler band sits.
+   ========================================================================== */
+
+/* --- The mat surface ---------------------------------------------------- */
+
+/* The tile, offset and line snap to whole device pixels. A fractional tile
+   (the vw-based --mat-cell rarely lands on one) is resampled, a 1px line
+   falls between device pixels and drops out, and two cells merge into a
+   rectangle or a bigger square. --mat-snap is one device pixel, set from
+   devicePixelRatio by lib/matSnap.ts so it holds at any zoom; without it the
+   4px fallback is whole at 100, 125, 150, 175 and 200%. Everything drawn
+   against the grid uses these, never --mat-cell or --mat-margin. */
+.mat {
+  --mat-tile: round(var(--mat-cell), var(--mat-snap, 4px));
+  --mat-offset: round(var(--mat-margin), var(--mat-snap, 4px));
+  --mat-line: max(round(var(--mat-line-w), var(--mat-snap, 1px)), var(--mat-snap, 1px));
+  position: relative;
+  background-color: var(--color-mat);
+  /* One cell, tiled. A gradient sized to the whole element tiles at the
+     element's size, so the offset left a partial cell along the top and left
+     edges. A cell-sized tile keeps every square the same. */
+  background-image:
+    linear-gradient(to right, var(--color-mat-line) 0 var(--mat-line), transparent var(--mat-line)),
+    linear-gradient(to bottom, var(--color-mat-line) 0 var(--mat-line), transparent var(--mat-line));
+  background-size: var(--mat-tile) var(--mat-tile);
+  background-position: var(--mat-offset) var(--mat-offset);
+  background-repeat: repeat;
+}
+
+/* Quieter mat — grid present but receded. Used where content sits on top of
+   the mat rather than beside it. */
+.mat--quiet {
+  --color-mat-line: color-mix(in srgb, #1e5c52 55%, #0a2b26);
+}
+
+/* Louder mat — for the variant that leans hardest on the texture.
+   color-mix cannot extrapolate: a percentage above 100% makes the second
+   percentage negative, which is invalid, and an invalid --color-mat-line
+   takes the whole background-image down with it. To brighten, mix toward a
+   lighter colour instead of overshooting the darker one. */
+.mat--loud {
+  --color-mat-line: color-mix(in srgb, #1e5c52 78%, #edf7f6);
+}
+
+/* A vignette, so the mat reads as a physical object with edges rather than a
+   flat tile. Subtle on purpose — the Figma render is nearly even. */
+.mat-vignette::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 50% 40%,
+    transparent 55%,
+    rgb(0 0 0 / 0.28) 100%
+  );
+}
+
+/* Scuffs and cut marks. feTurbulence, so it costs nothing to ship. */
+.mat-scuff::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* --- The numbered ruler -------------------------------------------------
+   A real cutting mat counts cells along its edges. The build script fills
+   .mat-ruler with enough ticks to overrun any page; the rail clips them.   */
+
+.mat-ruler {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--mat-offset);
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  padding-top: var(--mat-offset);
+}
+
+.mat-ruler__tick {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: var(--mat-tile);
+  font-family: var(--font-display);
+  font-size: clamp(0.5rem, 0.677vw, 0.8125rem); /* 13px at 1920 */
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--color-mat-line) 85%, var(--color-bone));
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  padding-block: 0.35em;
+}
+
+/* Horizontal ruler along the bottom edge, same construction turned 90°. */
+.mat-ruler--bottom {
+  inset: auto 0 0 0;
+  width: auto;
+  height: var(--mat-offset);
+  display: flex;
+  padding-top: 0;
+  padding-left: var(--mat-offset);
+}
+
+.mat-ruler--bottom .mat-ruler__tick {
+  height: auto;
+  width: var(--mat-tile);
+  writing-mode: horizontal-tb;
+  transform: none;
+  align-items: center;
+  justify-content: flex-start;
+  padding-inline: 0.35em;
+  padding-block: 0;
+}
+
+/* A brighter rule marking where the gridded area begins, as on the mat. */
+.mat-edge::before {
+  content: '';
+  position: absolute;
+  inset: var(--mat-offset) 0 0 var(--mat-offset);
+  pointer-events: none;
+  /* Brighter than the grid it bounds — mixed toward bone, not overshot.
+     See the note on .mat--loud above. */
+  border-top: var(--mat-line) solid
+    color-mix(in srgb, var(--color-mat-line) 62%, var(--color-bone));
+  border-left: var(--mat-line) solid
+    color-mix(in srgb, var(--color-mat-line) 62%, var(--color-bone));
+}
+
+/* Below the ruler breakpoint the margin band collapses and the grid runs to
+   the edge — a ruler you cannot read is just noise. */
+@media (max-width: 640px) {
+  .mat { --mat-margin: 0px; }
+  .mat-ruler { display: none; }
+  .mat-edge::before { display: none; }
+}

@@ -24,6 +24,8 @@ export const decisionSchema = z.discriminatedUnion("result", [
 			hoursOverride: z.number().min(0).max(MAX_APPROVED_HOURS).optional(),
 			reason: boundedText(8000).optional(),
 			result: z.literal(ReviewResult.APPROVED),
+			/** The reviewer's account of what the maker built, for the Airtable `Justification - Specific Technical Features` column. Ari sends the same thing as `justification.technical_features`. */
+			technicalFeatures: boundedText(2000).optional(),
 			/** Required when approving a design; ignored on a build. */
 			tier: tierSchema.optional(),
 		})

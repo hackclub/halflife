@@ -1,0 +1,53 @@
+/*
+ * The review platform's stylesheet: Fabricate's design system, carried over whole.
+ *
+ * Its own Tailwind entry because this is its own world – a separate root layout, so none of it reaches the landing page or the platform, and none of theirs reaches here. `source(none)` keeps Tailwind from scanning the whole app for utilities the review screens never use; the review components are the only source.
+ *
+ * `styles/` is a copy of Fabricate's `app/javascript/styles`, plus the file viewer's own (`hurt/styles.css` and `hurt/ui/ResizeHandle.css`, moved here because Next imports global CSS from the root layout). Keep edits to them small and say why, so a later re-port can tell a fix from drift.
+ */
+@import "tailwindcss" source(none);
+
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./styles/mat.css";
+@import "./styles/components.css";
+@import "./styles/docs-shell.css";
+@import "./styles/app.css";
+@import "./styles/resize-handle.css";
+@import "./styles/hurt.css";
+@import "./styles/hurt-resize-handle.css";
+@import "./half-life.css";
+
+@source "../../components/review";
+
+@font-face {
+	font-display: swap;
+	font-family: "Nippo";
+	font-style: normal;
+	font-weight: 700;
+	src: url("./fonts/Nippo-Bold.woff2") format("woff2");
+}
+
+@font-face {
+	font-display: swap;
+	font-family: "Nippo";
+	font-style: normal;
+	font-weight: 400;
+	src: url("./fonts/Nippo-Regular.woff2") format("woff2");
+}
+
+@font-face {
+	font-display: swap;
+	font-family: "Newstroke";
+	font-style: normal;
+	font-weight: 400;
+	src: url("./fonts/Newstroke-Regular.woff2") format("woff2");
+}
+
+@font-face {
+	font-display: swap;
+	font-family: "Space Grotesk";
+	font-style: normal;
+	font-weight: 300 700;
+	src: url("./fonts/SpaceGrotesk-Variable.woff2") format("woff2");
+}

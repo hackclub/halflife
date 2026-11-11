@@ -13,11 +13,25 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json bun.lock ./
+# `patchedDependencies` in package.json: bun install refuses to run without the patch files it names.
+COPY patches ./patches
 RUN bun install --frozen-lockfile
 
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 RUN bunx prisma contract emit
+
+# ── step2glb ─────────────────────────────────────────────────────────────────
+# The OpenCascade converter the review file viewer falls back to for STEP/IGES/BREP models too big for the browser (vendor/step2glb, lib/review-platform/model-conversion.ts).
+#
+# Alpine's `opencascade` package depends on VTK, Tcl/Tk and OpenGL for OpenCascade's viewers, close to 900 MB the converter never loads. So the runner does not install it: this stage copies out just the libraries the binary links against (about 45, the data-exchange toolkits and a few small ones) and builds it with an rpath to them.
+FROM base AS step2glb
+RUN apk add --no-cache build-base opencascade-dev
+WORKDIR /build
+COPY vendor/step2glb ./vendor/step2glb
+RUN mkdir -p /opt/step2glb/bin /opt/step2glb/lib \
+ && STEP2GLB_LDFLAGS="-Wl,-rpath,/opt/step2glb/lib" sh vendor/step2glb/build.sh /opt/step2glb/bin/step2glb \
+ && ldd /opt/step2glb/bin/step2glb | awk '$3 ~ /^\// && $3 !~ /ld-musl/ {print $3}' | xargs -I{} cp -L {} /opt/step2glb/lib/
 
 # ── prod-deps ────────────────────────────────────────────────────────────────
 # Runtime-only node_modules: the runner ships no build toolchain (typescript, eslint, tailwind, …). `prisma` itself is a production dependency, so `db migrate` at boot keeps working, as do the seed and backfill scripts. Rebuilt only when the lockfile or contract changes, like `deps` above.
@@ -26,6 +40,8 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json bun.lock ./
+# `patchedDependencies` in package.json: bun install refuses to run without the patch files it names.
+COPY patches ./patches
 RUN bun install --production --frozen-lockfile
 
 COPY prisma ./prisma
@@ -130,6 +146,8 @@ RUN apk add --no-cache curl \
  && addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
 
+COPY --from=step2glb /opt/step2glb /opt/step2glb
+ENV STEP2GLB_PATH=/opt/step2glb/bin/step2glb
 COPY --from=builder-live /app/public ./public
 COPY --from=builder-live --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder-live --chown=nextjs:nodejs /app/.next/static ./.next/static

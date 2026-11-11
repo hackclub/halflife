@@ -61,6 +61,7 @@ export const POST = withWritePermission(
 			reviewerId: gate.user.id,
 			reviewerName: gate.user.name,
 			submissionId: id,
+			technicalFeatures: "technicalFeatures" in body ? sanitizeOptional(body.technicalFeatures) : null,
 			tier: "tier" in body ? (body.tier ?? null) : null,
 		})
 

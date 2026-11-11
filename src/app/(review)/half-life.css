@@ -1,0 +1,64 @@
+/*
+ * Half Life's additions to the Fabricate stylesheet: only what the port needs and Fabricate's own files do not have.
+ *
+ * Everything above this file is Fabricate's, unchanged except `@theme static` in tokens.css (so every token is emitted even when no Tailwind utility uses it – the dashboard classes read them directly).
+ */
+
+/* Fabricate's layout paints the ground on <body> through its Inertia shell; here the shell is the document. */
+body {
+	min-height: 100dvh;
+	color: var(--color-bone);
+	background-color: var(--color-mat);
+}
+
+/* The rail's lockup. Fabricate draws its own logo image here; Half Life's name sits in the same box as set type, in Fabricate's display face. */
+.review-wordmark {
+	gap: 0.35em;
+	font-family: var(--font-display);
+	font-size: var(--text-ui);
+	font-weight: 700;
+	line-height: 1;
+	color: var(--color-paper);
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+	text-decoration: none;
+}
+
+.review-wordmark span {
+	font-weight: 400;
+	color: var(--color-grey-3);
+}
+
+/* An R2 timelapse plays in place; Fabricate's Lapse player drew the same box. */
+.entry__lapse-video {
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	background: var(--color-ink);
+}
+
+/* The queue's older/newer pager, in place of Fabricate's numbered Pagy links. */
+.review-pager {
+	display: flex;
+	gap: var(--space-1);
+	justify-content: flex-end;
+	margin-top: var(--space-2);
+}
+
+/* A Half Life journal carries its pictures, tables and code inline in the Markdown, so one wide child could stretch an entry past its column (an auto grid track grows to fit). Fabricate's entries keep media out of the body and never hit this. */
+.timeline {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.user-md table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+/* Fabricate draws the enlarged timelapse's backdrop as a div; here it is a button, so it needs a button's own look taken off. */
+button.lapse__dim {
+	padding: 0;
+	cursor: default;
+	border: 0;
+}
