@@ -96,6 +96,13 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 		return () => clearTimeout(id)
 	}, [ship.claimExpiresAt])
 
+	// The decision width on the document as well as the layout: the main column is the review's scroll box (see "Half Life" in styles/app.css) and has to stop where the decision panel starts, but it is the layout's parent, so it cannot read the layout's own value.
+	useEffect(() => {
+		const root = document.documentElement
+		root.style.setProperty("--review-decision", `${decisionWidth}px`)
+		return () => void root.style.removeProperty("--review-decision")
+	}, [decisionWidth])
+
 	// Fabricate's warm-up: the file viewer starts reading this repository shortly after the page opens, and the next ship's a little later, so the Files tab – and the next review – open on files that are already there. Best-effort: a repository GitHub will not hand over just opens cold.
 	useEffect(() => {
 		async function prepare(id: string, rank: number): Promise<void> {
@@ -174,19 +181,9 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 	const lapseLabel = lapseSeconds > 0 ? ` · ${formatDuration(lapseSeconds)} recorded` : ""
 
 	const tools = (
-		<>
-			<button className="review-files__tool" onClick={() => showTab("submission")} type="button">
-				← Submission
-			</button>
-			{canClaim ? (
-				<button className="review-files__tool" onClick={() => void claim()} type="button">
-					Claim review
-				</button>
-			) : null}
-			<button aria-pressed={decisionOpen} className="review-files__tool" onClick={toggleDecision} type="button">
-				{decisionOpen ? "Hide decision" : "Show decision"}
-			</button>
-		</>
+		<button aria-pressed={decisionOpen} className="review-files__tool" onClick={toggleDecision} type="button">
+			{decisionOpen ? "Hide decision" : "Show decision"}
+		</button>
 	)
 
 	return (
@@ -736,7 +733,6 @@ function DecisionPanel({
 							value={deflationReason}
 						/>
 					</Field>
-					<JustificationPreview airtable={airtable} draft={approval} />
 				</fieldset>
 				<div className="form__actions">
 					<button
@@ -790,6 +786,7 @@ function DecisionPanel({
 						)}
 					</div>
 				) : null}
+				<JustificationPreview airtable={airtable} draft={approval} />
 			</div>
 		</Paper>
 	)

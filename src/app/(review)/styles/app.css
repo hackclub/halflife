@@ -562,16 +562,19 @@
    right each scroll in their own column below the header.                 */
 
 .review-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); align-items: start; }
-.review-layout--files { position: fixed; inset: 0; z-index: 45; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0; align-items: stretch; background: var(--color-ground); }
+.review-layout--files { flex: 1 1 auto; min-height: 0; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: minmax(0, 1fr); gap: 0; align-items: stretch; }
 :root:has(.review-layout--files) { overflow: hidden; }
+.app-main:has(> .review-layout--files) { position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; padding: 0; background: var(--color-ground); }
+.app-main:has(> .review-layout--files) > .page-head { display: none; }
+.app-main:has(> .review-layout--files) > .tabs--review { margin: 0; padding: 0.5rem var(--space-2); }
 .review-layout__main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); min-width: 0; }
 .review-layout__main .table :is(th, td) { padding-inline: 0.4em; }
 .review-layout__main .table td:first-child { white-space: nowrap; }
 .review-layout > [hidden] { display: none; }
 .review-files { position: sticky; top: var(--space-2); }
-.review-layout--files .review-files { position: static; height: 100dvh; min-height: 0; }
+.review-layout--files .review-files { position: static; min-height: 0; }
 .review-layout--files .review-files .hurt { height: 100%; min-height: 0; border: 0; }
-.review-layout--files .review-layout__aside { position: static; box-sizing: border-box; width: min(var(--review-decision, 26rem), 60vw); height: 100dvh; padding: var(--space-2) var(--space-2) calc(var(--space-2) * 2 + 2rem); container: review-decision / inline-size; }
+.review-layout--files .review-layout__aside { position: static; box-sizing: border-box; width: min(var(--review-decision, 26rem), 60vw); padding: var(--space-2) var(--space-2) calc(var(--space-2) * 2 + 2rem); container: review-decision / inline-size; }
 @container review-decision (max-width: 26rem) {
   .paper { padding: 1rem; }
   .form__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -600,13 +603,19 @@
 .review-layout__aside > .paper > .btn { align-self: flex-start; margin-top: var(--space-1); }
 @media (min-width: 1101px) {
   .app-main:has(> .review-layout) { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: auto auto 1fr; min-height: 100dvh; padding-block: 0; padding-right: 0; }
+  .app-main:has(> .review-layout--files) { display: flex; }
   .app-main:has(> .review-layout) > :is(.page-head, .tabs--review) { grid-column: 1; padding-right: var(--space-2); }
   .app-main:has(> .review-layout) > .page-head { padding-top: clamp(2rem, 3vw, 3.5rem); }
   .app-main > .tabs--review { margin-bottom: 0; }
   .review-layout:not(.review-layout--files) { display: contents; }
   .review-layout:not(.review-layout--files) > .review-layout__main { grid-column: 1; grid-row: 3; padding: var(--space-2) var(--space-2) calc(var(--space-2) * 2 + 2rem) 0; }
-  .review-layout:not(.review-layout--files) > .resize-handle { grid-column: 2; grid-row: 1 / -1; }
-  .review-layout:not(.review-layout--files) > .review-layout__aside { grid-column: 3; grid-row: 1 / -1; position: sticky; top: 0; align-self: start; height: 100dvh; box-sizing: border-box; width: min(var(--review-decision, 26rem), 60vw); padding: var(--space-2) var(--space-2) calc(var(--space-2) * 2 + 2rem); container: review-decision / inline-size; }
+  /*
+   * Half Life: the main column, header included, scrolls in its own box, and the decision panel and its handle are fixed beside it rather than sticky in the page. With the page as the scroller, its scrollbar sat on the viewport's right edge on top of the panel's; now each scrollbar is at the edge of its own column. The column's transparent border is the panel's width, so the box – and its scrollbar – stop where the panel starts; ShipReview puts `--review-decision` on the document so this box can read it.
+   */
+  :root:has(.app-main > .review-layout:not(.review-layout--files)) { overflow: hidden; }
+  .app-main:has(> .review-layout:not(.review-layout--files)) { box-sizing: border-box; height: 100dvh; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-right: min(var(--review-decision, 26rem), 60vw) solid transparent; }
+  .review-layout:not(.review-layout--files) > .resize-handle { position: fixed; top: 0; bottom: 0; right: calc(min(var(--review-decision, 26rem), 60vw) - 4px); margin: 0; }
+  .review-layout:not(.review-layout--files) > .review-layout__aside { position: fixed; top: 0; right: 0; height: 100dvh; box-sizing: border-box; width: min(var(--review-decision, 26rem), 60vw); padding: var(--space-2) var(--space-2) calc(var(--space-2) * 2 + 2rem); container: review-decision / inline-size; }
   .review-layout > .review-layout__main:not(.review-files) { position: relative; align-content: start; }
 }
 .review-lock { margin: 0; padding: 0; border: 0; min-width: 0; }
@@ -1083,7 +1092,7 @@ a.needs__cell:hover .needs__label { color: var(--color-paper); }
   .review-layout__aside { overflow: visible; }
   .review-layout:not(.review-layout--files) > .resize-handle { display: none; }
   .review-layout.review-layout--files { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .review-layout--files .review-layout__aside { height: 100dvh; overflow-y: auto; }
+  .review-layout--files .review-layout__aside { overflow-y: auto; }
 }
 @media (max-width: 760px) {
   .review-layout.review-layout--files { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }

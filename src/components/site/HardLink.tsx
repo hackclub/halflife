@@ -10,7 +10,17 @@ import type { MouseEvent, ReactNode } from "react"
  *
  * Modified clicks are left alone so "open in new tab" still works.
  */
-export function HardLink({ children, className, href }: { children: ReactNode; className?: string; href: string }) {
+export function HardLink({
+	"aria-label": ariaLabel,
+	children,
+	className,
+	href,
+}: {
+	"aria-label"?: string
+	children: ReactNode
+	className?: string
+	href: string
+}) {
 	const go = (event: MouseEvent<HTMLAnchorElement>) => {
 		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
 		event.preventDefault()
@@ -18,7 +28,7 @@ export function HardLink({ children, className, href }: { children: ReactNode; c
 	}
 
 	return (
-		<Link className={className} href={href} onClick={go}>
+		<Link aria-label={ariaLabel} className={className} href={href} onClick={go}>
 			{children}
 		</Link>
 	)

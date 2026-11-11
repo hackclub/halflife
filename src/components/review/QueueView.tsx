@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useOptimistic, useTransition } from "react"
 import { ShipTable } from "@/components/review/ShipTable"
 import { PageHead, Paper } from "@/components/review/ui"
 import type { ReviewOption, ReviewQueue, ReviewStatus } from "@/lib/review-platform/types"
@@ -63,19 +63,30 @@ function FacetSelect({ all, label, onChange, options, value }: FacetSelectProps)
 /**
  * Fabricate's review queue: status tabs with counts, a kind filter, week, tier and starter pickers, "claimed by me", and a table that refreshes every fifteen seconds so claims and new hand-ins show up without a reload.
  *
+ * The controls show what was picked straight away, and each change builds on the last pick rather than on the filters the server last rendered: a render takes a few seconds, and in that gap a picker would otherwise snap back and a second change would undo the first. The table dims until the new rows arrive, and the background refresh waits while a change is in flight.
+ *
  * Fabricate's reviewer pledge card is not here – Half Life has no pledges.
  */
-export function QueueView({ filters, queue }: { filters: Filters; queue: ReviewQueue }) {
+export function QueueView({ filters: rendered, queue }: { filters: Filters; queue: ReviewQueue }) {
 	const router = useRouter()
+	const [pending, startTransition] = useTransition()
+	const [filters, pick] = useOptimistic(rendered)
 
 	useEffect(() => {
+		if (pending) return
 		const id = window.setInterval(() => {
 			if (document.visibilityState === "visible") router.refresh()
 		}, 15_000)
 		return () => window.clearInterval(id)
-	}, [router])
+	}, [pending, router])
 
-	const set = (patch: Partial<Filters>): void => router.push(queueHref({ ...filters, ...patch }))
+	const set = (patch: Partial<Filters>): void => {
+		const next = { ...filters, ...patch }
+		startTransition(() => {
+			pick(next)
+			router.push(queueHref(next))
+		})
+	}
 
 	return (
 		<>
@@ -130,18 +141,20 @@ export function QueueView({ filters, queue }: { filters: Filters; queue: ReviewQ
 					<input checked={filters.mine} onChange={e => set({ mine: e.target.checked })} type="checkbox" /> claimed by me
 				</label>
 			</div>
-			<Paper variant="tight">
-				<ShipTable rows={queue.rows} />
-			</Paper>
+			<div aria-busy={pending} className="review-queue__rows">
+				<Paper variant="tight">
+					<ShipTable rows={queue.rows} />
+				</Paper>
+			</div>
 			{queue.previous !== null || queue.next !== null ? (
 				<nav aria-label="Pages" className="review-pager">
 					{queue.previous !== null ? (
-						<Link className="btn btn--ghost btn--sm" href={queueHref(filters, queue.previous)}>
+						<Link className="btn btn--ghost btn--sm" href={queueHref(rendered, queue.previous)}>
 							← Newer
 						</Link>
 					) : null}
 					{queue.next !== null ? (
-						<Link className="btn btn--ghost btn--sm" href={queueHref(filters, queue.next)}>
+						<Link className="btn btn--ghost btn--sm" href={queueHref(rendered, queue.next)}>
 							Older →
 						</Link>
 					) : null}

@@ -19,6 +19,8 @@
 @import "./half-life.css";
 
 @source "../../components/review";
+/* The rail's printer photo is the platform's `PrinterPhoto`, whose wrapper is a few plain utilities. */
+@source "../../components/platform/art.tsx";
 
 @font-face {
 	font-display: swap;

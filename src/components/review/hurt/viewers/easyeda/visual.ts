@@ -890,6 +890,24 @@ function readShapeLine(
           })
         }
       }
+      // Segments 3 and 4: pin name and number, each show~x~y~rotation~text~anchor~fontFamily~fontSize~color
+      for (const segment of segments.slice(3, 5)) {
+        const label = (segment ?? '').split('~')
+        const text = decodeEasyEdaText(label[4] ?? '')
+        if (label[0] !== '1' || !text) continue
+        results.push({
+          kind: 'text',
+          x: number(label[1], 0),
+          y: number(label[2], 0),
+          text,
+          size: positiveNumber(label[7], 7),
+          rotation: number(label[3], 0),
+          fill: normalizeColor(label[8], defaultStroke) ?? defaultStroke,
+          opacity: 0.95,
+          anchor: inferTextAnchor(label[5] ?? 'start'),
+          baseline: 'baseline',
+        })
+      }
       // Segment 5: NOT dot (small circle indicating inversion)
       if (segments.length >= 6) {
         const notParts = (segments[5] ?? '').split('~')
