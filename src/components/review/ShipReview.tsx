@@ -27,7 +27,7 @@ import { Field, FormErrors, isSafeUrl, PageHead, Paper, SafeLink, StatusTag, Tie
 import { HardLink } from "@/components/site/HardLink"
 import type { ReviewDetail, ReviewViewer } from "@/lib/review-platform/types"
 
-/** Half Life's redirect to the maker's Telescreen profile, which keeps their Slack id out of the page (lib/review-platform/telescreen). */
+/** Half Life's redirect to the maker's Telescreen profile (lib/review-platform/telescreen). */
 const telescreenHref = (submissionId: string): string => `/api/reviews/${encodeURIComponent(submissionId)}/telescreen`
 
 const FileViewer = lazy(() => import("@/components/review/FileViewer"))
@@ -246,7 +246,6 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 						</SafeLink>
 					) : null}
 					{maker.hasTelescreen ? (
-						// Through Half Life's redirect, so the Slack id it needs is never in the page (lib/review-platform/telescreen).
 						<a className="btn btn--outline" href={telescreenHref(ship.id)} rel="noopener noreferrer" target="_blank">
 							Telescreen
 						</a>
@@ -417,12 +416,12 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 						<dl className="dl">
 							<dt>Name</dt>
 							<dd>{maker.name}</dd>
-							{viewer.seesContact ? (
+							<dt>Slack</dt>
+							<dd>{maker.slackId ?? "—"}</dd>
+							{viewer.seesEmail ? (
 								<>
 									<dt>Email</dt>
 									<dd>{maker.email ?? "—"}</dd>
-									<dt>Slack</dt>
-									<dd>{maker.slackId ?? "—"}</dd>
 								</>
 							) : null}
 							{viewer.seesRiskFlags ? (

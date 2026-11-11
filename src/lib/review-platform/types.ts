@@ -20,8 +20,8 @@ export interface ReviewViewer {
 	displayName: string
 	id: string
 	isAdmin: boolean
-	/** ADMIN or AUDITOR: the maker's email and Slack id. */
-	seesContact: boolean
+	/** ADMIN or AUDITOR: the maker's email, and reviewers' emails where that is all a past review recorded. */
+	seesEmail: boolean
 	/** ADMIN, AUDITOR or REVIEW_HOURS: fraud flag, verification status and internal notes. */
 	seesRiskFlags: boolean
 }
@@ -46,8 +46,23 @@ export interface ReviewRow {
 	tier: number | null
 }
 
+/** One choice in a queue picker, with how many rows choosing it would list. */
+export interface ReviewOption {
+	count: number
+	label: string
+	value: string
+}
+
+export interface ReviewFacets {
+	starters: ReviewOption[]
+	tiers: ReviewOption[]
+	weeks: ReviewOption[]
+}
+
 export interface ReviewQueue {
 	counts: { [_: string]: number }
+	/** The pickers' options, counted over the current tab. */
+	facets: ReviewFacets
 	next: string | null
 	previous: string | null
 	rows: ReviewRow[]
@@ -147,7 +162,7 @@ export interface ReviewProject {
 export interface ReviewMaker {
 	email: string | null
 	fraudFlagged: boolean
-	/** Whether there is a Telescreen profile to link to. The link goes through `/api/reviews/[id]/telescreen`, which holds the Slack id. */
+	/** Whether there is a Telescreen profile to link to, through `/api/reviews/[id]/telescreen`. */
 	hasTelescreen: boolean
 	id: string
 	name: string

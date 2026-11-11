@@ -13,7 +13,7 @@ interface Params {
 /**
  * Open the maker of this submission in Telescreen.
  *
- * A redirect, so their Slack id never reaches the review page (see lib/review-platform/telescreen). Held to the review screen's rules: REVIEW_SUBMISSIONS, and a 404 for your own work.
+ * A redirect, so the queue never needs their Slack id (see lib/review-platform/telescreen). Held to the review screen's rules: REVIEW_SUBMISSIONS, and a 404 for your own work.
  */
 export const GET = withPermission(
 	Permission.REVIEW_SUBMISSIONS,

@@ -1,7 +1,8 @@
 import "server-only"
-import { and } from "@prisma/orm-postgres/orm-client"
+import { and, or } from "@prisma/orm-postgres/orm-client"
 import { listBom } from "@/lib/bom"
-import { projectDisplayTitle, themeLabel } from "@/lib/config/program"
+import { STARTER_PROJECTS } from "@/lib/config/onboarding"
+import { projectDisplayTitle, scheduleForWeek, themeLabel, WARMUP_THEME } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
 import { HoursSource, Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
@@ -15,6 +16,7 @@ import type {
 	ReviewDetail,
 	ReviewDispute,
 	ReviewEntry,
+	ReviewFacets,
 	ReviewHistoryItem,
 	ReviewQueue,
 	ReviewRow,
@@ -78,7 +80,7 @@ function deciderName(
 	if (named) return named
 	const stored = review.reviewerName?.trim()
 	if (!stored) return review.reviewerId ? "–" : "Ari"
-	if (EMAIL.test(stored)) return viewer.seesContact ? stored : review.reviewerId ? "A reviewer" : "Ari"
+	if (EMAIL.test(stored)) return viewer.seesEmail ? stored : review.reviewerId ? "A reviewer" : "Ari"
 	return stored
 }
 
@@ -203,26 +205,128 @@ const submissionRows = () =>
 			.include("user", user => user.select("displayName", "fraudFlagged", "id", "name")),
 	)
 
+/** A program week as the queue names it: the warm-up, or the theme and phase scheduled for it. */
+export function weekLabel(week: number): string {
+	if (week === 0) return WARMUP_THEME.label
+	const schedule = scheduleForWeek(week)
+	if (!schedule) return `Week ${week}`
+	return `Week ${week} · ${themeLabel(schedule.theme.id)} ${schedule.phase === Phase.DESIGN ? "design" : "build"}`
+}
+
+/** The queue's narrowing filters, each null or "" for everything. */
+export interface QueueFacets {
+	/** "any" for every starter, "none" for the maker's own idea, or one starter's id. */
+	starter: string
+	/** The tier the row's badge shows: the approved tier once there is one, the requested tier before. */
+	tier: number | null
+	/** The program week the submission is scheduled for – its theme's week, not the week it was handed in. */
+	week: number | null
+}
+
+export const isStarterFilter = (value: string | undefined): value is string =>
+	value === "any" || value === "none" || STARTER_PROJECTS.some(starter => starter.id === value)
+
+interface FacetRow {
+	starter: string | null
+	tier: number | null
+	week: number | null
+}
+
+function starterMatches(filter: string, starter: string | null): boolean {
+	if (filter === "") return true
+	if (filter === "any") return starter !== null
+	if (filter === "none") return starter === null
+	return starter === filter
+}
+
+/** Whether a row passes every facet but `skip`, which is the one whose picker is being counted. */
+const facetMatches = (row: FacetRow, facets: QueueFacets, skip: keyof QueueFacets): boolean =>
+	(skip === "week" || facets.week === null || row.week === facets.week)
+	&& (skip === "tier" || facets.tier === null || row.tier === facets.tier)
+	&& (skip === "starter" || starterMatches(facets.starter, row.starter))
+
+function countBy<K>(rows: FacetRow[], key: (row: FacetRow) => K | null): Map<K, number> {
+	const counts = new Map<K, number>()
+	for (const row of rows) {
+		const value = key(row)
+		if (value !== null) counts.set(value, (counts.get(value) ?? 0) + 1)
+	}
+	return counts
+}
+
+/**
+ * The options each picker offers, counted over the current tab under every other filter, so an option's number is what choosing it would list.
+ *
+ * An option with nothing in it is left out unless it is the one chosen, which stays so the picker can still show it and switch back.
+ */
+function facetOptions(rows: FacetRow[], facets: QueueFacets): ReviewFacets {
+	const weekCounts = countBy(
+		rows.filter(row => facetMatches(row, facets, "week")),
+		row => row.week,
+	)
+	const tierCounts = countBy(
+		rows.filter(row => facetMatches(row, facets, "tier")),
+		row => row.tier,
+	)
+	const starterRows = rows.filter(row => facetMatches(row, facets, "starter"))
+	const starterCounts = countBy(starterRows, row => row.starter)
+	const keep = (count: number, value: string, chosen: string): boolean => count > 0 || value === chosen
+	const numbered = (counts: Map<number, number>, chosen: number | null, label: (value: number) => string) => {
+		if (chosen !== null && !counts.has(chosen)) counts.set(chosen, 0)
+		return [...counts]
+			.toSorted(([a], [b]) => a - b)
+			.map(([value, count]) => ({ count, label: label(value), value: String(value) }))
+	}
+	const ownIdea = starterRows.filter(row => row.starter === null).length
+	return {
+		starters: [
+			{ count: starterRows.length - ownIdea, label: "any starter", value: "any" },
+			...STARTER_PROJECTS.map(starter => ({
+				count: starterCounts.get(starter.id) ?? 0,
+				label: starter.title,
+				value: starter.id,
+			})),
+			{ count: ownIdea, label: "own idea", value: "none" },
+		].filter(option => keep(option.count, option.value, facets.starter)),
+		tiers: numbered(tierCounts, facets.tier, tier => `Tier ${tier}`),
+		weeks: numbered(weekCounts, facets.week, weekLabel),
+	}
+}
+
 export async function getQueue(opts: {
 	cursor?: string
+	facets: QueueFacets
 	kind: "" | "design" | "build"
 	mine: boolean
 	status: ReviewStatus
 	viewer: ReviewViewer
 }): Promise<ReviewQueue> {
-	const { viewer } = opts
+	const { facets, viewer } = opts
 	const live = formatDbTimestamp(new Date())
 	const phase = opts.kind === "" ? null : opts.kind === "design" ? Phase.DESIGN : Phase.BUILD
+	const everything: QueueFacets = { starter: "", tier: null, week: null }
 
 	// One filter for the page and for every tab's count, so a count can never disagree with the list it labels.
-	const scoped = (status: ReviewStatus) =>
+	const scoped = (status: ReviewStatus, narrow: QueueFacets = facets) =>
 		db.orm.public.PhaseSubmission.where(submission => {
 			const conditions = [
 				// Your own work is never yours to act on, so it is left out of every list here, decided ones included – the review screen refuses it anyway.
-				submission.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.neq(viewer.id))),
+				submission.themeProject.some(project => {
+					const projectConditions = [project.deletedAt.isNull(), project.userId.neq(viewer.id)]
+					const { starter, tier } = narrow
+					if (tier !== null)
+						projectConditions.push(
+							or(project.tier.eq(tier), and(project.tier.isNull(), project.requestedTier.eq(tier))),
+						)
+					if (starter === "any") projectConditions.push(project.starterProjectId.isNotNull())
+					else if (starter === "none") projectConditions.push(project.starterProjectId.isNull())
+					else if (starter) projectConditions.push(project.starterProjectId.eq(starter))
+					return and(...projectConditions)
+				}),
 				status === "pending" ? submission.resolvedAt.isNull() : submission.resolvedResult.eq(RESULT_FOR[status]),
 			]
 			if (phase) conditions.push(submission.phase.eq(phase))
+			if (narrow.week !== null) conditions.push(submission.scheduledWeek.eq(narrow.week))
 			if (opts.mine)
 				conditions.push(submission.claim.some(claim => and(claim.reviewerId.eq(viewer.id), claim.expiresAt.gt(live))))
 			return and(...conditions)
@@ -244,19 +348,30 @@ export async function getQueue(opts: {
 			? filtered.orderBy([submission => submission.createdAt.asc(), submission => submission.id.asc()])
 			: filtered.orderBy([submission => submission.resolvedAt.desc(), submission => submission.id.desc()])
 
-	const [page, ...counts] = await Promise.all([
+	const [page, facetSource, ...counts] = await Promise.all([
 		ordered
 			.select("createdAt", "id", "phase", "resolvedAt", "resolvedResult", "themeProjectId")
 			.offset(offset)
 			.limit(PAGE_SIZE + 1)
 			.all(),
+		// The whole tab, three small columns a row: the pickers count it in memory rather than a query per option.
+		scoped(opts.status, everything)
+			.select("scheduledWeek")
+			.include("themeProject", project => project.select("requestedTier", "starterProjectId", "tier"))
+			.all(),
 		...STATUSES.map(status => scoped(status).aggregate(a => ({ count: a.count() }))),
 	])
+	const facetRows: FacetRow[] = facetSource.map(row => ({
+		starter: row.themeProject?.starterProjectId ?? null,
+		tier: row.themeProject?.tier ?? row.themeProject?.requestedTier ?? null,
+		week: row.scheduledWeek,
+	}))
 
 	const rows = page.slice(0, PAGE_SIZE)
 	const resubmissions = await resubmissionsAmong(rows)
 	return {
 		counts: Object.fromEntries(STATUSES.map((status, i) => [status, counts[i]?.count ?? 0])),
+		facets: facetOptions(facetRows, facets),
 		next: page.length > PAGE_SIZE ? String(offset + PAGE_SIZE) : null,
 		previous: offset > 0 ? String(Math.max(0, offset - PAGE_SIZE)) : null,
 		rows: await toRows(rows, viewer, { resubmissions }),
@@ -425,13 +540,12 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		entries,
 		history: earlier,
 		maker: {
-			email: viewer.seesContact ? maker.email : null,
+			email: viewer.seesEmail ? maker.email : null,
 			fraudFlagged: viewer.seesRiskFlags ? maker.fraudFlagged : false,
-			// Whether there is a Telescreen profile to link to – the Slack id itself stays on the server (see lib/review-platform/telescreen).
 			hasTelescreen: maker.slackId !== null,
 			id: maker.id,
 			name: displayName(maker, "A maker"),
-			slackId: viewer.seesContact ? maker.slackId : null,
+			slackId: maker.slackId,
 			verificationStatus: viewer.seesRiskFlags ? maker.verificationStatus : null,
 		},
 		makerShips: (await toRows(makerSubmissions, viewer)).filter(other => other.id !== row.id),

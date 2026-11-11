@@ -7,7 +7,7 @@ import type { ReviewViewer } from "@/lib/review-platform/types"
 /**
  * What the signed-in reviewer may see and do on the review platform, from their roles.
  *
- * The same lines the console draws (`app/(platform)/(ops)/review/[id]/page.tsx`): contact details for ADMIN and AUDITOR, risk flags for those and for REVIEW_HOURS holders. These only decide what the server puts in the page; every write is checked again by the route it goes to.
+ * The same lines the console draws (`app/(platform)/(ops)/review/[id]/page.tsx`): risk flags for ADMIN, AUDITOR and REVIEW_HOURS holders. Emails for ADMIN and AUDITOR; the maker's Slack id is shown to every reviewer. These only decide what the server puts in the page; every write is checked again by the route it goes to.
  */
 export function reviewViewerFor({ roles, user }: PageContext): ReviewViewer {
 	const admin = hasRole(roles, Role.ADMIN)
@@ -19,7 +19,7 @@ export function reviewViewerFor({ roles, user }: PageContext): ReviewViewer {
 		displayName: displayName(user, "Reviewer"),
 		id: user.id,
 		isAdmin: admin,
-		seesContact: admin || auditor,
+		seesEmail: admin || auditor,
 		seesRiskFlags: admin || auditor || hasPermission(roles, Permission.REVIEW_HOURS),
 	}
 }
