@@ -11,6 +11,7 @@ import { grantCardCsv } from "@/lib/grant-card-csv"
 import {
 	GRANT_CARD_INVITE_MESSAGE,
 	grantCardAmountCents,
+	grantCardCapUsd,
 	grantCardFingerprint,
 	grantCardInstructions,
 	grantCardPurpose,
@@ -114,7 +115,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 		deletedAt: null,
 		designStatus: PhaseStatus.approved,
 	})
-		.select("bomTaxShippingUsd", "designStatus", "grantUsd", "id", "theme", "title", "userId")
+		.select("bomTaxShippingUsd", "designStatus", "grantUsd", "id", "theme", "tier", "title", "userId")
 		.include("bomItems", items => items.select("quantity", "unitCostUsd"))
 		.include("user", user => user.select("displayName", "email", "fraudFlagged", "id", "name", "verificationStatus"))
 		.include("hcbGrantCards", cards =>
@@ -169,7 +170,12 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 			continue
 		}
 
-		const amountCents = grantCardAmountCents(row.bomItems, row.bomTaxShippingUsd)
+		const capUsd = grantCardCapUsd(row.grantUsd, row.tier)
+		if (capUsd === null) {
+			excluded.push({ ownerName, projectId: row.id, reason: "No tier to cap the grant at", title: row.title })
+			continue
+		}
+		const amountCents = grantCardAmountCents(row.bomItems, row.bomTaxShippingUsd, capUsd)
 		if (amountCents <= 0) {
 			excluded.push({ ownerName, projectId: row.id, reason: "BOM is empty or totals zero", title: row.title })
 			continue
@@ -653,7 +659,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 		if (claimed !== 1) continue
 
 		const project = await db.orm.public.ThemeProject.whereUnique({ id: candidate.themeProjectId })
-			.select("bomTaxShippingUsd", "deletedAt", "designStatus", "grantUsd", "id", "title", "userId")
+			.select("bomTaxShippingUsd", "deletedAt", "designStatus", "grantUsd", "id", "tier", "title", "userId")
 			.include("bomItems", items => items.select("quantity", "unitCostUsd"))
 			.include("user", user => user.select("email", "fraudFlagged", "id", "name"))
 			.first()
@@ -691,8 +697,9 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			continue
 		}
 
-		const amountCents = grantCardAmountCents(project.bomItems, project.bomTaxShippingUsd)
-		if (amountCents !== candidate.amountCents) {
+		const capUsd = grantCardCapUsd(project.grantUsd, project.tier)
+		const amountCents = capUsd === null ? 0 : grantCardAmountCents(project.bomItems, project.bomTaxShippingUsd, capUsd)
+		if (capUsd === null || amountCents !== candidate.amountCents) {
 			await markSkipped(candidate.id, "BOM total changed since the batch was made")
 			outcomes.push(
 				toOutcome(candidate, HcbGrantCardStatus.SKIPPED, "BOM total changed since the batch was made", null),
