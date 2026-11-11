@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { bomTotalUsd, type PricedLine } from "@/lib/bom-policy"
+import { getTier } from "@/lib/config/tiers"
 
 /**
  * The parts of card-grant issuance that are pure.
@@ -13,10 +14,29 @@ export const GRANT_CARD_MARKER_PREFIX = "HL:"
 /** The most HCB fits in a purpose, so whatever else goes in has to. */
 export const GRANT_CARD_PURPOSE = "Half Life parts"
 
-/** What a card grant pays: the BOM total in cents, tax and shipping included. */
-export function grantCardAmountCents(items: readonly PricedLine[], taxShippingUsd: number | null | undefined): number {
+/**
+ * The most a design's card may pay: the lower of its approved grant and its tier's `grantUsd`. Null when the project has no tier, because then there is no ceiling to hold it to.
+ *
+ * The tier check matters because an approved grant can be overridden by hand; the card still may not exceed the tier it was approved at.
+ */
+export function grantCardCapUsd(grantUsd: number | null, tier: number | null): number | null {
+	const tierUsd = tier === null ? undefined : getTier(tier)?.grantUsd
+	if (tierUsd === undefined) return null
+	return Math.min(grantUsd ?? 0, tierUsd)
+}
+
+/**
+ * What a card grant pays: the BOM total in cents, tax and shipping included, never more than `capUsd`.
+ *
+ * The cap is the most a design can ever be granted: the tier's `grantUsd`, or the approved grant if that is lower. A cart over the cap is the maker's to cover, as the BOM editor says, so a card cannot be issued above it even when the parts list is bigger.
+ */
+export function grantCardAmountCents(
+	items: readonly PricedLine[],
+	taxShippingUsd: number | null | undefined,
+	capUsd: number,
+): number {
 	if (items.length === 0) return 0
-	return Math.round(bomTotalUsd(items, taxShippingUsd) * 100)
+	return Math.min(Math.round(bomTotalUsd(items, taxShippingUsd) * 100), Math.round(capUsd * 100))
 }
 
 /**
