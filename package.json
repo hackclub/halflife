@@ -34,6 +34,7 @@
 		"e2e:db": "bun scripts/e2e-db.ts",
 		"e2e:install": "bun --bun x playwright install --with-deps chromium",
 		"grant-role": "bun scripts/grant-role.ts",
+		"grants:week-1-holders": "bun --conditions=react-server scripts/week-1-starter-grant-holders.ts",
 		"hca:backfill-display-names": "bun --conditions=react-server scripts/backfill-display-names.ts",
 		"hours:backfill-overlap": "bun --conditions=react-server scripts/backfill-timelapse-overlap.ts",
 		"import:check": "bun import/check.ts",

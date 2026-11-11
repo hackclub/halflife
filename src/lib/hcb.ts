@@ -207,6 +207,42 @@ export async function readCardGrantOwner(grantHashid: string): Promise<CardGrant
 	return { email: readOwnerEmail(parsed.success ? parsed.data.user : null) }
 }
 
+export interface CardGrantSpend {
+	/** What the grant was issued for, in cents. */
+	amountCents: number | null
+	/** What is left on the grant, in cents; null when HCB did not say. */
+	balanceCents: number | null
+	/** The grant's card, when one has been issued. */
+	cardId: string | null
+	/** What the card has been spent on, in cents; null when there is no card or HCB did not say. */
+	spentCents: number | null
+}
+
+/**
+ * How much of a card grant has been spent: the grant's balance from the grant itself, and the card's total spend from its Stripe card.
+ *
+ * Read-only. Each part is null rather than an error when HCB leaves it out, so one missing field does not hide the rest.
+ */
+export async function readCardGrantSpend(grantHashid: string): Promise<CardGrantSpend> {
+	const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=balance_cents`)
+	if (!res.ok) {
+		const body = await res.text().catch(() => "")
+		throw new HttpError("INTERNAL", `HCB refused to read the grant (${res.status})`, { detail: body.slice(0, 300) })
+	}
+	const data: unknown = await res.json().catch(() => null)
+	const grant = isRecord(data) ? data : {}
+	const amountCents = typeof grant.amount_cents === "number" ? grant.amount_cents : null
+	const balanceCents = typeof grant.balance_cents === "number" ? grant.balance_cents : null
+	const cardId = typeof grant.card_id === "string" ? grant.card_id : null
+	if (!cardId) return { amountCents, balanceCents, cardId, spentCents: null }
+
+	const cardRes = await hcbFetch(`/api/v4/cards/${encodeURIComponent(cardId)}?expand=total_spent_cents`)
+	if (!cardRes.ok) return { amountCents, balanceCents, cardId, spentCents: null }
+	const card: unknown = await cardRes.json().catch(() => null)
+	const spentCents = isRecord(card) && typeof card.total_spent_cents === "number" ? card.total_spent_cents : null
+	return { amountCents, balanceCents, cardId, spentCents }
+}
+
 export interface GrantDisbursement {
 	/** Every HCB disbursement carries an amount; a row without one is not trusted. */
 	amountCents: number

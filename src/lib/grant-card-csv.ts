@@ -36,7 +36,7 @@ export const GRANT_CARD_CSV_HEADER = [
  * A project title with a comma lands in `instructions`, so this is not a nice-to-have: an unquoted comma would
  * shift every column after it and HCB would read the wrong amount.
  */
-function quoteField(field: string): string {
+export function quoteField(field: string): string {
 	if (!/[",\n\r]/.test(field)) return field
 	return `"${field.replaceAll('"', '""')}"`
 }

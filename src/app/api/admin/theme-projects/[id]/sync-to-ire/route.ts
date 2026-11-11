@@ -2,7 +2,7 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
-import { isIreConfigured } from "@/lib/ire-platform"
+import { ireLive, isIreConfigured } from "@/lib/ire-platform"
 import { getIreShipRow, sendSubmissionToIre } from "@/lib/ire-shadow"
 import { Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
@@ -17,7 +17,7 @@ interface Params {
 export const maxDuration = 60
 
 /**
- * Re-send one shadow hand-in to Ire. Same work the hourly ire-retry job does, for the submission an admin is looking at.
+ * Re-send one hand-in to Ire. Same work the hourly ire-retry job does, for the submission an admin is looking at.
  *
  * A phase awaiting review has at most one open local submission; a stale IreShip row from an earlier hand-in is replaced by the send itself. Nothing here is a decision path.
  */
@@ -58,7 +58,7 @@ export const POST = withWritePermission(
 				{
 					actorEmail: gate.user.email,
 					actorId: gate.user.id,
-					metadata: { manual: true, phase: parsed.data.phase, shadow: true },
+					metadata: { live: ireLive(), manual: true, phase: parsed.data.phase },
 					targetId: id,
 					targetType: "ThemeProject",
 				},

@@ -14,6 +14,7 @@ import { AuditAction, type Phase } from "../src/lib/enums"
 import { PULL_PII, syncHcaProfile } from "../src/lib/hca-profile"
 import { decryptUserPII, isPiiConfigured } from "../src/lib/pii"
 import db from "../src/lib/prisma8"
+import { phaseSchema } from "../src/lib/schemas/common"
 
 /**
  * Fill blank address fields on `YSWS Project Submission` rows from the maker's current address.
@@ -37,6 +38,9 @@ const ADDRESS_FIELDS = [
 ] as const
 
 type AddressKey = (typeof ADDRESS_FIELDS)[number][0]
+
+/** Address Line 2 (apt/suite) is optional; a blank there is normal and not a missing address. */
+const REQUIRED_KEYS: AddressKey[] = ADDRESS_FIELDS.map(([key]) => key).filter(key => key !== "addressLine2")
 
 interface CurrentRow {
 	addressLine1: string
@@ -79,6 +83,10 @@ function textCell(value: unknown): string {
 
 function blankAddressFields(row: CurrentRow): AddressKey[] {
 	return ADDRESS_FIELDS.map(([key]) => key).filter(key => !row[key])
+}
+
+function blankRequiredFields(row: CurrentRow): AddressKey[] {
+	return REQUIRED_KEYS.filter(key => !row[key])
 }
 
 /** The current address cells for every row in the submission table, read once. */
@@ -170,8 +178,13 @@ async function main() {
 		process.exit(1)
 	}
 
-	const keys = Object.fromEntries(ADDRESS_FIELDS.map(([key, field]) => [key, fieldKey(field)])) as {
-		[_ in AddressKey]: string
+	const keys: { [_ in AddressKey]: string } = {
+		addressLine1: fieldKey(YSWS_SUBMISSION.fields.addressLine1),
+		addressLine2: fieldKey(YSWS_SUBMISSION.fields.addressLine2),
+		city: fieldKey(YSWS_SUBMISSION.fields.city),
+		country: fieldKey(YSWS_SUBMISSION.fields.country),
+		state: fieldKey(YSWS_SUBMISSION.fields.state),
+		zip: fieldKey(YSWS_SUBMISSION.fields.zip),
 	}
 
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null }).select("id", "title", "userId").all()
@@ -218,14 +231,14 @@ async function main() {
 			state: pii.state?.trim() ?? "",
 			zip: pii.zip?.trim() ?? "",
 		}
-		const hasAny = Object.values(address).some(Boolean)
-		infoByUser.set(userId, { address, reason: hasAny ? null : await diagnoseUser(userId, false) })
+		const hasRequired = REQUIRED_KEYS.every(key => address[key])
+		infoByUser.set(userId, { address, reason: hasRequired ? null : await diagnoseUser(userId, false) })
 	}
-	// Diagnose partial addresses too.
-	for (const [userId, info] of infoByUser.entries()) {
-		const hasAny = Object.values(info.address).some(Boolean)
-		const hasAll = Object.values(info.address).every(Boolean)
-		if (hasAny && !hasAll) info.reason = "Partial address on file: some fields are missing from the stored/HCA address."
+	// Diagnose partial addresses too (missing required fields only; line2 alone is not partial).
+	for (const info of infoByUser.values()) {
+		const hasRequired = REQUIRED_KEYS.every(key => info.address[key])
+		if (!hasRequired && !info.reason)
+			info.reason = "Partial address on file: some fields are missing from the stored/HCA address."
 	}
 
 	const updates: Target[] = []
@@ -235,18 +248,37 @@ async function main() {
 	let fieldsToFill = 0
 
 	for (const [phaseKey, recordId] of records.entries()) {
-		const [projectId, phase] = phaseKey.split(":") as [string, Phase]
+		// The key is `${submissionId}:${phase}`, but the phase half arrives via audit metadata and was never validated there – skip a row whose phase is not a real one rather than filing it under a phase that does not exist.
+		const separator = phaseKey.indexOf(":")
+		if (separator === -1) continue
+		const parsedPhase = phaseSchema.safeParse(phaseKey.slice(separator + 1))
+		if (!parsedPhase.success) continue
+		const projectId = phaseKey.slice(0, separator)
+		const phase = parsedPhase.data
 		const row = current.get(recordId)
 		if (!row) {
 			gone++
 			continue
 		}
 		const blank = blankAddressFields(row)
-		if (blank.length === 0) {
+		const requiredBlank = blankRequiredFields(row)
+		const userId = ownerByProject.get(projectId)
+		if (requiredBlank.length === 0) {
 			complete++
+			// Still fill an available line2 opportunistically, but the row is not missing.
+			const line2 = userId && !row.addressLine2 ? (infoByUser.get(userId)?.address.addressLine2 ?? "") : ""
+			if (line2) {
+				fieldsToFill += 1
+				updates.push({
+					fields: { [keys.addressLine2]: line2 },
+					phase,
+					recordId,
+					title: titleByProject.get(projectId) ?? projectId,
+					userId: userId ?? "",
+				})
+			}
 			continue
 		}
-		const userId = ownerByProject.get(projectId)
 		if (!userId) {
 			missing.push({
 				blankInAirtable: blank,
@@ -268,12 +300,11 @@ async function main() {
 		const fields: { [_: string]: string } = {}
 		const filledByBackfill: AddressKey[] = []
 		for (const key of blank) {
-			if (address[key]) {
-				fields[keys[key]] = address[key]
-				filledByBackfill.push(key)
-			}
+			if (!address[key]) continue
+			fields[keys[key]] = address[key]
+			filledByBackfill.push(key)
 		}
-		const stillBlank = blank.filter(key => !address[key])
+		const stillBlank = requiredBlank.filter(key => !address[key])
 		const missingValue = stillBlank
 
 		if (filledByBackfill.length > 0) {
@@ -287,10 +318,10 @@ async function main() {
 			})
 		}
 
-		if (stillBlank.length > 0) {
+		if (stillBlank.length > 0)
 			missing.push({
-				blankInAirtable: blank,
-				filledByBackfill,
+				blankInAirtable: requiredBlank,
+				filledByBackfill: filledByBackfill.filter(key => key !== "addressLine2"),
 				missingValue,
 				phase,
 				projectId,
@@ -300,7 +331,6 @@ async function main() {
 				title: titleByProject.get(projectId) ?? projectId,
 				userId,
 			})
-		}
 	}
 
 	console.log(
