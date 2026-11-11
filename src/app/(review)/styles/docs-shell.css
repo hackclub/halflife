@@ -1,0 +1,713 @@
+/* ============================================================================
+   Fabricate — docs shell.
+     left rail        → a solid ink strip pinned to the viewport's left
+                        edge (after Blueprint's sidebar; it was a mat strip
+                        until 2026-09-20), sticky, collapsing to a <details>
+                        disclosure at 1024px
+     on this page     → 02-bench: a sticky rail on the right above 1280px,
+                        hairline border-left, hidden when a page has no
+                        headings
+     prose            → 02-bench: mono at 16px on --leading-prose
+
+   A plain (unscoped) stylesheet rather than a Svelte <style> block: the
+   rail/toc chrome lives in docs/+layout.svelte while the article/prose
+   markup they style is rendered by $lib/DocArticle.svelte (a different
+   component, reused by both /docs and /docs/[slug]) — Svelte's per-component
+   CSS scoping does not reach across that boundary, so this needs to be a
+   real global stylesheet, imported only on /docs routes.
+   ============================================================================ */
+
+.docs-shell {
+  /* Docs prose is Nippo too now — tokens.css already defaults --font-body to
+     --font-display, so this file no longer overrides it. */
+  /* The Figma's rail is 141px, which cannot hold "Example journal entry".
+     Widened to 260px at 1920; the mat still meets the viewport edge.
+     Recorded in COPY-TODO.md under "Variant 04-site". */
+  --rail-w: clamp(15rem, 13.54vw, 17.5rem); /* 240 → 280px */
+  --toc-w: 13.5rem;
+  /* The narrow-width topbar. 56px — one Figma mat margin, and enough for the
+     lockup at 28px with air either side. */
+  --topbar-h: 3.5rem;
+  /* The content panel's side padding, and the deeper left inset it gets
+     once the rail is a side column (see the shell rules). Four mat cells:
+     278px at 1920, 160px at the cell's floor. Liam's call, 2026-09-16. */
+  --docs-pad-x: clamp(1.25rem, 2.6vw, 3.125rem);
+  --docs-inset: var(--space-16);
+}
+
+.docs-shell {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: var(--leading-prose);
+  background: var(--color-ground);
+  color: var(--color-prose);
+  -webkit-font-smoothing: antialiased;
+}
+.docs-shell :where(h1, h2, h3, h4, p, ul, ol, figure, blockquote, pre) { margin: 0; }
+
+/* Only Nippo Bold is licensed, so display type is always 700. */
+.doc-title, .prose :is(h1, h2, h3, h4) {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* --- Shell --------------------------------------------------------------
+   Three tracks above 1280px. The on-this-page track is `auto`, so when the
+   rail hides itself on a page with no headings the column collapses to
+   nothing rather than leaving a gap.
+
+   A centred variant — article in the middle of the free space with the list
+   in a track against its right edge, after hwdocs.hackclub.dev — was tried
+   and reverted on 2026-09-16. What survived is the inset: above 1024 the
+   panel keeps a four-cell left padding instead of the old --docs-pad-x, so
+   the article sits well in from the rail rather than against it. */
+
+.docs-shell {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  align-items: start;
+  min-height: 100dvh;
+}
+
+@media (min-width: 1280px) {
+  .docs-shell { grid-template-columns: var(--rail-w) minmax(0, 1fr) auto; }
+}
+
+/* --- The rail -------------------------------------------------------------
+   Solid ink, so the mat-coloured group boxes sit up from it the way
+   Blueprint's do from its darker sidebar. Shared with the dashboards. */
+
+.docs-rail {
+  position: sticky;
+  background: var(--color-ink);
+  top: 0;
+  height: 100dvh;   /* the mat strip runs the full viewport, as drawn */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  /* One unit up from --space-3, on Liam's instruction (2026-09-17): the whole
+     column sat low against the doc title beside it. */
+  padding: var(--space-2) 0 0;
+}
+
+/* The rail's masthead — the lockup, in place of the "← Home" box this used to
+   be. Sized by height, not by the rail's width, so it stays the same object
+   at 240px and at 280px; centred, like the group boxes under it. Bare, with
+   no box of its own: the boxes below carry the rail's structure and one more
+   around the lockup read as a fourth group. */
+.docs-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  margin: 0 clamp(0.75rem, 1.3vw, 1.5625rem) var(--space-2);
+}
+.docs-logo img {
+  display: block;
+  width: auto;
+  height: 100%;
+}
+
+.docs-nav > summary {
+  list-style: none;
+  /* No padding: the label is visually hidden, so any padding here would leave
+     an empty band above the list. The narrow-width rules below give the
+     summary its own box back, where it is a real toggle. */
+  padding: 0;
+  font-family: var(--font-display);
+  /* Regular, like the links it toggles. Nippo has no weight between. */
+  font-weight: 400;
+  font-size: var(--text-ui);
+  line-height: var(--leading-tight);
+  color: var(--color-paper);
+  cursor: default;
+}
+.docs-nav > summary::-webkit-details-marker { display: none; }
+/* Open, the disclosure fills the rail so the signed-in block can sit at the
+   foot; the docs and the dashboards share this rail (SiteRail.tsx). */
+.docs-nav[open] { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+/* Chrome wraps everything after the summary in ::details-content, so the nav
+   and the foot are one block box and the foot's margin-top has nothing to push
+   against. Make that box the column instead. */
+.docs-nav[open]::details-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+
+/* --- The foot: who is signed in ------------------------------------------- */
+
+.docs-rail__foot {
+  margin-top: auto;
+  padding: var(--space-3) clamp(0.75rem, 1.3vw, 1.5625rem) var(--space-1);
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  font-family: var(--font-display);
+  color: var(--color-paper);
+}
+.docs-rail__user { display: flex; align-items: center; gap: 0.75rem; max-width: 100%; color: inherit; text-decoration: none; }
+.docs-rail__user:hover .docs-rail__name { text-decoration: underline; text-underline-offset: 0.25em; }
+.docs-rail__user img { flex: 0 0 auto; width: 3rem; height: 3rem; object-fit: cover; border: var(--border-hair) solid var(--color-bone); }
+.docs-rail__user > span { min-width: 0; }
+.docs-rail__name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-ui); line-height: var(--leading-snug); }
+.docs-rail__head { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.docs-rail__streak { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 0.15rem; font-size: var(--text-small); line-height: var(--leading-snug); }
+.docs-rail__streak .icon { width: 1.1em; height: 1.1em; }
+.docs-rail__meta { display: block; font-weight: 400; font-size: var(--text-small); line-height: var(--leading-snug); color: var(--color-grey-1); }
+.docs-rail__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); justify-self: stretch; }
+.docs-rail__signout { background: none; border: 0; padding: 0; font: inherit; font-weight: 400; color: var(--color-paper); cursor: pointer; }
+.docs-rail__signout:hover { text-decoration: underline; text-underline-offset: 0.25em; }
+.docs-rail__dev { display: grid; gap: 0.3rem; justify-self: stretch; padding-top: var(--space-1); border-top: var(--border-hair) dashed var(--color-mid); }
+.docs-rail__dev > span { font-weight: 400; font-size: var(--text-small); color: var(--color-grey-3); }
+.docs-rail__dev .field__select { font-size: var(--text-small); }
+
+/* --- The groups ---------------------------------------------------------
+   One box per group, after the Figma's Docs frame (nodes 172:14, 172:15):
+   mat-coloured boxes inset from the rail, title centred over centred page
+   names. The title links to the group's first page, and only the group
+   holding the current page lists its pages, so a click on a title lands in
+   that section and folds the last one — no <details>, no script; the next
+   page simply renders with its own group open. Only that group carries the
+   border, on Liam's instruction. The Figma's 16/14px pair is not taken:
+   page names sit at the prose size and the title one step up, Liam's call,
+   2026-09-16. */
+
+.docs-groups {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0 clamp(0.75rem, 1.3vw, 1.5625rem);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.docs-group {
+  background: var(--color-mat);
+  /* Transparent, not none, so the selected box does not grow by 2px. */
+  border: var(--border-hair) solid transparent;
+  text-align: center;
+}
+.docs-group.is-active { border-color: var(--color-bone); }
+
+.docs-group__title {
+  display: block;
+  padding: 0.5em 0.75em;
+  font-family: var(--font-display);
+  /* Regular, like the page links under it. Nippo has no weight between. */
+  font-weight: 400;
+  font-size: 1.125rem; /* one step up from the 16px page names */
+  line-height: var(--leading-snug);
+  color: var(--color-paper);
+  text-decoration: none;
+}
+a.docs-group__title:hover { background: rgb(255 255 255 / 0.05); }
+
+.docs-group__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.5em;
+}
+
+.docs-nav__link {
+  display: block;
+  padding: 0.3em 0.75em;
+  font-size: var(--text-body);
+  /* Regular — the body default is 700. The active page is picked out by
+     colour, not weight. */
+  font-weight: 400;
+  line-height: var(--leading-snug);
+  color: var(--color-grey-1);
+  text-decoration: none;
+}
+.docs-nav__link:hover { color: var(--color-paper); background: rgb(255 255 255 / 0.05); }
+.docs-nav__link.is-active {
+  /* Just an underline, on Liam's instruction — the filled bone bar the old
+     flat list used fought with the group's own border. */
+  color: var(--color-paper);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* A guide with its own pages (docs/<group>/<guide>/) lists them in a box of
+   its own, only while one of them is the current page. */
+.docs-nav__link.is-open { color: var(--color-paper); }
+
+.docs-nav__sub {
+  list-style: none;
+  margin: 0.2em 0.75em 0.4em;
+  padding: 0.2em 0;
+  border: var(--border-hair) solid var(--color-mid);
+}
+.docs-nav__sub .docs-nav__link { font-size: var(--text-small); }
+
+/* --- The content panel --------------------------------------------------- */
+
+.docs-main {
+  min-width: 0;
+  padding: clamp(4.5rem, 5.2vw, 6.25rem) var(--docs-pad-x) var(--space-12);
+}
+/* After the shorthand above, or the shorthand wins. */
+@media (min-width: 1025px) {
+  .docs-main { padding-left: var(--docs-inset); }
+  .docs-main:has(.docs-cards) { padding-right: var(--docs-inset); }
+}
+
+.docs-article { max-width: var(--prose-max); }
+.docs-article:has(.docs-cards) { max-width: none; container-type: inline-size; }
+.docs-article:has(.docs-cards) > .prose { max-width: var(--prose-max); }
+
+.paper-grid.docs-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@container (max-width: 45rem) { .paper-grid.docs-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (max-width: 28rem) { .paper-grid.docs-cards { grid-template-columns: minmax(0, 1fr); } }
+@container (min-width: 64rem) { .paper-grid.docs-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (min-width: 90rem) { .paper-grid.docs-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+.doc-title {
+  font-size: var(--text-h2);
+  /* The longest title ("Example journal entry") wraps below 1024px, so it
+     takes the wrapping leading rather than display leading. */
+  line-height: var(--leading-snug);
+  color: var(--color-paper);
+  text-wrap: balance;
+  /* Underlined exactly like .prose h2, so the page title reads as the first
+     heading in the same series rather than a different kind of object. It
+     used to be a separate .docs-rule element set further down the page, with
+     a lede between the two and a tick at each end. */
+  padding-bottom: 0; /* the rule hugs the letters, like .prose h2 */
+  border-bottom: var(--border-hair) solid var(--color-mid);
+  /* Two units to the intro: the same step a paragraph used to take, so the
+     opening lines read as the title's own text, not a stranded pair. Was
+     three, left over from the old rule's gap. Liam, 2026-09-16. */
+  margin-bottom: var(--space-2);
+}
+
+/* --- On this page (02-bench) --------------------------------------------
+   The page title heads the list and its h2s sit indented under it. Several
+   of the guides have no headings at all, so the rail hides itself rather
+   than printing a label over the title alone.
+
+   The current entry is picked out by colour and a bar over the rail's
+   hairline. .is-current is rendered on the page title and moved with the
+   scroll by $lib/toc-spy.js, the one inline script on these pages. A
+   CSS-only version (view timelines on the h2s driving animations on the
+   entries) was tried first on 2026-09-16 and worked, except that a short
+   final section could never light its own entry; Liam allowed the script. */
+
+.docs-toc {
+  display: none;
+  /* Nippo Regular, like the prose it indexes — the body default is 700. */
+  font-weight: 400;
+}
+
+@media (min-width: 1280px) {
+  .docs-toc:has(.docs-toc__item--h2) {
+    display: block;
+    width: var(--toc-w);
+    position: sticky;
+    /* Starts level with the doc title so it clears the absolutely
+       positioned primary nav, which sits in the same corner. */
+    margin-top: clamp(4.5rem, 5.2vw, 6.25rem);
+    top: var(--space-4);
+    max-height: calc(100dvh - var(--space-4));
+    overflow-y: auto;
+    padding: var(--space-2) var(--space-2) var(--space-4);
+    border-left: var(--border-hair) solid var(--color-mid);
+  }
+}
+
+.docs-toc__head {
+  margin: 0 0 0.6em;
+  font-family: var(--font-display);
+  /* Bold and a full step up from the entries, on Liam's instruction
+     (2026-09-16): it was a small grey label in the old rail. */
+  font-weight: 700;
+  font-size: var(--text-ui);
+  line-height: var(--leading-snug);
+  color: var(--color-paper);
+}
+
+.docs-toc ul { list-style: none; margin: 0; padding: 0; }
+
+.docs-toc__item a {
+  position: relative;
+  display: block;
+  padding: 0.35em 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-grey-2);
+  text-decoration: none;
+}
+/* The section entries indent under the page title. */
+.docs-toc__item--h2 a { padding-left: 1.25em; }
+.docs-toc__item a:hover { color: var(--color-paper); text-decoration: underline; text-underline-offset: 0.25em; }
+
+/* The current entry: white, with a bar sitting over the rail's hairline. */
+.docs-toc__item a::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * var(--space-2) - var(--border-hair));
+  width: var(--border-ui);
+  background: transparent;
+}
+.docs-toc__item.is-current a { color: var(--color-paper); }
+.docs-toc__item.is-current a::before { background: var(--color-bone); }
+/* The rail lists h2s only — see the headings pass in src/lib/server/docs.js. */
+
+/* ============================================================================
+   Prose (02-bench) — the rendered markdown. Scoped to .prose so nothing
+   leaks. Mono at 16px on a 1.75 leading: long-form reading is the point.
+   ============================================================================ */
+
+.prose {
+  font-size: var(--text-body);
+  /* Nippo Regular — long-form reading, unlike the rest of the site. */
+  font-weight: 400;
+  line-height: var(--leading-prose);
+  color: var(--color-prose);
+  /* Some source files carry bare URLs and a couple of broken link
+     syntaxes; wrap them rather than let them run past the measure. */
+  overflow-wrap: break-word;
+}
+
+/* Preflight zeroes every margin, so block rhythm is set here once, on the
+   direct children of the wrapper. Per-element rules below only add the
+   extra space above a heading.
+
+   In em, not a token: the prose is a fixed 16px, so its own gap should not
+   grow with the mat. 1.5em is 24px, a little under one 28px line, where
+   --space-2 was 35px at 1920 and left short paragraphs floating apart.
+   Heading margins still collapse over it, so those gaps are unchanged.
+   Liam, 2026-09-16. */
+.prose > * { margin-bottom: 1.5em; }
+.prose > *:last-child { margin-bottom: 0; }
+
+.prose :is(h1, h2, h3, h4) {
+  /* Every one of these wraps somewhere between 500px and 1920px, so they
+     all take the wrapping leading. */
+  line-height: var(--leading-snug);
+  color: var(--color-paper);
+  text-wrap: balance;
+}
+
+.prose h1 { font-size: var(--text-h3); margin-top: var(--space-4); }
+.prose h2 {
+  font-size: var(--text-h3);
+  margin-top: var(--space-4);
+  /* Under the heading, not over it — the rule now closes the heading off from
+     its own body text rather than fencing it away from the section above. */
+  /* No padding: the rule sits right under the letters, with only the
+     heading's own half-leading between, and the unit of margin below it is
+     the gap to the text. Liam, 2026-09-16. */
+  padding-bottom: 0;
+  border-bottom: var(--border-hair) solid var(--color-mid);
+}
+/* Under the h2's rule, one unit to whatever follows — the default two, or
+   an h3's own two above it, read as a gap, not a lead-in. Liam, 2026-09-16. */
+.prose h2 { margin-bottom: var(--space-1); }
+.prose h2 + :is(h3, h4) { margin-top: var(--space-1); }
+/* Tighter still under an h3 or h4, which has no rule to bridge: half a unit,
+   so the question and its answer read as one block. */
+.prose :is(h3, h4) { margin-bottom: calc(var(--space-1) / 2); }
+/* One step down the scale from the old --text-caption, and Regular rather
+   than the display default of 700, so it sits closer to the body it heads
+   than to the h2 above. Liam, 2026-09-16. */
+/* Two units above, not three: at three the FAQ read as questions floating
+   apart, with the gap to the previous answer twice the gap to its own. The
+   h4 shares the value so it never sits further from its section than the
+   larger h3 does. Liam, 2026-09-16. */
+.prose h3 { font-size: var(--text-credit); font-weight: 400; margin-top: var(--space-2); }
+.prose h4 {
+  font-size: var(--text-body);
+  margin-top: var(--space-2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-grey-1);
+}
+.prose > *:first-child { margin-top: 0; }
+
+.prose p { text-wrap: pretty; }
+
+.prose a {
+  color: var(--color-paper);
+  text-decoration: underline;
+  text-decoration-color: var(--color-mid);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.prose a:hover { text-decoration-color: currentColor; }
+
+.prose strong { color: var(--color-paper); font-weight: 700; }
+.prose em { font-style: italic; color: var(--color-grey-1); }
+
+/* Lists, including nesting. Markers are drafting marks, not bullets. */
+.prose ul, .prose ol { padding-left: 1.6em; }
+.prose li { margin: 0.35em 0; }
+.prose li::marker { color: var(--color-grey-3); }
+.prose ul { list-style: square; }
+.prose ul ul { list-style: '–  '; }
+.prose ul ul ul { list-style: disc; }
+.prose ol { list-style: decimal; }
+.prose ol ol { list-style: lower-alpha; }
+.prose li > ul, .prose li > ol { margin-block: 0.35em 0; }
+.prose li > p { margin-bottom: 0.35em; }
+.prose li > p:last-child { margin-bottom: 0; }
+
+.prose blockquote {
+  padding: var(--space-2);
+  border-left: var(--border-field) solid var(--color-mid);
+  background: var(--color-ink);
+  color: var(--color-grey-1);
+}
+.prose blockquote > * + * { margin-top: var(--space-1); }
+
+.prose hr {
+  height: 1px;
+  margin-block: var(--space-4);
+  border: 0;
+  background: var(--color-mid);
+}
+
+/* Tables. docs.js wraps every <table> in this box at render time so a wide
+   table scrolls inside its own box rather than dragging the page sideways. */
+.prose__scroll {
+  overflow-x: auto;
+  border: var(--border-hair) solid var(--color-mid);
+  background: var(--color-ink);
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.prose th, .prose td {
+  padding: 0.7em 0.9em;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--border-hair) solid var(--color-mid);
+}
+.prose thead th {
+  background: var(--color-deep);
+  color: var(--color-grey-1);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.prose tbody tr:last-child th,
+.prose tbody tr:last-child td { border-bottom: 0; }
+.prose td + td, .prose th + th { border-left: var(--border-hair) solid var(--color-mid); }
+
+/* Code. No fenced blocks in the current content, but the indented blocks in
+   journaling.md render as <pre> and several files use inline code. */
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  padding: 0.1em 0.35em;
+  background: var(--color-ink);
+  border: var(--border-hair) solid var(--color-mid);
+  color: var(--color-bone);
+}
+.prose pre {
+  padding: var(--space-2);
+  overflow-x: auto;
+  background: var(--color-ink);
+  border: var(--border-hair) solid var(--color-mid);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  tab-size: 2;
+}
+.prose pre code {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: inherit;
+  color: var(--color-prose);
+}
+
+/* Images sit in a well, like everything else photographic on this site. */
+.prose__video,.prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+  background: var(--color-ink);
+  border: var(--border-hair) solid var(--color-mid);
+}
+.prose p:has(> img:only-child) { margin-top: var(--space-3); }
+.prose img:not(a img) { cursor: zoom-in; }
+
+.image-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(4 17 15 / 0.8);
+  cursor: zoom-out;
+  animation: image-zoom-in 0.28s ease both;
+}
+.image-zoom.is-closing { animation: image-zoom-out 0.22s ease both; }
+.image-zoom img {
+  width: auto;
+  height: auto;
+  max-width: min(100%, 90rem);
+  max-height: 85vh;
+  transform-origin: 0 0;
+  border: var(--border-hair) solid var(--color-mid);
+}
+@keyframes image-zoom-in { from { background: rgb(4 17 15 / 0); } }
+@keyframes image-zoom-out { to { background: rgb(4 17 15 / 0); } }
+@media (prefers-reduced-motion: reduce) { .image-zoom, .image-zoom.is-closing { animation: none; } }
+
+/* Anchored headings keep clear of a sticky top when jumped to. */
+.prose :is(h1, h2, h3)[id] { scroll-margin-top: var(--space-4); }
+
+/* --- Below 1024: the rail is a topbar, and opens into a drawer ----------
+   It used to collapse to a full-width bar of nav links above the article,
+   then to a strip, then to nothing but its toggle. What it is now: closed, a
+   solid topbar — the mat's own gridline colour, painted flat — with the three
+   rules at the left and the lockup centred, linking home. Open, the same
+   panel as at 1920, over the article rather than pushing it, with an × in its
+   top right. Liam's calls, 2026-09-17.
+
+   Fixed, not sticky: the rail sits in a zero-width grid track so the article
+   runs the full viewport, and a sticky box cannot then stretch across it
+   without `width: 100vw`, which overruns by the width of a classic scrollbar
+   and puts a horizontal scrollbar on the page. `right: 0` has no such
+   problem.
+
+   Open state is read with :has() off the shell rather than set on the rail,
+   because .docs-logo is a *previous* sibling of the <details> and there is no
+   previous-sibling combinator.
+
+   The markup ships the <details> open, so above 1024px — and with JS off at
+   any width — this is a plain open column with no script behind it.
+   $lib/rail-collapse.js closes it below this width, where open would cover
+   the page on arrival. */
+
+@media (max-width: 1024px) {
+  /* One track, not two: the rail is fixed, so it is out of flow and no longer
+     a grid item at all — leave a rail track in and .docs-main slides into it
+     and lays out at its width. .docs-toc is display:none below 1280, so the
+     article is the only item left. */
+  .docs-shell { grid-template-columns: minmax(0, 1fr); }
+
+  .docs-rail {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 40;
+    width: auto;
+    height: var(--topbar-h);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--color-ink);
+    overflow: visible;
+    padding: 0 clamp(0.75rem, 1.3vw, 1.5625rem);
+  }
+
+  :is(.docs-shell, .app-shell):has(.docs-nav[open]) .docs-rail {
+    inset: 0 auto 0 0;
+    width: var(--rail-w);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background-color: var(--color-ink);
+    /* A band across the top for the lockup and the close button, both of
+       which are taken out of flow to sit in it. */
+    padding: calc(var(--space-2) + 2rem + var(--space-1)) 0 0;
+  }
+
+  /* The lockup is out of flow at both narrow states, so it clears the band's
+     padding rather than being pushed down by it. Same 2rem box as the ×, so
+     the two line up on their centres rather than their edges. */
+  .docs-logo {
+    position: absolute;
+    margin: 0;
+    height: 2rem;
+  }
+  .docs-logo img { height: 1.75rem; }
+
+  /* Closed, it is the topbar's centrepiece: centred on the viewport, not on
+     the space left over beside the toggle, so it sits on the page's centre
+     line. */
+  :is(.docs-shell, .app-shell):has(.docs-nav:not([open])) .docs-logo {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Open, it nests beside the × in the panel's top band — not at the group
+     boxes' left inset, which left it crowding the panel edge, but centred in
+     everything the × does not occupy: the span from the viewport edge to the
+     ×'s own left edge. Stated as a box with both sides pinned and auto
+     margins, so it follows the × rather than a measured offset.
+     Liam, 2026-09-17. */
+  :is(.docs-shell, .app-shell):has(.docs-nav[open]) .docs-logo {
+    left: 0;
+    right: calc(clamp(0.75rem, 1.3vw, 1.5625rem) + 2rem);
+    width: fit-content;
+    margin-inline: auto;
+    top: var(--space-2);
+  }
+
+  /* Here the summary is a real control, not the hidden label it is above
+     1024px. Neither state has a box: an outline around either one read as a
+     selected item next to the bordered group boxes, and the 2rem square is
+     only the tap target.
+
+     Closed it opens the drawer, at the left of the bar. Open it closes it,
+     as an × in the panel's top right corner, out of flow and clear of the
+     Home box. */
+  .docs-nav > summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin-inline: 0 auto;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  /* Three rules, drawn rather than set: ≡ is the identical-to sign and lands
+     at a different weight and width in every fallback font, where a gradient
+     is the same 2px hairline as every other border on the site. */
+  .docs-nav > summary::after {
+    content: '';
+    width: 1rem;
+    height: 0.75rem;
+    background-image:
+      linear-gradient(var(--color-paper) 0 0),
+      linear-gradient(var(--color-paper) 0 0),
+      linear-gradient(var(--color-paper) 0 0);
+    background-size: 100% var(--border-ui);
+    background-position: left top, left center, left bottom;
+    background-repeat: no-repeat;
+  }
+  .docs-nav[open] > summary {
+    position: absolute;
+    top: var(--space-2);
+    right: clamp(0.75rem, 1.3vw, 1.5625rem);
+    margin: 0;
+  }
+  /* The glyph carries the whole control, so it is set well up from the bars —
+     the 2rem box is only the tap target now. */
+  .docs-nav[open] > summary::after {
+    content: '×';
+    width: auto;
+    height: auto;
+    background-image: none;
+    font-size: 1.75em;
+  }
+
+  .docs-groups { margin-top: var(--space-2); }
+  /* Clear of the fixed bar, which is out of flow and holds no space. */
+  .docs-main { padding-top: calc(var(--topbar-h) + var(--space-3)); }
+  /* And an anchored heading has to clear it too, or a jump lands under it. */
+  .prose :is(h1, h2, h3)[id] {
+    scroll-margin-top: calc(var(--topbar-h) + var(--space-1));
+  }
+}

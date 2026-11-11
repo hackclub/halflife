@@ -17,7 +17,7 @@ import { HardwareExperience, HoursSource, type ParticipantGoal, Phase, PhaseStat
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
-import { getUserRoles, hasRole } from "@/lib/permissions"
+import { getUserRoles, hasPermission, hasRole, Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import {
 	effectiveDateFor,
@@ -110,9 +110,9 @@ export interface StoreSnapshot {
 	projects: Project[]
 	streak: number
 	/**
-	 * Who is signed in. Display fields only, never an email or a Slack id. `isAdmin` decides whether admin-only tools (redo onboarding) are offered; the routes behind them check the role themselves.
+	 * Who is signed in. Display fields only, never an email or a Slack id. `isAdmin` decides whether admin-only tools (redo onboarding) are offered, and `isReviewer` whether the sidebar links to the review platform; the routes behind them check the permission themselves.
 	 */
-	viewer: { id: string; name: string; image: string | null; isAdmin: boolean }
+	viewer: { id: string; name: string; image: string | null; isAdmin: boolean; isReviewer: boolean }
 	/**
 	 * Every warm-up project, by id: the one phase it is handed in as, the hours it has from somewhere other than its entries (Hackatime, reviewer adjustments), and when its journal closes. A maker may hold several, so each is addressed by its id – its entries and submit are `wu-<id>-…` keys in `progress` – never by a week number.
 	 */
@@ -553,6 +553,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			id: userId,
 			image: avatarUrl(user),
 			isAdmin: hasRole(roles, Role.ADMIN),
+			isReviewer: hasPermission(roles, Permission.REVIEW_SUBMISSIONS),
 			name: displayName(user, "You"),
 		},
 		warmups,

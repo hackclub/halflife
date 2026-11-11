@@ -7,6 +7,7 @@ import { useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconClock, IconLogout } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
+import { HardLink } from "@/components/site/HardLink"
 import { signOut } from "@/lib/auth-client"
 import { freestyleIsLive } from "@/lib/config/freestyle"
 import { cx } from "@/lib/cx"
@@ -30,6 +31,12 @@ export const NAV = [
  * The phone tab bar divides into equal cells, six at most: six 60px cells is what a 360px screen holds with the uppercase labels still readable. The Doomscroller gets in through the header link below lg instead of taking one.
  */
 export const TAB_NAV = NAV.filter(item => item.href !== "/doomscroller")
+
+const navLinkClass = (active: boolean): string =>
+	cx(
+		"group flex items-center justify-between gap-2 border-b border-dashed border-line py-3 text-[1.02rem] transition-[color,transform] duration-150 active:translate-y-px",
+		active ? "font-extrabold text-navy" : "font-semibold text-navy-soft hover:text-navy",
+	)
 
 export function Sidebar({ className }: { className?: string }) {
 	const pathname = usePathname()
@@ -61,20 +68,21 @@ export function Sidebar({ className }: { className?: string }) {
 							const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href)
 							return (
 								<li className="relative" data-tour={item.tourId} key={item.href}>
-									<Link
-										aria-current={active ? "page" : undefined}
-										className={cx(
-											"group flex items-center justify-between gap-2 border-b border-dashed border-line py-3 text-[1.02rem] transition-[color,transform] duration-150 active:translate-y-px",
-											active ? "font-extrabold text-navy" : "font-semibold text-navy-soft hover:text-navy",
-										)}
-										href={item.href}
-									>
+									<Link aria-current={active ? "page" : undefined} className={navLinkClass(active)} href={item.href}>
 										<span className="truncate">{item.label}</span>
 										{active && <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-coral" />}
 									</Link>
 								</li>
 							)
 						})}
+						{/* Reviewers only. The review platform is its own root layout, so it is never the current page here, and crossing to it is a full page load. */}
+						{viewer.isReviewer && (
+							<li className="relative">
+								<HardLink className={navLinkClass(false)} href="/reviews">
+									<span className="truncate">Review</span>
+								</HardLink>
+							</li>
+						)}
 					</ul>
 				</nav>
 			</Panel>

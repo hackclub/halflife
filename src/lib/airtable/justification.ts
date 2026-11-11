@@ -1,6 +1,7 @@
 import { fmtHours } from "@/lib/numbers"
 import { DAY_MS } from "@/lib/time"
 import "server-only"
+import { NO_FEATURES_RECORDED } from "@/lib/airtable/unified-justification"
 import { scheduledWeekFor } from "@/lib/config/program"
 import type { Phase, Theme } from "@/lib/enums"
 import { lapseTimelapseUrl } from "@/lib/lapse"
@@ -67,13 +68,7 @@ export interface JustificationValues {
 	specificTechnicalFeatures: string
 }
 
-/**
- * What the technical-features column says when the reviewer's box was left empty.
- *
- * Once a project is in the base the pipeline's `[SPECIFIC TECHNICAL FEATURES]` section is always read, so an
- * empty one reads as a gap rather than as "nothing was recorded".
- */
-export const NO_FEATURES_RECORDED = "No technical features were recorded for this submission."
+export { NO_FEATURES_RECORDED, reviewerTechnicalFeaturesCell } from "@/lib/airtable/unified-justification"
 
 /** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
@@ -135,13 +130,4 @@ export function alternateTrackingJustification(source: AlternateTrackingSource):
 			? `The time comes from ${entries} devlog ${entries === 1 ? "entry" : "entries"}${claimed}.`
 			: "No devlog entries were recorded either."
 	return `No Hackatime projects or Lapse timelapses were linked. ${method}`
-}
-
-/**
- * The `Justification - Specific Technical Features` cell: Ari's `review.justification.technical_features`, the
- * reviewer's own account of what the project has that accounts for the hours – and nothing else. An empty box
- * writes the marker, so a project never sits blank in the base.
- */
-export function reviewerTechnicalFeaturesCell(reviewerText: string | null): string {
-	return reviewerText?.trim() || NO_FEATURES_RECORDED
 }

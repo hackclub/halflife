@@ -30,6 +30,8 @@
 			"e2e/**",
 			"src/**",
 			"!src/app/generated",
+			"!src/app/(review)/styles",
+			"!src/components/review/hurt",
 			".impeccable/**",
 			".github/**",
 			"prisma/**",

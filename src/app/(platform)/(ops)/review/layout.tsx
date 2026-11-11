@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { OpsShell } from "@/app/components/OpsShell"
+import { HardLink } from "@/components/site/HardLink"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 
@@ -15,6 +16,8 @@ export default async function ReviewLayout({ children }: Readonly<{ children: Re
 			nav={
 				<>
 					<Link href="/review">Queue</Link>
+					{/* The review platform is its own root layout, so crossing to it is a full page load. */}
+					<HardLink href="/reviews">Review platform</HardLink>
 					<Link href="/dashboard">Dashboard</Link>
 				</>
 			}

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { OpsShell } from "@/app/components/OpsShell"
+import { HardLink } from "@/components/site/HardLink"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 
@@ -39,6 +40,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 					{hasPermission(roles, Permission.MANAGE_FEED) ? <Link href="/admin/reports">Reports</Link> : null}
 					{hasPermission(roles, Permission.VIEW_AUDIT_LOG) ? <Link href="/admin/audit">Audit</Link> : null}
 					{hasPermission(roles, Permission.VIEW_UPLOADS) ? <Link href="/admin/uploads">Uploads</Link> : null}
+					{hasPermission(roles, Permission.REVIEW_SUBMISSIONS) ? <HardLink href="/reviews">Reviews</HardLink> : null}
 					<Link href="/dashboard">Dashboard</Link>
 				</>
 			}

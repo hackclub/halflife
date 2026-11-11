@@ -26,7 +26,7 @@ function snapshot(over: Partial<StoreSnapshot> = {}): StoreSnapshot {
 		projectIdByWeek: {},
 		projects: [],
 		streak: 0,
-		viewer: { id: "u1", image: null, isAdmin: false, name: "Maker" },
+		viewer: { id: "u1", image: null, isAdmin: false, isReviewer: false, name: "Maker" },
 		warmups: {},
 		warmupsCloseAt: NOW + 1_000_000,
 		weekClosesAt: {},

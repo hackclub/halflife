@@ -17,6 +17,7 @@ import {
 	timelapseLinks,
 } from "@/lib/airtable/justification"
 import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
+import type { JustificationRow, JustificationRowMissing } from "@/lib/airtable/unified-justification"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
@@ -301,6 +302,7 @@ interface ReviewRowValues {
 	hackatimeId: string
 	hackatimeProjects: string
 	lapseLinks: string
+	overrideJustification: string
 	selfReportedHours: number | null
 }
 
@@ -315,7 +317,8 @@ const textCell = (value: unknown): string => (typeof value === "string" ? value.
  * A read that fails returns null rather than throwing. Nothing here can then say whether a row was deflated or what its tracking columns hold, so the status and note are still written and the extra columns are left as they were.
  */
 async function readReviewRow(config: AirtableConfig, recordId: string): Promise<ReviewRowValues | null> {
-	const { hackatimeId, hackatimeProjects, hoursSelfReported, lapseLinks } = YSWS_SUBMISSION.fields
+	const { hackatimeId, hackatimeProjects, hoursSelfReported, lapseLinks, overrideHoursSpentJustification } =
+		YSWS_SUBMISSION.fields
 	let row: AirtableRecord
 	try {
 		row = await withRateLimitRetry("readYswsReviewRow", () =>
@@ -337,6 +340,7 @@ async function readReviewRow(config: AirtableConfig, recordId: string): Promise<
 		hackatimeId: textCell(cell(hackatimeId)),
 		hackatimeProjects: textCell(cell(hackatimeProjects)),
 		lapseLinks: textCell(cell(lapseLinks)),
+		overrideJustification: textCell(cell(overrideHoursSpentJustification)),
 		selfReportedHours: numberCell(cell(hoursSelfReported)),
 	}
 }
@@ -379,20 +383,91 @@ function deflationColumns(
 }
 
 /**
- * The `Justification - Alternate Tracking Method` column for a decision.
+ * The `Justification - Alternate Tracking Method` text an approval writes: empty when the row has Hackatime or Lapse evidence, else the devlog entries the hours rest on.
  *
- * Only an approval is written: it is the justification of hours that were paid, and an earlier review's method should not be erased by a return, a reopen or a reset that has nothing new to say. When the row has since gained Hackatime or Lapse evidence the column is cleared, because the alternate method it described is no longer the one the hours rest on. The reviewer's reasoning is not put here: it says what the work is, not how the hours were tracked, and belongs in the specific-features and additional-justification columns instead.
+ * Only an approval writes it: it is the justification of hours that were paid, and an earlier review's method should not be erased by a return, a reopen or a reset that has nothing new to say. When the row has since gained Hackatime or Lapse evidence the column is cleared, because the alternate method it described is no longer the one the hours rest on. The reviewer's reasoning is not put here: it says what the work is, not how the hours were tracked, and belongs in the specific-features and additional-justification columns instead.
  */
-function alternateTrackingColumns(
-	status: string,
-	row: ReviewRowValues | null,
-	entryCount: number,
-	claimedHours: number | null,
-): { [_: string]: unknown } {
-	if (status !== YSWS_REVIEW_STATUS.approved || !row) return {}
-	const key = fieldKey(YSWS_SUBMISSION.fields.alternateTracking)
-	if ([row.hackatimeId, row.hackatimeProjects, row.lapseLinks].some(value => value !== "")) return { [key]: "" }
-	return { [key]: alternateTrackingJustification({ claimedHours, entryCount }) }
+async function approvalAlternateTracking(themeProjectId: string, phase: Phase, row: ReviewRowValues): Promise<string> {
+	if ([row.hackatimeId, row.hackatimeProjects, row.lapseLinks].some(value => value !== "")) return ""
+	const sessions = await db.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
+		.select("hoursClaimed", "hoursSource")
+		.all()
+	const manual = sessions.filter(s => s.hoursSource !== HoursSource.HACKATIME_TRACKED)
+	return alternateTrackingJustification({
+		claimedHours: row.selfReportedHours ?? round2(manual.reduce((sum, s) => sum + s.hoursClaimed, 0)),
+		entryCount: manual.length,
+	})
+}
+
+/**
+ * The submission's row as an approval would find it, for the review screen's preview of `Automation - Unified Justification`.
+ *
+ * Read from the base when it can be, because that is what the decision reads too: the claimed hours a deflation is measured against, and the evidence columns, which for the pre-season imports exist nowhere else. When it cannot – sync off, no key (as in local development), no row yet, or a failed read – the row is rebuilt from Postgres the way hand-in writes it, and `missing` says why, so the preview can say an approval will not write it.
+ */
+export async function readJustificationRow(
+	themeProjectId: string,
+	phase: Phase,
+): Promise<{ missing: JustificationRowMissing | null; row: JustificationRow }> {
+	const read = await (async (): Promise<JustificationRowMissing | ReviewRowValues> => {
+		const settings = await getProgramSettings()
+		if (!settings.airtableSyncEnabled) return "sync_disabled"
+		const config = getAirtableConfig()
+		if (!config) return "not_configured"
+		const recordId = await lastRecordId(themeProjectId, phase)
+		if (!recordId) return "no_row"
+		return (await readReviewRow(config, recordId)) ?? "unreadable"
+	})()
+	const row = typeof read === "string" ? await localReviewRow(themeProjectId, phase) : read
+	return {
+		missing: typeof read === "string" ? read : null,
+		row: {
+			alternateTracking: await approvalAlternateTracking(themeProjectId, phase, row),
+			claimedHours: row.selfReportedHours,
+			hackatimeId: row.hackatimeId,
+			hackatimeProjects: row.hackatimeProjects,
+			lapseLinks: row.lapseLinks,
+			overrideJustification: row.overrideJustification,
+		},
+	}
+}
+
+/**
+ * The row's evidence columns and claimed hours as hand-in writes them (see `fieldsFor`), from Postgres alone. The override justification is the program team's, written only in the base, so it is empty here.
+ */
+async function localReviewRow(themeProjectId: string, phase: Phase): Promise<ReviewRowValues> {
+	const [project, settings, breakdown] = await Promise.all([
+		db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+			.select("theme")
+			.include("user", user => user.select("hackatimeUserId"))
+			.include("hackatimeLinks", links => links.where({ phase }).select("hackatimeProject"))
+			.include("workSessions", sessions =>
+				sessions
+					.where({ deletedAt: null, phase })
+					.select("id")
+					.include("timelapses", timelapse => timelapse.select("externalId", "objectKey", "playbackUrl", "provider")),
+			)
+			.firstOrThrow(),
+		getProgramSettings(),
+		getHoursBreakdown(themeProjectId, phase),
+	])
+	const values = justificationValues(
+		{
+			bomItems: [],
+			description: null,
+			hackatimeProjects: project.hackatimeLinks.map(link => link.hackatimeProject),
+			hackatimeUserId: project.user?.hackatimeUserId ?? null,
+			lapseLinks: timelapseLinks(project.workSessions.flatMap(session => session.timelapses)),
+			workSessions: [],
+		},
+		{ eventStart: settings.eventStartDate, phase, theme: project.theme },
+	)
+	return {
+		hackatimeId: values.hackatimeId ?? "",
+		hackatimeProjects: values.hackatimeProjects ?? "",
+		lapseLinks: values.lapseLinks ?? "",
+		overrideJustification: "",
+		selfReportedHours: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
+	}
 }
 
 /**
@@ -514,29 +589,12 @@ export async function syncReviewDecisionToYsws(
 						Object.assign(deflationFields, deflationColumns(project, phase, status, justificationReason, row))
 					if (hasSpecificColumn)
 						specificFields[fieldKey(specificFeaturesField)] = reviewerTechnicalFeaturesCell(reviewerFeatures)
-					if (hasAlternateColumn) {
-						const devlogOnly =
-							row !== null
-							&& !row.hackatimeId
-							&& !row.hackatimeProjects
-							&& !row.lapseLinks
-							&& status === YSWS_REVIEW_STATUS.approved
-						const devlogSessions = devlogOnly
-							? await db.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
-									.select("hoursClaimed", "hoursSource")
-									.all()
-							: []
-						const manual = devlogSessions.filter(s => s.hoursSource !== HoursSource.HACKATIME_TRACKED)
-						Object.assign(
-							alternateFields,
-							alternateTrackingColumns(
-								status,
-								row,
-								manual.length,
-								row?.selfReportedHours ?? round2(manual.reduce((sum, s) => sum + s.hoursClaimed, 0)),
-							),
+					if (hasAlternateColumn && row && status === YSWS_REVIEW_STATUS.approved)
+						alternateFields[fieldKey(alternateTrackingField)] = await approvalAlternateTracking(
+							themeProjectId,
+							phase,
+							row,
 						)
-					}
 				}
 			} catch (err) {
 				// The status still lands; this names the extra values that did not.

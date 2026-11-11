@@ -28,6 +28,11 @@ const nextConfig: NextConfig = {
 				],
 				source: "/:path*",
 			},
+			// The review platform's wider image policy (see REVIEW_PLATFORM_HOSTS in lib/csp). Listed after the rule above so its value replaces that one's for these paths – two policies on one response would be enforced together, which is the narrower of the two.
+			...["/reviews", "/reviews/:path*"].map(source => ({
+				headers: [{ key: "Content-Security-Policy", value: contentSecurityPolicy({ reviewPlatform: true }) }],
+				source,
+			})),
 		]
 	},
 
@@ -65,6 +70,19 @@ const nextConfig: NextConfig = {
 	 * Bundles `pg` instead of leaving it as a server external. Turbopack loads externals through content-hashed aliases (`pg-<hash>`) that it symlinks into `.next/dev/node_modules` during the first compile, and Bun caches the first failed lookup for the life of the process – so the alias is written after Bun has already missed it, and every later import 500s with `Cannot find package 'pg-<hash>'` until the dev server restarts. Node re-resolves and is not affected. Remove this once Bun fixes the negative cache (oven-sh/bun#25370).
 	 */
 	transpilePackages: ["pg"],
+
+	turbopack: {
+		/**
+		 * The review file viewer is a copy of Fabricate's, type-checked under Fabricate's compiler settings by `tsconfig.hurt.json`. The main tsconfig excludes it and sees only `src/components/review/hurt-module.d.ts`; this alias is what points the bundler at the real thing.
+		 */
+		resolveAlias: {
+			"@review/hurt": "./src/components/review/hurt/index.ts",
+			// Browser bundles only: the viewer's Emscripten builds name these on a Node-only branch (see browser-stub.ts).
+			crypto: { browser: "./src/components/review/browser-stub.ts" },
+			fs: { browser: "./src/components/review/browser-stub.ts" },
+			path: { browser: "./src/components/review/browser-stub.ts" },
+		},
+	},
 }
 
 export default nextConfig

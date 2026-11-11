@@ -1,0 +1,12 @@
+{
+	"//": "The review file viewer (src/components/review/hurt) is a copy of Fabricate's, checked under Fabricate's own compiler settings so it can stay a faithful copy. The main tsconfig excludes it and the app reaches it through `@review/hurt` (see src/components/review/hurt-module.d.ts and turbopack.resolveAlias in next.config.ts).",
+	"compilerOptions": {
+		"incremental": false,
+		"moduleDetection": "force",
+		"noImplicitOverride": false,
+		"noUncheckedIndexedAccess": false
+	},
+	"exclude": [],
+	"extends": "./tsconfig.json",
+	"include": ["src/components/review/hurt/**/*.ts", "src/components/review/hurt/**/*.tsx"]
+}
