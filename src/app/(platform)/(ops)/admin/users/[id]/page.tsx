@@ -227,6 +227,7 @@ export default async function AdminUserPage({ params }: Props) {
 								// A grant is decided with the design, so one on an undecided project is an artefact of an import rather than money owed.
 								grantUsd: project.designStatus === PhaseStatus.approved ? project.grantUsd : null,
 								id: project.id,
+								starterProjectId: project.starterProjectId,
 								theme: project.theme,
 								themeLabel: themeLabel(project.theme),
 								tier: projectTierId(project),

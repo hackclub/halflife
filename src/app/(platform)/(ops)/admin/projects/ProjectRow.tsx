@@ -5,7 +5,9 @@ import { useState } from "react"
 import { ManageButton, ManageRow, ManageSection } from "@/app/components/admin/ProjectManage"
 import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
+import { StarterForm } from "@/app/components/forms/StarterForm"
 import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
+import { starterProjectsFor } from "@/lib/config/onboarding"
 import type { Theme } from "@/lib/enums"
 
 /** One project row, with the controls folded into a panel under it. */
@@ -21,6 +23,7 @@ export interface ProjectRowData {
 	ownerId: string
 	ownerName: string
 	requestedTier: number | null
+	starterProjectId: string | null
 	theme: Theme
 	themeLabel: string
 	tier: number | null
@@ -83,6 +86,11 @@ export function ProjectRow({
 				{canMoveTheme ? (
 					<ManageSection title="Move to theme">
 						<ThemeMoveForm current={data.theme} projectId={data.id} />
+					</ManageSection>
+				) : null}
+				{canMoveTheme && starterProjectsFor(data.theme).length > 0 ? (
+					<ManageSection title="Starter project">
+						<StarterForm current={data.starterProjectId} projectId={data.id} theme={data.theme} />
 					</ManageSection>
 				) : null}
 				{canExtend ? (

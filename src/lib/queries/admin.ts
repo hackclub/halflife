@@ -137,6 +137,7 @@ export interface ProjectDirectoryRow {
 	githubRepo: string | null
 	id: string
 	requestedTier: number | null
+	starterProjectId: string | null
 	submissionExtensionUntil: Date | null
 	theme: Models.public_ThemeProject["theme"]
 	tier: number | null
@@ -227,6 +228,7 @@ export async function listProjects(
 			"githubRepo",
 			"id",
 			"requestedTier",
+			"starterProjectId",
 			"submissionExtensionUntil",
 			"theme",
 			"tier",
@@ -244,6 +246,7 @@ export async function listProjects(
 			githubRepo: row.githubRepo,
 			id: row.id,
 			requestedTier: row.requestedTier,
+			starterProjectId: row.starterProjectId,
 			submissionExtensionUntil: parseNullableTimestamp(row.submissionExtensionUntil),
 			theme: row.theme,
 			tier: row.tier,
@@ -307,6 +310,7 @@ export interface UserDetail {
 		hcbGrantTopUps: { id: string }[]
 		id: string
 		requestedTier: number | null
+		starterProjectId: string | null
 		submissionExtensionUntil: Date | null
 		theme: Models.public_ThemeProject["theme"]
 		tier: number | null
@@ -378,6 +382,7 @@ export async function getUserDetail(
 					"grantUsd",
 					"id",
 					"requestedTier",
+					"starterProjectId",
 					"submissionExtensionUntil",
 					"theme",
 					"tier",
