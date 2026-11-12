@@ -20,7 +20,7 @@ import { phaseSchema } from "../src/lib/schemas/common"
 /**
  * Fill blank address fields on `YSWS Project Submission` rows from the maker's current address.
  *
- * Submission rows are written with the maker's shipping address at hand-in (see `fieldsFor` in lib/airtable/sync), refreshed from HCA at that point. Rows can still end up with blank address columns when PII could not be pulled or decrypted at the time, HCA had no address, or the sync ran without a usable token/key. This backfill decrypts each maker's stored PII, asks HCA again only when that stored address is incomplete, and writes any address field that is still blank on the Airtable row but now has a value.
+ * Submission rows are written with the maker's shipping address at hand-in (see `fieldsFor` in lib/airtable/sync), refreshed from HCA at that point. Rows can still end up with blank address columns when PII could not be pulled or decrypted at the time, HCA had no address, or the sync ran without a usable token/key. This backfill looks only at rows that are still missing a required cell, decrypts the owner's stored PII, asks HCA again only when that stored address is incomplete, and writes any address field that is still blank on the Airtable row but now has a value.
  *
  * Only fields that are empty in Airtable are written, so existing values are never overwritten. Rows that still have missing address fields after the run are logged with a reason and written to a JSON report, so the cause can be investigated.
  *
@@ -219,8 +219,18 @@ async function main() {
 	const ownerByProject = new Map(projects.map(project => [project.id, project.userId]))
 	const titleByProject = new Map(projects.map(project => [project.id, project.title]))
 
+	// Only owners of a row that is actually missing a required cell need a refresh: a complete row cannot be filled from one, and most owners have no blank row at all. Without this a scheduled run asks HCA about every owner on the books before writing anything.
+	const userIds = new Set<string>()
+	for (const [phaseKey, recordId] of records) {
+		const row = current.get(recordId)
+		if (!row || blankRequiredFields(row).length === 0) continue
+		const separator = phaseKey.indexOf(":")
+		if (separator === -1) continue
+		const userId = ownerByProject.get(phaseKey.slice(0, separator))
+		if (userId) userIds.add(userId)
+	}
+
 	// Decrypt what is stored first. A maker whose stored address is already complete needs no HCA round trip: this backfill only fills blank Airtable cells, so a refresh could not change what gets written. Asking HCA for every owner instead spends thousands of requests against its rate limit for nothing.
-	const userIds = [...new Set(projects.map(project => project.userId))]
 	const infoByUser = new Map<string, UserAddressInfo>()
 	for (const userId of userIds) {
 		let user = await db.orm.public.User.whereUnique({ id: userId }).first()
@@ -354,7 +364,7 @@ async function main() {
 		`Projects: ${projects.length}; synced submission rows: ${records.size} (${gone} row(s) since deleted in Airtable, ${complete} already complete)`,
 	)
 	console.log(
-		`Users: ${userIds.length}; rows to update: ${updates.length} (${fieldsToFill} field(s)); rows still with blank address fields after backfill: ${missing.length}`,
+		`Owners with a blank row: ${userIds.size}; rows to update: ${updates.length} (${fieldsToFill} field(s)); rows still with blank address fields after backfill: ${missing.length}`,
 	)
 	for (const target of updates.slice(0, 10))
 		console.log(`  fill  ${target.phase}  ${target.title}  →  ${Object.keys(target.fields).join(", ")}`)
@@ -379,7 +389,7 @@ async function main() {
 			projects: projects.length,
 			rows: records.size,
 			toUpdate: updates.length,
-			users: userIds.length,
+			users: userIds.size,
 		},
 	}
 	const outDir = "/tmp/opencode"
