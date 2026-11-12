@@ -188,7 +188,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					/>
 				</div>
 				{previewUrl ? (
-					// A plain img, as the shop itself shows it: next/image refuses any host not listed in next.config, and a pasted link can be anywhere. eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
+					// A plain img, as the shop itself shows it: next/image refuses any host not listed in next.config, and a pasted link can be anywhere. Staff paste any host into the item's image field
 					<img
 						alt=""
 						src={previewUrl}

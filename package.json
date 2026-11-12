@@ -134,8 +134,6 @@
 		"@types/three": "0.186.0",
 		"babel-plugin-react-compiler": "1.0.0",
 		"bun-types": "^1.4.4",
-		"eslint": "^9.39.5",
-		"eslint-config-next": "16.3.8",
 		"oxlint": "^1.93.0",
 		"oxlint-tsgolint": "^7.0.2006",
 		"prisma": "8.0.0-rc.33",
