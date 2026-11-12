@@ -1,0 +1,33 @@
+/* ==========================================================================
+   Fabricate — page shell shared by every route. The landing, thanks and docs
+   pages each carried a copy of this in the original site; here it lives once.
+   ========================================================================== */
+
+html { scroll-behavior: smooth; overflow-x: clip; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, p, ul, ol, figure { margin: 0; }
+
+/* Only Nippo Bold is licensed, so display type is always 700. */
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; }
+
+/* components.css sizes .flag but not the SVG inside it. */
+.flag img { display: block; width: 100%; height: auto; }
+
+.skip-link {
+  position: absolute; left: 0; top: 0; z-index: 50;
+  transform: translateY(-120%);
+  background: var(--color-paper); color: var(--color-onwhite);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-ui); text-decoration: none;
+}
+.skip-link:focus { transform: none; }
+
+/* The mat is the whole page above the footer, full bleed. */
+.mat-page { position: relative; }

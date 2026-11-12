@@ -9,7 +9,7 @@ import { useEffect } from "react"
  *
  * `HardLink` keeps the links across the two worlds honest, and this catches the cases a link cannot – a restored history entry, a redirect, a framework transition. The body carries the world it was rendered for, so a mismatch is unambiguous and one reload is the whole repair.
  */
-export function WorldGuard({ world }: { world: "site" | "platform" }) {
+export function WorldGuard({ world }: { world: "site" | "platform" | "review" }) {
 	useEffect(() => {
 		if (document.body.dataset.world === world) return
 		window.location.reload()

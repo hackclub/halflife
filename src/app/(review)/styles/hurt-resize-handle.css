@@ -1,0 +1,15 @@
+.resize-handle {
+  position: relative;
+  z-index: 2;
+  width: 7px;
+  margin-inline: -3px;
+  background: linear-gradient(var(--color-mid), var(--color-mid)) center / var(--border-hair) 100% no-repeat;
+  cursor: col-resize;
+  touch-action: none;
+}
+.resize-handle:hover, .resize-handle.is-dragging, .resize-handle:focus-visible {
+  background-image: linear-gradient(var(--color-bone), var(--color-bone));
+  background-size: 3px 100%;
+  outline: 0;
+}
+:root:has(.resize-handle.is-dragging) { cursor: col-resize; user-select: none; }

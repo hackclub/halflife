@@ -22,6 +22,20 @@ describe("decisionSchema", () => {
 		expect(decisionSchema.safeParse({ result: ReviewResult.APPROVED, tier: 2 }).success).toBe(true)
 		expect(decisionSchema.safeParse({ result: ReviewResult.APPROVED, tier: 9 }).success).toBe(false)
 	})
+
+	test("an approval may carry technical features, and only an approval", () => {
+		const approved = decisionSchema.safeParse({ result: ReviewResult.APPROVED, technicalFeatures: "RP2040, USB-C" })
+		expect(approved.success).toBe(true)
+		if (approved.success && approved.data.result === ReviewResult.APPROVED)
+			expect(approved.data.technicalFeatures).toBe("RP2040, USB-C")
+		expect(
+			decisionSchema.safeParse({ result: ReviewResult.APPROVED, technicalFeatures: "x".repeat(2001) }).success,
+		).toBe(false)
+		// The variants are strict: a return or a rejection says what to fix, not what was built.
+		expect(
+			decisionSchema.safeParse({ feedback: "fix", result: ReviewResult.RETURNED, technicalFeatures: "x" }).success,
+		).toBe(false)
+	})
 })
 
 describe("hoursDecisionSchema", () => {

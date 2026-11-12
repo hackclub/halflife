@@ -1,0 +1,131 @@
+/* ==========================================================================
+   Fabricate — design tokens
+   Extracted from Figma nVxpDSoCBgNPeE01BtukLz, page 38:2 "website".
+   Every value here is measured from the file, not invented. Where a value
+   was derived (fluid clamps, the spacing scale) it says so.
+   ========================================================================== */
+
+@theme static {
+  /* --- Colour ------------------------------------------------------------
+     Ten swatches from frame 63:236 "Color shi", plus three colours measured
+     off the rendered frames (mat base, mat grid line, docs body text).      */
+
+  --color-mat:          #0a2b26; /* cutting-mat base, measured off the render */
+  --color-mat-line:     #1e5c52; /* mat grid line, measured                   */
+  --color-ink:          #04110f; /* deepest green — inset panels, photo wells */
+  --color-ground:       #071d1a; /* page ground, Log in button fill           */
+  --color-deep:         #0c322c; /* dark green                                */
+  --color-mid:          #135349; /* mid green — borders, rules                */
+  --color-onwhite:      #0d2f2d; /* green ink on white — banners, button text */
+  --color-onwhite-soft: #0a2b26; /* green ink on white — polaroid captions    */
+
+  --color-bone:  #edf7f6; /* off-white — primary text, hairlines, borders */
+  --color-prose: #d7dbda; /* docs body text — light grey, Liam 2026-09-15  */
+  --color-paper: #ffffff; /* white — cards, banners, filled CTA           */
+
+  --color-grey-1: #d7dbda;
+  --color-grey-2: #bcc2c1;
+  --color-grey-3: #949e9d;
+  --color-placeholder: #959595; /* input placeholder */
+
+  --color-hc-red:   #ec3750; /* Hack Club red — the flag, alerts and field errors */
+  --color-ok:       #33d6a6; /* Hack Club green — met requirements, dashboards only */
+  --color-red-soft: #cf8a94; /* hc-red mixed 40% into grey-2 — delete and unmet, quietly */
+  --color-warn:     #f1c40f; /* Hack Club yellow — requirements that could not be checked, dashboards only */
+
+  /* --- Type --------------------------------------------------------------
+     The Figma sets everything in Nippo. Two cuts are self-hosted, Bold (700)
+     and Regular (400); no other weight exists, and asking for one gets the
+     nearer of those two rather than a fallback family.                      */
+
+  --font-display: 'Nippo', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  --font-stroke:  'Newstroke', var(--font-mono); /* KiCad silkscreen, annotations */
+  --font-body:    var(--font-display); /* variants override this */
+
+  /* Sizes are the Figma's px at a 1920 design width, made fluid.
+     The clamp midpoint is <figma px> / 1920 * 100vw, so at exactly 1920 the
+     rendered size equals the Figma value.                                   */
+
+  --text-display:  clamp(3.25rem, 6.667vw, 8rem);     /* 128px — FABRICATE     */
+  --text-h1:       clamp(2.5rem,  5.000vw, 6rem);     /*  96px — section head  */
+  --text-h2:       clamp(2.25rem, 3.333vw, 4rem);     /*  64px — docs h1       */
+  --text-banner:   clamp(1.25rem, 2.344vw, 2.8125rem);/*  45px — ribbon text   */
+  --text-h3:       clamp(1.5rem,  2.083vw, 2.5rem);   /*  40px — docs h2       */
+  --text-lead:     clamp(1.25rem, 1.875vw, 2.25rem);  /*  36px — hero subhead  */
+  --text-control:  clamp(1.125rem,1.667vw, 2rem);     /*  32px — input, button */
+  --text-nav:      clamp(1rem,    1.458vw, 1.75rem);  /*  28px — nav links     */
+  --text-meta:     clamp(0.9375rem,1.354vw,1.625rem); /*  26px — eligibility   */
+  --text-caption:  clamp(0.9375rem,1.198vw,1.4375rem);/*  23px — polaroid head */
+  --text-credit:   clamp(0.875rem,1.094vw, 1.3125rem);/*  21px — photo credit  */
+  --text-ui:       clamp(0.875rem,1.042vw, 1.25rem);  /*  20px — docs nav      */
+  --text-body:     1rem;                              /*  16px — docs prose    */
+  --text-small:    0.9375rem;                         /*  15px — polaroid body */
+
+  --leading-display: 1;    /* 96px+ display only */
+  --leading-tight:   1.15;  /* large headings that do not wrap */
+  --leading-snug:    1.3;   /* small headings that DO wrap — 17-34px */
+  --leading-body:    1.6;
+  --leading-prose:   1.75;
+
+  /* --- The mat grid ------------------------------------------------------
+     69.5px cells at a 1920 design width, measured across 14 gridlines on the
+     hero render (pitch 69.0–70.0px, mean 69.5). Single level — the mat has no
+     minor subdivisions. The cell shrinks on small screens so the squares stay
+     readable rather than swallowing the layout.                             */
+
+  --mat-cell:   clamp(2.5rem, 3.62vw, 4.34375rem); /* 40px → 69.5px */
+  --mat-margin: clamp(1.5rem, 2.92vw, 3.5rem);     /* ruler band, 56px at 1920 */
+  --mat-line-w: 1px;
+
+  /* --- Spacing -----------------------------------------------------------
+     Derived, not measured: a quarter of a mat cell. Section rhythm lands on
+     whole cells so the layout and the background agree about where things
+     sit. 1u ≈ 17.4px at 1920.                                               */
+
+  --u:      calc(var(--mat-cell) / 4);
+  --space-1: var(--u);
+  --space-2: calc(var(--u) * 2);
+  --space-3: calc(var(--u) * 3);
+  --space-4: var(--mat-cell);              /* one cell  */
+  --space-6: calc(var(--mat-cell) * 1.5);
+  --space-8: calc(var(--mat-cell) * 2);    /* two cells */
+  --space-12: calc(var(--mat-cell) * 3);
+  --space-16: calc(var(--mat-cell) * 4);
+
+  /* --- Layout ------------------------------------------------------------ */
+
+  --content-max: 1720px;       /* 1920 less a 100px gutter each side */
+  --prose-max:   42rem;        /* docs measure — 667px at 1920 in the Figma */
+  --gutter:      clamp(1.25rem, 10.365vw, 12.4375rem); /* 199px at 1920 — hero */
+  --gutter-tight:clamp(1.25rem, 6.719vw,  8.0625rem);  /* 129px at 1920 — sections */
+  --docs-rail:   clamp(0px, 7.34vw, 141px);            /* docs sidebar */
+  --header-h:    clamp(3.5rem, 5.2vw, 6.25rem);
+
+  /* --- Borders, radii, shadow -------------------------------------------
+     The Figma has no rounded corners anywhere. Keep it that way.            */
+
+  --radius-none: 0;
+  --border-hair:   1px;  /* banner outline, hairlines      */
+  --border-ui:     2px;  /* Log in button                  */
+  --border-field:  3px;  /* email capture                  */
+  --shadow-lift: 0 4px 4px 0 rgb(0 0 0 / 0.25); /* the only shadow in the file */
+
+  /* --- Rotations ---------------------------------------------------------
+     Measured, not chosen. The ribbon is two counter-rotated bars; the four
+     polaroids each sit at their own angle.                                  */
+
+  --rot-ribbon-a:  1.46deg;
+  --rot-ribbon-b: -1.10deg;
+  --rot-polaroid-1: -4.56deg;
+  --rot-polaroid-2:  3.94deg;
+  --rot-polaroid-3: -9.79deg;
+  --rot-polaroid-4: 10.60deg;
+  --rot-calipers:  -23.40deg;
+}
+
+/* --- Fonts ---------------------------------------------------------------
+   Declared in each entry stylesheet (variants/<v>/src/input.css), not here:
+   the Tailwind CLI does not rewrite url() inside an imported file, so the
+   path has to be relative to the *output* stylesheet. See that file.
+   Nippo Bold is the only Nippo cut licensed in this repo — app/javascript/fonts/. */

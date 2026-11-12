@@ -9,7 +9,28 @@ const LEGACY_IMAGE_HOSTS = [
 	"cdn.2008000.xyz",
 ]
 
-export function contentSecurityPolicy(): string {
+/**
+ * GitHub's image hosts, which only the review platform needs.
+ *
+ * The file viewer renders a project's README, and a README's pictures live on GitHub: committed files on raw.githubusercontent.com, pasted ones behind github.com/user-attachments and their signed private-user-images URLs, LFS objects on media.githubusercontent.com, and badges through camo. Only the review platform allows them – it is staff-only (REVIEW_SUBMISSIONS), so the reader whose IP address this policy protects is not the one looking.
+ */
+const REVIEW_PLATFORM_HOSTS = [
+	"https://github.com",
+	"https://raw.githubusercontent.com",
+	"https://media.githubusercontent.com",
+	"https://camo.githubusercontent.com",
+	"https://user-images.githubusercontent.com",
+	"https://private-user-images.githubusercontent.com",
+	"https://objects.githubusercontent.com",
+	// Where a signed private-user-images URL redirects. The exact bucket, not `*.s3.amazonaws.com`, which would admit any bucket at all.
+	"https://github-production-user-asset-6210df.s3.amazonaws.com",
+]
+
+/** Whether a path is the review platform's, the one surface that gets `REVIEW_PLATFORM_HOSTS`. */
+export const isReviewPlatformPath = (pathname: string): boolean =>
+	pathname === "/reviews" || pathname.startsWith("/reviews/")
+
+export function contentSecurityPolicy(options: { reviewPlatform?: boolean } = {}): string {
 	const img = new Set([
 		"'self'",
 		"data:",
@@ -60,6 +81,11 @@ export function contentSecurityPolicy(): string {
 		img.add(`https://${uploadHost}`)
 		media.add(`https://${uploadHost}`)
 	}
+	if (options.reviewPlatform)
+		for (const host of REVIEW_PLATFORM_HOSTS) {
+			img.add(host)
+			media.add(host)
+		}
 	for (const host of [...LEGACY_IMAGE_HOSTS, ...(process.env.JOURNAL_IMAGE_HOSTS ?? "").split(",")]) {
 		const trimmed = host.trim()
 		if (trimmed) img.add(`https://${trimmed}`)

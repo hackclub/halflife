@@ -14,7 +14,14 @@
 		"builtin": true,
 		"node": true
 	},
-	"ignorePatterns": [".next/**", "node_modules/**", "public/**", "src/app/generated/**", "migrations/**"],
+	"ignorePatterns": [
+		".next/**",
+		"node_modules/**",
+		"public/**",
+		"src/app/generated/**",
+		"migrations/**",
+		"src/components/review/hurt/**"
+	],
 	"options": {
 		"denyWarnings": true,
 		"reportUnusedDisableDirectives": "warn",

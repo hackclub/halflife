@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
-import { contentSecurityPolicy } from "@/lib/csp"
+import { contentSecurityPolicy, isReviewPlatformPath } from "@/lib/csp"
 import { publicRedirect } from "@/lib/public-origin"
 import { PLATFORM_HOME } from "@/lib/routes"
 
@@ -16,7 +16,7 @@ function matches(presented: string, expected: string): boolean {
  *
  * Deliberately does NOT do application auth: that lives in server components (lib/page-guards) and route handlers (lib/guards), where it has access to the database and can distinguish "not signed in" from "not permitted".
  */
-function securityHeaders(res: NextResponse): NextResponse {
+function securityHeaders(res: NextResponse, pathname = ""): NextResponse {
 	res.headers.set("X-Frame-Options", "DENY")
 	res.headers.set("X-Content-Type-Options", "nosniff")
 	res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -24,7 +24,7 @@ function securityHeaders(res: NextResponse): NextResponse {
 	// Applies to every origin, but harmless on plain http dev and the one header that stops a downgrade on the way to production.
 	res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 	// A CSP without `script-src`/`style-src`: it cannot break the app's inline styles and scripts, but it closes framed pages, plugin content and form/post hijacking, and it stops an image or video from any host but our own and the identity CDNs from seeing every reader. A nonce-based script policy is a follow-up, not a launch-day change.
-	res.headers.set("Content-Security-Policy", contentSecurityPolicy())
+	res.headers.set("Content-Security-Policy", contentSecurityPolicy({ reviewPlatform: isReviewPlatformPath(pathname) }))
 	return res
 }
 
@@ -93,7 +93,7 @@ export function proxy(request: NextRequest): NextResponse | undefined {
 		// Via the public origin, not `nextUrl.clone()`: behind the ingress the request URL carries the pod's own host (0.0.0.0). See lib/public-origin.
 		return securityHeaders(publicRedirect(request, `${PLATFORM_HOME}${request.nextUrl.search}`))
 
-	return securityHeaders(NextResponse.next())
+	return securityHeaders(NextResponse.next(), request.nextUrl.pathname)
 }
 
 export const config = {
