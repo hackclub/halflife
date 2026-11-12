@@ -31,11 +31,15 @@ export const userFlagsSchema = z
 
 export const projectExtensionSchema = z
 	.object({
+		starterProjectId: z.string().trim().min(1).max(64).nullable().optional(),
 		submissionExtensionUntil: z.coerce.date().nullable().optional(),
 		theme: z.enum(Theme).optional(),
 	})
 	.strict()
-	.refine(b => b.submissionExtensionUntil !== undefined || b.theme !== undefined, "Nothing to change")
+	.refine(
+		b => b.submissionExtensionUntil !== undefined || b.theme !== undefined || b.starterProjectId !== undefined,
+		"Nothing to change",
+	)
 
 /** One program week's extension. A null clears it, which deletes the row rather than storing an expired date. */
 export const weekExtensionSchema = z.object({ submissionExtensionUntil: z.coerce.date().nullable() }).strict()
