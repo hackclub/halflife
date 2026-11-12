@@ -5,43 +5,43 @@ import { resolve, sep } from "node:path"
 import { configuredOrigin } from "../src/lib/origin"
 import db from "../src/lib/prisma8"
 import { recordStarterCards } from "../src/lib/starter-card-records"
-import { kitShippingTsv, type StarterCardRow, starterCardCsv } from "../src/lib/starter-funding-csv"
+import { type StarterCardRow, starterCardCsv } from "../src/lib/starter-funding-csv"
 import { type StarterFundingDecision, starterFundingDecisions } from "../src/lib/starter-funding-export"
 
 /**
- * The Week 1 starter export: the HCB card CSV for every starter still owed, and the kit list for everyone sent a kit.
+ * The Week 1 starter export: the HCB import file for every starter who needs a new parts + PCB card, and a checklist of every starter's target and top-up.
  *
- *   bun run grants:starter-export -- --kits ./starter-kits.tsv --report ./starter-report.tsv > ./starter-cards.csv
+ *   bun run grants:starter-export -- --report ./starter-report.tsv > ./starter-new-cards.csv
  *
- * Read-only against the database and Airtable. The CSV goes to stdout, so it can be redirected. The kit list and the report hold addresses and emails, so they must be written outside this repository or to a path git ignores (see .gitignore). The run refuses if the payout source is not HCB, if Airtable's country and the verified address disagree, or if a kit is needed and no `--kits` file was given.
+ * Read-only against the database and Airtable, unless `--record` is passed, which records the new cards on the site. The import file goes to stdout, so it can be redirected. The report holds emails and must be written outside this repository or to a path git ignores (see .gitignore).
+ *
+ * Top-ups are not in the import file. A maker with a live card is topped up by hand in HCB, and the checklist shows the amount.
  */
 
 interface Args {
-	kits: string | null
 	record: boolean
 	report: string | null
 }
 
 function parseArgs(argv: readonly string[]): Args {
-	const args: Args = { kits: null, record: false, report: null }
+	const args: Args = { record: false, report: null }
 	for (let i = 0; i < argv.length; i++) {
 		const flag = argv[i]
 		if (flag === "--record") {
 			args.record = true
 			continue
 		}
-		if (flag !== "--kits" && flag !== "--report") throw new Error(`Unknown argument: ${flag}`)
+		if (flag !== "--report") throw new Error(`Unknown argument: ${flag}`)
 		const value = argv[i + 1]
-		if (!value) throw new Error(`${flag} needs a path`)
-		if (flag === "--kits") args.kits = value
-		else args.report = value
+		if (!value) throw new Error("--report needs a path")
+		args.report = value
 		i++
 	}
 	return args
 }
 
 /**
- * Files that hold addresses must never be committed. A path outside the repository is always fine; a path inside it is fine only when git ignores it, so it cannot be added by accident.
+ * Files that hold emails must never be committed. A path outside the repository is always fine; a path inside it is fine only when git ignores it, so it cannot be added by accident.
  */
 function safeOutputPath(path: string): string {
 	const absolute = resolve(path)
@@ -56,76 +56,83 @@ function safeOutputPath(path: string): string {
 	return absolute
 }
 
-function cardRows(decisions: readonly StarterFundingDecision[]): StarterCardRow[] {
-	const rows: StarterCardRow[] = []
-	for (const decision of decisions) {
-		if (decision.owedUsd <= 0) continue
-		if (decision.fulfilment !== "KIT_WITH_PCB_CARD" && decision.fulfilment !== "PARTS_CARD") continue
-		rows.push({
+function newCards(decisions: readonly StarterFundingDecision[]): StarterCardRow[] {
+	return decisions
+		.filter(decision => decision.action === "NEW_CARD")
+		.map(decision => ({
 			amountCents: Math.round(decision.owedUsd * 100),
 			email: decision.email,
-			fulfilment: decision.fulfilment,
 			projectId: decision.projectId,
 			title: decision.title,
-		})
-	}
-	return rows
+		}))
 }
 
 function reportTsv(decisions: readonly StarterFundingDecision[]): string {
-	const header = ["name", "email", "fulfilment", "card usd", "owed usd", "reason", "airtable record", "project"]
+	const header = [
+		"name",
+		"email",
+		"action",
+		"bom usd",
+		"target usd",
+		"funding given usd",
+		"recorded card usd",
+		"owed usd",
+		"reason",
+		"airtable record",
+		"project",
+	]
 	const lines = [header.join("\t")]
 	for (const d of decisions)
 		lines.push(
-			[d.name, d.email, d.fulfilment, d.cardUsd, d.owedUsd, d.reason, d.airtableRecordId ?? "", d.projectId]
+			[
+				d.name,
+				d.email,
+				d.action ?? "-",
+				d.bomTotalUsd.toFixed(2),
+				d.cardUsd.toFixed(2),
+				d.fundingGivenUsd.toFixed(2),
+				d.recordedCardUsd === null ? "-" : d.recordedCardUsd.toFixed(2),
+				d.owedUsd.toFixed(2),
+				d.reason,
+				d.airtableRecordId ?? "",
+				d.projectId,
+			]
 				.map(v => String(v).replaceAll(/[\t\r\n]+/g, " "))
 				.join("\t"),
 		)
 	return `${lines.join("\n")}\n`
 }
 
-function count(decisions: readonly StarterFundingDecision[], fulfilment: StarterFundingDecision["fulfilment"]): number {
-	return decisions.filter(d => d.fulfilment === fulfilment).length
+function count(decisions: readonly StarterFundingDecision[], action: StarterFundingDecision["action"]): number {
+	return decisions.filter(d => d.action === action).length
 }
 
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2))
-	const kitsPath = args.kits ? safeOutputPath(args.kits) : null
 	const reportPath = args.report ? safeOutputPath(args.report) : null
 
-	const decisions = await starterFundingDecisions(new Date())
-	const kitRows = decisions.filter(d => d.fulfilment === "KIT_WITH_PCB_CARD" || d.fulfilment === "KIT_ONLY")
-	if (kitRows.length > 0 && !kitsPath)
-		throw new Error(`${kitRows.length} kit(s) to ship: pass --kits <file outside the repo>`)
-
-	const shipRows = kitRows.flatMap(d => (d.address ? [d.address] : []))
-	const missingAddress = kitRows.length - shipRows.length
-	if (missingAddress > 0) throw new Error(`${missingAddress} kit(s) have no verified address; they cannot be shipped`)
-
+	const decisions = await starterFundingDecisions()
+	const cards = newCards(decisions)
 	const origin = configuredOrigin()
 	if (!origin)
 		console.error("NEXT_PUBLIC_APP_URL and BETTER_AUTH_URL are unset, so instructions will have no project link")
 
-	const cards = cardRows(decisions)
 	// Recorded before any file is written: a project that already has a live card refuses the whole batch, so no CSV goes out for it.
 	if (args.record && cards.length > 0) {
 		const { batchId, totalCents } = await recordStarterCards(
 			cards.map(card => ({ amountCents: card.amountCents, email: card.email, projectId: card.projectId })),
 		)
-		console.error(`Recorded ${cards.length} card(s), $${(totalCents / 100).toFixed(2)}, as batch ${batchId}.`)
-	} else if (cards.length > 0)
-		console.error(
-			"Cards are not recorded on the site. Pass --record to record them, so later waves and exports skip these projects.",
-		)
+		console.error(`Recorded ${cards.length} new card(s), $${(totalCents / 100).toFixed(2)}, as batch ${batchId}.`)
+	} else if (cards.length > 0) console.error("New cards are not recorded on the site. Pass --record to record them.")
 	process.stdout.write(starterCardCsv(cards, origin))
-	if (kitsPath) writeFileSync(kitsPath, kitShippingTsv(shipRows), { mode: 0o600 })
 	if (reportPath) writeFileSync(reportPath, reportTsv(decisions), { mode: 0o600 })
 
-	const flagged = decisions.filter(d => d.fulfilment === "FLAG" || d.fulfilment === "HOLD")
+	const flagged = decisions.filter(d => d.fulfilment === "FLAG")
+	const held = decisions.filter(d => d.fulfilment === "HOLD")
 	console.error(
-		`${decisions.length} starter(s): ${count(decisions, "KIT_WITH_PCB_CARD")} kit + PCB card, ${count(decisions, "KIT_ONLY")} kit only, ${count(decisions, "PARTS_CARD")} parts card, ${count(decisions, "WAIT")} waiting, ${count(decisions, "NONE")} nothing owed, ${count(decisions, "HOLD")} held, ${flagged.length} flagged. ${cards.length} card(s) written.`,
+		`${decisions.length} starter(s): ${count(decisions, "NEW_CARD")} new card(s), ${count(decisions, "TOP_UP")} top-up(s), ${decisions.filter(d => d.action === null).length} nothing owed, ${held.length} held, ${flagged.length} flagged.`,
 	)
-	if (!reportPath) console.error("Pass --report <file outside the repo> to list every row and its reason.")
+	if (!reportPath) console.error("Pass --report <file outside the repo> to list every row and its amounts.")
 }
 
 try {
