@@ -92,6 +92,7 @@
 		"jsx-a11y/prefer-tag-over-role": "off",
 		"nextjs/no-img-element": "off",
 		"node/no-sync": "off",
+		"oxc/no-map-spread": "off",
 		"promise/always-return": "off",
 		"promise/avoid-new": "error",
 		"promise/no-nesting": "off",
