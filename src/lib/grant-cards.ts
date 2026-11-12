@@ -31,7 +31,7 @@ import { configuredOrigin } from "@/lib/origin"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { STARTER_TIER_ID } from "@/lib/starter-funding"
-import { writeStarterFundingGiven } from "@/lib/starter-funding-sheet"
+import { readStarterFundingGiven, writeStarterFundingGiven } from "@/lib/starter-funding-sheet"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
@@ -57,6 +57,8 @@ export interface GrantCardProjectRow {
 	projectId: string
 	theme: Theme
 	title: string
+	/** Whether the project is one of Week 1's starters, whose Funding given the wave checks before paying. */
+	weekOneStarter: boolean
 }
 
 export interface GrantCardExclusion {
@@ -208,6 +210,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 			projectId: row.id,
 			theme: row.theme,
 			title: row.title,
+			weekOneStarter: isWeekOneStarter(row.starterProjectId),
 		})
 	}
 
@@ -250,13 +253,29 @@ async function applyUnifiedGate(
 	const recordIds = recordIdsFromSyncEvents(events)
 	const recordIdOf = (row: GrantCardProjectRow) => recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
 	const submitted = await readUnifiedSubmitted(eligible.map(recordIdOf).filter((id): id is string => Boolean(id)))
+	// A Week 1 starter with money already recorded in Airtable is paid by the starter export, not the wave, which does not net that money off.
+	const starterRecordIds = eligible
+		.filter(row => row.weekOneStarter)
+		.map(recordIdOf)
+		.filter((id): id is string => Boolean(id))
+	const fundingGiven = await readStarterFundingGiven(starterRecordIds)
+	const starterBlock = (recordId: string): string | null => {
+		const paid = fundingGiven?.get(recordId)
+		if (fundingGiven === null || paid === undefined) return "Could not check Funding given"
+		return paid > 0 ? "Has Funding given in Airtable; the starter export pays it" : null
+	}
 
 	const kept: GrantCardProjectRow[] = []
 	const gone = [...excluded]
 	for (const row of eligible) {
 		const recordId = recordIdOf(row)
 		if (submitted && recordId && submitted.has(recordId)) {
-			kept.push(row)
+			const block = row.weekOneStarter ? starterBlock(recordId) : null
+			if (block === null) {
+				kept.push(row)
+				continue
+			}
+			gone.push({ ownerName: row.ownerName, projectId: row.projectId, reason: block, title: row.title })
 			continue
 		}
 		gone.push({
