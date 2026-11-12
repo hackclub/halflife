@@ -16,7 +16,7 @@ interface Params {
 export const POST = withPermission(
 	Permission.REVIEW_SUBMISSIONS,
 	async (req: NextRequest, { params, gate }: Params & AuthedContext) => {
-		if (!(await conversionAvailable())) return filesError("Converting models on the server isn't set up here.", 503)
+		if (!conversionAvailable()) return filesError("Converting models on the server isn't set up here.", 503)
 		const found = await submissionRepo((await params).id, gate.user)
 		if (found instanceof NextResponse) return found
 		const conversion = await conversionFor(found.files, req.nextUrl.searchParams)
