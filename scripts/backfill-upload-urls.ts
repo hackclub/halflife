@@ -23,7 +23,7 @@ import { listUploadedObjects } from "../src/lib/uploads/r2"
  *
  * Read-only unless `--commit` is passed. Safe to run again: a row with every URL already correct changes nothing.
  *
- * Run `pnpm verify:uploads` first, so the base is known to serve the bucket. Then: `pnpm uploads:backfill-urls` (dry run), and `pnpm uploads:backfill-urls -- --commit` to write.
+ * Run `bun run verify:uploads` first, so the base is known to serve the bucket. Then: `bun run uploads:backfill-urls` (dry run), and `bun run uploads:backfill-urls -- --commit` to write.
  *
  * A project that mirrors into GitHub keeps the old links in `JOURNAL.md` until that project's next sync; the projects this run changed are listed at the end.
  */
@@ -42,7 +42,7 @@ function publicBase(): { bucket: string; origin: string } | null {
 		const lastSegment = new URL(origin).pathname.replace(/\/+$/, "").split("/").pop()
 		if (lastSegment === bucket) {
 			console.error(
-				`S3_PUBLIC_URL still ends in /${bucket}. New uploads need it to be the origin alone – run \`pnpm verify:uploads\`, then run this again.`,
+				`S3_PUBLIC_URL still ends in /${bucket}. New uploads need it to be the origin alone – run \`bun run verify:uploads\`, then run this again.`,
 			)
 			return null
 		}

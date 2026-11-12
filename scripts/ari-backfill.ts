@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { sendSubmissionToAri, withdrawSubmissionFromAri } from "../src/lib/ari"
 import { Phase } from "../src/lib/enums"
 import db from "../src/lib/prisma8"

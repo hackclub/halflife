@@ -2,7 +2,7 @@
 
 An independent pass over the repository looking for things that should be fixed before the programme opens. It complements [LAUNCH_FIXES.md](./LAUNCH_FIXES.md) (the earlier launch review, 12 of 14 items done) rather than replacing it; items that are still open there are repeated in §2/§5 with a `[tracked]` marker.
 
-Method: read the code directly, plus parallel audit passes over the API routes, integrations, frontend, data/business logic and deploy config. Every issue below was confirmed in the source. `pnpm typecheck`, `pnpm lint`, `pnpm build` and `pnpm verify:contracts` all pass; the DB-backed verify suites were not run (no database was up).
+Method: read the code directly, plus parallel audit passes over the API routes, integrations, frontend, data/business logic and deploy config. Every issue below was confirmed in the source. `bun run typecheck`, `bun run lint`, `bun run build` and `bun run verify:contracts` all pass; the DB-backed verify suites were not run (no database was up).
 
 Legend: **BLOCKER** – launch is damaged without it · **HIGH** · **MED** · **LOW**
 

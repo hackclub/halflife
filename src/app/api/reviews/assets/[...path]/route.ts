@@ -21,7 +21,7 @@ const FILES: { [_: string]: { file: string; type: string } } = Object.freeze({
 	"pdfjs/pdf.worker.min.mjs": { file: "pdfjs-dist/build/pdf.worker.min.mjs", type: "text/javascript; charset=utf-8" },
 })
 
-const DIRECTORIES: { [_: string]: { dir: string; types: { [_: string]: string } } } = Object.freeze({
+const DIRECTORIES: { [_: string]: { dir: string; types: { [ext: string]: string } } } = Object.freeze({
 	"pdfjs/cmaps": { dir: "pdfjs-dist/cmaps", types: { bcmap: "application/octet-stream" } },
 	"pdfjs/standard_fonts": {
 		dir: "pdfjs-dist/standard_fonts",

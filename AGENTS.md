@@ -25,15 +25,16 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Blocks or conditionals with 1 statement should omit braces
 	- This includes nested blocks, like `if (x) for (const y of z) ...`
 - Arrow functions with only a single return expression should omit braces and the return keyword
-- Function declarations should use arrow functions if they have only a single return expression, and standard function declarations otherwise
+- Function declarations should use arrow functions if they have only a single return expression, and standard function declarations otherwise, except if they're UI components
 	- This also applies for top-level functions
 	- Use `const` to declare arrow function variables
+	- UI components should always be standard function declarations, even when they only return JSX
 - Use guard statements to reduce nesting everywhere possible
 	- Do this in functions with `return`, and in loops with `continue`
 - Prefer `for (const x of y) ...` over `y.forEach(x => ...)`
 - Prefer `const` over `let`
 	- Avoid `var`
-- Use `===` and `!==` over `==` and `!=` except when comparing with null
+- Use `===` and `!==` over `==` and `!=`
 - Use Object.freeze() to make objects immutable where possible
 - Use `void` before function calls that return promises to be discarded, or before IIFEs rather than semicolons
 - Declare only 1 variable per declaration statement, avoid `const x = 1, y = 2, z = 3`

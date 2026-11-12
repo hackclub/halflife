@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { isAriConfigured, reconcileAriDecisions } from "../src/lib/ari"
 import db from "../src/lib/prisma8"
 

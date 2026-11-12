@@ -26,7 +26,7 @@ export const POST = withWritePermission(
 
 		const dispute = await db.orm.public.ReviewDispute.whereUnique({ id })
 			.select("resolvedAt")
-			.include("submission", submission => submission.select("phase", "themeProjectId"))
+			.include("submission", sub => sub.select("phase", "themeProjectId"))
 			.first()
 		if (!dispute?.submission) return fail("NOT_FOUND", "Dispute not found")
 		if (dispute.resolvedAt) return fail("CONFLICT", "That dispute is already resolved")

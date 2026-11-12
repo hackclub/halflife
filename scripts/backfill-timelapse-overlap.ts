@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import type { Phase } from "../src/lib/enums"
 import { refreshOverlapSpans } from "../src/lib/hours"
 import { lapseCredentials, verifyOwnTimelapses } from "../src/lib/lapse"
@@ -15,7 +16,7 @@ import { formatDbTimestamp } from "../src/lib/time"
  *
  * Safe to run again: it starts from the rows still missing a recording start.
  *
- * Run with `pnpm hours:backfill-overlap`.
+ * Run with `bun run hours:backfill-overlap`.
  */
 const PACE_MS = 250
 

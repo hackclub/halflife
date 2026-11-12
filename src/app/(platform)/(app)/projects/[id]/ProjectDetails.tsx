@@ -168,7 +168,8 @@ function DetailsForm({
 	const designWeek = project.weekId > DESIGN_WEEKS ? project.weekId - DESIGN_WEEKS : project.weekId
 	const theme = THEMES[designWeek - 1]?.id
 	const starters = theme ? starterProjectsFor(theme) : []
-	const showStarterPicker = starters.length > 0 || project.starterProjectId != null
+	const showStarterPicker =
+		starters.length > 0 || (project.starterProjectId !== null && project.starterProjectId !== undefined)
 
 	const takingStarter = starterId !== null
 	const tierEditable = !takingStarter && !tierLocked
@@ -362,7 +363,8 @@ function DetailsForm({
 							<span className="text-[0.95rem] font-bold text-navy">My own idea</span>
 						</OptionRow>
 					) : (
-						project.starterProjectId != null && (
+						project.starterProjectId !== null
+						&& project.starterProjectId !== undefined && (
 							<OptionRow
 								hint={`Leave the ${getStarterProject(project.starterProjectId)?.title ?? "starter project"} starter.`}
 								onClick={() => {

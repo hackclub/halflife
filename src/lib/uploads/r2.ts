@@ -358,7 +358,7 @@ export async function hashObject(key: string): Promise<{ head: Buffer; sha256: s
 			const reader = s3.file(key).stream().getReader()
 			const hash = createHash("sha256")
 			let head = Buffer.alloc(0)
-			for (;;) {
+			while (true) {
 				const { done, value } = await reader.read()
 				if (done) break
 				const chunk = Buffer.from(value)

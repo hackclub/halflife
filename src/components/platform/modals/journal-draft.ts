@@ -58,7 +58,7 @@ export function useJournalDraft(checkpointId: string, existing: SessionLog | und
 	// Peeked (not taken) during render so StrictMode's double-invoked initializer cannot consume it before state is set.
 	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => peekJournalTrip(checkpointId) ?? readJournalAutosave(checkpointId))
-	const draftRestored = draft != null
+	const draftRestored = draft !== null && draft !== undefined
 
 	// An edit re-opens the picker with this entry's clips selected: Lapse clips that still verify resolve into items, ones Lapse no longer vouches for stay pinned by id, and older non-Lapse uploads stay untouched. The resolve below seeds all three; a returning draft already holds the working set.
 	const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? [])

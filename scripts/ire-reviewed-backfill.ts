@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { type IreImportShip, mapReview } from "../src/lib/ire-import"
 import { importReviewedShips, isIreConfigured } from "../src/lib/ire-platform"
 import db from "../src/lib/prisma8"

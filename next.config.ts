@@ -1,7 +1,7 @@
 import type { NextConfig } from "next"
 import { contentSecurityPolicy } from "./src/lib/csp"
 
-// `output: "standalone"` traces the whole dependency graph, which is what the container image needs and pure overhead for a local `pnpm build`. Gate it on the two env vars that only ever appear in CI or a Docker build.
+// `output: "standalone"` traces the whole dependency graph, which is what the container image needs and pure overhead for a local `bun run build`. Gate it on the two env vars that only ever appear in CI or a Docker build.
 const isDeployBuild = Boolean(process.env.CI || process.env.DOCKER_BUILD)
 
 const nextConfig: NextConfig = {

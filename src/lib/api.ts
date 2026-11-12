@@ -202,7 +202,7 @@ async function readBodyWithCap(request: Request, maxBytes: number): Promise<Boun
 	const chunks: Uint8Array[] = []
 	let total = 0
 	try {
-		for (;;) {
+		while (true) {
 			const { done, value } = await reader.read()
 			if (done) break
 			total += value.byteLength

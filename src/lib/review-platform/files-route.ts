@@ -35,7 +35,7 @@ export async function submissionRepo(
 
 	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
 		.select("themeProjectId")
-		.include("themeProject", project => project.select("deletedAt", "githubRepo", "userId"))
+		.include("themeProject", proj => proj.select("deletedAt", "githubRepo", "userId"))
 		.first()
 	const project = submission?.themeProject
 	if (!submission || !project || project.deletedAt || project.userId === user.id)

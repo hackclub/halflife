@@ -29,15 +29,15 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 
 	const dispute = await db.orm.public.ReviewDispute.where({ id: disputeId })
 		.where(d =>
-			d.submission.some(submission =>
-				submission.themeProject.some(project =>
+			d.submission.some(sub =>
+				sub.themeProject.some(project =>
 					and(project.deletedAt.isNull(), project.id.eq(id), project.userId.eq(gate.user.id)),
 				),
 			),
 		)
 		.select("resolvedAt")
-		.include("submission", submission =>
-			submission.select("id", "phase").include("themeProject", project => project.select("theme", "title")),
+		.include("submission", sub =>
+			sub.select("id", "phase").include("themeProject", project => project.select("theme", "title")),
 		)
 		.first()
 	if (!dispute?.submission?.themeProject) return fail("NOT_FOUND", "Dispute not found")

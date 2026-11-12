@@ -15,7 +15,7 @@ import { formatDbTimestamp } from "../src/lib/time"
  *
  * 4. A project nobody has named is not listed as one, but its id is still available to write to – the five rows exist from signup.
  *
- * Run with `pnpm verify:store` against a scratch database.
+ * Run with `bun run verify:store` against a scratch database.
  */
 
 let failures = 0

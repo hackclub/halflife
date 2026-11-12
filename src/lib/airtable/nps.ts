@@ -19,17 +19,17 @@ import db from "@/lib/prisma8"
 import type { NpsTextsSubmit } from "@/lib/schemas/nps"
 
 /** The score column, as the table names it. */
-const SCORE = () => fieldKey(RSVP.fields.howLikelyRecommend)
+const scoreColumn = () => fieldKey(RSVP.fields.howLikelyRecommend)
 
 /** The three text columns, as the table names them. */
-const TEXT_COLUMNS = () => [
+const textColumns = () => [
 	fieldKey(RSVP.fields.howDoingWell),
 	fieldKey(RSVP.fields.howImprove),
 	fieldKey(RSVP.fields.howHear),
 ]
 
 /** The four NPS columns, as the table names them. */
-const NPS_COLUMNS = () => [SCORE(), ...TEXT_COLUMNS()]
+const npsColumns = () => [scoreColumn(), ...textColumns()]
 
 const fieldsQs = (cols: readonly string[]) => cols.map(c => `fields%5B%5D=${encodeURIComponent(c)}`).join("&")
 
@@ -48,7 +48,7 @@ const PAGE_SIZE = 100
 export const getProgrammeNps = cachedAirtableWalk(walkNpsScores)
 
 async function walkNpsScores(config: AirtableConfig): Promise<NpsSummary | null> {
-	const scoreField = SCORE()
+	const scoreField = scoreColumn()
 	// `filterByFormula` cannot use field ids, unlike the `fields[]` narrowing above.
 	const scoreRef = formulaRef(RSVP.fields.howLikelyRecommend)
 	try {
@@ -90,7 +90,7 @@ async function userEmail(userId: string): Promise<string | null> {
 export async function findSignupRecord(userId: string): Promise<AirtableRecord | null> {
 	const config = getAirtableConfig()
 	if (!config) return null
-	const cols = NPS_COLUMNS()
+	const cols = npsColumns()
 	const qs = fieldsQs(cols)
 
 	const buf = await db.orm.public.RsvpBuffer.where({ userId }).select("airtableRecordId").first()
@@ -140,15 +140,15 @@ const hasText = (value: unknown): boolean => typeof value === "string" && value.
 export async function readNpsState(userId: string): Promise<NpsState> {
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
-	const writable = await existingColumns(config, RSVP_TABLE_ID, NPS_COLUMNS())
-	if (!writable.has(SCORE())) return { skipped: "no_column" }
-	const textsWritable = TEXT_COLUMNS().some(c => writable.has(c))
+	const writable = await existingColumns(config, RSVP_TABLE_ID, npsColumns())
+	if (!writable.has(scoreColumn())) return { skipped: "no_column" }
+	const textsWritable = textColumns().some(c => writable.has(c))
 	const row = await findSignupRecord(userId)
 	if (!row) return { score: null, textsDone: !textsWritable }
-	const score = row.fields[SCORE()]
+	const score = row.fields[scoreColumn()]
 	return {
 		score: typeof score === "number" ? score : null,
-		textsDone: !textsWritable || TEXT_COLUMNS().some(c => hasText(row.fields[c])),
+		textsDone: !textsWritable || textColumns().some(c => hasText(row.fields[c])),
 	}
 }
 
@@ -202,9 +202,9 @@ export async function writeNpsScore(
 ): Promise<{ updated: boolean } | { skipped: string }> {
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
-	const writable = await existingColumns(config, RSVP_TABLE_ID, [SCORE()])
-	if (!writable.has(SCORE())) return { skipped: "no_column" }
-	return patchSignupRow(userId, { [SCORE()]: score }, "updateNpsScore")
+	const writable = await existingColumns(config, RSVP_TABLE_ID, [scoreColumn()])
+	if (!writable.has(scoreColumn())) return { skipped: "no_column" }
+	return patchSignupRow(userId, { [scoreColumn()]: score }, "updateNpsScore")
 }
 
 /**
@@ -216,15 +216,15 @@ export async function writeNpsTexts(
 ): Promise<{ updated: boolean } | { skipped: string }> {
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
-	const columns = values.howLikelyRecommend !== undefined ? [...TEXT_COLUMNS(), SCORE()] : TEXT_COLUMNS()
+	const columns = values.howLikelyRecommend !== undefined ? [...textColumns(), scoreColumn()] : textColumns()
 	const writable = await existingColumns(config, RSVP_TABLE_ID, columns)
 	const fields: { [_: string]: unknown } = {
 		[fieldKey(RSVP.fields.howDoingWell)]: values.howDoingWell?.trim() ? values.howDoingWell.trim() : undefined,
 		[fieldKey(RSVP.fields.howHear)]: values.howHear?.trim() ? values.howHear.trim() : undefined,
 		[fieldKey(RSVP.fields.howImprove)]: values.howImprove?.trim() ? values.howImprove.trim() : undefined,
-		...(values.howLikelyRecommend !== undefined ? { [SCORE()]: values.howLikelyRecommend } : {}),
+		...(values.howLikelyRecommend !== undefined ? { [scoreColumn()]: values.howLikelyRecommend } : {}),
 	}
-	if (values.howLikelyRecommend !== undefined && !writable.has(SCORE())) return { skipped: "no_column" }
+	if (values.howLikelyRecommend !== undefined && !writable.has(scoreColumn())) return { skipped: "no_column" }
 	for (const key of Object.keys(fields)) if (fields[key] === undefined || !writable.has(key)) delete fields[key]
 	if (Object.keys(fields).length === 0) return { updated: true }
 	return patchSignupRow(userId, fields, "updateNpsTexts")

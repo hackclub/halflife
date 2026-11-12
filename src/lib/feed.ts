@@ -460,7 +460,7 @@ export async function deleteOwnComment(commentId: string, userId: string): Promi
 	await db.transaction(async tx => {
 		// `hiddenAt: null` too: a moderator-hidden comment already had its decrement when it was hidden, so letting the owner delete it as well would take the count down a second time and could drive it negative.
 		const count = await tx.orm.public.PostComment.where({ deletedAt: null, id: commentId, userId })
-			.where(comment => comment.hiddenAt.isNull())
+			.where(target => target.hiddenAt.isNull())
 			.updateAndCount({ deletedAt: formatDbTimestamp(new Date()) })
 		if (count === 0) throw new HttpError("NOT_FOUND", "Comment not found")
 		const comment = await tx.orm.public.PostComment.whereUnique({ id: commentId }).select("postId").firstOrThrow()
@@ -521,7 +521,7 @@ export async function restorePost(postId: string): Promise<void> {
 export async function hideComment(commentId: string, moderatorId: string, reason: string): Promise<void> {
 	await db.transaction(async tx => {
 		const count = await tx.orm.public.PostComment.where({ deletedAt: null, id: commentId })
-			.where(comment => comment.hiddenAt.isNull())
+			.where(target => target.hiddenAt.isNull())
 			.updateAndCount({
 				hiddenAt: formatDbTimestamp(new Date()),
 				hiddenById: moderatorId,

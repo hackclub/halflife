@@ -87,7 +87,7 @@ function unflatten(flat: unknown[]): unknown {
 	const done: unknown[] = []
 
 	const hydrate = (slot: unknown): unknown => {
-		if (typeof slot !== "number") throw new Error(`Unexpected value in Ari's data: ${JSON.stringify(slot)}`)
+		if (typeof slot !== "number") throw new TypeError(`Unexpected value in Ari's data: ${JSON.stringify(slot)}`)
 
 		if (slot === -1 || slot === -2) return undefined // undefined, and a hole in an array
 		if (slot === -3) return Number.NaN
@@ -100,7 +100,7 @@ function unflatten(flat: unknown[]): unknown {
 		const value = flat[slot]
 		if (Array.isArray(value)) {
 			// a slot whose first entry is a string is a typed value (Date, Set, Map…), not a plain list of slots
-			if (typeof value[0] === "string") throw new Error(`Unsupported value in Ari's data: ${value[0]}`)
+			if (typeof value[0] === "string") throw new TypeError(`Unsupported value in Ari's data: ${value[0]}`)
 			const list: unknown[] = []
 			done[slot] = list
 			for (const item of value) list.push(hydrate(item))
@@ -153,7 +153,9 @@ function readPageData(body: string, program: string): AuditLog {
 	}
 
 	if (!Array.isArray(nodes))
-		throw new Error(`No page data in the response: check that ${program} is a program id and the cookie is signed in.`)
+		throw new TypeError(
+			`No page data in the response: check that ${program} is a program id and the cookie is signed in.`,
+		)
 
 	for (const node of nodes) {
 		if (!isRecord(node)) continue
@@ -167,7 +169,7 @@ function readPageData(body: string, program: string): AuditLog {
 	const chunk = chunks.get(promiseId)
 	if (!chunk) throw new Error("Ari never sent the audit log: try again, or check the cookie.")
 	if (chunk.error !== undefined) throw new Error(`Ari refused the request: ${errorText(chunk.error)}`)
-	if (!Array.isArray(chunk.data)) throw new Error("Ari's audit log was not in the format this tool knows.")
+	if (!Array.isArray(chunk.data)) throw new TypeError("Ari's audit log was not in the format this tool knows.")
 
 	const log = unflatten(chunk.data)
 	if (!isRecord(log) || !Array.isArray(log.rows))

@@ -34,7 +34,12 @@ export const POST = withWritePermission(
 			return fail("FORBIDDEN", "Overriding the grant amount requires the MANAGE_CREDIT permission")
 
 		// The same hole one step removed: the tier decides the grant via the tier table, so raising it above what the maker requested mints parts money without MANAGE_CREDIT either. A reviewer may still lower it (or keep it); only the raise needs the permission. Checked on design approvals, which is the only place the tier moves money.
-		if ("tier" in body && body.tier != null && !hasPermission(gate.roles, Permission.MANAGE_CREDIT)) {
+		if (
+			"tier" in body
+			&& body.tier !== null
+			&& body.tier !== undefined
+			&& !hasPermission(gate.roles, Permission.MANAGE_CREDIT)
+		) {
 			const sub = await db.orm.public.PhaseSubmission.whereUnique({ id })
 				.select("phase")
 				.include("themeProject", project => project.select("requestedTier"))

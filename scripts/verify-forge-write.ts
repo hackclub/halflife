@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { HttpError } from "../src/lib/errors"
 import { FORGES } from "../src/lib/forge"
 import { commitFiles, defaultBranchOf } from "../src/lib/forge-write"
@@ -204,7 +205,7 @@ async function main() {
 				return json({ tree: [{ mode: "100644", path: "BOM.md", sha: "old", type: "blob" }] })
 			if (method === "POST" && u.endsWith("/git/blobs")) return json({ sha: `blob${blobs++}` })
 			if (method === "POST" && u.endsWith("/git/trees")) {
-				if (typeof init.body !== "string") throw new Error("expected a JSON string body")
+				if (typeof init.body !== "string") throw new TypeError("expected a JSON string body")
 				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 				captured.tree = (JSON.parse(init.body) as { tree: TreeEntry[] }).tree
 				return json({ sha: "tree1" })

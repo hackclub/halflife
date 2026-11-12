@@ -2,7 +2,7 @@
 
 A third pass over the repository, looking for security issues, broken features and missing implementations before the platform opens. It complements [LAUNCH_FIXES.md](./LAUNCH_FIXES.md) (the launch review – all items done) and [PRELAUNCH_AUDIT.md](./PRELAUNCH_AUDIT.md) (the 2026-09-28 audit – all thirty-eight code items done). Items those passes already settled are not repeated; where a fix turned out to be incomplete, the residual hole is marked `[tracked-incomplete]` and the original item is named.
 
-Method: direct reading of the source, plus six parallel audit passes over the API and guards, the money/hours/review/shop logic, integrations and uploads, the frontend, the docs against the code, and the deploy/schema configuration. Every finding below was confirmed in source by the pass that found it, and the money and authorization findings were re-verified independently. The prior fixes each pass touched were re-checked as landed. At the time of writing `pnpm typecheck`, `pnpm lint`, `pnpm build` and `pnpm verify:contracts` all pass; the DB-backed verify suites were not run (no database was up).
+Method: direct reading of the source, plus six parallel audit passes over the API and guards, the money/hours/review/shop logic, integrations and uploads, the frontend, the docs against the code, and the deploy/schema configuration. Every finding below was confirmed in source by the pass that found it, and the money and authorization findings were re-verified independently. The prior fixes each pass touched were re-checked as landed. At the time of writing `bun run typecheck`, `bun run lint`, `bun run build` and `bun run verify:contracts` all pass; the DB-backed verify suites were not run (no database was up).
 
 Legend: **BLOCKER** – launch is damaged without it · **HIGH** · **MED** · **LOW**
 
@@ -26,7 +26,7 @@ Noted remainders, deliberately left as cleanups rather than launch risks:
 - **#45**: the CI image-build job and pruning dev dependencies from the runtime image were not done (pruning is documented as fragile, and there is no Docker daemon here to test a build); the entrypoint command override, the build-context exclusions and the dev-compose binding landed.
 - **#46**: the dead query modules are deleted and `backfillAnalytics` has a script entry point; the remaining never-written schema surface (project delete/restore, `ShopOrderNote`, `REVIEWER_PAYMENT`, unused User columns) stays reserved pending a product call.
 
-Every check passes on the final tree: `pnpm typecheck`, `pnpm lint`, `pnpm verify:contracts` and `pnpm build`. No new authorization bypass, injection or webhook-verification gap was found.
+Every check passes on the final tree: `bun run typecheck`, `bun run lint`, `bun run verify:contracts` and `bun run build`. No new authorization bypass, injection or webhook-verification gap was found.
 
 | # | Severity | Item | Area |
 | --- | --- | --- | --- |
@@ -35,7 +35,7 @@ Every check passes on the final tree: `pnpm typecheck`, `pnpm lint`, `pnpm verif
 | 3 | HIGH | A renamed/deleted Hackatime project reads as a fresh zero | money |
 | 4 | HIGH | A build can be approved after its design is un-approved mid-decision | money |
 | 5 | HIGH | Handoff upload buffers the whole body before auth or size checks | security |
-| 6 | HIGH | `pnpm db:seed` cannot run in the runtime image; a fresh deploy seeds no shop | ops |
+| 6 | HIGH | `bun run db:seed` cannot run in the runtime image; a fresh deploy seeds no shop | ops |
 | 7 | HIGH | `import/.env` (a live-looking DB credential) is in the Docker build context | secrets |
 | 8 | HIGH | Printer awards cannot be fulfilled, tracked or revoked from the product | missing feature |
 | 9 | HIGH | Reel/comment moderation exists in the library but is unreachable for staff | missing feature |
@@ -70,9 +70,9 @@ Every check passes on the final tree: `pnpm typecheck`, `pnpm lint`, `pnpm verif
   - `src/app/api/handoff/upload/route.ts:25-29` calls `await req.formData()` before reading the token; the size check lives later, in `src/lib/handoff.ts:135-139`. The route is deliberately unauthenticated, excluded from the basic-auth gate (`src/proxy.ts:114-119`) and has no rate limit, so `curl -F file=@10gb` to `/api/handoff/upload` is buffered in memory with no valid token. Impact depends on the ingress's request-body cap, which the repo does not define.
   - Fix: reject/stream by `Content-Length` (and a hard per-request cap) before `formData()`, or require the token in the URL and check it first.
 
-- [x] **6. `pnpm db:seed` – RUNBOOK launch step – cannot run in the runtime image, so a fresh deploy seeds no shop.** **HIGH (ops)** · fixed `04d1ea3`
-  - `docs/RUNBOOK.md:109` tells the operator to run `pnpm db:seed` in the pod. `prisma/seed.ts:5` imports `../src/lib/config/printers`, but the runner copies only `public`, `.next/standalone`, `.next/static`, `node_modules`, `src/app/generated`, `prisma` and `prisma.config.ts` (`Dockerfile:65-78`); `src/lib/**` is absent. The failure was reproduced in a simulated runner root (`Cannot find module '../src/lib/config/printers'`).
-  - `getProgramSettings()` lazily creates the settings row (`src/lib/program.ts:19-29`), so the app still boots – but the shop is empty (no printers, no upgrades) until someone seeds it another way. CI runs `pnpm db:seed` from the full checkout, so it stays green.
+- [x] **6. `bun run db:seed` – RUNBOOK launch step – cannot run in the runtime image, so a fresh deploy seeds no shop.** **HIGH (ops)** · fixed `04d1ea3`
+  - `docs/RUNBOOK.md:109` tells the operator to run `bun run db:seed` in the pod. `prisma/seed.ts:5` imports `../src/lib/config/printers`, but the runner copies only `public`, `.next/standalone`, `.next/static`, `node_modules`, `src/app/generated`, `prisma` and `prisma.config.ts` (`Dockerfile:65-78`); `src/lib/**` is absent. The failure was reproduced in a simulated runner root (`Cannot find module '../src/lib/config/printers'`).
+  - `getProgramSettings()` lazily creates the settings row (`src/lib/program.ts:19-29`), so the app still boots – but the shop is empty (no printers, no upgrades) until someone seeds it another way. CI runs `bun run db:seed` from the full checkout, so it stays green.
   - Fix: copy `src/lib/config` into the runner (or make `seed.ts` self-contained), and add a docker-build + seed smoke check to CI.
 
 - [x] **7. `import/.env` – a live-looking database credential – is in the Docker build context.** **HIGH (secrets)** · fixed `46bb0c3`

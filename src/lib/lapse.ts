@@ -1,6 +1,7 @@
 import "server-only"
 import { z } from "zod"
 import { HttpError } from "@/lib/errors"
+import { LAPSE_API_BASE } from "@/lib/lapse-config"
 import { oauthAccessToken } from "@/lib/oauth-token"
 import db from "@/lib/prisma8"
 import { parseDbTimestamp } from "@/lib/time"
@@ -12,8 +13,6 @@ import { parseDbTimestamp } from "@/lib/time"
  *
  * Auth is the user's own OAuth token, stored on their `lapse` Account row by better-auth when they link it. Lapse issues 30-day tokens and no refresh tokens yet, so an expired token is the same answer as never having linked: sign in with Lapse again.
  */
-
-export const LAPSE_API_BASE = (process.env.LAPSE_API_BASE ?? "https://api.lapse.hackclub.com/api").replace(/\/$/, "")
 
 /** Where people watch a timelapse – Lapse's own page, not the raw stream. */
 const LAPSE_WEB_BASE = (process.env.LAPSE_WEB_BASE ?? "https://lapse.hackclub.com").replace(/\/$/, "")
@@ -73,7 +72,7 @@ function toTimelapse(t: RawTimelapse): LapseTimelapse {
 	}
 }
 
-const NOT_LINKED = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse to pick your timelapses")
+const notLinked = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse to pick your timelapses")
 
 /** The user's Lapse identity and a token that is still good, or a refusal. */
 export async function lapseCredentials(userId: string): Promise<{ lapseUserId: string; accessToken: string }> {
@@ -81,9 +80,9 @@ export async function lapseCredentials(userId: string): Promise<{ lapseUserId: s
 		.orderBy(row => row.updatedAt.desc())
 		.select("accessToken", "accessTokenExpiresAt", "accountId", "id")
 		.first()
-	if (!account?.accessToken) throw NOT_LINKED()
+	if (!account?.accessToken) throw notLinked()
 	if (account.accessTokenExpiresAt && parseDbTimestamp(account.accessTokenExpiresAt).getTime() <= Date.now())
-		throw NOT_LINKED()
+		throw notLinked()
 
 	// The row holds ciphertext when tokens are encrypted at rest; better-auth's accessor decrypts it. Lapse issues no refresh token, so the expiry check above is still what decides whether the link is usable.
 	let { accessToken } = account
@@ -119,7 +118,7 @@ async function call<T>(
 		throw new HttpError("LAPSE_UNAVAILABLE", "Lapse is not answering right now. Try again in a minute")
 	}
 
-	if (res.status === 401 || res.status === 403) throw NOT_LINKED()
+	if (res.status === 401 || res.status === 403) throw notLinked()
 	const parsed = envelopeOf(schema).safeParse(await res.json().catch(() => null))
 	if (!parsed.success) {
 		// A 200 whose body we cannot read is drift in Lapse's own response, not the user's problem to diagnose: log it here and say so plainly instead of reporting the status, which was 200.
@@ -131,7 +130,7 @@ async function call<T>(
 	}
 	const body = parsed.data
 	if (!body.ok) {
-		if (body.error === "EXPIRED") throw NOT_LINKED()
+		if (body.error === "EXPIRED") throw notLinked()
 		if (body.error === "NO_PERMISSION") throw new HttpError("VALIDATION_FAILED", "That timelapse is not one of yours")
 		if (body.error === "NOT_FOUND") throw new HttpError("NOT_FOUND", "That timelapse is not on Lapse")
 		throw new HttpError("LAPSE_UNAVAILABLE", body.message || "Lapse refused the request")

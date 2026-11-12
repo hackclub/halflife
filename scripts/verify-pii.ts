@@ -15,7 +15,7 @@ import { formatDbTimestamp } from "../src/lib/time"
  *
  * Sentinels rather than real ciphertext, because the question is whether a COLUMN VALUE escapes, which does not depend on the encryption working.
  *
- * Needs the dev server on :3000 and a scratch database. Run with `pnpm verify:pii`.
+ * Needs the dev server on :3000 and a scratch database. Run with `bun run verify:pii`.
  */
 
 const BASE = process.env.VERIFY_BASE_URL ?? "http://localhost:3000"

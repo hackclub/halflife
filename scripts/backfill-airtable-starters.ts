@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"

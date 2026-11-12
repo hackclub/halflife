@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { isAriConfigured, repairStatusDecisions } from "../src/lib/ari"
 import db from "../src/lib/prisma8"
 

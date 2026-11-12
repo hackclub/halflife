@@ -391,7 +391,7 @@ export async function purchase(
 
 		if (fresh.maxPerUser > 0) {
 			const owned = await tx.orm.public.ShopOrder.where({ shopItemId, userId })
-				.where(order => order.status.notIn([ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED]))
+				.where(shopOrder => shopOrder.status.notIn([ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED]))
 				.aggregate(a => ({ quantity: a.sum("quantity") }))
 			const held = owned.quantity ?? 0
 			if (held + quantity > fresh.maxPerUser)

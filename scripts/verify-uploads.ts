@@ -7,7 +7,7 @@
  *
  * Prints no secret values, only whether each is present.
  *
- * Run with `pnpm verify:uploads`.
+ * Run with `bun run verify:uploads`.
  */
 
 let failures = 0

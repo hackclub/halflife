@@ -378,73 +378,71 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
 	// One phase of one project, written under the key prefix it is addressed by: `w<week>` for a season week, `wu-<id>` for a warm-up project, which has no week of its own. Returns the phase's off-book hours; a season week also records them, and its status, against its week number.
 	const recordPhase = (project: (typeof projects)[number], phase: Phase, prefix: string, week?: number): number => {
-		{
-			const id = (suffix: string) => `${prefix}-${suffix}`
+		const id = (suffix: string) => `${prefix}-${suffix}`
 
-			const phaseSessions = sessions.filter(s => s.themeProjectId === project.id && s.phase === phase)
-			const phaseLinks = linkRows.filter(l => l.themeProjectId === project.id && l.phase === phase)
+		const phaseSessions = sessions.filter(s => s.themeProjectId === project.id && s.phase === phase)
+		const phaseLinks = linkRows.filter(l => l.themeProjectId === project.id && l.phase === phase)
 
-			// Week one's project comes into existence through the first checkpoint rather than a project form, so the node that stands for it is different and is already recorded above. A warm-up has no such node at all.
-			if (phase === Phase.DESIGN && week !== undefined && week > 1) {
-				// Whether a tier has been chosen at all, rather than which one: the project node is about the form being filled in, and a tier written before a decision still counts as one having been chosen.
-				const tierChosen = project.requestedTier !== null || project.tier !== null
-				if (project.title && project.description && tierChosen)
-					progress[id("project")] = {
-						artefacts: 0,
-						done: true,
-						log: [],
-						minutes: 0,
-					}
-			}
-
-			for (const [index, session] of phaseSessions.entries())
-				progress[id(`entry-${index + 1}`)] = {
-					artefacts: session.media.length,
-					at: session.createdAt.getTime(),
-					done: true,
-					log: [
-						{
-							at: session.createdAt.getTime(),
-							body: session.content ?? session.title,
-							clips: session.timelapses.flatMap(t => {
-								const ref = t.externalId ?? t.objectKey
-								return ref ? [ref] : []
-							}),
-							id: session.id,
-							minutes: minutesOf(session),
-						},
-					],
-					minutes: minutesOf(session),
-				}
-
-			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is `update_requested`, with its old submission rows still there, and it has to read as not handed in, or the trail would hide the live entry and the Submit it needs again. Decided phases and one still in review stay handed in. `findLast` and not `find`, because the rows come back oldest first and the newest hand-in is the one that counts.
-			const submission = submissions.findLast(s => s.themeProjectId === project.id && s.phase === phase)
-			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-			if (week !== undefined) phaseStatusByWeek[week] = status
-			if (status === PhaseStatus.in_review || isPhaseDecided(status))
-				progress[id("submit")] = {
+		// Week one's project comes into existence through the first checkpoint rather than a project form, so the node that stands for it is different and is already recorded above. A warm-up has no such node at all.
+		if (phase === Phase.DESIGN && week !== undefined && week > 1) {
+			// Whether a tier has been chosen at all, rather than which one: the project node is about the form being filled in, and a tier written before a decision still counts as one having been chosen.
+			const tierChosen = project.requestedTier !== null || project.tier !== null
+			if (project.title && project.description && tierChosen)
+				progress[id("project")] = {
 					artefacts: 0,
-					at: submission?.createdAt.getTime(),
 					done: true,
 					log: [],
 					minutes: 0,
 				}
-
-			// What the phase is worth, minus what its entries already account for. `rollUpHours` is the function the ledger uses, so the trail's gates and the reviewer's totals cannot answer this differently.
-			const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
-			const { effectiveHours, hackatimeOverlapUnknown } = rollUpHours(phaseSessions, phaseLinks, frozen, recordings)
-			// A HACKATIME_TRACKED entry contributes zero to `effectiveHours`, so it must contribute zero here too, or the subtraction double-counts it.
-			const entryHours = phaseSessions.reduce(
-				(n, s) => n + (s.hoursSource === HoursSource.HACKATIME_TRACKED ? 0 : minutesOf(s) / 60),
-				0,
-			)
-			const offBook = Math.max(0, round2(effectiveHours - entryHours))
-			if (week !== undefined) offBookHours[week] = offBook
-			// Collected rather than warned about here: this snapshot feeds the trail and every project page, and the thing a participant needs to know is on the week total they are reading, not in a log.
-			if (hackatimeOverlapUnknown && week !== undefined && !overlapUncheckedWeeks.includes(week))
-				overlapUncheckedWeeks.push(week)
-			return offBook
 		}
+
+		for (const [index, session] of phaseSessions.entries())
+			progress[id(`entry-${index + 1}`)] = {
+				artefacts: session.media.length,
+				at: session.createdAt.getTime(),
+				done: true,
+				log: [
+					{
+						at: session.createdAt.getTime(),
+						body: session.content ?? session.title,
+						clips: session.timelapses.flatMap(t => {
+							const ref = t.externalId ?? t.objectKey
+							return ref ? [ref] : []
+						}),
+						id: session.id,
+						minutes: minutesOf(session),
+					},
+				],
+				minutes: minutesOf(session),
+			}
+
+		// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is `update_requested`, with its old submission rows still there, and it has to read as not handed in, or the trail would hide the live entry and the Submit it needs again. Decided phases and one still in review stay handed in. `findLast` and not `find`, because the rows come back oldest first and the newest hand-in is the one that counts.
+		const submission = submissions.findLast(s => s.themeProjectId === project.id && s.phase === phase)
+		const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+		if (week !== undefined) phaseStatusByWeek[week] = status
+		if (status === PhaseStatus.in_review || isPhaseDecided(status))
+			progress[id("submit")] = {
+				artefacts: 0,
+				at: submission?.createdAt.getTime(),
+				done: true,
+				log: [],
+				minutes: 0,
+			}
+
+		// What the phase is worth, minus what its entries already account for. `rollUpHours` is the function the ledger uses, so the trail's gates and the reviewer's totals cannot answer this differently.
+		const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
+		const { effectiveHours, hackatimeOverlapUnknown } = rollUpHours(phaseSessions, phaseLinks, frozen, recordings)
+		// A HACKATIME_TRACKED entry contributes zero to `effectiveHours`, so it must contribute zero here too, or the subtraction double-counts it.
+		const entryHours = phaseSessions.reduce(
+			(n, s) => n + (s.hoursSource === HoursSource.HACKATIME_TRACKED ? 0 : minutesOf(s) / 60),
+			0,
+		)
+		const offBook = Math.max(0, round2(effectiveHours - entryHours))
+		if (week !== undefined) offBookHours[week] = offBook
+		// Collected rather than warned about here: this snapshot feeds the trail and every project page, and the thing a participant needs to know is on the week total they are reading, not in a log.
+		if (hackatimeOverlapUnknown && week !== undefined && !overlapUncheckedWeeks.includes(week))
+			overlapUncheckedWeeks.push(week)
+		return offBook
 	}
 
 	for (const [themeIndex, theme] of THEMES.entries()) {

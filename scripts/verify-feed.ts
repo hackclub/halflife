@@ -13,7 +13,7 @@ import { formatDbTimestamp } from "../src/lib/time"
  *
  * 3. Denormalised counts agree with the rows they summarise, including after a moderator hides something.
  *
- * Run with `pnpm verify:feed` against a scratch database.
+ * Run with `bun run verify:feed` against a scratch database.
  */
 
 let failures = 0

@@ -479,7 +479,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		.include("hackatimeLinks", links =>
 			links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
 		)
-		.include("user", user => user.select("displayName", "id", "name"))
+		.include("user", owner => owner.select("displayName", "id", "name"))
 		.include("workSessions", sessions =>
 			sessions
 				.select("content", "createdAt", "hoursApproved", "hoursClaimed", "hoursSource", "id", "phase", "title")

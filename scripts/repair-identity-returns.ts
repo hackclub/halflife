@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { and, or } from "@prisma/orm-postgres/orm-client"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { currentReviewColumns } from "../src/lib/airtable/review-columns"

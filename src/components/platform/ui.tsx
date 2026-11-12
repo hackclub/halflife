@@ -1,13 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import {
-	type ButtonHTMLAttributes,
-	type ComponentProps,
-	type ComponentPropsWithRef,
-	forwardRef,
-	type ReactNode,
-} from "react"
+import type { ButtonHTMLAttributes, ComponentProps, ComponentPropsWithRef, ReactNode, Ref } from "react"
 import { cx } from "@/lib/cx"
 
 export { cx } from "@/lib/cx"
@@ -127,17 +121,17 @@ function buttonClass({
 	return cx(BUTTON_BASE, BUTTON_SIZES[size], BUTTON_VARIANTS[variant], full && "w-full", className)
 }
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonStyleProps {}
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonStyleProps {
+	ref?: Ref<HTMLButtonElement>
+}
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-	({ variant = "solid", size = "md", full, className, children, ...rest }, ref) => (
-		<button className={buttonClass({ className, full, size, variant })} ref={ref} {...rest}>
+export function Button({ variant = "solid", size = "md", full, className, children, ...rest }: ButtonProps) {
+	return (
+		<button className={buttonClass({ className, full, size, variant })} {...rest}>
 			{children}
 		</button>
-	),
-)
-// A forwardRef is an object rather than a function, so React DevTools has no name to show for it and the component reads as "ForwardRef" in a stack trace. Told one, it is "Button" in both.
-Button.displayName = "Button"
+	)
+}
 
 /**
  * A navigation action drawn as a button. The kit's `Button` cannot be a link, and hand-copying its classes is how the gold CTA drifted; this takes the same variant and size set and renders Next's `Link`.
