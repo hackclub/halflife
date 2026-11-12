@@ -9,15 +9,22 @@ import "server-only"
  */
 const inFlight = new Map<string, Promise<string | null>>()
 
+type TokenSource = (accountId: string, userId: string) => Promise<string | null>
+
+// Set by lib/auth once better-auth exists. This module cannot import lib/auth itself: auth depends on the modules that call this, so the import would close a cycle.
+let tokenSource: TokenSource | null = null
+
+export function registerOauthTokenSource(source: TokenSource): void {
+	tokenSource = source
+}
+
 export function oauthAccessToken(accountId: string, userId: string): Promise<string | null> {
 	const running = inFlight.get(accountId)
 	if (running) return running
 	const pending = (async () => {
 		try {
-			// Imported lazily: lib/auth reaches back into the database and its hooks, and importing it at module scope here would close a cycle.
-			const { auth } = await import("@/lib/auth")
-			const token = await auth.api.getAccessToken({ body: { accountId, userId } })
-			return token?.accessToken ?? null
+			if (!tokenSource) throw new Error("No OAuth token source registered: lib/auth has not been loaded")
+			return await tokenSource(accountId, userId)
 		} finally {
 			inFlight.delete(accountId)
 		}

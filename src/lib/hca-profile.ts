@@ -1,6 +1,7 @@
 import "server-only"
 import { z } from "zod"
 import { fetchWithRetry } from "@/lib/fetch-retry"
+import { oauthAccessToken } from "@/lib/oauth-token"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { redactForLog } from "@/lib/redact"
@@ -271,12 +272,10 @@ async function emailHeldByAnother(email: string, userId: string): Promise<string
  */
 export async function syncHcaProfile(userId: string, { profile = false } = {}): Promise<string | null> {
 	try {
-		// Imported here, not at the top: lib/auth calls this from its own hooks.
-		const { auth } = await import("@/lib/auth")
 		const account = await db.orm.public.Account.where({ providerId: "hca", userId }).select("id").first()
 		if (!account) return null
 		// Refreshes the token first if it has expired. No request headers, so better-auth takes this as the trusted server-side call it is.
-		const { accessToken } = await auth.api.getAccessToken({ body: { accountId: account.id, userId } })
+		const accessToken = await oauthAccessToken(account.id, userId)
 		if (!accessToken) return null
 
 		// The verification status belongs to the ONE hca account bound at sign-up (see lib/auth's link/unlink guards). A user with two hca rows is a laundering attempt in progress or a legacy double-link: the status from either token proves nothing about the user, so it is never upgraded here. Downgrades still apply – a non-verified answer clears nothing by itself, but it must not mint verified either.
