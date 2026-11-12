@@ -276,7 +276,7 @@
 				"noLeakedRender": "off",
 				"noLoopFunc": "off",
 				"noPlaywrightForceOption": "off",
-				"noReactForwardRef": "off",
+				"noReactForwardRef": "error",
 				"noReactSpecificProps": "off",
 				"noReturnAssign": "off",
 				"noShadow": "off",
