@@ -153,7 +153,9 @@ function readPageData(body: string, program: string): AuditLog {
 	}
 
 	if (!Array.isArray(nodes))
-		throw new TypeError(`No page data in the response: check that ${program} is a program id and the cookie is signed in.`)
+		throw new TypeError(
+			`No page data in the response: check that ${program} is a program id and the cookie is signed in.`,
+		)
 
 	for (const node of nodes) {
 		if (!isRecord(node)) continue
