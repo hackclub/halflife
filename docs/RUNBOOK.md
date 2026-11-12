@@ -223,6 +223,17 @@ bun --conditions=react-server scripts/backfill-airtable-reviewers.ts --commit
 
 It only writes that one column, leaves status and notes alone (so it triggers no Loops email), and clears the address on a phase whose current state no longer matches the review that was standing. Run it where `DATABASE_URL` points at the real database.
 
+### Address columns
+
+`Address (Line 1)`, `Address (Line 2)`, `City`, `State / Province`, `ZIP / Postal Code` and `Country` are a snapshot of the maker's shipping address at hand-in, pulled from Hack Club Auth (`lib/hca-profile`). A blank row means HCA held no address at that moment, not that the write failed: HCA's mailing address is optional and is managed at <https://auth.hackclub.com/addresses>. Rows written before a maker added their address stay blank until the row is rewritten (a resubmission or an admin refresh) or backfilled:
+
+```bash
+bun --conditions=react-server scripts/backfill-airtable-addresses.ts
+bun --conditions=react-server scripts/backfill-airtable-addresses.ts --commit
+```
+
+It only fills cells that are empty, so a value already on the row is never overwritten. It reads the stored PII first and asks HCA again only when the stored address is incomplete, so a run does not cost one HCA request per maker. Every row it still cannot fill is listed in a report with the reason; an address HCA never had cannot be backfilled, and those makers have to add one at the link above. Run it where `DATABASE_URL` points at the real database.
+
 ### The technical-features column, for the existing rows
 
 `Justification - Specific Technical Features` used to be written at hand-in as the maker's description, parts list and journal log, with the reviewer features added under their own heading at decision time. It now carries only Ari's reviewer technical-features box, written verbatim. Rows written under the old behaviour still hold the earlier account; the decided rows are brought in line by replaying their standing decisions:
