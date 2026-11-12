@@ -94,7 +94,7 @@ describe("createIreShip", () => {
 		if (!request) throw new Error("no request")
 		const timestamp = request.headers["x-ari-timestamp"]
 		const signature = request.headers["x-ari-signature"]
-		if (typeof timestamp !== "string") throw new Error("timestamp header missing")
+		if (typeof timestamp !== "string") throw new TypeError("timestamp header missing")
 		expect(signature).toBe(createHmac("sha256", "test-secret").update(`${timestamp}.${request.body}`).digest("hex"))
 	})
 

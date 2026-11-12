@@ -20,7 +20,7 @@ describe("redactForLog", () => {
 		const line = `start ${"x".repeat(5_000)}`
 		const out = redactForLog(line)
 		expect(typeof out).toBe("string")
-		if (typeof out !== "string") throw new Error("expected a string")
+		if (typeof out !== "string") throw new TypeError("expected a string")
 		expect(out.length).toBeLessThan(line.length)
 		expect(out.startsWith("start ")).toBe(true)
 	})
