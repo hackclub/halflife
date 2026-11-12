@@ -483,13 +483,13 @@ function MetricPie({
 		return { x: CX + radius * Math.cos(a), y: CY + radius * Math.sin(a) }
 	}
 
+	const wedges: ((typeof colored)[number] & { from: number; sweep: number })[] = []
 	let angle = 0
-	const wedges = colored.map(s => {
+	for (const s of colored) {
 		const sweep = (s.value / total) * 360
-		const w = { ...s, from: angle, sweep }
+		wedges.push({ ...s, from: angle, sweep })
 		angle += sweep
-		return w
-	})
+	}
 
 	const summary = colored
 		.slice(0, 3)
