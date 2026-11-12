@@ -12,7 +12,7 @@ import type { ShopItemView } from "@/lib/shop"
 /**
  * The last step before an order is sent: a maker chooses whether the item is posted to them or its value comes as an HCB grant card, and confirms the address staff would ship to.
  *
- * The address itself is encrypted at rest and never selected into anything a browser sees, so the shipping path asks them to check it in Hack Club Auth rather than showing a copy here. Neither path can be placed until its own box is ticked, so an order never reaches staff without an explicit choice behind it.
+ * The address itself is encrypted at rest and never selected into anything a browser sees, so the shipping path asks them to check it in Hack Club Auth rather than showing a copy here. Shipping also asks the buyer to accept that customs are their cost and can exceed the item's price. Neither path can be placed until every box on it is ticked, so an order never reaches staff without an explicit choice behind it.
  */
 export function OrderConfirmDialog({
 	item,
@@ -25,11 +25,13 @@ export function OrderConfirmDialog({
 }) {
 	const [delivery, setDelivery] = useState<ShopDeliveryPreference | null>(null)
 	const [addressChecked, setAddressChecked] = useState(false)
+	const [customsNotCovered, setCustomsNotCovered] = useState(false)
+	const [customsMayCostMore, setCustomsMayCostMore] = useState(false)
 	const [grantChecked, setGrantChecked] = useState(false)
 
 	const ready =
 		delivery === ShopDeliveryPreference.SHIP
-			? addressChecked
+			? addressChecked && customsNotCovered && customsMayCostMore
 			: delivery === ShopDeliveryPreference.GRANT_CARD
 				? grantChecked
 				: false
@@ -105,9 +107,16 @@ export function OrderConfirmDialog({
 							If it&rsquo;s missing or out of date, update it there first.
 						</p>
 					</div>
-					<div className="mt-3">
+					<div className="mt-3 grid gap-1">
 						<Acknowledgement checked={addressChecked} onChange={setAddressChecked}>
 							I&rsquo;ve checked my mailing address in Hack Club Auth and it&rsquo;s correct.
+						</Acknowledgement>
+						<Acknowledgement checked={customsNotCovered} onChange={setCustomsNotCovered}>
+							I understand Hack Club does not cover customs, and that if customs are incurred, I will cover the costs
+							myself.
+						</Acknowledgement>
+						<Acknowledgement checked={customsMayCostMore} onChange={setCustomsMayCostMore}>
+							I understand that customs may cost more than the item itself.
 						</Acknowledgement>
 					</div>
 				</div>
