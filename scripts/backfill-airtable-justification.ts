@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import {
 	AirtableListSchema,
 	type AirtableRecord,

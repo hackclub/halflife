@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { ireLive, isIreConfigured } from "../src/lib/ire-platform"
 import { findAllOpenIreSubmissions, findUnsyncedIreSubmissions, sendSubmissionToIre } from "../src/lib/ire-shadow"
 import db from "../src/lib/prisma8"

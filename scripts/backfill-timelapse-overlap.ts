@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import type { Phase } from "../src/lib/enums"
 import { refreshOverlapSpans } from "../src/lib/hours"
 import { lapseCredentials, verifyOwnTimelapses } from "../src/lib/lapse"

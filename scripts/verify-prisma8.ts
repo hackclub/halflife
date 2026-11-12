@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import db from "@/lib/prisma8"
 import {
 	countContentReports,
