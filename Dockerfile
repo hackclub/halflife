@@ -134,6 +134,19 @@ RUN apk add --no-cache curl \
  && addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
 
+# dumbpipe (https://www.dumbpipe.dev/), for moving files in and out of the container. The release binaries are static, so they run on Alpine as they are. Pinned by version and checksum; the digests are the sha256 GitHub publishes for each release asset.
+ARG TARGETARCH
+ARG DUMBPIPE_VERSION=0.40.1
+RUN case "${TARGETARCH}" in \
+      amd64) asset=linux-x86_64; sha=66aee1e249890ee63678dfc8f18ce3671e691673c83bbd72bf9a54c4d32da85c ;; \
+      arm64) asset=linux-aarch64; sha=1529c49598ac15d9413bf7f29a09c04cf2f5dc3af1b9080a1b50855a77846c47 ;; \
+      *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+ && curl -fsSL -o /tmp/dumbpipe.tar.gz "https://github.com/n0-computer/dumbpipe/releases/download/v${DUMBPIPE_VERSION}/dumbpipe-v${DUMBPIPE_VERSION}-${asset}.tar.gz" \
+ && echo "${sha}  /tmp/dumbpipe.tar.gz" | sha256sum -c - \
+ && tar -xzf /tmp/dumbpipe.tar.gz -C /usr/local/bin dumbpipe \
+ && rm /tmp/dumbpipe.tar.gz
+
 COPY --from=builder-live /app/public ./public
 COPY --from=builder-live --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder-live --chown=nextjs:nodejs /app/.next/static ./.next/static
