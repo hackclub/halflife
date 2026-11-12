@@ -111,7 +111,10 @@ async function loopsValues(): Promise<LoopsValues[]> {
 		const weeks: { [_: number]: boolean } = {}
 		for (const def of THEMES) {
 			const project = u.themeProjects.find(p => p.theme === def.id)
-			weeks[def.designWeek] = def.designWeek === 1 ? u.onboardingCompletedAt !== null : project?.namedAt != null
+			weeks[def.designWeek] =
+				def.designWeek === 1
+					? u.onboardingCompletedAt !== null
+					: project?.namedAt !== null && project?.namedAt !== undefined
 			weeks[def.buildWeek] = project?.workSessions.some(s => s.phase === Phase.BUILD) ?? false
 		}
 		// Submitted means a hand-in exists for that scheduled week, in any state – in review, approved, or sent back. Rows from before `scheduledWeek` was recorded fall back to the theme and phase's own week, and the warm-up's week 0 is not a program week. Unsubmitting deletes the open row, so a week taken back with no other hand-in reads as unsubmitted again.

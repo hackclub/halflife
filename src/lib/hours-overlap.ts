@@ -105,7 +105,13 @@ export function timelapseWindow(recordedAtMs: number | Date | null, coveredSecon
 	if (recordedAtMs === null || recordedAtMs === undefined) return null
 	const start = recordedAtMs instanceof Date ? recordedAtMs.getTime() : recordedAtMs
 	if (!Number.isFinite(start) || start < 0) return null
-	if (coveredSeconds == null || !Number.isFinite(coveredSeconds) || coveredSeconds <= 0) return null
+	if (
+		coveredSeconds === null
+		|| coveredSeconds === undefined
+		|| !Number.isFinite(coveredSeconds)
+		|| coveredSeconds <= 0
+	)
+		return null
 
 	const startSeconds = start / 1000
 	const duration = Math.round(coveredSeconds)

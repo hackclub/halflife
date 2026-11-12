@@ -39,7 +39,7 @@
 	"rules": {
 		"eslint/capitalized-comments": "off",
 		"eslint/curly": ["error", "multi"],
-		"eslint/eqeqeq": ["error", "smart"],
+		"eslint/eqeqeq": "error",
 		"eslint/func-style": "off",
 		"eslint/id-length": "off",
 		"eslint/init-declarations": "off",
