@@ -65,9 +65,15 @@ export function supersedeLiveCards(rowIds: readonly string[], reason: string): P
 			.select("amountCents", "id", "themeProjectId")
 			.all()
 		if (rows.length === 0) return 0
-		await tx.orm.public.HcbCardGrantExportRow.where(row => row.id.in(rows.map(r => r.id))).update({
-			supersededAt: formatDbTimestamp(new Date()),
-		})
+		// One row at a time: a single update filtered on a list of IDs saved only one of the rows in practice. Each row is then read back, so a row that did not save fails the whole transaction.
+		const supersededAt = formatDbTimestamp(new Date())
+		for (const row of rows) await tx.orm.public.HcbCardGrantExportRow.where({ id: row.id }).update({ supersededAt })
+		const stillLive = await tx.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
+			.where(row => row.id.in(rows.map(r => r.id)))
+			.select("id")
+			.all()
+		if (stillLive.length > 0)
+			throw new HttpError("INTERNAL", `${stillLive.length} row(s) did not save as superseded; nothing was changed`)
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_SUPERSEDE_GRANT_CARD_EXPORT,
 			actorEmail: null,
