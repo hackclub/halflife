@@ -105,3 +105,8 @@ yarn.lock
 /.claude/launch.json
 
 .opencode
+
+# Starter funding export outputs: they hold addresses and emails
+starter-cards.csv
+starter-kits.tsv
+starter-report.tsv

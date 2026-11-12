@@ -1,15 +1,17 @@
+import { spawnSync } from "node:child_process"
 import { writeFileSync } from "node:fs"
 import { resolve, sep } from "node:path"
 import { configuredOrigin } from "../src/lib/origin"
+import db from "../src/lib/prisma8"
 import { kitShippingTsv, type StarterCardRow, starterCardCsv } from "../src/lib/starter-funding-csv"
 import { type StarterFundingDecision, starterFundingDecisions } from "../src/lib/starter-funding-export"
 
 /**
  * The Week 1 starter export: the HCB card CSV for every starter still owed, and the kit list for everyone sent a kit.
  *
- *   bun --conditions=react-server scripts/starter-funding-export.ts --kits ~/Documents/halflife-private/kits.tsv --report ~/Documents/halflife-private/starter-report.tsv > starter-cards.csv
+ *   bun run grants:starter-export -- --kits ./starter-kits.tsv --report ./starter-report.tsv > ./starter-cards.csv
  *
- * Read-only against the database and Airtable. The CSV goes to stdout, so it can be redirected; the kit list and the report hold addresses and emails, so they are written to files that must be outside this repository. The run refuses if the payout source is not HCB, if Airtable's country and the verified address disagree, or if a kit is needed and no `--kits` file was given.
+ * Read-only against the database and Airtable. The CSV goes to stdout, so it can be redirected. The kit list and the report hold addresses and emails, so they must be written outside this repository or to a path git ignores (see .gitignore). The run refuses if the payout source is not HCB, if Airtable's country and the verified address disagree, or if a kit is needed and no `--kits` file was given.
  */
 
 interface Args {
@@ -31,12 +33,19 @@ function parseArgs(argv: readonly string[]): Args {
 	return args
 }
 
-/** Files that hold addresses must never land in the repository, where they could be committed. */
-function outsideRepo(path: string): string {
+/**
+ * Files that hold addresses must never be committed. A path outside the repository is always fine; a path inside it is fine only when git ignores it, so it cannot be added by accident.
+ */
+function safeOutputPath(path: string): string {
 	const absolute = resolve(path)
 	const root = resolve(process.cwd())
-	if (absolute === root || absolute.startsWith(`${root}${sep}`))
-		throw new Error(`${path} is inside the repository. Write this file outside it.`)
+	const inside = absolute === root || absolute.startsWith(`${root}${sep}`)
+	if (!inside) return absolute
+	const ignored = spawnSync("git", ["check-ignore", "-q", "--", absolute], { cwd: root }).status === 0
+	if (!ignored)
+		throw new Error(
+			`${path} is inside the repository and not gitignored. Add it to .gitignore or write it outside the repo.`,
+		)
 	return absolute
 }
 
@@ -74,8 +83,8 @@ function count(decisions: readonly StarterFundingDecision[], fulfilment: Starter
 
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2))
-	const kitsPath = args.kits ? outsideRepo(args.kits) : null
-	const reportPath = args.report ? outsideRepo(args.report) : null
+	const kitsPath = args.kits ? safeOutputPath(args.kits) : null
+	const reportPath = args.report ? safeOutputPath(args.report) : null
 
 	const decisions = await starterFundingDecisions(new Date())
 	const kitRows = decisions.filter(d => d.fulfilment === "KIT_WITH_PCB_CARD" || d.fulfilment === "KIT_ONLY")
@@ -102,4 +111,11 @@ async function main(): Promise<void> {
 	if (!reportPath) console.error("Pass --report <file outside the repo> to list every row and its reason.")
 }
 
-await main()
+try {
+	await main()
+} catch (err) {
+	console.error(err instanceof Error ? err.message : err)
+	process.exitCode = 1
+} finally {
+	await db.close()
+}
