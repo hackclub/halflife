@@ -4,8 +4,9 @@ import { getAirtableConfig } from "@/lib/airtable/client"
 import { recordIdsFromSyncEvents } from "@/lib/airtable/sync"
 import { readUnifiedSubmitted } from "@/lib/airtable/ysws"
 import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
+import { starterProjectsFor } from "@/lib/config/onboarding"
 import { displayName } from "@/lib/display-name"
-import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, type Theme } from "@/lib/enums"
+import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
 import { grantCardCsv } from "@/lib/grant-card-csv"
 import {
@@ -105,6 +106,10 @@ interface PreviewBuilder {
 	totalCents: number
 }
 
+/** Whether a project is one of Week 1's starters. Those are capped at the parts + PCB target, not their tier grant. */
+const isWeekOneStarter = (starterProjectId: string | null): boolean =>
+	starterProjectId !== null && starterProjectsFor(Theme.PCB).some(starter => starter.id === starterProjectId)
+
 /**
  * The one project query behind both the preview and the batch snapshot.
  *
@@ -115,7 +120,17 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 		deletedAt: null,
 		designStatus: PhaseStatus.approved,
 	})
-		.select("bomTaxShippingUsd", "designStatus", "grantUsd", "id", "theme", "tier", "title", "userId")
+		.select(
+			"bomTaxShippingUsd",
+			"designStatus",
+			"grantUsd",
+			"id",
+			"starterProjectId",
+			"theme",
+			"tier",
+			"title",
+			"userId",
+		)
 		.include("bomItems", items => items.select("quantity", "unitCostUsd"))
 		.include("user", user => user.select("displayName", "email", "fraudFlagged", "id", "name", "verificationStatus"))
 		.include("hcbGrantCards", cards =>
@@ -170,7 +185,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 			continue
 		}
 
-		const capUsd = grantCardCapUsd(row.grantUsd, row.tier)
+		const capUsd = grantCardCapUsd(row.grantUsd, row.tier, isWeekOneStarter(row.starterProjectId))
 		if (capUsd === null) {
 			excluded.push({ ownerName, projectId: row.id, reason: "No tier to cap the grant at", title: row.title })
 			continue
@@ -659,7 +674,17 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 		if (claimed !== 1) continue
 
 		const project = await db.orm.public.ThemeProject.whereUnique({ id: candidate.themeProjectId })
-			.select("bomTaxShippingUsd", "deletedAt", "designStatus", "grantUsd", "id", "tier", "title", "userId")
+			.select(
+				"bomTaxShippingUsd",
+				"deletedAt",
+				"designStatus",
+				"grantUsd",
+				"id",
+				"starterProjectId",
+				"tier",
+				"title",
+				"userId",
+			)
 			.include("bomItems", items => items.select("quantity", "unitCostUsd"))
 			.include("user", user => user.select("email", "fraudFlagged", "id", "name"))
 			.first()
@@ -697,7 +722,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			continue
 		}
 
-		const capUsd = grantCardCapUsd(project.grantUsd, project.tier)
+		const capUsd = grantCardCapUsd(project.grantUsd, project.tier, isWeekOneStarter(project.starterProjectId))
 		const amountCents = capUsd === null ? 0 : grantCardAmountCents(project.bomItems, project.bomTaxShippingUsd, capUsd)
 		if (capUsd === null || amountCents !== candidate.amountCents) {
 			await markSkipped(candidate.id, "BOM total changed since the batch was made")
