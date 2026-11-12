@@ -1,6 +1,7 @@
 import "server-only"
 import { z } from "zod"
 import { HttpError } from "@/lib/errors"
+import { LAPSE_API_BASE } from "@/lib/lapse-config"
 import { oauthAccessToken } from "@/lib/oauth-token"
 import db from "@/lib/prisma8"
 import { parseDbTimestamp } from "@/lib/time"
@@ -12,8 +13,6 @@ import { parseDbTimestamp } from "@/lib/time"
  *
  * Auth is the user's own OAuth token, stored on their `lapse` Account row by better-auth when they link it. Lapse issues 30-day tokens and no refresh tokens yet, so an expired token is the same answer as never having linked: sign in with Lapse again.
  */
-
-export const LAPSE_API_BASE = (process.env.LAPSE_API_BASE ?? "https://api.lapse.hackclub.com/api").replace(/\/$/, "")
 
 /** Where people watch a timelapse – Lapse's own page, not the raw stream. */
 const LAPSE_WEB_BASE = (process.env.LAPSE_WEB_BASE ?? "https://lapse.hackclub.com").replace(/\/$/, "")
