@@ -71,15 +71,15 @@ export function OrderConfirmDialog({
 				<legend className="label mb-2 text-navy-faint">Delivery</legend>
 				<DeliveryOption
 					checked={delivery === ShopDeliveryPreference.SHIP}
-					description="We post it to the mailing address on your Hack Club account."
+					description="We post it to the primary mailing address on your Hack Club account. Costs of customs are unpredictable and we do not cover them!"
 					label="Ship it to me"
 					onSelect={() => setDelivery(ShopDeliveryPreference.SHIP)}
 					value="ship"
 				/>
 				<DeliveryOption
 					checked={delivery === ShopDeliveryPreference.GRANT_CARD}
-					description="We put its value on an HCB grant card so you can buy it yourself. Staff arrange the card after you order."
-					label="Send a grant card instead"
+					description="We issue a grant card with the same value as the item so you can buy it yourself. Staff arrange the card after you order."
+					label="Send a grant card"
 					onSelect={() => setDelivery(ShopDeliveryPreference.GRANT_CARD)}
 					value="grant-card"
 				/>
