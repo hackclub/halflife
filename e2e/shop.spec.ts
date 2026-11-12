@@ -25,7 +25,7 @@ test("a participant confirms their mailing address before buying", async ({ open
 	await dialog.getByText("Ship it to me", { exact: true }).click()
 	await expect(dialog.getByRole("link", { name: "Open Hack Club Auth" })).toHaveAttribute(
 		"href",
-		"https://auth.hackclub.com",
+		"https://auth.hackclub.com/addresses",
 	)
 
 	// Nothing is ordered until the maker ticks every box on this path.

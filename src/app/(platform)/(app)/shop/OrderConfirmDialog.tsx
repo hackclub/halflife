@@ -95,7 +95,7 @@ export function OrderConfirmDialog({
 					</p>
 					<div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
 						<LinkButton
-							href="https://auth.hackclub.com"
+							href="https://auth.hackclub.com/addresses"
 							rel="noopener noreferrer"
 							size="sm"
 							target="_blank"
