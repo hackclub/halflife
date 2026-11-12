@@ -1,0 +1,83 @@
+[
+  {
+    "id": "createNativeEnumType.ShopDeliveryPreference",
+    "label": "Create enum type \"ShopDeliveryPreference\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "ShopDeliveryPreference"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create enum type \"ShopDeliveryPreference\"",
+        "sql": "CREATE TYPE \"public\".\"ShopDeliveryPreference\" AS ENUM ('SHIP', 'GRANT_CARD')",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "column.public.shop_order.deliveryPreference",
+    "label": "Add column \"deliveryPreference\" to \"shop_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deliveryPreference",
+        "table": "shop_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deliveryPreference\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "deliveryPreference"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"deliveryPreference\" on \"shop_order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deliveryPreference\"",
+        "sql": "ALTER TABLE \"public\".\"shop_order\" ADD COLUMN \"deliveryPreference\" \"ShopDeliveryPreference\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deliveryPreference\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "deliveryPreference"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"deliveryPreference\" on \"shop_order\""
+        }
+      },
+      {
+        "description": "verify column \"deliveryPreference\" has type \"ShopDeliveryPreference\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" WHERE (\"a\".\"attrelid\" = to_regclass($1) AND \"a\".\"attname\" = $2 AND \"a\".\"atttypid\" = to_regtype($3) AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "\"public\".\"shop_order\"",
+          "deliveryPreference",
+          "\"ShopDeliveryPreference\""
+        ]
+      }
+    ]
+  }
+]

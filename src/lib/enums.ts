@@ -319,6 +319,13 @@ export const Role = {
 
 export type Role = (typeof Role)[keyof typeof Role]
 
+export const ShopDeliveryPreference = {
+	GRANT_CARD: "GRANT_CARD",
+	SHIP: "SHIP",
+} as const satisfies { [K in Members<"ShopDeliveryPreference">]: K }
+
+export type ShopDeliveryPreference = (typeof ShopDeliveryPreference)[keyof typeof ShopDeliveryPreference]
+
 export const ShopFulfillmentMethod = {
 	BULK_TO_HQ: "BULK_TO_HQ",
 	DIRECT_SHIP: "DIRECT_SHIP",
