@@ -3,6 +3,7 @@ import {
 	paidSoFarUsd,
 	STARTER_KIT_STATUS,
 	type StarterFundingInput,
+	starterAction,
 	starterFundingFor,
 	starterPartsCapUsd,
 } from "@/lib/starter-funding"
@@ -104,6 +105,26 @@ describe("starter funding holds and flags", () => {
 
 	test("a zero BOM is flagged", () => {
 		expect(starterFundingFor(row({ bomTotalUsd: 0 })).fulfilment).toBe("FLAG")
+	})
+})
+
+describe("starter action", () => {
+	test("nothing owed is no action", () => {
+		expect(starterAction(0, 10)).toBeNull()
+		expect(starterAction(0, null)).toBeNull()
+	})
+
+	test("an amount owed with no live card recorded is a new card", () => {
+		expect(starterAction(31.2, null)).toBe("NEW_CARD")
+	})
+
+	test("an amount owed with a live card recorded is a top-up", () => {
+		expect(starterAction(23, 10)).toBe("TOP_UP")
+	})
+
+	test("money already spent with no live card is still a new card, for the rest owed", () => {
+		// A PCB bought on a cancelled grant: $19.79 has gone out, so $5.97 is owed on a new card.
+		expect(starterAction(5.97, null)).toBe("NEW_CARD")
 	})
 })
 

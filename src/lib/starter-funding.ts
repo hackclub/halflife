@@ -90,6 +90,14 @@ export function starterFundingFor(input: StarterFundingInput): StarterFunding {
 }
 
 /**
+ * Whether an amount still owed is a new card or a top-up. A live card recorded on the site means a top-up. No live card means a new card, even when money has already gone out for something else, such as a PCB bought on a cancelled grant.
+ */
+export function starterAction(owedUsd: number, recordedCardUsd: number | null): "NEW_CARD" | "TOP_UP" | null {
+	if (owedUsd <= 0) return null
+	return recordedCardUsd === null ? "NEW_CARD" : "TOP_UP"
+}
+
+/**
  * What has already left HCB for a maker, in USD: the operator's `Funding given` or the live card recorded for the project, whichever is larger.
  *
  * The two can describe the same card, and the operator often enters the card amount in `Funding given` after the import, so they are never added together. A top-up the operator records as a total is larger than the card, so it wins.

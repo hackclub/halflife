@@ -18,7 +18,7 @@ import { PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { liveRecordedCents } from "@/lib/starter-card-records"
-import { paidSoFarUsd, type StarterFulfilment, starterFundingFor } from "@/lib/starter-funding"
+import { paidSoFarUsd, type StarterFulfilment, starterAction, starterFundingFor } from "@/lib/starter-funding"
 
 /**
  * The starter export's reads: which Week 1 starters are approved, what the operator has recorded for each in Airtable, the site's BOM, and what each is owed.
@@ -134,8 +134,7 @@ export async function starterFundingDecisions(): Promise<StarterFundingDecision[
 		})
 
 		decisions.push({
-			// Any money already recorded, on the site or in Airtable, means a card exists: a missing site row must not turn a top-up into a second import.
-			action: verdict.owedUsd > 0 ? (recordedCardUsd === null && fundingGivenUsd === 0 ? "NEW_CARD" : "TOP_UP") : null,
+			action: starterAction(verdict.owedUsd, recordedCardUsd),
 			airtableRecordId: recordId,
 			bomTotalUsd: bom,
 			cardUsd: verdict.cardUsd,
