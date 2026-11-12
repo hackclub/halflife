@@ -3,7 +3,7 @@ import { or } from "@prisma/orm-postgres/orm-client"
 import { getAirtableConfig } from "@/lib/airtable/client"
 import { recordIdsFromSyncEvents } from "@/lib/airtable/sync"
 import { readUnifiedSubmitted } from "@/lib/airtable/ysws"
-import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
+import { AuditAction, logAudit, logAuditTx, requestInfo } from "@/lib/audit"
 import { starterProjectsFor } from "@/lib/config/onboarding"
 import { displayName } from "@/lib/display-name"
 import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
@@ -30,6 +30,8 @@ import { formatUsd } from "@/lib/money"
 import { configuredOrigin } from "@/lib/origin"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
+import { STARTER_TIER_ID } from "@/lib/starter-funding"
+import { writeStarterFundingGiven } from "@/lib/starter-funding-sheet"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
@@ -589,6 +591,33 @@ async function markIssued(
 			purpose: row.purpose ?? "",
 			userAgent: request.userAgent,
 		})
+	})
+	await recordStarterFunding(row.projectId, row.amountCents, request)
+}
+
+/**
+ * After a card is issued to a Week 1 starter, writes its total to Airtable's `Funding given`, so the starter export counts it.
+ *
+ * Best effort. The card is already on HCB and recorded here, and the export already counts the live card, so a failed write cannot make the starter owed again. The failure is audited, so it can be fixed in Airtable by hand.
+ */
+async function recordStarterFunding(
+	projectId: string,
+	amountCents: number,
+	request: { ip: string | null; userAgent: string | null },
+): Promise<void> {
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: projectId })
+		.select("starterProjectId", "tier")
+		.first()
+	if (!project || !isWeekOneStarter(project.starterProjectId) || project.tier !== STARTER_TIER_ID) return
+	const failure = await writeStarterFundingGiven(projectId, amountCents / 100)
+	if (failure === null) return
+	await logAudit({
+		action: AuditAction.AIRTABLE_SYNC_FAILURE,
+		actorEmail: null,
+		actorId: null,
+		metadata: { error: failure, field: "Funding given", ip: request.ip },
+		targetId: projectId,
+		targetType: "ThemeProject",
 	})
 }
 

@@ -89,6 +89,14 @@ export function starterFundingFor(input: StarterFundingInput): StarterFunding {
 	return result("PARTS_CARD", cardUsd, owedUsd, "parts + PCB card, capped at the tier maximum")
 }
 
+/** The PATCH body that sets `Funding given` on one design row. Rounded to cents, so Airtable gets the same figure the site recorded. */
+export function fundingGivenPatch(recordId: string, fieldName: string, totalUsd: number): string {
+	return JSON.stringify({
+		records: [{ fields: { [fieldName]: Math.round(totalUsd * 100) / 100 }, id: recordId }],
+		typecast: false,
+	})
+}
+
 /**
  * Whether an amount still owed is a new card or a top-up. A live card recorded on the site means a top-up. No live card means a new card, even when money has already gone out for something else, such as a PCB bought on a cancelled grant.
  */
