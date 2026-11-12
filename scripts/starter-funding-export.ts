@@ -162,8 +162,14 @@ async function confirmMode(args: Args, path: string): Promise<void> {
 			refusals.push(`${row.email}: no approved Week 1 starter for project ${row.projectId}`)
 			continue
 		}
-		if (decision.action !== "TOP_UP") {
-			refusals.push(`${row.email}: not a top-up (the export says ${decision.action ?? "nothing owed"})`)
+		// A starter who is already at target (Funding given already matches the card) is still a valid confirmation: it records the card the site is missing. Only a new card, a held or flagged starter, or one with no target is refused.
+		if (
+			decision.action === "NEW_CARD"
+			|| decision.cardUsd <= 0
+			|| decision.fulfilment === "HOLD"
+			|| decision.fulfilment === "FLAG"
+		) {
+			refusals.push(`${row.email}: not a card to confirm (the export says ${decision.action ?? decision.fulfilment})`)
 			continue
 		}
 		const reason = refusedTotal(row, {
