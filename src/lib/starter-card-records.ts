@@ -87,6 +87,18 @@ export function supersedeLiveCards(rowIds: readonly string[], reason: string): P
 	})
 }
 
+/** The IDs of each project's live export rows, so a card can be superseded by row. */
+export async function liveRowIdsByProject(projectIds: readonly string[]): Promise<Map<string, string[]>> {
+	const byProject = new Map<string, string[]>()
+	if (projectIds.length === 0) return byProject
+	const rows = await db.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
+		.where(row => row.themeProjectId.in([...projectIds]))
+		.select("id", "themeProjectId")
+		.all()
+	for (const row of rows) byProject.set(row.themeProjectId, [...(byProject.get(row.themeProjectId) ?? []), row.id])
+	return byProject
+}
+
 /** The live recorded card for each project, in cents. A project with none is left out of the map. */
 export async function liveRecordedCents(projectIds: readonly string[]): Promise<Map<string, number>> {
 	const recorded = new Map<string, number>()
