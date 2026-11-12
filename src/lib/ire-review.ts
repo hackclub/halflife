@@ -93,7 +93,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 				.first()
 		: null
 	const fallback = await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
-		.orderBy(submission => submission.createdAt.desc())
+		.orderBy(sub => sub.createdAt.desc())
 		.select("ariStatus", "id", "resolvedAt")
 		.first()
 	const submission = open ?? fallback

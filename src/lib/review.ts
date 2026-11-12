@@ -156,7 +156,7 @@ export interface FinalizeOutcome {
 export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutcome> {
 	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })
 		.include("claim")
-		.include("themeProject", project => project.include("user", user => user.select("id", "printerGoalId")))
+		.include("themeProject", proj => proj.include("user", user => user.select("id", "printerGoalId")))
 		.first()
 	if (!submission?.themeProject?.user) throw new HttpError("NOT_FOUND", "Submission not found")
 
@@ -201,7 +201,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	// The live Hackatime read is the one part of this that cannot happen inside the transaction: it is network I/O with a ten second timeout and two retries, so an interactive transaction would sit on a connection – and hold this maker's credit lock – for all of it. What it does is refresh the cache the decision then reads under the lock, so the number that ends up frozen is the fresh one.
 	const live = await getHoursBreakdown(project.id, phase, { live: approving })
 	// A reviewer (human or Ari) who supplied the hours explicitly has already covered the underpayment risk that a stale Hackatime reading creates, so staleness must not block a decision that does not depend on the live value.
-	if (approving && input.hoursOverride == null && live.hackatimeStale)
+	if (approving && (input.hoursOverride === null || input.hoursOverride === undefined) && live.hackatimeStale)
 		// Refusing here is the point: stasis's client returns 0 on a Hackatime timeout and that zero flows into the grant row, silently underpaying someone with no trace.
 		throw new HttpError(
 			"HACKATIME_STALE",
@@ -256,7 +256,13 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
 		// A tier's grant buys that tier's funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when the decision approves less time than was logged. Then the tier is what has to move, not the grant: a hundred dollars of parts for a five-hour week is money for work that was not done. An explicit grant override is an admin decision about the amount, so it is left alone.
-		if (approving && phase === Phase.DESIGN && tier && (grantUsd ?? 0) > 0 && input.grantUsdOverride == null) {
+		if (
+			approving
+			&& phase === Phase.DESIGN
+			&& tier
+			&& (grantUsd ?? 0) > 0
+			&& (input.grantUsdOverride === null || input.grantUsdOverride === undefined)
+		) {
 			const funded = getTierOrThrow(tier).fundingHours
 			const approved = approvedHours ?? 0
 			if (approved < funded) {

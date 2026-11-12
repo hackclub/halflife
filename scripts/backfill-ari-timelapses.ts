@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { or } from "@prisma/orm-postgres/orm-client"
 import { isAriConfigured } from "../src/lib/ari"
 import { Phase, PhaseStatus } from "../src/lib/enums"

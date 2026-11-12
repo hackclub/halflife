@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { spawnSync } from "node:child_process"
 import { writeFileSync } from "node:fs"
 import { resolve, sep } from "node:path"

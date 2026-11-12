@@ -12,7 +12,7 @@ import { formatDbTimestamp } from "../src/lib/time"
  *
  * 2. Onboarding never writes `ThemeProject.tier`. That column is the reviewer's decision and the number the grant is paid against; the participant's answer belongs in `requestedTier`. If these two ever merge, a participant is choosing their own funding.
  *
- * Run with `pnpm verify:onboarding` against a scratch database.
+ * Run with `bun run verify:onboarding` against a scratch database.
  */
 
 let failures = 0

@@ -174,7 +174,7 @@ async function main() {
 			project.userId,
 			targets.map(target => target.kind),
 		)
-		const targetTotal = targets.reduce((total, target) => total + target.target, 0)
+		const targetTotal = targets.reduce((sum, target) => sum + target.target, 0)
 
 		repairs.push({
 			correctedHours: frozenHours,

@@ -115,7 +115,7 @@ export function RepoChecks({
 			setLoading(false)
 		}
 		// The link is the input: a new one means a fresh check.
-	}, [project.id, project.githubRepo])
+	}, [project.id, project.githubRepo, onResult])
 
 	useEffect(() => {
 		// fetching on mount and on a new link

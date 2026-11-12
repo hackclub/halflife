@@ -6,7 +6,7 @@ import { recomputeAllStreaks } from "../src/lib/streak"
  *
  * A streak is derived rather than incremented, so this is always safe to run: it reads the rows and overwrites the `currentStreak` / `longestStreak` / `lastStreakDate` cache. Needed once for participants whose devlogs arrived through the Stasis import, which wrote `WorkSession` rows directly and never touched the streak columns – which is why every imported account read 0.
  *
- * Run with `pnpm streaks:recompute`.
+ * Run with `bun run streaks:recompute`.
  */
 async function main() {
 	const started = Date.now()

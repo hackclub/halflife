@@ -1,3 +1,4 @@
+import "../src/lib/auth"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import type { z } from "zod"
@@ -20,7 +21,7 @@ import type { ReviewShipInput } from "../src/lib/review-ship"
  *
  * The bodies below are written out by hand rather than extracted, because the point is to state what the client is believed to send. When one drifts, this fails and names it.
  *
- * Run with `pnpm verify:contracts`.
+ * Run with `bun run verify:contracts`.
  */
 
 // The project link is absolute only when the deployment names an origin, and this script has to name one itself: CI runs it with no environment at all, and the check below is about the rendering rather than about the deployment's config.
@@ -147,8 +148,8 @@ function routeFor(path: string): Set<string> | null {
 
 for (const call of [
 	...clientCalls(),
-	...STORE_CALLS.map(c => Object.assign({}, c, { file: "src/lib/store.tsx" })),
-	...COMPONENT_CALLS.map(c => Object.assign({}, c, { file: "src/components/platform/RepoSyncSettings.tsx" })),
+	...STORE_CALLS.map(c => ({ ...c, file: "src/lib/store.tsx" })),
+	...COMPONENT_CALLS.map(c => ({ ...c, file: "src/components/platform/RepoSyncSettings.tsx" })),
 ]) {
 	const exported = routeFor(call.path)
 	const label = `${call.path} [${call.methods.join("/")}]`
@@ -374,81 +375,79 @@ async function checkFetchRetry(): Promise<void> {
 	/* ── 2b. fetchWithRetry ─────────────────────────────────────────────────── */
 	//
 	// A transient failure at an identity endpoint used to abort an OAuth callback with a raw TimeoutError. The retry is the fix, and these pin the parts that matter: it retries what is worth retrying, leaves a 4xx alone, gives up after the retries, and never leaks an oversized body into memory.
-	{
-		const { fetchWithRetry } = await import("../src/lib/fetch-retry")
-		const realFetch = globalThis.fetch
+	const { fetchWithRetry } = await import("../src/lib/fetch-retry")
+	const realFetch = globalThis.fetch
 
-		// Silence the waits; the tests are about attempts, not wall time.
-		const originalSetTimeout = globalThis.setTimeout
-		await (async () => {
-			// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
-			globalThis.setTimeout = ((fn: () => void) => {
-				fn()
-				return 0
-			}) as unknown as typeof setTimeout
-			try {
-				// A transport error twice, then success: two failures, one answer.
-				let attempts = 0
-				globalThis.fetch = () => {
-					attempts++
-					if (attempts < 3) {
-						const err = new Error("aborted") as Error & { name: string }
-						err.name = "TimeoutError"
-						throw err
-					}
-					return Promise.resolve(new Response('{"ok":true}', { status: 200 }))
-				}
-				const res = await fetchWithRetry("https://example.test/a", { retries: 2 })
-				check("fetch-retry · a timeout is retried until it lands", attempts === 3 && res.status === 200)
-
-				// A 4xx is a real answer, not a blip.
-				let seen = 0
-				globalThis.fetch = () => {
-					seen++
-					return Promise.resolve(new Response("nope", { status: 401 }))
-				}
-				const unauthorized = await fetchWithRetry("https://example.test/b", { retries: 2 })
-				check("fetch-retry · a 4xx is not retried", seen === 1 && unauthorized.status === 401)
-
-				// A 5xx is worth another go.
-				let fives = 0
-				globalThis.fetch = () => {
-					fives++
-					return Promise.resolve(new Response("bad", { status: 503 }))
-				}
-				const down = await fetchWithRetry("https://example.test/c", { retries: 2 })
-				check("fetch-retry · a 5xx is retried then returned", fives === 3 && down.status === 503)
-
-				// Exhausting the retries throws rather than returning nothing.
-				let threw = false
-				globalThis.fetch = () => {
-					const err = new Error("nope") as Error & { name: string }
+	// Silence the waits; the tests are about attempts, not wall time.
+	const originalSetTimeout = globalThis.setTimeout
+	await (async () => {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
+		globalThis.setTimeout = ((fn: () => void) => {
+			fn()
+			return 0
+		}) as unknown as typeof setTimeout
+		try {
+			// A transport error twice, then success: two failures, one answer.
+			let attempts = 0
+			globalThis.fetch = () => {
+				attempts++
+				if (attempts < 3) {
+					const err = new Error("aborted") as Error & { name: string }
 					err.name = "TimeoutError"
 					throw err
 				}
-				try {
-					await fetchWithRetry("https://example.test/d", { retries: 1 })
-				} catch {
-					threw = true
-				}
-				check("fetch-retry · a persistent failure throws", threw)
-
-				// A body larger than the cap is refused rather than buffered whole.
-				globalThis.fetch = () =>
-					Promise.resolve(new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 }))
-				let oversizeThrew = false
-				try {
-					await fetchWithRetry("https://example.test/e", { retries: 0 })
-				} catch {
-					oversizeThrew = true
-				}
-				check("fetch-retry · an oversized body is refused", oversizeThrew)
-			} finally {
-				globalThis.fetch = realFetch
-				globalThis.setTimeout = originalSetTimeout
+				return Promise.resolve(new Response('{"ok":true}', { status: 200 }))
 			}
-		})()
-	}
+			const res = await fetchWithRetry("https://example.test/a", { retries: 2 })
+			check("fetch-retry · a timeout is retried until it lands", attempts === 3 && res.status === 200)
+
+			// A 4xx is a real answer, not a blip.
+			let seen = 0
+			globalThis.fetch = () => {
+				seen++
+				return Promise.resolve(new Response("nope", { status: 401 }))
+			}
+			const unauthorized = await fetchWithRetry("https://example.test/b", { retries: 2 })
+			check("fetch-retry · a 4xx is not retried", seen === 1 && unauthorized.status === 401)
+
+			// A 5xx is worth another go.
+			let fives = 0
+			globalThis.fetch = () => {
+				fives++
+				return Promise.resolve(new Response("bad", { status: 503 }))
+			}
+			const down = await fetchWithRetry("https://example.test/c", { retries: 2 })
+			check("fetch-retry · a 5xx is retried then returned", fives === 3 && down.status === 503)
+
+			// Exhausting the retries throws rather than returning nothing.
+			let threw = false
+			globalThis.fetch = () => {
+				const err = new Error("nope") as Error & { name: string }
+				err.name = "TimeoutError"
+				throw err
+			}
+			try {
+				await fetchWithRetry("https://example.test/d", { retries: 1 })
+			} catch {
+				threw = true
+			}
+			check("fetch-retry · a persistent failure throws", threw)
+
+			// A body larger than the cap is refused rather than buffered whole.
+			globalThis.fetch = () =>
+				Promise.resolve(new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 }))
+			let oversizeThrew = false
+			try {
+				await fetchWithRetry("https://example.test/e", { retries: 0 })
+			} catch {
+				oversizeThrew = true
+			}
+			check("fetch-retry · an oversized body is refused", oversizeThrew)
+		} finally {
+			globalThis.fetch = realFetch
+			globalThis.setTimeout = originalSetTimeout
+		}
+	})()
 }
 
 async function checkUploadKeys(): Promise<void> {

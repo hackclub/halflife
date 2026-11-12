@@ -395,7 +395,7 @@ export function useStoreWrites({ facts, router, setFacts }: StoreWritesOptions):
 						...f.progress,
 						[id]: {
 							...prev,
-							log: prev.log.map((l, i) => (i === 0 ? Object.assign({}, l, { body, clips, minutes }) : l)),
+							log: prev.log.map((l, i) => (i === 0 ? { ...l, body, clips, minutes } : l)),
 							minutes,
 						},
 					},

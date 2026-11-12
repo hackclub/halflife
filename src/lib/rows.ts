@@ -9,5 +9,5 @@
  * ```
  */
 export function withFields<T extends object, U extends object>(row: T, changes: U): Omit<T, keyof U> & U {
-	return Object.assign({}, row, changes)
+	return { ...row, ...changes }
 }

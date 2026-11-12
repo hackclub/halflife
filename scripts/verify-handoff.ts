@@ -19,7 +19,7 @@ import { formatDbTimestamp } from "../src/lib/time"
  *
  * Requires uploads to be configured (S3_ACCESS_KEY_ID/SECRET, S3_BUCKET_NAME, S3_ENDPOINT): minting itself refuses when R2 is absent, so the check fails closed without credentials rather than passing vacuously. The uploaded round trip object is deleted afterwards.
  *
- * Run with `pnpm verify:handoff` against a scratch database.
+ * Run with `bun run verify:handoff` against a scratch database.
  */
 
 let failures = 0

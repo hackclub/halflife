@@ -27,48 +27,62 @@ function Ico({ children, ...p }: P & { children: ReactNode }) {
 }
 
 /** The design half of a review: a pencil, not a colour. */
-export const IconPencil = (p: P) => (
-	<Ico {...p}>
-		<path d="m4 20 1.1-4.2L16.4 4.5a2.1 2.1 0 0 1 3 3L8.1 18.9 4 20Z" />
-		<path d="m14.6 6.3 3.1 3.1" />
-	</Ico>
-)
+export function IconPencil(p: P) {
+	return (
+		<Ico {...p}>
+			<path d="m4 20 1.1-4.2L16.4 4.5a2.1 2.1 0 0 1 3 3L8.1 18.9 4 20Z" />
+			<path d="m14.6 6.3 3.1 3.1" />
+		</Ico>
+	)
+}
 
 /** The build half of a review: a hammer, not a colour. */
-export const IconHammer = (p: P) => (
-	<Ico {...p}>
-		<path d="m13.6 5.2 5.2 5.2-2.1 2.1-5.2-5.2 2.1-2.1Z" />
-		<path d="M12.7 8.1 4 17v3h3l8.9-8.7" />
-	</Ico>
-)
+export function IconHammer(p: P) {
+	return (
+		<Ico {...p}>
+			<path d="m13.6 5.2 5.2 5.2-2.1 2.1-5.2-5.2 2.1-2.1Z" />
+			<path d="M12.7 8.1 4 17v3h3l8.9-8.7" />
+		</Ico>
+	)
+}
 
-export const IconChevronDown = (p: P) => (
-	<Ico {...p}>
-		<path d="m6 9 6 6 6-6" />
-	</Ico>
-)
+export function IconChevronDown(p: P) {
+	return (
+		<Ico {...p}>
+			<path d="m6 9 6 6 6-6" />
+		</Ico>
+	)
+}
 
-export const IconSearch = (p: P) => (
-	<Ico {...p}>
-		<circle cx="11" cy="11" r="6.4" />
-		<path d="m16 16 4.2 4.2" />
-	</Ico>
-)
+export function IconSearch(p: P) {
+	return (
+		<Ico {...p}>
+			<circle cx="11" cy="11" r="6.4" />
+			<path d="m16 16 4.2 4.2" />
+		</Ico>
+	)
+}
 
-export const IconFilter = (p: P) => (
-	<Ico {...p}>
-		<path d="M4 5.5h16l-6.2 7.2V19l-3.6 1.8v-8.1L4 5.5Z" />
-	</Ico>
-)
+export function IconFilter(p: P) {
+	return (
+		<Ico {...p}>
+			<path d="M4 5.5h16l-6.2 7.2V19l-3.6 1.8v-8.1L4 5.5Z" />
+		</Ico>
+	)
+}
 
-export const IconCheck = (p: P) => (
-	<Ico {...p}>
-		<path d="M5 12.5l4.5 4.5L19 7.5" />
-	</Ico>
-)
+export function IconCheck(p: P) {
+	return (
+		<Ico {...p}>
+			<path d="M5 12.5l4.5 4.5L19 7.5" />
+		</Ico>
+	)
+}
 
-export const IconX = (p: P) => (
-	<Ico {...p}>
-		<path d="M6 6l12 12M18 6 6 18" />
-	</Ico>
-)
+export function IconX(p: P) {
+	return (
+		<Ico {...p}>
+			<path d="M6 6l12 12M18 6 6 18" />
+		</Ico>
+	)
+}

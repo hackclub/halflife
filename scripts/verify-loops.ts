@@ -5,7 +5,7 @@ import { resolveSignupRow } from "../src/lib/airtable/loops"
  *
  * The join is the whole bug this exists for. It fails silently on purpose: a row that is not found is skipped and counted, never an error, so matching on the wrong key left every Loops column empty while the job reported success and wrote nothing. The measured version of that: 5211 users, 5101 Signups rows, one match.
  *
- * No network and no database, so this runs anywhere and needs no credentials. Run with `pnpm verify:loops`.
+ * No network and no database, so this runs anywhere and needs no credentials. Run with `bun run verify:loops`.
  */
 
 let failures = 0

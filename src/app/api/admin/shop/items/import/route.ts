@@ -34,14 +34,13 @@ export const POST = withWritePermission(Permission.MANAGE_SHOP, async (req: Requ
 			problems: taken.map(t => ({ line: 0, message: `Slug "${t.id}" already exists. Edit it from its own page.` })),
 		})
 
-	const data = items.map(item =>
-		Object.assign({}, item, {
-			costUsd: dollars(item.costUsd ?? null),
-			description: sanitize(item.description),
-			imageUrl: item.imageUrl ?? null,
-			name: sanitize(item.name),
-		}),
-	)
+	const data = items.map(item => ({
+		...item,
+		costUsd: dollars(item.costUsd ?? null),
+		description: sanitize(item.description),
+		imageUrl: item.imageUrl ?? null,
+		name: sanitize(item.name),
+	}))
 	// One statement, so a slug added in the meantime fails the whole batch rather than leaving half of it behind.
 	await db.orm.public.ShopItem.createAll(data)
 

@@ -11,7 +11,8 @@ import { Role } from "@/lib/enums"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import { FORGES } from "@/lib/forge"
 import { adoptHcaVerifiedEmail, fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
-import { LAPSE_API_BASE } from "@/lib/lapse"
+import { LAPSE_API_BASE } from "@/lib/lapse-config"
+import { registerOauthTokenSource } from "@/lib/oauth-token"
 import { isLoopbackHostname, publicHosts as publicHostList } from "@/lib/origin"
 import db from "@/lib/prisma8"
 import { redactForLog } from "@/lib/redact"
@@ -536,3 +537,8 @@ export const auth = betterAuth({
 		},
 	},
 })
+
+// Lets lib/oauth-token and everything that calls it read a linked account's token through better-auth, which decrypts and refreshes it.
+registerOauthTokenSource(
+	async (accountId, userId) => (await auth.api.getAccessToken({ body: { accountId, userId } }))?.accessToken ?? null,
+)

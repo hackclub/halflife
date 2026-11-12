@@ -24,8 +24,11 @@ function blockExternalFetch(): void {
  *
  * The reverse – requesting PII scopes the HCA app does not hold – breaks every sign-in, and can only be checked on the HCA app itself; docs/RUNBOOK has it on the pre-launch list.
  */
-export function register(): void {
+export async function register(): Promise<void> {
 	if (process.env.E2E_BLOCK_EXTERNAL_FETCH === "true") blockExternalFetch()
+
+	// Loads lib/auth so the OAuth token source is registered (lib/oauth-token) before any route runs. Every route that reaches a token-reading module relies on this, since those modules cannot import lib/auth themselves.
+	if (process.env.NEXT_RUNTIME === "nodejs") await import("@/lib/auth")
 
 	if (process.env.PULL_HCA_PII === "true" && !process.env.PII_ENCRYPTION_KEY)
 		console.error(
