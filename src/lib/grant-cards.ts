@@ -31,7 +31,12 @@ import { configuredOrigin } from "@/lib/origin"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { STARTER_TIER_ID } from "@/lib/starter-funding"
-import { readStarterFundingGiven, writeStarterFundingGiven } from "@/lib/starter-funding-sheet"
+import {
+	readStarterFundingGiven,
+	setStarterFundingGiven,
+	starterRecordIds,
+	writeStarterFundingGiven,
+} from "@/lib/starter-funding-sheet"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
@@ -254,11 +259,11 @@ async function applyUnifiedGate(
 	const recordIdOf = (row: GrantCardProjectRow) => recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
 	const submitted = await readUnifiedSubmitted(eligible.map(recordIdOf).filter((id): id is string => Boolean(id)))
 	// A Week 1 starter with money already recorded in Airtable is paid by the starter export, not the wave, which does not net that money off.
-	const starterRecordIds = eligible
+	const starterRecordIdList = eligible
 		.filter(row => row.weekOneStarter)
 		.map(recordIdOf)
 		.filter((id): id is string => Boolean(id))
-	const fundingGiven = await readStarterFundingGiven(starterRecordIds)
+	const fundingGiven = await readStarterFundingGiven(starterRecordIdList)
 	const starterBlock = (recordId: string): string | null => {
 		const paid = fundingGiven?.get(recordId)
 		if (fundingGiven === null || paid === undefined) return "Could not check Funding given"
@@ -429,51 +434,58 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 		throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
 
 	const { ip, userAgent } = await requestInfo()
-	const result = await db.transaction(async tx => {
-		// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through.
-		const txPreview = await buildPreview(tx)
-		if (txPreview.fingerprint !== input.fingerprint)
-			throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
-		if (txPreview.eligible.length === 0)
-			throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
+	// A starter's Funding given is written before its row can reach the CSV. If that write fails, nothing is exported.
+	const writtenStarterRows = await writeStarterFunding(current.eligible)
+	const result = await db
+		.transaction(async tx => {
+			// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through.
+			const txPreview = await buildPreview(tx)
+			if (txPreview.fingerprint !== input.fingerprint)
+				throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
+			if (txPreview.eligible.length === 0)
+				throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
 
-		const batch = await tx.orm.public.HcbCardGrantExportBatch.create({
-			createdById: input.admin.id,
-			fingerprint: txPreview.fingerprint,
-			totalCents: txPreview.totalCents,
-		})
-		try {
-			await tx.orm.public.HcbCardGrantExportRow.createAll(
-				txPreview.eligible.map(row => ({
-					amountCents: row.amountCents,
-					batchId: batch.id,
-					email: row.email,
-					themeProjectId: row.projectId,
-				})),
-			)
-		} catch (err) {
-			// The unique index is what tells us; naming the reason is more useful than a generic conflict.
-			if (isUniqueViolation(err))
-				throw new HttpError("CONFLICT", "Another export already claimed one of these projects")
-			throw err
-		}
-
-		await logAuditTx(tx, {
-			action: AuditAction.ADMIN_CREATE_GRANT_CARD_EXPORT,
-			actorEmail: input.admin.email,
-			actorId: input.admin.id,
-			ip,
-			metadata: {
-				count: txPreview.eligible.length,
+			const batch = await tx.orm.public.HcbCardGrantExportBatch.create({
+				createdById: input.admin.id,
 				fingerprint: txPreview.fingerprint,
 				totalCents: txPreview.totalCents,
-			},
-			targetId: batch.id,
-			targetType: "HcbCardGrantExportBatch",
-			userAgent,
+			})
+			try {
+				await tx.orm.public.HcbCardGrantExportRow.createAll(
+					txPreview.eligible.map(row => ({
+						amountCents: row.amountCents,
+						batchId: batch.id,
+						email: row.email,
+						themeProjectId: row.projectId,
+					})),
+				)
+			} catch (err) {
+				// The unique index is what tells us; naming the reason is more useful than a generic conflict.
+				if (isUniqueViolation(err))
+					throw new HttpError("CONFLICT", "Another export already claimed one of these projects")
+				throw err
+			}
+
+			await logAuditTx(tx, {
+				action: AuditAction.ADMIN_CREATE_GRANT_CARD_EXPORT,
+				actorEmail: input.admin.email,
+				actorId: input.admin.id,
+				ip,
+				metadata: {
+					count: txPreview.eligible.length,
+					fingerprint: txPreview.fingerprint,
+					totalCents: txPreview.totalCents,
+				},
+				targetId: batch.id,
+				targetType: "HcbCardGrantExportBatch",
+				userAgent,
+			})
+			return { batchId: batch.id, eligible: txPreview.eligible, totalCents: txPreview.totalCents }
 		})
-		return { batchId: batch.id, eligible: txPreview.eligible, totalCents: txPreview.totalCents }
-	})
+		.catch(async err => {
+			await revertStarterFunding(writtenStarterRows)
+			throw err
+		})
 
 	return {
 		batchId: result.batchId,
@@ -582,6 +594,40 @@ async function auditIssue(
 		targetType: "ThemeProject",
 		userAgent: input.userAgent,
 	})
+}
+
+/**
+ * Writes `Funding given` for each Week 1 starter in a card export, before its row can reach the CSV. Returns the rows written, so they can be undone if the export does not go ahead.
+ *
+ * Throws, naming the starter, when one cannot be written. Writes already made are undone first, so a failed export leaves Airtable as it was.
+ */
+async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<string[]> {
+	const starters = eligible.filter(row => row.weekOneStarter)
+	const recordIds = await starterRecordIds(starters.map(row => row.projectId))
+	const written: string[] = []
+	for (const row of starters) {
+		const recordId = recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
+		const failure = recordId
+			? await setStarterFundingGiven(recordId, row.amountCents / 100)
+			: "No Airtable row is linked to this project"
+		if (failure !== null) {
+			await revertStarterFunding(written)
+			throw new HttpError(
+				"INTERNAL",
+				`Funding given could not be written for ${row.title || row.projectId}, so nothing was exported: ${failure}`,
+			)
+		}
+		if (recordId) written.push(recordId)
+	}
+	return written
+}
+
+/** Undoes `Funding given` writes made for an export that did not go ahead, setting them back to zero. */
+async function revertStarterFunding(recordIds: readonly string[]): Promise<void> {
+	for (const recordId of recordIds) {
+		const failure = await setStarterFundingGiven(recordId, 0)
+		if (failure !== null) console.error("[grant-cards] could not revert Funding given", recordId, failure)
+	}
 }
 
 async function markIssued(
