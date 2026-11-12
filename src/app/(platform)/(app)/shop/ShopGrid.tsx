@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useMemo, useRef, useState } from "react"
 import { errorCode, errorMessage } from "@/lib/api-error"
 import { cx } from "@/lib/cx"
+import type { ShopDeliveryPreference } from "@/lib/enums"
 import type { ShopItemView } from "@/lib/shop"
 import { useStore } from "@/lib/store"
 import { OrderConfirmDialog } from "./OrderConfirmDialog"
@@ -78,7 +79,7 @@ export function ShopGrid({
 	 *
 	 * The server takes the coins inside one locked transaction and the order lands PENDING for someone to fulfil, so there is nothing to do optimistically here beyond refusing to double-fire – a second click while the first is in the air is how somebody ends up with two printers.
 	 */
-	async function buy(item: ShopItemView) {
+	async function buy(item: ShopItemView, deliveryPreference: ShopDeliveryPreference) {
 		if (busy) return
 		setBusy(item.id)
 		setError(null)
@@ -87,7 +88,7 @@ export function ShopGrid({
 			const key = keys.current.get(item.id) ?? crypto.randomUUID()
 			keys.current.set(item.id, key)
 			const res = await fetch("/api/shop/orders", {
-				body: JSON.stringify({ idempotencyKey: key, quantity: 1, shopItemId: item.id }),
+				body: JSON.stringify({ deliveryPreference, idempotencyKey: key, quantity: 1, shopItemId: item.id }),
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
@@ -117,18 +118,18 @@ export function ShopGrid({
 	}
 
 	/**
-	 * Buying is gated on a mailing address the maker has checked, but the address is never shown: it lives encrypted on their Hack Club account, so the dialog links there instead of asking the server to decrypt it into this page.
+	 * Buying is gated on how the item should reach the maker: posted to the address they have checked, or its value as a grant card. The address itself is never shown: it lives encrypted on their Hack Club account, so the dialog links there instead of asking the server to decrypt it into this page.
 	 */
 	function askToBuy(item: ShopItemView) {
 		if (busy) return
 		setConfirming(item)
 	}
 
-	function placeOrder() {
+	function placeOrder(deliveryPreference: ShopDeliveryPreference) {
 		if (!confirming) return
 		const item = confirming
 		setConfirming(null)
-		void buy(item)
+		void buy(item, deliveryPreference)
 	}
 
 	return (

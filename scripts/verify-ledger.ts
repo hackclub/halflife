@@ -1,5 +1,5 @@
 import "../src/lib/auth"
-import { Phase, PhaseStatus, ReviewResult, ShopItemCategory, Theme } from "../src/lib/enums"
+import { Phase, PhaseStatus, ReviewResult, ShopDeliveryPreference, ShopItemCategory, Theme } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
 
 /**
@@ -160,7 +160,9 @@ async function main() {
 		requiresPrinterQualified: false,
 	})
 
-	const attempts = await Promise.allSettled(Array.from({ length: 8 }, () => purchase(participant.id, item.id, 1)))
+	const attempts = await Promise.allSettled(
+		Array.from({ length: 8 }, () => purchase(participant.id, item.id, 1, ShopDeliveryPreference.SHIP)),
+	)
 	const succeeded = attempts.filter(a => a.status === "fulfilled").length
 	check("only one of eight concurrent purchases succeeds", succeeded, 1)
 
@@ -248,7 +250,7 @@ async function main() {
 		priceCredits: 10,
 		requiresPrinterQualified: false,
 	})
-	await purchase(saver.id, upgrade.id, 1)
+	await purchase(saver.id, upgrade.id, 1, ShopDeliveryPreference.SHIP)
 	check("spendable coins buy an upgrade", await saverSpendable(), expectedDesign.spendable - 10)
 	check("the purchase moved nothing locked", await saverBanked(), 0)
 
@@ -262,7 +264,7 @@ async function main() {
 		priceCredits: expectedDesign.spendable - 10,
 		requiresPrinterQualified: false,
 	})
-	await purchase(saver.id, printerItem.id, 1)
+	await purchase(saver.id, printerItem.id, 1, ShopDeliveryPreference.SHIP)
 	check("a printer purchase empties the balance", await saverSpendable(), 0)
 	check("and leaves nothing locked either", await saverBanked(), 0)
 

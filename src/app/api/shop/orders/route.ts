@@ -45,6 +45,7 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 		gate.user.id,
 		parsed.data.shopItemId,
 		parsed.data.quantity,
+		parsed.data.deliveryPreference,
 		parsed.data.idempotencyKey,
 		parsed.data.note ?? null,
 	)
@@ -54,6 +55,7 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 		actorEmail: gate.user.email,
 		actorId: gate.user.id,
 		metadata: {
+			deliveryPreference: order.deliveryPreference,
 			quantity: order.quantity,
 			shopItemId: parsed.data.shopItemId,
 			totalCredits: order.totalCredits,

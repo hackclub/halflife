@@ -1,8 +1,13 @@
 import { z } from "zod"
+import { ShopDeliveryPreference } from "@/lib/enums"
 import { boundedText } from "@/lib/schemas/common"
 
 export const purchaseSchema = z
 	.object({
+		/**
+		 * How the buyer wants the item to reach them: posted to their mailing address, or its value sent as an HCB grant card. Asked at checkout and stored on the order, because staff cannot know which one was meant otherwise.
+		 */
+		deliveryPreference: z.enum(ShopDeliveryPreference),
 		/**
 		 * One per purchase intent, reused across retries so a retried request resolves to the order it already made instead of charging twice.
 		 */
