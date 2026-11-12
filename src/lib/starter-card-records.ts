@@ -54,12 +54,14 @@ export function recordStarterCards(cards: readonly RecordedCard[]): Promise<{ ba
 	})
 }
 
-/** Supersede the live rows for these projects, when their HCB cards have been cancelled. Returns how many were superseded. */
-export function supersedeLiveCards(projectIds: readonly string[], reason: string): Promise<number> {
+/**
+ * Supersede these export rows, when their HCB cards have been cancelled. Only live rows are touched, and the caller names the rows, so a card recorded for a starter in this run can never be superseded by mistake.
+ */
+export function supersedeLiveCards(rowIds: readonly string[], reason: string): Promise<number> {
 	return db.transaction(async tx => {
-		if (projectIds.length === 0) return 0
+		if (rowIds.length === 0) return 0
 		const rows = await tx.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
-			.where(row => row.themeProjectId.in([...projectIds]))
+			.where(row => row.id.in([...rowIds]))
 			.select("amountCents", "id", "themeProjectId")
 			.all()
 		if (rows.length === 0) return 0
