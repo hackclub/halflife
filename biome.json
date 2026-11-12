@@ -314,6 +314,12 @@
 				"noReturnAssign": "off",
 				"noShadow": "off",
 				"noUnnecessaryConditions": "off",
+				"noUntrustedLicenses": {
+					"level": "warn",
+					"options": {
+						"ignoreDeprecated": true
+					}
+				},
 				"useArraySortCompare": "off",
 				"useBaseline": "off"
 			}
