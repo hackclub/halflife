@@ -20,7 +20,7 @@ import { phaseSchema } from "../src/lib/schemas/common"
 /**
  * Fill blank address fields on `YSWS Project Submission` rows from the maker's current address.
  *
- * Submission rows are written with the maker's shipping address at hand-in (see `fieldsFor` in lib/airtable/sync), refreshed from HCA at that point. Rows can still end up with blank address columns when PII could not be pulled or decrypted at the time, HCA had no address, or the sync ran without a usable token/key. This backfill refreshes each maker's profile from HCA, decrypts their stored PII, and writes any address field that is still blank on the Airtable row but now has a value.
+ * Submission rows are written with the maker's shipping address at hand-in (see `fieldsFor` in lib/airtable/sync), refreshed from HCA at that point. Rows can still end up with blank address columns when PII could not be pulled or decrypted at the time, HCA had no address, or the sync ran without a usable token/key. This backfill decrypts each maker's stored PII, asks HCA again only when that stored address is incomplete, and writes any address field that is still blank on the Airtable row but now has a value.
  *
  * Only fields that are empty in Airtable are written, so existing values are never overwritten. Rows that still have missing address fields after the run are logged with a reason and written to a JSON report, so the cause can be investigated.
  *
@@ -88,6 +88,19 @@ function blankAddressFields(row: CurrentRow): AddressKey[] {
 
 function blankRequiredFields(row: CurrentRow): AddressKey[] {
 	return REQUIRED_KEYS.filter(key => !row[key])
+}
+
+/** The address cells held in a user's stored PII. */
+function storedAddress(user: Parameters<typeof decryptUserPII>[0]): { [_ in AddressKey]: string } {
+	const pii = decryptUserPII(user)
+	return {
+		addressLine1: pii.line1?.trim() ?? "",
+		addressLine2: pii.line2?.trim() ?? "",
+		city: pii.city?.trim() ?? "",
+		country: pii.country?.trim() ?? "",
+		state: pii.state?.trim() ?? "",
+		zip: pii.zip?.trim() ?? "",
+	}
 }
 
 /** The current address cells for every row in the submission table, read once. */
@@ -206,16 +219,11 @@ async function main() {
 	const ownerByProject = new Map(projects.map(project => [project.id, project.userId]))
 	const titleByProject = new Map(projects.map(project => [project.id, project.title]))
 
-	// Refresh each maker's address from HCA once, then decrypt their stored PII.
+	// Decrypt what is stored first. A maker whose stored address is already complete needs no HCA round trip: this backfill only fills blank Airtable cells, so a refresh could not change what gets written. Asking HCA for every owner instead spends thousands of requests against its rate limit for nothing.
 	const userIds = [...new Set(projects.map(project => project.userId))]
 	const infoByUser = new Map<string, UserAddressInfo>()
 	for (const userId of userIds) {
-		try {
-			await syncHcaProfile(userId)
-		} catch (err) {
-			console.warn(`[addresses] could not refresh HCA profile for ${userId}:`, err)
-		}
-		const user = await db.orm.public.User.whereUnique({ id: userId }).first()
+		let user = await db.orm.public.User.whereUnique({ id: userId }).first()
 		if (!user) {
 			infoByUser.set(userId, {
 				address: { addressLine1: "", addressLine2: "", city: "", country: "", state: "", zip: "" },
@@ -223,14 +231,22 @@ async function main() {
 			})
 			continue
 		}
-		const pii = decryptUserPII(user)
-		const address = {
-			addressLine1: pii.line1?.trim() ?? "",
-			addressLine2: pii.line2?.trim() ?? "",
-			city: pii.city?.trim() ?? "",
-			country: pii.country?.trim() ?? "",
-			state: pii.state?.trim() ?? "",
-			zip: pii.zip?.trim() ?? "",
+		let address = storedAddress(user)
+		if (!REQUIRED_KEYS.every(key => address[key])) {
+			try {
+				await syncHcaProfile(userId)
+			} catch (err) {
+				console.warn(`[addresses] could not refresh HCA profile for ${userId}:`, err)
+			}
+			user = await db.orm.public.User.whereUnique({ id: userId }).first()
+			if (!user) {
+				infoByUser.set(userId, {
+					address: { addressLine1: "", addressLine2: "", city: "", country: "", state: "", zip: "" },
+					reason: "User record not found after HCA refresh",
+				})
+				continue
+			}
+			address = storedAddress(user)
 		}
 		const hasRequired = REQUIRED_KEYS.every(key => address[key])
 		infoByUser.set(userId, { address, reason: hasRequired ? null : await diagnoseUser(userId, false) })
