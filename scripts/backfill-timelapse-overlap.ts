@@ -15,7 +15,7 @@ import { formatDbTimestamp } from "../src/lib/time"
  *
  * Safe to run again: it starts from the rows still missing a recording start.
  *
- * Run with `pnpm hours:backfill-overlap`.
+ * Run with `bun run hours:backfill-overlap`.
  */
 const PACE_MS = 250
 

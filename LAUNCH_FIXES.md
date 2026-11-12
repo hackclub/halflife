@@ -1,6 +1,6 @@
 # Pre-launch fixes
 
-Bugs found in the launch review, ranked. Check off as each lands. Each item should get its own `pnpm typecheck && pnpm lint` pass (and `pnpm build` for the larger ones) before it is ticked.
+Bugs found in the launch review, ranked. Check off as each lands. Each item should get its own `bun run typecheck && bun run lint` pass (and `bun run build` for the larger ones) before it is ticked.
 
 ## High – launch blockers
 

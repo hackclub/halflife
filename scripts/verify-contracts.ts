@@ -20,7 +20,7 @@ import type { ReviewShipInput } from "../src/lib/review-ship"
  *
  * The bodies below are written out by hand rather than extracted, because the point is to state what the client is believed to send. When one drifts, this fails and names it.
  *
- * Run with `pnpm verify:contracts`.
+ * Run with `bun run verify:contracts`.
  */
 
 // The project link is absolute only when the deployment names an origin, and this script has to name one itself: CI runs it with no environment at all, and the check below is about the rendering rather than about the deployment's config.

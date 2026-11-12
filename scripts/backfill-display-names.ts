@@ -8,7 +8,7 @@ import db from "../src/lib/prisma8"
  *
  * Paced, because it is two HCA calls per person in the program. Safe to run again: it starts from the rows still missing a display name.
  *
- * Run with `pnpm hca:backfill-display-names`.
+ * Run with `bun run hca:backfill-display-names`.
  */
 const PACE_MS = 250
 

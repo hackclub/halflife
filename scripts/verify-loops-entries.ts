@@ -19,7 +19,7 @@ import db from "../src/lib/prisma8"
  * 1. Matched stale rows – the row joins to a user who now has no real entry (only Hackatime-linked sessions). The next `loops-sync` run clears these.
  * 2. Unmatched rows – the row has no join to any user, so nothing will ever rewrite or clear it. These need a manual clear in Airtable (or a fixed join), which is why they are listed separately.
  *
- * Read-only by default. With `--clear`, type 1 rows are PATCHed to null; type 2 rows are only reported, since clearing what we cannot match risks deleting a value that is actually correct. Run with `pnpm verify:loops-entries [--clear]`.
+ * Read-only by default. With `--clear`, type 1 rows are PATCHed to null; type 2 rows are only reported, since clearing what we cannot match risks deleting a value that is actually correct. Run with `bun run verify:loops-entries [--clear]`.
  */
 
 const clear = process.argv.includes("--clear")
