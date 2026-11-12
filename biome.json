@@ -194,7 +194,12 @@
 				"usePackageJsonValidEngines": "error",
 				"usePromiseRejectErrors": "error",
 				"useReactCompiler": "off",
-				"useReactFunctionComponentDefinition": "off",
+				"useReactFunctionComponentDefinition": {
+					"level": "on",
+					"options": {
+						"namedComponents": "functionDeclaration"
+					}
+				},
 				"useReactNamingConvention": "off",
 				"useReactNativeValidPlatformColors": "error",
 				"useRegexpExec": "error",
