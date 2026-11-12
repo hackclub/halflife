@@ -20,7 +20,7 @@ export const GET = withPermission(
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: (await params).id })
 			.select("phase", "themeProjectId")
-			.include("themeProject", project => project.select("deletedAt", "userId"))
+			.include("themeProject", proj => proj.select("deletedAt", "userId"))
 			.first()
 		const project = submission?.themeProject
 		if (!submission || !project || project.deletedAt || project.userId === gate.user.id)

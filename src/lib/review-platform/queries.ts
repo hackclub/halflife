@@ -411,8 +411,8 @@ function timelapseLinks(
 export async function getReviewDetail(submissionId: string, viewer: ReviewViewer): Promise<ReviewDetail | null> {
 	const row = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
 		.include("claim", claim => claim.include("reviewer", reviewer => reviewer.select("displayName", "id", "name")))
-		.include("dispute", dispute =>
-			dispute.include("messages", messages =>
+		.include("dispute", disp =>
+			disp.include("messages", messages =>
 				messages
 					.include("author", author => author.select("displayName", "name"))
 					.orderBy(message => message.createdAt.asc()),
@@ -423,8 +423,8 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 				.include("reviewer", reviewer => reviewer.select("displayName", "name"))
 				.orderBy(review => review.createdAt.desc()),
 		)
-		.include("themeProject", project =>
-			project.include("user", user =>
+		.include("themeProject", proj =>
+			proj.include("user", user =>
 				user.select("displayName", "email", "fraudFlagged", "id", "name", "slackId", "verificationStatus"),
 			),
 		)

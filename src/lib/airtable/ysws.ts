@@ -103,16 +103,16 @@ export async function writeYswsRecord(
 		return { skipped: "not_configured" }
 	}
 
-	const send = (f: { [_: string]: unknown }, id: string | null) =>
+	const send = (f: { [_: string]: unknown }, rowId: string | null) =>
 		withRateLimitRetry(
-			id ? "updateYswsSubmission" : "createYswsSubmission",
+			rowId ? "updateYswsSubmission" : "createYswsSubmission",
 			() =>
 				airtableFetch(AirtableListSchema, config, YSWS_SUBMISSION.tableId, {
-					body: JSON.stringify({ records: [id ? { fields: f, id } : { fields: f }], typecast: false }),
-					method: id ? "PATCH" : "POST",
+					body: JSON.stringify({ records: [rowId ? { fields: f, id: rowId } : { fields: f }], typecast: false }),
+					method: rowId ? "PATCH" : "POST",
 				}),
 			// A create is not idempotent: retrying a 5xx whose row was actually written duplicates it. The hourly retry job re-runs the whole sync instead, and finds the row (or adopts it) before posting again.
-			{ retryServerErrors: id !== null },
+			{ retryServerErrors: rowId !== null },
 		)
 
 	const current = { ...fields }

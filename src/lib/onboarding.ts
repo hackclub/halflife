@@ -67,8 +67,8 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 			.select("hardwareExperience", "onboardingCompletedAt", "onboardingStep", "trackingTutorialDismissedAt")
 			.firstOrThrow(),
 		db.orm.public.ThemeProject.where({ deletedAt: null, userId })
-			.where(project => project.theme.neq(Theme.WARMUP))
-			.orderBy(project => project.createdAt.asc())
+			.where(candidate => candidate.theme.neq(Theme.WARMUP))
+			.orderBy(candidate => candidate.createdAt.asc())
 			.select("description", "id", "requestedTier", "starterProjectId", "theme", "title")
 			.first(),
 	])

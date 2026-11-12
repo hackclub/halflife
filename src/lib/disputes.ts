@@ -52,7 +52,7 @@ export async function sendDisputedPhaseBack(
 ): Promise<void> {
 	const dispute = await db.orm.public.ReviewDispute.whereUnique({ id: disputeId })
 		.select("id", "resolvedAt")
-		.include("submission", submission => submission.select("id", "phase", "themeProjectId"))
+		.include("submission", sub => sub.select("id", "phase", "themeProjectId"))
 		.first()
 	if (!dispute?.submission) throw new HttpError("NOT_FOUND", "Dispute not found")
 	if (dispute.resolvedAt) throw new HttpError("CONFLICT", "That dispute is already resolved")

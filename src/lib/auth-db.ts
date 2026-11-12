@@ -57,7 +57,7 @@ const createPool = () => {
  * Untyped on purpose: better-auth addresses tables and columns by name from its own schema, and typing them would mean hand-writing four table interfaces that only mirror `prisma/contract.prisma`.
  */
 const createClient = () =>
-	new Kysely<{ [_: string]: { [_: string]: unknown } }>({ dialect: new PostgresDialect({ pool: createPool() }) })
+	new Kysely<{ [_: string]: { [column: string]: unknown } }>({ dialect: new PostgresDialect({ pool: createPool() }) })
 
 const authDb = globalThis.halflifeAuthDb ?? createClient()
 

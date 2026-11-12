@@ -20,8 +20,8 @@ export const GET = withPermission(
 	async (_req: Request, { params, gate }: Params & AuthedContext) => {
 		const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: (await params).id })
 			.select("themeProjectId")
-			.include("themeProject", project =>
-				project.select("deletedAt", "userId").include("user", user => user.select("slackId")),
+			.include("themeProject", proj =>
+				proj.select("deletedAt", "userId").include("user", user => user.select("slackId")),
 			)
 			.first()
 		const project = submission?.themeProject

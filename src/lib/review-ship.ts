@@ -216,7 +216,7 @@ async function buildReviewShipInput(
 				.orderBy(submission => submission.createdAt.desc())
 				.select("createdAt", "id", "notes", "phase", "resolvedAt"),
 		)
-		.include("user", user => user.select("email", "hackatimeUserId", "name", "slackId"))
+		.include("user", owner => owner.select("email", "hackatimeUserId", "name", "slackId"))
 		.include("workSessions", sessions =>
 			sessions
 				.where({ deletedAt: null, phase })

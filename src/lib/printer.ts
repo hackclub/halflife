@@ -149,8 +149,8 @@ export async function updatePrinterAwardStatus(
 	adminEmail: string | null,
 ): Promise<PrinterAwardResponse> {
 	const award = await db.orm.public.PrinterAward.whereUnique({ id: awardId })
-		.include("user", user =>
-			user.select(
+		.include("user", owner =>
+			owner.select(
 				"encryptedAddressCity",
 				"encryptedAddressCountry",
 				"encryptedAddressLine2",
@@ -270,7 +270,7 @@ export async function updatePrinterAwardStatus(
 			"trackingCarrier",
 			"trackingNumber",
 		)
-		.include("user", user => user.select("displayName", "id", "name"))
+		.include("user", owner => owner.select("displayName", "id", "name"))
 		.firstOrThrow()
 	if (!updated.user) throw new HttpError("NOT_FOUND", "Printer award not found")
 	const { encryptedAddress, user, ...rest } = updated

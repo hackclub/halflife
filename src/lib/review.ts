@@ -156,7 +156,7 @@ export interface FinalizeOutcome {
 export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutcome> {
 	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })
 		.include("claim")
-		.include("themeProject", project => project.include("user", user => user.select("id", "printerGoalId")))
+		.include("themeProject", proj => proj.include("user", user => user.select("id", "printerGoalId")))
 		.first()
 	if (!submission?.themeProject?.user) throw new HttpError("NOT_FOUND", "Submission not found")
 

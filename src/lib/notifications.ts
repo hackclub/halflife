@@ -310,7 +310,7 @@ async function disputeContext(
 		.select("ariSubmissionId", "phase", "themeProjectId")
 		.include("reviews", reviews =>
 			reviews
-				.orderBy(review => review.createdAt.desc())
+				.orderBy(rev => rev.createdAt.desc())
 				.where({ invalidated: false })
 				.limit(1)
 				.select("reviewerEmail")

@@ -316,7 +316,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	const open =
 		byShip
 		?? (await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
-			.orderBy(submission => submission.createdAt.desc())
+			.orderBy(sub => sub.createdAt.desc())
 			.select("ariStatus", "ariSubmissionId", "id", "resolvedAt")
 			.first())
 	if (!open) {
