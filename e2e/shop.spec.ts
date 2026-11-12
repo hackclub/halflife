@@ -1,5 +1,6 @@
 import { readBalance, readShopOrders } from "./db"
 import { expect, test } from "./fixtures"
+import { waitForHydration } from "./hydration"
 
 const itemName = "E2E Test Item"
 
@@ -10,7 +11,9 @@ test("a participant confirms their mailing address before buying", async ({ open
 	const item = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: itemName }) })
 	await expect(item).toBeVisible()
 	await item.hover()
-	await item.getByRole("button", { name: "Buy" }).click()
+	const buy = item.getByRole("button", { name: "Buy" })
+	await waitForHydration(buy)
+	await buy.click()
 
 	const dialog = page.getByRole("dialog", { name: "How should we get this to you?" })
 	await expect(dialog).toBeVisible()
@@ -25,11 +28,16 @@ test("a participant confirms their mailing address before buying", async ({ open
 		"https://auth.hackclub.com",
 	)
 
-	// Nothing is ordered until the maker ticks that they have checked the address.
+	// Nothing is ordered until the maker ticks every box on this path.
 	expect(await readShopOrders(user.id)).toEqual([])
 	await expect(place).toBeDisabled()
 
 	await dialog.getByText(/checked my mailing address/i).click()
+	// The address alone is not enough: customs are the buyer's cost, and staff need that on record.
+	await expect(place).toBeDisabled()
+	await dialog.getByText(/Hack Club does not cover customs/i).click()
+	await expect(place).toBeDisabled()
+	await dialog.getByText(/customs may cost more than the item itself/i).click()
 	await expect(place).toBeEnabled()
 	await place.click()
 
@@ -52,13 +60,15 @@ test("a participant can ask for a grant card instead of shipping", async ({ open
 	const item = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: itemName }) })
 	await expect(item).toBeVisible()
 	await item.hover()
-	await item.getByRole("button", { name: "Buy" }).click()
+	const buy = item.getByRole("button", { name: "Buy" })
+	await waitForHydration(buy)
+	await buy.click()
 
 	const dialog = page.getByRole("dialog", { name: "How should we get this to you?" })
 	await expect(dialog).toBeVisible()
 
-	await dialog.getByText("Send a grant card instead", { exact: true }).click()
-	// The shipping address is not part of this path.
+	await dialog.getByText("Send a grant card", { exact: true }).click()
+	// The shipping address and customs checks are not part of this path.
 	await expect(dialog.getByRole("link", { name: "Open Hack Club Auth" })).toHaveCount(0)
 
 	const place = dialog.getByRole("button", { name: "Place order" })
@@ -76,14 +86,16 @@ test("a participant can ask for a grant card instead of shipping", async ({ open
 	expect(await readBalance(user.id)).toBe(70)
 })
 
-test("dismissing the address check places no order", async ({ openAs }) => {
+test("dismissing checkout places no order", async ({ openAs }) => {
 	const { page, user } = await openAs({ coins: 130 })
 	await page.goto("/shop")
 
 	const item = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: itemName }) })
 	await expect(item).toBeVisible()
 	await item.hover()
-	await item.getByRole("button", { name: "Buy" }).click()
+	const buy = item.getByRole("button", { name: "Buy" })
+	await waitForHydration(buy)
+	await buy.click()
 
 	const dialog = page.getByRole("dialog", { name: "How should we get this to you?" })
 	await expect(dialog).toBeVisible()
