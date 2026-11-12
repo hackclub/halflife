@@ -17,7 +17,7 @@ import { displayName } from "@/lib/display-name"
 import { PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
-import { liveRecordedCents } from "@/lib/starter-card-records"
+import { liveRecordedCents, liveWaveCardCents } from "@/lib/starter-card-records"
 import { paidSoFarUsd, type StarterFulfilment, starterAction, starterFundingFor } from "@/lib/starter-funding"
 
 /**
@@ -115,6 +115,7 @@ export async function starterFundingDecisions(): Promise<StarterFundingDecision[
 	)
 
 	const recorded = await liveRecordedCents(projects.map(project => project.id))
+	const waveCards = await liveWaveCardCents(projects.map(project => project.id))
 	const decisions: StarterFundingDecision[] = []
 	for (const project of projects) {
 		const { user } = project
@@ -122,7 +123,9 @@ export async function starterFundingDecisions(): Promise<StarterFundingDecision[
 		const row = recordId ? (sheet.get(recordId) ?? null) : null
 		const items = await listBom(project.id)
 		const bom = bomTotalUsd(items, project.bomTaxShippingUsd)
-		const recordedCardUsd = recorded.has(project.id) ? (recorded.get(project.id) ?? 0) / 100 : null
+		// The largest live card for the project, from the CSV records or the grant wave. Never added together: the same card can appear in both.
+		const recordedCents = Math.max(recorded.get(project.id) ?? 0, waveCards.get(project.id) ?? 0)
+		const recordedCardUsd = recordedCents > 0 ? recordedCents / 100 : null
 		const fundingGivenUsd = row?.fundingGivenUsd ?? 0
 		const verdict = starterFundingFor({
 			approved: true,
