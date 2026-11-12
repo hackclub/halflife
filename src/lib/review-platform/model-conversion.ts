@@ -224,10 +224,9 @@ export class ModelConversion {
 			if (timedOut) throw failure("Converting took longer than 15 minutes.")
 			// Killed by the kernel, almost always for crossing the memory cap.
 			if (typeof signal === "string") throw failure("The model is too big even for the server to convert.")
-			const size = await stat(output).then(
-				info => info.size,
-				() => 0,
-			)
+			const size = await stat(output)
+				.then(info => info.size)
+				.catch(() => 0)
 			if (code === 0 && size > 0) return
 			const last = stderr.trim().split("\n").at(-1)?.trim()
 			throw failure(last || "The server could not convert this model.")

@@ -39,10 +39,10 @@ function claim(el: HTMLVideoElement) {
  */
 export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
 	claim(el)
-	return el.play().then(
-		() => true,
-		() => false,
-	)
+	return el
+		.play()
+		.then(() => true)
+		.catch(() => false)
 }
 
 /** For a video that started some other way – the element's own play event. */
