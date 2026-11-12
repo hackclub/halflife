@@ -144,7 +144,7 @@ RUN case "${TARGETARCH}" in \
     esac \
  && curl -fsSL -o /tmp/dumbpipe.tar.gz "https://github.com/n0-computer/dumbpipe/releases/download/v${DUMBPIPE_VERSION}/dumbpipe-v${DUMBPIPE_VERSION}-${asset}.tar.gz" \
  && echo "${sha}  /tmp/dumbpipe.tar.gz" | sha256sum -c - \
- && tar -xzf /tmp/dumbpipe.tar.gz -C /usr/local/bin dumbpipe \
+ && tar -xzf /tmp/dumbpipe.tar.gz -C /usr/local/bin ./dumbpipe \
  && rm /tmp/dumbpipe.tar.gz
 
 COPY --from=builder-live /app/public ./public
