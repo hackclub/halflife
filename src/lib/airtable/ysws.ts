@@ -127,7 +127,7 @@ export async function writeYswsRecord(
 		}
 	}
 	const dropped: string[] = []
-	for (;;)
+	while (true)
 		try {
 			const result = await send(current, id)
 			const [record] = result.records

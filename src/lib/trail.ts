@@ -137,7 +137,7 @@ export interface Trail {
  */
 function writtenMinutes(save: StoreSnapshot, weekId: number): number[] {
 	const written: number[] = []
-	for (;;) {
+	while (true) {
 		const entry = save.progress[`w${weekId}-entry-${written.length + 1}`]
 		if (!entry?.done) break
 		written.push(entry.minutes)
