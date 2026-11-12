@@ -5,7 +5,7 @@
 ARG NEXT_CACHE_IMAGE=alpine:3
 
 FROM oven/bun:1-alpine AS base
-# Production runs on Bun, not Node: installs, the Next build and the standalone server below all execute under `bun`. Local dev and CI still use pnpm (see package.json's packageManager field); the pnpm lockfile and workspace config are deliberately excluded from this build context via .dockerignore so they never land in the image.
+# Production runs on Bun, not Node: installs, the Next build and the standalone server below all execute under `bun`. Local dev and CI use Bun too (see package.json's packageManager field).
 
 # ── deps ─────────────────────────────────────────────────────────────────────
 FROM base AS deps
@@ -100,7 +100,7 @@ RUN bunx next build --experimental-build-mode compile
 FROM prepared AS builder-live
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_UPLOAD_HOST
-# `compile` skips Next's own typecheck pass: CI already runs `pnpm typecheck` and `pnpm lint` on every commit before it can reach prod, so re-running tsc here (~15s) buys nothing.
+# `compile` skips Next's own typecheck pass: CI already runs `bun check` and the Oxlint and Biome workflows on every commit before it can reach prod, so re-running tsc here (~15s) buys nothing.
 RUN --mount=type=cache,target=/app/.next/cache \
     --mount=type=bind,from=next-cache,source=/,target=/prev \
     sh -c 'if [ ! -e .next/cache/turbopack ] && [ -d /prev/cache ]; then cp -a /prev/cache/. .next/cache/; fi; bunx next build --experimental-build-mode compile'
