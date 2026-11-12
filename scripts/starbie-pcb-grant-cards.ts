@@ -63,7 +63,8 @@ async function previousGrantsByProject(projectIds: string[]): Promise<Map<string
 		.where(topUp => topUp.themeProjectId.in(projectIds))
 		.select("amountCents", "themeProjectId")
 		.all()
-	const csvRows = await db.orm.public.HcbCardGrantExportRow.where(row => row.themeProjectId.in(projectIds))
+	const csvRows = await db.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
+		.where(row => row.themeProjectId.in(projectIds))
 		.select("amountCents", "themeProjectId")
 		.all()
 

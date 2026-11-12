@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
 	isKitCountry,
 	KIT_PCB_CARD_USD,
+	paidSoFarUsd,
 	STARTER_KIT_STATUS,
 	type StarterFundingInput,
 	starterFundingFor,
@@ -146,5 +147,23 @@ describe("starter funding helpers", () => {
 
 	test("the parts cap is the Tier 1 grant plus the BOM margin", () => {
 		expect(starterPartsCapUsd()).toBe(33)
+	})
+})
+
+describe("money already paid", () => {
+	test("the operator's record and the recorded card are not added together", () => {
+		expect(paidSoFarUsd(10, 10)).toBe(10)
+	})
+
+	test("a recorded card counts when the operator has not entered one", () => {
+		expect(paidSoFarUsd(0, 33)).toBe(33)
+	})
+
+	test("an operator total above the card wins, so a top-up is not lost", () => {
+		expect(paidSoFarUsd(40, 33)).toBe(40)
+	})
+
+	test("nothing recorded and nothing entered is nothing paid", () => {
+		expect(paidSoFarUsd(0, null)).toBe(0)
 	})
 })

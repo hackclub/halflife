@@ -49,7 +49,9 @@ async function main(): Promise<void> {
 		.where(topUp => topUp.sentAt.isNotNull())
 		.select("amountCents", "grantHashid", "themeProjectId")
 		.all()
-	const csvRows = await db.orm.public.HcbCardGrantExportRow.select("amountCents", "themeProjectId").all()
+	const csvRows = await db.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
+		.select("amountCents", "themeProjectId")
+		.all()
 
 	const issued: Issued[] = [
 		...cards.map(card => ({

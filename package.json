@@ -35,6 +35,7 @@
 		"e2e:install": "bun --bun x playwright install --with-deps chromium",
 		"grant-role": "bun scripts/grant-role.ts",
 		"grants:starter-export": "bun --conditions=react-server scripts/starter-funding-export.ts",
+		"grants:starter-supersede-wave": "bun --conditions=react-server scripts/starter-supersede-wave.ts",
 		"grants:week-1-holders": "bun --conditions=react-server scripts/week-1-starter-grant-holders.ts",
 		"hca:backfill-display-names": "bun --conditions=react-server scripts/backfill-display-names.ts",
 		"hours:backfill-overlap": "bun --conditions=react-server scripts/backfill-timelapse-overlap.ts",

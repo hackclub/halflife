@@ -138,3 +138,12 @@ export function starterFundingFor(input: StarterFundingInput): StarterFunding {
 	if (!isStarterKitStatus(input.kitStatus)) return flag(`unknown kit status: ${input.kitStatus}`)
 	return routeKitStatus(input, input.country, input.kitStatus)
 }
+
+/**
+ * What has already left HCB for a maker, in USD: the operator's `Funding given` or the live card recorded for the project, whichever is larger.
+ *
+ * The two can describe the same card, and the operator often enters the card amount in `Funding given` after the import, so they are never added together. A top-up or reimbursement the operator records as a total is larger than the card, so it wins.
+ */
+export function paidSoFarUsd(fundingGivenUsd: number, recordedCardUsd: number | null): number {
+	return Math.max(fundingGivenUsd, recordedCardUsd ?? 0)
+}
