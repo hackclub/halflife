@@ -64,6 +64,8 @@ export const YSWS_SUBMISSION = {
 		firstName: f<string>("fldYswsFirstName", "First Name"),
 		// Stamped by the pipeline the first time the row reaches the unified base; empty for a row that never has. The only evidence a project is in the unified database, so the grant preview reads it back and only pays those (see `readUnifiedSubmitted` in lib/airtable/ysws).
 		firstSubmittedAt: f<string>("fldYswsFirstSubmittedAt", "Automation - First Submitted At"),
+		// The total the operator has sent this maker for their Week 1 starter, in USD, kept by hand after each HCB import. The starter export reads it to work out what is still owed, so it is never a payout signal for the pipeline (see docs/WEEK_1_STARTER_FUNDING.md).
+		fundingGiven: f<number>("fldgxI3ocxBN3MFG9", "Funding given"),
 		githubUsername: f<string>("fldYswsGithubUsername", "GitHub Username"),
 		hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
 		hackatimeProjects: f<string>(
@@ -72,6 +74,8 @@ export const YSWS_SUBMISSION = {
 		),
 		hoursSelfReported: f<number>("fldYswsHoursSelfReported", "Hours spent (self reported)"),
 		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
+		// Set by the operator for a Week 1 starter, once the maker has been offered a kit. The options are `STARTER_KIT_STATUS` in lib/starter-funding, and the starter export reads them to decide what is owed. Never written by the app.
+		kitStatus: f<string>("fldpsH0TKDU6dsTlt", "Kit status"),
 		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
 		lastName: f<string>("fldYswsLastName", "Last Name"),
 		// The hours figure the payout pipeline reads for an approved row. When a review cut the claimed total it holds the approved hours; otherwise it holds the claimed (self-reported) hours, so it is never blank for an approved submission. Cleared on a reversal so a stale figure cannot outlive its approval.

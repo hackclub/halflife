@@ -7,7 +7,9 @@ import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
+import { StarterForm } from "@/app/components/forms/StarterForm"
 import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
+import { starterProjectsFor } from "@/lib/config/onboarding"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
 import type { Theme } from "@/lib/enums"
 
@@ -22,6 +24,7 @@ export interface ThemedProjectRowData {
 	grantSent: boolean
 	grantUsd: number | null
 	id: string
+	starterProjectId: string | null
 	theme: Theme
 	themeLabel: string
 	tier: number | null
@@ -85,6 +88,11 @@ export function ThemedProjectRow({
 				{canMoveTheme ? (
 					<ManageSection title="Move to theme">
 						<ThemeMoveForm current={data.theme} projectId={data.id} />
+					</ManageSection>
+				) : null}
+				{canMoveTheme && starterProjectsFor(data.theme).length > 0 ? (
+					<ManageSection title="Starter project">
+						<StarterForm current={data.starterProjectId} projectId={data.id} theme={data.theme} />
 					</ManageSection>
 				) : null}
 				{canExtend ? (

@@ -130,7 +130,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 				.where({ phase: Phase.DESIGN })
 				.where(topUp => topUp.sentAt.isNotNull()),
 		)
-		.include("hcbCardGrantExports", exports => exports.select("id"))
+		.include("hcbCardGrantExports", exports => exports.select("id").where(export_ => export_.supersededAt.isNull()))
 		.all()
 
 	const eligible: GrantCardProjectRow[] = []

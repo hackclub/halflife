@@ -156,6 +156,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										ownerId: project.user.id,
 										ownerName: displayName(project.user) ?? "-",
 										requestedTier: project.requestedTier,
+										starterProjectId: project.starterProjectId,
 										theme: project.theme,
 										themeLabel: themeLabel(project.theme),
 										tier: project.tier,

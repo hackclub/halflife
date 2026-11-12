@@ -476,7 +476,7 @@ namespace public {
     @@map("hcb_card_grant_export_batch")
   }
 
-  /// One card in a generated CSV. A project appears here at most once ever: a second export would pay it twice.
+  /// One card in a generated CSV. A project appears here at most once while its row is live: a second live export would pay it twice. A row cancelled on HCB is superseded rather than deleted, so the history stays and the project can be paid again.
   model HcbCardGrantExportRow {
     id             String                   @id @onCreate(cuid(2))
     batchId        String
@@ -484,10 +484,11 @@ namespace public {
     email          String
     amountCents    Int
     createdAt      TimestampString(3)       @default(now())
+    supersededAt   TimestampString(3)?
     batch          HcbCardGrantExportBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_card_grant_export_row_batchId_idx")
     themeProject   ThemeProject             @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
 
-    @@index([themeProjectId], map: "hcb_card_grant_export_row_project_key", unique: true)
+    @@index([themeProjectId], map: "hcb_card_grant_export_row_project_key", unique: true, where: sql`("supersededAt" IS NULL)`)
     @@index([batchId], map: "hcb_card_grant_export_row_batchId_idx")
     @@map("hcb_card_grant_export_row")
   }
@@ -1337,6 +1338,8 @@ namespace public {
     IRE_SYNC_SUCCESS = "IRE_SYNC_SUCCESS"
     IRE_SYNC_FAILURE = "IRE_SYNC_FAILURE"
     ADMIN_CREATE_GRANT_CARD_EXPORT = "ADMIN_CREATE_GRANT_CARD_EXPORT"
+    ADMIN_SET_PROJECT_STARTER = "ADMIN_SET_PROJECT_STARTER"
+    ADMIN_SUPERSEDE_GRANT_CARD_EXPORT = "ADMIN_SUPERSEDE_GRANT_CARD_EXPORT"
   }
 
   native_enum ReviewDisputeOutcome {
