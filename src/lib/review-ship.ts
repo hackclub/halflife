@@ -269,24 +269,22 @@ async function buildReviewShipInput(
 			isWordlessJournal(session.content, session.title) && clips.length > 0
 				? emptyTimelapseSession(clips.length)
 				: written || sanitize(session.title) || "Journal entry"
-		return Object.assign(
-			{
-				// `createdAt` is a Prisma 8 `TimestampString`, so it reads as `2026-10-22 14:25:05.757` – a space where the `T` belongs and no zone. The provider validates `journals[].at` as a date string and refuses that form, so convert it to a real Date and let JSON send ISO text.
-				at: parseDbTimestamp(session.createdAt),
-				// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence the reviewer should see. A clip the provider counts is taken off the claim so the same sitting is not counted twice (see journalMinutes).
-				minutes: journalMinutes(session, countedProjects),
-				text: body,
-			},
+		return {
+			// `createdAt` is a Prisma 8 `TimestampString`, so it reads as `2026-10-22 14:25:05.757` – a space where the `T` belongs and no zone. The provider validates `journals[].at` as a date string and refuses that form, so convert it to a real Date and let JSON send ISO text.
+			at: parseDbTimestamp(session.createdAt),
+			// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence the reviewer should see. A clip the provider counts is taken off the claim so the same sitting is not counted twice (see journalMinutes).
+			minutes: journalMinutes(session, countedProjects),
+			text: body,
 			// Ari has no field for a journal's own attachments: its Lapse tile pulls clips per Hackatime project. Linking each recording in the entry keeps it attached to the journal it backs even when that pull has nothing to match (no Hackatime id, or a project Lapse never named), so a reviewer never opens an entry with no evidence in it.
-			clips.length > 0
+			...(clips.length > 0
 				? {
 						markdown: [
 							body,
 							...clips.map((url, index) => `[Timelapse${clips.length > 1 ? ` ${index + 1}` : ""}](${url})`),
 						].join("\n\n"),
 					}
-				: {},
-		)
+				: {}),
+		}
 	})
 
 	const phaseSubmissions = project.submissions.filter(s => s.phase === phase)

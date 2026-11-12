@@ -69,7 +69,7 @@
 		"eslint/one-var": "off",
 		"eslint/prefer-const": "error",
 		"eslint/prefer-named-capture-group": "off",
-		"eslint/prefer-object-spread": "off",
+		"eslint/prefer-object-spread": "error",
 		"eslint/prefer-template": "warn",
 		"eslint/require-unicode-regexp": "off",
 		"eslint/sort-imports": "off",

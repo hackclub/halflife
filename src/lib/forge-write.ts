@@ -757,6 +757,6 @@ async function commitGitLab(
 
 	// GitLab's commit response carries the commit sha, not per-file shas, so the run history records that per file. It is what a maker would look up anyway.
 	return written
-		.map(w => Object.assign({}, w, { sha: w.unchanged ? w.sha : commit.id }))
+		.map(w => ({ ...w, sha: w.unchanged ? w.sha : commit.id }))
 		.toSorted((a, b) => a.path.localeCompare(b.path))
 }
