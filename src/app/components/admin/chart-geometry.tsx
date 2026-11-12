@@ -76,7 +76,7 @@ export function niceTicks(
  *
  * `dashed` is for a second series on its own scale, so the two grids can be told apart where they cross.
  */
-export const GridLines = ({
+export function GridLines({
 	ticks,
 	yFor,
 	dashed = false,
@@ -84,29 +84,31 @@ export const GridLines = ({
 	dashed?: boolean
 	ticks: readonly number[]
 	yFor(tick: number): number
-}) => (
-	<>
-		{ticks.map((tick, i) => (
-			<line
-				key={i}
-				stroke="var(--color-line-soft)"
-				strokeDasharray={dashed ? "2 3" : undefined}
-				strokeWidth="1"
-				x1={pct(EDGE)}
-				x2={pct(1 - EDGE)}
-				y1={yFor(tick)}
-				y2={yFor(tick)}
-			/>
-		))}
-	</>
-)
+}) {
+	return (
+		<>
+			{ticks.map((tick, i) => (
+				<line
+					key={i}
+					stroke="var(--color-line-soft)"
+					strokeDasharray={dashed ? "2 3" : undefined}
+					strokeWidth="1"
+					x1={pct(EDGE)}
+					x2={pct(1 - EDGE)}
+					y1={yFor(tick)}
+					y2={yFor(tick)}
+				/>
+			))}
+		</>
+	)
+}
 
 /**
  * The tick labels down one side of a chart, each placed at the exact pixel its gridline sits on.
  *
  * The width is the column it takes beside the plot, and the caption sits above the top tick's band rather than on it. A right-hand axis is the second series' own scale, which is why its labels take the other side and its own colour.
  */
-export const YAxis = ({
+export function YAxis({
 	caption,
 	colour = "var(--color-accent-ink)",
 	format,
@@ -122,7 +124,7 @@ export const YAxis = ({
 	ticks: readonly number[]
 	width?: string
 	yFor(tick: number): number
-}) => {
+}) {
 	const edge = side === "left" ? { right: 6 } : { left: 6 }
 	return (
 		<div style={{ height: `${CHART_H}px`, position: "relative", width }}>
@@ -163,35 +165,37 @@ export const YAxis = ({
 /**
  * The day labels under a time-series plot, one printed label per block so a long season does not squeeze "MM-DD" into a few pixels.
  */
-export const DayAxis = ({ days, labelEvery }: { days: readonly { day: string }[]; labelEvery: number }) => (
-	<div
-		aria-hidden="true"
-		style={{
-			color: "var(--color-ink-muted)",
-			display: "grid",
-			fontSize: "0.65rem",
-			gap: "1px",
-			gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-			marginTop: "4px",
-			// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
-			paddingLeft: pct(EDGE),
-			paddingRight: pct(EDGE),
-		}}
-	>
-		{days.map((d, i) =>
-			i % labelEvery === 0 ? (
-				<div
-					key={d.day}
-					style={{
-						gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
-						overflow: "hidden",
-						textOverflow: "ellipsis",
-						whiteSpace: "nowrap",
-					}}
-				>
-					{d.day.slice(5)}
-				</div>
-			) : null,
-		)}
-	</div>
-)
+export function DayAxis({ days, labelEvery }: { days: readonly { day: string }[]; labelEvery: number }) {
+	return (
+		<div
+			aria-hidden="true"
+			style={{
+				color: "var(--color-ink-muted)",
+				display: "grid",
+				fontSize: "0.65rem",
+				gap: "1px",
+				gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+				marginTop: "4px",
+				// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
+				paddingLeft: pct(EDGE),
+				paddingRight: pct(EDGE),
+			}}
+		>
+			{days.map((d, i) =>
+				i % labelEvery === 0 ? (
+					<div
+						key={d.day}
+						style={{
+							gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+						}}
+					>
+						{d.day.slice(5)}
+					</div>
+				) : null,
+			)}
+		</div>
+	)
+}
