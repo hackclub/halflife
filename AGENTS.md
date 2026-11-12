@@ -33,7 +33,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Prefer `for (const x of y) ...` over `y.forEach(x => ...)`
 - Prefer `const` over `let`
 	- Avoid `var`
-- Use `===` and `!==` over `==` and `!=` except when comparing with null
+- Use `===` and `!==` over `==` and `!=`
 - Use Object.freeze() to make objects immutable where possible
 - Use `void` before function calls that return promises to be discarded, or before IIFEs rather than semicolons
 - Declare only 1 variable per declaration statement, avoid `const x = 1, y = 2, z = 3`
