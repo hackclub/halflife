@@ -37,12 +37,14 @@ function claim(el: HTMLVideoElement) {
 /**
  * Play `el` as the only reel making noise, for players with their own controls (the full-page stage). Resolves to whether it is playing – false when the browser refused, which is the caller's cue to retry muted.
  */
-export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
+export async function playExclusive(el: HTMLVideoElement): Promise<boolean> {
 	claim(el)
-	return el
-		.play()
-		.then(() => true)
-		.catch(() => false)
+	try {
+		await el.play()
+		return true
+	} catch {
+		return false
+	}
 }
 
 /** For a video that started some other way – the element's own play event. */
