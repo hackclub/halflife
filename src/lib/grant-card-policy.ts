@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { bomTotalUsd, type PricedLine } from "@/lib/bom-policy"
 import { getTier } from "@/lib/config/tiers"
+import { STARTER_TIER_ID, starterPartsCapUsd } from "@/lib/starter-funding"
 
 /**
  * The parts of card-grant issuance that are pure.
@@ -19,7 +20,9 @@ export const GRANT_CARD_PURPOSE = "Half Life parts"
  *
  * The tier check matters because an approved grant can be overridden by hand; the card still may not exceed the tier it was approved at.
  */
-export function grantCardCapUsd(grantUsd: number | null, tier: number | null): number | null {
+export function grantCardCapUsd(grantUsd: number | null, tier: number | null, weekOneStarter = false): number | null {
+	// A Tier 1 Week 1 starter is paid the parts + PCB target, not its tier grant, so the cap is the starter cap.
+	if (weekOneStarter && tier === STARTER_TIER_ID) return starterPartsCapUsd()
 	const tierUsd = tier === null ? undefined : getTier(tier)?.grantUsd
 	if (tierUsd === undefined) return null
 	return Math.min(grantUsd ?? 0, tierUsd)

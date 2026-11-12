@@ -1,5 +1,6 @@
 import "server-only"
 import { AuditAction, logAuditTx } from "@/lib/audit"
+import { HcbGrantCardStatus, Phase } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { grantCardFingerprint } from "@/lib/grant-card-policy"
 import db, { isUniqueViolation } from "@/lib/prisma8"
@@ -97,6 +98,25 @@ export async function liveRowIdsByProject(projectIds: readonly string[]): Promis
 		.all()
 	for (const row of rows) byProject.set(row.themeProjectId, [...(byProject.get(row.themeProjectId) ?? []), row.id])
 	return byProject
+}
+
+/**
+ * The live card the grant wave issued for each project, in cents. A card still pending or awaiting reconciliation counts, so a retry cannot pay the starter again. A project with none is left out of the map.
+ */
+export async function liveWaveCardCents(projectIds: readonly string[]): Promise<Map<string, number>> {
+	const cents = new Map<string, number>()
+	if (projectIds.length === 0) return cents
+	const cards = await db.orm.public.HcbGrantCard.where({ phase: Phase.DESIGN })
+		.where(card =>
+			card.status.in([HcbGrantCardStatus.PENDING, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]),
+		)
+		.where(card => card.supersededAt.isNull())
+		.where(card => card.themeProjectId.in([...projectIds]))
+		.select("amountCents", "themeProjectId")
+		.all()
+	for (const card of cards)
+		cents.set(card.themeProjectId, Math.max(cents.get(card.themeProjectId) ?? 0, card.amountCents))
+	return cents
 }
 
 /** The live recorded card for each project, in cents. A project with none is left out of the map. */

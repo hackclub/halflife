@@ -29,6 +29,15 @@ describe("grant card policy", () => {
 		expect(grantCardCapUsd(null, 2)).toBe(0)
 	})
 
+	test("a Tier 1 Week 1 starter is capped at the parts + PCB target, $33, not its $30 tier grant", () => {
+		expect(grantCardCapUsd(30, 1, true)).toBe(33)
+		expect(grantCardCapUsd(30, 1, false)).toBe(30)
+	})
+
+	test("the starter cap applies only to Tier 1", () => {
+		expect(grantCardCapUsd(30, 2, true)).toBe(30)
+	})
+
 	test("a project with no tier has no cap to hold it to", () => {
 		expect(grantCardCapUsd(30, null)).toBeNull()
 	})
