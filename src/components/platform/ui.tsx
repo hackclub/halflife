@@ -5,6 +5,7 @@ import {
 	type ButtonHTMLAttributes,
 	type ComponentProps,
 	type ComponentPropsWithRef,
+	type ForwardedRef,
 	forwardRef,
 	type ReactNode,
 } from "react"
@@ -129,13 +130,18 @@ function buttonClass({
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonStyleProps {}
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-	({ variant = "solid", size = "md", full, className, children, ...rest }, ref) => (
+function ButtonBase(
+	{ variant = "solid", size = "md", full, className, children, ...rest }: ButtonProps,
+	ref: ForwardedRef<HTMLButtonElement>,
+) {
+	return (
 		<button className={buttonClass({ className, full, size, variant })} ref={ref} {...rest}>
 			{children}
 		</button>
-	),
-)
+	)
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(ButtonBase)
 // A forwardRef is an object rather than a function, so React DevTools has no name to show for it and the component reads as "ForwardRef" in a stack trace. Told one, it is "Button" in both.
 Button.displayName = "Button"
 
