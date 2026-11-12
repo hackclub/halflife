@@ -277,7 +277,6 @@
 				"noPlaywrightForceOption": "off",
 				"noReactSpecificProps": "off",
 				"noReturnAssign": "off",
-				"noShadow": "off",
 				"noUnnecessaryConditions": "off",
 				"noUntrustedLicenses": {
 					"level": "warn",
