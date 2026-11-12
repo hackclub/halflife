@@ -111,6 +111,11 @@ export function OrdersList({ orders }: { orders: ShopOrderPublic[] }) {
 								</div>
 
 								<div className="mt-3 grid gap-1.5 text-[0.85rem] leading-snug text-navy-soft">
+									{order.deliveryPreference === "GRANT_CARD" ? (
+										<p>You asked for a grant card instead of shipping.</p>
+									) : order.deliveryPreference === "SHIP" ? (
+										<p>You asked for this to be shipped to your Hack Club address.</p>
+									) : null}
 									{order.status === "PENDING" || order.status === "ON_HOLD" ? (
 										<p>
 											{stage === "UNFULFILLED"

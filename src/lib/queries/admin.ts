@@ -26,6 +26,7 @@ import {
 	ReviewPass,
 	ReviewResult,
 	type Role,
+	type ShopDeliveryPreference,
 	type ShopFulfillmentMethod,
 	ShopFulfillmentStage,
 	ShopOrderStatus,
@@ -484,6 +485,7 @@ export async function getUserDetail(
 
 /** One row of the admin order directory: the staff-safe columns plus buyer and item names. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns, so the API's JSON keeps its ISO shapes. */
 export interface OrderDirectoryRow {
+	deliveryPreference: Models.public_ShopOrder["deliveryPreference"]
 	fulfilledAt: Date | null
 	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
 	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
@@ -527,6 +529,7 @@ export async function listOrders(opts: {
 		.limit(opts.limit + 1)
 		.select(
 			"fulfilledAt",
+			"deliveryPreference",
 			"fulfillmentMethod",
 			"fulfillmentStage",
 			"fulfillmentUpdatedAt",
@@ -556,6 +559,7 @@ export async function listOrders(opts: {
 		if (!row.shopItem) throw new Error(`order ${row.id} has no item`)
 		if (!row.user) throw new Error(`order ${row.id} has no buyer`)
 		return {
+			deliveryPreference: row.deliveryPreference,
 			fulfilledAt: parseNullableTimestamp(row.fulfilledAt),
 			fulfillmentMethod: row.fulfillmentMethod,
 			fulfillmentStage: row.fulfillmentStage,
@@ -630,6 +634,7 @@ export interface FulfillmentOrderRow {
 	cancellationReason: string | null
 	cancelledAt: Date | null
 	country: string | null
+	deliveryPreference: ShopDeliveryPreference | null
 	fulfilledAt: Date | null
 	fulfillmentMethod: ShopFulfillmentMethod | null
 	fulfillmentStage: ShopFulfillmentStage
@@ -651,6 +656,7 @@ export interface FulfillmentOrderRow {
 export interface FulfillmentOrderModel {
 	cancellationReason: string | null
 	cancelledAt: string | null
+	deliveryPreference: Models.public_ShopOrder["deliveryPreference"]
 	fulfilledAt: string | null
 	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
 	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
@@ -706,6 +712,7 @@ export async function listFulfillmentOrders(
 		.select(
 			"cancellationReason",
 			"cancelledAt",
+			"deliveryPreference",
 			"fulfilledAt",
 			"fulfillmentMethod",
 			"fulfillmentStage",
@@ -730,6 +737,7 @@ export async function listFulfillmentOrders(
 		return {
 			cancellationReason: row.cancellationReason,
 			cancelledAt: row.cancelledAt,
+			deliveryPreference: row.deliveryPreference,
 			fulfilledAt: row.fulfilledAt,
 			fulfillmentMethod: row.fulfillmentMethod,
 			fulfillmentStage: row.fulfillmentStage,

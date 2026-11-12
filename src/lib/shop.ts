@@ -7,6 +7,7 @@ import {
 	CoinBucket,
 	LedgerKind,
 	PhaseStatus,
+	type ShopDeliveryPreference,
 	ShopFulfillmentStage,
 	ShopItemCategory,
 	ShopOrderStatus,
@@ -34,6 +35,7 @@ export type ShopItemPublic = Omit<Models.public_ShopItem, "costUsd" | "orders" |
 export interface ShopOrderPublic {
 	cancellationReason: string | null
 	cancelledAt: Date | null
+	deliveryPreference: Models.public_ShopOrder["deliveryPreference"]
 	fulfilledAt: Date | null
 	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
 	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
@@ -59,6 +61,7 @@ export interface ShopOrderPublic {
 export const shopOrderPublicFields = [
 	"cancellationReason",
 	"cancelledAt",
+	"deliveryPreference",
 	"fulfilledAt",
 	"fulfillmentMethod",
 	"fulfillmentStage",
@@ -294,6 +297,7 @@ export async function purchase(
 	userId: string,
 	shopItemId: string,
 	quantity: number,
+	deliveryPreference: ShopDeliveryPreference,
 	idempotencyKey?: string,
 	note?: string | null,
 ): Promise<ShopOrderPublic> {
@@ -411,6 +415,7 @@ export async function purchase(
 			throw new HttpError("INSUFFICIENT_CREDIT", `You need ${totalCredits - payableFrom} more to buy this`)
 
 		const created = await tx.orm.public.ShopOrder.create({
+			deliveryPreference,
 			idempotencyKey: idempotencyKey ?? null,
 			itemNameSnapshot: fresh.name,
 			quantity,

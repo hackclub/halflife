@@ -548,6 +548,7 @@ namespace public {
     encryptedPhone       String                          @default("")
     trackingNumber       String?
     trackingCarrier      String?
+    deliveryPreference   pg.enum(ShopDeliveryPreference)?
     fulfillmentMethod    pg.enum(ShopFulfillmentMethod)?
     fulfillmentStage     pg.enum(ShopFulfillmentStage)   @default("UNFULFILLED")
     fulfillmentUpdatedAt TimestampString(3)?
@@ -1220,6 +1221,11 @@ namespace public {
     ORDERED_TO_HQ = "ORDERED_TO_HQ"
     SENT_FOR_DELIVERY = "SENT_FOR_DELIVERY"
     CANCELLED = "CANCELLED"
+  }
+
+  native_enum ShopDeliveryPreference {
+    SHIP = "SHIP"
+    GRANT_CARD = "GRANT_CARD"
   }
 
   native_enum EventColour {

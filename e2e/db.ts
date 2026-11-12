@@ -38,6 +38,7 @@ export interface E2eProjectRow {
 }
 
 export interface E2eShopOrderRow {
+	deliveryPreference: string | null
 	id: string
 	quantity: number
 	shopItemId: string
@@ -298,7 +299,7 @@ export async function readBalance(userId: string, bucket: "BANKED" | "SPENDABLE"
 
 export async function readShopOrders(userId: string): Promise<E2eShopOrderRow[]> {
 	const rows = await pool.unsafe<E2eShopOrderRow[]>(
-		`select id, "shopItemId", quantity, "unitCredits", "totalCredits", status
+		`select id, "shopItemId", quantity, "unitCredits", "totalCredits", status, "deliveryPreference"
 		from shop_order where "userId" = $1
 		order by "placedAt" asc`,
 		[userId],

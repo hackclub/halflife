@@ -134,6 +134,10 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 						<Link href={`/admin/fulfillment?${nextParams.toString()}`}>Next page</Link>
 					</p>
 				) : null}
+				<p className="hl-hint">
+					A grant card request means the participant asked for the item&rsquo;s value on an HCB card instead of
+					shipping.
+				</p>
 			</Panel>
 
 			<Panel title="Printers earned">

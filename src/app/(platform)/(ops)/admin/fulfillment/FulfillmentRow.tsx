@@ -7,7 +7,7 @@ import { OrderDecision } from "@/app/components/forms/OrderDecision"
 import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
 import { Badge } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
-import type { ShopOrderStatus } from "@/lib/enums"
+import type { ShopDeliveryPreference, ShopOrderStatus } from "@/lib/enums"
 import { STAGE_LABELS } from "@/lib/fulfillment"
 import { formatUsd } from "@/lib/money"
 import type { FulfillmentOrderRow } from "@/lib/queries/admin"
@@ -18,6 +18,12 @@ const STATUS: Record<ShopOrderStatus, { label: string; tone: "success" | "warnin
 	ON_HOLD: { label: "On hold", tone: "warning" },
 	PENDING: { label: "Pending", tone: "warning" },
 	REJECTED: { label: "Rejected", tone: "danger" },
+}
+
+/** The buyer's choice, in the words staff act on. */
+const DELIVERY_LABELS: Record<ShopDeliveryPreference, string> = {
+	GRANT_CARD: "Grant card requested",
+	SHIP: "Ship to address",
 }
 
 /**
@@ -54,6 +60,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 				<td className="hl-mono">{formatUtcDateTime(order.placedAt)}</td>
 				<td style={{ minWidth: "10rem" }}>
 					<Badge tone={status.tone}>{status.label}</Badge>
+					{order.deliveryPreference ? <div className="hl-hint">{DELIVERY_LABELS[order.deliveryPreference]}</div> : null}
 					{active ? <div className="hl-hint">{STAGE_LABELS[order.fulfillmentStage]}</div> : null}
 					{tracking ? <div className="hl-hint hl-mono">{tracking}</div> : null}
 					{order.status === "CANCELLED" && order.cancelledAt ? (
@@ -96,6 +103,12 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 							<dt>Stage</dt>
 							<dd>{STAGE_LABELS[order.fulfillmentStage]}</dd>
 						</div>
+						{order.deliveryPreference ? (
+							<div>
+								<dt>Delivery</dt>
+								<dd>{DELIVERY_LABELS[order.deliveryPreference]}</dd>
+							</div>
+						) : null}
 						{order.fulfilledAt ? (
 							<div>
 								<dt>Fulfilled</dt>
