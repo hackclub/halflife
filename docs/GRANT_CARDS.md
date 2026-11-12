@@ -506,3 +506,9 @@ bun run build
 - Whether a BOM total above the tier cap should be paid in full or capped at `grantUsd`.
 - Whether card grants should expire at the end of the season.
 - Where to persist the rotated HCB refresh token in production.
+
+## Superseded export rows
+
+`hcb_card_grant_export_row` holds one row per card in a CSV export. A project has at most one **live** row (`supersededAt` is null), enforced by a partial unique index, so a second export cannot pay it twice. When a card is cancelled on HCB, its row is superseded rather than deleted: the history stays, and the project can be paid again. The wave preview, the starter export and the reports count only live rows.
+
+Starter cards are recorded through `scripts/starter-funding-export.ts --record`, which writes a batch and one row per card before any file is written. `scripts/starter-supersede-wave.ts` supersedes the wave rows of starters whose cards were cancelled; it is a dry run unless `--apply` is passed, and each `--keep` email stays live.

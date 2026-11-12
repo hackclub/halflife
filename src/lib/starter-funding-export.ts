@@ -18,7 +18,8 @@ import { PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { decryptUserPII } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
-import { type StarterFulfilment, starterFundingFor } from "@/lib/starter-funding"
+import { liveRecordedCents } from "@/lib/starter-card-records"
+import { paidSoFarUsd, type StarterFulfilment, starterFundingFor } from "@/lib/starter-funding"
 import { countriesAgree, type KitShipRow } from "@/lib/starter-funding-csv"
 
 /**
@@ -128,6 +129,7 @@ export async function starterFundingDecisions(now: Date): Promise<StarterFunding
 		projects.map(project => recordIdOf(project.id)).filter((id): id is string => id !== null),
 	)
 
+	const recorded = await liveRecordedCents(projects.map(project => project.id))
 	const decisions: StarterFundingDecision[] = []
 	const mismatches: string[] = []
 	for (const project of projects) {
@@ -145,7 +147,10 @@ export async function starterFundingDecisions(now: Date): Promise<StarterFunding
 			approved: true,
 			bomTotalUsd: bom,
 			country: address?.country ?? null,
-			fundingGivenUsd: row?.fundingGivenUsd ?? 0,
+			fundingGivenUsd: paidSoFarUsd(
+				row?.fundingGivenUsd ?? 0,
+				recorded.has(project.id) ? (recorded.get(project.id) ?? 0) / 100 : null,
+			),
 			kitOfferDeadline: KIT_OFFER_DEADLINE,
 			kitStatus: row?.kitStatus ?? null,
 			now,

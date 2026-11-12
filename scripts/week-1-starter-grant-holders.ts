@@ -81,7 +81,8 @@ async function main(): Promise<void> {
 		.where(topUp => topUp.themeProjectId.in(projectIds))
 		.select("grantHashid", "themeProjectId")
 		.all()
-	const csvRows = await db.orm.public.HcbCardGrantExportRow.where(row => row.themeProjectId.in(projectIds))
+	const csvRows = await db.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
+		.where(row => row.themeProjectId.in(projectIds))
 		.select("amountCents", "email", "themeProjectId")
 		.all()
 

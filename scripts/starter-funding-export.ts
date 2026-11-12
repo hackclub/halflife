@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs"
 import { resolve, sep } from "node:path"
 import { configuredOrigin } from "../src/lib/origin"
 import db from "../src/lib/prisma8"
+import { recordStarterCards } from "../src/lib/starter-card-records"
 import { kitShippingTsv, type StarterCardRow, starterCardCsv } from "../src/lib/starter-funding-csv"
 import { type StarterFundingDecision, starterFundingDecisions } from "../src/lib/starter-funding-export"
 
@@ -16,13 +17,18 @@ import { type StarterFundingDecision, starterFundingDecisions } from "../src/lib
 
 interface Args {
 	kits: string | null
+	record: boolean
 	report: string | null
 }
 
 function parseArgs(argv: readonly string[]): Args {
-	const args: Args = { kits: null, report: null }
+	const args: Args = { kits: null, record: false, report: null }
 	for (let i = 0; i < argv.length; i++) {
 		const flag = argv[i]
+		if (flag === "--record") {
+			args.record = true
+			continue
+		}
 		if (flag !== "--kits" && flag !== "--report") throw new Error(`Unknown argument: ${flag}`)
 		const value = argv[i + 1]
 		if (!value) throw new Error(`${flag} needs a path`)
@@ -100,6 +106,16 @@ async function main(): Promise<void> {
 		console.error("NEXT_PUBLIC_APP_URL and BETTER_AUTH_URL are unset, so instructions will have no project link")
 
 	const cards = cardRows(decisions)
+	// Recorded before any file is written: a project that already has a live card refuses the whole batch, so no CSV goes out for it.
+	if (args.record && cards.length > 0) {
+		const { batchId, totalCents } = await recordStarterCards(
+			cards.map(card => ({ amountCents: card.amountCents, email: card.email, projectId: card.projectId })),
+		)
+		console.error(`Recorded ${cards.length} card(s), $${(totalCents / 100).toFixed(2)}, as batch ${batchId}.`)
+	} else if (cards.length > 0)
+		console.error(
+			"Cards are not recorded on the site. Pass --record to record them, so later waves and exports skip these projects.",
+		)
 	process.stdout.write(starterCardCsv(cards, origin))
 	if (kitsPath) writeFileSync(kitsPath, kitShippingTsv(shipRows), { mode: 0o600 })
 	if (reportPath) writeFileSync(reportPath, reportTsv(decisions), { mode: 0o600 })
