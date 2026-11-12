@@ -1,42 +1,56 @@
 import "../src/lib/auth"
 import { spawnSync } from "node:child_process"
-import { writeFileSync } from "node:fs"
+import { readFileSync, writeFileSync } from "node:fs"
 import { resolve, sep } from "node:path"
 import { configuredOrigin } from "../src/lib/origin"
 import db from "../src/lib/prisma8"
-import { recordStarterCards } from "../src/lib/starter-card-records"
+import { liveRowIdsByProject, recordStarterCards, supersedeLiveCards } from "../src/lib/starter-card-records"
+import { parseConfirmedTotals, refusedTotal } from "../src/lib/starter-funding-confirm"
 import { type StarterCardRow, starterCardCsv } from "../src/lib/starter-funding-csv"
 import { type StarterFundingDecision, starterFundingDecisions } from "../src/lib/starter-funding-export"
 
 /**
- * The Week 1 starter export: the HCB import file for every starter who needs a new parts + PCB card, and a checklist of every starter's target and top-up.
+ * The Week 1 starter export, in three modes.
  *
  *   bun run grants:starter-export -- --report ./starter-report.tsv > ./starter-new-cards.csv
+ *       The HCB import file for every starter who needs a new parts + PCB card, and a checklist of every starter's target and top-up. Read-only.
  *
- * Read-only against the database and Airtable, unless `--record` is passed, which records the new cards on the site. The import file goes to stdout, so it can be redirected. The report holds emails and must be written outside this repository or to a path git ignores (see .gitignore).
+ *   bun run grants:starter-export -- --record
+ *       Records the new cards on the site, so a later run skips them. Only new cards are recorded.
  *
- * Top-ups are not in the import file. A maker with a live card is topped up by hand in HCB, and the checklist shows the amount.
+ *   bun run grants:starter-export -- --confirm ./confirmed-totals.csv [--apply]
+ *       Records the card totals an admin confirmed on HCB after a top-up. Each row supersedes the live card and records the new total. Dry run unless --apply is passed. Any row that would reduce a card, go above the target, or fall below Funding given refuses the whole file, and nothing is written.
+ *
+ * Top-ups are not in the import file: a maker with a live card is topped up by hand in HCB. Airtable's `Funding given` is set through the approval step, not by this script. The report and the confirmed totals hold emails, so they must be written outside this repository or to a path git ignores (see .gitignore).
  */
 
 interface Args {
+	apply: boolean
+	confirm: string | null
 	record: boolean
 	report: string | null
 }
 
 function parseArgs(argv: readonly string[]): Args {
-	const args: Args = { record: false, report: null }
+	const args: Args = { apply: false, confirm: null, record: false, report: null }
 	for (let i = 0; i < argv.length; i++) {
 		const flag = argv[i]
 		if (flag === "--record") {
 			args.record = true
 			continue
 		}
-		if (flag !== "--report") throw new Error(`Unknown argument: ${flag}`)
+		if (flag === "--apply") {
+			args.apply = true
+			continue
+		}
+		if (flag !== "--report" && flag !== "--confirm") throw new Error(`Unknown argument: ${flag}`)
 		const value = argv[i + 1]
-		if (!value) throw new Error("--report needs a path")
-		args.report = value
+		if (!value) throw new Error(`${flag} needs a path`)
+		if (flag === "--report") args.report = value
+		else args.confirm = value
 		i++
 	}
+	if (args.apply && !args.confirm) throw new Error("--apply only applies with --confirm")
 	return args
 }
 
@@ -107,10 +121,8 @@ function count(decisions: readonly StarterFundingDecision[], action: StarterFund
 	return decisions.filter(d => d.action === action).length
 }
 
-async function main(): Promise<void> {
-	const args = parseArgs(process.argv.slice(2))
+async function exportMode(args: Args): Promise<void> {
 	const reportPath = args.report ? safeOutputPath(args.report) : null
-
 	const decisions = await starterFundingDecisions()
 	const cards = newCards(decisions)
 	const origin = configuredOrigin()
@@ -133,6 +145,71 @@ async function main(): Promise<void> {
 		`${decisions.length} starter(s): ${count(decisions, "NEW_CARD")} new card(s), ${count(decisions, "TOP_UP")} top-up(s), ${decisions.filter(d => d.action === null).length} nothing owed, ${held.length} held, ${flagged.length} flagged.`,
 	)
 	if (!reportPath) console.error("Pass --report <file outside the repo> to list every row and its amounts.")
+}
+
+/** Checks every confirmed row against the site and Airtable. Refuses the whole file on any problem, and records nothing unless `--apply` is passed. */
+async function confirmMode(args: Args, path: string): Promise<void> {
+	const { problems, rows } = parseConfirmedTotals(readFileSync(resolve(path), "utf8"))
+	if (problems.length > 0) throw new Error(`The confirmed totals file has problems: ${problems.join("; ")}`)
+
+	const decisions = await starterFundingDecisions()
+	const byProject = new Map(decisions.map(decision => [decision.projectId, decision]))
+	const refusals: string[] = []
+	const plan: { airtableRecordId: string | null; email: string; projectId: string; totalCents: number }[] = []
+	for (const row of rows) {
+		const decision = byProject.get(row.projectId)
+		if (!decision) {
+			refusals.push(`${row.email}: no approved Week 1 starter for project ${row.projectId}`)
+			continue
+		}
+		if (decision.action !== "TOP_UP") {
+			refusals.push(`${row.email}: not a top-up (the export says ${decision.action ?? "nothing owed"})`)
+			continue
+		}
+		const reason = refusedTotal(row, {
+			email: decision.email,
+			fundingGivenCents: Math.round(decision.fundingGivenUsd * 100),
+			recordedCents: decision.recordedCardUsd === null ? null : Math.round(decision.recordedCardUsd * 100),
+			targetCents: Math.round(decision.cardUsd * 100),
+		})
+		if (reason) refusals.push(`${row.email}: ${reason}`)
+		else
+			plan.push({
+				airtableRecordId: decision.airtableRecordId,
+				email: row.email,
+				projectId: row.projectId,
+				totalCents: row.totalCents,
+			})
+	}
+	if (refusals.length > 0) throw new Error(`Refused, nothing written:\n  ${refusals.join("\n  ")}`)
+
+	for (const entry of plan)
+		console.error(
+			`${entry.email}\t${(entry.totalCents / 100).toFixed(2)}\tairtable ${entry.airtableRecordId ?? "(none)"}`,
+		)
+	console.error(
+		`${plan.length} top-up(s) to record, $${(plan.reduce((sum, entry) => sum + entry.totalCents, 0) / 100).toFixed(2)} in total.`,
+	)
+	if (!args.apply) {
+		console.error("Dry run. Pass --apply to record them. Airtable's Funding given is set separately, through approval.")
+		return
+	}
+
+	const liveRows = await liveRowIdsByProject(plan.map(entry => entry.projectId))
+	for (const entry of plan) {
+		const superseded = liveRows.get(entry.projectId) ?? []
+		if (superseded.length > 0)
+			await supersedeLiveCards(superseded, "topped up by hand in HCB; superseded so the new total can be recorded")
+		await recordStarterCards([{ amountCents: entry.totalCents, email: entry.email, projectId: entry.projectId }])
+		console.error(`Recorded ${entry.email}: $${(entry.totalCents / 100).toFixed(2)}`)
+	}
+	console.error("Now set Funding given in Airtable to each total above, through the approval step.")
+}
+
+function main(): Promise<void> {
+	const args = parseArgs(process.argv.slice(2))
+	if (args.confirm) return confirmMode(args, args.confirm)
+	return exportMode(args)
 }
 
 try {
