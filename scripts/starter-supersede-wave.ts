@@ -44,9 +44,14 @@ async function main(): Promise<void> {
 		.all()
 	const projectIds = starterProjects.map(project => project.id)
 
+	// Only the wave batches, which an admin created. Cards recorded by the starter export have no creator, and are never superseded here.
+	const waveBatches = await db.orm.public.HcbCardGrantExportBatch.where(batch => batch.createdById.isNotNull())
+		.select("id")
+		.all()
 	const live = await db.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
 		.where(row => row.themeProjectId.in(projectIds))
-		.select("amountCents", "email", "themeProjectId")
+		.where(row => row.batchId.in(waveBatches.map(batch => batch.id)))
+		.select("amountCents", "email", "id", "themeProjectId")
 		.all()
 	const toSupersede = live.filter(row => !args.keep.has(row.email.trim().toLowerCase()))
 	const kept = live.length - toSupersede.length
@@ -63,7 +68,7 @@ async function main(): Promise<void> {
 		return
 	}
 	const superseded = await supersedeLiveCards(
-		toSupersede.map(row => row.themeProjectId),
+		toSupersede.map(row => row.id),
 		"cancelled on HCB; superseded so the starter card can be recorded",
 	)
 	console.error(`Superseded ${superseded} row(s).`)
