@@ -232,7 +232,11 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 		targetType: "ThemeProject",
 	})
 
-	return ok({ project: updated })
+	// Reviewer anonymity, as the GET above: this returns the whole row, and a decided phase leaves the reviewer's id on it even after a return or a reopen. Participant pages never show who decided.
+	const { buildReviewedById: _buildReviewer, designReviewedById: _designReviewer, ...safeUpdated } = updated
+	void _buildReviewer
+	void _designReviewer
+	return ok({ project: safeUpdated })
 })
 
 /**

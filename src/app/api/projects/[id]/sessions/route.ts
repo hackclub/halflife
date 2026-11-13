@@ -84,8 +84,10 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 	const items = rows.slice(0, query.data.limit)
 	const last = items.at(-1)
 	return ok({
-		items: items.map(s =>
-			withFields(parseSessionDates(s), {
+		// Reviewer anonymity: `reviewedById` names the (often teen) reviewer who approved the entry, and nothing on the maker's side reads it – the page shows decisions, never deciders. The sibling GET in projects/[id]/route.ts strips the same column; keep the two in step.
+		items: items.map(({ reviewedById: _reviewer, ...s }) => {
+			void _reviewer
+			return withFields(parseSessionDates(s), {
 				media: s.media.map(m =>
 					withFields(m, {
 						createdAt: parseDbTimestamp(m.createdAt),
@@ -98,8 +100,8 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 						recordedAt: parseNullableTimestamp(t.recordedAt),
 					}),
 				),
-			}),
-		),
+			})
+		}),
 		nextCursor:
 			rows.length > query.data.limit && last
 				? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id })

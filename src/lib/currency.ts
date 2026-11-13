@@ -197,7 +197,6 @@ export interface LedgerEntryRow {
 	balanceBefore: number
 	bucket: Models.public_LedgerEntry["bucket"]
 	createdAt: Date
-	createdById: string | null
 	id: string
 	kind: Models.public_LedgerEntry["kind"]
 	note: string | null
@@ -223,13 +222,13 @@ export async function getLedgerPage(
 			: filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
 	const rows = await paged
 		.limit(limit + 1)
+		// No `createdById`: this is the participant's own ledger, and every review approval writes the reviewer's id there. The row is still attributable through the audit log and the review itself.
 		.select(
 			"amount",
 			"balanceAfter",
 			"balanceBefore",
 			"bucket",
 			"createdAt",
-			"createdById",
 			"id",
 			"kind",
 			"note",
