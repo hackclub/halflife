@@ -260,7 +260,12 @@ async function bodies() {
 		[
 			"buy",
 			purchaseSchema,
-			{ idempotencyKey: "01234567-89ab-cdef-0123-456789abcdef", quantity: 1, shopItemId: "printer-ender-3-v3-se" },
+			{
+				deliveryPreference: "SHIP",
+				idempotencyKey: "01234567-89ab-cdef-0123-456789abcdef",
+				quantity: 1,
+				shopItemId: "printer-ender-3-v3-se",
+			},
 		],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
 		["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
