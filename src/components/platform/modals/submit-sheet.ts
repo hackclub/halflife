@@ -8,6 +8,7 @@ import { usesStarterDefaultDescription } from "@/lib/config/onboarding"
 import { type PrinterGoal, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { MIN_PROJECT_DESCRIPTION_CHARS, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER, getTier, type Tier } from "@/lib/config/tiers"
+import { PhaseStatus } from "@/lib/enums"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { SUBMISSION_LIMIT } from "@/lib/resubmissions"
 import { useStore } from "@/lib/store"
@@ -286,7 +287,8 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		if (submitting) return
 		setSubmitting(true)
 		setSubmitError(null)
-		if (project) {
+		// Once the design is decided, the tier on this sheet is the reviewer's, and the server refuses any change to it. Writing back an untouched tier would refuse the whole hand-in over nothing, so it is only sent when the maker has moved it.
+		if (project && (project.designStatus !== PhaseStatus.approved || tier !== project.tier)) {
 			const refusedTier = await setProjectTier(project.id, tier)
 			if (refusedTier) {
 				setSubmitting(false)
