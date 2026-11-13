@@ -13,6 +13,7 @@ import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
 import db from "@/lib/prisma8"
 import {
+	changedProjectKeys,
 	FROZEN_PHASE_STATUSES,
 	getSubmissionAccess,
 	projectDescriptionLockReason,
@@ -136,6 +137,10 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id }).first()
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
+	// What would actually change. A patch that only restates the project's current tier has nothing to write, so it is not refused by a lock on the details.
+	const changing = changedProjectKeys(project, data)
+	if (changing.length === 0) return ok({ project })
+
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
 
@@ -164,7 +169,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	const editLock = projectEditLockReason(project)
 	const descriptionOnly =
 		editLock !== null
-		&& Object.keys(data).length === 1
+		&& changing.length === 1
 		&& data.description !== undefined
 		&& projectDescriptionLockReason(project) === null
 	if (editLock && !descriptionOnly) return fail("PHASE_LOCKED", editLock)
@@ -193,7 +198,9 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 				...(data.description !== undefined ? { description: sanitizeOptional(data.description) } : {}),
 				...(data.githubRepo !== undefined ? { githubRepo: data.githubRepo } : {}),
 				// `requestedTier`, never `tier`. The assigned tier is a reviewer's call at design approval because it decides parts money, and letting this route write it would let anyone grant themselves $100.
-				...(data.requestedTier !== undefined ? { requestedTier: data.requestedTier } : {}),
+				...(changing.includes("requestedTier") && data.requestedTier !== undefined
+					? { requestedTier: data.requestedTier }
+					: {}),
 				...(data.starterProjectId !== undefined ? { starterProjectId: data.starterProjectId } : {}),
 				...(data.coverImageKey !== undefined ? { coverImageKey: data.coverImageKey } : {}),
 				...(data.artifactLinks !== undefined
