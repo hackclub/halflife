@@ -213,8 +213,8 @@ export async function seedProject(userId: string, theme = "PCB"): Promise<string
 export async function seedApprovedProject(userId: string): Promise<string> {
 	const id = randomUUID()
 	await pool.unsafe(
-		`insert into theme_project (id, "userId", theme, title, "designStatus", "grantUsd", "bomTaxShippingUsd", "createdAt", "updatedAt")
-		values ($1, $2, 'PCB'::"Theme", 'E2E payout', 'approved'::"PhaseStatus", 100, 0, now(), now())`,
+		`insert into theme_project (id, "userId", theme, title, "designStatus", "grantUsd", "bomTaxShippingUsd", tier, "createdAt", "updatedAt")
+		values ($1, $2, 'PCB'::"Theme", 'E2E payout', 'approved'::"PhaseStatus", 100, 0, 1, now(), now())`,
 		[id, userId],
 	)
 	await pool.unsafe(
