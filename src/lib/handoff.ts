@@ -82,6 +82,8 @@ export async function createHandoff(userId: string): Promise<NewHandoff> {
 export interface HandoffTarget {
 	expiresAt: Date
 	id: string
+	/** The key the last presign minted, which is the only key this handoff may confirm. Null before the phone asks for an upload URL. */
+	objectKey: string | null
 	userId: string
 }
 
@@ -95,7 +97,7 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	const tokenHash = hashToken(token)
 
 	const row = await db.orm.public.UploadHandoff.where({ tokenHash })
-		.select("expiresAt", "id", "tokenHash", "usedAt", "userId")
+		.select("expiresAt", "id", "objectKey", "tokenHash", "usedAt", "userId")
 		.first()
 	if (!row) return null
 
@@ -107,7 +109,7 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	if (row.usedAt) return null
 	if (expiresAt <= new Date()) return null
 
-	return { expiresAt, id: row.id, userId: row.userId }
+	return { expiresAt, id: row.id, objectKey: row.objectKey ?? null, userId: row.userId }
 }
 
 export interface HandoffUploadResult {
@@ -149,7 +151,10 @@ export async function prepareHandoffUpload(token: string, file: HandoffFileClaim
 	if (!target) throw new HttpError("NOT_FOUND", "This link has expired or has already been used")
 
 	const { ext } = validateHandoffFile(file)
-	return presignUpload(buildObjectKey(target.userId, POST_UPLOAD_FOLDER, ext), file.contentType)
+	const objectKey = buildObjectKey(target.userId, POST_UPLOAD_FOLDER, ext)
+	// Record the key before handing out the URL. It is what confirm compares against, so the phone can send back only the object this handoff itself created – not the name of one of the owner's existing reels, which a later failure path would then delete.
+	await db.orm.public.UploadHandoff.where({ id: target.id }).update({ contentType: file.contentType, objectKey })
+	return presignUpload(objectKey, file.contentType)
 }
 
 /**
@@ -167,6 +172,9 @@ export async function completeHandoffObject(
 	if (!target) throw new HttpError("NOT_FOUND", "This link has expired or has already been used")
 
 	const { ext } = validateHandoffFile(file)
+	// The key travels back through the phone, so it is believed only when it is the one this handoff minted. A prefix check let confirm name any object under the owner's posts folder – and the size and race paths below delete what they were given, so passing a reference reel's key destroyed it.
+	if (!target.objectKey || file.objectKey !== target.objectKey)
+		throw new HttpError("FORBIDDEN", "That object is not the upload this link made")
 	const prefix = `${POST_UPLOAD_FOLDER}/${target.userId}/`
 	const segments = file.objectKey.split("/")
 	if (
