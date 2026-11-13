@@ -5,7 +5,7 @@ import { lockUserCredit } from "@/lib/currency"
 import { Phase, PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { withWritePermission } from "@/lib/guards"
-import { Permission } from "@/lib/permissions"
+import { hasPermission, Permission } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { withFields } from "@/lib/rows"
@@ -32,13 +32,13 @@ export const POST = withWritePermission(Permission.REVIEW_HOURS, async (req: Req
 			sessionIds.length > 0
 				? tx.orm.public.WorkSession.where({ deletedAt: null })
 						.where(session => session.id.in(sessionIds))
-						.select("id", "phase", "themeProjectId")
+						.select("hoursApproved", "hoursClaimed", "id", "phase", "themeProjectId")
 						.include("themeProject", project => project.select("buildStatus", "designStatus", "userId"))
 						.all()
 				: [],
 			linkIds.length > 0
 				? tx.orm.public.HackatimeLink.where(link => link.id.in(linkIds))
-						.select("id", "phase", "themeProjectId")
+						.select("cachedSeconds", "hoursApproved", "id", "phase", "themeProjectId")
 						.include("themeProject", project => project.select("buildStatus", "designStatus", "userId"))
 						.all()
 				: [],
@@ -64,6 +64,21 @@ export const POST = withWritePermission(Permission.REVIEW_HOURS, async (req: Req
 			const status = statusFor(row.themeProject, row.phase)
 			if (status !== PhaseStatus.in_review)
 				throw new HttpError("PHASE_LOCKED", "Hours can only be approved while the phase is in review")
+		}
+
+		// Reviewer-set hours replace the entry's own figure, so raising one is the same credit decision a decision-level override is – and this route is the other half of that path. A REVIEW_HOURS holder may accept or cut the claim, but only MANAGE_CREDIT may pay above what was logged. The ceiling is the larger of the claim and an approval already on the row, so restating an approved number stays possible.
+		if (!hasPermission(gate.roles, Permission.MANAGE_CREDIT)) {
+			const ceilings = new Map<string, number>()
+			for (const row of sessions) ceilings.set(row.id, Math.max(row.hoursClaimed, row.hoursApproved ?? 0))
+			// Tracked seconds are the most a link can reach: the overlap subtraction only ever lowers the computed figure. Rounded up to the two decimals an approval carries, so approving the displayed total is not refused by its own rounding.
+			for (const row of links)
+				ceilings.set(row.id, Math.max(row.hoursApproved ?? 0, Math.ceil(((row.cachedSeconds ?? 0) / 3600) * 100) / 100))
+			for (const decision of parsed.data.decisions)
+				if (decision.hoursApproved > (ceilings.get(decision.id) ?? 0))
+					throw new HttpError(
+						"FORBIDDEN",
+						"Approving more hours than were logged requires the MANAGE_CREDIT permission",
+					)
 		}
 
 		// Ari owns its own decisions, but a claim another Half Life reviewer holds is theirs until it expires.
