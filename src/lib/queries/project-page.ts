@@ -10,7 +10,7 @@ import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
-import { projectEditLockReason } from "@/lib/program"
+import { projectDescriptionLockReason, projectEditLockReason } from "@/lib/program"
 import { deleteBlockReason } from "@/lib/project-delete"
 import { getRepoSyncState, type RepoSyncState } from "@/lib/repo-sync"
 import { submissionBudget } from "@/lib/resubmissions"
@@ -131,6 +131,8 @@ export interface ProjectPageData {
 	coverImageUrl: string | null
 	/** Why the project cannot be deleted, or null when it can. */
 	deleteBlocked: string | null
+	/** Why the description alone cannot change, or null when it can. */
+	descriptionLocked: string | null
 	/** Why the project's own fields cannot change, or null when they can. */
 	editLocked: string | null
 	/** What stands in until they choose one: a journal image, then a reel frame. */
@@ -396,6 +398,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
 		coverImageUrl: publicUrlFor(project.coverImageKey),
 		deleteBlocked: await deleteBlockReason(project),
+		descriptionLocked: projectDescriptionLockReason(project),
 		editLocked: projectEditLockReason(project),
 		fallbackThumbnail: projectThumbnail(
 			null,

@@ -29,6 +29,7 @@ export function ProjectDetails({
 	hours,
 	tierLocked,
 	locked,
+	descriptionLocked,
 	meta,
 	unsubmit,
 }: {
@@ -39,6 +40,8 @@ export function ProjectDetails({
 	tierLocked: boolean
 	/** Why nothing here can change right now, or null when it can. */
 	locked: string | null
+	/** Why the description alone cannot change, or null when it can. */
+	descriptionLocked: string | null
 	/** The facts under the description while reading: progress, then what it is. */
 	meta: React.ReactNode
 	/** Take the phase in review back out of it, when one is. */
@@ -46,6 +49,9 @@ export function ProjectDetails({
 }) {
 	const [editing, setEditing] = useState(false)
 	const lockedId = useId()
+	// A decided design freezes the details but not the words: the build still needs a description of its own, and the submit gate refuses one below its floor. The button opens a description-only form in that case.
+	const descriptionOnly = Boolean(locked) && !descriptionLocked
+	const editDisabled = Boolean(locked) && Boolean(descriptionLocked)
 	// Two steps, in place: unsubmitting pulls the week out of the review queue, so the first press asks, and the second does it.
 	const [confirming, setConfirming] = useState(false)
 	const [unsubmitting, setUnsubmitting] = useState(false)
@@ -62,7 +68,15 @@ export function ProjectDetails({
 	}
 
 	if (editing)
-		return <DetailsForm hours={hours} onDone={() => setEditing(false)} project={project} tierLocked={tierLocked} />
+		return (
+			<DetailsForm
+				detailsLock={locked}
+				hours={hours}
+				onDone={() => setEditing(false)}
+				project={project}
+				tierLocked={tierLocked}
+			/>
+		)
 
 	return (
 		<div>
@@ -73,18 +87,23 @@ export function ProjectDetails({
 				{/* Always where it lives, even while it cannot be used: a control that disappears sends the reader looking for it. Shut, it says why right underneath, instead of at the foot of the block. */}
 				<div className="mt-1 flex shrink-0 flex-col items-end gap-1">
 					<Button
-						aria-describedby={locked ? lockedId : undefined}
-						disabled={Boolean(locked)}
+						aria-describedby={editDisabled ? lockedId : undefined}
+						disabled={editDisabled}
 						onClick={() => setEditing(true)}
 						size="sm"
-						title={locked ?? undefined}
+						title={(editDisabled ? locked : null) ?? undefined}
 						variant="outline"
 					>
-						<IconPencil className="text-sm" /> Edit details
+						<IconPencil className="text-sm" /> {descriptionOnly ? "Edit description" : "Edit details"}
 					</Button>
-					{locked && (
+					{editDisabled && (
 						<p className="hand max-w-56 text-right text-[0.78rem] leading-snug text-navy-soft" id={lockedId}>
 							{locked}.
+						</p>
+					)}
+					{descriptionOnly && (
+						<p className="hand max-w-56 text-right text-[0.78rem] leading-snug text-navy-soft">
+							{locked}. You can still update the description for the build.
 						</p>
 					)}
 					{unsubmit
@@ -147,11 +166,13 @@ function DetailsForm({
 	project,
 	hours,
 	tierLocked,
+	detailsLock,
 	onDone,
 }: {
 	project: Project
 	hours: number
 	tierLocked: boolean
+	detailsLock: string | null
 	onDone(): void
 }) {
 	const { updateProject, goalId, participantGoal } = useStore()
@@ -194,18 +215,22 @@ function DetailsForm({
 		const { url, error: repoError } = validateRepoField(repo)
 		if (repoError) return setError({ field: "repo", message: repoError })
 
-		// Only what changed, so an untouched tier is never re-sent against a server rule it does not need to meet. Taking a starter always carries tier 1 with it when the project is not already there – the server refuses a starter at any other tier.
-		const patch = {
-			...(name.trim() !== project.name ? { name: name.trim() } : {}),
-			...(description.trim() !== project.description.trim() ? { description: description.trim() } : {}),
-			...(url !== (project.githubRepo ?? null) ? { githubRepo: url } : {}),
-			...(starterId !== (project.starterProjectId ?? null) ? { starterProjectId: starterId } : {}),
-			...(takingStarter && project.tier !== STARTER_PROJECT_TIER
-				? { tier: STARTER_PROJECT_TIER }
-				: tierEditable && tier !== project.tier
-					? { tier }
-					: {}),
-		}
+		// Only what changed, so an untouched tier is never re-sent against a server rule it does not need to meet. Taking a starter always carries tier 1 with it when the project is not already there – the server refuses a starter at any other tier. A description-only form is held to the one field it shows.
+		const patch = detailsLock
+			? description.trim() !== project.description.trim()
+				? { description: description.trim() }
+				: {}
+			: {
+					...(name.trim() !== project.name ? { name: name.trim() } : {}),
+					...(description.trim() !== project.description.trim() ? { description: description.trim() } : {}),
+					...(url !== (project.githubRepo ?? null) ? { githubRepo: url } : {}),
+					...(starterId !== (project.starterProjectId ?? null) ? { starterProjectId: starterId } : {}),
+					...(takingStarter && project.tier !== STARTER_PROJECT_TIER
+						? { tier: STARTER_PROJECT_TIER }
+						: tierEditable && tier !== project.tier
+							? { tier }
+							: {}),
+				}
 		if (Object.keys(patch).length === 0) return onDone()
 
 		setSaving(true)
@@ -215,6 +240,65 @@ function DetailsForm({
 		if (refused) setError({ field: null, message: refused })
 		else onDone()
 	}
+
+	// A decided design leaves only the words editable: hide the fields that cannot change rather than showing a form full of disabled controls. The patch `save` builds still carries only what differs, which here can only be the description.
+	if (detailsLock)
+		return (
+			<form
+				aria-label="Edit project description"
+				className="grid gap-4"
+				onKeyDown={e => {
+					if (e.key === "Escape" && !saving) onDone()
+				}}
+				onSubmit={e => {
+					e.preventDefault()
+					void save()
+				}}
+			>
+				<p className="hand text-[0.84rem] leading-snug text-navy-soft">
+					{detailsLock}. You can still update the description for the build.
+				</p>
+				<div className="grid gap-1.5">
+					<label className="label text-violet-deep" htmlFor={`${id}-desc`}>
+						Description
+					</label>
+					<textarea
+						className={cx(field, "resize-y text-[0.92rem] leading-relaxed")}
+						id={`${id}-desc`}
+						maxLength={4000}
+						onChange={e => {
+							setDescription(e.target.value)
+							if (error) setError(null)
+						}}
+						placeholder="What it is, and what it will do when it works."
+						rows={6}
+						value={description}
+					/>
+					<p
+						className={cx(
+							"hand text-[0.78rem] leading-snug",
+							description.trim().length < MIN_PROJECT_DESCRIPTION_CHARS ? "text-coral-deep" : "text-navy-soft",
+						)}
+					>
+						{description.trim().length}/{MIN_PROJECT_DESCRIPTION_CHARS} characters. A week needs at least{" "}
+						{MIN_PROJECT_DESCRIPTION_CHARS} to submit.
+					</p>
+				</div>
+				{error && (
+					<p className="text-[0.84rem] font-semibold text-coral-deep" role="alert">
+						{error.message}
+					</p>
+				)}
+				<div className="flex flex-wrap gap-2">
+					<Button disabled={saving} size="sm" type="submit" variant="solid">
+						{saving ? "Saving…" : "Save description"}
+					</Button>
+					<Button disabled={saving} onClick={onDone} size="sm" type="button" variant="ghost">
+						Cancel
+					</Button>
+				</div>
+			</form>
+		)
 
 	return (
 		<form

@@ -437,3 +437,18 @@ export function projectEditLockReason(project: { buildStatus: PhaseStatus; desig
 		return "A phase of this project has been decided, so its details are final"
 	return null
 }
+
+/**
+ * Why the description alone cannot change right now, or null when it can.
+ *
+ * A design decision is not the end of the project: the build is handed in weeks later, and the submit gate refuses a description below its floor or one still carrying the starter's text. Freezing the description at design approval leaves those makers with no way to hand the build in – which is what happened to designs approved before that floor existed. Every other detail stays frozen with the design decision (see `projectEditLockReason`); the description stays editable until the build itself is in review or decided.
+ */
+export function projectDescriptionLockReason(project: {
+	buildStatus: PhaseStatus
+	designStatus: PhaseStatus
+}): string | null {
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
+		return "In review, so it can't be edited. Unsubmit to change it"
+	if (isPhaseDecided(project.buildStatus)) return "The build has been decided, so its description is final"
+	return null
+}

@@ -709,6 +709,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 					<div className="min-w-0 @3xl:col-start-1 @3xl:row-start-1">
 						<ProjectDetails
 							// A warm-up project's hours live in its imported session, not in a trail week, so its tier hint reads the timeline total.
+							descriptionLocked={data.descriptionLocked}
 							hours={warmup ? hours : weekHours(project.weekId)}
 							locked={data.editLocked}
 							// Two lines, one voice: how far it has got, then what it is. Everything else the page knows about it is further down, where it can be acted on.
