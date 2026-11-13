@@ -159,6 +159,18 @@ function releaseUploadBytes(pool: UploadPool, bytes: number): void {
 }
 
 /**
+ * Reserve room in the shared upload budget for bytes read outside a multipart body, such as an image fetched from another site.
+ *
+ * The remote fetch holds those bytes in this process exactly as a body does, so it has to queue with the bodies rather than beside them: unbudgeted, a handful of large imports could fill the process's memory while every upload believed it had room.
+ *
+ * Returns the release to call in a `finally`, or null when the budget stayed full for the whole wait.
+ */
+export async function reserveUploadMemory(bytes: number): Promise<(() => void) | null> {
+	if (!(await reserveUploadBytes(defaultUploadPool, bytes))) return null
+	return () => releaseUploadBytes(defaultUploadPool, bytes)
+}
+
+/**
  * Parse an upload's multipart form without letting the caller decide how much memory the server spends before a single field can be read.
  *
  * `request.formData()` materialises the whole body first, and both upload routes check their size limits afterwards – fine for a small staff form, but a denial of service for an upload. The handoff path is deliberately unauthenticated and reads its token out of the form, so a limit checked after parsing arrives too late. Content-Length is checked first (cheap, and what a normal client sends), then the stream is counted as it is read, so a chunked request cannot skip the check by omitting the header.

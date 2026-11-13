@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
+import { fail, ok, parseBody, rateLimitedInMemory, reserveUploadMemory } from "@/lib/api"
 import { withWriteSession } from "@/lib/guards"
 import {
 	buildObjectKey,
@@ -28,9 +28,17 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const parsed = await parseBody(req, bodySchema)
 	if (parsed.error) return parsed.error
 
-	const image = await fetchRemoteImage(parsed.data.url, MAX_UPLOAD_BYTES)
-	const key = buildObjectKey(gate.user.id, "sessions", image.ext, contentHash(image.bytes))
-	await putObject(key, image.bytes, image.contentType)
+	// The remote fetch holds the image in this process the way a multipart body is held, so it reserves from the same memory pool instead of sitting beside it. The cap is what the fetch itself is allowed to read.
+	const release = await reserveUploadMemory(MAX_UPLOAD_BYTES)
+	if (!release) return fail("RATE_LIMITED", "Too many uploads at once. Wait a moment and try again")
 
-	return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
+	try {
+		const image = await fetchRemoteImage(parsed.data.url, MAX_UPLOAD_BYTES)
+		const key = buildObjectKey(gate.user.id, "sessions", image.ext, contentHash(image.bytes))
+		await putObject(key, image.bytes, image.contentType)
+
+		return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
+	} finally {
+		release()
+	}
 })
