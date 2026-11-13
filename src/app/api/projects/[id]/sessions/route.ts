@@ -24,6 +24,7 @@ import {
 	SUBMISSIONS_CLOSED_MESSAGE,
 	WEEK_CLOSED_MESSAGE,
 	weekClosesAt,
+	workedDayFor,
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { scheduleRepoSync } from "@/lib/repo-sync"
@@ -84,8 +85,10 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 	const items = rows.slice(0, query.data.limit)
 	const last = items.at(-1)
 	return ok({
-		items: items.map(s =>
-			withFields(parseSessionDates(s), {
+		// Reviewer anonymity: `reviewedById` names the (often teen) reviewer who approved the entry, and nothing on the maker's side reads it – the page shows decisions, never deciders. The sibling GET in projects/[id]/route.ts strips the same column; keep the two in step.
+		items: items.map(({ reviewedById: _reviewer, ...s }) => {
+			void _reviewer
+			return withFields(parseSessionDates(s), {
 				media: s.media.map(m =>
 					withFields(m, {
 						createdAt: parseDbTimestamp(m.createdAt),
@@ -98,8 +101,8 @@ export const GET = withSession(async (req: NextRequest, { params, gate }: Params
 						recordedAt: parseNullableTimestamp(t.recordedAt),
 					}),
 				),
-			}),
-		),
+			})
+		}),
 		nextCursor:
 			rows.length > query.data.limit && last
 				? encodeCursor({ at: parseDbTimestamp(last.createdAt), id: last.id })
@@ -148,9 +151,13 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	const timelapses = await verifyOwnTimelapses(gate.user.id, lapseIds)
 
 	const timing = await stampSessionTiming(new Date())
+	// The day the entry is for: today, or the day it was worked if that is inside the current program week. Its week number is the same either way, so `timing` supplies that.
+	const workedDay = workedDayFor(await getProgramSettings(), data.workedOn, new Date())
 
 	// One transaction: a session and the streak it feeds have to land together, or a rolled-back write leaves an inflated streak with nothing behind it.
 	const session = await db.transaction(async tx => {
+		// The daily 24-hour check below reads a total and then writes, and READ COMMITTED lets two parallel entries both see the same pre-insert figure. The lock serialises this person's journal writes, so the second sees the first.
+		await lockKey(tx, `journal:${gate.user.id}`)
 		if (lapseIds.length > 0) {
 			// Sorted so two requests naming the same recordings cannot deadlock on each other's locks.
 			for (const lapseId of [...lapseIds].toSorted()) await lockKey(tx, `lapse:${lapseId}`)
@@ -199,11 +206,11 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		if (new Date() >= closesAt && !(await ignoresSchedule(gate.user.id)))
 			throw new HttpError("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
-		// One person cannot work more than 24 hours in a day. Self-reported (MANUAL) claims are capped per effective date across all of the maker's live projects, so ten 15-hour entries in a minute are refused. Tracked entries are excluded: their time is verified by Hackatime, not self-reported. Counted inside the transaction, so two parallel submits cannot each pass against the same total.
+		// One person cannot work more than 24 hours in a day. Self-reported (MANUAL) claims are capped per day worked across all of the maker's live projects, so ten 15-hour entries in a minute are refused. Tracked entries are excluded: their time is verified by Hackatime, not self-reported. Counted inside the transaction, so two parallel submits cannot each pass against the same total.
 		if (data.hoursSource === HoursSource.MANUAL) {
 			const { claimedToday } = await tx.orm.public.WorkSession.where({
 				deletedAt: null,
-				effectiveDate: timing.effectiveDate,
+				effectiveDate: workedDay,
 				hoursSource: HoursSource.MANUAL,
 			})
 				.where(entry => entry.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))))
@@ -217,7 +224,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 
 		const created = await tx.orm.public.WorkSession.create({
 			content: data.content ? sanitizeHtml(data.content) : null,
-			effectiveDate: timing.effectiveDate,
+			effectiveDate: workedDay,
 			hoursClaimed: data.hoursClaimed,
 			hoursSource: data.hoursSource,
 			phase: data.phase,

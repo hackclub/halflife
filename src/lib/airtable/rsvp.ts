@@ -50,10 +50,9 @@ export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> 
 	} catch (err) {
 		if (!isUniqueViolation(err)) throw err
 		// Re-RSVPing must not clobber attribution captured the first time, and it resets the failure count: a row that hit the drain's attempt cap while Airtable was down must be retried when the person comes back, not left permanently invisible.
+		//
+		// Nothing else on the row moves. This write is unauthenticated, so a second POST claiming an address proves nothing about owning it – rewriting the name or pronouns here let anyone change somebody else's entry, and a field the form left out arrived as null and erased what was stored. The first row is the record.
 		await db.orm.public.RsvpBuffer.where({ email }).update({
-			...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
-			...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
-			...(input.pronouns !== undefined ? { pronouns: input.pronouns } : {}),
 			syncAttempts: 0,
 			syncedToAirtable: false,
 		})

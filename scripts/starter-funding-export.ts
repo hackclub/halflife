@@ -111,7 +111,7 @@ function reportTsv(decisions: readonly StarterFundingDecision[]): string {
 				d.airtableRecordId ?? "",
 				d.projectId,
 			]
-				.map(v => String(v).replaceAll(/[\t\r\n]+/g, " "))
+				.map(v => v.replaceAll(/[\t\r\n]+/g, " "))
 				.join("\t"),
 		)
 	return `${lines.join("\n")}\n`

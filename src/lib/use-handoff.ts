@@ -39,7 +39,7 @@ export type HandoffStatus = "idle" | "minting" | "waiting" | "ready" | "expired"
 const HandoffPollBody = z.object({ objectKey: z.string().optional(), state: z.string(), url: z.string().nullish() })
 const MintedHandoffBody = z.object({ expiresAt: z.string(), id: z.string(), qrSvg: z.string(), url: z.string() })
 const ConfirmedUploadBody = z.object({ objectKey: z.string(), url: z.string().nullish() })
-const PresignedUploadBody = z.object({ objectKey: z.string(), uploadUrl: z.string() })
+const PresignedUploadBody = z.object({ objectKey: z.string(), uploadUrl: z.string().nullable() })
 
 const POLL_MS = 2500
 
@@ -144,11 +144,14 @@ export async function uploadFile(
 	const presigned = await presignUpload(file, folder)
 	if (!presigned) return uploadThroughServer(file, folder, onProgress, "no-direct-url")
 
-	const put = await putFile(presigned.uploadUrl, file, onProgress)
-	if (!put.ok) {
-		// Status 0 means the browser never reached the bucket at all – CORS is not set on a deployment that has not had the rule applied yet, or this network blocks it. The slow path still works.
-		if (put.status === 0) return uploadThroughServer(file, folder, onProgress, "direct-unreachable")
-		throw new Error(`Storage refused the upload (${put.status}). Try again.`)
+	// A picture that is already stored comes back with no URL: its key is its hash, so the bytes on the bucket are the ones this file would put there, and signing another PUT would only offer to overwrite them.
+	if (presigned.uploadUrl) {
+		const put = await putFile(presigned.uploadUrl, file, onProgress)
+		if (!put.ok) {
+			// Status 0 means the browser never reached the bucket at all – CORS is not set on a deployment that has not had the rule applied yet, or this network blocks it. The slow path still works.
+			if (put.status === 0) return uploadThroughServer(file, folder, onProgress, "direct-unreachable")
+			throw new Error(`Storage refused the upload (${put.status}). Try again.`)
+		}
 	}
 
 	const res = await fetch("/api/upload/confirm", {
@@ -162,7 +165,10 @@ export async function uploadFile(
 	return { objectKey: payload.objectKey, url: payload.url ?? null }
 }
 
-async function presignUpload(file: File, folder: string): Promise<{ objectKey: string; uploadUrl: string } | null> {
+async function presignUpload(
+	file: File,
+	folder: string,
+): Promise<{ objectKey: string; uploadUrl: string | null } | null> {
 	// Pictures are keyed by their hash, and WebCrypto only exists in a secure context. A plain-HTTP deployment (a dev server on a LAN address, say) therefore takes the server path, which hashes after the upload instead.
 	if (file.type.startsWith("image/") && !globalThis.crypto?.subtle) return null
 
@@ -226,6 +232,8 @@ export async function uploadHandoffFile(
 		throw new Error(await uploadFailureFrom(res, { stage: "prepare" }))
 	}
 	const presigned = PresignedUploadBody.parse(await res.json())
+	// This route always mints a new key for the phone, so it always has a URL; a null here is a deployment answering with the picture route's "already stored" shape.
+	if (!presigned.uploadUrl) throw new Error("That upload could not start. Try again from the computer.")
 
 	const put = await putFile(presigned.uploadUrl, file, onProgress)
 	if (!put.ok) {

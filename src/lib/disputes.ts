@@ -17,8 +17,29 @@ import { formatDbTimestamp } from "@/lib/time"
  * The dispute itself changes no state (see `ReviewDispute`): it records the maker's words and opens a thread. These two actions are how a reviewer closes it – leave the decision standing, or agree it was wrong and send the hand-in back for a fresh review.
  */
 
+/**
+ * Neither the maker who filed the dispute nor the reviewer whose decision it questions may settle it.
+ *
+ * `REVIEW_SUBMISSIONS` is held by every reviewer, so without this a reviewer could resolve a dispute about their own decision – or a maker who is also a reviewer could close their own. The check runs before either ending writes anything.
+ */
+async function assertUninvolved(disputeId: string, deciderId: string): Promise<void> {
+	const dispute = await db.orm.public.ReviewDispute.whereUnique({ id: disputeId })
+		.select("submissionId", "userId")
+		.first()
+	if (!dispute) throw new HttpError("NOT_FOUND", "Dispute not found")
+	if (dispute.userId === deciderId) throw new HttpError("FORBIDDEN", "You cannot settle your own dispute")
+	const decided = await db.orm.public.SubmissionReview.where({
+		reviewerId: deciderId,
+		submissionId: dispute.submissionId,
+	})
+		.select("id")
+		.first()
+	if (decided) throw new HttpError("FORBIDDEN", "You cannot settle a dispute about your own decision")
+}
+
 /** Close a dispute with the decision left standing. Changes no state beyond the dispute. */
 export async function closeDispute(disputeId: string, reviewerId: string, reviewerEmail: string | null): Promise<void> {
+	await assertUninvolved(disputeId, reviewerId)
 	const closed = await db.orm.public.ReviewDispute.where({ id: disputeId })
 		.where(dispute => dispute.resolvedAt.isNull())
 		.updateAndCount({
@@ -56,6 +77,7 @@ export async function sendDisputedPhaseBack(
 		.first()
 	if (!dispute?.submission) throw new HttpError("NOT_FOUND", "Dispute not found")
 	if (dispute.resolvedAt) throw new HttpError("CONFLICT", "That dispute is already resolved")
+	await assertUninvolved(disputeId, reviewerId)
 
 	const { submission } = dispute
 	const { phase, themeProjectId } = submission

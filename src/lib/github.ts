@@ -37,6 +37,44 @@ const MAX_BACKOFF_MS = 15 * 60_000
 /** Waits before each retry of a transient failure. */
 const RETRY_DELAYS_MS = [300, 1000]
 
+/**
+ * The most any single forge answer may carry into memory.
+ *
+ * A file listing for a huge repository is a few megabytes. A file read is capped far lower by its caller. This is the backstop that stops one GitLab `raw` answer from buffering a gigabyte, which the BOM import used to do because it read whatever the repo served.
+ */
+const MAX_FORGE_BODY_BYTES = 16 * 1024 * 1024
+
+/** What a repo file read may carry. GitHub itself stops returning `content` past a megabyte, so the GitLab path has to refuse the same files to behave the same way. */
+export const MAX_FORGE_FILE_BYTES = 1024 * 1024
+
+type CappedBody = { body: ArrayBuffer; reason?: never } | { body?: never; reason: "too-large" | "unreadable" }
+
+/** Read a response body without letting the forge decide how much memory it costs. */
+async function readCappedBody(res: Response, maxBytes: number): Promise<CappedBody> {
+	const declared = Number(res.headers.get("content-length") ?? "")
+	if (Number.isFinite(declared) && declared > maxBytes) return { reason: "too-large" }
+	if (!res.body) return { body: new ArrayBuffer(0) }
+
+	const reader = res.body.getReader()
+	const chunks: Uint8Array[] = []
+	let total = 0
+	try {
+		while (true) {
+			const { done, value } = await reader.read()
+			if (done) break
+			total += value.byteLength
+			if (total > maxBytes) {
+				await reader.cancel().catch(() => undefined)
+				return { reason: "too-large" }
+			}
+			chunks.push(value)
+		}
+	} catch {
+		return { reason: "unreadable" }
+	}
+	return { body: new Uint8Array(Buffer.concat(chunks)).buffer }
+}
+
 /** How a forge being unreachable reads to whoever asked. */
 export class ForgeUnavailableError extends Error {
 	constructor(message: string) {
@@ -109,7 +147,7 @@ function request(route: Route, path: string): { url: string; headers: { [_: stri
 /**
  * One route, with retries for what is worth retrying. Resolves to the forge's answer – any status it chose, including 404 – or throws ForgeUnavailableError.
  */
-async function via(forge: Forge, route: Route, path: string): Promise<Response> {
+async function via(forge: Forge, route: Route, path: string, maxBytes = MAX_FORGE_BODY_BYTES): Promise<Response> {
 	let why = `${forge.label} did not answer.`
 	let timeouts = 0
 	for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
@@ -123,8 +161,11 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
 		try {
 			const raw = await fetch(url, { cache: "no-store", headers, signal: AbortSignal.timeout(TIMEOUT_MS[route]) })
 			// Read the body here, inside the same timeout and the same retry. The timeout covers the download as well as the headers, so a slow file list used to abort mid-read in the caller – outside every catch – and surface as a 500. Buffered, a slow body is just a slow attempt.
-			const body = await raw.arrayBuffer()
-			res = new Response(body, { headers: raw.headers, status: raw.status, statusText: raw.statusText })
+			const read = await readCappedBody(raw, maxBytes)
+			if (read.reason === "unreadable") throw new Error("The forge answer could not be read")
+			// Too large is the forge's answer, not a transient failure: retrying would just download it again. A 413 is what every caller already handles as "unreadable".
+			if (read.reason === "too-large") res = new Response(null, { status: 413, statusText: "Payload Too Large" })
+			else res = new Response(read.body, { headers: raw.headers, status: raw.status, statusText: raw.statusText })
 		} catch (err) {
 			// The maker sees "did not answer"; the cause is for whoever runs this.
 			console.warn(`[forge] ${forge.id} ${route} GET ${path} failed (attempt ${attempt + 1}):`, err)
@@ -160,15 +201,16 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
  *
  * Resolves to the response for any status the forge answered with, including 404 – that is a finding, not a failure. Throws ForgeUnavailableError when there is no answer to be had on any route.
  */
-export async function forgeGet(forge: Forge, path: string): Promise<Response> {
-	if (forge.id === "gitlab") return via(forge, "gitlab-direct", path)
+export async function forgeGet(forge: Forge, path: string, opts: { maxBytes?: number } = {}): Promise<Response> {
+	const maxBytes = opts.maxBytes ?? MAX_FORGE_BODY_BYTES
+	if (forge.id === "gitlab") return via(forge, "gitlab-direct", path, maxBytes)
 
-	if (!process.env.GH_PROXY_API_KEY) return via(forge, "github-direct", path)
+	if (!process.env.GH_PROXY_API_KEY) return via(forge, "github-direct", path, maxBytes)
 	try {
-		return await via(forge, "proxy", path)
+		return await via(forge, "proxy", path, maxBytes)
 	} catch (err) {
 		if (!(err instanceof ForgeUnavailableError)) throw err
 		console.warn(`[forge] proxy unavailable for ${path}, going to GitHub directly: ${err.message}`)
-		return via(forge, "github-direct", path)
+		return via(forge, "github-direct", path, maxBytes)
 	}
 }

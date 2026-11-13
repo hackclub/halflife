@@ -19,6 +19,7 @@ import {
 import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
+import { assertPayoutAllowed } from "@/lib/moderation"
 import { statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import db from "@/lib/prisma8"
@@ -111,6 +112,12 @@ function extensionUpdate(project: { submissionExtensionUntil: string | null }): 
 }
 
 export interface FinalizeInput {
+	/**
+	 * Whether a reviewer's numbers may exceed what the maker asked for: more hours than the phase logged, or a tier above the one requested.
+	 *
+	 * Off by default because Ari's approved hours are the review platform's own decision and are meant to replace Half Life's computed total outright. The console's decision route turns it on for a reviewer without `MANAGE_CREDIT`, so a REVIEW_SUBMISSIONS holder cannot mint coins or parts money for another account by writing a number above the claim.
+	 */
+	enforceClaimCeiling?: boolean
 	/** Shown to the participant. */
 	feedback: string
 	/**
@@ -176,6 +183,9 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	const projectUser = project.user
 	if (!projectUser) throw new HttpError("NOT_FOUND", "Submission not found")
 	const { phase } = submission
+	// A submission row is not the authority on whether a phase is awaiting review: a revert leaves the row open while the phase goes back to its maker (lib/ari, lib/ire-review), so a stale row stays decidable forever. Deciding it would approve work nobody handed in – or, as a rejection, claw back an approval that has already paid out, which is what unapprovePhase exists for and what this path must not do without OVERRIDE_DECISIONS.
+	if (statusFor(project, phase) !== PhaseStatus.in_review)
+		throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
 	const approving = input.result === ReviewResult.APPROVED
 
 	// A build cannot be approved before its design is. Submitting out of order is fine – see canSubmitPhase – but paying out of order is not. A warm-up project has no design to wait for: its one phase is whatever the form collected.
@@ -192,6 +202,13 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		// The tier's dollars are parts money, so the decision lands here – before the participant starts building – not at build approval. A reviewer who did not name one leaves the maker's request standing; `tier` can hold a value written before any decision (imported rows do), so it is the last resort rather than the first.
 		const chosen = input.tier ?? project.requestedTier ?? project.tier
 		if (!isTierId(chosen)) throw new HttpError("VALIDATION_FAILED", "Assign a funding tier when approving a design")
+		// A tier is parts money, and raising it raises the grant without touching the hours. A reviewer may lower or keep the maker's request, but only `MANAGE_CREDIT` may go above it. With no request on file the cap is Tier 1 – the entry tier, priced for a first project – rather than nothing at all, which is the hole this closes: the check is skipped only when there is no ceiling to apply, and there is always one. A project that already carries a tier (imported rows) keeps that as its ceiling, so a re-approval does not strand it below what it was given.
+		const ceiling = project.requestedTier ?? project.tier ?? ENTRY_TIER.id
+		if (input.enforceClaimCeiling && chosen > ceiling)
+			throw new HttpError(
+				"FORBIDDEN",
+				"Raising the tier above what the maker requested requires the MANAGE_CREDIT permission",
+			)
 		tier = chosen
 	}
 
@@ -230,12 +247,19 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		// reconcileGrant reads a running sum and writes a delta against it, so it needs the same serialization the shop does.
 		await lockUserCredit(tx, project.userId)
 
+		// An approval is the payout those submissions earn, so a banned, suspended or flagged account is not paid – by Ari just as much as by a reviewer. Read inside the transaction, under the same lock every other payout takes, so a penalty written in the meantime is seen.
+		if (approving) await assertPayoutAllowed(tx, project.userId)
+
 		// Re-read inside the transaction: the review page may have been open for a while, and the participant may have withdrawn in the meantime.
 		const fresh = await tx.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })
 			.select("resolvedAt")
+			.include("themeProject", owner => owner.select("buildStatus", "designStatus"))
 			.first()
 		if (!fresh) throw new HttpError("NOT_SUBMITTED", "This submission has been withdrawn")
 		if (fresh.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "Already decided")
+		// Under the lock, where a revert, an un-approval or a reopen that commits between the read above and this write cannot slip past.
+		if (!fresh.themeProject || statusFor(fresh.themeProject, phase) !== PhaseStatus.in_review)
+			throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
 
 		// Re-check the claim under the transaction too. The check before it ran against a read taken when the page opened, so another reviewer can have claimed the submission since; without this the decision would proceed and delete their live claim on the way out.
 		const claim = await tx.orm.public.ReviewClaim.where({ submissionId: input.submissionId }).first()
@@ -253,6 +277,15 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 		// The hours, read under the lock rather than before it. The hours-approval route takes this same lock before it rewrites a session or a link, so a batch that rewrote them while this decision was waiting for Hackatime is already in this read, and one still waiting cannot commit until this decision has. The total the decision freezes is the total the rows hold at the moment it is made.
 		const breakdown = await getHoursBreakdown(project.id, phase, { client: tx })
+		// Hours are coins: one approved hour mints five of them, and the design tier's funded block is measured against the same number. A reviewer may cut the claimed total, but paying above what was logged is a credit decision – otherwise REVIEW_SUBMISSIONS quietly carries the authority MANAGE_CREDIT withholds, up to MAX_APPROVED_HOURS per phase plus the grant that tier buys.
+		if (
+			approving
+			&& input.enforceClaimCeiling
+			&& input.hoursOverride !== null
+			&& input.hoursOverride !== undefined
+			&& input.hoursOverride > breakdown.computedTotal
+		)
+			throw new HttpError("FORBIDDEN", "Approving more hours than were logged requires the MANAGE_CREDIT permission")
 		const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
 		// A tier's grant buys that tier's funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when the decision approves less time than was logged. Then the tier is what has to move, not the grant: a hundred dollars of parts for a five-hour week is money for work that was not done. An explicit grant override is an admin decision about the amount, so it is left alone.

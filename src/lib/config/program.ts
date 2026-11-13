@@ -64,7 +64,7 @@ export const MIN_PROJECT_DESCRIPTION_CHARS = 100
 /**
  * Streaks.
  *
- * A day counts when the participant logs a work session with that day as its `effectiveDate` in the program timezone – the same stamp the journal already writes, so the streak is derived from work rather than from logging in.
+ * A day counts when the participant files a work session on that day in the program timezone, so the streak is derived from work rather than from logging in. Backdating an entry to the day it was worked does not extend the streak.
  *
  * `STREAK_GRACE_DAYS = 1` means one missed day does not reset you: the streak breaks on the second. Hardware work is not a daily-habit app, and a rule that punishes a day at a robotics competition would mostly teach people to file a fake session.
  */

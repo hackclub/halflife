@@ -9,7 +9,7 @@ import {
 } from "@/lib/config/repo-checks"
 import type { Theme } from "@/lib/enums"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
-import { ForgeUnavailableError, forgeGet } from "@/lib/github"
+import { ForgeUnavailableError, forgeGet, MAX_FORGE_FILE_BYTES } from "@/lib/github"
 import { containsOnshapeLink, isOnshapeLink } from "@/lib/repo"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 import { README_GUIDE_URL } from "@/lib/routes"
@@ -334,7 +334,9 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 	const [name] = candidates
 	if (!name) return null
 
-	const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`)
+	const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`, {
+		maxBytes: MAX_FORGE_FILE_BYTES,
+	})
 	if (!res.ok) return null
 	return capReadme(await res.text())
 }
@@ -761,18 +763,21 @@ export function readRepoFile(repoLink: string | null, path: string): Promise<str
 
 /** The same read, for a repo already resolved to a forge – so a caller holding a `RepoRef` does not resolve it twice. */
 async function readRepoFileAt(ref: RepoRef, path: string): Promise<string | null> {
-	// GitLab takes the file path as one encoded value, slashes included, the way the README read above does; GitHub's contents API takes it as path segments, so each is encoded on its own.
+	// GitLab takes the file path as one encoded value, slashes included, the way the README read above does; GitHub's contents API takes it as path segments, so each is encoded on its own. Both stop at MAX_FORGE_FILE_BYTES: GitHub's contents API omits `content` past a megabyte, and GitLab's raw endpoint would otherwise serve any size into memory.
 	if (ref.forge.id === "gitlab") {
 		const res = await forgeGet(
 			ref.forge,
 			`projects/${encodeURIComponent(ref.fullName)}/repository/files/${encodeURIComponent(path)}/raw?ref=HEAD`,
+			{ maxBytes: MAX_FORGE_FILE_BYTES },
 		)
 		if (!res.ok) return null
 		return res.text()
 	}
 
 	const encoded = path.split("/").map(encodeURIComponent).join("/")
-	const res = await forgeGet(ref.forge, `repos/${ref.fullName}/contents/${encoded}?ref=HEAD`)
+	const res = await forgeGet(ref.forge, `repos/${ref.fullName}/contents/${encoded}?ref=HEAD`, {
+		maxBytes: MAX_FORGE_FILE_BYTES * 2,
+	})
 	if (!res.ok) return null
 	const body: unknown = await res.json().catch(() => null)
 	// GitHub omits `content` for files over a megabyte and sets `encoding` to `none`; a BOM CSV is never one, so that is just unreadable.

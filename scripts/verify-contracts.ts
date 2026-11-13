@@ -260,7 +260,12 @@ async function bodies() {
 		[
 			"buy",
 			purchaseSchema,
-			{ idempotencyKey: "01234567-89ab-cdef-0123-456789abcdef", quantity: 1, shopItemId: "printer-ender-3-v3-se" },
+			{
+				deliveryPreference: "SHIP",
+				idempotencyKey: "01234567-89ab-cdef-0123-456789abcdef",
+				quantity: 1,
+				shopItemId: "printer-ender-3-v3-se",
+			},
 		],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
 		["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
@@ -381,8 +386,10 @@ async function checkFetchRetry(): Promise<void> {
 	// Silence the waits; the tests are about attempts, not wall time.
 	const originalSetTimeout = globalThis.setTimeout
 	await (async () => {
+		// Node's own timers hand arguments through setTimeout (a socket's connect timeout gets its context that way), and those keep the real timer. Only the retry's plain wait, which takes none, runs at once.
 		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
-		globalThis.setTimeout = ((fn: () => void) => {
+		globalThis.setTimeout = ((fn: (...args: unknown[]) => void, ms?: number, ...args: unknown[]) => {
+			if (args.length > 0) return originalSetTimeout(fn, ms, ...args)
 			fn()
 			return 0
 		}) as unknown as typeof setTimeout

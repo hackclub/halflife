@@ -1,8 +1,74 @@
 import { describe, expect, test } from "bun:test"
 import { PhaseStatus } from "@/lib/enums"
-import { projectDescriptionLockReason, projectEditLockReason } from "@/lib/program"
+import {
+	changedProjectKeys,
+	journalWindow,
+	projectDescriptionLockReason,
+	projectEditLockReason,
+	workedDayFor,
+} from "@/lib/program"
 
 const project = (designStatus: PhaseStatus, buildStatus: PhaseStatus) => ({ buildStatus, designStatus })
+
+/** Week 1 is 7–13 September 2026, in UTC. */
+const settings = { eventStartDate: new Date("2026-09-07T00:00:00.000Z"), programTimezone: "UTC" }
+
+describe("journalWindow", () => {
+	test("runs from the start of the current program week to today", () => {
+		expect(journalWindow(settings, new Date("2026-09-10T12:00:00.000Z"))).toEqual({
+			earliest: "2026-09-07",
+			today: "2026-09-10",
+		})
+		expect(journalWindow(settings, new Date("2026-09-14T00:30:00.000Z"))).toEqual({
+			earliest: "2026-09-14",
+			today: "2026-09-14",
+		})
+	})
+
+	test("allows only today before the program opens", () => {
+		expect(journalWindow(settings, new Date("2026-09-02T12:00:00.000Z"))).toEqual({
+			earliest: "2026-09-02",
+			today: "2026-09-02",
+		})
+	})
+})
+
+describe("workedDayFor", () => {
+	const now = new Date("2026-09-10T12:00:00.000Z")
+
+	test("is today when no day is given", () => {
+		expect(workedDayFor(settings, undefined, now)).toBe("2026-09-10")
+	})
+
+	test("accepts a day earlier in the current program week", () => {
+		expect(workedDayFor(settings, "2026-09-07", now)).toBe("2026-09-07")
+		expect(workedDayFor(settings, "2026-09-10", now)).toBe("2026-09-10")
+	})
+
+	test("refuses a day after today", () => {
+		expect(() => workedDayFor(settings, "2026-09-11", now)).toThrow("can't be dated after today")
+	})
+
+	test("refuses a day in an earlier program week", () => {
+		expect(() => workedDayFor(settings, "2026-09-06", now)).toThrow("started on 2026-09-07")
+	})
+})
+
+describe("changedProjectKeys", () => {
+	test("leaves out a tier the project already has", () => {
+		expect(changedProjectKeys({ requestedTier: 2 }, { description: "x", requestedTier: 2 })).toEqual(["description"])
+		expect(changedProjectKeys({ requestedTier: 2 }, { requestedTier: 2 })).toEqual([])
+	})
+
+	test("keeps a tier that differs", () => {
+		expect(changedProjectKeys({ requestedTier: 2 }, { requestedTier: 3 })).toEqual(["requestedTier"])
+		expect(changedProjectKeys({ requestedTier: null }, { requestedTier: 1 })).toEqual(["requestedTier"])
+	})
+
+	test("keeps every other field", () => {
+		expect(changedProjectKeys({ requestedTier: 1 }, { description: "x", title: "y" })).toEqual(["description", "title"])
+	})
+})
 
 describe("projectEditLockReason", () => {
 	test("freezes the details once either phase is decided", () => {

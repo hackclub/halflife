@@ -7,7 +7,8 @@
 /** Links have to survive being typed by hand without becoming an attack. */
 export function safeHref(raw: string): string | undefined {
 	const href = raw.trim()
-	if (/^(https?:|mailto:)/i.test(href)) return href
+	// The `//` is the whole check: WHATWG URL parsing resolves `https:/path` against an https page as a same-origin relative path, so `^https?:` alone would let a writer mint a link to our own routes.
+	if (/^https?:\/\//i.test(href) || /^mailto:/i.test(href)) return href
 	if (href.startsWith("/") || href.startsWith("#")) return href
 	return undefined
 }
@@ -15,7 +16,7 @@ export function safeHref(raw: string): string | undefined {
 /** The same guard for images, plus data URIs so a paste can be previewed. */
 export function safeSrc(raw: string): string | undefined {
 	const src = raw.trim()
-	if (/^https?:/i.test(src)) return src
+	if (/^https?:\/\//i.test(src)) return src
 	if (/^data:image\//i.test(src)) return src
 	// No site-relative paths: uploaded images are absolute R2 URLs, so a relative `![x](/signed-out)` can only be aimed at our own routes – and loading one as an image fires a credentialed GET at it (which is how one logged out every viewer of Explore).
 	return undefined

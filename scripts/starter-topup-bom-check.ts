@@ -62,7 +62,7 @@ const HEADER = [
 
 async function main(): Promise<void> {
 	const wanted = new Set(EMAILS.map(email => email.toLowerCase()))
-	const starterIds = starterProjectsFor(Theme.PCB).map(starter => starter.id)
+	const starterIds = new Set(starterProjectsFor(Theme.PCB).map(starter => starter.id))
 	const users = await db.orm.public.User.where(user => user.email.in(EMAILS))
 		.select("id", "email")
 		.all()
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 		if (!wanted.has(email)) continue
 		const items = await listBom(project.id)
 		const bom = bomTotalUsd(items, project.bomTaxShippingUsd)
-		const isStarter = starterIds.includes(project.starterProjectId ?? "")
+		const isStarter = starterIds.has(project.starterProjectId ?? "")
 		rows.push(
 			[
 				email,

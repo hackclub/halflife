@@ -51,6 +51,13 @@ export const DEFAULT_SESSION_TITLE = "Work session"
  */
 export const MAX_SESSION_TIMELAPSES = 25
 
+/** A calendar day as `YYYY-MM-DD`. A real one only: 2026-02-30 is refused rather than rolled over into March. */
+const calendarDaySchema = z.string().refine(value => {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+	const parsed = new Date(`${value}T00:00:00Z`)
+	return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+}, "Use a date like 2026-11-13")
+
 export const sessionCreateSchema = z
 	.object({
 		content: boundedText(MAX_SESSION_CONTENT).optional(),
@@ -70,6 +77,10 @@ export const sessionCreateSchema = z
 			.max(MAX_SESSION_TIMELAPSES, `An entry can hold at most ${MAX_SESSION_TIMELAPSES} timelapses`)
 			.default([]),
 		title: boundedText(200, 1),
+		/**
+		 * The program-timezone day the work was done. Left out, the entry is for today. The route checks it against the current program week, so this only ever moves an entry within the week it is filed in.
+		 */
+		workedOn: calendarDaySchema.optional(),
 	})
 	.strict()
 

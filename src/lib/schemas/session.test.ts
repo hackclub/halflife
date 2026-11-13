@@ -45,6 +45,23 @@ describe("sessionCreateSchema", () => {
 	})
 })
 
+describe("workedOn", () => {
+	test("is optional, and takes a real calendar day", () => {
+		expect(sessionCreateSchema.safeParse({ ...validEntry, workedOn: "2026-09-08" }).success).toBe(true)
+		expect(sessionCreateSchema.safeParse(validEntry).success).toBe(true)
+	})
+
+	test("refuses anything that is not a real day", () => {
+		for (const workedOn of ["2026-02-30", "2026-9-8", "08/09/2026", "2026-09-08T10:00", "tomorrow"])
+			expect(sessionCreateSchema.safeParse({ ...validEntry, workedOn }).success).toBe(false)
+	})
+
+	test("can be edited, and is not held to the create-only fields", () => {
+		expect(sessionUpdateSchema.safeParse({ workedOn: "2026-09-08" }).success).toBe(true)
+		expect(sessionUpdateSchema.safeParse({ workedOn: "2026-02-30" }).success).toBe(false)
+	})
+})
+
 describe("sessionUpdateSchema", () => {
 	test("edits a subset, never the images", () => {
 		expect(sessionUpdateSchema.safeParse({ title: "New title" }).success).toBe(true)

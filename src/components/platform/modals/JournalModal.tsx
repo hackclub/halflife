@@ -10,6 +10,7 @@ import { photosRequired } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { ParticipantGoal } from "@/lib/enums"
 import { countImages, proseLength } from "@/lib/markdown"
+import { round2 } from "@/lib/money"
 import { fmtHours } from "@/lib/numbers"
 import { MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { useStore } from "@/lib/store"
@@ -104,12 +105,20 @@ function JournalFooter({
 	)
 }
 
+/** A program day as the sheet names it: "today", or "11 Nov". */
+const dayLabel = (day: string, today: string): string =>
+	day === today
+		? "today"
+		: new Date(`${day}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
+
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const {
 		setOpenCheckpoint,
 		logSession,
 		editSession,
 		complete,
+		journalWindow,
+		manualHoursByDay,
 		projects,
 		stateOf,
 		weekOfCheckpoint,
@@ -154,6 +163,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const imageInput = useRef<HTMLInputElement>(null)
 	const [saving, setSaving] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
+	// The day the work was done. A new entry starts on today; an edit starts on the day it already has.
+	const [workedOn, setWorkedOn] = useState(() => existing?.day ?? journalWindow.today)
 
 	// The fallback is for a season sheet opened before its project row landed; it must never pick the warm-up project, which has no season week.
 	const project =
@@ -181,18 +192,29 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const attachedCount = picked.length + pinned.length + legacyKept.length
 	const recorded = attachedCount > 0
 	const overCap = claimed > MAX_SESSION_HOURS
-	const ok = claimed > 0 && !overCap && (journalled || recorded)
+	// The 24 self-reported hours belong to the day the work was done, so this entry is measured against what is already on that day. An edit takes its own hours back out first, since it replaces them.
+	const { today } = journalWindow
+	const earliestDay =
+		editing && existing?.day !== undefined && existing.day < journalWindow.earliest
+			? existing.day
+			: journalWindow.earliest
+	const ownHours = editing && existing && existing.day === workedOn ? round2(existing.minutes / 60) : 0
+	const dayLeft = Math.max(0, round2(24 - ((manualHoursByDay[workedOn] ?? 0) - ownHours)))
+	const overDay = claimed > dayLeft
+	const ok = claimed > 0 && !overCap && !overDay && (journalled || recorded)
 
 	// One thing at a time – a list of four faults reads as a wall, and only the first one is actionable anyway. Once the hours are in, the entry's next shortfall is named with the other way out beside it, so nobody is told to write 200 characters they could skip with a timelapse.
 	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab. They back the same entry."
 	const missing = !ok
 		? overCap
 			? `A single devlog covers at most ${MAX_SESSION_HOURS} hours. Split longer work across sessions.`
-			: claimed <= 0
-				? "Add the hours you spent on this session, or pick a Lapse timelapse."
-				: !longEnough
-					? `${200 - written} more characters in your entry, not counting images.${orLapse}`
-					: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtHours(typed)}.${orLapse}`
+			: overDay
+				? `${fmtHours(dayLeft)} left for ${dayLabel(workedOn, today)}, and this entry is ${fmtHours(claimed)}. Pick another day or lower the hours.`
+				: claimed <= 0
+					? "Add the hours you spent on this session, or pick a Lapse timelapse."
+					: !longEnough
+						? `${200 - written} more characters in your entry, not counting images.${orLapse}`
+						: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtHours(typed)}.${orLapse}`
 		: null
 
 	const hours = hoursOf(week)
@@ -211,11 +233,17 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (saving || uploading > 0) return
 		setSaving(true)
 		setSaveError(null)
+		// Only a day the maker actually changed is sent. An entry left on its day goes exactly as it did before dates existed, and a legacy entry with no day is not moved by opening it.
+		const dayMoved = editing ? existing?.day !== undefined && workedOn !== existing.day : workedOn !== today
 		if (editing) {
 			// The full set the server reconciles against: Lapse picks and pins plus the older uploads, which the server keeps silently – sending them keeps the local snapshot agreeing with it until the refresh.
-			const refused = await editSession(checkpoint.id, sessionMinutes, body.trim(), {
-				clips: [...legacyKept, ...pinned, ...picked.map(t => t.id)],
-			})
+			const refused = await editSession(
+				checkpoint.id,
+				sessionMinutes,
+				body.trim(),
+				{ clips: [...legacyKept, ...pinned, ...picked.map(t => t.id)] },
+				dayMoved ? workedOn : undefined,
+			)
 			setSaving(false)
 			if (refused) setSaveError(refused)
 			else {
@@ -224,9 +252,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			}
 			return
 		}
-		const refused = await logSession(checkpoint.id, sessionMinutes, body.trim(), {
-			clips: picked.map(t => t.id),
-		})
+		const refused = await logSession(
+			checkpoint.id,
+			sessionMinutes,
+			body.trim(),
+			{ clips: picked.map(t => t.id) },
+			dayMoved ? workedOn : undefined,
+		)
 		setSaving(false)
 		if (refused) {
 			setSaveError(refused)
@@ -282,10 +314,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					body={body}
 					claimed={claimed}
 					coveredSeconds={coveredSeconds}
+					dayLabel={dayLabel(workedOn, today)}
+					dayLeft={dayLeft}
 					discardDraft={discardDraft}
 					draftRestored={draftRestored}
 					dragging={dragging}
 					dragHandlers={dragHandlers}
+					earliestDay={earliestDay}
 					editing={editing}
 					entry={entry}
 					hasUnsavedWork={hasUnsavedWork}
@@ -297,16 +332,20 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					longEnough={longEnough}
 					needPhotos={needPhotos}
 					overCap={overCap}
+					overDay={overDay}
 					picked={picked}
 					preview={preview}
 					project={project}
 					setBody={setBody}
 					setHoursText={setHoursText}
 					setPreview={setPreview}
+					setWorkedOn={setWorkedOn}
 					shots={shots}
+					today={today}
 					typed={typed}
 					uploading={uploading}
 					week={week}
+					workedOn={workedOn}
 					written={written}
 				/>
 			) : (

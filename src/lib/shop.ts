@@ -14,6 +14,7 @@ import {
 } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
+import { assertPayoutAllowed } from "@/lib/moderation"
 import { getPrinterQualification } from "@/lib/printer"
 import db, { type DbOrTx } from "@/lib/prisma8"
 import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/program"
@@ -518,6 +519,14 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 		if (!order) throw new HttpError("NOT_FOUND", "Order not found")
 		if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD)
 			throw new HttpError("CONFLICT", "This order has already been decided")
+		// Refunding is a decision about money, and an order's owner deciding their own refund is the same conflict of interest a reviewer has: FULFILL_ORDERS is a large, low-trust group, so a member could buy something and refund themselves at will.
+		if (order.userId === adminId) throw new HttpError("FORBIDDEN", "You cannot decide your own order")
+		// Once staff have ordered from a vendor or sent the goods, the coins are tied to a real purchase; refunding here would hand the buyer the goods and their coins back. The participant's own cancel refuses at the same line (lib/shop-order). A stage recorded by mistake can be corrected in the fulfilment panel, which is bookkeeping and moves no coins.
+		if (order.fulfillmentStage !== ShopFulfillmentStage.UNFULFILLED)
+			throw new HttpError(
+				"CONFLICT",
+				"This order has already been ordered or sent, so it cannot be rejected and refunded",
+			)
 
 		await refundOrder(tx, order, adminId, reason)
 
@@ -584,6 +593,8 @@ export async function fulfillOrder(
 		if (order.status === ShopOrderStatus.FULFILLED) throw new HttpError("CONFLICT", "This order is already fulfilled")
 		if (order.status === ShopOrderStatus.REJECTED) throw new HttpError("CONFLICT", "This order was rejected")
 		if (order.status === ShopOrderStatus.CANCELLED) throw new HttpError("CONFLICT", "This order was cancelled")
+		// A penalty or a fraud flag that lands after the purchase still stops the goods: the order was placed while the account was in good standing, but fulfilling it now would ship money to an account under review. The purchase path checks the same gate.
+		await assertPayoutAllowed(tx, order.userId)
 
 		const claimed = await tx.orm.public.ShopOrder.where({ id: orderId, status: order.status }).updateAndCount({
 			fulfilledAt: formatDbTimestamp(new Date()),

@@ -1,6 +1,7 @@
 import { after } from "next/server"
 import { mirrorReviewDecision, reviewStatusForResult } from "@/lib/airtable/sync"
 import { fail, ok, parseBody } from "@/lib/api"
+import { ENTRY_TIER } from "@/lib/config/tiers"
 import { Phase } from "@/lib/enums"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { notifyReviewOutcome } from "@/lib/notifications"
@@ -42,9 +43,13 @@ export const POST = withWritePermission(
 		) {
 			const sub = await db.orm.public.PhaseSubmission.whereUnique({ id })
 				.select("phase")
-				.include("themeProject", project => project.select("requestedTier"))
+				.include("themeProject", project => project.select("requestedTier", "tier"))
 				.first()
-			const cap = sub?.phase === Phase.DESIGN ? (sub.themeProject?.requestedTier ?? null) : null
+			// A missing request is not a missing ceiling: with nothing asked for, Tier 1 is the most a reviewer may grant on their own, the same rule finalizeReview applies under the lock.
+			const cap =
+				sub?.phase === Phase.DESIGN
+					? (sub.themeProject?.requestedTier ?? sub.themeProject?.tier ?? ENTRY_TIER.id)
+					: null
 			if (cap !== null && body.tier > cap)
 				return fail(
 					"FORBIDDEN",
@@ -59,6 +64,7 @@ export const POST = withWritePermission(
 		const deflationReason = "deflationReason" in body ? sanitizeOptional(body.deflationReason) : null
 
 		const outcome = await finalizeReview({
+			enforceClaimCeiling: !hasPermission(gate.roles, Permission.MANAGE_CREDIT),
 			feedback,
 			grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
 			hoursOverride: "hoursOverride" in body ? (body.hoursOverride ?? null) : null,

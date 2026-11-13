@@ -10,17 +10,20 @@ import {
 import { type FieldDef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAuditTx } from "@/lib/audit"
+import { MAX_WARMUP_PROJECTS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { HoursSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { ireLive, isIreConfigured } from "@/lib/ire-platform"
 import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import { lockKey } from "@/lib/locks"
+import { payoutBlockReason } from "@/lib/moderation"
 import { round2 } from "@/lib/money"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
+import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { trackSideEffect } from "@/lib/side-effects"
 import { escapeLikePattern } from "@/lib/text"
 import { formatDbTimestamp } from "@/lib/time"
@@ -354,34 +357,46 @@ function importRow(
 			.first()
 		let createdUser = false
 		if (!user) {
-			const slackTaken = row.slackId
-				? await tx.orm.public.User.where({ slackId: row.slackId }).select("id").first()
-				: null
-			const hackatimeTaken = row.hackatimeId
-				? await tx.orm.public.User.where({ hackatimeUserId: row.hackatimeId }).select("id").first()
-				: null
 			user = await tx.orm.public.User.create({
 				email: row.email,
 				emailVerified: false,
 				joinedProgramAt: formatDbTimestamp(createdAt),
-				name: row.name,
-				...(row.slackId && !slackTaken ? { slackId: row.slackId } : {}),
-				...(row.hackatimeId && !hackatimeTaken ? { hackatimeUserId: row.hackatimeId } : {}),
+				name: sanitize(row.name ?? ""),
+				// No slackId or hackatimeUserId: the form is filled in by whoever holds it, so a submitter could attach somebody else's tracked account to an address they chose. Those links are made from a signed-in HCA account, where the identity is proved.
 				...encryptedPiiFields(row),
 			})
 			createdUser = true
 		}
 
+		// The same gates a project gets on the site. The import is admin-triggered, but one bad row must not file a project for a banned account, send it to a reviewer, or push a maker past the warm-up cap that bounds the pre-season parts money.
+		const state = await tx.orm.public.User.whereUnique({ id: user.id })
+			.select("bannedAt", "fraudFlagged", "suspendedUntil")
+			.first()
+		const block = state ? payoutBlockReason(state) : "Account not found"
+		if (block) return { reason: block, status: "skipped" as const, themeProjectId: null, userId: null }
+		const warmups = await tx.orm.public.ThemeProject.where({
+			deletedAt: null,
+			theme: Theme.WARMUP,
+			userId: user.id,
+		}).aggregate(aggregate => ({ count: aggregate.count() }))
+		if (warmups.count >= MAX_WARMUP_PROJECTS)
+			return {
+				reason: `already has ${MAX_WARMUP_PROJECTS} warm-up projects`,
+				status: "skipped" as const,
+				themeProjectId: null,
+				userId: null,
+			}
+
 		const createdAtText = formatDbTimestamp(createdAt)
 		const project = await tx.orm.public.ThemeProject.create({
 			createdAt: createdAtText,
-			description: row.description,
+			description: sanitize(row.description ?? ""),
 			// The form's "Code URL" is free text, and the playable-url fallback is not a repo at all, so the value is run through the repo field's own rule: a bare `github.com/me/thing` gains its scheme, and anything that will not parse becomes null rather than a link nothing can open.
 			githubRepo: normalizeRepo(row.repoUrl ?? "").url,
 			namedAt: createdAtText,
 			requestedTier: tierForRequestedFunding(row.requestedFunding),
 			theme: Theme.WARMUP,
-			title: row.title,
+			title: sanitize(row.title),
 			userId: user.id,
 			...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : {}),
 			...(phase === Phase.BUILD ? { buildStatus: PhaseStatus.in_review } : {}),
@@ -389,14 +404,15 @@ function importRow(
 
 		if (journalParts.length > 0 || row.hours !== null)
 			await tx.orm.public.WorkSession.create({
-				content: journalParts.length > 0 ? journalParts.join("\n\n") : null,
+				// Journal content renders as rich text, so it keeps safe markup and loses everything else – the same sanitiser the journal route applies.
+				content: journalParts.length > 0 ? sanitizeHtml(journalParts.join("\n\n")) : null,
 				createdAt: createdAtText,
 				effectiveDate: effectiveDateFor(createdAt, programTimezone),
 				hoursClaimed: row.hours ?? 0,
 				hoursSource: HoursSource.MANUAL,
 				phase,
 				themeProjectId: project.id,
-				title: `${row.title} (warm-up submission)`,
+				title: sanitize(`${row.title} (warm-up submission)`),
 				weekNumber: 0,
 			})
 

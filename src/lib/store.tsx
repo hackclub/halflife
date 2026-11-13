@@ -76,7 +76,13 @@ interface Ctx {
 	/**
 	 * Correct a finished entry's words, hours, and timelapses. Null once saved, or why it was refused. The clips are the full desired set of Lapse attachments; the server keeps, adds, and releases the difference.
 	 */
-	editSession(id: string, minutes: number, body: string, evidence?: Pick<SessionLog, "clips">): Promise<string | null>
+	editSession(
+		id: string,
+		minutes: number,
+		body: string,
+		evidence?: Pick<SessionLog, "clips">,
+		workedOn?: string,
+	): Promise<string | null>
 	/**
 	 * Make the project row for a design week, if there is none yet, and resolve to its id (null if the server refused). Called when a "create a project" checkpoint is opened, which is the only moment a project row is made.
 	 */
@@ -98,6 +104,8 @@ interface Ctx {
 	/** Whether a checkpoint is shut because its week's time ran out. */
 	isPassed(id: string): boolean
 	isUnlocked(id: string): boolean
+	/** The days a journal entry may be dated to right now. See `journalWindow` in lib/program. */
+	journalWindow: StoreSnapshot["journalWindow"]
 	/**
 	 * Point a project's repo link at the repo its sync writes to, when the two drifted apart because the sync's repo was picked after the project's was set. Resolves to null once saved, or the server's reason for refusing; the link is the sync target already, so no URL is taken from the client.
 	 */
@@ -107,7 +115,15 @@ interface Ctx {
 	/**
 	 * Resolves to null once the entry is saved, or to the server's reason for refusing it – Lapse may say a timelapse is not yours, is still processing, or already backs another entry, and the sheet has to stay open to say so.
 	 */
-	logSession(id: string, minutes: number, body: string, evidence?: Pick<SessionLog, "clips">): Promise<string | null>
+	logSession(
+		id: string,
+		minutes: number,
+		body: string,
+		evidence?: Pick<SessionLog, "clips">,
+		workedOn?: string,
+	): Promise<string | null>
+	/** Self-reported hours already logged, by the day they were worked. See the snapshot. */
+	manualHoursByDay: StoreSnapshot["manualHoursByDay"]
 	/** Whether the first checkpoint has been completed. */
 	onboardingDone: boolean
 	/** id of the checkpoint whose modal is open, if any */

@@ -15,6 +15,7 @@ import { bomTotalUsd } from "@/lib/bom-policy"
 import { starterProjectsFor } from "@/lib/config/onboarding"
 import { displayName } from "@/lib/display-name"
 import { PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
+import { payoutBlockReason } from "@/lib/moderation"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { liveRecordedCents, liveWaveCardCents } from "@/lib/starter-card-records"
@@ -99,7 +100,7 @@ export async function starterFundingDecisions(): Promise<StarterFundingDecision[
 	const projects = await db.orm.public.ThemeProject.where({ deletedAt: null, designStatus: PhaseStatus.approved })
 		.where(project => project.starterProjectId.in(starterIds))
 		.select("bomTaxShippingUsd", "id", "tier", "title")
-		.include("user", user => user.select("displayName", "email", "name"))
+		.include("user", user => user.select("bannedAt", "displayName", "email", "fraudFlagged", "name", "suspendedUntil"))
 		.all()
 
 	const events = await db.orm.public.AuditLog.where({ action: "AIRTABLE_SYNC_SUCCESS" })
@@ -135,19 +136,25 @@ export async function starterFundingDecisions(): Promise<StarterFundingDecision[
 			submitted: row?.submitted ?? false,
 			tier: project.tier,
 		})
+		// The same gate the decision and card paths use: a banned, suspended or flagged account is owed nothing while it stands, so a batch built here cannot pay it. Only a row that would otherwise send a card is flagged – "nothing more is owed" stays what it is.
+		const payoutBlock = user ? payoutBlockReason(user) : null
+		const decision =
+			payoutBlock && verdict.owedUsd > 0
+				? { ...verdict, fulfilment: "FLAG" as const, owedUsd: 0, reason: payoutBlock }
+				: verdict
 
 		decisions.push({
-			action: starterAction(verdict.owedUsd, recordedCardUsd),
+			action: starterAction(decision.owedUsd, recordedCardUsd),
 			airtableRecordId: recordId,
 			bomTotalUsd: bom,
-			cardUsd: verdict.cardUsd,
+			cardUsd: decision.cardUsd,
 			email: user?.email ?? "",
-			fulfilment: verdict.fulfilment,
+			fulfilment: decision.fulfilment,
 			fundingGivenUsd,
 			name: user ? displayName(user, "(no name)") : "(no owner)",
-			owedUsd: verdict.owedUsd,
+			owedUsd: decision.owedUsd,
 			projectId: project.id,
-			reason: user ? verdict.reason : "project has no owner",
+			reason: user ? decision.reason : "project has no owner",
 			recordedCardUsd,
 			title: project.title,
 		})

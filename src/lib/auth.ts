@@ -172,6 +172,15 @@ export const auth = betterAuth({
 				},
 			},
 			delete: {
+				// Unlinking Hackatime withdraws the authorisation that id was stored under. Leaving it behind kept fetching that account's hours after the person disconnected it, so clear it – but only while it still names this account, so a re-link under a different Hackatime account is not undone.
+				after: async account => {
+					const row = account as { accountId?: string; providerId?: string; userId?: string }
+					if (row.providerId !== "hackatime" || !row.userId || !row.accountId) return
+					await db.orm.public.User.where({ id: row.userId })
+						.where(user => user.hackatimeUserId.eq(row.accountId ?? ""))
+						.updateAndCount({ hackatimeUserId: null })
+						.catch(err => console.error("[auth] hackatime id clear failed:", err))
+				},
 				// The counterpart: unlinking HCA must not be a way to launder the verification status onto another account. The HCA identity stays bound for the life of the user; nothing legitimate unlinks it (sign-in needs it, and syncHcaProfile no-ops without it).
 				before: account => {
 					if ((account as { providerId?: string }).providerId === "hca") {
@@ -262,6 +271,9 @@ export const auth = betterAuth({
 		before: createAuthMiddleware(ctx => {
 			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return Promise.resolve()
 			const body: unknown = ctx.body
+			// Only Hack Club Auth creates an identity. `disableSignUp` on the link-only providers stops a *new* user, but it does not stop a sign-in to an account that is already linked: better-auth resolves the provider identity to the stored account row and hands back that user's session whenever its owner completes the provider's flow. An admin is then only as safe as their weakest linked account – Hackatime, Lapse, GitHub or GitLab can each be used to sign in as whoever linked it. Linking stays allowed, because a link is started from a session that already exists.
+			if (ctx.path === "/sign-in/social" && !(isRecord(body) && body.provider === "hca"))
+				throw new APIError("FORBIDDEN", { message: "Only Hack Club Auth can sign in" })
 			const idToken = isRecord(body) ? body.idToken : undefined
 			const scopes = isRecord(body) ? body.scopes : undefined
 			if (idToken) throw new APIError("FORBIDDEN", { message: "idToken is not accepted" })
