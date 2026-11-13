@@ -24,6 +24,7 @@ import {
 	effectiveWeekClose,
 	getProgramSettings,
 	isPhaseDecided,
+	journalWindow,
 	weekClosesAt,
 	weekOpensAt,
 } from "@/lib/program"
@@ -70,6 +71,14 @@ export interface StoreSnapshot {
 	coins: number
 	experience: Experience | null
 	goalId: string
+	/**
+	 * The days a journal entry may be dated to right now (see `journalWindow` in lib/program): `earliest` is the start of the current program week, and `today` is the latest day an entry can name.
+	 */
+	journalWindow: { earliest: string; today: string }
+	/**
+	 * Self-reported hours already logged, by the program day they were worked. The journal refuses an entry that takes a day past 24 hours, so the sheet reads this to say what is left on the day it is for.
+	 */
+	manualHoursByDay: { [_: string]: number }
 	/** The server's clock when this was read, so the first paint agrees with it. */
 	now: number
 	/**
@@ -209,6 +218,7 @@ async function loadStoreRows(userId: string) {
 			.select(
 				"content",
 				"createdAt",
+				"effectiveDate",
 				"hoursApproved",
 				"hoursClaimed",
 				"hoursSource",
@@ -409,6 +419,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 							const ref = t.externalId ?? t.objectKey
 							return ref ? [ref] : []
 						}),
+						day: session.effectiveDate ?? undefined,
 						id: session.id,
 						minutes: minutesOf(session),
 					},
@@ -493,6 +504,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		coins: balances.spendable,
 		experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
 		goalId: user.printerGoalId ?? DEFAULT_GOAL_ID,
+		journalWindow: journalWindow(settings, new Date()),
+		manualHoursByDay: manualHoursByDay(sessions),
 		now: Date.now(),
 		offBookHours,
 		onboardingDone: user.onboardingCompletedAt !== null,
@@ -560,6 +573,20 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		weekExtensions,
 		weekOpensAt: opens,
 	}
+}
+
+/**
+ * Self-reported hours by the program day they were worked, summed over the entries the 24-hour rule counts (MANUAL, the same set the route checks). Tracked entries are left out, as they are there.
+ */
+function manualHoursByDay(sessions: readonly { effectiveDate: string | null; hoursClaimed: number; hoursSource: HoursSource }[]): {
+	[_: string]: number
+} {
+	const totals: { [_: string]: number } = {}
+	for (const session of sessions) {
+		if (session.hoursSource !== HoursSource.MANUAL || !session.effectiveDate) continue
+		totals[session.effectiveDate] = (totals[session.effectiveDate] ?? 0) + session.hoursClaimed
+	}
+	return totals
 }
 
 interface SessionRow {

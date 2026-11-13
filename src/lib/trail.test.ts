@@ -14,6 +14,8 @@ function snapshot(over: Partial<StoreSnapshot> = {}): StoreSnapshot {
 		coins: 0,
 		experience: null,
 		goalId: "ender-3-v3-se",
+		journalWindow: { earliest: "2026-01-05", today: "2026-01-05" },
+		manualHoursByDay: {},
 		now: NOW,
 		offBookHours: {},
 		onboardingDone: false,

@@ -44,6 +44,8 @@ export interface SessionLog {
 	 * Timelapse clips picked for this session. The photo evidence is not listed here: it is written into `body` as Markdown images, so the entry and the pictures that back it can never drift apart.
 	 */
 	clips: string[]
+	/** The program-timezone day the work was done, as `YYYY-MM-DD`. Absent on a log saved before this was recorded. */
+	day?: string
 	id: string
 	minutes: number
 }

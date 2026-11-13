@@ -59,9 +59,21 @@ interface StoreWritesOptions {
 /** The provider's mutation hook for checkpoints and journal entries, kept apart from its ceremony and derivation. */
 interface StoreWrites {
 	complete(id: string, patch?: Partial<CheckpointState>): void
-	editSession(id: string, minutes: number, body: string, evidence?: Pick<SessionLog, "clips">): Promise<string | null>
+	editSession(
+		id: string,
+		minutes: number,
+		body: string,
+		evidence?: Pick<SessionLog, "clips">,
+		workedOn?: string,
+	): Promise<string | null>
 	finishOnboarding(): void
-	logSession(id: string, minutes: number, body: string, evidence?: Pick<SessionLog, "clips">): Promise<string | null>
+	logSession(
+		id: string,
+		minutes: number,
+		body: string,
+		evidence?: Pick<SessionLog, "clips">,
+		workedOn?: string,
+	): Promise<string | null>
 	postReel(id: string, caption: string, objectKey: string): Promise<PostReelResult>
 	setParticipantGoal(goal: ParticipantGoal, printerGoalId?: string): Promise<string | null>
 	submitPhase(id: string, extra?: SubmitExtras): Promise<string | null>
@@ -300,7 +312,13 @@ export function useStoreWrites({ facts, router, setFacts }: StoreWritesOptions):
 	 * Note what this does NOT do any more: credit coins. Hours are paid for when a reviewer approves the phase, not when they are claimed – otherwise the currency is self-issued, and a week could be spent in the shop before anyone had looked at it. The trail still moves immediately, because the node is the entry rather than the payment.
 	 */
 	const logSession = useCallback(
-		async (id: string, minutes: number, body: string, evidence?: Pick<SessionLog, "clips">): Promise<string | null> => {
+		async (
+			id: string,
+			minutes: number,
+			body: string,
+			evidence?: Pick<SessionLog, "clips">,
+			workedOn?: string,
+		): Promise<string | null> => {
 			const clips = evidence?.clips ?? []
 			// Server first, unlike the other writes here. An entry's timelapses are checked against Lapse, and a refusal is something the maker has to fix in the sheet – patching the trail first would show a node done for an entry that was never saved.
 			const route = routeOf(id)
@@ -312,6 +330,8 @@ export function useStoreWrites({ facts, router, setFacts }: StoreWritesOptions):
 							content: body,
 							hoursClaimed: round2(minutes / 60),
 							phase: route.phase,
+							// Only sent when the maker chose a day, so an entry for today goes exactly as it did before.
+							...(workedOn ? { workedOn } : {}),
 							timelapses: clips.map(lapseId => ({ lapseId })),
 							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
 							title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
@@ -363,7 +383,13 @@ export function useStoreWrites({ facts, router, setFacts }: StoreWritesOptions):
 	 * Server first, like logSession: the server can refuse (an entry a reviewer has already put hours on, a week in review or passed, a timelapse that is not yours or already backs another entry), and an edit shown as saved that quietly reverts on the next refresh is worse than a sheet that says why it did not take.
 	 */
 	const editSession = useCallback(
-		async (id: string, minutes: number, body: string, evidence?: Pick<SessionLog, "clips">): Promise<string | null> => {
+		async (
+			id: string,
+			minutes: number,
+			body: string,
+			evidence?: Pick<SessionLog, "clips">,
+			workedOn?: string,
+		): Promise<string | null> => {
 			const clips = evidence?.clips ?? []
 			const route = routeOf(id)
 			const entry = facts.progress[id]?.log[0]
@@ -374,6 +400,8 @@ export function useStoreWrites({ facts, router, setFacts }: StoreWritesOptions):
 					body: JSON.stringify({
 						content: body,
 						hoursClaimed: round2(minutes / 60),
+						// Only sent when the day actually moved: the server checks a move against the program week, and an older entry that stays on its day must not be refused for it.
+						...(workedOn ? { workedOn } : {}),
 						timelapses: clips.map(lapseId => ({ lapseId })),
 						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 					}),
