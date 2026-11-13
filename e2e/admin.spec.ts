@@ -65,7 +65,9 @@ test("an admin can generate and re-download an HCB grant CSV", async ({ openAs }
 	expect(download.suggestedFilename()).toMatch(/^hcb-card-grants-.+\.csv$/)
 	const firstBody = await readFile(await download.path(), "utf-8")
 	expect(firstBody).toContain(maker.email)
-	expect(firstBody).toContain(`Half Life parts,Parts for E2E payout – http://localhost:3100/projects/${projectId}`)
+	expect(firstBody).toContain(
+		`Half Life parts – E2E payout,Parts for E2E payout – http://localhost:3100/projects/${projectId}`,
+	)
 
 	// The file was frozen at generation: our row is in the database and the project is out of the next preview.
 	const recorded = await readGrantExports()
