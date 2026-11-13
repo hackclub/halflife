@@ -17,10 +17,10 @@ import db from "../src/lib/prisma8"
  *
  * Each (project, phase) that was submitted is placed on an Airtable row by one of two routes, in order:
  *
- * - `audit`: the record id the sync audit trail (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads) recorded for it. This is the authoritative route.
+ * - `audit`: the record id the sync audit trail (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads) recorded for it. It is only trusted when the row's own email, project name and stage match the project, and when no other project claims the same record.
  * - `exact`: the maker's email, the project's title and the stage match exactly one Airtable row, and exactly one project phase has that key. Titles can change after a submission, so a row that no longer matches its title stays unplaced here rather than guessed at.
  *
- * Everything else is listed for a person to decide and is never written: a key shared by several projects or several rows (`ambiguous`), a row with no project behind it (`no_project`), a project with no row (`no_row`), and a row already stamped with another project's id (`conflicting_id`).
+ * Everything else is listed for a person to decide and is never written: a key shared by several projects or several rows (`ambiguous`), a row with no project behind it (`no_project`), a project with no row (`no_row`), a row already stamped with another project's id (`conflicting_id`), an audit record whose row says something other than the project (`key_mismatch`), and a record claimed by more than one project (`shared_record`).
  *
  * Dry run unless `--commit` is passed. It always writes the full report to `~/half-life-id-report.json`. Run with `bun --conditions=react-server scripts/backfill-airtable-half-life-id.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
@@ -30,7 +30,7 @@ const REPORT_PATH = join(homedir(), "half-life-id-report.json")
 const PRINT_LIMIT = 20
 
 type Route = "audit" | "exact"
-type Skip = "ambiguous" | "no_project" | "no_row" | "conflicting_id"
+type Skip = "ambiguous" | "no_project" | "no_row" | "conflicting_id" | "key_mismatch" | "shared_record"
 
 interface Candidate {
 	email: string
@@ -46,11 +46,21 @@ interface AirtableRow {
 	projectId: string
 }
 
+interface Write {
+	phase: Phase
+	projectId: string
+	recordId: string
+	route: Route
+	title: string
+}
+
 /** A string cell, or "" when Airtable has nothing there. */
 const text = (value: unknown): string => (typeof value === "string" ? value : "")
 
 const keyFor = (email: string, title: string, stage: string): string =>
 	`${email.trim().toLowerCase()}|${title.trim()}|${stage}`
+
+const phaseKey = (c: Candidate): string => `${c.projectId}:${c.phase}`
 
 /** Every row in the table, reduced to the cells the match needs. */
 async function listRows(
@@ -148,18 +158,52 @@ async function main() {
 	const candidatesByKey = new Map<string, Candidate[]>()
 	for (const c of candidates) candidatesByKey.set(c.key, [...(candidatesByKey.get(c.key) ?? []), c])
 
-	const writes: { route: Route; recordId: string; projectId: string; phase: Phase; title: string }[] = []
+	const writes: Write[] = []
 	const aligned: string[] = []
 	const skipped: { reason: Skip; phase?: Phase; projectId?: string; title?: string; recordId?: string; key: string }[] =
 		[]
 	const placedRecords = new Set<string>()
+	const handled = new Set<string>()
 
-	// Audit-trail placements first: they are authoritative.
+	// Audit-trail placements, group by record so a record claimed twice is caught.
+	const claimants = new Map<string, Candidate[]>()
 	for (const c of candidates) {
-		const recordId = auditRecords.get(`${c.projectId}:${c.phase}`)
+		const recordId = auditRecords.get(phaseKey(c))
 		if (!recordId) continue
+		claimants.set(recordId, [...(claimants.get(recordId) ?? []), c])
+	}
+	for (const [recordId, group] of claimants) {
 		const row = rowById.get(recordId)
+		// A record the base no longer has falls through to the exact route.
 		if (!row) continue
+		if (group.length > 1) {
+			for (const c of group) {
+				skipped.push({
+					key: c.key,
+					phase: c.phase,
+					projectId: c.projectId,
+					reason: "shared_record",
+					recordId,
+					title: c.title,
+				})
+				handled.add(phaseKey(c))
+			}
+			continue
+		}
+		const [c] = group
+		if (!c) continue
+		handled.add(phaseKey(c))
+		if (row.key !== c.key) {
+			skipped.push({
+				key: c.key,
+				phase: c.phase,
+				projectId: c.projectId,
+				reason: "key_mismatch",
+				recordId,
+				title: c.title,
+			})
+			continue
+		}
 		placedRecords.add(recordId)
 		if (row.projectId === c.projectId) aligned.push(recordId)
 		else if (row.projectId === "")
@@ -176,13 +220,8 @@ async function main() {
 	}
 
 	// Exact-key placements for everything the audit trail did not place.
-	const placedProjectPhases = new Set(writes.map(w => `${w.projectId}:${w.phase}`))
 	for (const c of candidates) {
-		if (
-			auditRecords.has(`${c.projectId}:${c.phase}`)
-			&& rowById.has(auditRecords.get(`${c.projectId}:${c.phase}`) ?? "")
-		)
-			continue
+		if (handled.has(phaseKey(c))) continue
 		const sameKeyCandidates = candidatesByKey.get(c.key) ?? []
 		const sameKeyRows = rowsByKey.get(c.key) ?? []
 		if (sameKeyCandidates.length > 1 || sameKeyRows.length > 1) {
@@ -195,9 +234,21 @@ async function main() {
 		}
 		const [row] = sameKeyRows
 		if (!row) continue
-		if (placedRecords.has(row.id) || placedProjectPhases.has(`${c.projectId}:${c.phase}`)) continue
-		if (row.projectId === c.projectId) aligned.push(row.id)
-		else if (row.projectId === "") {
+		if (placedRecords.has(row.id)) {
+			skipped.push({
+				key: c.key,
+				phase: c.phase,
+				projectId: c.projectId,
+				reason: "ambiguous",
+				recordId: row.id,
+				title: c.title,
+			})
+			continue
+		}
+		if (row.projectId === c.projectId) {
+			aligned.push(row.id)
+			placedRecords.add(row.id)
+		} else if (row.projectId === "") {
 			writes.push({ phase: c.phase, projectId: c.projectId, recordId: row.id, route: "exact", title: c.title })
 			placedRecords.add(row.id)
 		} else
