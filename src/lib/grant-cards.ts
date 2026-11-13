@@ -382,7 +382,7 @@ export async function createGrantCardBatch(input: CreateGrantCardBatchInput): Pr
 					email: row.email,
 					grantUsdCents: row.grantUsd === null ? null : Math.round(row.grantUsd * 100),
 					phase: Phase.DESIGN,
-					purpose: grantCardPurpose(),
+					purpose: grantCardPurpose(row.title),
 					themeProjectId: row.projectId,
 					userId: row.ownerId,
 				})),
@@ -847,7 +847,8 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			continue
 		}
 
-		const purpose = grantCardPurpose()
+		// The purpose the batch recorded, so a retry looks for the card that was really sent. A row from before the purpose named the project has none, and keeps the bare line it was sent with.
+		const purpose = candidate.purpose ?? grantCardPurpose()
 
 		// A row that was claimed earlier is a previous attempt, not a fresh one. It may have committed at HCB and lost
 		// its response, so find out before sending again. Only an attempt known to be absent may proceed to create.

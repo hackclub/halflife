@@ -54,7 +54,7 @@ export function grantCardCsv(rows: readonly GrantCardCsvRow[], origin: string | 
 		const fields = [
 			row.email,
 			String(row.amountCents),
-			grantCardPurpose(),
+			grantCardPurpose(row.title),
 			grantCardInstructions(row.title, row.projectId, origin),
 			"false",
 			"false",

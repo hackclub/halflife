@@ -13,7 +13,12 @@ import { STARTER_TIER_ID, starterPartsCapUsd } from "@/lib/starter-funding"
 export const GRANT_CARD_MARKER_PREFIX = "HL:"
 
 /** The most HCB fits in a purpose, so whatever else goes in has to. */
+export const GRANT_CARD_PURPOSE_MAX = 30
+
+/** What every card's purpose starts with. */
 export const GRANT_CARD_PURPOSE = "Half Life parts"
+
+const PURPOSE_SEPARATOR = " – "
 
 /**
  * The most a design's card may pay: the lower of its approved grant and its tier's `grantUsd`. Null when the project has no tier, because then there is no ceiling to hold it to.
@@ -52,12 +57,24 @@ export function grantCardProjectUrl(projectId: string, origin: string | null): s
 }
 
 /**
- * The purpose stored on HCB: short enough for the import's column, and the same words on every card. What says
- * which project it is for moves to the instructions instead – the reconciler matches on equality here, so the
- * discrimination rides with the amount and the recipient, never with the purpose.
+ * The purpose stored on HCB: the parts line, then the project's name, cut to the most HCB fits. The reconciler matches on equality here, so a card's purpose must be the one it was claimed with: a batch stores it on its row, and only a row from before that has none falls back to the bare line.
  */
-export function grantCardPurpose(): string {
-	return GRANT_CARD_PURPOSE
+export function grantCardPurpose(title?: string | null): string {
+	const name = (title ?? "").replaceAll(/\s+/g, " ").trim()
+	if (!name) return GRANT_CARD_PURPOSE
+	const room = GRANT_CARD_PURPOSE_MAX - GRANT_CARD_PURPOSE.length - PURPOSE_SEPARATOR.length
+	const cut = name.length <= room ? name : `${fitWhole(name, room - 1)}…`
+	return `${GRANT_CARD_PURPOSE}${PURPOSE_SEPARATOR}${cut}`
+}
+
+/** The longest run of whole characters from the start that fits in `budget` UTF-16 units, so a surrogate pair is never split. */
+function fitWhole(text: string, budget: number): string {
+	let out = ""
+	for (const char of text) {
+		if (out.length + char.length > budget) break
+		out += char
+	}
+	return out
 }
 
 /** What the maker is told the money is for. Shared by the v4 create and the CSV import row. */

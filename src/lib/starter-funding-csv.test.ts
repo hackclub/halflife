@@ -16,7 +16,7 @@ describe("starter card CSV", () => {
 			origin,
 		)
 		const [, row] = csv.trim().split("\n")
-		expect(row).toContain("a@example.com,3300,Half Life parts,")
+		expect(row).toContain("a@example.com,3300,Half Life parts – ")
 		expect(row).not.toContain("Starbie PCB")
 	})
 

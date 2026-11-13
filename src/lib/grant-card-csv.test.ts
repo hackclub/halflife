@@ -14,7 +14,7 @@ describe("grant card CSV", () => {
 			grantCardCsv([{ amountCents: 1250, email: "maker@example.com", projectId: "prj_1", title: "Bloom" }], null),
 		).toBe(
 			`${GRANT_CARD_CSV_HEADER.join(",")}\n`
-				+ "maker@example.com,1250,Half Life parts,Parts for Bloom,false,false,Your Half Life parts grant is ready. Accept it to get your card.,,,,,\n",
+				+ "maker@example.com,1250,Half Life parts – Bloom,Parts for Bloom,false,false,Your Half Life parts grant is ready. Accept it to get your card.,,,,,\n",
 		)
 	})
 
