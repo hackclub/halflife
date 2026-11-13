@@ -13,11 +13,13 @@ import { lockKey } from "@/lib/locks"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import {
+	getProgramSettings,
 	getSubmissionAccess,
 	isPhaseDecided,
 	isWeekOpen,
 	SUBMISSIONS_CLOSED_MESSAGE,
 	WEEK_CLOSED_MESSAGE,
+	workedDayFor,
 } from "@/lib/program"
 import { scheduleRepoSync } from "@/lib/repo-sync"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
@@ -93,17 +95,24 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 		title: t.title,
 	}))
 
+	// Moving an entry to another day is checked against the same window as filing one. Naming the day it already has is not a move, so an entry that predates the window stays editable.
+	const movingDay = data.workedOn !== undefined && data.workedOn !== session.effectiveDate
+	const nextDay = movingDay ? workedDayFor(await getProgramSettings(), data.workedOn, new Date()) : session.effectiveDate
+
 	const updated = await db.transaction(async tx => {
 		// The edit's own daily total is a read-then-write too; take the same per-person lock creation takes so two parallel edits cannot both fit under 24 hours.
 		await lockKey(tx, `journal:${gate.user.id}`)
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
-		// Same daily cap as creation: an edit that raises the claim (or flips the source to MANUAL) must fit under the day's 24 self-reported hours, counting this entry's own current value out and the new one in.
+		// Same daily cap as creation: an edit that raises the claim, flips the source to MANUAL, or moves the entry to another day must fit under that day's 24 self-reported hours, counting this entry's own current value out and the new one in.
 		const nextSource = data.hoursSource ?? session.hoursSource
 		const nextHours = data.hoursClaimed ?? session.hoursClaimed
-		if (nextSource === HoursSource.MANUAL && (data.hoursClaimed !== undefined || data.hoursSource !== undefined)) {
+		if (
+			nextSource === HoursSource.MANUAL &&
+			(data.hoursClaimed !== undefined || data.hoursSource !== undefined || movingDay)
+		) {
 			const { claimedToday } = await tx.orm.public.WorkSession.where({
 				deletedAt: null,
-				effectiveDate: session.effectiveDate,
+				effectiveDate: nextDay,
 				hoursSource: HoursSource.MANUAL,
 			})
 				.where(s => s.themeProject.some(owner => and(owner.deletedAt.isNull(), owner.userId.eq(gate.user.id))))
@@ -135,6 +144,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 				...(data.content !== undefined ? { content: data.content ? sanitizeHtml(data.content) : null } : {}),
 				...(data.hoursClaimed !== undefined ? { hoursClaimed: data.hoursClaimed } : {}),
 				...(data.hoursSource !== undefined ? { hoursSource: data.hoursSource } : {}),
+				...(movingDay ? { effectiveDate: nextDay } : {}),
 			})
 		if (changed !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being edited")
 		return tx.orm.public.WorkSession.whereUnique({ id: sessionId }).firstOrThrow()
@@ -154,7 +164,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 
 	if (data.hoursClaimed !== undefined || data.hoursSource !== undefined || data.timelapses !== undefined)
 		await recomputeWeek(gate.user.id, session.weekNumber)
-	if (data.hoursClaimed !== undefined) await recomputeActiveDays(gate.user.id)
+	if (data.hoursClaimed !== undefined || movingDay) await recomputeActiveDays(gate.user.id)
 
 	// Attaching, dropping or swapping a recording moves the window Hackatime's hours are deduplicated against, so the cached spans covering it are refetched off the response path. `addIds` is the narrower truth for a pure reattach of clips already on this entry, but a removal narrows the window just as much, so the cache is warmed whenever the clip set was touched at all.
 	if (want !== null) after(() => refreshOverlapSpans(id, session.phase))

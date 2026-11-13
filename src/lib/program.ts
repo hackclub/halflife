@@ -214,6 +214,41 @@ export async function currentWeekNumber(): Promise<number> {
 	return weekNumberForDate(settings.eventStartDate, new Date(), settings.programTimezone)
 }
 
+/**
+ * The days a journal entry may be dated to right now, as program-timezone `YYYY-MM-DD` strings.
+ *
+ * `today` is the latest allowed day: nothing is dated ahead of the clock. `earliest` is the first day of the current program week, so an entry can be backdated to a day it was worked within this week and no further. Before the program opens there is no week to backdate within, so only today is allowed.
+ */
+export function journalWindow(
+	settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
+	now: Date,
+): { earliest: string; today: string } {
+	const today = effectiveDateFor(now, settings.programTimezone)
+	const week = weekNumberForDate(settings.eventStartDate, now, settings.programTimezone)
+	if (week < 1) return { earliest: today, today }
+	const firstDay = utcCalendarDay(settings.eventStartDate) + (week - 1) * 7
+	return { earliest: new Date(firstDay * DAY_MS).toISOString().slice(0, 10), today }
+}
+
+/**
+ * The day a journal entry is filed against. Without a `workedOn` that is today; with one, it has to sit inside `journalWindow`, which keeps the entry in the program week it is filed in, so its week number, its streak and its place in the week's record are the same whichever day it names.
+ */
+export function workedDayFor(
+	settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
+	workedOn: string | undefined,
+	now: Date,
+): string {
+	const { earliest, today } = journalWindow(settings, now)
+	if (workedOn === undefined) return today
+	if (workedOn > today) throw new HttpError("VALIDATION_FAILED", "An entry can't be dated after today.")
+	if (workedOn < earliest)
+		throw new HttpError(
+			"VALIDATION_FAILED",
+			`An entry can only be dated within the current program week, which started on ${earliest}.`,
+		)
+	return workedOn
+}
+
 export function formatProgramDate(date: Date, timeZone: string): string {
 	return date.toLocaleDateString("en-US", {
 		day: "numeric",
