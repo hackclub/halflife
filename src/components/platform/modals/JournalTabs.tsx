@@ -178,64 +178,66 @@ export function JournalEntryTab({
 				</ModalTitle>
 			)}
 
-			<div className="mb-4 max-w-55">
-				<Field hint="Back to the start of this program week" id="journal-day" label="Day worked">
-					<input
-						className={cx(borderedInputClass, "tabular-nums")}
-						id="journal-day"
-						max={today}
-						min={earliestDay}
-						onChange={e => {
-							// A cleared date box reads as empty; keep the last day rather than saving nothing.
-							if (e.target.value) setWorkedOn(e.target.value)
-						}}
-						type="date"
-						value={workedOn}
-					/>
-				</Field>
-				{/* What is left of the day's 24 self-reported hours, so a day that is full is seen before the save is refused. */}
-				<p
-					className={cx("hand mt-1.5 text-[0.76rem] tabular-nums", overDay ? "text-coral-deep" : "text-navy-soft")}
-					role="status"
-				>
-					{fmtHours(dayLeft)} left for {dayLabel}
-				</p>
-			</div>
+			<div className="mb-4 flex flex-wrap items-start gap-x-5 gap-y-3">
+				<div className="max-w-55 flex-1">
+					<Field hint="Back to the start of this program week" id="journal-day" label="Day worked">
+						<input
+							className={cx(borderedInputClass, "tabular-nums")}
+							id="journal-day"
+							max={today}
+							min={earliestDay}
+							onChange={e => {
+								// A cleared date box reads as empty; keep the last day rather than saving nothing.
+								if (e.target.value) setWorkedOn(e.target.value)
+							}}
+							type="date"
+							value={workedOn}
+						/>
+					</Field>
+					{/* What is left of the day's 24 self-reported hours, so a day that is full is seen before the save is refused. */}
+					<p
+						className={cx("hand mt-1.5 text-[0.76rem] tabular-nums", overDay ? "text-coral-deep" : "text-navy-soft")}
+						role="status"
+					>
+						{fmtHours(dayLeft)} left for {dayLabel}
+					</p>
+				</div>
 
-			<div className="mb-4 max-w-55">
-				<Field
-					hint={
-						picked.length > 0
-							? "On top of your timelapses. Put 0 if the recording covers it all."
-							: "(9.5 is 9 and a half hours)"
-					}
-					id="journal-hours"
-					label={picked.length > 0 ? "Additional hours" : "Hours this session"}
-				>
-					<input
-						aria-invalid={overCap || undefined}
-						className={cx(borderedInputClass, "tabular-nums")}
+				<div className="max-w-55 flex-1">
+					<Field
+						hint={
+							picked.length > 0
+								? "On top of your timelapses. Put 0 if the recording covers it all."
+								: "(9.5 is 9 and a half hours)"
+						}
 						id="journal-hours"
-						inputMode="decimal"
-						onChange={e => setHoursText(e.target.value.replaceAll(/[^\d.]/g, ""))}
-						placeholder="0"
-						value={hoursText}
-					/>
-				</Field>
-				{/* The claim as the server will log it: what was typed plus what the timelapses recorded. */}
-				{lapseHours > 0 && (
-					<p className="hand mt-1.5 text-[0.76rem] tabular-nums text-navy-soft" role="status">
-						{fmtDuration(coveredSeconds)} from timelapses
-						{typed > 0 ? ` + ${fmtDuration(typed * 3600)} declared` : ""} = {fmtDuration(claimed * 3600)} logged
-					</p>
-				)}
-				{editing && legacyBump && (
-					<p className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep" role="note">
-						This entry was logged as {fmtHours(legacyBump.from)} before timelapses added hours on top. With its{" "}
-						{fmtHours(legacyBump.lapse)} of recording it now totals {fmtHours(claimed)}. Unpick timelapses on the
-						Timelapse tab to bring it back down.
-					</p>
-				)}
+						label={picked.length > 0 ? "Additional hours" : "Hours this session"}
+					>
+						<input
+							aria-invalid={overCap || undefined}
+							className={cx(borderedInputClass, "tabular-nums")}
+							id="journal-hours"
+							inputMode="decimal"
+							onChange={e => setHoursText(e.target.value.replaceAll(/[^\d.]/g, ""))}
+							placeholder="0"
+							value={hoursText}
+						/>
+					</Field>
+					{/* The claim as the server will log it: what was typed plus what the timelapses recorded. */}
+					{lapseHours > 0 && (
+						<p className="hand mt-1.5 text-[0.76rem] tabular-nums text-navy-soft" role="status">
+							{fmtDuration(coveredSeconds)} from timelapses
+							{typed > 0 ? ` + ${fmtDuration(typed * 3600)} declared` : ""} = {fmtDuration(claimed * 3600)} logged
+						</p>
+					)}
+					{editing && legacyBump && (
+						<p className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep" role="note">
+							This entry was logged as {fmtHours(legacyBump.from)} before timelapses added hours on top. With its{" "}
+							{fmtHours(legacyBump.lapse)} of recording it now totals {fmtHours(claimed)}. Unpick timelapses on the
+							Timelapse tab to bring it back down.
+						</p>
+					)}
+				</div>
 			</div>
 
 			<div className="mb-3 flex flex-wrap items-center gap-2.5">
