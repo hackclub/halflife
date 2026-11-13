@@ -430,3 +430,6 @@ try {
 } finally {
 	await db.close()
 }
+
+// `lib/auth` leaves a handle open (the OAuth client), so the work finishes and the process then never exits. The database is closed; end the script explicitly so a scheduled job step does not sit there until its timeout.
+process.exit(process.exitCode ?? 0)
