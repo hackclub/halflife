@@ -180,7 +180,7 @@ export function JournalEntryTab({
 
 			<div className="mb-4 flex flex-wrap items-start gap-x-5 gap-y-3">
 				<div className="max-w-55 flex-1">
-					<Field hint="Back to the start of this program week" id="journal-day" label="Day worked">
+					<Field hint="Back to this week's start" id="journal-day" label="Day worked">
 						<input
 							className={cx(borderedInputClass, "tabular-nums")}
 							id="journal-day"
