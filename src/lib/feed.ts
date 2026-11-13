@@ -1,4 +1,5 @@
 import "server-only"
+import { or } from "@prisma/orm-postgres/orm-client"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { markReel } from "@/lib/analytics"
 import { avatarUrl } from "@/lib/avatar"
@@ -6,6 +7,7 @@ import { displayName } from "@/lib/display-name"
 import { PostKind, PostStatus, Role } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import type { FeedItem, FeedPage } from "@/lib/feed-schema"
+import { lockKey } from "@/lib/locks"
 import { decodeCursor, encodeCursor } from "@/lib/pagination"
 import db, { type DbOrTx } from "@/lib/prisma8"
 import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@/lib/program"
@@ -295,6 +297,13 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 
 	// The reel and the streak day it earns land together: a rolled-back post must not leave a day behind, exactly as a rolled-back devlog must not.
 	const created = await db.transaction(async tx => {
+		// One key, one live post. Two posts pointing at the same object used to be possible (post the same key again), and deleting either then removed the bytes the other still shows. The lock serialises creates and deletes for this person, since there is no unique index on the column yet.
+		await lockKey(tx, `post:${input.userId}`)
+		const duplicate = await tx.orm.public.Post.where({ deletedAt: null, objectKey: input.objectKey })
+			.select("id")
+			.first()
+		if (duplicate) throw new HttpError("CONFLICT", "That video is already posted")
+
 		const now = formatDbTimestamp(new Date())
 		const post = await tx.orm.public.Post.create({
 			byteSize: input.byteSize ?? null,
@@ -470,7 +479,9 @@ export async function deleteOwnComment(commentId: string, userId: string): Promi
 
 /** Soft-delete your own reel. */
 export async function deleteOwnPost(postId: string, userId: string): Promise<void> {
-	const media = await db.transaction(async tx => {
+	const { unshared } = await db.transaction(async tx => {
+		// The same lock creates take, so a create naming this key cannot land between the reference count below and the delete.
+		await lockKey(tx, `post:${userId}`)
 		const post = await tx.orm.public.Post.where({ deletedAt: null, id: postId, userId })
 			.select("objectKey", "thumbnailKey")
 			.first()
@@ -481,12 +492,22 @@ export async function deleteOwnPost(postId: string, userId: string): Promise<voi
 		})
 		// Deleting the only reel on a day removes that day from the run, so the streak is recomputed with it – same rule as deleting a devlog.
 		await recomputeStreak(tx, userId)
-		return post
+		// A key another live post still points at is not ours to remove: the row was gone but the bytes were shared, and deleting them broke the other reel.
+		const removable: string[] = []
+		for (const key of new Set([post.objectKey, post.thumbnailKey])) {
+			if (!key) continue
+			const stillUsed = await tx.orm.public.Post.where({ deletedAt: null })
+				.where(other => or(other.objectKey.eq(key), other.thumbnailKey.eq(key)))
+				.select("id")
+				.first()
+			if (!stillUsed) removable.push(key)
+		}
+		return { unshared: removable }
 	})
 
 	// The row is gone, so nothing may keep serving the file: a public bucket URL outlives the post. Best-effort – a storage hiccup must not fail the delete the person asked for.
-	for (const key of new Set([media.objectKey, media.thumbnailKey]))
-		if (key) await deleteObject(key).catch(err => console.error(`[feed] could not delete ${key} for ${postId}:`, err))
+	for (const key of unshared)
+		await deleteObject(key).catch(err => console.error(`[feed] could not delete ${key} for ${postId}:`, err))
 }
 
 // ─── Moderation ──────────────────────────────────────────────────────────────
