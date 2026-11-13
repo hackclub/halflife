@@ -262,6 +262,9 @@ export const auth = betterAuth({
 		before: createAuthMiddleware(ctx => {
 			if (ctx.path !== "/sign-in/social" && ctx.path !== "/link-social") return Promise.resolve()
 			const body: unknown = ctx.body
+			// Only Hack Club Auth creates an identity. `disableSignUp` on the link-only providers stops a *new* user, but it does not stop a sign-in to an account that is already linked: better-auth resolves the provider identity to the stored account row and hands back that user's session whenever its owner completes the provider's flow. An admin is then only as safe as their weakest linked account – Hackatime, Lapse, GitHub or GitLab can each be used to sign in as whoever linked it. Linking stays allowed, because a link is started from a session that already exists.
+			if (ctx.path === "/sign-in/social" && !(isRecord(body) && body.provider === "hca"))
+				throw new APIError("FORBIDDEN", { message: "Only Hack Club Auth can sign in" })
 			const idToken = isRecord(body) ? body.idToken : undefined
 			const scopes = isRecord(body) ? body.scopes : undefined
 			if (idToken) throw new APIError("FORBIDDEN", { message: "idToken is not accepted" })
