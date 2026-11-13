@@ -293,8 +293,8 @@ export const DELETE = withWriteSession(async (_req: Request, { params, gate }: P
 		const count = await tx.orm.public.ThemeProject.where({ deletedAt: null, id })
 			.where(row =>
 				and(
-					row.buildStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
-					row.designStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved]),
+					row.buildStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved, PhaseStatus.rejected]),
+					row.designStatus.notIn([PhaseStatus.in_review, PhaseStatus.approved, PhaseStatus.rejected]),
 				),
 			)
 			.updateAndCount({ deletedAt: nowText, deletedById: gate.user.id })

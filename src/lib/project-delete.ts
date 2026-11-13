@@ -1,6 +1,8 @@
 import "server-only"
-import { PhaseStatus } from "@/lib/enums"
+import { Phase, PhaseStatus } from "@/lib/enums"
 import db, { type DbOrTx } from "@/lib/prisma8"
+import { SUBMISSION_LIMIT, submissionBudget } from "@/lib/resubmissions"
+import { parseDbTimestamp } from "@/lib/time"
 
 /**
  * Why a maker cannot delete this project, or null when they can.
@@ -30,7 +32,17 @@ export async function deleteBlockReason(
 		return "A phase is in review, so unsubmit before deleting"
 	if (project.designStatus === PhaseStatus.approved || project.buildStatus === PhaseStatus.approved)
 		return "An approved project can't be deleted"
+	if (project.designStatus === PhaseStatus.rejected || project.buildStatus === PhaseStatus.rejected)
+		return "A rejected project can't be deleted. Ask a reviewer in Slack if you think the decision was wrong"
 	if (project.grantEmittedAt) return "A funded project can't be deleted"
+
+	// The three submissions a phase is given are counted per project row, so a soft delete and a new project would hand back a fresh three and put the old rejections out of a reviewer's sight. A project whose phase has spent its budget stays.
+	const submissions = await (client ?? db).orm.public.PhaseSubmission.where({ themeProjectId: project.id })
+		.select("createdAt", "phase")
+		.all()
+	const stamps = submissions.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), phase: row.phase }))
+	if ([Phase.DESIGN, Phase.BUILD].some(phase => submissionBudget(stamps, phase).used >= SUBMISSION_LIMIT))
+		return "This project has used all its submissions for a phase, so it can't be deleted"
 
 	const dbOrTx = client ?? db
 	const [ledger, topUps, cards, disputes] = await Promise.all([
