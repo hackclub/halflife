@@ -115,9 +115,8 @@ describe("writing Funding given", () => {
 			records: [{ fields: { "Funding given": 33 }, id: "recABC" }],
 			typecast: false,
 		})
-		expect(JSON.parse(fundingGivenPatch("recABC", "Funding given", 25.755)).records[0].fields["Funding given"]).toBe(
-			25.76,
-		)
+		const rounded: unknown = JSON.parse(fundingGivenPatch("recABC", "Funding given", 25.755))
+		expect(rounded).toMatchObject({ records: [{ fields: { "Funding given": 25.76 } }] })
 	})
 })
 
