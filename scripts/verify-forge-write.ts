@@ -34,7 +34,10 @@ interface Step {
 let script: Step[] = []
 let calls = 0
 
-globalThis.fetch = () => {
+globalThis.fetch = (input: RequestInfo | URL) => {
+	const url = input instanceof Request ? input.url : String(input)
+	// Loading lib/auth starts its own discovery request through this same fetch. Only the forge's API is scripted; anything else is refused without being counted.
+	if (!url.startsWith("https://api.github.com/")) return Promise.reject(new TypeError("fetch failed"))
 	// Once the script is spent, the last step repeats, so an exhausted retry can be observed.
 	const step = script[calls] ?? script.at(-1)
 	calls++
