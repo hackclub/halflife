@@ -47,6 +47,34 @@ describe("grant card policy", () => {
 		expect(grantCardPurpose().length).toBeLessThanOrEqual(30)
 	})
 
+	test("the purpose names the project after the parts line", () => {
+		expect(grantCardPurpose("Blinky")).toBe("Half Life parts – Blinky")
+	})
+
+	test("a name that fits the room left is kept whole, and the purpose is exactly 30 characters", () => {
+		const purpose = grantCardPurpose("Twelve chars")
+		expect(purpose).toBe("Half Life parts – Twelve chars")
+		expect(purpose.length).toBe(30)
+	})
+
+	test("a longer name is cut to fit, with an ellipsis, and never passes 30 characters", () => {
+		const purpose = grantCardPurpose("A very long project name")
+		expect(purpose).toBe("Half Life parts – A very long…")
+		expect(purpose.length).toBe(30)
+	})
+
+	test("a name made of emoji is cut on whole characters, not halves", () => {
+		const purpose = grantCardPurpose("🔧".repeat(20))
+		expect(purpose).toBe(`Half Life parts – ${"🔧".repeat(5)}…`)
+		expect(purpose.length).toBeLessThanOrEqual(30)
+	})
+
+	test("the name is tidied, and an empty one falls back to the bare line", () => {
+		expect(grantCardPurpose("  Blinky\n  rig  ")).toBe("Half Life parts – Blinky rig")
+		expect(grantCardPurpose("   ")).toBe("Half Life parts")
+		expect(grantCardPurpose(null)).toBe("Half Life parts")
+	})
+
 	test("the instructions name the project and carry its link when an origin is known", () => {
 		expect(grantCardInstructions("Bloom", "prj_1", "https://halflife.hackclub.com")).toBe(
 			"Parts for Bloom – https://halflife.hackclub.com/projects/prj_1",

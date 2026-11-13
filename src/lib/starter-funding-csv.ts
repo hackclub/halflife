@@ -22,7 +22,7 @@ export function starterCardCsv(rows: readonly StarterCardRow[], origin: string |
 		const fields = [
 			row.email,
 			String(row.amountCents),
-			grantCardPurpose(),
+			grantCardPurpose(row.title),
 			grantCardInstructions(row.title, row.projectId, origin),
 			"false",
 			"false",
