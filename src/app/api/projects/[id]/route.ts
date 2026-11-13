@@ -99,10 +99,8 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 		),
 	})
 
-	// Reviewer anonymity: the IDs below name the (often teen) reviewer who decided a phase or entry. Nothing on the maker's side reads them – the page shows decisions, never deciders – so they are stripped before responding. Keep this list in sync with any new reviewer-attribution column: the default here is "entire row", which is how they leaked.
-	const { buildReviewedById: _buildReviewer, designReviewedById: _designReviewer, ...safeProject } = project
-	void _buildReviewer
-	void _designReviewer
+	// Reviewer anonymity: the IDs below name the (often teen) reviewer who decided a phase or entry. Nothing on the maker's side reads them – the page shows decisions, never deciders – so they are stripped before responding.
+	const safeProject = withoutReviewerIds(project)
 	const safeSessions = safeProject.workSessions.map(({ reviewedById: _sessionReviewer, ...session }) => {
 		void _sessionReviewer
 		return session
@@ -124,6 +122,20 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	})
 })
 
+/**
+ * The project row without its reviewer attribution columns.
+ *
+ * The IDs name the (often teen) reviewer who decided a phase, and nothing on the maker's side reads them – the page shows decisions, never deciders – so no answer from this route may carry them. Both the GET and the PATCH's "nothing changed" early answer returned the whole row, which is how they leaked. Keep the list in sync with any new reviewer-attribution column.
+ */
+function withoutReviewerIds<T extends { buildReviewedById: string | null; designReviewedById: string | null }>(
+	project: T,
+): Omit<T, "buildReviewedById" | "designReviewedById"> {
+	const { buildReviewedById: _buildReviewer, designReviewedById: _designReviewer, ...safe } = project
+	void _buildReviewer
+	void _designReviewer
+	return safe
+}
+
 export const PATCH = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
@@ -139,7 +151,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 
 	// What would actually change. A patch that only restates the project's current tier has nothing to write, so it is not refused by a lock on the details.
 	const changing = changedProjectKeys(project, data)
-	if (changing.length === 0) return ok({ project })
+	if (changing.length === 0) return ok({ project: withoutReviewerIds(project) })
 
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
@@ -233,10 +245,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	})
 
 	// Reviewer anonymity, as the GET above: this returns the whole row, and a decided phase leaves the reviewer's id on it even after a return or a reopen. Participant pages never show who decided.
-	const { buildReviewedById: _buildReviewer, designReviewedById: _designReviewer, ...safeUpdated } = updated
-	void _buildReviewer
-	void _designReviewer
-	return ok({ project: safeUpdated })
+	return ok({ project: withoutReviewerIds(updated) })
 })
 
 /**
