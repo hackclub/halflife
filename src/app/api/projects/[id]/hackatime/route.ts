@@ -8,6 +8,7 @@ import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { fetchProjectSeconds, phaseWeekWindow } from "@/lib/hackatime"
 import { warmLinkSpans } from "@/lib/hours"
+import { lockKey } from "@/lib/locks"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { assertWeekStarted, getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
@@ -117,6 +118,9 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		)
 
 	const link = await db.transaction(async tx => {
+		// The cross-project check below reads then writes, and the database has no constraint across projects to catch a duplicate – only the per-project unique index. Two concurrent links of one tracked project to two different projects both read "not linked elsewhere" and both commit, counting one block of time twice at a full grant plus coins per project. The advisory lock is on the maker, so the second waits and sees the first's row.
+		await lockKey(tx, `hackatime-link:${gate.user.id}`)
+
 		// Re-read the phase on the transaction client immediately before the link lands: a submit that commits between the checks above and this create would otherwise attach hours to a phase the decision has already frozen.
 		const current = await tx.orm.public.ThemeProject.whereUnique({ id }).select("buildStatus", "designStatus").first()
 		const currentStatus = current ? statusFor(current, parsed.data.phase) : undefined
