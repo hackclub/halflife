@@ -16,7 +16,7 @@ import { isTierId, type TierId } from "@/lib/config/tiers"
 import { type HardwareExperience, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import db from "@/lib/prisma8"
-import { getProgramSettings, weekNumberForDate } from "@/lib/program"
+import { getProgramSettings, projectEditLockReason, weekNumberForDate } from "@/lib/program"
 import { ensureThemeProject } from "@/lib/provisioning"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { formatDbTimestamp } from "@/lib/time"
@@ -291,7 +291,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 			.select("hardwareExperience", "onboardingCompletedAt", "onboardingStep", "trackingTutorialDismissedAt")
 			.firstOrThrow()
 		const txProject = await tx.orm.public.ThemeProject.where({ deletedAt: null, theme: before.theme, userId })
-			.select("description", "id", "requestedTier", "starterProjectId", "title")
+			.select("buildStatus", "description", "designStatus", "id", "requestedTier", "starterProjectId", "title")
 			.first()
 		const freshReached = clampStep(txUser.onboardingStep)
 		if (index > freshReached) throw new HttpError("VALIDATION_FAILED", "Finish the earlier steps first")
@@ -300,7 +300,12 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		const targetProjectId = txProject?.id ?? before.project.id
 
-		if (touchesProject) await tx.orm.public.ThemeProject.where({ id: targetProjectId }).update(projectData)
+		if (touchesProject) {
+			// The setup flow is not a way around the project's own edit lock, which every other write respects. An early step stays re-answerable for as long as the flow is unfinished, so without this a maker could keep rewriting the title, description and requested tier of work already handed in – and a status-reconcile approval pays the tier the maker left behind on the hours they claimed. A phase in review is what a reviewer is reading; a decided phase is the record its money was paid against.
+			const lock = txProject ? projectEditLockReason(txProject) : null
+			if (lock) throw new HttpError("PHASE_LOCKED", lock)
+			await tx.orm.public.ThemeProject.where({ id: targetProjectId }).update(projectData)
+		}
 		const updatedProject = await tx.orm.public.ThemeProject.whereUnique({ id: targetProjectId })
 			.select("description", "id", "requestedTier", "starterProjectId", "title")
 			.firstOrThrow()
