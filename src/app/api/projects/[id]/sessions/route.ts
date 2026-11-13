@@ -153,6 +153,8 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 
 	// One transaction: a session and the streak it feeds have to land together, or a rolled-back write leaves an inflated streak with nothing behind it.
 	const session = await db.transaction(async tx => {
+		// The daily 24-hour check below reads a total and then writes, and READ COMMITTED lets two parallel entries both see the same pre-insert figure. The lock serialises this person's journal writes, so the second sees the first.
+		await lockKey(tx, `journal:${gate.user.id}`)
 		if (lapseIds.length > 0) {
 			// Sorted so two requests naming the same recordings cannot deadlock on each other's locks.
 			for (const lapseId of [...lapseIds].toSorted()) await lockKey(tx, `lapse:${lapseId}`)

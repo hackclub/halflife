@@ -9,6 +9,7 @@ import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
+import { lockKey } from "@/lib/locks"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import {
@@ -93,6 +94,8 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	}))
 
 	const updated = await db.transaction(async tx => {
+		// The edit's own daily total is a read-then-write too; take the same per-person lock creation takes so two parallel edits cannot both fit under 24 hours.
+		await lockKey(tx, `journal:${gate.user.id}`)
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
 		// Same daily cap as creation: an edit that raises the claim (or flips the source to MANUAL) must fit under the day's 24 self-reported hours, counting this entry's own current value out and the new one in.
 		const nextSource = data.hoursSource ?? session.hoursSource
