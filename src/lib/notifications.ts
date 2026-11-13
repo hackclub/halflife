@@ -163,7 +163,8 @@ async function deliverToMaker(input: {
 	const { slackId } = input
 	if (!slackId) return
 
-	const lines = plainLines(input)
+	// Every word here except our own link is interpolated: the reviewer's note from Ari, the maker's project title, a send's refusal reason. Slack mrkdwn turns `<@U…>`, `<!channel>` and `<url|text>` into mentions and links, so the text is escaped before it goes out; the link is ours and stays live.
+	const lines = plainLines(input).map(escapeSlackText)
 	const url = projectUrl(input.themeProjectId)
 	const link = url ? `\n<${url}|Open the project>` : ""
 
