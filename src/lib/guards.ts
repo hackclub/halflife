@@ -79,6 +79,22 @@ export async function requireActiveSession(): Promise<Guard> {
 	return ctx
 }
 
+/** Methods that cannot write on their own, so a cross-site caller gains nothing by making one. */
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
+
+/**
+ * Whether a browser sent this write from another origin.
+ *
+ * `Sec-Fetch-Site` is set by the browser from the page that made the request, and a page cannot write it, so it is the one piece of evidence about the caller's origin a forged request cannot fake. Absent means the caller is not a browser – a webhook, a script, an integration – and those cannot carry a member's cookies, so they are left to their own authentication.
+ *
+ * `same-site` is refused as well, and that is the whole point: `hackclub.com` and `hackclub.dev` are not public suffixes, so every `*.hackclub.com` and `*.hackclub.dev` page counts as same-site with the app – including the unrelated projects sharing `*.k.hackclub.dev`. Browsers send cookies on same-site requests, so accepting them would leave every one of those pages able to write with a signed-in member's session. Only the app calling itself, `same-origin`, is allowed.
+ */
+function isForeignWrite(req: NextRequest): boolean {
+	if (SAFE_METHODS.has(req.method)) return false
+	const site = req.headers.get("sec-fetch-site")
+	return site !== null && site !== "same-origin"
+}
+
 /**
  * The gate every authenticated route opens with, made structural rather than copy-pasted.
  *
@@ -98,6 +114,8 @@ function guardedRoute<C extends object = object>(
 ): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
 	// The guard sits inside `withRoute`, not in front of it: a thrown session lookup is the same unhandled rejection as a thrown handler, and should become the same logged 500 rather than escaping the wrapper.
 	return withRoute(async (req: NextRequest, ctx?: C) => {
+		// Checked before the session is resolved, so a cross-site write cannot even spend a session lookup. The header says where the browser was when it made the request; a signed-in member's cookies ride along regardless, which is what makes this a write with their authority.
+		if (isForeignWrite(req)) return fail("FORBIDDEN", "Cross-site requests are not accepted")
 		const gate = await resolveGuard()
 		if (gate.error) return gate.error
 		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing the compiler cannot verify without a runtime check
