@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 import { clientIp } from "@/lib/client-ip"
 
 function headers(values: { [_: string]: string | null }): { get(name: string): string | null } {
@@ -7,9 +7,22 @@ function headers(values: { [_: string]: string | null }): { get(name: string): s
 }
 
 describe("clientIp", () => {
-	test("prefers the Cloudflare header", () => {
+	const previous = process.env.TRUST_CF_CONNECTING_IP
+	afterEach(() => {
+		if (previous === undefined) delete process.env.TRUST_CF_CONNECTING_IP
+		else process.env.TRUST_CF_CONNECTING_IP = previous
+	})
+
+	test("prefers the Cloudflare header when the deployment is behind Cloudflare", () => {
+		process.env.TRUST_CF_CONNECTING_IP = "true"
 		const h = headers({ "cf-connecting-ip": "1.2.3.4", "x-forwarded-for": "9.9.9.9" })
 		expect(clientIp(h)).toBe("1.2.3.4")
+	})
+
+	test("ignores the Cloudflare header on a direct host", () => {
+		delete process.env.TRUST_CF_CONNECTING_IP
+		const h = headers({ "cf-connecting-ip": "1.2.3.4", "x-forwarded-for": "9.9.9.9" })
+		expect(clientIp(h)).toBe("9.9.9.9")
 	})
 
 	test("takes the last forwarded entry, the one the edge saw", () => {
@@ -24,6 +37,7 @@ describe("clientIp", () => {
 	})
 
 	test("trims whitespace", () => {
+		process.env.TRUST_CF_CONNECTING_IP = "true"
 		expect(clientIp(headers({ "cf-connecting-ip": "  1.2.3.4  " }))).toBe("1.2.3.4")
 	})
 })
