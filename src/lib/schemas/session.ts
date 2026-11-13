@@ -64,10 +64,6 @@ export const sessionCreateSchema = z
 		// A sanity bound, not a policy.
 		hoursClaimed: z.number().min(0).max(MAX_SESSION_HOURS),
 		/**
-		 * The program-timezone day the work was done. Left out, the entry is for today. The route checks it against the current program week, so this only ever moves an entry within the week it is filed in.
-		 */
-		workedOn: calendarDaySchema.optional(),
-		/**
 		 * MANUAL counts toward the journal total; HACKATIME_TRACKED does not, because those hours already arrive through the linked project.
 		 */
 		hoursSource: z.enum(HoursSource).default("MANUAL"),
@@ -81,6 +77,10 @@ export const sessionCreateSchema = z
 			.max(MAX_SESSION_TIMELAPSES, `An entry can hold at most ${MAX_SESSION_TIMELAPSES} timelapses`)
 			.default([]),
 		title: boundedText(200, 1),
+		/**
+		 * The program-timezone day the work was done. Left out, the entry is for today. The route checks it against the current program week, so this only ever moves an entry within the week it is filed in.
+		 */
+		workedOn: calendarDaySchema.optional(),
 	})
 	.strict()
 

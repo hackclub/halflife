@@ -97,7 +97,9 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 
 	// Moving an entry to another day is checked against the same window as filing one. Naming the day it already has is not a move, so an entry that predates the window stays editable.
 	const movingDay = data.workedOn !== undefined && data.workedOn !== session.effectiveDate
-	const nextDay = movingDay ? workedDayFor(await getProgramSettings(), data.workedOn, new Date()) : session.effectiveDate
+	const nextDay = movingDay
+		? workedDayFor(await getProgramSettings(), data.workedOn, new Date())
+		: session.effectiveDate
 
 	const updated = await db.transaction(async tx => {
 		// The edit's own daily total is a read-then-write too; take the same per-person lock creation takes so two parallel edits cannot both fit under 24 hours.
@@ -107,8 +109,8 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 		const nextSource = data.hoursSource ?? session.hoursSource
 		const nextHours = data.hoursClaimed ?? session.hoursClaimed
 		if (
-			nextSource === HoursSource.MANUAL &&
-			(data.hoursClaimed !== undefined || data.hoursSource !== undefined || movingDay)
+			nextSource === HoursSource.MANUAL
+			&& (data.hoursClaimed !== undefined || data.hoursSource !== undefined || movingDay)
 		) {
 			const { claimedToday } = await tx.orm.public.WorkSession.where({
 				deletedAt: null,

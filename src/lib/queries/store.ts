@@ -578,7 +578,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 /**
  * Self-reported hours by the program day they were worked, summed over the entries the 24-hour rule counts (MANUAL, the same set the route checks). Tracked entries are left out, as they are there.
  */
-function manualHoursByDay(sessions: readonly { effectiveDate: string | null; hoursClaimed: number; hoursSource: HoursSource }[]): {
+function manualHoursByDay(
+	sessions: readonly { effectiveDate: string | null; hoursClaimed: number; hoursSource: HoursSource }[],
+): {
 	[_: string]: number
 } {
 	const totals: { [_: string]: number } = {}
