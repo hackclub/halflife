@@ -302,7 +302,10 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		if (touchesProject) {
 			// The setup flow is not a way around the project's own edit lock, which every other write respects. An early step stays re-answerable for as long as the flow is unfinished, so without this a maker could keep rewriting the title, description and requested tier of work already handed in – and a status-reconcile approval pays the tier the maker left behind on the hours they claimed. A phase in review is what a reviewer is reading; a decided phase is the record its money was paid against.
-			const lock = txProject ? projectEditLockReason(txProject) : null
+			const targetProject = await tx.orm.public.ThemeProject.whereUnique({ id: targetProjectId })
+				.select("buildStatus", "designStatus")
+				.first()
+			const lock = targetProject ? projectEditLockReason(targetProject) : null
 			if (lock) throw new HttpError("PHASE_LOCKED", lock)
 			await tx.orm.public.ThemeProject.where({ id: targetProjectId }).update(projectData)
 		}

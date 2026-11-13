@@ -72,6 +72,8 @@ export const YSWS_SUBMISSION = {
 			"fldYswsHackatimeProjects",
 			"Justification - Hackatime Project Name(s) + Date Range(s)",
 		),
+		// Half Life's own project id for the submission, written on every write. It is the key a row is adopted by (see findExistingRow in lib/airtable/ysws), so two projects that share an email, title and stage cannot take each other's row. Its field id is not yet filled in: until the schema dump can read it, the writer falls back to the name (AIRTABLE_USE_FIELD_IDS=false).
+		halfLifeProjectId: f<string>("", "Half Life project ID"),
 		hoursSelfReported: f<number>("fldYswsHoursSelfReported", "Hours spent (self reported)"),
 		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
 		// Set by the operator for a Week 1 starter, once the maker has been offered a kit. The options are `STARTER_KIT_STATUS` in lib/starter-funding, and the starter export reads them to decide what is owed. Never written by the app.

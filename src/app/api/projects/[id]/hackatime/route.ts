@@ -57,7 +57,10 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
 
-	await assertWeekStarted(scheduledWeekFor(project.theme, parsed.data.phase), gate.user.id)
+	const scheduledWeek = scheduledWeekFor(project.theme, parsed.data.phase)
+	// A phase with no scheduled week (the warm-up theme) has no window to scope its hours to, so its link would count the project's all-time total. Refused here, where the link is written, rather than fetched and trusted.
+	if (scheduledWeek < 1) return fail("VALIDATION_FAILED", "This project has no scheduled week to link hours to")
+	await assertWeekStarted(scheduledWeek, gate.user.id)
 
 	// Linking adds hours to the phase, and the decision recomputes those hours live, so an in-review phase is frozen for this too – not only a decided one.
 	const phaseStatus = statusFor(project, parsed.data.phase)

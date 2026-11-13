@@ -242,6 +242,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		})(),
 		// The `Justification - …` columns, spread rather than listed: an evidence column we have nothing for is left out of the payload entirely, so a blank is never written over evidence the base already holds (see lib/airtable/justification). A row still in review carries the no-features marker there; an approved row keeps what the decision wrote, because a refresh must not erase the reviewer's box.
 		...justification,
+		halfLifeProjectId: themeProjectId,
 		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
 		journalUrl: journalUrl ?? "",
 		playableUrl,

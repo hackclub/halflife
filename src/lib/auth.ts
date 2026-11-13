@@ -7,6 +7,7 @@ import { z } from "zod"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
 import authDb from "@/lib/auth-db"
+import { trustsCfConnectingIp } from "@/lib/client-ip"
 import { Role } from "@/lib/enums"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import { FORGES } from "@/lib/forge"
@@ -128,7 +129,11 @@ export const auth = betterAuth({
 	//
 	// `ipAddress.ipAddressHeaders` is a separate concern and is NOT covered by `trustedProxyHeaders`: that option only affects base-URL/host resolution. The rate limiter resolves the client address on its own, and by default reads only `x-forwarded-for` – which, behind the ingress, carries more than one hop, so better-auth refuses it and falls back to a single shared `no-trusted-ip|/sign-in/social` bucket (3 requests per 10s for the whole site, which is what made ordinary sign-ins return 429). Cloudflare overwrites `cf-connecting-ip` and the ingress sets `x-real-ip`, both single values, so listing them first gives each person their own bucket. The same chain `clientIp` in lib/site/signups.ts reads.
 	advanced: {
-		ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-real-ip", "x-forwarded-for"] },
+		ipAddress: {
+			ipAddressHeaders: trustsCfConnectingIp()
+				? ["cf-connecting-ip", "x-real-ip", "x-forwarded-for"]
+				: ["x-real-ip", "x-forwarded-for"],
+		},
 		trustedProxyHeaders: true,
 	},
 

@@ -51,32 +51,8 @@ function rejectedFields(err: AirtableError, fields: { [_: string]: unknown }): s
 	})
 }
 
-/**
- * Look for a row this submission may already have, by the only identity the table can match on: the maker's email, the project name and the stage.
- *
- * Used when the record id is unknown – a create whose response was lost can have landed without Half Life recording an id, and posting again would put a second "Pending Review" copy in front of reviewers. Returns "ambiguous" when several rows match, because adopting one and leaving the others is as wrong as adding another; a human has to look.
- */
-async function findExistingRow(
-	config: AirtableConfig,
-	fields: { [_: string]: unknown },
-): Promise<{ id: string } | "ambiguous" | null> {
-	const email = fields[fieldKey(YSWS_SUBMISSION.fields.email)]
-	const projectName = fields[fieldKey(YSWS_SUBMISSION.fields.projectName)]
-	const stage = fields[fieldKey(YSWS_SUBMISSION.fields.stage)]
-	if (
-		typeof email !== "string"
-		|| email.length === 0
-		|| typeof projectName !== "string"
-		|| projectName.length === 0
-		|| typeof stage !== "string"
-		|| stage.length === 0
-	)
-		return null
-
-	const formula = `AND(${formulaRef(YSWS_SUBMISSION.fields.email)}='${escapeAirtableValue(email)}',${formulaRef(
-		YSWS_SUBMISSION.fields.projectName,
-	)}='${escapeAirtableValue(projectName)}',${formulaRef(YSWS_SUBMISSION.fields.stage)}='${escapeAirtableValue(stage)}')`
-
+/** The rows a formula matches, as one id, "ambiguous" for several, or null for none. */
+async function matchRows(config: AirtableConfig, formula: string): Promise<{ id: string } | "ambiguous" | null> {
 	const result = await withRateLimitRetry("findYswsSubmission", () =>
 		airtableFetch(
 			AirtableListSchema,
@@ -88,6 +64,44 @@ async function findExistingRow(
 	if (records.length === 0) return null
 	if (records.length === 1) return { id: records[0]?.id ?? "" }
 	return "ambiguous"
+}
+
+/**
+ * Look for a row this submission may already have.
+ *
+ * The first key is Half Life's own project id plus the stage, which only this project's rows carry. Rows written before that column was filled (see scripts/backfill-airtable-half-life-id) cannot match on it, so when it finds nothing the old key is tried: the maker's email, the project name and the stage. That key can be shared by a second project with the same title, which is why the backfill matters.
+ *
+ * Used when the record id is unknown – a create whose response was lost can have landed without Half Life recording an id, and posting again would put a second "Pending Review" copy in front of reviewers. Returns "ambiguous" when several rows match, because adopting one and leaving the others is as wrong as adding another; a human has to look.
+ */
+async function findExistingRow(
+	config: AirtableConfig,
+	fields: { [_: string]: unknown },
+): Promise<{ id: string } | "ambiguous" | null> {
+	const email = fields[fieldKey(YSWS_SUBMISSION.fields.email)]
+	const projectName = fields[fieldKey(YSWS_SUBMISSION.fields.projectName)]
+	const stage = fields[fieldKey(YSWS_SUBMISSION.fields.stage)]
+	const projectId = fields[fieldKey(YSWS_SUBMISSION.fields.halfLifeProjectId)]
+	if (typeof stage !== "string" || stage.length === 0) return null
+
+	if (typeof projectId === "string" && projectId.length > 0) {
+		const byId = await matchRows(
+			config,
+			`AND(${formulaRef(YSWS_SUBMISSION.fields.halfLifeProjectId)}='${escapeAirtableValue(projectId)}',${formulaRef(
+				YSWS_SUBMISSION.fields.stage,
+			)}='${escapeAirtableValue(stage)}')`,
+		)
+		if (byId) return byId
+	}
+
+	if (typeof email !== "string" || email.length === 0 || typeof projectName !== "string" || projectName.length === 0)
+		return null
+
+	return matchRows(
+		config,
+		`AND(${formulaRef(YSWS_SUBMISSION.fields.email)}='${escapeAirtableValue(email)}',${formulaRef(
+			YSWS_SUBMISSION.fields.projectName,
+		)}='${escapeAirtableValue(projectName)}',${formulaRef(YSWS_SUBMISSION.fields.stage)}='${escapeAirtableValue(stage)}')`,
+	)
 }
 
 /**
