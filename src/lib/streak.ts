@@ -9,11 +9,11 @@ import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 /**
  * Journalling streaks.
  *
- * A day counts when the participant did one of the two things the program asks for: wrote a devlog – a `WorkSession` stamped with that calendar day as its `effectiveDate` – or posted a reel, a `Post` that is not a staff ANNOUNCEMENT. The two live in separate tables for good reason (a devlog is evidence a reviewer reads, a reel is something made to be watched), but for the one question a streak answers – did you do the work today – they are the same signal, so both feed the run.
+ * A day counts when the participant did one of the two things the program asks for: wrote a devlog – a `WorkSession` filed on that calendar day – or posted a reel, a `Post` that is not a staff ANNOUNCEMENT. The two live in separate tables for good reason (a devlog is evidence a reviewer reads, a reel is something made to be watched), but for the one question a streak answers – did you do the work today – they are the same signal, so both feed the run.
  *
  * Recomputed from those rows rather than incremented on write. An incremented counter has to be right on every path that can create, edit, back-date or soft-delete a devlog or a reel, and is wrong forever the first time one of them is missed – there is no way to notice, and no way to repair it without the recompute this module would have needed anyway. Deriving it means `User.currentStreak` is a cache that any write can rebuild and `scripts/` can backfill.
  *
- * The unit is the calendar day in the PROGRAM timezone: `effectiveDate` already stores one, and a reel's timestamp is converted to one here, so a participant in Hawaii and one in Berlin get the same answer for "did I journal today" as each other and as the dashboard.
+ * The unit is the calendar day in the PROGRAM timezone: a devlog's filing time and a reel's publish time are both converted to one here, so a backdated devlog (see `workedOn`) does not count for the day it was worked, so a participant in Hawaii and one in Berlin get the same answer for "did I journal today" as each other and as the dashboard.
  */
 
 /** Days between two YYYY-MM-DD strings. Both are program-timezone dates. */
@@ -68,13 +68,12 @@ async function activeDaysDesc(tx: DbOrTx, userId: string): Promise<string[]> {
 	const { programTimezone } = await getProgramSettings()
 
 	const [sessions, posts] = await Promise.all([
+		// Counted from when the entry was filed, not the day it was worked: backdating an entry must not fill in a streak after the fact.
 		tx.orm.public.WorkSession.where({ deletedAt: null })
-			.where(session => session.effectiveDate.isNotNull())
 			.where(session =>
 				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
 			)
-			.distinct("effectiveDate")
-			.select("effectiveDate")
+			.select("createdAt")
 			.all(),
 		// Soft-deleted reels are gone, so the day they carried goes with them. Hidden ones still count: the day was worked whatever a moderator later did with the post. ANNOUNCEMENTs are HQ's, never a participant's.
 		tx.orm.public.Post.where({ deletedAt: null, userId })
@@ -84,7 +83,7 @@ async function activeDaysDesc(tx: DbOrTx, userId: string): Promise<string[]> {
 	])
 
 	const days = new Set<string>()
-	for (const s of sessions) if (s.effectiveDate) days.add(s.effectiveDate)
+	for (const s of sessions) days.add(effectiveDateFor(parseDbTimestamp(s.createdAt), programTimezone))
 	for (const p of posts) days.add(effectiveDateFor(parseDbTimestamp(p.publishedAt ?? p.createdAt), programTimezone))
 
 	// YYYY-MM-DD sorts lexicographically, so sort-then-reverse is newest-first without parsing a single date.
