@@ -118,7 +118,7 @@ async function main() {
 	for (const s of submissions) {
 		const project = projectById.get(s.themeProjectId)
 		if (!project?.user) continue
-		const phase = s.phase
+		const { phase } = s
 		const id = `${project.id}:${phase}`
 		if (seen.has(id)) continue
 		seen.add(id)
