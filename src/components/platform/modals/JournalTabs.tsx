@@ -91,10 +91,13 @@ export function JournalEntryTab({
 	body,
 	claimed,
 	coveredSeconds,
+	dayLabel,
+	dayLeft,
 	discardDraft,
 	draftRestored,
 	dragHandlers,
 	dragging,
+	earliestDay,
 	editing,
 	entry,
 	hasUnsavedWork,
@@ -106,26 +109,33 @@ export function JournalEntryTab({
 	longEnough,
 	needPhotos,
 	overCap,
+	overDay,
 	picked,
 	preview,
 	project,
 	setBody,
 	setHoursText,
 	setPreview,
+	setWorkedOn,
 	shots,
+	today,
 	typed,
 	uploading,
 	week,
+	workedOn,
 	written,
 }: {
 	addJournalImages: JournalImages["addJournalImages"]
 	body: string
 	claimed: number
 	coveredSeconds: number
+	dayLabel: string
+	dayLeft: number
 	discardDraft(): void
 	draftRestored: boolean
 	dragHandlers: JournalImages["dragHandlers"]
 	dragging: boolean
+	earliestDay: string
 	editing: boolean
 	entry: JournalImages["entry"]
 	hasUnsavedWork: boolean
@@ -137,16 +147,20 @@ export function JournalEntryTab({
 	longEnough: boolean
 	needPhotos: number
 	overCap: boolean
+	overDay: boolean
 	picked: LapseTimelapse[]
 	preview: boolean
 	project: Project | undefined
 	setBody: Dispatch<SetStateAction<string>>
 	setHoursText: Dispatch<SetStateAction<string>>
 	setPreview: Dispatch<SetStateAction<boolean>>
+	setWorkedOn: Dispatch<SetStateAction<string>>
 	shots: number
+	today: string
 	typed: number
 	uploading: number
 	week: Week
+	workedOn: string
 	written: number
 }) {
 	return (
@@ -163,6 +177,30 @@ export function JournalEntryTab({
 					What did you do this session?
 				</ModalTitle>
 			)}
+
+			<div className="mb-4 max-w-55">
+				<Field hint="Back to the start of this program week" id="journal-day" label="Day worked">
+					<input
+						className={cx(borderedInputClass, "tabular-nums")}
+						id="journal-day"
+						max={today}
+						min={earliestDay}
+						onChange={e => {
+							// A cleared date box reads as empty; keep the last day rather than saving nothing.
+							if (e.target.value) setWorkedOn(e.target.value)
+						}}
+						type="date"
+						value={workedOn}
+					/>
+				</Field>
+				{/* What is left of the day's 24 self-reported hours, so a day that is full is seen before the save is refused. */}
+				<p
+					className={cx("hand mt-1.5 text-[0.76rem] tabular-nums", overDay ? "text-coral-deep" : "text-navy-soft")}
+					role="status"
+				>
+					{fmtHours(dayLeft)} left for {dayLabel}
+				</p>
+			</div>
 
 			<div className="mb-4 max-w-55">
 				<Field
