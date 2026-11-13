@@ -182,6 +182,9 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	const projectUser = project.user
 	if (!projectUser) throw new HttpError("NOT_FOUND", "Submission not found")
 	const { phase } = submission
+	// A submission row is not the authority on whether a phase is awaiting review: a revert leaves the row open while the phase goes back to its maker (lib/ari, lib/ire-review), so a stale row stays decidable forever. Deciding it would approve work nobody handed in – or, as a rejection, claw back an approval that has already paid out, which is what unapprovePhase exists for and what this path must not do without OVERRIDE_DECISIONS.
+	if (statusFor(project, phase) !== PhaseStatus.in_review)
+		throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
 	const approving = input.result === ReviewResult.APPROVED
 
 	// A build cannot be approved before its design is. Submitting out of order is fine – see canSubmitPhase – but paying out of order is not. A warm-up project has no design to wait for: its one phase is whatever the form collected.
@@ -246,9 +249,13 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		// Re-read inside the transaction: the review page may have been open for a while, and the participant may have withdrawn in the meantime.
 		const fresh = await tx.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })
 			.select("resolvedAt")
+			.include("themeProject", owner => owner.select("buildStatus", "designStatus"))
 			.first()
 		if (!fresh) throw new HttpError("NOT_SUBMITTED", "This submission has been withdrawn")
 		if (fresh.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "Already decided")
+		// Under the lock, where a revert, an un-approval or a reopen that commits between the read above and this write cannot slip past.
+		if (!fresh.themeProject || statusFor(fresh.themeProject, phase) !== PhaseStatus.in_review)
+			throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
 
 		// Re-check the claim under the transaction too. The check before it ran against a read taken when the page opened, so another reviewer can have claimed the submission since; without this the decision would proceed and delete their live claim on the way out.
 		const claim = await tx.orm.public.ReviewClaim.where({ submissionId: input.submissionId }).first()
