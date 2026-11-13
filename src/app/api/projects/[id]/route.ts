@@ -15,6 +15,7 @@ import db from "@/lib/prisma8"
 import {
 	FROZEN_PHASE_STATUSES,
 	getSubmissionAccess,
+	projectDescriptionLockReason,
 	projectEditLockReason,
 	SUBMISSIONS_CLOSED_MESSAGE,
 } from "@/lib/program"
@@ -159,9 +160,14 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 			return fail("VALIDATION_FAILED", "Starter projects are fixed to tier 1")
 	}
 
-	// A decided phase is frozen: what the decision was made against is the record, so the details cannot be rewritten under it. Said after the tier rule above, which is the more specific answer to the same refusal.
+	// A decided phase is frozen: what the decision was made against is the record, so the details cannot be rewritten under it. One exception: after the design is decided the build still has to be handed in, and the submit gate refuses a description below its floor or one still carrying the starter's text, so a request that changes only the description is allowed until the build itself is in review or decided. Everything else stays frozen.
 	const editLock = projectEditLockReason(project)
-	if (editLock) return fail("PHASE_LOCKED", editLock)
+	const descriptionOnly =
+		editLock !== null
+		&& Object.keys(data).length === 1
+		&& data.description !== undefined
+		&& projectDescriptionLockReason(project) === null
+	if (editLock && !descriptionOnly) return fail("PHASE_LOCKED", editLock)
 
 	// Taking a starter without also asking for tier 1 would leave a starter at a bigger tier, which the check above only catches when the tier changes.
 	if (data.starterProjectId && (data.requestedTier ?? project.requestedTier) !== 1)
@@ -177,7 +183,11 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	// Conditional on the state just checked, so a submit or a decision that lands between the read above and this write is not edited out from under the reviewer reading it. It carries the ownership check and the live-row check with it, so a project that was deleted or handed to somebody else in the meantime is not written either.
 	const updated = await db.transaction(async tx => {
 		const claimed = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
-			.where(row => and(row.buildStatus.notIn(FROZEN_PHASE_STATUSES), row.designStatus.notIn(FROZEN_PHASE_STATUSES)))
+			.where(row =>
+				descriptionOnly
+					? and(row.buildStatus.eq(project.buildStatus), row.designStatus.eq(project.designStatus))
+					: and(row.buildStatus.notIn(FROZEN_PHASE_STATUSES), row.designStatus.notIn(FROZEN_PHASE_STATUSES)),
+			)
 			.updateAndCount({
 				...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
 				...(data.description !== undefined ? { description: sanitizeOptional(data.description) } : {}),

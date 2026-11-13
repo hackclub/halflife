@@ -20,7 +20,7 @@ import { phaseSchema } from "../src/lib/schemas/common"
 /**
  * Fill blank address fields on `YSWS Project Submission` rows from the maker's current address.
  *
- * Submission rows are written with the maker's shipping address at hand-in (see `fieldsFor` in lib/airtable/sync), refreshed from HCA at that point. Rows can still end up with blank address columns when PII could not be pulled or decrypted at the time, HCA had no address, or the sync ran without a usable token/key. This backfill refreshes each maker's profile from HCA, decrypts their stored PII, and writes any address field that is still blank on the Airtable row but now has a value.
+ * Submission rows are written with the maker's shipping address at hand-in (see `fieldsFor` in lib/airtable/sync), refreshed from HCA at that point. Rows can still end up with blank address columns when PII could not be pulled or decrypted at the time, HCA had no address, or the sync ran without a usable token/key. This backfill looks only at rows that are still missing a required cell, decrypts the owner's stored PII, asks HCA again only when that stored address is incomplete, and writes any address field that is still blank on the Airtable row but now has a value.
  *
  * Only fields that are empty in Airtable are written, so existing values are never overwritten. Rows that still have missing address fields after the run are logged with a reason and written to a JSON report, so the cause can be investigated.
  *
@@ -88,6 +88,19 @@ function blankAddressFields(row: CurrentRow): AddressKey[] {
 
 function blankRequiredFields(row: CurrentRow): AddressKey[] {
 	return REQUIRED_KEYS.filter(key => !row[key])
+}
+
+/** The address cells held in a user's stored PII. */
+function storedAddress(user: Parameters<typeof decryptUserPII>[0]): { [_ in AddressKey]: string } {
+	const pii = decryptUserPII(user)
+	return {
+		addressLine1: pii.line1?.trim() ?? "",
+		addressLine2: pii.line2?.trim() ?? "",
+		city: pii.city?.trim() ?? "",
+		country: pii.country?.trim() ?? "",
+		state: pii.state?.trim() ?? "",
+		zip: pii.zip?.trim() ?? "",
+	}
 }
 
 /** The current address cells for every row in the submission table, read once. */
@@ -206,16 +219,21 @@ async function main() {
 	const ownerByProject = new Map(projects.map(project => [project.id, project.userId]))
 	const titleByProject = new Map(projects.map(project => [project.id, project.title]))
 
-	// Refresh each maker's address from HCA once, then decrypt their stored PII.
-	const userIds = [...new Set(projects.map(project => project.userId))]
+	// Only owners of a row that is actually missing a required cell need a refresh: a complete row cannot be filled from one, and most owners have no blank row at all. Without this a scheduled run asks HCA about every owner on the books before writing anything.
+	const userIds = new Set<string>()
+	for (const [phaseKey, recordId] of records) {
+		const row = current.get(recordId)
+		if (!row || blankRequiredFields(row).length === 0) continue
+		const separator = phaseKey.indexOf(":")
+		if (separator === -1) continue
+		const userId = ownerByProject.get(phaseKey.slice(0, separator))
+		if (userId) userIds.add(userId)
+	}
+
+	// Decrypt what is stored first. A maker whose stored address is already complete needs no HCA round trip: this backfill only fills blank Airtable cells, so a refresh could not change what gets written. Asking HCA for every owner instead spends thousands of requests against its rate limit for nothing.
 	const infoByUser = new Map<string, UserAddressInfo>()
 	for (const userId of userIds) {
-		try {
-			await syncHcaProfile(userId)
-		} catch (err) {
-			console.warn(`[addresses] could not refresh HCA profile for ${userId}:`, err)
-		}
-		const user = await db.orm.public.User.whereUnique({ id: userId }).first()
+		let user = await db.orm.public.User.whereUnique({ id: userId }).first()
 		if (!user) {
 			infoByUser.set(userId, {
 				address: { addressLine1: "", addressLine2: "", city: "", country: "", state: "", zip: "" },
@@ -223,14 +241,22 @@ async function main() {
 			})
 			continue
 		}
-		const pii = decryptUserPII(user)
-		const address = {
-			addressLine1: pii.line1?.trim() ?? "",
-			addressLine2: pii.line2?.trim() ?? "",
-			city: pii.city?.trim() ?? "",
-			country: pii.country?.trim() ?? "",
-			state: pii.state?.trim() ?? "",
-			zip: pii.zip?.trim() ?? "",
+		let address = storedAddress(user)
+		if (!REQUIRED_KEYS.every(key => address[key])) {
+			try {
+				await syncHcaProfile(userId)
+			} catch (err) {
+				console.warn(`[addresses] could not refresh HCA profile for ${userId}:`, err)
+			}
+			user = await db.orm.public.User.whereUnique({ id: userId }).first()
+			if (!user) {
+				infoByUser.set(userId, {
+					address: { addressLine1: "", addressLine2: "", city: "", country: "", state: "", zip: "" },
+					reason: "User record not found after HCA refresh",
+				})
+				continue
+			}
+			address = storedAddress(user)
 		}
 		const hasRequired = REQUIRED_KEYS.every(key => address[key])
 		infoByUser.set(userId, { address, reason: hasRequired ? null : await diagnoseUser(userId, false) })
@@ -338,7 +364,7 @@ async function main() {
 		`Projects: ${projects.length}; synced submission rows: ${records.size} (${gone} row(s) since deleted in Airtable, ${complete} already complete)`,
 	)
 	console.log(
-		`Users: ${userIds.length}; rows to update: ${updates.length} (${fieldsToFill} field(s)); rows still with blank address fields after backfill: ${missing.length}`,
+		`Owners with a blank row: ${userIds.size}; rows to update: ${updates.length} (${fieldsToFill} field(s)); rows still with blank address fields after backfill: ${missing.length}`,
 	)
 	for (const target of updates.slice(0, 10))
 		console.log(`  fill  ${target.phase}  ${target.title}  →  ${Object.keys(target.fields).join(", ")}`)
@@ -363,7 +389,7 @@ async function main() {
 			projects: projects.length,
 			rows: records.size,
 			toUpdate: updates.length,
-			users: userIds.length,
+			users: userIds.size,
 		},
 	}
 	const outDir = "/tmp/opencode"
@@ -404,3 +430,6 @@ try {
 } finally {
 	await db.close()
 }
+
+// `lib/auth` leaves a handle open (the OAuth client), so the work finishes and the process then never exits. The database is closed; end the script explicitly so a scheduled job step does not sit there until its timeout.
+process.exit(process.exitCode ?? 0)

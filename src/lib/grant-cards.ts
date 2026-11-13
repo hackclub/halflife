@@ -3,9 +3,10 @@ import { or } from "@prisma/orm-postgres/orm-client"
 import { getAirtableConfig } from "@/lib/airtable/client"
 import { recordIdsFromSyncEvents } from "@/lib/airtable/sync"
 import { readUnifiedSubmitted } from "@/lib/airtable/ysws"
-import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
+import { AuditAction, logAudit, logAuditTx, requestInfo } from "@/lib/audit"
+import { starterProjectsFor } from "@/lib/config/onboarding"
 import { displayName } from "@/lib/display-name"
-import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, type Theme } from "@/lib/enums"
+import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
 import { grantCardCsv } from "@/lib/grant-card-csv"
 import {
@@ -29,6 +30,13 @@ import { formatUsd } from "@/lib/money"
 import { configuredOrigin } from "@/lib/origin"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
+import { STARTER_TIER_ID } from "@/lib/starter-funding"
+import {
+	readStarterFundingGiven,
+	setStarterFundingGiven,
+	starterRecordIds,
+	writeStarterFundingGiven,
+} from "@/lib/starter-funding-sheet"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
@@ -54,6 +62,8 @@ export interface GrantCardProjectRow {
 	projectId: string
 	theme: Theme
 	title: string
+	/** Whether the project is one of Week 1's starters, whose Funding given the wave checks before paying. */
+	weekOneStarter: boolean
 }
 
 export interface GrantCardExclusion {
@@ -105,6 +115,10 @@ interface PreviewBuilder {
 	totalCents: number
 }
 
+/** Whether a project is one of Week 1's starters. Those are capped at the parts + PCB target, not their tier grant. */
+const isWeekOneStarter = (starterProjectId: string | null): boolean =>
+	starterProjectId !== null && starterProjectsFor(Theme.PCB).some(starter => starter.id === starterProjectId)
+
 /**
  * The one project query behind both the preview and the batch snapshot.
  *
@@ -115,7 +129,17 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 		deletedAt: null,
 		designStatus: PhaseStatus.approved,
 	})
-		.select("bomTaxShippingUsd", "designStatus", "grantUsd", "id", "theme", "tier", "title", "userId")
+		.select(
+			"bomTaxShippingUsd",
+			"designStatus",
+			"grantUsd",
+			"id",
+			"starterProjectId",
+			"theme",
+			"tier",
+			"title",
+			"userId",
+		)
 		.include("bomItems", items => items.select("quantity", "unitCostUsd"))
 		.include("user", user => user.select("displayName", "email", "fraudFlagged", "id", "name", "verificationStatus"))
 		.include("hcbGrantCards", cards =>
@@ -170,7 +194,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 			continue
 		}
 
-		const capUsd = grantCardCapUsd(row.grantUsd, row.tier)
+		const capUsd = grantCardCapUsd(row.grantUsd, row.tier, isWeekOneStarter(row.starterProjectId))
 		if (capUsd === null) {
 			excluded.push({ ownerName, projectId: row.id, reason: "No tier to cap the grant at", title: row.title })
 			continue
@@ -191,6 +215,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 			projectId: row.id,
 			theme: row.theme,
 			title: row.title,
+			weekOneStarter: isWeekOneStarter(row.starterProjectId),
 		})
 	}
 
@@ -233,13 +258,29 @@ async function applyUnifiedGate(
 	const recordIds = recordIdsFromSyncEvents(events)
 	const recordIdOf = (row: GrantCardProjectRow) => recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
 	const submitted = await readUnifiedSubmitted(eligible.map(recordIdOf).filter((id): id is string => Boolean(id)))
+	// A Week 1 starter with money already recorded in Airtable is paid by the starter export, not the wave, which does not net that money off.
+	const starterRecordIdList = eligible
+		.filter(row => row.weekOneStarter)
+		.map(recordIdOf)
+		.filter((id): id is string => Boolean(id))
+	const fundingGiven = await readStarterFundingGiven(starterRecordIdList)
+	const starterBlock = (recordId: string): string | null => {
+		const paid = fundingGiven?.get(recordId)
+		if (fundingGiven === null || paid === undefined) return "Could not check Funding given"
+		return paid > 0 ? "Has Funding given in Airtable; the starter export pays it" : null
+	}
 
 	const kept: GrantCardProjectRow[] = []
 	const gone = [...excluded]
 	for (const row of eligible) {
 		const recordId = recordIdOf(row)
 		if (submitted && recordId && submitted.has(recordId)) {
-			kept.push(row)
+			const block = row.weekOneStarter ? starterBlock(recordId) : null
+			if (block === null) {
+				kept.push(row)
+				continue
+			}
+			gone.push({ ownerName: row.ownerName, projectId: row.projectId, reason: block, title: row.title })
 			continue
 		}
 		gone.push({
@@ -393,51 +434,58 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 		throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
 
 	const { ip, userAgent } = await requestInfo()
-	const result = await db.transaction(async tx => {
-		// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through.
-		const txPreview = await buildPreview(tx)
-		if (txPreview.fingerprint !== input.fingerprint)
-			throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
-		if (txPreview.eligible.length === 0)
-			throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
+	// A starter's Funding given is written before its row can reach the CSV. If that write fails, nothing is exported.
+	const writtenStarterRows = await writeStarterFunding(current.eligible)
+	const result = await db
+		.transaction(async tx => {
+			// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through.
+			const txPreview = await buildPreview(tx)
+			if (txPreview.fingerprint !== input.fingerprint)
+				throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
+			if (txPreview.eligible.length === 0)
+				throw new HttpError("CONFLICT", "No approved project is ready for a card grant")
 
-		const batch = await tx.orm.public.HcbCardGrantExportBatch.create({
-			createdById: input.admin.id,
-			fingerprint: txPreview.fingerprint,
-			totalCents: txPreview.totalCents,
-		})
-		try {
-			await tx.orm.public.HcbCardGrantExportRow.createAll(
-				txPreview.eligible.map(row => ({
-					amountCents: row.amountCents,
-					batchId: batch.id,
-					email: row.email,
-					themeProjectId: row.projectId,
-				})),
-			)
-		} catch (err) {
-			// The unique index is what tells us; naming the reason is more useful than a generic conflict.
-			if (isUniqueViolation(err))
-				throw new HttpError("CONFLICT", "Another export already claimed one of these projects")
-			throw err
-		}
-
-		await logAuditTx(tx, {
-			action: AuditAction.ADMIN_CREATE_GRANT_CARD_EXPORT,
-			actorEmail: input.admin.email,
-			actorId: input.admin.id,
-			ip,
-			metadata: {
-				count: txPreview.eligible.length,
+			const batch = await tx.orm.public.HcbCardGrantExportBatch.create({
+				createdById: input.admin.id,
 				fingerprint: txPreview.fingerprint,
 				totalCents: txPreview.totalCents,
-			},
-			targetId: batch.id,
-			targetType: "HcbCardGrantExportBatch",
-			userAgent,
+			})
+			try {
+				await tx.orm.public.HcbCardGrantExportRow.createAll(
+					txPreview.eligible.map(row => ({
+						amountCents: row.amountCents,
+						batchId: batch.id,
+						email: row.email,
+						themeProjectId: row.projectId,
+					})),
+				)
+			} catch (err) {
+				// The unique index is what tells us; naming the reason is more useful than a generic conflict.
+				if (isUniqueViolation(err))
+					throw new HttpError("CONFLICT", "Another export already claimed one of these projects")
+				throw err
+			}
+
+			await logAuditTx(tx, {
+				action: AuditAction.ADMIN_CREATE_GRANT_CARD_EXPORT,
+				actorEmail: input.admin.email,
+				actorId: input.admin.id,
+				ip,
+				metadata: {
+					count: txPreview.eligible.length,
+					fingerprint: txPreview.fingerprint,
+					totalCents: txPreview.totalCents,
+				},
+				targetId: batch.id,
+				targetType: "HcbCardGrantExportBatch",
+				userAgent,
+			})
+			return { batchId: batch.id, eligible: txPreview.eligible, totalCents: txPreview.totalCents }
 		})
-		return { batchId: batch.id, eligible: txPreview.eligible, totalCents: txPreview.totalCents }
-	})
+		.catch(async err => {
+			await revertStarterFunding(writtenStarterRows)
+			throw err
+		})
 
 	return {
 		batchId: result.batchId,
@@ -548,6 +596,40 @@ async function auditIssue(
 	})
 }
 
+/**
+ * Writes `Funding given` for each Week 1 starter in a card export, before its row can reach the CSV. Returns the rows written, so they can be undone if the export does not go ahead.
+ *
+ * Throws, naming the starter, when one cannot be written. Writes already made are undone first, so a failed export leaves Airtable as it was.
+ */
+async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<string[]> {
+	const starters = eligible.filter(row => row.weekOneStarter)
+	const recordIds = await starterRecordIds(starters.map(row => row.projectId))
+	const written: string[] = []
+	for (const row of starters) {
+		const recordId = recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
+		const failure = recordId
+			? await setStarterFundingGiven(recordId, row.amountCents / 100)
+			: "No Airtable row is linked to this project"
+		if (failure !== null) {
+			await revertStarterFunding(written)
+			throw new HttpError(
+				"INTERNAL",
+				`Funding given could not be written for ${row.title || row.projectId}, so nothing was exported: ${failure}`,
+			)
+		}
+		if (recordId) written.push(recordId)
+	}
+	return written
+}
+
+/** Undoes `Funding given` writes made for an export that did not go ahead, setting them back to zero. */
+async function revertStarterFunding(recordIds: readonly string[]): Promise<void> {
+	for (const recordId of recordIds) {
+		const failure = await setStarterFundingGiven(recordId, 0)
+		if (failure !== null) console.error("[grant-cards] could not revert Funding given", recordId, failure)
+	}
+}
+
 async function markIssued(
 	row: { amountCents: number; batchId: string; id: string; projectId: string; purpose: string | null },
 	grant: { cardId: string | null; id: string; status: string | null },
@@ -574,6 +656,33 @@ async function markIssued(
 			purpose: row.purpose ?? "",
 			userAgent: request.userAgent,
 		})
+	})
+	await recordStarterFunding(row.projectId, row.amountCents, request)
+}
+
+/**
+ * After a card is issued to a Week 1 starter, writes its total to Airtable's `Funding given`, so the starter export counts it.
+ *
+ * Best effort. The card is already on HCB and recorded here, and the export already counts the live card, so a failed write cannot make the starter owed again. The failure is audited, so it can be fixed in Airtable by hand.
+ */
+async function recordStarterFunding(
+	projectId: string,
+	amountCents: number,
+	request: { ip: string | null; userAgent: string | null },
+): Promise<void> {
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: projectId })
+		.select("starterProjectId", "tier")
+		.first()
+	if (!project || !isWeekOneStarter(project.starterProjectId) || project.tier !== STARTER_TIER_ID) return
+	const failure = await writeStarterFundingGiven(projectId, amountCents / 100)
+	if (failure === null) return
+	await logAudit({
+		action: AuditAction.AIRTABLE_SYNC_FAILURE,
+		actorEmail: null,
+		actorId: null,
+		metadata: { error: failure, field: "Funding given", ip: request.ip },
+		targetId: projectId,
+		targetType: "ThemeProject",
 	})
 }
 
@@ -659,7 +768,17 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 		if (claimed !== 1) continue
 
 		const project = await db.orm.public.ThemeProject.whereUnique({ id: candidate.themeProjectId })
-			.select("bomTaxShippingUsd", "deletedAt", "designStatus", "grantUsd", "id", "tier", "title", "userId")
+			.select(
+				"bomTaxShippingUsd",
+				"deletedAt",
+				"designStatus",
+				"grantUsd",
+				"id",
+				"starterProjectId",
+				"tier",
+				"title",
+				"userId",
+			)
 			.include("bomItems", items => items.select("quantity", "unitCostUsd"))
 			.include("user", user => user.select("email", "fraudFlagged", "id", "name"))
 			.first()
@@ -697,7 +816,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			continue
 		}
 
-		const capUsd = grantCardCapUsd(project.grantUsd, project.tier)
+		const capUsd = grantCardCapUsd(project.grantUsd, project.tier, isWeekOneStarter(project.starterProjectId))
 		const amountCents = capUsd === null ? 0 : grantCardAmountCents(project.bomItems, project.bomTaxShippingUsd, capUsd)
 		if (capUsd === null || amountCents !== candidate.amountCents) {
 			await markSkipped(candidate.id, "BOM total changed since the batch was made")

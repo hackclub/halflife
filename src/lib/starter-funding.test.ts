@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+	fundingGivenPatch,
 	paidSoFarUsd,
 	STARTER_KIT_STATUS,
 	type StarterFundingInput,
@@ -105,6 +106,18 @@ describe("starter funding holds and flags", () => {
 
 	test("a zero BOM is flagged", () => {
 		expect(starterFundingFor(row({ bomTotalUsd: 0 })).fulfilment).toBe("FLAG")
+	})
+})
+
+describe("writing Funding given", () => {
+	test("the patch sets one design row to the total, rounded to cents", () => {
+		expect(JSON.parse(fundingGivenPatch("recABC", "Funding given", 33))).toEqual({
+			records: [{ fields: { "Funding given": 33 }, id: "recABC" }],
+			typecast: false,
+		})
+		expect(JSON.parse(fundingGivenPatch("recABC", "Funding given", 25.755)).records[0].fields["Funding given"]).toBe(
+			25.76,
+		)
 	})
 })
 
