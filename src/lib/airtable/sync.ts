@@ -20,7 +20,7 @@ import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUB
 import type { JustificationRow, JustificationRowMissing } from "@/lib/airtable/unified-justification"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
-import { projectDisplayTitle, scheduledWeekFor } from "@/lib/config/program"
+import { projectDisplayTitle, scheduledWeekFor, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { HoursSource, PayoutSource, Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
 import { syncHcaProfile } from "@/lib/hca-profile"
@@ -111,9 +111,10 @@ export function reviewStatusForResult(result: ReviewResult): string {
 /**
  * The `Loops - halfLifeProjectWeek` label for a scheduled week.
  *
- * A single select written with `typecast: false`, so the string has to already be an option in the base – and there is no option for a week that was never scheduled. The warm-up's week 0 therefore reads as null (left blank), not as a made-up label a write would then have to shed.
+ * A single select written with `typecast: false`, so the string has to already be an option in the base – and a week outside 1–10 has no option unless one is named for it. The warm-up's week 0 is labelled `Warm-up`, which the base has as an option, so warm-up rows read the same as the season rows. Any other value is null (left blank), not a made-up label a write would then have to shed.
  */
 export function projectWeekLabel(week: number): string | null {
+	if (week === WARMUP_WEEK_ID) return "Warm-up"
 	return week >= 1 && week <= 10 ? `Week ${week}` : null
 }
 
