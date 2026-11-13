@@ -2,7 +2,14 @@ import { z } from "zod"
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { withWriteSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
-import { buildObjectKey, isUploadConfigured, presignUpload, UPLOAD_FOLDERS, validateUpload } from "@/lib/uploads/r2"
+import {
+	buildObjectKey,
+	isUploadConfigured,
+	objectExists,
+	presignUpload,
+	UPLOAD_FOLDERS,
+	validateUpload,
+} from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
 
@@ -52,9 +59,14 @@ export const POST = withWriteSession(async (req, { gate }) => {
 	const isImage = contentType.startsWith("image/")
 	if (isImage && !sha256) return fail("VALIDATION_FAILED", "Image uploads must send a sha256 of their bytes")
 
-	// Keys are namespaced by user so abuse is traceable and orphans are findable. Pictures are named after their bytes rather than a fresh uuid, so re-picking the same image mints the same URL; videos keep a random name because a reel is identified by its post. `.jpeg` is normalised to `.jpg` because the old server-side path sniffed the bytes and always named a JPEG `.jpg`; keeping both spellings would give one picture two keys and count it twice.
+	// Keys are namespaced by user so abuse is traceable and orphans are findable. Pictures are named after their bytes rather than a fresh uuid, so re-picking the same image mints the same URLs; videos keep a random name because a reel is identified by its post. `.jpeg` is normalised to `.jpg` because the old server-side path sniffed the bytes and always named a JPEG `.jpg`; keeping both spellings would give one picture two keys and count it twice.
 	const ext = check.ext === "jpeg" ? "jpg" : check.ext
 	const key = buildObjectKey(gate.user.id, folder, ext, isImage ? sha256 : undefined)
+
+	// A picture's key is the hash of its bytes, so it is the picture's identity and the bytes cannot legitimately change. If that key is already stored, do not sign another PUT for it: a fresh signature is a fresh overwrite, and the picture may already be a confirmed journal image. The client skips the upload and confirms what is there. Videos keep a random key, so there is nothing to collide with.
+	if (isImage && (await objectExists(key)))
+		return ok({ expiresAt: null, objectKey: key, uploadUrl: null }, { status: 200 })
+
 	const presigned = await presignUpload(key, contentType)
 
 	return ok(presigned, { status: 201 })

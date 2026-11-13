@@ -333,8 +333,21 @@ export async function statObject(key: string): Promise<StoredObjectStat> {
 	}
 }
 
-/** The first `bytes` of an object, fetched with a Range request so a video's header does not cost a whole reel. */
-export async function readObjectHead(key: string, bytes: number): Promise<Buffer> {
+/** Whether an object is already stored. A missing object is an answer, not an error; a bucket fault still throws. */
+export async function objectExists(key: string): Promise<boolean> {
+	try {
+		await statObject(key)
+		return true
+	} catch (err) {
+		if (err instanceof HttpError && err.code === "VALIDATION_FAILED") return false
+		throw err
+	}
+}
+
+/** The first `bytes` of an object, fetched with a Range request so a video's header does not cost a whole reel. */ export async function readObjectHead(
+	key: string,
+	bytes: number,
+): Promise<Buffer> {
 	try {
 		const s3 = await client()
 		return Buffer.from(await withBucketRetry(() => s3.file(key).slice(0, bytes).arrayBuffer()))
