@@ -19,6 +19,7 @@ import {
 import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
+import { assertPayoutAllowed } from "@/lib/moderation"
 import { statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import db from "@/lib/prisma8"
@@ -245,6 +246,9 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	const outcome = await db.transaction(async tx => {
 		// reconcileGrant reads a running sum and writes a delta against it, so it needs the same serialization the shop does.
 		await lockUserCredit(tx, project.userId)
+
+		// An approval is the payout those submissions earn, so a banned, suspended or flagged account is not paid – by Ari just as much as by a reviewer. Read inside the transaction, under the same lock every other payout takes, so a penalty written in the meantime is seen.
+		if (approving) await assertPayoutAllowed(tx, project.userId)
 
 		// Re-read inside the transaction: the review page may have been open for a while, and the participant may have withdrawn in the meantime.
 		const fresh = await tx.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })

@@ -34,6 +34,39 @@ export function penaltyFor(bannedAt: string | null | undefined, suspendedUntil: 
 }
 
 /**
+ * Why money or goods must not leave for this account right now, or null when they may.
+ *
+ * Payouts take their own gate rather than trusting a route's session guard: a review decision can be applied by Ari with no session at all, a grant card is issued from a batch that reads rows, and the starter-funding CSV is built by a job. Each of those would otherwise have to remember the ban, the suspension and the fraud flag separately – and three of them forgot.
+ *
+ * A suspension is read-only by design, so a suspended maker is paid when it lifts; a ban is open-ended. The fraud flag is a review verdict rather than a penalty and an admin can clear it, so it holds the money rather than ending the account.
+ */
+export function payoutBlockReason(user: {
+	bannedAt?: string | null
+	fraudFlagged?: boolean | null
+	suspendedUntil?: string | null
+}): string | null {
+	const penalty = penaltyFor(user.bannedAt ?? null, user.suspendedUntil ?? null)
+	if (penalty === "banned") return "Account is banned"
+	if (penalty === "suspended") return "Account is suspended"
+	if (user.fraudFlagged) return "Account is flagged"
+	return null
+}
+
+/** The same gate, read for a user id on whichever client the caller is already holding. */
+export async function payoutBlockFor(client: DbOrTx, userId: string): Promise<string | null> {
+	const user = await client.orm.public.User.whereUnique({ id: userId })
+		.select("bannedAt", "fraudFlagged", "suspendedUntil")
+		.first()
+	return user ? payoutBlockReason(user) : "Account not found"
+}
+
+/** Refuse a payout path outright, rather than returning a row a caller might forget to filter. */
+export async function assertPayoutAllowed(client: DbOrTx, userId: string): Promise<void> {
+	const block = await payoutBlockFor(client, userId)
+	if (block) throw new HttpError("FORBIDDEN", `${block}, so nothing can be paid out to it until an admin clears it`)
+}
+
+/**
  * Kill every live session a user holds.
  *
  * better-auth keeps its sessions in their own tables through its own pool (lib/auth-db), and a signed-in session cookie may be served for minutes before re-checking - so removing the rows is what ends the ban at once rather than at the next re-read. The guard's own user-row read catches anything the cookie cache still answers in between.

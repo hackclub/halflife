@@ -26,6 +26,7 @@ import {
 	readOrganizationBalanceCents,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
+import { payoutBlockReason } from "@/lib/moderation"
 import { formatUsd } from "@/lib/money"
 import { configuredOrigin } from "@/lib/origin"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
@@ -141,7 +142,18 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 			"userId",
 		)
 		.include("bomItems", items => items.select("quantity", "unitCostUsd"))
-		.include("user", user => user.select("displayName", "email", "fraudFlagged", "id", "name", "verificationStatus"))
+		.include("user", user =>
+			user.select(
+				"bannedAt",
+				"displayName",
+				"email",
+				"fraudFlagged",
+				"id",
+				"name",
+				"suspendedUntil",
+				"verificationStatus",
+			),
+		)
 		.include("hcbGrantCards", cards =>
 			cards
 				.select("id", "status")
@@ -176,10 +188,12 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 				|| card.status === HcbGrantCardStatus.ISSUED
 				|| card.status === HcbGrantCardStatus.AMBIGUOUS,
 		)
+		// The flag, the ban and the suspension in one answer, so this list and the issue loop cannot disagree about who is paid. A fraud flag on its own is what this list used to check.
+		const payoutBlock = payoutBlockReason(row.user)
 		const reason = !row.grantUsd
 			? "No approved grant"
-			: row.user.fraudFlagged
-				? "Account is flagged"
+			: payoutBlock
+				? payoutBlock
 				: row.user.verificationStatus !== "verified"
 					? "Identity is not verified"
 					: row.hcbGrantTopUps.length > 0
@@ -780,7 +794,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 				"userId",
 			)
 			.include("bomItems", items => items.select("quantity", "unitCostUsd"))
-			.include("user", user => user.select("email", "fraudFlagged", "id", "name"))
+			.include("user", user => user.select("bannedAt", "email", "fraudFlagged", "id", "name", "suspendedUntil"))
 			.first()
 		if (!project || project.deletedAt || !project.user) {
 			await markSkipped(candidate.id, "Project no longer exists")
@@ -798,9 +812,10 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, "Project has no approved grant", null))
 			continue
 		}
-		if (project.user.fraudFlagged) {
-			await markSkipped(candidate.id, "Account is flagged")
-			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, "Account is flagged", null))
+		const block = payoutBlockReason(project.user)
+		if (block) {
+			await markSkipped(candidate.id, block)
+			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, block, null))
 			continue
 		}
 

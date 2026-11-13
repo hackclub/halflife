@@ -5,6 +5,7 @@ import { THEMES, THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { PhaseStatus, type PrinterAwardStatus, type Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
+import { payoutBlockFor } from "@/lib/moderation"
 import { decryptUserPII, encryptPII, isPiiConfigured } from "@/lib/pii"
 import { canMovePrinterAward, PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import db, { type DbOrTx } from "@/lib/prisma8"
@@ -58,9 +59,9 @@ export async function ensurePrinterAward(
 	tx: DbOrTx,
 	userId: string,
 ): Promise<Omit<Models.public_PrinterAward, "user"> | null> {
-	// Flagged accounts earn no award while under review: their submissions are blocked, and the award is the payout those submissions would have earned. Checked on every approval (this is idempotent), so clearing the flag lets the next approval create it.
-	const holder = await tx.orm.public.User.whereUnique({ id: userId }).select("fraudFlagged").first()
-	if (holder?.fraudFlagged) return null
+	// Flagged accounts earn no award while under review: their submissions are blocked, and the award is the payout those submissions would have earned. Checked on every approval (this is idempotent), so clearing the flag lets the next approval create it. A ban or a live suspension holds it too, through the gate every payout path shares.
+	const block = await payoutBlockFor(tx, userId)
+	if (block) return null
 
 	const projects = await tx.orm.public.ThemeProject.where({
 		buildStatus: PhaseStatus.approved,
@@ -158,18 +159,14 @@ export async function updatePrinterAwardStatus(
 				"encryptedAddressStreet",
 				"encryptedAddressZip",
 				"encryptedPhone",
-				"fraudFlagged",
 			),
 		)
 		.first()
 	if (!award?.user) throw new HttpError("NOT_FOUND", "Printer award not found")
 
-	// A flagged account's award goes nowhere until an admin clears it – the server refuses, so fulfillers never have to spot the flag themselves. Revoking still works: taking an award away is always safe.
-	if (award.user.fraudFlagged && input.status !== "REVOKED")
-		throw new HttpError(
-			"FORBIDDEN",
-			"This account is under review, so its printer award cannot move until it is cleared.",
-		)
+	// A flagged account's award goes nowhere until an admin clears it – the server refuses, so fulfillers never have to spot the flag themselves. Revoking still works: taking an award away is always safe. A banned or suspended account is held by the same gate.
+	const block = input.status === "REVOKED" ? null : await payoutBlockFor(db, award.userId)
+	if (block) throw new HttpError("FORBIDDEN", `${block}, so its printer award cannot move until it is cleared.`)
 
 	if (!canMovePrinterAward(award.status, input.status))
 		throw new HttpError(

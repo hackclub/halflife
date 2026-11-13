@@ -14,6 +14,7 @@ import {
 } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { isIdentityVerified } from "@/lib/hca-profile"
+import { assertPayoutAllowed } from "@/lib/moderation"
 import { getPrinterQualification } from "@/lib/printer"
 import db, { type DbOrTx } from "@/lib/prisma8"
 import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/program"
@@ -592,6 +593,8 @@ export async function fulfillOrder(
 		if (order.status === ShopOrderStatus.FULFILLED) throw new HttpError("CONFLICT", "This order is already fulfilled")
 		if (order.status === ShopOrderStatus.REJECTED) throw new HttpError("CONFLICT", "This order was rejected")
 		if (order.status === ShopOrderStatus.CANCELLED) throw new HttpError("CONFLICT", "This order was cancelled")
+		// A penalty or a fraud flag that lands after the purchase still stops the goods: the order was placed while the account was in good standing, but fulfilling it now would ship money to an account under review. The purchase path checks the same gate.
+		await assertPayoutAllowed(tx, order.userId)
 
 		const claimed = await tx.orm.public.ShopOrder.where({ id: orderId, status: order.status }).updateAndCount({
 			fulfilledAt: formatDbTimestamp(new Date()),
