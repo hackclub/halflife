@@ -1,8 +1,24 @@
 import { describe, expect, test } from "bun:test"
 import { PhaseStatus } from "@/lib/enums"
-import { projectDescriptionLockReason, projectEditLockReason } from "@/lib/program"
+import { changedProjectKeys, projectDescriptionLockReason, projectEditLockReason } from "@/lib/program"
 
 const project = (designStatus: PhaseStatus, buildStatus: PhaseStatus) => ({ buildStatus, designStatus })
+
+describe("changedProjectKeys", () => {
+	test("leaves out a tier the project already has", () => {
+		expect(changedProjectKeys({ requestedTier: 2 }, { description: "x", requestedTier: 2 })).toEqual(["description"])
+		expect(changedProjectKeys({ requestedTier: 2 }, { requestedTier: 2 })).toEqual([])
+	})
+
+	test("keeps a tier that differs", () => {
+		expect(changedProjectKeys({ requestedTier: 2 }, { requestedTier: 3 })).toEqual(["requestedTier"])
+		expect(changedProjectKeys({ requestedTier: null }, { requestedTier: 1 })).toEqual(["requestedTier"])
+	})
+
+	test("keeps every other field", () => {
+		expect(changedProjectKeys({ requestedTier: 1 }, { description: "x", title: "y" })).toEqual(["description", "title"])
+	})
+})
 
 describe("projectEditLockReason", () => {
 	test("freezes the details once either phase is decided", () => {

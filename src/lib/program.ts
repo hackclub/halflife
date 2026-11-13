@@ -426,6 +426,18 @@ export function isPhaseDecided(status: PhaseStatus): boolean {
 export const FROZEN_PHASE_STATUSES: PhaseStatus[] = [PhaseStatus.in_review, PhaseStatus.approved, PhaseStatus.rejected]
 
 /**
+ * The keys of a project patch that would actually change the project.
+ *
+ * A tier the project already has is not a change. The submit sheet sends its tier with every hand-in, so a decided design would otherwise refuse the build's hand-in over a tier nobody moved – the lock is about what changes, not about what the request mentions.
+ */
+export function changedProjectKeys(
+	project: { requestedTier: number | null },
+	patch: { [_: string]: unknown },
+): string[] {
+	return Object.keys(patch).filter(key => key !== "requestedTier" || patch.requestedTier !== project.requestedTier)
+}
+
+/**
  * Why a project's own details cannot change right now, or null when they can.
  *
  * One place, so the route that refuses the edit and the page that says so cannot disagree about which phases are frozen.
