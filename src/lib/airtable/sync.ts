@@ -293,7 +293,7 @@ export async function syncSubmissionToYsws(
 	const fields = await fieldsFor(themeProjectId, phase)
 	if (!fields) return { skipped: "project_not_found" }
 	return withYswsWriteLock(themeProjectId, phase, async () =>
-		writeYswsRecord(fields, await lastRecordId(themeProjectId, phase)),
+		writeYswsRecord(fields, await lastRecordId(themeProjectId, phase), { themeProjectId }),
 	)
 }
 

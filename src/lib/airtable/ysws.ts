@@ -14,6 +14,8 @@ import {
 } from "@/lib/airtable/client"
 import { fieldKey, formulaRef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { errorMessage } from "@/lib/api-error"
+import db from "@/lib/prisma8"
+import { isRecord } from "@/lib/unknown"
 
 /**
  * Writes to the `YSWS Project Submission` table.
@@ -89,6 +91,25 @@ async function findExistingRow(
 }
 
 /**
+ * The project whose sync already recorded this Airtable record id, or null.
+ *
+ * A record id is only ever learned from a write, and every write leaves an audit row stamped with it, so the stamp is what says which project a row belongs to. A later `removed` entry for the same id means the row was taken back and the next submission starts a new one.
+ */
+async function recordIdOwner(recordId: string): Promise<string | null> {
+	const rows = await db.orm.public.AuditLog.where({ action: "AIRTABLE_SYNC_SUCCESS" })
+		.orderBy(entry => entry.createdAt.desc())
+		.select("metadata", "targetId")
+		.all()
+	for (const row of rows) {
+		const meta = isRecord(row.metadata) ? row.metadata : null
+		if (meta?.recordId !== recordId) continue
+		if (meta.removed) return null
+		return row.targetId
+	}
+	return null
+}
+
+/**
  * Create the row, or update it when its record id is known.
  *
  * If Airtable refuses a column, the row is written without it and the column is logged: a submission reaching the table with one blank field is recoverable, and one that never arrives is not. Resolves to the record id, and the columns that had to be left out.
@@ -96,6 +117,8 @@ async function findExistingRow(
 export async function writeYswsRecord(
 	fields: { [_: string]: unknown },
 	recordId: string | null,
+	/** The submission doing the write, so a matched row already stamped to a different project is not taken from it. */
+	owner?: { themeProjectId: string },
 ): Promise<{ recordId: string; dropped: string[] } | { skipped: "not_configured" }> {
 	const config = getAirtableConfig()
 	if (!config) {
@@ -122,6 +145,12 @@ export async function writeYswsRecord(
 		if (existing === "ambiguous")
 			throw new Error("More than one Airtable row matches this submission; resolve the duplicate before syncing")
 		if (existing) {
+			// The match is email + title + stage, which a second project can share. If the row is already stamped to another project, it is that project's payout row: adopting it would move the first project's row under the second, and unsubmitting the second would delete it.
+			const ownerOfRecord = await recordIdOwner(existing.id)
+			if (owner && ownerOfRecord && ownerOfRecord !== owner.themeProjectId)
+				throw new Error(
+					`Airtable row ${existing.id} already belongs to another project; resolve the duplicate before syncing`,
+				)
 			console.warn(`[airtable] adopting existing YSWS row ${existing.id}; the previous write left no record id`)
 			;({ id } = existing)
 		}
