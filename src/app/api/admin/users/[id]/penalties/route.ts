@@ -12,8 +12,8 @@ interface Params {
 
 export const dynamic = "force-dynamic"
 
-/** Current penalty state on the row, for the card on the admin page to render. */
-export const GET = withPermission(Permission.VIEW_USERS, async (_req, { params }: Params & AuthedContext) => {
+/** Current penalty state on the row, for the card on the admin page to render. A ban or suspension reason is moderation material: VIEW_USERS reaches the profile, not the record of why somebody was taken off the platform. */
+export const GET = withPermission(Permission.MANAGE_USERS, async (_req, { params }: Params & AuthedContext) => {
 	const { id } = await params
 	const row = await db.orm.public.User.whereUnique({ id })
 		.select("bannedAt", "bannedById", "banReason", "suspendedById", "suspendedUntil", "suspensionReason")

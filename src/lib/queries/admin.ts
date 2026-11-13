@@ -455,8 +455,18 @@ export async function getUserDetail(
 				email: "",
 				fraudFlagged: false,
 				hackatimeUserId: null,
+				// The award's tracking and the projects' money are ADMIN/AUDITOR material too. A FULFILLER ships from the printer-award sheet, which has its own query, not from a participant's profile.
+				printerAward: null,
 				slackDisplayName: null,
 				slackId: null,
+				themeProjects: user.themeProjects.map(project => ({
+					...project,
+					approvedHours: null,
+					buildCoins: null,
+					designBankedCoins: null,
+					designSpendableCoins: null,
+					grantUsd: null,
+				})),
 				verificationStatus: null,
 			},
 		}
