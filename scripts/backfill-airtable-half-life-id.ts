@@ -1,5 +1,7 @@
 import "../src/lib/auth"
 import { writeFileSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import { AirtableListSchema, airtableFetch, getAirtableConfig, withRateLimitRetry } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
@@ -20,11 +22,11 @@ import db from "../src/lib/prisma8"
  *
  * Everything else is listed for a person to decide and is never written: a key shared by several projects or several rows (`ambiguous`), a row with no project behind it (`no_project`), a project with no row (`no_row`), and a row already stamped with another project's id (`conflicting_id`).
  *
- * Dry run unless `--commit` is passed. It always writes the full report to `/tmp/opencode/half-life-id-report.json`. Run with `bun --conditions=react-server scripts/backfill-airtable-half-life-id.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
+ * Dry run unless `--commit` is passed. It always writes the full report to `~/half-life-id-report.json`. Run with `bun --conditions=react-server scripts/backfill-airtable-half-life-id.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
 
 const commit = process.argv.includes("--commit")
-const REPORT_PATH = "/tmp/opencode/half-life-id-report.json"
+const REPORT_PATH = join(homedir(), "half-life-id-report.json")
 const PRINT_LIMIT = 20
 
 type Route = "audit" | "exact"
