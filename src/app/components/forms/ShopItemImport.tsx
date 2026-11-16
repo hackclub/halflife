@@ -91,11 +91,11 @@ export function ShopItemImport() {
 					) : null}
 				</Callout>
 			) : null}
-			{created !== null ? (
+			{created === null ? null : (
 				<Callout>
 					Added {created} {created === 1 ? "item" : "items"}.
 				</Callout>
-			) : null}
+			)}
 
 			<div className="hl-row" style={{ alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
 				<Button disabled={busy} onClick={() => picker.current?.click()} type="button">

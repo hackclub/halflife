@@ -15,7 +15,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady(objectKey: string):
 		<div className="hl-stack hl-stack--tight">
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 
-			{!minted ? (
+			{minted ? null : (
 				<>
 					<p className="hl-hint" style={{ margin: 0 }}>
 						Record on your phone instead: scan a code, film it, and the video lands here. No signing in on the phone.
@@ -26,7 +26,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady(objectKey: string):
 						</Button>
 					</div>
 				</>
-			) : null}
+			)}
 
 			{minted && status === "waiting" ? (
 				<div className="hl-stack hl-stack--tight">

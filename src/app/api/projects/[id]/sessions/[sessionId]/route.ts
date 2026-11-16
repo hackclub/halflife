@@ -80,9 +80,9 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	const r2Keys = new Set(rows.flatMap(r => (r.objectKey ? [r.objectKey] : [])))
 	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
 	const want =
-		data.timelapses !== undefined
-			? [...new Set(data.timelapses.map(t => t.lapseId).filter(lapseId => !r2Keys.has(lapseId)))]
-			: null
+		data.timelapses === undefined
+			? null
+			: [...new Set(data.timelapses.map(t => t.lapseId).filter(lapseId => !r2Keys.has(lapseId)))]
 	const addIds = want ? want.filter(lapseId => !have.has(lapseId)) : []
 	// Same rule as creation, asked of Lapse rather than trusted from the sheet. Only brand-new ids are verified; everything already attached stays without a round trip. Verified for its side effects here (ownership, published, processed) and mapped to the shape the reconciler writes: `LapseTimelapse.createdAt` is epoch ms and becomes the recording's start, which is what makes this clip's wall-clock window comparable with Hackatime's tracked intervals.
 	const fresh = (await verifyOwnTimelapses(gate.user.id, addIds)).map(t => ({
@@ -142,10 +142,10 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 				),
 			)
 			.updateAndCount({
-				...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
-				...(data.content !== undefined ? { content: data.content ? sanitizeHtml(data.content) : null } : {}),
-				...(data.hoursClaimed !== undefined ? { hoursClaimed: data.hoursClaimed } : {}),
-				...(data.hoursSource !== undefined ? { hoursSource: data.hoursSource } : {}),
+				...(data.title === undefined ? {} : { title: sanitize(data.title) }),
+				...(data.content === undefined ? {} : { content: data.content ? sanitizeHtml(data.content) : null }),
+				...(data.hoursClaimed === undefined ? {} : { hoursClaimed: data.hoursClaimed }),
+				...(data.hoursSource === undefined ? {} : { hoursSource: data.hoursSource }),
 				...(movingDay ? { effectiveDate: nextDay } : {}),
 			})
 		if (changed !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being edited")

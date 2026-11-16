@@ -208,89 +208,91 @@ export function ReelComments({
 			</header>
 
 			<div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4">
-				{!reel ? null : !thread || (thread.status === "loading" && thread.items.length === 0) ? (
-					<ul aria-label="Loading comments" className="grid gap-5">
-						{[0, 1, 2].map(i => (
-							<li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 motion-safe:animate-pulse" key={i}>
-								<span className="size-9 rounded-full bg-black/[.06]" />
-								<span className="grid content-start gap-2 pt-1">
-									<span className="h-3 w-24 rounded-full bg-black/[.06]" />
-									<span className="h-3.5 w-full max-w-56 rounded-full bg-black/[.06]" />
-								</span>
-							</li>
-						))}
-					</ul>
-				) : thread.status === "error" && thread.items.length === 0 ? (
-					<div className="grid justify-items-center gap-3 py-10 text-center">
-						<p className="hand text-[0.9rem] text-coral-deep">the comments did not load.</p>
-						<button
-							className="label rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
-							onClick={() => fetchAgain(reel.id, null)}
-							type="button"
-						>
-							Try again
-						</button>
-					</div>
-				) : thread.items.length === 0 ? (
-					<div className="grid justify-items-center gap-1 py-12 text-center">
-						<p className="hand text-[0.98rem] text-navy">nobody has said anything yet.</p>
-						<p className="hand text-[0.86rem] text-navy-soft">say what you think of the build.</p>
-					</div>
-				) : (
-					<>
-						<ol className="grid gap-5" ref={list}>
-							{thread.items.map(c => (
-								<li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3" key={c.id}>
-									<Avatar className="size-9 text-[0.88rem]" image={c.author.image} name={c.author.name} />
-									<div className="min-w-0">
-										<p className="flex min-w-0 items-baseline gap-2">
-											<Link
-												className="truncate text-[0.84rem] font-extrabold text-navy transition-colors hover:text-violet-deep hover:underline hover:decoration-dashed hover:underline-offset-4"
-												href={`/u/${c.author.id}`}
-											>
-												{c.author.name ?? "A maker"}
-											</Link>
-											{c.mine && <span className="label shrink-0 text-violet-deep">you</span>}
-										</p>
-										<p className="mt-0.5 text-[0.9rem] leading-snug whitespace-pre-line [overflow-wrap:anywhere] text-navy">
-											{c.body}
-										</p>
-										<p className="hand mt-1 flex items-center gap-3.5 text-[0.76rem] text-navy-soft">
-											<time dateTime={c.createdAt}>{ago(c.createdAt)}</time>
-											{c.mine && (
-												<button
-													className="underline decoration-dashed underline-offset-4 transition-colors hover:text-coral-deep"
-													onClick={() => remove(c)}
-													type="button"
-												>
-													delete
-												</button>
-											)}
-											{!c.mine && (
-												<ReportButton
-													className="text-[0.76rem]"
-													context={c.body}
-													target={{ id: c.id, type: "REEL_COMMENT" }}
-													title="Report this comment"
-												/>
-											)}
-										</p>
-									</div>
+				{reel ? (
+					!thread || (thread.status === "loading" && thread.items.length === 0) ? (
+						<ul aria-label="Loading comments" className="grid gap-5">
+							{[0, 1, 2].map(i => (
+								<li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 motion-safe:animate-pulse" key={i}>
+									<span className="size-9 rounded-full bg-black/[.06]" />
+									<span className="grid content-start gap-2 pt-1">
+										<span className="h-3 w-24 rounded-full bg-black/[.06]" />
+										<span className="h-3.5 w-full max-w-56 rounded-full bg-black/[.06]" />
+									</span>
 								</li>
 							))}
-						</ol>
-						{thread.nextCursor && (
+						</ul>
+					) : thread.status === "error" && thread.items.length === 0 ? (
+						<div className="grid justify-items-center gap-3 py-10 text-center">
+							<p className="hand text-[0.9rem] text-coral-deep">the comments did not load.</p>
 							<button
-								className="hand mt-5 text-[0.84rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
-								disabled={thread.status === "loading"}
-								onClick={() => fetchAgain(reel.id, thread.nextCursor)}
+								className="label rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+								onClick={() => fetchAgain(reel.id, null)}
 								type="button"
 							>
-								{thread.status === "loading" ? "loading…" : "show older comments"}
+								Try again
 							</button>
-						)}
-					</>
-				)}
+						</div>
+					) : thread.items.length === 0 ? (
+						<div className="grid justify-items-center gap-1 py-12 text-center">
+							<p className="hand text-[0.98rem] text-navy">nobody has said anything yet.</p>
+							<p className="hand text-[0.86rem] text-navy-soft">say what you think of the build.</p>
+						</div>
+					) : (
+						<>
+							<ol className="grid gap-5" ref={list}>
+								{thread.items.map(c => (
+									<li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3" key={c.id}>
+										<Avatar className="size-9 text-[0.88rem]" image={c.author.image} name={c.author.name} />
+										<div className="min-w-0">
+											<p className="flex min-w-0 items-baseline gap-2">
+												<Link
+													className="truncate text-[0.84rem] font-extrabold text-navy transition-colors hover:text-violet-deep hover:underline hover:decoration-dashed hover:underline-offset-4"
+													href={`/u/${c.author.id}`}
+												>
+													{c.author.name ?? "A maker"}
+												</Link>
+												{c.mine && <span className="label shrink-0 text-violet-deep">you</span>}
+											</p>
+											<p className="mt-0.5 text-[0.9rem] leading-snug whitespace-pre-line [overflow-wrap:anywhere] text-navy">
+												{c.body}
+											</p>
+											<p className="hand mt-1 flex items-center gap-3.5 text-[0.76rem] text-navy-soft">
+												<time dateTime={c.createdAt}>{ago(c.createdAt)}</time>
+												{c.mine && (
+													<button
+														className="underline decoration-dashed underline-offset-4 transition-colors hover:text-coral-deep"
+														onClick={() => remove(c)}
+														type="button"
+													>
+														delete
+													</button>
+												)}
+												{!c.mine && (
+													<ReportButton
+														className="text-[0.76rem]"
+														context={c.body}
+														target={{ id: c.id, type: "REEL_COMMENT" }}
+														title="Report this comment"
+													/>
+												)}
+											</p>
+										</div>
+									</li>
+								))}
+							</ol>
+							{thread.nextCursor && (
+								<button
+									className="hand mt-5 text-[0.84rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+									disabled={thread.status === "loading"}
+									onClick={() => fetchAgain(reel.id, thread.nextCursor)}
+									type="button"
+								>
+									{thread.status === "loading" ? "loading…" : "show older comments"}
+								</button>
+							)}
+						</>
+					)
+				) : null}
 			</div>
 
 			<form

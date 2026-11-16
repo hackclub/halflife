@@ -77,7 +77,7 @@ export function PenaltyCard({ url, ...onRecord }: Readonly<PenaltySnapshot & { u
 				</Button>
 			) : null}
 
-			{!onRecord.banned ? (
+			{onRecord.banned ? null : (
 				<form
 					className="hl-stack hl-stack--tight"
 					onSubmit={e => {
@@ -121,7 +121,7 @@ export function PenaltyCard({ url, ...onRecord }: Readonly<PenaltySnapshot & { u
 							: "Banned: sign-in refused and sessions revoked immediately. Hidden content comes back on unban if you restore it."}
 					</p>
 				</form>
-			) : null}
+			)}
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 		</div>
 	)

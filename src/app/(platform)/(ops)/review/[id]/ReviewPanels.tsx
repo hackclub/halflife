@@ -263,12 +263,12 @@ export function ReviewEvidence({ claimedByMe, detail }: { claimedByMe: boolean; 
 								<td>{displayName(review.reviewer) ?? "Ari"}</td>
 								<td>
 									{review.feedback}
-									{review.frozenApprovedHours !== null ? (
+									{review.frozenApprovedHours === null ? null : (
 										<div className="hl-hint">
 											{review.frozenApprovedHours}h at tier {review.frozenTier ?? "-"}
-											{review.frozenGrantUsd !== null ? ` · $${review.frozenGrantUsd}` : ""}
+											{review.frozenGrantUsd === null ? "" : ` · $${review.frozenGrantUsd}`}
 										</div>
-									) : null}
+									)}
 								</td>
 							</tr>
 						))}

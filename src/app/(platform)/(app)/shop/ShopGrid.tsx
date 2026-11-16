@@ -59,7 +59,7 @@ export function ShopGrid({
 
 	const items = useMemo(() => {
 		const shelf = CATEGORIES.find(c => c.label === cat)
-		const filtered = !shelf?.match ? all : all.filter(i => i.category === shelf.match)
+		const filtered = shelf?.match ? all.filter(i => i.category === shelf.match) : all
 		switch (sort) {
 			case "default":
 				return filtered

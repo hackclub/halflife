@@ -174,13 +174,7 @@ export async function sendSubmissionToIre(
 					// A healthy row normally means Ire has the ship. A forced resend withdraws and re-creates it so a
 					// payload change reaches Ire; a verified full resend only recreates ships Ire has lost.
 					await withdrawRow(existing)
-				else if (!opts?.verify)
-					return {
-						id: existing.remoteId,
-						status: "duplicate",
-						...(existing.version === null ? {} : { version: existing.version }),
-					}
-				else {
+				else if (opts?.verify) {
 					const live = await getIreShip(ireExternalId(themeProjectId, phase))
 					if (live)
 						return {
@@ -188,7 +182,12 @@ export async function sendSubmissionToIre(
 							status: "duplicate",
 							...(existing.version === null ? {} : { version: existing.version }),
 						}
-				}
+				} else
+					return {
+						id: existing.remoteId,
+						status: "duplicate",
+						...(existing.version === null ? {} : { version: existing.version }),
+					}
 			else await withdrawRow(existing)
 
 		const created: IreShipCreated = await createIreShip(input, submissionId)

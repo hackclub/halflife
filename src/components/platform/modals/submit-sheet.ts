@@ -324,7 +324,7 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		if (postId)
 			setSharePost({
 				// Design only: build weeks earn flat, so "past your tier" means nothing there. The hours are the week's own total – the same basis the sheet's floor and target read – though a reviewer can still adjust them.
-				celebration: !isBuild ? { extraHours: Math.max(0, hours - week.earnFrom) } : undefined,
+				celebration: isBuild ? undefined : { extraHours: Math.max(0, hours - week.earnFrom) },
 				checkpointId: checkpoint.id,
 				eyebrow: `${weekName(week)} · Submitted`,
 				postId,

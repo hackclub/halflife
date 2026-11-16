@@ -176,27 +176,29 @@ export default async function AdminProgramPage() {
 			</Panel>
 
 			<Panel title="Submissions that never reached Ari">
-				{!ariSending ? (
-					<EmptyState>Ari is not configured on this deployment, so nothing is sent there.</EmptyState>
-				) : unsyncedAri.length === 0 ? (
-					<EmptyState>Every submission awaiting review is in Ari.</EmptyState>
+				{ariSending ? (
+					unsyncedAri.length === 0 ? (
+						<EmptyState>Every submission awaiting review is in Ari.</EmptyState>
+					) : (
+						<Table head={["Project", "Phase", "Why it's stuck", ""]}>
+							{unsyncedAri.map(item => (
+								<tr key={`${item.themeProjectId}-${item.phase}`}>
+									<td className="hl-mono">{item.themeProjectId}</td>
+									<td>{item.phase.toLowerCase()}</td>
+									<td className="hand">{item.reason ?? "Not attempted yet. The retry job will pick it up."}</td>
+									<td>
+										<ActionButton
+											body={{ phase: item.phase }}
+											label="Retry"
+											url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
+										/>
+									</td>
+								</tr>
+							))}
+						</Table>
+					)
 				) : (
-					<Table head={["Project", "Phase", "Why it's stuck", ""]}>
-						{unsyncedAri.map(item => (
-							<tr key={`${item.themeProjectId}-${item.phase}`}>
-								<td className="hl-mono">{item.themeProjectId}</td>
-								<td>{item.phase.toLowerCase()}</td>
-								<td className="hand">{item.reason ?? "Not attempted yet. The retry job will pick it up."}</td>
-								<td>
-									<ActionButton
-										body={{ phase: item.phase }}
-										label="Retry"
-										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
-									/>
-								</td>
-							</tr>
-						))}
-					</Table>
+					<EmptyState>Ari is not configured on this deployment, so nothing is sent there.</EmptyState>
 				)}
 				<p className="hl-hint">
 					A ship is what the reviewer sees, so a submission missing from Ari is a submission nobody will decide. The
@@ -323,31 +325,33 @@ export default async function AdminProgramPage() {
 					</tr>
 				</Table>
 
-				{!ireSending ? (
-					<EmptyState>Ire is not configured on this deployment, so nothing is sent there.</EmptyState>
-				) : unsyncedIre.length === 0 ? (
-					<EmptyState>
-						{ireMode() === "live"
-							? "Every submission awaiting review has a healthy ship in Ire."
-							: "Every submission awaiting review has a healthy shadow copy in Ire."}
-					</EmptyState>
+				{ireSending ? (
+					unsyncedIre.length === 0 ? (
+						<EmptyState>
+							{ireMode() === "live"
+								? "Every submission awaiting review has a healthy ship in Ire."
+								: "Every submission awaiting review has a healthy shadow copy in Ire."}
+						</EmptyState>
+					) : (
+						<Table head={["Project", "Phase", "Why it is stuck", ""]}>
+							{unsyncedIre.map(item => (
+								<tr key={`ire-${item.themeProjectId}-${item.phase}`}>
+									<td className="hl-mono">{item.themeProjectId}</td>
+									<td>{item.phase.toLowerCase()}</td>
+									<td className="hand">{item.reason ?? "Not sent yet. The hourly job will pick it up."}</td>
+									<td>
+										<ActionButton
+											body={{ phase: item.phase }}
+											label="Retry"
+											url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ire`}
+										/>
+									</td>
+								</tr>
+							))}
+						</Table>
+					)
 				) : (
-					<Table head={["Project", "Phase", "Why it is stuck", ""]}>
-						{unsyncedIre.map(item => (
-							<tr key={`ire-${item.themeProjectId}-${item.phase}`}>
-								<td className="hl-mono">{item.themeProjectId}</td>
-								<td>{item.phase.toLowerCase()}</td>
-								<td className="hand">{item.reason ?? "Not sent yet. The hourly job will pick it up."}</td>
-								<td>
-									<ActionButton
-										body={{ phase: item.phase }}
-										label="Retry"
-										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ire`}
-									/>
-								</td>
-							</tr>
-						))}
-					</Table>
+					<EmptyState>Ire is not configured on this deployment, so nothing is sent there.</EmptyState>
 				)}
 			</Panel>
 

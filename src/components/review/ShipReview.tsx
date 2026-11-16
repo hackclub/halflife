@@ -365,11 +365,11 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 										{ship.fundingDeclined
 											? "Declined – building with their own parts"
 											: [
-													project.requestedTier !== null
-														? `Tier ${project.requestedTier} requested`
-														: "No tier requested",
-													ship.requestedBomUsd !== null ? `${formatDollars(ship.requestedBomUsd)} BOM` : null,
-													ship.fundingCapUsd !== null ? `capped at ${formatDollars(ship.fundingCapUsd)}` : null,
+													project.requestedTier === null
+														? "No tier requested"
+														: `Tier ${project.requestedTier} requested`,
+													ship.requestedBomUsd === null ? null : `${formatDollars(ship.requestedBomUsd)} BOM`,
+													ship.fundingCapUsd === null ? null : `capped at ${formatDollars(ship.fundingCapUsd)}`,
 													ship.partialFundingAccepted ? "accepts partial funding" : null,
 												]
 													.filter(Boolean)
@@ -583,7 +583,7 @@ function DecisionPanel({
 						...(deflation && deflationReason.trim() ? { deflationReason: deflationReason.trim() } : {}),
 						feedback: feedback.trim(),
 						...(grantUsd !== null && viewer.canSetGrant ? { grantUsdOverride: grantUsd } : {}),
-						...(hoursValue !== null ? { hoursOverride: hoursValue } : {}),
+						...(hoursValue === null ? {} : { hoursOverride: hoursValue }),
 						...(reason.trim() ? { reason: reason.trim() } : {}),
 						result: "APPROVED",
 						...(technicalFeatures.trim() ? { technicalFeatures: technicalFeatures.trim() } : {}),
@@ -607,17 +607,17 @@ function DecisionPanel({
 		}
 	}
 
-	const meta = !ship.reviewable
-		? "This phase isn't in review on the project, so it can't be decided."
-		: !mine
-			? takenBy
-				? `${takenBy} is reviewing this ship.`
-				: "Claim this review to start deciding."
-			: design
+	const meta = ship.reviewable
+		? mine
+			? design
 				? ship.fundingDeclined
 					? "The maker declined funding. Approving sets the tier with no grant."
 					: undefined
 				: "Approving a build credits the build and checks whether this project reaches a printer."
+			: takenBy
+				? `${takenBy} is reviewing this ship.`
+				: "Claim this review to start deciding."
+		: "This phase isn't in review on the project, so it can't be decided."
 
 	return (
 		<Paper meta={meta} title="Decision">
@@ -772,7 +772,9 @@ function DecisionPanel({
 				</div>
 				{failedEntry !== null || savingEntries > 0 ? (
 					<div aria-live="polite" className="form__actions" style={{ flexWrap: "nowrap", whiteSpace: "nowrap" }}>
-						{failedEntry !== null ? (
+						{failedEntry === null ? (
+							<span className="field__hint">Waiting for deflation to save…</span>
+						) : (
 							<>
 								<span className="field__error" role="alert">
 									A deflation didn&rsquo;t save.
@@ -781,8 +783,6 @@ function DecisionPanel({
 									Show entry
 								</button>
 							</>
-						) : (
-							<span className="field__hint">Waiting for deflation to save…</span>
 						)}
 					</div>
 				) : null}

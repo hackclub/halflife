@@ -98,15 +98,15 @@ export function nextBlocker(gates: SubmitGates): string | null {
 		return `Your tier needs ${fmtHours(tierShortHours)} more design time than you have logged this week. Pick a tier you have earned.`
 	if (!fundingOk) return "Tick the box agreeing to cover the part of the cart the grant does not."
 	if (isBuild)
-		return !clip
-			? "Record your demo video to carry on."
-			: works === "no" && writeup.trim().length < 40
+		return clip
+			? works === "no" && writeup.trim().length < 40
 				? "Say what needs to change in a sentence or two."
-				: !descriptionReady
-					? descriptionBlocker
-					: !starterDescriptionReady
-						? starterDescriptionBlocker
-						: null
+				: descriptionReady
+					? starterDescriptionReady
+						? null
+						: starterDescriptionBlocker
+					: descriptionBlocker
+			: "Record your demo video to carry on."
 	if (step === 2) return carts === 0 && !fundingDeclined ? "Add a screenshot of your cart above to carry on." : null
 	if (!clip) return "Record your closing reel to carry on."
 	if (!hasCover) return "Add a cover image to your project before you can submit."

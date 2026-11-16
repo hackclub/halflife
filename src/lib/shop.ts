@@ -231,9 +231,9 @@ export async function getShopItemsFor(userId: string): Promise<{
 		// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
 		const { regionPrices, ...base } = item
 		const priceCredits =
-			context.regionId !== null
-				? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
-				: item.priceCredits
+			context.regionId === null
+				? item.priceCredits
+				: (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
 
 		// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
 		const payableFrom = spendableFor(balances, item.category)
@@ -369,11 +369,11 @@ export async function purchase(
 			.first()
 		const buyerRegionId = buyer?.shopRegion?.active ? buyer.shopRegion.id : null
 		const regional =
-			buyerRegionId !== null
-				? await tx.orm.public.ShopItemRegionPrice.where({ regionId: buyerRegionId, shopItemId })
+			buyerRegionId === null
+				? null
+				: await tx.orm.public.ShopItemRegionPrice.where({ regionId: buyerRegionId, shopItemId })
 						.select("priceCredits")
 						.first()
-				: null
 		// A retried request – double-tap, proxy retry, two tabs sharing one key – resolves to the order it already made rather than charging again. The same per-user lock serializes the two, so the loser always sees the winner's row.
 		if (idempotencyKey) {
 			const existing = await tx.orm.public.ShopOrder.where({ idempotencyKey, userId })

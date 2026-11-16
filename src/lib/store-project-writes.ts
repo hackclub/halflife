@@ -88,7 +88,7 @@ export function useProjectWrites({ facts, router, setFacts }: ProjectWritesOptio
 							requestedTier: p.tier,
 							title: p.name,
 							...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
-							...(p.starterProjectId !== undefined ? { starterProjectId: p.starterProjectId } : {}),
+							...(p.starterProjectId === undefined ? {} : { starterProjectId: p.starterProjectId }),
 						},
 						"PATCH",
 					)
@@ -159,12 +159,12 @@ export function useProjectWrites({ facts, router, setFacts }: ProjectWritesOptio
 			try {
 				res = await fetch(`/api/projects/${id}`, {
 					body: JSON.stringify({
-						...(patch.name !== undefined ? { title: patch.name } : {}),
-						...(patch.description !== undefined ? { description: patch.description } : {}),
-						...(patch.coverImageKey !== undefined ? { coverImageKey: patch.coverImageKey } : {}),
-						...(patch.githubRepo !== undefined ? { githubRepo: patch.githubRepo } : {}),
-						...(patch.tier !== undefined ? { requestedTier: patch.tier } : {}),
-						...(patch.starterProjectId !== undefined ? { starterProjectId: patch.starterProjectId } : {}),
+						...(patch.name === undefined ? {} : { title: patch.name }),
+						...(patch.description === undefined ? {} : { description: patch.description }),
+						...(patch.coverImageKey === undefined ? {} : { coverImageKey: patch.coverImageKey }),
+						...(patch.githubRepo === undefined ? {} : { githubRepo: patch.githubRepo }),
+						...(patch.tier === undefined ? {} : { requestedTier: patch.tier }),
+						...(patch.starterProjectId === undefined ? {} : { starterProjectId: patch.starterProjectId }),
 					}),
 					headers: { "content-type": "application/json" },
 					method: "PATCH",
@@ -182,14 +182,14 @@ export function useProjectWrites({ facts, router, setFacts }: ProjectWritesOptio
 					p.id === id
 						? {
 								...p,
-								...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
-								...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
-								...(patch.githubRepo !== undefined ? { githubRepo: patch.githubRepo } : {}),
-								...(patch.coverImageKey !== undefined ? { coverImageKey: patch.coverImageKey } : {}),
-								...(patch.tier !== undefined ? { tier: patch.tier } : {}),
-								...(patch.starterProjectId !== undefined
-									? { starter: patch.starterProjectId !== null, starterProjectId: patch.starterProjectId }
-									: {}),
+								...(patch.name === undefined ? {} : { name: patch.name.trim() }),
+								...(patch.description === undefined ? {} : { description: patch.description.trim() }),
+								...(patch.githubRepo === undefined ? {} : { githubRepo: patch.githubRepo }),
+								...(patch.coverImageKey === undefined ? {} : { coverImageKey: patch.coverImageKey }),
+								...(patch.tier === undefined ? {} : { tier: patch.tier }),
+								...(patch.starterProjectId === undefined
+									? {}
+									: { starter: patch.starterProjectId !== null, starterProjectId: patch.starterProjectId }),
 							}
 						: p,
 				),

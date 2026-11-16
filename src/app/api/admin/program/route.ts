@@ -22,11 +22,11 @@ export const PATCH = withWritePermission(Permission.MANAGE_PROGRAM, async (req: 
 	const { eventStartDate, shopClosesAt, submissionsCloseAt, ...rest } = parsed.data
 	const row = await db.orm.public.ProgramSettings.where({ id: "singleton" }).update({
 		...rest,
-		...(eventStartDate !== undefined ? { eventStartDate: formatDbTimestamp(eventStartDate) } : {}),
-		...(shopClosesAt !== undefined ? { shopClosesAt: shopClosesAt ? formatDbTimestamp(shopClosesAt) : null } : {}),
-		...(submissionsCloseAt !== undefined
-			? { submissionsCloseAt: submissionsCloseAt ? formatDbTimestamp(submissionsCloseAt) : null }
-			: {}),
+		...(eventStartDate === undefined ? {} : { eventStartDate: formatDbTimestamp(eventStartDate) }),
+		...(shopClosesAt === undefined ? {} : { shopClosesAt: shopClosesAt ? formatDbTimestamp(shopClosesAt) : null }),
+		...(submissionsCloseAt === undefined
+			? {}
+			: { submissionsCloseAt: submissionsCloseAt ? formatDbTimestamp(submissionsCloseAt) : null }),
 		updatedById: gate.user.id,
 	})
 	if (!row) return fail("NOT_FOUND", "Settings not found")

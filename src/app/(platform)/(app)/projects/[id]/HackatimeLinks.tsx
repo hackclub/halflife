@@ -209,7 +209,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 											onClick={() => unlink(l.id)}
 											size="sm"
 											title={
-												l.hoursApproved !== null ? "A reviewer has set hours on this link, so it stays" : undefined
+												l.hoursApproved === null ? undefined : "A reviewer has set hours on this link, so it stays"
 											}
 											variant="ghost"
 										>

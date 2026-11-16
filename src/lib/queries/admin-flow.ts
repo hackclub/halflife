@@ -282,13 +282,13 @@ function latestOutcomes(submissions: SankeyRows["submissions"]): Map<string, Out
 	for (const row of submissions) {
 		if (!row.themeProject) throw new Error("submission has no project")
 		const at = row.resolvedAt === null ? OPEN : parseDbTimestamp(row.resolvedAt).getTime()
-		const node = !row.resolvedResult
-			? "awaiting"
-			: row.resolvedResult === ReviewResult.APPROVED
+		const node = row.resolvedResult
+			? row.resolvedResult === ReviewResult.APPROVED
 				? "approved"
 				: row.resolvedResult === ReviewResult.RETURNED
 					? "returned"
 					: "rejected"
+			: "awaiting"
 		const previous = held.get(row.themeProject.userId)
 		if (!previous || at > previous.at) held.set(row.themeProject.userId, { at, node })
 	}
@@ -303,7 +303,7 @@ function tierProgress(rows: SankeyRows): { tierMet: Map<string, boolean>; userTi
 	const hackByProject = new Map(rows.designHackatime.map(row => [row.themeProjectId, (row.seconds ?? 0) / 3600]))
 	const latest = new Map<string, { createdAt: Date; project: SankeyRows["projects"][number]; tier: 1 | 2 | 3 }>()
 	for (const project of rows.projects) {
-		const raw = project.requestedTier ?? (project.starterProjectId !== null ? STARTER_PROJECT_TIER : null)
+		const raw = project.requestedTier ?? (project.starterProjectId === null ? null : STARTER_PROJECT_TIER)
 		if (!isTierId(raw)) continue
 		const createdAt = parseDbTimestamp(project.createdAt)
 		const held = latest.get(project.userId)
@@ -395,11 +395,11 @@ function boxesOf(user: SankeyUser, lookups: JourneyLookups): (string | null)[] {
 		reached(lookups.onboarding.repo) ? "reachedRepo" : null,
 		completed ? "setupDone" : null,
 		// The complements that make the gates visible: finishers who never got a project live, or never answered the goal prompt (mostly accounts from before it shipped – it cannot be dismissed now). Scoped to finishers so the boxes stay a finding about drop-off rather than everyone who never started.
-		user.firstProjectAt !== null ? "projectLive" : completed ? "projectMissing" : null,
-		user.participantGoal !== null ? "goalSet" : completed ? "goalMissing" : null,
+		user.firstProjectAt === null ? (completed ? "projectMissing" : null) : "projectLive",
+		user.participantGoal === null ? (completed ? "goalMissing" : null) : "goalSet",
 		...activityBoxes(lookups, user.id, completed),
 		// A project that never passed checks cannot be handed in – the sheet and the server both refuse it – so this box is the gate's bite: live projects stuck before review.
-		user.firstChecksPassedAt !== null ? "checksPassed" : user.firstProjectAt !== null ? "checksStalled" : null,
+		user.firstChecksPassedAt === null ? (user.firstProjectAt === null ? null : "checksStalled") : "checksPassed",
 		// The chosen tier of their latest project, and whether its funded hours have been worked – the two halves of "can they submit on it". No tier chosen, no boxes; the met box follows the tier box, never appears alone.
 		tierBox(lookups, user.id),
 		metBox(lookups, user.id),

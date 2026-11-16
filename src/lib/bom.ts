@@ -69,11 +69,11 @@ export function bomData(input: Partial<BomItemInput>): {
 	link?: string | null
 } {
 	return {
-		...(input.name !== undefined ? { name: sanitize(input.name) } : {}),
-		...(input.purpose !== undefined ? { purpose: sanitizeOptional(input.purpose) } : {}),
-		...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
-		...(input.unitCostUsd !== undefined ? { unitCostUsd: round2(input.unitCostUsd) } : {}),
-		...(input.vendor !== undefined ? { vendor: sanitizeOptional(input.vendor) } : {}),
-		...(input.link !== undefined ? { link: input.link || null } : {}),
+		...(input.name === undefined ? {} : { name: sanitize(input.name) }),
+		...(input.purpose === undefined ? {} : { purpose: sanitizeOptional(input.purpose) }),
+		...(input.quantity === undefined ? {} : { quantity: input.quantity }),
+		...(input.unitCostUsd === undefined ? {} : { unitCostUsd: round2(input.unitCostUsd) }),
+		...(input.vendor === undefined ? {} : { vendor: sanitizeOptional(input.vendor) }),
+		...(input.link === undefined ? {} : { link: input.link || null }),
 	}
 }

@@ -267,9 +267,7 @@ export function ReelViewer() {
 										Try again
 									</button>
 								</>
-							) : !feed.done ? (
-								<p className="hand text-[0.95rem] text-navy-soft motion-safe:animate-pulse">loading more reels…</p>
-							) : (
+							) : feed.done ? (
 								<>
 									<p className="hand text-[1.05rem] text-navy">
 										{feed.items.length === 0 ? "nothing here yet." : "that's everything!"}
@@ -278,6 +276,8 @@ export function ReelViewer() {
 										{feed.items.length === 0 ? "post the first reel." : "now it's your turn go build something"}
 									</p>
 								</>
+							) : (
+								<p className="hand text-[0.95rem] text-navy-soft motion-safe:animate-pulse">loading more reels…</p>
 							)}
 						</div>
 					)}

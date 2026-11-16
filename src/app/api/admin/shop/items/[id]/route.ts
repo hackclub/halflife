@@ -25,9 +25,9 @@ export const PATCH = withWritePermission(
 
 		const item = await db.orm.public.ShopItem.where({ id }).update({
 			...data,
-			...(data.name !== undefined ? { name: sanitize(data.name) } : {}),
-			...(data.description !== undefined ? { description: sanitize(data.description) } : {}),
-			...(data.costUsd !== undefined ? { costUsd: dollars(data.costUsd) } : {}),
+			...(data.name === undefined ? {} : { name: sanitize(data.name) }),
+			...(data.description === undefined ? {} : { description: sanitize(data.description) }),
+			...(data.costUsd === undefined ? {} : { costUsd: dollars(data.costUsd) }),
 		})
 		if (!item) return fail("NOT_FOUND", "Item not found")
 

@@ -63,15 +63,15 @@ export const PATCH = withWritePermission(
 			const row = await db.orm.public.User.where({ id })
 				.select("email", "emailVerified", "fraudFlagged", "id", "submissionExtensionUntil")
 				.update({
-					...(parsed.data.fraudFlagged !== undefined ? { fraudFlagged: parsed.data.fraudFlagged } : {}),
-					...(parsed.data.submissionExtensionUntil !== undefined
-						? {
+					...(parsed.data.fraudFlagged === undefined ? {} : { fraudFlagged: parsed.data.fraudFlagged }),
+					...(parsed.data.submissionExtensionUntil === undefined
+						? {}
+						: {
 								submissionExtensionUntil: parsed.data.submissionExtensionUntil
 									? formatDbTimestamp(parsed.data.submissionExtensionUntil)
 									: null,
-							}
-						: {}),
-					...(parsed.data.email !== undefined ? { email: parsed.data.email } : {}),
+							}),
+					...(parsed.data.email === undefined ? {} : { email: parsed.data.email }),
 					// Provenance is withdrawn with the address. Until now `email` was only ever written by an identity provider, so `findUserByEmail` matching it meant the address genuinely belonged to the HCA identity signing in - and better-auth's implicit account linking (lib/auth.ts trusts the hca provider, and `requireLocalEmailVerified` defaults true) will attach an incoming HCA identity to ANY row whose address matches when that row is `emailVerified`. An address a human typed into the admin panel has no such proof, so the flag must not stay set for a linked account. Clearing it is the main guard; adoptHcaVerifiedEmail (lib/hca-profile) reinforces it by refusing to re-verify any row that already has a linked Account, though it still repairs account-less staff-import rows - so the flag (not the address) is what separates a typed address from a verified one. The next sign-in still works, because it resolves on the HCA account row (providerId + sub) rather than on the address.
 					...(emailChanged ? { emailVerified: false } : {}),
 				})

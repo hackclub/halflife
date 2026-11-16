@@ -286,7 +286,7 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 			continue
 		}
 
-		const price = parseUsd(map.unitCostUsd !== undefined ? cells[map.unitCostUsd] : undefined)
+		const price = parseUsd(map.unitCostUsd === undefined ? undefined : cells[map.unitCostUsd])
 		if (price !== null && price > MAX_IMPORT_PRICE) {
 			skipped.push({ name, reason: `unit price is above $${MAX_IMPORT_PRICE}`, row: rowNumber })
 			continue
@@ -296,15 +296,15 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 			continue
 		}
 
-		const link = parseLink(map.link !== undefined ? cells[map.link] : undefined)
+		const link = parseLink(map.link === undefined ? undefined : cells[map.link])
 		const vendor =
-			clean(map.vendor !== undefined ? cells[map.vendor] : undefined, MAX_IMPORT_VENDOR) ?? vendorFromLink(link)
+			clean(map.vendor === undefined ? undefined : cells[map.vendor], MAX_IMPORT_VENDOR) ?? vendorFromLink(link)
 
 		lines.push({
 			link,
 			name,
-			purpose: purposeCol !== undefined ? clean(cells[purposeCol], 200) : null,
-			quantity: parseQuantity(map.quantity !== undefined ? cells[map.quantity] : undefined),
+			purpose: purposeCol === undefined ? null : clean(cells[purposeCol], 200),
+			quantity: parseQuantity(map.quantity === undefined ? undefined : cells[map.quantity]),
 			unitCostUsd: price ?? 0,
 			vendor,
 		})

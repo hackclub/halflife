@@ -73,7 +73,7 @@ export const PATCH = withWritePermission(
 			data.starterProjectId = starter
 		}
 		// A move must not leave a starter behind that the new week does not offer, so a Starbie never ends up on a CAD project.
-		const keptStarter = data.starterProjectId !== undefined ? data.starterProjectId : before.starterProjectId
+		const keptStarter = data.starterProjectId === undefined ? before.starterProjectId : data.starterProjectId
 		if (data.theme !== undefined && keptStarter !== null) {
 			const problem = starterProblem({ ...target, theme: data.theme }, keptStarter)
 			if (problem)

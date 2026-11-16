@@ -84,7 +84,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const captionBlocker = captionReady
 		? null
 		: `Caption needs ${8 - captionLength} more character${8 - captionLength === 1 ? "" : "s"} (${captionLength}/8).`
-	const postBlocker = !clip ? "Add a clip before posting this reel." : captionBlocker
+	const postBlocker = clip ? captionBlocker : "Add a clip before posting this reel."
 
 	// Posted: the same sheet now asks whether it is going anywhere else. The clip's URL comes along so it can be saved and uploaded there.
 	if (postedId)

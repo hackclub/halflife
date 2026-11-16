@@ -277,7 +277,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 /** Where each phase stands with review, above the repo checks. */
 function PhaseHours({ phase }: { phase: ProjectPageData["phases"][number] }) {
 	// The gap between what was claimed and what stands is the reviewer deflation, said outright rather than left for the reviewer's note to mention. A frozen total covers entry cuts and any final override together; while undecided only the entry cuts exist so far.
-	const deflated = phase.approvedHours !== null ? phase.claimedHours - phase.approvedHours : 0
+	const deflated = phase.approvedHours === null ? 0 : phase.claimedHours - phase.approvedHours
 	if (phase.approvedHours !== null && deflated > 0.005)
 		return (
 			<p className="hand text-[0.84rem] leading-snug text-navy-soft tabular-nums">

@@ -246,7 +246,7 @@ export async function updatePrinterAwardStatus(
 			before: award.status,
 			note: input.note.trim() || null,
 			userId: award.userId,
-			...(input.trackingNumber !== undefined ? { trackingNumber } : {}),
+			...(input.trackingNumber === undefined ? {} : { trackingNumber }),
 		},
 		targetId: awardId,
 		targetType: "PrinterAward",

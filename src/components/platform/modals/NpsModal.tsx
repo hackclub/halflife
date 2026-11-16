@@ -147,7 +147,7 @@ export function NpsGate() {
 		try {
 			const res = await fetch("/api/me/nps/texts", {
 				body: JSON.stringify({
-					...(selectedTextsScore !== null ? { howLikelyRecommend: selectedTextsScore } : {}),
+					...(selectedTextsScore === null ? {} : { howLikelyRecommend: selectedTextsScore }),
 					...(doingWell.trim() ? { howDoingWell: doingWell.trim() } : {}),
 					...(hear.trim() ? { howHear: hear.trim() } : {}),
 					...(improve.trim() ? { howImprove: improve.trim() } : {}),

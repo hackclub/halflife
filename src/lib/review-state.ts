@@ -21,7 +21,7 @@ export function projectReviewState(design: PhaseStatus, build: PhaseStatus): Pro
 	if (phases.has("rejected")) return "rejected"
 	if (phases.has("update_requested")) return "changes"
 	if (phases.has("in_review")) return "pending"
-	const current = build !== "draft" ? build : design
+	const current = build === "draft" ? design : build
 	return current === "approved" ? "approved" : "not_started"
 }
 

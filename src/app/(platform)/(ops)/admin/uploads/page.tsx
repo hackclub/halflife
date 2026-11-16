@@ -97,48 +97,52 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 				<span className="hl-hint">Showing up to 100 objects per page. Older objects continue on the next page.</span>
 			</Panel>
 
-			{!isUploadConfigured() ? (
+			{isUploadConfigured() ? (
+				listError ? (
+					<Callout tone="danger">{listError}</Callout>
+				) : listing && listing.objects.length === 0 ? (
+					<EmptyState>No uploaded objects match this folder.</EmptyState>
+				) : listing ? (
+					<Panel>
+						<Table head={["Key", "Folder", "Owner", "Size", "Modified", "File"]}>
+							{listing.objects.map(object => {
+								const parts = keyParts(object.key)
+								return (
+									<tr key={object.key}>
+										<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
+											{object.key}
+										</td>
+										<td>{parts.folder || "-"}</td>
+										<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
+											{parts.owner || "-"}
+										</td>
+										<td className="hl-mono">{formatBytes(object.size)}</td>
+										<td className="hl-mono">
+											{object.lastModified ? modifiedFormat.format(object.lastModified) : "-"}
+										</td>
+										<td>
+											{object.url ? (
+												<a href={object.url} rel="noreferrer" target="_blank">
+													Open
+												</a>
+											) : (
+												<span className="hl-hint">not public</span>
+											)}
+										</td>
+									</tr>
+								)
+							})}
+						</Table>
+						{listing.nextCursor ? (
+							<p>
+								<Link href={pageHref(listing.nextCursor)}>Next page</Link>
+							</p>
+						) : null}
+					</Panel>
+				) : null
+			) : (
 				<Callout tone="warning">File uploads are not configured on this deployment.</Callout>
-			) : listError ? (
-				<Callout tone="danger">{listError}</Callout>
-			) : listing && listing.objects.length === 0 ? (
-				<EmptyState>No uploaded objects match this folder.</EmptyState>
-			) : listing ? (
-				<Panel>
-					<Table head={["Key", "Folder", "Owner", "Size", "Modified", "File"]}>
-						{listing.objects.map(object => {
-							const parts = keyParts(object.key)
-							return (
-								<tr key={object.key}>
-									<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-										{object.key}
-									</td>
-									<td>{parts.folder || "-"}</td>
-									<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-										{parts.owner || "-"}
-									</td>
-									<td className="hl-mono">{formatBytes(object.size)}</td>
-									<td className="hl-mono">{object.lastModified ? modifiedFormat.format(object.lastModified) : "-"}</td>
-									<td>
-										{object.url ? (
-											<a href={object.url} rel="noreferrer" target="_blank">
-												Open
-											</a>
-										) : (
-											<span className="hl-hint">not public</span>
-										)}
-									</td>
-								</tr>
-							)
-						})}
-					</Table>
-					{listing.nextCursor ? (
-						<p>
-							<Link href={pageHref(listing.nextCursor)}>Next page</Link>
-						</p>
-					) : null}
-				</Panel>
-			) : null}
+			)}
 		</div>
 	)
 }

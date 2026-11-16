@@ -175,12 +175,11 @@ async function diagnoseUser(userId: string, hasAnyAddress: boolean): Promise<str
 		reasons.push(
 			"No encrypted address stored in DB after HCA refresh (HCA returned no address, token/sync unavailable, or PII not pulled)",
 		)
-	else if (!isPiiConfigured())
-		reasons.push("Encrypted address exists but PII_ENCRYPTION_KEY is not configured for decryption")
-	else
+	else if (isPiiConfigured())
 		reasons.push(
 			"Encrypted address exists but decryption yielded no address (wrong/missing/rotated PII key or malformed payload; check [pii] logs)",
 		)
+	else reasons.push("Encrypted address exists but PII_ENCRYPTION_KEY is not configured for decryption")
 
 	return reasons.join("; ")
 }

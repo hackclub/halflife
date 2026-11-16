@@ -56,7 +56,7 @@
 		"eslint/no-inline-comments": "off",
 		"eslint/no-loop-func": "off",
 		"eslint/no-magic-numbers": "off",
-		"eslint/no-negated-condition": "off",
+		"eslint/no-negated-condition": "error",
 		"eslint/no-nested-ternary": "off",
 		"eslint/no-promise-executor-return": "off",
 		"eslint/no-template-curly-in-string": "off",

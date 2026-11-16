@@ -190,19 +190,19 @@ export function useStoreCeremony({
 	// Someone who has already finished the first checkpoint must never be shown the intro again, whatever a stale or cleared localStorage says. The server is what knows, so it gets the final word – unless they asked for it back. A replay plays the cinematic and the tab tour and goes nowhere near the setup checkpoint: its answers are taken once, and the server refuses a second set, so "aim" and "checkpoint" go straight on to the tour.
 	//
 	// Before week 1 opens, Get started is shut, so the intro goes from the fly-through straight to the tab tour: "aim" (the spotlight on that checkpoint) and "checkpoint" (its modal) have nothing to point at.
-	const phase: IntroPhase = !onboardingDone
-		? !weekOneStarted && (ceremony.phase === "aim" || ceremony.phase === "checkpoint")
-			? ceremony.toured
-				? "done"
-				: "tour"
-			: ceremony.phase
-		: ceremony.replaying
+	const phase: IntroPhase = onboardingDone
+		? ceremony.replaying
 			? ceremony.phase === "aim" || ceremony.phase === "checkpoint"
 				? "tour"
 				: ceremony.phase
 			: ceremony.phase === "tour"
 				? "tour"
 				: "done"
+		: !weekOneStarted && (ceremony.phase === "aim" || ceremony.phase === "checkpoint")
+			? ceremony.toured
+				? "done"
+				: "tour"
+			: ceremony.phase
 
 	const setPhase = useCallback(
 		(next: IntroPhase) =>

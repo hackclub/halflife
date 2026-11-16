@@ -283,7 +283,7 @@ export function IdeaStep({ flow }: { flow: OnboardingFlowContext }) {
 				})}
 			</div>
 			{/* Only once a starter is the pick, for the same reason as the week step: the rule is about taking a starter, not about this step. */}
-			{idea !== null ? <Note>{STARTER_MODIFICATION_NOTE}</Note> : null}
+			{idea === null ? null : <Note>{STARTER_MODIFICATION_NOTE}</Note>}
 			<StepActions
 				busy={busy}
 				label={idea ? "Next" : "Stick with my own idea"}
