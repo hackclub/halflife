@@ -320,11 +320,12 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 
 	const orderedTimeline = timeline.toSorted((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 
+	// The build is the later hand-in, so when both are in review it is the one to withdraw: withdrawing the design under a build in review leaves a build the design-first rule refuses.
 	const inReview =
-		project.designStatus === PhaseStatus.in_review
-			? Phase.DESIGN
-			: project.buildStatus === PhaseStatus.in_review
-				? Phase.BUILD
+		project.buildStatus === PhaseStatus.in_review
+			? Phase.BUILD
+			: project.designStatus === PhaseStatus.in_review
+				? Phase.DESIGN
 				: null
 
 	// Both phases, in order, but only the ones that have left draft – a fresh project's page should not carry a "not started" row for each week.

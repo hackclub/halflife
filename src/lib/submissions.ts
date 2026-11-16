@@ -312,6 +312,10 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 		if (statusFor(current, phase) !== PhaseStatus.in_review)
 			throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
 
+		// The design-first rule in canSubmitPhase reads the design's status, so a build that has been handed in (or returned) must not lose the design it was handed in after. Withdraw the build first.
+		if (phase === Phase.DESIGN && current.buildStatus !== PhaseStatus.draft)
+			throw new HttpError("PHASE_LOCKED", "Withdraw the build before withdrawing the design")
+
 		const open = await tx.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
 			.orderBy(submission => submission.createdAt.desc())
 			.include("claim")
