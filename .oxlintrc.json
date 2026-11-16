@@ -158,7 +158,7 @@
 		"unicorn/prefer-logical-operator-over-ternary": "off",
 		"unicorn/prefer-spread": "off",
 		"unicorn/prefer-ternary": "off",
-		"unicorn/prefer-top-level-await": "off",
+		"unicorn/prefer-top-level-await": "error",
 		"unicorn/switch-case-braces": "off",
 		"unicorn/text-encoding-identifier-case": "off"
 	}
