@@ -1,6 +1,7 @@
 import "server-only"
 import { z } from "zod"
 import { HttpError } from "@/lib/errors"
+import { readStoredRefreshToken, storeRefreshToken } from "@/lib/hcb-credential"
 import { isRecord } from "@/lib/unknown"
 
 /**
@@ -11,7 +12,7 @@ import { isRecord } from "@/lib/unknown"
  *   POST /api/v4/card_grants/{hashid}/topup?expand=disbursements,user
  *   PUT  /api/v4/organizations/{slug}/transactions/{txn_id}
  *
- * Auth is an OAuth bearer. Either a static `HCB_ACCESS_TOKEN`, or the refresh-token flow (`HCB_CLIENT_ID` / `HCB_CLIENT_SECRET` / `HCB_REFRESH_TOKEN`), with the app invited to the org as a manager. The app needs `card_grants:write` to top up, and `card_grants:read` to check what a lost response left behind. Unconfigured, this module refuses rather than calling anything.
+ * Auth is an OAuth bearer. Either a static `HCB_ACCESS_TOKEN`, or the refresh-token flow (`HCB_CLIENT_ID` / `HCB_CLIENT_SECRET` / `HCB_REFRESH_TOKEN`), with the app authorised by a manager of the org. HCB spends a refresh token when it is used and returns a replacement, so the live one is kept in `hcb_credential` (see `lib/hcb-credential`); `HCB_REFRESH_TOKEN` only seeds it. The app needs `card_grants:write` to top up, and `card_grants:read` to check what a lost response left behind. Unconfigured, this module refuses rather than calling anything.
  */
 
 const DEFAULT_BASE = "https://hcb.hackclub.com"
@@ -52,9 +53,9 @@ function orgSlug(): string {
 }
 
 export function isHcbConfigured(): boolean {
-	const staticToken = Boolean(process.env.HCB_ACCESS_TOKEN)
+	const staticToken = Boolean(process.env.HCB_ACCESS_TOKEN?.trim())
 	const refreshable = Boolean(
-		process.env.HCB_CLIENT_ID && process.env.HCB_CLIENT_SECRET && process.env.HCB_REFRESH_TOKEN,
+		process.env.HCB_CLIENT_ID?.trim() && process.env.HCB_CLIENT_SECRET?.trim() && process.env.HCB_REFRESH_TOKEN?.trim(),
 	)
 	return Boolean(process.env.HCB_ORG_SLUG && (staticToken || refreshable))
 }
@@ -64,37 +65,74 @@ let cachedToken: { token: string; expiresAt: number } | null = null
 /** Refresh a little before expiry, so an in-flight call cannot ride off a cliff. */
 const TOKEN_EXPIRY_MARGIN_MS = 60_000
 
-async function accessToken(force = false): Promise<string> {
-	if (process.env.HCB_ACCESS_TOKEN) return process.env.HCB_ACCESS_TOKEN
-	if (!force && cachedToken && cachedToken.expiresAt > Date.now() + TOKEN_EXPIRY_MARGIN_MS) return cachedToken.token
+/**
+ * One refresh at a time.
+ *
+ * HCB spends a refresh token when it is used, so two callers that both find no cached access token (a page issuing several HCB reads in parallel on a cold start) must not each exchange the same one: the loser gets `invalid_grant`. They wait on one exchange instead.
+ */
+let refreshInFlight: Promise<string> | null = null
 
-	const id = process.env.HCB_CLIENT_ID
-	const secret = process.env.HCB_CLIENT_SECRET
-	const refresh = process.env.HCB_REFRESH_TOKEN
+async function accessToken(force = false): Promise<string> {
+	const staticToken = process.env.HCB_ACCESS_TOKEN?.trim()
+	if (staticToken) return staticToken
+	if (!force && cachedToken && cachedToken.expiresAt > Date.now() + TOKEN_EXPIRY_MARGIN_MS) return cachedToken.token
+	if (refreshInFlight) return refreshInFlight
+
+	const next = requestNewAccessToken()
+	refreshInFlight = next
+	try {
+		return await next
+	} finally {
+		// Compared before clearing so a refresh that started while this one was resolving is not forgotten.
+		if (refreshInFlight === next) refreshInFlight = null
+	}
+}
+
+async function requestNewAccessToken(): Promise<string> {
+	const id = process.env.HCB_CLIENT_ID?.trim()
+	const secret = process.env.HCB_CLIENT_SECRET?.trim()
+	// The stored token is the live one; the env value is the bootstrap for a fresh deployment and the way back in after a reset.
+	const refresh = (await readStoredRefreshToken()) ?? process.env.HCB_REFRESH_TOKEN?.trim()
 	if (!id || !secret || !refresh) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
 
+	const body = new URLSearchParams({
+		client_id: id,
+		client_secret: secret,
+		grant_type: "refresh_token",
+		refresh_token: refresh,
+	})
+	const redirectUri = process.env.HCB_REDIRECT_URI?.trim()
+	if (redirectUri) body.set("redirect_uri", redirectUri)
+
 	const res = await fetch(`${base()}/api/v4/oauth/token`, {
-		body: new URLSearchParams({
-			client_id: id,
-			client_secret: secret,
-			grant_type: "refresh_token",
-			redirect_uri: process.env.HCB_REDIRECT_URI ?? "",
-			refresh_token: refresh,
-		}),
+		body,
 		headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
 		method: "POST",
 		signal: AbortSignal.timeout(15_000),
 	})
-	if (!res.ok) throw new HttpError("INTERNAL", `HCB token refresh failed (${res.status})`)
+	if (!res.ok) {
+		// HCB's body names the failure (`invalid_grant` for a spent or unknown token, `invalid_client` for the secret), and this is the one error an operator has to act on, so it is kept rather than flattened into the status.
+		const detail = await res.text().catch(() => "")
+		console.warn(`[hcb] token refresh failed (${res.status}): ${detail.slice(0, 300)}`)
+		throw new HttpError("INTERNAL", `HCB token refresh failed (${res.status})`, { detail: detail.slice(0, 300) })
+	}
 
 	const data = TokenBody.parse(await res.json())
 	if (!data.access_token) throw new HttpError("INTERNAL", "HCB token refresh returned no access token")
 	// Default an hour when HCB does not say; either way the token is now bounded rather than cached for the life of the process.
 	const lifetimeMs = (typeof data.expires_in === "number" && data.expires_in > 0 ? data.expires_in : 3600) * 1000
 	cachedToken = { expiresAt: Date.now() + lifetimeMs, token: data.access_token }
+
 	if (data.refresh_token && data.refresh_token !== refresh)
-		// HCB rotates refresh tokens, and an env var cannot be rewritten. This token is used for the life of the process; persisting the new one (see docs) is what keeps the next process able to refresh.
-		console.warn("[hcb] refresh token rotated; persist the new value or the next refresh will fail")
+		try {
+			await storeRefreshToken(data.refresh_token)
+		} catch (err) {
+			// The access token is good, but the next restart has nothing to refresh with. Say so where an operator will see it.
+			console.error(
+				"[hcb] could not persist the rotated refresh token; the next restart needs a fresh HCB_REFRESH_TOKEN:",
+				err,
+			)
+		}
 
 	return cachedToken.token
 }
@@ -113,7 +151,7 @@ async function hcbFetch(path: string, init: RequestInit & { timeoutMs?: number }
 			headers: mergedHeaders,
 			signal: AbortSignal.timeout(timeoutMs),
 		})
-		if (res.status === 401 && attempt === 0 && !process.env.HCB_ACCESS_TOKEN) {
+		if (res.status === 401 && attempt === 0 && !process.env.HCB_ACCESS_TOKEN?.trim()) {
 			cachedToken = null
 			continue
 		}
