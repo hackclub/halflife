@@ -63,6 +63,17 @@ export function IconSearch(p: P) {
 	)
 }
 
+/** Read from the clipboard, drawn as a clipboard rather than a generic paste arrow. */
+export function IconClipboard(p: P) {
+	return (
+		<Ico {...p}>
+			<rect height="16" rx="2" width="13" x="5.5" y="4.5" />
+			<path d="M9.5 4.5V3.2A1.2 1.2 0 0 1 10.7 2h2.6a1.2 1.2 0 0 1 1.2 1.2v1.3" />
+			<path d="M9 10h6M9 13.5h6" />
+		</Ico>
+	)
+}
+
 export function IconFilter(p: P) {
 	return (
 		<Ico {...p}>
