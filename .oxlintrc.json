@@ -97,7 +97,7 @@
 		"promise/avoid-new": "error",
 		"promise/no-nesting": "off",
 		"promise/prefer-await-to-callbacks": "off",
-		"react/exhaustive-deps": "off",
+		"react/exhaustive-deps": "error",
 		"react/exhaustive-effect-dependencies": "off",
 		"react/function-component-definition": "off",
 		"react/jsx-max-depth": ["error", { "max": 8 }],
