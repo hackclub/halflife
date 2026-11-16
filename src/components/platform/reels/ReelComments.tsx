@@ -114,7 +114,6 @@ export function ReelComments({
 	const asked = thread !== undefined
 	useEffect(() => {
 		if (!reelId || asked) return
-		// oxlint-disable-next-line react/set-state-in-effect -- load only sets state after its await; the rule does not follow calls into async functions
 		void load(reelId, null)
 	}, [reelId, asked, load])
 

@@ -114,7 +114,6 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 
 	useEffect(() => {
 		// fetching on mount
-		// oxlint-disable-next-line react/set-state-in-effect -- load only sets state after its awaits; the rule does not follow calls into async functions
 		void load()
 	}, [load])
 
