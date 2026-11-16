@@ -121,7 +121,7 @@
 		"typescript/no-non-null-assertion": "error",
 		"typescript/parameter-properties": ["error", { "prefer": "parameter-property" }],
 		"typescript/prefer-includes": "warn",
-		"typescript/prefer-nullish-coalescing": "off",
+		"typescript/prefer-nullish-coalescing": ["error", { "ignorePrimitives": { "string": true } }],
 		"typescript/prefer-readonly-parameter-types": "off",
 		"typescript/prefer-ts-expect-error": "warn",
 		"typescript/require-await": "error",
