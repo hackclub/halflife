@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ClipboardSearchButton } from "@/app/components/admin/ClipboardSearchButton"
 import { Badge, Button, EmptyState, PageHeader, Panel, Table, TextInput } from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
 import { displayName } from "@/lib/display-name"
@@ -57,6 +58,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 					<Button type="submit">
 						<IconSearch /> Search
 					</Button>
+					<ClipboardSearchButton path="/admin/users" />
 				</form>
 			</Panel>
 
