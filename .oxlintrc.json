@@ -126,7 +126,16 @@
 		"typescript/prefer-ts-expect-error": "warn",
 		"typescript/require-await": "error",
 		"typescript/return-await": "warn",
-		"typescript/strict-boolean-expressions": "off",
+		"typescript/strict-boolean-expressions": [
+			"error",
+			{
+				"allowAny": true,
+				"allowNullableBoolean": true,
+				"allowNullableNumber": true,
+				"allowNullableObject": true,
+				"allowNullableString": true
+			}
+		],
 		"typescript/strict-void-return": "off",
 		"typescript/unbound-method": "off",
 		"unicorn/catch-error-name": ["error", { "name": "err" }],
