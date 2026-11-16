@@ -325,6 +325,8 @@ export interface SpansWarmTarget {
 	userId: string
 }
 
+const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
+
 /**
  * Warm the span cache for a batch of links, for the scheduled sync.
  *
@@ -334,7 +336,6 @@ export interface SpansWarmTarget {
  */
 export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promise<{ warmed: number; failed: number }> {
 	if (targets.length === 0) return { failed: 0, warmed: 0 }
-	const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
 	const projectIds = [...new Set(targets.map(t => t.themeProjectId))]
 	const userIds = [...new Set(targets.map(t => t.userId))]
 
@@ -500,14 +501,13 @@ export function rollUpHours(
 		// The recordings beside the link and the ones elsewhere under its name. Empty means nothing to compare, and nothing to warn about.
 		const windows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject ?? "")
 		if (windows.length > 0)
-			if (!cached)
-				// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
-				hackatimeOverlapUnknown = true
-			else {
+			if (cached) {
 				const overlap = capSubtraction(seconds, overlapSeconds(windows, cached.spans))
 				hackatimeOverlapSeconds += overlap
 				seconds -= overlap
 			}
+			// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
+			else hackatimeOverlapUnknown = true
 
 		hackatimeHours += seconds / 3600
 	}

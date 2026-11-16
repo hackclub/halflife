@@ -82,13 +82,13 @@ function JournalFooter({
 									, and {fmtHours(toGoal)} more if you want to reach your goal of{" "}
 									<strong className="rounded bg-gold-pale px-1 text-gold-ink">{weeklyGoalCoins} coins</strong> per week.
 								</>
-							) : !chasingPrinter ? (
+							) : chasingPrinter ? (
+								"."
+							) : (
 								<>
 									. Every hour past the minimum earns{" "}
 									<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> per hour.
 								</>
-							) : (
-								"."
 							)}
 						</>
 					) : (
@@ -205,17 +205,17 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	// One thing at a time – a list of four faults reads as a wall, and only the first one is actionable anyway. Once the hours are in, the entry's next shortfall is named with the other way out beside it, so nobody is told to write 200 characters they could skip with a timelapse.
 	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab. They back the same entry."
-	const missing = !ok
-		? overCap
+	const missing = ok
+		? null
+		: overCap
 			? `A single devlog covers at most ${MAX_SESSION_HOURS} hours. Split longer work across sessions.`
 			: overDay
 				? `${fmtHours(dayLeft)} left for ${dayLabel(workedOn, today)}, and this entry is ${fmtHours(claimed)}. Pick another day or lower the hours.`
 				: claimed <= 0
 					? "Add the hours you spent on this session, or pick a Lapse timelapse."
-					: !longEnough
-						? `${200 - written} more characters in your entry, not counting images.${orLapse}`
-						: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtHours(typed)}.${orLapse}`
-		: null
+					: longEnough
+						? `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtHours(typed)}.${orLapse}`
+						: `${200 - written} more characters in your entry, not counting images.${orLapse}`
 
 	const hours = hoursOf(week)
 	const toFloor = Math.max(0, week.submitHours - hours)

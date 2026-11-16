@@ -190,19 +190,19 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 		)
 		// The flag, the ban and the suspension in one answer, so this list and the issue loop cannot disagree about who is paid. A fraud flag on its own is what this list used to check.
 		const payoutBlock = payoutBlockReason(row.user)
-		const reason = !row.grantUsd
-			? "No approved grant"
-			: payoutBlock
+		const reason = row.grantUsd
+			? payoutBlock
 				? payoutBlock
-				: row.user.verificationStatus !== "verified"
-					? "Identity is not verified"
-					: row.hcbGrantTopUps.length > 0
+				: row.user.verificationStatus === "verified"
+					? row.hcbGrantTopUps.length > 0
 						? "Already paid by HCB top-up"
 						: row.hcbCardGrantExports.length > 0
 							? "Already in an HCB CSV import"
 							: liveCard
 								? "Card grant already issued or awaiting reconciliation"
 								: null
+					: "Identity is not verified"
+			: "No approved grant"
 		if (reason) {
 			excluded.push({ ownerName, projectId: row.id, reason, title: row.title })
 			continue

@@ -198,14 +198,14 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	// The alternate method only exists when there is no tracked evidence to name. It is written at hand-in so the row is never handed to a reviewer without one. An approved row is left alone here: an admin refresh must not overwrite what a reviewer wrote.
 	const hasTrackedEvidence = Boolean(user.hackatimeUserId) || project.hackatimeLinks.length > 0 || lapseLinks.length > 0
 	const alternateTracking =
-		phaseStatus !== PhaseStatus.in_review
-			? undefined
-			: hasTrackedEvidence
+		phaseStatus === PhaseStatus.in_review
+			? hasTrackedEvidence
 				? ""
 				: alternateTrackingJustification({
 						claimedHours: breakdown.journalHoursClaimed,
 						entryCount: project.workSessions.filter(s => s.hoursSource !== HoursSource.HACKATIME_TRACKED).length,
 					})
+			: undefined
 
 	const justification = justificationValues(
 		{

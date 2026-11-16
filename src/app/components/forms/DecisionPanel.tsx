@@ -72,9 +72,9 @@ export function DecisionPanel({
 	return (
 		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
-			{!claimedByMe ? (
+			{claimedByMe ? null : (
 				<Callout tone="warning">You have not claimed this. Claim it first so nobody duplicates your work.</Callout>
-			) : null}
+			)}
 
 			<Field label="Decision">
 				<Select

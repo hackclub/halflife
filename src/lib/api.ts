@@ -230,6 +230,8 @@ async function readBodyWithCap(request: Request, maxBytes: number): Promise<Boun
 	return { body: new Uint8Array(Buffer.concat(chunks)).buffer }
 }
 
+const invalid = () => fail("INVALID_BODY", "Expected a multipart form")
+
 /**
  * The parse itself, with the cap applied while the body streams in.
  *
@@ -238,7 +240,6 @@ async function readBodyWithCap(request: Request, maxBytes: number): Promise<Boun
 async function bufferUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
 	const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
 	const tooLarge = () => fail("VALIDATION_FAILED", `That upload is larger than ${maxFileBytes} bytes`)
-	const invalid = () => fail("INVALID_BODY", "Expected a multipart form")
 
 	const read = await readBodyWithCap(request, cap)
 	if (!read.body) return { error: read.reason === "TOO_LARGE" ? tooLarge() : invalid() }

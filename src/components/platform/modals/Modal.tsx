@@ -116,6 +116,7 @@ export function Modal({
 
 	useEffect(() => {
 		body.current?.scrollTo({ top: 0 })
+		// oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new scrollKey is the trigger to scroll back to the top; the body does not read it
 	}, [scrollKey])
 
 	if (!open || !isClient) return null

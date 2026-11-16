@@ -260,7 +260,7 @@ async function main(): Promise<void> {
 
 	console.log(`Resending ${targets.length} ship(s), ${options.concurrency} at a time`)
 	const limiter: Limiter = { cooldownUntil: 0, streak: 0 }
-	const totals: Record<TaskOutcome, number> = { failed: 0, refused: 0, resent: 0 }
+	const totals: { [_ in TaskOutcome]: number } = { failed: 0, refused: 0, resent: 0 }
 	let done = 0
 
 	await runPool(targets, options.concurrency, async id => {

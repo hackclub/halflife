@@ -157,7 +157,7 @@ function CheckpointNode({
 							: reviewStatus === "rejected"
 								? "this week has been reviewed."
 								: null
-	const locked = !unlocked ? lockReason(checkpoint.id) : null
+	const locked = unlocked ? null : lockReason(checkpoint.id)
 	// The puck's own disabled rule: what the button below actually refuses. The attention animation is meant to say "press here", so it is only honest while pressing would do something – a node that has passed but still opens keeps it, a settled one does not.
 	const clickable = unlocked && !settled
 	// Finished and still reachable: hovering says so, and says what a click does now – edit the entry, or post another reel.
@@ -286,7 +286,7 @@ function CheckpointNode({
 						className={cx(
 							isBeat(checkpoint) ? "text-[clamp(0.95rem,2.8vw,1.25rem)]" : "text-[clamp(1.5rem,4.4vw,2rem)]",
 							// A passed glyph was white on teal-grey (1.77:1) and a padlock sand-deep on sand (1.62): both under the 3:1 an icon that carries meaning needs.
-							passed || held ? "text-navy-soft" : !unlocked ? "text-sand-ink" : gold ? "text-navy" : "text-white",
+							passed || held ? "text-navy-soft" : unlocked ? (gold ? "text-navy" : "text-white") : "text-sand-ink",
 						)}
 						strokeWidth={st.done ? 3 : 2}
 					/>

@@ -58,6 +58,16 @@ function readBufferedEnd(video: HTMLVideoElement): number {
 	return 0
 }
 
+function play(element: HTMLVideoElement): void {
+	void (async () => {
+		try {
+			await element.play()
+		} catch {
+			// A play() the browser refused (autoplay rules, a pause racing it) leaves the player paused, which the controls already show.
+		}
+	})()
+}
+
 export function TimelapsePlayer({
 	defaultOpen,
 	playable,
@@ -182,16 +192,6 @@ export function TimelapsePlayer({
 		setIdle(false)
 		window.clearTimeout(idleTimer.current)
 		idleTimer.current = window.setTimeout(() => setIdle(true), IDLE_MS)
-	}
-
-	function play(element: HTMLVideoElement): void {
-		void (async () => {
-			try {
-				await element.play()
-			} catch {
-				// A play() the browser refused (autoplay rules, a pause racing it) leaves the player paused, which the controls already show.
-			}
-		})()
 	}
 
 	function togglePlay(): void {

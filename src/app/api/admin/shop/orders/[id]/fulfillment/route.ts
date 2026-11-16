@@ -42,8 +42,8 @@ export const PATCH = withWritePermission(
 
 		// Conditional on the status that was just read: an order rejected between that read and this write must not be marked as on its way out.
 		const updated = await db.orm.public.ShopOrder.where({ id, status: before.status }).updateAndCount({
-			...(body.method !== undefined ? { fulfillmentMethod: body.method } : {}),
-			...(body.stage !== undefined ? { fulfillmentStage: body.stage } : {}),
+			...(body.method === undefined ? {} : { fulfillmentMethod: body.method }),
+			...(body.stage === undefined ? {} : { fulfillmentStage: body.stage }),
 			fulfillmentUpdatedAt: formatDbTimestamp(new Date()),
 			lastActorId: gate.user.id,
 		})

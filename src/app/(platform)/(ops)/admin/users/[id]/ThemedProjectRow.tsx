@@ -66,7 +66,7 @@ export function ThemedProjectRow({
 				</td>
 				<td>{data.tier ?? "-"}</td>
 				<td>
-					{data.grantUsd !== null ? `$${data.grantUsd}` : "-"}
+					{data.grantUsd === null ? "-" : `$${data.grantUsd}`}
 					{data.cardGrantSent ? <div className="hl-hint">card grant issued</div> : null}
 					{data.grantSent ? <div className="hl-hint">top-up sent</div> : null}
 				</td>

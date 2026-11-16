@@ -157,11 +157,11 @@ export default async function AdminUserPage({ params }: Props) {
 
 			{isAdmin && penalties ? (
 				<Panel title="Penalties">
-					{penalty !== "none" ? (
+					{penalty === "none" ? null : (
 						<div className="hl-row">
 							<Badge tone={penalty === "banned" ? "danger" : "warning"}>{penalty}</Badge>
 						</div>
-					) : null}
+					)}
 					<PenaltyCard
 						banned={penalties.bannedAt !== null}
 						bannedAt={penalties.bannedAt ? parseDbTimestamp(penalties.bannedAt).toISOString() : null}

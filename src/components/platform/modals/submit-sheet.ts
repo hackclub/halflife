@@ -186,12 +186,13 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 	// The project's own parts list, as kept on its page – read fresh when the sheet opens, because it is edited there and this is the moment it is handed in. Null while it loads; the cart total reads zero until then.
 	const [bom, setBom] = useState<{ items: BomLine[]; taxShippingUsd: number } | null>(null)
 	const [bomError, setBomError] = useState<string | null>(null)
+	const projectId = project?.id
 	useEffect(() => {
-		if (isBuild || !project) return
+		if (isBuild || !projectId) return
 		let live = true
 		void (async () => {
 			try {
-				const res = await fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
+				const res = await fetch(`/api/projects/${projectId}/bom`, { cache: "no-store" })
 				const payload: unknown = await res.json().catch(() => null)
 				if (!res.ok) throw new Error(errorMessage(payload, refusalMessage(res.status, "Could not load the parts list")))
 				const parsed = BomResponseSchema.safeParse(payload)
@@ -204,7 +205,7 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		return () => {
 			live = false
 		}
-	}, [isBuild, project?.id]) // the id is the input
+	}, [isBuild, projectId]) // the id is the input
 	// The same arithmetic the submit gate reads (lib/bom-policy), so the total on screen is the total being held to.
 	const bomTotal = useMemo(() => bomTotalUsd(bom?.items ?? [], bom?.taxShippingUsd), [bom])
 
@@ -324,7 +325,7 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		if (postId)
 			setSharePost({
 				// Design only: build weeks earn flat, so "past your tier" means nothing there. The hours are the week's own total – the same basis the sheet's floor and target read – though a reviewer can still adjust them.
-				celebration: !isBuild ? { extraHours: Math.max(0, hours - week.earnFrom) } : undefined,
+				celebration: isBuild ? undefined : { extraHours: Math.max(0, hours - week.earnFrom) },
 				checkpointId: checkpoint.id,
 				eyebrow: `${weekName(week)} · Submitted`,
 				postId,

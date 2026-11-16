@@ -70,9 +70,10 @@ export const isConvertible = (path: string): boolean => EXTENSIONS.has(extname(p
 
 const resultPath = (key: string): string => join(DIR, `${key}.glb`)
 
+const text = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined)
+
 function readRemoteStatus(body: unknown): RemoteStatus | null {
 	if (!isRecord(body)) return null
-	const text = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined)
 	return { error: text(body.error), message: text(body.message), state: text(body.state) }
 }
 
@@ -161,7 +162,7 @@ export class ModelConversion {
 	private async convert(output: string): Promise<void> {
 		const deadline = Date.now() + TIMEOUT_MS
 		let misses = 0
-		for (;;) {
+		while (true) {
 			if (Date.now() > deadline) throw failure(`Converting took longer than ${TIMEOUT_MS / 60_000} minutes.`)
 			const status = await this.remoteStatus()
 			if (status?.state === "failed") throw failure(status.error || "The server could not convert this model.")

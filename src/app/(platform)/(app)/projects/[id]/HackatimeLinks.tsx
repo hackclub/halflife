@@ -114,6 +114,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 
 	useEffect(() => {
 		// fetching on mount
+		// oxlint-disable-next-line react/set-state-in-effect -- load only sets state after its await; the rule does not follow calls into async functions
 		void load()
 	}, [load])
 
@@ -209,7 +210,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 											onClick={() => unlink(l.id)}
 											size="sm"
 											title={
-												l.hoursApproved !== null ? "A reviewer has set hours on this link, so it stays" : undefined
+												l.hoursApproved === null ? undefined : "A reviewer has set hours on this link, so it stays"
 											}
 											variant="ghost"
 										>

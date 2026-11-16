@@ -46,11 +46,12 @@ const FREESTYLE_SEED: ThemeSeed = {
 	theme: "Freestyle",
 }
 
+const now = (): ThemeSeed => (isFreestyle() ? FREESTYLE_SEED : BREADBOARD_SEED)
+
 /**
  * Week 5's seed, read field by field at the moment it is asked for rather than once at load. A page left open over midnight, or a server that started before it, then turns freestyle on the stroke of it instead of on the next deploy.
  */
 function week5Seed(): ThemeSeed {
-	const now = (): ThemeSeed => (isFreestyle() ? FREESTYLE_SEED : BREADBOARD_SEED)
 	return {
 		get accent() {
 			return now().accent

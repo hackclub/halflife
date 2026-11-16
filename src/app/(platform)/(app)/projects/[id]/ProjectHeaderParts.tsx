@@ -74,17 +74,17 @@ export function ProjectFacts({
 			</p>
 			<p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
 				<Chip tone="muted">{warmup ? "Warm Up" : theme}</Chip>
-				{tier !== undefined ? (
+				{tier === undefined ? null : (
 					<Chip tone="violet">
 						Tier {tier}
 						{starter ? " · starter" : ""}
 					</Chip>
-				) : null}
-				{!warmup ? (
+				)}
+				{warmup ? null : (
 					<span>
 						weeks {weekId} &amp; {buildWeekId}
 					</span>
-				) : null}
+				)}
 				{repo ? (
 					<>
 						<Dot />

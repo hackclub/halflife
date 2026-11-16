@@ -34,7 +34,7 @@ export enum Permission {
  *
  * REVIEWER is the volume role and deliberately cannot mint credit, change roles, or reverse a decision. FULFILLER exists because shipping hardware is done by a larger, lower-trust group than reviewing. AUDITOR is a read-only seat for oversight that isn't ADMIN.
  */
-const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+const ROLE_PERMISSIONS: { [_ in Role]: Permission[] } = {
 	[Role.ADMIN]: Object.values(Permission),
 	[Role.REVIEWER]: [Permission.REVIEW_SUBMISSIONS, Permission.REVIEW_HOURS, Permission.VIEW_USERS],
 	[Role.FULFILLER]: [Permission.FULFILL_ORDERS, Permission.VIEW_USERS],
@@ -108,7 +108,7 @@ export function permissionSummary(roles: Role[]): PermissionSummary {
 }
 
 /** The words the console shows for each level. */
-export const PERMISSION_LEVEL_LABELS: Record<PermissionLevel, string> = {
+export const PERMISSION_LEVEL_LABELS: { [_ in PermissionLevel]: string } = {
 	full: "full access",
 	none: "no staff access",
 	read: "read only",

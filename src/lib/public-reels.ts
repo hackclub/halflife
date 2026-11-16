@@ -7,7 +7,7 @@
 export const PUBLIC_REEL_PLATFORMS = ["INSTAGRAM", "TIKTOK", "X", "YOUTUBE"] as const
 export type PublicReelPlatform = (typeof PUBLIC_REEL_PLATFORMS)[number]
 
-export const PLATFORM_INFO: Record<PublicReelPlatform, { label: string; example: string; hosts: string[] }> = {
+export const PLATFORM_INFO: { [_ in PublicReelPlatform]: { label: string; example: string; hosts: string[] } } = {
 	INSTAGRAM: {
 		example: "instagram.com/reel/…",
 		hosts: ["instagram.com"],

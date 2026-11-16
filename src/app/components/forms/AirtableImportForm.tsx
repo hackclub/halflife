@@ -29,21 +29,21 @@ const ImportSummarySchema = z.object({
 })
 type ImportSummary = z.infer<typeof ImportSummarySchema>
 
-const STATUS_LABEL: Record<ImportOutcome["status"], string> = {
+const STATUS_LABEL: { [_ in ImportOutcome["status"]]: string } = {
 	already_imported: "already imported",
 	failed: "failed",
 	imported: "imported",
 	skipped: "skipped",
 }
 
-const ARI_LABEL: Record<ImportOutcome["ari"], string> = {
+const ARI_LABEL: { [_ in ImportOutcome["ari"]]: string } = {
 	failed: "Ari send failed",
 	not_attempted: "",
 	not_configured: "Ari not configured",
 	sent: "sent to Ari",
 }
 
-const IRE_LABEL: Record<ImportOutcome["ire"], string> = {
+const IRE_LABEL: { [_ in ImportOutcome["ire"]]: string } = {
 	failed: "Ire send failed",
 	not_attempted: "",
 	not_configured: "Ire not configured",

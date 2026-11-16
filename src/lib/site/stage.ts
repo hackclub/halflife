@@ -38,6 +38,8 @@ export function type(size: number, lineHeight = 1.05): { readonly fontSize: stri
  */
 export const BAND_TAPER = 1.6
 
+const r = (n: number) => Number(n.toFixed(2))
+
 /**
  * A connector band, built from its centreline instead of exported path data.
  *
@@ -65,7 +67,6 @@ export function band(
 	const botRight = x1 + thick / 2
 
 	const left = Math.min(topLeft, botLeft)
-	const r = (n: number) => Number(n.toFixed(2))
 	const h = r(dy)
 
 	return {
@@ -122,7 +123,6 @@ export function stackWeld(lean: "left" | "right"): string {
 	const [near, far] = lean === "right" ? STACK_ANCHORS : [STACK_ANCHORS[1], STACK_ANCHORS[0]]
 	const thin = (2 * STACK_MEAN_EDGE) / (1 + BAND_TAPER)
 	const thick = thin * BAND_TAPER
-	const r = (n: number) => Number(n.toFixed(2))
 
 	return `M${r(near - thin / 2)} 0H${r(near + thin / 2)}L${r(far + thick / 2)} ${STACK_VIEW.h}H${r(far - thick / 2)}Z`
 }

@@ -83,6 +83,7 @@ export function StageSlide({
 		const ro = new ResizeObserver(measure)
 		ro.observe(el)
 		return () => ro.disconnect()
+		// oxlint-disable-next-line react/exhaustive-effect-dependencies -- the caption's text decides whether it clamps, so a new caption is measured again; the body does not read it
 	}, [reel.caption, expanded])
 
 	/** The heart that says a double tap landed, where it landed. */

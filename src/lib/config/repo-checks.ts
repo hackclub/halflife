@@ -60,9 +60,8 @@ export type RepoFileKind =
 	| "logicSchematic" // schematics, plus logic-simulator files
 	| "bom"
 
-export const REPO_FILE_KINDS: Record<
-	RepoFileKind,
-	{
+export const REPO_FILE_KINDS: {
+	[_ in RepoFileKind]: {
 		label: string
 		missing: string
 		extensions?: readonly string[]
@@ -70,7 +69,7 @@ export const REPO_FILE_KINDS: Record<
 		/** Set for the kinds a read design file can satisfy too – see DESIGN_JSON. */
 		json?: typeof DESIGN_JSON
 	}
-> = {
+} = {
 	bom: {
 		label: "BOM CSV",
 		missing: "No bom*.csv found",
@@ -149,15 +148,14 @@ export const REPO_FILE_KINDS: Record<
 	},
 }
 
-export const THEME_REPO_REQUIREMENTS: Record<
-	Theme,
-	{
+export const THEME_REPO_REQUIREMENTS: {
+	[_ in Theme]: {
 		/** The README BOM table the check suggests, when the week's funding is priced from it. */
 		bomTable?: { minRows: number }
 		recommended: readonly RepoFileKind[]
 		required: readonly RepoFileKind[]
 	}
-> = {
+} = {
 	// The board files are the week, and the BOM is what the parts funding is asked against – a design week hands in a cart to be funded, so a repo without its parts list is a hand-in a reviewer cannot price. Firmware is recommended rather than required: an analogue board – a preamp, a power supply, a sensor front end – has nothing to flash, and asking one for code it will never run turned a finished analogue project into a hand-in the checks refused.
 	[Theme.PCB]: { bomTable: { minRows: 2 }, recommended: ["pcbFab", "firmware"], required: ["pcbSource", "bom"] },
 	// A CAD week is a printed part, so one material row is a complete BOM; a board week also has the board itself, so two rows is the floor there.

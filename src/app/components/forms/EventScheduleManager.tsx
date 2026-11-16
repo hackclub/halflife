@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { EventForm } from "@/app/components/forms/EventForm"
 import { Badge, Callout, EmptyState, Panel } from "@/app/components/ui"
+import { useBrowserTimeZone, useClock } from "@/lib/browser-state"
 import { type CalendarEvent, calendarDay, dayLabel, eventColour, eventRangeLabel } from "@/lib/events"
 
 /**
@@ -15,15 +16,12 @@ import { type CalendarEvent, calendarDay, dayLabel, eventColour, eventRangeLabel
  */
 export function EventScheduleManager({ events, timeZone }: { events: CalendarEvent[]; timeZone: string }) {
 	const [editing, setEditing] = useState<CalendarEvent | null>(null)
-	// The form enters times in the browser's own zone, so the list has to show them in the same one. `timeZone` is the programme's, which is only the right answer for an admin sitting in it – everyone else saw every event shifted by the difference. The first render keeps the programme's zone so the server and client markup agree, then this corrects it after mount, exactly like the header calendar.
-	const [viewerZone, setViewerZone] = useState(timeZone)
+	// The form enters times in the browser's own zone, so the list has to show them in the same one. `timeZone` is the programme's, which is only the right answer for an admin sitting in it – everyone else saw every event shifted by the difference. The server draws the programme's zone so the markup agrees, and the browser's own zone takes over on the first client render, exactly like the header calendar.
+	const viewerZone = useBrowserTimeZone(timeZone)
 	const [formVersion, setFormVersion] = useState(0)
-	const today = calendarDay(new Date(), viewerZone)
-
-	useEffect(() => {
-		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
-		if (zone) setViewerZone(zone)
-	}, [])
+	// Null until mounted. Until then every event is listed as upcoming, the same on the server and the first client render, and the split lands straight after mount.
+	const now = useClock()
+	const today = now ? calendarDay(now, viewerZone) : null
 
 	// Closing the form is also what clears it. Bumping the version remounts it, which is the only way the `useState` initialisers run again – without this, Clear did nothing and a saved event left its values sitting in the create form, one more click away from a duplicate.
 	function closeForm() {
@@ -32,8 +30,9 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 	}
 
 	// The list reads in the order people ask questions in: what's next, then what has already happened. Splitting it here rather than sorting twice keeps the boundary honest – "past" is decided once, by the day.
-	const upcoming = events.filter(event => calendarDay(event.startsAt, viewerZone) >= today)
-	const past = events.filter(event => calendarDay(event.startsAt, viewerZone) < today).toReversed()
+	const upcoming = today === null ? events : events.filter(event => calendarDay(event.startsAt, viewerZone) >= today)
+	const past =
+		today === null ? [] : events.filter(event => calendarDay(event.startsAt, viewerZone) < today).toReversed()
 
 	const seriesCount = new Map<string, number>()
 	for (const event of events)

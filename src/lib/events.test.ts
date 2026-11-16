@@ -89,6 +89,8 @@ describe("weekDays / shiftWeek / weekLabel", () => {
 	})
 })
 
+const at = (s: string, e: string | null) => ({ endsAt: e ? new Date(e) : null, startsAt: new Date(s) })
+
 describe("minutesInDay / daySegment", () => {
 	test("counts minutes from local midnight", () => {
 		expect(minutesInDay(new Date("2026-01-05T19:00:00Z"), "America/New_York")).toBe(840)
@@ -96,7 +98,6 @@ describe("minutesInDay / daySegment", () => {
 	})
 
 	test("clips an event to the day", () => {
-		const at = (s: string, e: string | null) => ({ endsAt: e ? new Date(e) : null, startsAt: new Date(s) })
 		expect(daySegment(at("2026-03-05T19:00:00Z", "2026-03-05T20:30:00Z"), "2026-03-05", "UTC")).toEqual({
 			endMin: 1230,
 			startMin: 1140,
@@ -112,7 +113,6 @@ describe("minutesInDay / daySegment", () => {
 	})
 
 	test("gives open-ended events a half-hour block and ends midnight runs at 1440", () => {
-		const at = (s: string, e: string | null) => ({ endsAt: e ? new Date(e) : null, startsAt: new Date(s) })
 		expect(daySegment(at("2026-03-05T19:00:00Z", null), "2026-03-05", "UTC")).toEqual({
 			endMin: 1170,
 			startMin: 1140,
@@ -124,7 +124,6 @@ describe("minutesInDay / daySegment", () => {
 	})
 
 	test("is null when the event never touches the day", () => {
-		const at = (s: string, e: string | null) => ({ endsAt: e ? new Date(e) : null, startsAt: new Date(s) })
 		expect(daySegment(at("2026-03-04T19:00:00Z", "2026-03-04T20:00:00Z"), "2026-03-05", "UTC")).toBeNull()
 		expect(daySegment(at("2026-03-06T19:00:00Z", "2026-03-06T20:00:00Z"), "2026-03-05", "UTC")).toBeNull()
 		expect(daySegment(at("2026-03-05T19:00:00Z", "2026-03-05T19:00:00Z"), "2026-03-05", "UTC")).toBeNull()
@@ -148,18 +147,18 @@ describe("dayLabel / dayShort / eventRangeLabel", () => {
 	})
 })
 
-describe("eventsOnDay / nextEvent", () => {
-	const make = (id: string, start: string, end: string): CalendarEvent => ({
-		colour: "CORAL",
-		description: null,
-		endsAt: new Date(end),
-		id,
-		published: true,
-		seriesId: null,
-		startsAt: new Date(start),
-		title: id,
-	})
+const make = (id: string, start: string, end: string): CalendarEvent => ({
+	colour: "CORAL",
+	description: null,
+	endsAt: new Date(end),
+	id,
+	published: true,
+	seriesId: null,
+	startsAt: new Date(start),
+	title: id,
+})
 
+describe("eventsOnDay / nextEvent", () => {
 	test("belongs to the day it started", () => {
 		const events = [
 			make("b", "2026-03-06T10:00:00Z", "2026-03-06T11:00:00Z"),

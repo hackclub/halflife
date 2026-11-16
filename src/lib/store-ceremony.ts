@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { z } from "zod"
+import { readStored, useHydrated, useMediaQuery, useStoredValue, writeStored } from "./browser-state"
 import { setFreestylePreview } from "./config/freestyle"
 
 export type IntroPhase =
@@ -53,14 +54,28 @@ function seededCeremony(): Ceremony {
 	return { doomscrollerOpen: true, phase: "cinematic", version: 4 }
 }
 
-/** A one-shot localStorage write, swallowed when storage is off. */
-function remember(key: string, value: string | null) {
+/** The ceremony as saved, or the seed when nothing usable is saved. */
+function parseCeremony(raw: string | null): Ceremony {
+	const seed = seededCeremony()
+	if (!raw) return seed
 	try {
-		if (value === null) window.localStorage.removeItem(key)
-		else window.localStorage.setItem(key, value)
+		const parsed = CeremonySave.safeParse(JSON.parse(raw))
+		if (!parsed.success) return seed
+		return {
+			doomscrollerOpen: parsed.data.doomscrollerOpen ?? seed.doomscrollerOpen,
+			phase: parsed.data.phase ?? seed.phase,
+			replaying: parsed.data.replaying ?? seed.replaying,
+			toured: parsed.data.toured ?? seed.toured,
+			version: 4,
+		}
 	} catch {
-		/* private mode – it lasts the session */
+		return seed
 	}
+}
+
+/** Read the saved ceremony, change it, and save the result. Reads the store fresh, so a change made elsewhere is never overwritten by a stale copy. */
+function updateCeremony(update: (c: Ceremony) => Ceremony) {
+	writeStored(KEY, JSON.stringify(update(parseCeremony(readStored(KEY)))))
 }
 
 export interface StoreCeremony {
@@ -103,68 +118,24 @@ export function useStoreCeremony({
 	onFreestylePreviewChange(): void
 	weekOneStarted: boolean
 }): StoreCeremony {
-	const [ceremony, setCeremony] = useState<Ceremony>(seededCeremony)
-	const [hydrated, setHydrated] = useState(false)
-	const [reducedMotion, setReducedMotion] = useState(false)
-	const [bypassing, setBypassing] = useState(false)
-	const [previewingFreestyle, setPreviewingFreestyle] = useState(false)
+	// The saved ceremony and admin flags come from the store, so the server draws the seed and the client reads the saved values straight after hydration.
+	const ceremonyRaw = useStoredValue(KEY)
+	const ceremony = useMemo(() => parseCeremony(ceremonyRaw), [ceremonyRaw])
+	const hydrated = useHydrated()
+	const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)")
+	const bypassing = useStoredValue(BYPASS_KEY) === "1"
+	const previewingFreestyle = useStoredValue(FREESTYLE_PREVIEW_KEY) === "1"
 	// Single checkpoints an admin opened past their locks. Held in memory only: it is for checking one node, not a setting to come back to.
 	const [bypassed, setBypassed] = useState<string[]>([])
 
-	useEffect(() => {
-		const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
-		const sync = () => setReducedMotion(mq.matches)
-		sync()
-		mq.addEventListener("change", sync)
-		return () => mq.removeEventListener("change", sync)
-	}, [])
-
-	// Reading the persisted ceremony is exactly the external-system sync an effect is for: it cannot run during render without breaking SSR hydration, since the server has no localStorage and must render the seeded state.
-	useEffect(() => {
-		let next: Ceremony | null = null
-		try {
-			const raw = window.localStorage.getItem(KEY)
-			if (raw) {
-				const parsed = CeremonySave.safeParse(JSON.parse(raw))
-				if (parsed.success) {
-					const seed = seededCeremony()
-					next = {
-						doomscrollerOpen: parsed.data.doomscrollerOpen ?? seed.doomscrollerOpen,
-						phase: parsed.data.phase ?? seed.phase,
-						replaying: parsed.data.replaying ?? seed.replaying,
-						toured: parsed.data.toured ?? seed.toured,
-						version: 4,
-					}
-				}
-			}
-		} catch {
-			/* storage unavailable – run from the seed */
-		}
-		let bypass = false
-		let freestyle = false
-		try {
-			bypass = window.localStorage.getItem(BYPASS_KEY) === "1"
-			freestyle = window.localStorage.getItem(FREESTYLE_PREVIEW_KEY) === "1"
-		} catch {
-			/* storage unavailable – the trail stays locked */
-		}
-		// hydrating from localStorage
-		if (next) setCeremony(next)
-		if (bypass) setBypassing(true)
-		if (freestyle) setPreviewingFreestyle(true)
-		setHydrated(true)
-	}, [])
-
 	const setBypassLocks = useCallback((on: boolean) => {
-		setBypassing(on)
-		remember(BYPASS_KEY, on ? "1" : null)
+		writeStored(BYPASS_KEY, on ? "1" : null)
 	}, [])
 	// Read by role, not by storage alone: a flag left behind on a shared browser, or by an admin since demoted, opens nothing.
 	const bypassLocks = isAdmin && bypassing
 
 	const setPreviewFreestyle = useCallback((on: boolean) => {
-		setPreviewingFreestyle(on)
-		remember(FREESTYLE_PREVIEW_KEY, on ? "1" : null)
+		writeStored(FREESTYLE_PREVIEW_KEY, on ? "1" : null)
 	}, [])
 	// By role as well, like the bypass.
 	const previewFreestyle = isAdmin && previewingFreestyle
@@ -182,31 +153,26 @@ export function useStoreCeremony({
 		[],
 	)
 
-	useEffect(() => {
-		if (!hydrated) return
-		remember(KEY, JSON.stringify(ceremony))
-	}, [ceremony, hydrated])
-
 	// Someone who has already finished the first checkpoint must never be shown the intro again, whatever a stale or cleared localStorage says. The server is what knows, so it gets the final word – unless they asked for it back. A replay plays the cinematic and the tab tour and goes nowhere near the setup checkpoint: its answers are taken once, and the server refuses a second set, so "aim" and "checkpoint" go straight on to the tour.
 	//
 	// Before week 1 opens, Get started is shut, so the intro goes from the fly-through straight to the tab tour: "aim" (the spotlight on that checkpoint) and "checkpoint" (its modal) have nothing to point at.
-	const phase: IntroPhase = !onboardingDone
-		? !weekOneStarted && (ceremony.phase === "aim" || ceremony.phase === "checkpoint")
-			? ceremony.toured
-				? "done"
-				: "tour"
-			: ceremony.phase
-		: ceremony.replaying
+	const phase: IntroPhase = onboardingDone
+		? ceremony.replaying
 			? ceremony.phase === "aim" || ceremony.phase === "checkpoint"
 				? "tour"
 				: ceremony.phase
 			: ceremony.phase === "tour"
 				? "tour"
 				: "done"
+		: !weekOneStarted && (ceremony.phase === "aim" || ceremony.phase === "checkpoint")
+			? ceremony.toured
+				? "done"
+				: "tour"
+			: ceremony.phase
 
 	const setPhase = useCallback(
 		(next: IntroPhase) =>
-			setCeremony(c => {
+			updateCeremony(c => {
 				// The tour plays once. Someone who took it while week 1 was shut finishes Get started straight onto the trail, not into it again.
 				const nextPhase = next === "tour" && c.toured && !c.replaying ? "done" : next
 				return {
@@ -219,20 +185,24 @@ export function useStoreCeremony({
 		[phase],
 	)
 
-	const finishTour = useCallback(() => setCeremony(c => ({ ...c, phase: "done", replaying: false, toured: true })), [])
+	const finishTour = useCallback(
+		() => updateCeremony(c => ({ ...c, phase: "done", replaying: false, toured: true })),
+		[],
+	)
 
-	const setDoomscroller = useCallback((doomscrollerOpen: boolean) => setCeremony(c => ({ ...c, doomscrollerOpen })), [])
+	const setDoomscroller = useCallback(
+		(doomscrollerOpen: boolean) => updateCeremony(c => ({ ...c, doomscrollerOpen })),
+		[],
+	)
 
 	/** Replay the first run. Ceremony only; it cannot un-log a session or un-post a reel. */
 	const resetCeremony = useCallback(() => {
-		remember(KEY, null)
-		setCeremony({ ...seededCeremony(), replaying: true })
+		updateCeremony(() => ({ ...seededCeremony(), replaying: true }))
 	}, [])
 
 	/** Reseed for the admin redo, without the replay flag, so the intro runs on into setup as it would for someone new. */
 	const reseedCeremony = useCallback(() => {
-		remember(KEY, null)
-		setCeremony(seededCeremony())
+		writeStored(KEY, null)
 	}, [])
 
 	return {

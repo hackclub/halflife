@@ -88,11 +88,11 @@ export function ShopItemCard({
 								? "Sold out"
 								: item.locked
 									? "Locked"
-									: !afford
-										? "Not enough coins"
-										: has
+									: afford
+										? has
 											? "Order another"
-											: "Buy"}
+											: "Buy"
+										: "Not enough coins"}
 					</button>
 				)}
 			</div>

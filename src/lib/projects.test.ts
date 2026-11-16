@@ -24,6 +24,15 @@ describe("projectWeeks", () => {
 	})
 })
 
+const read = (id: string) =>
+	id === "j1"
+		? {
+				done: true,
+				log: [{ at: 100, body: "worked", clips: [], id: "e1", minutes: 60 }],
+				minutes: 60,
+			}
+		: { caption: "cap", done: true, log: [], minutes: 0 }
+
 describe("projectEvents", () => {
 	const weeks = [
 		week(1, [
@@ -33,15 +42,6 @@ describe("projectEvents", () => {
 			{ id: "r1", kind: "reel", reelBrief: "Film it", title: "Reel" } as Week["checkpoints"][number],
 		]),
 	]
-
-	const read = (id: string) =>
-		id === "j1"
-			? {
-					done: true,
-					log: [{ at: 100, body: "worked", clips: [], id: "e1", minutes: 60 }],
-					minutes: 60,
-				}
-			: { caption: "cap", done: true, log: [], minutes: 0 }
 
 	test("merges sessions and finished reels newest first", () => {
 		const events = projectEvents(project(1), weeks, read)

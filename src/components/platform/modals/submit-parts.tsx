@@ -69,11 +69,7 @@ export function BomTable({
 				<p className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep" role="alert">
 					{bomError}
 				</p>
-			) : !bom ? (
-				<p aria-live="polite" className="hand px-4 py-5 text-[0.88rem] text-navy-soft">
-					reading your parts list…
-				</p>
-			) : (
+			) : bom ? (
 				<div className="overflow-x-auto">
 					<table className="w-full min-w-120 text-left text-[0.86rem]">
 						<thead>
@@ -133,6 +129,10 @@ export function BomTable({
 						</tbody>
 					</table>
 				</div>
+			) : (
+				<p aria-live="polite" className="hand px-4 py-5 text-[0.88rem] text-navy-soft">
+					reading your parts list…
+				</p>
 			)}
 			<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-cream px-4 py-3">
 				<span className="label text-navy-soft">Cart total</span>

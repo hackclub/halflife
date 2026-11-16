@@ -10,6 +10,8 @@ import logoArt from "../../../public/brand/logo.png"
 import { getPromoMode, getServerPromoMode, setPromoMode, subscribePromo } from "./promo-state"
 import styles from "./sticker-sheet-banner.module.css"
 
+const dismiss = () => setPromoMode("hidden")
+
 /**
  * The weeks 3 + 4 challenge, as a strip across the top of the site.
  *
@@ -68,8 +70,6 @@ export function StickerSheetBanner({
 		pendingFocus.current = "banner"
 		setPromoMode("banner")
 	}
-
-	const dismiss = () => setPromoMode("hidden")
 
 	return (
 		<aside

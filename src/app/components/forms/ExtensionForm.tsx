@@ -1,6 +1,7 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button, Callout, TextInput } from "@/app/components/ui"
+import { useBrowserValue, useClock } from "@/lib/browser-state"
 import { toLocalInput } from "@/lib/deadline"
 import { DAY_MS } from "@/lib/time"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -19,21 +20,21 @@ export function ExtensionForm({
 	/** ISO string of the extension now on record, if any. */
 	current: string | null
 }>) {
-	// Filled in after mount: the server renders in its own timezone, and the input has to show the admin's.
-	const [value, setValue] = useState("")
-	useEffect(() => {
-		// reading the browser's timezone
-		setValue(current ? toLocalInput(new Date(current)) : "")
-	}, [current])
+	// The input shows the admin's own timezone, which only the browser knows, so it is blank on the server and filled in from the first client render. Typing overrides it, and the override holds only until the extension on record changes.
+	const formatted = useBrowserValue(() => (current ? toLocalInput(new Date(current)) : ""), "")
+	const [typed, setTyped] = useState<{ base: string | null; value: string } | null>(null)
+	const value = typed?.base === current ? typed.value : formatted
 	const { busy, error, run } = useAction()
 
-	const active = current !== null && new Date(current) > new Date()
+	// Null until mounted. Until the clock arrives the extension on record is taken as live, so the server markup says "Extended" rather than "Expired", and the client's read straight after hydration corrects it.
+	const now = useClock()
+	const active = current !== null && (now === null || new Date(current) > now)
 
 	function save(until: Date | null) {
 		void run(
 			"save",
 			() => sendJson(url, { body: { submissionExtensionUntil: until?.toISOString() ?? null }, method: "PATCH" }),
-			() => setValue(until ? toLocalInput(until) : ""),
+			() => setTyped({ base: current, value: until ? toLocalInput(until) : "" }),
 		)
 	}
 
@@ -60,7 +61,7 @@ export function ExtensionForm({
 			>
 				<TextInput
 					aria-label="Extend until"
-					onChange={e => setValue(e.target.value)}
+					onChange={e => setTyped({ base: current, value: e.target.value })}
 					style={{ maxWidth: "14rem" }}
 					type="datetime-local"
 					value={value}

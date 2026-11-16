@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { ClipboardSearchButton } from "@/app/components/admin/ClipboardSearchButton"
+import { CopyEmail } from "@/app/components/admin/CopyEmail"
 import { Badge, Button, EmptyState, PageHeader, Panel, Table, TextInput } from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
 import { displayName } from "@/lib/display-name"
@@ -57,6 +59,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 					<Button type="submit">
 						<IconSearch /> Search
 					</Button>
+					<ClipboardSearchButton path="/admin/users" />
 				</form>
 			</Panel>
 
@@ -83,7 +86,9 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 											<Badge tone="warning">suspended</Badge>
 										) : null}
 									</td>
-									<td className="hl-mono">{user.email}</td>
+									<td>
+										<CopyEmail email={user.email} />
+									</td>
 									<td>
 										{user.roles.length === 0 ? (
 											<span className="hl-hint">participant</span>

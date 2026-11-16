@@ -63,7 +63,7 @@ export function SketchDefs() {
  * Gato
  * ------------------------------------------------------------------ */
 
-const GATO: Record<"head" | "box" | "confused" | "schematic", StaticImageData> = {
+const GATO: { [_ in "head" | "box" | "confused" | "schematic"]: StaticImageData } = {
 	box: gatoBox,
 	confused: gatoConfused,
 	head: gatoHead,

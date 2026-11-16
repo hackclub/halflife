@@ -142,7 +142,7 @@ export interface StoreSnapshot {
 	weekOpensAt: { [_: number]: number }
 }
 
-const EXPERIENCE: Record<HardwareExperience, Experience> = {
+const EXPERIENCE: { [_ in HardwareExperience]: Experience } = {
 	[HardwareExperience.FIRST_TIME]: "first",
 	[HardwareExperience.A_LITTLE]: "little",
 	[HardwareExperience.A_GOOD_AMOUNT]: "some",

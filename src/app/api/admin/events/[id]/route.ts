@@ -10,6 +10,8 @@ interface Params {
 	params: Promise<{ id: string }>
 }
 
+const iso = (value: string | null): Date | null => parseNullableTimestamp(value)
+
 /**
  * Move, retitle or cancel one occurrence.
  *
@@ -32,7 +34,6 @@ export const PATCH = withWritePermission(
 		const endsAt = data.endsAt === undefined ? (before.endsAt ? parseDbTimestamp(before.endsAt) : null) : data.endsAt
 		if (endsAt && endsAt <= startsAt) return fail("VALIDATION_FAILED", "An event has to end after it starts")
 
-		const iso = (value: string | null): Date | null => parseNullableTimestamp(value)
 		const updated = await db.orm.public.ProgramEvent.where({ id }).update({
 			...data,
 			endsAt: data.endsAt === undefined ? undefined : data.endsAt === null ? null : formatDbTimestamp(data.endsAt),

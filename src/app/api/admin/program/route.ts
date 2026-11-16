@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic"
 
 export const GET = withPermission(Permission.MANAGE_PROGRAM, async () => ok({ settings: await getProgramSettings() }))
 
+const iso = (value: string | null): string | null => parseNullableTimestamp(value)?.toISOString() ?? null
+
 /**
  * The kill switches live here rather than in env vars deliberately. Stasis put its submission gate in SUBMISSIONS_CLOSED and it was never flipped in the dashboard, so submissions silently stayed open for two weeks after the event ended. A row with a toggle and an audit trail cannot be forgotten.
  */
@@ -22,15 +24,14 @@ export const PATCH = withWritePermission(Permission.MANAGE_PROGRAM, async (req: 
 	const { eventStartDate, shopClosesAt, submissionsCloseAt, ...rest } = parsed.data
 	const row = await db.orm.public.ProgramSettings.where({ id: "singleton" }).update({
 		...rest,
-		...(eventStartDate !== undefined ? { eventStartDate: formatDbTimestamp(eventStartDate) } : {}),
-		...(shopClosesAt !== undefined ? { shopClosesAt: shopClosesAt ? formatDbTimestamp(shopClosesAt) : null } : {}),
-		...(submissionsCloseAt !== undefined
-			? { submissionsCloseAt: submissionsCloseAt ? formatDbTimestamp(submissionsCloseAt) : null }
-			: {}),
+		...(eventStartDate === undefined ? {} : { eventStartDate: formatDbTimestamp(eventStartDate) }),
+		...(shopClosesAt === undefined ? {} : { shopClosesAt: shopClosesAt ? formatDbTimestamp(shopClosesAt) : null }),
+		...(submissionsCloseAt === undefined
+			? {}
+			: { submissionsCloseAt: submissionsCloseAt ? formatDbTimestamp(submissionsCloseAt) : null }),
 		updatedById: gate.user.id,
 	})
 	if (!row) return fail("NOT_FOUND", "Settings not found")
-	const iso = (value: string | null): string | null => parseNullableTimestamp(value)?.toISOString() ?? null
 	const settings = {
 		...row,
 		eventStartDate: parseDbTimestamp(row.eventStartDate).toISOString(),

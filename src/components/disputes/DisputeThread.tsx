@@ -103,13 +103,7 @@ export function DisputeThread({
 				))}
 			</ol>
 
-			{!open ? (
-				<p className={skin.outcome}>
-					{dispute.outcome === "upheld"
-						? `a reviewer sent this back for a fresh review on ${fmtDate(dispute.resolvedAt ?? dispute.at)}.`
-						: `a reviewer looked again and the decision stands, closed ${fmtDate(dispute.resolvedAt ?? dispute.at)}.`}
-				</p>
-			) : (
+			{open ? (
 				<div className={skin.form}>
 					<label className={skin.label} htmlFor={`dispute-reply-${dispute.id}`}>
 						{viewer === "reviewer" ? "Reply to the maker" : "Add to this dispute"}
@@ -162,6 +156,12 @@ export function DisputeThread({
 						) : null}
 					</div>
 				</div>
+			) : (
+				<p className={skin.outcome}>
+					{dispute.outcome === "upheld"
+						? `a reviewer sent this back for a fresh review on ${fmtDate(dispute.resolvedAt ?? dispute.at)}.`
+						: `a reviewer looked again and the decision stands, closed ${fmtDate(dispute.resolvedAt ?? dispute.at)}.`}
+				</p>
 			)}
 		</div>
 	)

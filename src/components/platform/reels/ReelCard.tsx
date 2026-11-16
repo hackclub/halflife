@@ -174,6 +174,7 @@ export function ReelCard({
 			current.current = false
 			el.pause()
 		}
+		// oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new clip has to be observed again; the body does not read the URL
 	}, [reel.videoUrl])
 
 	function toggle() {

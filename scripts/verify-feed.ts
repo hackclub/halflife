@@ -35,6 +35,8 @@ async function refused(label: string, fn: () => Promise<unknown>): Promise<void>
 	check(label, threw, true)
 }
 
+const key = (userId: string) => `posts/${userId}/${crypto.randomUUID()}.mp4`
+
 async function main() {
 	const feed = await import("../src/lib/feed")
 	const { createPost, getFeed, recordView, setLike, addComment, getComments } = feed
@@ -59,8 +61,6 @@ async function main() {
 		title: "Not yours",
 		userId: viewer.id,
 	})
-
-	const key = (userId: string) => `posts/${userId}/${crypto.randomUUID()}.mp4`
 
 	// ── Object key ownership ───────────────────────────────────────────────────
 	await refused("cannot post someone else's upload", () =>

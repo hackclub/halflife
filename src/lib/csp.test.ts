@@ -20,6 +20,8 @@ describe("isReviewPlatformPath", () => {
 	})
 })
 
+const others = (parts: string[]) => parts.filter(part => !/^(img|media)-src /.test(part))
+
 describe("contentSecurityPolicy", () => {
 	test("keeps GitHub's image hosts out of the participant-facing policy", () => {
 		const img = directive(contentSecurityPolicy(), "img-src")
@@ -42,7 +44,6 @@ describe("contentSecurityPolicy", () => {
 	test("widens only images and media, not framing or form targets", () => {
 		const base = contentSecurityPolicy().split("; ")
 		const review = contentSecurityPolicy({ reviewPlatform: true }).split("; ")
-		const others = (parts: string[]) => parts.filter(part => !/^(img|media)-src /.test(part))
 		expect(others(review)).toEqual(others(base))
 	})
 })

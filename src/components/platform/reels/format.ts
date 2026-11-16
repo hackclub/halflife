@@ -5,12 +5,13 @@ export function compact(n: number): string {
 	return `${n}`
 }
 
+const pad = (n: number) => n.toString().padStart(2, "0")
+
 /** Seconds as the player's clock: 00:07, 01:29, 1:02:10. */
 export function clock(seconds: number): string {
 	const s = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0
 	const h = Math.floor(s / 3600)
 	const m = Math.floor((s % 3600) / 60)
-	const pad = (n: number) => n.toString().padStart(2, "0")
 	return h > 0 ? `${h}:${pad(m)}:${pad(s % 60)}` : `${pad(m)}:${pad(s % 60)}`
 }
 

@@ -217,14 +217,14 @@ function DetailsForm({
 
 		// Only what changed, so an untouched tier is never re-sent against a server rule it does not need to meet. Taking a starter always carries tier 1 with it when the project is not already there – the server refuses a starter at any other tier. A description-only form is held to the one field it shows.
 		const patch = detailsLock
-			? description.trim() !== project.description.trim()
-				? { description: description.trim() }
-				: {}
+			? description.trim() === project.description.trim()
+				? {}
+				: { description: description.trim() }
 			: {
-					...(name.trim() !== project.name ? { name: name.trim() } : {}),
-					...(description.trim() !== project.description.trim() ? { description: description.trim() } : {}),
-					...(url !== (project.githubRepo ?? null) ? { githubRepo: url } : {}),
-					...(starterId !== (project.starterProjectId ?? null) ? { starterProjectId: starterId } : {}),
+					...(name.trim() === project.name ? {} : { name: name.trim() }),
+					...(description.trim() === project.description.trim() ? {} : { description: description.trim() }),
+					...(url === (project.githubRepo ?? null) ? {} : { githubRepo: url }),
+					...(starterId === (project.starterProjectId ?? null) ? {} : { starterProjectId: starterId }),
 					...(takingStarter && project.tier !== STARTER_PROJECT_TIER
 						? { tier: STARTER_PROJECT_TIER }
 						: tierEditable && tier !== project.tier

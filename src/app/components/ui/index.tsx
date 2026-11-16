@@ -8,7 +8,7 @@ import { HangingSign } from "@/components/sign/HangingSign"
 
 type Variant = "default" | "primary" | "danger"
 
-const variantClass: Record<Variant, string> = {
+const variantClass: { [_ in Variant]: string } = {
 	danger: "hl-btn hl-btn--danger",
 	default: "hl-btn",
 	primary: "hl-btn hl-btn--primary",

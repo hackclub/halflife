@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { IconVolumeOff } from "@/components/platform/icons"
+import { useMediaQuery } from "@/lib/browser-state"
 import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
-import { type FeedPosition, readPosition, savePosition } from "./feedPosition"
+import { savePosition, useArrival } from "./feedPosition"
 import { ReelActions } from "./ReelActions"
 import { ReelCommentsPanel } from "./ReelCommentsPanel"
 import { type SlideHandle, StageSlide } from "./StageSlide"
@@ -47,17 +48,8 @@ export function ReelViewer() {
 	const [sheetShown, setSheetShown] = useState(false)
 	// A card's comments link asks for the conversation once its reel has landed.
 	const [pendingComments, setPendingComments] = useState(false)
-	// The reel a card's link asked for, and whether that link wanted the comments. Read from the URL once, after mount, so the walk below knows to go to it rather than to wherever the viewer left off.
-	const deepLink = useRef<{ id: string; comments: boolean } | null>(null)
 	// Whether the comments have room to stand beside the reel. Only one of the two homes for them is ever mounted, so only one ever fetches.
-	const [wide, setWide] = useState(false)
-	useEffect(() => {
-		const mq = window.matchMedia(COMMENTS_BESIDE)
-		const sync = () => setWide(mq.matches)
-		sync()
-		mq.addEventListener("change", sync)
-		return () => mq.removeEventListener("change", sync)
-	}, [])
+	const wide = useMediaQuery(COMMENTS_BESIDE)
 	// The current slide's own controls, for the keyboard.
 	const active = useRef<SlideHandle | null>(null)
 	const register = useCallback((handle: SlideHandle | null) => {
@@ -66,8 +58,16 @@ export function ReelViewer() {
 	const onAutoMuted = useCallback(() => setAutoMuted(true), [])
 
 	const feed = useFeed()
-	// Where this viewer left off today: undefined until storage has been read, then the reel being walked to, then null once they are on it (or it could not be found). Until then the frame shows the loading shape, so the top reel does not start playing on the way down to theirs.
-	const [resume, setResume] = useState<FeedPosition | null | undefined>(undefined)
+	// Where the viewer is walked to: undefined until the arrival is known, then the reel to walk to, then null once they are on it (or it could not be found). Until then the frame shows the loading shape, so the top reel does not start playing on the way down to theirs.
+	const arrival = useArrival()
+	const deep = arrival?.deep ?? null
+	const [walked, setWalked] = useState(false)
+	const resume = useMemo(() => {
+		if (arrival === undefined) return
+		if (walked) return null
+		if (deep) return { id: deep.id, leadIds: [] }
+		return arrival.saved
+	}, [walked, arrival, deep])
 	const restoring = resume !== null
 	const resumePages = useRef(0)
 	// The slide to land on once the walk ends and the slides are back.
@@ -77,25 +77,12 @@ export function ReelViewer() {
 	const { index, landOnSlide, registerSlide, scroller, setCursor, setIndex, stage, step } = useReelNavigation(last)
 	const current: FeedItem | undefined = restoring ? undefined : feed.items[index]
 
-	// Where to land after mount. A reel card's link carries a reel id, which wins over the saved position; otherwise it is wherever they left off. Storage after mount, because the server has none and rendered without it.
-	useEffect(() => {
-		const params = new URLSearchParams(window.location.search)
-		const id = params.get("reel")
-		if (id) {
-			deepLink.current = { comments: params.get("comments") === "1", id }
-			// reading the URL after mount
-			setResume({ id, leadIds: [] })
-			return
-		}
-		setResume(readPosition())
-	}, [])
-
 	// Walk the feed down to the saved reel, a page at a time.
 	const { done, error, handleMore, items, leading, loading } = feed
 	useEffect(() => {
 		if (!resume || loading) return
 		// A link goes straight to its reel; the unseen-admin-reel rule below is for picking up where someone left off, not for following a card.
-		const isDeep = deepLink.current !== null
+		const isDeep = deep !== null
 		// An admin reel they have not been shown yet goes first, exactly as it would on a fresh visit; picking up where they left off can wait.
 		const unseenLead = isDeep ? false : leading.some(r => !resume.leadIds.includes(r.id))
 		const at = unseenLead ? -1 : items.findIndex(r => r.id === resume.id)
@@ -103,15 +90,16 @@ export function ReelViewer() {
 			landOn.current = at
 			setCursor(at)
 			setIndex(at)
-			if (isDeep && deepLink.current?.comments) setPendingComments(true)
-			setResume(null)
+			// oxlint-disable-next-line react/set-state-in-effect -- the walk is driven by the feed's own loading, which only an effect can follow; the arrival itself is read from the store
+			if (deep?.comments) setPendingComments(true)
+			setWalked(true)
 		} else if (!unseenLead && !done && !error && resumePages.current < RESUME_MAX_PAGES) {
 			resumePages.current += 1
 			handleMore()
 		}
 		// Deleted, hidden, or further back than it is worth walking: the top.
-		else setResume(null)
-	}, [resume, loading, items, leading, done, error, handleMore])
+		else setWalked(true)
+	}, [resume, loading, items, leading, done, error, handleMore, deep, setCursor, setIndex])
 
 	// A card's comments link opens the conversation once its reel has landed. Wide, that is the panel beside the reel; below it, the sheet over it.
 	useEffect(() => {
@@ -119,6 +107,7 @@ export function ReelViewer() {
 		if (wide) setPrefs({ comments: true })
 		else {
 			// a deep link asks for the comments once
+			// oxlint-disable-next-line react/set-state-in-effect -- opens the comments for a deep link once the reel has landed; the flag is state from an earlier effect, so it cannot be derived during render
 			setSheetShown(true)
 			setSheetOpen(true)
 		}
@@ -267,9 +256,7 @@ export function ReelViewer() {
 										Try again
 									</button>
 								</>
-							) : !feed.done ? (
-								<p className="hand text-[0.95rem] text-navy-soft motion-safe:animate-pulse">loading more reels…</p>
-							) : (
+							) : feed.done ? (
 								<>
 									<p className="hand text-[1.05rem] text-navy">
 										{feed.items.length === 0 ? "nothing here yet." : "that's everything!"}
@@ -278,6 +265,8 @@ export function ReelViewer() {
 										{feed.items.length === 0 ? "post the first reel." : "now it's your turn go build something"}
 									</p>
 								</>
+							) : (
+								<p className="hand text-[0.95rem] text-navy-soft motion-safe:animate-pulse">loading more reels…</p>
 							)}
 						</div>
 					)}

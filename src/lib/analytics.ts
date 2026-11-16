@@ -327,7 +327,7 @@ export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 		}
 		for (const [week, list] of byWeek) {
 			let running = 0
-			const reached: Partial<Record<ReturnType<typeof milestoneField>, string>> = {}
+			const reached: Partial<{ [_ in ReturnType<typeof milestoneField>]: string }> = {}
 			for (const s of list) {
 				running += s.hours
 				for (const h of HOUR_MILESTONES)

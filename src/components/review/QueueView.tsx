@@ -148,16 +148,16 @@ export function QueueView({ filters: rendered, queue }: { filters: Filters; queu
 			</div>
 			{queue.previous !== null || queue.next !== null ? (
 				<nav aria-label="Pages" className="review-pager">
-					{queue.previous !== null ? (
+					{queue.previous === null ? null : (
 						<Link className="btn btn--ghost btn--sm" href={queueHref(rendered, queue.previous)}>
 							← Newer
 						</Link>
-					) : null}
-					{queue.next !== null ? (
+					)}
+					{queue.next === null ? null : (
 						<Link className="btn btn--ghost btn--sm" href={queueHref(rendered, queue.next)}>
 							Older →
 						</Link>
-					) : null}
+					)}
 				</nav>
 			) : null}
 		</>

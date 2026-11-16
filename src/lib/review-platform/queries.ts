@@ -254,6 +254,15 @@ function countBy<K>(rows: FacetRow[], key: (row: FacetRow) => K | null): Map<K, 
 	return counts
 }
 
+const keep = (count: number, value: string, chosen: string): boolean => count > 0 || value === chosen
+
+const numbered = (counts: Map<number, number>, chosen: number | null, label: (value: number) => string) => {
+	if (chosen !== null && !counts.has(chosen)) counts.set(chosen, 0)
+	return [...counts]
+		.toSorted(([a], [b]) => a - b)
+		.map(([value, count]) => ({ count, label: label(value), value: String(value) }))
+}
+
 /**
  * The options each picker offers, counted over the current tab under every other filter, so an option's number is what choosing it would list.
  *
@@ -270,13 +279,6 @@ function facetOptions(rows: FacetRow[], facets: QueueFacets): ReviewFacets {
 	)
 	const starterRows = rows.filter(row => facetMatches(row, facets, "starter"))
 	const starterCounts = countBy(starterRows, row => row.starter)
-	const keep = (count: number, value: string, chosen: string): boolean => count > 0 || value === chosen
-	const numbered = (counts: Map<number, number>, chosen: number | null, label: (value: number) => string) => {
-		if (chosen !== null && !counts.has(chosen)) counts.set(chosen, 0)
-		return [...counts]
-			.toSorted(([a], [b]) => a - b)
-			.map(([value, count]) => ({ count, label: label(value), value: String(value) }))
-	}
 	const ownIdea = starterRows.filter(row => row.starter === null).length
 	return {
 		starters: [

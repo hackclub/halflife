@@ -572,16 +572,16 @@ export async function checkRepo(
 
 	const checks: RepoCheck[] = [
 		{ detail: name, key: "repo", label: `Public ${forge.label} repo`, status: "pass" },
-		readme !== null
-			? { key: "readme", label: "README", status: "pass" }
-			: {
+		readme === null
+			? {
 					blocking: true,
 					detail: "Add a README.md saying what the project is, how it works, and why you made it.",
 					key: "readme",
 					label: "README missing",
 					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
-				},
+				}
+			: { key: "readme", label: "README", status: "pass" },
 	]
 	const readmeChars = readme === null ? 0 : readmeText(readme).length
 	const imageCount = readme === null ? 0 : readmeImageCount(readme)

@@ -15,7 +15,7 @@ import { getProgramSettings, weekClosesAt } from "@/lib/program"
  */
 export function warmupPhaseOf(project: { warmupPhase: Phase | null; buildStatus: PhaseStatus }): Phase {
 	if (project.warmupPhase) return project.warmupPhase
-	return project.buildStatus !== PhaseStatus.draft ? Phase.BUILD : Phase.DESIGN
+	return project.buildStatus === PhaseStatus.draft ? Phase.DESIGN : Phase.BUILD
 }
 
 /** Whether a warm-up project can still be started, and when that stops. */

@@ -1,5 +1,6 @@
 "use client"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useMemo } from "react"
+import { readStored, useStoredValue, writeStored } from "@/lib/browser-state"
 import { isRecord } from "@/lib/unknown"
 
 /**
@@ -20,38 +21,30 @@ export interface PlayerPrefs {
 const KEY = "halflife.player.v1"
 const DEFAULTS: PlayerPrefs = { autoScroll: false, comments: true, muted: false, rate: 1 }
 
-export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerPrefs>) => void] {
-	const [prefs, setPrefs] = useState<PlayerPrefs>(DEFAULTS)
-
-	// After mount, because the server has no storage and must render the defaults; reading it during render would tear hydration.
-	useEffect(() => {
-		try {
-			const raw = window.localStorage.getItem(KEY)
-			if (!raw) return
-			const saved: unknown = JSON.parse(raw)
-			if (!isRecord(saved)) return
-			// hydrating from localStorage
-			setPrefs({
-				autoScroll: typeof saved.autoScroll === "boolean" ? saved.autoScroll : DEFAULTS.autoScroll,
-				comments: typeof saved.comments === "boolean" ? saved.comments : DEFAULTS.comments,
-				muted: typeof saved.muted === "boolean" ? saved.muted : DEFAULTS.muted,
-				rate: RATES.find(rate => rate === saved.rate) ?? DEFAULTS.rate,
-			})
-		} catch {
-			/* storage unavailable – the defaults stand */
+/** The saved prefs, with the defaults for anything missing, malformed or unreadable. */
+function parsePrefs(raw: string | null): PlayerPrefs {
+	if (!raw) return DEFAULTS
+	try {
+		const saved: unknown = JSON.parse(raw)
+		if (!isRecord(saved)) return DEFAULTS
+		return {
+			autoScroll: typeof saved.autoScroll === "boolean" ? saved.autoScroll : DEFAULTS.autoScroll,
+			comments: typeof saved.comments === "boolean" ? saved.comments : DEFAULTS.comments,
+			muted: typeof saved.muted === "boolean" ? saved.muted : DEFAULTS.muted,
+			rate: RATES.find(rate => rate === saved.rate) ?? DEFAULTS.rate,
 		}
-	}, [])
+	} catch {
+		return DEFAULTS
+	}
+}
+
+export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerPrefs>) => void] {
+	// The server has no storage, so it draws the defaults; the saved prefs arrive with the first client read.
+	const raw = useStoredValue(KEY)
+	const prefs = useMemo(() => parsePrefs(raw), [raw])
 
 	const update = useCallback((patch: Partial<PlayerPrefs>) => {
-		setPrefs(prev => {
-			const next = { ...prev, ...patch }
-			try {
-				window.localStorage.setItem(KEY, JSON.stringify(next))
-			} catch {
-				/* quota or private mode – it holds for this visit */
-			}
-			return next
-		})
+		writeStored(KEY, JSON.stringify({ ...parsePrefs(readStored(KEY)), ...patch }))
 	}, [])
 
 	return [prefs, update] as const

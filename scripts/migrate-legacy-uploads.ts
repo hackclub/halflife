@@ -29,11 +29,12 @@ interface BucketObject {
 const EMPTY_SHA256 = createHash("sha256").update("").digest("hex")
 const RETRIES = 4
 
+const value = (name: string): string | null => {
+	const arg = process.argv.find(entry => entry.startsWith(`--${name}=`))
+	return arg ? arg.slice(name.length + 3) : null
+}
+
 function parseArgs(): Args {
-	const value = (name: string): string | null => {
-		const arg = process.argv.find(entry => entry.startsWith(`--${name}=`))
-		return arg ? arg.slice(name.length + 3) : null
-	}
 	const number = (name: string, fallback: number): number => {
 		const raw = value(name)
 		const parsed = raw === null ? Number.NaN : Number(raw)

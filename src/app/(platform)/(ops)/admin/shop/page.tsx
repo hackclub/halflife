@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic"
 
 type ShopItemCategory = Models.public_ShopItem["category"]
 
-const CATEGORY_LABEL: Record<ShopItemCategory, string> = {
+const CATEGORY_LABEL: { [_ in ShopItemCategory]: string } = {
 	CONSUMABLE: "consumable",
 	MISC: "misc",
 	PRINTER: "printer",

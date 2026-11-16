@@ -16,12 +16,12 @@ import { formatDbTimestamp } from "@/lib/time"
 export type Outcome = "RESOLVED" | "DISMISSED"
 
 /** The reply key each outcome reports itself under. */
-const replyKey: Record<Outcome, "resolved" | "dismissed"> = {
+const replyKey: { [_ in Outcome]: "resolved" | "dismissed" } = {
 	DISMISSED: "dismissed",
 	RESOLVED: "resolved",
 }
 
-const auditAction: Record<Outcome, AuditAction> = {
+const auditAction: { [_ in Outcome]: AuditAction } = {
 	DISMISSED: AuditAction.ADMIN_DISMISS_REPORT,
 	RESOLVED: AuditAction.ADMIN_RESOLVE_REPORT,
 }

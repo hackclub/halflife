@@ -56,7 +56,7 @@ export function countImages(source: string): number {
 export function imageSources(source: string): string[] {
 	const out: string[] = []
 	for (const m of source.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
-		const src = m[1] !== undefined ? safeSrc(m[1]) : undefined
+		const src = m[1] === undefined ? undefined : safeSrc(m[1])
 		if (src && !/^data:/i.test(src)) out.push(src)
 	}
 	return out
@@ -94,14 +94,7 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
 			cut = true
 			break
 		}
-		if (m[2] !== undefined) {
-			images += 1
-			if (images > 1) {
-				end = m.index
-				cut = true
-				break
-			}
-		} else {
+		if (m[2] === undefined) {
 			const shown = (m[3] ?? m[4] ?? m[5] ?? m[6] ?? m[7] ?? m[8] ?? "").length
 			if (used + shown > limit) {
 				end = m.index
@@ -109,6 +102,13 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
 				break
 			}
 			used += shown
+		} else {
+			images += 1
+			if (images > 1) {
+				end = m.index
+				cut = true
+				break
+			}
 		}
 		last = m.index + m[0].length
 	}

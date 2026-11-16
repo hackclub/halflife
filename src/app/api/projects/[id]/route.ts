@@ -35,6 +35,11 @@ interface Params {
 
 export const dynamic = "force-dynamic"
 
+const parseList = <T extends { createdAt: string }>(
+	rows: readonly T[],
+): (Omit<T, "createdAt"> & { createdAt: Date })[] =>
+	rows.map(r => withFields(r, { createdAt: parseDbTimestamp(r.createdAt) }))
+
 export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
@@ -58,10 +63,6 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	])
 
 	// Prisma 8 reads timestamps as PostgreSQL text; the page works in Dates, so parse them at the boundary.
-	const parseList = <T extends { createdAt: string }>(
-		rows: readonly T[],
-	): (Omit<T, "createdAt"> & { createdAt: Date })[] =>
-		rows.map(r => withFields(r, { createdAt: parseDbTimestamp(r.createdAt) }))
 	const project = withFields(row, {
 		approvedHoursAt: parseNullableTimestamp(row.approvedHoursAt),
 		buildReviewedAt: parseNullableTimestamp(row.buildReviewedAt),
@@ -167,7 +168,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 			return fail("VALIDATION_FAILED", "That is not one of this week's starter projects")
 	}
 	// The starter the project will have after this request, since the same request may be the one taking it or dropping it.
-	const starterAfter = data.starterProjectId !== undefined ? data.starterProjectId : project.starterProjectId
+	const starterAfter = data.starterProjectId === undefined ? project.starterProjectId : data.starterProjectId
 
 	// The project page promises the tier is final once the design week is handed in, and a starter project is scoped to tier 1 from the start. Hold the server to the same promise rather than trusting the picker to be hidden.
 	if (data.requestedTier !== undefined && data.requestedTier !== project.requestedTier) {
@@ -206,23 +207,23 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 					: and(row.buildStatus.notIn(FROZEN_PHASE_STATUSES), row.designStatus.notIn(FROZEN_PHASE_STATUSES)),
 			)
 			.updateAndCount({
-				...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
-				...(data.description !== undefined ? { description: sanitizeOptional(data.description) } : {}),
-				...(data.githubRepo !== undefined ? { githubRepo: data.githubRepo } : {}),
+				...(data.title === undefined ? {} : { title: sanitize(data.title) }),
+				...(data.description === undefined ? {} : { description: sanitizeOptional(data.description) }),
+				...(data.githubRepo === undefined ? {} : { githubRepo: data.githubRepo }),
 				// `requestedTier`, never `tier`. The assigned tier is a reviewer's call at design approval because it decides parts money, and letting this route write it would let anyone grant themselves $100.
 				...(changing.includes("requestedTier") && data.requestedTier !== undefined
 					? { requestedTier: data.requestedTier }
 					: {}),
-				...(data.starterProjectId !== undefined ? { starterProjectId: data.starterProjectId } : {}),
-				...(data.coverImageKey !== undefined ? { coverImageKey: data.coverImageKey } : {}),
-				...(data.artifactLinks !== undefined
-					? {
+				...(data.starterProjectId === undefined ? {} : { starterProjectId: data.starterProjectId }),
+				...(data.coverImageKey === undefined ? {} : { coverImageKey: data.coverImageKey }),
+				...(data.artifactLinks === undefined
+					? {}
+					: {
 							artifactLinks: data.artifactLinks.map(l => ({
 								label: sanitize(l.label),
 								url: l.url,
 							})),
-						}
-					: {}),
+						}),
 			})
 		if (claimed !== 1) return null
 		return tx.orm.public.ThemeProject.whereUnique({ id }).first()

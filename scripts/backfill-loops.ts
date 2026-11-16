@@ -76,11 +76,7 @@ async function main() {
 		pending.push({ email: key, hasRow: Boolean(buf), recordId, userId: u.id })
 	}
 
-	if (!commit)
-		console.log(
-			`[dry run] already linked: ${alreadyLinked}, would link: ${pending.length}, unmappable (no Signups row for this email): ${unmappable}`,
-		)
-	else {
+	if (commit) {
 		for (const p of pending) {
 			if (p.hasRow)
 				await db.orm.public.RsvpBuffer.where({ email: p.email }).update({
@@ -108,7 +104,10 @@ async function main() {
 		console.log(
 			"Note: linked rows still need the rsvp-drain to PATCH `Half-Life User ID` upstream; it works through its queue on its own schedule.",
 		)
-	}
+	} else
+		console.log(
+			`[dry run] already linked: ${alreadyLinked}, would link: ${pending.length}, unmappable (no Signups row for this email): ${unmappable}`,
+		)
 
 	const result = await syncLoopsProperties({ dryRun: !commit })
 	if ("skipped" in result) console.log(`loops sync skipped: ${result.skipped}`)

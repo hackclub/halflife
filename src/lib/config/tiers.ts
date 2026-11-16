@@ -25,7 +25,7 @@ export interface Tier {
 	/**
 	 * Real projects built at this tier, shown when choosing one. Keyed by theme, because a tier is shared by every week but what fits in it is not.
 	 */
-	readonly showcase: Partial<Record<Theme, readonly TierShowcaseProject[]>>
+	readonly showcase: Partial<{ [_ in Theme]: readonly TierShowcaseProject[] }>
 }
 
 export interface TierShowcaseProject {

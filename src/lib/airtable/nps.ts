@@ -216,13 +216,13 @@ export async function writeNpsTexts(
 ): Promise<{ updated: boolean } | { skipped: string }> {
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
-	const columns = values.howLikelyRecommend !== undefined ? [...textColumns(), scoreColumn()] : textColumns()
+	const columns = values.howLikelyRecommend === undefined ? textColumns() : [...textColumns(), scoreColumn()]
 	const writable = await existingColumns(config, RSVP_TABLE_ID, columns)
 	const fields: { [_: string]: unknown } = {
 		[fieldKey(RSVP.fields.howDoingWell)]: values.howDoingWell?.trim() ? values.howDoingWell.trim() : undefined,
 		[fieldKey(RSVP.fields.howHear)]: values.howHear?.trim() ? values.howHear.trim() : undefined,
 		[fieldKey(RSVP.fields.howImprove)]: values.howImprove?.trim() ? values.howImprove.trim() : undefined,
-		...(values.howLikelyRecommend !== undefined ? { [scoreColumn()]: values.howLikelyRecommend } : {}),
+		...(values.howLikelyRecommend === undefined ? {} : { [scoreColumn()]: values.howLikelyRecommend }),
 	}
 	if (values.howLikelyRecommend !== undefined && !writable.has(scoreColumn())) return { skipped: "no_column" }
 	for (const key of Object.keys(fields)) if (fields[key] === undefined || !writable.has(key)) delete fields[key]

@@ -12,7 +12,7 @@ import { STAGE_LABELS } from "@/lib/fulfillment"
 import { formatUsd } from "@/lib/money"
 import type { FulfillmentOrderRow } from "@/lib/queries/admin"
 
-const STATUS: Record<ShopOrderStatus, { label: string; tone: "success" | "warning" | "danger" | "muted" }> = {
+const STATUS: { [_ in ShopOrderStatus]: { label: string; tone: "success" | "warning" | "danger" | "muted" } } = {
 	CANCELLED: { label: "Cancelled by participant", tone: "muted" },
 	FULFILLED: { label: "Fulfilled", tone: "success" },
 	ON_HOLD: { label: "On hold", tone: "warning" },
@@ -21,7 +21,7 @@ const STATUS: Record<ShopOrderStatus, { label: string; tone: "success" | "warnin
 }
 
 /** The buyer's choice, in the words staff act on. */
-const DELIVERY_LABELS: Record<ShopDeliveryPreference, string> = {
+const DELIVERY_LABELS: { [_ in ShopDeliveryPreference]: string } = {
 	GRANT_CARD: "Grant card requested",
 	SHIP: "Ship to address",
 }

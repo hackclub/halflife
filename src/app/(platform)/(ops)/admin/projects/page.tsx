@@ -28,9 +28,10 @@ interface Props {
 
 const STATUSES = Object.values(PhaseStatus)
 
+const status = (v?: string) => STATUSES.find(x => x === v)
+
 /** Anything unrecognised in the query string is dropped, not trusted. */
 function filtersFrom(s: FirstValues<Search>): ProjectFilters {
-	const status = (v?: string) => STATUSES.find(x => x === v)
 	const tier = Number(s.tier)
 	return {
 		buildStatus: status(s.build),

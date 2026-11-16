@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { IconChevronLeft, IconChevronRight } from "@/components/platform/icons"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
+import { useClock } from "@/lib/browser-state"
 import { cx } from "@/lib/cx"
 import {
 	type CalendarEvent,
@@ -64,16 +65,19 @@ export function EventCalendar({
 	events: CalendarEvent[]
 	timeZone: string
 }) {
-	const today = useMemo(() => calendarDay(new Date(), timeZone), [timeZone])
+	// The clock ticks every second, so `today` moves on at midnight without a timer of its own. Null until mounted, and the calendar only draws once it is open, so the epoch placeholder never reaches the screen.
+	const now = useClock() ?? new Date(0)
+	const today = calendarDay(now, timeZone)
 	// The week to open on. The header this dialog hangs off counts down to the next event, so opening the calendar on *its* week is what makes the thing the button just advertised visible: a call on Friday the 30th used to land in an empty Monday-to-Sunday grid because "today" is still in the week before. An event already under way keeps today's week, since its start may be the previous day.
-	const openingDay = useMemo(() => {
-		const next = nextEvent(events, new Date())
+	// Not memoised: it reads the clock, which changes every second, so a memo would only recompute on every tick anyway.
+	const openingDay = (() => {
+		const next = nextEvent(events, now)
 		if (!next) return today
 		const nextDay = calendarDay(next.startsAt, timeZone)
 		// A live event that began yesterday still belongs to today's view, not last week's.
 		if (nextDay < today) return today
 		return nextDay
-	}, [events, timeZone, today])
+	})()
 	// Any day in the viewed week; the grid always shows its Monday-to-Sunday.
 	const [anchor, setAnchor] = useState(openingDay)
 	const [selected, setSelected] = useState<string | null>(null)
@@ -87,16 +91,6 @@ export function EventCalendar({
 		setAnchor(openingDay)
 		setSelected(null)
 	}
-
-	// Midnight can roll over while the dialog is open, and the grid would otherwise be highlighting yesterday until it was closed and reopened.
-	useEffect(() => {
-		if (!open) return
-		const timer = setInterval(() => {
-			const current = calendarDay(new Date(), timeZone)
-			setSeen(prev => (prev.today === current ? prev : { open: true, today: current }))
-		}, 60_000)
-		return () => clearInterval(timer)
-	}, [open, timeZone])
 
 	// Each day's clipped segments with greedy overlap lanes, plus the week's shared hour range. Lanes are counted per overlap crowd, not per day: two calls sharing an hour split their column, but a lone event keeps the full width even on a day that is busy elsewhere.
 	const { segments, startHour, endHour } = useMemo(() => {
@@ -151,7 +145,7 @@ export function EventCalendar({
 	const gridHeight = spanHours * HOUR_PX
 	const hours = useMemo(() => Array.from({ length: spanHours + 1 }, (_, i) => startHour + i), [startHour, spanHours])
 
-	const upcoming = useMemo(() => events.filter(event => eventIsUpcoming(event, new Date())).slice(0, 6), [events])
+	const upcoming = events.filter(event => eventIsUpcoming(event, now)).slice(0, 6)
 	const onDay = useMemo(() => (selected ? eventsOnDay(events, selected, timeZone) : []), [events, selected, timeZone])
 
 	function shift(delta: number) {
@@ -285,7 +279,7 @@ export function EventCalendar({
 										<EventBlock
 											day={day}
 											gridHeight={gridHeight}
-											isLive={eventIsLive(segment.event, new Date())}
+											isLive={eventIsLive(segment.event, now)}
 											key={segment.event.id}
 											onSelect={() => setSelected(day)}
 											segment={segment}
@@ -315,7 +309,7 @@ export function EventCalendar({
 					<ul className="mt-3 grid gap-3">
 						{listed.map(event => (
 							<li key={event.id}>
-								<EventRow event={event} timeZone={timeZone} />
+								<EventRow event={event} now={now} timeZone={timeZone} />
 							</li>
 						))}
 					</ul>
@@ -397,9 +391,9 @@ function TodayLine({ startHour, gridHeight, timeZone }: { startHour: number; gri
 }
 
 /** One event: when, and where to turn up. */
-function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string }) {
+function EventRow({ event, now, timeZone }: { event: CalendarEvent; now: Date; timeZone: string }) {
 	const colour = eventColour(event.colour)
-	const live = eventIsLive(event, new Date())
+	const live = eventIsLive(event, now)
 	return (
 		<div
 			className="sketch flex gap-3.5 bg-paper px-4 py-3.5"

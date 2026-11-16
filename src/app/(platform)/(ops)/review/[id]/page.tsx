@@ -98,10 +98,10 @@ export default async function ReviewDetailPage({ params }: Props) {
 				title="Claim"
 			>
 				<div className="hl-row">
-					{!claimedByMe ? (
-						<ActionButton label="Claim" url={`/api/review/submissions/${id}/claim`} variant="primary" />
-					) : (
+					{claimedByMe ? (
 						<ActionButton label="Release" method="DELETE" url={`/api/review/submissions/${id}/claim`} />
+					) : (
+						<ActionButton label="Claim" url={`/api/review/submissions/${id}/claim`} variant="primary" />
 					)}
 				</div>
 			</Panel>
