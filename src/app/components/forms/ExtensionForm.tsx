@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { Button, Callout, TextInput } from "@/app/components/ui"
-import { useBrowserValue } from "@/lib/browser-state"
+import { useBrowserValue, useClock } from "@/lib/browser-state"
 import { toLocalInput } from "@/lib/deadline"
 import { DAY_MS } from "@/lib/time"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -26,7 +26,9 @@ export function ExtensionForm({
 	const value = typed?.base === current ? typed.value : formatted
 	const { busy, error, run } = useAction()
 
-	const active = current !== null && new Date(current) > new Date()
+	// Null until mounted. Until the clock arrives the extension on record is taken as live, so the server markup says "Extended" rather than "Expired", and the client's read straight after hydration corrects it.
+	const now = useClock()
+	const active = current !== null && (now === null || new Date(current) > now)
 
 	function save(until: Date | null) {
 		void run(
