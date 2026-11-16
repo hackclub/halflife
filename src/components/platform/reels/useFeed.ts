@@ -60,9 +60,9 @@ export function useFeed(limit = 12): {
 		[limit, done],
 	)
 
-	// Fetching the first page is the external-system sync an effect is for, and every state update inside `load` happens after the await – the rule cannot see that through the call, so it is exempted here rather than worked around with a timeout that would only add a frame of blank feed.
+	// Fetching the first page is the external-system sync an effect is for, and every state update inside `load` happens after the await.
 	useEffect(() => {
-		// updates land after await
+		// oxlint-disable-next-line react/set-state-in-effect -- load only sets state after its await; the rule does not follow calls into async functions
 		void load(null)
 	}, [load])
 
