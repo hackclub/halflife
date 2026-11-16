@@ -109,7 +109,7 @@
 		"react/no-unescaped-entities": "warn",
 		"react/purity": "off",
 		"react/react-in-jsx-scope": "off",
-		"react/refs": "off",
+		"react/refs": "error",
 		"react/set-state-in-effect": "error",
 		"typescript/consistent-indexed-object-style": "off",
 		"typescript/consistent-return": "off",
