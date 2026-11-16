@@ -293,7 +293,8 @@ export function withRoute<A extends unknown[]>(
 			return await handler(...args)
 		} catch (err) {
 			if (err instanceof HttpError) return fail(err.code, err.message, err.details)
-			console.error("[api] unhandled error:", err)
+			// The stack alone: logging the error object also dumps its enumerable properties, such as a timeout's DOMException error codes.
+			console.error(`[api] unhandled error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`)
 			return fail("INTERNAL", "Something went wrong")
 		}
 	}
