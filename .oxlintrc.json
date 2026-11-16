@@ -117,7 +117,7 @@
 		"typescript/method-signature-style": ["error", "method"],
 		"typescript/no-confusing-void-expression": "off",
 		"typescript/no-explicit-any": "error",
-		"typescript/no-misused-promises": "off",
+		"typescript/no-misused-promises": "error",
 		"typescript/no-non-null-assertion": "error",
 		"typescript/parameter-properties": ["error", { "prefer": "parameter-property" }],
 		"typescript/prefer-includes": "warn",
