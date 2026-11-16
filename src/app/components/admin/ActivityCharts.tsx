@@ -72,6 +72,15 @@ function ProgrammeToggle() {
 	)
 }
 
+const perActiveUser = (value: number, users: number) => (users > 0 ? value / users : 0)
+
+/** One segment per pair of points, because a `d` attribute cannot carry the percentage x. */
+const segments = (at: { x: number; y: number }[]) =>
+	at.slice(1).map((point, i) => {
+		const previous = at[i] ?? point
+		return { x1: previous.x, x2: point.x, y1: previous.y, y2: point.y }
+	})
+
 /**
  * Hours and devlogs per day, as two lines over one shared day axis and two scales.
  *
@@ -97,7 +106,6 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 		)
 
 	// A gap-filled day with no contributors has no average to take and no activity to take it from, so it reads as zero. Left as `value / users` it would divide by zero into NaN and put a hole in the path.
-	const perActiveUser = (value: number, users: number) => (users > 0 ? value / users : 0)
 	const hoursOf = (d: DayActivity) => (perUser ? perActiveUser(d.hours, d.users) : d.hours)
 	const devlogsOf = (d: DayActivity) => (perUser ? perActiveUser(d.devlogs, d.users) : d.devlogs)
 
@@ -127,12 +135,6 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 	const yFor = (v: number, max: number) => PAD_T + plotH - (v / max) * plotH
 	const points = (pick: (d: DayActivity) => number, max: number) =>
 		days.map((d, i) => ({ x: xOf(i), y: yFor(pick(d), max) }))
-	/** One segment per pair of points, because a `d` attribute cannot carry the percentage x. */
-	const segments = (at: { x: number; y: number }[]) =>
-		at.slice(1).map((point, i) => {
-			const previous = at[i] ?? point
-			return { x1: previous.x, x2: point.x, y1: previous.y, y2: point.y }
-		})
 	const hoursSegments = segments(points(hoursOf, hoursAxis.top))
 	const devlogsSegments = segments(points(devlogsOf, devlogsAxis.top))
 	/** The fill under the hours line, as a column per day rather than a closed path, for the same reason. */
@@ -339,7 +341,7 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 	const yFor = (v: number) => PAD_T + plotH - (v / axis.top) * plotH
 	const at = days.map((d, i) => ({ x: xOf(i), y: yFor(d.users) }))
 	/** One segment per pair of points, because a `d` attribute cannot carry the percentage x. */
-	const segments = at.slice(1).map((point, i) => {
+	const segmentPaths = at.slice(1).map((point, i) => {
 		const previous = at[i] ?? point
 		return { x1: previous.x, x2: point.x, y1: previous.y, y2: point.y }
 	})
@@ -435,7 +437,7 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 							</rect>
 						))}
 						<GridLines ticks={ticks} yFor={yFor} />
-						{segments.map((segment, i) => (
+						{segmentPaths.map((segment, i) => (
 							<line
 								key={`l${i}`}
 								stroke="var(--color-teal)"

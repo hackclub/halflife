@@ -32,6 +32,8 @@ export interface UnifiedJustificationColumns {
 	specificTechnicalFeatures: string
 }
 
+const section = (heading: string, body: string, lead = ""): string => (body ? `\n\n[${heading}]\n${lead}${body}` : "")
+
 /**
  * The formula on `Automation - Unified Justification`, character for character – including the space it puts before the deflation text, and the Hackatime lines it writes even when they are empty.
  *
@@ -39,7 +41,6 @@ export interface UnifiedJustificationColumns {
  */
 export function unifiedJustification(columns: UnifiedJustificationColumns): string {
 	if (columns.overrideJustification) return columns.overrideJustification
-	const section = (heading: string, body: string, lead = ""): string => (body ? `\n\n[${heading}]\n${lead}${body}` : "")
 	return [
 		`[HACKATIME]\nHackatime ID: ${columns.hackatimeId}\nHackatime Projects: ${columns.hackatimeProjects}`,
 		columns.lapseLinks ? `\nLapse Links: ${columns.lapseLinks}` : "",

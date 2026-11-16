@@ -5,6 +5,88 @@ import { EmptyState } from "@/app/components/ui"
 import { pctOf } from "@/lib/numbers"
 import type { FlowStep } from "@/lib/queries/admin"
 
+const row = (s: FlowStep, prevWidth: number, bottomWidth: number, prevLabel: string | undefined, baseline: boolean) => (
+	<Fragment key={s.id}>
+		{!baseline && s.dropOffPct > 0 && (
+			<>
+				<div />
+				<div
+					aria-label={`${s.retainPct}% continued and ${s.dropOffPct}% stopped between ${prevLabel} and ${s.label}`}
+					role="note"
+					style={{
+						fontSize: "0.78rem",
+						fontVariantNumeric: "tabular-nums",
+						fontWeight: flowHeatWeight(s.dropOffPct),
+						textAlign: "center",
+						...flowHeatInk(s.dropOffPct),
+					}}
+				>
+					↓ {s.retainPct}% through · {s.dropOffPct}% stopped
+				</div>
+			</>
+		)}
+
+		<div style={{ minHeight: "3.8rem", minWidth: 0 }}>
+			<div style={{ fontWeight: 700 }}>
+				{s.label}
+				{baseline && (
+					<span className="hl-hint" style={{ fontSize: "0.72rem", fontWeight: 400 }}>
+						{" "}
+						· baseline
+					</span>
+				)}
+			</div>
+			<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
+				{s.hint}
+			</div>
+		</div>
+
+		<div
+			aria-hidden="true"
+			style={{ height: "2.75rem", position: "relative" }}
+			title={`${s.label}: ${s.count} people · ${s.hint}`}
+		>
+			<div
+				style={{
+					inset: 0,
+					position: "absolute",
+					...flowHeat(s.dropOffPct),
+					clipPath: `polygon(${(100 - prevWidth) / 2}% 0, ${(100 + prevWidth) / 2}% 0, ${(100 + bottomWidth) / 2}% 100%, ${(100 - bottomWidth) / 2}% 100%)`,
+				}}
+			/>
+			{/* The headcount rides inside the band, white on a dark pill so a thin tail's number stays legible even where it overflows the band onto the panel. */}
+			<span
+				style={{
+					display: "grid",
+					inset: 0,
+					placeItems: "center",
+					position: "absolute",
+				}}
+			>
+				<span
+					style={{
+						background: "rgba(0,0,0,.4)",
+						borderRadius: "999px",
+						color: "#fff",
+						fontSize: "0.88rem",
+						fontVariantNumeric: "tabular-nums",
+						fontWeight: 800,
+						lineHeight: 1.35,
+						padding: "0 0.4rem",
+						whiteSpace: "nowrap",
+					}}
+				>
+					{s.count}
+					{baseline ? " users " : " "}
+					<span style={{ fontSize: "0.74rem", fontWeight: 400 }}>
+						· {s.ofSignupsPct}%{baseline ? " of signups" : ""}
+					</span>
+				</span>
+			</span>
+		</div>
+	</Fragment>
+)
+
 /**
  * The funnel as an actual funnel running down the page: each stage is a trapezoid whose top edge meets the stage above it and whose bottom edge is its own share of signups, so the slope between two stages *is* the drop-off. Captions sit in a column to the left of the funnel, where text never fights the colour for contrast, and the through/stopped share for each joint is named in the connector between its two stages. Each stage is heat-coloured by the share of the previous stage it lost, from blue (no loss) to red (all lost).
  *
@@ -32,94 +114,6 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const share = (n: number) => (top > 0 ? (n / top) * 100 : 0)
 	const widthOf = (n: number) => (n === 0 ? 0 : Math.max(share(n), MIN_W))
 	const widths = rows.map(s => widthOf(s.count))
-
-	const row = (
-		s: FlowStep,
-		prevWidth: number,
-		bottomWidth: number,
-		prevLabel: string | undefined,
-		baseline: boolean,
-	) => (
-		<Fragment key={s.id}>
-			{!baseline && s.dropOffPct > 0 && (
-				<>
-					<div />
-					<div
-						aria-label={`${s.retainPct}% continued and ${s.dropOffPct}% stopped between ${prevLabel} and ${s.label}`}
-						role="note"
-						style={{
-							fontSize: "0.78rem",
-							fontVariantNumeric: "tabular-nums",
-							fontWeight: flowHeatWeight(s.dropOffPct),
-							textAlign: "center",
-							...flowHeatInk(s.dropOffPct),
-						}}
-					>
-						↓ {s.retainPct}% through · {s.dropOffPct}% stopped
-					</div>
-				</>
-			)}
-
-			<div style={{ minHeight: "3.8rem", minWidth: 0 }}>
-				<div style={{ fontWeight: 700 }}>
-					{s.label}
-					{baseline && (
-						<span className="hl-hint" style={{ fontSize: "0.72rem", fontWeight: 400 }}>
-							{" "}
-							· baseline
-						</span>
-					)}
-				</div>
-				<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
-					{s.hint}
-				</div>
-			</div>
-
-			<div
-				aria-hidden="true"
-				style={{ height: "2.75rem", position: "relative" }}
-				title={`${s.label}: ${s.count} people · ${s.hint}`}
-			>
-				<div
-					style={{
-						inset: 0,
-						position: "absolute",
-						...flowHeat(s.dropOffPct),
-						clipPath: `polygon(${(100 - prevWidth) / 2}% 0, ${(100 + prevWidth) / 2}% 0, ${(100 + bottomWidth) / 2}% 100%, ${(100 - bottomWidth) / 2}% 100%)`,
-					}}
-				/>
-				{/* The headcount rides inside the band, white on a dark pill so a thin tail's number stays legible even where it overflows the band onto the panel. */}
-				<span
-					style={{
-						display: "grid",
-						inset: 0,
-						placeItems: "center",
-						position: "absolute",
-					}}
-				>
-					<span
-						style={{
-							background: "rgba(0,0,0,.4)",
-							borderRadius: "999px",
-							color: "#fff",
-							fontSize: "0.88rem",
-							fontVariantNumeric: "tabular-nums",
-							fontWeight: 800,
-							lineHeight: 1.35,
-							padding: "0 0.4rem",
-							whiteSpace: "nowrap",
-						}}
-					>
-						{s.count}
-						{baseline ? " users " : " "}
-						<span style={{ fontSize: "0.74rem", fontWeight: 400 }}>
-							· {s.ofSignupsPct}%{baseline ? " of signups" : ""}
-						</span>
-					</span>
-				</span>
-			</div>
-		</Fragment>
-	)
 
 	return (
 		// width:100% – the panel is a flex column, where auto margins alone shrink-wrap this to its content instead of filling the panel.

@@ -308,6 +308,8 @@ function unlockedIn(gate: TrailGate, id: string): boolean {
 	return withoutOptionalIdea(list.slice(0, i)).every(done)
 }
 
+const firstFinish = (c: Checkpoint) => (c.kind === "reel" ? `Post ${c.title} first.` : `Finish ${c.title} first.`)
+
 /**
  * Why a checkpoint is shut, in the maker's terms. Null when it is open.
  *
@@ -316,7 +318,6 @@ function unlockedIn(gate: TrailGate, id: string): boolean {
 function lockReasonIn(gate: TrailGate, id: string): string | null {
 	const { save, weeks } = gate
 	// Titles are node names, so they keep their capital. The verb follows the kind: you post a reel, you finish everything else.
-	const firstFinish = (c: Checkpoint) => (c.kind === "reel" ? `Post ${c.title} first.` : `Finish ${c.title} first.`)
 
 	if (unlockedIn(gate, id)) return null
 	if (passedIn(gate, id)) return PASSED_REASON

@@ -35,6 +35,11 @@ interface Params {
 
 export const dynamic = "force-dynamic"
 
+const parseList = <T extends { createdAt: string }>(
+	rows: readonly T[],
+): (Omit<T, "createdAt"> & { createdAt: Date })[] =>
+	rows.map(r => withFields(r, { createdAt: parseDbTimestamp(r.createdAt) }))
+
 export const GET = withSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id } = await params
 
@@ -58,10 +63,6 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	])
 
 	// Prisma 8 reads timestamps as PostgreSQL text; the page works in Dates, so parse them at the boundary.
-	const parseList = <T extends { createdAt: string }>(
-		rows: readonly T[],
-	): (Omit<T, "createdAt"> & { createdAt: Date })[] =>
-		rows.map(r => withFields(r, { createdAt: parseDbTimestamp(r.createdAt) }))
 	const project = withFields(row, {
 		approvedHoursAt: parseNullableTimestamp(row.approvedHoursAt),
 		buildReviewedAt: parseNullableTimestamp(row.buildReviewedAt),

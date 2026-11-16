@@ -1416,6 +1416,8 @@ export interface HoursByUser {
 	overlapUnknownPhases: number
 }
 
+const phaseKey = (themeProjectId: string, phase: Phase) => `${themeProjectId}:${phase}`
+
 /**
  * Hours per account, read the way the ledger reads them.
  *
@@ -1428,7 +1430,6 @@ export interface HoursByUser {
  * `frozenTotal` is deliberately not passed. These are the hours people logged, not the hours they were credited – the reviewer's frozen total is one number per (project, phase) and belongs on the project page, where a participant is reading their own.
  */
 function hoursByUser(inputs: RegionInputs): HoursByUser {
-	const phaseKey = (themeProjectId: string, phase: Phase) => `${themeProjectId}:${phase}`
 	const phases = new Map<string, HoursByPhase>()
 	const recordingsByUser = new Map<string, RecordedWindow[]>()
 	const forPhase = (themeProjectId: string, phase: Phase, userId: string): HoursByPhase => {
@@ -1782,6 +1783,13 @@ export interface FirstProjectStat {
 	users: number
 }
 
+const pretty = (id: string) =>
+	getStarterProject(id)?.title
+	?? id
+		.split(/[-_]/)
+		.map(w => (w ? w[0]?.toUpperCase() + w.slice(1) : w))
+		.join(" ")
+
 /**
  * What users chose for their first project: which starter, or a custom idea.
  *
@@ -1797,12 +1805,6 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 	for (const r of rows) counts.set(r.starterProjectId, (counts.get(r.starterProjectId) ?? 0) + 1)
 
 	// Starter ids outlive the catalogue: resolve a title when one exists, else show the id prettified rather than dropped.
-	const pretty = (id: string) =>
-		getStarterProject(id)?.title
-		?? id
-			.split(/[-_]/)
-			.map(w => (w ? w[0]?.toUpperCase() + w.slice(1) : w))
-			.join(" ")
 
 	return [...counts]
 		.filter(([, users]) => users > 0)

@@ -325,6 +325,8 @@ export interface SpansWarmTarget {
 	userId: string
 }
 
+const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
+
 /**
  * Warm the span cache for a batch of links, for the scheduled sync.
  *
@@ -334,7 +336,6 @@ export interface SpansWarmTarget {
  */
 export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promise<{ warmed: number; failed: number }> {
 	if (targets.length === 0) return { failed: 0, warmed: 0 }
-	const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
 	const projectIds = [...new Set(targets.map(t => t.themeProjectId))]
 	const userIds = [...new Set(targets.map(t => t.userId))]
 

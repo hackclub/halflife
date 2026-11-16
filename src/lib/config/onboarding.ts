@@ -169,6 +169,16 @@ export function getStarterProject(id: string): StarterProject | undefined {
 	return STARTER_PROJECTS.find(p => p.id === id)
 }
 
+const normalise = (text: string | null) =>
+	(text ?? "")
+		.replaceAll(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+		.replaceAll(/[\u2018\u2019]/g, "'")
+		.replaceAll(/[\u201C\u201D]/g, '"')
+		.replaceAll(/[\u2013\u2014]/g, "-")
+		.replaceAll(/\s+/g, " ")
+		.trim()
+		.toLowerCase()
+
 /**
  * Whether a project is still carrying the starter's own description.
  *
@@ -178,15 +188,6 @@ export function usesStarterDefaultDescription(starterProjectId: string | null, d
 	if (!starterProjectId) return false
 	const starter = getStarterProject(starterProjectId)
 	if (!starter) return false
-	const normalise = (text: string | null) =>
-		(text ?? "")
-			.replaceAll(/[\u200B-\u200D\u2060\uFEFF]/g, "")
-			.replaceAll(/[\u2018\u2019]/g, "'")
-			.replaceAll(/[\u201C\u201D]/g, '"')
-			.replaceAll(/[\u2013\u2014]/g, "-")
-			.replaceAll(/\s+/g, " ")
-			.trim()
-			.toLowerCase()
 	return normalise(description) === normalise(starter.description)
 }
 

@@ -6,6 +6,13 @@ import { buildCoinsFor, designCoinsFor } from "../src/lib/hours"
 import { round2 } from "../src/lib/money"
 import db from "../src/lib/prisma8"
 
+async function ledgerTotal(themeProjectId: string, userId: string, kinds: LedgerKind[]): Promise<number> {
+	const { total } = await db.orm.public.LedgerEntry.where({ themeProjectId, userId })
+		.where(entry => entry.kind.in(kinds))
+		.aggregate(sum => ({ total: sum.sum("amount") }))
+	return total ?? 0
+}
+
 /**
  * Pay the coins that approvals recorded with a zero approved-hours override never earned.
  *
@@ -92,13 +99,6 @@ async function main() {
 		targets: Target[]
 		title: string
 		userId: string
-	}
-
-	async function ledgerTotal(themeProjectId: string, userId: string, kinds: LedgerKind[]): Promise<number> {
-		const { total } = await db.orm.public.LedgerEntry.where({ themeProjectId, userId })
-			.where(entry => entry.kind.in(kinds))
-			.aggregate(sum => ({ total: sum.sum("amount") }))
-		return total ?? 0
 	}
 
 	// A project can have more than one hand-in per phase (a return, then another). Only the

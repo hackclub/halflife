@@ -37,6 +37,8 @@ function tether(a: Rect, b: Rect) {
 	}
 }
 
+const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi)
+
 /**
  * Cuts holes in a dimmed overlay around live elements and parks a coach card beside the first of them. The highlight never takes pointer events, so the element underneath stays clickable when the step asks the user to act on it.
  *
@@ -182,7 +184,6 @@ export function Spotlight({
 	const cardW = Math.min(340, vw - 32)
 	const cardH = 190
 	const gap = 14
-	const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi)
 
 	let cardTop: number
 	let cardLeft: number

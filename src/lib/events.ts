@@ -91,10 +91,11 @@ export function msUntilStart(event: Pick<CalendarEvent, "startsAt">, now: Date):
 	return Math.max(0, event.startsAt.getTime() - now.getTime())
 }
 
+const pad = (n: number) => n.toString().padStart(2, "0")
+
 /** `YYYY-MM-DD` for a year/month/day, zero-padded. */
-export function dayKey(year: number, month: number, day: number): string {
-	const pad = (n: number) => n.toString().padStart(2, "0")
-	return `${year}-${pad(month)}-${pad(day)}`
+export function dayKey(year: number, monthNumber: number, day: number): string {
+	return `${year}-${pad(monthNumber)}-${pad(day)}`
 }
 
 /** The month a day string belongs to, for opening the grid on the right one. */
@@ -127,13 +128,14 @@ export function shiftWeek(day: string, offset: number): string {
 	return addDays(day, offset * 7)
 }
 
+const month = (year: number, m: number) =>
+	new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(year, m - 1, 1)))
+
 /** "March 2 - 8, 2026", widening to months and years when the week straddles them. */
 export function weekLabel(days: readonly string[]): string {
 	const [first = "", last = ""] = [days[0], days[6]]
 	const [fy = 1970, fm = 1, fd = 1] = first.split("-").map(Number)
 	const [ly = 1970, lm = 1, ld = 1] = last.split("-").map(Number)
-	const month = (year: number, m: number) =>
-		new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(year, m - 1, 1)))
 	if (fy !== ly) return `${month(fy, fm)} ${fd}, ${fy} - ${month(ly, lm)} ${ld}, ${ly}`
 	if (fm !== lm) return `${month(fy, fm)} ${fd} - ${month(ly, lm)} ${ld}, ${ly}`
 	return `${month(fy, fm)} ${fd} - ${ld}, ${fy}`
@@ -178,19 +180,19 @@ export function daySegment(
 
 /** "Thursday, March 5" – a day's own heading, with no time attached. */
 export function dayLabel(day: string): string {
-	const { year, month } = monthOf(day)
+	const { year, month: monthNumber } = monthOf(day)
 	const dayOfMonth = Number(day.split("-")[2] ?? 1)
 	return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long", timeZone: "UTC", weekday: "long" }).format(
-		new Date(Date.UTC(year, month - 1, dayOfMonth)),
+		new Date(Date.UTC(year, monthNumber - 1, dayOfMonth)),
 	)
 }
 
 /** "Thu Mar 5" – the short form, for a grid cell's accessible name. */
 export function dayShort(day: string): string {
-	const { year, month } = monthOf(day)
+	const { year, month: monthNumber } = monthOf(day)
 	const dayOfMonth = Number(day.split("-")[2] ?? 1)
 	return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" }).format(
-		new Date(Date.UTC(year, month - 1, dayOfMonth)),
+		new Date(Date.UTC(year, monthNumber - 1, dayOfMonth)),
 	)
 }
 

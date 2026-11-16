@@ -25,6 +25,9 @@ export interface JournalImages {
 	uploading: number
 }
 
+const mightBeImage = (e: DragEvent) =>
+	["Files", "text/html", "text/uri-list"].some(t => e.dataTransfer.types.includes(t))
+
 /**
  * Pictures in the journal entry: picked, dropped or pasted, all landing in the text where the cursor is.
  *
@@ -140,8 +143,6 @@ export function useJournalImages({
 	}
 
 	// A drag that could be carrying an image: files, or a picture dragged off another page, which comes as markup and an address rather than a file. Dragging a selection around the entry is plain text, and not ours.
-	const mightBeImage = (e: DragEvent) =>
-		["Files", "text/html", "text/uri-list"].some(t => e.dataTransfer.types.includes(t))
 
 	return {
 		addJournalImages,

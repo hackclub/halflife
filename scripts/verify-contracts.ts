@@ -39,8 +39,8 @@ function check(label: string, ok: boolean, detail = "") {
 /* ── 1. Methods ──────────────────────────────────────────────────────────── */
 
 function walk(dir: string): string[] {
-	return readdirSync(dir).flatMap(entry => {
-		const full = join(dir, entry)
+	return readdirSync(dir).flatMap(name => {
+		const full = join(dir, name)
 		return statSync(full).isDirectory() ? walk(full) : full.endsWith(".ts") || full.endsWith(".tsx") ? [full] : []
 	})
 }
@@ -479,12 +479,13 @@ async function checkUploadKeys(): Promise<void> {
 		check(`key · ${key || "(empty)"} ${owned ? "is mine" : "is not mine"}`, isOwnedKey(me, key) === owned)
 }
 
+const asciiBytes = (s: string) => Array.from(s, c => c.codePointAt(0) ?? 0)
+
 async function checkVideoSignatures(): Promise<void> {
 	const { isVideoBytes } = await import("../src/lib/uploads/r2")
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
 	// A MIME type and an extension are only claims; the bytes decide. The `ftyp` box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a video one – otherwise a still image renamed `.mp4` becomes a reel.
-	const asciiBytes = (s: string) => Array.from(s, c => c.codePointAt(0) ?? 0)
 	const isoFile = (major: string, compatible: string[] = []) => {
 		const body = [
 			0,
@@ -539,6 +540,21 @@ async function checkAriExternalIds(): Promise<void> {
 	check("ari · rejects empty project", parseAriExternalId(":design") === null)
 }
 
+const clip = (
+	over: Partial<{
+		coveredSeconds: number | null
+		externalId: string | null
+		hackatimeProject: string | null
+		provider: string
+	}> = {},
+) => ({
+	coveredSeconds: 3600,
+	externalId: "clip_1" as string | null,
+	hackatimeProject: "The Track" as string | null,
+	provider: "lapse",
+	...over,
+})
+
 async function checkAriJournalTime(): Promise<void> {
 	/* ── 5a. Ari's journal time is net of the recording ───────────────────── */
 	//
@@ -547,20 +563,6 @@ async function checkAriJournalTime(): Promise<void> {
 	const { HoursSource } = await import("../src/lib/enums")
 	const { MANUAL, HACKATIME_TRACKED } = HoursSource
 	const counted = new Set(["The Track"])
-	const clip = (
-		over: Partial<{
-			coveredSeconds: number | null
-			externalId: string | null
-			hackatimeProject: string | null
-			provider: string
-		}> = {},
-	) => ({
-		coveredSeconds: 3600,
-		externalId: "clip_1" as string | null,
-		hackatimeProject: "The Track" as string | null,
-		provider: "lapse",
-		...over,
-	})
 	check(
 		"ari · a fully recorded entry claims no devlog minutes",
 		journalMinutes({ hoursClaimed: 2, hoursSource: MANUAL, timelapses: [clip({ coveredSeconds: 7200 })] }, counted)
@@ -597,6 +599,8 @@ async function checkAriJournalTime(): Promise<void> {
 	)
 }
 
+const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
+
 async function checkAriPending(): Promise<void> {
 	const { Phase } = await import("../src/lib/enums")
 	/* ── 5b. Which hand-ins are pending at Ari ─────────────────────────────── */
@@ -604,7 +608,6 @@ async function checkAriPending(): Promise<void> {
 	// What the hourly retry job replays and what the admin Retry button offers: in-review phases whose NEWEST open submission has no ariSubmissionId.
 	const { selectPendingShips } = await import("../src/lib/ari-pending")
 	const { PhaseStatus } = await import("../src/lib/enums")
-	const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
 	const projects = [
 		{ buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" },
 		{ buildStatus: PhaseStatus.in_review, designStatus: PhaseStatus.approved, id: "p2" },
@@ -647,7 +650,6 @@ async function checkAriPending(): Promise<void> {
 
 async function checkAriCounts(): Promise<void> {
 	const { Phase, PhaseStatus } = await import("../src/lib/enums")
-	const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
 	/* ── 5b-iii. Ari's board, counted as Ari counts ────────────────────────── */
 	//
 	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
@@ -840,18 +842,19 @@ async function checkReviewDecision(): Promise<void> {
 	)
 }
 
+const row = (amountCents: number, createdAt: string | null) => ({
+	amountCents,
+	createdAt,
+	memo: null,
+	transactionId: null,
+})
+
 async function checkHcb(): Promise<void> {
 	/* ── 5c. HCB disbursement reconciliation ──────────────────────────────── */
 	//
 	// The one path that decides whether a timed-out top-up is re-sent. An unreadable payload must be ambiguous, never absent: "nothing landed" is the state that pays twice.
 	const { reconcileDisbursement } = await import("../src/lib/hcb")
 	const attemptedAt = new Date(Date.UTC(2026, 0, 1, 0, 0))
-	const row = (amountCents: number, createdAt: string | null) => ({
-		amountCents,
-		createdAt,
-		memo: null,
-		transactionId: null,
-	})
 	const listed = (...rows: ReturnType<typeof row>[]) => ({ kind: "listed" as const, rows })
 	check(
 		"hcb · unreadable payload is ambiguous, never absent",
@@ -880,12 +883,13 @@ async function checkHcb(): Promise<void> {
 	)
 }
 
+const stats = (...items: { name: string; total_seconds: number }[]) => ({ data: { projects: items } })
+
 async function checkHackatimeSeconds(): Promise<void> {
 	/* ── 5d. Hackatime project seconds ─────────────────────────────────────── */
 	//
 	// Approval reads this live, so the difference between "genuinely zero" and "Hackatime no longer lists that project" decides whether someone is paid zero silently or the decision is refused.
 	const { projectSecondsFrom } = await import("../src/lib/hackatime")
-	const stats = (...items: { name: string; total_seconds: number }[]) => ({ data: { projects: items } })
 
 	const presentZero = projectSecondsFrom(stats({ name: "firmware", total_seconds: 0 }), "firmware")
 	check("hackatime · present with 0s is a live zero", !presentZero.stale && presentZero.seconds === 0)
@@ -912,6 +916,8 @@ async function checkHackatimeSeconds(): Promise<void> {
 	check("hackatime · a null body is stale", nullBody.stale && !nullBody.notFound)
 }
 
+const spanList = (...spans: { start_time: number; end_time: number }[]) => ({ spans })
+
 async function checkHackatimeSpans(): Promise<void> {
 	/* ── 5d-ii. Hackatime spans, and the overlap arithmetic ────────────────── */
 	//
@@ -928,7 +934,6 @@ async function checkHackatimeSpans(): Promise<void> {
 		windowsForLink,
 	} = await import("../src/lib/hours-overlap")
 
-	const spanList = (...spans: { start_time: number; end_time: number }[]) => ({ spans })
 	const read = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 2000, start_time: 1700 }))
 	check("hackatime spans · two spans are read", !read.stale && read.spans.length === 2 && read.spans[0]?.start === 1000)
 
@@ -1298,6 +1303,19 @@ async function checkJournalImages(): Promise<void> {
 		check(`images · "${source.slice(0, 40)}" → ${expected}`, countImages(source) === expected)
 }
 
+const entry = (over: Partial<JournalEntry> = {}) => ({
+	content: "<p>Wired <strong>everything</strong> up.</p>",
+	createdAt: new Date("2026-10-06T12:00:00Z"),
+	effectiveDate: "2026-10-06",
+	hoursApproved: null,
+	hoursClaimed: 2,
+	id: "s1",
+	phase: "DESIGN" as const,
+	timelapses: [],
+	title: "Routed it",
+	...over,
+})
+
 async function checkRepoFiles(): Promise<void> {
 	/* ── 6b. Repo sync file rendering ───────────────────────────────────────── */
 	//
@@ -1315,18 +1333,6 @@ async function checkRepoFiles(): Promise<void> {
 			title: "Hackpad",
 			weekId: 1,
 		}
-		const entry = (over: Partial<JournalEntry> = {}) => ({
-			content: "<p>Wired <strong>everything</strong> up.</p>",
-			createdAt: new Date("2026-10-06T12:00:00Z"),
-			effectiveDate: "2026-10-06",
-			hoursApproved: null,
-			hoursClaimed: 2,
-			id: "s1",
-			phase: "DESIGN" as const,
-			timelapses: [],
-			title: "Routed it",
-			...over,
-		})
 
 		const rendered = renderJournal(project, [
 			entry({ createdAt: new Date("2026-10-08T12:00:00Z"), effectiveDate: "2026-10-08", id: "s2", title: "Later" }),

@@ -30,6 +30,16 @@ const REVIEW_PLATFORM_HOSTS = [
 export const isReviewPlatformPath = (pathname: string): boolean =>
 	pathname === "/reviews" || pathname.startsWith("/reviews/")
 
+const addOrigin = (value: string | undefined, target: Set<string>): void => {
+	if (!value) return
+	try {
+		const url = new URL(value)
+		if (url.protocol === "https:") target.add(url.origin)
+	} catch {
+		// A malformed override is ignored rather than taking the header down with it.
+	}
+}
+
 export function contentSecurityPolicy(options: { reviewPlatform?: boolean } = {}): string {
 	const img = new Set([
 		"'self'",
@@ -64,16 +74,6 @@ export function contentSecurityPolicy(options: { reviewPlatform?: boolean } = {}
 		"https://lapse-hackclub.link",
 		"https://*.lapse-hackclub.link",
 	])
-
-	const addOrigin = (value: string | undefined, target: Set<string>): void => {
-		if (!value) return
-		try {
-			const url = new URL(value)
-			if (url.protocol === "https:") target.add(url.origin)
-		} catch {
-			// A malformed override is ignored rather than taking the header down with it.
-		}
-	}
 
 	addOrigin(process.env.CACHET_BASE_URL ?? "https://cachet.dunkirk.sh", img)
 	const uploadHost = process.env.NEXT_PUBLIC_UPLOAD_HOST?.trim()

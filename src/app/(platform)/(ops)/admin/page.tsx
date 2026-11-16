@@ -428,7 +428,7 @@ function SyncResult({ result }: Readonly<{ result: unknown }>) {
  * One metric as a donut pie: the biggest slices named, the long tail folded into Other. Shared by the continent and country panels, once for users and once for hours – both hand it rows shaped the same way and say which field to cut by.
  */
 function MetricPie({
-	title,
+	title: heading,
 	rows,
 	pick,
 	format,
@@ -498,11 +498,11 @@ function MetricPie({
 	return (
 		<figure style={{ margin: 0 }}>
 			<figcaption style={{ fontWeight: 800, marginBottom: "0.5rem", textAlign: "center" }}>
-				{title} · {format(total)}
+				{heading} · {format(total)}
 			</figcaption>
 			<div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: "1rem" }}>
 				<svg
-					aria-label={`${title} by share: ${summary}${colored.length > 3 ? ", and more" : ""}`}
+					aria-label={`${heading} by share: ${summary}${colored.length > 3 ? ", and more" : ""}`}
 					role="img"
 					style={{ flexShrink: 0, height: "11rem", width: "11rem" }}
 					viewBox="0 0 200 200"
@@ -540,7 +540,7 @@ function MetricPie({
 						{format(total)}
 					</text>
 					<text style={{ fill: "var(--color-ink-muted)", fontSize: "0.8rem" }} textAnchor="middle" x={CX} y={CY + 20}>
-						total {title.toLowerCase()}
+						total {heading.toLowerCase()}
 					</text>
 				</svg>
 				<table
@@ -593,6 +593,13 @@ const GOAL_LINE_COLOUR: { [_ in ParticipantGoal]: string } = {
 	PRINTER: "var(--color-accent)",
 }
 
+const perUser = (hours: number, users: number) => (users > 0 ? hours / users : 0)
+
+const title = (d: GoalDayActivity) =>
+	`${d.day}: ${d.byGoal
+		.map(g => `${GOAL_OPTIONS.find(o => o.value === g.goal)?.short ?? g.goal} ${fmtHours(perUser(g.hours, g.users))}`)
+		.join(", ")} per person`
+
 /**
  * Journal hours per active user per day, one line per answer to the goal prompt.
  *
@@ -608,7 +615,6 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 	const plotH = CHART_H - PAD_T - PAD_B
 
 	// A goal nobody worked towards that day has no average to take, so it reads as zero rather than dividing by nobody.
-	const perUser = (hours: number, users: number) => (users > 0 ? hours / users : 0)
 	const lines = GOAL_OPTIONS.map(option => {
 		const values = days.map(d => {
 			const goal = d.byGoal.find(g => g.goal === option.value)
@@ -640,10 +646,6 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 	const first = days[0]?.day
 	const last = days.at(-1)?.day
 	// One title per day on every line's dot, so hovering any of the three gives the whole day rather than a third of it.
-	const title = (d: GoalDayActivity) =>
-		`${d.day}: ${d.byGoal
-			.map(g => `${GOAL_OPTIONS.find(o => o.value === g.goal)?.short ?? g.goal} ${fmtHours(perUser(g.hours, g.users))}`)
-			.join(", ")} per person`
 
 	return (
 		<div>

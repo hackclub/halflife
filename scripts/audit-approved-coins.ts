@@ -5,6 +5,13 @@ import { LedgerKind, Phase, PhaseStatus, ReviewResult, Theme } from "../src/lib/
 import { buildCoinsFor, designCoinsFor } from "../src/lib/hours"
 import db from "../src/lib/prisma8"
 
+async function ledgerTotal(themeProjectId: string, userId: string, kinds: LedgerKind[]): Promise<number> {
+	const { total } = await db.orm.public.LedgerEntry.where({ themeProjectId, userId })
+		.where(entry => entry.kind.in(kinds))
+		.aggregate(sum => ({ total: sum.sum("amount") }))
+	return total ?? 0
+}
+
 /**
  * Explain every approved phase that was paid no coins, or fewer than its decision says.
  *
@@ -96,13 +103,6 @@ async function main() {
 					reviewerId: review.reviewerId,
 				})
 		}
-	}
-
-	async function ledgerTotal(themeProjectId: string, userId: string, kinds: LedgerKind[]): Promise<number> {
-		const { total } = await db.orm.public.LedgerEntry.where({ themeProjectId, userId })
-			.where(entry => entry.kind.in(kinds))
-			.aggregate(sum => ({ total: sum.sum("amount") }))
-		return total ?? 0
 	}
 
 	const counts: { [_: string]: number } = {}

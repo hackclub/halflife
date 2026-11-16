@@ -41,15 +41,16 @@ export function getServerPromoMode(): PromoMode {
 	return "banner"
 }
 
+const onStorage = (event: StorageEvent) => {
+	if (event.key !== STICKER_SHEET_PROMO_KEY) return
+	memory = isMode(event.newValue) ? event.newValue : "banner"
+	emit()
+}
+
 export function subscribePromo(listener: () => void): () => void {
 	listeners.add(listener)
 
 	// Another tab closing the promo should close this one too. `storage` only fires for writes made elsewhere, which is exactly the case handled here.
-	const onStorage = (event: StorageEvent) => {
-		if (event.key !== STICKER_SHEET_PROMO_KEY) return
-		memory = isMode(event.newValue) ? event.newValue : "banner"
-		emit()
-	}
 
 	window.addEventListener("storage", onStorage)
 	return () => {

@@ -34,13 +34,13 @@ describe("tierForHours", () => {
 	})
 })
 
-describe("projectTierId", () => {
-	const project = (over: { designStatus?: PhaseStatus; requestedTier?: number | null; tier?: number | null }) => ({
-		designStatus: over.designStatus ?? PhaseStatus.draft,
-		requestedTier: over.requestedTier ?? null,
-		tier: over.tier ?? null,
-	})
+const project = (over: { designStatus?: PhaseStatus; requestedTier?: number | null; tier?: number | null }) => ({
+	designStatus: over.designStatus ?? PhaseStatus.draft,
+	requestedTier: over.requestedTier ?? null,
+	tier: over.tier ?? null,
+})
 
+describe("projectTierId", () => {
 	test("uses the maker's request until the design is approved", () => {
 		expect(projectTierId(project({ requestedTier: 2 }))).toBe(2)
 		expect(projectTierId(project({ designStatus: PhaseStatus.in_review, requestedTier: 3 }))).toBe(3)

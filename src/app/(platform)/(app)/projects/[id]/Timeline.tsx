@@ -9,6 +9,8 @@ import { cx } from "@/lib/cx"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { TimelineItem, TimelineLapse } from "@/lib/queries/project-page"
 
+const phaseOf = (item: TimelineItem) => (item.kind === "reel" ? null : item.phase)
+
 /**
  * The whole record of a project, newest first: every journal entry with the timelapses behind it, every reel, and each time a week was handed in and decided.
  *
@@ -28,7 +30,6 @@ export function Timeline({
 	allowReport?: boolean
 }) {
 	// Which week each moment belongs to is said once, where that week starts, rather than on every entry – and only once there are two weeks to tell apart. A reel carries no phase, so it sits in whichever week is running when it comes up.
-	const phaseOf = (item: TimelineItem) => (item.kind === "reel" ? null : item.phase)
 	const split = new Set(items.map(phaseOf).filter(Boolean)).size > 1
 	let running: "DESIGN" | "BUILD" | null = null
 	const rows: React.ReactNode[] = []

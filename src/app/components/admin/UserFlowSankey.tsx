@@ -72,6 +72,8 @@ interface Ribbon {
 	value: number
 }
 
+const otherEnd = (side: "out" | "in", r: Ribbon) => (side === "out" ? r.target : r.source)
+
 export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const { stages, total } = diagram
 
@@ -157,10 +159,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			const mine = ribbons
 				.filter(r => (side === "out" ? r.source === node : r.target === node))
 				// Order by where the other end sits, so ribbons leave a box in the order their destinations are stacked.
-				.toSorted((a, b) => {
-					const other = (r: Ribbon) => (side === "out" ? r.target : r.source)
-					return other(a).y0 - other(b).y0
-				})
+				.toSorted((a, b) => otherEnd(side, a).y0 - otherEnd(side, b).y0)
 			// Fan-out ribbons share their source's people across several activity boxes, and fan-in ribbons share their target's across the same activities coming back. Stacking shared ribbons double-counts them – but only where it shows: a few units of overshoot on a small box is sub-pixel, while nesting would hide its smaller flows entirely. So the fan ribbons nest from the box's top edge only when stacking everything would visibly overflow it; otherwise every ribbon stacks sequentially and each flow stays visible.
 			const nestable = (r: Ribbon) => (side === "out" ? r.fan === "out" : r.fan === "in")
 			const boxSize = node.y1 - node.y0

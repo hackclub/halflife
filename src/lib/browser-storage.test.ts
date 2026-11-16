@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { readStored, writeStored } from "./browser-storage"
 
+const fail = () => {
+	throw new Error("SecurityError: storage is blocked")
+}
+
 /** A Map-backed `localStorage`, or one that throws on every call, as a private window does. */
 function fakeStorage(blocked: boolean) {
 	const items = new Map<string, string>()
-	const fail = () => {
-		throw new Error("SecurityError: storage is blocked")
-	}
 	return {
 		getItem: (key: string) => (blocked ? fail() : (items.get(key) ?? null)),
 		removeItem: (key: string) => (blocked ? fail() : void items.delete(key)),
