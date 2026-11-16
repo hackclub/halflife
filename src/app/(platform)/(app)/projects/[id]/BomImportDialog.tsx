@@ -23,17 +23,26 @@ export function BomImportDialog({
 	open: boolean
 	projectId: string
 }) {
-	const [loading, setLoading] = useState(false)
+	const [loading, setLoading] = useState(open)
 	const [importing, setImporting] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [preview, setPreview] = useState<ImportPreview | null>(null)
 
+	// A new read starts whenever the dialog opens or the project changes. The reset happens while rendering, so the effect below only starts the request.
+	const requestKey = open ? projectId : null
+	const [seenKey, setSeenKey] = useState(requestKey)
+	if (requestKey !== seenKey) {
+		setSeenKey(requestKey)
+		if (requestKey !== null) {
+			setPreview(null)
+			setError(null)
+			setLoading(true)
+		}
+	}
+
 	useEffect(() => {
 		if (!open) return
 		let live = true
-		setPreview(null)
-		setError(null)
-		setLoading(true)
 		void (async () => {
 			try {
 				const res = await fetch(`/api/projects/${projectId}/bom/import`, {
