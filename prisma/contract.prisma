@@ -744,6 +744,14 @@ namespace public {
     @@map("program_settings")
   }
 
+  model HcbCredential {
+    id           String             @id @default("singleton")
+    refreshToken String
+    updatedAt    TimestampString(3) @onCreate(now()) @onUpdate(now())
+
+    @@map("hcb_credential")
+  }
+
   model PublicReel {
     id             String                      @id @onCreate(cuid(2))
     url            String

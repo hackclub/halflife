@@ -1,0 +1,51 @@
+[
+  {
+    "id": "table.hcb_credential",
+    "label": "Create table \"hcb_credential\"",
+    "summary": "Creates table \"hcb_credential\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "hcb_credential"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"hcb_credential\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_credential\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"hcb_credential\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"hcb_credential\"",
+        "sql": "CREATE TABLE \"public\".\"hcb_credential\" (\n  \"id\" text DEFAULT 'singleton' NOT NULL,\n  \"refreshToken\" text NOT NULL,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"hcb_credential\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_credential\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"hcb_credential\""
+        }
+      }
+    ]
+  }
+]
