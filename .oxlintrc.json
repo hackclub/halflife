@@ -111,7 +111,7 @@
 		"react/react-in-jsx-scope": "off",
 		"react/refs": "error",
 		"react/set-state-in-effect": "error",
-		"typescript/consistent-indexed-object-style": "off",
+		"typescript/consistent-indexed-object-style": ["error", "index-signature"],
 		"typescript/consistent-return": "off",
 		"typescript/consistent-type-imports": "warn",
 		"typescript/method-signature-style": ["error", "method"],
