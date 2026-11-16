@@ -307,7 +307,12 @@ export const auth = betterAuth({
 			}
 			const line = `${new Date().toISOString()} ${level.toUpperCase()} [Better Auth]: ${message}`
 			// Upstream provider errors can echo request fields; scrub emails/tokens before they reach the logs (L10).
-			const safeArgs = args.map(a => redactForLog(a))
+			// An Error prints as its name, message and cause. Printed whole, it dumps its stack and every property, and a refused database connection is a stack of identical `[cause]` lines.
+			const safeArgs = args.map(a => {
+				if (!(a instanceof Error)) return redactForLog(a)
+				const cause = a.cause instanceof Error ? `: ${a.cause.message}` : ""
+				return redactForLog(`${a.name}: ${a.message}${cause}`)
+			})
 			if (level === "error") console.error(line, ...safeArgs)
 			else if (level === "warn") console.warn(line, ...safeArgs)
 			else console.log(line, ...safeArgs)

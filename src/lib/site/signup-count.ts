@@ -49,7 +49,8 @@ async function walkSignups(config: AirtableConfig): Promise<number | null> {
 			;({ offset } = page)
 		} while (offset)
 	} catch (err) {
-		console.warn("[signup-count] could not count the sign-up list:", err)
+		// The message says what went wrong; a timeout's object dump is 30 lines of DOMException error codes.
+		console.warn(`[signup-count] could not count the sign-up list: ${err instanceof Error ? err.message : String(err)}`)
 		return null
 	}
 	return seen.size

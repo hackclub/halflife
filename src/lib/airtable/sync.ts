@@ -246,6 +246,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		halfLifeProjectId: themeProjectId,
 		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
 		journalUrl: journalUrl ?? "",
+		// The same goes for the reviewer: a re-submission puts the row back in review, so the previous decision's Pass 1 reviewer no longer stands. An approved row keeps it, as the refresh must not erase who decided.
+		pass1Reviewer: phaseStatus === PhaseStatus.in_review ? "" : undefined,
 		playableUrl,
 		projectName: project.title,
 		projectWeek: projectWeekLabel(week) ?? undefined,
