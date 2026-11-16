@@ -31,6 +31,7 @@ export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerP
 			const saved: unknown = JSON.parse(raw)
 			if (!isRecord(saved)) return
 			// hydrating from localStorage
+			// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
 			setPrefs({
 				autoScroll: typeof saved.autoScroll === "boolean" ? saved.autoScroll : DEFAULTS.autoScroll,
 				comments: typeof saved.comments === "boolean" ? saved.comments : DEFAULTS.comments,

@@ -84,6 +84,7 @@ export function ReelViewer() {
 		if (id) {
 			deepLink.current = { comments: params.get("comments") === "1", id }
 			// reading the URL after mount
+			// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
 			setResume({ id, leadIds: [] })
 			return
 		}
@@ -104,6 +105,7 @@ export function ReelViewer() {
 			setCursor(at)
 			setIndex(at)
 			if (isDeep && deepLink.current?.comments) setPendingComments(true)
+			// oxlint-disable-next-line react/set-state-in-effect -- restores the saved reel once the feed is known; the saved position is read after mount, so it cannot be derived during render
 			setResume(null)
 		} else if (!unseenLead && !done && !error && resumePages.current < RESUME_MAX_PAGES) {
 			resumePages.current += 1
@@ -119,6 +121,7 @@ export function ReelViewer() {
 		if (wide) setPrefs({ comments: true })
 		else {
 			// a deep link asks for the comments once
+			// oxlint-disable-next-line react/set-state-in-effect -- opens the comments for a deep link once the reel has landed; the flag is state from an earlier effect, so it cannot be derived during render
 			setSheetShown(true)
 			setSheetOpen(true)
 		}

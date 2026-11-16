@@ -103,6 +103,7 @@ export function RepoSyncSettings({
 
 	useEffect(() => {
 		// fetching on mount and on a new project
+		// oxlint-disable-next-line react/set-state-in-effect -- starts the first load on mount and on a new project; the loading state is set before the request it reports
 		void load()
 	}, [load])
 

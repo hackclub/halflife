@@ -22,6 +22,7 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 
 	useEffect(() => {
 		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
 		if (zone) setViewerZone(zone)
 	}, [])
 

@@ -120,6 +120,7 @@ export function RepoChecks({
 
 	useEffect(() => {
 		// fetching on mount and on a new link
+		// oxlint-disable-next-line react/set-state-in-effect -- starts the first check on mount and on a new link; the loading state is set before the request it reports
 		void run()
 	}, [run])
 

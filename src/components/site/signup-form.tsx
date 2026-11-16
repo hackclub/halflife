@@ -54,6 +54,7 @@ export default function SignupForm({
 		// A callback that could not attach the Hack Club identity sends the person back here with a flag, so they meet an explanation on the field they sign in with rather than an empty page. The common case – a staff-imported row that was never verified – is repaired automatically at the callback (lib/hca-profile), so this is the remainder.
 		if (params.get("error") === "account_not_linked") {
 			// reading the redirect flag after hydration
+			// oxlint-disable-next-line react/set-state-in-effect -- reads the redirect flag from the URL after hydration
 			setStatus("error")
 			setMessage("We couldn't link your Hack Club account. Try again, or reach out in Slack.")
 		}

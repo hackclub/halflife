@@ -33,6 +33,7 @@ export function useDraft(name: string, initial = ""): readonly [string, (value: 
 	// Read after mount, not during render: the server has no storage, and reading it in the initialiser would hydrate a different value from the one the server drew.
 	useEffect(() => {
 		const stored = read(key)
+		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
 		if (stored !== null) setValue(stored)
 	}, [key])
 
@@ -106,6 +107,7 @@ export function useStoredWidth(key: string, fallback: number): readonly [number,
 
 	useEffect(() => {
 		const stored = Number(read(key))
+		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
 		if (stored > 0) setWidth(stored)
 	}, [key])
 
@@ -126,7 +128,7 @@ export function useStoredToggle(key: string): readonly [boolean, (next: boolean)
 
 	// After mount, not in render: the server has no storage, and the first client render has to match what it drew.
 	useEffect(() => {
-		// oxlint-disable-next-line react/no-deriving-state-in-effects -- localStorage is only readable after hydration
+		// oxlint-disable-next-line react/no-deriving-state-in-effects, react/set-state-in-effect -- localStorage is only readable after hydration
 		setOn(read(key) !== "hidden")
 	}, [key])
 

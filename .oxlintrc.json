@@ -110,7 +110,7 @@
 		"react/purity": "off",
 		"react/react-in-jsx-scope": "off",
 		"react/refs": "off",
-		"react/set-state-in-effect": "off",
+		"react/set-state-in-effect": "error",
 		"typescript/consistent-indexed-object-style": "off",
 		"typescript/consistent-return": "off",
 		"typescript/consistent-type-imports": "warn",

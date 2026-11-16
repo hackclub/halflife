@@ -36,6 +36,7 @@ export function EventScheduleButton({
 
 	useEffect(() => {
 		// the browser's clock and zone; the server's are different ones
+		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
 		setNow(new Date())
 		setViewerZone(Intl.DateTimeFormat().resolvedOptions().timeZone ?? timeZone)
 		const timer = setInterval(() => setNow(new Date()), 1000)

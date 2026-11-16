@@ -21,6 +21,7 @@ export function CurrentWeekButton() {
 
 	useEffect(() => {
 		if (!week) {
+			// oxlint-disable-next-line react/set-state-in-effect -- measures the DOM for the current week, which is outside React and cannot be derived during render
 			setSide(null)
 			return
 		}

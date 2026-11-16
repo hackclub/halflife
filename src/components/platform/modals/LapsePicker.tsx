@@ -74,6 +74,7 @@ export function LapsePicker({
 
 	useEffect(() => {
 		// fetching on mount
+		// oxlint-disable-next-line react/set-state-in-effect -- starts the first load on mount and on a new session; the loading state is set before the request it reports
 		void refresh()
 	}, [refresh])
 

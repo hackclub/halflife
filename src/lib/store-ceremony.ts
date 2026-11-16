@@ -149,6 +149,7 @@ export function useStoreCeremony({
 			/* storage unavailable – the trail stays locked */
 		}
 		// hydrating from localStorage
+		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
 		if (next) setCeremony(next)
 		if (bypass) setBypassing(true)
 		if (freestyle) setPreviewingFreestyle(true)

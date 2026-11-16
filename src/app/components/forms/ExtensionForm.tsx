@@ -23,6 +23,7 @@ export function ExtensionForm({
 	const [value, setValue] = useState("")
 	useEffect(() => {
 		// reading the browser's timezone
+		// oxlint-disable-next-line react/set-state-in-effect -- the input shows the viewer's own timezone, which only the browser knows; it is set after mount for hydration and when the extension changes
 		setValue(current ? toLocalInput(new Date(current)) : "")
 	}, [current])
 	const { busy, error, run } = useAction()
