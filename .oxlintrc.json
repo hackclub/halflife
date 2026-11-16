@@ -150,7 +150,14 @@
 		"unicorn/no-null": "off",
 		"unicorn/no-useless-undefined": "off",
 		"unicorn/number-literal-case": "off",
-		"unicorn/numeric-separators-style": "off",
+		"unicorn/numeric-separators-style": [
+			"error",
+			{
+				"hexadecimal": {
+					"groupLength": 4
+				}
+			}
+		],
 		"unicorn/prefer-code-point": "warn",
 		"unicorn/prefer-date-now": "warn",
 		"unicorn/prefer-global-this": "off",

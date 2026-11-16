@@ -15,7 +15,7 @@ describe("grant card policy", () => {
 
 	test("never pays more than the cap, however large the BOM", () => {
 		expect(grantCardAmountCents([{ quantity: 10, unitCostUsd: 20 }], 5, 30)).toBe(3000)
-		expect(grantCardAmountCents([{ quantity: 1, unitCostUsd: 500 }], 0, 100)).toBe(10000)
+		expect(grantCardAmountCents([{ quantity: 1, unitCostUsd: 500 }], 0, 100)).toBe(10_000)
 	})
 
 	test("an empty BOM is worth nothing", () => {

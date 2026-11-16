@@ -21,7 +21,7 @@ describe("mapReview", () => {
 		expect(review).toEqual({
 			decided_at: "2026-10-22T14:25:05.757Z",
 			decision: "approved",
-			hours_approved_seconds: 45000,
+			hours_approved_seconds: 45_000,
 			internal_note: "Clear evidence.",
 			note_to_maker: "Lovely board.",
 			reviewer_email: "ada@example.com",
@@ -33,7 +33,7 @@ describe("mapReview", () => {
 	test("falls back to the override hours when nothing was frozen", () => {
 		const review = mapReview({ ...base, hoursOverride: 3 })
 
-		expect(review?.hours_approved_seconds).toBe(10800)
+		expect(review?.hours_approved_seconds).toBe(10_800)
 	})
 
 	test("maps returned and rejected decisions", () => {

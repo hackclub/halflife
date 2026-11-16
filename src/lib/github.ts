@@ -23,7 +23,7 @@ import type { Forge } from "@/lib/forge"
 /**
  * How long one attempt may take. The proxy usually answers in a second or two but now and then sits on a request for twenty; cutting it off at six and asking again is faster than waiting, since the retry nearly always lands. Direct calls get longer: they are the last resort, and a big repo's file list can genuinely take a while.
  */
-const TIMEOUT_MS: { [_ in Route]: number } = { "github-direct": 10_000, "gitlab-direct": 10_000, proxy: 6_000 }
+const TIMEOUT_MS: { [_ in Route]: number } = { "github-direct": 10_000, "gitlab-direct": 10_000, proxy: 6000 }
 
 /** Slow attempts a route gets before we stop waiting on it. */
 const MAX_TIMEOUTS = 2
