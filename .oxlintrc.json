@@ -107,7 +107,7 @@
 		"react/memo-dependencies": "off",
 		"react/no-array-index-key": "off",
 		"react/no-unescaped-entities": "warn",
-		"react/purity": "off",
+		"react/purity": "error",
 		"react/react-in-jsx-scope": "off",
 		"react/refs": "error",
 		"react/set-state-in-effect": "error",
