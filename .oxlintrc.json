@@ -167,6 +167,6 @@
 		"unicorn/prefer-ternary": "off",
 		"unicorn/prefer-top-level-await": "error",
 		"unicorn/switch-case-braces": ["error", "avoid"],
-		"unicorn/text-encoding-identifier-case": "off"
+		"unicorn/text-encoding-identifier-case": "error"
 	}
 }

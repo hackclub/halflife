@@ -543,7 +543,7 @@ async function commitGitHub(
 				return
 			}
 			const blobRes = await call(creds, `${base}/git/blobs`, {
-				body: JSON.stringify({ content: file.content, encoding: "utf-8" }),
+				body: JSON.stringify({ content: file.content, encoding: "utf8" }),
 				headers: { "content-type": "application/json" },
 				method: "POST",
 			})
@@ -608,7 +608,7 @@ async function initializeEmptyGitHubRepo(
 		body: JSON.stringify({
 			branch,
 			// The Contents API wants the bytes base64-encoded, not the text.
-			content: Buffer.from(file.content, "utf-8").toString("base64"),
+			content: Buffer.from(file.content, "utf8").toString("base64"),
 			message,
 		}),
 		headers: { "content-type": "application/json" },
@@ -633,13 +633,13 @@ async function currentBlobShas(creds: ForgeCredentials, base: string, treeSha: s
  * Computed here rather than asked for, because asking means uploading each file twice – once to check, once to write – and the hash is the documented, stable way to compare against what the tree already holds.
  */
 function blobSha(content: string): string {
-	const bytes = Buffer.from(content, "utf-8")
-	const header = Buffer.from(`blob ${bytes.length}\0`, "utf-8")
+	const bytes = Buffer.from(content, "utf8")
+	const header = Buffer.from(`blob ${bytes.length}\0`, "utf8")
 	return createHash("sha1").update(header).update(bytes).digest("hex")
 }
 
 function byteLength(content: string): number {
-	return Buffer.byteLength(content, "utf-8")
+	return Buffer.byteLength(content, "utf8")
 }
 
 /* ── GitLab ─────────────────────────────────────────────────────────────── */
