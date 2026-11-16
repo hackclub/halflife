@@ -130,7 +130,7 @@
 		"typescript/strict-void-return": "off",
 		"typescript/unbound-method": "off",
 		"unicorn/catch-error-name": ["error", { "name": "err" }],
-		"unicorn/consistent-function-scoping": "off",
+		"unicorn/consistent-function-scoping": "error",
 		"unicorn/empty-brace-spaces": "error",
 		"unicorn/filename-case": "off",
 		"unicorn/max-nested-calls": "off",
