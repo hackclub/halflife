@@ -98,7 +98,7 @@
 		"promise/no-nesting": "off",
 		"promise/prefer-await-to-callbacks": "off",
 		"react/exhaustive-deps": "error",
-		"react/exhaustive-effect-dependencies": "off",
+		"react/exhaustive-effect-dependencies": "error",
 		"react/function-component-definition": "off",
 		"react/jsx-max-depth": ["error", { "max": 8 }],
 		"react/jsx-no-target-blank": "warn",
