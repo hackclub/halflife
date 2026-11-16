@@ -142,7 +142,7 @@
 		"unicorn/consistent-function-scoping": "error",
 		"unicorn/empty-brace-spaces": "error",
 		"unicorn/filename-case": "off",
-		"unicorn/max-nested-calls": "off",
+		"unicorn/max-nested-calls": ["error", { "max": 6 }],
 		"unicorn/no-array-callback-reference": "off",
 		"unicorn/no-await-expression-member": "off",
 		"unicorn/no-negated-condition": "off",
