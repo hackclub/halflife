@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { EventForm } from "@/app/components/forms/EventForm"
 import { Badge, Callout, EmptyState, Panel } from "@/app/components/ui"
+import { useBrowserTimeZone } from "@/lib/browser-state"
 import { type CalendarEvent, calendarDay, dayLabel, eventColour, eventRangeLabel } from "@/lib/events"
 
 /**
@@ -15,16 +16,10 @@ import { type CalendarEvent, calendarDay, dayLabel, eventColour, eventRangeLabel
  */
 export function EventScheduleManager({ events, timeZone }: { events: CalendarEvent[]; timeZone: string }) {
 	const [editing, setEditing] = useState<CalendarEvent | null>(null)
-	// The form enters times in the browser's own zone, so the list has to show them in the same one. `timeZone` is the programme's, which is only the right answer for an admin sitting in it – everyone else saw every event shifted by the difference. The first render keeps the programme's zone so the server and client markup agree, then this corrects it after mount, exactly like the header calendar.
-	const [viewerZone, setViewerZone] = useState(timeZone)
+	// The form enters times in the browser's own zone, so the list has to show them in the same one. `timeZone` is the programme's, which is only the right answer for an admin sitting in it – everyone else saw every event shifted by the difference. The server draws the programme's zone so the markup agrees, and the browser's own zone takes over on the first client render, exactly like the header calendar.
+	const viewerZone = useBrowserTimeZone(timeZone)
 	const [formVersion, setFormVersion] = useState(0)
 	const today = calendarDay(new Date(), viewerZone)
-
-	useEffect(() => {
-		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
-		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
-		if (zone) setViewerZone(zone)
-	}, [])
 
 	// Closing the form is also what clears it. Bumping the version remounts it, which is the only way the `useState` initialisers run again – without this, Clear did nothing and a saved event left its values sitting in the create form, one more click away from a duplicate.
 	function closeForm() {

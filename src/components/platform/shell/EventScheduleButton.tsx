@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { IconClock } from "@/components/platform/icons"
 import { EventCalendar } from "@/components/platform/shell/EventCalendar"
+import { useBrowserTimeZone, useClock } from "@/lib/browser-state"
 import { cx } from "@/lib/cx"
 import { type CalendarEvent, eventIsUpcoming, eventRangeLabel, msUntilStart, nextEvent } from "@/lib/events"
 import { countdownParts, pad2 } from "@/lib/site/countdown"
@@ -30,18 +31,9 @@ export function EventScheduleButton({
 }) {
 	const [open, setOpen] = useState(false)
 	// Null until mounted, then the clock. Seeding it with Date.now() during render is the mismatch this whole dance exists to avoid.
-	const [now, setNow] = useState<Date | null>(null)
-	// The viewer's own zone, read from the browser after mount. The programme zone holds the fort until then: reading the browser's during render is the same hydration mismatch the null-until-mounted clock above avoids.
-	const [viewerZone, setViewerZone] = useState(timeZone)
-
-	useEffect(() => {
-		// the browser's clock and zone; the server's are different ones
-		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
-		setNow(new Date())
-		setViewerZone(Intl.DateTimeFormat().resolvedOptions().timeZone ?? timeZone)
-		const timer = setInterval(() => setNow(new Date()), 1000)
-		return () => clearInterval(timer)
-	}, [timeZone])
+	const now = useClock()
+	// The viewer's own zone. The programme zone holds the fort until the browser's is read, which is the same hydration mismatch the null-until-mounted clock avoids.
+	const viewerZone = useBrowserTimeZone(timeZone)
 
 	const next = useMemo(() => nextEvent(events, now ?? new Date(0)), [events, now])
 	const parts = countdownParts(next && now ? msUntilStart(next, now) : 0)

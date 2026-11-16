@@ -4,11 +4,23 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from "react"
 import { signInWith, useSession } from "@/lib/auth-client"
+import { useLocationSearch } from "@/lib/browser-state"
 import { BRAND } from "@/lib/site/content"
 import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/site/stage"
 import brushstroke from "../../../public/art/brushstroke.png"
 
 type Status = "idle" | "pending" | "error"
+
+interface Feedback {
+	message: string
+	status: Status
+}
+
+const IDLE_FEEDBACK: Feedback = { message: "", status: "idle" }
+const LINK_NOT_LINKED: Feedback = {
+	message: "We couldn't link your Hack Club account. Try again, or reach out in Slack.",
+	status: "error",
+}
 
 /**
  * The way in. Sizing is entirely `em`-relative, so the caller sets one font-size and the field, the button and the paddings all follow – the comp stage passes a `cqw` value, the stacked mobile layout passes a `clamp()`.
@@ -36,8 +48,11 @@ export default function SignupForm({
 	const id = useId()
 	const router = useRouter()
 	const { data: session } = useSession()
-	const [status, setStatus] = useState<Status>("idle")
-	const [message, setMessage] = useState("")
+	// What the person has done since the page loaded. Until they do something, the feedback comes from the address bar, so the server and the first client render agree.
+	const [feedback, setFeedback] = useState<Feedback | null>(null)
+	const search = useLocationSearch()
+	const linkFailed = new URLSearchParams(search).get("error") === "account_not_linked"
+	const { status, message } = feedback ?? (linkFailed ? LINK_NOT_LINKED : IDLE_FEEDBACK)
 	const inputRef = useRef<HTMLInputElement>(null)
 
 	/**
@@ -51,18 +66,10 @@ export default function SignupForm({
 		const params = new URLSearchParams(window.location.search)
 		const prefill = params.get("email")?.trim()
 		if (prefill && inputRef.current && !inputRef.current.value) inputRef.current.value = prefill
-		// A callback that could not attach the Hack Club identity sends the person back here with a flag, so they meet an explanation on the field they sign in with rather than an empty page. The common case – a staff-imported row that was never verified – is repaired automatically at the callback (lib/hca-profile), so this is the remainder.
-		if (params.get("error") === "account_not_linked") {
-			// reading the redirect flag after hydration
-			// oxlint-disable-next-line react/set-state-in-effect -- reads the redirect flag from the URL after hydration
-			setStatus("error")
-			setMessage("We couldn't link your Hack Club account. Try again, or reach out in Slack.")
-		}
 	}, [])
 
 	function fail(text: string) {
-		setStatus("error")
-		setMessage(text)
+		setFeedback({ message: text, status: "error" })
 		inputRef.current?.focus()
 	}
 
@@ -75,8 +82,7 @@ export default function SignupForm({
 		if (!email) return fail("Enter your email to sign up or log in.")
 		if (field && !field.checkValidity()) return fail("That doesn't look like an email address.")
 
-		setStatus("pending")
-		setMessage("Taking you to Hack Club to sign in…")
+		setFeedback({ message: "Taking you to Hack Club to sign in…", status: "pending" })
 
 		// Whoever sent this visitor here – a referral link or a campaign URL – is only present in this page's own address bar, so it's read fresh at submit time and sent before the page leaves. `keepalive` lets it finish even if the sign-in navigates away first, and its answer is not needed, so it is deliberately NOT awaited: awaiting a slow or rate-limited signup would put the list provider between the visitor and the way in. (This used to await with an AbortController that fired after 2.5s – but aborting cancels the request, so a slow signup was silently dropped rather than "left to finish on its own".)
 		const params = new URLSearchParams(window.location.search)
@@ -182,10 +188,7 @@ export default function SignupForm({
 								inputMode="email"
 								name="email"
 								onChange={() => {
-									if (status === "error") {
-										setStatus("idle")
-										setMessage("")
-									}
+									if (status === "error") setFeedback(IDLE_FEEDBACK)
 								}}
 								placeholder="email address"
 								ref={inputRef}
