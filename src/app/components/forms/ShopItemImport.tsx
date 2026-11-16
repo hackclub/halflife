@@ -115,7 +115,7 @@ export function ShopItemImport() {
 					ref={picker}
 					type="file"
 				/>
-				<Button disabled={!file || busy} onClick={() => run()} type="button" variant="primary">
+				<Button disabled={!file || busy} onClick={() => void run()} type="button" variant="primary">
 					{busy ? "Importing…" : "Import items"}
 				</Button>
 			</div>

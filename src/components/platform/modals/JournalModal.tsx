@@ -291,7 +291,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					editing={editing}
 					missing={missing}
 					ok={ok}
-					save={save}
+					save={() => void save()}
 					saveError={saveError}
 					saving={saving}
 					showGoal={showGoal}
@@ -360,7 +360,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					pinned={pinned}
 					setPicked={setPicked}
 					setPinned={setPinned}
-					signInWithLapse={signInWithLapse}
+					signInWithLapse={() => void signInWithLapse()}
 				/>
 			)}
 		</Modal>

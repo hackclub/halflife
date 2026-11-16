@@ -160,7 +160,7 @@ export function OrdersList({ orders }: { orders: ShopOrderPublic[] }) {
 												<Button disabled={busy !== null} onClick={() => setConfirming(null)} size="sm" variant="ghost">
 													Keep it
 												</Button>
-												<Button disabled={busy !== null} onClick={() => cancel(order)} size="sm" variant="coral">
+												<Button disabled={busy !== null} onClick={() => void cancel(order)} size="sm" variant="coral">
 													{busy === order.id ? "Cancelling…" : "Cancel and refund"}
 												</Button>
 											</>

@@ -240,7 +240,7 @@ export function CoverImage({
 						accept={IMAGE_ACCEPT}
 						aria-hidden="true"
 						className="sr-only"
-						onChange={e => pick(e.target.files?.[0])}
+						onChange={e => void pick(e.target.files?.[0])}
 						ref={input}
 						tabIndex={-1}
 						type="file"
@@ -252,7 +252,7 @@ export function CoverImage({
 						<button
 							className="hand text-[0.8rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
 							disabled={busy}
-							onClick={() => clear()}
+							onClick={() => void clear()}
 							type="button"
 						>
 							remove

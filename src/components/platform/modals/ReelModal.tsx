@@ -160,7 +160,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						{/* On a finished checkpoint with nothing started there is no draft to keep – it is just the answer to "another one?" */}
 						{done && !clip && !caption.trim() ? "Not now" : "Save draft"}
 					</Button>
-					<Button disabled={Boolean(postBlocker) || posting} onClick={() => post()} variant="solid">
+					<Button disabled={Boolean(postBlocker) || posting} onClick={() => void post()} variant="solid">
 						{posting ? "Posting…" : done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
 					</Button>
 				</>

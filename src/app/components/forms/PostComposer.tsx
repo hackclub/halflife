@@ -103,7 +103,7 @@ export function PostComposer({
 	}
 
 	return (
-		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
+		<form className="hl-stack hl-stack--tight" onSubmit={e => void submit(e)}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 
 			<Panel title="Record on your phone">

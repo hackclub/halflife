@@ -73,27 +73,31 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 	const poll = useCallback(
 		(id: string) => {
 			stop()
-			timer.current = setInterval(async () => {
-				try {
-					const res = await fetch(`/api/handoff/${id}`)
-					if (!res.ok) return
-					const parsed = HandoffPollBody.safeParse(await res.json())
-					if (!parsed.success) return
-					const payload = parsed.data
-					if (payload.state === "ready" && payload.objectKey) {
-						stop()
-						setStatus("ready")
-						ready.current(payload.objectKey, payload.url ?? null)
-						// Tell the server we have it, so nothing keeps this row live.
-						void fetch(`/api/handoff/${id}`, { method: "POST" })
-					} else if (payload.state === "expired") {
-						stop()
-						setStatus("expired")
-					}
-				} catch {
-					// A dropped poll is not worth surfacing; the next tick retries.
-				}
-			}, POLL_MS)
+			timer.current = setInterval(
+				() =>
+					void (async () => {
+						try {
+							const res = await fetch(`/api/handoff/${id}`)
+							if (!res.ok) return
+							const parsed = HandoffPollBody.safeParse(await res.json())
+							if (!parsed.success) return
+							const payload = parsed.data
+							if (payload.state === "ready" && payload.objectKey) {
+								stop()
+								setStatus("ready")
+								ready.current(payload.objectKey, payload.url ?? null)
+								// Tell the server we have it, so nothing keeps this row live.
+								void fetch(`/api/handoff/${id}`, { method: "POST" })
+							} else if (payload.state === "expired") {
+								stop()
+								setStatus("expired")
+							}
+						} catch {
+							// A dropped poll is not worth surfacing; the next tick retries.
+						}
+					})(),
+				POLL_MS,
+			)
 		},
 		[stop],
 	)

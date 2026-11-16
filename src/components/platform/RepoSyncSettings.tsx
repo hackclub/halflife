@@ -175,7 +175,7 @@ export function RepoSyncSettings({
 					{FORGES.map(forge => (
 						<Button
 							key={forge.id}
-							onClick={() => linkForge(forge.id, window.location.pathname + window.location.search)}
+							onClick={() => void linkForge(forge.id, window.location.pathname + window.location.search)}
 							variant="solid"
 						>
 							Connect {forge.label}
@@ -229,7 +229,7 @@ export function RepoSyncSettings({
 					<LinkProjectButton
 						busy={linking}
 						existing={state.projectRepo}
-						onClick={() => linkProject()}
+						onClick={() => void linkProject()}
 						repo={state.repo}
 					/>
 				)}
@@ -240,20 +240,20 @@ export function RepoSyncSettings({
 				)}
 
 				<div className="flex flex-wrap gap-2">
-					<Button disabled={busy} onClick={() => send("PUT")} size="sm" variant="outline">
+					<Button disabled={busy} onClick={() => void send("PUT")} size="sm" variant="outline">
 						{busy ? "Syncing…" : "Sync now"}
 					</Button>
 					{forge && (
 						<Button
 							disabled={busy}
-							onClick={() => linkForge(forge.id, window.location.pathname + window.location.search)}
+							onClick={() => void linkForge(forge.id, window.location.pathname + window.location.search)}
 							size="sm"
 							variant="outline"
 						>
 							Reconnect {forge.label}
 						</Button>
 					)}
-					<Button disabled={busy} onClick={() => send("POST", { enabled: false })} size="sm" variant="ghost">
+					<Button disabled={busy} onClick={() => void send("POST", { enabled: false })} size="sm" variant="ghost">
 						Turn off
 					</Button>
 				</div>
@@ -322,7 +322,7 @@ export function RepoSyncSettings({
 				>
 					{busy ? "Writing to the repo…" : "Turn on syncing"}
 				</Button>
-				<Button disabled={busy || loading} onClick={() => load()} size="sm" variant="ghost">
+				<Button disabled={busy || loading} onClick={() => void load()} size="sm" variant="ghost">
 					Check again
 				</Button>
 				{state.linkedForges.map(id => {
@@ -332,7 +332,7 @@ export function RepoSyncSettings({
 						<Button
 							disabled={busy}
 							key={id}
-							onClick={() => linkForge(forge.id, window.location.pathname + window.location.search)}
+							onClick={() => void linkForge(forge.id, window.location.pathname + window.location.search)}
 							size="sm"
 							variant="outline"
 						>

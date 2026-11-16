@@ -68,16 +68,18 @@ export function AccountMenu({ className }: { className?: string }) {
 					<button
 						className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[0.9rem] font-semibold text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep disabled:opacity-60"
 						disabled={signingOut}
-						onClick={async () => {
-							setSigningOut(true)
-							try {
-								await signOut()
-								setOpen(false)
-								window.location.assign("/")
-							} finally {
-								setSigningOut(false)
-							}
-						}}
+						onClick={() =>
+							void (async () => {
+								setSigningOut(true)
+								try {
+									await signOut()
+									setOpen(false)
+									window.location.assign("/")
+								} finally {
+									setSigningOut(false)
+								}
+							})()
+						}
 						type="button"
 					>
 						{signingOut ? "Signing out…" : "Log out"}

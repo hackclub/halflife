@@ -116,7 +116,7 @@ export function ProjectDetails({
 									<Button disabled={unsubmitting} onClick={() => setConfirming(false)} size="sm" variant="ghost">
 										Keep it in
 									</Button>
-									<Button disabled={unsubmitting} onClick={() => takeBack()} size="sm" variant="solid">
+									<Button disabled={unsubmitting} onClick={() => void takeBack()} size="sm" variant="solid">
 										{unsubmitting ? "Unsubmitting…" : "Unsubmit"}
 									</Button>
 								</div>

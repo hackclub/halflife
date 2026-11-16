@@ -186,7 +186,7 @@ export function NpsGate() {
 									One tap and you&apos;re in – then a quick follow-up.
 								</p>
 							)}
-							<Button disabled={draft === null || savingScore} onClick={() => submitScore()} variant="solid">
+							<Button disabled={draft === null || savingScore} onClick={() => void submitScore()} variant="solid">
 								{savingScore ? "Sending…" : "Send feedback"}
 							</Button>
 						</>
@@ -221,7 +221,7 @@ export function NpsGate() {
 									Add at least one answer to carry on.
 								</p>
 							)}
-							<Button disabled={savingTexts || !hasTexts} onClick={() => submitTexts()} variant="solid">
+							<Button disabled={savingTexts || !hasTexts} onClick={() => void submitTexts()} variant="solid">
 								{savingTexts ? "Sending…" : "Send feedback"}
 							</Button>
 						</>

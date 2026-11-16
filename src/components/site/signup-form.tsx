@@ -165,7 +165,7 @@ export default function SignupForm({
 
 				{/* The row is the positioning context for the confirmation plate, so the plate is exactly the field's footprint and nothing below it ever moves. overflow-hidden keeps the wipe's cut edge crisp. */}
 				<div className="relative overflow-hidden">
-					<form className="flex w-full" noValidate onSubmit={onSubmit}>
+					<form className="flex w-full" noValidate onSubmit={e => void onSubmit(e)}>
 						<label className="sr-only" htmlFor={id}>
 							email address
 						</label>

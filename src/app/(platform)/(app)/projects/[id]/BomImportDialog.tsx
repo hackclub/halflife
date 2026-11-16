@@ -112,11 +112,11 @@ export function BomImportDialog({
 							Cancel
 						</Button>
 						{preview.existing > 0 && (
-							<Button disabled={importing} onClick={() => applyImport(false)} size="sm" variant="outline">
+							<Button disabled={importing} onClick={() => void applyImport(false)} size="sm" variant="outline">
 								{importing ? "Adding…" : `Add ${preview.lines.length} to my list`}
 							</Button>
 						)}
-						<Button disabled={importing} onClick={() => applyImport(true)} size="sm" variant="solid">
+						<Button disabled={importing} onClick={() => void applyImport(true)} size="sm" variant="solid">
 							{importing
 								? "Importing…"
 								: preview.existing > 0

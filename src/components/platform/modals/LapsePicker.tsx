@@ -133,7 +133,7 @@ export function LapsePicker({
 					Timelapses are recorded on Lapse. Sign in once and every timelapse you publish there shows up here to pick
 					from.
 				</p>
-				<Button disabled={leaving} onClick={() => startSignIn()} variant="solid">
+				<Button disabled={leaving} onClick={() => void startSignIn()} variant="solid">
 					{leaving ? "Opening Lapse…" : "Sign in with Lapse"} <IconArrowRight className="text-base" />
 				</Button>
 				<p className="hand text-[0.78rem] text-navy-soft">
@@ -148,7 +148,7 @@ export function LapsePicker({
 				<p className="flex items-start gap-2 text-[0.88rem] font-semibold text-coral-deep" role="alert">
 					<IconWarning className="mt-0.5 shrink-0 text-base" /> {load.message}
 				</p>
-				<Button onClick={() => refresh()} size="sm" variant="outline">
+				<Button onClick={() => void refresh()} size="sm" variant="outline">
 					Try again
 				</Button>
 			</div>
@@ -167,7 +167,7 @@ export function LapsePicker({
 				>
 					record a new one on Lapse
 				</a>
-				<Button onClick={() => refresh()} size="sm" variant="ghost">
+				<Button onClick={() => void refresh()} size="sm" variant="ghost">
 					Refresh
 				</Button>
 			</div>
@@ -252,7 +252,7 @@ export function LapsePicker({
 
 			{load.nextCursor && (
 				<div className="mt-3 flex justify-center">
-					<Button disabled={more} onClick={() => loadMore()} size="sm" variant="outline">
+					<Button disabled={more} onClick={() => void loadMore()} size="sm" variant="outline">
 						{more ? "Loading…" : "Show older timelapses"}
 					</Button>
 				</div>

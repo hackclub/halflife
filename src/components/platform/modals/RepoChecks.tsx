@@ -139,7 +139,7 @@ export function RepoChecks({
 				<h3 className="label text-violet-deep" id="repo-checks-title">
 					Repo checks
 				</h3>
-				<Button disabled={loading} onClick={() => run()} size="sm" variant="ghost">
+				<Button disabled={loading} onClick={() => void run()} size="sm" variant="ghost">
 					{loading ? "Checking…" : "Check again"}
 				</Button>
 			</div>
@@ -153,7 +153,7 @@ export function RepoChecks({
 						Your repo sync is writing to <span className="font-semibold">{displayRepo(syncRepo.repo)}</span>. Link this
 						project to it?
 					</span>
-					<Button disabled={linking} onClick={() => linkProject()} size="sm" variant="outline">
+					<Button disabled={linking} onClick={() => void linkProject()} size="sm" variant="outline">
 						{linking ? "Linking…" : "Link this repo"}
 					</Button>
 				</p>

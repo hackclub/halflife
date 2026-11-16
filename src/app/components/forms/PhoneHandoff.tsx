@@ -21,7 +21,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady(objectKey: string):
 						Record on your phone instead: scan a code, film it, and the video lands here. No signing in on the phone.
 					</p>
 					<div>
-						<Button disabled={busy} onClick={mint}>
+						<Button disabled={busy} onClick={() => void mint()}>
 							{busy ? "Making a code…" : "Record on my phone"}
 						</Button>
 					</div>
@@ -56,7 +56,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady(objectKey: string):
 				<div className="hl-stack hl-stack--tight">
 					<Callout tone="warning">That code expired before anything arrived.</Callout>
 					<div>
-						<Button disabled={busy} onClick={mint}>
+						<Button disabled={busy} onClick={() => void mint()}>
 							Make a new code
 						</Button>
 					</div>

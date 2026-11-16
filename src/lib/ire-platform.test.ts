@@ -48,13 +48,16 @@ let server: Server
 let port = 0
 
 beforeAll(async () => {
-	server = createServer(async (request, res) => {
-		let body = ""
-		for await (const chunk of request as AsyncIterable<Buffer>) body += chunk.toString("utf8")
-		seen.push({ body, headers: request.headers, url: request.url ?? "" })
-		res.writeHead(response.status, { "content-type": "application/json" })
-		res.end(JSON.stringify(response.body))
-	})
+	server = createServer(
+		(request, res) =>
+			void (async () => {
+				let body = ""
+				for await (const chunk of request as AsyncIterable<Buffer>) body += chunk.toString("utf8")
+				seen.push({ body, headers: request.headers, url: request.url ?? "" })
+				res.writeHead(response.status, { "content-type": "application/json" })
+				res.end(JSON.stringify(response.body))
+			})(),
+	)
 	server.listen(0, "127.0.0.1")
 	await once(server, "listening")
 	const address = server.address()

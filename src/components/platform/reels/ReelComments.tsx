@@ -261,7 +261,7 @@ export function ReelComments({
 												{c.mine && (
 													<button
 														className="underline decoration-dashed underline-offset-4 transition-colors hover:text-coral-deep"
-														onClick={() => remove(c)}
+														onClick={() => void remove(c)}
 														type="button"
 													>
 														delete
@@ -297,7 +297,7 @@ export function ReelComments({
 
 			<form
 				className="shrink-0 border-t border-dashed border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-				onSubmit={send}
+				onSubmit={e => void send(e)}
 			>
 				<div className="flex items-center gap-2.5">
 					<Avatar className="size-9 text-[0.88rem]" image={viewer.image} name={viewer.name} />

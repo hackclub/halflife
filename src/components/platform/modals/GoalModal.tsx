@@ -142,7 +142,7 @@ export function GoalModal({
 									Cancel
 								</Button>
 							)}
-							<Button disabled={saving} onClick={() => commit(ParticipantGoal.PRINTER, picked)} variant="teal">
+							<Button disabled={saving} onClick={() => void commit(ParticipantGoal.PRINTER, picked)} variant="teal">
 								{unchanged ? "Keep this goal" : "Set this goal"} <IconCheck className="text-base" />
 							</Button>
 						</>
