@@ -62,6 +62,7 @@ export function useFeed(limit = 12): {
 
 	// Fetching the first page is the external-system sync an effect is for, and every state update inside `load` happens after the await.
 	useEffect(() => {
+		// oxlint-disable-next-line react/set-state-in-effect -- load only sets state after its await; the rule does not follow calls into async functions
 		void load(null)
 	}, [load])
 

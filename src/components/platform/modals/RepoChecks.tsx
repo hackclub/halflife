@@ -83,6 +83,7 @@ export function RepoChecks({
 	useEffect(() => {
 		// The page already loaded the sync state; only a surface without it asks.
 		if (initialSyncRepo !== undefined) return
+		// oxlint-disable-next-line react/set-state-in-effect -- loadSync only sets state after its await; the rule does not follow calls into async functions
 		void loadSync()
 	}, [initialSyncRepo, loadSync])
 
