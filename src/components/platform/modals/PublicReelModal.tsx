@@ -46,13 +46,13 @@ export function PublicReelModal({
 }) {
 	const [step, setStep] = useState<"ask" | "links" | "saved">(start)
 	const titleId = useId()
-	const [values, setValues] = useState<Record<PublicReelPlatform, string>>({
+	const [values, setValues] = useState<{ [_ in PublicReelPlatform]: string }>({
 		INSTAGRAM: "",
 		TIKTOK: "",
 		X: "",
 		YOUTUBE: "",
 	})
-	const [errors, setErrors] = useState<Partial<Record<PublicReelPlatform, string>>>({})
+	const [errors, setErrors] = useState<Partial<{ [_ in PublicReelPlatform]: string }>>({})
 	const [saving, setSaving] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
 	const [referral, setReferral] = useState<
@@ -99,7 +99,7 @@ export function PublicReelModal({
 	async function save() {
 		if (saving) return
 		// The same check the server runs, so a wrong link is named on its field before anything is sent.
-		const found: Partial<Record<PublicReelPlatform, string>> = {}
+		const found: Partial<{ [_ in PublicReelPlatform]: string }> = {}
 		for (const p of filled) {
 			const read = readPublicReelLink(p, values[p])
 			if ("error" in read) found[p] = read.error

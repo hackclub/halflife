@@ -18,7 +18,7 @@ export const REPORT_REASONS: { id: ReportReason; label: string }[] = [
 	{ id: "OTHER", label: "Other" },
 ]
 
-export const REPORT_TARGET_LABELS: Record<ReportTarget, string> = {
+export const REPORT_TARGET_LABELS: { [_ in ReportTarget]: string } = {
 	DEVLOG: "Devlog",
 	PROJECT: "Project",
 	REEL: "Reel",
@@ -26,7 +26,7 @@ export const REPORT_TARGET_LABELS: Record<ReportTarget, string> = {
 	USER: "User",
 }
 
-export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+export const REPORT_STATUS_LABELS: { [_ in ReportStatus]: string } = {
 	DISMISSED: "Dismissed",
 	OPEN: "Open",
 	RESOLVED: "Resolved",

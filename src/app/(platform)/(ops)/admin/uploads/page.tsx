@@ -16,7 +16,7 @@ interface Props {
 	searchParams: Promise<Search>
 }
 
-const FOLDER_LABELS: Record<UploadFolder, string> = {
+const FOLDER_LABELS: { [_ in UploadFolder]: string } = {
 	covers: "Cover images",
 	posts: "Reels",
 	sessions: "Session evidence",

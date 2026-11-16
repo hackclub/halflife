@@ -56,7 +56,7 @@ const fmtPct = (share: number) => `${(share * 100).toFixed(1)}%`
 const fmtNps = (score: number | null) => (score === null ? "-" : score > 0 ? `+${score}` : String(score))
 
 /** Outcome wording, the same one a maker is told in lib/notifications. */
-const RESULT_LABEL: Record<ReviewResult, string> = {
+const RESULT_LABEL: { [_ in ReviewResult]: string } = {
 	APPROVED: "Approved",
 	REJECTED: "Rejected",
 	RETURNED: "Changes requested",
@@ -587,7 +587,7 @@ function MetricPie({
 }
 
 /** One line per answer to the goal prompt, in `GOAL_OPTIONS` order. */
-const GOAL_LINE_COLOUR: Record<ParticipantGoal, string> = {
+const GOAL_LINE_COLOUR: { [_ in ParticipantGoal]: string } = {
 	FULL_FUNDING: "var(--color-teal)",
 	PARTIAL_FUNDING: "var(--color-coin)",
 	PRINTER: "var(--color-accent)",

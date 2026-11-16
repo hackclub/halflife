@@ -9,7 +9,7 @@ import { STAGE_LABELS } from "@/lib/fulfillment"
 import type { ShopOrderPublic } from "@/lib/shop"
 import { canCancelOrder, cancelBlockedReason } from "@/lib/shop-order"
 
-const STATUS: Record<ShopOrderStatus, { label: string; tone: "sky" | "gold" | "teal" | "coral" | "muted" }> = {
+const STATUS: { [_ in ShopOrderStatus]: { label: string; tone: "sky" | "gold" | "teal" | "coral" | "muted" } } = {
 	CANCELLED: { label: "Cancelled", tone: "muted" },
 	FULFILLED: { label: "Fulfilled", tone: "teal" },
 	ON_HOLD: { label: "On hold", tone: "gold" },

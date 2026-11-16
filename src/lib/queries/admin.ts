@@ -1327,9 +1327,9 @@ export async function listContentReports(
 /** One row of the content-report directory, with every reportable target attached. */
 export type ContentReportRow = Awaited<ReturnType<typeof listContentReports>>["items"][number]
 
-export async function countContentReports(): Promise<Record<ReportStatus, number>> {
+export async function countContentReports(): Promise<{ [_ in ReportStatus]: number }> {
 	const groups = await db.orm.public.ContentReport.groupBy("status").aggregate(group => ({ count: group.count() }))
-	const counts: Record<ReportStatus, number> = { DISMISSED: 0, OPEN: 0, RESOLVED: 0 }
+	const counts: { [_ in ReportStatus]: number } = { DISMISSED: 0, OPEN: 0, RESOLVED: 0 }
 	for (const group of groups) counts[group.status] = group.count
 	return counts
 }

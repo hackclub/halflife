@@ -46,7 +46,7 @@ export function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone 
 }
 
 /** Plain words, not the enum. */
-export const REVIEW_STATUS_TEXT: Record<PhaseStatus, string> = {
+export const REVIEW_STATUS_TEXT: { [_ in PhaseStatus]: string } = {
 	approved: "approved",
 	draft: "not started",
 	in_review: "in review",
@@ -55,7 +55,7 @@ export const REVIEW_STATUS_TEXT: Record<PhaseStatus, string> = {
 }
 
 /** Tailwind background for a state's dot, in the platform's own state colours. */
-export const REVIEW_STATUS_DOT: Record<PhaseStatus, string> = {
+export const REVIEW_STATUS_DOT: { [_ in PhaseStatus]: string } = {
 	approved: "bg-teal",
 	draft: "bg-line-strong",
 	in_review: "bg-sky",

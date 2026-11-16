@@ -39,7 +39,7 @@ export interface Forge {
 	scopes: readonly string[]
 }
 
-export const FORGES: Record<ForgeId, Forge> = {
+export const FORGES: { [_ in ForgeId]: Forge } = {
 	github: {
 		aliases: ["www.github.com"],
 		blobSegment: "blob",

@@ -43,7 +43,7 @@ export interface Draft {
 	vendor: string
 }
 
-export const FIELD_NAMES: Record<keyof Draft, string> = {
+export const FIELD_NAMES: { [_ in keyof Draft]: string } = {
 	link: "Link",
 	name: "Part",
 	purpose: "What it's for",

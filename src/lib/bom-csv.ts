@@ -47,7 +47,7 @@ const HEADER_SEARCH_ROWS = 20
 type Field = "name" | "purpose" | "quantity" | "unitCostUsd" | "vendor" | "link"
 
 /** Normalised header names, tried in this order when a field is ambiguous. */
-const ALIASES: Record<Field, readonly string[]> = {
+const ALIASES: { [_ in Field]: readonly string[] } = {
 	link: [
 		"link",
 		"url",
@@ -120,8 +120,8 @@ function normalize(cell: string): string {
 }
 
 /** Which column each field lives in, by the names its cells carry. */
-function mapHeader(row: readonly string[]): Partial<Record<Field, number>> {
-	const map: Partial<Record<Field, number>> = {}
+function mapHeader(row: readonly string[]): Partial<{ [_ in Field]: number }> {
+	const map: Partial<{ [_ in Field]: number }> = {}
 	for (const [index, cell] of row.entries()) {
 		const key = normalize(cell)
 		if (!key) continue
@@ -139,9 +139,9 @@ function mapHeader(row: readonly string[]): Partial<Record<Field, number>> {
 /**
  * The header row, preferring the first one that names enough columns to be recognisable. A file may open with a title or an export date; those rows map to nothing and are passed over.
  */
-function findHeader(rows: readonly string[][]): { index: number; map: Partial<Record<Field, number>> } | null {
+function findHeader(rows: readonly string[][]): { index: number; map: Partial<{ [_ in Field]: number }> } | null {
 	const limit = Math.min(rows.length, HEADER_SEARCH_ROWS)
-	let fallback: { index: number; map: Partial<Record<Field, number>> } | null = null
+	let fallback: { index: number; map: Partial<{ [_ in Field]: number }> } | null = null
 	for (let i = 0; i < limit; i++) {
 		const map = mapHeader(rows[i] ?? [])
 		if (map.name === undefined) continue

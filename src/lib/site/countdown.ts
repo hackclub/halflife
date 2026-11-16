@@ -15,7 +15,7 @@ export const COUNTDOWN_UNITS = [
 	{ key: "seconds", label: "seconds", ms: 1000 },
 ] as const
 
-export type CountdownParts = Record<(typeof COUNTDOWN_UNITS)[number]["key"], number>
+export type CountdownParts = { [_ in (typeof COUNTDOWN_UNITS)[number]["key"]]: number }
 
 /**
  * Split a span of milliseconds into whole days/hours/minutes/seconds.
