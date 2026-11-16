@@ -13,7 +13,7 @@ import db from "../src/lib/prisma8"
  *
  * A row is created at hand-in, and `syncSubmissionToYsws` (lib/airtable/sync) now stamps the week's single-select label (`Week 1` … `Week 10`) on every write – first submissions, re-submissions and admin refreshes alike, since all of them go through `fieldsFor`. Rows already in the base carry nothing, and this replays the state Postgres already holds onto them: the theme and phase's own scheduled week, which is what every other week-derived column on the row already says.
  *
- * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. Warm-up submissions have no scheduled week and no matching option, so they are skipped rather than stamped with a label the base would refuse. Rows whose columns already agree are left alone, so a second run writes nothing.
+ * The record id is not kept on the project. It is on the audit row each successful write left (`AIRTABLE_SYNC_SUCCESS`, the same source `lastRecordId` reads), so each (project, phase) is written at its newest id that has not since been `removed`; a row taken back on unsubmit is reported as gone rather than quietly recreated. A warm-up's row gets `Warm-up`, which is an option the base holds. Rows whose columns already agree are left alone, so a second run writes nothing.
  *
  * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/backfill-airtable-project-week.ts [--commit]`. In production run it where `DATABASE_URL` and the Airtable secrets both point at the live base, not from a dev machine against a local Postgres.
  */
@@ -77,7 +77,6 @@ async function main() {
 
 	const targets: { phase: Phase; recordId: string; title: string; week: string }[] = []
 	let withoutRow = 0
-	let warmup = 0
 	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const recordId = records.get(`${project.id}:${phase}`)
@@ -85,12 +84,9 @@ async function main() {
 				withoutRow++
 				continue
 			}
-			// The same week every other column on the row already says: the theme and phase's own scheduled week. A warm-up has none and no matching option, so it is skipped, not stamped.
+			// The same week every other column on the row already says: the theme and phase's own scheduled week. A warm-up's is `Warm-up`, the option the base holds for it.
 			const label = projectWeekLabel(scheduledWeekFor(project.theme, phase))
-			if (!label) {
-				warmup++
-				continue
-			}
+			if (!label) continue
 			targets.push({ phase, recordId, title: project.title, week: label })
 		}
 
@@ -113,7 +109,7 @@ async function main() {
 	}
 
 	console.log(
-		`Projects: ${projects.length}; Airtable rows: ${targets.length} (${withoutRow} phase(s) never written, ${gone} row(s) since deleted, ${warmup} warm-up phase(s) skipped)`,
+		`Projects: ${projects.length}; Airtable rows: ${targets.length} (${withoutRow} phase(s) never written, ${gone} row(s) since deleted)`,
 	)
 	console.log(`aligned: ${aligned}, to update: ${updates.length}`)
 	for (const t of updates.slice(0, 10)) console.log(`  ${t.phase}  ${t.title}  →  ${t.week}`)

@@ -91,7 +91,7 @@ export const YSWS_SUBMISSION = {
 		pass1Reviewer: f<string>("fldYswsPass1Reviewer", "Pass 1 reviewer"),
 		playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
 		projectName: f<string>("fldYswsProjectName", "Project name"),
-		// Which program week this submission is for, as the single select Loops triggers off (`Week 1` … `Week 10`). Derived from the theme and phase's own scheduled week (see `projectWeekLabel` in lib/airtable/sync); a warm-up has no scheduled week and leaves it blank.
+		// Which program week this submission is for, as the single select Loops triggers off (`Week 1` … `Week 10`). Derived from the theme and phase's own scheduled week (see `projectWeekLabel` in lib/airtable/sync); a warm-up reads `Warm-up`.
 		projectWeek: f<string>("fldYswsProjectWeek", "Loops - halfLifeProjectWeek"),
 		requestedFunding: f<number>("fldYswsRequestedFunding", "Requested funding"),
 		// The reviewer's own words on that decision, beside the status and in the same Loops family. Written by the same mirror the status is (see `syncReviewDecisionToYsws` in lib/airtable/sync), because a decision on ari.hackclub.com reaches the base only through it.
