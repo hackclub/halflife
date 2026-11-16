@@ -122,6 +122,7 @@ export function RepoChecks({
 		// oxlint-disable-next-line react/set-state-in-effect -- starts the first check on mount and on a new link; the loading state is set before the request it reports
 		void run()
 		// The link is the input: a new one means a fresh check.
+		// oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new link is the trigger for a fresh check; the body does not read it
 	}, [run, project.githubRepo])
 
 	const failed = data?.checks.filter(c => c.blocking && c.status === "fail") ?? []

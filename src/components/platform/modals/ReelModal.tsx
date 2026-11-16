@@ -40,6 +40,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				// Autoplay refuses before a gesture; the play button below is the fallback.
 			}
 		})()
+		// oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new preview URL plays the clip again; the body does not read it
 	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.

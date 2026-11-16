@@ -140,6 +140,7 @@ export function useJournalDraft(checkpointId: string, existing: SessionLog | und
 			live = false
 		}
 		// `existing` is the entry this sheet opened on: it never changes mid-edit.
+		// oxlint-disable-next-line react/exhaustive-effect-dependencies -- moving to another checkpoint re-seeds the sheet, so checkpointId is the trigger; the body does not read it
 	}, [editing, existing, checkpointId])
 
 	useEffect(() => {

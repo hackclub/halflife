@@ -40,6 +40,7 @@ export function FirstCheckpoint() {
 		return () => {
 			cancelled = true
 		}
+		// oxlint-disable-next-line react/exhaustive-effect-dependencies -- the retry button bumps attempt to run the load again; the body never reads it
 	}, [attempt])
 
 	const close = () => setOpenCheckpoint(null)

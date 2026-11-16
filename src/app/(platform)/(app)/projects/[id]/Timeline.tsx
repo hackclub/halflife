@@ -221,6 +221,7 @@ function EntryBody({ source }: { source: string }) {
 		const ro = new ResizeObserver(measure)
 		ro.observe(el)
 		return () => ro.disconnect()
+		// oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new source means the entry's content changed, so it is measured again; the body does not read it
 	}, [source, open])
 
 	return (
