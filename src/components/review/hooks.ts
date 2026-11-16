@@ -1,50 +1,30 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useStoredValue, writeStored } from "@/lib/browser-state"
 
 /**
  * Fabricate's review-screen hooks (`useDraft`, `useAutosave`, `useStoredWidth`), ported unchanged in behaviour.
  *
- * Every storage access is wrapped: a private window or blocked site data throws on `localStorage`, and a draft that cannot be kept must still be typeable.
+ * Storage is read through `lib/browser-state`, so the server and the first client render agree and no effect has to copy a stored value into state. A private window or blocked site data throws on `localStorage`, and a draft that cannot be kept must still be typeable.
  */
-
-function read(key: string): string | null {
-	try {
-		return localStorage.getItem(key)
-	} catch {
-		return null
-	}
-}
-
-function write(key: string, value: string | null): void {
-	try {
-		if (value === null) localStorage.removeItem(key)
-		else localStorage.setItem(key, value)
-	} catch {
-		// Storage is a convenience here; losing it loses only the draft.
-	}
-}
 
 /** A text field whose unsent value survives a reload, keyed per submission. */
 export function useDraft(name: string, initial = ""): readonly [string, (value: string) => void, () => void] {
 	const key = `halflife:review-draft:${name}`
-	const [value, setValue] = useState(initial)
+	const stored = useStoredValue(key)
+	const value = stored ?? initial
 
-	// Read after mount, not during render: the server has no storage, and reading it in the initialiser would hydrate a different value from the one the server drew.
-	useEffect(() => {
-		const stored = read(key)
-		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
-		if (stored !== null) setValue(stored)
-	}, [key])
-
-	useEffect(() => {
-		write(key, value === initial ? null : value)
-	}, [key, value, initial])
+	const setValue = useCallback(
+		(next: string) => {
+			writeStored(key, next === initial ? null : next)
+		},
+		[key, initial],
+	)
 
 	const clear = useCallback(() => {
-		write(key, null)
-		setValue(initial)
-	}, [key, initial])
+		writeStored(key, null)
+	}, [key])
 
 	return [value, setValue, clear] as const
 }
@@ -103,20 +83,14 @@ export function useAutosave<T>(
 
 /** A panel width the reviewer dragged, remembered across visits. */
 export function useStoredWidth(key: string, fallback: number): readonly [number, (next: number | null) => void] {
-	const [width, setWidth] = useState(fallback)
-
-	useEffect(() => {
-		const stored = Number(read(key))
-		// oxlint-disable-next-line react/set-state-in-effect -- read browser storage or the URL after mount: the server has none, and reading it during render would mismatch on hydration
-		if (stored > 0) setWidth(stored)
-	}, [key])
+	const stored = Number(useStoredValue(key))
+	const width = stored > 0 ? stored : fallback
 
 	const update = useCallback(
 		(next: number | null) => {
-			setWidth(next ?? fallback)
-			write(key, next === null ? null : String(Math.round(next)))
+			writeStored(key, next === null ? null : String(Math.round(next)))
 		},
-		[key, fallback],
+		[key],
 	)
 
 	return [width, update] as const
@@ -124,18 +98,11 @@ export function useStoredWidth(key: string, fallback: number): readonly [number,
 
 /** Whether a stored flag is on, defaulting on, for the decision panel's show/hide. */
 export function useStoredToggle(key: string): readonly [boolean, (next: boolean) => void] {
-	const [on, setOn] = useState(true)
-
-	// After mount, not in render: the server has no storage, and the first client render has to match what it drew.
-	useEffect(() => {
-		// oxlint-disable-next-line react/no-deriving-state-in-effects, react/set-state-in-effect -- localStorage is only readable after hydration
-		setOn(read(key) !== "hidden")
-	}, [key])
+	const on = useStoredValue(key) !== "hidden"
 
 	const update = useCallback(
 		(next: boolean) => {
-			setOn(next)
-			write(key, next ? "shown" : "hidden")
+			writeStored(key, next ? "shown" : "hidden")
 		},
 		[key],
 	)
