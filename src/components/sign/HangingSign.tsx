@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { isTruthy } from "@/lib/truthy"
 
 /**
  * The hanging sign: two straps pinned above a torn plaque, with the page title on it.
@@ -89,8 +90,8 @@ export function HangingSign({
 				</h1>
 			</div>
 
-			{subtitle ? <p className={skin.subtitle}>{subtitle}</p> : null}
-			{actions ? (
+			{isTruthy(subtitle) ? <p className={skin.subtitle}>{subtitle}</p> : null}
+			{isTruthy(actions) ? (
 				<div className={skin.actions} style={skin.actionsStyle}>
 					{actions}
 				</div>

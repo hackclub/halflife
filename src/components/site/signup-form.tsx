@@ -7,6 +7,7 @@ import { signInWith, useSession } from "@/lib/auth-client"
 import { useLocationSearch } from "@/lib/browser-state"
 import { BRAND } from "@/lib/site/content"
 import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/site/stage"
+import { isTruthy } from "@/lib/truthy"
 import brushstroke from "../../../public/art/brushstroke.png"
 
 type Status = "idle" | "pending" | "error"
@@ -132,9 +133,9 @@ export default function SignupForm({
 			  `isolate` keeps the swash's negative index inside this box instead of letting it escape to the nearest stacking context and paint behind the hero plate, which is to say behind nothing.
 			 */}
 			<div
-				className={intro ? "relative isolate mb-4" : ""}
+				className={isTruthy(intro) ? "relative isolate mb-4" : ""}
 				style={
-					intro
+					isTruthy(intro)
 						? {
 								paddingBlock: SWASH_INSET_Y,
 								paddingInline: `${SWASH_INSET_X * 100}%`,
@@ -142,7 +143,7 @@ export default function SignupForm({
 						: undefined
 				}
 			>
-				{intro ? (
+				{isTruthy(intro) ? (
 					<>
 						{/* Decorative: the promise is the sentence over it, and a brush mark carries nothing a reader needs. Through `next/image` rather than as a CSS `background-image` so the 487 KB PNG is served resized and re-encoded on the hero, where it would otherwise land whole in the middle of the largest paint on the page.
 

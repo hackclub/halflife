@@ -3,7 +3,9 @@
  *
  * Same markup and class names as `app/javascript/components/ui` in Fabricate, so its stylesheet (copied into `app/(review)/styles`) applies unchanged. Inertia's `<Head>` is gone: the page title comes from each route's metadata instead.
  */
+
 import type { ReactNode } from "react"
+import { isTruthy } from "@/lib/truthy"
 
 export function PageHead({
 	actions,
@@ -22,12 +24,12 @@ export function PageHead({
 		<div className={className ? `page-head ${className}` : "page-head"}>
 			<div>
 				<h1 className="page-head__title">
-					{eyebrow ? <span className="page-head__eyebrow">{eyebrow}</span> : null}
+					{isTruthy(eyebrow) ? <span className="page-head__eyebrow">{eyebrow}</span> : null}
 					{title}
 				</h1>
-				{lead ? <p className="page-head__lead">{lead}</p> : null}
+				{isTruthy(lead) ? <p className="page-head__lead">{lead}</p> : null}
 			</div>
-			{actions ? <div className="page-head__actions">{actions}</div> : null}
+			{isTruthy(actions) ? <div className="page-head__actions">{actions}</div> : null}
 		</div>
 	)
 }
@@ -50,13 +52,13 @@ export function Paper({
 	const classes = ["paper", variant ? `paper--${variant}` : "", className ?? ""].filter(Boolean).join(" ")
 	return (
 		<section className={classes}>
-			{title || actions ? (
+			{isTruthy(title) || isTruthy(actions) ? (
 				<header className="paper__head">
 					<div>
-						{title ? <h2 className="paper__title">{title}</h2> : null}
-						{meta ? <p className="paper__meta">{meta}</p> : null}
+						{isTruthy(title) ? <h2 className="paper__title">{title}</h2> : null}
+						{isTruthy(meta) ? <p className="paper__meta">{meta}</p> : null}
 					</div>
-					{actions ? <div className="form__actions">{actions}</div> : null}
+					{isTruthy(actions) ? <div className="form__actions">{actions}</div> : null}
 				</header>
 			) : null}
 			{children}
@@ -160,7 +162,7 @@ export function Field({
 				) : null}
 			</label>
 			{children}
-			{hint && !error ? <p className="field__hint">{hint}</p> : null}
+			{isTruthy(hint) && !error ? <p className="field__hint">{hint}</p> : null}
 			{error ? (
 				<p className="field__error" role="alert">
 					{error}

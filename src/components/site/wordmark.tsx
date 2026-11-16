@@ -1,5 +1,6 @@
 import Image, { type StaticImageData } from "next/image"
 import { BRAND } from "@/lib/site/content"
+import { isTruthy } from "@/lib/truthy"
 import logoArt from "../../../public/art/logo.png"
 
 const LOGO_SRC: StaticImageData | null = logoArt
@@ -11,7 +12,7 @@ const LOGO_SRC: StaticImageData | null = logoArt
  *
  * Two hardcoded numbers are gone instead of being corrected. The file was trimmed to its own ink, so its dimensions now *are* the artwork, and the box takes its ratio from the import rather than from anything typed here. A replacement logo of any shape gets a box of that shape.
  */
-const LOGO_ASPECT = LOGO_SRC ? LOGO_SRC.width / LOGO_SRC.height : 1
+const LOGO_ASPECT = isTruthy(LOGO_SRC) ? LOGO_SRC.width / LOGO_SRC.height : 1
 
 interface Props {
 	/**

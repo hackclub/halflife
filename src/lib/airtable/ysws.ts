@@ -1,3 +1,4 @@
+import { isTruthy } from "@/lib/truthy"
 import "server-only"
 import {
 	type AirtableConfig,
@@ -90,7 +91,7 @@ async function findExistingRow(
 				YSWS_SUBMISSION.fields.stage,
 			)}='${escapeAirtableValue(stage)}')`,
 		)
-		if (byId) return byId
+		if (isTruthy(byId)) return byId
 	}
 
 	if (typeof email !== "string" || email.length === 0 || typeof projectName !== "string" || projectName.length === 0)
@@ -117,7 +118,7 @@ async function recordIdOwner(recordId: string): Promise<string | null> {
 	for (const row of rows) {
 		const meta = isRecord(row.metadata) ? row.metadata : null
 		if (meta?.recordId !== recordId) continue
-		if (meta.removed) return null
+		if (isTruthy(meta.removed)) return null
 		return row.targetId
 	}
 	return null

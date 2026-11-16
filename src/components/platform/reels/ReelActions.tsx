@@ -8,6 +8,7 @@ import { ReportButton } from "@/components/platform/report/ReportButton"
 import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { prefersStill } from "@/lib/reduced-motion"
+import { isTruthy } from "@/lib/truthy"
 import { compact } from "./format"
 import { sendLike } from "./ReelCard"
 
@@ -108,7 +109,7 @@ function Action({
 					// Phone: over the picture, which can be any brightness – a white CAD window or a lit bench as easily as a dark one – so the icon sits on a disc of its own, as the card's mute button does. From md: a drawn paper disc beside the reel.
 					"backdrop-blur-sm md:backdrop-blur-none",
 					face,
-					onClick && !on && "md:group-hover:bg-mint md:group-hover:text-teal-ink",
+					onClick && !isTruthy(on) && "md:group-hover:bg-mint md:group-hover:text-teal-ink",
 				)}
 				ref={disc}
 				style={{ "--ring": ring, "--sk-radius": "999px" }}

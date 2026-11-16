@@ -1,6 +1,7 @@
 import Link from "next/link"
 import type { ComponentPropsWithRef, ReactNode } from "react"
 import { HangingSign } from "@/components/sign/HangingSign"
+import { isTruthy } from "@/lib/truthy"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that know about colour, spacing or type – a page composes these and never writes a raw utility class.
@@ -54,9 +55,9 @@ export function Panel({
 		<section
 			className={wide ? "hl-panel hl-stack hl-stack--tight hl-panel--wide" : "hl-panel hl-stack hl-stack--tight"}
 		>
-			{(title || actions) && (
+			{(isTruthy(title) || isTruthy(actions)) && (
 				<div className="hl-row" style={{ justifyContent: "space-between" }}>
-					{title ? <h2 style={{ fontSize: "1.05rem", margin: 0 }}>{title}</h2> : <span />}
+					{isTruthy(title) ? <h2 style={{ fontSize: "1.05rem", margin: 0 }}>{title}</h2> : <span />}
 					{actions}
 				</div>
 			)}
@@ -119,7 +120,7 @@ export function Field({ label, hint, children }: Readonly<{ label: string; hint?
 		<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 			<span className="hl-label-text">{label}</span>
 			{children}
-			{hint ? <span className="hl-hint">{hint}</span> : null}
+			{isTruthy(hint) ? <span className="hl-hint">{hint}</span> : null}
 		</label>
 	)
 }

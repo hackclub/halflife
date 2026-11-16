@@ -1,3 +1,4 @@
+import { isTruthy } from "@/lib/truthy"
 /** 1234 → "1.2k". Counts on a reel are glanced at, not read. */
 export function compact(n: number): string {
 	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`
@@ -19,7 +20,7 @@ export function clock(seconds: number): string {
  * How long ago, the way a feed says it: "now", "5m ago", "3h ago", "6d ago", "2w ago", and past a month the date itself – "ago" stops meaning anything once it has to be worked out.
  */
 export function ago(when: Date | string | null | undefined, now = Date.now()): string {
-	if (!when) return ""
+	if (!isTruthy(when)) return ""
 	const t = new Date(when).getTime()
 	if (Number.isNaN(t)) return ""
 	const s = Math.max(0, Math.round((now - t) / 1000))

@@ -1,6 +1,7 @@
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react"
 import type { LapseTimelapse } from "@/lib/lapse-timelapses"
 import { round2 } from "@/lib/money"
+import { isTruthy } from "@/lib/truthy"
 import type { SessionLog } from "@/lib/types"
 import {
 	clampToContentLimit,
@@ -98,7 +99,7 @@ export function useJournalDraft(checkpointId: string, existing: SessionLog | und
 
 	// Seed the picker's working set from what the entry was saved with. The seed never overwrites anything already picked – a returning draft, or a toggle that beat the read back, always wins.
 	useEffect(() => {
-		if (!editing || !existing || existing.clips.length === 0 || seededRef.current) return
+		if (!editing || !isTruthy(existing) || existing.clips.length === 0 || seededRef.current) return
 		let live = true
 		void (async () => {
 			let seed: ClipSeed = { picked: [], pinned: [] }

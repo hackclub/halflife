@@ -8,6 +8,7 @@ import db, { isUniqueViolation } from "@/lib/prisma8"
 import { starterProblem } from "@/lib/project-starter"
 import { projectExtensionSchema } from "@/lib/schemas/admin"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { isTruthy } from "@/lib/truthy"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -93,7 +94,7 @@ export const PATCH = withWritePermission(
 			if (isUniqueViolation(err)) return fail("CONFLICT", "That maker already has a live project on the target theme")
 			throw err
 		}
-		if (!updated) return fail("NOT_FOUND", "Project not found")
+		if (!isTruthy(updated)) return fail("NOT_FOUND", "Project not found")
 
 		if (data.submissionExtensionUntil !== undefined)
 			await logAudit({

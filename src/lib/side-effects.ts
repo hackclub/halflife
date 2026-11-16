@@ -43,7 +43,7 @@ export async function trackSideEffect<T>(
 		if (kind === "airtable" && !skipped) {
 			// A write that made or found an Airtable row reports its record id, and it is kept here: the YSWS table has no column of ours to find the row by later, so this is how a re-submission updates it and an unsubmit deletes it (lib/airtable/sync). A write that was skipped – sync turned off, Airtable not configured – logs no id, so it is retried later.
 			const recordId =
-				result && typeof result === "object" && "recordId" in result && typeof result.recordId === "string"
+				result !== null && typeof result === "object" && "recordId" in result && typeof result.recordId === "string"
 					? result.recordId
 					: undefined
 			await logAudit({
@@ -65,7 +65,7 @@ export async function trackSideEffect<T>(
 				actorId: ctx.actorId,
 				metadata: {
 					...metadataObject(ctx.metadata),
-					...(result && typeof result === "object" && "id" in result && typeof result.id === "string"
+					...(result !== null && typeof result === "object" && "id" in result && typeof result.id === "string"
 						? { ariSubmissionId: result.id }
 						: {}),
 				},
@@ -80,7 +80,7 @@ export async function trackSideEffect<T>(
 				actorId: ctx.actorId,
 				metadata: {
 					...metadataObject(ctx.metadata),
-					...(result && typeof result === "object" && "id" in result && typeof result.id === "string"
+					...(result !== null && typeof result === "object" && "id" in result && typeof result.id === "string"
 						? { ireSubmissionId: result.id }
 						: {}),
 				},
