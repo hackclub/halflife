@@ -161,7 +161,7 @@ export class ModelConversion {
 	private async convert(output: string): Promise<void> {
 		const deadline = Date.now() + TIMEOUT_MS
 		let misses = 0
-		for (;;) {
+		while (true) {
 			if (Date.now() > deadline) throw failure(`Converting took longer than ${TIMEOUT_MS / 60_000} minutes.`)
 			const status = await this.remoteStatus()
 			if (status?.state === "failed") throw failure(status.error || "The server could not convert this model.")
