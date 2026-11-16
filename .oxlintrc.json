@@ -100,7 +100,7 @@
 		"react/exhaustive-deps": "off",
 		"react/exhaustive-effect-dependencies": "off",
 		"react/function-component-definition": "off",
-		"react/jsx-max-depth": "off",
+		"react/jsx-max-depth": ["error", { "max": 8 }],
 		"react/jsx-no-target-blank": "warn",
 		"react/jsx-no-useless-fragment": "warn",
 		"react/jsx-props-no-spreading": "off",
