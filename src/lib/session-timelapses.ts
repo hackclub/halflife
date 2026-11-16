@@ -39,7 +39,7 @@ export async function reconcileSessionTimelapses(
 		.all()
 	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
 	const removeIds = rows
-		.filter(r => r.provider === "lapse" && r.externalId && !want.includes(r.externalId))
+		.filter(r => r.provider === "lapse" && r.externalId !== null && r.externalId !== "" && !want.includes(r.externalId))
 		.map(r => r.id)
 	const addIds = want.filter(id => !have.has(id))
 	const adding = fresh.filter(t => addIds.includes(t.id))

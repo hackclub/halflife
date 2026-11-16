@@ -40,7 +40,7 @@ export const GET = withSession(async (_req: Request, { gate }) => {
 			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
 			.all(),
 		db.orm.public.HackatimeLink.where(link =>
-			link.themeProject.some(project => project.deletedAt.isNull() && project.userId.eq(gate.user.id)),
+			link.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(gate.user.id))),
 		)
 			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase", "themeProjectId")
 			.all(),

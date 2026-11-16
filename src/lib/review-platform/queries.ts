@@ -152,7 +152,7 @@ async function toRows(
 		return [
 			{
 				ageDays: ageDays(submittedAt, now),
-				claimExpiresAt: claimLive && expiresAt ? expiresAt.toISOString() : null,
+				claimExpiresAt: claimLive && expiresAt !== null ? expiresAt.toISOString() : null,
 				flagged: viewer.seesRiskFlags && maker.fraudFlagged,
 				hoursClaimed: roundHours(hours.get(`${project.id}:${row.phase}`) ?? 0),
 				id: row.id,
@@ -565,7 +565,7 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		},
 		ship: {
 			ageDays: ageDays(submittedAt, now),
-			claimExpiresAt: claimLive && claimExpires ? claimExpires.toISOString() : null,
+			claimExpiresAt: claimLive && claimExpires !== null ? claimExpires.toISOString() : null,
 			claimedByViewer: claimLive && row.claim?.reviewerId === viewer.id,
 			claimerName: claimLive ? displayName(row.claim?.reviewer, "Another reviewer") : null,
 			decision: standing

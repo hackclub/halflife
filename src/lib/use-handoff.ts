@@ -170,7 +170,7 @@ async function presignUpload(
 	folder: string,
 ): Promise<{ objectKey: string; uploadUrl: string | null } | null> {
 	// Pictures are keyed by their hash, and WebCrypto only exists in a secure context. A plain-HTTP deployment (a dev server on a LAN address, say) therefore takes the server path, which hashes after the upload instead.
-	if (file.type.startsWith("image/") && !globalThis.crypto?.subtle) return null
+	if (file.type.startsWith("image/") && globalThis.crypto?.subtle === undefined) return null
 
 	const res = await fetch("/api/upload/presign", {
 		body: JSON.stringify({
