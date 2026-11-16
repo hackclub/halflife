@@ -318,6 +318,27 @@
 		font-family: var(--font-mono);
 		font-size: 0.85rem;
 	}
+	/* A value that is read as text but wanted elsewhere: the whole value is the control, and only the dashed edge says so, so the column still reads as a column. */
+	.hl-copy {
+		padding: 0;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		cursor: copy;
+		background: none;
+		border: 0;
+		border-bottom: 1px dashed var(--color-field-edge);
+	}
+	.hl-copy:hover {
+		color: var(--color-ink-strong);
+		border-bottom-color: currentColor;
+	}
+	.hl-copy-note {
+		margin-left: 0.4rem;
+		font-family: var(--font-sans);
+		font-size: 0.75rem;
+		color: var(--color-ink-muted);
+	}
 
 	/* ── Badges and callouts ───────────────────────────────────────────────── */
 	.hl-badge {
