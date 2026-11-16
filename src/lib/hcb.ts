@@ -54,10 +54,9 @@ function orgSlug(): string {
 
 export function isHcbConfigured(): boolean {
 	const staticToken = Boolean(process.env.HCB_ACCESS_TOKEN?.trim())
-	const refreshable = Boolean(
-		process.env.HCB_CLIENT_ID?.trim() && process.env.HCB_CLIENT_SECRET?.trim() && process.env.HCB_REFRESH_TOKEN?.trim(),
-	)
-	return Boolean(process.env.HCB_ORG_SLUG && (staticToken || refreshable))
+	// Client credentials are enough to be "configured": the refresh token that completes the flow is stored by the callback route, not required from the environment.
+	const oauth = Boolean(process.env.HCB_CLIENT_ID?.trim() && process.env.HCB_CLIENT_SECRET?.trim())
+	return Boolean(process.env.HCB_ORG_SLUG && (staticToken || oauth))
 }
 
 let cachedToken: { token: string; expiresAt: number } | null = null
@@ -93,7 +92,12 @@ async function requestNewAccessToken(): Promise<string> {
 	const secret = process.env.HCB_CLIENT_SECRET?.trim()
 	// The stored token is the live one; the env value is the bootstrap for a fresh deployment and the way back in after a reset.
 	const refresh = (await readStoredRefreshToken()) ?? process.env.HCB_REFRESH_TOKEN?.trim()
-	if (!id || !secret || !refresh) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
+	if (!id || !secret) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
+	if (!refresh)
+		throw new HttpError(
+			"NOT_CONFIGURED",
+			"No HCB refresh token is stored. Authorise the application once at /api/integrations/hcb/callback.",
+		)
 
 	const body = new URLSearchParams({
 		client_id: id,
