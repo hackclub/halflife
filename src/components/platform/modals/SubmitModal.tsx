@@ -61,7 +61,7 @@ function SubmitFooter({ sheet }: { sheet: SubmitSheet }) {
 					Next <IconArrowRight className="text-base" />
 				</Button>
 			) : (
-				<Button disabled={!canAdvance || submitting} onClick={() => submit()} variant="coral">
+				<Button disabled={!canAdvance || submitting} onClick={() => void submit()} variant="coral">
 					{submitting
 						? "Submitting…"
 						: owed > 0

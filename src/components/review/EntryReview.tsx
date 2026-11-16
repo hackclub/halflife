@@ -6,6 +6,7 @@ import { saveSessionHours } from "@/components/review/api"
 import { formatDuration } from "@/components/review/format"
 import { useAutosave } from "@/components/review/hooks"
 import type { ReviewEntry } from "@/lib/review-platform/types"
+import { isTruthy } from "@/lib/truthy"
 
 export type EntrySave = "saving" | "error" | null
 
@@ -64,7 +65,7 @@ export function EntryReview({ entry, onSaving }: { entry: ReviewEntry; onSaving(
 					{Math.round(entry.secondsSpent / 60)} min reported
 					{entry.timelapseSeconds > 0 ? ` · ${formatDuration(entry.timelapseSeconds)} recorded` : ""}
 				</span>
-				{status && typeof status === "object" ? (
+				{isTruthy(status) && typeof status === "object" ? (
 					<span className="field__error" role="alert">
 						{status.error}
 					</span>

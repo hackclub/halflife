@@ -160,16 +160,18 @@ function RailAccount() {
 				<button
 					className="docs-rail__signout"
 					disabled={signingOut}
-					onClick={async () => {
-						setSigningOut(true)
-						try {
-							await signOut()
-							// A full document load: the landing page is another root layout.
-							window.location.assign("/")
-						} finally {
-							setSigningOut(false)
-						}
-					}}
+					onClick={() =>
+						void (async () => {
+							setSigningOut(true)
+							try {
+								await signOut()
+								// A full document load: the landing page is another root layout.
+								window.location.assign("/")
+							} finally {
+								setSigningOut(false)
+							}
+						})()
+					}
 					type="button"
 				>
 					{signingOut ? "Signing out…" : "Log out ⎋"}

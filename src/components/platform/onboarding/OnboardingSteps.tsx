@@ -128,7 +128,7 @@ export function ExperienceStep({ flow }: { flow: OnboardingFlowContext }) {
 				busy={busy}
 				canSubmit={experience !== null}
 				onBack={back}
-				onSubmit={() => send({ experience, step: "experience" })}
+				onSubmit={() => void send({ experience, step: "experience" })}
 			/>
 		</div>
 	)
@@ -212,7 +212,7 @@ export function WeekStep({ flow }: { flow: OnboardingFlowContext }) {
 					/>
 				</>
 			) : (
-				<StepActions busy={busy} onBack={back} onSubmit={() => send({ step: "week" })} />
+				<StepActions busy={busy} onBack={back} onSubmit={() => void send({ step: "week" })} />
 			)}
 		</div>
 	)
@@ -288,7 +288,7 @@ export function IdeaStep({ flow }: { flow: OnboardingFlowContext }) {
 				busy={busy}
 				label={idea ? "Next" : "Stick with my own idea"}
 				onBack={back}
-				onSubmit={() => send({ starterProjectId: idea, step: "idea" })}
+				onSubmit={() => void send({ starterProjectId: idea, step: "idea" })}
 			/>
 		</div>
 	)
@@ -395,7 +395,7 @@ export function TierStep({ flow }: { flow: OnboardingFlowContext }) {
 				busy={busy}
 				canSubmit={view.project.tierLocked || pickedTier !== null}
 				onBack={back}
-				onSubmit={() => send({ requestedTier: view.project.tierLocked ? null : pickedTier, step: "tier" })}
+				onSubmit={() => void send({ requestedTier: view.project.tierLocked ? null : pickedTier, step: "tier" })}
 			/>
 		</div>
 	)
@@ -441,7 +441,7 @@ export function TrackingStep({ flow }: { flow: OnboardingFlowContext }) {
 				busy={busy}
 				label="Next"
 				onBack={back}
-				onSubmit={() => send({ dismissed: true, step: "tracking" })}
+				onSubmit={() => void send({ dismissed: true, step: "tracking" })}
 			/>
 		</div>
 	)
@@ -456,8 +456,17 @@ export function RepoStep({ flow }: { flow: OnboardingFlowContext }) {
 				<code className="hand text-navy">JOURNAL.md</code> and <code className="hand text-navy">BOM.csv</code> up to
 				date in it as you work. You can turn it on later from the project page, so this is optional.
 			</p>
-			<RepoSyncSettings compact onEnabled={() => send({ enabled: true, step: "repo" })} projectId={view.projectId} />
-			<StepActions busy={busy} label="Finish" onBack={back} onSubmit={() => send({ enabled: false, step: "repo" })} />
+			<RepoSyncSettings
+				compact
+				onEnabled={() => void send({ enabled: true, step: "repo" })}
+				projectId={view.projectId}
+			/>
+			<StepActions
+				busy={busy}
+				label="Finish"
+				onBack={back}
+				onSubmit={() => void send({ enabled: false, step: "repo" })}
+			/>
 		</div>
 	)
 }

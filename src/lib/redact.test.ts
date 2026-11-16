@@ -17,7 +17,7 @@ describe("redactForLog", () => {
 	})
 
 	test("truncates very long lines instead of scanning them whole", () => {
-		const line = `start ${"x".repeat(5_000)}`
+		const line = `start ${"x".repeat(5000)}`
 		const out = redactForLog(line)
 		expect(typeof out).toBe("string")
 		if (typeof out !== "string") throw new TypeError("expected a string")

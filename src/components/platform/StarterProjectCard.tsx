@@ -3,6 +3,7 @@ import { StarterRender } from "@/components/platform/art"
 import { IconBook, IconFile } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
+import { isTruthy } from "@/lib/truthy"
 
 export interface StarterProjectCardData {
 	description: string
@@ -73,7 +74,7 @@ export function ProjectChoiceCard({
 					<p className="label text-teal-ink">{label}</p>
 					<h3 className="mt-1 text-[1.2rem] leading-tight font-extrabold text-navy">{title}</h3>
 					{children}
-					{action ? <div className={cx("pt-4", stacked && "mt-auto")}>{action}</div> : null}
+					{isTruthy(action) ? <div className={cx("pt-4", stacked && "mt-auto")}>{action}</div> : null}
 				</div>
 			</div>
 		</Panel>

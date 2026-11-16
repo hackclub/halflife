@@ -111,17 +111,19 @@ export function Sidebar({ className }: { className?: string }) {
 					<button
 						className="label mt-2 inline-flex items-center gap-1.5 text-sky-ink transition-colors hover:text-coral-deep"
 						disabled={signingOut}
-						onClick={async () => {
-							setSigningOut(true)
-							try {
-								await signOut()
-								// A full document load across the two root layouts: a client navigation can leave the
-								// landing stylesheet in front of the platform's, painting the trail in the wrong world.
-								window.location.assign("/")
-							} finally {
-								setSigningOut(false)
-							}
-						}}
+						onClick={() =>
+							void (async () => {
+								setSigningOut(true)
+								try {
+									await signOut()
+									// A full document load across the two root layouts: a client navigation can leave the
+									// landing stylesheet in front of the platform's, painting the trail in the wrong world.
+									window.location.assign("/")
+								} finally {
+									setSigningOut(false)
+								}
+							})()
+						}
 						type="button"
 					>
 						{signingOut ? "Signing out…" : "Log out"} <IconLogout className="text-[0.95rem]" />
@@ -249,14 +251,16 @@ function RedoOnboarding() {
 				<button
 					className={cx(link, "font-semibold text-coral-dark hover:text-navy")}
 					disabled={busy}
-					onClick={async () => {
-						setBusy(true)
-						setError(null)
-						const failed = await redoOnboarding()
-						setBusy(false)
-						if (failed) setError(failed)
-						else setAsking(false)
-					}}
+					onClick={() =>
+						void (async () => {
+							setBusy(true)
+							setError(null)
+							const failed = await redoOnboarding()
+							setBusy(false)
+							if (failed) setError(failed)
+							else setAsking(false)
+						})()
+					}
 					type="button"
 				>
 					{busy ? "Resetting…" : "Yes, redo it"}

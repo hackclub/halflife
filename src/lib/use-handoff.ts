@@ -73,27 +73,31 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 	const poll = useCallback(
 		(id: string) => {
 			stop()
-			timer.current = setInterval(async () => {
-				try {
-					const res = await fetch(`/api/handoff/${id}`)
-					if (!res.ok) return
-					const parsed = HandoffPollBody.safeParse(await res.json())
-					if (!parsed.success) return
-					const payload = parsed.data
-					if (payload.state === "ready" && payload.objectKey) {
-						stop()
-						setStatus("ready")
-						ready.current(payload.objectKey, payload.url ?? null)
-						// Tell the server we have it, so nothing keeps this row live.
-						void fetch(`/api/handoff/${id}`, { method: "POST" })
-					} else if (payload.state === "expired") {
-						stop()
-						setStatus("expired")
-					}
-				} catch {
-					// A dropped poll is not worth surfacing; the next tick retries.
-				}
-			}, POLL_MS)
+			timer.current = setInterval(
+				() =>
+					void (async () => {
+						try {
+							const res = await fetch(`/api/handoff/${id}`)
+							if (!res.ok) return
+							const parsed = HandoffPollBody.safeParse(await res.json())
+							if (!parsed.success) return
+							const payload = parsed.data
+							if (payload.state === "ready" && payload.objectKey) {
+								stop()
+								setStatus("ready")
+								ready.current(payload.objectKey, payload.url ?? null)
+								// Tell the server we have it, so nothing keeps this row live.
+								void fetch(`/api/handoff/${id}`, { method: "POST" })
+							} else if (payload.state === "expired") {
+								stop()
+								setStatus("expired")
+							}
+						} catch {
+							// A dropped poll is not worth surfacing; the next tick retries.
+						}
+					})(),
+				POLL_MS,
+			)
 		},
 		[stop],
 	)
@@ -170,7 +174,7 @@ async function presignUpload(
 	folder: string,
 ): Promise<{ objectKey: string; uploadUrl: string | null } | null> {
 	// Pictures are keyed by their hash, and WebCrypto only exists in a secure context. A plain-HTTP deployment (a dev server on a LAN address, say) therefore takes the server path, which hashes after the upload instead.
-	if (file.type.startsWith("image/") && !globalThis.crypto?.subtle) return null
+	if (file.type.startsWith("image/") && globalThis.crypto?.subtle === undefined) return null
 
 	const res = await fetch("/api/upload/presign", {
 		body: JSON.stringify({

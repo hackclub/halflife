@@ -34,10 +34,10 @@ import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/l
  */
 
 /** Debounce: the shortest gap between a write and its commit being started. */
-export const SYNC_DEBOUNCE_MS = 2_000
+export const SYNC_DEBOUNCE_MS = 2000
 
 /** How long a scheduled run waits for the in-flight one to finish. */
-const QUEUE_POLL_MS = 1_500
+const QUEUE_POLL_MS = 1500
 
 /** Give up waiting for a stuck run; the next write will start a fresh one. */
 const QUEUE_MAX_WAIT_MS = 60_000

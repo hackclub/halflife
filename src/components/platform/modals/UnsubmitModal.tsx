@@ -47,7 +47,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<Button disabled={busy} onClick={() => setOpenCheckpoint(null)} variant="outline">
 						Keep it in review
 					</Button>
-					<Button disabled={busy} onClick={() => unsubmit()} variant="solid">
+					<Button disabled={busy} onClick={() => void unsubmit()} variant="solid">
 						{busy ? "Unsubmitting…" : week.id === WARMUP_WEEK_ID ? "Unsubmit your warm-up" : `Unsubmit week ${week.id}`}
 					</Button>
 				</>

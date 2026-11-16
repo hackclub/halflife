@@ -33,12 +33,12 @@ export const createPostSchema = z
 			.min(0)
 			.max(24 * 3600)
 			.nullish(),
-		height: z.number().int().min(0).max(20000).nullish(),
+		height: z.number().int().min(0).max(20_000).nullish(),
 		kind: z.enum(PostKind).default(PostKind.FREEFORM),
 		objectKey,
 		themeProjectId: cuid.nullish(),
 		thumbnailKey: objectKey.nullish(),
-		width: z.number().int().min(0).max(20000).nullish(),
+		width: z.number().int().min(0).max(20_000).nullish(),
 	})
 	.strict()
 

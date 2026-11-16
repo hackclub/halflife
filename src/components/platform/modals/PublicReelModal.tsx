@@ -230,7 +230,7 @@ export function PublicReelModal({
 					<Button disabled={saving} onClick={onClose} variant="outline">
 						Skip
 					</Button>
-					<Button disabled={filled.length === 0 || saving} onClick={() => save()} variant="solid">
+					<Button disabled={filled.length === 0 || saving} onClick={() => void save()} variant="solid">
 						{saving ? "Saving…" : "Save links"}
 					</Button>
 				</>
@@ -265,11 +265,11 @@ export function PublicReelModal({
 						</code>
 					)}
 					{referral.state === "ready" && (
-						<Button onClick={() => copy(referral.link, "link")} size="sm" variant="outline">
+						<Button onClick={() => void copy(referral.link, "link")} size="sm" variant="outline">
 							{copied === "link" ? "Copied!" : "Copy link"}
 						</Button>
 					)}
-					<Button onClick={() => copy(captionLine, "caption")} size="sm" variant="outline">
+					<Button onClick={() => void copy(captionLine, "caption")} size="sm" variant="outline">
 						{copied === "caption" ? "Copied!" : referral.state === "ready" ? "Copy link + hashtag" : "Copy hashtag"}
 					</Button>
 				</div>

@@ -242,7 +242,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 			break
 		}
 
-		case "tier": {
+		case "tier":
 			if (answer.requestedTier === null) {
 				// Only the locked case may decline to choose: its tier was already written when the starter project was taken, so there is nothing left to answer. Anyone else is trying to skip the question.
 				if (!before.project.tierLocked) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
@@ -257,7 +257,6 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 			if (!isTierId(answer.requestedTier)) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 			projectData.requestedTier = answer.requestedTier
 			break
-		}
 
 		case "tracking":
 			if (answer.dismissed) userData.trackingTutorialDismissedAt = new Date()

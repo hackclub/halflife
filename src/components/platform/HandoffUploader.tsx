@@ -58,7 +58,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 		)
 
 	return (
-		<form className="grid gap-4" onSubmit={submit}>
+		<form className="grid gap-4" onSubmit={e => void submit(e)}>
 			{error ? (
 				<p
 					className="rounded-xl border-2 border-coral bg-coral/10 px-4 py-3 text-[0.92rem] leading-snug font-semibold text-coral-dark"

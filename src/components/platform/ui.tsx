@@ -3,6 +3,7 @@
 import Link from "next/link"
 import type { ButtonHTMLAttributes, ComponentProps, ComponentPropsWithRef, ReactNode, Ref } from "react"
 import { cx } from "@/lib/cx"
+import { isTruthy } from "@/lib/truthy"
 
 export { cx } from "@/lib/cx"
 
@@ -209,7 +210,7 @@ export function OptionRow({
 				</span>
 				<span className="min-w-0 flex-1">{children}</span>
 			</span>
-			{hint && <span className="mt-1.5 block pl-8 text-[0.78rem] leading-snug text-navy-soft">{hint}</span>}
+			{isTruthy(hint) && <span className="mt-1.5 block pl-8 text-[0.78rem] leading-snug text-navy-soft">{hint}</span>}
 		</button>
 	)
 }

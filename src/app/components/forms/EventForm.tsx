@@ -88,7 +88,7 @@ export function EventForm({
 	const missing = !title.trim() || !startsAt
 
 	return (
-		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
+		<form className="hl-stack hl-stack--tight" onSubmit={e => void submit(e)}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 
 			<div className="hl-row" style={{ alignItems: "flex-end" }}>

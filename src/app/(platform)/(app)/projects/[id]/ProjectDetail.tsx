@@ -94,7 +94,7 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 				</p>
 			)}
 			<div className="flex flex-wrap gap-2">
-				<Button disabled={saving} onClick={() => submit()} size="sm" variant="solid">
+				<Button disabled={saving} onClick={() => void submit()} size="sm" variant="solid">
 					{saving ? "Sending…" : "Ask for a second look"}
 				</Button>
 				<Button disabled={saving} onClick={onClose} size="sm" variant="ghost">
@@ -149,7 +149,7 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
 				<div className="mt-3.5 grid gap-2.5">
 					<p className="text-[0.9rem] font-extrabold text-navy">Delete {name}? You can&apos;t undo this yourself.</p>
 					<div className="flex flex-wrap gap-2">
-						<Button disabled={deleting} onClick={() => remove()} size="sm" variant="coral">
+						<Button disabled={deleting} onClick={() => void remove()} size="sm" variant="coral">
 							{deleting ? "Deleting…" : "Yes, delete it"}
 						</Button>
 						<Button disabled={deleting} onClick={() => setConfirming(false)} size="sm" variant="ghost">

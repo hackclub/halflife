@@ -122,7 +122,7 @@ export function ReelCapture({
 				accept={VIDEO_ACCEPT}
 				aria-hidden="true"
 				className="sr-only"
-				onChange={e => pick(e.target.files?.[0])}
+				onChange={e => void pick(e.target.files?.[0])}
 				ref={input}
 				tabIndex={-1}
 				type="file"
@@ -134,7 +134,7 @@ export function ReelCapture({
 				aria-hidden="true"
 				capture="environment"
 				className="sr-only"
-				onChange={e => pick(e.target.files?.[0])}
+				onChange={e => void pick(e.target.files?.[0])}
 				ref={camera}
 				tabIndex={-1}
 				type="file"

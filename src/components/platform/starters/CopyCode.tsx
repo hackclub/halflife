@@ -27,7 +27,7 @@ export function CopyCode({ code }: { code: string }) {
 		<button
 			aria-live="polite"
 			className="label rounded-md px-2 py-0.5 text-[0.7rem] text-white/85 transition-colors hover:bg-white/15 hover:text-white"
-			onClick={copy}
+			onClick={() => void copy()}
 			type="button"
 		>
 			{state === "copied" ? "Copied!" : state === "failed" ? "Select it instead" : "Copy"}

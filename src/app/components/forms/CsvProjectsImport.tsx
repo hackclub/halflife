@@ -146,7 +146,7 @@ export function CsvProjectsImport() {
 					ref={picker}
 					type="file"
 				/>
-				<Button disabled={busy || !file} onClick={() => run()} variant="primary">
+				<Button disabled={busy || !file} onClick={() => void run()} variant="primary">
 					{busy ? "Importing… (this can take a while)" : "Import projects from CSV"}
 				</Button>
 			</div>

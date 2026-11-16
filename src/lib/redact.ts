@@ -17,7 +17,7 @@ const BEARER = /(Bearer\s+)[A-Za-z0-9\-._~+/=]{8,}/gi
  *
  * A log line is not a document. Past this the tail is noise, and the scrubber's cost grows with the length of what it is given, so the tail is dropped rather than scanned.
  */
-const MAX_SCRUBBED_CHARS = 4_096
+const MAX_SCRUBBED_CHARS = 4096
 
 /** Mask emails and bearer-like tokens in free text. Non-strings pass through. */
 export function redactForLog(value: string): string

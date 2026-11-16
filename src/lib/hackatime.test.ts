@@ -55,8 +55,8 @@ describe("phaseWeekWindowSeconds", () => {
 
 	test("the start is the Monday the week opens on, and the end is Sunday 11:59PM", () => {
 		expect(phaseWeekWindowSeconds(settings, Theme.PCB, Phase.DESIGN, {})).toEqual({
-			fromSeconds: 1789344000,
-			toSeconds: 1789948740,
+			fromSeconds: 1_789_344_000,
+			toSeconds: 1_789_948_740,
 		})
 	})
 
@@ -69,7 +69,7 @@ describe("phaseWeekWindowSeconds", () => {
 			phaseWeekWindowSeconds(settings, Theme.PCB, Phase.DESIGN, {
 				userUntil: new Date("2026-09-24T23:59:00Z"),
 			}),
-		).toEqual({ fromSeconds: 1789344000, toSeconds: 1790294340 })
+		).toEqual({ fromSeconds: 1_789_344_000, toSeconds: 1_790_294_340 })
 	})
 
 	test("an extension that is shorter than the scheduled close does not shrink it", () => {
@@ -77,7 +77,7 @@ describe("phaseWeekWindowSeconds", () => {
 			phaseWeekWindowSeconds(settings, Theme.PCB, Phase.DESIGN, {
 				projectUntil: new Date("2026-09-15T23:59:00Z"),
 			}),
-		).toEqual({ fromSeconds: 1789344000, toSeconds: 1789948740 })
+		).toEqual({ fromSeconds: 1_789_344_000, toSeconds: 1_789_948_740 })
 	})
 
 	test("the latest of the three extensions wins", () => {
@@ -87,6 +87,6 @@ describe("phaseWeekWindowSeconds", () => {
 				userUntil: new Date("2026-09-22T23:59:00Z"),
 				weekUntil: new Date("2026-09-21T23:59:00Z"),
 			}),
-		).toEqual({ fromSeconds: 1789344000, toSeconds: 1790294340 })
+		).toEqual({ fromSeconds: 1_789_344_000, toSeconds: 1_790_294_340 })
 	})
 })

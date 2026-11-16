@@ -14,6 +14,7 @@ import { createPortal } from "react-dom"
 import { IconX } from "@/components/platform/icons"
 import { accentText } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
+import { isTruthy } from "@/lib/truthy"
 
 /**
  * The id the dialog's `aria-labelledby` points at. `Modal` provides it so a `ModalTitle` that does not carry its own `id` still names the dialog; the dialogs that predate this passed `labelledBy` and an `id` themselves.
@@ -168,7 +169,7 @@ export function Modal({
 					<ModalTitleId.Provider value={titleId}>{children}</ModalTitleId.Provider>
 				</div>
 
-				{footer && (
+				{isTruthy(footer) && (
 					<div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-dashed border-line/80 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-5">
 						{footer}
 					</div>
@@ -203,7 +204,7 @@ export function ModalTitle({
 			>
 				{children}
 			</h2>
-			{sub && (
+			{isTruthy(sub) && (
 				<p className={cx("mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft", !subWide && "max-w-[62ch]")}>{sub}</p>
 			)}
 		</div>

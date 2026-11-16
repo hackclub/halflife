@@ -161,7 +161,9 @@ export function droppedImages(transfer: DataTransfer): ImageSource[] {
 		.getData("text/uri-list")
 		.split(/\r?\n/)
 		.map(line => line.trim())
-		.filter(line => line && !line.startsWith("#") && /^https?:\/\/\S+\.(png|jpe?g|gif|webp)(?:[?#]\S*)?$/i.test(line))
+		.filter(
+			line => line !== "" && !line.startsWith("#") && /^https?:\/\/\S+\.(png|jpe?g|gif|webp)(?:[?#]\S*)?$/i.test(line),
+		)
 		.map(url => ({ alt: "", url }))
 }
 

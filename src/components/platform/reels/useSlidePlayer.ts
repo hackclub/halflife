@@ -26,6 +26,12 @@ export interface SlidePlayer {
  *
  * Playback follows `active` and nothing else. The page decides which slide is current; the slide plays when it is, from the top, and stops when it is not.
  */
+/** A length the browser or the record has, or null: zero and NaN (not yet known) count as missing, as they did under `||`. */
+function measured(seconds: number | null | undefined): number | null {
+	if (!seconds) return null
+	return seconds
+}
+
 export function useSlidePlayer({
 	active,
 	muted,
@@ -109,7 +115,7 @@ export function useSlidePlayer({
 	function handleTime() {
 		const el = video.current
 		if (!el) return
-		setTime({ now: el.currentTime, total: el.duration || reel.durationSeconds || 0 })
+		setTime({ now: el.currentTime, total: measured(el.duration) ?? measured(reel.durationSeconds) ?? 0 })
 		if (!playing && fill.current && el.duration)
 			fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`
 		if (counted.current) return

@@ -63,7 +63,7 @@ test("an admin can generate and re-download an HCB grant CSV", async ({ openAs }
 		page.getByRole("button", { name: /^Generate \d+ grants$/ }).click(),
 	])
 	expect(download.suggestedFilename()).toMatch(/^hcb-card-grants-.+\.csv$/)
-	const firstBody = await readFile(await download.path(), "utf-8")
+	const firstBody = await readFile(await download.path(), "utf8")
 	expect(firstBody).toContain(maker.email)
 	expect(firstBody).toContain(
 		`Half Life parts – E2E payout,Parts for E2E payout – http://localhost:3100/projects/${projectId}`,
@@ -86,5 +86,5 @@ test("an admin can generate and re-download an HCB grant CSV", async ({ openAs }
 		page.waitForEvent("download"),
 		exportRow.getByRole("link", { name: "Download CSV" }).click(),
 	])
-	expect(await readFile(await again.path(), "utf-8")).toBe(firstBody)
+	expect(await readFile(await again.path(), "utf8")).toBe(firstBody)
 })

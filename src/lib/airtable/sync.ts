@@ -1,3 +1,4 @@
+import { isTruthy } from "@/lib/truthy"
 import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
 import {
@@ -57,7 +58,7 @@ async function lastRecordId(themeProjectId: string, phase: Phase): Promise<strin
 	for (const row of rows) {
 		const meta = isRecord(row.metadata) ? row.metadata : null
 		if (meta?.phase !== phase) continue
-		if (meta.removed) return null
+		if (isTruthy(meta.removed)) return null
 		if (typeof meta.recordId === "string") return meta.recordId
 	}
 	return null

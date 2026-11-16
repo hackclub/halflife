@@ -296,13 +296,11 @@ async function main(): Promise<void> {
 	else console.log(`Wrote ${options.out}`)
 }
 
-void (async () => {
-	try {
-		await main()
-	} catch (err) {
-		console.error(err instanceof Error ? err.message : err)
-		process.exit(1)
-	}
-})()
+try {
+	await main()
+} catch (err) {
+	console.error(err instanceof Error ? err.message : err)
+	process.exit(1)
+}
 
 export { main }

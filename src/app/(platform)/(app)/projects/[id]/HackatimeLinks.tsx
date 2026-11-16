@@ -207,7 +207,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 										<Button
 											aria-label={`Unlink ${l.hackatimeProject}`}
 											disabled={busy !== null || l.hoursApproved !== null}
-											onClick={() => unlink(l.id)}
+											onClick={() => void unlink(l.id)}
 											size="sm"
 											title={
 												l.hoursApproved === null ? undefined : "A reviewer has set hours on this link, so it stays"
@@ -226,7 +226,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 								<Button
 									disabled={busy !== null}
 									onClick={() =>
-										run("account", async () => {
+										void run("account", async () => {
 											await linkHackatime(`/projects/${projectId}`)
 										})
 									}
@@ -257,7 +257,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 										</option>
 									))}
 								</select>
-								<Button disabled={!picked || busy !== null} onClick={link} variant="outline">
+								<Button disabled={!picked || busy !== null} onClick={() => void link()} variant="outline">
 									<IconPlus className="text-sm" /> {busy === "link" ? "Linking…" : "Link project"}
 								</Button>
 							</div>

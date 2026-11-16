@@ -1,5 +1,6 @@
 import "server-only"
 import type { AriReview, AriWebhookEvent } from "@hackclub/ari"
+import { and } from "@prisma/orm-postgres/orm-client"
 import { mirrorAriPhaseToYsws, mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
 import { approvedHoursFrom } from "@/lib/ari-hours"
 import { parseAriExternalId } from "@/lib/ari-id"
@@ -279,8 +280,8 @@ async function applyReset(event: ResetInput): Promise<void> {
 	await db.transaction(async tx => {
 		await tx.orm.public.SubmissionReview.where({ invalidated: false })
 			.where(review =>
-				review.submission.some(
-					submission => submission.phase.eq(phase) && submission.themeProjectId.eq(themeProjectId),
+				review.submission.some(submission =>
+					and(submission.phase.eq(phase), submission.themeProjectId.eq(themeProjectId)),
 				),
 			)
 			.updateAndCount({ invalidated: true, invalidatedAt: nowText })

@@ -1,3 +1,4 @@
+import { isTruthy } from "@/lib/truthy"
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
 import { DESIGN_WEEKS } from "@/lib/config/program"
@@ -37,7 +38,7 @@ export function reelNameForKey(key: string): string {
 	const progress = slot && /^\d+$/.test(slot)
 	// `curriculum` names the phases in lower case, as the trail does; the Prisma enum is spelled the other way and is not what this takes.
 	const phase = week === null ? null : week > DESIGN_WEEKS ? ("build" as const) : ("design" as const)
-	const what = progress
+	const what = isTruthy(progress)
 		? phase
 			? `${progressReelHours(phase, Number(slot))}h progress reel`
 			: "progress reel"

@@ -4,7 +4,7 @@ import { readLapsePage } from "@/lib/lapse-timelapses"
 const timelapse = {
 	attached: false,
 	createdAt: 1_700_000_000_000,
-	durationSeconds: 3_600,
+	durationSeconds: 3600,
 	hackatimeProject: null,
 	id: "cm1lapse",
 	processing: false,

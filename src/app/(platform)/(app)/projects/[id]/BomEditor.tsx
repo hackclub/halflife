@@ -311,7 +311,7 @@ export function BomEditor({
 								line={l}
 								locked={locked}
 								onEdit={open}
-								onRemove={remove}
+								onRemove={line => void remove(line)}
 								saving={saving}
 							/>
 						))}
@@ -453,7 +453,7 @@ function ExtraRow({
 							disabled={disabled}
 							id={id}
 							inputMode="decimal"
-							onBlur={() => commit()}
+							onBlur={() => void commit()}
 							onChange={e => {
 								setDraft(e.target.value.replaceAll("$", ""))
 								if (invalid) setInvalid(false)

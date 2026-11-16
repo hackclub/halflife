@@ -261,7 +261,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	if (readmeRes.ok) {
 		const r: unknown = await readmeRes.json()
 		if (isRecord(r) && typeof r.content === "string" && r.encoding === "base64")
-			readme = capReadme(Buffer.from(r.content, "base64").toString("utf-8"))
+			readme = capReadme(Buffer.from(r.content, "base64").toString("utf8"))
 	}
 
 	return { designs: designFinder(ref, files), files, kind: "ok", paths, readme, truncated: body.truncated === true }
@@ -782,5 +782,5 @@ async function readRepoFileAt(ref: RepoRef, path: string): Promise<string | null
 	const body: unknown = await res.json().catch(() => null)
 	// GitHub omits `content` for files over a megabyte and sets `encoding` to `none`; a BOM CSV is never one, so that is just unreadable.
 	if (!isRecord(body) || typeof body.content !== "string" || body.encoding !== "base64") return null
-	return Buffer.from(body.content, "base64").toString("utf-8")
+	return Buffer.from(body.content, "base64").toString("utf8")
 }

@@ -132,7 +132,7 @@ export function ImageUploads({
 				aria-hidden="true"
 				className="sr-only"
 				multiple
-				onChange={e => pick(e.target.files)}
+				onChange={e => void pick(e.target.files)}
 				ref={input}
 				tabIndex={-1}
 				type="file"

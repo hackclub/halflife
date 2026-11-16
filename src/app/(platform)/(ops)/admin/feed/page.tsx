@@ -14,6 +14,7 @@ import {
 	listRecentPublicReels,
 } from "@/lib/queries/admin"
 import { preview } from "@/lib/text"
+import { isTruthy } from "@/lib/truthy"
 
 export const dynamic = "force-dynamic"
 
@@ -103,7 +104,7 @@ export default async function AdminFeedPage() {
 								<td>
 									{comment.hiddenAt ? <Badge tone="danger">hidden</Badge> : null}
 									<span className="hl-hint"> {preview(comment.body)}</span>
-									{comment.post ? (
+									{isTruthy(comment.post) ? (
 										<div className="hl-hint">on {preview(comment.post.caption, 60) || "a reel"}</div>
 									) : null}
 								</td>

@@ -9,7 +9,7 @@ const input: ReviewShipInput = {
 	maker: { email: "maker@example.com", name: "Maker", slack_id: "U123" },
 	meta: {
 		bom: [{ name: "RP2040", qty: 1, unit_usd: 1.2 }],
-		grant_cap_cents: 10000,
+		grant_cap_cents: 10_000,
 		hours: { claimed_seconds: 3600, hackatime_seconds: 1800, journal_seconds: 1800, timelapse_seconds: 0 },
 		phase: "design",
 		prior_reviews: [{ feedback: "Add a BOM", result: "RETURNED" }],
