@@ -99,7 +99,7 @@ export function ReelViewer() {
 		}
 		// Deleted, hidden, or further back than it is worth walking: the top.
 		else setWalked(true)
-	}, [resume, loading, items, leading, done, error, handleMore, deep])
+	}, [resume, loading, items, leading, done, error, handleMore, deep, setCursor, setIndex])
 
 	// A card's comments link opens the conversation once its reel has landed. Wide, that is the panel beside the reel; below it, the sheet over it.
 	useEffect(() => {

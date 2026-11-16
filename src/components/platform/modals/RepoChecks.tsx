@@ -115,14 +115,14 @@ export function RepoChecks({
 		} finally {
 			setLoading(false)
 		}
-		// The link is the input: a new one means a fresh check.
-	}, [project.id, project.githubRepo, onResult])
+	}, [project.id, onResult])
 
 	useEffect(() => {
 		// fetching on mount and on a new link
 		// oxlint-disable-next-line react/set-state-in-effect -- starts the first check on mount and on a new link; the loading state is set before the request it reports
 		void run()
-	}, [run])
+		// The link is the input: a new one means a fresh check.
+	}, [run, project.githubRepo])
 
 	const failed = data?.checks.filter(c => c.blocking && c.status === "fail") ?? []
 	const waived = waivedFirmware ? failed.filter(c => c.key === "firmware").length : 0

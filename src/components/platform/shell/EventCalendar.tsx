@@ -69,14 +69,15 @@ export function EventCalendar({
 	const now = useClock() ?? new Date(0)
 	const today = calendarDay(now, timeZone)
 	// The week to open on. The header this dialog hangs off counts down to the next event, so opening the calendar on *its* week is what makes the thing the button just advertised visible: a call on Friday the 30th used to land in an empty Monday-to-Sunday grid because "today" is still in the week before. An event already under way keeps today's week, since its start may be the previous day.
-	const openingDay = useMemo(() => {
+	// Not memoised: it reads the clock, which changes every second, so a memo would only recompute on every tick anyway.
+	const openingDay = (() => {
 		const next = nextEvent(events, now)
 		if (!next) return today
 		const nextDay = calendarDay(next.startsAt, timeZone)
 		// A live event that began yesterday still belongs to today's view, not last week's.
 		if (nextDay < today) return today
 		return nextDay
-	}, [events, now, timeZone, today])
+	})()
 	// Any day in the viewed week; the grid always shows its Monday-to-Sunday.
 	const [anchor, setAnchor] = useState(openingDay)
 	const [selected, setSelected] = useState<string | null>(null)
@@ -144,7 +145,7 @@ export function EventCalendar({
 	const gridHeight = spanHours * HOUR_PX
 	const hours = useMemo(() => Array.from({ length: spanHours + 1 }, (_, i) => startHour + i), [startHour, spanHours])
 
-	const upcoming = useMemo(() => events.filter(event => eventIsUpcoming(event, now)).slice(0, 6), [events, now])
+	const upcoming = events.filter(event => eventIsUpcoming(event, now)).slice(0, 6)
 	const onDay = useMemo(() => (selected ? eventsOnDay(events, selected, timeZone) : []), [events, selected, timeZone])
 
 	function shift(delta: number) {
