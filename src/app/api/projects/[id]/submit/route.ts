@@ -1,19 +1,11 @@
-import { after } from "next/server"
-import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
-import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { markSubmission } from "@/lib/analytics"
 import { ok, parseBody } from "@/lib/api"
-import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
-import { refreshLinkCache } from "@/lib/hackatime"
-import { ireLive, isIreConfigured } from "@/lib/ire-platform"
-import { sendSubmissionToIre } from "@/lib/ire-shadow"
-import db from "@/lib/prisma8"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { submitSchema } from "@/lib/schemas/project"
-import { trackSideEffect } from "@/lib/side-effects"
 import { submitPhase } from "@/lib/submissions"
+import { propagateSubmission } from "@/lib/submit-effects"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -56,87 +48,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		targetType: "ThemeProject",
 	})
 
-	// Into the YSWS table as "Pending Review" – the table reviewers work from on ari.hackclub.com. After the response, so a slow Airtable never holds up a hand-in; a failure lands in the audit log and the retry job replays it.
-	after(async () => {
-		await trackSideEffect(
-			"airtable",
-			{
-				actorEmail: gate.user.email,
-				actorId: gate.user.id,
-				metadata: { phase: parsed.data.phase },
-				targetId: id,
-				targetType: "ThemeProject",
-			},
-			() => syncSubmissionToYsws(id, parsed.data.phase),
-		)
-	})
-
-	// Tick the week's `ProjectSubmitted` box on the maker's Signups row, so Loops can trigger off the hand-in without waiting for the hourly sync. Best-effort: a skip or a fault only delays the tick until `loops-sync` heals it, so it must never fail the hand-in.
-	after(async () => {
-		try {
-			if (submission.scheduledWeek !== null && submission.scheduledWeek !== undefined)
-				await syncLoopsWeekSubmitted(gate.user.id, submission.scheduledWeek)
-		} catch (err) {
-			console.error("[submit] loops submitted tick failed:", err)
-		}
-	})
-
-	// And into review. In live mode Ire owns the decision, so the hand-in goes there exclusively; otherwise Ari reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without review secrets logs no noise; a failure lands in the audit log and the retry route.
-	if (ireLive())
-		after(async () => {
-			await trackSideEffect(
-				"ire",
-				{
-					actorEmail: gate.user.email,
-					actorId: gate.user.id,
-					metadata: { live: true, phase: parsed.data.phase },
-					targetId: id,
-					targetType: "ThemeProject",
-				},
-				() => sendSubmissionToIre(id, parsed.data.phase),
-			)
-		})
-	else {
-		if (isAriConfigured())
-			after(async () => {
-				await trackSideEffect(
-					"ari",
-					{
-						actorEmail: gate.user.email,
-						actorId: gate.user.id,
-						metadata: { phase: parsed.data.phase },
-						targetId: id,
-						targetType: "ThemeProject",
-					},
-					() => sendSubmissionToAri(id, parsed.data.phase),
-				)
-			})
-
-		// A shadow copy for Ire. Ari remains authoritative; this exists so Ire's checks and queue can be compared against Ari before any decision moves. No maker notice on failure: the maker never asked for a second review.
-		if (isIreConfigured())
-			after(async () => {
-				await trackSideEffect(
-					"ire",
-					{
-						actorEmail: gate.user.email,
-						actorId: gate.user.id,
-						metadata: { phase: parsed.data.phase, shadow: true },
-						targetId: id,
-						targetType: "ThemeProject",
-					},
-					() => sendSubmissionToIre(id, parsed.data.phase),
-				)
-			})
-	}
-
-	// Warm the Hackatime cache now so the reviewer opens a page with fresh numbers instead of waiting on the API. The participant does not need to wait for it.
-	after(async () => {
-		const links = await db.orm.public.HackatimeLink.where({ phase: parsed.data.phase, themeProjectId: id })
-			.select("id")
-			.all()
-		for (const link of links)
-			await refreshLinkCache(link.id).catch(err => console.error("[submit] hackatime refresh failed:", err))
-	})
+	propagateSubmission(gate.user, gate.user.id, id, parsed.data.phase, submission.scheduledWeek)
 
 	return ok({ submission }, { status: 201 })
 })

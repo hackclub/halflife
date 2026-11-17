@@ -46,9 +46,9 @@ export const projectExtensionSchema = z
 export const weekExtensionSchema = z.object({ submissionExtensionUntil: z.coerce.date().nullable() }).strict()
 
 /**
- * An admin taking one phase out of review. The reason is required, because the audit row is the only record of why a submission was pulled back.
+ * An admin acting on one phase of a project. The reason is required, because the audit row is the only record of why the admin did it.
  */
-export const phaseWithdrawalSchema = z
+export const phaseReasonSchema = z
 	.object({
 		phase: phaseSchema,
 		reason: boundedText(1000, 1),

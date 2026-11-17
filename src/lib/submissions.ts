@@ -104,6 +104,11 @@ function accessOpenOnClient(
 	return false
 }
 
+/** Options for a submission made on someone else's behalf. `force` skips the programme's timing gates and the repo checks, and nothing else. */
+export interface SubmitOptions {
+	force?: boolean
+}
+
 export async function submitPhase(
 	userId: string,
 	themeProjectId: string,
@@ -113,13 +118,17 @@ export async function submitPhase(
 	partialFundingAccepted = false,
 	fundingDeclined = false,
 	noMicrocontroller = false,
+	options: SubmitOptions = {},
 ): Promise<Omit<Models.public_PhaseSubmission, "claim" | "dispute" | "reviews" | "themeProject">> {
 	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: themeProjectId, userId }).first()
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-	const access = await getSubmissionAccess(userId, themeProjectId)
-	if (!access.open) throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
-	await assertWeekStarted(scheduledWeekFor(project.theme, phase), userId)
+	// The programme's timing gates. An admin's forced submit skips them: the window may have closed, or the week may not have opened for this maker yet, and the reason for the hand-in is the admin's to give.
+	if (!options.force) {
+		const access = await getSubmissionAccess(userId, themeProjectId)
+		if (!access.open) throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+		await assertWeekStarted(scheduledWeekFor(project.theme, phase), userId)
+	}
 
 	const submissionRows = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
 		.select("createdAt", "phase")
@@ -155,8 +164,8 @@ export async function submitPhase(
 			"Upload a photo or screenshot of the project as its cover before submitting this phase",
 		)
 
-	// Handing a week in is a checkpoint too; a deleted reel still owed holds it.
-	await assertNoOwedReel(userId)
+	// Handing a week in is a checkpoint too; a deleted reel still owed holds it. A forced submit answers for it instead.
+	if (!options.force) await assertNoOwedReel(userId)
 
 	// A submission must not be able to file someone else's evidence as its own. Refuse rather than filter: silently dropping a stranger's key hands back a success with the evidence missing, which the maker only finds out at review.
 	const foreign = attachmentKeys.filter(key => !isOwnedKey(userId, key))
@@ -184,24 +193,29 @@ export async function submitPhase(
 	if (user?.fraudFlagged) throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
 
 	// The repo checks, run here rather than trusted from the sheet: what the maker was shown a minute ago is not an authorisation. They exist so a maker fixes what would get the week rejected before it is handed in, so a blocking failure refuses with its own reason. GitHub being unreachable never blocks.
-	const repoChecks = await checkRepo(project.githubRepo, project.theme, {
-		artifactLinks: project.artifactLinks,
-		description: project.description,
-	})
-	const blocking = repoChecks.checks.filter(check => check.blocking && check.status === "fail")
-	// The Displays week asks for firmware because most display projects drive one from a microcontroller. A display driven some other way has no firmware to hand in, and the maker says so with the box; see firmwareWaiverCovers for what it may clear.
-	const firmwareWaived = firmwareWaiverCovers(project.theme, blocking, noMicrocontroller)
-	if (blocking.length > 0 && !firmwareWaived) {
-		const [first] = blocking
-		throw new HttpError(
-			"UNPROCESSABLE",
-			first ? `${first.label}. ${first.detail ?? ""}`.trim() : "The repo is missing something this week needs",
-			{ repoChecks },
-		)
-	}
+	// A forced submit skips the repo checks, and does not stamp the funnel marker either: the checks did not pass, they were overridden.
+	// Only a checked maker submission can waive the firmware box; a forced one has no check to waive.
+	let firmwareWaived = false
+	if (!options.force) {
+		const repoChecks = await checkRepo(project.githubRepo, project.theme, {
+			artifactLinks: project.artifactLinks,
+			description: project.description,
+		})
+		const blocking = repoChecks.checks.filter(check => check.blocking && check.status === "fail")
+		// The Displays week asks for firmware because most display projects drive one from a microcontroller. A display driven some other way has no firmware to hand in, and the maker says so with the box; see firmwareWaiverCovers for what it may clear.
+		firmwareWaived = firmwareWaiverCovers(project.theme, blocking, noMicrocontroller)
+		if (blocking.length > 0 && !firmwareWaived) {
+			const [first] = blocking
+			throw new HttpError(
+				"UNPROCESSABLE",
+				first ? `${first.label}. ${first.detail ?? ""}`.trim() : "The repo is missing something this week needs",
+				{ repoChecks },
+			)
+		}
 
-	// The checks that gate a submission came back green, or their one waivable failure was waived by the maker. The stamp used to sit on the advisory preflight GET, which made it a GET that wrote – a cross-site top-level navigation carries the session cookie, so any site could stamp a participant's funnel marker by linking them at it. Here it sits behind the POST that hands a phase in, so the marker is written when the maker actually tries to submit, and the admin funnel's "repo checks passed" step means what its hint says: the checks that ran for a submission were satisfied.
-	await markChecksPassed(userId)
+		// The checks that gate a submission came back green, or their one waivable failure was waived by the maker. The stamp used to sit on the advisory preflight GET, which made it a GET that wrote – a cross-site top-level navigation carries the session cookie, so any site could stamp a participant's funnel marker by linking them at it. Here it sits behind the POST that hands a phase in, so the marker is written when the maker actually tries to submit, and the admin funnel's "repo checks passed" step means what its hint says: the checks that ran for a submission were satisfied.
+		await markChecksPassed(userId)
+	}
 
 	// A cart past the tier's funding is not a refusal, it is a grant that covers part of it – which is something the maker has to agree to rather than something this route infers. Declining the grant is the other way out: the whole cart is theirs, so there is no shortfall to agree to. The numbers come from the database and never from the sheet: a list edited in another tab, or a tier request changed since the page was opened, decide what the maker is agreeing to.
 	const funding = await partsFundingFor(project, phase)
