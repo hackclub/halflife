@@ -192,8 +192,8 @@ export function ThemedProjectRow({
 				{designForce || buildForce ? (
 					<ManageSection title="Force submit">
 						<p className="hl-hint" style={{ marginTop: 0 }}>
-							Hands the phase in for the maker, past the submissions window, the week's opening date and the repo
-							checks. The maker still has to agree to any parts shortfall themselves.
+							Hands the phase in for the maker, past the submissions window, the opening date of the week and the repo
+							checks. Any parts shortfall still needs the maker to agree to it themselves.
 						</p>
 						<div className="hl-stack hl-stack--tight">
 							{designForce ? (
