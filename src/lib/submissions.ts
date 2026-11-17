@@ -295,13 +295,28 @@ export async function submitPhase(
 }
 
 export async function unsubmitPhase(userId: string, themeProjectId: string, phase: Phase): Promise<void> {
-	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: themeProjectId, userId }).first()
+	const owned = await db.orm.public.ThemeProject.where({ deletedAt: null, id: themeProjectId, userId })
+		.select("id")
+		.first()
+	if (!owned) throw new HttpError("NOT_FOUND", "Project not found")
+	await withdrawFromReview(themeProjectId, phase)
+}
+
+/**
+ * Take a phase back out of review, for the maker's unsubmit and for an admin's withdrawal alike.
+ *
+ * The open hand-in is deleted and the phase returns to draft, or to needs changes when its last decision was a return. The same checks run whoever asks: a live reviewer claim refuses, and a design cannot leave while its build is in review. Returns the owner, so the caller can follow the withdrawal up for them.
+ */
+export async function withdrawFromReview(themeProjectId: string, phase: Phase): Promise<{ userId: string }> {
+	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: themeProjectId })
+		.select("buildStatus", "designStatus", "userId")
+		.first()
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
 	if (statusFor(project, phase) !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
 
-	return db.transaction(async tx => {
+	await db.transaction(async tx => {
 		// Serialize against the review path. finalizeReview takes this same per-user credit lock before it re-reads the submission, so holding it here means a decision cannot land between our read and our delete.
 		await lockUserCredit(tx, project.userId)
 
@@ -348,6 +363,7 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 			.updateAndCount(phaseStatusUpdate(phase, restored))
 		if (flipped !== 1) throw new HttpError("CONFLICT", "This project moved while it was being withdrawn")
 	})
+	return { userId: project.userId }
 }
 
 /** Stamp a session with the day and program week it belongs to. */
