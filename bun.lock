@@ -58,11 +58,7 @@
     "@tracespace/plotter@5.0.0-alpha.0": "patches/@tracespace%2Fplotter@5.0.0-alpha.0.patch",
   },
   "overrides": {
-    "@hono/node-server": "^2.1.5",
     "@prisma/orm-toolchain": "8.0.0-rc.22",
-    "hono": "^4.13.14",
-    "lodash": "^4.18.1",
-    "valibot": "^1.5.0",
     "zod": "^4.6.7",
   },
   "packages": {
