@@ -7,6 +7,7 @@ import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
+import { JournalHoursEditor, type JournalHoursEntry } from "@/app/components/forms/JournalHoursEditor"
 import { StarterForm } from "@/app/components/forms/StarterForm"
 import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
 import { starterProjectsFor } from "@/lib/config/onboarding"
@@ -24,6 +25,8 @@ export interface ThemedProjectRowData {
 	grantSent: boolean
 	grantUsd: number | null
 	id: string
+	/** The project's live journal entries, so an admin can correct a claim that was submitted wrong. */
+	journal: JournalHoursEntry[]
 	starterProjectId: string | null
 	theme: Theme
 	themeLabel: string
@@ -32,12 +35,14 @@ export interface ThemedProjectRowData {
 }
 
 export function ThemedProjectRow({
+	canEditHours,
 	canExtend,
 	canMoveTheme,
 	canOverride,
 	canSendGrant,
 	data,
 }: Readonly<{
+	canEditHours: boolean
 	canExtend: boolean
 	canMoveTheme: boolean
 	canOverride: boolean
@@ -49,7 +54,8 @@ export function ThemedProjectRow({
 	const grantAction = canSendGrant && data.designStatus === "approved" && Boolean(data.grantUsd) && !data.grantSent
 	const designOverride = canOverride && data.designStatus === "approved"
 	const buildOverride = canOverride && data.buildStatus === "approved"
-	const hasActions = canExtend || canMoveTheme || grantAction || designOverride || buildOverride
+	const hoursAction = canEditHours && data.journal.length > 0
+	const hasActions = canExtend || canMoveTheme || grantAction || designOverride || buildOverride || hoursAction
 
 	return (
 		<>
@@ -98,6 +104,11 @@ export function ThemedProjectRow({
 				{canExtend ? (
 					<ManageSection title="Extension">
 						<ExtensionForm current={data.extension} url={`/api/admin/theme-projects/${data.id}`} />
+					</ManageSection>
+				) : null}
+				{hoursAction ? (
+					<ManageSection title="Journal hours">
+						<JournalHoursEditor entries={data.journal} />
 					</ManageSection>
 				) : null}
 				{designOverride || buildOverride ? (

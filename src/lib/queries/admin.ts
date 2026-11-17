@@ -316,9 +316,21 @@ export interface UserDetail {
 		theme: Models.public_ThemeProject["theme"]
 		tier: number | null
 		title: string
+		/** The project's live journal entries, oldest first. */
+		workSessions: UserDetailSession[]
 	}[]
 	verificationStatus: string | null
 	weekExtensions: { submissionExtensionUntil: Date; week: number }[]
+}
+
+/** One journal entry as the user page lists it, so an admin can find and correct its hours. */
+export interface UserDetailSession {
+	effectiveDate: string | null
+	hoursApproved: number | null
+	hoursClaimed: number
+	id: string
+	phase: Models.public_WorkSession["phase"]
+	title: string
 }
 
 /** The 25 most recent orders on the user page: number, item, credit total and status only. */
@@ -401,6 +413,12 @@ export async function getUserDetail(
 						.select("id")
 						.where({ phase: "DESIGN" })
 						.where(topUp => topUp.sentAt.isNotNull()),
+				)
+				.include("workSessions", sessions =>
+					sessions
+						.select("effectiveDate", "hoursApproved", "hoursClaimed", "id", "phase", "title")
+						.where({ deletedAt: null })
+						.orderBy([session => session.effectiveDate.asc(), session => session.createdAt.asc()]),
 				),
 		)
 		.include("weekExtensions", extensions =>

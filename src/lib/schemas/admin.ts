@@ -11,6 +11,7 @@ import {
 	Theme,
 } from "@/lib/enums"
 import { boundedText, cuid, httpsUrl, isTimeZone } from "@/lib/schemas/common"
+import { MAX_SESSION_HOURS } from "@/lib/schemas/session"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
 
@@ -43,6 +44,16 @@ export const projectExtensionSchema = z
 
 /** One program week's extension. A null clears it, which deletes the row rather than storing an expired date. */
 export const weekExtensionSchema = z.object({ submissionExtensionUntil: z.coerce.date().nullable() }).strict()
+
+/**
+ * Correcting one journal entry's claimed hours. The ceiling is the participant's own, so an admin cannot write a figure the maker could not have logged. The reason is required because the audit row is the only record of why a claim changed.
+ */
+export const sessionHoursSchema = z
+	.object({
+		hoursClaimed: z.number().min(0).max(MAX_SESSION_HOURS),
+		reason: boundedText(1000, 1),
+	})
+	.strict()
 
 /** A reply in a dispute thread. Required and non-empty: a blank reply answers nothing. */
 export const disputeMessageSchema = z.object({ body: boundedText(2000, 1) }).strict()
