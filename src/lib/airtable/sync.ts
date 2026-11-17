@@ -1,6 +1,7 @@
 import { isTruthy } from "@/lib/truthy"
 import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
+import { noteAddressGap, readAddressSnapshot } from "@/lib/airtable/address"
 import {
 	type AirtableConfig,
 	type AirtableRecord,
@@ -24,12 +25,11 @@ import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { HoursSource, PayoutSource, Phase, PhaseStatus, ReviewResult } from "@/lib/enums"
-import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
 import { lockKey } from "@/lib/locks"
 import { round2 } from "@/lib/money"
 import { statusFor } from "@/lib/phase"
-import { decryptUserPII } from "@/lib/pii"
+import type { DecryptedAddress } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { findRepoFile } from "@/lib/repo-checks"
@@ -164,9 +164,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	if (!project) return null
 
 	// Fresh from HCA, so the address a grant ships to is the one on file today rather than the one from whenever they last signed in.
-	await syncHcaProfile(project.userId)
-	const user = await db.orm.public.User.whereUnique({ id: project.userId }).firstOrThrow()
-	const pii = decryptUserPII(user)
+	const { gap, pii, user } = await readAddressSnapshot(project.userId)
+	await noteAddressGap(gap, themeProjectId, phase)
 
 	const week = scheduledWeekFor(project.theme, phase)
 	const settings = await getProgramSettings()
@@ -475,6 +474,19 @@ async function localReviewRow(themeProjectId: string, phase: Phase): Promise<Rev
 	}
 }
 
+/** The six shipping-address cells, keyed as the row writes them. */
+function addressCells(pii: DecryptedAddress): { [_: string]: string } {
+	const { addressLine1, addressLine2, city, country, state, zip } = YSWS_SUBMISSION.fields
+	return {
+		[fieldKey(addressLine1)]: pii.line1 ?? "",
+		[fieldKey(addressLine2)]: pii.line2 ?? "",
+		[fieldKey(city)]: pii.city ?? "",
+		[fieldKey(country)]: pii.country ?? "",
+		[fieldKey(state)]: pii.state ?? "",
+		[fieldKey(zip)]: pii.zip ?? "",
+	}
+}
+
 /**
  * Move a submission's row on to the decision Ari just reached: the status Loops triggers on, the reviewer's note the email quotes, and the project and week that decision is about.
  *
@@ -526,6 +538,8 @@ export async function syncReviewDecisionToYsws(
 
 	// The override, reviewer and justification columns may not exist yet on a base that predates them. Airtable rejects a whole PATCH for one unknown field, so ask first and leave them out when absent rather than losing the status with them.
 	const overrides: { [_: string]: unknown } = {}
+	// The maker's address as it stands now, so a decision ships the address they hold rather than the one from hand-in. Only set when there is one: a blank never overwrites what the row already holds.
+	let addressFields: { [_: string]: string } = {}
 	const deflationFields: { [_: string]: unknown } = {}
 	const alternateFields: { [_: string]: unknown } = {}
 	const additionalFields: { [_: string]: unknown } = {}
@@ -562,7 +576,7 @@ export async function syncReviewDecisionToYsws(
 			try {
 				const [project, submission] = await Promise.all([
 					db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
-						.select("approvedHours", "designApprovedHours", "theme", "title")
+						.select("approvedHours", "designApprovedHours", "theme", "title", "userId")
 						.first(),
 					db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
 						.orderBy(row => row.createdAt.desc())
@@ -576,6 +590,9 @@ export async function syncReviewDecisionToYsws(
 						.first(),
 				])
 				if (project) {
+					const address = await readAddressSnapshot(project.userId)
+					if (address.pii.line1) addressFields = addressCells(address.pii)
+					else await noteAddressGap(address.gap, themeProjectId, phase)
 					const week = submission?.scheduledWeek ?? scheduledWeekFor(project.theme, phase)
 					const values = reviewOverrideValues(projectDisplayTitle(project), week)
 					for (const [field, value] of Object.entries(values)) if (writable.has(field)) overrides[field] = value
@@ -619,6 +636,7 @@ export async function syncReviewDecisionToYsws(
 		...alternateFields,
 		...additionalFields,
 		...specificFields,
+		...addressFields,
 	}
 	const moved = await updateYswsRecord(recordId, complete)
 	if (moved.ok) return { updated: true }
