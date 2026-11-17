@@ -85,11 +85,7 @@
 		"verify:uploads": "bun --conditions=react-server scripts/verify-uploads.ts"
 	},
 	"overrides": {
-		"@hono/node-server": "^2.1.5",
 		"@prisma/orm-toolchain": "8.0.0-rc.22",
-		"hono": "^4.13.14",
-		"lodash": "^4.18.1",
-		"valibot": "^1.5.0",
 		"zod": "^4.6.7"
 	},
 	"dependencies": {
@@ -105,7 +101,7 @@
 		"fzstd": "0.1.1",
 		"highlight.js": "11.12.0",
 		"isomorphic-dompurify": "^4.7.0",
-		"kysely": "^0.29.8",
+		"kysely": "^0.29.9",
 		"libarchive-wasm": "1.2.0",
 		"marked": "18.1.1",
 		"next": "^16.4.6",
@@ -123,10 +119,10 @@
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.7",
-		"@playwright/test": "^1.65.0",
+		"@biomejs/biome": "^2.6.8",
+		"@playwright/test": "^1.65.1",
 		"@tailwindcss/postcss": "^4.3.5",
-		"@types/node": "^22.20.5",
+		"@types/node": "^26.1.2",
 		"@types/papaparse": "5.5.2",
 		"@types/pg": "^8.23.1",
 		"@types/qrcode": "^1.5.6",
@@ -135,8 +131,8 @@
 		"@types/three": "0.186.0",
 		"babel-plugin-react-compiler": "1.0.0",
 		"bun-types": "^1.4.4",
-		"oxlint": "^1.93.0",
-		"oxlint-tsgolint": "^7.0.2006",
+		"oxlint": "^1.94.0",
+		"oxlint-tsgolint": "^7.0.2007",
 		"tailwindcss": "^4.3.5",
 		"typescript": "~6.0.3"
 	},

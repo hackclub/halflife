@@ -1,6 +1,6 @@
 "use client"
 
-import DOMPurify from "isomorphic-dompurify"
+import DOMPurify from "dompurify"
 import { marked } from "marked"
 import { useMemo, useRef, useState } from "react"
 import { Icon, type IconName } from "@/components/review/ui"
