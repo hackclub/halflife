@@ -1,17 +1,9 @@
-import { after } from "next/server"
-import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
-import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
 import { ok, parseBody } from "@/lib/api"
-import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { scheduledWeekFor } from "@/lib/config/program"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
-import { ireLive, isIreConfigured } from "@/lib/ire-platform"
-import { withdrawSubmissionFromIre } from "@/lib/ire-shadow"
-import db from "@/lib/prisma8"
 import { unsubmitSchema } from "@/lib/schemas/project"
-import { trackSideEffect } from "@/lib/side-effects"
 import { unsubmitPhase } from "@/lib/submissions"
+import { propagateWithdrawal } from "@/lib/withdraw-effects"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -34,79 +26,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		targetType: "ThemeProject",
 	})
 
-	// Taken back before review, so its row goes too – otherwise reviewers on ari would see a hand-in that no longer exists. `removed` marks the row gone, so the next submission of this phase writes a fresh one.
-	after(async () => {
-		await trackSideEffect(
-			"airtable",
-			{
-				actorEmail: gate.user.email,
-				actorId: gate.user.id,
-				metadata: { phase: parsed.data.phase, removed: true },
-				targetId: id,
-				targetType: "ThemeProject",
-			},
-			() => removeSubmissionFromYsws(id, parsed.data.phase),
-		)
-	})
-
-	// The week's box is recomputed, not just cleared: withdrawing the only hand-in for a week unticks `ProjectSubmitted`, while an older hand-in standing behind it keeps it ticked. Best-effort like the submit tick – the hourly sync heals whatever this misses.
-	after(async () => {
-		try {
-			const project = await db.orm.public.ThemeProject.whereUnique({ id }).select("theme").first()
-			if (project) await syncLoopsWeekSubmitted(gate.user.id, scheduledWeekFor(project.theme, parsed.data.phase))
-		} catch (err) {
-			console.error("[unsubmit] loops submitted tick failed:", err)
-		}
-	})
-
-	// Withdraw it from review too, or the queue keeps a hand-in that no longer exists in Half Life. In live mode Ire is the only queue; otherwise both the Ari ship and the shadow copy are withdrawn.
-	if (ireLive()) {
-		if (isIreConfigured())
-			after(async () => {
-				await trackSideEffect(
-					"ire",
-					{
-						actorEmail: gate.user.email,
-						actorId: gate.user.id,
-						metadata: { live: true, phase: parsed.data.phase, withdrawn: true },
-						targetId: id,
-						targetType: "ThemeProject",
-					},
-					() => withdrawSubmissionFromIre(id, parsed.data.phase),
-				)
-			})
-	} else {
-		if (isAriConfigured())
-			after(async () => {
-				await trackSideEffect(
-					"ari",
-					{
-						actorEmail: gate.user.email,
-						actorId: gate.user.id,
-						metadata: { phase: parsed.data.phase, withdrawn: true },
-						targetId: id,
-						targetType: "ThemeProject",
-					},
-					() => withdrawSubmissionFromAri(id, parsed.data.phase),
-				)
-			})
-
-		// The shadow copy has the same problem, and its failure is replayable from the IreShip row even though the local submission was just deleted.
-		if (isIreConfigured())
-			after(async () => {
-				await trackSideEffect(
-					"ire",
-					{
-						actorEmail: gate.user.email,
-						actorId: gate.user.id,
-						metadata: { phase: parsed.data.phase, withdrawn: true },
-						targetId: id,
-						targetType: "ThemeProject",
-					},
-					() => withdrawSubmissionFromIre(id, parsed.data.phase),
-				)
-			})
-	}
+	propagateWithdrawal(gate.user, gate.user.id, id, parsed.data.phase)
 
 	return ok({ ok: true })
 })

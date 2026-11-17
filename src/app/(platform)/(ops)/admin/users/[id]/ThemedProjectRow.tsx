@@ -55,7 +55,17 @@ export function ThemedProjectRow({
 	const designOverride = canOverride && data.designStatus === "approved"
 	const buildOverride = canOverride && data.buildStatus === "approved"
 	const hoursAction = canEditHours && data.journal.length > 0
-	const hasActions = canExtend || canMoveTheme || grantAction || designOverride || buildOverride || hoursAction
+	const designWithdraw = canOverride && data.designStatus === "in_review"
+	const buildWithdraw = canOverride && data.buildStatus === "in_review"
+	const hasActions =
+		canExtend
+		|| canMoveTheme
+		|| grantAction
+		|| designOverride
+		|| buildOverride
+		|| hoursAction
+		|| designWithdraw
+		|| buildWithdraw
 
 	return (
 		<>
@@ -136,6 +146,34 @@ export function ThemedProjectRow({
 									confirm={`Un-approve the build? This reconciles their ${CREDIT_NAME_PLURAL} back down.`}
 									label="Un-approve build"
 									url={`/api/admin/theme-projects/${data.id}/override`}
+								/>
+							) : null}
+						</div>
+					</ManageSection>
+				) : null}
+				{designWithdraw || buildWithdraw ? (
+					<ManageSection title="Withdraw from review">
+						<p className="hl-hint" style={{ marginTop: 0 }}>
+							Takes the hand-in back, so the maker can edit it. A reviewer who holds it right now blocks this until
+							their claim expires.
+						</p>
+						<div className="hl-stack hl-stack--tight">
+							{designWithdraw ? (
+								<ActionButton
+									body={{ phase: "DESIGN" }}
+									confirm="Withdraw the design from review? The reviewer's place in the queue is lost."
+									label="Withdraw design"
+									reasonPrompt="Why is this design being withdrawn from review?"
+									url={`/api/admin/theme-projects/${data.id}/unsubmit`}
+								/>
+							) : null}
+							{buildWithdraw ? (
+								<ActionButton
+									body={{ phase: "BUILD" }}
+									confirm="Withdraw the build from review? The reviewer's place in the queue is lost."
+									label="Withdraw build"
+									reasonPrompt="Why is this build being withdrawn from review?"
+									url={`/api/admin/theme-projects/${data.id}/unsubmit`}
 								/>
 							) : null}
 						</div>
