@@ -8,10 +8,11 @@ import {
 	withRateLimitRetry,
 } from "@/lib/airtable/client"
 import { type FieldDef, fieldKey, YSWS_PENDING_REVIEW, YSWS_SUBMISSION } from "@/lib/airtable/schema"
+import { projectWeekLabel } from "@/lib/airtable/sync"
 import { updateYswsRecord } from "@/lib/airtable/ysws"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAuditTx } from "@/lib/audit"
-import { MAX_WARMUP_PROJECTS } from "@/lib/config/program"
+import { MAX_WARMUP_PROJECTS, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { HoursSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
@@ -461,17 +462,19 @@ function importRow(
 }
 
 /**
- * Mark an imported row as in review on Airtable.
+ * Mark an imported row as in review on Airtable: its Loops status, and the week it is for.
  *
- * The import hands the project to Ari, which is now reviewing it, but it never wrote the Loops status: the status is only written at hand-in and on a decision. Without this, an imported row sits with a blank `Loops - halfLifeReviewStatus` until Ari decides, which is what the pre-season Fillout rows looked like.
+ * The import hands the project to Ari, which is now reviewing it, but it never wrote these cells. The status is only written at hand-in and on a decision, and the week is only written at hand-in too, so an imported row kept both blank until Ari decided. That is what the pre-season Fillout rows looked like.
  *
- * Best-effort: the import has already committed by the time this runs, so a refused write is logged rather than failing the row.
+ * One request for both, so a row cannot get one without the other. Best-effort: the import has already committed by the time this runs, so a refused write is logged rather than failing the row.
  */
-async function markPendingReview(recordId: string): Promise<void> {
-	const { reviewStatus } = YSWS_SUBMISSION.fields
-	const written = await updateYswsRecord(recordId, { [fieldKey(reviewStatus)]: YSWS_PENDING_REVIEW })
-	if (!written.ok)
-		console.error(`[airtable] warm-up import could not set ${recordId} to "${YSWS_PENDING_REVIEW}": ${written.reason}`)
+async function markInReview(recordId: string): Promise<void> {
+	const { projectWeek, reviewStatus } = YSWS_SUBMISSION.fields
+	const written = await updateYswsRecord(recordId, {
+		[fieldKey(reviewStatus)]: YSWS_PENDING_REVIEW,
+		[fieldKey(projectWeek)]: projectWeekLabel(WARMUP_WEEK_ID),
+	})
+	if (!written.ok) console.error(`[airtable] warm-up import could not mark ${recordId} as in review: ${written.reason}`)
 }
 
 async function sendToAri(
@@ -572,7 +575,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 			}
 
 			if (result.status === "imported") {
-				await markPendingReview(record.id)
+				await markInReview(record.id)
 				if (parsed.row.screenshotUrl) {
 					const key = await rehostScreenshot(result.userId, parsed.row.screenshotUrl)
 					if (key) await db.orm.public.ThemeProject.where({ id: result.themeProjectId }).update({ coverImageKey: key })
