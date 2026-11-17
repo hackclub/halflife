@@ -7,7 +7,8 @@ import {
 	getAirtableConfig,
 	withRateLimitRetry,
 } from "@/lib/airtable/client"
-import { type FieldDef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
+import { type FieldDef, fieldKey, YSWS_PENDING_REVIEW, YSWS_SUBMISSION } from "@/lib/airtable/schema"
+import { updateYswsRecord } from "@/lib/airtable/ysws"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAuditTx } from "@/lib/audit"
 import { MAX_WARMUP_PROJECTS } from "@/lib/config/program"
@@ -459,6 +460,20 @@ function importRow(
 	})
 }
 
+/**
+ * Mark an imported row as in review on Airtable.
+ *
+ * The import hands the project to Ari, which is now reviewing it, but it never wrote the Loops status: the status is only written at hand-in and on a decision. Without this, an imported row sits with a blank `Loops - halfLifeReviewStatus` until Ari decides, which is what the pre-season Fillout rows looked like.
+ *
+ * Best-effort: the import has already committed by the time this runs, so a refused write is logged rather than failing the row.
+ */
+async function markPendingReview(recordId: string): Promise<void> {
+	const { reviewStatus } = YSWS_SUBMISSION.fields
+	const written = await updateYswsRecord(recordId, { [fieldKey(reviewStatus)]: YSWS_PENDING_REVIEW })
+	if (!written.ok)
+		console.error(`[airtable] warm-up import could not set ${recordId} to "${YSWS_PENDING_REVIEW}": ${written.reason}`)
+}
+
 async function sendToAri(
 	themeProjectId: string,
 	phase: Phase,
@@ -557,6 +572,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 			}
 
 			if (result.status === "imported") {
+				await markPendingReview(record.id)
 				if (parsed.row.screenshotUrl) {
 					const key = await rehostScreenshot(result.userId, parsed.row.screenshotUrl)
 					if (key) await db.orm.public.ThemeProject.where({ id: result.themeProjectId }).update({ coverImageKey: key })
