@@ -57,7 +57,9 @@ export function ActionButton({
 		// A cancelled or empty modal is a cancelled action, not a request the server should reject for an empty reason.
 		if (!trimmed) return
 		setAsking(false)
-		send({ reason: trimmed })
+		// The reason joins the body rather than replacing it, so a caller can name what it acts on and still ask why.
+		const fields = typeof body === "object" && body !== null ? body : {}
+		send({ ...fields, reason: trimmed })
 	}
 
 	return (
