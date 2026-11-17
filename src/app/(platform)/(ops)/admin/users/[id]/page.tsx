@@ -15,8 +15,9 @@ import { isHcbConfigured } from "@/lib/hcb"
 import { penaltyFor } from "@/lib/moderation"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePermission } from "@/lib/permissions"
+import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
-import { getProgramSettings } from "@/lib/program"
+import { getProgramSettings, isPhaseDecided } from "@/lib/program"
 import { getUserDetail } from "@/lib/queries/admin"
 import { parseDbTimestamp } from "@/lib/time"
 import { ThemedProjectRow } from "./ThemedProjectRow"
@@ -213,6 +214,7 @@ export default async function AdminUserPage({ params }: Props) {
 				>
 					{user.themeProjects.map(project => (
 						<ThemedProjectRow
+							canEditHours={canOverride}
 							canExtend={canManageUsers}
 							canMoveTheme={canMoveTheme}
 							canOverride={canOverride}
@@ -227,6 +229,19 @@ export default async function AdminUserPage({ params }: Props) {
 								// A grant is decided with the design, so one on an undecided project is an artefact of an import rather than money owed.
 								grantUsd: project.designStatus === PhaseStatus.approved ? project.grantUsd : null,
 								id: project.id,
+								journal: project.workSessions.map(session => {
+									const status = statusFor(project, session.phase)
+									return {
+										decided: isPhaseDecided(status),
+										effectiveDate: session.effectiveDate,
+										hoursApproved: session.hoursApproved,
+										hoursClaimed: session.hoursClaimed,
+										id: session.id,
+										locked: status === PhaseStatus.in_review,
+										phase: session.phase,
+										title: session.title,
+									}
+								}),
 								starterProjectId: project.starterProjectId,
 								theme: project.theme,
 								themeLabel: themeLabel(project.theme),
