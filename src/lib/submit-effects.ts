@@ -52,7 +52,7 @@ export function propagateSubmission(
 	})
 
 	// And into review. In live mode Ire owns the decision, so the hand-in goes there exclusively; otherwise Ari reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without review secrets logs no noise; a failure lands in the audit log and the retry route.
-	if (ireLive()) {
+	if (ireLive())
 		after(async () => {
 			await trackSideEffect(
 				"ire",
@@ -66,7 +66,7 @@ export function propagateSubmission(
 				() => sendSubmissionToIre(themeProjectId, phase),
 			)
 		})
-	} else {
+	else {
 		if (isAriConfigured())
 			after(async () => {
 				await trackSideEffect(
