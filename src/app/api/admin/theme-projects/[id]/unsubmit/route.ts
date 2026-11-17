@@ -2,7 +2,7 @@ import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import { phaseWithdrawalSchema } from "@/lib/schemas/admin"
+import { phaseReasonSchema } from "@/lib/schemas/admin"
 import { withdrawFromReview } from "@/lib/submissions"
 import { propagateWithdrawal } from "@/lib/withdraw-effects"
 
@@ -20,7 +20,7 @@ export const POST = withWritePermission(
 	async (req: Request, { params, gate }: Params & AuthedContext) => {
 		const { id } = await params
 
-		const parsed = await parseBody(req, phaseWithdrawalSchema)
+		const parsed = await parseBody(req, phaseReasonSchema)
 		if (parsed.error) return parsed.error
 		const { phase, reason } = parsed.data
 

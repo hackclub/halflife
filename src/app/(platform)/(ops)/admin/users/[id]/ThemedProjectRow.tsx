@@ -34,6 +34,11 @@ export interface ThemedProjectRowData {
 	title: string
 }
 
+/** Whether a phase is one the maker can hand in from here: not yet handed in, or sent back to fix. */
+function canHandIn(status: string): boolean {
+	return status === "draft" || status === "update_requested"
+}
+
 export function ThemedProjectRow({
 	canEditHours,
 	canExtend,
@@ -57,6 +62,9 @@ export function ThemedProjectRow({
 	const hoursAction = canEditHours && data.journal.length > 0
 	const designWithdraw = canOverride && data.designStatus === "in_review"
 	const buildWithdraw = canOverride && data.buildStatus === "in_review"
+	// A phase the maker has not handed in, or has been asked to fix. Once it is in review, the withdraw section above is the route.
+	const designForce = canOverride && canHandIn(data.designStatus)
+	const buildForce = canOverride && canHandIn(data.buildStatus)
 	const hasActions =
 		canExtend
 		|| canMoveTheme
@@ -66,6 +74,8 @@ export function ThemedProjectRow({
 		|| hoursAction
 		|| designWithdraw
 		|| buildWithdraw
+		|| designForce
+		|| buildForce
 
 	return (
 		<>
@@ -174,6 +184,34 @@ export function ThemedProjectRow({
 									label="Withdraw build"
 									reasonPrompt="Why is this build being withdrawn from review?"
 									url={`/api/admin/theme-projects/${data.id}/unsubmit`}
+								/>
+							) : null}
+						</div>
+					</ManageSection>
+				) : null}
+				{designForce || buildForce ? (
+					<ManageSection title="Force submit">
+						<p className="hl-hint" style={{ marginTop: 0 }}>
+							Hands the phase in for the maker, past the submissions window, the week's opening date and the repo
+							checks. The maker still has to agree to any parts shortfall themselves.
+						</p>
+						<div className="hl-stack hl-stack--tight">
+							{designForce ? (
+								<ActionButton
+									body={{ phase: "DESIGN" }}
+									confirm="Hand the design in for the maker, past the timing gates?"
+									label="Force submit design"
+									reasonPrompt="Why is this design being handed in for the maker?"
+									url={`/api/admin/theme-projects/${data.id}/submit`}
+								/>
+							) : null}
+							{buildForce ? (
+								<ActionButton
+									body={{ phase: "BUILD" }}
+									confirm="Hand the build in for the maker, past the timing gates?"
+									label="Force submit build"
+									reasonPrompt="Why is this build being handed in for the maker?"
+									url={`/api/admin/theme-projects/${data.id}/submit`}
 								/>
 							) : null}
 						</div>
