@@ -1,7 +1,7 @@
 import { isTruthy } from "@/lib/truthy"
 import "server-only"
 import { or } from "@prisma/orm-postgres/orm-client"
-import { readAddressSnapshot } from "@/lib/airtable/address"
+import { noteAddressGap, readAddressSnapshot } from "@/lib/airtable/address"
 import {
 	type AirtableConfig,
 	type AirtableRecord,
@@ -164,7 +164,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	if (!project) return null
 
 	// Fresh from HCA, so the address a grant ships to is the one on file today rather than the one from whenever they last signed in.
-	const { pii, user } = await readAddressSnapshot(project.userId)
+	const { gap, pii, user } = await readAddressSnapshot(project.userId)
+	await noteAddressGap(gap, themeProjectId, phase)
 
 	const week = scheduledWeekFor(project.theme, phase)
 	const settings = await getProgramSettings()
@@ -591,6 +592,7 @@ export async function syncReviewDecisionToYsws(
 				if (project) {
 					const address = await readAddressSnapshot(project.userId)
 					if (address.pii.line1) addressFields = addressCells(address.pii)
+					else await noteAddressGap(address.gap, themeProjectId, phase)
 					const week = submission?.scheduledWeek ?? scheduledWeekFor(project.theme, phase)
 					const values = reviewOverrideValues(projectDisplayTitle(project), week)
 					for (const [field, value] of Object.entries(values)) if (writable.has(field)) overrides[field] = value

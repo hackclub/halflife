@@ -1,4 +1,6 @@
 import "server-only"
+import { AuditAction, logAudit } from "@/lib/audit"
+import type { Phase } from "@/lib/enums"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { type DecryptedAddress, decryptUserPII } from "@/lib/pii"
 import db from "@/lib/prisma8"
@@ -33,4 +35,19 @@ export async function readAddressSnapshot(userId: string): Promise<AddressSnapsh
 	if (pii.line1) return { gap: null, pii, user }
 	if (user.encryptedAddressStreet) return { gap: "address_unreadable", pii, user }
 	return { gap: linked ? "no_address_on_file" : "no_hca_account", pii, user }
+}
+
+/**
+ * Leave a trace when a row goes out without an address the maker should have had.
+ *
+ * A maker with no HCA account is expected to be blank, so it is not recorded. Everything else is: a linked maker with no address on file, or a stored address that will not decrypt. The audit log is where an operator sees these without reading the base or the logs.
+ */
+export async function noteAddressGap(gap: AddressGap | null, themeProjectId: string, phase: Phase): Promise<void> {
+	if (gap === null || gap === "no_hca_account") return
+	await logAudit({
+		action: AuditAction.AIRTABLE_ADDRESS_GAP,
+		metadata: { gap, phase },
+		targetId: themeProjectId,
+		targetType: "ThemeProject",
+	})
 }

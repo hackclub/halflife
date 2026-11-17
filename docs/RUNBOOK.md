@@ -227,7 +227,7 @@ It only writes that one column, leaves status and notes alone (so it triggers no
 
 ### Address columns
 
-`Address (Line 1)`, `Address (Line 2)`, `City`, `State / Province`, `ZIP / Postal Code` and `Country` are a snapshot of the maker's shipping address at hand-in, pulled from Hack Club Auth (`lib/hca-profile`). A blank row means HCA held no address at that moment, not that the write failed: HCA's mailing address is optional and is managed at <https://auth.hackclub.com/addresses>. Rows written before a maker added their address stay blank until the row is rewritten (a resubmission or an admin refresh) or backfilled:
+`Address (Line 1)`, `Address (Line 2)`, `City`, `State / Province`, `ZIP / Postal Code` and `Country` are a snapshot of the maker's shipping address at hand-in, pulled from Hack Club Auth (`lib/hca-profile`). A blank row means HCA held no address at that moment, not that the write failed: HCA's mailing address is optional and is managed at <https://auth.hackclub.com/addresses>. Every decision now refreshes these cells from HCA too, so an address added after hand-in reaches the row on approval. A row still goes out blank when the maker has no address on file, or when their stored address will not decrypt (which points at `PII_ENCRYPTION_KEY`). Each such row leaves an `AIRTABLE_ADDRESS_GAP` audit row (`/admin/audit?action=AIRTABLE_ADDRESS_GAP`) saying which, so the cause is visible without reading the base. A maker with no HCA account is not recorded, because no address can ever arrive for them. Rows written before this change and not decided since stay blank until the row is rewritten (a resubmission or an admin refresh) or backfilled:
 
 ```bash
 bun --conditions=react-server scripts/backfill-airtable-addresses.ts
