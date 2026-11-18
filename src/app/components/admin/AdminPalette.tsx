@@ -1,18 +1,9 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useState } from "react"
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react"
 import { Modal } from "@/app/components/ui/Modal"
-import type { AdminNavGroup, AdminNavItem } from "./admin-nav"
-
-interface PaletteEntry extends AdminNavItem {
-	group: string
-}
-
-const SEARCH_GROUP = "Search"
-
-const flatten = (groups: AdminNavGroup[]): PaletteEntry[] =>
-	groups.flatMap(group => group.items.map(item => ({ ...item, group: group.label })))
+import { type AdminNavGroup, type AdminPaletteEntry, paletteEntries } from "./admin-nav"
 
 /**
  * Jump to any admin page from the keyboard, and search the users directory without leaving the keyboard either. Opened with Ctrl K or Cmd K from anywhere in the console, or the button in the header.
@@ -22,6 +13,12 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 	const [open, setOpen] = useState(false)
 	const [query, setQuery] = useState("")
 	const [active, setActive] = useState(0)
+	const inputRef = useRef<HTMLInputElement>(null)
+
+	// The modal focuses its first control, which is the close button, so the field is focused explicitly once it is open.
+	useEffect(() => {
+		if (open) inputRef.current?.focus()
+	}, [open])
 
 	useEffect(() => {
 		const onKey = (event: globalThis.KeyboardEvent): void => {
@@ -33,22 +30,7 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 		return () => window.removeEventListener("keydown", onKey)
 	}, [])
 
-	const term = query.trim().toLowerCase()
-	const pages = flatten(groups).filter(
-		entry => term === "" || `${entry.label} ${entry.group}`.toLowerCase().includes(term),
-	)
-	const hasUsers = groups.some(group => group.items.some(item => item.href === "/admin/users"))
-	const entries: PaletteEntry[] =
-		term.length >= 2 && hasUsers
-			? [
-					...pages,
-					{
-						group: SEARCH_GROUP,
-						href: `/admin/users?q=${encodeURIComponent(query.trim())}`,
-						label: `Find users matching "${query.trim()}"`,
-					},
-				]
-			: pages
+	const entries = paletteEntries(groups, query)
 	const current = Math.min(active, Math.max(entries.length - 1, 0))
 
 	const close = (): void => {
@@ -57,7 +39,7 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 		setActive(0)
 	}
 
-	const go = (entry: PaletteEntry | undefined): void => {
+	const go = (entry: AdminPaletteEntry | undefined): void => {
 		if (!entry) return
 		close()
 		if (entry.hard) {
@@ -89,7 +71,6 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 			</button>
 			<Modal onClose={close} open={open} title="Search the admin console">
 				<div className="hl-stack hl-stack--tight">
-					{/* The native dialog moves focus into its first control on open, which is this field, so no autoFocus is needed. */}
 					<input
 						aria-autocomplete="list"
 						aria-controls="admin-palette-list"
@@ -100,6 +81,7 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 						}}
 						onKeyDown={onInputKey}
 						placeholder="Go to a page, or type a name or email to find a user"
+						ref={inputRef}
 						value={query}
 					/>
 					<div aria-label="Matching pages" className="hl-admin-palette-list" id="admin-palette-list" role="listbox">
