@@ -41,7 +41,10 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 		},
 		{
 			items: [
-				...pages(can(Permission.MANAGE_CREDIT), [{ href: "/admin/grants", label: "Grants" }]),
+				...pages(can(Permission.MANAGE_CREDIT), [
+					{ href: "/admin/grants", label: "Grants" },
+					{ href: "/admin/ledger", label: "Ledger" },
+				]),
 				...pages(can(Permission.MANAGE_SHOP), [{ href: "/admin/shop", label: "Shop" }]),
 				...pages(can(Permission.FULFILL_ORDERS), [{ href: "/admin/fulfillment", label: "Fulfillment" }]),
 			],

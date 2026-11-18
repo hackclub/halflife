@@ -38,7 +38,8 @@ interface Props {
 const NUMERIC = { display: "block", fontVariantNumeric: "tabular-nums", textAlign: "right" } as const
 
 export default async function AdminLedgerPage({ searchParams }: Props) {
-	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
+	// Every account's bits in one place, so it is guarded by the permission that moves them, not the one that reads a single profile.
+	const { roles } = await requirePermissionPage(Permission.MANAGE_CREDIT)
 	// Each filter is taken as the single value the URL named: a repeated parameter arrives as an array, and an array is not a value this page can read.
 	const { cursor, from, kind: kindParam, q, to } = firstValues(await searchParams)
 	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
