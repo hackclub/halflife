@@ -16,6 +16,7 @@ const STATUS_TONE: { [_: string]: "success" | "warning" | "danger" | "muted" } =
 	FAILED: "danger",
 	ISSUED: "success",
 	PENDING: "warning",
+	RETURNED: "muted",
 	SKIPPED: "muted",
 }
 
@@ -30,8 +31,9 @@ export default async function GrantCardBatchPage({ params }: Props) {
 	if (!batch) notFound()
 
 	const remaining = batch.cards.filter(card => card.status === HcbGrantCardStatus.PENDING).length
+	// A returned card was still issued, so its amount counts towards what the batch sent.
 	const issuedCents = batch.cards
-		.filter(card => card.status === HcbGrantCardStatus.ISSUED)
+		.filter(card => card.status === HcbGrantCardStatus.ISSUED || card.status === HcbGrantCardStatus.RETURNED)
 		.reduce((total, card) => total + card.amountCents, 0)
 
 	return (
@@ -95,7 +97,9 @@ export default async function GrantCardBatchPage({ params }: Props) {
 												url={`/api/admin/grant-cards/${card.id}/reconcile`}
 											/>
 										) : null}
-										{card.hcbCardGrantId && card.status !== HcbGrantCardStatus.CANCELED ? (
+										{card.hcbCardGrantId
+										&& card.status !== HcbGrantCardStatus.CANCELED
+										&& card.status !== HcbGrantCardStatus.RETURNED ? (
 											<ActionButton
 												confirm="Cancel this HCB card grant and return its remaining balance to the organisation?"
 												label="Cancel"

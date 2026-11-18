@@ -199,6 +199,8 @@ async function buildPreview(
 				|| card.status === HcbGrantCardStatus.ISSUED
 				|| card.status === HcbGrantCardStatus.AMBIGUOUS,
 		)
+		// A card the maker handed back was still paid to them once, and the money went back to the organisation. It is not a live card, so it never reissues on its own.
+		const returnedCard = row.hcbGrantCards.some(card => card.status === HcbGrantCardStatus.RETURNED)
 		// The flag, the ban and the suspension in one answer, so this list and the issue loop cannot disagree about who is paid. A fraud flag on its own is what this list used to check.
 		const payoutBlock = payoutBlockReason(row.user)
 		const reason = row.grantUsd
@@ -207,11 +209,13 @@ async function buildPreview(
 				: row.user.verificationStatus === "verified"
 					? row.hcbGrantTopUps.length > 0
 						? "Already paid by HCB top-up"
-						: row.hcbCardGrantExports.length > 0
-							? "Already in an HCB CSV import"
-							: liveCard
-								? "Card grant already issued or awaiting reconciliation"
-								: null
+						: returnedCard
+							? "Already paid: the maker returned an earlier card grant"
+							: row.hcbCardGrantExports.length > 0
+								? "Already in an HCB CSV import"
+								: liveCard
+									? "Card grant already issued or awaiting reconciliation"
+									: null
 					: "Identity is not verified"
 			: "No approved grant"
 		if (reason) {
@@ -899,6 +903,19 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			continue
 		}
 
+		// A card the maker handed back means the project has already been paid once. Reissuing it is an admin decision, never something a batch does on its own.
+		const returnedCard = await db.orm.public.HcbGrantCard.where({
+			phase: Phase.DESIGN,
+			status: HcbGrantCardStatus.RETURNED,
+			themeProjectId: project.id,
+		}).first()
+		if (returnedCard) {
+			const reason = "Already paid: the maker returned an earlier card grant"
+			await markSkipped(candidate.id, reason)
+			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, reason, null))
+			continue
+		}
+
 		// A project in a live CSV export is already claimed for payment, even though that table is not the one this
 		// batch's unique index covers. Checking it before the create is what keeps a batch and an export from paying
 		// the same project when both were previewed a moment apart.
@@ -1129,6 +1146,7 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 		failed: 0,
 		issued: 0,
 		pending: 0,
+		returned: 0,
 		skipped: 0,
 	}
 	for (const row of rows)
@@ -1136,6 +1154,7 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 		else if (row.status === HcbGrantCardStatus.CANCELED) counts.canceled += 1
 		else if (row.status === HcbGrantCardStatus.FAILED) counts.failed += 1
 		else if (row.status === HcbGrantCardStatus.ISSUED) counts.issued += 1
+		else if (row.status === HcbGrantCardStatus.RETURNED) counts.returned += 1
 		else if (row.status === HcbGrantCardStatus.SKIPPED) counts.skipped += 1
 		else counts.pending += 1
 
@@ -1152,7 +1171,8 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 		ambiguousCount: counts.ambiguous,
 		completedAt: counts.pending === 0 ? (batch.completedAt ?? formatDbTimestamp(new Date())) : null,
 		failedCount: counts.failed,
-		issuedCount: counts.issued,
+		// A returned card was issued before it came back, so it still counts as issued: the batch did its job, the maker gave the money back.
+		issuedCount: counts.issued + counts.returned,
 		skippedCount: counts.skipped,
 		status,
 	})
@@ -1193,7 +1213,11 @@ export async function reconcileGrantCard(
 ): Promise<GrantCardOutcome> {
 	const row = await db.orm.public.HcbGrantCard.whereUnique({ id }).first()
 	if (!row) throw new HttpError("NOT_FOUND", "Card grant not found")
-	if (row.status === HcbGrantCardStatus.ISSUED || row.status === HcbGrantCardStatus.CANCELED)
+	if (
+		row.status === HcbGrantCardStatus.ISSUED
+		|| row.status === HcbGrantCardStatus.CANCELED
+		|| row.status === HcbGrantCardStatus.RETURNED
+	)
 		return toOutcome(row, row.status, row.error, row.hcbCardGrantId)
 	// A pending row may be in another request's hands right now; reconciling it could race the create and mark it failed
 	// while HCB issues the grant. Only the two states the UI offers can be checked.
