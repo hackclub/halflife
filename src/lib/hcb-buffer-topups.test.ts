@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { GrantDisbursement } from "@/lib/hcb"
-import { bareGrantId, bufferTopUpKey, selectBufferTopUps } from "@/lib/hcb-buffer-topups"
+import { bareGrantId, bufferTopUpKey, grantReturnedAt, selectBufferTopUps } from "@/lib/hcb-buffer-topups"
 
 const disbursement = (overrides: Partial<GrantDisbursement> = {}): GrantDisbursement => ({
 	amountCents: 200,
@@ -20,7 +20,15 @@ describe("buffer top-ups", () => {
 		expect(bufferTopUpKey("cdg_DZIKLV", disbursement())).toBe(
 			"DZIKLV|2026-11-14T19:11:39.123Z|200|Topup of grant to Polo",
 		)
-		expect(bufferTopUpKey("cdg_DZIKLV", disbursement({ createdAt: null, memo: null }))).toBe("DZIKLV||200|")
+		// With no time and no transaction id, the position keeps two otherwise identical rows apart.
+		expect(bufferTopUpKey("cdg_DZIKLV", disbursement({ createdAt: null, memo: null, transactionId: null }), 0)).toBe(
+			"DZIKLV||200||0",
+		)
+		expect(bufferTopUpKey("cdg_DZIKLV", disbursement({ createdAt: null, memo: null, transactionId: null }), 1)).toBe(
+			"DZIKLV||200||1",
+		)
+		// A transaction id distinguishes the row even without a time.
+		expect(bufferTopUpKey("cdg_DZIKLV", disbursement({ createdAt: null, memo: null }))).toBe("DZIKLV||200||txn_1")
 	})
 
 	test("a manual top-up on the grant is a buffer top-up", () => {
@@ -45,5 +53,50 @@ describe("buffer top-ups", () => {
 	test("a site top-up of a different amount on the same grant is still a buffer top-up", () => {
 		const sent = [{ amountCents: 500, grantHashid: "DZIKLV" }]
 		expect(selectBufferTopUps([disbursement()], sent, "cdg_DZIKLV")).toHaveLength(1)
+	})
+
+	test("a payment explains one disbursement, not every disbursement of that amount", () => {
+		const sent = [{ amountCents: 200, grantHashid: "DZIKLV", transactionId: "txn_1" }]
+		const rows = [disbursement(), disbursement({ transactionId: "txn_2" })]
+		expect(selectBufferTopUps(rows, sent, "cdg_DZIKLV")).toHaveLength(1)
+	})
+
+	test("a transaction id pairs exactly, even when another payment has the same amount", () => {
+		const sent = [
+			{ amountCents: 200, grantHashid: "DZIKLV", transactionId: "txn_9" },
+			{ amountCents: 200, grantHashid: "DZIKLV", transactionId: "txn_1" },
+		]
+		expect(selectBufferTopUps([disbursement()], sent, "cdg_DZIKLV")).toHaveLength(0)
+	})
+})
+
+describe("grantReturnedAt", () => {
+	test("the balance going back to the organisation is a return", () => {
+		const rows = [
+			disbursement({ amountCents: 6432, memo: "Grant to Ellie" }),
+			disbursement({
+				amountCents: -6432,
+				createdAt: "2026-11-19T10:00:00.000Z",
+				memo: "Returning canceled grant to Ellie",
+			}),
+		]
+		expect(grantReturnedAt(rows)).toBe("2026-11-19T10:00:00.000Z")
+	})
+
+	test("a grant that was not returned has no return time", () => {
+		const rows = [
+			disbursement({ amountCents: 6432, memo: "Grant to Ellie" }),
+			disbursement({ amountCents: 200, memo: "Topup of grant to Ellie" }),
+			disbursement({ amountCents: -5, memo: "Purchase at Adafruit" }),
+		]
+		expect(grantReturnedAt(rows)).toBeNull()
+	})
+
+	test("a return without a time is not treated as a return", () => {
+		expect(
+			grantReturnedAt([
+				disbursement({ amountCents: -6432, createdAt: null, memo: "Returning canceled grant to Ellie" }),
+			]),
+		).toBeNull()
 	})
 })

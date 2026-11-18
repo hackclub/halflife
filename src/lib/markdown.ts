@@ -3,6 +3,7 @@
  *
  * Kept out of `components/platform/Markdown.tsx` because it has no JSX in it and is read from the server (`lib/thumbnail.ts` picks a project's cover out of a journal entry). The renderer imports the same guards and the token pattern, so what counts as an image and what renders as one cannot drift apart.
  */
+import { isPublicHost } from "@/lib/origin"
 
 /** Links have to survive being typed by hand without becoming an attack. */
 export function safeHref(raw: string): string | undefined {
@@ -13,10 +14,24 @@ export function safeHref(raw: string): string | undefined {
 	return undefined
 }
 
-/** The same guard for images, plus data URIs so a paste can be previewed. */
+/**
+ * The same guard for images, plus data URIs so a paste can be previewed.
+ *
+ * Never our own hosts. An image pointed at one of our routes is a credentialed GET that the author makes every
+ * viewer's browser send, which is how a journal entry once logged out everyone who opened Explore. It is also how
+ * the HCB callback could have been reached from a journal: the route writes the deployment's payout credential, so
+ * no user-supplied picture may aim at it, at the review platform, or at any other path we serve.
+ */
 export function safeSrc(raw: string): string | undefined {
 	const src = raw.trim()
-	if (/^https?:\/\//i.test(src)) return src
+	if (/^https?:\/\//i.test(src)) {
+		try {
+			if (isPublicHost(new URL(src).hostname)) return undefined
+		} catch {
+			return undefined
+		}
+		return src
+	}
 	if (/^data:image\//i.test(src)) return src
 	// No site-relative paths: uploaded images are absolute R2 URLs, so a relative `![x](/signed-out)` can only be aimed at our own routes – and loading one as an image fires a credentialed GET at it (which is how one logged out every viewer of Explore).
 	return undefined

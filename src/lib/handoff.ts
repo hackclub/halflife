@@ -4,6 +4,7 @@ import { HttpError } from "@/lib/errors"
 import { POST_UPLOAD_FOLDER } from "@/lib/feed"
 import db from "@/lib/prisma8"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
+import { recordConfirmedUpload } from "@/lib/uploads/confirmed"
 import {
 	buildObjectKey,
 	deleteObject,
@@ -204,6 +205,17 @@ export async function completeHandoffObject(
 		objectKey: file.objectKey,
 	})
 
+	// The reel composer posts this key, so it has to be a confirmed upload like any other. The bytes were verified
+	// above; this is the record the post route looks for.
+	await recordConfirmedUpload({
+		byteSize: verified.size,
+		contentHash: null,
+		contentType: verified.contentType,
+		folder: POST_UPLOAD_FOLDER,
+		objectKey: file.objectKey,
+		userId: target.userId,
+	})
+
 	return { objectKey: file.objectKey }
 }
 
@@ -243,6 +255,15 @@ export async function completeHandoff(
 		byteSize: file.size,
 		contentType: file.type,
 		objectKey: key,
+	})
+
+	await recordConfirmedUpload({
+		byteSize: bytes.length,
+		contentHash: null,
+		contentType: file.type,
+		folder: POST_UPLOAD_FOLDER,
+		objectKey: key,
+		userId: target.userId,
 	})
 
 	return { objectKey: key }

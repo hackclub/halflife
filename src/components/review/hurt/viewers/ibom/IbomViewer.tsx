@@ -6,6 +6,7 @@ import HurtIcon from '../../ui/HurtIcon'
 import PanZoom, { type PanZoomHandle } from '../../ui/PanZoom'
 import TextViewer from '../TextViewer'
 import { prepareIbom, type IbomFrame, type IbomPart, type IbomView } from './load'
+import { svgDataUrl } from '../../core/svg'
 import { partAt, type Side } from './geometry'
 
 type Layer = keyof IbomView['layers']
@@ -338,7 +339,7 @@ function Stage({
   )
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
-    const created = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+    const created = svgDataUrl(svg)
     setUrl(created)
     return () => URL.revokeObjectURL(created)
   }, [svg])

@@ -146,6 +146,20 @@ export function withRole<C extends object = object>(
 	return guardedRoute(() => requireRole(role), handler)
 }
 
+/** A write route that needs the named role, while the caller's penalty state allows acting. */
+export function withWriteRole<C extends object = object>(
+	role: Role,
+	handler: GuardedHandler<C>,
+): (req: NextRequest, ctx?: C) => Promise<NextResponse> {
+	return guardedRoute(async () => {
+		const ctx = await resolveAllowed()
+		if (ctx.error) return ctx
+		if (!hasRole(ctx.roles, role)) return { error: fail("FORBIDDEN", `Requires the ${role} role`) }
+		if (ctx.penalty !== "none") return { error: fail("ACCOUNT_SUSPENDED", "Your account is unable to act") }
+		return ctx
+	}, handler)
+}
+
 /** A write route any signed-in participant may call, while their penalty state allows acting. */
 export function withWriteSession<C extends object = object>(
 	handler: GuardedHandler<C>,

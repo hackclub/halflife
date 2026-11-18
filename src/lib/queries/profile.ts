@@ -63,6 +63,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 	const [user, projectRows, reels, counts, settings] = await Promise.all([
 		db.orm.public.User.whereUnique({ id: userId })
 			.select(
+				"bannedAt",
 				"createdAt",
 				"currentStreak",
 				"displayName",
@@ -100,6 +101,11 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		getProgramSettings(),
 	])
 	if (!user) return null
+
+	// A ban with content hidden takes the person's public trail with it. The reels are already hidden, but the
+	// profile is also where their journals and projects are listed, so it reads as gone rather than as a page of one
+	// kind of work with the other kind still in place. Staff reach it through /admin/users.
+	if (user.bannedAt && viewerId !== userId) return null
 
 	// A row is made when its checkpoint is opened, before the project has a name. An unnamed one is not a project anybody started, so it stays off the list.
 	const projects = projectRows.filter(project => project.namedAt !== null && project.title !== "")

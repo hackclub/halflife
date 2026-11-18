@@ -9,10 +9,10 @@ import {
 	scheduledWeekFor,
 	TOTAL_WEEKS,
 } from "@/lib/config/program"
-import { type PayoutSource, Phase, PhaseStatus, Role } from "@/lib/enums"
+import { type PayoutSource, Phase, PhaseStatus, Role, type Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { getUserRoles, hasRole } from "@/lib/permissions"
-import db from "@/lib/prisma8"
+import db, { type DbOrTx } from "@/lib/prisma8"
 import {
 	calendarDayNumber,
 	DAY_MS,
@@ -277,6 +277,23 @@ export interface SubmissionAccess {
 }
 
 /**
+ * The latest week extension covering a project's two weeks, read from a given client.
+ *
+ * Both of a project's weeks count, because a grant written for a week the maker had not started still has to cover the project once they begin it. Shared by the access pre-check (`getSubmissionAccess`) and the submit transaction, so the two cannot disagree about which weeks a grant covers – a disagreement let an ordinary submit pass the pre-check and fail in the transaction.
+ */
+export async function latestWeekExtension(client: DbOrTx, userId: string, theme: Theme): Promise<Date | null> {
+	const weeks = [scheduledWeekFor(theme, Phase.DESIGN), scheduledWeekFor(theme, Phase.BUILD)]
+	const rows = await client.orm.public.WeekExtension.where({ userId })
+		.where(row => row.week.in(weeks))
+		.select("submissionExtensionUntil")
+		.all()
+	return rows.reduce<Date | null>((latest, row) => {
+		const until = parseDbTimestamp(row.submissionExtensionUntil)
+		return latest === null || until > latest ? until : latest
+	}, null)
+}
+
+/**
  * Whether this participant may still write to this project.
  *
  * Three levels of override, all as rows rather than manual database surgery: a per-user one covering everything they do, a per-project one, and a per-week one that can be granted before the week's project exists. Any being in the future opens the gate. The week one reaches either of the project's two weeks, because a grant written for a week the maker had not started still has to cover the project once they begin it.
@@ -323,15 +340,7 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 		}
 
 	if (project) {
-		const weeks = [scheduledWeekFor(project.theme, Phase.DESIGN), scheduledWeekFor(project.theme, Phase.BUILD)]
-		const weekRows = await db.orm.public.WeekExtension.where({ userId })
-			.where(row => row.week.in(weeks))
-			.select("submissionExtensionUntil")
-			.all()
-		const weekExt = weekRows.reduce<Date | null>((latest, row) => {
-			const until = parseDbTimestamp(row.submissionExtensionUntil)
-			return latest === null || until > latest ? until : latest
-		}, null)
+		const weekExt = await latestWeekExtension(db, userId, project.theme)
 		if (weekExt && weekExt > now)
 			return {
 				closesAt: settings.submissionsCloseAt,

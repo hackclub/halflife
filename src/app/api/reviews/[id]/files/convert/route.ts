@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { type AuthedContext, withPermission } from "@/lib/guards"
+import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { conversionFor, filesError, submissionRepo } from "@/lib/review-platform/files-route"
 import { conversionAvailable } from "@/lib/review-platform/model-conversion"
@@ -13,7 +13,7 @@ interface Params {
 /**
  * Convert a STEP/IGES/BREP file too big for the browser, or say how far along that is. The viewer calls this every two seconds until it answers `done`, then fetches `../converted`. See lib/review-platform/model-conversion.
  */
-export const POST = withPermission(
+export const POST = withWritePermission(
 	Permission.REVIEW_SUBMISSIONS,
 	async (req: NextRequest, { params, gate }: Params & AuthedContext) => {
 		if (!conversionAvailable()) return filesError("Converting models on the server isn't set up here.", 503)

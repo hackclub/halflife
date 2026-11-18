@@ -4,16 +4,19 @@ import { useLoad } from '../../core/useLoad'
 import { formatBytes } from '../../core/format'
 import { Gate, Toolbar } from '../../ui/parts'
 import { readOffice, type Block, type Run } from './ooxml'
-import { IMAGE_MIME } from '../ImageViewer'
+import { IMAGE_MIME, rasterizeSvg } from '../ImageViewer'
 
 type Urls = Map<string, string>
 
-function imageUrls(images: Map<string, Uint8Array>) {
+async function imageUrls(images: Map<string, Uint8Array>, signal: AbortSignal) {
   const urls: Urls = new Map()
   for (const [name, bytes] of images) {
     const type = IMAGE_MIME[name.split('.').pop()?.toLowerCase() ?? '']
-    if (type && bytes.length)
-      urls.set(name, URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type })))
+    if (!type || !bytes.length) continue
+    const raw = new Blob([bytes as Uint8Array<ArrayBuffer>], { type })
+    // A docx/pptx media part is repository-controlled. A blob: URL of an SVG is a same-origin page, so rasterise it
+    // before it can be opened as one.
+    urls.set(name, URL.createObjectURL(type === 'image/svg+xml' ? await rasterizeSvg(raw, signal) : raw))
   }
   return urls
 }
@@ -108,7 +111,7 @@ export default function DocumentViewer({ file, source }: ViewerProps) {
     async ({ signal }) => {
       const doc = await readOffice(await source.read(file.path, { signal }), file.name)
       signal.throwIfAborted()
-      const urls = imageUrls(doc.images)
+      const urls = await imageUrls(doc.images, signal)
       const thumbnail = doc.thumbnail
         ? URL.createObjectURL(new Blob([doc.thumbnail as Uint8Array<ArrayBuffer>], { type: 'image/jpeg' }))
         : null

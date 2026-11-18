@@ -109,6 +109,11 @@ export function isVideoBytes(bytes: Uint8Array): boolean {
 export const UPLOAD_FOLDERS = ["sessions", "covers", "timelapses", "posts", "shop"] as const
 export type UploadFolder = (typeof UPLOAD_FOLDERS)[number]
 
+/** Whether a string names one of the folders this app uploads into. */
+export function isUploadFolder(value: string): value is UploadFolder {
+	return (UPLOAD_FOLDERS as readonly string[]).includes(value)
+}
+
 export interface UploadedObjectSummary {
 	key: string
 	lastModified: Date | null

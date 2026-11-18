@@ -26,10 +26,17 @@ function readUserRow(userId: string) {
  * The maker's address as an Airtable row should carry it: HCA asked now, then the stored copy read back.
  *
  * Asking HCA is what keeps the address current, so a decision made after the maker added one ships it. A maker with no HCA account is not asked, and the stored copy is read as before. Never throws: a failed HCA call falls back to the stored copy, which is what the row was written from before.
+ *
+ * `sync: false` serves the stored copy without asking HCA. The reminder poll uses it between throttled syncs: a page
+ * that asks on every mount would otherwise make two HCA requests per view and can get the server's IP throttled,
+ * which breaks sign-in and identity checks for everyone.
  */
-export async function readAddressSnapshot(userId: string): Promise<AddressSnapshot> {
+export async function readAddressSnapshot(
+	userId: string,
+	{ sync = true }: { sync?: boolean } = {},
+): Promise<AddressSnapshot> {
 	const linked = await db.orm.public.Account.where({ providerId: "hca", userId }).select("id").first()
-	if (linked) await syncHcaProfile(userId)
+	if (linked && sync) await syncHcaProfile(userId)
 	const user = await readUserRow(userId)
 	const pii = decryptUserPII(user)
 	if (pii.line1) return { gap: null, pii, user }

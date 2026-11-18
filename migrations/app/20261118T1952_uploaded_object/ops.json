@@ -1,0 +1,199 @@
+[
+  {
+    "id": "table.uploaded_object",
+    "label": "Create table \"uploaded_object\"",
+    "summary": "Creates table \"uploaded_object\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "uploaded_object"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"uploaded_object\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploaded_object\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"uploaded_object\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"uploaded_object\"",
+        "sql": "CREATE TABLE \"public\".\"uploaded_object\" (\n  \"byteSize\" int4 NOT NULL,\n  \"confirmedAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"contentHash\" text,\n  \"contentType\" text NOT NULL,\n  \"folder\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"objectKey\" text NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"uploaded_object\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"uploaded_object\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"uploaded_object\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "index.uploaded_object.uploaded_object_objectKey_key",
+    "label": "Create index \"uploaded_object_objectKey_key\" on \"uploaded_object\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "uploaded_object_objectKey_key",
+        "table": "uploaded_object"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"uploaded_object_objectKey_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploaded_object_objectKey_key\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"uploaded_object_objectKey_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"uploaded_object_objectKey_key\"",
+        "sql": "CREATE UNIQUE INDEX \"uploaded_object_objectKey_key\" ON \"public\".\"uploaded_object\" (\"objectKey\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"uploaded_object_objectKey_key\" exists on \"uploaded_object\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"uploaded_object_objectKey_key\"",
+          "i",
+          "I",
+          "\"public\".\"uploaded_object\"",
+          "btree",
+          "[\"objectKey\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.uploaded_object.uploaded_object_user_folder_idx",
+    "label": "Create index \"uploaded_object_user_folder_idx\" on \"uploaded_object\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "uploaded_object_user_folder_idx",
+        "table": "uploaded_object"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"uploaded_object_user_folder_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploaded_object_user_folder_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"uploaded_object_user_folder_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"uploaded_object_user_folder_idx\"",
+        "sql": "CREATE INDEX \"uploaded_object_user_folder_idx\" ON \"public\".\"uploaded_object\" (\"userId\", \"folder\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"uploaded_object_user_folder_idx\" exists on \"uploaded_object\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"uploaded_object_user_folder_idx\"",
+          "i",
+          "I",
+          "\"public\".\"uploaded_object\"",
+          "btree",
+          "[\"userId\",\"folder\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.uploaded_object.uploaded_object_userId_fkey",
+    "label": "Add foreign key \"uploaded_object_userId_fkey\" on \"uploaded_object\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "uploaded_object_userId_fkey",
+        "table": "uploaded_object"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"uploaded_object_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "uploaded_object_userId_fkey",
+          "public",
+          "\"public\".\"uploaded_object\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"uploaded_object_userId_fkey\" on \"uploaded_object\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"uploaded_object_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"uploaded_object\"\nADD CONSTRAINT \"uploaded_object_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"uploaded_object_userId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "uploaded_object_userId_fkey",
+          "public",
+          "\"public\".\"uploaded_object\"",
+          "f",
+          "[\"userId\"]",
+          "\"public\".\"user\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  }
+]

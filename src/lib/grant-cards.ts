@@ -17,6 +17,7 @@ import {
 	grantCardFingerprint,
 	grantCardInstructions,
 	grantCardPurpose,
+	remainingAfterCancelledCards,
 } from "@/lib/grant-card-policy"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {
@@ -24,10 +25,12 @@ import {
 	createCardGrant,
 	isHcbConfigured,
 	listOrganizationCardGrants,
+	readCardGrantSpend,
 	readOrganizationBalanceCents,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
 import { bareGrantId, bufferTopUpCentsByGrant } from "@/lib/hcb-buffer-topups"
+import { lockKey } from "@/lib/locks"
 import { payoutBlockReason } from "@/lib/moderation"
 import { formatUsd } from "@/lib/money"
 import { configuredOrigin } from "@/lib/origin"
@@ -164,7 +167,7 @@ async function buildPreview(
 		)
 		.include("hcbGrantCards", cards =>
 			cards
-				.select("id", "status")
+				.select("id", "spentCents", "status")
 				.where({ phase: Phase.DESIGN })
 				.where(card => card.supersededAt.isNull()),
 		)
@@ -196,6 +199,8 @@ async function buildPreview(
 				|| card.status === HcbGrantCardStatus.ISSUED
 				|| card.status === HcbGrantCardStatus.AMBIGUOUS,
 		)
+		// A card the maker handed back was still paid to them once, and the money went back to the organisation. It is not a live card, so it never reissues on its own.
+		const returnedCard = row.hcbGrantCards.some(card => card.status === HcbGrantCardStatus.RETURNED)
 		// The flag, the ban and the suspension in one answer, so this list and the issue loop cannot disagree about who is paid. A fraud flag on its own is what this list used to check.
 		const payoutBlock = payoutBlockReason(row.user)
 		const reason = row.grantUsd
@@ -204,11 +209,13 @@ async function buildPreview(
 				: row.user.verificationStatus === "verified"
 					? row.hcbGrantTopUps.length > 0
 						? "Already paid by HCB top-up"
-						: row.hcbCardGrantExports.length > 0
-							? "Already in an HCB CSV import"
-							: liveCard
-								? "Card grant already issued or awaiting reconciliation"
-								: null
+						: returnedCard
+							? "Already paid: the maker returned an earlier card grant"
+							: row.hcbCardGrantExports.length > 0
+								? "Already in an HCB CSV import"
+								: liveCard
+									? "Card grant already issued or awaiting reconciliation"
+									: null
 					: "Identity is not verified"
 			: "No approved grant"
 		if (reason) {
@@ -221,9 +228,25 @@ async function buildPreview(
 			excluded.push({ ownerName, projectId: row.id, reason: "No tier to cap the grant at", title: row.title })
 			continue
 		}
-		const amountCents = grantCardAmountCents(row.bomItems, row.bomTaxShippingUsd, capUsd)
-		if (amountCents <= 0) {
+		const fullCents = grantCardAmountCents(row.bomItems, row.bomTaxShippingUsd, capUsd)
+		if (fullCents <= 0) {
 			excluded.push({ ownerName, projectId: row.id, reason: "BOM is empty or totals zero", title: row.title })
+			continue
+		}
+		// A cancelled card returned only its unspent balance, so what it spent is not funded again. An unknown
+		// spend pays nothing until it is checked, rather than paying the full amount twice.
+		const cancelled = row.hcbGrantCards.filter(card => card.status === HcbGrantCardStatus.CANCELED)
+		const amountCents = remainingAfterCancelledCards(fullCents, cancelled)
+		if (amountCents <= 0) {
+			const known = cancelled.every(card => card.spentCents !== null)
+			excluded.push({
+				ownerName,
+				projectId: row.id,
+				reason: known
+					? "Already spent from an earlier card that was cancelled"
+					: "An earlier card was cancelled and its remaining balance is unknown",
+				title: row.title,
+			})
 			continue
 		}
 
@@ -374,6 +397,10 @@ export async function createGrantCardBatch(input: CreateGrantCardBatchInput): Pr
 
 	const { ip, userAgent } = await requestInfo()
 	const result = await db.transaction(async tx => {
+		// One lock across every writer that claims a project for payment. The unique indexes are per table, so
+		// without this an API batch and a CSV export (or a starter wave) can each pass their own check and both
+		// claim the same project, paying it twice.
+		await lockKey(tx, "grant-cards:issue")
 		// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through.
 		const snapshot = await buildPreview(tx)
 		if (snapshot.fingerprint !== input.fingerprint)
@@ -461,9 +488,12 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 
 	const { ip, userAgent } = await requestInfo()
 	// A starter's Funding given is written before its row can reach the CSV. If that write fails, nothing is exported.
-	const writtenStarterRows = await writeStarterFunding(current.eligible)
+	const { previous: previousStarterFunding, written: writtenStarterRows } = await writeStarterFunding(current.eligible)
 	const result = await db
 		.transaction(async tx => {
+			// The same lock every other issuer takes: a batch creating a card while this export is being written
+			// would otherwise claim the same project through a table this transaction did not check.
+			await lockKey(tx, "grant-cards:issue")
 			// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through. The starters' own writes are passed in, or the gate would refuse the starters that were just written for.
 			const txPreview = await buildPreview(tx, writtenStarterRows)
 			if (txPreview.fingerprint !== input.fingerprint)
@@ -509,7 +539,7 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 			return { batchId: batch.id, eligible: txPreview.eligible, totalCents: txPreview.totalCents }
 		})
 		.catch(async err => {
-			await revertStarterFunding(writtenStarterRows.keys())
+			await revertStarterFunding(previousStarterFunding, writtenStarterRows.keys())
 			throw err
 		})
 
@@ -549,9 +579,15 @@ export async function listGrantCardExports(limit: number): Promise<GrantCardExpo
 	}))
 }
 
-/** Rebuild the file a generated export held, or null if there is no such export. */
+/**
+ * Rebuild the file a generated export held, or null if there is no such export.
+ *
+ * Superseded rows are left out. Their project was paid another way (or the card was cancelled), so re-downloading an
+ * old file and uploading it again would create a second card for a project that has already been paid.
+ */
 export async function grantCardExportCsv(batchId: string): Promise<{ csv: string; filename: string } | null> {
 	const rows = await db.orm.public.HcbCardGrantExportRow.where({ batchId })
+		.where(row => row.supersededAt.isNull())
 		.include("themeProject", project => project.select("title"))
 		// The batch inserted its rows in one transaction, so createdAt ties; id keeps the order stable.
 		.orderBy([row => row.createdAt.asc(), row => row.id.asc()])
@@ -623,13 +659,19 @@ async function auditIssue(
 }
 
 /**
- * Writes `Funding given` for each Week 1 starter in a card export, before its row can reach the CSV. Returns the rows written, so they can be undone if the export does not go ahead.
+ * Writes `Funding given` for each Week 1 starter in a card export, before its row can reach the CSV. Returns the rows written and their previous values, so an export that does not go ahead can put Airtable back exactly as it was.
  *
- * Throws, naming the starter, when one cannot be written. Writes already made are undone first, so a failed export leaves Airtable as it was.
+ * Throws, naming the starter, when one cannot be written. Writes already made are undone first, and the previous values are restored rather than zeroed: another export may have paid a figure that a failure here must not erase.
  */
-async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<Map<string, number>> {
+async function writeStarterFunding(
+	eligible: GrantCardProjectRow[],
+): Promise<{ previous: Map<string, number>; written: Map<string, number> }> {
 	const starters = eligible.filter(row => row.weekOneStarter)
 	const recordIds = await starterRecordIds(starters.map(row => row.projectId))
+	const before =
+		recordIds.size === 0 ? new Map<string, number>() : await readStarterFundingGiven([...new Set(recordIds.values())])
+	if (before === null)
+		throw new HttpError("INTERNAL", "Funding given could not be read from Airtable, so nothing was exported")
 	const written = new Map<string, number>()
 	for (const row of starters) {
 		const recordId = recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
@@ -637,7 +679,7 @@ async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<Map
 			? await setStarterFundingGiven(recordId, row.amountCents / 100)
 			: "No Airtable row is linked to this project"
 		if (failure !== null) {
-			await revertStarterFunding(written.keys())
+			await revertStarterFunding(before, written.keys())
 			throw new HttpError(
 				"INTERNAL",
 				`Funding given could not be written for ${row.title || row.projectId}, so nothing was exported: ${failure}`,
@@ -645,13 +687,13 @@ async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<Map
 		}
 		if (recordId) written.set(recordId, row.amountCents / 100)
 	}
-	return written
+	return { previous: before, written }
 }
 
-/** Undoes `Funding given` writes made for an export that did not go ahead, setting them back to zero. */
-async function revertStarterFunding(recordIds: Iterable<string>): Promise<void> {
+/** Undoes `Funding given` writes made for an export that did not go ahead, restoring each row's own previous figure. */
+async function revertStarterFunding(previous: ReadonlyMap<string, number>, recordIds: Iterable<string>): Promise<void> {
 	for (const recordId of recordIds) {
-		const failure = await setStarterFundingGiven(recordId, 0)
+		const failure = await setStarterFundingGiven(recordId, previous.get(recordId) ?? 0)
 		if (failure !== null) console.error("[grant-cards] could not revert Funding given", recordId, failure)
 	}
 }
@@ -734,6 +776,22 @@ async function markAmbiguous(id: string, reason: string): Promise<void> {
 }
 
 /**
+ * Every HCB grant id the site already holds, live or not, keyed the way HCB lists them.
+ *
+ * A reconcile must never match one of these again. Two of a maker's cards at the same tier are the same amount, so a
+ * lost response that is allowed to pair with their other project's grant marks that grant against the wrong row,
+ * fails the unique index, and leaves this row pending forever. A grant already recorded here was paid for something.
+ */
+async function claimedGrantIds(): Promise<Set<string>> {
+	const claimed = new Set<string>()
+	for (const card of await db.orm.public.HcbGrantCard.where({}).select("hcbCardGrantId").all())
+		if (card.hcbCardGrantId) claimed.add(bareGrantId(card.hcbCardGrantId))
+	for (const topUp of await db.orm.public.HcbGrantTopUp.where({}).select("grantHashid").all())
+		if (topUp.grantHashid) claimed.add(bareGrantId(topUp.grantHashid))
+	return claimed
+}
+
+/**
  * Process the next chunk of a batch.
  *
  * A row is claimed with a compare-and-set before HCB is called, so two requests cannot both pay it. A failed create is never retried in place: the reconciliation below either finds the grant HCB made or leaves the row for a human.
@@ -775,6 +833,8 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 	const { ip, userAgent } = await requestInfo()
 	const outcomes: GrantCardOutcome[] = []
 	const titles = new Map<string, string>()
+	// Every grant already recorded elsewhere, so a lost response in this chunk cannot claim one of them.
+	const claimedGrants = await claimedGrantIds()
 	const verified = new Map<string, Promise<boolean>>()
 	const isVerified = (userId: string): Promise<boolean> => {
 		const cached = verified.get(userId)
@@ -843,13 +903,49 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 			continue
 		}
 
+		// A card the maker handed back means the project has already been paid once. Reissuing it is an admin decision, never something a batch does on its own.
+		const returnedCard = await db.orm.public.HcbGrantCard.where({
+			phase: Phase.DESIGN,
+			status: HcbGrantCardStatus.RETURNED,
+			themeProjectId: project.id,
+		}).first()
+		if (returnedCard) {
+			const reason = "Already paid: the maker returned an earlier card grant"
+			await markSkipped(candidate.id, reason)
+			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, reason, null))
+			continue
+		}
+
+		// A project in a live CSV export is already claimed for payment, even though that table is not the one this
+		// batch's unique index covers. Checking it before the create is what keeps a batch and an export from paying
+		// the same project when both were previewed a moment apart.
+		const exported = await db.orm.public.HcbCardGrantExportRow.where({ themeProjectId: project.id })
+			.where(row => row.supersededAt.isNull())
+			.first()
+		if (exported) {
+			await markSkipped(candidate.id, "Already in an HCB CSV import")
+			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, "Already in an HCB CSV import", null))
+			continue
+		}
+
 		const capUsd = grantCardCapUsd(project.grantUsd, project.tier, isWeekOneStarter(project.starterProjectId))
-		const amountCents = capUsd === null ? 0 : grantCardAmountCents(project.bomItems, project.bomTaxShippingUsd, capUsd)
-		if (capUsd === null || amountCents !== candidate.amountCents) {
-			await markSkipped(candidate.id, "BOM total changed since the batch was made")
-			outcomes.push(
-				toOutcome(candidate, HcbGrantCardStatus.SKIPPED, "BOM total changed since the batch was made", null),
-			)
+		const fullCents = capUsd === null ? 0 : grantCardAmountCents(project.bomItems, project.bomTaxShippingUsd, capUsd)
+		// The same netting the preview did, re-read here: a card cancelled between the two must not be paid twice.
+		const cancelledCards = await db.orm.public.HcbGrantCard.where({
+			phase: Phase.DESIGN,
+			status: HcbGrantCardStatus.CANCELED,
+			themeProjectId: project.id,
+		})
+			.select("spentCents")
+			.all()
+		const amountCents = remainingAfterCancelledCards(fullCents, cancelledCards)
+		if (capUsd === null || amountCents <= 0 || amountCents !== candidate.amountCents) {
+			const reason =
+				capUsd !== null && amountCents <= 0
+					? "An earlier card was cancelled and left nothing to reissue"
+					: "BOM total changed since the batch was made"
+			await markSkipped(candidate.id, reason)
+			outcomes.push(toOutcome(candidate, HcbGrantCardStatus.SKIPPED, reason, null))
 			continue
 		}
 
@@ -878,12 +974,16 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 				)
 				continue
 			}
-			const reconciled = reconcileCardGrantIssue(previous, {
-				amountCents,
-				attemptedAt: parseDbTimestamp(candidate.claimedAt),
-				email: project.user.email,
-				purpose,
-			})
+			const reconciled = reconcileCardGrantIssue(
+				previous,
+				{
+					amountCents,
+					attemptedAt: parseDbTimestamp(candidate.claimedAt),
+					email: project.user.email,
+					purpose,
+				},
+				claimedGrants,
+			)
 			if (reconciled.kind === "landed") {
 				const grant = previous.kind === "listed" ? previous.rows.find(row => row.id === reconciled.grantId) : undefined
 				if (grant) {
@@ -893,6 +993,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 						input.admin,
 						{ ip, userAgent },
 					)
+					claimedGrants.add(bareGrantId(grant.id))
 					outcomes.push(toOutcome(candidate, HcbGrantCardStatus.ISSUED, null, grant.id))
 					continue
 				}
@@ -963,12 +1064,16 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 				outcomes.push(toOutcome(candidate, HcbGrantCardStatus.AMBIGUOUS, message, null))
 				continue
 			}
-			const reconciled = reconcileCardGrantIssue(list, {
-				amountCents,
-				attemptedAt: parseDbTimestamp(candidate.claimedAt ?? candidate.createdAt),
-				email: project.user.email,
-				purpose,
-			})
+			const reconciled = reconcileCardGrantIssue(
+				list,
+				{
+					amountCents,
+					attemptedAt: parseDbTimestamp(candidate.claimedAt ?? candidate.createdAt),
+					email: project.user.email,
+					purpose,
+				},
+				claimedGrants,
+			)
 			if (reconciled.kind === "landed") {
 				const grant = list.kind === "listed" ? list.rows.find(row => row.id === reconciled.grantId) : undefined
 				if (grant) {
@@ -984,6 +1089,7 @@ export async function processCardGrantBatch(input: ProcessGrantCardBatchInput): 
 						input.admin,
 						{ ip, userAgent },
 					)
+					claimedGrants.add(bareGrantId(grant.id))
 					outcomes.push(toOutcome(candidate, HcbGrantCardStatus.ISSUED, null, grant.id))
 					continue
 				}
@@ -1040,6 +1146,7 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 		failed: 0,
 		issued: 0,
 		pending: 0,
+		returned: 0,
 		skipped: 0,
 	}
 	for (const row of rows)
@@ -1047,6 +1154,7 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 		else if (row.status === HcbGrantCardStatus.CANCELED) counts.canceled += 1
 		else if (row.status === HcbGrantCardStatus.FAILED) counts.failed += 1
 		else if (row.status === HcbGrantCardStatus.ISSUED) counts.issued += 1
+		else if (row.status === HcbGrantCardStatus.RETURNED) counts.returned += 1
 		else if (row.status === HcbGrantCardStatus.SKIPPED) counts.skipped += 1
 		else counts.pending += 1
 
@@ -1063,7 +1171,8 @@ async function refreshBatch(batchId: string): Promise<GrantCardBatchSummary> {
 		ambiguousCount: counts.ambiguous,
 		completedAt: counts.pending === 0 ? (batch.completedAt ?? formatDbTimestamp(new Date())) : null,
 		failedCount: counts.failed,
-		issuedCount: counts.issued,
+		// A returned card was issued before it came back, so it still counts as issued: the batch did its job, the maker gave the money back.
+		issuedCount: counts.issued + counts.returned,
 		skippedCount: counts.skipped,
 		status,
 	})
@@ -1104,7 +1213,11 @@ export async function reconcileGrantCard(
 ): Promise<GrantCardOutcome> {
 	const row = await db.orm.public.HcbGrantCard.whereUnique({ id }).first()
 	if (!row) throw new HttpError("NOT_FOUND", "Card grant not found")
-	if (row.status === HcbGrantCardStatus.ISSUED || row.status === HcbGrantCardStatus.CANCELED)
+	if (
+		row.status === HcbGrantCardStatus.ISSUED
+		|| row.status === HcbGrantCardStatus.CANCELED
+		|| row.status === HcbGrantCardStatus.RETURNED
+	)
 		return toOutcome(row, row.status, row.error, row.hcbCardGrantId)
 	// A pending row may be in another request's hands right now; reconciling it could race the create and mark it failed
 	// while HCB issues the grant. Only the two states the UI offers can be checked.
@@ -1112,12 +1225,16 @@ export async function reconcileGrantCard(
 		throw new HttpError("CONFLICT", "Only an ambiguous or failed grant can be checked against HCB")
 
 	const list = await listOrganizationCardGrants()
-	const reconciled = reconcileCardGrantIssue(list, {
-		amountCents: row.amountCents,
-		attemptedAt: parseDbTimestamp(row.claimedAt ?? row.createdAt),
-		email: row.email,
-		purpose: row.purpose ?? grantCardPurpose(),
-	})
+	const reconciled = reconcileCardGrantIssue(
+		list,
+		{
+			amountCents: row.amountCents,
+			attemptedAt: parseDbTimestamp(row.claimedAt ?? row.createdAt),
+			email: row.email,
+			purpose: row.purpose ?? grantCardPurpose(),
+		},
+		await claimedGrantIds(),
+	)
 	if (reconciled.kind === "landed") {
 		const grant = list.kind === "listed" ? list.rows.find(candidate => candidate.id === reconciled.grantId) : undefined
 		if (!grant) throw new HttpError("CONFLICT", "HCB named a grant Half Life could not read")
@@ -1163,12 +1280,28 @@ export async function cancelGrantCard(
 	if (row.status === HcbGrantCardStatus.CANCELED)
 		return toOutcome(row, HcbGrantCardStatus.CANCELED, row.error, row.hcbCardGrantId)
 
+	// Read the spend before cancelling: HCB returns the unspent balance to the org on cancel, so afterwards there is
+	// no way to tell how much of the card was used. A number we cannot read means the project would be payable in
+	// full again, so the cancellation is refused rather than recorded blind.
+	const spend = await readCardGrantSpend(row.hcbCardGrantId)
+	const spentCents =
+		spend.spentCents
+		?? (spend.amountCents !== null && spend.balanceCents !== null
+			? Math.max(0, spend.amountCents - spend.balanceCents)
+			: null)
+	if (spentCents === null)
+		throw new HttpError(
+			"CONFLICT",
+			"HCB could not say what this card has spent, so cancelling it would make the project payable in full again. Try again once HCB answers.",
+		)
+
 	await cancelCardGrant(row.hcbCardGrantId)
 	const { ip, userAgent } = await requestInfo()
 	await db.transaction(async tx => {
 		await tx.orm.public.HcbGrantCard.where({ id }).update({
 			canceledAt: formatDbTimestamp(new Date()),
 			hcbStatus: "canceled",
+			spentCents,
 			status: HcbGrantCardStatus.CANCELED,
 		})
 		await logAuditTx(tx, {
@@ -1176,7 +1309,7 @@ export async function cancelGrantCard(
 			actorEmail: admin.email,
 			actorId: admin.id,
 			ip,
-			metadata: { amountCents: row.amountCents, grantId: row.hcbCardGrantId },
+			metadata: { amountCents: row.amountCents, grantId: row.hcbCardGrantId, spentCents },
 			targetId: row.themeProjectId,
 			targetType: "ThemeProject",
 			userAgent,
@@ -1275,11 +1408,7 @@ export async function reconcileCsvExportRows(input: ReconcileCsvExportRowsInput)
 		.select("amountCents", "email", "id", "themeProjectId")
 		.all()
 	// Every HCB grant the site has ever recorded, live or not, is already accounted for, so none of them can confirm a CSV row.
-	const claimed = new Set<string>()
-	for (const card of await db.orm.public.HcbGrantCard.where({}).select("hcbCardGrantId").all())
-		if (card.hcbCardGrantId) claimed.add(bareGrantId(card.hcbCardGrantId))
-	for (const topUp of await db.orm.public.HcbGrantTopUp.where({}).select("grantHashid").all())
-		if (topUp.grantHashid) claimed.add(bareGrantId(topUp.grantHashid))
+	const claimed = await claimedGrantIds()
 
 	const list = await listOrganizationCardGrants()
 	if (list.kind === "unreadable")
@@ -1386,6 +1515,33 @@ export async function reconcileCsvExportRows(input: ReconcileCsvExportRowsInput)
 }
 
 /** Put superseded CSV rows back to live, for projects a later check found paid. Refuses unknown ids. */
-export function restoreCsvExportRows(rowIds: readonly string[], reason: string): Promise<number> {
-	return restoreExportRows(rowIds, reason)
+export async function restoreCsvExportRows(rowIds: readonly string[], reason: string): Promise<number> {
+	if (rowIds.length === 0) return 0
+	const superseded = (
+		await db.orm.public.HcbCardGrantExportRow.where({}).select("id", "themeProjectId", "supersededAt").all()
+	).filter(row => rowIds.includes(row.id) && row.supersededAt !== null)
+	// A project that already has a live card, or one the maker returned, has been dealt with. Restoring its row would offer it to the next wave, which is how a returned card gets paid a second time.
+	const paidCards = await db.orm.public.HcbGrantCard.where({})
+		.where(card =>
+			card.status.in([
+				HcbGrantCardStatus.PENDING,
+				HcbGrantCardStatus.ISSUED,
+				HcbGrantCardStatus.AMBIGUOUS,
+				HcbGrantCardStatus.RETURNED,
+			]),
+		)
+		.where(card => card.supersededAt.isNull())
+		.select("status", "themeProjectId")
+		.all()
+	const paidProjects = new Set(paidCards.map(card => card.themeProjectId))
+	const blocked = superseded.filter(row => paidProjects.has(row.themeProjectId))
+	if (blocked.length > 0)
+		throw new HttpError(
+			"CONFLICT",
+			`${blocked.length} row(s) belong to a project that already has a card grant; reissuing one is a decision to make on HCB, not a restore`,
+		)
+	return restoreExportRows(
+		superseded.map(row => row.id),
+		reason,
+	)
 }

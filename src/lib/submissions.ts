@@ -22,6 +22,7 @@ import {
 	getProgramSettings,
 	getSubmissionAccess,
 	ignoresSchedule,
+	latestWeekExtension,
 	type ProgramSettings,
 	SUBMISSIONS_CLOSED_MESSAGE,
 	weekNumberForDate,
@@ -30,6 +31,7 @@ import { assertNoOwedReel } from "@/lib/reel-gate"
 import { checkRepo } from "@/lib/repo-checks"
 import { RESUBMISSION_LIMIT, SUBMISSION_LIMIT_MESSAGE, submissionBudget } from "@/lib/resubmissions"
 import { parseDbTimestamp } from "@/lib/time"
+import { requireConfirmedUploads } from "@/lib/uploads/confirmed"
 import { isOwnedKey } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
@@ -73,12 +75,23 @@ export function canSubmitPhase(
 		return { code: "SUBMISSION_LIMIT", message: SUBMISSION_LIMIT_MESSAGE, ok: false }
 
 	// A warm-up project is one phase by nature – it was handed in through the pre-season form, not designed and then built – so the design-first rule does not apply to it.
-	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft)
-		return {
-			code: "PHASE_LOCKED",
-			message: "Submit this project's design before submitting the build",
-			ok: false,
-		}
+	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP) {
+		if (project.designStatus === PhaseStatus.draft)
+			return {
+				code: "PHASE_LOCKED",
+				message: "Submit this project's design before submitting the build",
+				ok: false,
+			}
+		// A rejected design can never be approved, and the build approval requires an approved design, so a build handed
+		// in behind one would sit in the queue forever. Refuse it and name the way out.
+		if (project.designStatus === PhaseStatus.rejected)
+			return {
+				code: "PHASE_LOCKED",
+				message:
+					"This project's design was rejected, so the build cannot be submitted. Ask an admin to reopen the design.",
+				ok: false,
+			}
+	}
 
 	return { ok: true }
 }
@@ -90,12 +103,12 @@ function accessOpenOnClient(
 	settings: Pick<ProgramSettings, "submissionsOpen" | "submissionsCloseAt"> | null,
 	userExtension: string | null | undefined,
 	projectExtension: string | null | undefined,
-	weekExtension: string | null | undefined,
+	weekExtension: Date | null,
 	now: Date,
 ): boolean {
 	const userExt = userExtension ? parseDbTimestamp(userExtension) : null
 	const projectExt = projectExtension ? parseDbTimestamp(projectExtension) : null
-	const weekExt = weekExtension ? parseDbTimestamp(weekExtension) : null
+	const weekExt = weekExtension
 	if (!settings) return false
 	if (settings.submissionsOpen && (!settings.submissionsCloseAt || settings.submissionsCloseAt > now)) return true
 	if (userExt && userExt > now) return true
@@ -171,6 +184,10 @@ export async function submitPhase(
 	const foreign = attachmentKeys.filter(key => !isOwnedKey(userId, key))
 	if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
+	// And the object behind the key has to be a checked upload, not a name: the confirmation record is what an upload
+	// leaves behind after its bytes, size and type were verified.
+	await requireConfirmedUploads(userId, attachmentKeys, ["sessions", "covers"])
+
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
 	// Counted in hours rather than in entries: a HACKATIME_TRACKED entry is a journal entry that claims no time of its own, so counting entries would let a phase be handed in with no countable work at all.
 	if (breakdown.journalHours <= 0 && breakdown.hackatimeHours <= 0)
@@ -240,33 +257,34 @@ export async function submitPhase(
 
 	return db.transaction(async tx => {
 		// The gate is re-read on the transaction client: `getProgramSettings` caches the settings row for this request, so the pre-check above cannot see a submissions toggle, and a week can start or close between it and this write. Either would otherwise file a submission into a closed week.
-		const [accessSettings, accessUser, accessProject, accessWeek] = await Promise.all([
+		const [accessSettings, accessUser, accessProject, accessWeekExt] = await Promise.all([
 			tx.orm.public.ProgramSettings.whereUnique({ id: "singleton" }).first(),
 			tx.orm.public.User.whereUnique({ id: userId }).select("submissionExtensionUntil").first(),
 			tx.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
 				.select("buildStatus", "designStatus", "submissionExtensionUntil")
 				.first(),
-			tx.orm.public.WeekExtension.whereUnique({ userId, week: scheduledWeek })
-				.select("submissionExtensionUntil")
-				.first(),
+			latestWeekExtension(tx, userId, project.theme),
 		])
-		const stillOpen = accessOpenOnClient(
-			accessSettings
-				? {
-						submissionsCloseAt: accessSettings.submissionsCloseAt
-							? parseDbTimestamp(accessSettings.submissionsCloseAt)
-							: null,
-						submissionsOpen: accessSettings.submissionsOpen,
-					}
-				: null,
-			accessUser?.submissionExtensionUntil,
-			accessProject?.submissionExtensionUntil,
-			accessWeek?.submissionExtensionUntil,
-			new Date(),
-		)
-		if (!stillOpen && !(await ignoresSchedule(userId)))
-			throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
-		await assertWeekStarted(scheduledWeekFor(project.theme, phase), userId)
+		// A forced submit answers for the timing gates – that is the whole of `force`, and re-checking them here is what used to make force-submit fail in exactly the cases it exists for. The week extension read above covers both of the project's weeks, the same as the pre-check.
+		if (!options.force) {
+			const stillOpen = accessOpenOnClient(
+				accessSettings
+					? {
+							submissionsCloseAt: accessSettings.submissionsCloseAt
+								? parseDbTimestamp(accessSettings.submissionsCloseAt)
+								: null,
+							submissionsOpen: accessSettings.submissionsOpen,
+						}
+					: null,
+				accessUser?.submissionExtensionUntil,
+				accessProject?.submissionExtensionUntil,
+				accessWeekExt,
+				new Date(),
+			)
+			if (!stillOpen && !(await ignoresSchedule(userId)))
+				throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+			await assertWeekStarted(scheduledWeekFor(project.theme, phase), userId)
+		}
 
 		// The budget is re-read on the transaction client for the same reason as the gate: a hand-in that landed between the pre-check and this write must be part of the count. The conditional claim below is what actually serialises two submits; this is the refusal that says why.
 		if (accessProject && statusFor(accessProject, phase) === PhaseStatus.update_requested) {

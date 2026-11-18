@@ -20,7 +20,6 @@ export const GET = withSession(async (_req: Request, { gate }) => {
 		db.orm.public.User.whereUnique({ id: gate.user.id })
 			.select(
 				"email",
-				"fraudFlagged",
 				"hackatimeUserId",
 				"id",
 				"image",

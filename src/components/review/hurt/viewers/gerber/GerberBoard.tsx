@@ -5,6 +5,7 @@ import { Gate, ToolButton, ToolDivider, Toolbar } from '../../ui/parts'
 import PanZoom, { type PanZoomHandle } from '../../ui/PanZoom'
 import { renderBoard, type GerberLayer, type GerberRender } from './render'
 import { BOARD_COLORS, UNKNOWN_LAYER_COLOR } from '../../ui/boardColors'
+import { svgDataUrl } from '../../core/svg'
 import { addMeasurePoint, MeasureMarks, MeasureReadout, type MeasurePoint } from '../../ui/Measure'
 
 const PX_PER_MM = 8
@@ -51,7 +52,7 @@ function svgUrl(svg: string, width: number, height: number, color?: string) {
       '<svg',
       `<svg width="${width}" height="${height}" preserveAspectRatio="none"${color ? ` color="${color}"` : ''}`,
     )
-  return URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml' }))
+  return svgDataUrl(sized)
 }
 
 export default function GerberBoard({

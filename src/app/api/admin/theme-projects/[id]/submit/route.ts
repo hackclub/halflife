@@ -28,6 +28,7 @@ export const POST = withWritePermission(
 
 		const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id }).select("userId").first()
 		if (!project) return fail("NOT_FOUND", "Project not found")
+		if (project.userId === gate.user.id) return fail("FORBIDDEN", "You cannot force a hand-in on your own project")
 
 		const submission = await submitPhase(project.userId, id, phase, null, [], false, false, false, { force: true })
 

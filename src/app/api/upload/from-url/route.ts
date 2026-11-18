@@ -1,20 +1,23 @@
 import { z } from "zod"
 import { fail, ok, parseBody, rateLimitedInMemory, reserveUploadMemory } from "@/lib/api"
 import { withWriteSession } from "@/lib/guards"
-import {
-	buildObjectKey,
-	contentHash,
-	isUploadConfigured,
-	MAX_UPLOAD_BYTES,
-	publicUrlFor,
-	putObject,
-} from "@/lib/uploads/r2"
+import { recordConfirmedUpload } from "@/lib/uploads/confirmed"
+import { buildObjectKey, contentHash, isUploadConfigured, publicUrlFor, putObject } from "@/lib/uploads/r2"
 import { fetchRemoteImage } from "@/lib/uploads/remote"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
 const bodySchema = z.object({ url: z.url().max(2048) }).strict()
+
+/**
+ * The most a re-hosted picture may be.
+ *
+ * A journal image is a photo or a screenshot; 25 MiB is generous for one. The shared upload pool is 128 MiB, and
+ * reserving the video-sized 100 MiB for a ten-second remote fetch let a handful of concurrent imports starve every
+ * other upload in the process.
+ */
+const MAX_REMOTE_IMAGE_BYTES = 25 * 1024 * 1024
 
 /**
  * Re-host an image from another site in the bucket: an image dragged into a journal entry from another page arrives as its address, and a hotlinked picture can vanish or change after the entry is reviewed. Journal images only, so they land beside the uploaded ones in `sessions`, named after their bytes the same way (see /api/upload).
@@ -29,13 +32,22 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 	if (parsed.error) return parsed.error
 
 	// The remote fetch holds the image in this process the way a multipart body is held, so it reserves from the same memory pool instead of sitting beside it. The cap is what the fetch itself is allowed to read.
-	const release = await reserveUploadMemory(MAX_UPLOAD_BYTES)
+	const release = await reserveUploadMemory(MAX_REMOTE_IMAGE_BYTES)
 	if (!release) return fail("RATE_LIMITED", "Too many uploads at once. Wait a moment and try again")
 
 	try {
-		const image = await fetchRemoteImage(parsed.data.url, MAX_UPLOAD_BYTES)
+		const image = await fetchRemoteImage(parsed.data.url, MAX_REMOTE_IMAGE_BYTES)
 		const key = buildObjectKey(gate.user.id, "sessions", image.ext, contentHash(image.bytes))
 		await putObject(key, image.bytes, image.contentType)
+
+		await recordConfirmedUpload({
+			byteSize: image.bytes.length,
+			contentHash: contentHash(image.bytes),
+			contentType: image.contentType,
+			folder: "sessions",
+			objectKey: key,
+			userId: gate.user.id,
+		})
 
 		return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
 	} finally {

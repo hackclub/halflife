@@ -1,10 +1,12 @@
 import Link from "next/link"
 import { ExportGrantCardsCsvForm } from "@/app/components/forms/ExportGrantCardsCsvForm"
+import { HcbConnectForm } from "@/app/components/forms/HcbConnectForm"
 import { IssueGrantCardsForm } from "@/app/components/forms/IssueGrantCardsForm"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { themeLabel } from "@/lib/config/program"
 import { HcbGrantCardBatchStatus, PayoutSource } from "@/lib/enums"
 import { listGrantCardBatches, listGrantCardExports, previewCardGrants } from "@/lib/grant-cards"
+import { readStoredRefreshToken } from "@/lib/hcb-credential"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -21,10 +23,11 @@ const BATCH_TONE: { [_: string]: "success" | "warning" | "danger" | "muted" } = 
 export default async function AdminGrantsPage() {
 	await requirePermissionPage(Permission.MANAGE_CREDIT)
 
-	const [preview, batches, csvExports] = await Promise.all([
+	const [preview, batches, csvExports, hcbConnected] = await Promise.all([
 		previewCardGrants(),
 		listGrantCardBatches(20),
 		listGrantCardExports(20),
+		readStoredRefreshToken(),
 	])
 
 	return (
@@ -55,6 +58,14 @@ export default async function AdminGrantsPage() {
 					</p>
 				)}
 				{preview.balanceError ? <p className="hl-hint hl-mono">{preview.balanceError}</p> : null}
+			</Panel>
+
+			<Panel title="HCB connection">
+				<p className="hl-hint">
+					Half Life pays from the HCB organisation through an OAuth application. Connecting stores a rotating refresh
+					token on this deployment; HCB must be connected before cards can be issued.
+				</p>
+				<HcbConnectForm connected={hcbConnected !== null} />
 			</Panel>
 
 			<Panel title="Issue card grants">

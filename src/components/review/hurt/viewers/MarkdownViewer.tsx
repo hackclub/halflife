@@ -4,7 +4,7 @@ import { useLoad } from '../core/useLoad'
 import { decodeText } from '../core/text'
 import { resolvePath } from '../core/source'
 import { Gate, ToolButton, Toolbar } from '../ui/parts'
-import { IMAGE_MIME } from './ImageViewer'
+import { IMAGE_MIME, rasterizeSvg } from './ImageViewer'
 
 const EXTERNAL = /^[a-z][a-z0-9+.-]*:/i
 const ALERT = /^\[!(note|tip|important|warning|caution)\]\s*/i
@@ -49,7 +49,11 @@ async function render(source: FileSource, file: HurtFile, text: string, signal: 
     if (!source.rawUrl) {
       if (!source.byPath.has(path)) return null
       const type = IMAGE_MIME[path.split('.').pop()?.toLowerCase() ?? ''] ?? ''
-      const url = URL.createObjectURL(new Blob([await source.read(path, { signal })], { type }))
+      const raw = new Blob([await source.read(path, { signal })], { type })
+      // The repository controls these bytes, and a blob: URL of type image/svg+xml is a same-origin page: opening it
+      // in a new tab runs the SVG's own script. It becomes a PNG before it becomes a URL, as ImageViewer does.
+      const blob = type === 'image/svg+xml' ? await rasterizeSvg(raw, signal) : raw
+      const url = URL.createObjectURL(blob)
       blobs.push(url)
       return url
     }

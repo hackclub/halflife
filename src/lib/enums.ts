@@ -159,6 +159,7 @@ export const HcbGrantCardStatus = {
 	FAILED: "FAILED",
 	ISSUED: "ISSUED",
 	PENDING: "PENDING",
+	RETURNED: "RETURNED",
 	SKIPPED: "SKIPPED",
 } as const satisfies { [K in Members<"HcbGrantCardStatus">]: K }
 

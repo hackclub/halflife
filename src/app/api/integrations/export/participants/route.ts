@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server"
 import { z } from "zod"
 import { ok, parseQuery } from "@/lib/api"
 import { themeLabel } from "@/lib/config/program"
+import { displayName } from "@/lib/display-name"
 import { withExportRoute } from "@/lib/integration-route"
 import { type CursorOrderOf, pageResult, paginationQuery, readCursor } from "@/lib/pagination"
 import db from "@/lib/prisma8"
@@ -45,7 +46,7 @@ export const GET = withExportRoute(async (req: NextRequest, gate) => {
 			: filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
 
 	const rows = await paged
-		.select("createdAt", "email", "id", "name", "slackId", "updatedAt", "verificationStatus")
+		.select("createdAt", "displayName", "email", "id", "name", "slackId", "updatedAt", "verificationStatus")
 		.include("themeProjects", projects =>
 			projects
 				.where({ deletedAt: null })
@@ -69,7 +70,9 @@ export const GET = withExportRoute(async (req: NextRequest, gate) => {
 		items: page.items.map(u => ({
 			createdAt: u.createdAt,
 			id: u.id,
-			name: u.name,
+			// The display rule, never the raw `name` column: sign-up stores the email there when HCA sends no name, so
+			// a partner key was handed emails (and minors' full names) it is meant not to see.
+			name: displayName(u),
 			themeProjects: u.themeProjects.map(p => withFields(p, { themeLabel: themeLabel(p.theme) })),
 			updatedAt: u.updatedAt,
 			verificationStatus: u.verificationStatus,

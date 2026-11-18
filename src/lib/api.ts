@@ -31,12 +31,34 @@ export function fail(code: ApiErrorCode, message: string, details?: unknown): Ne
 type Parsed<T> = { data: T; error?: never } | { data?: never; error: NextResponse<ApiErrorBody> }
 
 /**
- * Parse and validate a JSON body. Handlers must never read a field off an unvalidated object – that is how `undefined` reaches Prisma and becomes a confusing runtime error three layers down.
+ * The most a JSON request body may be.
+ *
+ * Every handler reads a small object, and the proxy's own body limit does not cover the paths it excludes (`api/upload`, `api/handoff`, `api/integrations`). Without a cap of our own, an unauthenticated handoff POST is buffered and parsed in full, so one request can spend the process's memory. 256 KB leaves room for the largest thing any route legitimately carries – a journal entry at its 20,000-character limit, with multi-byte characters – and still refuses the multi-megabyte body the old code would have read.
  */
-export async function parseBody<S extends z.ZodType>(request: Request, schema: S): Promise<Parsed<z.output<S>>> {
+export const MAX_JSON_BODY_BYTES = 256 * 1024
+
+/**
+ * Parse and validate a JSON body. Handlers must never read a field off an unvalidated object – that is how `undefined` reaches Prisma and becomes a confusing runtime error three layers down.
+ *
+ * The body is read through the same byte-capped reader the upload routes use, so a caller cannot decide how much memory parsing it spends.
+ */
+export async function parseBody<S extends z.ZodType>(
+	request: Request,
+	schema: S,
+	maxBytes: number = MAX_JSON_BODY_BYTES,
+): Promise<Parsed<z.output<S>>> {
+	const read = await readBodyWithCap(request, maxBytes)
+	if (!read.body)
+		return {
+			error: fail(
+				"INVALID_BODY",
+				read.reason === "TOO_LARGE" ? "Request body is too large" : "Request body must be valid JSON",
+			),
+		}
+
 	let raw: unknown
 	try {
-		raw = await request.json()
+		raw = JSON.parse(new TextDecoder().decode(read.body))
 	} catch {
 		return { error: fail("INVALID_BODY", "Request body must be valid JSON") }
 	}

@@ -14,6 +14,7 @@ import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@
 import { sanitize } from "@/lib/sanitize"
 import { recomputeStreak } from "@/lib/streak"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
+import { requireConfirmedUpload } from "@/lib/uploads/confirmed"
 import { deleteObject, isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -280,6 +281,11 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 	assertOwnedKey(input.userId, input.objectKey, "video")
 	if (input.thumbnailKey) assertOwnedKey(input.userId, input.thumbnailKey, "thumbnail")
 
+	// The key travelled back through the browser, so it is only a name until the confirmation record says the bytes
+	// landed and passed their checks. The post takes its size and type from that record, never from the request.
+	const video = await requireConfirmedUpload(input.userId, input.objectKey, [POST_UPLOAD_FOLDER])
+	if (input.thumbnailKey) await requireConfirmedUpload(input.userId, input.thumbnailKey, [POST_UPLOAD_FOLDER])
+
 	if (input.themeProjectId) {
 		// A reel can be attached to a project, but only to one of yours – otherwise a reel could be filed against someone else's submission.
 		const owned = await db.orm.public.ThemeProject.where({
@@ -306,10 +312,10 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 
 		const now = formatDbTimestamp(new Date())
 		const post = await tx.orm.public.Post.create({
-			byteSize: input.byteSize ?? null,
+			byteSize: video.byteSize,
 			caption,
 			checkpointKey: input.checkpointKey ?? null,
-			contentType: input.contentType ?? null,
+			contentType: video.contentType,
 			durationSeconds: input.durationSeconds ?? null,
 			height: input.height ?? null,
 			kind: input.kind,

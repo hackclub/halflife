@@ -27,6 +27,7 @@ import { projectUpdateSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recomputeStreak } from "@/lib/streak"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
+import { requireConfirmedUpload } from "@/lib/uploads/confirmed"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 interface Params {
@@ -191,12 +192,13 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	if (data.starterProjectId && (data.requestedTier ?? project.requestedTier) !== 1)
 		return fail("VALIDATION_FAILED", "Starter projects are fixed to tier 1")
 
-	// A cover is a key, and a key is a path into the bucket: only one this user uploaded as a cover, or a project could point its cover at anyone's file. `isOwnedKey` refuses path tricks (`..`, `%2e%2e`); the prefix pins it to the covers folder, so a key genuinely yours but uploaded as session evidence cannot be re-filed as a cover.
+	// A cover is a key, and a key is a path into the bucket: only one this user uploaded as a cover, or a project could point its cover at anyone's file. `isOwnedKey` refuses path tricks (`..`, `%2e%2e`); the prefix pins it to the covers folder, so a key genuinely yours but uploaded as session evidence cannot be re-filed as a cover. The confirmation record is what proves the bytes actually landed.
 	if (
 		data.coverImageKey
 		&& (!isOwnedKey(gate.user.id, data.coverImageKey) || !data.coverImageKey.startsWith("covers/"))
 	)
 		return fail("VALIDATION_FAILED", "Upload the cover image first")
+	if (data.coverImageKey) await requireConfirmedUpload(gate.user.id, data.coverImageKey, ["covers"])
 
 	// Conditional on the state just checked, so a submit or a decision that lands between the read above and this write is not edited out from under the reviewer reading it. It carries the ownership check and the live-row check with it, so a project that was deleted or handed to somebody else in the meantime is not written either.
 	const updated = await db.transaction(async tx => {

@@ -68,4 +68,21 @@ describe("sessionUpdateSchema", () => {
 		expect(sessionUpdateSchema.safeParse({ hoursClaimed: 99 }).success).toBe(false)
 		expect(sessionUpdateSchema.safeParse({ media: [] }).success).toBe(false)
 	})
+
+	test("does not invent the create-only defaults", () => {
+		// A title-only edit must not say "make this a manual-hours entry with no clips": both are the caller's
+		// intent downstream, and the defaults used to flip a Hackatime-tracked entry and delete its timelapses.
+		const parsed = sessionUpdateSchema.parse({ title: "hi" })
+		expect(parsed).toEqual({ title: "hi" })
+	})
+
+	test("still accepts an explicit source and clip set", () => {
+		const parsed = sessionUpdateSchema.safeParse({
+			hoursSource: HoursSource.MANUAL,
+			timelapses: [{ lapseId: "clip-1" }],
+		})
+		expect(parsed.success).toBe(true)
+		if (parsed.success)
+			expect(parsed.data).toEqual({ hoursSource: HoursSource.MANUAL, timelapses: [{ lapseId: "clip-1" }] })
+	})
 })

@@ -92,6 +92,7 @@ namespace public {
     syncRunLogs                 SyncRunLog[]
     themeProjects               ThemeProject[]
     uploadHandoffs              UploadHandoff[]
+    uploadedObjects             UploadedObject[]
     shopRegion                  ShopRegion?                  @relation(fields: [shopRegionId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
     reportsAgainst              ContentReport[]              @relation(name: "ContentReport_targetUser")
     reportsMade                 ContentReport[]              @relation(name: "ContentReport_reporter")
@@ -132,6 +133,9 @@ namespace public {
     externalId      String?
     receivedAt      TimestampString(3)  @default(now())
     appliedAt       TimestampString(3)?
+    /// Set when the hand-in the event decided was withdrawn, so the deferred decision must never be replayed against
+    /// whatever took its place.
+    voidedAt        TimestampString(3)?
     payload         Jsonb?
 
     @@index([deliveryId], map: "ari_webhook_delivery_deliveryId_key", unique: true)
@@ -463,6 +467,11 @@ namespace public {
     claimedAt      TimestampString(3)?
     issuedAt       TimestampString(3)?
     canceledAt     TimestampString(3)?
+    /// What the card had already spent when it was cancelled, so a reissue pays only the remainder. Null on rows
+    /// cancelled before this was recorded: their remaining balance is unknown and nothing is reissued automatically.
+    spentCents     Int?
+    /// When the daily HCB sync saw the maker return this grant. Null on a card that has not been returned.
+    returnedAt     TimestampString(3)?
     supersededAt   TimestampString(3)?
     createdAt      TimestampString(3)          @default(now())
     batch          HcbGrantCardBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_grant_card_batchId_status_idx")
@@ -1034,6 +1043,25 @@ namespace public {
     @@map("upload_handoff")
   }
 
+  /// One direct-to-bucket object the server has checked. A key is not evidence of an upload: without this row a
+  /// client can name any key it likes, so every write that accepts a key requires the matching record and takes the
+  /// size and type from it rather than from the request.
+  model UploadedObject {
+    id          String             @id @onCreate(cuid(2))
+    objectKey   String
+    userId      String
+    folder      String
+    contentType String
+    byteSize    Int
+    contentHash String?
+    confirmedAt TimestampString(3) @default(now())
+    user        User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([objectKey], map: "uploaded_object_objectKey_key", unique: true)
+    @@index([userId, folder], map: "uploaded_object_user_folder_idx")
+    @@map("uploaded_object")
+  }
+
   model UserDay {
     userId      String
     day         String
@@ -1392,6 +1420,8 @@ namespace public {
     AMBIGUOUS = "AMBIGUOUS"
     SKIPPED = "SKIPPED"
     CANCELED = "CANCELED"
+    /// The maker cancelled the grant themselves and its balance went back to the organisation. The money is not on the card, so the row is not live; it still counts as the project having been paid, so nothing reissues it without an admin.
+    RETURNED = "RETURNED"
   }
 
   native_enum HcbGrantCardBatchStatus {

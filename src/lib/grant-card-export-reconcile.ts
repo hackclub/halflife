@@ -59,8 +59,13 @@ export function reconcileExportRows(
 
 	const verdicts: ExportRowVerdict[] = []
 	const surplus: HcbCardGrantSummary[] = []
+	// A grant can be evidence for one row only. The caller offers a buffered grant twice (at its full and its net
+	// amount), so without this the same grant could confirm two rows with the same maker and different amounts.
+	const used = new Set<string>()
+	const available = (grant: HcbCardGrantSummary): boolean =>
+		grant.status?.toLowerCase() !== "canceled" && !claimed.has(bareId(grant.id)) && !used.has(bareId(grant.id))
 	for (const group of groups.values()) {
-		const sameAmount = live.filter(grant => grant.amountCents === group.amountCents)
+		const sameAmount = live.filter(grant => available(grant) && grant.amountCents === group.amountCents)
 		const hidden = sameAmount.some(grant => grant.email === null || grant.purpose === null)
 		const mine = sameAmount.filter(
 			grant => normalEmail(grant.email) === group.email && isHalfLifePurpose(grant.purpose ?? ""),
@@ -100,6 +105,7 @@ export function reconcileExportRows(
 			continue
 		}
 		judge("landed", "HCB holds a card grant for this maker and amount")
+		for (const grant of mine.slice(0, group.rows.length)) used.add(bareId(grant.id))
 		surplus.push(...mine.slice(group.rows.length))
 	}
 	return { surplus, verdicts }

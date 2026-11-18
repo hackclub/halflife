@@ -16,6 +16,8 @@ export type StoredUploadKind = "image" | "video"
 export interface VerifiedStoredUpload {
 	contentType: string
 	ext: string
+	/** The SHA-256 of the bytes, for a picture named after its content; null for a video. */
+	sha256: string | null
 	size: number
 	storedType: string | null
 }
@@ -57,7 +59,7 @@ export async function verifyStoredUpload(
 			await discard(key)
 			throw new HttpError("VALIDATION_FAILED", "That file does not look like a video")
 		}
-		return { contentType: expectedType, ext, size: stat.size, storedType: stat.type }
+		return { contentType: expectedType, ext, sha256: null, size: stat.size, storedType: stat.type }
 	}
 
 	const { head, sha256 } = await hashObject(key)
@@ -75,7 +77,7 @@ export async function verifyStoredUpload(
 		throw new HttpError("VALIDATION_FAILED", DISCARDED)
 	}
 
-	return { contentType: sniffed.contentType, ext: sniffed.ext, size: stat.size, storedType: stat.type }
+	return { contentType: sniffed.contentType, ext: sniffed.ext, sha256, size: stat.size, storedType: stat.type }
 }
 
 /** Best-effort: a deletion that fails must not replace the reason the upload was refused. */

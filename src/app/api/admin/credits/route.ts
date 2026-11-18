@@ -15,6 +15,9 @@ export const POST = withWritePermission(Permission.MANAGE_CREDIT, async (req: Re
 
 	const target = await db.orm.public.User.whereUnique({ id: userId }).select("id").first()
 	if (!target) return fail("NOT_FOUND", "User not found")
+	// Reviewers are not exempt from the second pair of eyes, and neither are admins: a credit written by the person
+	// it pays has no check on it at all.
+	if (userId === gate.user.id) return fail("FORBIDDEN", "You cannot adjust your own credit")
 
 	// Issuing coins is a reward, so the maker has to have cleared HCA's identity check first. A clawback is not a reward and is still allowed: taking credit back must not be blocked by the state of the account it is taken from. Asked before the transaction, because `isIdentityVerified` may call HCA and that must not hold a lock.
 	if (amount > 0 && !(await isIdentityVerified(userId)))

@@ -17,13 +17,33 @@ purifier.addHook("afterSanitizeAttributes", node => {
 		else node.removeAttribute("href")
 		node.setAttribute("target", "_blank")
 		node.setAttribute("rel", "noopener noreferrer")
+		return
 	}
-	if (node.tagName === "IMG") {
-		const src = safeSrc(node.getAttribute("src") ?? "")
-		if (src) node.setAttribute("src", src)
-		else node.removeAttribute("src")
-		node.setAttribute("loading", "lazy")
+
+	// Every URL-bearing attribute a sanitised subtree can load, not just <img src>. A repo's Markdown can carry
+	// <video src>, <source src>, <audio src>, <track src> and poster=, and each of those is a credentialed GET the
+	// reviewer's browser makes on the author's behalf – including at our own routes, which is why safeSrc refuses
+	// them. srcset is a list, so a bad candidate is dropped rather than taking the whole attribute with it.
+	for (const attribute of ["src", "poster"]) {
+		const value = node.getAttribute(attribute)
+		if (value === null) continue
+		const safe = safeSrc(value)
+		if (safe) node.setAttribute(attribute, safe)
+		else node.removeAttribute(attribute)
 	}
+
+	const srcset = node.getAttribute("srcset")
+	if (typeof srcset === "string" && srcset.length > 0) {
+		const kept = srcset.split(",").flatMap(candidate => {
+			const [url, ...descriptor] = candidate.trim().split(/\s+/)
+			const safe = url ? safeSrc(url) : undefined
+			return safe ? [[safe, ...descriptor].join(" ")] : []
+		})
+		if (kept.length > 0) node.setAttribute("srcset", kept.join(", "))
+		else node.removeAttribute("srcset")
+	}
+
+	if (node.tagName === "IMG") node.setAttribute("loading", "lazy")
 })
 
 export function renderReviewMarkdown(source: string): string {

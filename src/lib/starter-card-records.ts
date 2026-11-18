@@ -3,6 +3,7 @@ import { AuditAction, logAuditTx } from "@/lib/audit"
 import { HcbGrantCardStatus, Phase } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { grantCardFingerprint } from "@/lib/grant-card-policy"
+import { lockKey } from "@/lib/locks"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { formatDbTimestamp } from "@/lib/time"
 
@@ -26,6 +27,9 @@ export function recordStarterCards(cards: readonly RecordedCard[]): Promise<{ ba
 	)
 	return db.transaction(async tx => {
 		if (cards.length === 0) throw new HttpError("CONFLICT", "No cards to record")
+		// The same lock the card batch and CSV export take, so a starter wave cannot claim a project that one of
+		// them is claiming at the same moment through a different table.
+		await lockKey(tx, "grant-cards:issue")
 		const batch = await tx.orm.public.HcbCardGrantExportBatch.create({
 			createdById: null,
 			fingerprint,

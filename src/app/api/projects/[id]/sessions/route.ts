@@ -4,7 +4,7 @@ import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
-import { HoursSource, PhaseStatus, Theme } from "@/lib/enums"
+import { HoursSource, MediaType, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
@@ -34,6 +34,7 @@ import { sessionCreateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
 import { stampSessionTiming } from "@/lib/submissions"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
+import { requireConfirmedUploads } from "@/lib/uploads/confirmed"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
@@ -146,6 +147,19 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	const foreign = data.media.map(m => m.objectKey).filter(key => !isOwnedKey(gate.user.id, key))
 	if (foreign.length > 0) return fail("VALIDATION_FAILED", "Those uploads are not yours")
 
+	// Ownership says whose folder the key is in; it does not say anything landed there. The confirmation record does,
+	// and it is also where the size and type come from, so a client cannot claim a 5 GB object or a video that is not one.
+	const mediaRecords = await requireConfirmedUploads(
+		gate.user.id,
+		data.media.map(m => m.objectKey),
+		["sessions"],
+	)
+	for (const media of data.media) {
+		const record = mediaRecords.get(media.objectKey)
+		const kind = record?.contentType.startsWith("video/") ? MediaType.VIDEO : MediaType.IMAGE
+		if (media.type !== kind) return fail("VALIDATION_FAILED", "That upload is not the kind of file it says it is")
+	}
+
 	// Timelapses are the same rule asked of Lapse: each must be the caller's own, published, and done processing. And one recording backs one session – otherwise the same footage could be offered as proof twice. That check is read-then-create, so it happens inside the transaction under a lock on the recording; two parallel submits of the same clip otherwise both pass it.
 	const lapseIds = [...new Set(data.timelapses.map(t => t.lapseId))]
 	const timelapses = await verifyOwnTimelapses(gate.user.id, lapseIds)
@@ -234,14 +248,17 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		})
 		if (data.media.length > 0)
 			await tx.orm.public.SessionMedia.createAll(
-				data.media.map((m, i) => ({
-					byteSize: m.byteSize ?? null,
-					contentType: m.contentType ?? null,
-					objectKey: m.objectKey,
-					sortOrder: i,
-					type: m.type,
-					workSessionId: created.id,
-				})),
+				data.media.map((m, i) => {
+					const record = mediaRecords.get(m.objectKey)
+					return {
+						byteSize: record?.byteSize ?? null,
+						contentType: record?.contentType ?? null,
+						objectKey: m.objectKey,
+						sortOrder: i,
+						type: m.type,
+						workSessionId: created.id,
+					}
+				}),
 			)
 		if (timelapses.length > 0)
 			await tx.orm.public.SessionTimelapse.createAll(

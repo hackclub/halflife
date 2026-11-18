@@ -2,12 +2,11 @@ import { z } from "zod"
 import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { withWriteSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
-import { isOwnedKey, isUploadConfigured, publicUrlFor, UPLOAD_FOLDERS, validateUpload } from "@/lib/uploads/r2"
+import { recordConfirmedUpload } from "@/lib/uploads/confirmed"
+import { isOwnedKey, isUploadConfigured, isUploadFolder, publicUrlFor, validateUpload } from "@/lib/uploads/r2"
 import { verifyStoredUpload } from "@/lib/uploads/verify"
 
 export const dynamic = "force-dynamic"
-
-const ALLOWED_FOLDERS = new Set<string>(UPLOAD_FOLDERS)
 
 /**
  * Check a file that the browser sent straight to the bucket, before anything can point at it.
@@ -38,7 +37,7 @@ export const POST = withWriteSession(async (req, { gate }) => {
 	// `folder/userId/name.ext`, exactly: a nested path is not a key this app minted, whatever its first segment says.
 	const segments = objectKey.split("/")
 	const folder = segments[0] ?? ""
-	if (segments.length !== 3 || !ALLOWED_FOLDERS.has(folder))
+	if (segments.length !== 3 || !isUploadFolder(folder))
 		return fail("VALIDATION_FAILED", "That is not an upload this app made")
 
 	if (folder === "shop" && !hasPermission(gate.roles, Permission.MANAGE_SHOP))
@@ -49,7 +48,22 @@ export const POST = withWriteSession(async (req, { gate }) => {
 	const check = validateUpload(objectKey, contentType, size)
 	if (!check.ok) return fail("VALIDATION_FAILED", check.reason)
 
-	await verifyStoredUpload(objectKey, contentType.startsWith("video/") ? "video" : "image", contentType)
+	const verified = await verifyStoredUpload(
+		objectKey,
+		contentType.startsWith("video/") ? "video" : "image",
+		contentType,
+	)
+
+	// The record every write that accepts this key will look for, with the size and type the bucket reported rather
+	// than the ones the request claimed.
+	await recordConfirmedUpload({
+		byteSize: verified.size,
+		contentHash: verified.sha256,
+		contentType: verified.contentType,
+		folder,
+		objectKey,
+		userId: gate.user.id,
+	})
 
 	return ok({ objectKey, url: publicUrlFor(objectKey) }, { status: 201 })
 })
