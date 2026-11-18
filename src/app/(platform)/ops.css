@@ -498,7 +498,7 @@
 	}
 	.hl-admin-body {
 		display: grid;
-		grid-template-columns: 13.5rem minmax(0, 1fr);
+		grid-template-columns: 11rem minmax(0, 1fr);
 		flex: 1;
 	}
 	/*
@@ -568,7 +568,7 @@
 	/*
 	 * Long directories are read top to bottom, so the admin tables are denser than the participant's, keep their heading in view while the window scrolls, and stripe alternate rows so the eye can follow one across a wide table. Roomy tables, whose cells hold controls, keep their own padding.
 	 */
-	.hl-admin-main .hl-table:not(.hl-table--roomy) {
+	.hl-admin-main .hl-table {
 		font-size: 0.9rem;
 	}
 	.hl-admin-main .hl-table:not(.hl-table--roomy) th,
@@ -656,6 +656,29 @@
 		gap: 0.4rem;
 		align-items: center;
 		font-weight: 600;
+	}
+
+	/*
+	 * Space is the scarce thing on an admin screen, so the frame keeps its padding modest and the cards hold more rows. Cards keep their border and rounding, which is what marks them as cards.
+	 */
+	.hl-admin-main {
+		padding: 1.25rem 1rem 3rem;
+	}
+	.hl-admin-main .hl-stack {
+		gap: 1rem;
+	}
+	.hl-admin-main .hl-panel {
+		padding: 0.9rem 0.95rem;
+	}
+	.hl-admin-main .hl-page-head {
+		margin-bottom: 0.9rem;
+	}
+	.hl-admin-side a {
+		font-size: 0.95rem;
+	}
+	/* Dates, money and counts are read across a row, so a value like "Nov 12, 2026, 10:00 PM" stays on one line rather than folding into a column of fragments. */
+	.hl-admin-main .hl-table td.hl-mono {
+		white-space: nowrap;
 	}
 	/* Whatever is still too wide scrolls inside its own table, rather than pushing the whole console sideways. */
 	.hl-admin-main {
