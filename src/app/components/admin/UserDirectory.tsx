@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge, Button, EmptyState, statusLabel, Table } from "@/app/components/ui"
+import { formatUtcDate } from "@/lib/deadline"
 import type { DirectoryRow } from "@/lib/directory-rows"
 import { CopyEmail } from "./CopyEmail"
 
@@ -74,7 +75,7 @@ export function UserRow({ row }: Readonly<{ row: DirectoryRow }>) {
 			<td>
 				<Badge tone={verifiedTone(row.verified)}>{statusLabel(row.verified)}</Badge>
 			</td>
-			<td className="hl-mono">{new Date(row.joined).toDateString()}</td>
+			<td className="hl-mono">{formatUtcDate(new Date(row.joined))}</td>
 		</tr>
 	)
 }

@@ -52,3 +52,15 @@ const UTC_COMPACT = new Intl.DateTimeFormat("en-GB", {
 export function formatUtcCompact(at: Date | number): string {
 	return UTC_COMPACT.format(at)
 }
+
+const UTC_DATE = new Intl.DateTimeFormat("en-GB", {
+	day: "numeric",
+	month: "short",
+	timeZone: "UTC",
+	year: "numeric",
+})
+
+/** A calendar day as the console writes it, in UTC, so a date reads the same on the server and in any browser: "18 Nov 2026". */
+export function formatUtcDate(at: Date | number): string {
+	return UTC_DATE.format(at)
+}
