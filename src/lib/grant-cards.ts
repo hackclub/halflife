@@ -1285,15 +1285,16 @@ export async function reconcileCsvExportRows(input: ReconcileCsvExportRowsInput)
 	if (list.kind === "unreadable")
 		throw new HttpError("INTERNAL", "HCB's card grant list could not be read, so nothing was reconciled")
 
-	// A top-up made by hand on HCB raises a grant's amount, so the amount the grant was issued for is its HCB amount less the buffer top-ups recorded against it.
+	// A manual top-up is sometimes already in HCB's amount and sometimes not, so a grant with buffer top-ups is offered to the matcher both ways. Either form matching a CSV row counts, so this can only keep a row live by mistake, never supersede one by mistake.
 	const buffered = await bufferTopUpCentsByGrant()
-	const originalGrants = list.rows.map(grant => ({
-		...grant,
-		amountCents: grant.amountCents - (buffered.get(bareGrantId(grant.id)) ?? 0),
-	}))
+	const candidates = list.rows.flatMap(grant => {
+		const topUp = buffered.get(bareGrantId(grant.id)) ?? 0
+		if (topUp === 0) return [grant]
+		return [grant, { ...grant, amountCents: grant.amountCents - topUp }]
+	})
 	const { surplus, verdicts } = reconcileExportRows(
 		rows.map(row => ({ amountCents: row.amountCents, email: row.email, id: row.id })),
-		originalGrants,
+		candidates,
 		claimed,
 	)
 	const confirmPaid = new Set(input.confirmPaid)
