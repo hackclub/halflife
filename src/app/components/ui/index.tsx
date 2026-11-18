@@ -127,14 +127,20 @@ export function EmptyState({ children }: Readonly<{ children: ReactNode }>) {
 	)
 }
 
+/**
+ * A labelled control. The hint sits under the label, not inside it, so a screen reader reads the field's name and then, separately, what it is for.
+ */
 export function Field({ label, hint, children }: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
 	return (
-		// biome-ignore lint/a11y/noLabelWithoutControl: the control is the children prop, which the rule cannot see through. Every call site passes a labelled input, select or textarea.
-		<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
-			<span className="hl-label-text">{label}</span>
-			{children}
+		<div className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
+			{/* The control is the children prop, which the rule cannot see through. Every call site passes a labelled input, select or textarea. */}
+			{/* biome-ignore lint/a11y/noLabelWithoutControl: see the comment above. */}
+			<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
+				<span className="hl-label-text">{label}</span>
+				{children}
+			</label>
 			{isTruthy(hint) ? <span className="hl-hint">{hint}</span> : null}
-		</label>
+		</div>
 	)
 }
 
@@ -164,7 +170,9 @@ export function Table({
 				<thead>
 					<tr>
 						{head.map((h, i) => (
-							<th key={i}>{h}</th>
+							<th key={typeof h === "string" ? h : i} scope="col">
+								{h}
+							</th>
 						))}
 					</tr>
 				</thead>

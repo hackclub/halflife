@@ -510,7 +510,7 @@
 	}
 	.hl-admin-body {
 		display: grid;
-		grid-template-columns: 11rem minmax(0, 1fr);
+		grid-template-columns: 12rem minmax(0, 1fr);
 		flex: 1;
 	}
 	/*
@@ -675,6 +675,50 @@
 		font-variant-numeric: tabular-nums;
 		font-weight: 400;
 		color: var(--color-ink-muted);
+	}
+
+	/* ── Needs attention ───────────────────────────────────────────────────── */
+	/* The work waiting on staff, as counts that are also the way into it. */
+	.hl-attention {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	.hl-attention a {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		min-width: 11rem;
+		padding: 0.7rem 0.9rem;
+		color: var(--color-ink);
+		text-decoration: none;
+		background: var(--color-surface);
+		border: 2px solid var(--color-border);
+		border-radius: var(--radius-panel);
+	}
+	.hl-attention a:hover {
+		border-color: var(--color-accent);
+	}
+	.hl-attention strong {
+		font-size: 1.6rem;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-strong);
+	}
+	.hl-attention span {
+		font-size: 0.9rem;
+		color: var(--color-ink-muted);
+	}
+
+	/* ── File inputs ───────────────────────────────────────────────────────── */
+	/* A file field reads as a drop target rather than an empty text box. */
+	.hl-admin-main input[type="file"] {
+		padding: 0.9rem;
+		font: inherit;
+		background: var(--color-surface);
+		border: 2px dashed var(--color-field-edge);
+		border-radius: var(--radius-button);
+		cursor: pointer;
 	}
 
 	/* The line under a list that loads as you scroll: its progress, or the reason it stopped. */
