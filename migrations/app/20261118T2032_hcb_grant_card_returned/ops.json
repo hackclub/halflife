@@ -1,0 +1,125 @@
+[
+  {
+    "id": "addNativeEnumValue.HcbGrantCardStatus.RETURNED",
+    "label": "Add value \"RETURNED\" to enum type \"HcbGrantCardStatus\"",
+    "summary": "Adds value \"RETURNED\" to enum type \"HcbGrantCardStatus\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "HcbGrantCardStatus"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"HcbGrantCardStatus\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "HcbGrantCardStatus",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"HcbGrantCardStatus\""
+        }
+      },
+      {
+        "description": "ensure value \"RETURNED\" is absent from enum type \"HcbGrantCardStatus\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "HcbGrantCardStatus",
+          "RETURNED"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"RETURNED\" in enum type \"HcbGrantCardStatus\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"RETURNED\" to enum type \"HcbGrantCardStatus\"",
+        "sql": "ALTER TYPE \"public\".\"HcbGrantCardStatus\" ADD VALUE 'RETURNED'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"RETURNED\" exists on enum type \"HcbGrantCardStatus\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "HcbGrantCardStatus",
+          "RETURNED"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"RETURNED\" in enum type \"HcbGrantCardStatus\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "column.public.hcb_grant_card.returnedAt",
+    "label": "Add column \"returnedAt\" to \"hcb_grant_card\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "returnedAt",
+        "table": "hcb_grant_card"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"returnedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "returnedAt"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"returnedAt\" on \"hcb_grant_card\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"returnedAt\"",
+        "sql": "ALTER TABLE \"public\".\"hcb_grant_card\" ADD COLUMN \"returnedAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"returnedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "returnedAt"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"returnedAt\" on \"hcb_grant_card\""
+        }
+      },
+      {
+        "description": "verify column \"returnedAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "returnedAt",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  }
+]

@@ -470,6 +470,8 @@ namespace public {
     /// What the card had already spent when it was cancelled, so a reissue pays only the remainder. Null on rows
     /// cancelled before this was recorded: their remaining balance is unknown and nothing is reissued automatically.
     spentCents     Int?
+    /// When the daily HCB sync saw the maker return this grant. Null on a card that has not been returned.
+    returnedAt     TimestampString(3)?
     supersededAt   TimestampString(3)?
     createdAt      TimestampString(3)          @default(now())
     batch          HcbGrantCardBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_grant_card_batchId_status_idx")
@@ -1418,6 +1420,8 @@ namespace public {
     AMBIGUOUS = "AMBIGUOUS"
     SKIPPED = "SKIPPED"
     CANCELED = "CANCELED"
+    /// The maker cancelled the grant themselves and its balance went back to the organisation. The money is not on the card, so the row is not live; it still counts as the project having been paid, so nothing reissues it without an admin.
+    RETURNED = "RETURNED"
   }
 
   native_enum HcbGrantCardBatchStatus {
