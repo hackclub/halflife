@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { LedgerList } from "@/app/components/admin/LedgerList"
-import { Button, Field, PageHeader, Panel, Select, Stat, TextInput } from "@/app/components/ui"
+import { Button, Field, PageHeader, Panel, Select, Stat, TableToolbar, TextInput } from "@/app/components/ui"
 import { IconFilter } from "@/app/components/ui/icons"
 import { LedgerKind } from "@/lib/enums"
 import { ledgerKindFrom, ledgerKindLabel, utcDay } from "@/lib/ledger-filters"
@@ -64,34 +64,36 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 			</div>
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-					<TextInput
-						defaultValue={q ?? ""}
-						name="q"
-						placeholder={includePii ? "Search by name or email" : "Search by name"}
-						style={{ maxWidth: "20rem" }}
-					/>
-					<Select defaultValue={kind ?? ""} name="kind" style={{ maxWidth: "14rem" }}>
-						<option value="">Any kind</option>
-						{Object.values(LedgerKind).map(value => (
-							<option key={value} value={value}>
-								{ledgerKindLabel(value)}
-							</option>
-						))}
-					</Select>
-					<Field label="From">
-						<TextInput defaultValue={from ?? ""} name="from" type="date" />
-					</Field>
-					<Field label="To">
-						<TextInput defaultValue={to ?? ""} name="to" type="date" />
-					</Field>
-					<Button type="submit">
-						<IconFilter /> Filter
-					</Button>
-					<Link className="hl-hint" href="/admin/ledger">
-						Reset
-					</Link>
-				</form>
+				<TableToolbar count={`${count} matched`}>
+					<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+						<TextInput
+							defaultValue={q ?? ""}
+							name="q"
+							placeholder={includePii ? "Search by name or email" : "Search by name"}
+							style={{ maxWidth: "20rem" }}
+						/>
+						<Select defaultValue={kind ?? ""} name="kind" style={{ maxWidth: "14rem" }}>
+							<option value="">Any kind</option>
+							{Object.values(LedgerKind).map(value => (
+								<option key={value} value={value}>
+									{ledgerKindLabel(value)}
+								</option>
+							))}
+						</Select>
+						<Field label="From">
+							<TextInput defaultValue={from ?? ""} name="from" type="date" />
+						</Field>
+						<Field label="To">
+							<TextInput defaultValue={to ?? ""} name="to" type="date" />
+						</Field>
+						<Button type="submit">
+							<IconFilter /> Filter
+						</Button>
+						<Link className="hl-hint" href="/admin/ledger">
+							Reset
+						</Link>
+					</form>
+				</TableToolbar>
 				<span className="hl-hint">Dates and times are UTC.</span>
 			</Panel>
 

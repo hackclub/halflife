@@ -155,6 +155,18 @@ export function Select({ className, ...props }: Readonly<ComponentPropsWithRef<"
 	return <select {...props} className={withClass("hl-select", className)} />
 }
 
+/**
+ * The line above a list: its filters on the left, the number of rows it is showing on the right. One shape for every list, so a reader finds the count and the controls in the same place on each page.
+ */
+export function TableToolbar({ children, count }: Readonly<{ children: ReactNode; count?: ReactNode }>) {
+	return (
+		<div className="hl-table-toolbar">
+			<div className="hl-table-toolbar-controls">{children}</div>
+			{isTruthy(count) ? <span className="hl-count">{count}</span> : null}
+		</div>
+	)
+}
+
 export function TextArea({ className, ...props }: Readonly<ComponentPropsWithRef<"textarea">>) {
 	return <textarea {...props} className={withClass("hl-textarea", className)} />
 }

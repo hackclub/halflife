@@ -73,7 +73,10 @@ export function LedgerList({
 							<Badge tone={ledgerKindTone(entry.kind)}>{ledgerKindLabel(entry.kind)}</Badge>
 						</td>
 						<td>{entry.note ?? <span className="hl-hint">-</span>}</td>
-						<td className="hl-mono" style={NUMERIC}>
+						<td
+							className="hl-mono"
+							style={{ ...NUMERIC, color: entry.amount > 0 ? "var(--color-success-ink)" : undefined }}
+						>
 							{entry.amount > 0 ? `+${entry.amount}` : entry.amount}
 						</td>
 					</tr>

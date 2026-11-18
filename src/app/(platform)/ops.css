@@ -471,6 +471,7 @@
 	 * The admin console trades the staff navbar for a sidebar and a full-width page. The sidebar stays in its column while a long table scrolls, and the page takes the window's width, which is where the tables need it. Below 760px the sidebar drops above the page.
 	 */
 	.hl-admin {
+		scrollbar-gutter: stable;
 		display: flex;
 		flex-direction: column;
 		min-height: 100dvh;
@@ -905,6 +906,25 @@
 		padding: 0.75rem 0;
 		background: var(--color-surface-raised);
 		border-top: 2px solid var(--color-border);
+	}
+
+	/* ── Table toolbar ─────────────────────────────────────────────────────── */
+	/* The controls above a list and its count, on one line where the window allows. */
+	.hl-table-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem 1rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.hl-table-toolbar-controls {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
+		min-width: 0;
 	}
 
 	/* ── Triage split ──────────────────────────────────────────────────────── */
