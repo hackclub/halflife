@@ -13,30 +13,32 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 
 	return (
 		<nav aria-label="Admin sections" className="hl-admin-side">
-			{groups.map(group => (
-				<div className="hl-admin-group" key={group.label}>
-					<div className="hl-admin-group-label">{group.label}</div>
-					{group.items.map(item => {
-						const active = isAdminNavActive(pathname, item.href)
-						if (item.hard)
+			<div className="hl-admin-side-inner">
+				{groups.map(group => (
+					<div className="hl-admin-group" key={group.label}>
+						<div className="hl-admin-group-label">{group.label}</div>
+						{group.items.map(item => {
+							const active = isAdminNavActive(pathname, item.href)
+							if (item.hard)
+								return (
+									<HardLink href={item.href} key={item.href}>
+										{item.label}
+									</HardLink>
+								)
 							return (
-								<HardLink href={item.href} key={item.href}>
+								<Link
+									aria-current={active ? "page" : undefined}
+									className="hl-admin-link"
+									href={item.href}
+									key={item.href}
+								>
 									{item.label}
-								</HardLink>
+								</Link>
 							)
-						return (
-							<Link
-								aria-current={active ? "page" : undefined}
-								className="hl-admin-link"
-								href={item.href}
-								key={item.href}
-							>
-								{item.label}
-							</Link>
-						)
-					})}
-				</div>
-			))}
+						})}
+					</div>
+				))}
+			</div>
 		</nav>
 	)
 }

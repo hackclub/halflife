@@ -501,15 +501,20 @@
 		grid-template-columns: 13.5rem minmax(0, 1fr);
 		flex: 1;
 	}
+	/*
+	 * The column stretches the height of the page, so its background runs the whole way down. Only the list inside it is sticky, so the links stay in view while a long page scrolls, and the column sits above the tables that scroll past it.
+	 */
 	.hl-admin-side {
+		z-index: 2;
+		background: var(--color-surface-raised);
+		border-right: 2px solid var(--color-border);
+	}
+	.hl-admin-side-inner {
 		position: sticky;
 		top: 0;
-		align-self: start;
 		max-height: 100dvh;
 		padding: 1rem 0.75rem 2rem;
 		overflow-y: auto;
-		background: var(--color-surface-raised);
-		border-right: 2px solid var(--color-border);
 	}
 	.hl-admin-group + .hl-admin-group {
 		margin-top: 1.1rem;
@@ -547,10 +552,12 @@
 			grid-template-columns: minmax(0, 1fr);
 		}
 		.hl-admin-side {
-			position: static;
-			max-height: none;
 			border-right: 0;
 			border-bottom: 2px solid var(--color-border);
+		}
+		.hl-admin-side-inner {
+			position: static;
+			max-height: none;
 		}
 		.hl-admin-main {
 			padding: 1rem;
@@ -576,6 +583,22 @@
 	}
 	.hl-admin-main .hl-table tbody tr:nth-child(even) td {
 		background: var(--color-surface-sunken);
+	}
+	/* Roomy rows exist for their controls, not their padding, so the admin keeps them to a single line's rhythm. */
+	.hl-admin-main .hl-table--roomy td {
+		padding-block: 0.5rem;
+	}
+	/* Repo URLs and IDs are for finding a row, not for reading across it: they end in an ellipsis so one long string cannot widen the table. */
+	.hl-admin-main td .hl-mono {
+		display: block;
+		max-width: 26ch;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	/* Whatever is still too wide scrolls inside its own table, rather than pushing the whole console sideways. */
+	.hl-admin-main {
+		overflow-x: clip;
 	}
 
 	/* The command palette's list, inside the console's modal. */
