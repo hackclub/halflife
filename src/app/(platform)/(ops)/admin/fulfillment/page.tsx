@@ -82,36 +82,40 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 			<PageHeader compact subtitle="Every order that was not rejected, including cancelled ones." title="Fulfillment" />
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-					<Field label="Placed from">
-						<TextInput defaultValue={search.from ?? ""} name="from" type="date" />
-					</Field>
-					<Field label="Placed to">
-						<TextInput defaultValue={search.to ?? ""} name="to" type="date" />
-					</Field>
-					<Select defaultValue={filters.method ?? ""} name="method" style={{ maxWidth: "14rem" }}>
-						<option value="">Any method</option>
-						<option value="NONE">Method not chosen</option>
-						{Object.entries(METHOD_LABELS).map(([value, label]) => (
-							<option key={value} value={value}>
-								{label}
-							</option>
-						))}
-					</Select>
-					<Select defaultValue={filters.stage ?? ""} name="stage" style={{ maxWidth: "14rem" }}>
-						<option value="">Any stage</option>
-						{Object.entries(STAGE_LABELS).map(([value, label]) => (
-							<option key={value} value={value}>
-								{label}
-							</option>
-						))}
-					</Select>
-					<Button type="submit">
-						<IconFilter /> Filter
-					</Button>
-					<Link className="hl-hint" href="/admin/fulfillment">
-						Reset
-					</Link>
+				<form className="hl-filters" method="get">
+					<div className="hl-filters__grid">
+						<Field label="Placed from">
+							<TextInput defaultValue={search.from ?? ""} name="from" type="date" />
+						</Field>
+						<Field label="Placed to">
+							<TextInput defaultValue={search.to ?? ""} name="to" type="date" />
+						</Field>
+						<Select defaultValue={filters.method ?? ""} name="method" style={{ maxWidth: "14rem" }}>
+							<option value="">Any method</option>
+							<option value="NONE">Method not chosen</option>
+							{Object.entries(METHOD_LABELS).map(([value, label]) => (
+								<option key={value} value={value}>
+									{label}
+								</option>
+							))}
+						</Select>
+						<Select defaultValue={filters.stage ?? ""} name="stage" style={{ maxWidth: "14rem" }}>
+							<option value="">Any stage</option>
+							{Object.entries(STAGE_LABELS).map(([value, label]) => (
+								<option key={value} value={value}>
+									{label}
+								</option>
+							))}
+						</Select>
+					</div>
+					<div className="hl-filters__footer">
+						<Link className="hl-hint" href="/admin/fulfillment">
+							Reset
+						</Link>
+						<Button type="submit">
+							<IconFilter /> Filter
+						</Button>
+					</div>
 				</form>
 				<span className="hl-hint">Dates are UTC.</span>
 			</Panel>
