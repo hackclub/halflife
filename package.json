@@ -74,6 +74,7 @@
 		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.hurt.json",
 		"uploads:backfill-urls": "bun --conditions=react-server scripts/backfill-upload-urls.ts",
 		"uploads:migrate-legacy": "bun scripts/migrate-legacy-uploads.ts",
+		"verify:ari-hours": "bun --conditions=react-server scripts/verify-hours-consistency.ts",
 		"verify:contracts": "bun --conditions=react-server scripts/verify-contracts.ts",
 		"verify:feed": "bun --conditions=react-server scripts/verify-feed.ts",
 		"verify:forge-write": "bun --conditions=react-server scripts/verify-forge-write.ts",
