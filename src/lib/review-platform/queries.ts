@@ -23,6 +23,7 @@ import type {
 	ReviewStatus,
 	ReviewViewer,
 } from "@/lib/review-platform/types"
+import { planAriJournals } from "@/lib/review-ship"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
@@ -437,7 +438,7 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 	// Your own work is not reviewable by you, so it is not visible here either – the same null the console returns, which does not confirm that the submission exists.
 	if (project.userId === viewer.id) return null
 
-	const [breakdown, sessions, history, makerSubmissions, bom, next] = await Promise.all([
+	const [breakdown, sessions, history, makerSubmissions, bom, next, links] = await Promise.all([
 		getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
 		db.orm.public.WorkSession.where({ deletedAt: null, phase: row.phase, themeProjectId: row.themeProjectId })
 			.include("media", media => media.orderBy(m => m.sortOrder.asc()))
@@ -464,6 +465,9 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 			.all(),
 		listBom(row.themeProjectId),
 		row.resolvedAt ? Promise.resolve(null) : nextPending(viewer, row),
+		db.orm.public.HackatimeLink.where({ phase: row.phase, themeProjectId: row.themeProjectId })
+			.select("hackatimeProject")
+			.all(),
 	])
 
 	const now = new Date()
@@ -495,6 +499,21 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 			title: (session.content ?? "").trimStart().startsWith(session.title.trim()) ? "" : session.title,
 		}
 	})
+
+	// The same plan the sender builds, so the panel can say what Ari will read rather than only what Half Life counts.
+	const plan = await planAriJournals(
+		maker.id,
+		sessions.map(session => ({
+			hoursClaimed: session.hoursClaimed,
+			hoursSource: session.hoursSource,
+			timelapses: session.timelapses,
+		})),
+		new Set(links.map(link => link.hackatimeProject)),
+	)
+	const expectedSeconds =
+		plan.minutes.reduce((sum, minutes) => sum + minutes * 60, 0)
+		+ plan.poolSeconds
+		+ Math.round(breakdown.hackatimeHours * 3600)
 
 	const earlier: ReviewHistoryItem[] = history.map(submission => {
 		const review = submission.reviews[0] ?? null
@@ -535,6 +554,13 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 	const cover = publicUrlFor(project.coverImageKey)
 
 	return {
+		ariHours: {
+			claimedSeconds: Math.round(breakdown.computedTotal * 3600),
+			expectedSeconds,
+			foreignSeconds: plan.foreignSeconds,
+			poolSeconds: plan.poolSeconds,
+			unabsorbedSeconds: plan.unabsorbedSeconds,
+		},
 		bom,
 		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
 		breakdown,

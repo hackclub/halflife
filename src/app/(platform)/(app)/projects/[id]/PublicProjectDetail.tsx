@@ -9,6 +9,7 @@ import { LinkButton, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
+import { fmtHours } from "@/lib/projects"
 import type { ProjectOpenDispute, PublicProjectData } from "@/lib/queries/project-page"
 import { ProjectBackLink, ProjectFacts, ProjectSection } from "./ProjectHeaderParts"
 import { Timeline } from "./Timeline"
@@ -120,6 +121,19 @@ export function PublicProjectDetail({
 							warmup={warmup}
 							weekId={data.weekId}
 						/>
+						{/* The total above spans both weeks and is mostly claims until each is decided, so say which half is which: a reader comparing it with a review on Ari is otherwise looking at two different questions. */}
+						{!warmup && data.phaseHours.length > 0 ? (
+							<p className="hand mt-1.5 text-[0.8rem] text-navy-soft tabular-nums">
+								{data.phaseHours
+									.map(
+										phase =>
+											`${phase.phase} ${fmtHours(phase.hours)}${
+												phase.approvedHours === null ? (phase.handsIn ? " in review" : " not handed in") : " approved"
+											}`,
+									)
+									.join(" · ")}
+							</p>
+						) : null}
 					</div>
 				</div>
 			</Panel>

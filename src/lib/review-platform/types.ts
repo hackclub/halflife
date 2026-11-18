@@ -177,7 +177,27 @@ export interface ReviewTier {
 	name: string
 }
 
+/**
+ * What Ari's own sum will come to for this hand-in.
+ *
+ * Ari does not read the claim Half Life sends: it adds the journal minutes it was given, the duration of every Lapse clip under a named Hackatime project, and Hackatime. The console shows the same figure the ship will produce, so a reviewer setting a decision is not reading one number while the maker is shown another.
+ */
+export interface AriShippingHours {
+	/** Half Life's journal and Hackatime total for the phase – the number the decision defaults to. */
+	claimedSeconds: number
+	/** What Ari should read once it has added the clips and Hackatime. Equal to the claim when the journals could absorb the pool. */
+	expectedSeconds: number
+	/** Recordings under the named projects made for entries this hand-in does not carry. */
+	foreignSeconds: number
+	/** Clips under the named projects, from every week. */
+	poolSeconds: number
+	/** The part of the pool the journals could not absorb, so Ari will read high by this much. */
+	unabsorbedSeconds: number
+}
+
 export interface ReviewDetail {
+	/** The two platforms' totals side by side, for the hours panel. */
+	ariHours: AriShippingHours
 	bom: BomLine[]
 	bomTaxShippingUsd: number
 	breakdown: HoursBreakdown

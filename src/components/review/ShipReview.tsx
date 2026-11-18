@@ -357,6 +357,16 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 								counted
 								{breakdown.hackatimeHours > 0 ? ` · ${formatHours(breakdown.hackatimeHours)} Hackatime` : ""}
 								{lapseLabel} · <strong>{formatHours(breakdown.effectiveHours)} total</strong>
+								{detail.ariHours.foreignSeconds > 0 ? (
+									<p className="field__hint" style={{ marginTop: 4 }}>
+										Ari adds every Lapse clip under this project, including{" "}
+										{formatDuration(detail.ariHours.foreignSeconds)} recorded for entries this hand-in does not carry,
+										so it reads {formatHours(detail.ariHours.expectedSeconds / 3600)}
+										{detail.ariHours.unabsorbedSeconds > 0
+											? ` – ${formatDuration(detail.ariHours.unabsorbedSeconds)} more than this total, because the journals could not absorb it. Credit this number, not Ari's.`
+											: ", the same total as here."}
+									</p>
+								) : null}
 							</dd>
 							{design ? (
 								<>
