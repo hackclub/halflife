@@ -285,6 +285,53 @@ async function countClipProjects(userId: string, clips: readonly OwnerClip[]): P
 	return new Map([...asked].map(([id, timelapse]) => [id, timelapse.hackatimeProject]))
 }
 
+/** What a ship's journals will say once every clip Ari counts has been taken off them. */
+export interface AriClipPlan {
+	/** How much of that was taken off this hand-in's journals. */
+	carriedSeconds: number
+	/** The part of the pool recorded for entries this hand-in does not carry. */
+	foreignSeconds: number
+	/** One entry's minutes, in the order the sessions were given: the figure the provider will read. */
+	minutes: number[]
+	/** The recordings under the named Hackatime projects, from every week of this maker's work. */
+	poolSeconds: number
+	/** What the journals could not absorb, so the provider will still read high by this much. */
+	unabsorbedSeconds: number
+}
+
+/**
+ * The minutes to send, and the arithmetic behind them.
+ *
+ * Ari pulls every clip under a named Hackatime project rather than the ones attached to the entries it was sent, so a hand-in carries its maker's recordings from other weeks unless the journals give up that much room. Both the sender and the review console need the same answer – one to send it, the other to say why Ari's total is not the one on screen – so the plan lives here rather than inside the sender.
+ */
+export async function planAriJournals(
+	userId: string,
+	sessions: readonly JournalTimeSource[],
+	countedProjects: ReadonlySet<string>,
+): Promise<AriClipPlan> {
+	const makerClips = await ownerClips(userId)
+	const clipProjects = await countClipProjects(userId, makerClips)
+	const projectOfClip = (externalId: string | null | undefined, stored: string | null): string | null =>
+		stored ?? (externalId ? (clipProjects.get(externalId) ?? null) : null)
+	const poolSeconds = makerClips.reduce((sum, clip) => {
+		const clipProject = projectOfClip(clip.externalId, clip.hackatimeProject)
+		return clipProject && countedProjects.has(clipProject) ? sum + Math.max(0, Math.round(clip.coveredSeconds)) : sum
+	}, 0)
+	const times = sessions.map(session =>
+		journalTime(session, countedProjects, timelapse => projectOfClip(timelapse.externalId, timelapse.hackatimeProject)),
+	)
+	const nettedSeconds = times.reduce((sum, time) => sum + time.recordedSeconds, 0)
+	const foreignSeconds = Math.max(0, poolSeconds - nettedSeconds)
+	const carried = carryForeignClips(times, foreignSeconds)
+	return {
+		carriedSeconds: carried.carriedSeconds,
+		foreignSeconds,
+		minutes: carried.journals.map(journal => journal.minutes),
+		poolSeconds,
+		unabsorbedSeconds: carried.unabsorbedSeconds,
+	}
+}
+
 /**
  * Whether an entry carries no words of its own, leaving only the title column's "Work session" placeholder.
  *
@@ -367,23 +414,9 @@ async function buildReviewShipInput(
 	const hackatimeProjects = [...new Set(project.hackatimeLinks.map(l => l.hackatimeProject))].slice(0, 50)
 	const countedProjects = new Set(hackatimeProjects)
 
-	// What Ari will add on top of the journals, and what it therefore has to come off them. Ari pulls every clip under a named project, from any week, so the pool is the maker's whole Lapse history under those names rather than this phase's footage; only the difference between the two is footage this ship does not own.
-	const makerClips = await ownerClips(user.id)
-	const clipProjects = await countClipProjects(user.id, makerClips)
-	const projectOfClip = (externalId: string | null | undefined, stored: string | null): string | null =>
-		stored ?? (externalId ? (clipProjects.get(externalId) ?? null) : null)
-	const poolSeconds = makerClips.reduce((sum, clip) => {
-		const clipProject = projectOfClip(clip.externalId, clip.hackatimeProject)
-		return clipProject && countedProjects.has(clipProject) ? sum + Math.max(0, Math.round(clip.coveredSeconds)) : sum
-	}, 0)
 	const sent = project.workSessions.slice(-200)
-	const times = sent.map(session =>
-		journalTime(session, countedProjects, timelapse => projectOfClip(timelapse.externalId, timelapse.hackatimeProject)),
-	)
-	const nettedSeconds = times.reduce((sum, time) => sum + time.recordedSeconds, 0)
-	const foreignSeconds = Math.max(0, poolSeconds - nettedSeconds)
-	const carried = carryForeignClips(times, foreignSeconds)
-	const ariExpectedSeconds = carried.journals.reduce((sum, journal) => sum + journal.minutes * 60, 0) + poolSeconds
+	const plan = await planAriJournals(user.id, sent, countedProjects)
+	const ariExpectedSeconds = plan.minutes.reduce((sum, minutes) => sum + minutes * 60, 0) + plan.poolSeconds
 
 	const journals = sent.map((session, index) => {
 		const clips = session.timelapses.flatMap(t => {
@@ -403,7 +436,7 @@ async function buildReviewShipInput(
 			// `createdAt` is a Prisma 8 `TimestampString`, so it reads as `2026-10-22 14:25:05.757` – a space where the `T` belongs and no zone. The provider validates `journals[].at` as a date string and refuses that form, so convert it to a real Date and let JSON send ISO text.
 			at: parseDbTimestamp(session.createdAt),
 			// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence the reviewer should see. A clip the provider counts is taken off the claim so the same sitting is not counted twice (see journalTime), and the second pass takes off footage recorded for another week, which Ari would otherwise add to this ship as well.
-			minutes: carried.journals[index]?.minutes ?? 0,
+			minutes: plan.minutes[index] ?? 0,
 			text: body,
 			// Ari has no field for a journal's own attachments: its Lapse tile pulls clips per Hackatime project. Linking each recording in the entry keeps it attached to the journal it backs even when that pull has nothing to match (no Hackatime id, or a project Lapse never named), so a reviewer never opens an entry with no evidence in it.
 			...(clips.length > 0
@@ -478,11 +511,11 @@ async function buildReviewShipInput(
 				claimed_seconds: Math.round(hours.computedTotal * 3600),
 				hackatime_seconds: Math.round(hours.hackatimeHours * 3600),
 				journal_seconds: Math.round(hours.journalHours * 3600),
-				timelapse_carried_seconds: carried.carriedSeconds,
-				timelapse_foreign_seconds: foreignSeconds,
-				timelapse_pool_seconds: poolSeconds,
+				timelapse_carried_seconds: plan.carriedSeconds,
+				timelapse_foreign_seconds: plan.foreignSeconds,
+				timelapse_pool_seconds: plan.poolSeconds,
 				timelapse_seconds: Math.round(hours.timelapseSeconds),
-				timelapse_unabsorbed_seconds: carried.unabsorbedSeconds,
+				timelapse_unabsorbed_seconds: plan.unabsorbedSeconds,
 			},
 			phase: phase === Phase.DESIGN ? "design" : "build",
 			prior_reviews: priorReviews.map(review => {

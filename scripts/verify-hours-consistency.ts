@@ -39,7 +39,7 @@ for (const project of projects)
 			failures.push(`${project.title} (${phase}): not sendable – ${error instanceof Error ? error.message : error}`)
 			continue
 		}
-		const hours = ship.input.meta.hours
+		const { hours } = ship.input.meta
 		checked += 1
 		const halfLife = hours.claimed_seconds
 		const ari = hours.ari_expected_seconds ?? halfLife

@@ -432,6 +432,10 @@ export interface PublicProjectData {
 	/** What the project is worth, on the same accounting as the owner's page and their profile. */
 	hours: number
 	id: string
+	/**
+	 * The same total, split the way it is decided: one design hand-in and one build hand-in, each with what the maker has logged and whether a reviewer has signed it off. A project's headline figure spans both weeks and, until both are decided, is mostly claims – which is the number that reads as though it were approved.
+	 */
+	phaseHours: { approvedHours: number | null; handsIn: boolean; hours: number; phase: "design" | "build" }[]
 	thumbnail: ProjectThumbnail | null
 	timeline: TimelineItem[]
 	title: string
@@ -569,6 +573,8 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 			recordings,
 		).effectiveHours
 	const hours = round2(phaseHours(Phase.DESIGN) + phaseHours(Phase.BUILD))
+	const phaseApproved = (phase: Phase) =>
+		(phase === Phase.DESIGN ? fetched.designApprovedHours : fetched.approvedHours) ?? null
 
 	const themeIndex = THEMES.findIndex(t => t.id === project.theme)
 	const timeline = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)].toSorted(
@@ -582,6 +588,12 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		githubRepo: project.githubRepo,
 		hours,
 		id: project.id,
+		phaseHours: ([Phase.DESIGN, Phase.BUILD] as const).map(phase => ({
+			approvedHours: phaseApproved(phase),
+			handsIn: (phase === Phase.DESIGN ? fetched.designStatus : fetched.buildStatus) !== PhaseStatus.draft,
+			hours: phaseHours(phase),
+			phase: phase === Phase.DESIGN ? "design" : "build",
+		})),
 		thumbnail: projectThumbnail(
 			publicUrlFor(project.coverImageKey),
 			project.workSessions,
