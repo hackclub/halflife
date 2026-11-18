@@ -54,9 +54,21 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 					{order.quantity > 1 ? <span className="hl-hint"> ×{order.quantity}</span> : null}
 				</td>
 				<td className="hl-mono">
-					{order.totalUsd === null ? <span className="hl-hint">not set</span> : formatUsd(order.totalUsd)}
+					{order.totalUsd === null ? (
+						<span className="hl-hint" title="No cost has been entered for this order">
+							–
+						</span>
+					) : (
+						formatUsd(order.totalUsd)
+					)}
 				</td>
-				<td>{order.country ?? <span className="hl-hint">unknown</span>}</td>
+				<td>
+					{order.country ?? (
+						<span className="hl-hint" title="No country on the shipping address">
+							–
+						</span>
+					)}
+				</td>
 				<td className="hl-mono" title={formatUtcDateTime(order.placedAt)}>
 					{formatUtcCompact(order.placedAt)}
 				</td>
