@@ -82,6 +82,7 @@ describe("sessionUpdateSchema", () => {
 			timelapses: [{ lapseId: "clip-1" }],
 		})
 		expect(parsed.success).toBe(true)
-		if (parsed.success) expect(parsed.data).toEqual({ hoursSource: HoursSource.MANUAL, timelapses: [{ lapseId: "clip-1" }] })
+		if (parsed.success)
+			expect(parsed.data).toEqual({ hoursSource: HoursSource.MANUAL, timelapses: [{ lapseId: "clip-1" }] })
 	})
 })
