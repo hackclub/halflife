@@ -52,7 +52,7 @@ export async function decodeImage(blob: Blob, signal?: AbortSignal) {
  *
  * An SVG shown through an <img> is inert: the browser will not run its scripts. But the blob: URL behind that <img> is a same-origin document, and "Open image in new tab" navigates to it as a page – where the SVG's own <script> and event handlers run with the app's origin and cookies, under a policy with no script-src. The repository is attacker-controlled, so the bytes have to stop being a document before they become a URL.
  */
-async function rasterizeSvg(blob: Blob, signal?: AbortSignal): Promise<Blob> {
+export async function rasterizeSvg(blob: Blob, signal?: AbortSignal): Promise<Blob> {
   const { url, width, height } = await decodeImage(blob, signal)
   try {
     const image = new Image()

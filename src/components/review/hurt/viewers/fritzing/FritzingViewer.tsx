@@ -4,6 +4,7 @@ import { useLoad } from '../../core/useLoad'
 import { formatBytes, plural } from '../../core/format'
 import { Gate, TextToggle, ToolButton, Toolbar } from '../../ui/parts'
 import PanZoom, { type PanZoomHandle } from '../../ui/PanZoom'
+import { svgDataUrl } from '../../core/svg'
 import PartsTable from '../altium/PartsTable'
 import { loadFritzing, type FritzingView, type FzItem, type FzResult, type FzScene } from './fritzing'
 
@@ -104,7 +105,7 @@ function useSvgUrls(items: FzItem[]) {
     const next = new Map<string, string>()
     for (const it of items)
       if (it.svg && !next.has(it.svg))
-        next.set(it.svg, URL.createObjectURL(new Blob([it.svg], { type: 'image/svg+xml' })))
+        next.set(it.svg, svgDataUrl(it.svg))
     setUrls(next)
     return () => next.forEach((url) => URL.revokeObjectURL(url))
   }, [items])

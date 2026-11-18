@@ -7,6 +7,7 @@ import { Gate, TextToggle, ToolButton, ToolDivider, Toolbar } from '../../ui/par
 import PanZoom, { type PanZoomHandle } from '../../ui/PanZoom'
 import { addMeasurePoint, MeasureMarks, MeasureReadout, type MeasurePoint } from '../../ui/Measure'
 import LegacyEdaViewer from '../LegacyEdaViewer'
+import { svgDataUrl } from '../../core/svg'
 import { renderEagle, type EagleLayerSvg, type EagleRender, type EagleSheet } from './load'
 
 const PX_PER_MM = 8
@@ -62,7 +63,7 @@ function layerUrl(sheet: EagleSheet, layer: EagleLayerSvg, width: number, height
   const [x, y, w, h] = sheet.viewBox
   const color = layer.number === 44 ? ink : layer.color
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${x} ${y} ${w} ${h}" preserveAspectRatio="none" font-family="Arial, Helvetica, sans-serif"><g transform="scale(1 -1)" fill="${color}" stroke="${color}">${layer.body}</g></svg>`
-  return URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+  return svgDataUrl(svg)
 }
 
 const KIND_LABEL = { board: 'Eagle board', schematic: 'Eagle schematic', library: 'Eagle library' }
