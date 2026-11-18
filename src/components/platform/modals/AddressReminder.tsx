@@ -108,7 +108,9 @@ export function AddressReminder({ blocked = false }: { blocked?: boolean }) {
 			accent="var(--color-coral)"
 			footer={
 				<>
-					<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">We&apos;ll ask again in an hour.</p>
+					<p className="hand hidden min-w-0 flex-1 text-[0.78rem] text-navy-soft sm:block">
+						We&apos;ll ask again shortly if it&apos;s still not set.
+					</p>
 					<Button onClick={snooze} variant="ghost">
 						Remind me later
 					</Button>
@@ -120,13 +122,13 @@ export function AddressReminder({ blocked = false }: { blocked?: boolean }) {
 			onClose={snooze}
 			open={canShow}
 		>
-			<ModalTitle sub="Your design was approved, but there's no mailing address on your Hack Club account – so we have nowhere to send the parts.">
+			<ModalTitle sub="Your design was approved, but there's no mailing address on your Hack Club account. We have nowhere to send the parts.">
 				We can&apos;t ship your parts yet
 			</ModalTitle>
 
 			<p className="text-[0.92rem] leading-relaxed text-navy-soft">
-				Add a mailing address in Hack Club Auth and we&apos;ll pick it up automatically. You don&apos;t need to tell us
-				here – once it&apos;s saved there, this reminder goes away.
+				Add a mailing address in Hack Club Auth and we&apos;ll pick it up automatically. Once it&apos;s saved there,
+				this reminder stops.
 			</p>
 		</Modal>
 	)

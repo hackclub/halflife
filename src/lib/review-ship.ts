@@ -74,6 +74,10 @@ export interface ReviewHours {
 	timelapse_seconds: number
 	/** Foreign seconds left over because the journals had no claim left to take them from. Non-zero means Ari will still read high by this much. */
 	timelapse_unabsorbed_seconds?: number
+	/** Clips whose Hackatime project nothing could name; Ari may count them under this ship and the journals cannot allow for it. */
+	timelapse_unattributed_count?: number
+	/** Their duration. */
+	timelapse_unattributed_seconds?: number
 }
 
 export interface ReviewPriorReview {
@@ -181,8 +185,9 @@ export function journalTime(
 	countedProjects: ReadonlySet<string>,
 	projectOf: (timelapse: JournalTimeSource["timelapses"][number]) => string | null = timelapse =>
 		timelapse.hackatimeProject,
-): { minutes: number; recordedSeconds: number } {
-	if (session.hoursSource === HoursSource.HACKATIME_TRACKED) return { minutes: 0, recordedSeconds: 0 }
+): { claimedSeconds: number; minutes: number; recordedSeconds: number } {
+	if (session.hoursSource === HoursSource.HACKATIME_TRACKED)
+		return { claimedSeconds: 0, minutes: 0, recordedSeconds: 0 }
 	const claimedSeconds = Math.max(0, Math.round(session.hoursClaimed * 60 * 60))
 	const recordedSeconds = session.timelapses.reduce((sum, t) => {
 		if (t.provider !== "lapse" || !t.externalId) return sum
@@ -191,6 +196,7 @@ export function journalTime(
 		return sum + Math.max(0, Math.round(t.coveredSeconds ?? 0))
 	}, 0)
 	return {
+		claimedSeconds,
 		minutes: Math.min(1440, Math.round(Math.max(0, claimedSeconds - recordedSeconds) / 60)),
 		recordedSeconds,
 	}
@@ -202,43 +208,35 @@ export function journalMinutes(session: JournalTimeSource, countedProjects: Read
 }
 
 /**
- * Take the recordings a ship does not own off its journals, largest claim first.
+ * Spend a hand-in's journal minutes the way a reviewer will read them.
  *
  * Ari counts every clip under a named Hackatime project, not only the ones attached to the entries it was sent. The bulk of that is usually this phase's own footage, which `journalTime` already nets per entry; what is left is footage from another week – a design hand-in carrying the build week's recordings, or the reverse. Left alone it is added wholesale to both ships, inflating each by the other's time.
  *
- * Journal minutes are the only negative lever a ship has, so the difference is moved off the entries that can spare it, biggest first, and what cannot be absorbed is reported rather than silently swallowed: Ari will read high by exactly that much. Nothing here decides what the maker is owed – Half Life's own hours never read the sent minutes – only what the reviewer sees on Ari's screen, which is the number they set the decision against.
+ * Journal minutes are the only negative lever a ship has, so each entry keeps its share of what is left after the foreign footage comes off, and the shares are rounded together rather than one by one: rounding every entry on its own is worth up to half a minute each, which on a long hand-in is the two-minute drift between the two platforms that this exists to remove. What cannot be absorbed is reported rather than swallowed. Nothing here decides what the maker is owed – Half Life's own hours never read the sent minutes – only what the reviewer sees on Ari's screen, which is the number they set the decision against.
  */
-export function carryForeignClips(
-	journals: readonly { minutes: number }[],
+export function distributeJournalMinutes(
+	exactSeconds: readonly number[],
 	foreignSeconds: number,
-): { journals: { minutes: number }[]; carriedSeconds: number; unabsorbedSeconds: number } {
-	const totalSeconds = journals.reduce((sum, journal) => sum + journal.minutes * 60, 0)
+): { minutes: number[]; carriedSeconds: number; unabsorbedSeconds: number } {
+	const shares = exactSeconds.map(seconds => Math.max(0, seconds))
+	const total = shares.reduce((sum, seconds) => sum + seconds, 0)
 	const asked = Math.max(0, Math.round(foreignSeconds))
-	const carried = Math.min(totalSeconds, asked)
-	if (carried === 0)
-		return {
-			carriedSeconds: 0,
-			journals: journals.map(journal => ({ minutes: journal.minutes })),
-			unabsorbedSeconds: asked,
-		}
-	// Spread across every entry rather than emptying the largest: a hand-in whose biggest entry reads zero under its own write-up looks like a mistake to a reviewer, while a proportional trim leaves each entry's shape intact. Whole minutes are required, so the leftover goes to the entries that lost the most to rounding.
-	const kept = totalSeconds - carried
-	const exact = journals.map(journal => ((journal.minutes * 60) / totalSeconds) * kept)
-	const seconds = exact.map(Math.floor)
-	const order = exact
-		.map((value, index) => ({ fraction: value - Math.floor(value), index }))
-		.sort((a, b) => b.fraction - a.fraction)
-	let leftover = kept - seconds.reduce((sum, value) => sum + value, 0)
+	const carried = Math.min(total, asked)
+	if (total === 0) return { carriedSeconds: 0, minutes: shares.map(() => 0), unabsorbedSeconds: asked }
+	const targetMinutes = Math.round((total - carried) / 60)
+	const raw = shares.map(seconds => (seconds / total) * targetMinutes)
+	const minutes = raw.map(Math.floor)
+	// Whole minutes are required, so the entries that lost the most to rounding take the remainder – which is what keeps the sum on the target instead of each entry on its own.
+	const order = raw
+		.map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+		.toSorted((a, b) => b.remainder - a.remainder)
+	let left = targetMinutes - minutes.reduce((sum, value) => sum + value, 0)
 	for (const entry of order) {
-		if (leftover <= 0) break
-		seconds[entry.index] = (seconds[entry.index] ?? 0) + 1
-		leftover -= 1
+		if (left <= 0) break
+		minutes[entry.index] = (minutes[entry.index] ?? 0) + 1
+		left -= 1
 	}
-	return {
-		carriedSeconds: carried,
-		journals: seconds.map(total => ({ minutes: Math.floor(total / 60) })),
-		unabsorbedSeconds: asked - carried,
-	}
+	return { carriedSeconds: carried, minutes, unabsorbedSeconds: asked - carried }
 }
 
 /** One Lapse clip as the maker's rows remember it, and as Lapse may correct it. */
@@ -297,6 +295,10 @@ export interface AriClipPlan {
 	poolSeconds: number
 	/** What the journals could not absorb, so the provider will still read high by this much. */
 	unabsorbedSeconds: number
+	/** Clips whose Hackatime project neither the row nor Lapse could name, so the pool above cannot include them. */
+	unattributedCount: number
+	/** Their duration: footage Ari may add and this hand-in cannot account for. */
+	unattributedSeconds: number
 }
 
 /**
@@ -322,13 +324,20 @@ export async function planAriJournals(
 	)
 	const nettedSeconds = times.reduce((sum, time) => sum + time.recordedSeconds, 0)
 	const foreignSeconds = Math.max(0, poolSeconds - nettedSeconds)
-	const carried = carryForeignClips(times, foreignSeconds)
-	return {
-		carriedSeconds: carried.carriedSeconds,
+	const spread = distributeJournalMinutes(
+		times.map(time => time.claimedSeconds - time.recordedSeconds),
 		foreignSeconds,
-		minutes: carried.journals.map(journal => journal.minutes),
+	)
+	// A clip with no project anywhere in reach is one Ari may or may not pair with this ship, and nothing here can say which. Counted so the reviewer is told the number may be short, rather than being shown a confident total that quietly leaves it out.
+	const unattributed = makerClips.filter(clip => !projectOfClip(clip.externalId, clip.hackatimeProject))
+	return {
+		carriedSeconds: spread.carriedSeconds,
+		foreignSeconds,
+		minutes: spread.minutes,
 		poolSeconds,
-		unabsorbedSeconds: carried.unabsorbedSeconds,
+		unabsorbedSeconds: spread.unabsorbedSeconds,
+		unattributedCount: unattributed.length,
+		unattributedSeconds: unattributed.reduce((sum, clip) => sum + Math.max(0, Math.round(clip.coveredSeconds)), 0),
 	}
 }
 
@@ -516,6 +525,8 @@ async function buildReviewShipInput(
 				timelapse_pool_seconds: plan.poolSeconds,
 				timelapse_seconds: Math.round(hours.timelapseSeconds),
 				timelapse_unabsorbed_seconds: plan.unabsorbedSeconds,
+				timelapse_unattributed_count: plan.unattributedCount,
+				timelapse_unattributed_seconds: plan.unattributedSeconds,
 			},
 			phase: phase === Phase.DESIGN ? "design" : "build",
 			prior_reviews: priorReviews.map(review => {

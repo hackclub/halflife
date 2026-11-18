@@ -560,6 +560,8 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 			foreignSeconds: plan.foreignSeconds,
 			poolSeconds: plan.poolSeconds,
 			unabsorbedSeconds: plan.unabsorbedSeconds,
+			unattributedCount: plan.unattributedCount,
+			unattributedSeconds: plan.unattributedSeconds,
 		},
 		bom,
 		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,

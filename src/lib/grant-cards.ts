@@ -27,6 +27,7 @@ import {
 	readOrganizationBalanceCents,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
+import { bareGrantId, bufferTopUpCentsByGrant } from "@/lib/hcb-buffer-topups"
 import { payoutBlockReason } from "@/lib/moderation"
 import { formatUsd } from "@/lib/money"
 import { configuredOrigin } from "@/lib/origin"
@@ -1276,17 +1277,23 @@ export async function reconcileCsvExportRows(input: ReconcileCsvExportRowsInput)
 	// Every HCB grant the site has ever recorded, live or not, is already accounted for, so none of them can confirm a CSV row.
 	const claimed = new Set<string>()
 	for (const card of await db.orm.public.HcbGrantCard.where({}).select("hcbCardGrantId").all())
-		if (card.hcbCardGrantId) claimed.add(card.hcbCardGrantId)
+		if (card.hcbCardGrantId) claimed.add(bareGrantId(card.hcbCardGrantId))
 	for (const topUp of await db.orm.public.HcbGrantTopUp.where({}).select("grantHashid").all())
-		if (topUp.grantHashid) claimed.add(topUp.grantHashid)
+		if (topUp.grantHashid) claimed.add(bareGrantId(topUp.grantHashid))
 
 	const list = await listOrganizationCardGrants()
 	if (list.kind === "unreadable")
 		throw new HttpError("INTERNAL", "HCB's card grant list could not be read, so nothing was reconciled")
 
+	// A top-up made by hand on HCB raises a grant's amount, so the amount the grant was issued for is its HCB amount less the buffer top-ups recorded against it.
+	const buffered = await bufferTopUpCentsByGrant()
+	const originalGrants = list.rows.map(grant => ({
+		...grant,
+		amountCents: grant.amountCents - (buffered.get(bareGrantId(grant.id)) ?? 0),
+	}))
 	const { surplus, verdicts } = reconcileExportRows(
 		rows.map(row => ({ amountCents: row.amountCents, email: row.email, id: row.id })),
-		list.rows,
+		originalGrants,
 		claimed,
 	)
 	const confirmPaid = new Set(input.confirmPaid)

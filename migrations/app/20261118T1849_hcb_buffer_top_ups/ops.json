@@ -1,0 +1,147 @@
+[
+  {
+    "id": "table.hcb_buffer_top_up",
+    "label": "Create table \"hcb_buffer_top_up\"",
+    "summary": "Creates table \"hcb_buffer_top_up\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "hcb_buffer_top_up"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"hcb_buffer_top_up\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_buffer_top_up\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"hcb_buffer_top_up\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"hcb_buffer_top_up\"",
+        "sql": "CREATE TABLE \"public\".\"hcb_buffer_top_up\" (\n  \"amountCents\" int4 NOT NULL,\n  \"disbursementKey\" text NOT NULL,\n  \"hcbCardGrantId\" text NOT NULL,\n  \"hcbCreatedAt\" timestamp(3),\n  \"id\" text NOT NULL,\n  \"memo\" text,\n  \"observedAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"hcb_buffer_top_up\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_buffer_top_up\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"hcb_buffer_top_up\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "index.hcb_buffer_top_up.hcb_buffer_top_up_disbursementKey_key",
+    "label": "Create index \"hcb_buffer_top_up_disbursementKey_key\" on \"hcb_buffer_top_up\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "hcb_buffer_top_up_disbursementKey_key",
+        "table": "hcb_buffer_top_up"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"hcb_buffer_top_up_disbursementKey_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_buffer_top_up_disbursementKey_key\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"hcb_buffer_top_up_disbursementKey_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"hcb_buffer_top_up_disbursementKey_key\"",
+        "sql": "CREATE UNIQUE INDEX \"hcb_buffer_top_up_disbursementKey_key\" ON \"public\".\"hcb_buffer_top_up\" (\"disbursementKey\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"hcb_buffer_top_up_disbursementKey_key\" exists on \"hcb_buffer_top_up\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_buffer_top_up_disbursementKey_key\"",
+          "i",
+          "I",
+          "\"public\".\"hcb_buffer_top_up\"",
+          "btree",
+          "[\"disbursementKey\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.hcb_buffer_top_up.hcb_buffer_top_up_hcbCardGrantId_idx",
+    "label": "Create index \"hcb_buffer_top_up_hcbCardGrantId_idx\" on \"hcb_buffer_top_up\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "hcb_buffer_top_up_hcbCardGrantId_idx",
+        "table": "hcb_buffer_top_up"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"hcb_buffer_top_up_hcbCardGrantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_buffer_top_up_hcbCardGrantId_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"hcb_buffer_top_up_hcbCardGrantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"hcb_buffer_top_up_hcbCardGrantId_idx\"",
+        "sql": "CREATE INDEX \"hcb_buffer_top_up_hcbCardGrantId_idx\" ON \"public\".\"hcb_buffer_top_up\" (\"hcbCardGrantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"hcb_buffer_top_up_hcbCardGrantId_idx\" exists on \"hcb_buffer_top_up\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"hcb_buffer_top_up_hcbCardGrantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"hcb_buffer_top_up\"",
+          "btree",
+          "[\"hcbCardGrantId\"]"
+        ]
+      }
+    ]
+  }
+]

@@ -61,7 +61,7 @@ describe("reconcileExportRows", () => {
 	})
 
 	test("a grant Half Life already tracks through the API cannot be the CSV's payment, and blocks a missing verdict", () => {
-		expect(reconcileExportRows([row("r1")], [grant({ id: "cdg_api" })], new Set(["cdg_api"])).verdicts[0]?.kind).toBe(
+		expect(reconcileExportRows([row("r1")], [grant({ id: "cdg_api" })], new Set(["api"])).verdicts[0]?.kind).toBe(
 			"ambiguous",
 		)
 	})
@@ -135,5 +135,12 @@ describe("applyReviewedDecisions", () => {
 	test("an ambiguous row is never changed by the supersede list", () => {
 		const result = applyReviewedDecisions(missing, { confirmedPaid: new Set(), supersede: new Set(["c"]) })
 		expect(result.find(v => v.rowId === "c")?.kind).toBe("ambiguous")
+	})
+})
+
+describe("reconcileExportRows with prefixed and bare grant ids", () => {
+	test("a claimed grant is recognised whether HCB's id has the cdg_ prefix or not", () => {
+		const result = reconcileExportRows([row("r1")], [grant({ id: "cdg_api" })], new Set(["api"]))
+		expect(result.verdicts[0]?.kind).toBe("ambiguous")
 	})
 })

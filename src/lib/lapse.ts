@@ -138,31 +138,53 @@ async function call<T>(
 	return body.data
 }
 
+/** What asking Lapse about a list of clips actually came to. */
+export interface TimelapseLookup {
+	/** False when the maker has no Lapse link, or its token is gone, so Lapse was never asked. */
+	asked: boolean
+	/** Ids Lapse could not answer for: refused, still processing, or unreachable at the time. */
+	failed: string[]
+	/** The records Lapse returned, by id. */
+	records: Map<string, LapseTimelapse>
+}
+
 /**
  * The Lapse records for these ids, best effort.
  *
  * A row's `hackatimeProject` is a snapshot of what Hackatime was tracking when the clip was filed, and one written before Lapse reported a project keeps none. Ari pairs a clip to a ship by the project Lapse names, so that gap is the difference between a sitting being counted once and twice. An id Lapse refuses, is still processing or has never heard of is skipped rather than failing the caller: this explains time, it does not admit evidence, and a maker whose Lapse token has lapsed must still be able to submit.
+ *
+ * `asked` and `failed` exist for the repair script: "Lapse says this clip has no project" and "Lapse never answered" look identical in `records`, and only one of them means running the script again later is pointless.
  */
-export async function lookupTimelapses(userId: string, ids: readonly string[]): Promise<Map<string, LapseTimelapse>> {
+export async function inspectTimelapses(userId: string, ids: readonly string[]): Promise<TimelapseLookup> {
 	const unique = [...new Set(ids)].filter(Boolean)
-	const found = new Map<string, LapseTimelapse>()
-	if (unique.length === 0) return found
+	const records = new Map<string, LapseTimelapse>()
+	const failed: string[] = []
+	if (unique.length === 0) return { asked: true, failed, records }
 	let accessToken: string
 	try {
 		;({ accessToken } = await lapseCredentials(userId))
 	} catch {
-		return found
+		return { asked: false, failed: unique, records }
 	}
 	for (let at = 0; at < unique.length; at += VERIFY_CHUNK_SIZE) {
 		const chunk = unique.slice(at, at + VERIFY_CHUNK_SIZE)
 		await Promise.allSettled(
 			chunk.map(async id => {
-				const data = await call(z.object({ timelapse: RawTimelapseSchema }), accessToken, "/timelapse/query", { id })
-				found.set(id, toTimelapse(data.timelapse))
+				try {
+					const data = await call(z.object({ timelapse: RawTimelapseSchema }), accessToken, "/timelapse/query", { id })
+					records.set(id, toTimelapse(data.timelapse))
+				} catch {
+					failed.push(id)
+				}
 			}),
 		)
 	}
-	return found
+	return { asked: true, failed, records }
+}
+
+/** The records alone, for callers that only need the projects. */
+export async function lookupTimelapses(userId: string, ids: readonly string[]): Promise<Map<string, LapseTimelapse>> {
+	return (await inspectTimelapses(userId, ids)).records
 }
 
 /** A page of the user's published timelapses, newest first. */

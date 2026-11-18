@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test"
 import { HoursSource, Phase } from "@/lib/enums"
-import { carryForeignClips, journalMinutes, journalTime, type ReviewShipInput, toAriShipInput } from "@/lib/review-ship"
+import {
+	distributeJournalMinutes,
+	journalMinutes,
+	journalTime,
+	type ReviewShipInput,
+	toAriShipInput,
+} from "@/lib/review-ship"
 
 const input: ReviewShipInput = {
 	description: "A board",
@@ -103,7 +109,7 @@ describe("journalMinutes", () => {
 				counted,
 				() => "board",
 			),
-		).toEqual({ minutes: 60, recordedSeconds: 3600 })
+		).toEqual({ claimedSeconds: 7200, minutes: 60, recordedSeconds: 3600 })
 	})
 
 	test("leaves an unattributed clip in the claim when the project cannot be resolved", () => {
@@ -116,35 +122,35 @@ describe("journalMinutes", () => {
 				},
 				counted,
 			),
-		).toEqual({ minutes: 120, recordedSeconds: 0 })
+		).toEqual({ claimedSeconds: 7200, minutes: 120, recordedSeconds: 0 })
 	})
 })
 
-describe("carryForeignClips", () => {
-	test("spreads another week's footage across the entries, keeping their shape", () => {
-		const carried = carryForeignClips([{ minutes: 60 }, { minutes: 30 }, { minutes: 10 }], 3600)
-		expect(carried).toEqual({
+describe("distributeJournalMinutes", () => {
+	test("spreads another week's footage, keeping each entry's share", () => {
+		expect(distributeJournalMinutes([3600, 1800, 600], 3600)).toEqual({
 			carriedSeconds: 3600,
-			journals: [{ minutes: 24 }, { minutes: 12 }, { minutes: 4 }],
+			minutes: [24, 12, 4],
 			unabsorbedSeconds: 0,
 		})
 	})
 
 	test("reports what the claims could not absorb rather than going negative", () => {
-		const carried = carryForeignClips([{ minutes: 10 }, { minutes: 5 }], 7200)
-		expect(carried).toEqual({
+		expect(distributeJournalMinutes([600, 300], 7200)).toEqual({
 			carriedSeconds: 900,
-			journals: [{ minutes: 0 }, { minutes: 0 }],
+			minutes: [0, 0],
 			unabsorbedSeconds: 6300,
 		})
 	})
 
-	test("leaves the journals alone when there is nothing foreign", () => {
-		expect(carryForeignClips([{ minutes: 42 }], 0)).toEqual({
-			carriedSeconds: 0,
-			journals: [{ minutes: 42 }],
-			unabsorbedSeconds: 0,
-		})
+	test("rounds the entries together, so the total lands on the minute", () => {
+		// 500s over five entries is 8m20s: rounding each entry on its own would send 5 minutes and lose the rest.
+		const spread = distributeJournalMinutes([100, 100, 100, 100, 100], 0)
+		expect(spread.minutes.reduce((sum, minutes) => sum + minutes, 0)).toBe(8)
+	})
+
+	test("leaves the minutes alone when there is nothing foreign", () => {
+		expect(distributeJournalMinutes([2520], 0)).toEqual({ carriedSeconds: 0, minutes: [42], unabsorbedSeconds: 0 })
 	})
 })
 
