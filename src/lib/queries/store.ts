@@ -14,6 +14,7 @@ import { projectTierId } from "@/lib/config/tiers"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { HardwareExperience, HoursSource, type ParticipantGoal, Phase, PhaseStatus, Role, Theme } from "@/lib/enums"
+import { designFundingStates } from "@/lib/funding-state-queries"
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
@@ -198,6 +199,7 @@ async function loadStoreRows(userId: string) {
 				"designApprovedHours",
 				"designStatus",
 				"githubRepo",
+				"grantUsd",
 				"id",
 				"namedAt",
 				"requestedTier",
@@ -332,6 +334,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	const projects = projectRows.map(project =>
 		withFields(project, { submissionExtensionUntil: parseNullableTimestamp(project.submissionExtensionUntil) }),
 	)
+	const fundingByProject = await designFundingStates(projects)
 	const weekExtensionByWeek = new Map(
 		weekExtensionRows.map(row => [row.week, parseDbTimestamp(row.submissionExtensionUntil)]),
 	)
@@ -537,6 +540,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					coverImageKey: project.coverImageKey,
 					description: project.description ?? "",
 					designStatus: project.designStatus,
+					fundingState: fundingByProject.get(project.id) ?? null,
 					githubRepo: project.githubRepo,
 					id: project.id,
 					name: project.title,

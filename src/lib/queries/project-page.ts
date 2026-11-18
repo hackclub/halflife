@@ -5,6 +5,8 @@ import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { HoursSource, Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/lib/enums"
+import type { FundingState } from "@/lib/funding-state"
+import { designFundingStates } from "@/lib/funding-state-queries"
 import { rollUpHours } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { lapseTimelapseUrl } from "@/lib/lapse"
@@ -106,6 +108,8 @@ export interface PhaseReview {
 	dispute: PhaseDispute | null
 	/** Hours cut at the entry level so far (sessions and links a reviewer put explicit hours on), before any final override. Shown while no decision has frozen a total. */
 	entryDeflatedHours: number
+	/** Where an approved design's money stands. Only the design phase carries one, and only with a grant to wait on. */
+	fundingState: FundingState | null
 	phase: Phase
 	/** When it was decided, epoch ms. */
 	reviewedAt: number | null
@@ -225,6 +229,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 			"designReviewedAt",
 			"designStatus",
 			"grantEmittedAt",
+			"grantUsd",
 			"id",
 		)
 		.include("hackatimeLinks", links => links.select("cachedSeconds", "hoursApproved", "phase"))
@@ -328,6 +333,8 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				? Phase.DESIGN
 				: null
 
+	const designFunding = (await designFundingStates([project])).get(project.id) ?? null
+
 	// Both phases, in order, but only the ones that have left draft – a fresh project's page should not carry a "not started" row for each week.
 	const phases: PhaseReview[] = ([Phase.DESIGN, Phase.BUILD] as const)
 		.map(phase => {
@@ -382,6 +389,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 						}
 					: null,
 				entryDeflatedHours,
+				fundingState: isDesign ? designFunding : null,
 				phase,
 				reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
 				shipError: openShip?.ariShipError ?? null,

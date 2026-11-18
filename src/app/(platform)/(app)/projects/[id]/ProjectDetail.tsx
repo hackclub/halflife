@@ -13,6 +13,7 @@ import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { getTier } from "@/lib/config/tiers"
 import { cx } from "@/lib/cx"
+import { FUNDING_STATE_TEXT, fundingChipTone } from "@/lib/funding-state"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewChipTone } from "@/lib/review-state"
@@ -397,6 +398,9 @@ function ReviewState({
 									{p.phase === "DESIGN" ? "Design" : "Build"}
 								</span>
 								<Chip tone={reviewChipTone(p.status)}>{REVIEW_STATUS_TEXT[p.status]}</Chip>
+								{p.fundingState && (
+									<Chip tone={fundingChipTone(p.fundingState)}>{FUNDING_STATE_TEXT[p.fundingState]}</Chip>
+								)}
 								{p.reviewedAt !== null && (
 									<span className="hand text-[0.82rem] text-navy-soft">decided {fmtDate(p.reviewedAt)}</span>
 								)}
