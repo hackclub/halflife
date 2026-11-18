@@ -39,3 +39,16 @@ const UTC_DATE_TIME = new Intl.DateTimeFormat("en-US", {
 export function formatUtcDateTime(at: Date | number): string {
 	return UTC_DATE_TIME.format(at)
 }
+
+const UTC_COMPACT = new Intl.DateTimeFormat("en-GB", {
+	day: "numeric",
+	hour: "2-digit",
+	minute: "2-digit",
+	month: "short",
+	timeZone: "UTC",
+})
+
+/** The same moment, shorter, for a column that has to fit beside others: "12 Nov, 22:00". The full timestamp stays in the title. */
+export function formatUtcCompact(at: Date | number): string {
+	return UTC_COMPACT.format(at)
+}

@@ -24,7 +24,13 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 
 	// A section with no pages left is dropped, so the sidebar never shows a heading over nothing.
 	const groups: AdminNavGroup[] = [
-		{ items: [{ href: "/admin", label: "Overview" }], label: "Overview" },
+		{
+			items: [
+				{ href: "/admin", label: "Overview" },
+				{ href: "/dashboard", label: "Dashboard" },
+			],
+			label: "Overview",
+		},
 		{
 			items: [
 				...pages(can(Permission.VIEW_USERS), [
@@ -32,12 +38,17 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 					{ href: "/admin/projects", label: "Projects" },
 					{ href: "/admin/referrals", label: "Referrals" },
 				]),
+			],
+			label: "People",
+		},
+		{
+			items: [
 				...pages(can(Permission.MANAGE_FEED), [
 					{ href: "/admin/reports", label: "Reports" },
 					{ href: "/admin/feed", label: "Feed" },
 				]),
 			],
-			label: "People",
+			label: "Moderation",
 		},
 		{
 			items: [
@@ -65,7 +76,6 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 				...pages(can(Permission.VIEW_AUDIT_LOG), [{ href: "/admin/audit", label: "Audit" }]),
 				...pages(can(Permission.VIEW_UPLOADS), [{ href: "/admin/uploads", label: "Uploads" }]),
 				...pages(can(Permission.REVIEW_SUBMISSIONS), [{ hard: true, href: "/reviews", label: "Reviews" }]),
-				{ href: "/dashboard", label: "Dashboard" },
 			],
 			label: "System",
 		},

@@ -135,15 +135,15 @@ export default async function AdminOverviewPage() {
 
 			<Panel title="Needs attention">
 				<nav aria-label="Work waiting on staff" className="hl-attention">
-					<Link href="/admin/fulfillment">
+					<Link data-zero={counters.pendingOrders === 0 ? "true" : undefined} href="/admin/fulfillment">
 						<strong>{fmtInt(counters.pendingOrders)}</strong>
 						<span>orders to fulfil</span>
 					</Link>
-					<Link href="/reviews">
+					<Link data-zero={counters.pendingReviews === 0 ? "true" : undefined} href="/reviews">
 						<strong>{fmtInt(counters.pendingReviews)}</strong>
 						<span>projects awaiting review</span>
 					</Link>
-					<Link href="/admin/reports">
+					<Link data-zero={reportCounts.OPEN === 0 ? "true" : undefined} href="/admin/reports">
 						<strong>{fmtInt(reportCounts.OPEN)}</strong>
 						<span>open reports</span>
 					</Link>

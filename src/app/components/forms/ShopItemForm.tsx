@@ -221,7 +221,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				/>
 				<span>Requires all five projects shipped</span>
 			</label>
-			<div>
+			<div className="hl-savebar">
 				<Button disabled={busy !== null || uploading} type="submit" variant="primary">
 					{busy ? (editing ? "Saving…" : "Creating…") : editing ? "Save changes" : "Create item"}
 				</Button>
