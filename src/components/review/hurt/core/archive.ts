@@ -233,10 +233,37 @@ export function openZip(buffer: ArrayBuffer): Archive {
       const raw = bytes.subarray(start, start + entry.compressedSize)
       if (entry.method === 0) return raw
       if (entry.method === 8) return inflate(raw, 'deflate-raw', Math.min(entry.size, UNPACKED_LIMIT))
-      if (entry.method === ZSTD) return (await import('fzstd')).decompress(raw)
+      if (entry.method === ZSTD) return inflateZstd(raw, Math.min(entry.size, UNPACKED_LIMIT))
       throw new Error(`${entry.name} uses a compression method the browser cannot read.`)
     },
   }
+}
+
+/**
+ * Decompress a zstd entry with a ceiling.
+ *
+ * `decompress()` allocates whatever the stream says it needs, so a small archive of nested frames expands the
+ * reviewer's memory until the tab dies. The streaming API lets the output be counted as it arrives, and the same
+ * `UNPACKED_LIMIT` the deflate path uses stops it at the point the entry is refused.
+ */
+async function inflateZstd(raw: Uint8Array, limit: number): Promise<Uint8Array> {
+  const { Decompress } = await import('fzstd')
+  const chunks: Uint8Array[] = []
+  let total = 0
+  const stream = new Decompress((chunk) => {
+    total += chunk.length
+    if (total > limit) throw new Error('This file is too large to unpack in the browser.')
+    chunks.push(chunk)
+  })
+  stream.push(raw, true)
+  if (total > limit) throw new Error('This file is too large to unpack in the browser.')
+  const out = new Uint8Array(total)
+  let at = 0
+  for (const chunk of chunks) {
+    out.set(chunk, at)
+    at += chunk.length
+  }
+  return out
 }
 
 function isTar(bytes: Uint8Array) {
