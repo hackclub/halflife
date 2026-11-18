@@ -90,6 +90,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			scrollKey={step}
 			size="lg"
 		>
+			{sheet.confirmDialog}
 			<SubmitNotices sheet={sheet} />
 
 			{step === 1 && <FilesStep sheet={sheet} />}

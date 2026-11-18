@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { useConfirm } from "@/app/components/ui/useConfirm"
 import {
 	claim as claimSubmission,
 	closeDispute,
@@ -895,13 +896,20 @@ function DecidedPanel({
 				? "reopen"
 				: null
 
+	const { confirm, dialog: reverseDialog } = useConfirm()
+
 	async function reverse(action: "unapprove" | "reopen"): Promise<void> {
-		const reason = window.prompt(
-			action === "unapprove"
-				? "Why undo this approval? Credit is taken back to what the maker still holds, and the phase goes back to them for changes. The maker sees this."
-				: "Why reopen this rejection? The phase goes back to the maker for changes. The maker sees this.",
-		)
-		if (!reason?.trim()) return
+		const reason = await confirm({
+			confirmLabel: action === "unapprove" ? "Undo approval" : "Reopen",
+			input: { label: "Reason", placeholder: "Say why, in a sentence" },
+			message:
+				action === "unapprove"
+					? "Credit is taken back to what the maker still holds, and the phase goes back to them for changes. The maker sees this."
+					: "The phase goes back to the maker for changes. The maker sees this.",
+			title: action === "unapprove" ? "Undo this approval?" : "Reopen this rejection?",
+			tone: "danger",
+		})
+		if (!reason) return
 		onErrors([])
 		setBusy(true)
 		try {
@@ -920,6 +928,7 @@ function DecidedPanel({
 
 	return (
 		<Paper title="Decision">
+			{reverseDialog}
 			<FormErrors errors={errors} />
 			<dl className="dl">
 				<dt>Status</dt>
@@ -983,8 +992,16 @@ function DisputePaper({
 	const [reply, setReply] = useState("")
 	const [busy, setBusy] = useState(false)
 	const replyField = useRef<HTMLTextAreaElement>(null)
+	const { confirm, dialog } = useConfirm()
 	if (!dispute) return null
 	const open = dispute.resolvedAt === null
+
+	/** Asks first, then runs the task: the dispute's two decisive buttons both go through here. */
+	async function confirmThen(question: string, task: () => Promise<unknown>): Promise<void> {
+		if ((await confirm({ message: "This is recorded in the audit log.", title: question, tone: "danger" })) === null)
+			return
+		void run(task)
+	}
 
 	async function run(task: () => Promise<unknown>, done?: () => void): Promise<void> {
 		onError([])
@@ -1052,10 +1069,9 @@ function DisputePaper({
 						<button
 							className="btn btn--ghost btn--sm"
 							disabled={busy}
-							onClick={() => {
-								if (window.confirm("Close this dispute and let the decision stand?"))
-									void run(() => closeDispute(dispute.id))
-							}}
+							onClick={() =>
+								void confirmThen("Close this dispute and let the decision stand?", () => closeDispute(dispute.id))
+							}
 							type="button"
 						>
 							Close, decision stands
@@ -1064,10 +1080,11 @@ function DisputePaper({
 							<button
 								className="btn btn--ghost btn--sm"
 								disabled={busy}
-								onClick={() => {
-									if (window.confirm("Uphold the dispute and send this phase back to the queue?"))
-										void run(() => sendDisputeBack(dispute.id))
-								}}
+								onClick={() =>
+									void confirmThen("Uphold the dispute and send this phase back to the queue?", () =>
+										sendDisputeBack(dispute.id),
+									)
+								}
 								type="button"
 							>
 								Uphold, send back
@@ -1076,6 +1093,7 @@ function DisputePaper({
 					</div>
 				</div>
 			) : null}
+			{dialog}
 		</Paper>
 	)
 }

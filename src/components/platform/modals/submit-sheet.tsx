@@ -1,6 +1,6 @@
 "use client"
 
-import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react"
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useMemo, useState } from "react"
 import { errorMessage, refusalMessage } from "@/lib/api-error"
 import { bomTotalUsd, fundingAgreementMissing, partsFunding } from "@/lib/bom-policy"
 import type { BomLine } from "@/lib/bom-schema"
@@ -17,6 +17,7 @@ import { BomResponseSchema, isWeeksProject, weekName } from "./checkpoint-shared
 import type { UploadedImage } from "./ImageUploads"
 import type { SubmissionReel } from "./SubmissionReelPicker"
 import { canAdvance as canAdvanceFrom, nextBlocker as nextBlockerFor, type SubmitGates } from "./submit-gates"
+import { useConfirm } from "./useConfirm"
 
 export interface SubmitSheet {
 	acknowledgedAll: boolean
@@ -33,6 +34,8 @@ export interface SubmitSheet {
 	clip: string | null
 	closeSheet(): void
 	closingPostId: string | null
+	/** The box that asks before declining funding. Rendered by the sheet, so it sits inside the modal. */
+	confirmDialog: ReactNode
 	declinedFunding: boolean
 	descriptionLength: number
 	descriptionReady: boolean
@@ -335,21 +338,28 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 	}
 
 	// Declining funding is the one choice in this sheet that an edit cannot quietly undo – once handed in without it there is no grant to order – so the box asks once more, following the repo's window.confirm precedent for irreversible choices.
-	function toggleDeclinedFunding() {
+	const { confirm, dialog: confirmDialog } = useConfirm()
+
+	async function askDeclinedFunding(): Promise<void> {
 		if (declinedFunding) {
 			setDeclinedFunding(false)
 			return
 		}
-		if (
-			window.confirm(
-				bomEmpty
-					? "Submit with an empty parts list? No parts funding will be ordered for this project. You can still change your mind before you submit."
-					: "Submit without any parts funding? Your parts list stays on the project for the reviewer to see, but approving it orders no grant. You can still change your mind before you submit.",
-			)
-		) {
-			setDeclinedFunding(true)
-			setAcceptsPartialFunding(false)
-		}
+		const answer = await confirm({
+			confirmLabel: "Submit without funding",
+			message: bomEmpty
+				? "No parts funding will be ordered for this project. You can still change your mind before you submit."
+				: "Your parts list stays on the project for the reviewer to see, but approving it orders no grant. You can still change your mind before you submit.",
+			title: bomEmpty ? "Submit with an empty parts list?" : "Submit without any parts funding?",
+			tone: "danger",
+		})
+		if (answer === null) return
+		setDeclinedFunding(true)
+		setAcceptsPartialFunding(false)
+	}
+
+	function toggleDeclinedFunding(): void {
+		void askDeclinedFunding()
 	}
 
 	return {
@@ -367,6 +377,7 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		clip,
 		closeSheet: () => setOpenCheckpoint(null),
 		closingPostId,
+		confirmDialog,
 		declinedFunding,
 		descriptionLength,
 		descriptionReady,
