@@ -46,35 +46,30 @@ export function UserRow({ row }: Readonly<{ row: DirectoryRow }>) {
 			<td>
 				<CopyEmail email={row.email} />
 			</td>
+			{/* Roles and access share a cell. An account with no staff role is simply a participant, so that reads as one quiet word, and only staff carry badges and an access level. */}
 			<td>
-				{row.roles.length === 0 ? (
-					<span className="hl-hint">participant</span>
-				) : (
-					row.roles.map(role => (
-						<Badge key={role} tone="muted">
-							{role}
-						</Badge>
-					))
-				)}
-			</td>
-			{/* The access level is the union of what the roles grant. The list of permissions is the tooltip rather than the cell, so thirteen words do not run down the column. */}
-			<td>
-				{/* Most accounts hold no staff access at all, so that state is quiet text. Only a real grant earns a pill, and the column stops reading as one repeated badge. */}
-				{row.level === "none" ? (
-					<span className="hl-hint">{row.levelLabel}</span>
-				) : (
-					<Badge
-						title={row.granted.length > 0 ? `Can ${row.granted.join(", ")}` : "No staff permissions"}
-						tone={levelTone(row.level)}
-					>
-						{row.levelLabel}
+				{row.roles.length === 0 && row.level === "none" ? <span className="hl-hint">participant</span> : null}
+				{row.roles.map(role => (
+					<Badge key={role} tone="muted">
+						{role}
 					</Badge>
-				)}
-				{row.grantedCount > 0 ? (
-					<div className="hl-hint">
-						{row.grantedCount} of {row.permissionTotal} permissions
+				))}
+				{row.level === "none" ? null : (
+					<div>
+						<Badge
+							title={row.granted.length > 0 ? `Can ${row.granted.join(", ")}` : "No staff permissions"}
+							tone={levelTone(row.level)}
+						>
+							{row.levelLabel}
+						</Badge>
+						{row.grantedCount > 0 ? (
+							<span className="hl-hint">
+								{" "}
+								{row.grantedCount} of {row.permissionTotal}
+							</span>
+						) : null}
 					</div>
-				) : null}
+				)}
 			</td>
 			<td>
 				<Badge tone={verifiedTone(row.verified)}>{statusLabel(row.verified)}</Badge>
@@ -141,7 +136,7 @@ export function UserDirectory({
 
 	return (
 		<>
-			<Table head={["Name", "Email", "Roles", "Access", "Verified", "Joined"]}>
+			<Table head={["Name", "Email", "Roles and access", "Verified", "Joined"]}>
 				{rows.map(row => (
 					<UserRow key={row.id} row={row} />
 				))}
