@@ -34,8 +34,11 @@ export function isHalfLifePurpose(purpose: string): boolean {
 
 const normalEmail = (email: string | null): string | null => email?.trim().toLowerCase() ?? null
 
+/** HCB lists card grants as `cdg_…`, while the site stores the bare hashid. Compare on the bare one. */
+const bareId = (id: string): string => id.replace(/^cdg_/, "")
+
 /**
- * `rows` are the live export rows; `grants` are every card grant the organisation holds, as HCB lists them; `claimed` are the HCB ids Half Life already tracks through its own API cards, which a CSV row cannot be.
+ * `rows` are the live export rows; `grants` are every card grant the organisation holds, as HCB lists them; `claimed` are the bare HCB ids Half Life already tracks through its own API cards, which a CSV row cannot be. A grant's amount here is its original amount, so the caller takes buffer top-ups off first.
  *
  * A canceled grant pays nothing, so it is not evidence. Only a grant with a Half Life purpose and the row's maker and amount counts, and a grant HCB will not show the owner or purpose of blocks a verdict of `missing` for its amount.
  */
@@ -44,7 +47,7 @@ export function reconcileExportRows(
 	grants: readonly HcbCardGrantSummary[],
 	claimed: ReadonlySet<string>,
 ): ExportReconciliation {
-	const live = grants.filter(grant => grant.status?.toLowerCase() !== "canceled" && !claimed.has(grant.id))
+	const live = grants.filter(grant => grant.status?.toLowerCase() !== "canceled" && !claimed.has(bareId(grant.id)))
 	const groups = new Map<string, { amountCents: number; email: string; rows: ExportRowForReconcile[] }>()
 	for (const row of rows) {
 		const email = normalEmail(row.email) ?? ""
