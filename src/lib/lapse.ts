@@ -138,6 +138,33 @@ async function call<T>(
 	return body.data
 }
 
+/**
+ * The Lapse records for these ids, best effort.
+ *
+ * A row's `hackatimeProject` is a snapshot of what Hackatime was tracking when the clip was filed, and one written before Lapse reported a project keeps none. Ari pairs a clip to a ship by the project Lapse names, so that gap is the difference between a sitting being counted once and twice. An id Lapse refuses, is still processing or has never heard of is skipped rather than failing the caller: this explains time, it does not admit evidence, and a maker whose Lapse token has lapsed must still be able to submit.
+ */
+export async function lookupTimelapses(userId: string, ids: readonly string[]): Promise<Map<string, LapseTimelapse>> {
+	const unique = [...new Set(ids)].filter(Boolean)
+	const found = new Map<string, LapseTimelapse>()
+	if (unique.length === 0) return found
+	let accessToken: string
+	try {
+		;({ accessToken } = await lapseCredentials(userId))
+	} catch {
+		return found
+	}
+	for (let at = 0; at < unique.length; at += VERIFY_CHUNK_SIZE) {
+		const chunk = unique.slice(at, at + VERIFY_CHUNK_SIZE)
+		await Promise.allSettled(
+			chunk.map(async id => {
+				const data = await call(z.object({ timelapse: RawTimelapseSchema }), accessToken, "/timelapse/query", { id })
+				found.set(id, toTimelapse(data.timelapse))
+			}),
+		)
+	}
+	return found
+}
+
 /** A page of the user's published timelapses, newest first. */
 export async function listMyTimelapses(
 	userId: string,

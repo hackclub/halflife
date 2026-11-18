@@ -37,6 +37,7 @@
 		"grant-role": "bun scripts/grant-role.ts",
 		"grants:reconcile-csv": "bun --conditions=react-server scripts/reconcile-grant-card-exports.ts",
 		"grants:starter-export": "bun --conditions=react-server scripts/starter-funding-export.ts",
+		"lapse:backfill-projects": "bun --conditions=react-server scripts/backfill-lapse-projects.ts",
 		"grants:week-1-holders": "bun --conditions=react-server scripts/week-1-starter-grant-holders.ts",
 		"hca:backfill-display-names": "bun --conditions=react-server scripts/backfill-display-names.ts",
 		"hours:backfill-overlap": "bun --conditions=react-server scripts/backfill-timelapse-overlap.ts",

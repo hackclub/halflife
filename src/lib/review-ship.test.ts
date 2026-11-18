@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { HoursSource, Phase } from "@/lib/enums"
-import { journalMinutes, type ReviewShipInput, toAriShipInput } from "@/lib/review-ship"
+import { carryForeignClips, journalMinutes, journalTime, type ReviewShipInput, toAriShipInput } from "@/lib/review-ship"
 
 const input: ReviewShipInput = {
 	description: "A board",
@@ -89,6 +89,62 @@ describe("journalMinutes", () => {
 		expect(
 			journalMinutes({ hoursClaimed: 2, hoursSource: HoursSource.HACKATIME_TRACKED, timelapses: [] }, counted),
 		).toBe(0)
+	})
+
+	test("takes off a clip whose project the row never recorded, once the project is known", () => {
+		// The row says nothing, Lapse says `board`: the clip is Ari's to add, so the claim has to lose it or the sitting is paid twice.
+		expect(
+			journalTime(
+				{
+					hoursClaimed: 2,
+					hoursSource: HoursSource.MANUAL,
+					timelapses: [{ coveredSeconds: 3600, externalId: "clip", hackatimeProject: null, provider: "lapse" }],
+				},
+				counted,
+				() => "board",
+			),
+		).toEqual({ minutes: 60, recordedSeconds: 3600 })
+	})
+
+	test("leaves an unattributed clip in the claim when the project cannot be resolved", () => {
+		expect(
+			journalTime(
+				{
+					hoursClaimed: 2,
+					hoursSource: HoursSource.MANUAL,
+					timelapses: [{ coveredSeconds: 3600, externalId: "clip", hackatimeProject: null, provider: "lapse" }],
+				},
+				counted,
+			),
+		).toEqual({ minutes: 120, recordedSeconds: 0 })
+	})
+})
+
+describe("carryForeignClips", () => {
+	test("spreads another week's footage across the entries, keeping their shape", () => {
+		const carried = carryForeignClips([{ minutes: 60 }, { minutes: 30 }, { minutes: 10 }], 3600)
+		expect(carried).toEqual({
+			carriedSeconds: 3600,
+			journals: [{ minutes: 24 }, { minutes: 12 }, { minutes: 4 }],
+			unabsorbedSeconds: 0,
+		})
+	})
+
+	test("reports what the claims could not absorb rather than going negative", () => {
+		const carried = carryForeignClips([{ minutes: 10 }, { minutes: 5 }], 7200)
+		expect(carried).toEqual({
+			carriedSeconds: 900,
+			journals: [{ minutes: 0 }, { minutes: 0 }],
+			unabsorbedSeconds: 6300,
+		})
+	})
+
+	test("leaves the journals alone when there is nothing foreign", () => {
+		expect(carryForeignClips([{ minutes: 42 }], 0)).toEqual({
+			carriedSeconds: 0,
+			journals: [{ minutes: 42 }],
+			unabsorbedSeconds: 0,
+		})
 	})
 })
 
