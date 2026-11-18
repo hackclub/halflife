@@ -74,8 +74,9 @@ describe("grantReturnedAt", () => {
 	test("the balance going back to the organisation is a return", () => {
 		const rows = [
 			disbursement({ amountCents: 6432, memo: "Grant to Ellie" }),
+			// HCB's API gives the amount unsigned; the memo carries the direction.
 			disbursement({
-				amountCents: -6432,
+				amountCents: 6432,
 				createdAt: "2026-11-19T10:00:00.000Z",
 				memo: "Returning canceled grant to Ellie",
 			}),
@@ -95,7 +96,7 @@ describe("grantReturnedAt", () => {
 	test("a return without a time is not treated as a return", () => {
 		expect(
 			grantReturnedAt([
-				disbursement({ amountCents: -6432, createdAt: null, memo: "Returning canceled grant to Ellie" }),
+				disbursement({ amountCents: 6432, createdAt: null, memo: "Returning canceled grant to Ellie" }),
 			]),
 		).toBeNull()
 	})
