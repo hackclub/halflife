@@ -557,6 +557,27 @@
 		}
 	}
 
+	/*
+	 * Long directories are read top to bottom, so the admin tables are denser than the participant's, keep their heading in view while the window scrolls, and stripe alternate rows so the eye can follow one across a wide table. Roomy tables, whose cells hold controls, keep their own padding.
+	 */
+	.hl-admin-main .hl-table:not(.hl-table--roomy) {
+		font-size: 0.9rem;
+	}
+	.hl-admin-main .hl-table:not(.hl-table--roomy) th,
+	.hl-admin-main .hl-table:not(.hl-table--roomy) td {
+		padding: 0.4rem 0.55rem;
+	}
+	.hl-admin-main .hl-table thead th {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		background: var(--color-surface-raised);
+		box-shadow: inset 0 -2px 0 var(--color-border);
+	}
+	.hl-admin-main .hl-table tbody tr:nth-child(even) td {
+		background: var(--color-surface-sunken);
+	}
+
 	/* The command palette's list, inside the console's modal. */
 	.hl-admin-palette-list {
 		display: flex;
