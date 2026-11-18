@@ -367,6 +367,13 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 											: ", the same total as here."}
 									</p>
 								) : null}
+								{detail.ariHours.unattributedCount > 0 ? (
+									<p className="field__hint" style={{ marginTop: 4 }}>
+										{detail.ariHours.unattributedCount} of this maker&apos;s clips (
+										{formatDuration(detail.ariHours.unattributedSeconds)}) has no Hackatime project on record or on
+										Lapse, so if Ari pairs them with this project its total will read higher than the one above.
+									</p>
+								) : null}
 							</dd>
 							{design ? (
 								<>
