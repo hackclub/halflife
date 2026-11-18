@@ -1,6 +1,5 @@
 import "server-only"
 import type { AriShipInput } from "@hackclub/ari"
-import { and } from "@prisma/orm-postgres/orm-client"
 import { ariExternalId } from "@/lib/ari-id"
 import { getThemeDef, WARMUP_THEME } from "@/lib/config/program"
 import { getTier, projectTierId } from "@/lib/config/tiers"
@@ -252,16 +251,11 @@ interface OwnerClip {
 /**
  * Every Lapse clip this maker has recorded, across all their projects and phases.
  *
- * Ari's pool is not this phase's footage: it is every clip under a Hackatime project the ship names, whichever week it was filmed in. Reading the same set here is what lets the two totals be compared at all. A maker with no Lapse link simply has none.
+ * Ari's pool is not this phase's footage: it is every clip under a Hackatime project the ship names, whichever week it was filmed in. Reading the same set here is what lets the two totals be compared at all. Deleted sessions and projects count too, because deleting an entry removes Half Life's claim on that time but not the recording: Ari still pulls the clip, so leaving it out of the pool would put the over-count straight back on the next ship. A maker with no Lapse link simply has none.
  */
 async function ownerClips(userId: string): Promise<OwnerClip[]> {
 	const rows = await db.orm.public.SessionTimelapse.where(timelapse =>
-		timelapse.workSession.some(session =>
-			and(
-				session.deletedAt.isNull(),
-				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
-			),
-		),
+		timelapse.workSession.some(session => session.themeProject.some(project => project.userId.eq(userId))),
 	)
 		.where(timelapse => timelapse.provider.eq("lapse"))
 		.select("coveredSeconds", "externalId", "hackatimeProject")
