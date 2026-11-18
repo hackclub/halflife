@@ -94,7 +94,7 @@
 	"dependencies": {
 		"@better-auth/kysely-adapter": "1.7.25",
 		"@hackclub/ari": "^0.1.1",
-		"@prisma/orm-postgres": "8.0.0-rc.22",
+		"@prisma/orm-postgres": "8.0.0-rc.23",
 		"@tracespace/core": "5.0.0-alpha.0",
 		"@tracespace/identify-layers": "5.0.0-alpha.0",
 		"@tracespace/parser": "5.0.0-alpha.0",
