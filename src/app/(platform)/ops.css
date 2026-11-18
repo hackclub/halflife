@@ -658,6 +658,23 @@
 		font-weight: 600;
 	}
 
+	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
+	.hl-count {
+		font-variant-numeric: tabular-nums;
+		font-weight: 400;
+		color: var(--color-ink-muted);
+	}
+
+	/* The line under a list that loads as you scroll: its progress, or the reason it stopped. */
+	.hl-directory-footer {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
+		justify-content: center;
+		min-height: 2.5rem;
+	}
+
 	/*
 	 * Space is the scarce thing on an admin screen, so the frame keeps its padding modest and the cards hold more rows. Cards keep their border and rounding, which is what marks them as cards.
 	 */
