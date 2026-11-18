@@ -1,6 +1,7 @@
 import "server-only"
 import { z } from "zod"
 import { HttpError } from "@/lib/errors"
+import { GRANT_CARD_PURPOSE } from "@/lib/grant-card-policy"
 import { readStoredRefreshToken, storeRefreshToken } from "@/lib/hcb-credential"
 import { isRecord } from "@/lib/unknown"
 
@@ -507,38 +508,52 @@ export interface CardGrantExpectation {
 /**
  * Whether a listed grant's purpose is the one an attempt sent.
  *
- * Everything now writes the same constant, so equality is the rule. Grants issued while the purpose still carried
- * a marker or a link are caught by their prefix instead: those attempts were in flight across the switches, and
- * re-checking one of them under the new equality only would read it as "nothing landed" and pay it twice.
+ * Everything now writes a purpose naming the project, so equality is the rule: two cards for the same maker at the
+ * same tier are the same amount, and a purpose that only shares the prefix cannot tell them apart. Grants issued
+ * while the purpose still carried a marker or a link are caught by their prefix instead, but only when the attempt
+ * itself has no title to compare – a title-bearing expectation has to match exactly or the reconcile pairs it with
+ * another project's grant and leaves this one unpaid.
  */
 export function purposeMatches(listed: string | null, expected: string): boolean {
 	if (listed === expected) return true
-	return typeof listed === "string" && listed.startsWith("Half Life parts – ")
+	if (expected !== GRANT_CARD_PURPOSE) return false
+	return typeof listed === "string" && listed.startsWith(GRANT_CARD_PURPOSE)
 }
+
+/** HCB's card grant ids carry a `cdg_` prefix, and the site stores either form, so compare on the bare one. */
+const bareGrantIdOf = (id: string): string => id.replace(/^cdg_/, "")
 
 /**
  * Decide whether a card grant whose response was lost actually landed.
  *
  * A single matching grant at or after the attempt is evidence it did. Several in the window, a candidate with no usable timestamp, or a payload that could not be read at all is not something to guess about: an unnecessary retry creates a second card, and a skipped one leaves the maker unpaid.
+ *
+ * `excludeIds` holds every grant the site already recorded against another card or top-up. A grant in it was paid
+ * for something else, so it can never confirm this attempt: matching one is how a lost response claimed the maker's
+ * other card and left the row it belonged to stuck unpaid.
  */
 export function reconcileCardGrantIssue(
 	list: HcbCardGrantList,
 	expected: CardGrantExpectation,
+	excludeIds: ReadonlySet<string> = new Set(),
 ): { kind: "landed"; grantId: string } | { kind: "absent" } | { kind: "ambiguous" } {
 	if (list.kind === "unreadable") return { kind: "ambiguous" }
+
+	const excluded = excludeIds.size === 0 ? null : new Set([...excludeIds].map(bareGrantIdOf))
+	const rows = excluded === null ? list.rows : list.rows.filter(row => !excluded.has(bareGrantIdOf(row.id)))
 
 	const email = expected.email.trim().toLowerCase()
 	// The amount, purpose and recipient identify the attempt; an attempt sent on an older purpose form still
 	// reconciles, so a lost response on the deploy that switched cannot retry into a second card.
 	// A row that carries both but no readable owner is not evidence the attempt was absent: HCB may not render
 	// another account's email to this token. Retrying then pays twice.
-	const sameProject = list.rows.filter(
+	const sameProject = rows.filter(
 		row => row.amountCents === expected.amountCents && purposeMatches(row.purpose, expected.purpose),
 	)
 	if (sameProject.length === 0) {
 		// Without a purpose the row cannot be tied to this project. If HCB returned this amount and owner but
 		// dropped the purpose, the link itself is unreadable, which is not the same answer as "nothing landed".
-		const unmarked = list.rows.some(
+		const unmarked = rows.some(
 			row => row.amountCents === expected.amountCents && row.email?.toLowerCase() === email && row.purpose === null,
 		)
 		return unmarked ? { kind: "ambiguous" } : { kind: "absent" }

@@ -76,4 +76,22 @@ describe("reconcileCardGrantIssue", () => {
 	test("a matching amount and owner without the marker is ambiguous", () => {
 		expect(reconcileCardGrantIssue(listed([grant({ purpose: null })]), expected)).toEqual({ kind: "ambiguous" })
 	})
+
+	test("another project's titled grant is not this attempt", () => {
+		// Two of a maker's cards at the same tier are the same amount, so a title that differs is a different card.
+		const titled = { ...expected, purpose: "Half Life parts – Lamp" }
+		expect(reconcileCardGrantIssue(listed([grant({ purpose: "Half Life parts – Clock" })]), titled)).toEqual({
+			kind: "absent",
+		})
+	})
+
+	test("a grant already recorded against another row cannot confirm this one", () => {
+		expect(reconcileCardGrantIssue(listed([grant()]), expected, new Set(["1"]))).toEqual({ kind: "absent" })
+		expect(reconcileCardGrantIssue(listed([grant()]), expected, new Set(["cdg_1"]))).toEqual({ kind: "absent" })
+	})
+
+	test("a title-less legacy attempt still reconciles through the prefix", () => {
+		const legacy = { ...expected, purpose: "Half Life parts" }
+		expect(reconcileCardGrantIssue(listed([grant()]), legacy)).toEqual({ grantId: "cdg_1", kind: "landed" })
+	})
 })

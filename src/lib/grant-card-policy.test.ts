@@ -5,6 +5,7 @@ import {
 	grantCardFingerprint,
 	grantCardInstructions,
 	grantCardPurpose,
+	remainingAfterCancelledCards,
 } from "@/lib/grant-card-policy"
 
 describe("grant card policy", () => {
@@ -98,5 +99,24 @@ describe("grant card policy", () => {
 				{ amountCents: 200, email: "b@example.com", projectId: "p2" },
 			]),
 		)
+	})
+})
+
+describe("remainingAfterCancelledCards", () => {
+	test("takes what a cancelled card spent off the reissue", () => {
+		expect(remainingAfterCancelledCards(3000, [{ spentCents: 2500 }])).toBe(500)
+		expect(remainingAfterCancelledCards(3000, [{ spentCents: 0 }])).toBe(3000)
+	})
+
+	test("sums several cancelled cards", () => {
+		expect(remainingAfterCancelledCards(3000, [{ spentCents: 1000 }, { spentCents: 500 }])).toBe(1500)
+	})
+
+	test("never asks for a negative card", () => {
+		expect(remainingAfterCancelledCards(1000, [{ spentCents: 2500 }])).toBe(0)
+	})
+
+	test("an unknown spend pays nothing more rather than everything again", () => {
+		expect(remainingAfterCancelledCards(3000, [{ spentCents: null }])).toBe(0)
 	})
 })

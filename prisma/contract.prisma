@@ -463,6 +463,9 @@ namespace public {
     claimedAt      TimestampString(3)?
     issuedAt       TimestampString(3)?
     canceledAt     TimestampString(3)?
+    /// What the card had already spent when it was cancelled, so a reissue pays only the remainder. Null on rows
+    /// cancelled before this was recorded: their remaining balance is unknown and nothing is reissued automatically.
+    spentCents     Int?
     supersededAt   TimestampString(3)?
     createdAt      TimestampString(3)          @default(now())
     batch          HcbGrantCardBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "hcb_grant_card_batchId_status_idx")

@@ -86,6 +86,26 @@ export function grantCardInstructions(title: string, projectId: string, origin: 
 /** The message HCB shows when it invites the maker to accept the card. Shared by the v4 create and the CSV row. */
 export const GRANT_CARD_INVITE_MESSAGE = "Your Half Life parts grant is ready. Accept it to get your card."
 
+/**
+ * What a project may still be paid after an earlier card was cancelled.
+ *
+ * Cancelling a card returns only its unspent balance to the org, so the next card must not cover the spent part a
+ * second time: a $30 card with $25 spent funds the design $55 in total otherwise. A null spend is a card cancelled
+ * before the amount was recorded; its remaining balance is unknown, and paying the full amount again is the
+ * direction that loses money, so nothing more is issued until someone checks it on HCB.
+ */
+export function remainingAfterCancelledCards(
+	fullCents: number,
+	cancelled: readonly { spentCents: number | null }[],
+): number {
+	let spent = 0
+	for (const card of cancelled) {
+		if (card.spentCents === null) return 0
+		spent += Math.max(0, card.spentCents)
+	}
+	return Math.max(0, fullCents - spent)
+}
+
 /** A fingerprint of exactly what a preview offered, so a stale confirmation cannot issue a different amount. */
 export function grantCardFingerprint(
 	rows: readonly { amountCents: number; email: string; projectId: string }[],
