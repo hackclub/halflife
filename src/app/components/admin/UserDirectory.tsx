@@ -59,12 +59,17 @@ export function UserRow({ row }: Readonly<{ row: DirectoryRow }>) {
 			</td>
 			{/* The access level is the union of what the roles grant. The list of permissions is the tooltip rather than the cell, so thirteen words do not run down the column. */}
 			<td>
-				<Badge
-					title={row.granted.length > 0 ? `Can ${row.granted.join(", ")}` : "No staff permissions"}
-					tone={levelTone(row.level)}
-				>
-					{row.levelLabel}
-				</Badge>
+				{/* Most accounts hold no staff access at all, so that state is quiet text. Only a real grant earns a pill, and the column stops reading as one repeated badge. */}
+				{row.level === "none" ? (
+					<span className="hl-hint">{row.levelLabel}</span>
+				) : (
+					<Badge
+						title={row.granted.length > 0 ? `Can ${row.granted.join(", ")}` : "No staff permissions"}
+						tone={levelTone(row.level)}
+					>
+						{row.levelLabel}
+					</Badge>
+				)}
 				{row.grantedCount > 0 ? (
 					<div className="hl-hint">
 						{row.grantedCount} of {row.permissionTotal} permissions

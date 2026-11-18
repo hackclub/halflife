@@ -36,8 +36,8 @@ const KIND_TONES: { [_: string]: LedgerKindTone } = {
 	DESIGN_EXCESS_HOURS: "success",
 	PARTS_TOP_UP: "warning",
 	REVIEWER_PAYMENT: "sand",
-	SHOP_PURCHASE: "danger",
-	SHOP_REFUND: "info",
+	SHOP_PURCHASE: "info",
+	SHOP_REFUND: "sand",
 	THEME_COMPLETION_BONUS: "gold",
 }
 
