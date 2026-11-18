@@ -108,7 +108,9 @@ export function AddressReminder({ blocked = false }: { blocked?: boolean }) {
 			accent="var(--color-coral)"
 			footer={
 				<>
-					<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">We&apos;ll ask again shortly if it's still not set.</p>
+					<p className="hand hidden min-w-0 flex-1 text-[0.78rem] text-navy-soft sm:block">
+						We&apos;ll ask again shortly if it's still not set.
+					</p>
 					<Button onClick={snooze} variant="ghost">
 						Remind me later
 					</Button>
