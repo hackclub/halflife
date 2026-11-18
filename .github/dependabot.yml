@@ -1,0 +1,14 @@
+version: 2
+
+updates:
+    # The workflows pin every action to a commit SHA with a trailing version comment. Dependabot moves the pin and the comment together, so a bump arrives as ordinary reviewable YAML rather than a floating tag that changes underneath a green build.
+    - package-ecosystem: github-actions
+      directory: "/"
+      schedule:
+          interval: weekly
+          day: monday
+      # One PR for the whole set: the actions are only bumped together in practice, and a single run tests them all against the same commit.
+      groups:
+          github-actions:
+              patterns: ["*"]
+      open-pull-requests-limit: 3
