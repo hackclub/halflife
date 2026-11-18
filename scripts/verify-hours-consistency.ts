@@ -45,7 +45,9 @@ for (const project of projects) {
 			ship = await buildReviewShipInput(project.id, phase)
 		} catch (error) {
 			// A project that cannot be sent at all is already reported where it was submitted; naming it here as a drift would bury the real failures.
-			failures.push(`${project.title} (${phase}): not sendable – ${error instanceof Error ? error.message : error}`)
+			failures.push(
+				`${project.title} (${phase}): not sendable – ${error instanceof Error ? error.message : String(error)}`,
+			)
 			continue
 		}
 		const { hours } = ship.input.meta

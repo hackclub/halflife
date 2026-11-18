@@ -229,7 +229,7 @@ export function distributeJournalMinutes(
 	// Whole minutes are required, so the entries that lost the most to rounding take the remainder – which is what keeps the sum on the target instead of each entry on its own.
 	const order = raw
 		.map((value, index) => ({ index, remainder: value - Math.floor(value) }))
-		.sort((a, b) => b.remainder - a.remainder)
+		.toSorted((a, b) => b.remainder - a.remainder)
 	let left = targetMinutes - minutes.reduce((sum, value) => sum + value, 0)
 	for (const entry of order) {
 		if (left <= 0) break
