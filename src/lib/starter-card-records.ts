@@ -130,3 +130,29 @@ export async function liveRecordedCents(projectIds: readonly string[]): Promise<
 	for (const row of rows) recorded.set(row.themeProjectId, row.amountCents)
 	return recorded
 }
+
+/**
+ * Put superseded export rows back to live, when a later check finds the project was paid after all (a manual top-up on the HCB grant, or a reissue). Only rows that are superseded are touched, and each one is audited with the reason.
+ */
+export function restoreExportRows(rowIds: readonly string[], reason: string): Promise<number> {
+	return db.transaction(async tx => {
+		if (rowIds.length === 0) return 0
+		const rows = await tx.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNotNull())
+			.where(row => row.id.in([...rowIds]))
+			.select("amountCents", "id", "themeProjectId")
+			.all()
+		for (const row of rows)
+			await tx.orm.public.HcbCardGrantExportRow.where({ id: row.id }).update({ supersededAt: null })
+		await logAuditTx(tx, {
+			action: AuditAction.ADMIN_SUPERSEDE_GRANT_CARD_EXPORT,
+			actorEmail: null,
+			actorId: null,
+			metadata: {
+				reason,
+				restored: true,
+				rows: rows.map(r => ({ amountCents: r.amountCents, projectId: r.themeProjectId })),
+			},
+		})
+		return rows.length
+	})
+}

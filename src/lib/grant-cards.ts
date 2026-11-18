@@ -32,7 +32,7 @@ import { formatUsd } from "@/lib/money"
 import { configuredOrigin } from "@/lib/origin"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
-import { supersedeLiveCards } from "@/lib/starter-card-records"
+import { restoreExportRows, supersedeLiveCards } from "@/lib/starter-card-records"
 import { STARTER_TIER_ID } from "@/lib/starter-funding"
 import {
 	readStarterFundingGiven,
@@ -1243,7 +1243,10 @@ export interface CsvExportReconcileReport {
 	grantsNotCanceled: number
 	/** How many card grants HCB listed, canceled ones included. */
 	grantsRead: number
+	/** Missing rows not on the supersede list, which stay live. */
+	leftLive: number
 	rows: CsvExportReconcileRow[]
+	/** Missing rows on the supersede list: what an apply supersedes, or would. */
 	superseded: number
 	surplusGrants: number
 }
@@ -1356,6 +1359,7 @@ export async function reconcileCsvExportRows(input: ReconcileCsvExportRowsInput)
 	const missing = reported
 		.filter(row => row.verdict === "missing" && supersedeList.has(row.rowId))
 		.map(row => row.rowId)
+	const leftLive = reported.filter(row => row.verdict === "missing" && !supersedeList.has(row.rowId)).length
 	const superseded =
 		input.apply && missing.length > 0
 			? await supersedeLiveCards(missing, "No HCB card grant matches this CSV row. Reconciled against HCB")
@@ -1366,8 +1370,14 @@ export async function reconcileCsvExportRows(input: ReconcileCsvExportRowsInput)
 		fundingWrites,
 		grantsNotCanceled: list.rows.filter(grant => grant.status?.toLowerCase() !== "canceled").length,
 		grantsRead: list.rows.length,
+		leftLive,
 		rows: reported,
-		superseded,
+		superseded: input.apply ? superseded : missing.length,
 		surplusGrants: surplus.length,
 	}
+}
+
+/** Put superseded CSV rows back to live, for projects a later check found paid. Refuses unknown ids. */
+export function restoreCsvExportRows(rowIds: readonly string[], reason: string): Promise<number> {
+	return restoreExportRows(rowIds, reason)
 }

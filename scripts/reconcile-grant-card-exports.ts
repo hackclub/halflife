@@ -1,4 +1,4 @@
-import { reconcileCsvExportRows } from "../src/lib/grant-cards"
+import { reconcileCsvExportRows, restoreCsvExportRows } from "../src/lib/grant-cards"
 
 /**
  * Checks every live CSV import row against the card grants HCB holds, and brings the site in line with HCB.
@@ -21,13 +21,15 @@ const flags = new Map<string, string>()
 for (let i = 0; i < args.length; i++) {
 	const arg = args[i]
 	if (arg === "--apply") continue
-	if (arg !== "--confirm-paid" && arg !== "--supersede") throw new Error(`Unknown argument: ${arg}`)
+	if (arg !== "--confirm-paid" && arg !== "--supersede" && arg !== "--restore")
+		throw new Error(`Unknown argument: ${arg}`)
 	const value = args[i + 1]
 	if (!value) throw new Error(`${arg} needs a comma-separated list of row ids`)
 	flags.set(arg, value)
 	i++
 }
 const apply = args.includes("--apply")
+const restore = flags.get("--restore")
 const list = (flag: string): string[] =>
 	(flags.get(flag) ?? "")
 		.split(",")
@@ -37,6 +39,15 @@ const list = (flag: string): string[] =>
 /** Tabs and newlines would break the one-line-per-row shape. */
 function oneLine(value: string): string {
 	return value.replaceAll(/[\t\r\n]+/g, " ").trim()
+}
+
+if (restore !== undefined) {
+	const restored = await restoreCsvExportRows(
+		list("--restore"),
+		"Found paid on HCB: a manual top-up on the grant, or a reissue",
+	)
+	console.error(`Restored ${restored} superseded row(s) to live`)
+	process.exit(0)
 }
 
 const report = await reconcileCsvExportRows({
@@ -65,8 +76,9 @@ console.error(
 console.error(
 	`HCB listed ${report.grantsRead} card grant(s), ${report.grantsNotCanceled} not canceled (compare the latter with HCB's own count); ${report.surplusGrants} grant(s) match no CSV row`,
 )
+const fundingCount = report.fundingWrites.length
 console.error(
 	apply
-		? `Applied: ${report.superseded} row(s) superseded, ${report.fundingWrites.length} Funding given write(s) attempted`
-		: `Dry run: nothing written. Re-run with --apply to supersede ${count("missing")} row(s) and write ${report.fundingWrites.length} Funding given value(s)`,
+		? `Applied: ${report.superseded} row(s) superseded, ${fundingCount} Funding given write(s) attempted. ${report.leftLive} missing row(s) not on the --supersede list stay live`
+		: `Dry run: nothing written. Would supersede ${report.superseded} row(s) on the --supersede list, and would write ${fundingCount} Funding given value(s). ${report.leftLive} missing row(s) not on the --supersede list would stay live`,
 )
