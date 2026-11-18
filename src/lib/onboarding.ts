@@ -11,15 +11,15 @@ import {
 	stepIndexOf,
 	suggestedTierFor,
 } from "@/lib/config/onboarding"
-import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
+import { DESIGN_WEEKS, scheduledWeekFor, THEMES } from "@/lib/config/program"
 import { isTierId, type TierId } from "@/lib/config/tiers"
-import { type HardwareExperience, PhaseStatus, Theme } from "@/lib/enums"
+import { type HardwareExperience, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import db from "@/lib/prisma8"
-import { getProgramSettings, projectEditLockReason, weekNumberForDate } from "@/lib/program"
+import { getProgramSettings, projectEditLockReason, weekClosesAt, weekNumberForDate } from "@/lib/program"
 import { ensureThemeProject } from "@/lib/provisioning"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
-import { formatDbTimestamp } from "@/lib/time"
+import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
  * The first checkpoint's state machine.
@@ -82,6 +82,10 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 		const settings = await getProgramSettings()
 		theme = themeForCurrentWeek(settings.eventStartDate, settings.programTimezone)
 		project = pickProject(await ensureThemeProject(userId, theme))
+		// A late joiner is onboarded into the theme whose design week is happening now – which, after week five, is a
+		// design week that has already closed. Without a window they could never add the journal entries that prove
+		// the design work, so onboarding provisions one for each of the theme's weeks that has passed.
+		await grantLateJoinerWindows(userId, theme, settings)
 	}
 
 	const reached = clampStep(user.onboardingStep)
@@ -100,6 +104,48 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 		suggestedTier: suggestedTierFor(user.hardwareExperience),
 		theme,
 		trackingDismissed: user.trackingTutorialDismissedAt !== null,
+	}
+}
+
+/**
+ * How long a late joiner gets on a week that had already passed when they were onboarded.
+ *
+ * Two weeks of design then build is the normal shape, so the design week and its build week each get this much from
+ * the moment onboarding runs. It is a floor rather than a policy: an admin can grant more on the user page, and a
+ * later grant is never shortened by this one.
+ */
+export const LATE_ONBOARDING_EXTENSION_DAYS = 14
+
+/**
+ * Reopen each of the onboarding theme's weeks that has already closed, for this person only.
+ *
+ * A participant who signs up after week five is given the theme whose design week is current in the rotation, but
+ * that design week closed weeks ago. Journal entries cannot be added to a passed week, and a Hackatime link is
+ * scoped to its own week, so without this the design hand-in has no hours to clear its tier floor and the build
+ * cannot be submitted while the design is a draft. Writing the extension against the week (not the project) means it
+ * survives the project row being recreated.
+ */
+async function grantLateJoinerWindows(
+	userId: string,
+	theme: Theme,
+	settings: Awaited<ReturnType<typeof getProgramSettings>>,
+): Promise<void> {
+	const now = new Date()
+	const until = new Date(now.getTime() + LATE_ONBOARDING_EXTENSION_DAYS * DAY_MS)
+	for (const phase of [Phase.DESIGN, Phase.BUILD]) {
+		const week = scheduledWeekFor(theme, phase)
+		if (week < 1) continue
+		if (now < weekClosesAt(settings, week)) continue
+		// Never shorten an extension that is already in the future, including one an admin granted by hand.
+		const existing = await db.orm.public.WeekExtension.whereUnique({ userId, week })
+			.select("submissionExtensionUntil")
+			.first()
+		if (existing && parseDbTimestamp(existing.submissionExtensionUntil) > now) continue
+		await db.orm.public.WeekExtension.upsert({
+			conflictOn: { userId, week },
+			create: { submissionExtensionUntil: formatDbTimestamp(until), userId, week },
+			update: { submissionExtensionUntil: formatDbTimestamp(until) },
+		})
 	}
 }
 
