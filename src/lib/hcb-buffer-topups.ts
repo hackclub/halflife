@@ -23,8 +23,9 @@ export const GRANT_RETURN_MEMO_PREFIX = "Returning canceled grant to "
  * The money has left the card, so the card is finished either way. Who cancelled it is HCB's business; the site records that the grant was returned, and that the project has been paid once.
  */
 export function grantReturnedAt(disbursements: readonly GrantDisbursement[]): string | null {
+	// HCB reports the amount unsigned, with the direction only in the memo, so the memo is what tells a return apart.
 	const returned = disbursements.find(
-		d => d.amountCents < 0 && d.memo?.startsWith(GRANT_RETURN_MEMO_PREFIX) && typeof d.createdAt === "string",
+		d => d.memo?.startsWith(GRANT_RETURN_MEMO_PREFIX) && typeof d.createdAt === "string",
 	)
 	return returned?.createdAt ?? null
 }
