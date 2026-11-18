@@ -2,7 +2,7 @@ import { after } from "next/server"
 import { ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { Role } from "@/lib/enums"
-import { withRole } from "@/lib/guards"
+import { withWriteRole } from "@/lib/guards"
 import { getOnboardingState, resetOnboarding } from "@/lib/onboarding"
 import { toOnboardingView } from "@/lib/onboarding-view"
 
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic"
  *
  * Their own onboarding only, never someone else's: this is for checking the flow, and there is no id to pass. Admin-only because the setup answers are otherwise taken once, and a participant resetting theirs could re-roll a starter project's tier lock.
  */
-export const POST = withRole(Role.ADMIN, async (_req: Request, { gate }) => {
+export const POST = withWriteRole(Role.ADMIN, async (_req: Request, { gate }) => {
 	await resetOnboarding(gate.user.id)
 
 	after(() =>
