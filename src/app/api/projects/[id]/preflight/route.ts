@@ -1,7 +1,23 @@
 import { fail, ok } from "@/lib/api"
 import { type AuthedContext, withSession } from "@/lib/guards"
+import { identityNeeded } from "@/lib/identity-reminder-needed"
 import db from "@/lib/prisma8"
-import { checkRepo } from "@/lib/repo-checks"
+import { checkRepo, type RepoCheck } from "@/lib/repo-checks"
+
+/** Where a maker goes to verify their identity with Hack Club. */
+const VERIFY_URL = "https://auth.hackclub.com"
+
+/**
+ * The identity row the sheet shows when the maker has not cleared Hack Club Auth's check. It is a warning and never blocks: the hand-in goes ahead, and only grants and shop orders wait on the check.
+ */
+const IDENTITY_CHECK: RepoCheck = {
+	detail:
+		"You can still hand this in. Grants and shop orders wait until Hack Club Auth has verified you, which can take a while.",
+	key: "identity",
+	label: "Identity not verified yet",
+	link: { href: VERIFY_URL, label: "Verify with Hack Club" },
+	status: "warn",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -28,5 +44,7 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 		artifactLinks: project.artifactLinks,
 		description: project.description,
 	})
-	return ok(checks)
+	// Appended after the repo checks, so `canSubmit` is the repo's answer alone: an identity warning never stops a hand-in.
+	const identity = (await identityNeeded(gate.user.id)) ? [IDENTITY_CHECK] : []
+	return ok({ ...checks, checks: [...checks.checks, ...identity] })
 })

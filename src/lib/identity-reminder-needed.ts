@@ -14,9 +14,26 @@ export const IDENTITY_RECHECK_MS = 2 * 60_000
 const lastAnswer = new Map<string, { at: number; needed: boolean }>()
 
 /**
+ * Whether the caller has not cleared Hack Club Auth's identity check, asked through the short cache above.
+ *
+ * `isIdentityVerified` only calls HCA when the stored status is not yes, so a verified maker costs nothing here. The answer is cached per person, so a page that asks on every view does not ask HCA on every view.
+ */
+export async function identityNeeded(userId: string): Promise<boolean> {
+	const now = Date.now()
+	const cached = lastAnswer.get(userId)
+	if (cached && now - cached.at < IDENTITY_RECHECK_MS) return cached.needed
+
+	const needed = !(await isIdentityVerified(userId))
+	// Bounded rather than unbounded: an old entry is no worse than a miss.
+	if (lastAnswer.size > 10_000) lastAnswer.clear()
+	lastAnswer.set(userId, { at: now, needed })
+	return needed
+}
+
+/**
  * Whether the caller has approved work and has not cleared Hack Club Auth's identity check.
  *
- * Approved work is the case the reminder is for: an approved design is what the grant waits on, and grants and shop orders are refused until the check passes. Makers without an approved design are not asked at all, so the check costs nothing for them. HCA is asked only when the stored status is not yes, which `isIdentityVerified` already handles.
+ * Approved work is the case the reminder is for: an approved design is what the grant waits on, and grants and shop orders are refused until the check passes. Makers without an approved design are not asked at all, so the check costs nothing for them.
  */
 export async function identityReminderNeeded(userId: string): Promise<boolean> {
 	const approved = await db.orm.public.ThemeProject.where({
@@ -27,14 +44,5 @@ export async function identityReminderNeeded(userId: string): Promise<boolean> {
 		.select("id")
 		.first()
 	if (!approved) return false
-
-	const now = Date.now()
-	const cached = lastAnswer.get(userId)
-	if (cached && now - cached.at < IDENTITY_RECHECK_MS) return cached.needed
-
-	const needed = !(await isIdentityVerified(userId))
-	// Bounded rather than unbounded: only approved makers reach this, and an old entry is no worse than a miss.
-	if (lastAnswer.size > 10_000) lastAnswer.clear()
-	lastAnswer.set(userId, { at: now, needed })
-	return needed
+	return identityNeeded(userId)
 }
