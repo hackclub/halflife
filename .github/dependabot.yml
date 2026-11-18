@@ -1,0 +1,25 @@
+version: 2
+
+updates:
+    # The workflows pin every action to a commit SHA with a trailing version comment. Dependabot moves the pin and the comment together, so a bump arrives as ordinary reviewable YAML rather than a floating tag that changes underneath a green build.
+    # One PR for the whole set: the actions are only bumped together in practice, and a single run tests them all against the same commit.
+    - package-ecosystem: github-actions
+      directory: "/"
+      schedule:
+          interval: daily
+      groups:
+          github-actions:
+              patterns: ["*"]
+      open-pull-requests-limit: 3
+
+    # Dependabot reads `bun.lock` and `packageManager`, keeping the runtime the workflows install in step with the lockfile.
+    # Minor and patch bumps are grouped: they land as one PR that CI verifies in a single run. Majors stay separate so each arrives with its own diff and migration notes to read.
+    - package-ecosystem: bun
+      directory: "/"
+      schedule:
+          interval: daily
+      groups:
+          bun-minor-patch:
+              patterns: ["*"]
+              update-types: ["minor", "patch"]
+      open-pull-requests-limit: 5

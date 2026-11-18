@@ -18,6 +18,7 @@ import {
 	IconPlay,
 	IconTrophy,
 } from "@/components/platform/icons"
+import { AddressReminder } from "@/components/platform/modals/AddressReminder"
 import { GoalModal } from "@/components/platform/modals/GoalModal"
 import { Overlays } from "@/components/platform/onboarding/Overlays"
 import { EventScheduleButton } from "@/components/platform/shell/EventScheduleButton"
@@ -337,6 +338,7 @@ export function AppShell({
 				</ul>
 			</nav>
 
+			<AddressReminder blocked={goalOpen || onDoomscroller} />
 			<Overlays />
 			<GoalModal onClose={() => setGoalOpen(false)} open={goalOpen} />
 		</>

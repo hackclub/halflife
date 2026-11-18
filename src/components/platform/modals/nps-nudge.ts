@@ -1,7 +1,7 @@
 /**
- * Whether the NPS follow-up is on screen, so the sticker promotion can get out of its way.
+ * Whether the NPS prompt owns the screen: one of its steps is up, or it is still deciding whether to show.
  *
- * The banner lives in the app shell and the follow-up lives on the dashboard page, so a module-level flag with subscribers is how the two meet – the same shape as the promo's own mode store.
+ * Two readers depend on this. The sticker promotion stands down rather than sitting under a blocking dialog, and the address reminder waits for the prompt to finish so the two never open at once. The banner lives in the app shell and the prompt lives on the dashboard page, so a module-level flag with subscribers is how they meet – the same shape as the promo's own mode store.
  */
 let nudgeActive = false
 

@@ -101,7 +101,7 @@
 		"dxf-viewer": "1.0.49",
 		"fzstd": "0.1.1",
 		"highlight.js": "11.12.0",
-		"isomorphic-dompurify": "^4.7.0",
+		"isomorphic-dompurify": "^4.8.0",
 		"kysely": "^0.29.9",
 		"libarchive-wasm": "1.2.0",
 		"marked": "18.1.1",
