@@ -61,8 +61,14 @@ export interface DirectoryUser {
 	verificationStatus: string | null
 }
 
+/**
+ * The directory's account-state filters. Each names one thing an admin goes looking for: an account that needs a decision, not one of every kind at once.
+ */
+export const USER_STATES = ["all", "flagged", "banned", "suspended", "unverified"] as const
+export type UserState = (typeof USER_STATES)[number]
+
 export async function listUsers(
-	opts: { q?: string; cursor?: string; limit: number },
+	opts: { q?: string; state?: UserState; cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
@@ -70,7 +76,7 @@ export async function listUsers(
 	// Without PII the search box matches names only. Matching an address or a Slack id would turn the directory into a registration oracle: anybody holding VIEW_USERS could confirm whether a given person has an account here.
 	const term = opts.q
 	const pattern = term === undefined ? null : containsPattern(term)
-	const filtered =
+	const searched =
 		pattern === null
 			? ordered
 			: ordered.where(user =>
@@ -81,6 +87,18 @@ export async function listUsers(
 						...(includePii ? [user.email.ilike(pattern), user.slackId.ilike(pattern)] : []),
 					),
 				)
+	const state = opts.state ?? "all"
+	const now = new Date()
+	const filtered =
+		state === "flagged"
+			? searched.where(user => user.fraudFlagged.eq(true))
+			: state === "banned"
+				? searched.where(user => user.bannedAt.isNotNull())
+				: state === "suspended"
+					? searched.where(user => user.suspendedUntil.gt(formatDbTimestamp(now)))
+					: state === "unverified"
+						? searched.where(user => or(user.verificationStatus.isNull(), user.verificationStatus.neq("verified")))
+						: searched
 	const position = readCursor(opts.cursor)
 	// The directory is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
 	const paged =

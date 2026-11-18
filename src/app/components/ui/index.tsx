@@ -75,8 +75,18 @@ export function PageHeader({
 	title,
 	subtitle,
 	actions,
-}: Readonly<{ title: string; subtitle?: ReactNode; actions?: ReactNode }>) {
-	return <HangingSign actions={actions} subtitle={subtitle} surface="console" title={title} />
+	compact = false,
+}: Readonly<{ title: string; subtitle?: ReactNode; actions?: ReactNode; compact?: boolean }>) {
+	if (!compact) return <HangingSign actions={actions} subtitle={subtitle} surface="console" title={title} />
+	return (
+		<header className="hl-page-head">
+			<div>
+				<h1 className="hl-page-title">{title}</h1>
+				{isTruthy(subtitle) ? <div className="hl-muted hl-page-sub">{subtitle}</div> : null}
+			</div>
+			{isTruthy(actions) ? <div className="hl-page-head-actions">{actions}</div> : null}
+		</header>
+	)
 }
 
 type BadgeTone = "success" | "warning" | "danger" | "muted" | "access"
