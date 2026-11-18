@@ -640,6 +640,9 @@ export async function checkRepo(
 		)
 	}
 
+	// A BOM.md is the parts list under its old name. The platform reads the CSV, so the one change is the file's name, and the message says so rather than leaving the maker to guess.
+	const bomMarkdown = snap.paths.some(path => /(^|\/)bom\.md$/.test(path))
+
 	for (const kind of required) {
 		const found = matches(kind, snap, designs)
 		const def = REPO_FILE_KINDS[kind]
@@ -655,7 +658,16 @@ export async function checkRepo(
 							label: `${def.label} not found`,
 							status: "warn",
 						}
-					: { blocking: true, detail: def.missing, key: kind, label: `${def.label} missing`, status: "fail" },
+					: {
+							blocking: true,
+							detail:
+								kind === "bom" && bomMarkdown
+									? "Found a BOM.md file. Rename it to BOM.csv – the same parts list, saved as CSV. The table in the README can stay."
+									: def.missing,
+							key: kind,
+							label: `${def.label} missing`,
+							status: "fail",
+						},
 		)
 	}
 	for (const kind of recommended) {
