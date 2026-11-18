@@ -75,12 +75,23 @@ export function canSubmitPhase(
 		return { code: "SUBMISSION_LIMIT", message: SUBMISSION_LIMIT_MESSAGE, ok: false }
 
 	// A warm-up project is one phase by nature – it was handed in through the pre-season form, not designed and then built – so the design-first rule does not apply to it.
-	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft)
-		return {
-			code: "PHASE_LOCKED",
-			message: "Submit this project's design before submitting the build",
-			ok: false,
-		}
+	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP) {
+		if (project.designStatus === PhaseStatus.draft)
+			return {
+				code: "PHASE_LOCKED",
+				message: "Submit this project's design before submitting the build",
+				ok: false,
+			}
+		// A rejected design can never be approved, and the build approval requires an approved design, so a build handed
+		// in behind one would sit in the queue forever. Refuse it and name the way out.
+		if (project.designStatus === PhaseStatus.rejected)
+			return {
+				code: "PHASE_LOCKED",
+				message:
+					"This project's design was rejected, so the build cannot be submitted. Ask an admin to reopen the design.",
+				ok: false,
+			}
+	}
 
 	return { ok: true }
 }

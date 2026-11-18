@@ -1,7 +1,8 @@
-import { ok, parseBody } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { sendGrant } from "@/lib/grants"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
+import db from "@/lib/prisma8"
 import { grantSchema } from "@/lib/schemas/admin"
 
 interface Params {
@@ -22,6 +23,10 @@ export const POST = withWritePermission(
 
 		const parsed = await parseBody(req, grantSchema)
 		if (parsed.error) return parsed.error
+
+		const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id }).select("userId").first()
+		if (!project) return fail("NOT_FOUND", "Project not found")
+		if (project.userId === gate.user.id) return fail("FORBIDDEN", "You cannot send a grant to your own project")
 
 		const result = await sendGrant({
 			adminEmail: gate.user.email,

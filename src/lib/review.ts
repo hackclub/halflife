@@ -603,6 +603,28 @@ export async function unapprovePhase(
 					"CONFLICT",
 					"A card grant has already been issued for this design. Cancel it on the Grant cards page before un-approving",
 				)
+
+			// A sent top-up is money that has moved, and a live CSV row is a card the org may already have created from
+			// the file. Either would leave the maker funded for a design that no longer stands.
+			const paidTopUp = await tx.orm.public.HcbGrantTopUp.where({ phase: Phase.DESIGN, themeProjectId })
+				.where(topUp => topUp.sentAt.isNotNull())
+				.select("id")
+				.first()
+			if (paidTopUp)
+				throw new HttpError(
+					"CONFLICT",
+					"A top-up has already been sent for this design. Un-approving it would leave the maker paid for work that no longer stands",
+				)
+
+			const liveExport = await tx.orm.public.HcbCardGrantExportRow.where({ themeProjectId })
+				.where(row => row.supersededAt.isNull())
+				.select("id")
+				.first()
+			if (liveExport)
+				throw new HttpError(
+					"CONFLICT",
+					"This design is in a live HCB CSV export. Supersede that row on the Grant cards page before un-approving",
+				)
 		}
 
 		await tx.orm.public.SubmissionReview.where({ invalidated: false })

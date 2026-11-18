@@ -28,6 +28,7 @@ export const PATCH = withWritePermission(
 		const before = await db.orm.public.ThemeProject.where({ deletedAt: null, id })
 			.select(
 				"designStatus",
+				"grantEmittedAt",
 				"requestedTier",
 				"starterProjectId",
 				"submissionExtensionUntil",
@@ -69,6 +70,14 @@ export const PATCH = withWritePermission(
 		const target = { designStatus: before.designStatus, requestedTier: before.requestedTier, tier: before.tier }
 		const starter = parsed.data.starterProjectId
 		if (starter !== undefined && starter !== before.starterProjectId) {
+			// A starter is paid at the starter cap rather than the approved grant, so changing it after the design was
+			// funded could raise the card above what the reviewer approved. The grant is rewritten by the review, not
+			// by this route.
+			if (before.grantEmittedAt)
+				return fail(
+					"CONFLICT",
+					"The design has already been funded, so its starter can no longer change what the card pays",
+				)
 			const problem = starterProblem({ ...target, theme: data.theme ?? before.theme }, starter)
 			if (problem) return fail("VALIDATION_FAILED", problem)
 			data.starterProjectId = starter

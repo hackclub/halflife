@@ -6,6 +6,7 @@ import { ENTRY_TIER, getTier, projectTierId } from "@/lib/config/tiers"
 import { Phase, PhaseStatus } from "@/lib/enums"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
+import { isPhaseDecided } from "@/lib/program"
 import { withFields } from "@/lib/rows"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import type { BomItemInput } from "@/lib/schemas/project"
@@ -50,12 +51,15 @@ export async function listBom(themeProjectId: string): Promise<BomLine[]> {
 /**
  * Why the list cannot change right now, or null when it can.
  *
- * In review for the same reason the project itself is: editing what a reviewer is reading changes the thing being decided halfway through. And final once the design is approved, because that approval is what paid the tier out against this list.
+ * In review for the same reason the project itself is: editing what a reviewer is reading changes the thing being decided halfway through. And final once the design is decided, approved or rejected, because that decision is what the tier and any grant were paid against.
  */
 export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus: PhaseStatus }): string | null {
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return "A phase is in review, so unsubmit before editing"
-	if (project.designStatus === PhaseStatus.approved) return "The design week is approved, so the parts list is final"
+	// Decided, not just approved: a rejected design is the record its decision was made against, and its parts list is
+	// what any later re-approval would pay.
+	if (isPhaseDecided(project.designStatus)) return "The design week is decided, so the parts list is final"
+	if (isPhaseDecided(project.buildStatus)) return "The build week is decided, so the parts list is final"
 	return null
 }
 

@@ -1,4 +1,4 @@
-import { ok, parseBody } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
@@ -25,6 +25,7 @@ export const POST = withWritePermission(
 		const { phase, reason } = parsed.data
 
 		const { userId } = await withdrawFromReview(id, phase)
+		if (userId === gate.user.id) return fail("FORBIDDEN", "You cannot unsubmit your own project")
 
 		await logAudit({
 			action: AuditAction.ADMIN_UNSUBMIT_PHASE,

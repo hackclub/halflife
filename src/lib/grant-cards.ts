@@ -484,7 +484,7 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 
 	const { ip, userAgent } = await requestInfo()
 	// A starter's Funding given is written before its row can reach the CSV. If that write fails, nothing is exported.
-	const writtenStarterRows = await writeStarterFunding(current.eligible)
+	const { previous: previousStarterFunding, written: writtenStarterRows } = await writeStarterFunding(current.eligible)
 	const result = await db
 		.transaction(async tx => {
 			// The same lock every other issuer takes: a batch creating a card while this export is being written
@@ -535,7 +535,7 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 			return { batchId: batch.id, eligible: txPreview.eligible, totalCents: txPreview.totalCents }
 		})
 		.catch(async err => {
-			await revertStarterFunding(writtenStarterRows.keys())
+			await revertStarterFunding(previousStarterFunding, writtenStarterRows.keys())
 			throw err
 		})
 
@@ -575,9 +575,15 @@ export async function listGrantCardExports(limit: number): Promise<GrantCardExpo
 	}))
 }
 
-/** Rebuild the file a generated export held, or null if there is no such export. */
+/**
+ * Rebuild the file a generated export held, or null if there is no such export.
+ *
+ * Superseded rows are left out. Their project was paid another way (or the card was cancelled), so re-downloading an
+ * old file and uploading it again would create a second card for a project that has already been paid.
+ */
 export async function grantCardExportCsv(batchId: string): Promise<{ csv: string; filename: string } | null> {
 	const rows = await db.orm.public.HcbCardGrantExportRow.where({ batchId })
+		.where(row => row.supersededAt.isNull())
 		.include("themeProject", project => project.select("title"))
 		// The batch inserted its rows in one transaction, so createdAt ties; id keeps the order stable.
 		.orderBy([row => row.createdAt.asc(), row => row.id.asc()])
@@ -649,13 +655,19 @@ async function auditIssue(
 }
 
 /**
- * Writes `Funding given` for each Week 1 starter in a card export, before its row can reach the CSV. Returns the rows written, so they can be undone if the export does not go ahead.
+ * Writes `Funding given` for each Week 1 starter in a card export, before its row can reach the CSV. Returns the rows written and their previous values, so an export that does not go ahead can put Airtable back exactly as it was.
  *
- * Throws, naming the starter, when one cannot be written. Writes already made are undone first, so a failed export leaves Airtable as it was.
+ * Throws, naming the starter, when one cannot be written. Writes already made are undone first, and the previous values are restored rather than zeroed: another export may have paid a figure that a failure here must not erase.
  */
-async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<Map<string, number>> {
+async function writeStarterFunding(
+	eligible: GrantCardProjectRow[],
+): Promise<{ previous: Map<string, number>; written: Map<string, number> }> {
 	const starters = eligible.filter(row => row.weekOneStarter)
 	const recordIds = await starterRecordIds(starters.map(row => row.projectId))
+	const before =
+		recordIds.size === 0 ? new Map<string, number>() : await readStarterFundingGiven([...new Set(recordIds.values())])
+	if (before === null)
+		throw new HttpError("INTERNAL", "Funding given could not be read from Airtable, so nothing was exported")
 	const written = new Map<string, number>()
 	for (const row of starters) {
 		const recordId = recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
@@ -663,7 +675,7 @@ async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<Map
 			? await setStarterFundingGiven(recordId, row.amountCents / 100)
 			: "No Airtable row is linked to this project"
 		if (failure !== null) {
-			await revertStarterFunding(written.keys())
+			await revertStarterFunding(before, written.keys())
 			throw new HttpError(
 				"INTERNAL",
 				`Funding given could not be written for ${row.title || row.projectId}, so nothing was exported: ${failure}`,
@@ -671,13 +683,13 @@ async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<Map
 		}
 		if (recordId) written.set(recordId, row.amountCents / 100)
 	}
-	return written
+	return { previous: before, written }
 }
 
-/** Undoes `Funding given` writes made for an export that did not go ahead, setting them back to zero. */
-async function revertStarterFunding(recordIds: Iterable<string>): Promise<void> {
+/** Undoes `Funding given` writes made for an export that did not go ahead, restoring each row's own previous figure. */
+async function revertStarterFunding(previous: ReadonlyMap<string, number>, recordIds: Iterable<string>): Promise<void> {
 	for (const recordId of recordIds) {
-		const failure = await setStarterFundingGiven(recordId, 0)
+		const failure = await setStarterFundingGiven(recordId, previous.get(recordId) ?? 0)
 		if (failure !== null) console.error("[grant-cards] could not revert Funding given", recordId, failure)
 	}
 }
