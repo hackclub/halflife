@@ -1515,6 +1515,33 @@ export async function reconcileCsvExportRows(input: ReconcileCsvExportRowsInput)
 }
 
 /** Put superseded CSV rows back to live, for projects a later check found paid. Refuses unknown ids. */
-export function restoreCsvExportRows(rowIds: readonly string[], reason: string): Promise<number> {
-	return restoreExportRows(rowIds, reason)
+export async function restoreCsvExportRows(rowIds: readonly string[], reason: string): Promise<number> {
+	if (rowIds.length === 0) return 0
+	const superseded = (
+		await db.orm.public.HcbCardGrantExportRow.where({}).select("id", "themeProjectId", "supersededAt").all()
+	).filter(row => rowIds.includes(row.id) && row.supersededAt !== null)
+	// A project that already has a live card, or one the maker returned, has been dealt with. Restoring its row would offer it to the next wave, which is how a returned card gets paid a second time.
+	const paidCards = await db.orm.public.HcbGrantCard.where({})
+		.where(card =>
+			card.status.in([
+				HcbGrantCardStatus.PENDING,
+				HcbGrantCardStatus.ISSUED,
+				HcbGrantCardStatus.AMBIGUOUS,
+				HcbGrantCardStatus.RETURNED,
+			]),
+		)
+		.where(card => card.supersededAt.isNull())
+		.select("status", "themeProjectId")
+		.all()
+	const paidProjects = new Set(paidCards.map(card => card.themeProjectId))
+	const blocked = superseded.filter(row => paidProjects.has(row.themeProjectId))
+	if (blocked.length > 0)
+		throw new HttpError(
+			"CONFLICT",
+			`${blocked.length} row(s) belong to a project that already has a card grant; reissuing one is a decision to make on HCB, not a restore`,
+		)
+	return restoreExportRows(
+		superseded.map(row => row.id),
+		reason,
+	)
 }
