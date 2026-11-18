@@ -109,7 +109,7 @@ export function AddressReminder({ blocked = false }: { blocked?: boolean }) {
 			footer={
 				<>
 					<p className="hand hidden min-w-0 flex-1 text-[0.78rem] text-navy-soft sm:block">
-						We&apos;ll ask again shortly if it's still not set.
+						We&apos;ll ask again shortly if it&apos;s still not set.
 					</p>
 					<Button onClick={snooze} variant="ghost">
 						Remind me later
