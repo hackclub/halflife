@@ -1239,7 +1239,9 @@ export interface CsvExportFundingWrite {
 export interface CsvExportReconcileReport {
 	applied: boolean
 	fundingWrites: CsvExportFundingWrite[]
-	/** How many card grants HCB listed. A count far below what HCB shows means the list was cut short, and its missing verdicts cannot be trusted. */
+	/** How many of those are not canceled. This is the figure to compare with HCB's own card grant count, which leaves cancelled grants out. */
+	grantsNotCanceled: number
+	/** How many card grants HCB listed, canceled ones included. */
 	grantsRead: number
 	rows: CsvExportReconcileRow[]
 	superseded: number
@@ -1341,6 +1343,7 @@ export async function reconcileCsvExportRows(input: { apply: boolean }): Promise
 	return {
 		applied: input.apply,
 		fundingWrites,
+		grantsNotCanceled: list.rows.filter(grant => grant.status?.toLowerCase() !== "canceled").length,
 		grantsRead: list.rows.length,
 		rows: reported,
 		superseded,
