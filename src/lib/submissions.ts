@@ -31,6 +31,7 @@ import { assertNoOwedReel } from "@/lib/reel-gate"
 import { checkRepo } from "@/lib/repo-checks"
 import { RESUBMISSION_LIMIT, SUBMISSION_LIMIT_MESSAGE, submissionBudget } from "@/lib/resubmissions"
 import { parseDbTimestamp } from "@/lib/time"
+import { requireConfirmedUploads } from "@/lib/uploads/confirmed"
 import { isOwnedKey } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
@@ -171,6 +172,10 @@ export async function submitPhase(
 	// A submission must not be able to file someone else's evidence as its own. Refuse rather than filter: silently dropping a stranger's key hands back a success with the evidence missing, which the maker only finds out at review.
 	const foreign = attachmentKeys.filter(key => !isOwnedKey(userId, key))
 	if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
+
+	// And the object behind the key has to be a checked upload, not a name: the confirmation record is what an upload
+	// leaves behind after its bytes, size and type were verified.
+	await requireConfirmedUploads(userId, attachmentKeys, ["sessions", "covers"])
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
 	// Counted in hours rather than in entries: a HACKATIME_TRACKED entry is a journal entry that claims no time of its own, so counting entries would let a phase be handed in with no countable work at all.

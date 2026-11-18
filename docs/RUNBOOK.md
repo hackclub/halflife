@@ -58,7 +58,14 @@ Half-Life deploys to **Orchard**, org **YSWS** (`ysws`). Not Vercel, not Coolify
 
    Add it under R2 → the bucket → Settings → CORS Policy, with the production origin (not a wildcard – an empty response to the preflight is what a browser reports as a failed upload). `bun run verify:uploads` preflights a presigned URL from `NEXT_PUBLIC_APP_URL` and says so if the rule is missing or names another origin.
 
-6. **Deploy.**
+   **The public asset domain needs two headers and a rule, because a presigned PUT cannot bound its own body.** Bun signs the host and expiry, not `Content-Type` or `Content-Length`, so anyone with a URL can PUT an arbitrarily large `text/html` object and never call `/confirm`; nothing in the app deletes an unconfirmed object, because the app cannot tell an abandoned upload from one whose row is still being written. On the asset domain:
+   - send `X-Content-Type-Options: nosniff`, so a stored `text/html` cannot be sniffed into something else;
+   - send `Content-Disposition: attachment` for any response that is not an image or a video, so an object the server never checked opens as a download rather than as a page under Hack Club's origin;
+   - add an R2 lifecycle rule that expires objects under the upload prefixes (or simply objects older than a day that the app never confirmed) so an abandoned upload does not live forever. The app records every confirmed key in `uploaded_object`; anything absent from that table is not referenced by a post, journal, cover or submission.
+
+   Without the headers, a participant can host attacker-authored HTML at an unguessable URL on that host, under Hack Club branding. If the host is a `*.hackclub.com` subdomain, script there can read non-HttpOnly `.hackclub.com` cookies; the app itself is not writable from it, because every write refuses cross-site requests (`src/lib/guards.ts`).
+
+ 6. **Deploy.**
 
    ```text
    deploy_from_github  projectId: <id>, name: half-life-web,

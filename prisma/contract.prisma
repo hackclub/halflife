@@ -92,6 +92,7 @@ namespace public {
     syncRunLogs                 SyncRunLog[]
     themeProjects               ThemeProject[]
     uploadHandoffs              UploadHandoff[]
+    uploadedObjects             UploadedObject[]
     shopRegion                  ShopRegion?                  @relation(fields: [shopRegionId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
     reportsAgainst              ContentReport[]              @relation(name: "ContentReport_targetUser")
     reportsMade                 ContentReport[]              @relation(name: "ContentReport_reporter")
@@ -1035,6 +1036,25 @@ namespace public {
     @@index([userId, createdAt], map: "upload_handoff_userId_createdAt_idx")
     @@index([expiresAt], map: "upload_handoff_expiresAt_idx")
     @@map("upload_handoff")
+  }
+
+  /// One direct-to-bucket object the server has checked. A key is not evidence of an upload: without this row a
+  /// client can name any key it likes, so every write that accepts a key requires the matching record and takes the
+  /// size and type from it rather than from the request.
+  model UploadedObject {
+    id          String             @id @onCreate(cuid(2))
+    objectKey   String
+    userId      String
+    folder      String
+    contentType String
+    byteSize    Int
+    contentHash String?
+    confirmedAt TimestampString(3) @default(now())
+    user        User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([objectKey], map: "uploaded_object_objectKey_key", unique: true)
+    @@index([userId, folder], map: "uploaded_object_user_folder_idx")
+    @@map("uploaded_object")
   }
 
   model UserDay {

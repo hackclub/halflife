@@ -1,10 +1,12 @@
 import { fail, ok, parseUploadForm, rateLimitedInMemory } from "@/lib/api"
 import { withWriteSession } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
+import { recordConfirmedUpload } from "@/lib/uploads/confirmed"
 import {
 	buildObjectKey,
 	contentHash,
 	isUploadConfigured,
+	isUploadFolder,
 	isVideoBytes,
 	MAX_UPLOAD_BYTES,
 	publicUrlFor,
@@ -15,8 +17,6 @@ import { sniffImage } from "@/lib/uploads/remote"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
-
-const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts", "shop"])
 
 export const POST = withWriteSession(async (req: Request, { gate }) => {
 	if (rateLimitedInMemory(`upload:${gate.user.id}`))
@@ -30,7 +30,7 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 	if (!(file instanceof File)) return fail("INVALID_BODY", "Expected a `file` field")
 
 	const folderRaw = parsed.data.get("folder")
-	const folder = typeof folderRaw === "string" && ALLOWED_FOLDERS.has(folderRaw) ? folderRaw : "sessions"
+	const folder = typeof folderRaw === "string" && isUploadFolder(folderRaw) ? folderRaw : "sessions"
 
 	// Shop pictures are the catalogue's, so only someone who runs the shop puts them there – and only pictures.
 	if (folder === "shop") {
@@ -64,6 +64,15 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 	const name = contentType.startsWith("image/") ? contentHash(bytes) : undefined
 	const key = buildObjectKey(gate.user.id, folder, ext, name)
 	await putObject(key, bytes, contentType)
+
+	await recordConfirmedUpload({
+		byteSize: bytes.length,
+		contentHash: name ?? null,
+		contentType,
+		folder,
+		objectKey: key,
+		userId: gate.user.id,
+	})
 
 	return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
 })

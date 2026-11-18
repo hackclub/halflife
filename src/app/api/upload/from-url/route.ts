@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { fail, ok, parseBody, rateLimitedInMemory, reserveUploadMemory } from "@/lib/api"
 import { withWriteSession } from "@/lib/guards"
+import { recordConfirmedUpload } from "@/lib/uploads/confirmed"
 import {
 	buildObjectKey,
 	contentHash,
@@ -36,6 +37,15 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 		const image = await fetchRemoteImage(parsed.data.url, MAX_UPLOAD_BYTES)
 		const key = buildObjectKey(gate.user.id, "sessions", image.ext, contentHash(image.bytes))
 		await putObject(key, image.bytes, image.contentType)
+
+		await recordConfirmedUpload({
+			byteSize: image.bytes.length,
+			contentHash: contentHash(image.bytes),
+			contentType: image.contentType,
+			folder: "sessions",
+			objectKey: key,
+			userId: gate.user.id,
+		})
 
 		return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
 	} finally {
