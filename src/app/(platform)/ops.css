@@ -563,11 +563,11 @@
 		padding: 0.7rem 1rem;
 		font: inherit;
 		font-weight: 700;
-		text-align: left;
 		color: var(--color-ink-strong);
+		text-align: left;
+		cursor: pointer;
 		background: transparent;
 		border: 0;
-		cursor: pointer;
 	}
 	@media (min-width: 761px) {
 		.hl-admin-menu-toggle {

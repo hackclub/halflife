@@ -65,22 +65,26 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 			</div>
 
 			<Panel>
-				<TableToolbar count={`${fmtInt(count)} matched`}>
+				<TableToolbar>
 					<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-						<TextInput
-							defaultValue={q ?? ""}
-							name="q"
-							placeholder={includePii ? "Search by name or email" : "Search by name"}
-							style={{ maxWidth: "20rem" }}
-						/>
-						<Select defaultValue={kind ?? ""} name="kind" style={{ maxWidth: "14rem" }}>
-							<option value="">Any kind</option>
-							{Object.values(LedgerKind).map(value => (
-								<option key={value} value={value}>
-									{ledgerKindLabel(value)}
-								</option>
-							))}
-						</Select>
+						<Field label="Participant">
+							<TextInput
+								defaultValue={q ?? ""}
+								name="q"
+								placeholder={includePii ? "Search by name or email" : "Search by name"}
+								style={{ maxWidth: "20rem" }}
+							/>
+						</Field>
+						<Field label="Kind">
+							<Select defaultValue={kind ?? ""} name="kind" style={{ maxWidth: "14rem" }}>
+								<option value="">Any kind</option>
+								{Object.values(LedgerKind).map(value => (
+									<option key={value} value={value}>
+										{ledgerKindLabel(value)}
+									</option>
+								))}
+							</Select>
+						</Field>
 						<Field label="From">
 							<TextInput defaultValue={from ?? ""} name="from" type="date" />
 						</Field>

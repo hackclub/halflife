@@ -90,23 +90,27 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 						<Field label="Placed to">
 							<TextInput defaultValue={search.to ?? ""} name="to" type="date" />
 						</Field>
-						<Select defaultValue={filters.method ?? ""} name="method" style={{ maxWidth: "14rem" }}>
-							<option value="">Any method</option>
-							<option value="NONE">Method not chosen</option>
-							{Object.entries(METHOD_LABELS).map(([value, label]) => (
-								<option key={value} value={value}>
-									{label}
-								</option>
-							))}
-						</Select>
-						<Select defaultValue={filters.stage ?? ""} name="stage" style={{ maxWidth: "14rem" }}>
-							<option value="">Any stage</option>
-							{Object.entries(STAGE_LABELS).map(([value, label]) => (
-								<option key={value} value={value}>
-									{label}
-								</option>
-							))}
-						</Select>
+						<Field label="Method">
+							<Select defaultValue={filters.method ?? ""} name="method">
+								<option value="">Any method</option>
+								<option value="NONE">Method not chosen</option>
+								{Object.entries(METHOD_LABELS).map(([value, label]) => (
+									<option key={value} value={value}>
+										{label}
+									</option>
+								))}
+							</Select>
+						</Field>
+						<Field label="Stage">
+							<Select defaultValue={filters.stage ?? ""} name="stage">
+								<option value="">Any stage</option>
+								{Object.entries(STAGE_LABELS).map(([value, label]) => (
+									<option key={value} value={value}>
+										{label}
+									</option>
+								))}
+							</Select>
+						</Field>
 					</div>
 					<div className="hl-filters__footer">
 						<Link className="hl-hint" href="/admin/fulfillment">
