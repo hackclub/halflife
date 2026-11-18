@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { Button, Callout, Field, Modal, TextArea } from "@/app/components/ui"
+import { useConfirm } from "@/app/components/ui/useConfirm"
 import { sendJson, useAction } from "@/lib/use-action"
 
 /**
@@ -31,6 +32,7 @@ export function ActionButton({
 	reasonPrompt?: string
 }>) {
 	const { busy, error, run } = useAction()
+	const { confirm: askConfirm, dialog: confirmDialog } = useConfirm()
 	const [asking, setAsking] = useState(false)
 	const [reason, setReason] = useState("")
 
@@ -42,8 +44,21 @@ export function ActionButton({
 		)
 	}
 
-	function submit() {
-		if (confirm && !window.confirm(confirm)) return
+	async function submit() {
+		if (!confirm) {
+			afterConfirm()
+			return
+		}
+		const result = await askConfirm({
+			confirmLabel: label,
+			message: confirm,
+			title: label,
+			tone: variant === "danger" ? "danger" : "default",
+		})
+		if (result !== null) afterConfirm()
+	}
+
+	function afterConfirm() {
 		if (reasonPrompt) {
 			setReason("")
 			setAsking(true)
@@ -64,10 +79,11 @@ export function ActionButton({
 
 	return (
 		<span className="hl-stack hl-stack--tight">
-			<Button disabled={busy !== null || disabled} onClick={submit} variant={variant}>
+			<Button disabled={busy !== null || disabled} onClick={() => void submit()} variant={variant}>
 				{busy ? (pendingLabel ?? "Working…") : label}
 			</Button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
+			{confirmDialog}
 			{asking && reasonPrompt ? (
 				<Modal onClose={() => setAsking(false)} open title={reasonPrompt}>
 					<Field label="Reason">
