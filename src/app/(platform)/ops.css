@@ -1359,6 +1359,12 @@ html:has(.hl-admin) {
 }
 
 /* Inside the admin console, controls take a fine rule and the focus ring carries the emphasis. Heavy outlines made every button look like the primary action. */
+/* Row actions (Manage, View, Hide) are small and quiet, so the content of a row reads before its buttons. The one primary action on a page keeps full size. */
+.hl-admin-main .hl-table td .hl-btn {
+	padding: 0.28rem 0.7rem;
+	font-size: 0.85rem;
+	border-width: 1px;
+}
 /* A read-only field looks fixed: sunken ground and muted text, so nobody mistakes it for a box to type in. */
 .hl-admin-main .hl-input[readonly] {
 	color: var(--color-ink-muted);
