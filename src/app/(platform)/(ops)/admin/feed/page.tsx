@@ -45,114 +45,125 @@ export default async function AdminFeedPage() {
 				subtitle="Announcements are pinned above every other reel and are only visible to accounts that can manage the feed. Everything else lands in the Doomscroller in the ordinary order."
 				title="Post to the feed"
 			/>
-			<PostComposer canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} projects={options} />
+			{/* The composer and the reels it adds to sit side by side, so posting and checking the result do not need a scroll between them. */}
+			<div className="hl-feed-grid">
+				<div className="hl-feed-compose">
+					<PostComposer canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} projects={options} />
+				</div>
+				<div className="hl-stack">
+					<Panel title="Recent reels">
+						{posts.length === 0 ? (
+							<EmptyState>No reels yet.</EmptyState>
+						) : (
+							<Table head={["Author", "Reel", "Posted", ""]}>
+								{posts.map(post => (
+									<tr key={post.id}>
+										<td>
+											<Link href={`/admin/users/${post.user.id}`}>{displayName(post.user, post.user.email)}</Link>
+										</td>
+										<td>
+											{post.hiddenAt ? (
+												<Badge tone="danger">hidden</Badge>
+											) : post.kind === "ANNOUNCEMENT" ? (
+												<Badge tone="warning">announcement</Badge>
+											) : null}
+											<span className="hl-hint">
+												{" "}
+												{preview(post.caption) || post.themeProject?.title || "no caption"}
+											</span>
+											{post.hiddenReason ? (
+												<div className="hl-hint">hidden: {preview(post.hiddenReason, 60)}</div>
+											) : null}
+										</td>
+										<td className="hl-mono">{formatUtcDateTime(post.publishedAt ?? post.createdAt)}</td>
+										<td>
+											{post.hiddenAt ? (
+												<ActionButton
+													confirm="Put this reel back in the feed?"
+													label="Restore"
+													method="DELETE"
+													url={`/api/admin/posts/${post.id}/moderate`}
+												/>
+											) : (
+												<ActionButton
+													confirm="Hide this reel from every feed?"
+													label="Hide"
+													reasonPrompt="Why is this reel being hidden?"
+													url={`/api/admin/posts/${post.id}/moderate`}
+													variant="danger"
+												/>
+											)}
+										</td>
+									</tr>
+								))}
+							</Table>
+						)}
+						<p className="hl-hint">
+							A hidden reel stays as a record; restoring puts it back. A hidden comment cannot be restored yet.
+						</p>
+					</Panel>
 
-			<Panel title="Recent reels">
-				{posts.length === 0 ? (
-					<EmptyState>No reels yet.</EmptyState>
-				) : (
-					<Table head={["Author", "Reel", "Posted", ""]}>
-						{posts.map(post => (
-							<tr key={post.id}>
-								<td>
-									<Link href={`/admin/users/${post.user.id}`}>{displayName(post.user, post.user.email)}</Link>
-								</td>
-								<td>
-									{post.hiddenAt ? (
-										<Badge tone="danger">hidden</Badge>
-									) : post.kind === "ANNOUNCEMENT" ? (
-										<Badge tone="warning">announcement</Badge>
-									) : null}
-									<span className="hl-hint"> {preview(post.caption) || post.themeProject?.title || "no caption"}</span>
-									{post.hiddenReason ? <div className="hl-hint">hidden: {preview(post.hiddenReason, 60)}</div> : null}
-								</td>
-								<td className="hl-mono">{formatUtcDateTime(post.publishedAt ?? post.createdAt)}</td>
-								<td>
-									{post.hiddenAt ? (
-										<ActionButton
-											confirm="Put this reel back in the feed?"
-											label="Restore"
-											method="DELETE"
-											url={`/api/admin/posts/${post.id}/moderate`}
-										/>
-									) : (
-										<ActionButton
-											confirm="Hide this reel from every feed?"
-											label="Hide"
-											reasonPrompt="Why is this reel being hidden?"
-											url={`/api/admin/posts/${post.id}/moderate`}
-											variant="danger"
-										/>
-									)}
-								</td>
-							</tr>
-						))}
-					</Table>
-				)}
-				<p className="hl-hint">
-					A hidden reel stays as a record; restoring puts it back. A hidden comment cannot be restored yet.
-				</p>
-			</Panel>
+					<Panel title="Recent comments">
+						{comments.length === 0 ? (
+							<EmptyState>No comments yet.</EmptyState>
+						) : (
+							<Table head={["Author", "Comment", "Posted", ""]}>
+								{comments.map(comment => (
+									<tr key={comment.id}>
+										<td>{displayName(comment.user, comment.user.email)}</td>
+										<td>
+											{comment.hiddenAt ? <Badge tone="danger">hidden</Badge> : null}
+											<span className="hl-hint"> {preview(comment.body)}</span>
+											{isTruthy(comment.post) ? (
+												<div className="hl-hint">on {preview(comment.post.caption, 60) || "a reel"}</div>
+											) : null}
+										</td>
+										<td className="hl-mono">{formatUtcDateTime(comment.createdAt)}</td>
+										<td>
+											{comment.hiddenAt ? (
+												<span className="hl-hint">hidden</span>
+											) : (
+												<ActionButton
+													confirm="Hide this comment from every feed?"
+													label="Hide"
+													reasonPrompt="Why is this comment being hidden?"
+													url={`/api/admin/comments/${comment.id}/moderate`}
+													variant="danger"
+												/>
+											)}
+										</td>
+									</tr>
+								))}
+							</Table>
+						)}
+					</Panel>
 
-			<Panel title="Recent comments">
-				{comments.length === 0 ? (
-					<EmptyState>No comments yet.</EmptyState>
-				) : (
-					<Table head={["Author", "Comment", "Posted", ""]}>
-						{comments.map(comment => (
-							<tr key={comment.id}>
-								<td>{displayName(comment.user, comment.user.email)}</td>
-								<td>
-									{comment.hiddenAt ? <Badge tone="danger">hidden</Badge> : null}
-									<span className="hl-hint"> {preview(comment.body)}</span>
-									{isTruthy(comment.post) ? (
-										<div className="hl-hint">on {preview(comment.post.caption, 60) || "a reel"}</div>
-									) : null}
-								</td>
-								<td className="hl-mono">{formatUtcDateTime(comment.createdAt)}</td>
-								<td>
-									{comment.hiddenAt ? (
-										<span className="hl-hint">hidden</span>
-									) : (
-										<ActionButton
-											confirm="Hide this comment from every feed?"
-											label="Hide"
-											reasonPrompt="Why is this comment being hidden?"
-											url={`/api/admin/comments/${comment.id}/moderate`}
-											variant="danger"
-										/>
-									)}
-								</td>
-							</tr>
-						))}
-					</Table>
-				)}
-			</Panel>
-
-			<Panel title="Public reel links">
-				{publicReels.length === 0 ? (
-					<EmptyState>No public links claimed yet.</EmptyState>
-				) : (
-					<Table head={["Platform", "Maker", "Link", "Reel", "Added"]}>
-						{publicReels.map(reel => (
-							<tr key={reel.id}>
-								<td>{reel.platform.toLowerCase()}</td>
-								<td>
-									<Link href={`/admin/users/${reel.user.id}`}>{displayName(reel.user) ?? reel.email}</Link>
-								</td>
-								<td>
-									<a className="hl-hint" href={reel.url} rel="noreferrer" target="_blank">
-										{reel.url}
-									</a>
-								</td>
-								<td className="hl-hint">{reel.themeProject?.title ?? reel.post?.caption?.slice(0, 60) ?? "-"}</td>
-								<td className="hl-mono">{formatUtcDateTime(reel.postedAt)}</td>
-							</tr>
-						))}
-					</Table>
-				)}
-				<p className="hl-hint">Where a reel went viral: the links participants claimed for the virality prizes.</p>
-			</Panel>
+					<Panel title="Public reel links">
+						{publicReels.length === 0 ? (
+							<EmptyState>No public links claimed yet.</EmptyState>
+						) : (
+							<Table head={["Platform", "Maker", "Link", "Reel", "Added"]}>
+								{publicReels.map(reel => (
+									<tr key={reel.id}>
+										<td>{reel.platform.toLowerCase()}</td>
+										<td>
+											<Link href={`/admin/users/${reel.user.id}`}>{displayName(reel.user) ?? reel.email}</Link>
+										</td>
+										<td>
+											<a className="hl-hint" href={reel.url} rel="noreferrer" target="_blank">
+												{reel.url}
+											</a>
+										</td>
+										<td className="hl-hint">{reel.themeProject?.title ?? reel.post?.caption?.slice(0, 60) ?? "-"}</td>
+										<td className="hl-mono">{formatUtcDateTime(reel.postedAt)}</td>
+									</tr>
+								))}
+							</Table>
+						)}
+						<p className="hl-hint">Where a reel went viral: the links participants claimed for the virality prizes.</p>
+					</Panel>
+				</div>
+			</div>
 		</section>
 	)
 }

@@ -67,10 +67,9 @@ export default async function AdminReportsPage({
 						{FILTERS.map(f => (
 							<Link
 								aria-current={f.id === filter || undefined}
-								className="hl-hint"
+								className="hl-chip"
 								href={f.id === "open" ? "/admin/reports" : `/admin/reports?status=${f.id}`}
 								key={f.id}
-								style={f.id === filter ? { color: "var(--color-ink-strong)", fontWeight: 700 } : undefined}
 							>
 								{f.label}{" "}
 								<span className="hl-count">

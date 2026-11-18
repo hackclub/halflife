@@ -585,7 +585,25 @@
 	}
 	.hl-admin-main .hl-table:not(.hl-table--roomy) th,
 	.hl-admin-main .hl-table:not(.hl-table--roomy) td {
-		padding: 0.4rem 0.55rem;
+		padding: 0.4rem 0.45rem;
+	}
+	/*
+	 * An action column is pinned to the right edge of its scrolling wrapper, so Manage and View stay in reach while the columns before it scroll under a shadow. Without the pin the last column is the one that scrolls out of sight first.
+	 */
+	.hl-admin-main .hl-table--pin-last th:last-child,
+	.hl-admin-main .hl-table--pin-last td:last-child {
+		position: sticky;
+		right: 0;
+		z-index: 1;
+		background: var(--color-surface-raised);
+		box-shadow: -10px 0 10px -10px rgb(16 15 48 / 0.18);
+	}
+	.hl-admin-main .hl-table--pin-last thead th:last-child {
+		background: var(--color-surface-sunken);
+	}
+	/* Column headings never fold onto a second line, so a narrow column shows its full name in one row. */
+	.hl-admin-main .hl-table thead th {
+		white-space: nowrap;
 	}
 	.hl-admin-main .hl-table thead th {
 		position: sticky;
@@ -831,6 +849,31 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
+	}
+
+	/* ── Layout helpers ────────────────────────────────────────────────────── */
+	/* A form reads best at a measure a person can scan, not the full width of a wide window. */
+	.hl-measure {
+		max-width: 44rem;
+	}
+	/* The feed's composer beside the reels it adds to. The composer stays in view while the list scrolls. */
+	.hl-feed-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+		gap: 1rem;
+		align-items: start;
+	}
+	.hl-feed-compose {
+		position: sticky;
+		top: 1rem;
+	}
+	@media (max-width: 1100px) {
+		.hl-feed-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.hl-feed-compose {
+			position: static;
+		}
 	}
 
 	/* ── Filter chips ──────────────────────────────────────────────────────── */

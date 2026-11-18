@@ -167,7 +167,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 					<EmptyState>No projects match.</EmptyState>
 				) : (
 					<Table
-						className="hl-table--roomy"
+						className="hl-table--roomy hl-table--pin-last"
 						head={["Project", "Owner", "Theme", "Tier", "Review", canExtend || canMoveTheme ? "Actions" : "Extension"]}
 					>
 						{items.map(project => {
