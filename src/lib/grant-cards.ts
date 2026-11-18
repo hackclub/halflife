@@ -124,8 +124,13 @@ const isWeekOneStarter = (starterProjectId: string | null): boolean =>
  * The one project query behind both the preview and the batch snapshot.
  *
  * It is deliberately the same function for both: a preview that priced one set and a create that paid another would be the bug this fingerprint exists to stop.
+ *
+ * `ownWrites` holds the `Funding given` this request has just written for Week 1 starters, keyed by design row, so the recheck does not reject the starters it is about to pay.
  */
-async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
+async function buildPreview(
+	client: DbOrTx,
+	ownWrites: ReadonlyMap<string, number> = new Map(),
+): Promise<PreviewBuilder> {
 	const rows = await client.orm.public.ThemeProject.where({
 		deletedAt: null,
 		designStatus: PhaseStatus.approved,
@@ -233,7 +238,7 @@ async function buildPreview(client: DbOrTx): Promise<PreviewBuilder> {
 		})
 	}
 
-	const gated = await applyUnifiedGate(client, eligible, excluded)
+	const gated = await applyUnifiedGate(client, eligible, excluded, ownWrites)
 
 	return {
 		eligible: gated.eligible.toSorted(
@@ -261,6 +266,7 @@ async function applyUnifiedGate(
 	client: DbOrTx,
 	eligible: GrantCardProjectRow[],
 	excluded: GrantCardExclusion[],
+	ownWrites: ReadonlyMap<string, number>,
 ): Promise<{ eligible: GrantCardProjectRow[]; excluded: GrantCardExclusion[] }> {
 	if (eligible.length === 0 || !getAirtableConfig()) return { eligible, excluded }
 
@@ -281,6 +287,9 @@ async function applyUnifiedGate(
 	const starterBlock = (recordId: string): string | null => {
 		const paid = fundingGiven?.get(recordId)
 		if (fundingGiven === null || paid === undefined) return "Could not check Funding given"
+		// The money this request is about to pay is the reason it is there, not a reason to refuse it.
+		const own = ownWrites.get(recordId)
+		if (own !== undefined && Math.abs(paid - own) < 0.005) return null
 		return paid > 0 ? "Has Funding given in Airtable; the starter export pays it" : null
 	}
 
@@ -452,8 +461,8 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 	const writtenStarterRows = await writeStarterFunding(current.eligible)
 	const result = await db
 		.transaction(async tx => {
-			// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through.
-			const txPreview = await buildPreview(tx)
+			// Recompute inside the transaction too, so a BOM edit between the check above and this write cannot slip through. The starters' own writes are passed in, or the gate would refuse the starters that were just written for.
+			const txPreview = await buildPreview(tx, writtenStarterRows)
 			if (txPreview.fingerprint !== input.fingerprint)
 				throw new HttpError("CONFLICT", "The list of projects or their BOM totals changed. Reload and try again")
 			if (txPreview.eligible.length === 0)
@@ -497,7 +506,7 @@ export async function createGrantCardExportBatch(input: CreateGrantCardExportInp
 			return { batchId: batch.id, eligible: txPreview.eligible, totalCents: txPreview.totalCents }
 		})
 		.catch(async err => {
-			await revertStarterFunding(writtenStarterRows)
+			await revertStarterFunding(writtenStarterRows.keys())
 			throw err
 		})
 
@@ -615,29 +624,29 @@ async function auditIssue(
  *
  * Throws, naming the starter, when one cannot be written. Writes already made are undone first, so a failed export leaves Airtable as it was.
  */
-async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<string[]> {
+async function writeStarterFunding(eligible: GrantCardProjectRow[]): Promise<Map<string, number>> {
 	const starters = eligible.filter(row => row.weekOneStarter)
 	const recordIds = await starterRecordIds(starters.map(row => row.projectId))
-	const written: string[] = []
+	const written = new Map<string, number>()
 	for (const row of starters) {
 		const recordId = recordIds.get(`${row.projectId}:${Phase.DESIGN}`)
 		const failure = recordId
 			? await setStarterFundingGiven(recordId, row.amountCents / 100)
 			: "No Airtable row is linked to this project"
 		if (failure !== null) {
-			await revertStarterFunding(written)
+			await revertStarterFunding(written.keys())
 			throw new HttpError(
 				"INTERNAL",
 				`Funding given could not be written for ${row.title || row.projectId}, so nothing was exported: ${failure}`,
 			)
 		}
-		if (recordId) written.push(recordId)
+		if (recordId) written.set(recordId, row.amountCents / 100)
 	}
 	return written
 }
 
 /** Undoes `Funding given` writes made for an export that did not go ahead, setting them back to zero. */
-async function revertStarterFunding(recordIds: readonly string[]): Promise<void> {
+async function revertStarterFunding(recordIds: Iterable<string>): Promise<void> {
 	for (const recordId of recordIds) {
 		const failure = await setStarterFundingGiven(recordId, 0)
 		if (failure !== null) console.error("[grant-cards] could not revert Funding given", recordId, failure)
