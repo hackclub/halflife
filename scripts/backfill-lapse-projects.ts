@@ -70,9 +70,9 @@ for (const [owner, clips] of byOwner) {
 			await db.orm.public.SessionTimelapse.where({ id: clip.clipId }).update({
 				hackatimeProject: record.hackatimeProject,
 			})
-		} catch (error) {
+		} catch (err) {
 			writeFailures += 1
-			console.error(`could not write ${clip.clipId}:`, error instanceof Error ? error.message : error)
+			console.error(`could not write ${clip.clipId}:`, err instanceof Error ? err.message : err)
 		}
 	}
 }
