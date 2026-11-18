@@ -1,5 +1,5 @@
 import { type ComposerProject, PostComposer } from "@/app/components/forms/PostComposer"
-import { EmptyState, LinkButton, PageHeader, Panel } from "@/app/components/ui"
+import { LinkButton, PageHeader, Panel } from "@/app/components/ui"
 import { themeLabel } from "@/lib/config/program"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
