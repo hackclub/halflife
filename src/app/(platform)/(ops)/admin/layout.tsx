@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 		{
 			items: [
 				{ href: "/admin", label: "Overview" },
-				{ href: "/dashboard", label: "Dashboard" },
+				{ href: "/dashboard", label: "My dashboard" },
 			],
 			label: "Overview",
 		},
