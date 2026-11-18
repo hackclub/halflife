@@ -1,5 +1,21 @@
 import { describe, expect, test } from "bun:test"
-import { summariseNps } from "@/lib/nps"
+import { isWithinFirstDay, summariseNps } from "@/lib/nps"
+
+const HOUR_MS = 60 * 60 * 1000
+
+describe("isWithinFirstDay", () => {
+	const now = new Date("2026-11-18T12:00:00Z")
+
+	test("holds the prompt back for an account that joined within the day", () => {
+		expect(isWithinFirstDay(new Date(now.getTime() - HOUR_MS), now)).toBe(true)
+		expect(isWithinFirstDay(new Date(now.getTime() - 23 * HOUR_MS), now)).toBe(true)
+	})
+
+	test("asks once a full day has passed", () => {
+		expect(isWithinFirstDay(new Date(now.getTime() - 24 * HOUR_MS), now)).toBe(false)
+		expect(isWithinFirstDay(new Date(now.getTime() - 30 * 24 * HOUR_MS), now)).toBe(false)
+	})
+})
 
 describe("summariseNps", () => {
 	test("has no score until somebody answers", () => {
