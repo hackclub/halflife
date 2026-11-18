@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import type { ReportReason, ReportStatus } from "@/lib/enums"
@@ -45,12 +45,12 @@ const FILTERS: { id: Filter; label: string; status: ReportStatusFilter }[] = [
 export default async function AdminReportsPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ cursor?: SearchParamValue; status?: SearchParamValue }>
+	searchParams: Promise<{ cursor?: SearchParamValue; id?: SearchParamValue; status?: SearchParamValue }>
 }) {
 	await requirePermissionPage(Permission.MANAGE_FEED)
 
 	// The filter and the page cursor, each taken as the single value the URL named: a repeated parameter arrives as an array, and an array is not a value this page can read.
-	const { status, cursor } = firstValues(await searchParams)
+	const { id, status, cursor } = firstValues(await searchParams)
 	const filter: Filter = filterFor(status)
 	const active = FILTERS.find(f => f.id === filter) ?? ({ id: "open", label: "Open", status: "OPEN" } as const)
 
@@ -58,6 +58,9 @@ export default async function AdminReportsPage({
 		countContentReports(),
 		listContentReports(active.status, { cursor }),
 	])
+
+	// The report the detail pane shows: the one named in the URL if it is in this queue, otherwise the first one in it.
+	const selected = reports.find(report => report.id === id) ?? reports[0] ?? null
 
 	return (
 		<section className="hl-stack">
@@ -83,34 +86,57 @@ export default async function AdminReportsPage({
 				title="Reports"
 			/>
 
-			<Panel title={`${active.label} reports`}>
-				{reports.length === 0 ? (
-					<EmptyState>
-						{filter === "open"
-							? "Nobody has reported anything. The queue is clear."
-							: `No ${active.label.toLowerCase()} reports.`}
-					</EmptyState>
-				) : (
-					<Table head={["Reported", "Reason", "Reporter", "Received", "Status", ""]}>
-						{reports.map(report => (
-							<ReportRow key={report.id} report={report} />
-						))}
-					</Table>
-				)}
-				{nextCursor ? (
-					<p>
-						<Link
-							href={
-								filter === "open"
-									? `/admin/reports?cursor=${nextCursor}`
-									: `/admin/reports?status=${filter}&cursor=${nextCursor}`
-							}
-						>
-							Next page
-						</Link>
-					</p>
+			{/* A queue on the left and the chosen report on the right, so a decision is made beside the thing it is about rather than in a row of buttons. */}
+			<div className="hl-split">
+				<Panel title={`${active.label} reports`}>
+					{reports.length === 0 ? (
+						<EmptyState>
+							{filter === "open"
+								? "Nobody has reported anything. The queue is clear."
+								: `No ${active.label.toLowerCase()} reports.`}
+						</EmptyState>
+					) : (
+						<nav aria-label="Reports in this queue" className="hl-queue">
+							{reports.map(report => {
+								const subject = subjectOf(report)
+								const params = new URLSearchParams({ id: report.id })
+								if (filter !== "open") params.set("status", filter)
+								return (
+									<Link
+										aria-current={report.id === selected?.id ? "true" : undefined}
+										className="hl-queue-item"
+										href={`/admin/reports?${params.toString()}`}
+										key={report.id}
+									>
+										<Badge tone={reasonTone(report.reason)}>{REASON_LABELS[report.reason]}</Badge>
+										<span>{subject.gone ? "Removed" : preview(subject.preview, 70) || "Open"}</span>
+										<span className="hl-hint">{formatUtcDateTime(parseDbTimestamp(report.createdAt))}</span>
+									</Link>
+								)
+							})}
+						</nav>
+					)}
+					{nextCursor ? (
+						<p>
+							<Link
+								href={
+									filter === "open"
+										? `/admin/reports?cursor=${nextCursor}`
+										: `/admin/reports?status=${filter}&cursor=${nextCursor}`
+								}
+							>
+								Next page
+							</Link>
+						</p>
+					) : null}
+				</Panel>
+
+				{selected ? (
+					<Panel title="Report">
+						<ReportDetail report={selected} />
+					</Panel>
 				) : null}
-			</Panel>
+			</div>
 		</section>
 	)
 }
@@ -119,74 +145,78 @@ function filterFor(status: string | undefined): Filter {
 	return status === "resolved" || status === "dismissed" || status === "all" ? status : "open"
 }
 
-function ReportRow({ report }: { report: ContentReportRow }) {
+/** The chosen report in full: what it is about, who sent it, when, and the decisions open to staff. */
+function ReportDetail({ report }: { report: ContentReportRow }) {
 	const subject = subjectOf(report)
 	return (
-		<tr>
-			<td>
+		<div className="hl-stack hl-stack--tight">
+			<div>
 				<Badge tone="muted">{REPORT_TARGET_LABELS[report.target]}</Badge>{" "}
-				{subject.gone ? (
-					<Badge tone="danger">removed</Badge>
-				) : (
-					<Link href={subject.href}>{preview(subject.preview, 80) || "open"}</Link>
-				)}
-				<div className="hl-hint">
-					by {subject.author}
-					{report.details ? ` · “${preview(report.details, 80)}”` : ""}
-				</div>
-			</td>
-			<td>
-				<Badge tone={reasonTone(report.reason)}>{REASON_LABELS[report.reason]}</Badge>
-			</td>
-			<td className="hl-hint">{displayName(report.reporter, report.reporter?.email ?? "")}</td>
-			<td className="hl-mono">{formatUtcDateTime(parseDbTimestamp(report.createdAt))}</td>
-			<td>
+				<Badge tone={reasonTone(report.reason)}>{REASON_LABELS[report.reason]}</Badge>{" "}
 				<Badge tone={statusTone(report.status)}>{REPORT_STATUS_LABELS[report.status]}</Badge>
-				{report.status !== "OPEN" && report.resolvedAt ? (
-					<div className="hl-hint">{formatUtcDateTime(parseDbTimestamp(report.resolvedAt))}</div>
-				) : null}
-			</td>
-			<td>
-				<div className="hl-row">
-					{!subject.gone
-						&& (subject.hideUrl || subject.restoreUrl || subject.hidden)
-						&& (subject.hidden ? (
-							subject.restoreUrl ? (
-								<ActionButton
-									confirm="Put this reel back in the feed?"
-									label="Restore"
-									method="DELETE"
-									url={subject.restoreUrl}
-								/>
-							) : (
-								<span className="hl-hint">hidden</span>
-							)
-						) : subject.hideUrl ? (
-							<ActionButton
-								confirm={`${subject.hideLabel} this ${subject.kind}?`}
-								label={subject.hideLabel}
-								reasonPrompt={`Why is this ${subject.kind} being hidden?`}
-								url={subject.hideUrl}
-								variant="danger"
-							/>
-						) : null)}
-					{report.status === "OPEN" && (
-						<>
-							<ActionButton
-								confirm="Close this report as reviewed?"
-								label="Resolve"
-								url={`/api/admin/reports/${report.id}/resolve`}
-							/>
-							<ActionButton
-								confirm="Close this report as no violation?"
-								label="Dismiss"
-								url={`/api/admin/reports/${report.id}/dismiss`}
-							/>
-						</>
-					)}
-				</div>
-			</td>
-		</tr>
+			</div>
+			{subject.gone ? (
+				<p className="hl-hint">This {REPORT_TARGET_LABELS[report.target].toLowerCase()} has been removed.</p>
+			) : (
+				<p>
+					<Link href={subject.href}>{preview(subject.preview, 200) || "Open the reported item"}</Link>
+					<span className="hl-hint"> by {subject.author}</span>
+				</p>
+			)}
+			{report.details ? (
+				<blockquote className="hl-hint" style={{ margin: 0 }}>
+					{report.details}
+				</blockquote>
+			) : null}
+			<p className="hl-hint" style={{ margin: 0 }}>
+				Reported by {displayName(report.reporter, report.reporter?.email ?? "")} on{" "}
+				{formatUtcDateTime(parseDbTimestamp(report.createdAt))}
+			</p>
+			<ReportActions report={report} subject={subject} />
+		</div>
+	)
+}
+
+function ReportActions({ report, subject }: { report: ContentReportRow; subject: Subject }) {
+	return (
+		<div className="hl-row">
+			{!subject.gone
+				&& (subject.hideUrl || subject.restoreUrl || subject.hidden)
+				&& (subject.hidden ? (
+					subject.restoreUrl ? (
+						<ActionButton
+							confirm="Put this reel back in the feed?"
+							label="Restore"
+							method="DELETE"
+							url={subject.restoreUrl}
+						/>
+					) : (
+						<span className="hl-hint">hidden</span>
+					)
+				) : subject.hideUrl ? (
+					<ActionButton
+						confirm={`${subject.hideLabel} this ${subject.kind}?`}
+						label={subject.hideLabel}
+						reasonPrompt={`Why is this ${subject.kind} being hidden?`}
+						url={subject.hideUrl}
+						variant="danger"
+					/>
+				) : null)}
+			{report.status === "OPEN" && (
+				<>
+					<ActionButton
+						confirm="Close this report as reviewed?"
+						label="Resolve"
+						url={`/api/admin/reports/${report.id}/resolve`}
+					/>
+					<ActionButton
+						confirm="Close this report as no violation?"
+						label="Dismiss"
+						url={`/api/admin/reports/${report.id}/dismiss`}
+					/>
+				</>
+			)}
+		</div>
 	)
 }
 

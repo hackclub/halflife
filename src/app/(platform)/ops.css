@@ -907,6 +907,54 @@
 		border-top: 2px solid var(--color-border);
 	}
 
+	/* ── Triage split ──────────────────────────────────────────────────────── */
+	/* A queue on the left, the chosen item on the right. The queue keeps its place while the detail changes. */
+	.hl-split {
+		display: grid;
+		grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+		gap: 1rem;
+		align-items: start;
+	}
+	.hl-split > .hl-panel:last-child {
+		position: sticky;
+		top: 1rem;
+	}
+	@media (max-width: 960px) {
+		.hl-split {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.hl-split > .hl-panel:last-child {
+			position: static;
+		}
+	}
+	.hl-queue {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		max-height: 70vh;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+	.hl-queue-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		min-width: 0;
+		overflow-wrap: anywhere;
+		padding: 0.55rem 0.7rem;
+		color: var(--color-ink);
+		text-decoration: none;
+		border: 2px solid transparent;
+		border-radius: var(--radius-button);
+	}
+	.hl-queue-item:hover {
+		background: var(--color-surface-sunken);
+	}
+	.hl-queue-item[aria-current="true"] {
+		background: var(--color-surface-sunken);
+		border-color: var(--color-accent);
+	}
+
 	/* A form reads best at a measure a person can scan, not the full width of a wide window. */
 	.hl-measure {
 		max-width: 44rem;
