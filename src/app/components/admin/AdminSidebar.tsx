@@ -13,32 +13,36 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 
 	return (
 		<nav aria-label="Admin sections" className="hl-admin-side">
-			<div className="hl-admin-side-inner">
-				{groups.map(group => (
-					<div className="hl-admin-group" key={group.label}>
-						<div className="hl-admin-group-label">{group.label}</div>
-						{group.items.map(item => {
-							const active = isAdminNavActive(pathname, item.href)
-							if (item.hard)
+			{/* On a phone the sections sit behind one disclosure, so the page is the first thing down the screen. On a desktop the list is always open and the disclosure is hidden. */}
+			<details className="hl-admin-menu">
+				<summary>Sections</summary>
+				<div className="hl-admin-side-inner">
+					{groups.map(group => (
+						<div className="hl-admin-group" key={group.label}>
+							<div className="hl-admin-group-label">{group.label}</div>
+							{group.items.map(item => {
+								const active = isAdminNavActive(pathname, item.href)
+								if (item.hard)
+									return (
+										<HardLink href={item.href} key={item.href}>
+											{item.label}
+										</HardLink>
+									)
 								return (
-									<HardLink href={item.href} key={item.href}>
+									<Link
+										aria-current={active ? "page" : undefined}
+										className="hl-admin-link"
+										href={item.href}
+										key={item.href}
+									>
 										{item.label}
-									</HardLink>
+									</Link>
 								)
-							return (
-								<Link
-									aria-current={active ? "page" : undefined}
-									className="hl-admin-link"
-									href={item.href}
-									key={item.href}
-								>
-									{item.label}
-								</Link>
-							)
-						})}
-					</div>
-				))}
-			</div>
+							})}
+						</div>
+					))}
+				</div>
+			</details>
 		</nav>
 	)
 }

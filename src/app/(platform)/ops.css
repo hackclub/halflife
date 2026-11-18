@@ -556,6 +556,40 @@
 		color: var(--color-paper);
 		background: var(--color-ink-strong);
 	}
+	/* The sections disclosure: a single bar on a phone, hidden on a desktop where the list is always shown. */
+	.hl-admin-menu > summary {
+		padding: 0.7rem 1rem;
+		font-weight: 700;
+		cursor: pointer;
+		list-style: none;
+	}
+	.hl-admin-menu > summary::-webkit-details-marker {
+		display: none;
+	}
+	@media (min-width: 761px) {
+		.hl-admin-menu > summary {
+			display: none;
+		}
+		.hl-admin-menu .hl-admin-side-inner {
+			display: block;
+		}
+	}
+	@media (max-width: 600px) {
+		.hl-attention a {
+			flex: 1 1 8rem;
+			min-width: 0;
+		}
+	}
+	@media (max-width: 600px) {
+		.hl-admin-email,
+		.hl-admin-kbd {
+			display: none;
+		}
+		.hl-admin-top {
+			gap: 0.6rem;
+			padding: 0.5rem 0.75rem;
+		}
+	}
 	.hl-admin-main {
 		min-width: 0;
 		padding: 1.5rem 1.75rem 3rem;
