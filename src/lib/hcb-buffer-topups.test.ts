@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { GrantDisbursement } from "@/lib/hcb"
-import { bareGrantId, bufferTopUpKey, selectBufferTopUps } from "@/lib/hcb-buffer-topups"
+import { bareGrantId, bufferTopUpKey, grantReturnedAt, selectBufferTopUps } from "@/lib/hcb-buffer-topups"
 
 const disbursement = (overrides: Partial<GrantDisbursement> = {}): GrantDisbursement => ({
 	amountCents: 200,
@@ -67,5 +67,36 @@ describe("buffer top-ups", () => {
 			{ amountCents: 200, grantHashid: "DZIKLV", transactionId: "txn_1" },
 		]
 		expect(selectBufferTopUps([disbursement()], sent, "cdg_DZIKLV")).toHaveLength(0)
+	})
+})
+
+describe("grantReturnedAt", () => {
+	test("the balance going back to the organisation is a return", () => {
+		const rows = [
+			disbursement({ amountCents: 6432, memo: "Grant to Ellie" }),
+			disbursement({
+				amountCents: -6432,
+				createdAt: "2026-11-19T10:00:00.000Z",
+				memo: "Returning canceled grant to Ellie",
+			}),
+		]
+		expect(grantReturnedAt(rows)).toBe("2026-11-19T10:00:00.000Z")
+	})
+
+	test("a grant that was not returned has no return time", () => {
+		const rows = [
+			disbursement({ amountCents: 6432, memo: "Grant to Ellie" }),
+			disbursement({ amountCents: 200, memo: "Topup of grant to Ellie" }),
+			disbursement({ amountCents: -5, memo: "Purchase at Adafruit" }),
+		]
+		expect(grantReturnedAt(rows)).toBeNull()
+	})
+
+	test("a return without a time is not treated as a return", () => {
+		expect(
+			grantReturnedAt([
+				disbursement({ amountCents: -6432, createdAt: null, memo: "Returning canceled grant to Ellie" }),
+			]),
+		).toBeNull()
 	})
 })

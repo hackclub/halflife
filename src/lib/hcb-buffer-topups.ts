@@ -1,4 +1,5 @@
 import "server-only"
+import { HcbGrantCardStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type GrantDisbursement, listCardGrantDisbursements, listOrganizationCardGrants } from "@/lib/hcb"
 import db from "@/lib/prisma8"
@@ -12,6 +13,21 @@ import { formatDbTimestamp } from "@/lib/time"
 
 /** HCB's memo for a top-up into a grant. Withdrawals and returns use other memos and are not buffer top-ups. */
 export const BUFFER_TOPUP_MEMO_PREFIX = "Topup of grant to "
+
+/** HCB's memo for the balance going back to the organisation, after the grant was cancelled. */
+export const GRANT_RETURN_MEMO_PREFIX = "Returning canceled grant to "
+
+/**
+ * When a grant's unspent balance went back to the organisation, or null when it did not.
+ *
+ * The money has left the card, so the card is finished either way. Who cancelled it is HCB's business; the site records that the grant was returned, and that the project has been paid once.
+ */
+export function grantReturnedAt(disbursements: readonly GrantDisbursement[]): string | null {
+	const returned = disbursements.find(
+		d => d.amountCents < 0 && d.memo?.startsWith(GRANT_RETURN_MEMO_PREFIX) && typeof d.createdAt === "string",
+	)
+	return returned?.createdAt ?? null
+}
 
 /** HCB's card grant ids carry a `cdg_` prefix; the top-up table stores the bare hashid. Compare on the bare one. */
 export const bareGrantId = (id: string): string => id.replace(/^cdg_/, "")
@@ -76,6 +92,8 @@ export interface BufferTopUpSyncResult {
 	dryRun: boolean
 	grantsScanned: number
 	recorded: number
+	/** Issued or ambiguous card rows the sync marked RETURNED. */
+	returnedMarked: number
 	topUpsFound: number
 }
 
@@ -103,8 +121,17 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		hcbCreatedAt: string | null
 		memo: string | null
 	}[] = []
+	// Every card row still counted as live, so a return found on HCB can be matched to the row that paid it.
+	const liveCards = new Map<string, string>()
+	for (const card of await db.orm.public.HcbGrantCard.where({})
+		.where(row => row.status.in([HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]))
+		.select("hcbCardGrantId", "id")
+		.all())
+		if (card.hcbCardGrantId) liveCards.set(bareGrantId(card.hcbCardGrantId), card.id)
+
 	let topUpsFound = 0
 	let alreadyRecorded = 0
+	const returned: { id: string; returnedAt: string }[] = []
 	for (const grant of list.rows) {
 		const read = await listCardGrantDisbursements(grant.id)
 		if (read.kind === "unreadable")
@@ -112,6 +139,9 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 				"INTERNAL",
 				`HCB's disbursements for grant ${bareGrantId(grant.id)} could not be read, so nothing was synced`,
 			)
+		const returnedAt = grantReturnedAt(read.rows)
+		const liveCardId = liveCards.get(bareGrantId(grant.id))
+		if (returnedAt !== null && liveCardId) returned.push({ id: liveCardId, returnedAt })
 		for (const [index, disbursement] of selectBufferTopUps(read.rows, sitePayments, grant.id).entries()) {
 			topUpsFound++
 			const key = bufferTopUpKey(grant.id, disbursement, index)
@@ -130,6 +160,15 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		}
 	}
 
+	if (!input.dryRun && returned.length > 0)
+		for (const card of returned)
+			await db.orm.public.HcbGrantCard.where({ id: card.id }).update({
+				error: "The maker returned this grant on HCB; its balance went back to the organisation",
+				hcbStatus: "returned",
+				returnedAt: formatDbTimestamp(new Date(card.returnedAt)),
+				status: HcbGrantCardStatus.RETURNED,
+			})
+
 	if (!input.dryRun && fresh.length > 0)
 		await db.orm.public.HcbBufferTopUp.createAll(
 			fresh.map(row => ({
@@ -146,6 +185,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		dryRun: input.dryRun,
 		grantsScanned: list.rows.length,
 		recorded: input.dryRun ? 0 : fresh.length,
+		returnedMarked: input.dryRun ? 0 : returned.length,
 		topUpsFound,
 	}
 }
