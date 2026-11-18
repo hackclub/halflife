@@ -975,6 +975,18 @@
 		border-color: var(--color-accent);
 	}
 
+	/* ── Form grid ─────────────────────────────────────────────────────────── */
+	/* Fields flow into as many columns as the panel has room for. Anything that needs the whole row says so with hl-form-wide. */
+	.hl-form-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+		gap: 1rem 1.25rem;
+		align-items: start;
+	}
+	.hl-form-wide {
+		grid-column: 1 / -1;
+	}
+
 	/* A form reads best at a measure a person can scan, not the full width of a wide window. */
 	.hl-measure {
 		max-width: 44rem;

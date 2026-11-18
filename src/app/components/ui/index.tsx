@@ -130,9 +130,14 @@ export function EmptyState({ children }: Readonly<{ children: ReactNode }>) {
 /**
  * A labelled control. The hint sits under the label, not inside it, so a screen reader reads the field's name and then, separately, what it is for.
  */
-export function Field({ label, hint, children }: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
+export function Field({
+	className,
+	label,
+	hint,
+	children,
+}: Readonly<{ className?: string; label: string; hint?: ReactNode; children: ReactNode }>) {
 	return (
-		<div className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
+		<div className={withClass("hl-stack hl-stack--tight", className)} style={{ gap: "0.25rem" }}>
 			{/* The control is the children prop, which the rule cannot see through. Every call site passes a labelled input, select or textarea. */}
 			{/* biome-ignore lint/a11y/noLabelWithoutControl: see the comment above. */}
 			<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
