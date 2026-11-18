@@ -111,11 +111,12 @@ export function NpsGate() {
 	const selectedTextsScore = textsScore ?? score
 	const hasTexts = Boolean(doingWell.trim() || improve.trim() || hear.trim())
 
-	// While the follow-up is up it owns the sticker promotion's corner, so the banner stands down.
+	// The prompt owns the screen from the moment it mounts until it has nothing left to ask, so nothing else opens on top of it or sits under it.
+	const promptActive = !loaded || needsScore || showFollowUp
 	useEffect(() => {
-		setNpsNudgeActive(showFollowUp)
+		setNpsNudgeActive(promptActive)
 		return () => setNpsNudgeActive(false)
-	}, [showFollowUp])
+	}, [promptActive])
 
 	async function submitScore() {
 		if (draft === null || savingScore) return
