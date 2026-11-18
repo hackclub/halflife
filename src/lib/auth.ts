@@ -351,7 +351,9 @@ export const auth = betterAuth({
 							emailVerified: identity.emailVerified,
 							id: identity.sub,
 							image: identity.image ?? undefined,
-							name: identity.name ?? identity.email,
+							// Never the email: a stored address in `name` leaked through the participant export and any
+							// other surface that reads the column raw. displayName() also guards old rows written this way.
+							name: identity.name ?? identity.nickname ?? "Maker",
 							// HCA is configured from discovery, so better-auth treats it as OIDC and keys the account on `sub`, not `id`. Without it the sign-in fails with OAUTH_ACCOUNT_SUBJECT_INVALID. Same value as before, so existing accounts are still found.
 							sub: identity.sub,
 							updatedAt: new Date(),
