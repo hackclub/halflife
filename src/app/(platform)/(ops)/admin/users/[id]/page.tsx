@@ -95,6 +95,7 @@ export default async function AdminUserPage({ params }: Props) {
 		<div className="hl-stack">
 			<PageHeader
 				actions={user.fraudFlagged ? <Badge tone="danger">flagged</Badge> : null}
+				compact
 				subtitle={user.email}
 				title={displayName(user, user.email)}
 			/>

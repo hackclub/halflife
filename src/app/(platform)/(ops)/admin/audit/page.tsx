@@ -30,7 +30,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack hl-page-wide">
-			<PageHeader subtitle="Every mutation, with what it changed from and to." title="Audit log" />
+			<PageHeader compact subtitle="Every mutation, with what it changed from and to." title="Audit log" />
 
 			<Panel>
 				<form className="hl-row" method="get">

@@ -38,7 +38,7 @@ export default async function GrantCardBatchPage({ params }: Props) {
 
 	return (
 		<div className="hl-stack hl-page-wide">
-			<PageHeader subtitle={<Link href="/admin/grants">Back to grant cards</Link>} title="Grant card batch" />
+			<PageHeader compact subtitle={<Link href="/admin/grants">Back to grant cards</Link>} title="Grant card batch" />
 
 			<div className="hl-row">
 				<Stat label="Total" value={formatUsd(batch.totalCents / 100)} />

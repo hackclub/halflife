@@ -52,6 +52,7 @@ export default async function AdminDeadlinesPage({ searchParams }: Props) {
 	return (
 		<div className="hl-stack">
 			<PageHeader
+				compact
 				subtitle="Every live extension in one place – who has extra time and when it runs out."
 				title="Deadlines"
 			/>

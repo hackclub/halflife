@@ -66,6 +66,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	return (
 		<div className="hl-stack hl-page-wide">
 			<PageHeader
+				compact
 				subtitle={
 					includePii
 						? "Search by title, description, repo, project ID, or the owner's name, email or Slack ID."

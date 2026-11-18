@@ -79,7 +79,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack hl-page-wide">
-			<PageHeader subtitle="Every order that was not rejected, including cancelled ones." title="Fulfillment" />
+			<PageHeader compact subtitle="Every order that was not rejected, including cancelled ones." title="Fulfillment" />
 
 			<Panel>
 				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>

@@ -33,7 +33,7 @@ export default async function AdminShopPage() {
 
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Shop items" />
+			<PageHeader compact title="Shop items" />
 
 			<Panel title="Catalogue">
 				{items.length === 0 ? (

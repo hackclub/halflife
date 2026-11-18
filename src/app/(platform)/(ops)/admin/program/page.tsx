@@ -71,6 +71,7 @@ export default async function AdminProgramPage() {
 	return (
 		<div className="hl-stack">
 			<PageHeader
+				compact
 				subtitle={
 					week < 1
 						? "The program has not started yet."

@@ -41,6 +41,7 @@ export default async function AdminFeedPage() {
 	return (
 		<section className="hl-stack">
 			<PageHeader
+				compact
 				subtitle="Announcements are pinned above every other reel and are only visible to accounts that can manage the feed. Everything else lands in the Doomscroller in the ordinary order."
 				title="Post to the feed"
 			/>

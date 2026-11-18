@@ -30,7 +30,7 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 			<p>
 				<Link href="/admin/shop">← Shop items</Link>
 			</p>
-			<PageHeader title={item.name} />
+			<PageHeader compact title={item.name} />
 			<Panel title="Edit item">
 				<p className="hl-hint" style={{ marginBottom: "0.75rem" }}>
 					<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge> Changes apply to

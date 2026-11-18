@@ -33,6 +33,7 @@ export default async function AdminGrantsPage() {
 	return (
 		<div className="hl-stack hl-page-wide">
 			<PageHeader
+				compact
 				subtitle="Issue HCB card grants for approved designs. The amount is each project's BOM total."
 				title="Grant cards"
 			/>

@@ -128,7 +128,7 @@ export default async function AdminOverviewPage() {
 
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Overview" />
+			<PageHeader compact title="Overview" />
 
 			<div className="hl-row">
 				<Stat label="Orders to fulfil" value={counters.pendingOrders} />

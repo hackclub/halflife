@@ -73,7 +73,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack">
-			<PageHeader subtitle="Every object currently in the R2 bucket. This page is read-only." title="Uploads" />
+			<PageHeader compact subtitle="Every object currently in the R2 bucket. This page is read-only." title="Uploads" />
 
 			<Panel>
 				<form className="hl-row" method="get" style={{ alignItems: "center", flexWrap: "wrap" }}>
