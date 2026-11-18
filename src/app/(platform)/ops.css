@@ -605,6 +605,58 @@
 		width: auto;
 		margin-left: 0;
 	}
+
+	/* A status pill is one label, so it stays on one line and the cell widens for it rather than folding the word into two lines. */
+	.hl-admin-main .hl-badge {
+		white-space: nowrap;
+	}
+	/* A stage's pill drops to its own line when its cell is too narrow for both, instead of running past the cell's edge. */
+	.hl-review-stages li {
+		flex-wrap: wrap;
+	}
+
+	/* ── Filter form ───────────────────────────────────────────────────────── */
+	/* Three bands: the search, the labelled stage choices, then the yes-or-no toggles with the clear link beside them. */
+	.hl-filters {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+	.hl-filters__search {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
+	}
+	.hl-filters__search .hl-input {
+		flex: 1 1 18rem;
+		width: auto;
+	}
+	.hl-filters__grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+		gap: 0.75rem 1rem;
+	}
+	.hl-filters__footer {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.5rem;
+		align-items: center;
+		justify-content: space-between;
+		padding-top: 1rem;
+		border-top: 2px solid var(--color-border);
+	}
+	.hl-filters__toggles {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.25rem;
+	}
+	.hl-filters__toggles label {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+		font-weight: 600;
+	}
 	/* Whatever is still too wide scrolls inside its own table, rather than pushing the whole console sideways. */
 	.hl-admin-main {
 		overflow-x: clip;

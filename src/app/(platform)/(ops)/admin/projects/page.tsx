@@ -1,5 +1,15 @@
 import Link from "next/link"
-import { Button, EmptyState, PageHeader, Panel, Select, statusLabel, Table, TextInput } from "@/app/components/ui"
+import {
+	Button,
+	EmptyState,
+	Field,
+	PageHeader,
+	Panel,
+	Select,
+	statusLabel,
+	Table,
+	TextInput,
+} from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
 import { THEMES, themeLabel } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
@@ -76,58 +86,79 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 			/>
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-					<TextInput
-						defaultValue={search.q ?? ""}
-						name="q"
-						placeholder="Search projects or owners"
-						style={{ maxWidth: "20rem" }}
-					/>
-					<Select defaultValue={filters.theme ?? ""} name="theme" style={{ maxWidth: "12rem" }}>
-						<option value="">Any theme</option>
-						{THEMES.map(t => (
-							<option key={t.id} value={t.id}>
-								{themeLabel(t.id)}
-							</option>
-						))}
-						<option value={Theme.WARMUP}>Warm Up</option>
-					</Select>
-					<Select defaultValue={filters.designStatus ?? ""} name="design" style={{ maxWidth: "12rem" }}>
-						<option value="">Design: any</option>
-						{STATUSES.map(s => (
-							<option key={s} value={s}>
-								Design: {statusLabel(s)}
-							</option>
-						))}
-					</Select>
-					<Select defaultValue={filters.buildStatus ?? ""} name="build" style={{ maxWidth: "12rem" }}>
-						<option value="">Build: any</option>
-						{STATUSES.map(s => (
-							<option key={s} value={s}>
-								Build: {statusLabel(s)}
-							</option>
-						))}
-					</Select>
-					<Select defaultValue={filters.tier ? String(filters.tier) : ""} name="tier" style={{ maxWidth: "9rem" }}>
-						<option value="">Any tier</option>
-						<option value="1">Tier 1</option>
-						<option value="2">Tier 2</option>
-						<option value="3">Tier 3</option>
-					</Select>
-					<label className="hl-row" style={{ gap: "0.35rem" }}>
-						<input defaultChecked={filters.extended} name="extended" type="checkbox" value="1" />
-						Extension running
-					</label>
-					<label className="hl-row" style={{ gap: "0.35rem" }}>
-						<input defaultChecked={filters.unstarted} name="unstarted" type="checkbox" value="1" />
-						Include unstarted
-					</label>
-					<Button type="submit">
-						<IconSearch /> Search
-					</Button>
-					<Link className="hl-hint" href="/admin/projects">
-						Reset
-					</Link>
+				<form className="hl-filters" method="get">
+					{/* The search is the one thing most lookups start with, so it gets its own row and the only primary button. */}
+					<div className="hl-filters__search">
+						<TextInput
+							aria-label="Search projects or owners"
+							defaultValue={search.q ?? ""}
+							name="q"
+							placeholder="Search projects or owners"
+						/>
+						<Button type="submit">
+							<IconSearch /> Search
+						</Button>
+					</div>
+
+					{/* Each stage filter is labelled above its control, so the grid reads as four named choices rather than a run of unlabelled dropdowns. */}
+					<div className="hl-filters__grid">
+						<Field label="Theme">
+							<Select defaultValue={filters.theme ?? ""} name="theme">
+								<option value="">Any theme</option>
+								{THEMES.map(t => (
+									<option key={t.id} value={t.id}>
+										{themeLabel(t.id)}
+									</option>
+								))}
+								<option value={Theme.WARMUP}>Warm Up</option>
+							</Select>
+						</Field>
+						<Field label="Design stage">
+							<Select defaultValue={filters.designStatus ?? ""} name="design">
+								<option value="">Any status</option>
+								{STATUSES.map(s => (
+									<option key={s} value={s}>
+										{statusLabel(s)}
+									</option>
+								))}
+							</Select>
+						</Field>
+						<Field label="Build stage">
+							<Select defaultValue={filters.buildStatus ?? ""} name="build">
+								<option value="">Any status</option>
+								{STATUSES.map(s => (
+									<option key={s} value={s}>
+										{statusLabel(s)}
+									</option>
+								))}
+							</Select>
+						</Field>
+						<Field label="Tier">
+							<Select defaultValue={filters.tier ? String(filters.tier) : ""} name="tier">
+								<option value="">Any tier</option>
+								<option value="1">Tier 1</option>
+								<option value="2">Tier 2</option>
+								<option value="3">Tier 3</option>
+							</Select>
+						</Field>
+					</div>
+
+					{/* Yes-or-no narrowing sits apart from the choices above, with reset beside it, so the controls that clear the form are where people look for them. */}
+					<div className="hl-filters__footer">
+						<div className="hl-filters__toggles">
+							<label>
+								<input defaultChecked={filters.extended} name="extended" type="checkbox" value="1" />
+								Extension running
+							</label>
+							<label>
+								<input defaultChecked={filters.unstarted} name="unstarted" type="checkbox" value="1" />
+								Include unstarted
+							</label>
+						</div>
+						<Link className="hl-hint" href="/admin/projects">
+							Clear all filters
+						</Link>
+					</div>
 				</form>
 			</Panel>
 
