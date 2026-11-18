@@ -193,6 +193,9 @@ export interface AriShippingHours {
 	poolSeconds: number
 	/** The part of the pool the journals could not absorb, so Ari will read high by this much. */
 	unabsorbedSeconds: number
+	/** Clips neither the row nor Lapse could attribute to a project, which Ari may still count under this one. */
+	unattributedCount: number
+	unattributedSeconds: number
 }
 
 export interface ReviewDetail {
