@@ -9,7 +9,7 @@ import { displayName } from "@/lib/display-name"
 import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
 import { grantCardCsv } from "@/lib/grant-card-csv"
-import { type ExportRowVerdict, reconcileExportRows } from "@/lib/grant-card-export-reconcile"
+import { applyReviewedDecisions, type ExportRowVerdict, reconcileExportRows } from "@/lib/grant-card-export-reconcile"
 import {
 	GRANT_CARD_INVITE_MESSAGE,
 	grantCardAmountCents,
@@ -1255,7 +1255,15 @@ export interface CsvExportReconcileReport {
  *
  * Dry run unless `apply` is set. Every read happens before the first write, so an unreadable HCB list or Airtable stops the run with nothing changed.
  */
-export async function reconcileCsvExportRows(input: { apply: boolean }): Promise<CsvExportReconcileReport> {
+export interface ReconcileCsvExportRowsInput {
+	apply: boolean
+	/** Rows a person checked on HCB and found paid by the maker: they stay live and count as landed. */
+	confirmPaid?: readonly string[]
+	/** Rows a person checked and found with no payment: only these may be superseded, and only when the matcher calls them missing. */
+	supersede?: readonly string[]
+}
+
+export async function reconcileCsvExportRows(input: ReconcileCsvExportRowsInput): Promise<CsvExportReconcileReport> {
 	if (!isHcbConfigured()) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
 
 	const rows = await db.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
@@ -1278,7 +1286,18 @@ export async function reconcileCsvExportRows(input: { apply: boolean }): Promise
 		list.rows,
 		claimed,
 	)
-	const verdictById = new Map(verdicts.map(verdict => [verdict.rowId, verdict]))
+	const confirmPaid = new Set(input.confirmPaid)
+	const supersedeList = new Set(input.supersede)
+	const liveIds = new Set(rows.map(row => row.id))
+	for (const id of [...confirmPaid, ...supersedeList])
+		if (!liveIds.has(id))
+			throw new HttpError("CONFLICT", `${id} is not a live CSV export row, so it cannot be reviewed`)
+	const verdictById = new Map(
+		applyReviewedDecisions(verdicts, { confirmedPaid: confirmPaid, supersede: supersedeList }).map(verdict => [
+			verdict.rowId,
+			verdict,
+		]),
+	)
 	const reported: CsvExportReconcileRow[] = rows.map(row => {
 		const verdict = verdictById.get(row.id)
 		return {
@@ -1334,7 +1353,9 @@ export async function reconcileCsvExportRows(input: { apply: boolean }): Promise
 		})
 	}
 
-	const missing = reported.filter(row => row.verdict === "missing").map(row => row.rowId)
+	const missing = reported
+		.filter(row => row.verdict === "missing" && supersedeList.has(row.rowId))
+		.map(row => row.rowId)
 	const superseded =
 		input.apply && missing.length > 0
 			? await supersedeLiveCards(missing, "No HCB card grant matches this CSV row. Reconciled against HCB")

@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { type ExportRowForReconcile, isHalfLifePurpose, reconcileExportRows } from "@/lib/grant-card-export-reconcile"
+import {
+	applyReviewedDecisions,
+	type ExportRowForReconcile,
+	isHalfLifePurpose,
+	reconcileExportRows,
+} from "@/lib/grant-card-export-reconcile"
 import type { HcbCardGrantSummary } from "@/lib/hcb"
 
 const row = (id: string, overrides: Partial<ExportRowForReconcile> = {}): ExportRowForReconcile => ({
@@ -105,5 +110,30 @@ describe("reconcileExportRows", () => {
 		const result = reconcileExportRows([row("r1"), row("r2", { email: "second@example.com" })], [grant()], none)
 		expect(result.verdicts.find(v => v.rowId === "r1")?.kind).toBe("landed")
 		expect(result.verdicts.find(v => v.rowId === "r2")?.kind).toBe("missing")
+	})
+})
+
+describe("applyReviewedDecisions", () => {
+	const missing = [
+		{ kind: "missing" as const, reason: "no grant", rowId: "a" },
+		{ kind: "missing" as const, reason: "no grant", rowId: "b" },
+		{ kind: "ambiguous" as const, reason: "unclear", rowId: "c" },
+	]
+
+	test("a confirmed-paid row becomes landed, whatever the matcher said", () => {
+		const result = applyReviewedDecisions(missing, { confirmedPaid: new Set(["a", "c"]), supersede: new Set() })
+		expect(result.find(v => v.rowId === "a")?.kind).toBe("landed")
+		expect(result.find(v => v.rowId === "c")?.kind).toBe("landed")
+	})
+
+	test("a missing row not on the supersede list stays missing, but says it was left live", () => {
+		const result = applyReviewedDecisions(missing, { confirmedPaid: new Set(), supersede: new Set(["a"]) })
+		expect(result.find(v => v.rowId === "a")?.kind).toBe("missing")
+		expect(result.find(v => v.rowId === "b")?.reason).toContain("left live")
+	})
+
+	test("an ambiguous row is never changed by the supersede list", () => {
+		const result = applyReviewedDecisions(missing, { confirmedPaid: new Set(), supersede: new Set(["c"]) })
+		expect(result.find(v => v.rowId === "c")?.kind).toBe("ambiguous")
 	})
 })

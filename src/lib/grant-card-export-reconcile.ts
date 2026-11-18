@@ -101,3 +101,25 @@ export function reconcileExportRows(
 	}
 	return { surplus, verdicts }
 }
+
+/**
+ * Apply human decisions on top of the matcher. The matcher cannot tell who cancelled a grant, so a person checks each HCB grant and passes the verdicts through here.
+ *
+ * `confirmedPaid` rows become `landed`, whatever the matcher said, because the maker returned or converted the grant. `supersede` only lets a `missing` row through to be superseded, so a row that is missing but not on the list is left live and reported.
+ */
+export function applyReviewedDecisions(
+	verdicts: readonly ExportRowVerdict[],
+	decisions: { confirmedPaid: ReadonlySet<string>; supersede: ReadonlySet<string> },
+): ExportRowVerdict[] {
+	return verdicts.map(verdict => {
+		if (decisions.confirmedPaid.has(verdict.rowId))
+			return {
+				kind: "landed",
+				reason: "Confirmed paid: the maker returned or converted the grant on HCB",
+				rowId: verdict.rowId,
+			}
+		if (verdict.kind === "missing" && !decisions.supersede.has(verdict.rowId))
+			return { ...verdict, reason: `${verdict.reason}. Not on the reviewed supersede list, so left live` }
+		return verdict
+	})
+}

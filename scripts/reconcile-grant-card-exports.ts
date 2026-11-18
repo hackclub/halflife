@@ -17,16 +17,33 @@ import { reconcileCsvExportRows } from "../src/lib/grant-cards"
  */
 
 const args = process.argv.slice(2)
-const unknown = args.filter(arg => arg !== "--apply")
-if (unknown.length > 0) throw new Error(`Unknown argument: ${unknown.join(" ")}`)
+const flags = new Map<string, string>()
+for (let i = 0; i < args.length; i++) {
+	const arg = args[i]
+	if (arg === "--apply") continue
+	if (arg !== "--confirm-paid" && arg !== "--supersede") throw new Error(`Unknown argument: ${arg}`)
+	const value = args[i + 1]
+	if (!value) throw new Error(`${arg} needs a comma-separated list of row ids`)
+	flags.set(arg, value)
+	i++
+}
 const apply = args.includes("--apply")
+const list = (flag: string): string[] =>
+	(flags.get(flag) ?? "")
+		.split(",")
+		.map(id => id.trim())
+		.filter(Boolean)
 
 /** Tabs and newlines would break the one-line-per-row shape. */
 function oneLine(value: string): string {
 	return value.replaceAll(/[\t\r\n]+/g, " ").trim()
 }
 
-const report = await reconcileCsvExportRows({ apply })
+const report = await reconcileCsvExportRows({
+	apply,
+	confirmPaid: list("--confirm-paid"),
+	supersede: list("--supersede"),
+})
 
 for (const row of report.rows.toSorted(
 	(a, b) => a.verdict.localeCompare(b.verdict) || a.rowId.localeCompare(b.rowId),
