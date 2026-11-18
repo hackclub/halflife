@@ -9,6 +9,7 @@ import { displayName } from "@/lib/display-name"
 import { HcbGrantCardBatchStatus, HcbGrantCardStatus, PayoutSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
 import { grantCardCsv } from "@/lib/grant-card-csv"
+import { type ExportRowVerdict, reconcileExportRows } from "@/lib/grant-card-export-reconcile"
 import {
 	GRANT_CARD_INVITE_MESSAGE,
 	grantCardAmountCents,
@@ -31,6 +32,7 @@ import { formatUsd } from "@/lib/money"
 import { configuredOrigin } from "@/lib/origin"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
+import { supersedeLiveCards } from "@/lib/starter-card-records"
 import { STARTER_TIER_ID } from "@/lib/starter-funding"
 import {
 	readStarterFundingGiven,
@@ -1214,4 +1216,134 @@ export async function listGrantCardBatches(limit = 10): Promise<GrantCardBatchSu
 		.limit(limit)
 		.all()
 	return rows.map(toBatchSummary)
+}
+
+export interface CsvExportReconcileRow {
+	amountCents: number
+	email: string
+	reason: string
+	rowId: string
+	title: string
+	verdict: ExportRowVerdict["kind"]
+}
+
+export interface CsvExportFundingWrite {
+	/** Why the write failed, or null when it was made (or would be, in a dry run). */
+	error: string | null
+	projectId: string
+	recordId: string
+	targetUsd: number
+	title: string
+}
+
+export interface CsvExportReconcileReport {
+	applied: boolean
+	fundingWrites: CsvExportFundingWrite[]
+	/** How many card grants HCB listed. A count far below what HCB shows means the list was cut short, and its missing verdicts cannot be trusted. */
+	grantsRead: number
+	rows: CsvExportReconcileRow[]
+	superseded: number
+	surplusGrants: number
+}
+
+/**
+ * Check every live CSV row against the card grants HCB holds, and bring the site in line with HCB.
+ *
+ * A row HCB holds a grant for stays live, and a Week 1 starter's `Funding given` is raised to that card. A row no grant can be is superseded, so its project can be paid again. Ambiguous rows are left alone for a person to check.
+ *
+ * Dry run unless `apply` is set. Every read happens before the first write, so an unreadable HCB list or Airtable stops the run with nothing changed.
+ */
+export async function reconcileCsvExportRows(input: { apply: boolean }): Promise<CsvExportReconcileReport> {
+	if (!isHcbConfigured()) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
+
+	const rows = await db.orm.public.HcbCardGrantExportRow.where(row => row.supersededAt.isNull())
+		.include("themeProject", project => project.select("starterProjectId", "tier", "title"))
+		.select("amountCents", "email", "id", "themeProjectId")
+		.all()
+	// Every HCB grant the site has ever recorded, live or not, is already accounted for, so none of them can confirm a CSV row.
+	const claimed = new Set<string>()
+	for (const card of await db.orm.public.HcbGrantCard.where({}).select("hcbCardGrantId").all())
+		if (card.hcbCardGrantId) claimed.add(card.hcbCardGrantId)
+	for (const topUp of await db.orm.public.HcbGrantTopUp.where({}).select("grantHashid").all())
+		if (topUp.grantHashid) claimed.add(topUp.grantHashid)
+
+	const list = await listOrganizationCardGrants()
+	if (list.kind === "unreadable")
+		throw new HttpError("INTERNAL", "HCB's card grant list could not be read, so nothing was reconciled")
+
+	const { surplus, verdicts } = reconcileExportRows(
+		rows.map(row => ({ amountCents: row.amountCents, email: row.email, id: row.id })),
+		list.rows,
+		claimed,
+	)
+	const verdictById = new Map(verdicts.map(verdict => [verdict.rowId, verdict]))
+	const reported: CsvExportReconcileRow[] = rows.map(row => {
+		const verdict = verdictById.get(row.id)
+		return {
+			amountCents: row.amountCents,
+			email: row.email,
+			reason: verdict?.reason ?? "Not checked",
+			rowId: row.id,
+			title: row.themeProject?.title ?? "",
+			verdict: verdict?.kind ?? "ambiguous",
+		}
+	})
+
+	// Read Funding given for the confirmed Week 1 starters before anything is written, so an unreadable Airtable stops the run here.
+	const starterRows = rows.filter(row => {
+		const project = row.themeProject
+		if (!project) return false
+		return (
+			verdictById.get(row.id)?.kind === "landed"
+			&& isWeekOneStarter(project.starterProjectId)
+			&& project.tier === STARTER_TIER_ID
+		)
+	})
+	const recordIds = await starterRecordIds(starterRows.map(row => row.themeProjectId))
+	const starterTargets = starterRows.flatMap(row => {
+		const recordId = recordIds.get(`${row.themeProjectId}:${Phase.DESIGN}`)
+		if (!recordId) return []
+		return [
+			{
+				projectId: row.themeProjectId,
+				recordId,
+				targetUsd: row.amountCents / 100,
+				title: row.themeProject?.title ?? "",
+			},
+		]
+	})
+	const paid =
+		starterTargets.length === 0
+			? new Map<string, number>()
+			: await readStarterFundingGiven(starterTargets.map(target => target.recordId))
+	if (paid === null)
+		throw new HttpError("INTERNAL", "Funding given could not be read from Airtable, so nothing was reconciled")
+
+	const fundingWrites: CsvExportFundingWrite[] = []
+	for (const target of starterTargets) {
+		if ((paid.get(target.recordId) ?? 0) >= target.targetUsd - 0.005) continue
+		const error = input.apply ? await setStarterFundingGiven(target.recordId, target.targetUsd) : null
+		fundingWrites.push({
+			error,
+			projectId: target.projectId,
+			recordId: target.recordId,
+			targetUsd: target.targetUsd,
+			title: target.title,
+		})
+	}
+
+	const missing = reported.filter(row => row.verdict === "missing").map(row => row.rowId)
+	const superseded =
+		input.apply && missing.length > 0
+			? await supersedeLiveCards(missing, "No HCB card grant matches this CSV row. Reconciled against HCB")
+			: 0
+
+	return {
+		applied: input.apply,
+		fundingWrites,
+		grantsRead: list.rows.length,
+		rows: reported,
+		superseded,
+		surplusGrants: surplus.length,
+	}
 }
