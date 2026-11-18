@@ -633,7 +633,7 @@
 	}
 	/* Roomy rows exist for their controls, not their padding, so the admin keeps them to a single line's rhythm. */
 	.hl-admin-main .hl-table--roomy td {
-		padding-block: 0.5rem;
+		padding-block: 0.35rem;
 	}
 	/* Repo URLs and IDs are for finding a row, not for reading across it: they end in an ellipsis so one long string cannot widen the table. */
 	.hl-admin-main td .hl-mono {
@@ -744,6 +744,10 @@
 		font-size: 1.15rem;
 		font-weight: 700;
 		color: var(--color-ink-muted);
+	}
+	/* A link with work waiting reads as a call to action; one with nothing in it stays quiet. */
+	.hl-attention a:not([data-zero="true"]) {
+		border-color: var(--color-accent);
 	}
 	.hl-attention span {
 		font-size: 0.9rem;
@@ -992,6 +996,13 @@
 	}
 	.hl-queue-item:hover {
 		background: var(--color-surface-sunken);
+	}
+	/* A title that runs long shows its first two lines and ends in an ellipsis, rather than pushing the queue sideways. */
+	.hl-queue-item > span:nth-child(2) {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		-webkit-line-clamp: 2;
 	}
 	.hl-queue-item[aria-current="true"] {
 		background: var(--color-surface-sunken);
