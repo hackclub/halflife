@@ -44,6 +44,10 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 	const [sessions, settings] = await Promise.all([
 		db.orm.public.WorkSession.where({ deletedAt: null })
 			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
+			// A banned maker's journal is not on Explore, with or without the "hide content" tick. The reels are hidden
+			// by hideAllContent, but free-text entries live on WorkSession, which has no hide column of its own – so the
+			// author's ban is what takes them out.
+			.where(session => session.themeProject.some(project => project.user.some(author => author.bannedAt.isNull())))
 			// `NOT` negates the pair, so an entry survives when it carries a body: a writer who really typed the fallback line as their opening has content behind the title, and is not caught here.
 			.where(session => not(and(session.content.isNull(), session.title.eq(DEFAULT_SESSION_TITLE))))
 			// The id breaks ties, so two entries saved in the same millisecond keep one order between loads.
