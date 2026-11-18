@@ -1359,6 +1359,12 @@ html:has(.hl-admin) {
 }
 
 /* Inside the admin console, controls take a fine rule and the focus ring carries the emphasis. Heavy outlines made every button look like the primary action. */
+/* A read-only field looks fixed: sunken ground and muted text, so nobody mistakes it for a box to type in. */
+.hl-admin-main .hl-input[readonly] {
+	color: var(--color-ink-muted);
+	cursor: default;
+	background: var(--color-surface-sunken);
+}
 /* A disabled control reads as unavailable, not as a faded primary: neutral ground and muted text. */
 .hl-admin-main .hl-btn:disabled {
 	color: var(--color-ink-muted);
