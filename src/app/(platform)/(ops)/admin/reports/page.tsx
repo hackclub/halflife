@@ -72,7 +72,10 @@ export default async function AdminReportsPage({
 								key={f.id}
 								style={f.id === filter ? { color: "var(--color-ink-strong)", fontWeight: 700 } : undefined}
 							>
-								{f.label} ({f.status === "ALL" ? counts.OPEN + counts.RESOLVED + counts.DISMISSED : counts[f.status]})
+								{f.label}{" "}
+								<span className="hl-count">
+									{f.status === "ALL" ? counts.OPEN + counts.RESOLVED + counts.DISMISSED : counts[f.status]}
+								</span>
 							</Link>
 						))}
 					</div>
