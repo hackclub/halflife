@@ -17,19 +17,29 @@ export const BUFFER_TOPUP_MEMO_PREFIX = "Topup of grant to "
 export const bareGrantId = (id: string): string => id.replace(/^cdg_/, "")
 
 /** The identity of one HCB disbursement, so a re-run cannot record it twice. */
-export function bufferTopUpKey(grantId: string, disbursement: GrantDisbursement): string {
-	return `${bareGrantId(grantId)}|${disbursement.createdAt ?? ""}|${disbursement.amountCents}|${disbursement.memo ?? ""}`
+export function bufferTopUpKey(grantId: string, disbursement: GrantDisbursement, index = 0): string {
+	const base = `${bareGrantId(grantId)}|${disbursement.createdAt ?? ""}|${disbursement.amountCents}|${disbursement.memo ?? ""}`
+	// Without a time, the transaction id is the stable half of the identity; two rows with neither are
+	// indistinguishable by content and used to collapse into one record, so the position keeps them apart.
+	if (disbursement.createdAt !== null) return base
+	return `${base}|${disbursement.transactionId ?? String(index)}`
 }
 
 export interface SitePayment {
 	amountCents: number
 	grantHashid: string
+	/** The HCB transaction the payment landed as. A disbursement sharing it is definitely this payment. */
+	transactionId?: string | null
 }
 
 /**
  * The disbursements on one grant that are buffer top-ups.
  *
- * A positive top-up whose amount matches a payment Half Life sent into the same grant is that payment, not a buffer top-up, and is skipped. Anything else with the top-up memo counts.
+ * A positive top-up that is one of Half Life's own payments is that payment, not a buffer top-up. The pairing is
+ * one-to-one: a payment can explain one disbursement, and the rest stay buffer top-ups. Matching by transaction id
+ * first is exact; the amount is only a fallback for a payment with no id recorded. Dropping every disbursement that
+ * merely matched an amount hid a hand top-up of the same size, and treating a landed-but-unsent payment as a buffer
+ * top-up inflated the grant's original amount.
  */
 export function selectBufferTopUps(
 	disbursements: readonly GrantDisbursement[],
@@ -37,13 +47,28 @@ export function selectBufferTopUps(
 	grantId: string,
 ): GrantDisbursement[] {
 	const bare = bareGrantId(grantId)
-	return disbursements.filter(d => {
-		if (d.amountCents <= 0) return false
-		if (!d.memo?.startsWith(BUFFER_TOPUP_MEMO_PREFIX)) return false
-		return !sitePayments.some(
-			payment => bareGrantId(payment.grantHashid) === bare && payment.amountCents === d.amountCents,
-		)
-	})
+	const payments = sitePayments.filter(payment => bareGrantId(payment.grantHashid) === bare)
+	const candidates = disbursements.filter(
+		d => d.amountCents > 0 && Boolean(d.memo?.startsWith(BUFFER_TOPUP_MEMO_PREFIX)),
+	)
+
+	const unmatched = [...candidates]
+	const byTransaction = unmatched.filter(d => d.transactionId !== null && d.transactionId !== undefined)
+	for (const disbursement of byTransaction) {
+		const index = payments.findIndex(payment => payment.transactionId === disbursement.transactionId)
+		if (index === -1) continue
+		payments.splice(index, 1)
+		unmatched.splice(unmatched.indexOf(disbursement), 1)
+	}
+
+	// What is left could still be a payment whose id the site never recorded. Pair by amount, one for one.
+	for (const disbursement of unmatched.slice()) {
+		const index = payments.findIndex(payment => payment.amountCents === disbursement.amountCents)
+		if (index === -1) continue
+		payments.splice(index, 1)
+		unmatched.splice(unmatched.indexOf(disbursement), 1)
+	}
+	return unmatched
 }
 
 export interface BufferTopUpSyncResult {
@@ -65,7 +90,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		throw new HttpError("INTERNAL", "HCB's card grant list could not be read, so nothing was synced")
 
 	const sitePayments = await db.orm.public.HcbGrantTopUp.where(topUp => topUp.sentAt.isNotNull())
-		.select("amountCents", "grantHashid")
+		.select("amountCents", "grantHashid", "transactionId")
 		.all()
 	const known = new Set(
 		(await db.orm.public.HcbBufferTopUp.where({}).select("disbursementKey").all()).map(row => row.disbursementKey),
@@ -87,9 +112,9 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 				"INTERNAL",
 				`HCB's disbursements for grant ${bareGrantId(grant.id)} could not be read, so nothing was synced`,
 			)
-		for (const disbursement of selectBufferTopUps(read.rows, sitePayments, grant.id)) {
+		for (const [index, disbursement] of selectBufferTopUps(read.rows, sitePayments, grant.id).entries()) {
 			topUpsFound++
-			const key = bufferTopUpKey(grant.id, disbursement)
+			const key = bufferTopUpKey(grant.id, disbursement, index)
 			if (known.has(key)) {
 				alreadyRecorded++
 				continue

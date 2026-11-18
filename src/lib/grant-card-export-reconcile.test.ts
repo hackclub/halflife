@@ -144,3 +144,18 @@ describe("reconcileExportRows with prefixed and bare grant ids", () => {
 		expect(result.verdicts[0]?.kind).toBe("ambiguous")
 	})
 })
+
+describe("reconcileExportRows with a buffered grant offered twice", () => {
+	test("one grant can confirm one row, not both of its amount forms", () => {
+		// The caller offers a grant whose amount was topped up both at its full and its net amount, so two rows for
+		// the same maker could each match the same grant through a different amount.
+		const same = grant({ id: "cdg_buf" })
+		const net = grant({ amountCents: 2550, id: "cdg_buf" })
+		const result = reconcileExportRows(
+			[row("full", { amountCents: 3050 }), row("net", { amountCents: 2550 })],
+			[same, net],
+			none,
+		)
+		expect(result.verdicts.map(verdict => verdict.kind).toSorted()).toEqual(["ambiguous", "landed"])
+	})
+})
