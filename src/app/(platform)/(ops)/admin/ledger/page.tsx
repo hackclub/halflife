@@ -4,6 +4,7 @@ import { Button, Field, PageHeader, Panel, Select, Stat, TableToolbar, TextInput
 import { IconFilter } from "@/app/components/ui/icons"
 import { LedgerKind } from "@/lib/enums"
 import { ledgerKindFrom, ledgerKindLabel, utcDay } from "@/lib/ledger-filters"
+import { fmtInt } from "@/lib/numbers"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasRole, Permission, Role } from "@/lib/permissions"
 import { listLedgerEntries } from "@/lib/queries/admin-ledger"
@@ -59,12 +60,12 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 			<PageHeader compact subtitle="Every credit movement, newest first." title="Ledger" />
 
 			<div className="hl-row">
-				<Stat label="Entries matched" value={count} />
-				<Stat label="Net credit over the filters" value={total > 0 ? `+${total}` : total} />
+				<Stat label="Entries matched" value={fmtInt(count)} />
+				<Stat label="Net credit over the filters" value={total > 0 ? `+${fmtInt(total)}` : fmtInt(total)} />
 			</div>
 
 			<Panel>
-				<TableToolbar count={`${count} matched`}>
+				<TableToolbar count={`${fmtInt(count)} matched`}>
 					<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
 						<TextInput
 							defaultValue={q ?? ""}

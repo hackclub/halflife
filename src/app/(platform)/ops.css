@@ -656,6 +656,13 @@
 	.hl-admin-main .hl-badge {
 		white-space: nowrap;
 	}
+	/* Badges carry one fine rule, like the controls around them, so a row of them does not out-weigh the content. */
+	.hl-admin-main .hl-badge {
+		border-width: 1px;
+	}
+	.hl-queue-item > .hl-badge {
+		align-self: flex-start;
+	}
 	/* A stage's pill drops to its own line when its cell is too narrow for both, instead of running past the cell's edge. */
 	.hl-review-stages li {
 		flex-wrap: wrap;
