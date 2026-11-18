@@ -579,6 +579,15 @@
 			display: none;
 		}
 	}
+	/* Helper text is the part people read on a small screen, so it gets a size they can read without zooming. */
+	@media (max-width: 600px) {
+		.hl-admin-main .hl-hint {
+			font-size: 0.95rem;
+		}
+		.hl-admin-main .hl-scroll {
+			box-shadow: inset -12px 0 10px -10px rgb(16 15 48 / 0.2);
+		}
+	}
 	@media (max-width: 600px) {
 		.hl-admin-email,
 		.hl-admin-kbd {
@@ -998,7 +1007,7 @@
 	/* A queue on the left, the chosen item on the right. The queue keeps its place while the detail changes. */
 	.hl-split {
 		display: grid;
-		grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+		grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
 		gap: 1rem;
 		align-items: start;
 	}
