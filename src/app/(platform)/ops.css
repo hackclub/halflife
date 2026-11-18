@@ -437,8 +437,8 @@
 	}
 	/* Pinned under the header, so the field stays where it is while the results below it grow and shrink. */
 	.hl-modal--top {
-		margin: 4.5rem auto auto;
 		max-height: calc(100dvh - 5.5rem);
+		margin: 4.5rem auto auto;
 	}
 
 	/* ── Staff top bar ─────────────────────────────────────────────────────── */
@@ -471,7 +471,6 @@
 	 * The admin console trades the staff navbar for a sidebar and a full-width page. The sidebar stays in its column while a long table scrolls, and the page takes the window's width, which is where the tables need it. Below 760px the sidebar drops above the page.
 	 */
 	.hl-admin {
-		scrollbar-gutter: stable;
 		display: flex;
 		flex-direction: column;
 		min-height: 100dvh;
@@ -493,8 +492,8 @@
 		min-width: 0;
 		margin-left: auto;
 		overflow: hidden;
-		font-size: 0.9rem;
 		text-overflow: ellipsis;
+		font-size: 0.9rem;
 		white-space: nowrap;
 	}
 	.hl-admin-search {
@@ -511,8 +510,8 @@
 	}
 	.hl-admin-body {
 		display: grid;
-		grid-template-columns: 12rem minmax(0, 1fr);
 		flex: 1;
+		grid-template-columns: 12rem minmax(0, 1fr);
 	}
 	/*
 	 * The column stretches the height of the page, so its background runs the whole way down. Only the list inside it is sticky, so the links stay in view while a long page scrolls, and the column sits above the tables that scroll past it.
@@ -537,9 +536,9 @@
 		margin-bottom: 0.25rem;
 		font-size: 0.72rem;
 		font-weight: 700;
-		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 		text-transform: uppercase;
+		letter-spacing: 0.08em;
 	}
 	.hl-admin-side a {
 		display: block;
@@ -583,9 +582,9 @@
 	 */
 	.hl-admin-main .hl-table {
 		font-size: 0.9rem;
+		border-spacing: 0;
 		/* Separate cells, not collapsed borders, so a sticky cell keeps its own rule as it scrolls over its neighbours. */
 		border-collapse: separate;
-		border-spacing: 0;
 	}
 	.hl-admin-main .hl-table:not(.hl-table--roomy) th,
 	.hl-admin-main .hl-table:not(.hl-table--roomy) td {
@@ -707,8 +706,8 @@
 
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
 	.hl-count {
-		font-variant-numeric: tabular-nums;
 		font-weight: 400;
+		font-variant-numeric: tabular-nums;
 		color: var(--color-ink-muted);
 	}
 
@@ -756,10 +755,10 @@
 	.hl-admin-main input[type="file"] {
 		padding: 0.9rem;
 		font: inherit;
+		cursor: pointer;
 		background: var(--color-surface);
 		border: 2px dashed var(--color-field-edge);
 		border-radius: var(--radius-button);
-		cursor: pointer;
 	}
 
 	/* The line under a list that loads as you scroll: its progress, or the reason it stopped. */
@@ -812,8 +811,8 @@
 		flex-direction: column;
 		gap: 0.2rem;
 		max-height: 60vh;
-		margin: 0;
 		padding: 0;
+		margin: 0;
 		overflow-y: auto;
 		list-style: none;
 	}
@@ -826,14 +825,14 @@
 		font: inherit;
 		color: var(--color-ink);
 		text-align: left;
+		cursor: pointer;
 		background: transparent;
 		border: 0;
 		border-radius: var(--radius-button);
-		cursor: pointer;
 	}
 	.hl-admin-palette-item[data-active="true"] {
-		background: var(--color-surface-sunken);
 		outline: 2px solid var(--color-accent);
+		background: var(--color-surface-sunken);
 	}
 
 	/* ── Compact page heading ─────────────────────────────────────────────── */
@@ -869,8 +868,8 @@
 		flex-direction: column;
 		gap: 0.25rem;
 		max-height: 26rem;
-		margin: 0;
 		padding: 0 0 0 1rem;
+		margin: 0;
 		overflow-y: auto;
 		list-style: none;
 		border-left: 2px solid var(--color-border);
@@ -901,8 +900,8 @@
 		bottom: 0;
 		z-index: 2;
 		display: flex;
-		justify-content: flex-end;
 		gap: 0.75rem;
+		justify-content: flex-end;
 		padding: 0.75rem 0;
 		background: var(--color-surface-raised);
 		border-top: 2px solid var(--color-border);
@@ -913,17 +912,17 @@
 	.hl-table-toolbar {
 		display: flex;
 		flex-wrap: wrap;
+		gap: 0.6rem 1rem;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.6rem 1rem;
 		padding-bottom: 0.75rem;
 		border-bottom: 1px solid var(--color-border);
 	}
 	.hl-table-toolbar-controls {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: center;
 		gap: 0.6rem;
+		align-items: center;
 		min-width: 0;
 	}
 
@@ -960,9 +959,9 @@
 		flex-direction: column;
 		gap: 0.2rem;
 		min-width: 0;
-		overflow-wrap: anywhere;
 		padding: 0.55rem 0.7rem;
 		color: var(--color-ink);
+		overflow-wrap: anywhere;
 		text-decoration: none;
 		border: 2px solid transparent;
 		border-radius: var(--radius-button);
@@ -1310,4 +1309,17 @@
 		font-size: 0.78rem;
 		overflow-wrap: anywhere;
 	}
+}
+
+/* The gutter is reserved on the root, where the page actually scrolls, so the layout does not shift when a page grows past the window's height. */
+html:has(.hl-admin) {
+	scrollbar-gutter: stable;
+}
+
+/* Inside the admin console, controls take a fine rule and the focus ring carries the emphasis. Heavy outlines made every button look like the primary action. */
+.hl-admin-main .hl-btn,
+.hl-admin-main .hl-input,
+.hl-admin-main .hl-select,
+.hl-admin-main .hl-textarea {
+	border-width: 1px;
 }
