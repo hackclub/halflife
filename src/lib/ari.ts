@@ -191,7 +191,23 @@ export async function withdrawSubmissionFromAri(
 		// Already gone is the state we wanted; only a real failure should retry.
 		if (err instanceof AriApiError && err.code === "not_queued") return { status: "not_queued" as const }
 		throw err
+	} finally {
+		// Whatever the withdraw answered, this hand-in is being taken back, so a decision stored for it must not be
+		// replayed later against the resubmission that takes the open slot.
+		await voidDeferredDeliveries(themeProjectId, phase).catch(err =>
+			console.error(`[ari] could not void deferred deliveries for ${themeProjectId}:${phase}:`, err),
+		)
 	}
+}
+
+/** Retire every deferred decision held for a hand-in that is being withdrawn. */
+async function voidDeferredDeliveries(themeProjectId: string, phase: Phase): Promise<void> {
+	await db.orm.public.AriWebhookDelivery.where({
+		appliedAt: null,
+		externalId: ariExternalId(themeProjectId, phase),
+	})
+		.where(row => row.voidedAt.isNull())
+		.updateAndCount({ voidedAt: formatDbTimestamp(new Date()) })
 }
 
 /** Hand-ins awaiting review that never reached Ari – for the retry job and the admin panel. Three queries total rather than several per project, because the
@@ -301,7 +317,10 @@ async function recordAriPhase(row: AriPhaseRow, ariPhase: string): Promise<boole
 	return true
 }
 
-async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } = {}): Promise<void> {
+async function applyDecision(
+	event: DecisionEvent,
+	opts: { announce?: boolean; receivedAt?: Date } = {},
+): Promise<void> {
 	const parsed = parseAriExternalId(event.external_id)
 	if (!parsed) {
 		await ignored(event, "unparseable external_id", event.external_id)
@@ -311,13 +330,13 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 
 	// Prefer the row this ship was actually sent for. A withdraw-and-resubmit reuses the same external id, so a decision for the withdrawn ship must not be applied to the newer hand-in that now holds the open slot.
 	const byShip = await db.orm.public.PhaseSubmission.where({ ariSubmissionId: event.id, phase, themeProjectId })
-		.select("ariStatus", "ariSubmissionId", "id", "resolvedAt")
+		.select("ariStatus", "ariSubmissionId", "createdAt", "id", "resolvedAt")
 		.first()
 	const open =
 		byShip
 		?? (await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
 			.orderBy(sub => sub.createdAt.desc())
-			.select("ariStatus", "ariSubmissionId", "id", "resolvedAt")
+			.select("ariStatus", "ariSubmissionId", "createdAt", "id", "resolvedAt")
 			.first())
 	if (!open) {
 		await ignored(event, "no open submission for this phase", event.external_id)
@@ -325,6 +344,13 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	}
 	if (!byShip && open.ariSubmissionId && open.ariSubmissionId !== event.id) {
 		await ignored(event, "decision names an earlier ship of this phase", event.external_id)
+		return
+	}
+	// With no row carrying this ship's id, the only candidate is the newest open one. A row created after the delivery
+	// arrived cannot be the hand-in this decision was about – it is a resubmission that took the open slot while the
+	// event waited, and applying an old approval to it would decide work no reviewer saw.
+	if (!byShip && opts.receivedAt && parseDbTimestamp(open.createdAt) > opts.receivedAt) {
+		await ignored(event, "decision predates the open submission", event.external_id)
 		return
 	}
 	const submission = open
@@ -615,12 +641,12 @@ async function applyUnknown(event: UnknownEvent): Promise<void> {
 	})
 }
 
-async function applyEvent(event: AriWebhookEvent): Promise<void> {
+async function applyEvent(event: AriWebhookEvent, receivedAt?: Date): Promise<void> {
 	switch (event.event) {
 		case "review.approved":
 		case "review.changes":
 		case "review.rejected":
-			await applyDecision(event)
+			await applyDecision(event, { receivedAt })
 			break
 		case "review.reverted":
 		case "review.requeued":
@@ -641,8 +667,8 @@ async function applyEvent(event: AriWebhookEvent): Promise<void> {
 /**
  * Apply an event that was stored because the state was not ready for it – a build approval that arrived before its design. Called by the `ari-retry` job; the caller marks the delivery applied once this resolves.
  */
-export async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
-	await applyEvent(event)
+export async function applyStoredEvent(event: AriWebhookEvent, receivedAt?: Date): Promise<void> {
+	await applyEvent(event, receivedAt)
 }
 
 /**

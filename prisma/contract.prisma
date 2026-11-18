@@ -133,6 +133,9 @@ namespace public {
     externalId      String?
     receivedAt      TimestampString(3)  @default(now())
     appliedAt       TimestampString(3)?
+    /// Set when the hand-in the event decided was withdrawn, so the deferred decision must never be replayed against
+    /// whatever took its place.
+    voidedAt        TimestampString(3)?
     payload         Jsonb?
 
     @@index([deliveryId], map: "ari_webhook_delivery_deliveryId_key", unique: true)

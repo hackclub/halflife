@@ -16,7 +16,7 @@ import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 import db from "@/lib/prisma8"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
-import { DAY_MS, formatDbTimestamp } from "@/lib/time"
+import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
 export const maxDuration = 300
@@ -121,16 +121,25 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	let deferred = 0
 	let deferredFailed = 0
 	if (isAriConfigured()) {
+		// A decision that has waited a month is about work nobody is looking at any more. Retiring the oldest first is
+		// what keeps a handful of permanently waiting events from filling the 25-event window on every run.
+		const retiredAt = formatDbTimestamp(new Date())
+		await db.orm.public.AriWebhookDelivery.where({ appliedAt: null })
+			.where(row => row.voidedAt.isNull())
+			.where(row => row.receivedAt.lt(formatDbTimestamp(new Date(Date.now() - 30 * DAY_MS))))
+			.updateAndCount({ voidedAt: retiredAt })
+
 		const waiting = await db.orm.public.AriWebhookDelivery.where({ appliedAt: null })
 			.where(row => row.payload.isNotNull())
+			.where(row => row.voidedAt.isNull())
 			.orderBy(row => row.receivedAt.asc())
-			.select("id", "payload")
+			.select("id", "payload", "receivedAt")
 			.limit(25)
 			.all()
 		for (const row of waiting)
 			try {
 				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- shape named at this boundary
-				await applyStoredEvent(row.payload as unknown as AriWebhookEvent)
+				await applyStoredEvent(row.payload as unknown as AriWebhookEvent, parseDbTimestamp(row.receivedAt))
 				await db.orm.public.AriWebhookDelivery.where({ id: row.id }).update({
 					appliedAt: formatDbTimestamp(new Date()),
 				})
