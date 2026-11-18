@@ -1,10 +1,12 @@
-import Link from "next/link"
-import { OpsShell } from "@/app/components/OpsShell"
-import { HardLink } from "@/components/site/HardLink"
+import { AdminFrame } from "@/app/components/admin/AdminFrame"
+import type { AdminNavGroup, AdminNavItem } from "@/app/components/admin/admin-nav"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 
 export const dynamic = "force-dynamic"
+
+/** The items when this person may open them, and none otherwise, so a section keeps only the pages they can reach. */
+const pages = (allowed: boolean, items: AdminNavItem[]): AdminNavItem[] => (allowed ? items : [])
 
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 	const { user, roles } = await requireAnyPermissionPage(
@@ -18,35 +20,57 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 		Permission.MANAGE_CREDIT,
 	)
 
+	const can = (permission: Permission): boolean => hasPermission(roles, permission)
+
+	// A section with no pages left is dropped, so the sidebar never shows a heading over nothing.
+	const groups: AdminNavGroup[] = [
+		{ items: [{ href: "/admin", label: "Overview" }], label: "Overview" },
+		{
+			items: [
+				...pages(can(Permission.VIEW_USERS), [
+					{ href: "/admin/users", label: "Users" },
+					{ href: "/admin/projects", label: "Projects" },
+					{ href: "/admin/referrals", label: "Referrals" },
+				]),
+				...pages(can(Permission.MANAGE_FEED), [
+					{ href: "/admin/reports", label: "Reports" },
+					{ href: "/admin/feed", label: "Feed" },
+				]),
+			],
+			label: "People",
+		},
+		{
+			items: [
+				...pages(can(Permission.MANAGE_CREDIT), [{ href: "/admin/grants", label: "Grants" }]),
+				...pages(can(Permission.MANAGE_SHOP), [{ href: "/admin/shop", label: "Shop" }]),
+				...pages(can(Permission.FULFILL_ORDERS), [{ href: "/admin/fulfillment", label: "Fulfillment" }]),
+			],
+			label: "Money",
+		},
+		{
+			items: [
+				...pages(can(Permission.MANAGE_PROGRAM), [
+					{ href: "/admin/program", label: "Program" },
+					{ href: "/admin/events", label: "Events" },
+				]),
+				...pages(can(Permission.VIEW_USERS), [{ href: "/admin/deadlines", label: "Deadlines" }]),
+			],
+			label: "Programme",
+		},
+		{
+			items: [
+				...pages(can(Permission.VIEW_AUDIT_LOG), [{ href: "/admin/audit", label: "Audit" }]),
+				...pages(can(Permission.VIEW_UPLOADS), [{ href: "/admin/uploads", label: "Uploads" }]),
+				...pages(can(Permission.REVIEW_SUBMISSIONS), [{ hard: true, href: "/reviews", label: "Reviews" }]),
+				{ href: "/dashboard", label: "Dashboard" },
+			],
+			label: "System",
+		},
+	].filter(group => group.items.length > 0)
+
 	return (
-		<OpsShell
-			email={user.email}
-			nav={
-				<>
-					<Link href="/admin">Overview</Link>
-					{hasPermission(roles, Permission.VIEW_USERS) ? (
-						<>
-							<Link href="/admin/users">Users</Link>
-							<Link href="/admin/projects">Projects</Link>
-							<Link href="/admin/referrals">Referrals</Link>
-						</>
-					) : null}
-					{hasPermission(roles, Permission.MANAGE_CREDIT) ? <Link href="/admin/grants">Grants</Link> : null}
-					{hasPermission(roles, Permission.MANAGE_SHOP) ? <Link href="/admin/shop">Shop</Link> : null}
-					{hasPermission(roles, Permission.FULFILL_ORDERS) ? <Link href="/admin/fulfillment">Fulfillment</Link> : null}
-					{hasPermission(roles, Permission.MANAGE_PROGRAM) ? <Link href="/admin/program">Program</Link> : null}
-					{hasPermission(roles, Permission.MANAGE_PROGRAM) ? <Link href="/admin/events">Events</Link> : null}
-					{hasPermission(roles, Permission.MANAGE_FEED) ? <Link href="/admin/feed">Feed</Link> : null}
-					{hasPermission(roles, Permission.MANAGE_FEED) ? <Link href="/admin/reports">Reports</Link> : null}
-					{hasPermission(roles, Permission.VIEW_AUDIT_LOG) ? <Link href="/admin/audit">Audit</Link> : null}
-					{hasPermission(roles, Permission.VIEW_UPLOADS) ? <Link href="/admin/uploads">Uploads</Link> : null}
-					{hasPermission(roles, Permission.REVIEW_SUBMISSIONS) ? <HardLink href="/reviews">Reviews</HardLink> : null}
-					<Link href="/dashboard">Dashboard</Link>
-				</>
-			}
-			title="Half-Life admin"
-		>
+		<AdminFrame email={user.email} groups={groups}>
 			{children}
-		</OpsShell>
+		</AdminFrame>
 	)
 }

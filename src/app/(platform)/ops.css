@@ -449,6 +449,189 @@
 		transform: translateY(1px);
 	}
 
+	/* ── Admin console frame ───────────────────────────────────────────────── */
+	/*
+	 * The admin console trades the staff navbar for a sidebar and a full-width page. The sidebar stays in its column while a long table scrolls, and the page takes the window's width, which is where the tables need it. Below 760px the sidebar drops above the page.
+	 */
+	.hl-admin {
+		display: flex;
+		flex-direction: column;
+		min-height: 100dvh;
+	}
+	.hl-admin-top {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+		padding: 0.6rem 1.25rem;
+		background: var(--color-surface-raised);
+		border-bottom: 2px solid var(--color-border);
+	}
+	.hl-admin-brand {
+		font-weight: 800;
+		color: var(--color-ink-strong);
+		white-space: nowrap;
+	}
+	.hl-admin-email {
+		min-width: 0;
+		margin-left: auto;
+		overflow: hidden;
+		font-size: 0.9rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.hl-admin-search {
+		padding: 0.35rem 0.8rem;
+		font-size: 0.9rem;
+	}
+	.hl-admin-kbd {
+		padding: 0.05rem 0.35rem;
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 4px;
+	}
+	.hl-admin-body {
+		display: grid;
+		grid-template-columns: 13.5rem minmax(0, 1fr);
+		flex: 1;
+	}
+	.hl-admin-side {
+		position: sticky;
+		top: 0;
+		align-self: start;
+		max-height: 100dvh;
+		padding: 1rem 0.75rem 2rem;
+		overflow-y: auto;
+		background: var(--color-surface-raised);
+		border-right: 2px solid var(--color-border);
+	}
+	.hl-admin-group + .hl-admin-group {
+		margin-top: 1.1rem;
+	}
+	.hl-admin-group-label {
+		padding: 0 0.6rem;
+		margin-bottom: 0.25rem;
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-muted);
+		text-transform: uppercase;
+	}
+	.hl-admin-side a {
+		display: block;
+		padding: 0.3rem 0.6rem;
+		font-weight: 600;
+		color: var(--color-ink);
+		text-decoration: none;
+		border-radius: var(--radius-button);
+	}
+	.hl-admin-side a:hover {
+		background: var(--color-surface-sunken);
+	}
+	.hl-admin-side a[aria-current="page"] {
+		color: var(--color-accent-ink);
+		background: var(--color-accent);
+	}
+	.hl-admin-main {
+		min-width: 0;
+		padding: 1.5rem 1.75rem 3rem;
+	}
+	@media (max-width: 760px) {
+		.hl-admin-body {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.hl-admin-side {
+			position: static;
+			max-height: none;
+			border-right: 0;
+			border-bottom: 2px solid var(--color-border);
+		}
+		.hl-admin-main {
+			padding: 1rem;
+		}
+	}
+
+	/* The command palette's list, inside the console's modal. */
+	.hl-admin-palette-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		max-height: 60vh;
+		margin: 0;
+		padding: 0;
+		overflow-y: auto;
+		list-style: none;
+	}
+	.hl-admin-palette-item {
+		display: flex;
+		gap: 1rem;
+		justify-content: space-between;
+		width: 100%;
+		padding: 0.5rem 0.7rem;
+		font: inherit;
+		color: var(--color-ink);
+		text-align: left;
+		background: transparent;
+		border: 0;
+		border-radius: var(--radius-button);
+		cursor: pointer;
+	}
+	.hl-admin-palette-item[data-active="true"] {
+		background: var(--color-surface-sunken);
+		outline: 2px solid var(--color-accent);
+	}
+
+	/* ── Compact page heading ─────────────────────────────────────────────── */
+	/* A heading that takes one line, where the hanging sign takes a band of the screen. Admin pages use it; the review console keeps the sign. */
+	.hl-page-head {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.5rem;
+		align-items: baseline;
+		justify-content: space-between;
+		margin-bottom: 1.25rem;
+	}
+	.hl-page-title {
+		margin: 0;
+		font-size: 1.6rem;
+		font-weight: 800;
+		color: var(--color-ink-strong);
+	}
+	.hl-page-sub {
+		margin: 0.2rem 0 0;
+	}
+	.hl-page-head-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	/* ── Filter chips ──────────────────────────────────────────────────────── */
+	.hl-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+	.hl-chip {
+		padding: 0.3rem 0.75rem;
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--color-ink);
+		text-decoration: none;
+		background: var(--color-surface-raised);
+		border: 2px solid var(--color-border);
+		border-radius: 999px;
+	}
+	.hl-chip:hover {
+		border-color: var(--color-accent);
+	}
+	.hl-chip[aria-current="true"] {
+		color: var(--color-accent-ink);
+		background: var(--color-accent);
+		border-color: var(--color-accent);
+	}
+
 	/* ── Dispute thread ────────────────────────────────────────────────────── */
 	/*
 	 * A message's meta is its label and its body is the message, so the body sits tight under the label and indented from it, while the gap between messages is the wider interval. That is what groups each meta with its own text instead of giving every line the same rhythm.
