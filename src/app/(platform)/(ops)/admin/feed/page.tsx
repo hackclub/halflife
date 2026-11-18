@@ -89,8 +89,9 @@ export default async function AdminFeedPage() {
 													confirm="Hide this reel from every feed?"
 													label="Hide"
 													reasonPrompt="Why is this reel being hidden?"
+													tone="danger"
 													url={`/api/admin/posts/${post.id}/moderate`}
-													variant="danger"
+													variant="default"
 												/>
 											)}
 										</td>
@@ -127,8 +128,9 @@ export default async function AdminFeedPage() {
 													confirm="Hide this comment from every feed?"
 													label="Hide"
 													reasonPrompt="Why is this comment being hidden?"
+													tone="danger"
 													url={`/api/admin/comments/${comment.id}/moderate`}
-													variant="danger"
+													variant="default"
 												/>
 											)}
 										</td>

@@ -198,8 +198,9 @@ function ReportActions({ report, subject }: { report: ContentReportRow; subject:
 						confirm={`${subject.hideLabel} this ${subject.kind}?`}
 						label={subject.hideLabel}
 						reasonPrompt={`Why is this ${subject.kind} being hidden?`}
+						tone="danger"
 						url={subject.hideUrl}
-						variant="danger"
+						variant="default"
 					/>
 				) : null)}
 			{report.status === "OPEN" && (
