@@ -162,8 +162,9 @@ export default async function AdminUserPage({ params }: Props) {
 							}
 							label={user.fraudFlagged ? "Clear the flag" : "Flag this account"}
 							method="PATCH"
+							tone={user.fraudFlagged ? "default" : "danger"}
 							url={`/api/admin/users/${id}`}
-							variant={user.fraudFlagged ? "default" : "danger"}
+							variant="default"
 						/>
 					</div>
 				</Panel>

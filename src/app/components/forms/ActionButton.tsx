@@ -14,6 +14,7 @@ export function ActionButton({
 	label,
 	pendingLabel,
 	variant = "default",
+	tone,
 	confirm,
 	disabled,
 	onDone,
@@ -25,6 +26,8 @@ export function ActionButton({
 	label: string
 	pendingLabel?: string
 	variant?: "default" | "primary" | "danger"
+	/** How the confirm box reads. Defaults to red for a danger button, so a quieter button can still ask in red. */
+	tone?: "default" | "danger"
 	confirm?: string
 	disabled?: boolean
 	onDone?(): void
@@ -53,7 +56,7 @@ export function ActionButton({
 			confirmLabel: label,
 			message: confirm,
 			title: label,
-			tone: variant === "danger" ? "danger" : "default",
+			tone: tone ?? (variant === "danger" ? "danger" : "default"),
 		})
 		if (result !== null) afterConfirm()
 	}
