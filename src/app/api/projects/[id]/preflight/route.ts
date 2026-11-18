@@ -1,4 +1,6 @@
 import { fail, ok } from "@/lib/api"
+import { listBom } from "@/lib/bom"
+import { bomGapCheck, bomGaps } from "@/lib/bom-gaps"
 import { PhaseStatus } from "@/lib/enums"
 import { type AuthedContext, withSession } from "@/lib/guards"
 import { identityNeeded } from "@/lib/identity-reminder-needed"
@@ -64,7 +66,10 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 	// The address matters until the design is approved, because that is when parts are posted. Once approved the reminder on the shell takes over.
 	const address =
 		project.designStatus !== PhaseStatus.approved && (await handInAddressMissing(gate.user.id)) ? [ADDRESS_CHECK] : []
+	// The parts list is what funding is priced from, so a line with no price or link is said here rather than found by a reviewer.
+	const bomGap = bomGapCheck(bomGaps(await listBom(id)))
+	const parts = bomGap ? [bomGap] : []
 	// Appended after the repo checks, so `canSubmit` is the repo's answer alone: nothing here stops a hand-in.
 	const identity = (await identityNeeded(gate.user.id)) ? [IDENTITY_CHECK] : []
-	return ok({ ...checks, checks: [...checks.checks, ...address, ...identity] })
+	return ok({ ...checks, checks: [...checks.checks, ...address, ...parts, ...identity] })
 })
