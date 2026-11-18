@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { ledgerKindFrom, ledgerKindLabel, utcDay } from "@/lib/ledger-filters"
+import { LedgerKind } from "@/lib/enums"
+import { ledgerKindFrom, ledgerKindLabel, ledgerKindTone, utcDay } from "@/lib/ledger-filters"
 
 describe("ledger filters", () => {
 	test("reads a date input as midnight UTC", () => {
@@ -23,5 +24,20 @@ describe("ledger filters", () => {
 	test("reads a kind as words", () => {
 		expect(ledgerKindLabel("DESIGN_BANKED_HOURS")).toBe("Design banked hours")
 		expect(ledgerKindLabel("ADMIN_ADJUSTMENT")).toBe("Admin adjustment")
+	})
+})
+
+describe("ledger kind tones", () => {
+	test("the common kinds do not share a colour", () => {
+		const common = [
+			LedgerKind.DESIGN_EXCESS_HOURS,
+			LedgerKind.BUILD_HOURS,
+			LedgerKind.THEME_COMPLETION_BONUS,
+			LedgerKind.SHOP_PURCHASE,
+			LedgerKind.SHOP_REFUND,
+			LedgerKind.ADMIN_ADJUSTMENT,
+		]
+		const tones = common.map(ledgerKindTone)
+		expect(new Set(tones).size).toBe(tones.length)
 	})
 })

@@ -1,18 +1,7 @@
 import Link from "next/link"
-import {
-	Badge,
-	Button,
-	EmptyState,
-	Field,
-	PageHeader,
-	Panel,
-	Select,
-	Stat,
-	Table,
-	TextInput,
-} from "@/app/components/ui"
+import { LedgerList } from "@/app/components/admin/LedgerList"
+import { Button, Field, PageHeader, Panel, Select, Stat, TextInput } from "@/app/components/ui"
 import { IconFilter } from "@/app/components/ui/icons"
-import { formatUtcDateTime } from "@/lib/deadline"
 import { LedgerKind } from "@/lib/enums"
 import { ledgerKindFrom, ledgerKindLabel, utcDay } from "@/lib/ledger-filters"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -33,9 +22,6 @@ interface Search {
 interface Props {
 	searchParams: Promise<Search>
 }
-
-/** Figures that line up when read down the column. A block so it also right-aligns the heading above them. */
-const NUMERIC = { display: "block", fontVariantNumeric: "tabular-nums", textAlign: "right" } as const
 
 export default async function AdminLedgerPage({ searchParams }: Props) {
 	// Every account's bits in one place, so it is guarded by the permission that moves them, not the one that reads a single profile.
@@ -59,12 +45,14 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 		{ includePii },
 	)
 
-	// The next page keeps every filter; only the cursor moves.
-	const nextParams = new URLSearchParams(
-		Object.entries({ cursor: nextCursor ?? undefined, from, kind: kindParam, q, to }).filter(
+	// The rows below load more as they are scrolled to, through the same filters, so the list's address carries them all.
+	const filterParams = new URLSearchParams(
+		Object.entries({ from, kind: kindParam, q, to }).filter(
 			(entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== "",
 		),
 	)
+	const baseUrl = `/api/admin/ledger?${filterParams.toString()}`
+	const rows = items.map(entry => ({ ...entry, createdAt: entry.createdAt.toISOString() }))
 
 	return (
 		<div className="hl-stack hl-page-wide">
@@ -108,44 +96,8 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 			</Panel>
 
 			<Panel>
-				{items.length === 0 ? (
-					<EmptyState>No ledger entries match.</EmptyState>
-				) : (
-					<Table
-						head={[
-							"When",
-							"Participant",
-							"Kind",
-							"Note",
-							<span key="amount" style={NUMERIC}>
-								Amount
-							</span>,
-						]}
-					>
-						{items.map(entry => (
-							<tr key={entry.id}>
-								<td className="hl-mono">{formatUtcDateTime(entry.createdAt)}</td>
-								<td>
-									<Link href={`/admin/users/${entry.user.id}`}>{entry.user.name ?? "-"}</Link>
-								</td>
-								<td>
-									<Badge tone={entry.amount > 0 ? "success" : entry.amount < 0 ? "danger" : "muted"}>
-										{ledgerKindLabel(entry.kind)}
-									</Badge>
-								</td>
-								<td>{entry.note ?? <span className="hl-hint">-</span>}</td>
-								<td className="hl-mono" style={NUMERIC}>
-									{entry.amount > 0 ? `+${entry.amount}` : entry.amount}
-								</td>
-							</tr>
-						))}
-					</Table>
-				)}
-				{nextCursor ? (
-					<p>
-						<Link href={`/admin/ledger?${nextParams.toString()}`}>Next page</Link>
-					</p>
-				) : null}
+				{/* Keyed on the filters, so a new search starts a new list rather than appending to the old one. */}
+				<LedgerList baseUrl={baseUrl} initialCursor={nextCursor} initialRows={rows} key={filterParams.toString()} />
 			</Panel>
 		</div>
 	)

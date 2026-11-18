@@ -89,7 +89,10 @@ export function PageHeader({
 	)
 }
 
-type BadgeTone = "success" | "warning" | "danger" | "muted" | "access"
+/**
+ * The badge colours. Status uses the first three and access uses navy. The rest exist so a list with many kinds of one thing (a ledger's entry kinds, say) can tell them apart by colour, and each one is an ink from the platform palette, not a new hue.
+ */
+export type BadgeTone = "success" | "warning" | "danger" | "muted" | "access" | "info" | "violet" | "gold" | "sand"
 
 export function Badge({
 	tone = "muted",

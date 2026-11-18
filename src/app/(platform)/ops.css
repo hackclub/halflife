@@ -366,6 +366,18 @@
 	.hl-badge--access {
 		color: var(--color-accent-ink);
 	}
+	.hl-badge--info {
+		color: var(--color-sky-ink);
+	}
+	.hl-badge--violet {
+		color: var(--color-violet-dark);
+	}
+	.hl-badge--gold {
+		color: var(--color-gold-ink);
+	}
+	.hl-badge--sand {
+		color: var(--color-sand-ink);
+	}
 
 	.hl-callout {
 		padding: 0.85rem 1rem;
@@ -692,6 +704,13 @@
 	}
 	.hl-admin-side a {
 		font-size: 0.95rem;
+	}
+	/* A select is as wide as its longest option needs, not the whole form: the admin's short choice lists would otherwise stretch across the page. */
+	.hl-admin-main .hl-select {
+		align-self: flex-start;
+		width: auto;
+		min-width: 12rem;
+		max-width: 100%;
 	}
 	/* Dates, money and counts are read across a row, so a value like "Nov 12, 2026, 10:00 PM" stays on one line rather than folding into a column of fragments. */
 	.hl-admin-main .hl-table td.hl-mono {
