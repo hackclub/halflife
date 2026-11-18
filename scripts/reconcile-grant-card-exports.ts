@@ -45,7 +45,9 @@ const count = (kind: string): number => report.rows.filter(row => row.verdict ==
 console.error(
 	`${report.rows.length} live row(s): ${count("landed")} confirmed by HCB, ${count("missing")} with no HCB grant, ${count("ambiguous")} ambiguous`,
 )
-console.error(`HCB listed ${report.grantsRead} card grant(s); ${report.surplusGrants} grant(s) match no CSV row`)
+console.error(
+	`HCB listed ${report.grantsRead} card grant(s), ${report.grantsNotCanceled} not canceled (compare the latter with HCB's own count); ${report.surplusGrants} grant(s) match no CSV row`,
+)
 console.error(
 	apply
 		? `Applied: ${report.superseded} row(s) superseded, ${report.fundingWrites.length} Funding given write(s) attempted`

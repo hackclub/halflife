@@ -42,20 +42,35 @@ describe("reconcileExportRows", () => {
 		)
 	})
 
-	test("a canceled grant pays nothing, so it cannot confirm a row", () => {
+	test("a canceled grant pays nothing, and alone it does not block a missing verdict", () => {
 		expect(reconcileExportRows([row("r1")], [grant({ status: "canceled" })], none).verdicts[0]?.kind).toBe("missing")
 	})
 
-	test("a grant Half Life already tracks through the API cannot be the CSV's payment", () => {
+	test("a grant reissued after an admin cancelled the first is the payment", () => {
+		const result = reconcileExportRows(
+			[row("r1")],
+			[grant({ id: "cdg_old", status: "canceled" }), grant({ id: "cdg_new" })],
+			none,
+		)
+		expect(result.verdicts[0]?.kind).toBe("landed")
+	})
+
+	test("a grant Half Life already tracks through the API cannot be the CSV's payment, and blocks a missing verdict", () => {
 		expect(reconcileExportRows([row("r1")], [grant({ id: "cdg_api" })], new Set(["cdg_api"])).verdicts[0]?.kind).toBe(
-			"missing",
+			"ambiguous",
 		)
 	})
 
-	test("a grant with another purpose is not one of ours", () => {
+	test("a grant with another purpose is not one of ours, but it is not proof of no grant either", () => {
 		expect(reconcileExportRows([row("r1")], [grant({ purpose: "Bike repair" })], none).verdicts[0]?.kind).toBe(
-			"missing",
+			"ambiguous",
 		)
+	})
+
+	test("a converted or returned grant still counts as paid", () => {
+		const statuses = ["Converted to reimbursement", "Returned"]
+		for (const status of statuses)
+			expect(reconcileExportRows([row("r1")], [grant({ status })], none).verdicts[0]?.kind).toBe("landed")
 	})
 
 	test("the bare purpose counts as a Half Life purpose", () => {

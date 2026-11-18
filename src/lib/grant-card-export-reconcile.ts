@@ -62,6 +62,13 @@ export function reconcileExportRows(
 		const mine = sameAmount.filter(
 			grant => normalEmail(grant.email) === group.email && isHalfLifePurpose(grant.purpose ?? ""),
 		)
+		// Every grant not canceled for this maker and amount, including ones the site already tracks, whatever their purpose. A canceled grant is left out: admins cancel and reissue cards, so the reissue is the payment, and a canceled card alone proves nothing. A row is only missing when no live grant of this maker and amount exists.
+		const sameMaker = grants.filter(
+			grant =>
+				grant.amountCents === group.amountCents
+				&& normalEmail(grant.email) === group.email
+				&& grant.status?.toLowerCase() !== "canceled",
+		)
 		const judge = (kind: ExportRowVerdict["kind"], reason: string): void => {
 			for (const row of group.rows) verdicts.push({ kind, reason, rowId: row.id })
 		}
@@ -70,8 +77,16 @@ export function reconcileExportRows(
 			judge("ambiguous", "HCB hides the owner or purpose of a grant for this amount, so it cannot be ruled out")
 			continue
 		}
+		if (mine.length === 0 && sameMaker.length === 0) {
+			judge("missing", "HCB holds no card grant at all for this maker and amount")
+			continue
+		}
 		if (mine.length === 0) {
-			judge("missing", "No Half Life card grant on HCB has this maker's email and amount")
+			const described = sameMaker.map(grant => `${grant.status ?? "no status"} / ${grant.purpose ?? "no purpose"}`)
+			judge(
+				"ambiguous",
+				`HCB holds ${sameMaker.length} grant(s) for this maker and amount, none a live Half Life grant (${described.join("; ")})`,
+			)
 			continue
 		}
 		if (mine.length < group.rows.length) {
