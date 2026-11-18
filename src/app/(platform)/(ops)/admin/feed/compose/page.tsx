@@ -1,5 +1,5 @@
 import { type ComposerProject, PostComposer } from "@/app/components/forms/PostComposer"
-import { LinkButton, PageHeader } from "@/app/components/ui"
+import { EmptyState, LinkButton, PageHeader, Panel } from "@/app/components/ui"
 import { themeLabel } from "@/lib/config/program"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
@@ -29,8 +29,22 @@ export default async function AdminFeedComposePage() {
 				subtitle="Announcements are pinned above every other reel and are only visible to accounts that can manage the feed. Everything else lands in the Doomscroller in the ordinary order."
 				title="Post a reel"
 			/>
-			<div className="hl-measure">
-				<PostComposer canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} projects={options} />
+			{/* The form on the left, and what each choice does on the right, so the page is not one narrow column on a wide screen. */}
+			<div className="hl-feed-grid">
+				<div>
+					<PostComposer canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} projects={options} />
+				</div>
+				<Panel title="Before you post">
+					<ul
+						className="hl-hint"
+						style={{ display: "flex", flexDirection: "column", gap: "0.5rem", margin: 0, paddingLeft: "1.1rem" }}
+					>
+						<li>A video is the reel itself. Use mp4, webm or mov.</li>
+						<li>Announcements are pinned above every other reel and are only visible to feed managers.</li>
+						<li>A project link is optional. Idea and progress reels usually have one.</li>
+						<li>Everything else lands in the Doomscroller in the ordinary order.</li>
+					</ul>
+				</Panel>
 			</div>
 		</section>
 	)

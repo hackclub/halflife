@@ -135,7 +135,11 @@ export default async function AdminReportsPage({
 					<Panel title="Report">
 						<ReportDetail report={selected} />
 					</Panel>
-				) : null}
+				) : (
+					<Panel title="Report">
+						<EmptyState>Choose a report from the queue to see what it is about and decide on it.</EmptyState>
+					</Panel>
+				)}
 			</div>
 		</section>
 	)
