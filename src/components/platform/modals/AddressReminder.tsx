@@ -42,7 +42,7 @@ async function readNeeded(): Promise<boolean | null> {
  *
  * The same shape as the NPS prompt and mounted in the shell rather than on one page, because an approved design is no longer something you only look at on the trail. It is dismissible, unlike NPS, and comes back after an hour (lib/address-reminder) – the work stays approved and unshipped however many times it is closed.
  *
- * It waits its turn: the intro ceremony, the goal question, an open checkpoint and the NPS prompt all own the screen first, so this never opens two dialogs at once. Return from Hack Club Auth and it checks again, so an address added while it was open makes it disappear rather than linger for the rest of the snooze.
+ * It waits its turn: the intro ceremony, the goal question and picker, an open checkpoint, the Doomscroller and the NPS prompt all own the screen first, so this never opens two dialogs at once. Return from Hack Club Auth and it checks again, so an address added while it was open makes it disappear rather than linger for the rest of the snooze.
  */
 export function AddressReminder({ blocked = false }: { blocked?: boolean }) {
 	const { hydrated, openCheckpoint, participantGoal, phase } = useStore()
@@ -108,9 +108,7 @@ export function AddressReminder({ blocked = false }: { blocked?: boolean }) {
 			accent="var(--color-coral)"
 			footer={
 				<>
-					<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
-						We&apos;ll ask again in an hour if it&apos;s still missing.
-					</p>
+					<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">We&apos;ll ask again in an hour.</p>
 					<Button onClick={snooze} variant="ghost">
 						Remind me later
 					</Button>
