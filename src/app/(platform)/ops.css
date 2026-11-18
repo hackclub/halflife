@@ -1341,6 +1341,14 @@ html:has(.hl-admin) {
 }
 
 /* Inside the admin console, controls take a fine rule and the focus ring carries the emphasis. Heavy outlines made every button look like the primary action. */
+/* A disabled control reads as unavailable, not as a faded primary: neutral ground and muted text. */
+.hl-admin-main .hl-btn:disabled {
+	color: var(--color-ink-muted);
+	cursor: not-allowed;
+	background: var(--color-surface-sunken);
+	border-color: var(--color-border);
+	opacity: 1;
+}
 .hl-admin-main .hl-btn,
 .hl-admin-main .hl-input,
 .hl-admin-main .hl-select,
