@@ -7,12 +7,41 @@ import { Chip, Field, inputClass, OptionRow } from "@/components/platform/ui"
 import { MIN_PROJECT_DESCRIPTION_CHARS } from "@/lib/config/program"
 import { cx } from "@/lib/cx"
 import { SUBMISSION_LIMIT } from "@/lib/resubmissions"
+import { useStore } from "@/lib/store"
 import { ImageUploads } from "./ImageUploads"
 import { ModalTitle } from "./Modal"
 import { RepoChecks } from "./RepoChecks"
 import { SubmissionReelPicker } from "./SubmissionReelPicker"
 import { BomTable, SubmissionAcknowledgements, SubmitNotice, TierPicker } from "./submit-parts"
 import type { SubmitSheet } from "./submit-sheet"
+
+/** Inside this long before a week locks, the sheet says so: a hand-in after the lock is refused. */
+const CLOSING_SOON_MS = 6 * 60 * 60 * 1000
+
+/** How long is left before the week locks, said in hours and minutes, for a banner. */
+function timeLeft(ms: number): string {
+	const minutes = Math.ceil(ms / 60_000)
+	if (minutes < 60) return `${minutes} min`
+	return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+}
+
+/** A banner for the last hours before the week locks, when there are any left to warn about. */
+function ClosingNotice({ weekId }: { weekId: number }) {
+	const { weekClosesAtMs } = useStore()
+	const closes = weekClosesAtMs(weekId)
+	if (closes === null) return null
+	const left = closes - Date.now()
+	if (left <= 0 || left > CLOSING_SOON_MS) return null
+	return (
+		<SubmitNotice
+			icon={<IconWarning className="mt-0.5 shrink-0 text-xl text-gold-ink" />}
+			title={`This week locks in ${timeLeft(left)}.`}
+			tone="gold"
+		>
+			Hand it in now. A submission after the lock is refused, and it will not be taken in next week.
+		</SubmitNotice>
+	)
+}
 
 /**
  * The banners above the steps: why this hand-in is different, and what still blocks it.
@@ -31,9 +60,11 @@ export function SubmitNotices({ sheet }: { sheet: SubmitSheet }) {
 		starterDescriptionReady,
 		submissionsLeft,
 		submissionsUsed,
+		week,
 	} = sheet
 	return (
 		<>
+			<ClosingNotice weekId={week.id} />
 			{resubmitting && (
 				<SubmitNotice
 					icon={
