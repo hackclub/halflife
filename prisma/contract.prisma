@@ -411,6 +411,21 @@ namespace public {
     @@map("hcb_grant_topup")
   }
 
+  /// A top-up made on HCB straight into a card grant, without going through Half Life (a buffer top-up). The scheduled sync reads each grant's disbursements into here. It never blocks a card and never counts against a maker's entitlement; it only explains why a grant's HCB amount is bigger than the amount it was issued for.
+  model HcbBufferTopUp {
+    id              String              @id @onCreate(cuid(2))
+    disbursementKey String
+    hcbCardGrantId  String
+    amountCents     Int
+    memo            String?
+    hcbCreatedAt    TimestampString(3)?
+    observedAt      TimestampString(3)  @default(now())
+
+    @@index([disbursementKey], map: "hcb_buffer_top_up_disbursementKey_key", unique: true)
+    @@index([hcbCardGrantId], map: "hcb_buffer_top_up_hcbCardGrantId_idx")
+    @@map("hcb_buffer_top_up")
+  }
+
   model HcbGrantCardBatch {
     id             String                           @id @onCreate(cuid(2))
     status         pg.enum(HcbGrantCardBatchStatus) @default("PROCESSING")
