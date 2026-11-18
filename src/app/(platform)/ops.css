@@ -601,15 +601,13 @@
 	.hl-admin-main .hl-table--pin-last thead th:last-child {
 		background: var(--color-surface-sunken);
 	}
-	/* Column headings never fold onto a second line, so a narrow column shows its full name in one row. */
-	.hl-admin-main .hl-table thead th {
-		white-space: nowrap;
-	}
+	/* The heading row stays in view while the body scrolls, never folds onto a second line, and sits on the sunken ground. */
 	.hl-admin-main .hl-table thead th {
 		position: sticky;
 		top: 0;
 		z-index: 1;
-		background: var(--color-surface-raised);
+		white-space: nowrap;
+		background: var(--color-surface-sunken);
 		box-shadow: inset 0 -2px 0 var(--color-border);
 	}
 	/* Stripes are a whisper now, and the hover row is the one that shows which line the pointer is on. */
@@ -617,9 +615,6 @@
 		background: rgb(16 15 48 / 0.025);
 	}
 	.hl-admin-main .hl-table tbody tr:hover td {
-		background: var(--color-surface-sunken);
-	}
-	.hl-admin-main .hl-table thead th {
 		background: var(--color-surface-sunken);
 	}
 	/* Panels are a quiet border and a faint lift, so the content inside them carries the weight. The outline is kept for the console's focus rings. */
@@ -852,6 +847,39 @@
 	}
 
 	/* ── Layout helpers ────────────────────────────────────────────────────── */
+	/* ── Account history ───────────────────────────────────────────────────── */
+	/* One run of events down a single rule: when, what, and a line of detail beneath. */
+	.hl-timeline {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		max-height: 26rem;
+		margin: 0;
+		padding: 0 0 0 1rem;
+		overflow-y: auto;
+		list-style: none;
+		border-left: 2px solid var(--color-border);
+	}
+	.hl-timeline li {
+		display: grid;
+		grid-template-columns: 11rem minmax(0, 1fr);
+		gap: 0.1rem 1rem;
+		align-items: baseline;
+		padding-block: 0.3rem;
+	}
+	.hl-timeline-when {
+		font-size: 0.82rem;
+		color: var(--color-ink-muted);
+		white-space: nowrap;
+	}
+	.hl-timeline-title {
+		font-weight: 600;
+		color: var(--color-ink);
+	}
+	.hl-timeline li > .hl-hint {
+		grid-column: 2;
+	}
+
 	/* A form reads best at a measure a person can scan, not the full width of a wide window. */
 	.hl-measure {
 		max-width: 44rem;

@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation"
+import { type TimelineEvent, UserTimeline } from "@/app/components/admin/UserTimeline"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { EmailForm } from "@/app/components/forms/EmailForm"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { PenaltyCard } from "@/app/components/forms/PenaltyCard"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
-import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
@@ -91,6 +92,37 @@ export default async function AdminUserPage({ params }: Props) {
 		}
 	})
 
+	// Everything the account has that carries a date, in one list: when it joined, what roles it was given, its printer milestones, and every ledger movement.
+	const timeline: TimelineEvent[] = [
+		{ at: user.createdAt, title: "Joined the programme" },
+		...user.roles.map(role => ({
+			at: new Date(role.grantedAt),
+			detail: role.grantedBy ? "Granted by a staff account" : undefined,
+			title: `Given the ${role.role.toLowerCase()} role`,
+		})),
+		...(user.printerAward
+			? [
+					{ at: user.printerAward.qualifiedAt, title: "Qualified for a printer" },
+					...(user.printerAward.shippedAt ? [{ at: user.printerAward.shippedAt, title: "Printer shipped" }] : []),
+					...(user.printerAward.deliveredAt ? [{ at: user.printerAward.deliveredAt, title: "Printer delivered" }] : []),
+					...(user.printerAward.revokedAt
+						? [
+								{
+									at: user.printerAward.revokedAt,
+									detail: user.printerAward.revokedReason ?? undefined,
+									title: "Printer award revoked",
+								},
+							]
+						: []),
+				]
+			: []),
+		...ledger.map(entry => ({
+			at: entry.createdAt,
+			detail: entry.note ?? undefined,
+			title: `${entry.kind.toLowerCase().replaceAll("_", " ")} ${entry.amount > 0 ? `+${entry.amount}` : entry.amount}`,
+		})),
+	]
+
 	return (
 		<div className="hl-stack">
 			<PageHeader
@@ -107,8 +139,12 @@ export default async function AdminUserPage({ params }: Props) {
 				<Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={balances.spendable} />
 				<Stat label="Printer fund" value={balances.banked} />
 				<Stat label="Projects shipped" value={`${printer.shippedCount} / ${printer.required}`} />
-				<Stat label="Verified" value={user.verificationStatus ?? "unknown"} />
+				<Stat label="Verified" value={statusLabel(user.verificationStatus ?? "unverified")} />
 			</div>
+
+			<Panel title="History">
+				{timeline.length === 0 ? <EmptyState>Nothing recorded yet.</EmptyState> : <UserTimeline events={timeline} />}
+			</Panel>
 
 			{canManageUsers ? (
 				<Panel title="Email">
