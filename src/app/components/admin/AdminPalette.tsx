@@ -69,7 +69,7 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 			<button className="hl-btn hl-admin-search" onClick={() => setOpen(true)} type="button">
 				Search <kbd className="hl-admin-kbd">Ctrl K</kbd>
 			</button>
-			<Modal onClose={close} open={open} title="Search the admin console">
+			<Modal onClose={close} open={open} placement="top" title="Search the admin console">
 				<div className="hl-stack hl-stack--tight">
 					<input
 						aria-autocomplete="list"

@@ -423,6 +423,11 @@
 		max-height: calc(100dvh - 2rem);
 		overflow-y: auto;
 	}
+	/* Pinned under the header, so the field stays where it is while the results below it grow and shrink. */
+	.hl-modal--top {
+		margin: 4.5rem auto auto;
+		max-height: calc(100dvh - 5.5rem);
+	}
 
 	/* ── Staff top bar ─────────────────────────────────────────────────────── */
 	/*
