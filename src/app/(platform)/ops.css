@@ -539,9 +539,10 @@
 	.hl-admin-side a:hover {
 		background: var(--color-surface-sunken);
 	}
+	/* The current page is the brand navy with light text, rather than navy on the pale accent, which reads as too faint on a bright screen. */
 	.hl-admin-side a[aria-current="page"] {
-		color: var(--color-accent-ink);
-		background: var(--color-accent);
+		color: var(--color-paper);
+		background: var(--color-ink-strong);
 	}
 	.hl-admin-main {
 		min-width: 0;
@@ -595,6 +596,14 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	/*
+	 * The wide breakouts centre themselves on the window, which is right for the reading column of the review console but puts the admin page under its own sidebar. The admin frame already gives the page the full width beside the sidebar, so the breakout is turned off here.
+	 */
+	.hl-admin-main .hl-page-wide,
+	.hl-admin-main .hl-panel--wide {
+		width: auto;
+		margin-left: 0;
 	}
 	/* Whatever is still too wide scrolls inside its own table, rather than pushing the whole console sideways. */
 	.hl-admin-main {
