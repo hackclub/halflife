@@ -38,11 +38,13 @@ export function LinkButton({
 }
 
 export function Panel({
+	id,
 	title,
 	actions,
 	wide,
 	children,
 }: Readonly<{
+	id?: string
 	title?: ReactNode
 	actions?: ReactNode
 	/**
@@ -54,6 +56,7 @@ export function Panel({
 	return (
 		<section
 			className={wide ? "hl-panel hl-stack hl-stack--tight hl-panel--wide" : "hl-panel hl-stack hl-stack--tight"}
+			id={id}
 		>
 			{(isTruthy(title) || isTruthy(actions)) && (
 				<div className="hl-row" style={{ justifyContent: "space-between" }}>

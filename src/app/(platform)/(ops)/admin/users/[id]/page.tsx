@@ -139,21 +139,33 @@ export default async function AdminUserPage({ params }: Props) {
 				<Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={balances.spendable} />
 				<Stat label="Printer fund" value={balances.banked} />
 				<Stat label="Projects shipped" value={`${printer.shippedCount} / ${printer.required}`} />
-				<Stat label="Verified" value={statusLabel(user.verificationStatus ?? "unverified")} />
+				<Stat
+					label="Verified"
+					value={<span style={{ fontSize: "1.1rem" }}>{statusLabel(user.verificationStatus ?? "unverified")}</span>}
+				/>
 			</div>
 
-			<Panel title="History">
+			<nav aria-label="Jump to a section" className="hl-jump">
+				<a href="#history">History</a>
+				<a href="#account">Email</a>
+				<a href="#moderation">Moderation</a>
+				<a href="#projects">Projects</a>
+				<a href="#ledger">Ledger</a>
+				<a href="#orders">Orders</a>
+			</nav>
+
+			<Panel id="history" title="History">
 				{timeline.length === 0 ? <EmptyState>Nothing recorded yet.</EmptyState> : <UserTimeline events={timeline} />}
 			</Panel>
 
 			{canManageUsers ? (
-				<Panel title="Email">
+				<Panel id="account" title="Email">
 					<EmailForm current={user.email} url={`/api/admin/users/${id}`} />
 				</Panel>
 			) : null}
 
 			{canManageUsers ? (
-				<Panel title="Moderation">
+				<Panel id="moderation" title="Moderation">
 					<div className="hl-row">
 						<ActionButton
 							body={{ fraudFlagged: !user.fraudFlagged }}
@@ -229,7 +241,7 @@ export default async function AdminUserPage({ params }: Props) {
 				</p>
 			</Panel>
 
-			<Panel title="Themed projects" wide>
+			<Panel id="projects" title="Themed projects" wide>
 				{canManageCredit && isHcbConfigured() && (
 					<p className="hl-hint" style={{ marginTop: 0 }}>
 						{settings.payoutSource === PayoutSource.HCB
@@ -298,7 +310,7 @@ export default async function AdminUserPage({ params }: Props) {
 				</Panel>
 			) : null}
 
-			<Panel title="Ledger">
+			<Panel id="ledger" title="Ledger">
 				{ledger.length === 0 ? (
 					<EmptyState>No entries.</EmptyState>
 				) : (
@@ -316,7 +328,7 @@ export default async function AdminUserPage({ params }: Props) {
 				)}
 			</Panel>
 
-			<Panel title="Orders">
+			<Panel id="orders" title="Orders">
 				{orders.length === 0 ? (
 					<EmptyState>No orders.</EmptyState>
 				) : (
