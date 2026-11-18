@@ -37,6 +37,12 @@ export interface HcaAddress {
 /** One HCA identity, whichever endpoint each field came from. */
 export interface HcaIdentity {
 	address: HcaAddress | null
+	/**
+	 * Whether HCA actually answered about the address. True for an address, and true for an empty `addresses` list –
+	 * which is HCA saying this identity has none. False when neither endpoint said anything, which is an outage or a
+	 * missing scope and must not be read as the maker deleting their address.
+	 */
+	addressKnown: boolean
 	birthdate: string | null
 	email: string | null
 	emailVerified: boolean
@@ -144,37 +150,46 @@ const DiscoveryBody = z.object({
 	userinfo_endpoint: z.string().optional(),
 })
 
-/** The address to ship to: the one marked primary, else the first. */
+/** The address to ship to: the one marked primary, else the first. `known` says whether HCA answered at all. */
 function addressFrom(
 	me: { [_: string]: unknown } | null,
 	userinfo: { [_: string]: unknown } | null,
-): HcaAddress | null {
-	const list = Array.isArray(me?.addresses) ? me.addresses.filter(isRecord) : []
-	const a = list.find(x => x.primary === true) ?? list[0]
+): { address: HcaAddress | null; known: boolean } {
+	const list = Array.isArray(me?.addresses) ? me.addresses.filter(isRecord) : null
+	const a = list?.find(x => x.primary === true) ?? list?.[0]
 	if (a)
 		return {
-			city: str(a.city),
-			country: str(a.country),
-			line1: str(a.line_1),
-			line2: str(a.line_2),
-			state: str(a.state),
-			zip: str(a.postal_code),
+			address: {
+				city: str(a.city),
+				country: str(a.country),
+				line1: str(a.line_1),
+				line2: str(a.line_2),
+				state: str(a.state),
+				zip: str(a.postal_code),
+			},
+			known: true,
 		}
+
+	// An `addresses` list that is present but empty is HCA saying this identity has none, not that it did not answer.
+	if (list !== null) return { address: null, known: true }
 
 	// The standard OIDC claim, when the `address` scope puts it there instead.
 	const o = userinfo?.address
 	if (isRecord(o)) {
 		const [line1, ...more] = (str(o.street_address) ?? "").split(/\r?\n/)
 		return {
-			city: str(o.locality),
-			country: str(o.country),
-			line1: str(line1),
-			line2: str(more.join(", ")),
-			state: str(o.region),
-			zip: str(o.postal_code),
+			address: {
+				city: str(o.locality),
+				country: str(o.country),
+				line1: str(line1),
+				line2: str(more.join(", ")),
+				state: str(o.region),
+				zip: str(o.postal_code),
+			},
+			known: true,
 		}
 	}
-	return null
+	return { address: null, known: false }
 }
 
 /** Read one person's identity from HCA with their access token. */
@@ -189,9 +204,11 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 	const email = str(userinfo?.email) ?? str(me?.primary_email)
 	const name =
 		str(userinfo?.name) ?? ([str(userinfo?.given_name), str(userinfo?.family_name)].filter(Boolean).join(" ") || null)
+	const address = addressFrom(me, userinfo)
 
 	return {
-		address: addressFrom(me, userinfo),
+		address: address.address,
+		addressKnown: address.known,
 		birthdate: str(userinfo?.birthdate) ?? str(me?.birthday),
 		email,
 		// HCA signs people in by emailing them a code, so the address it holds is one they have proven they read. The explicit claim wins when present.
@@ -206,17 +223,33 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 	}
 }
 
-/** The PII fields, encrypted, when this deployment is set up to keep them. */
-export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: string } {
+/**
+ * The PII fields, encrypted, when this deployment is set up to keep them.
+ *
+ * All six address columns are written together. Only emitting the fields HCA happened to return left the previous
+ * line 2 or state in place when an address changed, and Airtable then shipped a label combining two addresses. A
+ * missing part is written as null, and an HCA answer that says there is no address clears all six; an answer that
+ * says nothing about one leaves the stored copy alone, because an outage is not a maker deleting their address.
+ */
+export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: string | null } {
 	if (!PULL_PII) return {}
-	const out: { [_: string]: string } = {}
+	const out: { [_: string]: string | null } = {}
 	const a = identity.address
-	if (a?.line1) out.encryptedAddressStreet = encryptPII(a.line1)
-	if (a?.line2) out.encryptedAddressLine2 = encryptPII(a.line2)
-	if (a?.city) out.encryptedAddressCity = encryptPII(a.city)
-	if (a?.state) out.encryptedAddressState = encryptPII(a.state)
-	if (a?.zip) out.encryptedAddressZip = encryptPII(a.zip)
-	if (a?.country) out.encryptedAddressCountry = encryptPII(a.country)
+	if (a) {
+		out.encryptedAddressStreet = a.line1 ? encryptPII(a.line1) : null
+		out.encryptedAddressLine2 = a.line2 ? encryptPII(a.line2) : null
+		out.encryptedAddressCity = a.city ? encryptPII(a.city) : null
+		out.encryptedAddressState = a.state ? encryptPII(a.state) : null
+		out.encryptedAddressZip = a.zip ? encryptPII(a.zip) : null
+		out.encryptedAddressCountry = a.country ? encryptPII(a.country) : null
+	} else if (identity.addressKnown) {
+		out.encryptedAddressStreet = null
+		out.encryptedAddressLine2 = null
+		out.encryptedAddressCity = null
+		out.encryptedAddressState = null
+		out.encryptedAddressZip = null
+		out.encryptedAddressCountry = null
+	}
 	if (identity.birthdate) out.encryptedBirthday = encryptPII(identity.birthdate)
 	return out
 }
