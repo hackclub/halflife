@@ -86,5 +86,17 @@ export const sessionCreateSchema = z
 
 /**
  * Editing an entry does not touch its images: the PATCH route writes the title, the content, the claimed hours and the source, and nothing else. `media` is left out so the shape says what the route does, rather than accepting a field and dropping it.
+ *
+ * The two defaulted fields are declared again without their defaults. `partial()` makes a key optional but keeps the default's output type, and in zod 4 the default still runs, so `parse({ title })` used to come back carrying `hoursSource: "MANUAL"` and `timelapses: []`. The route reads those as the caller's intent: an edit that only changed the title flipped a Hackatime-tracked entry to manual hours (paying the same time twice) and, for any API caller that did not send clips, removed every timelapse on the entry. Absent has to mean absent.
  */
-export const sessionUpdateSchema = sessionCreateSchema.omit({ media: true }).partial().strict()
+export const sessionUpdateSchema = sessionCreateSchema
+	.omit({ hoursSource: true, media: true, timelapses: true })
+	.partial()
+	.extend({
+		hoursSource: z.enum(HoursSource).optional(),
+		timelapses: z
+			.array(timelapseSchema)
+			.max(MAX_SESSION_TIMELAPSES, `An entry can hold at most ${MAX_SESSION_TIMELAPSES} timelapses`)
+			.optional(),
+	})
+	.strict()
