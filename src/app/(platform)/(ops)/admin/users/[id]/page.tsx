@@ -9,6 +9,7 @@ import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { PayoutSource, Phase, PhaseStatus } from "@/lib/enums"
 import { isIdentityVerified } from "@/lib/hca-profile"
@@ -317,7 +318,7 @@ export default async function AdminUserPage({ params }: Props) {
 					<Table head={["When", "Kind", "Note", "Amount", "Balance"]}>
 						{ledger.map(entry => (
 							<tr key={entry.id}>
-								<td className="hl-mono">{entry.createdAt.toLocaleString()}</td>
+								<td className="hl-mono">{formatUtcDateTime(entry.createdAt)}</td>
 								<td className="hl-mono">{entry.kind}</td>
 								<td>{entry.note ?? "-"}</td>
 								<td className="hl-mono">{entry.amount > 0 ? `+${entry.amount}` : entry.amount}</td>

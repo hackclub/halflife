@@ -16,6 +16,7 @@ import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { getProgrammeNps } from "@/lib/airtable/nps"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { type ParticipantGoal, Phase, type ReviewResult } from "@/lib/enums"
 import { fmtInt } from "@/lib/numbers"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
@@ -394,7 +395,7 @@ export default async function AdminOverviewPage() {
 						{syncs.map(run => (
 							<tr key={run.syncKey}>
 								<td className="hl-mono">{run.syncKey}</td>
-								<td className="hl-mono">{run.lastRunAt.toLocaleString()}</td>
+								<td className="hl-mono">{formatUtcDateTime(run.lastRunAt)}</td>
 								<td>
 									<SyncResult result={run.result} />
 								</td>

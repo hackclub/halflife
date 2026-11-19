@@ -21,7 +21,7 @@ describe("formatShortDate / formatUtcDateTime", () => {
 	})
 
 	test("pins audit timestamps to UTC", () => {
-		expect(formatUtcDateTime(new Date("2026-10-05T23:59:00Z"))).toBe("Oct 5, 2026, 11:59 PM")
+		expect(formatUtcDateTime(new Date("2026-10-05T23:59:00Z"))).toBe("5 Oct 2026, 23:59")
 	})
 })
 

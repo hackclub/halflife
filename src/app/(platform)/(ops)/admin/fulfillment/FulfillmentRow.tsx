@@ -6,7 +6,7 @@ import { ManageButton, ManageRow, ManageSection } from "@/app/components/admin/P
 import { OrderDecision } from "@/app/components/forms/OrderDecision"
 import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
 import { Badge } from "@/app/components/ui"
-import { formatUtcCompact, formatUtcDateTime } from "@/lib/deadline"
+import { formatUtcDateTime } from "@/lib/deadline"
 import type { ShopDeliveryPreference, ShopOrderStatus } from "@/lib/enums"
 import { STAGE_LABELS } from "@/lib/fulfillment"
 import { formatUsd } from "@/lib/money"
@@ -70,7 +70,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 					)}
 				</td>
 				<td className="hl-mono" title={formatUtcDateTime(order.placedAt)}>
-					{formatUtcCompact(order.placedAt)}
+					{formatUtcDateTime(order.placedAt)}
 				</td>
 				<td style={{ minWidth: "10rem" }}>
 					<Badge tone={status.tone}>{status.label}</Badge>

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button, EmptyState, PageHeader, Panel, Table, TextInput } from "@/app/components/ui"
 import { IconFilter } from "@/app/components/ui/icons"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
@@ -65,7 +66,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 									actorId: entry.actorId,
 									actorIp: entry.actorIp,
 									actorUserAgent: entry.actorUserAgent,
-									createdAt: parseDbTimestamp(entry.createdAt).toLocaleString(),
+									createdAt: formatUtcDateTime(parseDbTimestamp(entry.createdAt)),
 									id: entry.id,
 									metadata: entry.metadata,
 									targetId: entry.targetId,

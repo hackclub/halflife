@@ -12,6 +12,7 @@ import {
 } from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
 import { THEMES, themeLabel } from "@/lib/config/program"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { PhaseStatus, Theme } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -173,7 +174,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 						{items.map(project => {
 							const userExtension =
 								project.user.submissionExtensionUntil && project.user.submissionExtensionUntil > now
-									? project.user.submissionExtensionUntil.toLocaleString()
+									? formatUtcDateTime(project.user.submissionExtensionUntil)
 									: null
 							return (
 								<ProjectRow
@@ -183,7 +184,9 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										buildStatus: project.buildStatus,
 										designStatus: project.designStatus,
 										extension: project.submissionExtensionUntil?.toISOString() ?? null,
-										extensionLabel: project.submissionExtensionUntil?.toLocaleString() ?? null,
+										extensionLabel: project.submissionExtensionUntil
+											? formatUtcDateTime(project.submissionExtensionUntil)
+											: null,
 										githubRepo: project.githubRepo,
 										id: project.id,
 										ownerId: project.user.id,

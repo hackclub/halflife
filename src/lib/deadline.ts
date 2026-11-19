@@ -29,28 +29,19 @@ export function toLocalInput(date: Date): string {
 	return local.toISOString().slice(0, 16)
 }
 
-const UTC_DATE_TIME = new Intl.DateTimeFormat("en-US", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-})
-
-/** An audit or moderation timestamp, pinned to UTC so the console does not disagree with itself between server and browser. */
-export function formatUtcDateTime(at: Date | number): string {
-	return UTC_DATE_TIME.format(at)
-}
-
-const UTC_COMPACT = new Intl.DateTimeFormat("en-GB", {
+const UTC_DATE_TIME = new Intl.DateTimeFormat("en-GB", {
 	day: "numeric",
 	hour: "2-digit",
+	hour12: false,
 	minute: "2-digit",
 	month: "short",
 	timeZone: "UTC",
+	year: "numeric",
 })
 
-/** The same moment, shorter, for a column that has to fit beside others: "12 Nov, 22:00". The full timestamp stays in the title. */
-export function formatUtcCompact(at: Date | number): string {
-	return UTC_COMPACT.format(at)
+/** An audit or moderation timestamp, the one format every admin page uses, pinned to UTC: "18 Nov 2026, 22:00". */
+export function formatUtcDateTime(at: Date | number): string {
+	return UTC_DATE_TIME.format(at)
 }
 
 const UTC_DATE = new Intl.DateTimeFormat("en-GB", {
