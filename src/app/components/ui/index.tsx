@@ -3,6 +3,7 @@ import type { ComponentPropsWithRef, ReactNode } from "react"
 import { HangingSign } from "@/components/sign/HangingSign"
 import { isTruthy } from "@/lib/truthy"
 import { IconFilter } from "./icons"
+import { ResetFilters } from "./ResetFilters"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that know about colour, spacing or type – a page composes these and never writes a raw utility class.
@@ -165,32 +166,36 @@ export function Select({ className, ...props }: Readonly<ComponentPropsWithRef<"
 }
 
 /**
- * The filter form above a list. Every list uses this one shape: an optional leading row (a search), the labelled fields in one grid, then a footer whose notes sit on the left while Reset and Filter sit together on the right, so a reader clears and applies filters in the same place on every page.
+ * The filter form above a list. Every list uses this one shape: an optional leading row (a search), the labelled fields in one grid, then a footer whose notes sit on the left while Reset and Filter sit together on the right, so a reader clears and applies filters in the same place on every page. A bar with a search row draws its rule under that row, so what is searched and what is filtered read as two bands.
  */
 export function FilterBar({
 	children,
 	footer,
-	inline = false,
 	leading,
 	resetHref,
 }: Readonly<{
 	children: ReactNode
 	footer?: ReactNode
-	/** Put the fields beside the search row on a wide screen, rather than under it. Only for a bar with few fields, since a tall grid would leave the search floating. */
-	inline?: boolean
 	leading?: ReactNode
 	resetHref: string
 }>) {
+	// A search row starts its own band, and a bar with no notes of its own can keep the actions on the fields' line rather than giving them a row with nothing beside them.
+	const className = [
+		"hl-filters",
+		leading === undefined ? "" : "hl-filters--search-first",
+		leading !== undefined && footer === undefined ? "hl-filters--actions-inline" : "",
+	]
+		.filter(Boolean)
+		.join(" ")
+
 	return (
-		<form className={inline ? "hl-filters hl-filters--inline" : "hl-filters"} method="get">
+		<form className={className} method="get">
 			{leading}
 			<div className="hl-filters__grid">{children}</div>
 			<div className="hl-filters__footer">
 				<div className="hl-filters__notes">{footer}</div>
 				<div className="hl-filters__actions">
-					<Link className="hl-hint" href={resetHref}>
-						Reset
-					</Link>
+					<ResetFilters href={resetHref} />
 					<Button type="submit">
 						<IconFilter /> Filter
 					</Button>

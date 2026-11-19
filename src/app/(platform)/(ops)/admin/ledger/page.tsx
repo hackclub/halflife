@@ -49,13 +49,18 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 		{ includePii },
 	)
 
-	// The rows below load more as they are scrolled to, through the same filters, so the list's address carries them all.
+	// The rows below load more as they are scrolled to, through the same filters, so the list's address carries them all. A row's kind badge links back to the page with that kind added to the same filters.
 	const filterParams = new URLSearchParams(
 		Object.entries({ from, kind: kindParam, q, to }).filter(
 			(entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== "",
 		),
 	)
 	const baseUrl = `/api/admin/ledger?${filterParams.toString()}`
+	const pageParams = new URLSearchParams(
+		Object.entries({ from, q, to }).filter(
+			(entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== "",
+		),
+	)
 	const rows = items.map(entry => ({ ...entry, createdAt: entry.createdAt.toISOString() }))
 
 	return (
@@ -69,36 +74,46 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 
 			<Panel>
 				<FilterBar footer={<span className="hl-hint">Dates and times are UTC.</span>} resetHref="/admin/ledger">
-					<Field label="Participant">
-						<TextInput
-							defaultValue={q ?? ""}
-							name="q"
-							placeholder={includePii ? "Search by name or email" : "Search by name"}
-							style={{ maxWidth: "20rem" }}
-						/>
-					</Field>
-					<Field label="Kind">
-						<Select defaultValue={kind ?? ""} name="kind">
-							<option value="">Any kind</option>
-							{Object.values(LedgerKind).map(value => (
-								<option key={value} value={value}>
-									{ledgerKindLabel(value)}
-								</option>
-							))}
-						</Select>
-					</Field>
-					<Field label="From">
-						<TextInput defaultValue={from ?? ""} name="from" type="date" />
-					</Field>
-					<Field label="To">
-						<TextInput defaultValue={to ?? ""} name="to" type="date" />
-					</Field>
+					<div className="hl-filter-group">
+						<Field label="Participant">
+							<TextInput
+								defaultValue={q ?? ""}
+								name="q"
+								placeholder={includePii ? "Search by name or email" : "Search by name"}
+								style={{ maxWidth: "20rem" }}
+							/>
+						</Field>
+						<Field label="Kind">
+							<Select defaultValue={kind ?? ""} name="kind">
+								<option value="">Any kind</option>
+								{Object.values(LedgerKind).map(value => (
+									<option key={value} value={value}>
+										{ledgerKindLabel(value)}
+									</option>
+								))}
+							</Select>
+						</Field>
+					</div>
+					<div className="hl-filter-group">
+						<Field label="From">
+							<TextInput defaultValue={from ?? ""} name="from" type="date" />
+						</Field>
+						<Field label="To">
+							<TextInput defaultValue={to ?? ""} name="to" type="date" />
+						</Field>
+					</div>
 				</FilterBar>
 			</Panel>
 
 			<Panel>
 				{/* Keyed on the filters, so a new search starts a new list rather than appending to the old one. */}
-				<LedgerList baseUrl={baseUrl} initialCursor={nextCursor} initialRows={rows} key={filterParams.toString()} />
+				<LedgerList
+					baseUrl={baseUrl}
+					filters={pageParams.toString()}
+					initialCursor={nextCursor}
+					initialRows={rows}
+					key={filterParams.toString()}
+				/>
 			</Panel>
 		</div>
 	)

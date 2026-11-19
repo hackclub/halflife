@@ -144,6 +144,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 				{/* Keyed on the filters, so a new search starts a new list rather than appending to the old one. */}
 				<ProjectList
 					baseUrl={`/api/admin/projects?${listParams}`}
+					filters={filterKey}
 					flags={flags}
 					initialCursor={nextCursor}
 					initialRows={rows}

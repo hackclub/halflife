@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic"
 const query = paginationQuery.extend({
 	q: z.string().trim().max(200).optional(),
 	state: z.enum(USER_STATES).optional(),
+	verified: z.string().trim().max(50).optional(),
 })
 
 /** One page of the directory as rows the client can draw, with the cursor for the next page. */

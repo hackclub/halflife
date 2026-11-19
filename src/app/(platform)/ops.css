@@ -963,28 +963,41 @@
 	}
 
 	/*
-	 * A filter bar whose search row and fields share one line, once there is room: the search keeps a sensible width instead of stretching across the panel, and the footer still takes its own full-width line. Below the wrap point the two stack again.
+	 * A bar whose search row sits above its fields: the rule falls under the search, so the row that searches and the fields that filter read as two bands. The footer keeps its actions but drops its own rule, which would otherwise be a second line a few pixels below the first.
 	 */
-	.hl-filters--inline {
+	.hl-filters--search-first > .hl-filters__search {
+		padding-bottom: 1rem;
+		border-bottom: 2px solid var(--color-border);
+	}
+	.hl-filters--search-first > .hl-filters__footer {
+		padding-top: 0;
+		border-top: 0;
+	}
+	/* A search row's fields share one width rather than each sizing to its longest option, since a row of controls that are all different widths reads as a mistake. The track stops at 14rem so a wide panel leaves the fields at the left instead of stretching them apart. */
+	.hl-filters--search-first > .hl-filters__grid {
+		grid-template-columns: repeat(auto-fit, minmax(11rem, 14rem));
+		justify-content: start;
+	}
+	/*
+	 * A bar with a search and no notes of its own: the search takes its own line, and the actions take the end of the fields' line when it has room. The wrap is decided by the content rather than a screen width, so a panel that is wide because the console's sidebar folded away keeps them beside the fields, and a narrow one drops them below.
+	 */
+	.hl-filters--actions-inline {
 		flex-direction: row;
 		flex-wrap: wrap;
 		align-items: flex-end;
 	}
-	.hl-filters--inline .hl-filters__search {
-		/* The 25rem basis is the search row's own two controls: the input and the Paste button keep one line before the fields are allowed beside them. */
-		flex: 1 1 25rem;
+	.hl-filters--actions-inline > .hl-filters__search {
+		flex: 1 1 100%;
+	}
+	.hl-filters--actions-inline > .hl-filters__grid {
+		/* Its basis is the room two fields need, so the line fits them beside the actions sooner; it then takes any spare width, which the fields keep to their own size and leave empty at the right. */
+		flex: 1 1 23rem;
 		min-width: 0;
 	}
-	/* The input starts small enough to keep the Paste button beside it, then grows into whatever the row has left. */
-	.hl-filters--inline .hl-filters__search .hl-input {
-		flex-basis: 12rem;
-	}
-	.hl-filters--inline .hl-filters__grid {
-		flex: 0 1 auto;
-		min-width: 0;
-	}
-	.hl-filters--inline .hl-filters__footer {
-		flex-basis: 100%;
+	.hl-filters--actions-inline > .hl-filters__footer {
+		flex: 0 0 auto;
+		padding: 0;
+		margin-left: auto;
 	}
 
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
@@ -1096,6 +1109,11 @@
 		width: auto;
 		min-width: 12rem;
 		max-width: 100%;
+	}
+	/* A select in a filter grid fills its column rather than sizing to its longest option, so a row of filters has one width for every control and one gap between every pair. */
+	.hl-admin-main .hl-filters__grid .hl-select {
+		width: 100%;
+		min-width: 0;
 	}
 	/* Dates, money and counts are read across a row, so a value like "Nov 12, 2026, 10:00 PM" stays on one line rather than folding into a column of fragments. */
 	.hl-admin-main .hl-table td.hl-mono {
@@ -1631,6 +1649,44 @@ html:has(.hl-admin) {
 	color: var(--color-ink-muted);
 	cursor: default;
 	background: var(--color-surface-sunken);
+}
+/* A filter bar whose fields come in groups – the date range, then the selects – wraps by group rather than one field at a time, so a row never ends with a single field stranded on the next line. */
+.hl-filters__grid:has(> .hl-filter-group) {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1rem;
+}
+.hl-filter-group {
+	display: grid;
+	flex: 0 1 auto;
+	/* One column per field in the group, whatever the group's own width works out to, so the pair stays a pair and the trio a trio. */
+	grid-auto-columns: minmax(11rem, 13rem);
+	grid-auto-flow: column;
+	gap: 0.75rem 1rem;
+}
+@media (max-width: 40rem) {
+	/* Below the width a pair of fields fits, each group stacks its fields one per line. */
+	.hl-filter-group {
+		grid-auto-columns: auto;
+		grid-auto-flow: row;
+		width: 100%;
+	}
+}
+/* A number is a short value – days, minutes, cents – so it takes a field's own width rather than the whole form's, the way a select in the console does. */
+.hl-admin-main .hl-input[type="number"] {
+	width: min(100%, 9rem);
+}
+/* Two short fields beside each other once there is room for both, stacked when there is not. */
+.hl-field-pair {
+	display: grid;
+	grid-template-columns: minmax(0, 14rem);
+	gap: 0.75rem 1rem;
+	align-items: start;
+}
+@media (min-width: 48rem) {
+	.hl-field-pair {
+		grid-template-columns: repeat(2, minmax(0, 14rem));
+	}
 }
 /* A disabled control reads as unavailable, not as a faded primary: neutral ground and muted text. */
 .hl-admin-main .hl-btn:disabled {

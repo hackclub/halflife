@@ -76,6 +76,8 @@ export interface GrantCardProjectRow {
 export type GrantExclusionTone = "danger" | "info" | "muted" | "warning"
 
 export interface GrantCardExclusion {
+	/** The owner's account, so the list can link to their admin pages. Null for a project with no owner at all. */
+	ownerId: string | null
 	ownerName: string
 	projectId: string
 	reason: string
@@ -191,6 +193,7 @@ async function buildPreview(
 	for (const row of rows) {
 		if (!row.user) {
 			excluded.push({
+				ownerId: null,
 				ownerName: "Unknown owner",
 				projectId: row.id,
 				reason: "Project has no owner",
@@ -221,13 +224,21 @@ async function buildPreview(
 		else if (row.hcbCardGrantExports.length > 0) exclusion = { reason: "Already in an HCB CSV import", tone: "muted" }
 		else if (liveCard) exclusion = { reason: "Card grant already issued or awaiting reconciliation", tone: "muted" }
 		if (exclusion) {
-			excluded.push({ ownerName, projectId: row.id, reason: exclusion.reason, title: row.title, tone: exclusion.tone })
+			excluded.push({
+				ownerId: row.user.id,
+				ownerName,
+				projectId: row.id,
+				reason: exclusion.reason,
+				title: row.title,
+				tone: exclusion.tone,
+			})
 			continue
 		}
 
 		const capUsd = grantCardCapUsd(row.grantUsd, row.tier, isWeekOneStarter(row.starterProjectId))
 		if (capUsd === null) {
 			excluded.push({
+				ownerId: row.user.id,
 				ownerName,
 				projectId: row.id,
 				reason: "No tier to cap the grant at",
@@ -239,6 +250,7 @@ async function buildPreview(
 		const fullCents = grantCardAmountCents(row.bomItems, row.bomTaxShippingUsd, capUsd)
 		if (fullCents <= 0) {
 			excluded.push({
+				ownerId: row.user.id,
 				ownerName,
 				projectId: row.id,
 				reason: "BOM is empty or totals zero",
@@ -254,6 +266,7 @@ async function buildPreview(
 		if (amountCents <= 0) {
 			const known = cancelled.every(card => card.spentCents !== null)
 			excluded.push({
+				ownerId: row.user.id,
 				ownerName,
 				projectId: row.id,
 				reason: known
@@ -345,6 +358,7 @@ async function applyUnifiedGate(
 				continue
 			}
 			gone.push({
+				ownerId: row.ownerId,
 				ownerName: row.ownerName,
 				projectId: row.projectId,
 				reason: block.reason,
@@ -354,6 +368,7 @@ async function applyUnifiedGate(
 			continue
 		}
 		gone.push({
+			ownerId: row.ownerId,
 			ownerName: row.ownerName,
 			projectId: row.projectId,
 			reason: submitted ? "Not in the unified database" : "Could not check the unified database",

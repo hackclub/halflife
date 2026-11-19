@@ -76,7 +76,7 @@ export const USER_STATES = ["all", "flagged", "banned", "suspended", "unverified
 export type UserState = (typeof USER_STATES)[number]
 
 export async function listUsers(
-	opts: { q?: string; state?: UserState; cursor?: string; limit: number },
+	opts: { q?: string; state?: UserState; verified?: string; cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
@@ -107,12 +107,20 @@ export async function listUsers(
 					: state === "unverified"
 						? searched.where(user => or(user.verificationStatus.isNull(), user.verificationStatus.neq("verified")))
 						: searched
+	// HCA's own word for the identity status, as the directory's badge shows it. "unknown" is an account HCA has never answered for, which is a null column rather than the string.
+	const { verified } = opts
+	const matched =
+		verified === undefined
+			? filtered
+			: verified === "unknown"
+				? filtered.where(user => user.verificationStatus.isNull())
+				: filtered.where({ verificationStatus: verified })
 	const position = readCursor(opts.cursor)
 	// The directory is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
 	const paged =
 		position?.at === undefined || position?.at === null
-			? filtered
-			: filtered.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
+			? matched
+			: matched.cursor({ createdAt: formatDbTimestamp(position.at), id: position.id })
 	const rows = await paged
 		.limit(opts.limit + 1)
 		.select(

@@ -69,6 +69,8 @@ export interface FulfillmentOrderRow {
 	placedAt: Date
 	quantity: number
 	rejectionReason: string | null
+	/** The catalogue item this order is for, so the sheet can link back to it. */
+	shopItemId: string
 	status: ShopOrderStatus
 	totalUsd: number | null
 	trackingCarrier: string | null
@@ -99,7 +101,7 @@ export interface FulfillmentOrderModel {
 	placedAt: Date
 	quantity: number
 	rejectionReason: string | null
-	shopItem: { costUsd: number | null }
+	shopItem: { costUsd: number | null; id: string }
 	status: Models.public_ShopOrder["status"]
 	trackingCarrier: string | null
 	trackingNumber: string | null
@@ -174,7 +176,7 @@ export async function listFulfillmentOrders(
 				// The sheet acts on the newest attempt; older failures and cancellations stay as its history.
 				.orderBy([card => card.createdAt.desc(), card => card.id.desc()]),
 		)
-		.include("shopItem", item => item.select("costUsd"))
+		.include("shopItem", item => item.select("costUsd", "id"))
 		.include("user", user => user.select("displayName", "encryptedAddressCountry", "id", "name"))
 		.all()
 	const models = rows.slice(0, opts.limit).map(row => {
@@ -215,6 +217,7 @@ export async function listFulfillmentOrders(
 			fulfilledAt: parseNullableTimestamp(order.fulfilledAt),
 			fulfillmentStage: fulfillmentStageOf(order),
 			grantCard: grantCards[0] ?? null,
+			shopItemId: shopItem.id,
 			totalUsd: unit === null ? null : unit * order.quantity,
 			user: { id: user.id, name: displayName(user) },
 		})

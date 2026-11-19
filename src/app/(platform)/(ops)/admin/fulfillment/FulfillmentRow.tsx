@@ -33,12 +33,19 @@ const CARD_STATUS: { [_ in HcbGrantCardStatus]: { label: string; tone: "success"
 		SKIPPED: { label: "Skipped", tone: "muted" },
 	}
 
+/** The sheet's address with a stage added, keeping the filters already in it. */
+function stageHref(filters: string, stage: string): string {
+	const params = new URLSearchParams(filters)
+	params.set("stage", stage)
+	return `/admin/fulfillment?${params.toString()}`
+}
+
 /**
  * One order on the fulfilment sheet, with every control folded into a manage panel beneath it.
  *
- * The table is a reading list: order number, who, what, what it cost and where it is. Method, stage, the decision and the record of what was decided are not columns – they are a panel, so the sheet has room for the orders rather than the forms.
+ * The table is a reading list: order number, who, what, what it cost and where it is. Method, stage, the decision and the record of what was decided are not columns – they are a panel, so the sheet has room for the orders rather than the forms. `filters` is the sheet's current query without a stage, so a row's status can add one.
  */
-export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderJson }>) {
+export function FulfillmentRow({ filters, order }: Readonly<{ filters: string; order: FulfillmentOrderJson }>) {
 	const [open, setOpen] = useState(false)
 	const active = order.status === "PENDING" || order.status === "ON_HOLD"
 	const status = STATUS[order.status]
@@ -64,7 +71,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderJson
 					</div>
 				</td>
 				<td>
-					{order.itemNameSnapshot}
+					<Link href={`/admin/shop/${order.shopItemId}`}>{order.itemNameSnapshot}</Link>
 					{order.quantity > 1 ? <span className="hl-hint"> ×{order.quantity}</span> : null}
 				</td>
 				<td className="hl-mono">
@@ -87,7 +94,12 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderJson
 					{formatUtcDateTime(new Date(order.placedAt))}
 				</td>
 				<td className="hl-fulfill-status">
-					<Badge tone={status.tone}>{status.label}</Badge>
+					<Link
+						href={stageHref(filters, order.fulfillmentStage)}
+						title={`Show only ${STAGE_LABELS[order.fulfillmentStage]} orders`}
+					>
+						<Badge tone={status.tone}>{status.label}</Badge>
+					</Link>
 					{order.deliveryPreference ? <div className="hl-hint">{DELIVERY_LABELS[order.deliveryPreference]}</div> : null}
 					{order.grantCard ? <div className="hl-hint">Card: {CARD_STATUS[order.grantCard.status].label}</div> : null}
 					{active ? <div className="hl-hint">{STAGE_LABELS[order.fulfillmentStage]}</div> : null}
