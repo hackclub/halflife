@@ -99,63 +99,6 @@ export default async function AdminOverviewPage({ searchParams }: Props) {
 	const { tab: requestedTab } = firstValues(await searchParams)
 	const tab: OverviewTab = TABS.find(item => item.id === requestedTab)?.id ?? "summary"
 
-	const [
-		counters,
-		nps,
-		syncs,
-		flow,
-		sankeyData,
-		weeklyFlow,
-		areas,
-		countries,
-		activity,
-		activeUsers,
-		activityByGoal,
-		projectsByWeek,
-		hoursByWeek,
-		hoursSpread,
-		firstProjects,
-		projectReviewStatuses,
-		verification,
-		reviewer,
-		settings,
-	] = await Promise.all([
-		getAdminCounters(),
-		getProgrammeNps(),
-		getLatestSyncRuns([
-			"hackatime",
-			"airtable_ysws",
-			"airtable_rsvp",
-			"airtable_loops",
-			"ari_ship",
-			"claim_sweep",
-			"printer_reconcile",
-			"help_ticket_summary",
-			"project_review_summary",
-		]),
-		getUserFlowFunnel(),
-		getUserFlowSankey(),
-		getUserFlowWeekly(),
-		getAreaStats(),
-		getCountryStats(),
-		getDailyActivity(),
-		getDailyActiveUsers(),
-		getDailyActivityByGoal(),
-		getProjectsByWeek(),
-		getHoursByWeek(),
-		getHoursDistribution(),
-		getFirstProjectStats(),
-		getProjectReviewStatuses(),
-		getVerificationStats(),
-		getReviewerStats(),
-		getProgramSettings(),
-	])
-
-	// `eventStartDate` is stored as UTC midnight of the calendar day the programme opens, which is also the day week 1 opens in the programme's timezone. The charts' days are effective dates in that timezone, so its UTC date is what they are compared against.
-	const programmeStart = settings.eventStartDate.toISOString().slice(0, 10)
-
-	const reportCounts = await countContentReports()
-
 	return (
 		<div className="hl-stack">
 			<PageHeader
@@ -178,292 +121,349 @@ export default async function AdminOverviewPage({ searchParams }: Props) {
 			/>
 			<TabKeys current={tabHref(tab)} hrefs={TABS.map(item => tabHref(item.id))} />
 
-			{tab === "summary" ? (
-				<>
-					<Panel title="Needs attention">
-						<nav aria-label="Work waiting on staff" className="hl-attention">
-							<Link data-zero={counters.pendingOrders === 0 ? "true" : undefined} href="/admin/fulfillment">
-								<strong>{fmtInt(counters.pendingOrders)}</strong>
-								<span>orders to fulfil</span>
-							</Link>
-							<Link data-zero={counters.pendingReviews === 0 ? "true" : undefined} href="/reviews">
-								<strong>{fmtInt(counters.pendingReviews)}</strong>
-								<span>projects awaiting review</span>
-							</Link>
-							<Link data-zero={reportCounts.OPEN === 0 ? "true" : undefined} href="/admin/reports">
-								<strong>{fmtInt(reportCounts.OPEN)}</strong>
-								<span>open reports</span>
-							</Link>
-						</nav>
-					</Panel>
-
-					<div className="hl-row">
-						<Stat label="Participants" value={counters.participants} />
-						<Stat label="Active today" value={activeUsers.today} />
-						<Stat label="Printers earned" value={counters.shipped} />
-					</div>
-
-					<Panel
-						actions={
-							<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-								from the dashboard prompt
-							</span>
-						}
-						title="Net Promoter Score"
-					>
-						{nps === null ? (
-							<EmptyState>NPS is unavailable: Airtable is not configured or did not answer.</EmptyState>
-						) : nps.responses === 0 ? (
-							<EmptyState>Nobody has answered the NPS question yet.</EmptyState>
-						) : (
-							<div
-								style={{
-									alignItems: "center",
-									display: "flex",
-									flexWrap: "wrap",
-									gap: "1.5rem",
-									justifyContent: "space-between",
-								}}
-							>
-								<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
-								<ShareDonut
-									centerLabel="responses"
-									colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)"]}
-									empty="No NPS answers yet."
-									measure="NPS answers"
-									rows={[
-										{ label: "Promoters (9-10)", value: nps.promoters },
-										{ label: "Passives (7-8)", value: nps.passives },
-										{ label: "Detractors (0-6)", value: nps.detractors },
-									]}
-								/>
-							</div>
-						)}
-						<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-							Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus the
-							detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from the
-							same Signups table the dashboard&apos;s prompt writes to, cached for a minute.
-						</p>
-					</Panel>
-
-					<Panel
-						actions={
-							<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-								each project counted once, in the state its card shows
-							</span>
-						}
-						title="Reviewer activity"
-					>
-						<div
-							style={{
-								alignItems: "center",
-								display: "flex",
-								flexWrap: "wrap",
-								gap: "1.5rem",
-								justifyContent: "space-between",
-							}}
-						>
-							<ShareDonut
-								centerLabel="submitted"
-								colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
-								empty="No projects with a review state yet."
-								measure="Project review status"
-								rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
-							/>
-							<div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-								<Stat label="Reviewed today" value={reviewer.reviewedToday} />
-								<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
-							</div>
-						</div>
-						{counters.pendingReviewsUnsent > 0 && (
-							<p className="hl-hint" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
-								<span className="hl-mono">{fmtInt(counters.pendingReviewsUnsent)}</span> more are handed in and in
-								review here but never reached Ari, so no reviewer has them. See{" "}
-								<Link href="/admin/program">what broke, and a Retry for each</Link>.
-							</p>
-						)}
-						<Table head={["Outcome", "Today", "All time"]}>
-							{reviewer.byResult.map(row => (
-								<tr key={row.result}>
-									<td>{RESULT_LABEL[row.result]}</td>
-									<td className="hl-mono">{fmtInt(row.today)}</td>
-									<td className="hl-mono">{fmtInt(row.total)}</td>
-								</tr>
-							))}
-						</Table>
-						<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-							Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
-							changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved.
-							It is the same state the project&apos;s card shows, so a design approved while its build is still in
-							review reads as pending rather than as two slices, and a resubmission does not leave a second copy of the
-							project behind. Projects that have never been submitted are left out. Console decisions are included.
-						</p>
-					</Panel>
-				</>
-			) : null}
-
-			{tab === "people" ? (
-				<>
-					<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} weeks={weeklyFlow} />
-
-					<Panel title="Activities after onboarding">
-						<ActivityShareChart share={sankeyData.activityShare} />
-					</Panel>
-
-					<Panel title="Users & hours by continent">
-						<div
-							style={{
-								alignItems: "start",
-								display: "grid",
-								gap: "1.5rem",
-								gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))",
-							}}
-						>
-							<MetricPie format={fmtInt} pick={r => r.users} rows={areas} title="Users" />
-							<MetricPie format={fmtHours} pick={r => r.hours} rows={areas} title="Hours" />
-						</div>
-						<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-							Continents group each account&apos;s timezone; Unknown has none on file. Hours count journal devlogs
-							(reviewer-adjusted where set) plus linked Hackatime time, attributed to the author&apos;s region.
-						</p>
-					</Panel>
-
-					<Panel title="Users & hours by country">
-						<div
-							style={{
-								alignItems: "start",
-								display: "grid",
-								gap: "1.5rem",
-								gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))",
-							}}
-						>
-							<MetricPie
-								format={fmtInt}
-								pick={r => r.users}
-								rows={countries.map(c => ({ hours: c.hours, label: c.country, users: c.users }))}
-								title="Users"
-							/>
-							<MetricPie
-								format={fmtHours}
-								pick={r => r.hours}
-								rows={countries.map(c => ({ hours: c.hours, label: c.country, users: c.users }))}
-								title="Hours"
-							/>
-						</div>
-						<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-							Countries map each account&apos;s timezone; zones with nothing to place read as Unknown.
-						</p>
-					</Panel>
-
-					<Panel title="First project choice">
-						<ShareDonut
-							empty="No finished setups yet."
-							measure="First project choice"
-							rows={firstProjects.map(s => ({ label: s.label, value: s.users }))}
-						/>
-						<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-							Users who finished setup and still have their week-one project. Starter names come from the catalogue;
-							Custom project means they named their own idea.
-						</p>
-					</Panel>
-
-					<Panel title="Identity verification">
-						<ShareDonut
-							empty="No accounts yet."
-							measure="Identity status"
-							rows={verification.map(s => ({ label: s.label, value: s.users }))}
-						/>
-						<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-							Hack Club Auth&apos;s own reading of each account, taken at its last sign-in or purchase. Only a verified
-							identity can be paid; needs verification is somebody part-way through IDV, and not asked is an account no
-							sign-in has reported on yet.
-						</p>
-					</Panel>
-
-					<Panel title="Hours per participant">
-						<HoursHistogram data={hoursSpread} />
-					</Panel>
-				</>
-			) : null}
-
-			{tab === "activity" ? (
-				<>
-					<ProgrammeFilterProvider programmeStart={programmeStart}>
-						<Panel title="Daily active users">
-							<DauChart days={activeUsers.days} />
-							<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-								A person counts once a day, and only once that day&apos;s tracked time reaches 15 minutes. A visit with
-								no time logged does not count, and neither do three devlogs where one would have done. Days are
-								program-timezone effective dates, the day the work counted for. The bars behind the line are each
-								week&apos;s average, over the days that week covers on the chart, and are labelled where they are wide
-								enough to hold the number.
-							</p>
-						</Panel>
-
-						<Panel title="Activity over time">
-							<ActivityStrip days={activity} />
-							<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-								Days are program-timezone effective dates, the day the work counted for. Hours count journal devlogs
-								only.
-							</p>
-						</Panel>
-
-						<Panel title="Activity per user over time">
-							<ActivityStrip days={activity} perUser />
-							<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-								One person&apos;s average working day rather than the programme&apos;s total. Read beside the chart
-								above, the totals say how much was done and this says how thinly it was spread, so a busy day and a flat
-								average together mean the work was going somewhere, and both rising means more people joined in.
-							</p>
-						</Panel>
-					</ProgrammeFilterProvider>
-
-					<Panel title="Hours per user by goal">
-						<GoalHoursChart days={activityByGoal} />
-						<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-							The same hours split by what each maker said they are here for. Where the three lines separate, the goal
-							question is saying something about effort; where they move together, it is saying something about the
-							programme.
-						</p>
-					</Panel>
-
-					<Panel title="Projects per week">
-						<ProjectsByWeekChart weeks={projectsByWeek} />
-						<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-							What people are building, by the week it is for. A project sits in its theme&apos;s design week once the
-							design has been handed in, and in the build week once the build has, so the two PCBs blocks are different
-							projects, not one cohort counted twice.
-						</p>
-					</Panel>
-					<Panel title="Hours per week">
-						<HoursByWeekChart weeks={hoursByWeek} />
-					</Panel>
-				</>
-			) : null}
-
-			{tab === "jobs" ? (
-				<Panel
-					actions={<Link href="/admin/audit?action=AIRTABLE_SYNC_FAILURE">Sync failures</Link>}
-					title="Scheduled jobs"
-				>
-					{syncs.length === 0 ? (
-						<EmptyState>No job has completed yet. Run them by hand from Orchard to check the wiring.</EmptyState>
-					) : (
-						<Table head={["Job", "Last success", "Result"]}>
-							{syncs.map(run => (
-								<tr key={run.syncKey}>
-									<td className="hl-mono">{run.syncKey}</td>
-									<td className="hl-mono">{formatUtcDateTime(run.lastRunAt)}</td>
-									<td>
-										<SyncResult result={run.result} />
-									</td>
-								</tr>
-							))}
-						</Table>
-					)}
-				</Panel>
-			) : null}
+			{tab === "summary" ? <SummaryTab /> : null}
+			{tab === "people" ? <PeopleTab /> : null}
+			{tab === "activity" ? <ActivityTab /> : null}
+			{tab === "jobs" ? <JobsTab /> : null}
 		</div>
+	)
+}
+
+/** Summary: what needs attention, the headline figures, NPS and reviewer activity. Only its own queries run when this tab is open. */
+async function SummaryTab() {
+	const [counters, nps, activeUsers, projectReviewStatuses, reviewer, reportCounts] = await Promise.all([
+		getAdminCounters(),
+		getProgrammeNps(),
+		getDailyActiveUsers(),
+		getProjectReviewStatuses(),
+		getReviewerStats(),
+		countContentReports(),
+	])
+
+	return (
+		<>
+			<Panel title="Needs attention">
+				<nav aria-label="Work waiting on staff" className="hl-attention">
+					<Link data-zero={counters.pendingOrders === 0 ? "true" : undefined} href="/admin/fulfillment">
+						<strong>{fmtInt(counters.pendingOrders)}</strong>
+						<span>orders to fulfil</span>
+					</Link>
+					<Link data-zero={counters.pendingReviews === 0 ? "true" : undefined} href="/reviews">
+						<strong>{fmtInt(counters.pendingReviews)}</strong>
+						<span>projects awaiting review</span>
+					</Link>
+					<Link data-zero={reportCounts.OPEN === 0 ? "true" : undefined} href="/admin/reports">
+						<strong>{fmtInt(reportCounts.OPEN)}</strong>
+						<span>open reports</span>
+					</Link>
+				</nav>
+			</Panel>
+
+			<div className="hl-row">
+				<Stat label="Participants" value={counters.participants} />
+				<Stat label="Active today" value={activeUsers.today} />
+				<Stat label="Printers earned" value={counters.shipped} />
+			</div>
+
+			<Panel
+				actions={
+					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
+						from the dashboard prompt
+					</span>
+				}
+				title="Net Promoter Score"
+			>
+				{nps === null ? (
+					<EmptyState>NPS is unavailable: Airtable is not configured or did not answer.</EmptyState>
+				) : nps.responses === 0 ? (
+					<EmptyState>Nobody has answered the NPS question yet.</EmptyState>
+				) : (
+					<div
+						style={{
+							alignItems: "center",
+							display: "flex",
+							flexWrap: "wrap",
+							gap: "1.5rem",
+							justifyContent: "space-between",
+						}}
+					>
+						<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
+						<ShareDonut
+							centerLabel="responses"
+							colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)"]}
+							empty="No NPS answers yet."
+							measure="NPS answers"
+							rows={[
+								{ label: "Promoters (9-10)", value: nps.promoters },
+								{ label: "Passives (7-8)", value: nps.passives },
+								{ label: "Detractors (0-6)", value: nps.detractors },
+							]}
+						/>
+					</div>
+				)}
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus the
+					detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from the same
+					Signups table the dashboard&apos;s prompt writes to, cached for a minute.
+				</p>
+			</Panel>
+
+			<Panel
+				actions={
+					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
+						each project counted once, in the state its card shows
+					</span>
+				}
+				title="Reviewer activity"
+			>
+				<div
+					style={{
+						alignItems: "center",
+						display: "flex",
+						flexWrap: "wrap",
+						gap: "1.5rem",
+						justifyContent: "space-between",
+					}}
+				>
+					<ShareDonut
+						centerLabel="submitted"
+						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
+						empty="No projects with a review state yet."
+						measure="Project review status"
+						rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
+					/>
+					<div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+						<Stat label="Reviewed today" value={reviewer.reviewedToday} />
+						<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
+					</div>
+				</div>
+				{counters.pendingReviewsUnsent > 0 && (
+					<p className="hl-hint" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+						<span className="hl-mono">{fmtInt(counters.pendingReviewsUnsent)}</span> more are handed in and in review
+						here but never reached Ari, so no reviewer has them. See{" "}
+						<Link href="/admin/program">what broke, and a Retry for each</Link>.
+					</p>
+				)}
+				<Table head={["Outcome", "Today", "All time"]}>
+					{reviewer.byResult.map(row => (
+						<tr key={row.result}>
+							<td>{RESULT_LABEL[row.result]}</td>
+							<td className="hl-mono">{fmtInt(row.today)}</td>
+							<td className="hl-mono">{fmtInt(row.total)}</td>
+						</tr>
+					))}
+				</Table>
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
+					changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved. It
+					is the same state the project&apos;s card shows, so a design approved while its build is still in review reads
+					as pending rather than as two slices, and a resubmission does not leave a second copy of the project behind.
+					Projects that have never been submitted are left out. Console decisions are included.
+				</p>
+			</Panel>
+		</>
+	)
+}
+
+/** People: the sign-up flow, where people come from and what they chose. Only its own queries run when this tab is open. */
+async function PeopleTab() {
+	const [flow, sankeyData, weeklyFlow, areas, countries, hoursSpread, firstProjects, verification] = await Promise.all([
+		getUserFlowFunnel(),
+		getUserFlowSankey(),
+		getUserFlowWeekly(),
+		getAreaStats(),
+		getCountryStats(),
+		getHoursDistribution(),
+		getFirstProjectStats(),
+		getVerificationStats(),
+	])
+
+	return (
+		<>
+			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} weeks={weeklyFlow} />
+
+			<Panel title="Activities after onboarding">
+				<ActivityShareChart share={sankeyData.activityShare} />
+			</Panel>
+
+			<Panel title="Users & hours by continent">
+				<div
+					style={{
+						alignItems: "start",
+						display: "grid",
+						gap: "1.5rem",
+						gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))",
+					}}
+				>
+					<MetricPie format={fmtInt} pick={r => r.users} rows={areas} title="Users" />
+					<MetricPie format={fmtHours} pick={r => r.hours} rows={areas} title="Hours" />
+				</div>
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Continents group each account&apos;s timezone; Unknown has none on file. Hours count journal devlogs
+					(reviewer-adjusted where set) plus linked Hackatime time, attributed to the author&apos;s region.
+				</p>
+			</Panel>
+
+			<Panel title="Users & hours by country">
+				<div
+					style={{
+						alignItems: "start",
+						display: "grid",
+						gap: "1.5rem",
+						gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))",
+					}}
+				>
+					<MetricPie
+						format={fmtInt}
+						pick={r => r.users}
+						rows={countries.map(c => ({ hours: c.hours, label: c.country, users: c.users }))}
+						title="Users"
+					/>
+					<MetricPie
+						format={fmtHours}
+						pick={r => r.hours}
+						rows={countries.map(c => ({ hours: c.hours, label: c.country, users: c.users }))}
+						title="Hours"
+					/>
+				</div>
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Countries map each account&apos;s timezone; zones with nothing to place read as Unknown.
+				</p>
+			</Panel>
+
+			<Panel title="First project choice">
+				<ShareDonut
+					empty="No finished setups yet."
+					measure="First project choice"
+					rows={firstProjects.map(s => ({ label: s.label, value: s.users }))}
+				/>
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Users who finished setup and still have their week-one project. Starter names come from the catalogue; Custom
+					project means they named their own idea.
+				</p>
+			</Panel>
+
+			<Panel title="Identity verification">
+				<ShareDonut
+					empty="No accounts yet."
+					measure="Identity status"
+					rows={verification.map(s => ({ label: s.label, value: s.users }))}
+				/>
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Hack Club Auth&apos;s own reading of each account, taken at its last sign-in or purchase. Only a verified
+					identity can be paid; needs verification is somebody part-way through IDV, and not asked is an account no
+					sign-in has reported on yet.
+				</p>
+			</Panel>
+
+			<Panel title="Hours per participant">
+				<HoursHistogram data={hoursSpread} />
+			</Panel>
+		</>
+	)
+}
+
+/** Activity: daily and weekly activity charts. Only its own queries run when this tab is open. */
+async function ActivityTab() {
+	const [settings, activity, activeUsers, activityByGoal, projectsByWeek, hoursByWeek] = await Promise.all([
+		getProgramSettings(),
+		getDailyActivity(),
+		getDailyActiveUsers(),
+		getDailyActivityByGoal(),
+		getProjectsByWeek(),
+		getHoursByWeek(),
+	])
+
+	// `eventStartDate` is stored as UTC midnight of the calendar day the programme opens, which is also the day week 1 opens in the programme's timezone. The charts' days are effective dates in that timezone, so its UTC date is what they are compared against.
+	const programmeStart = settings.eventStartDate.toISOString().slice(0, 10)
+
+	return (
+		<>
+			<ProgrammeFilterProvider programmeStart={programmeStart}>
+				<Panel title="Daily active users">
+					<DauChart days={activeUsers.days} />
+					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+						A person counts once a day, and only once that day&apos;s tracked time reaches 15 minutes. A visit with no
+						time logged does not count, and neither do three devlogs where one would have done. Days are
+						program-timezone effective dates, the day the work counted for. The bars behind the line are each
+						week&apos;s average, over the days that week covers on the chart, and are labelled where they are wide
+						enough to hold the number.
+					</p>
+				</Panel>
+
+				<Panel title="Activity over time">
+					<ActivityStrip days={activity} />
+					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+						Days are program-timezone effective dates, the day the work counted for. Hours count journal devlogs only.
+					</p>
+				</Panel>
+
+				<Panel title="Activity per user over time">
+					<ActivityStrip days={activity} perUser />
+					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+						One person&apos;s average working day rather than the programme&apos;s total. Read beside the chart above,
+						the totals say how much was done and this says how thinly it was spread, so a busy day and a flat average
+						together mean the work was going somewhere, and both rising means more people joined in.
+					</p>
+				</Panel>
+			</ProgrammeFilterProvider>
+
+			<Panel title="Hours per user by goal">
+				<GoalHoursChart days={activityByGoal} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					The same hours split by what each maker said they are here for. Where the three lines separate, the goal
+					question is saying something about effort; where they move together, it is saying something about the
+					programme.
+				</p>
+			</Panel>
+
+			<Panel title="Projects per week">
+				<ProjectsByWeekChart weeks={projectsByWeek} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					What people are building, by the week it is for. A project sits in its theme&apos;s design week once the
+					design has been handed in, and in the build week once the build has, so the two PCBs blocks are different
+					projects, not one cohort counted twice.
+				</p>
+			</Panel>
+			<Panel title="Hours per week">
+				<HoursByWeekChart weeks={hoursByWeek} />
+			</Panel>
+		</>
+	)
+}
+
+/** Jobs: when each scheduled job last succeeded and what it recorded. */
+async function JobsTab() {
+	const syncs = await getLatestSyncRuns([
+		"hackatime",
+		"airtable_ysws",
+		"airtable_rsvp",
+		"airtable_loops",
+		"ari_ship",
+		"claim_sweep",
+		"printer_reconcile",
+		"help_ticket_summary",
+		"project_review_summary",
+	])
+
+	return (
+		<Panel actions={<Link href="/admin/audit?action=AIRTABLE_SYNC_FAILURE">Sync failures</Link>} title="Scheduled jobs">
+			{syncs.length === 0 ? (
+				<EmptyState>No job has completed yet. Run them by hand from Orchard to check the wiring.</EmptyState>
+			) : (
+				<Table head={["Job", "Last success", "Result"]}>
+					{syncs.map(run => (
+						<tr key={run.syncKey}>
+							<td className="hl-mono">{run.syncKey}</td>
+							<td className="hl-mono">{formatUtcDateTime(run.lastRunAt)}</td>
+							<td>
+								<SyncResult result={run.result} />
+							</td>
+						</tr>
+					))}
+				</Table>
+			)}
+		</Panel>
 	)
 }
 
