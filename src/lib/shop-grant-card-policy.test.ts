@@ -50,10 +50,8 @@ describe("shopGrantCardBlockReason", () => {
 })
 
 describe("shopGrantCardInstructions", () => {
-	test("names the order and the item, and asks for the item", () => {
-		expect(shopGrantCardInstructions(12, "Soldering kit")).toBe(
-			'Order #12: Soldering kit. Please use to purchase "Soldering kit"',
-		)
+	test("names the order once and asks for the item", () => {
+		expect(shopGrantCardInstructions(12, "Soldering kit")).toBe('Order #12. Please use to purchase "Soldering kit"')
 	})
 })
 

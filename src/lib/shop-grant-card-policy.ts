@@ -39,7 +39,7 @@ export function shopGrantCardBlockReason(
 
 /** What HCB shows on the grant: the order and the item, which is all a shop card has. */
 export function shopGrantCardInstructions(orderNumber: number, itemName: string): string {
-	return `Order #${orderNumber}: ${itemName}. Please use to purchase "${itemName}"`
+	return `Order #${orderNumber}. Please use to purchase "${itemName}"`
 }
 
 /** The purpose HCB stores. It has to identify the attempt for a reconcile, and HCB caps it, so the item name is cut to fit. */
