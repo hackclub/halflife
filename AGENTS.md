@@ -72,3 +72,7 @@ None of this should conflict with the formatting or linting rules of Biome or ox
 
 - Do not hard-wrap. Never split a sentence over multiple lines
 	- If the new line is after a semicolon or is a new sentence, OK
+
+## Product copy
+
+- Parts money is only for parts. Never write, or imply, that unspent grant-card money becomes coins: a card's leftover balance goes back to Half Life when it is closed, and coins come only from approved hours past a tier's funded block.
