@@ -901,12 +901,16 @@
 		align-items: flex-end;
 	}
 	.hl-filters--inline .hl-filters__search {
-		flex: 1 1 22rem;
+		/* The 25rem basis is the search row's own two controls: the input and the Paste button keep one line before the fields are allowed beside them. */
+		flex: 1 1 25rem;
 		min-width: 0;
-		max-width: 34rem;
+	}
+	/* The input starts small enough to keep the Paste button beside it, then grows into whatever the row has left. */
+	.hl-filters--inline .hl-filters__search .hl-input {
+		flex-basis: 12rem;
 	}
 	.hl-filters--inline .hl-filters__grid {
-		flex: 1 1 16rem;
+		flex: 0 1 auto;
 		min-width: 0;
 	}
 	.hl-filters--inline .hl-filters__footer {
