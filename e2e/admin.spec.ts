@@ -75,7 +75,8 @@ test("an admin can generate and re-download an HCB grant CSV", async ({ openAs }
 	expect(mine).toMatchObject({ amountCents: 200, email: maker.email, themeProjectId: projectId })
 	expect(mine?.batchId).toBe(download.suggestedFilename().replace("hcb-card-grants-", "").replace(".csv", ""))
 	await page.goto("/admin/grants?tab=excluded")
-	await expect(page.getByText("Already in an HCB CSV import").first()).toBeVisible()
+	// The table's cell, not the reason filter's option, which carries the same words.
+	await expect(page.getByRole("cell", { name: "Already in an HCB CSV import" }).first()).toBeVisible()
 
 	// The history entry re-downloads the exact file, and lives on the Batches tab.
 	await page.goto("/admin/grants?tab=batches")
