@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Badge, Button, EmptyState, PageHeader, Panel, Select, Stat, Table } from "@/app/components/ui"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { formatRemaining, remainingTone } from "@/lib/deadline-remaining"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -99,7 +100,7 @@ export default async function AdminDeadlinesPage({ searchParams }: Props) {
 									<Badge tone="muted">{item.kind}</Badge>
 								</td>
 								<td>{coversFor(item)}</td>
-								<td className="hl-mono">{item.expiresAt.toLocaleString()}</td>
+								<td className="hl-mono">{formatUtcDateTime(item.expiresAt)}</td>
 								<td>
 									<Badge tone={remainingTone(item.expiresAt, now)}>{formatRemaining(item.expiresAt, now)}</Badge>
 								</td>

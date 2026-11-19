@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardStatus } from "@/lib/enums"
 import { getGrantCardBatch } from "@/lib/grant-cards"
 import { formatUsd } from "@/lib/money"
@@ -50,8 +51,8 @@ export default async function GrantCardBatchPage({ params }: Props) {
 
 			<Panel>
 				<p className="hl-hint" style={{ margin: 0 }}>
-					Created {batch.createdAt.toLocaleString()}
-					{batch.completedAt ? `, finished ${batch.completedAt.toLocaleString()}` : ""}. Batch{" "}
+					Created {formatUtcDateTime(batch.createdAt)}
+					{batch.completedAt ? `, finished ${formatUtcDateTime(batch.completedAt)}` : ""}. Batch{" "}
 					<span className="hl-mono">{batch.id}</span>.
 				</p>
 				{remaining > 0 ? (
