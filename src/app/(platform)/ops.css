@@ -488,6 +488,21 @@
 		color: var(--color-ink-strong);
 		white-space: nowrap;
 	}
+	/* The way back to the maker's own dashboard, kept in the header so it is not a page inside the console's own sections. */
+	.hl-admin-dashboard {
+		flex: 0 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--color-ink);
+		text-decoration: none;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.hl-admin-dashboard:hover {
+		text-decoration: underline;
+	}
 	.hl-admin-email {
 		min-width: 0;
 		margin-left: auto;

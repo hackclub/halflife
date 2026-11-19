@@ -25,10 +25,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 	// A section with no pages left is dropped, so the sidebar never shows a heading over nothing.
 	const groups: AdminNavGroup[] = [
 		{
-			items: [
-				{ href: "/admin", label: "Overview" },
-				{ href: "/dashboard", label: "My dashboard" },
-			],
+			items: [{ href: "/admin", label: "Overview" }],
 			label: "Overview",
 		},
 		{
