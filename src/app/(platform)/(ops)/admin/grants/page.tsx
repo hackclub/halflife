@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ExportGrantCardsCsvForm } from "@/app/components/forms/ExportGrantCardsCsvForm"
 import { HcbConnectForm } from "@/app/components/forms/HcbConnectForm"
@@ -11,6 +12,10 @@ import { readStoredRefreshToken } from "@/lib/hcb-credential"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
+
+export const metadata: Metadata = {
+	title: "Grant cards",
+}
 
 export const dynamic = "force-dynamic"
 

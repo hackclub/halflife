@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
 import { Badge, EmptyState, Field, FilterBar, PageHeader, Panel, Select, Table, TextInput } from "@/app/components/ui"
@@ -12,6 +13,10 @@ import { type FulfillmentFilters, listFulfillmentOrders, listPrinterAwards } fro
 import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 import { DAY_MS } from "@/lib/time"
 import { FulfillmentRow } from "./FulfillmentRow"
+
+export const metadata: Metadata = {
+	title: "Fulfillment",
+}
 
 export const dynamic = "force-dynamic"
 

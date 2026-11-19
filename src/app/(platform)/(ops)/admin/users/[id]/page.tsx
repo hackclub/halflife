@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { type TimelineEvent, UserTimeline } from "@/app/components/admin/UserTimeline"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -24,6 +25,10 @@ import { getUserDetail } from "@/lib/queries/admin"
 import { parseDbTimestamp } from "@/lib/time"
 import { ThemedProjectRow } from "./ThemedProjectRow"
 import { WeekExtensionForm } from "./WeekExtensionForm"
+
+export const metadata: Metadata = {
+	title: "User",
+}
 
 export const dynamic = "force-dynamic"
 

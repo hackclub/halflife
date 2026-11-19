@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, LinkButton, PageHeader, Panel, Table } from "@/app/components/ui"
@@ -12,6 +13,10 @@ import {
 } from "@/lib/queries/admin"
 import { preview } from "@/lib/text"
 import { isTruthy } from "@/lib/truthy"
+
+export const metadata: Metadata = {
+	title: "Feed",
+}
 
 export const dynamic = "force-dynamic"
 

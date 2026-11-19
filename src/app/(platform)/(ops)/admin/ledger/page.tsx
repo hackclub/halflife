@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { LedgerList } from "@/app/components/admin/LedgerList"
 import { Field, FilterBar, PageHeader, Panel, Select, Stat, TextInput } from "@/app/components/ui"
 import { LedgerKind } from "@/lib/enums"
@@ -8,6 +9,10 @@ import { hasRole, Permission, Role } from "@/lib/permissions"
 import { listLedgerEntries } from "@/lib/queries/admin-ledger"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { DAY_MS } from "@/lib/time"
+
+export const metadata: Metadata = {
+	title: "Ledger",
+}
 
 export const dynamic = "force-dynamic"
 

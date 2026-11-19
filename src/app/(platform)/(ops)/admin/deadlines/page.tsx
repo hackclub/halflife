@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Badge, Button, EmptyState, PageHeader, Panel, Select, Stat, Table } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
@@ -7,6 +8,10 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { hasRole, Permission, Role } from "@/lib/permissions"
 import { type DeadlineExtension, type ExtensionKind, listActiveExtensions } from "@/lib/queries/admin-deadlines"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
+
+export const metadata: Metadata = {
+	title: "Deadlines",
+}
 
 export const dynamic = "force-dynamic"
 

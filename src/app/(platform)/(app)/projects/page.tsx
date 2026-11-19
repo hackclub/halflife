@@ -5,7 +5,7 @@ import { WarmupStart } from "./WarmupStart"
 
 export const metadata: Metadata = {
 	description: "Every project you have started, and everything you logged against it.",
-	title: "Half Life Projects",
+	title: "Projects",
 }
 
 export default function ProjectsPage() {

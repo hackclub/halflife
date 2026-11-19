@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ActivityStrip, DauChart, ProgrammeFilterProvider } from "@/app/components/admin/ActivityCharts"
 import { ActivityShareChart } from "@/app/components/admin/ActivityShareChart"
@@ -46,6 +47,10 @@ import {
 } from "@/lib/queries/admin"
 import { getUserFlowSankey } from "@/lib/queries/admin-flow"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
+
+export const metadata: Metadata = {
+	title: "Overview",
+}
 
 export const dynamic = "force-dynamic"
 

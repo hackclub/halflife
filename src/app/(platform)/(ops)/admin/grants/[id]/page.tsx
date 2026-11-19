@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -8,6 +9,10 @@ import { getGrantCardBatch } from "@/lib/grant-cards"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
+
+export const metadata: Metadata = {
+	title: "Grant card batch",
+}
 
 export const dynamic = "force-dynamic"
 

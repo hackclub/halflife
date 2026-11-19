@@ -14,7 +14,10 @@ import "./globals.css"
 export const metadata: Metadata = {
 	description:
 		"Design five hardware projects, then build all five. Ten weeks, real funding, and a 3D printer at the end.",
-	title: "Half Life: become a hardware expert in 10 weeks",
+	title: {
+		default: "Half Life",
+		template: "%s · Half Life",
+	},
 }
 
 export const viewport: Viewport = {

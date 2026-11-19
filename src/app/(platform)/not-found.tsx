@@ -6,7 +6,7 @@ import { NotFoundScene } from "@/components/site/not-found-scene"
 export default function NotFound() {
 	return (
 		<>
-			<title>Page not found · Half Life by Hack Club</title>
+			<title>Page not found · Half Life</title>
 			<NotFoundScene />
 		</>
 	)

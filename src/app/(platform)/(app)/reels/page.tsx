@@ -6,7 +6,7 @@ import { ReelsList } from "./ReelsList"
 
 export const metadata: Metadata = {
 	description: "Your reels, by project, and everywhere you have posted them.",
-	title: "Half Life Reels",
+	title: "Reels",
 }
 
 export const dynamic = "force-dynamic"
