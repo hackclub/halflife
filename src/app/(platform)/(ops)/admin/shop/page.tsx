@@ -44,7 +44,7 @@ export default async function AdminShopPage() {
 				{items.length === 0 ? (
 					<EmptyState>No items yet.</EmptyState>
 				) : (
-					<Table head={["Slug", "Name", "Category", "Price", "Cost (USD)", "Stock", "Gated", "Active", ""]}>
+					<Table head={["Slug", "Name", "Category", "Price", "Cost (USD)", "Stock", "Gated", "Active", "Manage"]}>
 						{items.map(item => (
 							<tr key={item.id}>
 								<td className="hl-mono">{item.id}</td>
