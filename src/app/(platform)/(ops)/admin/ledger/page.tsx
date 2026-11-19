@@ -49,13 +49,18 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 		{ includePii },
 	)
 
-	// The rows below load more as they are scrolled to, through the same filters, so the list's address carries them all.
+	// The rows below load more as they are scrolled to, through the same filters, so the list's address carries them all. A row's kind badge links back to the page with that kind added to the same filters.
 	const filterParams = new URLSearchParams(
 		Object.entries({ from, kind: kindParam, q, to }).filter(
 			(entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== "",
 		),
 	)
 	const baseUrl = `/api/admin/ledger?${filterParams.toString()}`
+	const pageParams = new URLSearchParams(
+		Object.entries({ from, q, to }).filter(
+			(entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== "",
+		),
+	)
 	const rows = items.map(entry => ({ ...entry, createdAt: entry.createdAt.toISOString() }))
 
 	return (
@@ -98,7 +103,13 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 
 			<Panel>
 				{/* Keyed on the filters, so a new search starts a new list rather than appending to the old one. */}
-				<LedgerList baseUrl={baseUrl} initialCursor={nextCursor} initialRows={rows} key={filterParams.toString()} />
+				<LedgerList
+					baseUrl={baseUrl}
+					filters={pageParams.toString()}
+					initialCursor={nextCursor}
+					initialRows={rows}
+					key={filterParams.toString()}
+				/>
 			</Panel>
 		</div>
 	)

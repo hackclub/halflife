@@ -34,19 +34,25 @@ const isLedgerPage = (value: unknown): value is LedgerPage =>
 const NUMERIC = { fontVariantNumeric: "tabular-nums", textAlign: "right" } as const
 
 /**
- * The ledger's rows, loading the next page as the bottom of the table comes into view. The filters are in `baseUrl`, so a new search remounts this list rather than appending to the old one.
+ * The ledger's rows, loading the next page as the bottom of the table comes into view. The filters are in `baseUrl`, so a new search remounts this list rather than appending to the old one. A row's kind badge links back to the page with that kind added to `filters`, the same search with one more condition.
  */
 export function LedgerList({
 	baseUrl,
+	filters,
 	initialCursor,
 	initialRows,
-}: Readonly<{ baseUrl: string; initialCursor: string | null; initialRows: LedgerListRow[] }>) {
+}: Readonly<{ baseUrl: string; filters: string; initialCursor: string | null; initialRows: LedgerListRow[] }>) {
 	const { cursor, failed, loadMore, loading, rows, sentinel } = useInfiniteRows<LedgerListRow>({
 		baseUrl,
 		initialCursor,
 		initialRows,
 		isPage: isLedgerPage,
 	})
+	const kindHref = (kind: LedgerKind) => {
+		const params = new URLSearchParams(filters)
+		params.set("kind", kind)
+		return `/admin/ledger?${params.toString()}`
+	}
 
 	if (rows.length === 0) return <EmptyState>No ledger entries match.</EmptyState>
 
@@ -70,7 +76,9 @@ export function LedgerList({
 							<Link href={`/admin/users/${entry.user.id}`}>{entry.user.name ?? "-"}</Link>
 						</td>
 						<td>
-							<Badge tone={ledgerKindTone(entry.kind)}>{ledgerKindLabel(entry.kind)}</Badge>
+							<Link href={kindHref(entry.kind)} title={`Show only ${ledgerKindLabel(entry.kind)} entries`}>
+								<Badge tone={ledgerKindTone(entry.kind)}>{ledgerKindLabel(entry.kind)}</Badge>
+							</Link>
 						</td>
 						<td>{entry.note ?? <span className="hl-hint">-</span>}</td>
 						<td
