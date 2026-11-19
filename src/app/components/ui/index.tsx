@@ -2,6 +2,7 @@ import Link from "next/link"
 import type { ComponentPropsWithRef, ReactNode } from "react"
 import { HangingSign } from "@/components/sign/HangingSign"
 import { isTruthy } from "@/lib/truthy"
+import { IconFilter } from "./icons"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that know about colour, spacing or type – a page composes these and never writes a raw utility class.
@@ -161,6 +162,34 @@ export function TextInput({ className, ...props }: Readonly<ComponentPropsWithRe
 
 export function Select({ className, ...props }: Readonly<ComponentPropsWithRef<"select">>) {
 	return <select {...props} className={withClass("hl-select", className)} />
+}
+
+/**
+ * The filter form above a list. Every list uses this one shape: an optional leading row (a search), the labelled fields in one grid, then a footer whose notes sit on the left while Reset and Filter sit together on the right, so a reader clears and applies filters in the same place on every page.
+ */
+export function FilterBar({
+	children,
+	footer,
+	leading,
+	resetHref,
+}: Readonly<{ children: ReactNode; footer?: ReactNode; leading?: ReactNode; resetHref: string }>) {
+	return (
+		<form className="hl-filters" method="get">
+			{leading}
+			<div className="hl-filters__grid">{children}</div>
+			<div className="hl-filters__footer">
+				<div className="hl-filters__notes">{footer}</div>
+				<div className="hl-filters__actions">
+					<Link className="hl-hint" href={resetHref}>
+						Reset
+					</Link>
+					<Button type="submit">
+						<IconFilter /> Filter
+					</Button>
+				</div>
+			</div>
+		</form>
+	)
 }
 
 /**

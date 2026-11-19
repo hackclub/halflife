@@ -741,6 +741,19 @@
 		padding-top: 1rem;
 		border-top: 2px solid var(--color-border);
 	}
+	/* Notes on the left of the footer; Reset and Filter together on the right, the same on every list. */
+	.hl-filters__notes {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
+		align-items: center;
+	}
+	.hl-filters__actions {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+		margin-left: auto;
+	}
 	.hl-filters__toggles {
 		display: flex;
 		flex-wrap: wrap;

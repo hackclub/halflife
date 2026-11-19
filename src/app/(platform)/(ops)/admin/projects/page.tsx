@@ -3,6 +3,7 @@ import {
 	Button,
 	EmptyState,
 	Field,
+	FilterBar,
 	PageHeader,
 	Panel,
 	Select,
@@ -87,65 +88,8 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 			/>
 
 			<Panel>
-				<form className="hl-filters" method="get">
-					{/* The search is the one thing most lookups start with, so it gets its own row and the only primary button. */}
-					<div className="hl-filters__search">
-						<TextInput
-							aria-label="Search projects or owners"
-							defaultValue={search.q ?? ""}
-							name="q"
-							placeholder="Search projects or owners"
-						/>
-						<Button type="submit">
-							<IconSearch /> Search
-						</Button>
-					</div>
-
-					{/* Each stage filter is labelled above its control, so the grid reads as four named choices rather than a run of unlabelled dropdowns. */}
-					<div className="hl-filters__grid">
-						<Field label="Theme">
-							<Select defaultValue={filters.theme ?? ""} name="theme">
-								<option value="">Any theme</option>
-								{THEMES.map(t => (
-									<option key={t.id} value={t.id}>
-										{themeLabel(t.id)}
-									</option>
-								))}
-								<option value={Theme.WARMUP}>Warm Up</option>
-							</Select>
-						</Field>
-						<Field label="Design stage">
-							<Select defaultValue={filters.designStatus ?? ""} name="design">
-								<option value="">Any status</option>
-								{STATUSES.map(s => (
-									<option key={s} value={s}>
-										{statusLabel(s)}
-									</option>
-								))}
-							</Select>
-						</Field>
-						<Field label="Build stage">
-							<Select defaultValue={filters.buildStatus ?? ""} name="build">
-								<option value="">Any status</option>
-								{STATUSES.map(s => (
-									<option key={s} value={s}>
-										{statusLabel(s)}
-									</option>
-								))}
-							</Select>
-						</Field>
-						<Field label="Tier">
-							<Select defaultValue={filters.tier ? String(filters.tier) : ""} name="tier">
-								<option value="">Any tier</option>
-								<option value="1">Tier 1</option>
-								<option value="2">Tier 2</option>
-								<option value="3">Tier 3</option>
-							</Select>
-						</Field>
-					</div>
-
-					{/* Yes-or-no narrowing sits apart from the choices above, with reset beside it, so the controls that clear the form are where people look for them. */}
-					<div className="hl-filters__footer">
+				<FilterBar
+					footer={
 						<div className="hl-filters__toggles">
 							<label>
 								<input defaultChecked={filters.extended} name="extended" type="checkbox" value="1" />
@@ -156,11 +100,63 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 								Include unstarted
 							</label>
 						</div>
-						<Link className="hl-hint" href="/admin/projects">
-							Clear all filters
-						</Link>
-					</div>
-				</form>
+					}
+					leading={
+						/* The search is the one thing most lookups start with, so it gets its own row and the only primary button. */
+						<div className="hl-filters__search">
+							<TextInput
+								aria-label="Search projects or owners"
+								defaultValue={search.q ?? ""}
+								name="q"
+								placeholder="Search projects or owners"
+							/>
+							<Button type="submit">
+								<IconSearch /> Search
+							</Button>
+						</div>
+					}
+					resetHref="/admin/projects"
+				>
+					<Field label="Theme">
+						<Select defaultValue={filters.theme ?? ""} name="theme">
+							<option value="">Any theme</option>
+							{THEMES.map(t => (
+								<option key={t.id} value={t.id}>
+									{themeLabel(t.id)}
+								</option>
+							))}
+							<option value={Theme.WARMUP}>Warm Up</option>
+						</Select>
+					</Field>
+					<Field label="Design stage">
+						<Select defaultValue={filters.designStatus ?? ""} name="design">
+							<option value="">Any status</option>
+							{STATUSES.map(s => (
+								<option key={s} value={s}>
+									{statusLabel(s)}
+								</option>
+							))}
+						</Select>
+					</Field>
+					<Field label="Build stage">
+						<Select defaultValue={filters.buildStatus ?? ""} name="build">
+							<option value="">Any status</option>
+							{STATUSES.map(s => (
+								<option key={s} value={s}>
+									{statusLabel(s)}
+								</option>
+							))}
+						</Select>
+					</Field>
+					<Field label="Tier">
+						<Select defaultValue={filters.tier ? String(filters.tier) : ""} name="tier">
+							<option value="">Any tier</option>
+							<option value="1">Tier 1</option>
+							<option value="2">Tier 2</option>
+							<option value="3">Tier 3</option>
+						</Select>
+					</Field>
+				</FilterBar>
 			</Panel>
 
 			<Panel>
