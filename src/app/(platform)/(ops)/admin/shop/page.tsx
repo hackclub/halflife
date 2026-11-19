@@ -76,6 +76,7 @@ export default async function AdminShopPage() {
 											label="Retire"
 											method="DELETE"
 											url={`/api/admin/shop/items/${item.id}`}
+											variant="danger"
 										/>
 									) : (
 										<ActionButton
@@ -83,6 +84,7 @@ export default async function AdminShopPage() {
 											label="Re-list"
 											method="PATCH"
 											url={`/api/admin/shop/items/${item.id}`}
+											variant="primary"
 										/>
 									)}
 								</td>
