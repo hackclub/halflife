@@ -165,24 +165,21 @@ export function Select({ className, ...props }: Readonly<ComponentPropsWithRef<"
 }
 
 /**
- * The filter form above a list. Every list uses this one shape: an optional leading row (a search), the labelled fields in one grid, then a footer whose notes sit on the left while Reset and Filter sit together on the right, so a reader clears and applies filters in the same place on every page.
+ * The filter form above a list. Every list uses this one shape: an optional leading row (a search), the labelled fields in one grid, then a footer whose notes sit on the left while Reset and Filter sit together on the right, so a reader clears and applies filters in the same place on every page. A bar with a search row draws its rule under that row, so what is searched and what is filtered read as two bands.
  */
 export function FilterBar({
 	children,
 	footer,
-	inline = false,
 	leading,
 	resetHref,
 }: Readonly<{
 	children: ReactNode
 	footer?: ReactNode
-	/** Put the fields beside the search row on a wide screen, rather than under it. Only for a bar with few fields, since a tall grid would leave the search floating. */
-	inline?: boolean
 	leading?: ReactNode
 	resetHref: string
 }>) {
 	return (
-		<form className={inline ? "hl-filters hl-filters--inline" : "hl-filters"} method="get">
+		<form className={leading === undefined ? "hl-filters" : "hl-filters hl-filters--search-first"} method="get">
 			{leading}
 			<div className="hl-filters__grid">{children}</div>
 			<div className="hl-filters__footer">

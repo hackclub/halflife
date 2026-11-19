@@ -31,18 +31,46 @@ const verifiedTone = (verified: string): "success" | "muted" | "warning" => {
 /** Only a full set of permissions gets a colour of its own, so the column points at the accounts that matter. */
 const levelTone = (level: string): "access" | "muted" => (level === "full" ? "access" : "muted")
 
-export function UserRow({ row }: Readonly<{ row: DirectoryRow }>) {
+/** The filters a row's badges add to, so clicking one narrows the list rather than losing the search. */
+export interface DirectoryFilters {
+	q: string
+	state: string
+	verified: string
+}
+
+/** The directory's address with one filter changed, keeping the others. The empty values are the defaults, so they are left out. */
+function directoryHref(filters: DirectoryFilters, next: Partial<DirectoryFilters>): string {
+	const merged = { ...filters, ...next }
+	const params = new URLSearchParams()
+	if (merged.q) params.set("q", merged.q)
+	if (merged.state !== "all") params.set("state", merged.state)
+	if (merged.verified) params.set("verified", merged.verified)
+	const query = params.toString()
+	return query ? `/admin/users?${query}` : "/admin/users"
+}
+
+export function UserRow({ row, filters }: Readonly<{ row: DirectoryRow; filters: DirectoryFilters }>) {
 	return (
 		<tr>
 			<td>
 				<div className="hl-user-name">
 					<Link href={`/admin/users/${row.id}`}>{row.name}</Link>
-					{row.penalty === "banned" ? <Badge tone="danger">banned</Badge> : null}
-					{row.penalty === "suspended" ? <Badge tone="warning">suspended</Badge> : null}
+					{row.penalty === "banned" ? (
+						<Link href={directoryHref(filters, { state: "banned" })} title="Show only banned accounts">
+							<Badge tone="danger">banned</Badge>
+						</Link>
+					) : null}
+					{row.penalty === "suspended" ? (
+						<Link href={directoryHref(filters, { state: "suspended" })} title="Show only suspended accounts">
+							<Badge tone="warning">suspended</Badge>
+						</Link>
+					) : null}
 				</div>
 				{row.fraudFlagged ? (
 					<div>
-						<Badge tone="danger">flagged</Badge>
+						<Link href={directoryHref(filters, { state: "flagged" })} title="Show only fraud-flagged accounts">
+							<Badge tone="danger">flagged</Badge>
+						</Link>
 					</div>
 				) : null}
 			</td>
@@ -78,7 +106,12 @@ export function UserRow({ row }: Readonly<{ row: DirectoryRow }>) {
 				</div>
 			</td>
 			<td>
-				<Badge tone={verifiedTone(row.verified)}>{statusLabel(row.verified)}</Badge>
+				<Link
+					href={directoryHref(filters, { verified: row.verified })}
+					title={`Show only ${statusLabel(row.verified)} accounts`}
+				>
+					<Badge tone={verifiedTone(row.verified)}>{statusLabel(row.verified)}</Badge>
+				</Link>
 			</td>
 			<td className="hl-mono">{formatUtcDate(new Date(row.joined))}</td>
 		</tr>
@@ -93,7 +126,15 @@ export function UserDirectory({
 	initialCursor,
 	q,
 	state,
-}: Readonly<{ initialRows: DirectoryRow[]; initialCursor: string | null; q: string; state: string }>) {
+	verified,
+}: Readonly<{
+	initialRows: DirectoryRow[]
+	initialCursor: string | null
+	q: string
+	state: string
+	verified: string
+}>) {
+	const filters: DirectoryFilters = { q, state, verified }
 	const [rows, setRows] = useState(initialRows)
 	const [cursor, setCursor] = useState(initialCursor)
 	const [loading, setLoading] = useState(false)
@@ -110,6 +151,7 @@ export function UserDirectory({
 			const params = new URLSearchParams({ cursor })
 			if (q) params.set("q", q)
 			if (state !== "all") params.set("state", state)
+			if (verified) params.set("verified", verified)
 			const res = await fetch(`/api/admin/users?${params}`)
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			const page: unknown = await res.json()
@@ -122,7 +164,7 @@ export function UserDirectory({
 			busy.current = false
 			setLoading(false)
 		}
-	}, [cursor, q, state])
+	}, [cursor, q, state, verified])
 
 	// The sentinel sits under the last row. Loading starts a screen early, so the next page is usually there before the reader reaches the end.
 	useEffect(() => {
@@ -144,7 +186,7 @@ export function UserDirectory({
 		<>
 			<Table head={["Name", "Email", "Roles and access", "Verified", "Joined"]}>
 				{rows.map(row => (
-					<UserRow key={row.id} row={row} />
+					<UserRow filters={filters} key={row.id} row={row} />
 				))}
 			</Table>
 			<div aria-live="polite" className="hl-directory-footer">

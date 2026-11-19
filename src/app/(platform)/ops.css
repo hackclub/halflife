@@ -963,28 +963,15 @@
 	}
 
 	/*
-	 * A filter bar whose search row and fields share one line, once there is room: the search keeps a sensible width instead of stretching across the panel, and the footer still takes its own full-width line. Below the wrap point the two stack again.
+	 * A bar whose search row sits above its fields: the rule falls under the search, so the row that searches and the fields that filter read as two bands. The footer keeps its actions but drops its own rule, which would otherwise be a second line a few pixels below the first.
 	 */
-	.hl-filters--inline {
-		flex-direction: row;
-		flex-wrap: wrap;
-		align-items: flex-end;
+	.hl-filters--search-first > .hl-filters__search {
+		padding-bottom: 1rem;
+		border-bottom: 2px solid var(--color-border);
 	}
-	.hl-filters--inline .hl-filters__search {
-		/* The 25rem basis is the search row's own two controls: the input and the Paste button keep one line before the fields are allowed beside them. */
-		flex: 1 1 25rem;
-		min-width: 0;
-	}
-	/* The input starts small enough to keep the Paste button beside it, then grows into whatever the row has left. */
-	.hl-filters--inline .hl-filters__search .hl-input {
-		flex-basis: 12rem;
-	}
-	.hl-filters--inline .hl-filters__grid {
-		flex: 0 1 auto;
-		min-width: 0;
-	}
-	.hl-filters--inline .hl-filters__footer {
-		flex-basis: 100%;
+	.hl-filters--search-first > .hl-filters__footer {
+		padding-top: 0;
+		border-top: 0;
 	}
 
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
