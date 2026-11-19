@@ -10,8 +10,8 @@ import { Badge } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardStatus, type ShopOrderStatus } from "@/lib/enums"
 import { DELIVERY_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
+import type { FulfillmentOrderJson } from "@/lib/fulfillment-sheet"
 import { formatUsd } from "@/lib/money"
-import type { FulfillmentOrderRow } from "@/lib/queries/admin"
 
 const STATUS: { [_ in ShopOrderStatus]: { label: string; tone: "success" | "warning" | "danger" | "muted" } } = {
 	CANCELLED: { label: "Cancelled by participant", tone: "muted" },
@@ -38,7 +38,7 @@ const CARD_STATUS: { [_ in HcbGrantCardStatus]: { label: string; tone: "success"
  *
  * The table is a reading list: order number, who, what, what it cost and where it is. Method, stage, the decision and the record of what was decided are not columns – they are a panel, so the sheet has room for the orders rather than the forms.
  */
-export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow }>) {
+export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderJson }>) {
 	const [open, setOpen] = useState(false)
 	const active = order.status === "PENDING" || order.status === "ON_HOLD"
 	const status = STATUS[order.status]
@@ -82,8 +82,8 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						</span>
 					)}
 				</td>
-				<td className="hl-mono" title={formatUtcDateTime(order.placedAt)}>
-					{formatUtcDateTime(order.placedAt)}
+				<td className="hl-mono" title={formatUtcDateTime(new Date(order.placedAt))}>
+					{formatUtcDateTime(new Date(order.placedAt))}
 				</td>
 				<td className="hl-fulfill-status">
 					<Badge tone={status.tone}>{status.label}</Badge>
@@ -92,7 +92,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 					{active ? <div className="hl-hint">{STAGE_LABELS[order.fulfillmentStage]}</div> : null}
 					{tracking ? <div className="hl-hint hl-mono">{tracking}</div> : null}
 					{order.status === "CANCELLED" && order.cancelledAt ? (
-						<div className="hl-hint">{formatUtcDateTime(order.cancelledAt)}</div>
+						<div className="hl-hint">{formatUtcDateTime(new Date(order.cancelledAt))}</div>
 					) : null}
 				</td>
 				<td>
@@ -125,7 +125,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						</div>
 						<div>
 							<dt>Placed</dt>
-							<dd>{formatUtcDateTime(order.placedAt)}</dd>
+							<dd>{formatUtcDateTime(new Date(order.placedAt))}</dd>
 						</div>
 						<div>
 							<dt>Stage</dt>
@@ -140,7 +140,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						{order.fulfilledAt ? (
 							<div>
 								<dt>Fulfilled</dt>
-								<dd>{formatUtcDateTime(order.fulfilledAt)}</dd>
+								<dd>{formatUtcDateTime(new Date(order.fulfilledAt))}</dd>
 							</div>
 						) : null}
 						{tracking ? (
@@ -152,7 +152,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						{order.cancelledAt ? (
 							<div>
 								<dt>Cancelled</dt>
-								<dd>{formatUtcDateTime(order.cancelledAt)}</dd>
+								<dd>{formatUtcDateTime(new Date(order.cancelledAt))}</dd>
 							</div>
 						) : null}
 						{order.cancellationReason ? (
