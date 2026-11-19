@@ -57,6 +57,8 @@ async function main(): Promise<void> {
 
 /**
  * The production seed intentionally contains no item a fresh participant may buy: every catalogue item is gated on shipping themes, and printers are not sold in the shop. Phase 2 needs one un-gated, affordable item, so it lives only in the E2E database.
+ *
+ * It carries a cost, because a grant-card order puts that cost on the card and an item with none is refused. Shipping orders ignore it.
  */
 async function prepareShopFixtures(): Promise<void> {
 	const pool = new SQL(bunSqlUrl(e2eDatabaseUrl))
@@ -64,16 +66,17 @@ async function prepareShopFixtures(): Promise<void> {
 		await pool.unsafe(`update program_settings set "shopOpen" = true, "shopClosesAt" = null where id = 'singleton'`)
 		await pool.unsafe(
 			`insert into shop_item (
-				id, name, description, category, "priceCredits", "maxPerUser",
+				id, name, description, category, "priceCredits", "costUsd", "maxPerUser",
 				"requiresPrinterQualified", active, "sortOrder", "createdAt", "updatedAt"
 			) values (
 				'e2e-item', 'E2E Test Item', 'A fixture item for browser tests.', 'MISC'::"ShopItemCategory",
-				60, 5, false, true, 0, now(), now()
+				60, 10, 5, false, true, 0, now(), now()
 			)
 			on conflict (id) do update set
 				name = excluded.name,
 				description = excluded.description,
 				"priceCredits" = excluded."priceCredits",
+				"costUsd" = excluded."costUsd",
 				active = true`,
 		)
 	} finally {
