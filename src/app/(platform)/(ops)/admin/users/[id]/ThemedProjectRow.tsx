@@ -2,15 +2,12 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { ProjectControls } from "@/app/components/admin/ProjectControls"
 import { ManageButton, ManageRow, ManageSection } from "@/app/components/admin/ProjectManage"
 import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import { ActionButton } from "@/app/components/forms/ActionButton"
-import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
 import { JournalHoursEditor, type JournalHoursEntry } from "@/app/components/forms/JournalHoursEditor"
-import { StarterForm } from "@/app/components/forms/StarterForm"
-import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
-import { starterProjectsFor } from "@/lib/config/onboarding"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
 import type { Theme } from "@/lib/enums"
 import type { FundingState } from "@/lib/funding-state"
@@ -118,21 +115,14 @@ export function ThemedProjectRow({
 						<GrantForm alreadySent={data.grantSent} amountUsd={data.grantUsd ?? 0} projectId={data.id} />
 					</ManageSection>
 				) : null}
-				{canMoveTheme ? (
-					<ManageSection title="Move to theme">
-						<ThemeMoveForm current={data.theme} projectId={data.id} />
-					</ManageSection>
-				) : null}
-				{canMoveTheme && starterProjectsFor(data.theme).length > 0 ? (
-					<ManageSection title="Starter project">
-						<StarterForm current={data.starterProjectId} projectId={data.id} theme={data.theme} />
-					</ManageSection>
-				) : null}
-				{canExtend ? (
-					<ManageSection title="Extension">
-						<ExtensionForm current={data.extension} url={`/api/admin/theme-projects/${data.id}`} />
-					</ManageSection>
-				) : null}
+				<ProjectControls
+					canExtend={canExtend}
+					canMoveTheme={canMoveTheme}
+					extension={data.extension}
+					projectId={data.id}
+					starterProjectId={data.starterProjectId}
+					theme={data.theme}
+				/>
 				{hoursAction ? (
 					<ManageSection title="Journal hours">
 						<JournalHoursEditor entries={data.journal} />
