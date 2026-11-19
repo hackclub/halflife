@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { useConfirm } from "@/components/platform/modals/useConfirm"
 import { fmtDate } from "@/lib/projects"
 import type { PhaseDispute } from "@/lib/queries/project-page"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -83,8 +84,10 @@ export function DisputeThread({
 		)
 	}
 
-	function act(key: string, url: string, confirm: string) {
-		if (!window.confirm(confirm)) return
+	const { confirm, dialog } = useConfirm()
+
+	async function act(key: string, url: string, question: string) {
+		if ((await confirm({ message: question, title: "Are you sure?", tone: "danger" })) === null) return
 		void run(key, () => sendJson(url))
 	}
 
@@ -92,6 +95,7 @@ export function DisputeThread({
 
 	return (
 		<div className={skin.root}>
+			{dialog}
 			<ol className={skin.list}>
 				{parts.map(part => (
 					<li className={skin.item} key={part.id}>
@@ -132,7 +136,7 @@ export function DisputeThread({
 							<button
 								className={skin.secondary}
 								disabled={busy !== null}
-								onClick={() => act("close", closeUrl, "Close this dispute with the decision left standing?")}
+								onClick={() => void act("close", closeUrl, "Close this dispute with the decision left standing?")}
 								type="button"
 							>
 								{busy === "close" ? "Closing…" : "Decision stands"}
@@ -143,7 +147,7 @@ export function DisputeThread({
 								className={skin.primary}
 								disabled={busy !== null}
 								onClick={() =>
-									act(
+									void act(
 										"sendBack",
 										sendBackUrl,
 										"Send this submission back for a fresh review? The current decision is undone and the ship returns to Ari's queue.",

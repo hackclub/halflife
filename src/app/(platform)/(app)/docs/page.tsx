@@ -7,7 +7,7 @@ import { DOCS } from "@/lib/data"
 
 export const metadata: Metadata = {
 	description: "How the program works, how hours are counted, and what reviewers look for.",
-	title: "Half Life Docs",
+	title: "Docs",
 }
 
 export default function DocsIndex() {

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { z } from "zod"
 import { Button, Callout, TextInput } from "@/app/components/ui"
+import { useConfirm } from "@/app/components/ui/useConfirm"
 import { sendJsonParsed, useAction } from "@/lib/use-action"
 
 /** What `/grant` answers once it has sent the design's grant, or found one already sent. */
@@ -22,10 +23,21 @@ export function GrantForm({
 	const [message, setMessage] = useState<string | null>(null)
 	const { busy, error, run } = useAction()
 
+	// The hook sits above the early return, since hooks must run in the same order on every render.
+	const { confirm, dialog } = useConfirm()
+
 	if (alreadySent) return <span className="hl-hint">grant sent</span>
 
-	function send() {
-		if (!window.confirm(`Send $${amountUsd} to this maker's HCB card grant?`)) return
+	async function send() {
+		if (
+			(await confirm({
+				confirmLabel: "Send grant",
+				message: "This sends the grant to the maker's HCB card.",
+				title: `Send $${amountUsd}?`,
+				tone: "danger",
+			})) === null
+		)
+			return
 		void run(
 			"send",
 			() =>
@@ -41,6 +53,7 @@ export function GrantForm({
 
 	return (
 		<span className="hl-stack hl-stack--tight">
+			{dialog}
 			<TextInput
 				aria-label="HCB grant link"
 				disabled={busy !== null}
@@ -48,7 +61,7 @@ export function GrantForm({
 				placeholder="hcb.hackclub.com/grants/…"
 				value={grantUrl}
 			/>
-			<Button disabled={busy !== null || !grantUrl.trim()} onClick={send} variant="primary">
+			<Button disabled={busy !== null || !grantUrl.trim()} onClick={() => void send()} variant="primary">
 				{busy ? "Sending…" : `Send $${amountUsd}`}
 			</Button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}

@@ -14,9 +14,10 @@ import {
 import { existingColumns } from "@/lib/airtable/field-probe"
 import { recordDirectSignup } from "@/lib/airtable/rsvp"
 import { fieldKey, formulaRef, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
-import { type NpsSummary, summariseNps } from "@/lib/nps"
+import { isWithinFirstDay, type NpsSummary, summariseNps } from "@/lib/nps"
 import db from "@/lib/prisma8"
 import type { NpsTextsSubmit } from "@/lib/schemas/nps"
+import { parseDbTimestamp } from "@/lib/time"
 
 /** The score column, as the table names it. */
 const scoreColumn = () => fieldKey(RSVP.fields.howLikelyRecommend)
@@ -134,10 +135,19 @@ export type NpsState = { score: number | null; textsDone: boolean } | { skipped:
 /** Whether the answered text is anything at all: whitespace alone is not feedback. */
 const hasText = (value: unknown): boolean => typeof value === "string" && value.trim().length > 0
 
+/** Whether the account is still inside its first day, when the prompt is held back. A missing account is not new, so the rest of the read decides. */
+async function joinedWithinDay(userId: string): Promise<boolean> {
+	const user = await db.orm.public.User.whereUnique({ id: userId }).select("createdAt").first()
+	return user ? isWithinFirstDay(parseDbTimestamp(user.createdAt), new Date()) : false
+}
+
 /**
  * Where the caller stands in the two-step flow. The score gates the dashboard, and the texts keep the follow-up modal up until at least one of them is saved. A row holding a score number – 0 counts – has answered the first step, and a row holding any text has answered the second. Skipped rather than blocking when Airtable is unconfigured or the base predates the columns, so a half-built base never parks anyone behind a form that cannot save – and a base without the text columns reads the second step as done, so nobody is asked for answers that cannot be stored.
+ *
+ * An account that joined less than a day ago is skipped too, so a new sign-up is not asked for a score before they have had a chance to use the site. The prompt comes up on a later visit once the day has passed.
  */
 export async function readNpsState(userId: string): Promise<NpsState> {
+	if (await joinedWithinDay(userId)) return { skipped: "new_account" }
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
 	const writable = await existingColumns(config, RSVP_TABLE_ID, npsColumns())

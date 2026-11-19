@@ -1,13 +1,16 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { type TimelineEvent, UserTimeline } from "@/app/components/admin/UserTimeline"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { EmailForm } from "@/app/components/forms/EmailForm"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { PenaltyCard } from "@/app/components/forms/PenaltyCard"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
-import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { PayoutSource, Phase, PhaseStatus } from "@/lib/enums"
 import { isIdentityVerified } from "@/lib/hca-profile"
@@ -22,6 +25,10 @@ import { getUserDetail } from "@/lib/queries/admin"
 import { parseDbTimestamp } from "@/lib/time"
 import { ThemedProjectRow } from "./ThemedProjectRow"
 import { WeekExtensionForm } from "./WeekExtensionForm"
+
+export const metadata: Metadata = {
+	title: "User",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -91,10 +98,42 @@ export default async function AdminUserPage({ params }: Props) {
 		}
 	})
 
+	// Everything the account has that carries a date, in one list: when it joined, what roles it was given, its printer milestones, and every ledger movement.
+	const timeline: TimelineEvent[] = [
+		{ at: user.createdAt, title: "Joined the programme" },
+		...user.roles.map(role => ({
+			at: new Date(role.grantedAt),
+			detail: role.grantedBy ? "Granted by a staff account" : undefined,
+			title: `Given the ${role.role.toLowerCase()} role`,
+		})),
+		...(user.printerAward
+			? [
+					{ at: user.printerAward.qualifiedAt, title: "Qualified for a printer" },
+					...(user.printerAward.shippedAt ? [{ at: user.printerAward.shippedAt, title: "Printer shipped" }] : []),
+					...(user.printerAward.deliveredAt ? [{ at: user.printerAward.deliveredAt, title: "Printer delivered" }] : []),
+					...(user.printerAward.revokedAt
+						? [
+								{
+									at: user.printerAward.revokedAt,
+									detail: user.printerAward.revokedReason ?? undefined,
+									title: "Printer award revoked",
+								},
+							]
+						: []),
+				]
+			: []),
+		...ledger.map(entry => ({
+			at: entry.createdAt,
+			detail: entry.note ?? undefined,
+			title: `${entry.kind.toLowerCase().replaceAll("_", " ")} ${entry.amount > 0 ? `+${entry.amount}` : entry.amount}`,
+		})),
+	]
+
 	return (
 		<div className="hl-stack">
 			<PageHeader
 				actions={user.fraudFlagged ? <Badge tone="danger">flagged</Badge> : null}
+				compact
 				subtitle={user.email}
 				title={displayName(user, user.email)}
 			/>
@@ -106,17 +145,33 @@ export default async function AdminUserPage({ params }: Props) {
 				<Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={balances.spendable} />
 				<Stat label="Printer fund" value={balances.banked} />
 				<Stat label="Projects shipped" value={`${printer.shippedCount} / ${printer.required}`} />
-				<Stat label="Verified" value={user.verificationStatus ?? "unknown"} />
+				<Stat
+					label="Verified"
+					value={<span style={{ fontSize: "1.1rem" }}>{statusLabel(user.verificationStatus ?? "unverified")}</span>}
+				/>
 			</div>
 
+			<nav aria-label="Jump to a section" className="hl-jump">
+				<a href="#history">History</a>
+				<a href="#account">Email</a>
+				<a href="#moderation">Moderation</a>
+				<a href="#projects">Projects</a>
+				<a href="#ledger">Ledger</a>
+				<a href="#orders">Orders</a>
+			</nav>
+
+			<Panel id="history" title="History">
+				{timeline.length === 0 ? <EmptyState>Nothing recorded yet.</EmptyState> : <UserTimeline events={timeline} />}
+			</Panel>
+
 			{canManageUsers ? (
-				<Panel title="Email">
+				<Panel id="account" title="Email">
 					<EmailForm current={user.email} url={`/api/admin/users/${id}`} />
 				</Panel>
 			) : null}
 
 			{canManageUsers ? (
-				<Panel title="Moderation">
+				<Panel id="moderation" title="Moderation">
 					<div className="hl-row">
 						<ActionButton
 							body={{ fraudFlagged: !user.fraudFlagged }}
@@ -125,8 +180,9 @@ export default async function AdminUserPage({ params }: Props) {
 							}
 							label={user.fraudFlagged ? "Clear the flag" : "Flag this account"}
 							method="PATCH"
+							tone={user.fraudFlagged ? "default" : "danger"}
 							url={`/api/admin/users/${id}`}
-							variant={user.fraudFlagged ? "default" : "danger"}
+							variant="default"
 						/>
 					</div>
 				</Panel>
@@ -191,7 +247,7 @@ export default async function AdminUserPage({ params }: Props) {
 				</p>
 			</Panel>
 
-			<Panel title="Themed projects" wide>
+			<Panel id="projects" title="Themed projects" wide>
 				{canManageCredit && isHcbConfigured() && (
 					<p className="hl-hint" style={{ marginTop: 0 }}>
 						{settings.payoutSource === PayoutSource.HCB
@@ -260,14 +316,14 @@ export default async function AdminUserPage({ params }: Props) {
 				</Panel>
 			) : null}
 
-			<Panel title="Ledger">
+			<Panel id="ledger" title="Ledger">
 				{ledger.length === 0 ? (
 					<EmptyState>No entries.</EmptyState>
 				) : (
 					<Table head={["When", "Kind", "Note", "Amount", "Balance"]}>
 						{ledger.map(entry => (
 							<tr key={entry.id}>
-								<td className="hl-mono">{entry.createdAt.toLocaleString()}</td>
+								<td className="hl-mono">{formatUtcDateTime(entry.createdAt)}</td>
 								<td className="hl-mono">{entry.kind}</td>
 								<td>{entry.note ?? "-"}</td>
 								<td className="hl-mono">{entry.amount > 0 ? `+${entry.amount}` : entry.amount}</td>
@@ -278,7 +334,7 @@ export default async function AdminUserPage({ params }: Props) {
 				)}
 			</Panel>
 
-			<Panel title="Orders">
+			<Panel id="orders" title="Orders">
 				{orders.length === 0 ? (
 					<EmptyState>No orders.</EmptyState>
 				) : (

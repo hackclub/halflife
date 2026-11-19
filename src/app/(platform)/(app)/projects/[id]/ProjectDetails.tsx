@@ -394,11 +394,11 @@ function DetailsForm({
 							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
 							: "Building from a starter, or your own idea? Picked the wrong one by accident? Change it here."}
 					</p>
-					{takingStarter && hotGoal && !selectedStarter?.longerBuild && (
+					{takingStarter && hotGoal && selectedStarter?.capped === true && (
 						<p className="hand text-[0.82rem] leading-snug text-coral-deep" role="status">
-							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of
-							work, no more. Your {goal.name} needs roughly {Math.round(goal.paceHours * 5)} coins a design week on top
-							of its parts-funding to stay on pace.
+							Heads up: {selectedStarter.title} is meant to take about{" "}
+							{fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of work, no more. Your {goal.name} needs roughly{" "}
+							{Math.round(goal.paceHours * 5)} coins a design week on top of its parts-funding to stay on pace.
 						</p>
 					)}
 					{starters.map(s => {

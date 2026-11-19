@@ -15,7 +15,7 @@ import { DAY_MS } from "@/lib/time"
 
 export const metadata: Metadata = {
 	description: "Journal entries from everyone building hardware this week.",
-	title: "Half Life Explore",
+	title: "Explore",
 }
 
 export const dynamic = "force-dynamic"

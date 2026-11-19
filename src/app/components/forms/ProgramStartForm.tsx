@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Button, Callout, Field, TextInput } from "@/app/components/ui"
+import { useConfirm } from "@/app/components/ui/useConfirm"
 import { DAY_MS } from "@/lib/time"
 import { sendJson, useAction } from "@/lib/use-action"
 
@@ -33,11 +34,17 @@ export function ProgramStartForm({
 	const monday = valid && new Date(`${date}T00:00:00Z`).getUTCDay() === 1
 	const changed = date !== initial
 
-	function save() {
+	const { confirm, dialog } = useConfirm()
+
+	async function save() {
 		if (
-			!window.confirm(
-				"Moving the start moves every week for everyone: weeks can lock or reopen on the map the moment this saves. Continue?",
-			)
+			(await confirm({
+				confirmLabel: "Move the start",
+				message:
+					"Moving the start moves every week for everyone: weeks can lock or reopen on the map the moment this saves.",
+				title: "Move the programme start?",
+				tone: "danger",
+			})) === null
 		)
 			return
 		void run(
@@ -49,6 +56,7 @@ export function ProgramStartForm({
 
 	return (
 		<div className="hl-stack hl-stack--tight">
+			{dialog}
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{saved ? <Callout>Saved. The schedule below is the new one.</Callout> : null}
 
@@ -66,7 +74,7 @@ export function ProgramStartForm({
 						type="date"
 						value={date}
 					/>
-					<Button disabled={busy !== null || !valid || !changed} onClick={save} variant="primary">
+					<Button disabled={busy !== null || !valid || !changed} onClick={() => void save()} variant="primary">
 						{busy ? "Saving…" : "Save start date"}
 					</Button>
 					{changed ? (

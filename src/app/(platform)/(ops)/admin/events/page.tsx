@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { EventScheduleManager, EventScheduleNote } from "@/app/components/forms/EventScheduleManager"
 import { PageHeader } from "@/app/components/ui"
 import { nextEvent } from "@/lib/events"
@@ -5,6 +6,10 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { getProgramSettings } from "@/lib/program"
 import { listAllEvents } from "@/lib/queries/events"
+
+export const metadata: Metadata = {
+	title: "Events",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -21,6 +26,7 @@ export default async function AdminEventsPage() {
 	return (
 		<div className="hl-stack">
 			<PageHeader
+				compact
 				subtitle={
 					upcoming
 						? `Next: ${upcoming.title}. ${events.length} on the calendar.`

@@ -1,15 +1,21 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ExportGrantCardsCsvForm } from "@/app/components/forms/ExportGrantCardsCsvForm"
 import { HcbConnectForm } from "@/app/components/forms/HcbConnectForm"
 import { IssueGrantCardsForm } from "@/app/components/forms/IssueGrantCardsForm"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { themeLabel } from "@/lib/config/program"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardBatchStatus, PayoutSource } from "@/lib/enums"
 import { listGrantCardBatches, listGrantCardExports, previewCardGrants } from "@/lib/grant-cards"
 import { readStoredRefreshToken } from "@/lib/hcb-credential"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
+
+export const metadata: Metadata = {
+	title: "Grant cards",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -33,6 +39,7 @@ export default async function AdminGrantsPage() {
 	return (
 		<div className="hl-stack hl-page-wide">
 			<PageHeader
+				compact
 				subtitle="Issue HCB card grants for approved designs. The amount is each project's BOM total."
 				title="Grant cards"
 			/>
@@ -95,7 +102,7 @@ export default async function AdminGrantsPage() {
 						{csvExports.map(csvExport => (
 							<tr key={csvExport.batchId}>
 								<td className="hl-mono">{csvExport.batchId}</td>
-								<td>{csvExport.createdAt.toLocaleString()}</td>
+								<td>{formatUtcDateTime(csvExport.createdAt)}</td>
 								<td className="hl-mono">{csvExport.count}</td>
 								<td className="hl-mono">{formatUsd(csvExport.totalCents / 100)}</td>
 								<td>
@@ -158,7 +165,7 @@ export default async function AdminGrantsPage() {
 										{batch.id}
 									</Link>
 								</td>
-								<td>{batch.createdAt.toLocaleString()}</td>
+								<td>{formatUtcDateTime(batch.createdAt)}</td>
 								<td>
 									<Badge tone={BATCH_TONE[batch.status] ?? "muted"}>
 										{batch.status === HcbGrantCardBatchStatus.PROCESSING ? "processing" : batch.status.toLowerCase()}

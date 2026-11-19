@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useSyncExternalStore } from "react"
+import { setAddressReminderOpen } from "@/components/platform/modals/address-reminder-open"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { getNpsNudgeActive, subscribeNpsNudgeActive } from "@/components/platform/modals/nps-nudge"
 import { Button, LinkButton } from "@/components/platform/ui"
@@ -102,6 +103,12 @@ export function AddressReminder({ blocked = false }: { blocked?: boolean }) {
 		&& participantGoal !== null
 		&& openCheckpoint === null
 		&& !npsActive
+
+	// The identity reminder waits for this one to close, so the two never stack.
+	useEffect(() => {
+		setAddressReminderOpen(canShow)
+		return () => setAddressReminderOpen(false)
+	}, [canShow])
 
 	return (
 		<Modal

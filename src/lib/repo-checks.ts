@@ -382,6 +382,31 @@ export function readmeImageCount(readme: string): number {
 	return [...scannableReadme(readme).matchAll(README_IMAGE)].length
 }
 
+/** A schematic named in an image's alt text or path. `sch` on its own is the usual file name. */
+const SCHEMATIC_WORD = /schem|\bsch\b/i
+
+/**
+ * Whether any image the README embeds names a schematic in its alt text or its path.
+ *
+ * A word match, not a picture check: it reads what the image is called, so a schematic under a file name like `board.png` with no caption is not seen. The check says exactly that when it fails, rather than claiming there is no schematic.
+ */
+export function readmeSchematicImage(readme: string): boolean {
+	const text = scannableReadme(readme)
+	const images = [...text.matchAll(README_IMAGE)].map(match => match[0])
+	if (images.some(image => SCHEMATIC_WORD.test(image))) return true
+	// A reference-style image keeps its path in a definition elsewhere, so the definition it points at is read too.
+	const referenced = new Set(
+		images.flatMap(image => {
+			const label = image.match(/\]\[([^\]\n]+)\]$/)?.[1]
+			return label ? [label.toLowerCase()] : []
+		}),
+	)
+	return [...text.matchAll(/^\s{0,3}\[([^\]\n]+)\]:\s*(\S+)/gm)].some(definition => {
+		const [, label = "", url = ""] = definition
+		return referenced.has(label.toLowerCase()) && SCHEMATIC_WORD.test(`${label} ${url}`)
+	})
+}
+
 /** The README's prose, with images and the whitespace they leave behind removed. */
 function readmeText(readme: string): string {
 	return scannableReadme(readme).replaceAll(README_IMAGE, " ").replaceAll(/\s+/g, " ").trim()
@@ -640,6 +665,33 @@ export async function checkRepo(
 		)
 	}
 
+	// A week that requires a schematic wants a picture of it in the README as well as the file. Only a warning, and it says what it looked at: a schematic can be in the README under a name the words do not catch.
+	if (readme !== null && required.includes("logicSchematic")) {
+		const schematicImage = readmeSchematicImage(readme)
+		checks.push(
+			schematicImage
+				? {
+						detail: "An image in the README is named as a schematic",
+						key: "readme_schematic",
+						label: "Schematic picture in the README",
+						status: "pass",
+					}
+				: {
+						detail:
+							imageCount === 0
+								? "The README has no images, so none of them mentions a schematic in its alt text or path. Add a picture of the schematic and caption it as one."
+								: `None of the ${imageCount} image${imageCount === 1 ? "" : "s"} in the README mentions a schematic in its alt text or path. Add a picture of the schematic and caption it as one.`,
+						key: "readme_schematic",
+						label: "No schematic picture in the README",
+						link: { href: README_GUIDE_URL, label: "What goes in a README" },
+						status: "warn",
+					},
+		)
+	}
+
+	// A BOM.md is the parts list under its old name. The platform reads the CSV, so the one change is the file's name, and the message says so rather than leaving the maker to guess.
+	const bomMarkdown = snap.paths.some(path => /(^|\/)bom\.md$/.test(path))
+
 	for (const kind of required) {
 		const found = matches(kind, snap, designs)
 		const def = REPO_FILE_KINDS[kind]
@@ -655,7 +707,16 @@ export async function checkRepo(
 							label: `${def.label} not found`,
 							status: "warn",
 						}
-					: { blocking: true, detail: def.missing, key: kind, label: `${def.label} missing`, status: "fail" },
+					: {
+							blocking: true,
+							detail:
+								kind === "bom" && bomMarkdown
+									? "Found a BOM.md file. Rename it to BOM.csv – the same parts list, saved as CSV. The table in the README can stay."
+									: def.missing,
+							key: kind,
+							label: `${def.label} missing`,
+							status: "fail",
+						},
 		)
 	}
 	for (const kind of recommended) {

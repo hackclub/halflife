@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ItemCostField } from "@/app/components/forms/ItemCostField"
@@ -9,6 +10,10 @@ import type { Models } from "@/app/generated/prisma8/contract.d"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
+
+export const metadata: Metadata = {
+	title: "Shop items",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -33,7 +38,7 @@ export default async function AdminShopPage() {
 
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Shop items" />
+			<PageHeader compact title="Shop items" />
 
 			<Panel title="Catalogue">
 				{items.length === 0 ? (

@@ -9,17 +9,19 @@ import { Chip, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { cx } from "@/lib/cx"
 import type { PhaseStatus } from "@/lib/enums"
+import { FUNDING_STATE_TEXT, type FundingState } from "@/lib/funding-state"
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewTone } from "@/lib/review-state"
 import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 
-/** One phase's state, said in words as well as colour. */
-function PhaseChip({ phase, status }: { phase: string; status: PhaseStatus }) {
+/** One phase's state, said in words as well as colour. An approved design also says where its money stands. */
+function PhaseChip({ funding, phase, status }: { funding?: FundingState | null; phase: string; status: PhaseStatus }) {
 	return (
 		<span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5 text-[0.72rem] font-semibold text-navy-soft">
 			<span aria-hidden className={cx("size-2 shrink-0 rounded-full", REVIEW_STATUS_DOT[status])} />
 			{phase} {REVIEW_STATUS_TEXT[status]}
+			{funding && ` · ${FUNDING_STATE_TEXT[funding]}`}
 		</span>
 	)
 }
@@ -123,7 +125,9 @@ export function ProjectsGrid() {
 									{/* Only the phases that have left draft: a fresh project's card stays quiet. */}
 									{(project.designStatus !== "draft" || project.buildStatus !== "draft") && (
 										<span className="mt-2 flex flex-wrap gap-1.5">
-											{project.designStatus !== "draft" && <PhaseChip phase="Design" status={project.designStatus} />}
+											{project.designStatus !== "draft" && (
+												<PhaseChip funding={project.fundingState} phase="Design" status={project.designStatus} />
+											)}
 											{project.buildStatus !== "draft" && <PhaseChip phase="Build" status={project.buildStatus} />}
 										</span>
 									)}

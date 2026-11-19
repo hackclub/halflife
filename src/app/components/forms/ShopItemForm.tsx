@@ -122,7 +122,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 	const previewUrl = previewImageUrl(form.imageUrl)
 
 	return (
-		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
+		<form className="hl-form-grid" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{saved ? <Callout>Saved.</Callout> : null}
 			<Field
@@ -145,7 +145,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			<Field label="Name">
 				<TextInput onChange={e => setForm({ ...form, name: e.target.value })} required value={form.name} />
 			</Field>
-			<Field label="Description">
+			<Field className="hl-form-wide" label="Description">
 				<TextArea onChange={e => setForm({ ...form, description: e.target.value })} required value={form.description} />
 			</Field>
 			<Field hint="Printers are not listed in the shop; everything else is paid for in coins." label="Category">
@@ -163,7 +163,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					))}
 				</Select>
 			</Field>
-			<Field hint="Paste an https link, or upload one. Blank for no picture." label="Image">
+			<Field className="hl-form-wide" hint="Paste an https link, or upload one. Blank for no picture." label="Image">
 				<div className="hl-row" style={{ alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
 					<TextInput
 						onChange={e => setForm({ ...form, imageUrl: e.target.value })}
@@ -213,7 +213,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					value={form.costUsd}
 				/>
 			</Field>
-			<label className="hl-row" style={{ gap: "0.5rem" }}>
+			<label className="hl-row hl-form-wide" style={{ gap: "0.5rem" }}>
 				<input
 					checked={form.requiresPrinterQualified}
 					onChange={e => setForm({ ...form, requiresPrinterQualified: e.target.checked })}
@@ -221,7 +221,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				/>
 				<span>Requires all five projects shipped</span>
 			</label>
-			<div>
+			<div className="hl-savebar hl-form-wide">
 				<Button disabled={busy !== null || uploading} type="submit" variant="primary">
 					{busy ? (editing ? "Saving…" : "Creating…") : editing ? "Save changes" : "Create item"}
 				</Button>

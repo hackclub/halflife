@@ -4,7 +4,7 @@ import "../(site)/globals.css"
 
 export const metadata: Metadata = {
 	description: "This account can no longer access Half Life.",
-	title: "Account banned – Half Life",
+	title: "Account banned · Half Life",
 }
 
 /**

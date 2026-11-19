@@ -29,13 +29,37 @@ export function toLocalInput(date: Date): string {
 	return local.toISOString().slice(0, 16)
 }
 
-const UTC_DATE_TIME = new Intl.DateTimeFormat("en-US", {
-	dateStyle: "medium",
-	timeStyle: "short",
+const UTC_DATE_TIME = new Intl.DateTimeFormat("en-GB", {
+	day: "numeric",
+	hour: "2-digit",
+	hour12: false,
+	minute: "2-digit",
+	month: "short",
 	timeZone: "UTC",
+	year: "numeric",
 })
 
-/** An audit or moderation timestamp, pinned to UTC so the console does not disagree with itself between server and browser. */
+/** en-GB spells September "Sept"; every month is trimmed to three letters so the console's columns stay even. */
+function formatPinned(formatter: Intl.DateTimeFormat, at: Date | number): string {
+	return formatter
+		.formatToParts(at)
+		.map(part => (part.type === "month" ? part.value.slice(0, 3) : part.value))
+		.join("")
+}
+
+/** An audit or moderation timestamp, the one format every admin page uses, pinned to UTC: "18 Nov 2026, 22:00". */
 export function formatUtcDateTime(at: Date | number): string {
-	return UTC_DATE_TIME.format(at)
+	return formatPinned(UTC_DATE_TIME, at)
+}
+
+const UTC_DATE = new Intl.DateTimeFormat("en-GB", {
+	day: "numeric",
+	month: "short",
+	timeZone: "UTC",
+	year: "numeric",
+})
+
+/** A calendar day as the console writes it, in UTC, so a date reads the same on the server and in any browser: "18 Nov 2026". */
+export function formatUtcDate(at: Date | number): string {
+	return formatPinned(UTC_DATE, at)
 }

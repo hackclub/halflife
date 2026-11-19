@@ -3,7 +3,7 @@ import { ReelViewer } from "@/components/platform/reels/ReelViewer"
 
 export const metadata: Metadata = {
 	description: "Every reel anyone posts, newest first. The fastest way to see what the program is building this week.",
-	title: "Half Life Doomscroller",
+	title: "Doomscroller",
 }
 
 export default function DoomscrollerPage() {

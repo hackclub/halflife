@@ -1,9 +1,14 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { Role } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasRole, Permission } from "@/lib/permissions"
 import { getReferralLeaderboard } from "@/lib/site/referrals"
+
+export const metadata: Metadata = {
+	title: "Referrals",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +23,7 @@ export default async function AdminReferralsPage() {
 	return (
 		<div className="hl-stack">
 			<PageHeader
+				compact
 				subtitle="Ranked by the sign-ups each ?ref= link has brought in, from the landing page sign-up list."
 				title="Referrals"
 			/>

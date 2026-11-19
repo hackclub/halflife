@@ -1,12 +1,18 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Button, EmptyState, PageHeader, Panel, Table, TextInput } from "@/app/components/ui"
 import { IconFilter } from "@/app/components/ui/icons"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { listAuditLog } from "@/lib/queries/admin"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { parseDbTimestamp } from "@/lib/time"
 import { AuditRow } from "./AuditRow"
+
+export const metadata: Metadata = {
+	title: "Audit log",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -30,7 +36,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack hl-page-wide">
-			<PageHeader subtitle="Every mutation, with what it changed from and to." title="Audit log" />
+			<PageHeader compact subtitle="Every mutation, with what it changed from and to." title="Audit log" />
 
 			<Panel>
 				<form className="hl-row" method="get">
@@ -65,7 +71,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 									actorId: entry.actorId,
 									actorIp: entry.actorIp,
 									actorUserAgent: entry.actorUserAgent,
-									createdAt: parseDbTimestamp(entry.createdAt).toLocaleString(),
+									createdAt: formatUtcDateTime(parseDbTimestamp(entry.createdAt)),
 									id: entry.id,
 									metadata: entry.metadata,
 									targetId: entry.targetId,

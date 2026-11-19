@@ -20,8 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 	const { slug } = await params
 	const starter = getDisplayStarter(slug)
 	return starter
-		? { description: starter.short, title: `${starter.title} · Half Life Display Guides` }
-		: { title: "Half Life Display Guides" }
+		? { description: starter.short, title: `${starter.title} · Display guides` }
+		: { title: "Display guides" }
 }
 
 /**

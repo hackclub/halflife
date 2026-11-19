@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { Button, Callout, Select } from "@/app/components/ui"
+import { useConfirm } from "@/app/components/ui/useConfirm"
 import { starterProjectsFor } from "@/lib/config/onboarding"
 import type { Theme } from "@/lib/enums"
 import { sendJson, useAction } from "@/lib/use-action"
@@ -19,13 +20,15 @@ export function StarterForm({
 	const [value, setValue] = useState<string>(current ?? NONE)
 	const { busy, error, run } = useAction()
 
-	function save() {
+	const { confirm, dialog } = useConfirm()
+
+	async function save() {
 		if (value === (current ?? NONE)) return
 		const picked = value === NONE ? null : (starters.find(s => s.id === value)?.title ?? value)
 		const message = picked
 			? `Set this project's starter to ${picked}? It must be Tier 1 and is recorded in the audit log.`
 			: "Clear this project's starter? It is recorded in the audit log."
-		if (!window.confirm(message)) return
+		if ((await confirm({ message, title: picked ? "Set the starter?" : "Clear the starter?" })) === null) return
 		void run("save", () =>
 			sendJson(`/api/admin/theme-projects/${projectId}`, {
 				body: { starterProjectId: value === NONE ? null : value },
@@ -36,6 +39,7 @@ export function StarterForm({
 
 	return (
 		<div className="hl-stack hl-stack--tight">
+			{dialog}
 			<div className="hl-row">
 				<Select
 					aria-label="Starter project"
@@ -50,7 +54,7 @@ export function StarterForm({
 						</option>
 					))}
 				</Select>
-				<Button disabled={busy !== null || value === (current ?? NONE)} onClick={save} type="button">
+				<Button disabled={busy !== null || value === (current ?? NONE)} onClick={() => void save()} type="button">
 					{busy ? "Saving…" : "Save starter"}
 				</Button>
 			</div>

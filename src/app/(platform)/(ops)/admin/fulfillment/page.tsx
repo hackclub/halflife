@@ -1,7 +1,7 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
-import { Badge, Button, EmptyState, Field, PageHeader, Panel, Select, Table, TextInput } from "@/app/components/ui"
-import { IconFilter } from "@/app/components/ui/icons"
+import { Badge, EmptyState, Field, FilterBar, PageHeader, Panel, Select, Table, TextInput } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
@@ -13,6 +13,10 @@ import { type FulfillmentFilters, listFulfillmentOrders, listPrinterAwards } fro
 import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 import { DAY_MS } from "@/lib/time"
 import { FulfillmentRow } from "./FulfillmentRow"
+
+export const metadata: Metadata = {
+	title: "Fulfillment",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -79,41 +83,38 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack hl-page-wide">
-			<PageHeader subtitle="Every order that was not rejected, including cancelled ones." title="Fulfillment" />
+			<PageHeader compact subtitle="Every order that was not rejected, including cancelled ones." title="Fulfillment" />
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+				<FilterBar footer={<span className="hl-hint">Dates are UTC.</span>} resetHref="/admin/fulfillment">
 					<Field label="Placed from">
 						<TextInput defaultValue={search.from ?? ""} name="from" type="date" />
 					</Field>
 					<Field label="Placed to">
 						<TextInput defaultValue={search.to ?? ""} name="to" type="date" />
 					</Field>
-					<Select defaultValue={filters.method ?? ""} name="method" style={{ maxWidth: "14rem" }}>
-						<option value="">Any method</option>
-						<option value="NONE">Method not chosen</option>
-						{Object.entries(METHOD_LABELS).map(([value, label]) => (
-							<option key={value} value={value}>
-								{label}
-							</option>
-						))}
-					</Select>
-					<Select defaultValue={filters.stage ?? ""} name="stage" style={{ maxWidth: "14rem" }}>
-						<option value="">Any stage</option>
-						{Object.entries(STAGE_LABELS).map(([value, label]) => (
-							<option key={value} value={value}>
-								{label}
-							</option>
-						))}
-					</Select>
-					<Button type="submit">
-						<IconFilter /> Filter
-					</Button>
-					<Link className="hl-hint" href="/admin/fulfillment">
-						Reset
-					</Link>
-				</form>
-				<span className="hl-hint">Dates are UTC.</span>
+					<Field label="Method">
+						<Select defaultValue={filters.method ?? ""} name="method">
+							<option value="">Any method</option>
+							<option value="NONE">Method not chosen</option>
+							{Object.entries(METHOD_LABELS).map(([value, label]) => (
+								<option key={value} value={value}>
+									{label}
+								</option>
+							))}
+						</Select>
+					</Field>
+					<Field label="Stage">
+						<Select defaultValue={filters.stage ?? ""} name="stage">
+							<option value="">Any stage</option>
+							{Object.entries(STAGE_LABELS).map(([value, label]) => (
+								<option key={value} value={value}>
+									{label}
+								</option>
+							))}
+						</Select>
+					</Field>
+				</FilterBar>
 			</Panel>
 
 			<Panel>
@@ -121,7 +122,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					<EmptyState>No orders match.</EmptyState>
 				) : (
 					<Table
-						className="hl-table--roomy"
+						className="hl-table--roomy hl-table--pin-last"
 						head={["#", "Participant", "Item", "Cost (USD)", "Country", "Placed", "Status", "Manage"]}
 					>
 						{items.map(order => (
@@ -145,7 +146,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					<EmptyState>Nobody has shipped all five projects yet.</EmptyState>
 				) : (
 					<Table
-						className="hl-table--roomy"
+						className="hl-table--roomy hl-table--pin-last"
 						head={["Participant", "Qualified", "Status", "Address", "Tracking", "Update"]}
 					>
 						{awards.map(award => (

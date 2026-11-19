@@ -1,12 +1,18 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardStatus } from "@/lib/enums"
 import { getGrantCardBatch } from "@/lib/grant-cards"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
+
+export const metadata: Metadata = {
+	title: "Grant card batch",
+}
 
 export const dynamic = "force-dynamic"
 
@@ -38,7 +44,7 @@ export default async function GrantCardBatchPage({ params }: Props) {
 
 	return (
 		<div className="hl-stack hl-page-wide">
-			<PageHeader subtitle={<Link href="/admin/grants">Back to grant cards</Link>} title="Grant card batch" />
+			<PageHeader compact subtitle={<Link href="/admin/grants">Back to grant cards</Link>} title="Grant card batch" />
 
 			<div className="hl-row">
 				<Stat label="Total" value={formatUsd(batch.totalCents / 100)} />
@@ -50,8 +56,8 @@ export default async function GrantCardBatchPage({ params }: Props) {
 
 			<Panel>
 				<p className="hl-hint" style={{ margin: 0 }}>
-					Created {batch.createdAt.toLocaleString()}
-					{batch.completedAt ? `, finished ${batch.completedAt.toLocaleString()}` : ""}. Batch{" "}
+					Created {formatUtcDateTime(batch.createdAt)}
+					{batch.completedAt ? `, finished ${formatUtcDateTime(batch.completedAt)}` : ""}. Batch{" "}
 					<span className="hl-mono">{batch.id}</span>.
 				</p>
 				{remaining > 0 ? (

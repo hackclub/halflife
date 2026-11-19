@@ -179,7 +179,7 @@ export const DOCS: DocArticle[] = [
 				heading: "AI usage, project quality, and originality",
 				list: [
 					"You may not use AI to generate any graphics used in the final GitHub repo.",
-					"You may use AI to help with coding, up to ~30% of code can be generated, the majority should still be your own work.",
+					"You may use AI to help with coding, but if more than 30% of the code you submit was generated with AI, expect your hours to be deflated.",
 					"Journals and your README cannot be written with the help of AI.",
 					"Your project should be polished, something you'd be proud to show to others, and something that you can potentially sell as a product!",
 					"Copied designs, stolen project files, and more will result in a rejection and a potential ban from Half Life and Hack Club as a whole",
