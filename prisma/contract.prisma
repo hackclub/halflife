@@ -588,6 +588,7 @@ namespace public {
     idempotencyKey       String?
     ledgerEntries        LedgerEntry[]
     notes                ShopOrderNote[]
+    grantCards           HcbShopGrantCard[]
     user                 User                            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
     shopItem             ShopItem                        @relation(fields: [shopItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
@@ -597,6 +598,30 @@ namespace public {
     @@index([status, placedAt], map: "shop_order_status_placedAt_idx")
     @@index([shopItemId], map: "shop_order_shopItemId_idx")
     @@map("shop_order")
+  }
+
+  /// The HCB card grant a shop order asked for instead of shipping. It has its own table because a parts grant is keyed to a project and phase, and a shop order is neither. Restrict on the order: a card that was issued on HCB must never lose its record by a cascade from the buyer.
+  model HcbShopGrantCard {
+    id             String                      @id @onCreate(cuid(2))
+    shopOrderId    String
+    email          String
+    amountCents    Int
+    status         pg.enum(HcbGrantCardStatus) @default("PENDING")
+    hcbCardGrantId String?
+    hcbStatus      String?
+    cardId         String?
+    disbursementId String?
+    purpose        String?
+    error          String?
+    claimedAt      TimestampString(3)?
+    issuedAt       TimestampString(3)?
+    canceledAt     TimestampString(3)?
+    createdAt      TimestampString(3)          @default(now())
+    shopOrder      ShopOrder                   @relation(fields: [shopOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
+
+    @@index([shopOrderId], name: "hcb_shop_grant_card_shopOrderId_live_key", unique: true, where: sql`("status" IN ('PENDING'::"HcbGrantCardStatus", 'ISSUED'::"HcbGrantCardStatus", 'AMBIGUOUS'::"HcbGrantCardStatus"))`)
+    @@index([hcbCardGrantId], map: "hcb_shop_grant_card_hcbCardGrantId_key", unique: true)
+    @@map("hcb_shop_grant_card")
   }
 
   model LedgerEntry {
