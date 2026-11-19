@@ -42,7 +42,7 @@ export function ProjectRow({
 	return (
 		<>
 			<tr>
-				<td style={{ minWidth: "16rem", overflowWrap: "anywhere" }}>
+				<td className="hl-col-project">
 					<span className="hl-entity-name">{data.title || "Untitled"}</span>
 					{/* The participant's project page opens for its owner only, so the admin link goes to the owner's page, where the project is listed. The public link is the read-only project page. */}
 					<div className="hl-entity-links">
@@ -54,19 +54,19 @@ export function ProjectRow({
 						{data.githubRepo ? data.githubRepo.replace(/^https:\/\/github\.com\//, "") : data.id}
 					</div>
 				</td>
-				<td style={{ minWidth: "13rem", overflowWrap: "anywhere" }}>
+				<td className="hl-col-owner">
 					<span className="hl-entity-name">{data.ownerName}</span>
 					<div className="hl-entity-links">
 						<Link href={`/admin/users/${data.ownerId}`}>Admin user</Link>
 						<Link href={`/u/${data.ownerId}`}>Public profile</Link>
 					</div>
 				</td>
-				<td style={{ minWidth: "9rem" }}>{data.themeLabel}</td>
+				<td className="hl-col-theme">{data.themeLabel}</td>
 				<td>{tier}</td>
-				<td style={{ minWidth: "14rem" }}>
+				<td className="hl-col-review">
 					<ReviewStages buildStatus={data.buildStatus} designStatus={data.designStatus} />
 				</td>
-				<td style={{ minWidth: "13rem" }}>
+				<td className="hl-col-actions">
 					{canManage ? (
 						<div className="hl-row-actions">
 							<ManageButton onToggle={() => setOpen(value => !value)} open={open} panelId={panelId} />
