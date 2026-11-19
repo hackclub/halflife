@@ -815,6 +815,27 @@
 		font-weight: 600;
 	}
 
+	/*
+	 * A filter bar whose search row and fields share one line, once there is room: the search keeps a sensible width instead of stretching across the panel, and the footer still takes its own full-width line. Below the wrap point the two stack again.
+	 */
+	.hl-filters--inline {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-end;
+	}
+	.hl-filters--inline .hl-filters__search {
+		flex: 1 1 22rem;
+		min-width: 0;
+		max-width: 34rem;
+	}
+	.hl-filters--inline .hl-filters__grid {
+		flex: 1 1 16rem;
+		min-width: 0;
+	}
+	.hl-filters--inline .hl-filters__footer {
+		flex-basis: 100%;
+	}
+
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
 	.hl-count {
 		font-weight: 400;
@@ -1214,6 +1235,13 @@
 	.hl-entity-name {
 		font-weight: 700;
 		color: var(--color-ink-strong);
+	}
+	/* A directory name and its account-state badges sit on one line, spaced so the badge reads as a separate fact from the name. */
+	.hl-user-name {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem 0.5rem;
+		align-items: center;
 	}
 	/* The two views of the same thing sit together, so an admin never has to guess which one a name goes to. */
 	.hl-entity-links {

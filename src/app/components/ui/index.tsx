@@ -170,11 +170,19 @@ export function Select({ className, ...props }: Readonly<ComponentPropsWithRef<"
 export function FilterBar({
 	children,
 	footer,
+	inline = false,
 	leading,
 	resetHref,
-}: Readonly<{ children: ReactNode; footer?: ReactNode; leading?: ReactNode; resetHref: string }>) {
+}: Readonly<{
+	children: ReactNode
+	footer?: ReactNode
+	/** Put the fields beside the search row on a wide screen, rather than under it. Only for a bar with few fields, since a tall grid would leave the search floating. */
+	inline?: boolean
+	leading?: ReactNode
+	resetHref: string
+}>) {
 	return (
-		<form className="hl-filters" method="get">
+		<form className={inline ? "hl-filters hl-filters--inline" : "hl-filters"} method="get">
 			{leading}
 			<div className="hl-filters__grid">{children}</div>
 			<div className="hl-filters__footer">

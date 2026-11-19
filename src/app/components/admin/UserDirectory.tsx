@@ -35,14 +35,16 @@ export function UserRow({ row }: Readonly<{ row: DirectoryRow }>) {
 	return (
 		<tr>
 			<td>
-				<Link href={`/admin/users/${row.id}`}>{row.name}</Link>
+				<div className="hl-user-name">
+					<Link href={`/admin/users/${row.id}`}>{row.name}</Link>
+					{row.penalty === "banned" ? <Badge tone="danger">banned</Badge> : null}
+					{row.penalty === "suspended" ? <Badge tone="warning">suspended</Badge> : null}
+				</div>
 				{row.fraudFlagged ? (
 					<div>
 						<Badge tone="danger">flagged</Badge>
 					</div>
 				) : null}
-				{row.penalty === "banned" ? <Badge tone="danger">banned</Badge> : null}
-				{row.penalty === "suspended" ? <Badge tone="warning">suspended</Badge> : null}
 			</td>
 			<td>
 				<CopyEmail email={row.email} />
