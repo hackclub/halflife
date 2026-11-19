@@ -493,12 +493,12 @@
 		flex: 0 1 auto;
 		min-width: 0;
 		overflow: hidden;
+		text-overflow: ellipsis;
 		font-size: 0.9rem;
 		font-weight: 600;
 		color: var(--color-ink);
-		text-decoration: none;
-		text-overflow: ellipsis;
 		white-space: nowrap;
+		text-decoration: none;
 	}
 	.hl-admin-dashboard:hover {
 		text-decoration: underline;
@@ -521,9 +521,9 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0.1rem 0.4rem;
-		line-height: 1.2;
 		font-family: var(--font-mono);
 		font-size: 0.75rem;
+		line-height: 1.2;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: 4px;
@@ -1338,6 +1338,18 @@
 		flex-wrap: wrap;
 		gap: 0.35rem 0.5rem;
 		align-items: center;
+	}
+	/* Roles and their access level are badges on their own wrapping line, with the permission count quiet beneath rather than squeezing beside them. */
+	.hl-user-access {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		align-items: flex-start;
+	}
+	.hl-user-badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
 	}
 	/* The two views of the same thing sit together, so an admin never has to guess which one a name goes to. */
 	.hl-entity-links {
