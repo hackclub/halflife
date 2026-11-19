@@ -127,7 +127,14 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 										<td className="hl-mono" title={object.key}>
 											{shortenFileName(parts.name)}
 										</td>
-										<td>{parts.folder || "-"}</td>
+										{/* The folder a file is in, as the filter that shows only that folder. */}
+										<td>
+											{parts.folder ? (
+												<Link href={`/admin/uploads?folder=${encodeURIComponent(parts.folder)}`}>{parts.folder}</Link>
+											) : (
+												"-"
+											)}
+										</td>
 										<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
 											{parts.owner || "-"}
 										</td>
