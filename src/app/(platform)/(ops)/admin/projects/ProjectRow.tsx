@@ -24,10 +24,22 @@ export interface ProjectRowData extends ProjectManageData {
 	title: string
 }
 
-export function ProjectRow({ data, flags }: Readonly<{ data: ProjectRowData; flags: ProjectManageFlags }>) {
+/** The projects list with one filter changed, keeping the others. */
+function filteredHref(filters: string, key: string, value: string): string {
+	const params = new URLSearchParams(filters)
+	params.set(key, value)
+	return `/admin/projects?${params.toString()}`
+}
+
+export function ProjectRow({
+	data,
+	filters,
+	flags,
+}: Readonly<{ data: ProjectRowData; filters: string; flags: ProjectManageFlags }>) {
 	const [open, setOpen] = useState(false)
 	const panelId = `manage-${data.id}`
 	const hasActions = hasProjectActions(data, flags)
+	const tierValue = data.tier ?? data.requestedTier
 	const tier = data.tier ?? (data.requestedTier ? `${data.requestedTier} (asked)` : "-")
 
 	return (
@@ -54,10 +66,30 @@ export function ProjectRow({ data, flags }: Readonly<{ data: ProjectRowData; fla
 						<Link href={`/u/${data.ownerId}`}>Public profile</Link>
 					</div>
 				</td>
-				<td className="hl-col-theme">{data.themeLabel}</td>
-				<td>{tier}</td>
+				<td className="hl-col-theme">
+					<Link href={filteredHref(filters, "theme", data.theme)} title={`Show only ${data.themeLabel} projects`}>
+						{data.themeLabel}
+					</Link>
+				</td>
+				<td>
+					{tierValue === null ? (
+						tier
+					) : (
+						<Link
+							href={filteredHref(filters, "tier", String(tierValue))}
+							title={`Show only tier ${tierValue} projects`}
+						>
+							{tier}
+						</Link>
+					)}
+				</td>
 				<td className="hl-col-review">
-					<ReviewStages buildStatus={data.buildStatus} designStatus={data.designStatus} />
+					<ReviewStages
+						buildHref={filteredHref(filters, "build", data.buildStatus)}
+						buildStatus={data.buildStatus}
+						designHref={filteredHref(filters, "design", data.designStatus)}
+						designStatus={data.designStatus}
+					/>
 				</td>
 				<td className="hl-col-actions">
 					{hasActions ? (

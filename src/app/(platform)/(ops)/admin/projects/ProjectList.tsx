@@ -23,11 +23,14 @@ const isProjectPage = (value: unknown): value is ProjectPage =>
  */
 export function ProjectList({
 	baseUrl,
+	filters,
 	flags,
 	initialCursor,
 	initialRows,
 }: Readonly<{
 	baseUrl: string
+	/** The filters as a query string, so a row's theme, tier or status can link to the list filtered by it. */
+	filters: string
 	flags: ProjectManageFlags
 	initialCursor: string | null
 	initialRows: ProjectRowData[]
@@ -50,7 +53,7 @@ export function ProjectList({
 				head={["Project", "Owner", "Theme", "Tier", "Review", canManage ? "Actions" : "Extension"]}
 			>
 				{rows.map(data => (
-					<ProjectRow data={data} flags={flags} key={data.id} />
+					<ProjectRow data={data} filters={filters} flags={flags} key={data.id} />
 				))}
 			</Table>
 			<div aria-live="polite" className="hl-directory-footer">
