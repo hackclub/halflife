@@ -1312,6 +1312,25 @@
 		font-size: 0.82rem;
 		color: var(--color-ink-strong);
 	}
+	/* Each control reads top to bottom: its input, then its buttons on a row beneath, all at one height. */
+	.hl-manage-controls {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+		align-items: flex-start;
+	}
+	.hl-manage-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.hl-manage-panel .hl-btn {
+		height: 2.75rem;
+	}
+	/* A note sits clear of the control it describes, rather than touching the button under it. */
+	.hl-manage-panel p.hl-hint {
+		margin: 0 0 0.75rem;
+	}
 	/* A small two-column list for the read-only facts inside a manage panel, so labels line up instead of running into their values. */
 	.hl-detail-list {
 		display: grid;
