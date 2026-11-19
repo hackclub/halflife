@@ -6,7 +6,7 @@ import "../(platform)/globals.css"
 export const metadata: Metadata = {
 	// This page is reached from a QR code and is a one-shot upload target. Nothing about it should ever be indexed or shared onward.
 	robots: { follow: false, index: false },
-	title: "Record for Half-Life",
+	title: "Record a reel · Half Life",
 }
 
 export const viewport: Viewport = {

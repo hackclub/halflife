@@ -7,7 +7,7 @@ import { OrdersList } from "./OrdersList"
 
 export const metadata: Metadata = {
 	description: "Everything you have spent coins on in the Half Life shop, and where each order has got to.",
-	title: "Your orders · Half Life Shop",
+	title: "Your orders · Shop",
 }
 
 export const dynamic = "force-dynamic"

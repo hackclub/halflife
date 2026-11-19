@@ -15,7 +15,7 @@ import { ProfileReels } from "./ProfileReels"
 
 export const metadata: Metadata = {
 	description: "A maker's projects and the reels they have posted.",
-	title: "Half Life Profile",
+	title: "Profile",
 }
 
 export const dynamic = "force-dynamic"

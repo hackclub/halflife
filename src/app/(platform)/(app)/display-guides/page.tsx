@@ -5,7 +5,7 @@ import { DISPLAY_STARTERS, getDisplayStarter } from "@/lib/config/display-starte
 
 export const metadata: Metadata = {
 	description: "Week 4's starter projects: seven displays, each with a full guide.",
-	title: "Half Life Display Guides",
+	title: "Display guides",
 }
 
 /**
