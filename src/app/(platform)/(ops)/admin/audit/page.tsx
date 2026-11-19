@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Button, EmptyState, PageHeader, Panel, Table, TextInput } from "@/app/components/ui"
 import { IconFilter } from "@/app/components/ui/icons"
@@ -8,6 +9,10 @@ import { listAuditLog } from "@/lib/queries/admin"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { parseDbTimestamp } from "@/lib/time"
 import { AuditRow } from "./AuditRow"
+
+export const metadata: Metadata = {
+	title: "Audit log",
+}
 
 export const dynamic = "force-dynamic"
 

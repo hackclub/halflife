@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Button, Callout, EmptyState, Field, PageHeader, Panel, Select, Table } from "@/app/components/ui"
 import { IconFilter } from "@/app/components/ui/icons"
@@ -5,6 +6,10 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { isUploadConfigured, listUploadedObjects, UPLOAD_FOLDERS, type UploadFolder } from "@/lib/uploads/r2"
+
+export const metadata: Metadata = {
+	title: "Uploads",
+}
 
 export const dynamic = "force-dynamic"
 

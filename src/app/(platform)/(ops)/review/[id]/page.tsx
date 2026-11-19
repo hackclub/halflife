@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -8,6 +9,10 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { getSubmissionDetail } from "@/lib/queries/review"
 import { ReviewBom, ReviewDecision, ReviewEvidence, ReviewHours, ReviewProject } from "./ReviewPanels"
+
+export const metadata: Metadata = {
+	title: "Review",
+}
 
 export const dynamic = "force-dynamic"
 

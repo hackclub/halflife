@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { AirtableImportForm } from "@/app/components/forms/AirtableImportForm"
@@ -22,6 +23,10 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange, weekOpensAt } from "@/lib/program"
 import { getOpenDisputes } from "@/lib/queries/review"
+
+export const metadata: Metadata = {
+	title: "Program settings",
+}
 
 export const dynamic = "force-dynamic"
 

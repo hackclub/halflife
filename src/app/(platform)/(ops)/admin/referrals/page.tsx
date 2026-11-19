@@ -1,9 +1,14 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { Role } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasRole, Permission } from "@/lib/permissions"
 import { getReferralLeaderboard } from "@/lib/site/referrals"
+
+export const metadata: Metadata = {
+	title: "Referrals",
+}
 
 export const dynamic = "force-dynamic"
 

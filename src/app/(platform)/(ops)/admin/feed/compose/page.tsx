@@ -1,9 +1,14 @@
+import type { Metadata } from "next"
 import { type ComposerProject, PostComposer } from "@/app/components/forms/PostComposer"
 import { LinkButton, PageHeader, Panel } from "@/app/components/ui"
 import { themeLabel } from "@/lib/config/program"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
+
+export const metadata: Metadata = {
+	title: "Post a reel",
+}
 
 export const dynamic = "force-dynamic"
 

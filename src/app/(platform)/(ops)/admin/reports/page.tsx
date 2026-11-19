@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, PageHeader, Panel } from "@/app/components/ui"
@@ -16,6 +17,10 @@ import { REPORT_REASONS, REPORT_STATUS_LABELS, REPORT_TARGET_LABELS } from "@/li
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { preview } from "@/lib/text"
 import { parseDbTimestamp } from "@/lib/time"
+
+export const metadata: Metadata = {
+	title: "Reports",
+}
 
 export const dynamic = "force-dynamic"
 

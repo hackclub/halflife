@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ItemRegionPrices } from "@/app/components/forms/ItemRegionPrices"
@@ -6,6 +7,10 @@ import { Badge, PageHeader, Panel } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
+
+export const metadata: Metadata = {
+	title: "Shop item",
+}
 
 export const dynamic = "force-dynamic"
 

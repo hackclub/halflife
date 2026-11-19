@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import {
 	Button,
@@ -21,6 +22,10 @@ import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
 import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 import { ProjectRow } from "./ProjectRow"
+
+export const metadata: Metadata = {
+	title: "Projects",
+}
 
 export const dynamic = "force-dynamic"
 
