@@ -1446,6 +1446,14 @@ html:has(.hl-admin) {
 	.hl-filters__grid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
+	.hl-filters__grid > * {
+		min-width: 0;
+	}
+	.hl-filters__grid .hl-select,
+	.hl-filters__grid .hl-input {
+		width: 100%;
+		min-width: 0;
+	}
 	.hl-attention a {
 		flex: 1 1 8rem;
 		min-width: 0;
