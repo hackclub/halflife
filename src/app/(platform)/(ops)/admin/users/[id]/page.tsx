@@ -13,6 +13,7 @@ import { projectTierId } from "@/lib/config/tiers"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { PayoutSource, Phase, PhaseStatus } from "@/lib/enums"
+import { designFundingStates } from "@/lib/funding-state-queries"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import { isHcbConfigured } from "@/lib/hcb"
 import { penaltyFor } from "@/lib/moderation"
@@ -55,6 +56,8 @@ export default async function AdminUserPage({ params }: Props) {
 	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
 	const settings = await getProgramSettings()
+	// Where each approved design's money stands (queued, awaiting funding, funded), read the same way the maker's own pages read it.
+	const fundingByProject = await designFundingStates(user.themeProjects)
 	// Airtable is the old payer; under HCB a manual top-up would be a second way to pay the same project.
 	const canSendGrant =
 		canManageCredit && isHcbConfigured() && identityVerified && settings.payoutSource === PayoutSource.AIRTABLE
@@ -279,6 +282,7 @@ export default async function AdminUserPage({ params }: Props) {
 								approvedHours: project.approvedHours,
 								buildStatus: project.buildStatus,
 								cardGrantSent: project.hcbGrantCards.some(card => card.status === "ISSUED"),
+								designFunding: fundingByProject.get(project.id) ?? null,
 								designStatus: project.designStatus,
 								extension: project.submissionExtensionUntil?.toISOString() ?? null,
 								grantSent: project.hcbGrantTopUps.length > 0,
