@@ -306,6 +306,16 @@
 		min-height: 7rem;
 		resize: vertical;
 	}
+	/* An exclusion's reason carries the colour of what it means: something to fix, something already settled, or something waiting. */
+	.hl-reason--danger {
+		color: var(--color-danger-ink);
+	}
+	.hl-reason--warning {
+		color: var(--color-warning-ink);
+	}
+	.hl-reason--muted {
+		color: var(--color-ink-muted);
+	}
 	.hl-hint {
 		margin: 0;
 		font-size: 0.875rem;

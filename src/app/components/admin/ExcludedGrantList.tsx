@@ -3,11 +3,14 @@
 import { useEffect, useRef, useState } from "react"
 import { Table } from "@/app/components/ui"
 
+export type ExcludedReasonTone = "danger" | "muted" | "warning"
+
 export interface ExcludedGrantRow {
 	ownerName: string
 	projectId: string
 	reason: string
 	title: string
+	tone: ExcludedReasonTone
 }
 
 /** How many rows show before the reader reaches the end, and how many each step adds. */
@@ -44,7 +47,7 @@ export function ExcludedGrantList({ rows }: Readonly<{ rows: ExcludedGrantRow[] 
 							<div className="hl-hint hl-mono">{row.projectId}</div>
 						</td>
 						<td>{row.ownerName}</td>
-						<td>{row.reason}</td>
+						<td className={`hl-reason--${row.tone}`}>{row.reason}</td>
 					</tr>
 				))}
 			</Table>
