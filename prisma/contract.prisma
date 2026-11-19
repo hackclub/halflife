@@ -616,6 +616,8 @@ namespace public {
     claimedAt      TimestampString(3)?
     issuedAt       TimestampString(3)?
     canceledAt     TimestampString(3)?
+    /// What the card had already spent when it was cancelled. Null on a card cancelled before this was recorded.
+    spentCents     Int?
     createdAt      TimestampString(3)          @default(now())
     shopOrder      ShopOrder                   @relation(fields: [shopOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
 

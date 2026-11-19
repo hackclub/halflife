@@ -10,6 +10,7 @@ import {
 	createCardGrant,
 	isHcbConfigured,
 	listOrganizationCardGrants,
+	readCardGrantSpend,
 	readOrganizationBalanceCents,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
@@ -382,12 +383,28 @@ export async function cancelShopGrantCard(id: string, admin: Admin): Promise<Sho
 	if (row.status === HcbGrantCardStatus.RETURNED)
 		throw new HttpError("CONFLICT", "The buyer already returned this grant")
 
+	// Read the spend before cancelling: HCB returns the unspent balance to the org, so afterwards there is no way to
+	// tell how much of the card was used. A number we cannot read is refused rather than recorded blind, because the
+	// refund guard needs it to decide whether the order is safe to refund.
+	const spend = await readCardGrantSpend(row.hcbCardGrantId)
+	const spentCents =
+		spend.spentCents
+		?? (spend.amountCents !== null && spend.balanceCents !== null
+			? Math.max(0, spend.amountCents - spend.balanceCents)
+			: null)
+	if (spentCents === null)
+		throw new HttpError(
+			"CONFLICT",
+			"HCB could not say what this card has spent, so cancelling it would leave the order's refund unsafe. Try again once HCB answers.",
+		)
+
 	await cancelCardGrant(row.hcbCardGrantId)
 	const { ip, userAgent } = await requestInfo()
 	await db.transaction(async tx => {
 		await tx.orm.public.HcbShopGrantCard.where({ id }).update({
 			canceledAt: formatDbTimestamp(new Date()),
 			hcbStatus: "canceled",
+			spentCents,
 			status: HcbGrantCardStatus.CANCELED,
 		})
 		await logAuditTx(tx, {
@@ -395,7 +412,12 @@ export async function cancelShopGrantCard(id: string, admin: Admin): Promise<Sho
 			actorEmail: admin.email,
 			actorId: admin.id,
 			ip,
-			metadata: { amountCents: row.amountCents, grantId: row.hcbCardGrantId, orderId: row.shopOrderId },
+			metadata: {
+				amountCents: row.amountCents,
+				grantId: row.hcbCardGrantId,
+				orderId: row.shopOrderId,
+				spentCents,
+			},
 			targetId: row.shopOrderId,
 			targetType: "ShopOrder",
 			userAgent,

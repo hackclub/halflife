@@ -525,8 +525,8 @@ A shop order can ask for its value as a card instead of shipping (`ShopDeliveryP
 
 - **Issue** claims a pending row, rechecks the order, the account and the HCB balance, creates the grant and records it. Pressing it again resolves to the card already issued rather than making a second one.
 - **Check HCB** reconciles an ambiguous, failed or abandoned attempt the same way the project batch does. A failure that may have committed is never retried before the list has been read.
-- **Cancel** returns the remaining balance to the organisation. A cancelled shop card is not reissued automatically, so the part the buyer already spent cannot be paid twice.
+- **Cancel** reads what the card has spent, then returns the remaining balance to the organisation and records the spend on the row. A cancelled shop card is not reissued automatically, so the part the buyer already spent cannot be paid twice.
 
 The amount is the order's, not a BOM, so shop cards do not appear in the project preview, batch or CSV export. `claimedGrantIds` includes them, so a reconcile on either path cannot pair a shop grant with a project row or the other way round.
 
-A refund is refused while the order has a live card, whether the buyer cancels or staff reject it. Refunding would leave the buyer with the coins and the card. Issuing a card does not yet mark the order fulfilled; that remains a separate decision on the order.
+A refund is refused while the order has a live card, whether the buyer cancels or staff reject it. Refunding would leave the buyer with the coins and the card. A cancelled card only allows a refund when it spent nothing: one that was used keeps the refund blocked, because the buyer already had that value. Issuing a card does not yet mark the order fulfilled; that remains a separate decision on the order.
