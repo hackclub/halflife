@@ -579,6 +579,19 @@
 			display: none;
 		}
 	}
+	/* Between a phone and the sidebar's own width the open list has room for two columns of groups, which keeps it from running past the bottom of a short screen. A narrower phone keeps one. */
+	@media (min-width: 561px) and (max-width: 760px) {
+		.hl-admin-side-inner[data-open="true"] {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 1.1rem 1.5rem;
+			align-items: start;
+		}
+		/* The grid's row gap spaces the groups here, so the stacked list's top margin would only misalign the second column. */
+		.hl-admin-side-inner[data-open="true"] > .hl-admin-group + .hl-admin-group {
+			margin-top: 0;
+		}
+	}
 	/* Helper text is the part people read on a small screen, so it gets a size they can read without zooming. */
 	@media (max-width: 600px) {
 		.hl-admin-main .hl-hint {
@@ -606,7 +619,9 @@
 		.hl-admin-body {
 			grid-template-columns: minmax(0, 1fr);
 		}
+		/* The bar is only as tall as its toggle: the grid would otherwise stretch it to take the page's spare height, leaving a blank band under "Sections". */
 		.hl-admin-side {
+			align-self: start;
 			border-right: 0;
 			border-bottom: 2px solid var(--color-border);
 		}
