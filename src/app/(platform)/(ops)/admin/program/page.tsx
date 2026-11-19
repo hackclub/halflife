@@ -191,7 +191,7 @@ export default async function AdminProgramPage() {
 								<tr key={`${item.themeProjectId}-${item.phase}`}>
 									<td className="hl-mono">{item.themeProjectId}</td>
 									<td>{item.phase.toLowerCase()}</td>
-									<td className="hand">{item.reason ?? "Not attempted yet. The retry job will pick it up."}</td>
+									<td>{item.reason ?? "Not attempted yet. The retry job will pick it up."}</td>
 									<td>
 										<ActionButton
 											body={{ phase: item.phase }}
@@ -344,7 +344,7 @@ export default async function AdminProgramPage() {
 								<tr key={`ire-${item.themeProjectId}-${item.phase}`}>
 									<td className="hl-mono">{item.themeProjectId}</td>
 									<td>{item.phase.toLowerCase()}</td>
-									<td className="hand">{item.reason ?? "Not sent yet. The hourly job will pick it up."}</td>
+									<td>{item.reason ?? "Not sent yet. The hourly job will pick it up."}</td>
 									<td>
 										<ActionButton
 											body={{ phase: item.phase }}
