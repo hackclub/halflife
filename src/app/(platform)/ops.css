@@ -999,6 +999,22 @@
 		padding: 0;
 		margin-left: auto;
 	}
+	/*
+	 * A bar with one field beside its search rather than under it: the search takes the room and the field keeps a field's width, and the pair stacks once the panel is too narrow for both. The wrap is decided by the content, so the console's sidebar folding away is enough to bring them onto one line.
+	 */
+	.hl-filters--search-inline {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-end;
+	}
+	.hl-filters--search-inline > .hl-filters__search {
+		flex: 1 1 18rem;
+		min-width: 0;
+	}
+	.hl-filters--search-inline > .hl-filters__grid {
+		flex: 0 1 14rem;
+		grid-template-columns: minmax(0, 1fr);
+	}
 
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
 	.hl-count {
