@@ -89,7 +89,13 @@ describe("shopItemSchema / shopItemUpdateSchema", () => {
 		const parsed = shopItemSchema.safeParse(validItem)
 		expect(parsed.success).toBe(true)
 		if (parsed.success)
-			expect(parsed.data).toMatchObject({ active: true, category: "PRINTER_UPGRADE", maxPerUser: 1, stock: null })
+			expect(parsed.data).toMatchObject({
+				active: true,
+				category: "PRINTER_UPGRADE",
+				grantCardMerchantIds: [],
+				maxPerUser: 1,
+				stock: null,
+			})
 	})
 
 	test("refuses bad slugs, negative prices and unknown keys", () => {
@@ -103,6 +109,15 @@ describe("shopItemSchema / shopItemUpdateSchema", () => {
 		expect(shopItemUpdateSchema.safeParse({ name: "New name" }).success).toBe(true)
 		expect(shopItemUpdateSchema.safeParse({ id: "x" }).success).toBe(false)
 		expect(shopItemUpdateSchema.safeParse({}).success).toBe(true)
+	})
+
+	test("a merchant allowlist is optional, non-empty and capped", () => {
+		expect(shopItemSchema.safeParse({ ...validItem, grantCardMerchantIds: ["AAAPLASTIC"] }).success).toBe(true)
+		expect(shopItemUpdateSchema.safeParse({ grantCardMerchantIds: ["AAAPLASTIC"] }).success).toBe(true)
+		expect(shopItemUpdateSchema.safeParse({ grantCardMerchantIds: [""] }).success).toBe(false)
+		expect(
+			shopItemUpdateSchema.safeParse({ grantCardMerchantIds: Array.from({ length: 101 }, (_, i) => `M${i}`) }).success,
+		).toBe(false)
 	})
 
 	test("an update carries only the fields it was sent, never the create defaults", () => {

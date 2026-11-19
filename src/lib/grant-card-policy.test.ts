@@ -5,6 +5,8 @@ import {
 	grantCardFingerprint,
 	grantCardInstructions,
 	grantCardPurpose,
+	merchantIdsEqual,
+	normalizeMerchantIds,
 	remainingAfterCancelledCards,
 } from "@/lib/grant-card-policy"
 
@@ -99,6 +101,19 @@ describe("grant card policy", () => {
 				{ amountCents: 200, email: "b@example.com", projectId: "p2" },
 			]),
 		)
+	})
+})
+
+describe("merchant allowlists", () => {
+	test("trims blanks and duplicates without changing the order", () => {
+		expect(normalizeMerchantIds([" AAA ", "BBB", "AAA", ""])).toEqual(["AAA", "BBB"])
+	})
+
+	test("two lists match as sets, and an empty list is a real answer", () => {
+		expect(merchantIdsEqual(["AAA", "BBB"], ["BBB", "AAA"])).toBe(true)
+		expect(merchantIdsEqual(["AAA"], ["AAA", "BBB"])).toBe(false)
+		expect(merchantIdsEqual([], [])).toBe(true)
+		expect(merchantIdsEqual([], ["AAA"])).toBe(false)
 	})
 })
 

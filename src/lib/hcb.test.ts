@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import {
 	type CardGrantExpectation,
+	cardGrantCreateBody,
 	type HcbCardGrantList,
 	type HcbCardGrantSummary,
 	reconcileCardGrantIssue,
@@ -16,11 +17,13 @@ const expected: CardGrantExpectation = {
 
 function grant(overrides: Partial<HcbCardGrantSummary> = {}): HcbCardGrantSummary {
 	return {
+		allowedMerchants: [],
 		amountCents: 3050,
 		cardId: "card_1",
 		createdAt: "2026-10-29T12:00:05.000Z",
 		email: "maker@example.com",
 		id: "cdg_1",
+		merchantLock: [],
 		purpose: "Half Life parts – HL:prj_123",
 		status: "active",
 		...overrides,
@@ -93,5 +96,56 @@ describe("reconcileCardGrantIssue", () => {
 	test("a title-less legacy attempt still reconciles through the prefix", () => {
 		const legacy = { ...expected, purpose: "Half Life parts" }
 		expect(reconcileCardGrantIssue(listed([grant()]), legacy)).toEqual({ grantId: "cdg_1", kind: "landed" })
+	})
+})
+
+describe("cardGrantCreateBody", () => {
+	const input = {
+		amountCents: 3050,
+		email: "maker@example.com",
+		instructions: "Order #12: Soldering kit",
+		inviteMessage: "Your Half Life shop grant is ready.",
+		purpose: "Soldering kit",
+	}
+
+	test("joins the merchant allowlist into the comma-separated string HCB accepts", () => {
+		expect(cardGrantCreateBody({ ...input, merchantIds: ["AAAPLASTIC", "BBBHARDWARE"] }).merchant_lock).toBe(
+			"AAAPLASTIC,BBBHARDWARE",
+		)
+	})
+
+	test("omits the lock entirely when the card is unrestricted", () => {
+		expect(cardGrantCreateBody(input)).not.toHaveProperty("merchant_lock")
+		expect(cardGrantCreateBody({ ...input, merchantIds: [] })).not.toHaveProperty("merchant_lock")
+	})
+})
+
+describe("reconcileCardGrantIssue with a merchant lock", () => {
+	const locked = { ...expected, merchantIds: ["AAAPLASTIC", "BBBHARDWARE"] }
+
+	test("the grant carrying the same allowlist is the attempt", () => {
+		const row = grant({ merchantLock: ["BBBHARDWARE", "AAAPLASTIC"] })
+		expect(reconcileCardGrantIssue(listed([row]), locked)).toEqual({ grantId: "cdg_1", kind: "landed" })
+	})
+
+	test("a grant with a different allowlist is a different card", () => {
+		expect(reconcileCardGrantIssue(listed([grant({ merchantLock: ["AAAPLASTIC"] })]), locked)).toEqual({
+			kind: "absent",
+		})
+	})
+
+	test("a grant whose lock HCB did not report is ambiguous, never absent", () => {
+		expect(reconcileCardGrantIssue(listed([grant({ merchantLock: null })]), locked)).toEqual({ kind: "ambiguous" })
+	})
+
+	test("an unrestricted attempt is confirmed by an unrestricted grant, and not by a locked one", () => {
+		const unrestricted = { ...expected, merchantIds: [] }
+		expect(reconcileCardGrantIssue(listed([grant({ merchantLock: [] })]), unrestricted)).toEqual({
+			grantId: "cdg_1",
+			kind: "landed",
+		})
+		expect(reconcileCardGrantIssue(listed([grant({ merchantLock: ["AAAPLASTIC"] })]), unrestricted)).toEqual({
+			kind: "absent",
+		})
 	})
 })

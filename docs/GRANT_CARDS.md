@@ -162,7 +162,7 @@ The docs are community-maintained, so treat the HCB source as the final authorit
   own project link. Where the deployment names no origin it is just `Parts for <project title>`.
 - `instructions` – human-readable, names the project.
 - `invite_message` – shown in the HCB invitation email.
-- No merchant lock, category lock, keyword lock, one-time use or pre-authorisation in v1.
+- No merchant lock, category lock, keyword lock, one-time use or pre-authorisation on the project batch in v1. Shop cards use the item's merchant allowlist; see **Shop orders** below.
 - No `expiration_at` in v1. Expiry is a policy decision, not a default.
 
 ## Data model
@@ -528,6 +528,10 @@ A shop order can ask for its value as a card instead of shipping (`ShopDeliveryP
 - **Cancel** reads what the card has spent, then returns the remaining balance to the organisation and records the spend on the row. A cancelled shop card is not reissued automatically, so the part the buyer already spent cannot be paid twice. If nothing was spent, the order is reopened to pending, so it can be shipped, refunded or cancelled as usual. If anything was spent, the order stays fulfilled and an admin settles it.
 
 The amount is the order's, not a BOM, so shop cards do not appear in the project preview, batch or CSV export. `claimedGrantIds` includes them, so a reconcile on either path cannot pair a shop grant with a project row or the other way round.
+
+An item can carry `grantCardMerchantIds` from the shop item editor. The list is snapshotted onto the order at purchase and onto the card attempt, then sent as HCB's comma-separated `merchant_lock`; an empty list creates an unrestricted card. HCB returns both the card's own lock and the effective allowlist (`merchant_lock` and `allowed_merchants`), and issue verifies both before recording the card. A mismatch cancels the grant and marks the row ambiguous. `Check HCB` matches on the same lock, so a grant with a different allowlist cannot settle the attempt.
+
+The allowlist is an OR with HCB's category and keyword locks: setting those on the same card widens it rather than narrowing it, so shop cards send only `merchant_lock`. An organisation-wide merchant setting is unioned into every card and cannot be narrowed per card, so keep it empty when different items need different vendors. A merchant lock restricts where the card can spend, not what it buys; it also does not cover a courier that bills shipping separately unless that courier's ID is in the list.
 
 A refund is refused while the order has a live card, whether the buyer cancels or staff reject it. Refunding would leave the buyer with the coins and the card. A cancelled card only allows a refund when it spent nothing: one that was used keeps the refund blocked, because the buyer already had that value.
 

@@ -16,11 +16,13 @@ const row = (id: string, overrides: Partial<ExportRowForReconcile> = {}): Export
 
 function grant(overrides: Partial<HcbCardGrantSummary> = {}): HcbCardGrantSummary {
 	return {
+		allowedMerchants: [],
 		amountCents: 3050,
 		cardId: null,
 		createdAt: "2026-10-29T12:00:05.000Z",
 		email: "maker@example.com",
 		id: "cdg_1",
+		merchantLock: [],
 		purpose: "Half Life parts – Robot arm",
 		status: "active",
 		...overrides,

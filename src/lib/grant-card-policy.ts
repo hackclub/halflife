@@ -115,3 +115,17 @@ export function grantCardFingerprint(
 		.toSorted((a, b) => a.localeCompare(b))
 	return createHash("sha256").update(ordered.join("\n")).digest("hex")
 }
+
+/** Trim empty entries and duplicates, keeping the order the admin entered. Merchant IDs are case-sensitive. */
+export function normalizeMerchantIds(ids: readonly string[]): string[] {
+	return [...new Set(ids.map(id => id.trim()).filter(Boolean))]
+}
+
+/** Whether two merchant allowlists name the same set, regardless of order or duplicate entries. */
+export function merchantIdsEqual(left: readonly string[], right: readonly string[]): boolean {
+	const a = normalizeMerchantIds(left)
+	const b = normalizeMerchantIds(right)
+	if (a.length !== b.length) return false
+	const wanted = new Set(b)
+	return a.every(id => wanted.has(id))
+}

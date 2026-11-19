@@ -35,7 +35,14 @@ export const POST = withWritePermission(Permission.MANAGE_SHOP, async (req: Requ
 		action: AuditAction.ADMIN_CREATE_SHOP_ITEM,
 		actorEmail: gate.user.email,
 		actorId: gate.user.id,
-		metadata: { after: { costUsd: item.costUsd, name: item.name, priceCredits: item.priceCredits } },
+		metadata: {
+			after: {
+				costUsd: item.costUsd,
+				grantCardMerchantIds: [...item.grantCardMerchantIds],
+				name: item.name,
+				priceCredits: item.priceCredits,
+			},
+		},
 		targetId: item.id,
 		targetType: "ShopItem",
 	})

@@ -3,7 +3,7 @@ import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { lockUserCredit } from "@/lib/currency"
 import { HcbGrantCardStatus, PayoutSource, ShopOrderStatus } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
-import { grantCardPurpose } from "@/lib/grant-card-policy"
+import { grantCardPurpose, merchantIdsEqual } from "@/lib/grant-card-policy"
 import { ABANDONED_CARD_ATTEMPT_MS, claimedGrantIds } from "@/lib/grant-cards"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {
@@ -41,6 +41,8 @@ export interface ShopGrantCardOutcome {
 	error: string | null
 	hcbCardGrantId: string | null
 	id: string
+	/** The merchant allowlist this card was issued with. Empty means unrestricted. */
+	merchantIds: readonly string[]
 	orderId: string
 	status: HcbGrantCardStatus
 }
@@ -58,7 +60,16 @@ interface RequestInfo {
 /** The order fields a card needs, with the account checks read fresh. */
 function loadOrder(client: DbOrTx, orderId: string) {
 	return client.orm.public.ShopOrder.whereUnique({ id: orderId })
-		.select("deliveryPreference", "grantCardCents", "id", "itemNameSnapshot", "orderNumber", "status", "userId")
+		.select(
+			"deliveryPreference",
+			"grantCardCents",
+			"grantCardMerchantIds",
+			"id",
+			"itemNameSnapshot",
+			"orderNumber",
+			"status",
+			"userId",
+		)
 		.include("user", user => user.select("bannedAt", "email", "fraudFlagged", "id", "name", "suspendedUntil"))
 		.first()
 }
@@ -92,6 +103,7 @@ function hcbStatusOf(err: unknown): number | null {
 function toOutcome(row: {
 	amountCents: number
 	error: string | null
+	grantCardMerchantIds: readonly string[]
 	hcbCardGrantId: string | null
 	id: string
 	shopOrderId: string
@@ -102,9 +114,30 @@ function toOutcome(row: {
 		error: row.error,
 		hcbCardGrantId: row.hcbCardGrantId,
 		id: row.id,
+		merchantIds: row.grantCardMerchantIds,
 		orderId: row.shopOrderId,
 		status: row.status,
 	}
+}
+
+/** A merchant lock in words, for a reason an admin has to act on. */
+function merchantLockLabel(ids: readonly string[] | null): string {
+	if (ids === null) return "a merchant lock Half Life could not read"
+	return ids.length === 0 ? "no merchant lock" : ids.join(", ")
+}
+
+/** Why HCB's answer does not carry the lock this order asked for, or null when it does. */
+function merchantMismatchReason(
+	grant: { allowedMerchants: string[] | null; id: string; merchantLock: string[] | null },
+	expected: readonly string[],
+): string | null {
+	if (grant.merchantLock === null || grant.allowedMerchants === null)
+		return `HCB did not report the merchant lock for grant ${grant.id}. Check it on HCB before retrying`
+	if (!merchantIdsEqual(expected, grant.merchantLock))
+		return `HCB issued grant ${grant.id} with ${merchantLockLabel(grant.merchantLock)} instead of ${merchantLockLabel(expected)}. Check it on HCB before retrying`
+	if (!expected.every(id => grant.allowedMerchants?.includes(id)))
+		return `HCB's allowlist for grant ${grant.id} does not include every merchant this order asked for. Check it on HCB before retrying`
+	return null
 }
 
 async function markFailed(id: string, reason: string): Promise<void> {
@@ -127,7 +160,7 @@ async function markAmbiguous(id: string, reason: string): Promise<void> {
  * The order's owner is fixed at purchase, so reading it before the transaction is safe. The credit lock is what serialises this with a refund or a shipment. The order update is conditional on it still being open. If it is not, the card is still recorded, because the money has already moved, and the audit says the order was not fulfilled.
  */
 async function markIssued(
-	claimed: { amountCents: number; id: string; purpose: string | null },
+	claimed: { amountCents: number; grantCardMerchantIds: readonly string[]; id: string; purpose: string | null },
 	orderId: string,
 	grant: { cardId: string | null; id: string; status: string | null },
 	purpose: string,
@@ -162,6 +195,7 @@ async function markIssued(
 				cardId: grant.cardId,
 				fulfilled: fulfilled === 1,
 				grantId: grant.id,
+				merchantIds: [...claimed.grantCardMerchantIds],
 				orderId,
 				purpose,
 			},
@@ -243,6 +277,7 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 				amountCents: freshAmount,
 				claimedAt: formatDbTimestamp(now),
 				email,
+				grantCardMerchantIds: fresh.grantCardMerchantIds,
 				purpose,
 				shopOrderId: orderId,
 			})
@@ -259,6 +294,7 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 			email,
 			instructions: shopGrantCardInstructions(order.orderNumber, order.itemNameSnapshot),
 			inviteMessage: SHOP_GRANT_CARD_INVITE_MESSAGE,
+			merchantIds: claimed.grantCardMerchantIds,
 			purpose,
 		})
 	} catch (err) {
@@ -266,14 +302,19 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 	}
 
 	const responseEmail = grant.email?.trim().toLowerCase()
-	if (grant.amountCents !== claimed.amountCents || !responseEmail || responseEmail !== email.trim().toLowerCase()) {
+	const wrongAmount = grant.amountCents !== claimed.amountCents
+	const wrongOwner = !responseEmail || responseEmail !== email.trim().toLowerCase()
+	const merchantMismatch = merchantMismatchReason(grant, claimed.grantCardMerchantIds)
+	if (wrongAmount || wrongOwner || merchantMismatch) {
 		// The money has moved. Cancel it if HCB will let us, and never let this look like a clean issue. The grant id
 		// stays in the reason so a cancel HCB refused is still findable after the page is reloaded.
 		await cancelCardGrant(grant.id).catch(() => undefined)
-		const reason =
-			grant.amountCents === claimed.amountCents
+		const reason = wrongAmount
+			? `HCB issued grant ${grant.id} for ${formatUsd(grant.amountCents / 100)} instead of ${formatUsd(claimed.amountCents / 100)}. Check it on HCB before retrying`
+			: wrongOwner
 				? `HCB reported a different owner for grant ${grant.id}. Cancel it on HCB and check before retrying`
-				: `HCB issued grant ${grant.id} for ${formatUsd(grant.amountCents / 100)} instead of ${formatUsd(claimed.amountCents / 100)}. Check it on HCB before retrying`
+				: (merchantMismatch
+					?? `HCB issued grant ${grant.id} without the merchant lock this order asked for. Check it on HCB before retrying`)
 		await markAmbiguous(claimed.id, reason)
 		return toOutcome({ ...claimed, error: reason, status: HcbGrantCardStatus.AMBIGUOUS })
 	}
@@ -309,6 +350,7 @@ async function handleCreateFailure(
 			amountCents: claimed.amountCents,
 			attemptedAt: parseDbTimestamp(claimed.claimedAt ?? claimed.createdAt),
 			email: claimed.email,
+			merchantIds: claimed.grantCardMerchantIds,
 			purpose,
 		},
 		await claimedGrantIds(),
@@ -360,6 +402,7 @@ export async function reconcileShopGrantCard(id: string, admin: Admin): Promise<
 			amountCents: row.amountCents,
 			attemptedAt: parseDbTimestamp(row.claimedAt ?? row.createdAt),
 			email: row.email,
+			merchantIds: row.grantCardMerchantIds,
 			purpose,
 		},
 		await claimedGrantIds(),
