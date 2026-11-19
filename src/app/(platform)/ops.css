@@ -973,9 +973,9 @@
 		padding-top: 0;
 		border-top: 0;
 	}
-	/* A search row's fields keep their own width rather than stretching into equal columns, so two of them sit together at the left instead of drifting apart on a wide panel. */
+	/* A search row's fields share one width rather than each sizing to its longest option, since a row of controls that are all different widths reads as a mistake. The track stops at 14rem so a wide panel leaves the fields at the left instead of stretching them apart. */
 	.hl-filters--search-first > .hl-filters__grid {
-		grid-template-columns: repeat(auto-fit, minmax(11rem, max-content));
+		grid-template-columns: repeat(auto-fit, minmax(11rem, 14rem));
 		justify-content: start;
 	}
 	/*
@@ -1110,8 +1110,9 @@
 		min-width: 12rem;
 		max-width: 100%;
 	}
-	/* A select in a filter grid takes the width its column gives it, rather than forcing the column wider than the room there is for it, so a row of filters keeps one gap between every pair. */
+	/* A select in a filter grid fills its column rather than sizing to its longest option, so a row of filters has one width for every control and one gap between every pair. */
 	.hl-admin-main .hl-filters__grid .hl-select {
+		width: 100%;
 		min-width: 0;
 	}
 	/* Dates, money and counts are read across a row, so a value like "Nov 12, 2026, 10:00 PM" stays on one line rather than folding into a column of fragments. */
