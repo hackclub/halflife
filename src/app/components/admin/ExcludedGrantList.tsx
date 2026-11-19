@@ -29,7 +29,7 @@ export function ExcludedGrantList({ rows }: Readonly<{ rows: ExcludedGrantRow[] 
 	const sentinel = useRef<HTMLDivElement>(null)
 
 	// The reasons actually present, so the filter offers what this batch has rather than every reason the code can give.
-	const reasons = useMemo(() => Array.from(new Set(rows.map(row => row.reason))).sort(), [rows])
+	const reasons = useMemo(() => Array.from(new Set(rows.map(row => row.reason))).toSorted(), [rows])
 	const term = query.trim().toLowerCase()
 	const filtered = rows.filter(
 		row =>
@@ -54,7 +54,7 @@ export function ExcludedGrantList({ rows }: Readonly<{ rows: ExcludedGrantRow[] 
 	return (
 		<>
 			{/* Filtering happens here rather than in a request: the whole batch is already worked out, so a search narrows it as it is typed. */}
-			<div className="hl-filters">
+			<div className="hl-filters hl-filters--search-inline">
 				<div className="hl-filters__search">
 					<TextInput
 						aria-label="Search excluded projects"
