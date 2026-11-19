@@ -68,7 +68,7 @@ export default async function AdminShopPage() {
 								<td>
 									<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
 								</td>
-								<td className="hl-row" style={{ gap: "0.5rem" }}>
+								<td className="hl-shop-actions">
 									<LinkButton href={`/admin/shop/${item.id}`}>Edit</LinkButton>
 									{item.active ? (
 										<ActionButton

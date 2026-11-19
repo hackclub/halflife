@@ -680,6 +680,16 @@
 	.hl-table--shop td:last-child {
 		min-width: 6.5rem;
 	}
+	/* Edit and Retire are one action pair, so they share the cell's width and line up instead of each ending where its label does. */
+	.hl-shop-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		align-items: stretch;
+	}
+	.hl-shop-actions .hl-btn {
+		width: 100%;
+	}
 	/* ── Tables ────────────────────────────────────────────────────────────── */
 	/* The manage control in a project's actions cell: its own width, with an owner-extension note beneath it. */
 	.hl-row-actions {
