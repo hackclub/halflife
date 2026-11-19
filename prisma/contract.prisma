@@ -564,6 +564,8 @@ namespace public {
     totalCredits         Int
     itemNameSnapshot     String
     unitCostUsd          Float?
+    /// What a grant card for this order pays, in cents: the item's cost to us times the quantity, fixed at purchase so a later catalogue price change cannot change the card. Null on an order that is not a grant card.
+    grantCardCents       Int?
     stockDebited         Boolean?
     status               pg.enum(ShopOrderStatus)        @default("PENDING")
     holdReason           String?

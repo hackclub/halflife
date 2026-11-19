@@ -7,7 +7,7 @@ import {
 	CoinBucket,
 	LedgerKind,
 	PhaseStatus,
-	type ShopDeliveryPreference,
+	ShopDeliveryPreference,
 	ShopFulfillmentStage,
 	ShopItemCategory,
 	ShopOrderStatus,
@@ -20,7 +20,7 @@ import db, { type DbOrTx } from "@/lib/prisma8"
 import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/program"
 import { countryOfTimezone } from "@/lib/regions"
 import { sanitize } from "@/lib/sanitize"
-import { canCancelOrder, cancelBlockedReason } from "@/lib/shop-order"
+import { canCancelOrder, cancelBlockedReason, grantCardCentsFor } from "@/lib/shop-order"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
@@ -394,6 +394,12 @@ export async function purchase(
 			throw new HttpError("NOT_FOUND", "Item not found")
 		if (fresh.stock !== null && fresh.stock < quantity) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
 
+		// A grant card pays the item's cost to us, fixed now so a later catalogue change cannot move it. An item with no cost has no amount to put on a card, so it is refused here rather than ordered and left for staff to work out.
+		const grantCardCents =
+			deliveryPreference === ShopDeliveryPreference.GRANT_CARD ? grantCardCentsFor(fresh.costUsd, quantity) : null
+		if (deliveryPreference === ShopDeliveryPreference.GRANT_CARD && grantCardCents === null)
+			throw new HttpError("VALIDATION_FAILED", "This item has no cost to put on a grant card. Ship it instead.")
+
 		if (fresh.maxPerUser > 0) {
 			const owned = await tx.orm.public.ShopOrder.where({ shopItemId, userId })
 				.where(shopOrder => shopOrder.status.notIn([ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED]))
@@ -417,6 +423,7 @@ export async function purchase(
 
 		const created = await tx.orm.public.ShopOrder.create({
 			deliveryPreference,
+			grantCardCents,
 			idempotencyKey: idempotencyKey ?? null,
 			itemNameSnapshot: fresh.name,
 			quantity,

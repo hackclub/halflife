@@ -1,6 +1,18 @@
 import { ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
 
 /**
+ * What a grant card for an order pays, in cents: the item's cost to us, times the quantity. Null when the item has no cost or the cost rounds to nothing, because then there is no amount a card could carry.
+ *
+ * Rounded per unit, so the figure is the same cost the fulfilment sheet shows, multiplied out.
+ */
+export function grantCardCentsFor(costUsd: number | null, quantity: number): number | null {
+	if (costUsd === null) return null
+	const unitCents = Math.round(costUsd * 100)
+	if (unitCents <= 0) return null
+	return unitCents * quantity
+}
+
+/**
  * Whether a participant can still cancel this order themselves.
  *
  * Only while it is awaiting a decision and nothing has been ordered from a vendor. Once staff mark it ordered to HQ or sent for delivery, the coins are tied to a real purchase and only staff can decide what happens; after it is fulfilled, rejected or cancelled there is nothing left to undo.
