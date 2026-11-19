@@ -675,6 +675,20 @@
 		}
 	}
 
+	/* The fulfilment sheet's participant and status columns keep their room while the window has it, and wrap rather than push the actions out when it does not. */
+	.hl-fulfill-participant {
+		min-width: 12rem;
+	}
+	.hl-fulfill-status {
+		min-width: 10rem;
+	}
+	@media (max-width: 1297px) {
+		.hl-fulfill-participant,
+		.hl-fulfill-status {
+			min-width: 0;
+		}
+	}
+
 	/* The shop catalogue's actions column needs room for its two buttons; the slug ellipsis keeps the rest of the row inside the panel. */
 	.hl-table--shop th:last-child,
 	.hl-table--shop td:last-child {

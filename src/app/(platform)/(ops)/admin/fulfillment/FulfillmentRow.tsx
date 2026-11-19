@@ -42,7 +42,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 		<>
 			<tr>
 				<td className="hl-mono">{order.orderNumber}</td>
-				<td style={{ minWidth: "12rem" }}>
+				<td className="hl-fulfill-participant">
 					<span className="hl-entity-name">{order.user.name ?? "-"}</span>
 					<div className="hl-entity-links">
 						<Link href={`/admin/users/${order.user.id}`}>Admin user</Link>
@@ -72,7 +72,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 				<td className="hl-mono" title={formatUtcDateTime(order.placedAt)}>
 					{formatUtcDateTime(order.placedAt)}
 				</td>
-				<td style={{ minWidth: "10rem" }}>
+				<td className="hl-fulfill-status">
 					<Badge tone={status.tone}>{status.label}</Badge>
 					{order.deliveryPreference ? <div className="hl-hint">{DELIVERY_LABELS[order.deliveryPreference]}</div> : null}
 					{active ? <div className="hl-hint">{STAGE_LABELS[order.fulfillmentStage]}</div> : null}

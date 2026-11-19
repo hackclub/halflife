@@ -122,7 +122,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					<EmptyState>No orders match.</EmptyState>
 				) : (
 					<Table
-						className="hl-table--roomy hl-table--pin-last"
+						className="hl-table--roomy"
 						head={["#", "Participant", "Item", "Cost (USD)", "Country", "Placed", "Status", "Manage"]}
 					>
 						{items.map(order => (
