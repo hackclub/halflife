@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Table } from "@/app/components/ui"
 
-export type ExcludedReasonTone = "danger" | "muted" | "warning"
+export type ExcludedReasonTone = "danger" | "info" | "muted" | "warning"
 
 export interface ExcludedGrantRow {
 	ownerName: string

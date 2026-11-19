@@ -73,14 +73,16 @@ export interface GrantCardProjectRow {
 	weekOneStarter: boolean
 }
 
-export type GrantExclusionTone = "danger" | "muted" | "warning"
+export type GrantExclusionTone = "danger" | "info" | "muted" | "warning"
 
 export interface GrantCardExclusion {
 	ownerName: string
 	projectId: string
 	reason: string
 	title: string
-	/** How the reason reads in the list: something to fix, something already settled, or something merely waiting. */
+	/**
+	 * How the reason reads in the list: something to fix, something already settled, something waiting on the pipeline, or something merely waiting on the maker.
+	 */
 	tone: GrantExclusionTone
 }
 
@@ -356,7 +358,8 @@ async function applyUnifiedGate(
 			projectId: row.projectId,
 			reason: submitted ? "Not in the unified database" : "Could not check the unified database",
 			title: row.title,
-			tone: submitted ? "warning" : "danger",
+			// Waiting on the sync pipeline, not on anything the maker controls, so it reads apart from a maker fix.
+			tone: submitted ? "info" : "danger",
 		})
 	}
 	return { eligible: kept, excluded: gone }

@@ -43,6 +43,7 @@
 	/* Status as text: teal and coin read 2.80 and 1.98:1 on white, so a badge's word takes these inks instead. `danger` stays a whole-colour alias because the admin charts draw with it. */
 	--color-danger: var(--color-coral);
 	--color-success-ink: var(--color-teal-ink);
+	--color-info-ink: var(--color-sky-ink);
 	--color-warning-ink: var(--color-orange-ink);
 	--color-danger-ink: var(--color-coral-deep);
 
@@ -306,9 +307,12 @@
 		min-height: 7rem;
 		resize: vertical;
 	}
-	/* An exclusion's reason carries the colour of what it means: something to fix, something already settled, or something waiting. */
+	/* An exclusion's reason carries the colour of what it means: something to fix, something waiting on the pipeline, something waiting on the maker, or something already settled. */
 	.hl-reason--danger {
 		color: var(--color-danger-ink);
+	}
+	.hl-reason--info {
+		color: var(--color-info-ink);
 	}
 	.hl-reason--warning {
 		color: var(--color-warning-ink);
