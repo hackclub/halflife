@@ -5,6 +5,7 @@ import { THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
 import {
 	CoinBucket,
+	HcbGrantCardStatus,
 	LedgerKind,
 	PhaseStatus,
 	ShopDeliveryPreference,
@@ -515,6 +516,21 @@ async function refundOrder(tx: DbOrTx, order: ShopOrderRow, actorId: string, rea
 	}
 }
 
+/**
+ * A refund would hand the buyer their coins back while the card they were sent still exists. Only a live card blocks it:
+ * one that failed or was cancelled moved no money the order has to answer for.
+ */
+async function assertNoLiveShopCard(tx: DbOrTx, orderId: string): Promise<void> {
+	const card = await tx.orm.public.HcbShopGrantCard.where({ shopOrderId: orderId })
+		.where(row => row.status.in([HcbGrantCardStatus.PENDING, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]))
+		.first()
+	if (card)
+		throw new HttpError(
+			"CONFLICT",
+			"A grant card has been issued for this order, so it cannot be refunded. Cancel the card on the fulfilment sheet first",
+		)
+}
+
 export async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrderRow> {
 	const target = await db.orm.public.ShopOrder.whereUnique({ id: orderId }).select("userId").first()
 	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
@@ -534,6 +550,7 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 				"CONFLICT",
 				"This order has already been ordered or sent, so it cannot be rejected and refunded",
 			)
+		await assertNoLiveShopCard(tx, orderId)
 
 		await refundOrder(tx, order, adminId, reason)
 
@@ -564,6 +581,7 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
 		if (!order || order.userId !== userId) throw new HttpError("NOT_FOUND", "Order not found")
 		if (!canCancelOrder(order))
 			throw new HttpError("CONFLICT", cancelBlockedReason(order) ?? "This order can no longer be cancelled")
+		await assertNoLiveShopCard(tx, orderId)
 
 		await refundOrder(tx, order, userId, reason ?? "cancelled by the participant")
 

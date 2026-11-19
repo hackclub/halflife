@@ -801,10 +801,15 @@ async function markAmbiguous(id: string, reason: string): Promise<void> {
  * A reconcile must never match one of these again. Two of a maker's cards at the same tier are the same amount, so a
  * lost response that is allowed to pair with their other project's grant marks that grant against the wrong row,
  * fails the unique index, and leaves this row pending forever. A grant already recorded here was paid for something.
+ *
+ * Shop cards are included: they are paid to the same makers out of the same balance, and a reconcile in either path
+ * must not claim a grant the other one already recorded.
  */
-async function claimedGrantIds(): Promise<Set<string>> {
+export async function claimedGrantIds(): Promise<Set<string>> {
 	const claimed = new Set<string>()
 	for (const card of await db.orm.public.HcbGrantCard.where({}).select("hcbCardGrantId").all())
+		if (card.hcbCardGrantId) claimed.add(bareGrantId(card.hcbCardGrantId))
+	for (const card of await db.orm.public.HcbShopGrantCard.where({}).select("hcbCardGrantId").all())
 		if (card.hcbCardGrantId) claimed.add(bareGrantId(card.hcbCardGrantId))
 	for (const topUp of await db.orm.public.HcbGrantTopUp.where({}).select("grantHashid").all())
 		if (topUp.grantHashid) claimed.add(bareGrantId(topUp.grantHashid))
