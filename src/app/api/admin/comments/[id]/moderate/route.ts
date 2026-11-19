@@ -1,6 +1,6 @@
 import { ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { hideComment } from "@/lib/feed"
+import { hideComment, restoreComment } from "@/lib/feed"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { moderatePostSchema } from "@/lib/schemas/feed"
@@ -12,7 +12,7 @@ interface Params {
 }
 
 /**
- * Hide a comment. Hiding only: a hidden comment is out of the feed and out of the comment count, and there is no moderator-facing restore – the owner cannot delete it either (that would decrement the count twice), so unhiding would need a new pair of operations rather than a flag flip.
+ * Hide a comment, or put a hidden one back. Hiding takes it out of the feed and out of the post's comment count; restoring does both in reverse, in one transaction, so the count and the rows cannot disagree.
  */
 export const POST = withWritePermission(
 	Permission.MANAGE_FEED,
@@ -34,5 +34,25 @@ export const POST = withWritePermission(
 		})
 
 		return ok({ hidden: true })
+	},
+)
+
+/** Put it back. */
+export const DELETE = withWritePermission(
+	Permission.MANAGE_FEED,
+	async (_req: Request, { params, gate }: Params & AuthedContext) => {
+		const { id } = await params
+
+		await restoreComment(id)
+
+		await logAudit({
+			action: AuditAction.ADMIN_RESTORE_COMMENT,
+			actorEmail: gate.user.email,
+			actorId: gate.user.id,
+			targetId: id,
+			targetType: "PostComment",
+		})
+
+		return ok({ restored: true })
 	},
 )

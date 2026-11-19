@@ -93,9 +93,7 @@ export default async function AdminFeedPage() {
 							))}
 						</Table>
 					)}
-					<p className="hl-hint">
-						A hidden reel stays as a record; restoring puts it back. A hidden comment cannot be restored yet.
-					</p>
+					<p className="hl-hint">A hidden reel or comment stays as a record; restoring puts it back.</p>
 				</Panel>
 
 				<Panel title="Recent comments">
@@ -116,7 +114,12 @@ export default async function AdminFeedPage() {
 									<td className="hl-mono">{formatUtcDateTime(comment.createdAt)}</td>
 									<td>
 										{comment.hiddenAt ? (
-											<span className="hl-hint">hidden</span>
+											<ActionButton
+												confirm="Put this comment back in the feed?"
+												label="Restore"
+												method="DELETE"
+												url={`/api/admin/comments/${comment.id}/moderate`}
+											/>
 										) : (
 											<ActionButton
 												confirm="Hide this comment from every feed?"
