@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { ExcludedGrantList } from "@/app/components/admin/ExcludedGrantList"
 import { ExportGrantCardsCsvForm } from "@/app/components/forms/ExportGrantCardsCsvForm"
 import { HcbConnectForm } from "@/app/components/forms/HcbConnectForm"
 import { IssueGrantCardsForm } from "@/app/components/forms/IssueGrantCardsForm"
@@ -142,18 +143,7 @@ export default async function AdminGrantsPage() {
 
 			{preview.excluded.length > 0 ? (
 				<Panel title="Excluded" wide>
-					<Table head={["Project", "Maker", "Reason"]}>
-						{preview.excluded.map(row => (
-							<tr key={row.projectId}>
-								<td>
-									{row.title || "Untitled"}
-									<div className="hl-hint hl-mono">{row.projectId}</div>
-								</td>
-								<td>{row.ownerName}</td>
-								<td>{row.reason}</td>
-							</tr>
-						))}
-					</Table>
+					<ExcludedGrantList rows={preview.excluded} />
 				</Panel>
 			) : null}
 
