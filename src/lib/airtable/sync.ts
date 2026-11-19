@@ -13,6 +13,7 @@ import {
 import { deflationFor, deflationJustification, deflationReasonText, numberCell } from "@/lib/airtable/deflation"
 import { existingColumns } from "@/lib/airtable/field-probe"
 import {
+	additionalJustificationCell,
 	alternateTrackingJustification,
 	justificationValues,
 	reviewerTechnicalFeaturesCell,
@@ -21,6 +22,7 @@ import {
 import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import type { JustificationRow, JustificationRowMissing } from "@/lib/airtable/unified-justification"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
+import { projectUrl } from "@/lib/app-url"
 import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
@@ -223,8 +225,9 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	)
 
 	const fields = toFields(YSWS_SUBMISSION.fields, {
-		// The reviewer's note belongs to the decision in front of the row. A new hand-in has none, so a re-submission clears the previous review's notes along with its status; an approved row is left alone, because an admin refresh must not erase what the reviewer wrote.
-		additionalJustification: phaseStatus === PhaseStatus.in_review ? "" : undefined,
+		// The reviewer's note belongs to the decision in front of the row. A new hand-in has none, so a re-submission clears the previous review's notes along with its status, leaving the project link; an approved row is left alone, because an admin refresh must not erase what the reviewer wrote.
+		additionalJustification:
+			phaseStatus === PhaseStatus.in_review ? additionalJustificationCell(null, projectUrl(themeProjectId)) : undefined,
 		codeUrl: project.githubRepo ?? "",
 		email: user.email,
 		firstName: firstName ?? "",
@@ -502,7 +505,7 @@ function addressCells(pii: DecryptedAddress): { [_: string]: string } {
  *
  * `deflationReason` is Ari's `review.justification.deflation_reason`: the reviewer's own account of why they approved fewer hours than the row claims. It is preferred for `Justification - Deflation Justification`; without it that column falls back to the review's internal reason. The maker-facing note is never used there – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it says nothing about the cut.
  *
- * The review's internal reason is also written to `Justification - Additional Justification`, which is where the pipeline reads Ari's "Justification notes" (`review.audit_note`) from. `justificationNotes` is that note; undefined leaves the column alone (an older caller), null clears it for a decision that no longer stands.
+ * The review's internal reason is also written to `Justification - Additional Justification`, which is where the pipeline reads Ari's "Justification notes" (`review.audit_note`) from, with a link to the project after it (see `additionalJustificationCell`). `justificationNotes` is that note; undefined leaves the column alone (an older caller), null clears the note for a decision that no longer stands and leaves the link.
  *
  * The reviewer's technical features come from the standing review (`SubmissionReview.technicalFeatures`, Ari's `review.justification.technical_features`). `Justification - Specific Technical Features` carries those words and nothing else – a decision overwrites whatever an earlier account or journal text put there, and a decision made without them writes an empty cell. A refresh never re-adds the maker's account.
  */
@@ -569,9 +572,12 @@ export async function syncReviewDecisionToYsws(
 		const hasDeflationColumns = writable.has(overrideHoursSpent.name) && writable.has(deflationField.name)
 		const hasAlternateColumn = writable.has(alternateTrackingField.name)
 		const hasSpecificColumn = writable.has(specificFeaturesField.name)
-		// The reviewer's "Justification notes", written verbatim. Undefined is a caller that does not know the column; null or blank clears it, so a reversal or a decision with no note cannot leave the previous review's words on the row.
+		// The reviewer's "Justification notes", written verbatim, with the project link after it. Undefined is a caller that does not know the column; null or blank clears the note, so a reversal or a decision with no note cannot leave the previous review's words on the row.
 		if (writable.has(additionalJustification.name) && justificationNotes !== undefined)
-			additionalFields[fieldKey(additionalJustification)] = justificationNotes?.trim() ?? ""
+			additionalFields[fieldKey(additionalJustification)] = additionalJustificationCell(
+				justificationNotes,
+				projectUrl(themeProjectId),
+			)
 		if (writable.size > 0)
 			try {
 				const [project, submission] = await Promise.all([
