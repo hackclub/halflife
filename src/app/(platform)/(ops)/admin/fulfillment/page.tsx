@@ -78,6 +78,12 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	const filterKey = filterParams.toString()
 	const listParams = new URLSearchParams(filterParams)
 	listParams.set("limit", String(FULFILLMENT_PAGE_SIZE))
+	// A row's status links to the sheet filtered to its stage, so the address keeps the other filters but not the page's own stage.
+	const linkParams = new URLSearchParams(
+		Object.entries({ delivery: search.delivery, from: search.from, method: search.method, to: search.to }).filter(
+			(entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== "",
+		),
+	)
 
 	return (
 		<div className="hl-stack hl-page-wide">
@@ -105,7 +111,15 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 			{orders ? (
 				<>
 					<Panel>
-						<FilterBar footer={<span className="hl-hint">Dates are UTC.</span>} resetHref="/admin/fulfillment">
+						<FilterBar
+							footer={
+								<span className="hl-hint">
+									Dates are UTC. A grant card request means the participant asked for the item&rsquo;s value on an HCB
+									card instead of shipping.
+								</span>
+							}
+							resetHref="/admin/fulfillment"
+						>
 							<Field label="Placed from">
 								<TextInput defaultValue={search.from ?? ""} name="from" type="date" />
 							</Field>
@@ -151,14 +165,11 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 						{/* Keyed on the filters, so a new search starts a new list rather than appending to the old one. */}
 						<FulfillmentList
 							baseUrl={`/api/admin/fulfillment?${listParams}`}
+							filters={linkParams.toString()}
 							initialCursor={orders.nextCursor}
 							initialRows={orders.items.map(toFulfillmentJson)}
 							key={filterKey}
 						/>
-						<p className="hl-hint">
-							A grant card request means the participant asked for the item&rsquo;s value on an HCB card instead of
-							shipping.
-						</p>
 					</Panel>
 				</>
 			) : null}

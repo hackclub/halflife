@@ -23,9 +23,10 @@ const isOrderPage = (value: unknown): value is OrderPage =>
  */
 export function FulfillmentList({
 	baseUrl,
+	filters,
 	initialCursor,
 	initialRows,
-}: Readonly<{ baseUrl: string; initialCursor: string | null; initialRows: FulfillmentOrderJson[] }>) {
+}: Readonly<{ baseUrl: string; filters: string; initialCursor: string | null; initialRows: FulfillmentOrderJson[] }>) {
 	const { cursor, failed, loadMore, loading, rows, sentinel } = useInfiniteRows<FulfillmentOrderJson>({
 		baseUrl,
 		initialCursor,
@@ -43,7 +44,7 @@ export function FulfillmentList({
 				head={["#", "Participant", "Item", "Cost (USD)", "Country", "Placed", "Status", "Manage"]}
 			>
 				{rows.map(order => (
-					<FulfillmentRow key={order.id} order={order} />
+					<FulfillmentRow filters={filters} key={order.id} order={order} />
 				))}
 			</Table>
 			<div aria-live="polite" className="hl-directory-footer">
