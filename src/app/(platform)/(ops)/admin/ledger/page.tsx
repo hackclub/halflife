@@ -74,30 +74,34 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 
 			<Panel>
 				<FilterBar footer={<span className="hl-hint">Dates and times are UTC.</span>} resetHref="/admin/ledger">
-					<Field label="Participant">
-						<TextInput
-							defaultValue={q ?? ""}
-							name="q"
-							placeholder={includePii ? "Search by name or email" : "Search by name"}
-							style={{ maxWidth: "20rem" }}
-						/>
-					</Field>
-					<Field label="Kind">
-						<Select defaultValue={kind ?? ""} name="kind">
-							<option value="">Any kind</option>
-							{Object.values(LedgerKind).map(value => (
-								<option key={value} value={value}>
-									{ledgerKindLabel(value)}
-								</option>
-							))}
-						</Select>
-					</Field>
-					<Field label="From">
-						<TextInput defaultValue={from ?? ""} name="from" type="date" />
-					</Field>
-					<Field label="To">
-						<TextInput defaultValue={to ?? ""} name="to" type="date" />
-					</Field>
+					<div className="hl-filter-group">
+						<Field label="Participant">
+							<TextInput
+								defaultValue={q ?? ""}
+								name="q"
+								placeholder={includePii ? "Search by name or email" : "Search by name"}
+								style={{ maxWidth: "20rem" }}
+							/>
+						</Field>
+						<Field label="Kind">
+							<Select defaultValue={kind ?? ""} name="kind">
+								<option value="">Any kind</option>
+								{Object.values(LedgerKind).map(value => (
+									<option key={value} value={value}>
+										{ledgerKindLabel(value)}
+									</option>
+								))}
+							</Select>
+						</Field>
+					</div>
+					<div className="hl-filter-group">
+						<Field label="From">
+							<TextInput defaultValue={from ?? ""} name="from" type="date" />
+						</Field>
+						<Field label="To">
+							<TextInput defaultValue={to ?? ""} name="to" type="date" />
+						</Field>
+					</div>
 				</FilterBar>
 			</Panel>
 

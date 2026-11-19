@@ -1649,6 +1649,28 @@ html:has(.hl-admin) {
 	cursor: default;
 	background: var(--color-surface-sunken);
 }
+/* A filter bar whose fields come in groups – the date range, then the selects – wraps by group rather than one field at a time, so a row never ends with a single field stranded on the next line. */
+.hl-filters__grid:has(> .hl-filter-group) {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1rem;
+}
+.hl-filter-group {
+	display: grid;
+	flex: 0 1 auto;
+	/* One column per field in the group, whatever the group's own width works out to, so the pair stays a pair and the trio a trio. */
+	grid-auto-columns: minmax(11rem, 13rem);
+	grid-auto-flow: column;
+	gap: 0.75rem 1rem;
+}
+@media (max-width: 40rem) {
+	/* Below the width a pair of fields fits, each group stacks its fields one per line. */
+	.hl-filter-group {
+		grid-auto-columns: auto;
+		grid-auto-flow: row;
+		width: 100%;
+	}
+}
 /* A number is a short value – days, minutes, cents – so it takes a field's own width rather than the whole form's, the way a select in the console does. */
 .hl-admin-main .hl-input[type="number"] {
 	width: min(100%, 9rem);

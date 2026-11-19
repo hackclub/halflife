@@ -120,44 +120,48 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 							}
 							resetHref="/admin/fulfillment"
 						>
-							<Field label="Placed from">
-								<TextInput defaultValue={search.from ?? ""} name="from" type="date" />
-							</Field>
-							<Field label="Placed to">
-								<TextInput defaultValue={search.to ?? ""} name="to" type="date" />
-							</Field>
-							<Field label="Delivery">
-								<Select defaultValue={filters.delivery ?? ""} name="delivery">
-									<option value="">Any delivery</option>
-									<option value="NONE">Not chosen</option>
-									{Object.entries(DELIVERY_LABELS).map(([value, label]) => (
-										<option key={value} value={value}>
-											{label}
-										</option>
-									))}
-								</Select>
-							</Field>
-							<Field label="Method">
-								<Select defaultValue={filters.method ?? ""} name="method">
-									<option value="">Any method</option>
-									<option value="NONE">Method not chosen</option>
-									{Object.entries(METHOD_LABELS).map(([value, label]) => (
-										<option key={value} value={value}>
-											{label}
-										</option>
-									))}
-								</Select>
-							</Field>
-							<Field label="Stage">
-								<Select defaultValue={filters.stage ?? ""} name="stage">
-									<option value="">Any stage</option>
-									{Object.entries(STAGE_LABELS).map(([value, label]) => (
-										<option key={value} value={value}>
-											{label}
-										</option>
-									))}
-								</Select>
-							</Field>
+							<div className="hl-filter-group">
+								<Field label="Placed from">
+									<TextInput defaultValue={search.from ?? ""} name="from" type="date" />
+								</Field>
+								<Field label="Placed to">
+									<TextInput defaultValue={search.to ?? ""} name="to" type="date" />
+								</Field>
+							</div>
+							<div className="hl-filter-group">
+								<Field label="Delivery">
+									<Select defaultValue={filters.delivery ?? ""} name="delivery">
+										<option value="">Any delivery</option>
+										<option value="NONE">Not chosen</option>
+										{Object.entries(DELIVERY_LABELS).map(([value, label]) => (
+											<option key={value} value={value}>
+												{label}
+											</option>
+										))}
+									</Select>
+								</Field>
+								<Field label="Method">
+									<Select defaultValue={filters.method ?? ""} name="method">
+										<option value="">Any method</option>
+										<option value="NONE">Method not chosen</option>
+										{Object.entries(METHOD_LABELS).map(([value, label]) => (
+											<option key={value} value={value}>
+												{label}
+											</option>
+										))}
+									</Select>
+								</Field>
+								<Field label="Stage">
+									<Select defaultValue={filters.stage ?? ""} name="stage">
+										<option value="">Any stage</option>
+										{Object.entries(STAGE_LABELS).map(([value, label]) => (
+											<option key={value} value={value}>
+												{label}
+											</option>
+										))}
+									</Select>
+								</Field>
+							</div>
 						</FilterBar>
 					</Panel>
 
