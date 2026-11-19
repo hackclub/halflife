@@ -39,9 +39,17 @@ const UTC_DATE_TIME = new Intl.DateTimeFormat("en-GB", {
 	year: "numeric",
 })
 
+/** en-GB spells September "Sept"; every month is trimmed to three letters so the console's columns stay even. */
+function formatPinned(formatter: Intl.DateTimeFormat, at: Date | number): string {
+	return formatter
+		.formatToParts(at)
+		.map(part => (part.type === "month" ? part.value.slice(0, 3) : part.value))
+		.join("")
+}
+
 /** An audit or moderation timestamp, the one format every admin page uses, pinned to UTC: "18 Nov 2026, 22:00". */
 export function formatUtcDateTime(at: Date | number): string {
-	return UTC_DATE_TIME.format(at)
+	return formatPinned(UTC_DATE_TIME, at)
 }
 
 const UTC_DATE = new Intl.DateTimeFormat("en-GB", {
@@ -53,5 +61,5 @@ const UTC_DATE = new Intl.DateTimeFormat("en-GB", {
 
 /** A calendar day as the console writes it, in UTC, so a date reads the same on the server and in any browser: "18 Nov 2026". */
 export function formatUtcDate(at: Date | number): string {
-	return UTC_DATE.format(at)
+	return formatPinned(UTC_DATE, at)
 }
