@@ -978,10 +978,6 @@
 		grid-template-columns: repeat(auto-fit, minmax(11rem, max-content));
 		justify-content: start;
 	}
-	/* A select in a filter grid takes the width its column gives it, rather than forcing the column wider than the room there is for it. */
-	.hl-filters__grid .hl-select {
-		min-width: 0;
-	}
 	/*
 	 * A bar with a search and no notes of its own: the search takes its own line, and the actions take the end of the fields' line when it has room. The wrap is decided by the content rather than a screen width, so a panel that is wide because the console's sidebar folded away keeps them beside the fields, and a narrow one drops them below.
 	 */
@@ -1113,6 +1109,10 @@
 		width: auto;
 		min-width: 12rem;
 		max-width: 100%;
+	}
+	/* A select in a filter grid takes the width its column gives it, rather than forcing the column wider than the room there is for it, so a row of filters keeps one gap between every pair. */
+	.hl-admin-main .hl-filters__grid .hl-select {
+		min-width: 0;
 	}
 	/* Dates, money and counts are read across a row, so a value like "Nov 12, 2026, 10:00 PM" stays on one line rather than folding into a column of fragments. */
 	.hl-admin-main .hl-table td.hl-mono {
@@ -1648,6 +1648,10 @@ html:has(.hl-admin) {
 	color: var(--color-ink-muted);
 	cursor: default;
 	background: var(--color-surface-sunken);
+}
+/* A number is a short value – days, minutes, cents – so it takes a field's own width rather than the whole form's, the way a select in the console does. */
+.hl-admin-main .hl-input[type="number"] {
+	width: min(100%, 9rem);
 }
 /* A disabled control reads as unavailable, not as a faded primary: neutral ground and muted text. */
 .hl-admin-main .hl-btn:disabled {
