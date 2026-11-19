@@ -981,6 +981,11 @@
 	}
 
 	/* ── Layout helpers ────────────────────────────────────────────────────── */
+	/* A pasted run of text with no spaces, such as a URL or a keyboard mash, wraps inside its panel rather than running past the edge. */
+	.hl-wrap-anywhere {
+		overflow-wrap: anywhere;
+	}
+
 	/* ── Section jump nav ──────────────────────────────────────────────────── */
 	/* A long page's sections, as one row of links that stay short. Sections clear the sticky header when reached. */
 	.hl-jump {
