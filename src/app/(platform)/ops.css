@@ -588,16 +588,6 @@
 			box-shadow: inset -12px 0 10px -10px rgb(16 15 48 / 0.2);
 		}
 	}
-	/* Phone: filter fields in two columns, and the attention cards share the row. */
-	@media (max-width: 600px) {
-		.hl-filters__grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.hl-attention a {
-			flex: 1 1 8rem;
-			min-width: 0;
-		}
-	}
 	@media (max-width: 600px) {
 		.hl-admin-email,
 		.hl-admin-kbd {
@@ -1449,4 +1439,15 @@ html:has(.hl-admin) {
 .hl-admin-main .hl-select,
 .hl-admin-main .hl-textarea {
 	border-width: 1px;
+}
+
+/* Phone overrides for the filter grid and attention cards. Kept last so they win over the base rules above. */
+@media (max-width: 600px) {
+	.hl-filters__grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.hl-attention a {
+		flex: 1 1 8rem;
+		min-width: 0;
+	}
 }
