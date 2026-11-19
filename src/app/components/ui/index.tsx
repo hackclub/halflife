@@ -178,8 +178,17 @@ export function FilterBar({
 	leading?: ReactNode
 	resetHref: string
 }>) {
+	// A search row starts its own band, and a bar with no notes of its own can keep the actions on the fields' line rather than giving them a row with nothing beside them.
+	const className = [
+		"hl-filters",
+		leading === undefined ? "" : "hl-filters--search-first",
+		leading !== undefined && footer === undefined ? "hl-filters--actions-inline" : "",
+	]
+		.filter(Boolean)
+		.join(" ")
+
 	return (
-		<form className={leading === undefined ? "hl-filters" : "hl-filters hl-filters--search-first"} method="get">
+		<form className={className} method="get">
 			{leading}
 			<div className="hl-filters__grid">{children}</div>
 			<div className="hl-filters__footer">

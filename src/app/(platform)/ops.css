@@ -973,6 +973,36 @@
 		padding-top: 0;
 		border-top: 0;
 	}
+	/* A search row's fields keep their own width rather than stretching into equal columns, so two of them sit together at the left instead of drifting apart on a wide panel. */
+	.hl-filters--search-first > .hl-filters__grid {
+		grid-template-columns: repeat(auto-fit, minmax(11rem, max-content));
+		justify-content: start;
+	}
+	/* A select in a filter grid takes the width its column gives it, rather than forcing the column wider than the room there is for it. */
+	.hl-filters__grid .hl-select {
+		min-width: 0;
+	}
+	/*
+	 * A bar with a search and no notes of its own: the search takes its own line, and the actions take the end of the fields' line when it has room. The wrap is decided by the content rather than a screen width, so a panel that is wide because the console's sidebar folded away keeps them beside the fields, and a narrow one drops them below.
+	 */
+	.hl-filters--actions-inline {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-end;
+	}
+	.hl-filters--actions-inline > .hl-filters__search {
+		flex: 1 1 100%;
+	}
+	.hl-filters--actions-inline > .hl-filters__grid {
+		/* Its basis is the room two fields need, so the line fits them beside the actions sooner; it then takes any spare width, which the fields keep to their own size and leave empty at the right. */
+		flex: 1 1 23rem;
+		min-width: 0;
+	}
+	.hl-filters--actions-inline > .hl-filters__footer {
+		flex: 0 0 auto;
+		padding: 0;
+		margin-left: auto;
+	}
 
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
 	.hl-count {
