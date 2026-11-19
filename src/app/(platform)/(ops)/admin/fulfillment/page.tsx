@@ -4,8 +4,8 @@ import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
 import { Badge, EmptyState, Field, FilterBar, PageHeader, Panel, Select, Table, TextInput } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
-import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
-import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
+import { ShopDeliveryPreference, ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
+import { DELIVERY_LABELS, METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { PRINTER_AWARD_LABELS } from "@/lib/printer-award"
@@ -22,6 +22,7 @@ export const dynamic = "force-dynamic"
 
 interface Search {
 	cursor?: SearchParamValue
+	delivery?: SearchParamValue
 	from?: SearchParamValue
 	method?: SearchParamValue
 	stage?: SearchParamValue
@@ -42,6 +43,7 @@ function utcDay(v?: string): Date | undefined {
 function filtersFrom(s: FirstValues<Search>): FulfillmentFilters {
 	const to = utcDay(s.to)
 	return {
+		delivery: s.delivery === "NONE" ? "NONE" : Object.values(ShopDeliveryPreference).find(d => d === s.delivery),
 		method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find(m => m === s.method),
 		// The "to" day is inclusive, so the bound is the midnight after it.
 		placedBefore: to ? new Date(to.getTime() + DAY_MS) : undefined,
@@ -92,6 +94,17 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					</Field>
 					<Field label="Placed to">
 						<TextInput defaultValue={search.to ?? ""} name="to" type="date" />
+					</Field>
+					<Field label="Delivery">
+						<Select defaultValue={filters.delivery ?? ""} name="delivery">
+							<option value="">Any delivery</option>
+							<option value="NONE">Not chosen</option>
+							{Object.entries(DELIVERY_LABELS).map(([value, label]) => (
+								<option key={value} value={value}>
+									{label}
+								</option>
+							))}
+						</Select>
 					</Field>
 					<Field label="Method">
 						<Select defaultValue={filters.method ?? ""} name="method">

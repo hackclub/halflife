@@ -31,6 +31,8 @@ export const fulfillmentStageOf = (order: {
 	order.status === ShopOrderStatus.CANCELLED ? ShopFulfillmentStage.CANCELLED : order.fulfillmentStage
 
 export interface FulfillmentFilters {
+	/** `"NONE"` is an order whose buyer never chose between shipping and a card (placed before the question was asked). */
+	delivery?: ShopDeliveryPreference | "NONE"
 	/** `"NONE"` is an order nobody has chosen a method for yet. */
 	method?: ShopFulfillmentMethod | "NONE"
 	/** Exclusive. */
@@ -115,7 +117,7 @@ export async function listFulfillmentOrders(
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
 	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
-	const { method, placedBefore, placedFrom, stage } = filters
+	const { delivery, method, placedBefore, placedFrom, stage } = filters
 	let filtered = db.orm.public.ShopOrder.where(order => order.status.in(FULFILLMENT_ORDER_STATUSES)).orderBy([
 		order => order.placedAt.desc(),
 		order => order.id.desc(),
@@ -127,6 +129,8 @@ export async function listFulfillmentOrders(
 				...(placedBefore ? [order.placedAt.lt(formatDbTimestamp(placedBefore))] : []),
 			),
 		)
+	if (delivery === "NONE") filtered = filtered.where(order => order.deliveryPreference.isNull())
+	else if (delivery) filtered = filtered.where({ deliveryPreference: delivery })
 	if (method === "NONE") filtered = filtered.where(order => order.fulfillmentMethod.isNull())
 	else if (method) filtered = filtered.where({ fulfillmentMethod: method })
 	if (stage)

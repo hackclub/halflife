@@ -8,8 +8,8 @@ import { OrderDecision } from "@/app/components/forms/OrderDecision"
 import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
 import { Badge } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
-import { HcbGrantCardStatus, type ShopDeliveryPreference, type ShopOrderStatus } from "@/lib/enums"
-import { STAGE_LABELS } from "@/lib/fulfillment"
+import { HcbGrantCardStatus, type ShopOrderStatus } from "@/lib/enums"
+import { DELIVERY_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { formatUsd } from "@/lib/money"
 import type { FulfillmentOrderRow } from "@/lib/queries/admin"
 
@@ -19,12 +19,6 @@ const STATUS: { [_ in ShopOrderStatus]: { label: string; tone: "success" | "warn
 	ON_HOLD: { label: "On hold", tone: "warning" },
 	PENDING: { label: "Pending", tone: "warning" },
 	REJECTED: { label: "Rejected", tone: "danger" },
-}
-
-/** The buyer's choice, in the words staff act on. */
-const DELIVERY_LABELS: { [_ in ShopDeliveryPreference]: string } = {
-	GRANT_CARD: "Grant card requested",
-	SHIP: "Ship to address",
 }
 
 /** Where a shop card grant has got to, in the words the person issuing it needs. */
@@ -94,11 +88,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 				<td className="hl-fulfill-status">
 					<Badge tone={status.tone}>{status.label}</Badge>
 					{order.deliveryPreference ? <div className="hl-hint">{DELIVERY_LABELS[order.deliveryPreference]}</div> : null}
-					{order.grantCard?.status === HcbGrantCardStatus.ISSUED ? (
-						<div className="hl-hint">Grant card issued</div>
-					) : order.grantCard?.status === HcbGrantCardStatus.AMBIGUOUS ? (
-						<div className="hl-hint">Grant card needs checking</div>
-					) : null}
+					{order.grantCard ? <div className="hl-hint">Card: {CARD_STATUS[order.grantCard.status].label}</div> : null}
 					{active ? <div className="hl-hint">{STAGE_LABELS[order.fulfillmentStage]}</div> : null}
 					{tracking ? <div className="hl-hint hl-mono">{tracking}</div> : null}
 					{order.status === "CANCELLED" && order.cancelledAt ? (
