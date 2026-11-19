@@ -4,6 +4,7 @@ import {
 	cardGrantCreateBody,
 	type HcbCardGrantList,
 	type HcbCardGrantSummary,
+	purposeMatches,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
 
@@ -96,6 +97,17 @@ describe("reconcileCardGrantIssue", () => {
 	test("a title-less legacy attempt still reconciles through the prefix", () => {
 		const legacy = { ...expected, purpose: "Half Life parts" }
 		expect(reconcileCardGrantIssue(listed([grant()]), legacy)).toEqual({ grantId: "cdg_1", kind: "landed" })
+	})
+})
+
+describe("purposeMatches", () => {
+	test("a bare prize line catches a prize-titled card and a legacy parts-titled one", () => {
+		expect(purposeMatches("Half Life prize – Soldering kit", "Half Life prize")).toBe(true)
+		expect(purposeMatches("Half Life parts – Soldering kit", "Half Life prize")).toBe(true)
+	})
+
+	test("a titled purpose still matches only itself", () => {
+		expect(purposeMatches("Half Life prize – Clock", "Half Life prize – Lamp")).toBe(false)
 	})
 })
 

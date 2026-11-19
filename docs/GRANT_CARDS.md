@@ -519,7 +519,7 @@ Starter cards are issued through `scripts/starter-funding-export.ts`. With no fl
 
 ## Shop orders
 
-A shop order can ask for its value as a card instead of shipping (`ShopDeliveryPreference.GRANT_CARD`). The order carries `grantCardCents`, fixed at purchase from the item's cost to us times the quantity. An item with no cost is refused at checkout when a card is asked for, because there is no amount to put on it.
+A shop order can ask for its value as a card instead of shipping (`ShopDeliveryPreference.GRANT_CARD`). The order carries `grantCardCents`, fixed at purchase from the item's cost to us times the quantity. An item with no cost is refused at checkout when a card is asked for, because there is no amount to put on it. The HCB purpose is `Half Life prize – <item>`, the instructions name the order and ask the buyer to purchase the item, and the invitation names the item too.
 
 `HcbShopGrantCard` is that card's record: one row per attempt, and at most one live row per order. Staff issue it from the order's panel on `/admin/fulfillment`:
 

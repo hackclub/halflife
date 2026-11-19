@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+	GRANT_CARD_PURPOSE_MAX,
 	grantCardAmountCents,
 	grantCardCapUsd,
 	grantCardFingerprint,
@@ -7,6 +8,7 @@ import {
 	grantCardPurpose,
 	merchantIdsEqual,
 	normalizeMerchantIds,
+	PRIZE_GRANT_CARD_PURPOSE,
 	remainingAfterCancelledCards,
 } from "@/lib/grant-card-policy"
 
@@ -76,6 +78,12 @@ describe("grant card policy", () => {
 		expect(grantCardPurpose("  Blinky\n  rig  ")).toBe("Half Life parts – Blinky rig")
 		expect(grantCardPurpose("   ")).toBe("Half Life parts")
 		expect(grantCardPurpose(null)).toBe("Half Life parts")
+	})
+
+	test("a custom prefix carries its own bare line and still fits HCB's limit", () => {
+		expect(grantCardPurpose("Iron", PRIZE_GRANT_CARD_PURPOSE)).toBe("Half Life prize – Iron")
+		expect(grantCardPurpose(null, PRIZE_GRANT_CARD_PURPOSE)).toBe("Half Life prize")
+		expect(grantCardPurpose("A very long item name", PRIZE_GRANT_CARD_PURPOSE)).toHaveLength(GRANT_CARD_PURPOSE_MAX)
 	})
 
 	test("the instructions name the project and carry its link when an origin is known", () => {

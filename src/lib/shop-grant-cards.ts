@@ -3,7 +3,7 @@ import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { lockUserCredit } from "@/lib/currency"
 import { HcbGrantCardStatus, PayoutSource, ShopOrderStatus } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
-import { grantCardPurpose, merchantIdsEqual } from "@/lib/grant-card-policy"
+import { merchantIdsEqual } from "@/lib/grant-card-policy"
 import { ABANDONED_CARD_ATTEMPT_MS, claimedGrantIds } from "@/lib/grant-cards"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {
@@ -21,9 +21,9 @@ import { formatUsd } from "@/lib/money"
 import db, { type DbOrTx, isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import {
-	SHOP_GRANT_CARD_INVITE_MESSAGE,
 	shopGrantCardBlockReason,
 	shopGrantCardInstructions,
+	shopGrantCardInviteMessage,
 	shopGrantCardPurpose,
 } from "@/lib/shop-grant-card-policy"
 import { isLiveShopCard } from "@/lib/shop-order"
@@ -293,12 +293,12 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 			amountCents: claimed.amountCents,
 			email,
 			instructions: shopGrantCardInstructions(order.orderNumber, order.itemNameSnapshot),
-			inviteMessage: SHOP_GRANT_CARD_INVITE_MESSAGE,
+			inviteMessage: shopGrantCardInviteMessage(order.itemNameSnapshot),
 			merchantIds: claimed.grantCardMerchantIds,
 			purpose,
 		})
 	} catch (err) {
-		return handleCreateFailure(claimed, err, admin, { ip, userAgent })
+		return handleCreateFailure(claimed, err, admin, { ip, userAgent }, purpose)
 	}
 
 	const responseEmail = grant.email?.trim().toLowerCase()
@@ -329,6 +329,7 @@ async function handleCreateFailure(
 	err: unknown,
 	admin: Admin,
 	request: RequestInfo,
+	expectedPurpose: string,
 ): Promise<ShopGrantCardOutcome> {
 	const status = hcbStatusOf(err)
 	const message = messageOf(err)
@@ -343,7 +344,7 @@ async function handleCreateFailure(
 		await markAmbiguous(claimed.id, reason)
 		return toOutcome({ ...claimed, error: reason, status: HcbGrantCardStatus.AMBIGUOUS })
 	}
-	const purpose = claimed.purpose ?? grantCardPurpose()
+	const purpose = claimed.purpose ?? expectedPurpose
 	const reconciled = reconcileCardGrantIssue(
 		list,
 		{
@@ -394,7 +395,11 @@ export async function reconcileShopGrantCard(id: string, admin: Admin): Promise<
 	if (row.status !== HcbGrantCardStatus.AMBIGUOUS && row.status !== HcbGrantCardStatus.FAILED && !abandoned)
 		throw new HttpError("CONFLICT", "Only an ambiguous or failed grant can be checked against HCB")
 
-	const purpose = row.purpose ?? grantCardPurpose()
+	const order =
+		row.purpose === null
+			? await db.orm.public.ShopOrder.whereUnique({ id: row.shopOrderId }).select("itemNameSnapshot").first()
+			: null
+	const purpose = row.purpose ?? shopGrantCardPurpose(order?.itemNameSnapshot ?? "")
 	const list = await listOrganizationCardGrants()
 	const reconciled = reconcileCardGrantIssue(
 		list,

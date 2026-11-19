@@ -1,7 +1,12 @@
 import "server-only"
 import { z } from "zod"
 import { HttpError } from "@/lib/errors"
-import { GRANT_CARD_PURPOSE, merchantIdsEqual, normalizeMerchantIds } from "@/lib/grant-card-policy"
+import {
+	GRANT_CARD_PURPOSE,
+	merchantIdsEqual,
+	normalizeMerchantIds,
+	PRIZE_GRANT_CARD_PURPOSE,
+} from "@/lib/grant-card-policy"
 import { readStoredRefreshToken, storeRefreshToken } from "@/lib/hcb-credential"
 import { isRecord } from "@/lib/unknown"
 
@@ -545,6 +550,9 @@ export interface CardGrantExpectation {
 	purpose: string
 }
 
+/** The prefixes a bare purpose may carry. Shop cards moved from the parts prefix to the prize prefix, so both have to reconcile. */
+const BARE_PURPOSES = new Set([GRANT_CARD_PURPOSE, PRIZE_GRANT_CARD_PURPOSE])
+
 /**
  * Whether a listed grant's purpose is the one an attempt sent.
  *
@@ -556,8 +564,12 @@ export interface CardGrantExpectation {
  */
 export function purposeMatches(listed: string | null, expected: string): boolean {
 	if (listed === expected) return true
-	if (expected !== GRANT_CARD_PURPOSE) return false
-	return typeof listed === "string" && listed.startsWith(GRANT_CARD_PURPOSE)
+	if (!BARE_PURPOSES.has(expected)) return false
+	if (typeof listed !== "string") return false
+	if (listed.startsWith(expected)) return true
+	// A shop row from before the prize prefix was stored falls back to the bare prize line; its card still says
+	// `Half Life parts – …`. Matching the wider prefix here is what lets that row reconcile instead of retrying.
+	return expected === PRIZE_GRANT_CARD_PURPOSE && listed.startsWith(GRANT_CARD_PURPOSE)
 }
 
 /** HCB's card grant ids carry a `cdg_` prefix, and the site stores either form, so compare on the bare one. */
