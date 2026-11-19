@@ -635,6 +635,13 @@
 	}
 
 	/* ── Tables ────────────────────────────────────────────────────────────── */
+	/* The manage control in a project's actions cell: its own width, with an owner-extension note beneath it. */
+	.hl-row-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		align-items: flex-start;
+	}
 	/* The projects table keeps its columns comfortable while the sidebar leaves room for them, and lets them wrap instead of scrolling past the edge when it does not. */
 	.hl-cell-project {
 		min-width: 15rem;
@@ -1326,7 +1333,7 @@
 	}
 	.hl-manage-panel {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
 		gap: 1.5rem;
 		padding: 1rem 1.1rem;
 	}

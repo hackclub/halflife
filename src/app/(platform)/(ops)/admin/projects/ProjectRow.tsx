@@ -68,7 +68,7 @@ export function ProjectRow({
 				</td>
 				<td style={{ minWidth: "13rem" }}>
 					{canManage ? (
-						<div className="hl-stack hl-stack--tight">
+						<div className="hl-row-actions">
 							<ManageButton onToggle={() => setOpen(value => !value)} open={open} panelId={panelId} />
 							{data.userExtension ? <span className="hl-hint">Owner extended until {data.userExtension}</span> : null}
 						</div>
