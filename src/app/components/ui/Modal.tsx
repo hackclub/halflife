@@ -12,11 +12,14 @@ export function Modal({
 	open,
 	onClose,
 	title,
+	placement = "centre",
 	children,
 }: Readonly<{
 	open: boolean
 	onClose(): void
 	title: string
+	/** Where the panel sits. A panel whose height changes as you type, such as a search, is pinned to the top so its field does not move. */
+	placement?: "centre" | "top"
 	children: ReactNode
 }>) {
 	const ref = useRef<HTMLDialogElement>(null)
@@ -35,7 +38,7 @@ export function Modal({
 	return (
 		<dialog
 			aria-labelledby={titleId}
-			className="hl-modal"
+			className={placement === "top" ? "hl-modal hl-modal--top" : "hl-modal"}
 			onCancel={event => {
 				event.preventDefault()
 				onClose()

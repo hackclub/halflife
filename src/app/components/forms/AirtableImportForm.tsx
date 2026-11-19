@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { z } from "zod"
 import { Button, Callout } from "@/app/components/ui"
+import { useConfirm } from "@/app/components/ui/useConfirm"
 import { errorMessage } from "@/lib/api-error"
 
 const ImportOutcomeSchema = z.object({
@@ -65,11 +66,16 @@ export function AirtableImportForm({
 	const [error, setError] = useState<string | null>(null)
 	const [summary, setSummary] = useState<ImportSummary | null>(null)
 
+	const { confirm, dialog } = useConfirm()
+
 	async function run() {
 		if (
-			!window.confirm(
-				"Import warm-up projects from Airtable? This creates an account for any submitter who has none, files each project on the Warm Up track, and sends each one to Ari for review.",
-			)
+			(await confirm({
+				confirmLabel: "Import",
+				message:
+					"This creates an account for any submitter who has none, files each project on the Warm Up track, and sends each one to Ari for review.",
+				title: "Import warm-up projects from Airtable?",
+			})) === null
 		)
 			return
 
@@ -101,6 +107,7 @@ export function AirtableImportForm({
 
 	return (
 		<div className="hl-stack hl-stack--tight">
+			{dialog}
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 
 			{summary ? (

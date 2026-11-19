@@ -21,6 +21,7 @@ export default async function AdminEventsPage() {
 	return (
 		<div className="hl-stack">
 			<PageHeader
+				compact
 				subtitle={
 					upcoming
 						? `Next: ${upcoming.title}. ${events.length} on the calendar.`

@@ -16,12 +16,14 @@ import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { getProgrammeNps } from "@/lib/airtable/nps"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { type ParticipantGoal, Phase, type ReviewResult } from "@/lib/enums"
 import { fmtInt } from "@/lib/numbers"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { getProgramSettings } from "@/lib/program"
 import {
+	countContentReports,
 	type GoalDayActivity,
 	getAdminCounters,
 	getAreaStats,
@@ -126,12 +128,30 @@ export default async function AdminOverviewPage() {
 	// `eventStartDate` is stored as UTC midnight of the calendar day the programme opens, which is also the day week 1 opens in the programme's timezone. The charts' days are effective dates in that timezone, so its UTC date is what they are compared against.
 	const programmeStart = settings.eventStartDate.toISOString().slice(0, 10)
 
+	const reportCounts = await countContentReports()
+
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Overview" />
+			<PageHeader compact title="Overview" />
+
+			<Panel title="Needs attention">
+				<nav aria-label="Work waiting on staff" className="hl-attention">
+					<Link data-zero={counters.pendingOrders === 0 ? "true" : undefined} href="/admin/fulfillment">
+						<strong>{fmtInt(counters.pendingOrders)}</strong>
+						<span>orders to fulfil</span>
+					</Link>
+					<Link data-zero={counters.pendingReviews === 0 ? "true" : undefined} href="/reviews">
+						<strong>{fmtInt(counters.pendingReviews)}</strong>
+						<span>projects awaiting review</span>
+					</Link>
+					<Link data-zero={reportCounts.OPEN === 0 ? "true" : undefined} href="/admin/reports">
+						<strong>{fmtInt(reportCounts.OPEN)}</strong>
+						<span>open reports</span>
+					</Link>
+				</nav>
+			</Panel>
 
 			<div className="hl-row">
-				<Stat label="Orders to fulfil" value={counters.pendingOrders} />
 				<Stat label="Participants" value={counters.participants} />
 				<Stat label="Active today" value={activeUsers.today} />
 				<Stat label="Printers earned" value={counters.shipped} />
@@ -375,7 +395,7 @@ export default async function AdminOverviewPage() {
 						{syncs.map(run => (
 							<tr key={run.syncKey}>
 								<td className="hl-mono">{run.syncKey}</td>
-								<td className="hl-mono">{run.lastRunAt.toLocaleString()}</td>
+								<td className="hl-mono">{formatUtcDateTime(run.lastRunAt)}</td>
 								<td>
 									<SyncResult result={run.result} />
 								</td>

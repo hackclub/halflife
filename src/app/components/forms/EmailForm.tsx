@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { Button, Callout, Field, TextInput } from "@/app/components/ui"
+import { useConfirm } from "@/app/components/ui/useConfirm"
 import { sendJson, useAction } from "@/lib/use-action"
 
 /**
@@ -26,11 +27,21 @@ export function EmailForm({
 	// An unchanged submit is a no-op the server would refuse anyway, so it is never offered.
 	const canSave = trimmed.length > 0 && trimmed.toLowerCase() !== current.toLowerCase()
 
-	function submit(e: React.SubmitEvent) {
+	const { confirm, dialog } = useConfirm()
+
+	async function submit(e: React.SubmitEvent) {
 		e.preventDefault()
 		if (!canSave) return
 		// This is an identity change with no undo and no second copy of the old address anywhere but the audit log, so it is confirmed rather than fired off with a stray click.
-		if (!window.confirm(`Change ${current} to ${trimmed}? Notifications go to the new address from now on.`)) return
+		if (
+			(await confirm({
+				confirmLabel: "Change email",
+				message: "Notifications go to the new address from now on.",
+				title: `Change ${current} to ${trimmed}?`,
+				tone: "danger",
+			})) === null
+		)
+			return
 		void run(
 			"save",
 			() => sendJson(url, { body: { email: trimmed }, method: "PATCH" }),
@@ -39,7 +50,8 @@ export function EmailForm({
 	}
 
 	return (
-		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
+		<form className="hl-stack hl-stack--tight" onSubmit={event => void submit(event)}>
+			{dialog}
 			<p className="hl-hint" style={{ margin: 0 }}>
 				Currently <span className="hl-mono">{current}</span>. Hack Club is the usual source of this address, and it
 				overwrites whatever is stored here the next time they sign in - so this is for people who have asked HCA to

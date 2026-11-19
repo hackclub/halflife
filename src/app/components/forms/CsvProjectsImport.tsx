@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { z } from "zod"
 import { Button, Callout } from "@/app/components/ui"
+import { useConfirm } from "@/app/components/ui/useConfirm"
 
 const CsvOutcomeSchema = z.object({
 	email: z.string(),
@@ -51,12 +52,16 @@ export function CsvProjectsImport() {
 	const [problems, setProblems] = useState<{ line: number; message: string }[]>([])
 	const [summary, setSummary] = useState<CsvSummary | null>(null)
 
+	const { confirm, dialog } = useConfirm()
+
 	async function run() {
 		if (!file) return
 		if (
-			!window.confirm(
-				`Import ${file.name} as warm-up projects? This creates an account for any email that has none, one Theme.WARMUP project per row, and a devlog per entry in the row's journals column.`,
-			)
+			(await confirm({
+				confirmLabel: "Import",
+				message: `This creates an account for any email that has none, one Theme.WARMUP project per row, and a devlog per entry in the row's journals column.`,
+				title: `Import ${file.name} as warm-up projects?`,
+			})) === null
 		)
 			return
 
@@ -100,6 +105,7 @@ export function CsvProjectsImport() {
 
 	return (
 		<div className="hl-stack hl-stack--tight">
+			{dialog}
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 
 			{problems.length > 0 ? (

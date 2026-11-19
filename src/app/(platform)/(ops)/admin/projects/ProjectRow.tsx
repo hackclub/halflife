@@ -52,10 +52,10 @@ export function ProjectRow({
 						<Link href={`/admin/users/${data.ownerId}#project-${data.id}`}>Admin project</Link>
 						<Link href={`/projects/${data.id}`}>Public project</Link>
 					</div>
-					<div className="hl-hint hl-mono">{data.id}</div>
-					{data.githubRepo ? (
-						<div className="hl-hint hl-mono">{data.githubRepo.replace(/^https:\/\/github\.com\//, "")}</div>
-					) : null}
+					{/* One line for where the project lives: its repository when it has one, otherwise its ID. The full ID stays in the tooltip. */}
+					<div className="hl-hint hl-mono" title={data.id}>
+						{data.githubRepo ? data.githubRepo.replace(/^https:\/\/github\.com\//, "") : data.id}
+					</div>
 				</td>
 				<td style={{ minWidth: "13rem", overflowWrap: "anywhere" }}>
 					<span className="hl-entity-name">{data.ownerName}</span>

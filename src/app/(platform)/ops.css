@@ -366,6 +366,18 @@
 	.hl-badge--access {
 		color: var(--color-accent-ink);
 	}
+	.hl-badge--info {
+		color: var(--color-sky-ink);
+	}
+	.hl-badge--violet {
+		color: var(--color-violet-dark);
+	}
+	.hl-badge--gold {
+		color: var(--color-gold-ink);
+	}
+	.hl-badge--sand {
+		color: var(--color-sand-ink);
+	}
 
 	.hl-callout {
 		padding: 0.85rem 1rem;
@@ -423,6 +435,11 @@
 		max-height: calc(100dvh - 2rem);
 		overflow-y: auto;
 	}
+	/* Pinned under the header, so the field stays where it is while the results below it grow and shrink. */
+	.hl-modal--top {
+		max-height: calc(100dvh - 5.5rem);
+		margin: 4.5rem auto auto;
+	}
 
 	/* ── Staff top bar ─────────────────────────────────────────────────────── */
 	/*
@@ -447,6 +464,726 @@
 	}
 	.hl-nav a:active {
 		transform: translateY(1px);
+	}
+
+	/* ── Admin console frame ───────────────────────────────────────────────── */
+	/*
+	 * The admin console trades the staff navbar for a sidebar and a full-width page. The sidebar stays in its column while a long table scrolls, and the page takes the window's width, which is where the tables need it. Below 760px the sidebar drops above the page.
+	 */
+	.hl-admin {
+		display: flex;
+		flex-direction: column;
+		min-height: 100dvh;
+	}
+	.hl-admin-top {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+		padding: 0.6rem 1.25rem;
+		background: var(--color-surface-raised);
+		border-bottom: 2px solid var(--color-border);
+	}
+	.hl-admin-brand {
+		font-weight: 800;
+		color: var(--color-ink-strong);
+		white-space: nowrap;
+	}
+	.hl-admin-email {
+		min-width: 0;
+		margin-left: auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: 0.9rem;
+		white-space: nowrap;
+	}
+	.hl-admin-search {
+		padding: 0.35rem 0.8rem;
+		font-size: 0.9rem;
+	}
+	.hl-admin-kbd {
+		padding: 0.05rem 0.35rem;
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 4px;
+	}
+	.hl-admin-body {
+		display: grid;
+		flex: 1;
+		grid-template-columns: 12rem minmax(0, 1fr);
+	}
+	/*
+	 * The column stretches the height of the page, so its background runs the whole way down. Only the list inside it is sticky, so the links stay in view while a long page scrolls, and the column sits above the tables that scroll past it.
+	 */
+	.hl-admin-side {
+		z-index: 2;
+		background: var(--color-surface-raised);
+		border-right: 2px solid var(--color-border);
+	}
+	.hl-admin-side-inner {
+		position: sticky;
+		top: 0;
+		max-height: 100dvh;
+		padding: 1rem 0.75rem 2rem;
+		overflow-y: auto;
+	}
+	.hl-admin-group + .hl-admin-group {
+		margin-top: 1.1rem;
+	}
+	.hl-admin-group-label {
+		padding: 0 0.6rem;
+		margin-bottom: 0.25rem;
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: var(--color-ink-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+	}
+	.hl-admin-side a {
+		display: block;
+		padding: 0.3rem 0.6rem;
+		font-weight: 600;
+		color: var(--color-ink);
+		text-decoration: none;
+		border-radius: var(--radius-button);
+	}
+	.hl-admin-side a:hover {
+		background: var(--color-surface-sunken);
+	}
+	/* The current page is the brand navy with light text, rather than navy on the pale accent, which reads as too faint on a bright screen. */
+	.hl-admin-side a[aria-current="page"] {
+		color: var(--color-paper);
+		background: var(--color-ink-strong);
+	}
+	/* The sections toggle: a single bar on a phone that opens the list, hidden on a desktop where the list is always shown. */
+	.hl-admin-menu-toggle {
+		display: block;
+		width: 100%;
+		padding: 0.7rem 1rem;
+		font: inherit;
+		font-weight: 700;
+		color: var(--color-ink-strong);
+		text-align: left;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+	}
+	@media (min-width: 761px) {
+		.hl-admin-menu-toggle {
+			display: none;
+		}
+	}
+	@media (max-width: 760px) {
+		.hl-admin-side-inner[data-open="false"] {
+			display: none;
+		}
+	}
+	/* Helper text is the part people read on a small screen, so it gets a size they can read without zooming. */
+	@media (max-width: 600px) {
+		.hl-admin-main .hl-hint {
+			font-size: 0.95rem;
+		}
+		.hl-admin-main .hl-scroll {
+			box-shadow: inset -12px 0 10px -10px rgb(16 15 48 / 0.2);
+		}
+	}
+	@media (max-width: 600px) {
+		.hl-admin-email,
+		.hl-admin-kbd {
+			display: none;
+		}
+		.hl-admin-top {
+			gap: 0.6rem;
+			padding: 0.5rem 0.75rem;
+		}
+	}
+	.hl-admin-main {
+		min-width: 0;
+		padding: 1.5rem 1.75rem 3rem;
+	}
+	@media (max-width: 760px) {
+		.hl-admin-body {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.hl-admin-side {
+			border-right: 0;
+			border-bottom: 2px solid var(--color-border);
+		}
+		.hl-admin-side-inner {
+			position: static;
+			max-height: none;
+		}
+		.hl-admin-main {
+			padding: 1rem;
+		}
+	}
+
+	/* ── Tables ────────────────────────────────────────────────────────────── */
+	.hl-table {
+		width: 100%;
+		font-size: 0.95rem;
+		border-collapse: collapse;
+	}
+	/*
+	 * Long directories are read top to bottom, so the admin tables are denser than the participant's, keep their heading in view while the window scrolls, and stripe alternate rows so the eye can follow one across a wide table. Roomy tables, whose cells hold controls, keep their own padding.
+	 */
+	.hl-admin-main .hl-table {
+		font-size: 0.9rem;
+		border-spacing: 0;
+		/* Separate cells, not collapsed borders, so a sticky cell keeps its own rule as it scrolls over its neighbours. */
+		border-collapse: separate;
+	}
+	.hl-table th,
+	.hl-table td {
+		padding: 0.55rem 0.6rem;
+		text-align: left;
+		border-bottom: 2px solid var(--color-border);
+	}
+	.hl-table th {
+		font-weight: 700;
+		color: var(--color-ink-strong);
+	}
+	/* Rows whose cells carry controls rather than one line of text: every cell starts at the top, so the project's own details line up with the first action instead of floating halfway down a tall row. */
+	.hl-table--roomy td {
+		padding-block: 0.85rem;
+		vertical-align: top;
+	}
+	.hl-audit-diff th,
+	.hl-audit-diff td {
+		padding: 0.3rem 0.5rem;
+		vertical-align: top;
+		text-align: left;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.hl-audit-diff thead th {
+		font-size: 0.7rem;
+		font-weight: 700;
+		color: var(--color-ink-muted);
+	}
+	.hl-audit-diff tbody th {
+		font-family: var(--font-mono);
+		font-weight: 400;
+		color: var(--color-ink-muted);
+		white-space: nowrap;
+	}
+	/* The heading row stays in view while the body scrolls, never folds onto a second line, and sits on the sunken ground. */
+	.hl-admin-main .hl-table thead th {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		white-space: nowrap;
+		background: var(--color-surface-sunken);
+		box-shadow: inset 0 -2px 0 var(--color-border);
+	}
+	.hl-manage-row > td {
+		/* A long value in a panel (a user agent, a URL) must wrap inside the table rather than widen it: a cell that contributes no intrinsic width takes the width of the columns it spans. */
+		max-width: 0;
+		padding: 0;
+		background: var(--color-surface-sunken);
+	}
+	/* Roomy rows exist for their controls, not their padding, so the admin keeps them to a single line's rhythm. */
+	.hl-admin-main .hl-table--roomy td {
+		padding-block: 0.35rem;
+	}
+	.hl-audit-diff tr:last-child th,
+	.hl-audit-diff tr:last-child td {
+		border-bottom: 0;
+	}
+	.hl-admin-main .hl-table:not(.hl-table--roomy) th,
+	.hl-admin-main .hl-table:not(.hl-table--roomy) td {
+		padding: 0.4rem 0.45rem;
+	}
+	/*
+	 * An action column is pinned to the right edge of its scrolling wrapper, so Manage and View stay in reach while the columns before it scroll under a shadow. Without the pin the last column is the one that scrolls out of sight first.
+	 */
+	.hl-admin-main .hl-table--pin-last th:last-child,
+	.hl-admin-main .hl-table--pin-last td:last-child {
+		position: sticky;
+		right: 0;
+		z-index: 1;
+		background: var(--color-surface-raised);
+		box-shadow: -10px 0 10px -10px rgb(16 15 48 / 0.18);
+	}
+	/* The pinned action column keeps room for its button, so the button never touches the window edge. */
+	.hl-admin-main .hl-table--pin-last td:last-child,
+	.hl-admin-main .hl-table--pin-last th:last-child {
+		min-width: 9rem;
+	}
+	.hl-admin-main .hl-table--pin-last thead th:last-child {
+		background: var(--color-surface-sunken);
+	}
+	/* Stripes are a whisper now, and the hover row is the one that shows which line the pointer is on. */
+	.hl-admin-main .hl-table tbody tr:nth-child(even) {
+		background: rgb(16 15 48 / 0.025);
+	}
+	.hl-admin-main .hl-table tbody tr:hover td {
+		background: var(--color-surface-sunken);
+	}
+	/* Panels are a quiet border and a faint lift, so the content inside them carries the weight. The outline is kept for the console's focus rings. */
+	.hl-admin-main .hl-panel {
+		border: 1px solid var(--color-border);
+		border-radius: 12px;
+		box-shadow: 0 1px 2px rgb(16 15 48 / 0.05);
+	}
+	/* Repo URLs and IDs are for finding a row, not for reading across it: they end in an ellipsis so one long string cannot widen the table. */
+	.hl-admin-main td .hl-mono {
+		display: block;
+		max-width: 26ch;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	/*
+	 * The wide breakouts centre themselves on the window, which is right for the reading column of the review console but puts the admin page under its own sidebar. The admin frame already gives the page the full width beside the sidebar, so the breakout is turned off here.
+	 */
+	.hl-admin-main .hl-page-wide,
+	.hl-admin-main .hl-panel--wide {
+		width: auto;
+		margin-left: 0;
+	}
+
+	/* A status pill is one label, so it stays on one line and the cell widens for it rather than folding the word into two lines. */
+	.hl-admin-main .hl-badge {
+		white-space: nowrap;
+	}
+	/* Badges carry one fine rule, like the controls around them, so a row of them does not out-weigh the content. */
+	.hl-admin-main .hl-badge {
+		border-width: 1px;
+	}
+	.hl-queue-item > .hl-badge {
+		align-self: flex-start;
+	}
+	/* A stage's pill drops to its own line when its cell is too narrow for both, instead of running past the cell's edge. */
+	.hl-review-stages li {
+		flex-wrap: wrap;
+	}
+
+	/* ── Filter form ───────────────────────────────────────────────────────── */
+	/* Three bands: the search, the labelled stage choices, then the yes-or-no toggles with the clear link beside them. */
+	.hl-filters {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+	.hl-filters__search {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
+	}
+	.hl-filters__search .hl-input {
+		flex: 1 1 18rem;
+		width: auto;
+	}
+	.hl-filters__grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+		gap: 0.75rem 1rem;
+	}
+	.hl-filters__footer {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.5rem;
+		align-items: center;
+		justify-content: space-between;
+		padding-top: 1rem;
+		border-top: 2px solid var(--color-border);
+	}
+	/* Notes on the left of the footer; Reset and Filter together on the right, the same on every list. */
+	.hl-filters__notes {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
+		align-items: center;
+	}
+	.hl-filters__actions {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+		margin-left: auto;
+	}
+	.hl-filters__toggles {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.25rem;
+	}
+	.hl-filters__toggles label {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+		font-weight: 600;
+	}
+
+	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
+	.hl-count {
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-muted);
+	}
+
+	/* ── Needs attention ───────────────────────────────────────────────────── */
+	/* The work waiting on staff, as counts that are also the way into it. */
+	.hl-attention {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	.hl-attention a {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		min-width: 11rem;
+		padding: 0.7rem 0.9rem;
+		color: var(--color-ink);
+		text-decoration: none;
+		background: var(--color-surface);
+		border: 2px solid var(--color-border);
+		border-radius: var(--radius-panel);
+	}
+	.hl-attention a:hover {
+		border-color: var(--color-accent);
+	}
+	.hl-attention strong {
+		font-size: 1.6rem;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-strong);
+	}
+	/* A count of nothing is shown quietly, so the things that do need work are the ones the eye lands on. */
+	.hl-attention a[data-zero="true"] strong {
+		font-size: 1.15rem;
+		font-weight: 700;
+		color: var(--color-ink-muted);
+	}
+	/* A link with work waiting reads as a call to action; one with nothing in it stays quiet. */
+	.hl-attention a:not([data-zero="true"]) {
+		border-color: var(--color-accent);
+	}
+	.hl-attention span {
+		font-size: 0.9rem;
+		color: var(--color-ink-muted);
+	}
+
+	/* ── File inputs ───────────────────────────────────────────────────────── */
+	/* A file field reads as a drop target rather than an empty text box. */
+	.hl-admin-main input[type="file"] {
+		padding: 0.9rem;
+		font: inherit;
+		cursor: pointer;
+		background: var(--color-surface);
+		border: 2px dashed var(--color-field-edge);
+		border-radius: var(--radius-button);
+	}
+
+	/* The line under a list that loads as you scroll: its progress, or the reason it stopped. */
+	.hl-directory-footer {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
+		justify-content: center;
+		min-height: 2.5rem;
+	}
+
+	/*
+	 * Space is the scarce thing on an admin screen, so the frame keeps its padding modest and the cards hold more rows. Cards keep their border and rounding, which is what marks them as cards.
+	 */
+	.hl-admin-main {
+		padding: 1.25rem 1rem 3rem;
+	}
+	.hl-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+	.hl-admin-main .hl-stack {
+		gap: 1rem;
+	}
+	.hl-admin-main .hl-panel {
+		padding: 0.9rem 0.95rem;
+	}
+	/* A heading that takes one line, where the hanging sign takes a band of the screen. Admin pages use it; the review console keeps the sign. */
+	.hl-page-head {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.5rem;
+		align-items: baseline;
+		justify-content: space-between;
+		margin-bottom: 1.25rem;
+	}
+	.hl-admin-main .hl-page-head {
+		margin-bottom: 0.9rem;
+	}
+	.hl-admin-side a {
+		font-size: 0.95rem;
+	}
+	/* A select is as wide as its longest option needs, not the whole form: the admin's short choice lists would otherwise stretch across the page. */
+	.hl-admin-main .hl-select {
+		align-self: flex-start;
+		width: auto;
+		min-width: 12rem;
+		max-width: 100%;
+	}
+	/* Dates, money and counts are read across a row, so a value like "Nov 12, 2026, 10:00 PM" stays on one line rather than folding into a column of fragments. */
+	.hl-admin-main .hl-table td.hl-mono {
+		white-space: nowrap;
+	}
+	/* Whatever is still too wide scrolls inside its own table, rather than pushing the whole console sideways. */
+	.hl-admin-main {
+		overflow-x: clip;
+	}
+
+	/* The command palette's list, inside the console's modal. */
+	.hl-admin-palette-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		max-height: 60vh;
+		padding: 0;
+		margin: 0;
+		overflow-y: auto;
+		list-style: none;
+	}
+	.hl-admin-palette-item {
+		display: flex;
+		gap: 1rem;
+		justify-content: space-between;
+		width: 100%;
+		padding: 0.5rem 0.7rem;
+		font: inherit;
+		color: var(--color-ink);
+		text-align: left;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--radius-button);
+	}
+	.hl-admin-palette-item[data-active="true"] {
+		outline: 2px solid var(--color-accent);
+		background: var(--color-surface-sunken);
+	}
+
+	/* ── Compact page heading ─────────────────────────────────────────────── */
+	.hl-page-title {
+		margin: 0;
+		font-size: 1.6rem;
+		font-weight: 800;
+		color: var(--color-ink-strong);
+	}
+	.hl-page-sub {
+		margin: 0.2rem 0 0;
+	}
+	.hl-page-head-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	/* ── Layout helpers ────────────────────────────────────────────────────── */
+	/* ── Section jump nav ──────────────────────────────────────────────────── */
+	/* A long page's sections, as one row of links that stay short. Sections clear the sticky header when reached. */
+	.hl-jump {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+	.hl-jump a {
+		padding: 0.25rem 0.7rem;
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--color-ink);
+		text-decoration: none;
+		background: var(--color-surface-raised);
+		border: 1px solid var(--color-border);
+		border-radius: 999px;
+	}
+	.hl-jump a:hover {
+		border-color: var(--color-accent);
+	}
+	.hl-admin-main section[id] {
+		scroll-margin-top: 1rem;
+	}
+
+	/* ── Account history ───────────────────────────────────────────────────── */
+	/* One run of events down a single rule: when, what, and a line of detail beneath. */
+	.hl-timeline {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		max-height: 26rem;
+		padding: 0 0 0 1rem;
+		margin: 0;
+		overflow-y: auto;
+		list-style: none;
+		border-left: 2px solid var(--color-border);
+	}
+	.hl-timeline li {
+		display: grid;
+		grid-template-columns: 11rem minmax(0, 1fr);
+		gap: 0.1rem 1rem;
+		align-items: baseline;
+		padding-block: 0.3rem;
+	}
+	.hl-timeline-when {
+		font-size: 0.82rem;
+		color: var(--color-ink-muted);
+		white-space: nowrap;
+	}
+	.hl-timeline-title {
+		font-weight: 600;
+		color: var(--color-ink);
+	}
+	.hl-timeline li > .hl-hint {
+		grid-column: 2;
+	}
+
+	/* A form's save row stays on screen while the fields above it scroll, so the action never sits below the fold of a long form. */
+	.hl-savebar {
+		position: sticky;
+		bottom: 0;
+		z-index: 2;
+		display: flex;
+		gap: 0.75rem;
+		justify-content: flex-end;
+		padding: 0.75rem 0;
+		background: var(--color-surface-raised);
+		border-top: 2px solid var(--color-border);
+	}
+
+	/* ── Table toolbar ─────────────────────────────────────────────────────── */
+	/* The controls above a list and its count, on one line where the window allows. */
+	.hl-table-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem 1rem;
+		align-items: center;
+		justify-content: space-between;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.hl-table-toolbar-controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		align-items: center;
+		min-width: 0;
+	}
+
+	/* ── Triage split ──────────────────────────────────────────────────────── */
+	/* A queue on the left, the chosen item on the right. The queue keeps its place while the detail changes. */
+	.hl-split {
+		display: grid;
+		grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+		gap: 1rem;
+		align-items: start;
+	}
+	.hl-split > .hl-panel:last-child {
+		position: sticky;
+		top: 1rem;
+	}
+	@media (max-width: 960px) {
+		.hl-split {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.hl-split > .hl-panel:last-child {
+			position: static;
+		}
+	}
+	.hl-queue {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		max-height: 70vh;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+	.hl-queue-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		min-width: 0;
+		padding: 0.55rem 0.7rem;
+		color: var(--color-ink);
+		overflow-wrap: anywhere;
+		text-decoration: none;
+		border: 2px solid transparent;
+		border-radius: var(--radius-button);
+	}
+	.hl-queue-item:hover {
+		background: var(--color-surface-sunken);
+	}
+	/* A title that runs long shows its first two lines and ends in an ellipsis, rather than pushing the queue sideways. */
+	.hl-queue-item > span:nth-child(2) {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		-webkit-line-clamp: 2;
+	}
+	.hl-queue-item[aria-current="true"] {
+		background: var(--color-surface-sunken);
+		border-color: var(--color-accent);
+	}
+
+	/* ── Form grid ─────────────────────────────────────────────────────────── */
+	/* Fields flow into as many columns as the panel has room for. Anything that needs the whole row says so with hl-form-wide. */
+	.hl-form-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+		gap: 1rem 1.25rem;
+		align-items: start;
+	}
+	.hl-form-wide {
+		grid-column: 1 / -1;
+	}
+
+	/* A form reads best at a measure a person can scan, not the full width of a wide window. */
+	.hl-measure {
+		max-width: 44rem;
+	}
+	/* The feed's composer beside the reels it adds to. The composer stays in view while the list scrolls. */
+	.hl-feed-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+		gap: 1rem;
+		align-items: start;
+	}
+	.hl-feed-compose {
+		position: sticky;
+		top: 1rem;
+	}
+	@media (max-width: 1100px) {
+		.hl-feed-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.hl-feed-compose {
+			position: static;
+		}
+	}
+
+	/* ── Filter chips ──────────────────────────────────────────────────────── */
+	.hl-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+	.hl-chip {
+		padding: 0.3rem 0.75rem;
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--color-ink);
+		text-decoration: none;
+		background: var(--color-surface-raised);
+		border: 2px solid var(--color-border);
+		border-radius: 999px;
+	}
+	.hl-chip:hover {
+		border-color: var(--color-accent);
+	}
+	.hl-chip[aria-current="true"] {
+		color: var(--color-accent-ink);
+		background: var(--color-accent);
+		border-color: var(--color-accent);
 	}
 
 	/* ── Dispute thread ────────────────────────────────────────────────────── */
@@ -477,11 +1214,6 @@
 		padding: 2.5rem 1.25rem 4rem;
 		margin: 0 auto;
 	}
-	.hl-stack {
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
-	}
 	.hl-stack--tight {
 		gap: 0.75rem;
 	}
@@ -493,27 +1225,6 @@
 	}
 	.hl-scroll {
 		overflow-x: auto;
-	}
-	/* ── Tables ────────────────────────────────────────────────────────────── */
-	.hl-table {
-		width: 100%;
-		font-size: 0.95rem;
-		border-collapse: collapse;
-	}
-	.hl-table th,
-	.hl-table td {
-		padding: 0.55rem 0.6rem;
-		text-align: left;
-		border-bottom: 2px solid var(--color-border);
-	}
-	.hl-table th {
-		font-weight: 700;
-		color: var(--color-ink-strong);
-	}
-	/* Rows whose cells carry controls rather than one line of text: every cell starts at the top, so the project's own details line up with the first action instead of floating halfway down a tall row. */
-	.hl-table--roomy td {
-		padding-block: 0.85rem;
-		vertical-align: top;
 	}
 	.hl-entity-name {
 		font-weight: 700;
@@ -561,12 +1272,6 @@
 		font-size: 0.78rem;
 		font-weight: 700;
 		color: var(--color-ink-strong);
-	}
-	.hl-manage-row > td {
-		/* A long value in a panel (a user agent, a URL) must wrap inside the table rather than widen it: a cell that contributes no intrinsic width takes the width of the columns it spans. */
-		max-width: 0;
-		padding: 0;
-		background: var(--color-surface-sunken);
 	}
 	.hl-manage-panel {
 		display: grid;
@@ -643,28 +1348,6 @@
 		font-size: 0.78rem;
 		border-collapse: collapse;
 	}
-	.hl-audit-diff th,
-	.hl-audit-diff td {
-		padding: 0.3rem 0.5rem;
-		vertical-align: top;
-		text-align: left;
-		border-bottom: 1px solid var(--color-border);
-	}
-	.hl-audit-diff thead th {
-		font-size: 0.7rem;
-		font-weight: 700;
-		color: var(--color-ink-muted);
-	}
-	.hl-audit-diff tbody th {
-		font-family: var(--font-mono);
-		font-weight: 400;
-		color: var(--color-ink-muted);
-		white-space: nowrap;
-	}
-	.hl-audit-diff tr:last-child th,
-	.hl-audit-diff tr:last-child td {
-		border-bottom: 0;
-	}
 	/* JSON values keep their line breaks when indented, and a long unbroken id or URL wraps instead of widening the panel. */
 	.hl-audit-value {
 		font-family: var(--font-mono);
@@ -722,5 +1405,57 @@
 		font-family: var(--font-mono);
 		font-size: 0.78rem;
 		overflow-wrap: anywhere;
+	}
+}
+
+/* The gutter is reserved on the root, where the page actually scrolls, so the layout does not shift when a page grows past the window's height. */
+html:has(.hl-admin) {
+	scrollbar-gutter: stable;
+}
+
+/* Inside the admin console, controls take a fine rule and the focus ring carries the emphasis. Heavy outlines made every button look like the primary action. */
+.hl-admin-main .hl-btn,
+.hl-admin-main .hl-input,
+.hl-admin-main .hl-select,
+.hl-admin-main .hl-textarea {
+	border-width: 1px;
+}
+/* Row actions (Manage, View, Hide) are small and quiet, so the content of a row reads before its buttons. The one primary action on a page keeps full size. */
+.hl-admin-main .hl-table td .hl-btn {
+	padding: 0.28rem 0.7rem;
+	font-size: 0.85rem;
+	border-width: 1px;
+}
+/* A read-only field looks fixed: sunken ground and muted text, so nobody mistakes it for a box to type in. */
+.hl-admin-main .hl-input[readonly] {
+	color: var(--color-ink-muted);
+	cursor: default;
+	background: var(--color-surface-sunken);
+}
+/* A disabled control reads as unavailable, not as a faded primary: neutral ground and muted text. */
+.hl-admin-main .hl-btn:disabled {
+	color: var(--color-ink-muted);
+	cursor: not-allowed;
+	background: var(--color-surface-sunken);
+	border-color: var(--color-border);
+	opacity: 1;
+}
+
+/* Phone overrides for the filter grid and attention cards. Kept last so they win over the base rules above. */
+@media (max-width: 600px) {
+	.hl-filters__grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.hl-filters__grid > * {
+		min-width: 0;
+	}
+	.hl-filters__grid .hl-select,
+	.hl-filters__grid .hl-input {
+		width: 100%;
+		min-width: 0;
+	}
+	.hl-attention a {
+		flex: 1 1 8rem;
+		min-width: 0;
 	}
 }

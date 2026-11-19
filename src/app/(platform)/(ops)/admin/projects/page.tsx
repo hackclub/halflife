@@ -1,7 +1,19 @@
 import Link from "next/link"
-import { Button, EmptyState, PageHeader, Panel, Select, statusLabel, Table, TextInput } from "@/app/components/ui"
+import {
+	Button,
+	EmptyState,
+	Field,
+	FilterBar,
+	PageHeader,
+	Panel,
+	Select,
+	statusLabel,
+	Table,
+	TextInput,
+} from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
 import { THEMES, themeLabel } from "@/lib/config/program"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { PhaseStatus, Theme } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -66,6 +78,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	return (
 		<div className="hl-stack hl-page-wide">
 			<PageHeader
+				compact
 				subtitle={
 					includePii
 						? "Search by title, description, repo, project ID, or the owner's name, email or Slack ID."
@@ -75,59 +88,75 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 			/>
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-					<TextInput
-						defaultValue={search.q ?? ""}
-						name="q"
-						placeholder="Search projects or owners"
-						style={{ maxWidth: "20rem" }}
-					/>
-					<Select defaultValue={filters.theme ?? ""} name="theme" style={{ maxWidth: "12rem" }}>
-						<option value="">Any theme</option>
-						{THEMES.map(t => (
-							<option key={t.id} value={t.id}>
-								{themeLabel(t.id)}
-							</option>
-						))}
-						<option value={Theme.WARMUP}>Warm Up</option>
-					</Select>
-					<Select defaultValue={filters.designStatus ?? ""} name="design" style={{ maxWidth: "12rem" }}>
-						<option value="">Design: any</option>
-						{STATUSES.map(s => (
-							<option key={s} value={s}>
-								Design: {statusLabel(s)}
-							</option>
-						))}
-					</Select>
-					<Select defaultValue={filters.buildStatus ?? ""} name="build" style={{ maxWidth: "12rem" }}>
-						<option value="">Build: any</option>
-						{STATUSES.map(s => (
-							<option key={s} value={s}>
-								Build: {statusLabel(s)}
-							</option>
-						))}
-					</Select>
-					<Select defaultValue={filters.tier ? String(filters.tier) : ""} name="tier" style={{ maxWidth: "9rem" }}>
-						<option value="">Any tier</option>
-						<option value="1">Tier 1</option>
-						<option value="2">Tier 2</option>
-						<option value="3">Tier 3</option>
-					</Select>
-					<label className="hl-row" style={{ gap: "0.35rem" }}>
-						<input defaultChecked={filters.extended} name="extended" type="checkbox" value="1" />
-						Extension running
-					</label>
-					<label className="hl-row" style={{ gap: "0.35rem" }}>
-						<input defaultChecked={filters.unstarted} name="unstarted" type="checkbox" value="1" />
-						Include unstarted
-					</label>
-					<Button type="submit">
-						<IconSearch /> Search
-					</Button>
-					<Link className="hl-hint" href="/admin/projects">
-						Reset
-					</Link>
-				</form>
+				<FilterBar
+					footer={
+						<div className="hl-filters__toggles">
+							<label>
+								<input defaultChecked={filters.extended} name="extended" type="checkbox" value="1" />
+								Extension running
+							</label>
+							<label>
+								<input defaultChecked={filters.unstarted} name="unstarted" type="checkbox" value="1" />
+								Include unstarted
+							</label>
+						</div>
+					}
+					leading={
+						/* The search is the one thing most lookups start with, so it gets its own row and the only primary button. */
+						<div className="hl-filters__search">
+							<TextInput
+								aria-label="Search projects or owners"
+								defaultValue={search.q ?? ""}
+								name="q"
+								placeholder="Search projects or owners"
+							/>
+							<Button type="submit">
+								<IconSearch /> Search
+							</Button>
+						</div>
+					}
+					resetHref="/admin/projects"
+				>
+					<Field label="Theme">
+						<Select defaultValue={filters.theme ?? ""} name="theme">
+							<option value="">Any theme</option>
+							{THEMES.map(t => (
+								<option key={t.id} value={t.id}>
+									{themeLabel(t.id)}
+								</option>
+							))}
+							<option value={Theme.WARMUP}>Warm Up</option>
+						</Select>
+					</Field>
+					<Field label="Design stage">
+						<Select defaultValue={filters.designStatus ?? ""} name="design">
+							<option value="">Any status</option>
+							{STATUSES.map(s => (
+								<option key={s} value={s}>
+									{statusLabel(s)}
+								</option>
+							))}
+						</Select>
+					</Field>
+					<Field label="Build stage">
+						<Select defaultValue={filters.buildStatus ?? ""} name="build">
+							<option value="">Any status</option>
+							{STATUSES.map(s => (
+								<option key={s} value={s}>
+									{statusLabel(s)}
+								</option>
+							))}
+						</Select>
+					</Field>
+					<Field label="Tier">
+						<Select defaultValue={filters.tier ? String(filters.tier) : ""} name="tier">
+							<option value="">Any tier</option>
+							<option value="1">Tier 1</option>
+							<option value="2">Tier 2</option>
+							<option value="3">Tier 3</option>
+						</Select>
+					</Field>
+				</FilterBar>
 			</Panel>
 
 			<Panel>
@@ -135,13 +164,13 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 					<EmptyState>No projects match.</EmptyState>
 				) : (
 					<Table
-						className="hl-table--roomy"
+						className="hl-table--roomy hl-table--pin-last"
 						head={["Project", "Owner", "Theme", "Tier", "Review", canExtend || canMoveTheme ? "Actions" : "Extension"]}
 					>
 						{items.map(project => {
 							const userExtension =
 								project.user.submissionExtensionUntil && project.user.submissionExtensionUntil > now
-									? project.user.submissionExtensionUntil.toLocaleString()
+									? formatUtcDateTime(project.user.submissionExtensionUntil)
 									: null
 							return (
 								<ProjectRow
@@ -151,7 +180,9 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										buildStatus: project.buildStatus,
 										designStatus: project.designStatus,
 										extension: project.submissionExtensionUntil?.toISOString() ?? null,
-										extensionLabel: project.submissionExtensionUntil?.toLocaleString() ?? null,
+										extensionLabel: project.submissionExtensionUntil
+											? formatUtcDateTime(project.submissionExtensionUntil)
+											: null,
 										githubRepo: project.githubRepo,
 										id: project.id,
 										ownerId: project.user.id,

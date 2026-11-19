@@ -18,6 +18,7 @@ export default async function AdminReferralsPage() {
 	return (
 		<div className="hl-stack">
 			<PageHeader
+				compact
 				subtitle="Ranked by the sign-ups each ?ref= link has brought in, from the landing page sign-up list."
 				title="Referrals"
 			/>

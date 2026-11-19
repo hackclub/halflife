@@ -2,6 +2,7 @@ import Link from "next/link"
 import type { ComponentPropsWithRef, ReactNode } from "react"
 import { HangingSign } from "@/components/sign/HangingSign"
 import { isTruthy } from "@/lib/truthy"
+import { IconFilter } from "./icons"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that know about colour, spacing or type – a page composes these and never writes a raw utility class.
@@ -38,11 +39,13 @@ export function LinkButton({
 }
 
 export function Panel({
+	id,
 	title,
 	actions,
 	wide,
 	children,
 }: Readonly<{
+	id?: string
 	title?: ReactNode
 	actions?: ReactNode
 	/**
@@ -54,6 +57,7 @@ export function Panel({
 	return (
 		<section
 			className={wide ? "hl-panel hl-stack hl-stack--tight hl-panel--wide" : "hl-panel hl-stack hl-stack--tight"}
+			id={id}
 		>
 			{(isTruthy(title) || isTruthy(actions)) && (
 				<div className="hl-row" style={{ justifyContent: "space-between" }}>
@@ -75,11 +79,24 @@ export function PageHeader({
 	title,
 	subtitle,
 	actions,
-}: Readonly<{ title: string; subtitle?: ReactNode; actions?: ReactNode }>) {
-	return <HangingSign actions={actions} subtitle={subtitle} surface="console" title={title} />
+	compact = false,
+}: Readonly<{ title: string; subtitle?: ReactNode; actions?: ReactNode; compact?: boolean }>) {
+	if (!compact) return <HangingSign actions={actions} subtitle={subtitle} surface="console" title={title} />
+	return (
+		<header className="hl-page-head">
+			<div>
+				<h1 className="hl-page-title">{title}</h1>
+				{isTruthy(subtitle) ? <div className="hl-muted hl-page-sub">{subtitle}</div> : null}
+			</div>
+			{isTruthy(actions) ? <div className="hl-page-head-actions">{actions}</div> : null}
+		</header>
+	)
 }
 
-type BadgeTone = "success" | "warning" | "danger" | "muted" | "access"
+/**
+ * The badge colours. Status uses the first three and access uses navy. The rest exist so a list with many kinds of one thing (a ledger's entry kinds, say) can tell them apart by colour, and each one is an ink from the platform palette, not a new hue.
+ */
+export type BadgeTone = "success" | "warning" | "danger" | "muted" | "access" | "info" | "violet" | "gold" | "sand"
 
 export function Badge({
 	tone = "muted",
@@ -114,14 +131,25 @@ export function EmptyState({ children }: Readonly<{ children: ReactNode }>) {
 	)
 }
 
-export function Field({ label, hint, children }: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
+/**
+ * A labelled control. The hint sits under the label, not inside it, so a screen reader reads the field's name and then, separately, what it is for.
+ */
+export function Field({
+	className,
+	label,
+	hint,
+	children,
+}: Readonly<{ className?: string; label: string; hint?: ReactNode; children: ReactNode }>) {
 	return (
-		// biome-ignore lint/a11y/noLabelWithoutControl: the control is the children prop, which the rule cannot see through. Every call site passes a labelled input, select or textarea.
-		<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
-			<span className="hl-label-text">{label}</span>
-			{children}
+		<div className={withClass("hl-stack hl-stack--tight", className)} style={{ gap: "0.25rem" }}>
+			{/* The control is the children prop, which the rule cannot see through. Every call site passes a labelled input, select or textarea. */}
+			{/* biome-ignore lint/a11y/noLabelWithoutControl: see the comment above. */}
+			<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
+				<span className="hl-label-text">{label}</span>
+				{children}
+			</label>
 			{isTruthy(hint) ? <span className="hl-hint">{hint}</span> : null}
-		</label>
+		</div>
 	)
 }
 
@@ -134,6 +162,46 @@ export function TextInput({ className, ...props }: Readonly<ComponentPropsWithRe
 
 export function Select({ className, ...props }: Readonly<ComponentPropsWithRef<"select">>) {
 	return <select {...props} className={withClass("hl-select", className)} />
+}
+
+/**
+ * The filter form above a list. Every list uses this one shape: an optional leading row (a search), the labelled fields in one grid, then a footer whose notes sit on the left while Reset and Filter sit together on the right, so a reader clears and applies filters in the same place on every page.
+ */
+export function FilterBar({
+	children,
+	footer,
+	leading,
+	resetHref,
+}: Readonly<{ children: ReactNode; footer?: ReactNode; leading?: ReactNode; resetHref: string }>) {
+	return (
+		<form className="hl-filters" method="get">
+			{leading}
+			<div className="hl-filters__grid">{children}</div>
+			<div className="hl-filters__footer">
+				<div className="hl-filters__notes">{footer}</div>
+				<div className="hl-filters__actions">
+					<Link className="hl-hint" href={resetHref}>
+						Reset
+					</Link>
+					<Button type="submit">
+						<IconFilter /> Filter
+					</Button>
+				</div>
+			</div>
+		</form>
+	)
+}
+
+/**
+ * The line above a list: its filters on the left, the number of rows it is showing on the right. One shape for every list, so a reader finds the count and the controls in the same place on each page.
+ */
+export function TableToolbar({ children, count }: Readonly<{ children: ReactNode; count?: ReactNode }>) {
+	return (
+		<div className="hl-table-toolbar">
+			<div className="hl-table-toolbar-controls">{children}</div>
+			{isTruthy(count) ? <span className="hl-count">{count}</span> : null}
+		</div>
+	)
 }
 
 export function TextArea({ className, ...props }: Readonly<ComponentPropsWithRef<"textarea">>) {
@@ -151,7 +219,9 @@ export function Table({
 				<thead>
 					<tr>
 						{head.map((h, i) => (
-							<th key={i}>{h}</th>
+							<th key={typeof h === "string" ? h : i} scope="col">
+								{h}
+							</th>
 						))}
 					</tr>
 				</thead>

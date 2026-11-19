@@ -30,11 +30,13 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 			<p>
 				<Link href="/admin/shop">← Shop items</Link>
 			</p>
-			<PageHeader title={item.name} />
-			<Panel title="Edit item">
-				<p className="hl-hint" style={{ marginBottom: "0.75rem" }}>
-					<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge> Changes apply to
-					new orders; orders already placed keep what they were bought at.
+			<PageHeader compact title={item.name} />
+			<Panel
+				actions={<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>}
+				title="Edit item"
+			>
+				<p className="hl-hint" style={{ margin: 0 }}>
+					Changes apply to new orders; orders already placed keep what they were bought at.
 				</p>
 				<ShopItemForm
 					item={{
