@@ -56,9 +56,10 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderJson
 			<tr>
 				<td className="hl-mono">{order.orderNumber}</td>
 				<td className="hl-fulfill-participant">
-					<span className="hl-entity-name">{order.user.name ?? "-"}</span>
+					<Link className="hl-entity-name" href={`/admin/users/${order.user.id}`}>
+						{order.user.name ?? "-"}
+					</Link>
 					<div className="hl-entity-links">
-						<Link href={`/admin/users/${order.user.id}`}>Admin user</Link>
 						<Link href={`/u/${order.user.id}`}>Public profile</Link>
 					</div>
 				</td>
