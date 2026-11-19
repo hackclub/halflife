@@ -151,7 +151,8 @@ export function WarmupModal({ onClose, closesOn }: { onClose(): void; closesOn: 
 										{phase !== "BUILD" && (
 											<span className="mt-1 block text-navy-soft/90">
 												You can submit on tier {t.id} from {fmtHours(submitFloorFor(t.fundingHours))} of design time.
-												Every hour past that (once your tier&apos;s funding is achieved) earns 5 spendable coins.
+												Every hour past that (once your tier&apos;s funding is achieved) earns 5 spendable coins. Parts
+												money you do not spend goes back to Half Life, never into coins.
 											</span>
 										)}
 									</>
