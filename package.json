@@ -6,6 +6,7 @@
 		"airtable:backfill-deflation": "bun --conditions=react-server scripts/backfill-airtable-deflation.ts",
 		"airtable:backfill-half-life-id": "bun --conditions=react-server scripts/backfill-airtable-half-life-id.ts",
 		"airtable:backfill-justification": "bun --conditions=react-server scripts/backfill-airtable-justification.ts",
+		"airtable:backfill-project-link": "bun --conditions=react-server scripts/backfill-airtable-project-link.ts",
 		"airtable:backfill-project-week": "bun --conditions=react-server scripts/backfill-airtable-project-week.ts",
 		"airtable:backfill-review": "bun --conditions=react-server scripts/backfill-airtable-review.ts",
 		"airtable:backfill-reviewers": "bun --conditions=react-server scripts/backfill-airtable-reviewers.ts",
