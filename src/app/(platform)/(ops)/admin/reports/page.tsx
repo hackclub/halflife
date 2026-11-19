@@ -167,13 +167,13 @@ function ReportDetail({ report }: { report: ContentReportRow }) {
 			{subject.gone ? (
 				<p className="hl-hint">This {REPORT_TARGET_LABELS[report.target].toLowerCase()} has been removed.</p>
 			) : (
-				<p>
+				<p className="hl-wrap-anywhere">
 					<Link href={subject.href}>{preview(subject.preview, 200) || "Open the reported item"}</Link>
 					<span className="hl-hint"> by {subject.author}</span>
 				</p>
 			)}
 			{report.details ? (
-				<blockquote className="hl-hint" style={{ margin: 0 }}>
+				<blockquote className="hl-hint hl-wrap-anywhere" style={{ margin: 0 }}>
 					{report.details}
 				</blockquote>
 			) : null}

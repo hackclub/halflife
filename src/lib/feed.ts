@@ -561,4 +561,20 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 	})
 }
 
+/** Put a hidden comment back. The mirror of `hideComment`, count included: a comment in the feed is a comment in the count. */
+export async function restoreComment(commentId: string): Promise<void> {
+	await db.transaction(async tx => {
+		const count = await tx.orm.public.PostComment.where({ deletedAt: null, id: commentId })
+			.where(target => target.hiddenAt.isNotNull())
+			.updateAndCount({
+				hiddenAt: null,
+				hiddenById: null,
+				hiddenReason: null,
+			})
+		if (count === 0) throw new HttpError("NOT_FOUND", "Comment not found")
+		const comment = await tx.orm.public.PostComment.whereUnique({ id: commentId }).select("postId").firstOrThrow()
+		await bumpPostCount(tx, comment.postId, "commentCount", count)
+	})
+}
+
 export { PostKind, PostStatus } from "@/lib/enums"

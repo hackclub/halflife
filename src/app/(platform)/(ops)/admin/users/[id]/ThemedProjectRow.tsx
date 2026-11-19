@@ -13,12 +13,15 @@ import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
 import { starterProjectsFor } from "@/lib/config/onboarding"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
 import type { Theme } from "@/lib/enums"
+import type { FundingState } from "@/lib/funding-state"
 
 /** One themed project on a participant's admin page. */
 export interface ThemedProjectRowData {
 	approvedHours: number | null
 	buildStatus: string
 	cardGrantSent: boolean
+	/** Where an approved design's money stands, when it has a grant to wait on. */
+	designFunding: FundingState | null
 	designStatus: string
 	/** ISO string, so the extension form edits the same instant the server holds. */
 	extension: string | null
@@ -88,7 +91,11 @@ export function ThemedProjectRow({
 					</div>
 				</td>
 				<td style={{ minWidth: "14rem" }}>
-					<ReviewStages buildStatus={data.buildStatus} designStatus={data.designStatus} />
+					<ReviewStages
+						buildStatus={data.buildStatus}
+						designFunding={data.designFunding}
+						designStatus={data.designStatus}
+					/>
 				</td>
 				<td>{data.tier ?? "-"}</td>
 				<td>

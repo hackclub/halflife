@@ -70,6 +70,18 @@ export interface JustificationValues {
 
 export { NO_FEATURES_RECORDED, reviewerTechnicalFeaturesCell } from "@/lib/airtable/unified-justification"
 
+/**
+ * The `Justification - Additional Justification` cell: the reviewer's "Justification notes" (blank when there are none), with a link to the project on Half Life at the end.
+ *
+ * The link is written with every value of the column, including a cleared note, so anyone reading the row can get from it to the project. With no public origin configured `url` is "", and the note stands on its own rather than a link that starts at `/`.
+ */
+export function additionalJustificationCell(notes: string | null | undefined, url: string): string {
+	const note = notes?.trim() ?? ""
+	if (!url) return note
+	const link = `Project on Half Life: ${url}`
+	return note ? `${note}\n\n${link}` : link
+}
+
 /** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
