@@ -397,7 +397,7 @@ export function readmeSchematicImage(readme: string): boolean {
 	// A reference-style image keeps its path in a definition elsewhere, so the definition it points at is read too.
 	const referenced = new Set(
 		images.flatMap(image => {
-			const label = image.match(/\]\[([^\]\n]+)\]$/)?.[1]
+			const label = /\]\[([^\]\n]+)\]$/.exec(image)?.[1]
 			return label ? [label.toLowerCase()] : []
 		}),
 	)

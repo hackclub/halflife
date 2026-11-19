@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { IconCamera, IconCart, IconCheck, IconFilm, IconPencil, IconWarning } from "@/components/platform/icons"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { Chip, Field, inputClass, OptionRow } from "@/components/platform/ui"
@@ -28,9 +29,15 @@ function timeLeft(ms: number): string {
 /** A banner for the last hours before the week locks, when there are any left to warn about. */
 function ClosingNotice({ weekId }: { weekId: number }) {
 	const { weekClosesAtMs } = useStore()
+	const [now, setNow] = useState(() => Date.now())
+	// The clock ticks on its own, so the notice clears itself when the last hour runs out without the maker having to reload.
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), 60_000)
+		return () => clearInterval(timer)
+	}, [])
 	const closes = weekClosesAtMs(weekId)
 	if (closes === null) return null
-	const left = closes - Date.now()
+	const left = closes - now
 	if (left <= 0 || left > CLOSING_SOON_MS) return null
 	return (
 		<SubmitNotice
