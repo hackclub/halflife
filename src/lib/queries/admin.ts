@@ -154,6 +154,8 @@ export interface ProjectDirectoryRow {
 	buildStatus: Models.public_ThemeProject["buildStatus"]
 	designStatus: Models.public_ThemeProject["designStatus"]
 	githubRepo: string | null
+	grantSent: boolean
+	grantUsd: number | null
 	id: string
 	requestedTier: number | null
 	starterProjectId: string | null
@@ -170,6 +172,14 @@ export interface ProjectDirectoryRow {
 		slackId: string | null
 		submissionExtensionUntil: Date | null
 	}
+	workSessions: {
+		effectiveDate: string | null
+		hoursApproved: number | null
+		hoursClaimed: number
+		id: string
+		phase: Phase
+		title: string
+	}[]
 }
 
 export async function listProjects(
@@ -245,6 +255,7 @@ export async function listProjects(
 			"buildStatus",
 			"designStatus",
 			"githubRepo",
+			"grantUsd",
 			"id",
 			"requestedTier",
 			"starterProjectId",
@@ -254,7 +265,19 @@ export async function listProjects(
 			"title",
 			"updatedAt",
 		)
+		.include("hcbGrantTopUps", topUps =>
+			topUps
+				.select("id")
+				.where({ phase: "DESIGN" })
+				.where(topUp => topUp.sentAt.isNotNull()),
+		)
 		.include("user", user => user.select("displayName", "email", "id", "name", "slackId", "submissionExtensionUntil"))
+		.include("workSessions", sessions =>
+			sessions
+				.select("effectiveDate", "hoursApproved", "hoursClaimed", "id", "phase", "title")
+				.where({ deletedAt: null })
+				.orderBy([session => session.effectiveDate.asc(), session => session.createdAt.asc()]),
+		)
 		.all()
 	const items = rows.slice(0, opts.limit).map(row => {
 		// The foreign key is required, so a missing owner is a data-integrity error rather than a row to render without one.
@@ -263,6 +286,8 @@ export async function listProjects(
 			buildStatus: row.buildStatus,
 			designStatus: row.designStatus,
 			githubRepo: row.githubRepo,
+			grantSent: row.hcbGrantTopUps.length > 0,
+			grantUsd: row.grantUsd,
 			id: row.id,
 			requestedTier: row.requestedTier,
 			starterProjectId: row.starterProjectId,
@@ -279,6 +304,7 @@ export async function listProjects(
 				slackId: row.user.slackId,
 				submissionExtensionUntil: parseNullableTimestamp(row.user.submissionExtensionUntil),
 			},
+			workSessions: row.workSessions,
 		}
 	})
 	const last = items.at(-1)

@@ -2,41 +2,32 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { ProjectControls } from "@/app/components/admin/ProjectControls"
 import { ManageButton, ManageRow } from "@/app/components/admin/ProjectManage"
+import {
+	hasProjectActions,
+	type ProjectManageData,
+	type ProjectManageFlags,
+	ProjectManageSections,
+} from "@/app/components/admin/ProjectManagePanel"
 import { ReviewStages } from "@/app/components/admin/ReviewStages"
-import type { Theme } from "@/lib/enums"
 
 /** One project row, with the controls folded into a panel under it. */
-export interface ProjectRowData {
-	buildStatus: string
-	designStatus: string
-	/** ISO string, so the extension form edits the same instant the server holds. */
-	extension: string | null
-	/** The same instant, already formatted for display. */
+export interface ProjectRowData extends ProjectManageData {
+	/** The same instant as `extension`, already formatted for display. */
 	extensionLabel: string | null
 	githubRepo: string | null
-	id: string
 	ownerId: string
 	ownerName: string
 	requestedTier: number | null
-	starterProjectId: string | null
-	theme: Theme
 	themeLabel: string
 	tier: number | null
 	title: string
-	/** The owner-wide extension, already formatted, when one is running. */
-	userExtension: string | null
 }
 
-export function ProjectRow({
-	canExtend,
-	canMoveTheme,
-	data,
-}: Readonly<{ canExtend: boolean; canMoveTheme: boolean; data: ProjectRowData }>) {
+export function ProjectRow({ data, flags }: Readonly<{ data: ProjectRowData; flags: ProjectManageFlags }>) {
 	const [open, setOpen] = useState(false)
-	const canManage = canExtend || canMoveTheme
 	const panelId = `manage-${data.id}`
+	const hasActions = hasProjectActions(data, flags)
 	const tier = data.tier ?? (data.requestedTier ? `${data.requestedTier} (asked)` : "-")
 
 	return (
@@ -67,7 +58,7 @@ export function ProjectRow({
 					<ReviewStages buildStatus={data.buildStatus} designStatus={data.designStatus} />
 				</td>
 				<td className="hl-col-actions">
-					{canManage ? (
+					{hasActions ? (
 						<div className="hl-row-actions">
 							<ManageButton onToggle={() => setOpen(value => !value)} open={open} panelId={panelId} />
 							{data.userExtension ? <span className="hl-hint">Owner extended until {data.userExtension}</span> : null}
@@ -79,16 +70,8 @@ export function ProjectRow({
 					)}
 				</td>
 			</tr>
-			<ManageRow id={panelId} open={open}>
-				<ProjectControls
-					canExtend={canExtend}
-					canMoveTheme={canMoveTheme}
-					extension={data.extension}
-					projectId={data.id}
-					starterProjectId={data.starterProjectId}
-					theme={data.theme}
-					userExtension={data.userExtension}
-				/>
+			<ManageRow id={panelId} open={open && hasActions}>
+				<ProjectManageSections data={data} flags={flags} />
 			</ManageRow>
 		</>
 	)

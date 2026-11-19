@@ -316,11 +316,6 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 					>
 						{user.themeProjects.map(project => (
 							<ThemedProjectRow
-								canEditHours={canOverride}
-								canExtend={canManageUsers}
-								canMoveTheme={canMoveTheme}
-								canOverride={canOverride}
-								canSendGrant={canSendGrant}
 								data={{
 									approvedHours: project.approvedHours,
 									buildStatus: project.buildStatus,
@@ -350,6 +345,13 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 									themeLabel: themeLabel(project.theme),
 									tier: projectTierId(project),
 									title: project.title,
+								}}
+								flags={{
+									canEditHours: canOverride,
+									canExtend: canManageUsers,
+									canMoveTheme,
+									canOverride,
+									canSendGrant,
 								}}
 								key={project.id}
 							/>

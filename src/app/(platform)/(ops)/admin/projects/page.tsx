@@ -19,6 +19,8 @@ import { displayName } from "@/lib/display-name"
 import { PhaseStatus, Theme } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
+import { statusFor } from "@/lib/phase"
+import { isPhaseDecided } from "@/lib/program"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
 import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
 import { ProjectRow } from "./ProjectRow"
@@ -68,6 +70,10 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	const filters = filtersFrom(search)
 	const canExtend = hasPermission(roles, Permission.MANAGE_USERS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
+	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
+	// The same controls as a user's themed projects. Sending a grant needs the owner's identity checked, which this list does not look up row by row, so it stays on the user page.
+	const flags = { canEditHours: canOverride, canExtend, canMoveTheme, canOverride, canSendGrant: false }
+	const canManage = Object.values(flags).some(Boolean)
 	// The owner's email and Slack ID are contact details: they leave the server for ADMIN/AUDITOR only, exactly as the user directory does.
 	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
 	const { items, nextCursor } = await listProjects({ ...filters, cursor: search.cursor, limit: 50 }, { includePii })
@@ -170,7 +176,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 				) : (
 					<Table
 						className="hl-table--roomy hl-table--projects"
-						head={["Project", "Owner", "Theme", "Tier", "Review", canExtend || canMoveTheme ? "Actions" : "Extension"]}
+						head={["Project", "Owner", "Theme", "Tier", "Review", canManage ? "Actions" : "Extension"]}
 					>
 						{items.map(project => {
 							const userExtension =
@@ -179,8 +185,6 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 									: null
 							return (
 								<ProjectRow
-									canExtend={canExtend}
-									canMoveTheme={canMoveTheme}
 									data={{
 										buildStatus: project.buildStatus,
 										designStatus: project.designStatus,
@@ -189,7 +193,22 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 											? formatUtcDateTime(project.submissionExtensionUntil)
 											: null,
 										githubRepo: project.githubRepo,
+										grantSent: project.grantSent,
+										grantUsd: project.designStatus === PhaseStatus.approved ? project.grantUsd : null,
 										id: project.id,
+										journal: project.workSessions.map(session => {
+											const phaseStatus = statusFor(project, session.phase)
+											return {
+												decided: isPhaseDecided(phaseStatus),
+												effectiveDate: session.effectiveDate,
+												hoursApproved: session.hoursApproved,
+												hoursClaimed: session.hoursClaimed,
+												id: session.id,
+												locked: phaseStatus === PhaseStatus.in_review,
+												phase: session.phase,
+												title: session.title,
+											}
+										}),
 										ownerId: project.user.id,
 										ownerName: displayName(project.user) ?? "-",
 										requestedTier: project.requestedTier,
@@ -200,6 +219,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										title: project.title,
 										userExtension,
 									}}
+									flags={flags}
 									key={project.id}
 								/>
 							)
