@@ -787,9 +787,14 @@
 	.hl-queue-item > .hl-badge {
 		align-self: flex-start;
 	}
-	/* A stage's pill drops to its own line when its cell is too narrow for both, instead of running past the cell's edge. */
+	/* A stage's pills drop to their own line when the cell is too narrow for the label and both, instead of one pill staying beside the label and the other falling alone. */
 	.hl-review-stages li {
 		flex-wrap: wrap;
+	}
+	.hl-review-stages__badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
 	}
 
 	/* ── Filter form ───────────────────────────────────────────────────────── */

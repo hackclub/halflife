@@ -22,13 +22,17 @@ export function ReviewStages({
 			<li>
 				<IconPencil />
 				<span className="hl-review-stages__name">Design</span>
-				<Badge tone={statusTone(designStatus)}>{statusLabel(designStatus)}</Badge>
-				{designFunding ? <Badge tone={FUNDING_TONE[designFunding]}>{FUNDING_STATE_TEXT[designFunding]}</Badge> : null}
+				<span className="hl-review-stages__badges">
+					<Badge tone={statusTone(designStatus)}>{statusLabel(designStatus)}</Badge>
+					{designFunding ? <Badge tone={FUNDING_TONE[designFunding]}>{FUNDING_STATE_TEXT[designFunding]}</Badge> : null}
+				</span>
 			</li>
 			<li>
 				<IconHammer />
 				<span className="hl-review-stages__name">Build</span>
-				<Badge tone={statusTone(buildStatus)}>{statusLabel(buildStatus)}</Badge>
+				<span className="hl-review-stages__badges">
+					<Badge tone={statusTone(buildStatus)}>{statusLabel(buildStatus)}</Badge>
+				</span>
 			</li>
 		</ul>
 	)
