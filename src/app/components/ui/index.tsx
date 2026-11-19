@@ -3,6 +3,7 @@ import type { ComponentPropsWithRef, ReactNode } from "react"
 import { HangingSign } from "@/components/sign/HangingSign"
 import { isTruthy } from "@/lib/truthy"
 import { IconFilter } from "./icons"
+import { ResetFilters } from "./ResetFilters"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that know about colour, spacing or type – a page composes these and never writes a raw utility class.
@@ -194,9 +195,7 @@ export function FilterBar({
 			<div className="hl-filters__footer">
 				<div className="hl-filters__notes">{footer}</div>
 				<div className="hl-filters__actions">
-					<Link className="hl-hint" href={resetHref}>
-						Reset
-					</Link>
+					<ResetFilters href={resetHref} />
 					<Button type="submit">
 						<IconFilter /> Filter
 					</Button>
