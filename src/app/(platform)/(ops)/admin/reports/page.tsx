@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { TabKeys } from "@/app/components/admin/TabKeys"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, PageHeader, Panel } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
@@ -89,6 +90,10 @@ export default async function AdminReportsPage({
 				}
 				compact
 				title="Reports"
+			/>
+			<TabKeys
+				current={filter === "open" ? "/admin/reports" : `/admin/reports?status=${filter}`}
+				hrefs={FILTERS.map(f => (f.id === "open" ? "/admin/reports" : `/admin/reports?status=${f.id}`))}
 			/>
 
 			{/* A queue on the left and the chosen report on the right, so a decision is made beside the thing it is about rather than in a row of buttons. */}

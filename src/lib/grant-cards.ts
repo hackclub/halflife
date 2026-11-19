@@ -73,11 +73,17 @@ export interface GrantCardProjectRow {
 	weekOneStarter: boolean
 }
 
+export type GrantExclusionTone = "danger" | "info" | "muted" | "warning"
+
 export interface GrantCardExclusion {
 	ownerName: string
 	projectId: string
 	reason: string
 	title: string
+	/**
+	 * How the reason reads in the list: something to fix, something already settled, something waiting on the pipeline, or something merely waiting on the maker.
+	 */
+	tone: GrantExclusionTone
 }
 
 export interface GrantCardPreview {
@@ -189,6 +195,7 @@ async function buildPreview(
 				projectId: row.id,
 				reason: "Project has no owner",
 				title: row.title,
+				tone: "danger",
 			})
 			continue
 		}
@@ -203,34 +210,41 @@ async function buildPreview(
 		const returnedCard = row.hcbGrantCards.some(card => card.status === HcbGrantCardStatus.RETURNED)
 		// The flag, the ban and the suspension in one answer, so this list and the issue loop cannot disagree about who is paid. A fraud flag on its own is what this list used to check.
 		const payoutBlock = payoutBlockReason(row.user)
-		const reason = row.grantUsd
-			? payoutBlock
-				? payoutBlock
-				: row.user.verificationStatus === "verified"
-					? row.hcbGrantTopUps.length > 0
-						? "Already paid by HCB top-up"
-						: returnedCard
-							? "Already paid: the maker returned an earlier card grant"
-							: row.hcbCardGrantExports.length > 0
-								? "Already in an HCB CSV import"
-								: liveCard
-									? "Card grant already issued or awaiting reconciliation"
-									: null
-					: "Identity is not verified"
-			: "No approved grant"
-		if (reason) {
-			excluded.push({ ownerName, projectId: row.id, reason, title: row.title })
+		let exclusion: { reason: string; tone: GrantExclusionTone } | null = null
+		if (!row.grantUsd) exclusion = { reason: "No approved grant", tone: "danger" }
+		else if (payoutBlock) exclusion = { reason: payoutBlock, tone: "danger" }
+		else if (row.user.verificationStatus !== "verified")
+			exclusion = { reason: "Identity is not verified", tone: "danger" }
+		else if (row.hcbGrantTopUps.length > 0) exclusion = { reason: "Already paid by HCB top-up", tone: "muted" }
+		else if (returnedCard)
+			exclusion = { reason: "Already paid: the maker returned an earlier card grant", tone: "muted" }
+		else if (row.hcbCardGrantExports.length > 0) exclusion = { reason: "Already in an HCB CSV import", tone: "muted" }
+		else if (liveCard) exclusion = { reason: "Card grant already issued or awaiting reconciliation", tone: "muted" }
+		if (exclusion) {
+			excluded.push({ ownerName, projectId: row.id, reason: exclusion.reason, title: row.title, tone: exclusion.tone })
 			continue
 		}
 
 		const capUsd = grantCardCapUsd(row.grantUsd, row.tier, isWeekOneStarter(row.starterProjectId))
 		if (capUsd === null) {
-			excluded.push({ ownerName, projectId: row.id, reason: "No tier to cap the grant at", title: row.title })
+			excluded.push({
+				ownerName,
+				projectId: row.id,
+				reason: "No tier to cap the grant at",
+				title: row.title,
+				tone: "danger",
+			})
 			continue
 		}
 		const fullCents = grantCardAmountCents(row.bomItems, row.bomTaxShippingUsd, capUsd)
 		if (fullCents <= 0) {
-			excluded.push({ ownerName, projectId: row.id, reason: "BOM is empty or totals zero", title: row.title })
+			excluded.push({
+				ownerName,
+				projectId: row.id,
+				reason: "BOM is empty or totals zero",
+				title: row.title,
+				tone: "warning",
+			})
 			continue
 		}
 		// A cancelled card returned only its unspent balance, so what it spent is not funded again. An unknown
@@ -246,6 +260,7 @@ async function buildPreview(
 					? "Already spent from an earlier card that was cancelled"
 					: "An earlier card was cancelled and its remaining balance is unknown",
 				title: row.title,
+				tone: "muted",
 			})
 			continue
 		}
@@ -310,13 +325,13 @@ async function applyUnifiedGate(
 		.map(recordIdOf)
 		.filter((id): id is string => Boolean(id))
 	const fundingGiven = await readStarterFundingGiven(starterRecordIdList)
-	const starterBlock = (recordId: string): string | null => {
+	const starterBlock = (recordId: string): { reason: string; tone: GrantExclusionTone } | null => {
 		const paid = fundingGiven?.get(recordId)
-		if (fundingGiven === null || paid === undefined) return "Could not check Funding given"
+		if (fundingGiven === null || paid === undefined) return { reason: "Could not check Funding given", tone: "danger" }
 		// The money this request is about to pay is the reason it is there, not a reason to refuse it.
 		const own = ownWrites.get(recordId)
 		if (own !== undefined && Math.abs(paid - own) < 0.005) return null
-		return paid > 0 ? "Has Funding given in Airtable; the starter export pays it" : null
+		return paid > 0 ? { reason: "Has Funding given in Airtable; the starter export pays it", tone: "muted" } : null
 	}
 
 	const kept: GrantCardProjectRow[] = []
@@ -329,7 +344,13 @@ async function applyUnifiedGate(
 				kept.push(row)
 				continue
 			}
-			gone.push({ ownerName: row.ownerName, projectId: row.projectId, reason: block, title: row.title })
+			gone.push({
+				ownerName: row.ownerName,
+				projectId: row.projectId,
+				reason: block.reason,
+				title: row.title,
+				tone: block.tone,
+			})
 			continue
 		}
 		gone.push({
@@ -337,6 +358,8 @@ async function applyUnifiedGate(
 			projectId: row.projectId,
 			reason: submitted ? "Not in the unified database" : "Could not check the unified database",
 			title: row.title,
+			// Waiting on the sync pipeline, not on anything the maker controls, so it reads apart from a maker fix.
+			tone: submitted ? "info" : "danger",
 		})
 	}
 	return { eligible: kept, excluded: gone }
@@ -781,10 +804,15 @@ async function markAmbiguous(id: string, reason: string): Promise<void> {
  * A reconcile must never match one of these again. Two of a maker's cards at the same tier are the same amount, so a
  * lost response that is allowed to pair with their other project's grant marks that grant against the wrong row,
  * fails the unique index, and leaves this row pending forever. A grant already recorded here was paid for something.
+ *
+ * Shop cards are included: they are paid to the same makers out of the same balance, and a reconcile in either path
+ * must not claim a grant the other one already recorded.
  */
-async function claimedGrantIds(): Promise<Set<string>> {
+export async function claimedGrantIds(): Promise<Set<string>> {
 	const claimed = new Set<string>()
 	for (const card of await db.orm.public.HcbGrantCard.where({}).select("hcbCardGrantId").all())
+		if (card.hcbCardGrantId) claimed.add(bareGrantId(card.hcbCardGrantId))
+	for (const card of await db.orm.public.HcbShopGrantCard.where({}).select("hcbCardGrantId").all())
 		if (card.hcbCardGrantId) claimed.add(bareGrantId(card.hcbCardGrantId))
 	for (const topUp of await db.orm.public.HcbGrantTopUp.where({}).select("grantHashid").all())
 		if (topUp.grantHashid) claimed.add(bareGrantId(topUp.grantHashid))

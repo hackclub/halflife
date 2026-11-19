@@ -1,29 +1,14 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-import {
-	Button,
-	EmptyState,
-	Field,
-	FilterBar,
-	PageHeader,
-	Panel,
-	Select,
-	statusLabel,
-	Table,
-	TextInput,
-} from "@/app/components/ui"
+import { Button, Field, FilterBar, PageHeader, Panel, Select, statusLabel, TextInput } from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
 import { THEMES, themeLabel } from "@/lib/config/program"
-import { formatUtcDateTime } from "@/lib/deadline"
-import { displayName } from "@/lib/display-name"
 import { PhaseStatus, Theme } from "@/lib/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
-import { statusFor } from "@/lib/phase"
-import { isPhaseDecided } from "@/lib/program"
-import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
-import { type FirstValues, firstValues, type SearchParamValue } from "@/lib/search-params"
-import { ProjectRow } from "./ProjectRow"
+import { Permission } from "@/lib/permissions"
+import { PROJECT_PAGE_SIZE, projectAccessFor, projectFiltersFrom, toProjectRow } from "@/lib/project-directory"
+import { listProjects } from "@/lib/queries/admin"
+import { firstValues, type SearchParamValue } from "@/lib/search-params"
+import { ProjectList } from "./ProjectList"
 
 export const metadata: Metadata = {
 	title: "Projects",
@@ -33,7 +18,6 @@ export const dynamic = "force-dynamic"
 
 interface Search {
 	build?: SearchParamValue
-	cursor?: SearchParamValue
 	design?: SearchParamValue
 	extended?: SearchParamValue
 	q?: SearchParamValue
@@ -47,44 +31,30 @@ interface Props {
 
 const STATUSES = Object.values(PhaseStatus)
 
-const status = (v?: string) => STATUSES.find(x => x === v)
-
-/** Anything unrecognised in the query string is dropped, not trusted. */
-function filtersFrom(s: FirstValues<Search>): ProjectFilters {
-	const tier = Number(s.tier)
-	return {
-		buildStatus: status(s.build),
-		designStatus: status(s.design),
-		extended: s.extended === "1",
-		q: s.q?.trim() || undefined,
-		theme: Object.values(Theme).find(t => t === s.theme),
-		tier: tier === 1 || tier === 2 || tier === 3 ? tier : undefined,
-		unstarted: s.unstarted === "1",
-	}
-}
-
 export default async function AdminProjectsPage({ searchParams }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
 	// Every filter, taken as the single value the URL named: a repeated parameter arrives as an array, and an array where Prisma expects a string is a 500.
 	const search = firstValues(await searchParams)
-	const filters = filtersFrom(search)
-	const canExtend = hasPermission(roles, Permission.MANAGE_USERS)
-	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
-	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
-	// The same controls as a user's themed projects. Sending a grant needs the owner's identity checked, which this list does not look up row by row, so it stays on the user page.
-	const flags = { canEditHours: canOverride, canExtend, canMoveTheme, canOverride, canSendGrant: false }
-	const canManage = Object.values(flags).some(Boolean)
-	// The owner's email and Slack ID are contact details: they leave the server for ADMIN/AUDITOR only, exactly as the user directory does.
-	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
-	const { items, nextCursor } = await listProjects({ ...filters, cursor: search.cursor, limit: 50 }, { includePii })
-
-	// The next page keeps every filter; only the cursor moves.
-	const nextParams = new URLSearchParams(
-		Object.entries({ ...search, cursor: nextCursor ?? undefined }).filter(
-			(e): e is [string, string] => typeof e[1] === "string" && e[1] !== "",
-		),
-	)
+	const filters = projectFiltersFrom(search)
+	const { flags, includePii } = projectAccessFor(roles)
 	const now = new Date()
+	const { items, nextCursor } = await listProjects({ ...filters, limit: PROJECT_PAGE_SIZE }, { includePii })
+	const rows = items.map(project => toProjectRow(project, now))
+
+	// The rows below load more through the same filters, so the list's address carries them all.
+	const listParams = new URLSearchParams(
+		Object.entries({
+			build: search.build,
+			design: search.design,
+			extended: search.extended,
+			q: search.q,
+			theme: search.theme,
+			tier: search.tier,
+			unstarted: search.unstarted,
+		}).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== ""),
+	)
+	const filterKey = listParams.toString()
+	listParams.set("limit", String(PROJECT_PAGE_SIZE))
 
 	return (
 		<div className="hl-stack hl-page-wide">
@@ -171,66 +141,14 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 			</Panel>
 
 			<Panel>
-				{items.length === 0 ? (
-					<EmptyState>No projects match.</EmptyState>
-				) : (
-					<Table
-						className="hl-table--roomy hl-table--projects"
-						head={["Project", "Owner", "Theme", "Tier", "Review", canManage ? "Actions" : "Extension"]}
-					>
-						{items.map(project => {
-							const userExtension =
-								project.user.submissionExtensionUntil && project.user.submissionExtensionUntil > now
-									? formatUtcDateTime(project.user.submissionExtensionUntil)
-									: null
-							return (
-								<ProjectRow
-									data={{
-										buildStatus: project.buildStatus,
-										designStatus: project.designStatus,
-										extension: project.submissionExtensionUntil?.toISOString() ?? null,
-										extensionLabel: project.submissionExtensionUntil
-											? formatUtcDateTime(project.submissionExtensionUntil)
-											: null,
-										githubRepo: project.githubRepo,
-										grantSent: project.grantSent,
-										grantUsd: project.designStatus === PhaseStatus.approved ? project.grantUsd : null,
-										id: project.id,
-										journal: project.workSessions.map(session => {
-											const phaseStatus = statusFor(project, session.phase)
-											return {
-												decided: isPhaseDecided(phaseStatus),
-												effectiveDate: session.effectiveDate,
-												hoursApproved: session.hoursApproved,
-												hoursClaimed: session.hoursClaimed,
-												id: session.id,
-												locked: phaseStatus === PhaseStatus.in_review,
-												phase: session.phase,
-												title: session.title,
-											}
-										}),
-										ownerId: project.user.id,
-										ownerName: displayName(project.user) ?? "-",
-										requestedTier: project.requestedTier,
-										starterProjectId: project.starterProjectId,
-										theme: project.theme,
-										themeLabel: themeLabel(project.theme),
-										tier: project.tier,
-										title: project.title,
-										userExtension,
-									}}
-									flags={flags}
-									key={project.id}
-								/>
-							)
-						})}
-					</Table>
-				)}
-				{nextCursor ? (
-					<p>
-						<Link href={`/admin/projects?${nextParams.toString()}`}>Next page</Link>
-					</p>
-				) : null}
+				{/* Keyed on the filters, so a new search starts a new list rather than appending to the old one. */}
+				<ProjectList
+					baseUrl={`/api/admin/projects?${listParams}`}
+					flags={flags}
+					initialCursor={nextCursor}
+					initialRows={rows}
+					key={filterKey}
+				/>
 			</Panel>
 		</div>
 	)

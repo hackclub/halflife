@@ -13,6 +13,7 @@ import {
 	pct,
 	YAxis,
 } from "@/app/components/admin/chart-geometry"
+import { TabKeys } from "@/app/components/admin/TabKeys"
 import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { getProgrammeNps } from "@/lib/airtable/nps"
@@ -46,6 +47,7 @@ import {
 	type WeekProjectCluster,
 } from "@/lib/queries/admin"
 import { getUserFlowSankey } from "@/lib/queries/admin-flow"
+import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
 export const metadata: Metadata = {
@@ -69,7 +71,23 @@ const RESULT_LABEL: { [_ in ReviewResult]: string } = {
 	RETURNED: "Changes requested",
 }
 
-export default async function AdminOverviewPage() {
+/** The tabs in the order the chips and the [ and ] keys step through them. */
+const TABS = [
+	{ id: "summary", label: "Summary" },
+	{ id: "people", label: "People" },
+	{ id: "activity", label: "Activity" },
+	{ id: "jobs", label: "Jobs" },
+] as const
+
+type OverviewTab = (typeof TABS)[number]["id"]
+
+const tabHref = (id: OverviewTab) => (id === "summary" ? "/admin" : `/admin?tab=${id}`)
+
+interface Props {
+	searchParams: Promise<{ tab?: SearchParamValue }>
+}
+
+export default async function AdminOverviewPage({ searchParams }: Props) {
 	await requireAnyPermissionPage(
 		Permission.VIEW_USERS,
 		Permission.MANAGE_SHOP,
@@ -77,68 +95,53 @@ export default async function AdminOverviewPage() {
 		Permission.VIEW_AUDIT_LOG,
 		Permission.MANAGE_PROGRAM,
 	)
-
-	const [
-		counters,
-		nps,
-		syncs,
-		flow,
-		sankeyData,
-		weeklyFlow,
-		areas,
-		countries,
-		activity,
-		activeUsers,
-		activityByGoal,
-		projectsByWeek,
-		hoursByWeek,
-		hoursSpread,
-		firstProjects,
-		projectReviewStatuses,
-		verification,
-		reviewer,
-		settings,
-	] = await Promise.all([
-		getAdminCounters(),
-		getProgrammeNps(),
-		getLatestSyncRuns([
-			"hackatime",
-			"airtable_ysws",
-			"airtable_rsvp",
-			"airtable_loops",
-			"ari_ship",
-			"claim_sweep",
-			"printer_reconcile",
-			"help_ticket_summary",
-			"project_review_summary",
-		]),
-		getUserFlowFunnel(),
-		getUserFlowSankey(),
-		getUserFlowWeekly(),
-		getAreaStats(),
-		getCountryStats(),
-		getDailyActivity(),
-		getDailyActiveUsers(),
-		getDailyActivityByGoal(),
-		getProjectsByWeek(),
-		getHoursByWeek(),
-		getHoursDistribution(),
-		getFirstProjectStats(),
-		getProjectReviewStatuses(),
-		getVerificationStats(),
-		getReviewerStats(),
-		getProgramSettings(),
-	])
-
-	// `eventStartDate` is stored as UTC midnight of the calendar day the programme opens, which is also the day week 1 opens in the programme's timezone. The charts' days are effective dates in that timezone, so its UTC date is what they are compared against.
-	const programmeStart = settings.eventStartDate.toISOString().slice(0, 10)
-
-	const reportCounts = await countContentReports()
+	// The tab, taken as the single value the URL named: a repeated parameter arrives as an array, which is not a tab.
+	const { tab: requestedTab } = firstValues(await searchParams)
+	const tab: OverviewTab = TABS.find(item => item.id === requestedTab)?.id ?? "summary"
 
 	return (
 		<div className="hl-stack">
-			<PageHeader compact title="Overview" />
+			<PageHeader
+				actions={
+					<div className="hl-row">
+						{TABS.map(item => (
+							<Link
+								aria-current={item.id === tab || undefined}
+								className="hl-chip"
+								href={tabHref(item.id)}
+								key={item.id}
+							>
+								{item.label}
+							</Link>
+						))}
+					</div>
+				}
+				compact
+				title="Overview"
+			/>
+			<TabKeys current={tabHref(tab)} hrefs={TABS.map(item => tabHref(item.id))} />
 
+			{tab === "summary" ? <SummaryTab /> : null}
+			{tab === "people" ? <PeopleTab /> : null}
+			{tab === "activity" ? <ActivityTab /> : null}
+			{tab === "jobs" ? <JobsTab /> : null}
+		</div>
+	)
+}
+
+/** Summary: what needs attention, the headline figures, NPS and reviewer activity. Only its own queries run when this tab is open. */
+async function SummaryTab() {
+	const [counters, nps, activeUsers, projectReviewStatuses, reviewer, reportCounts] = await Promise.all([
+		getAdminCounters(),
+		getProgrammeNps(),
+		getDailyActiveUsers(),
+		getProjectReviewStatuses(),
+		getReviewerStats(),
+		countContentReports(),
+	])
+
+	return (
+		<>
 			<Panel title="Needs attention">
 				<nav aria-label="Work waiting on staff" className="hl-attention">
 					<Link data-zero={counters.pendingOrders === 0 ? "true" : undefined} href="/admin/fulfillment">
@@ -258,7 +261,25 @@ export default async function AdminOverviewPage() {
 					Projects that have never been submitted are left out. Console decisions are included.
 				</p>
 			</Panel>
+		</>
+	)
+}
 
+/** People: the sign-up flow, where people come from and what they chose. Only its own queries run when this tab is open. */
+async function PeopleTab() {
+	const [flow, sankeyData, weeklyFlow, areas, countries, hoursSpread, firstProjects, verification] = await Promise.all([
+		getUserFlowFunnel(),
+		getUserFlowSankey(),
+		getUserFlowWeekly(),
+		getAreaStats(),
+		getCountryStats(),
+		getHoursDistribution(),
+		getFirstProjectStats(),
+		getVerificationStats(),
+	])
+
+	return (
+		<>
 			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} weeks={weeklyFlow} />
 
 			<Panel title="Activities after onboarding">
@@ -338,7 +359,26 @@ export default async function AdminOverviewPage() {
 			<Panel title="Hours per participant">
 				<HoursHistogram data={hoursSpread} />
 			</Panel>
+		</>
+	)
+}
 
+/** Activity: daily and weekly activity charts. Only its own queries run when this tab is open. */
+async function ActivityTab() {
+	const [settings, activity, activeUsers, activityByGoal, projectsByWeek, hoursByWeek] = await Promise.all([
+		getProgramSettings(),
+		getDailyActivity(),
+		getDailyActiveUsers(),
+		getDailyActivityByGoal(),
+		getProjectsByWeek(),
+		getHoursByWeek(),
+	])
+
+	// `eventStartDate` is stored as UTC midnight of the calendar day the programme opens, which is also the day week 1 opens in the programme's timezone. The charts' days are effective dates in that timezone, so its UTC date is what they are compared against.
+	const programmeStart = settings.eventStartDate.toISOString().slice(0, 10)
+
+	return (
+		<>
 			<ProgrammeFilterProvider programmeStart={programmeStart}>
 				<Panel title="Daily active users">
 					<DauChart days={activeUsers.days} />
@@ -388,28 +428,42 @@ export default async function AdminOverviewPage() {
 			<Panel title="Hours per week">
 				<HoursByWeekChart weeks={hoursByWeek} />
 			</Panel>
+		</>
+	)
+}
 
-			<Panel
-				actions={<Link href="/admin/audit?action=AIRTABLE_SYNC_FAILURE">Sync failures</Link>}
-				title="Scheduled jobs"
-			>
-				{syncs.length === 0 ? (
-					<EmptyState>No job has completed yet. Run them by hand from Orchard to check the wiring.</EmptyState>
-				) : (
-					<Table head={["Job", "Last success", "Result"]}>
-						{syncs.map(run => (
-							<tr key={run.syncKey}>
-								<td className="hl-mono">{run.syncKey}</td>
-								<td className="hl-mono">{formatUtcDateTime(run.lastRunAt)}</td>
-								<td>
-									<SyncResult result={run.result} />
-								</td>
-							</tr>
-						))}
-					</Table>
-				)}
-			</Panel>
-		</div>
+/** Jobs: when each scheduled job last succeeded and what it recorded. */
+async function JobsTab() {
+	const syncs = await getLatestSyncRuns([
+		"hackatime",
+		"airtable_ysws",
+		"airtable_rsvp",
+		"airtable_loops",
+		"ari_ship",
+		"claim_sweep",
+		"printer_reconcile",
+		"help_ticket_summary",
+		"project_review_summary",
+	])
+
+	return (
+		<Panel actions={<Link href="/admin/audit?action=AIRTABLE_SYNC_FAILURE">Sync failures</Link>} title="Scheduled jobs">
+			{syncs.length === 0 ? (
+				<EmptyState>No job has completed yet. Run them by hand from Orchard to check the wiring.</EmptyState>
+			) : (
+				<Table head={["Job", "Last success", "Result"]}>
+					{syncs.map(run => (
+						<tr key={run.syncKey}>
+							<td className="hl-mono">{run.syncKey}</td>
+							<td className="hl-mono">{formatUtcDateTime(run.lastRunAt)}</td>
+							<td>
+								<SyncResult result={run.result} />
+							</td>
+						</tr>
+					))}
+				</Table>
+			)}
+		</Panel>
 	)
 }
 

@@ -34,10 +34,11 @@ export function ProjectRow({ data, flags }: Readonly<{ data: ProjectRowData; fla
 		<>
 			<tr>
 				<td className="hl-col-project">
-					<span className="hl-entity-name">{data.title || "Untitled"}</span>
-					{/* The participant's project page opens for its owner only, so the admin link goes to the owner's page, where the project is listed. The public link is the read-only project page. */}
+					{/* The participant's project page opens for its owner only, so the name goes to the owner's page, where the project is listed. The public link is the read-only project page. */}
+					<Link className="hl-entity-name" href={`/admin/users/${data.ownerId}?tab=projects#project-${data.id}`}>
+						{data.title || "Untitled"}
+					</Link>
 					<div className="hl-entity-links">
-						<Link href={`/admin/users/${data.ownerId}?tab=projects#project-${data.id}`}>Admin project</Link>
 						<Link href={`/projects/${data.id}`}>Public project</Link>
 					</div>
 					{/* One line for where the project lives: its repository when it has one, otherwise its ID. The full ID stays in the tooltip. */}
@@ -46,9 +47,10 @@ export function ProjectRow({ data, flags }: Readonly<{ data: ProjectRowData; fla
 					</div>
 				</td>
 				<td className="hl-col-owner">
-					<span className="hl-entity-name">{data.ownerName}</span>
+					<Link className="hl-entity-name" href={`/admin/users/${data.ownerId}`}>
+						{data.ownerName}
+					</Link>
 					<div className="hl-entity-links">
-						<Link href={`/admin/users/${data.ownerId}`}>Admin user</Link>
 						<Link href={`/u/${data.ownerId}`}>Public profile</Link>
 					</div>
 				</td>

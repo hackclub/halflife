@@ -5,7 +5,7 @@ import { ItemCostField } from "@/app/components/forms/ItemCostField"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { ShopItemImport } from "@/app/components/forms/ShopItemImport"
 import { ShopRegionForm } from "@/app/components/forms/ShopRegionForm"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Badge, EmptyState, LinkButton, PageHeader, Panel, Table } from "@/app/components/ui"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -44,10 +44,17 @@ export default async function AdminShopPage() {
 				{items.length === 0 ? (
 					<EmptyState>No items yet.</EmptyState>
 				) : (
-					<Table head={["Slug", "Name", "Category", "Price", "Cost (USD)", "Stock", "Gated", "Active", ""]}>
+					<Table
+						className="hl-table--shop"
+						head={["Slug", "Name", "Category", "Price", "Cost (USD)", "Stock", "Gated", "Active", "Manage"]}
+					>
 						{items.map(item => (
 							<tr key={item.id}>
-								<td className="hl-mono">{item.id}</td>
+								<td>
+									<span className="hl-mono" title={item.id}>
+										{item.id}
+									</span>
+								</td>
 								<td>
 									<Link href={`/admin/shop/${item.id}`}>{item.name}</Link>
 								</td>
@@ -61,14 +68,15 @@ export default async function AdminShopPage() {
 								<td>
 									<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
 								</td>
-								<td className="hl-row" style={{ gap: "0.5rem" }}>
-									<Link href={`/admin/shop/${item.id}`}>Edit</Link>
+								<td className="hl-shop-actions">
+									<LinkButton href={`/admin/shop/${item.id}`}>Edit</LinkButton>
 									{item.active ? (
 										<ActionButton
 											confirm="Retire this item? Existing orders keep working."
 											label="Retire"
 											method="DELETE"
 											url={`/api/admin/shop/items/${item.id}`}
+											variant="danger"
 										/>
 									) : (
 										<ActionButton
@@ -76,6 +84,7 @@ export default async function AdminShopPage() {
 											label="Re-list"
 											method="PATCH"
 											url={`/api/admin/shop/items/${item.id}`}
+											variant="primary"
 										/>
 									)}
 								</td>

@@ -1,8 +1,40 @@
 import { describe, expect, test } from "bun:test"
-import { ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
-import { canCancelOrder, cancelBlockedReason } from "@/lib/shop-order"
+import { HcbGrantCardStatus, ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
+import { canCancelOrder, cancelBlockedReason, grantCardCentsFor, isLiveShopCard } from "@/lib/shop-order"
+
+describe("isLiveShopCard", () => {
+	test("pending, issued and ambiguous cards are live", () => {
+		for (const status of [HcbGrantCardStatus.PENDING, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS])
+			expect(isLiveShopCard(status)).toBe(true)
+	})
+
+	test("failed, skipped, cancelled and returned cards are not", () => {
+		for (const status of [
+			HcbGrantCardStatus.FAILED,
+			HcbGrantCardStatus.SKIPPED,
+			HcbGrantCardStatus.CANCELED,
+			HcbGrantCardStatus.RETURNED,
+		])
+			expect(isLiveShopCard(status)).toBe(false)
+	})
+})
 
 const order = (status: ShopOrderStatus, fulfillmentStage: ShopFulfillmentStage) => ({ fulfillmentStage, status })
+
+describe("grantCardCentsFor", () => {
+	test("is the item's cost in cents, times the quantity", () => {
+		expect(grantCardCentsFor(18.5, 1)).toBe(1850)
+		expect(grantCardCentsFor(18.5, 3)).toBe(5550)
+	})
+
+	test("is null when the item has no cost, so there is no amount to put on a card", () => {
+		expect(grantCardCentsFor(null, 1)).toBeNull()
+	})
+
+	test("is null when the cost is zero", () => {
+		expect(grantCardCentsFor(0, 2)).toBeNull()
+	})
+})
 
 describe("canCancelOrder", () => {
 	test("a pending or held order that nothing has been ordered for can be cancelled", () => {

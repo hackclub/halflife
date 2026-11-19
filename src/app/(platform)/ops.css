@@ -43,6 +43,7 @@
 	/* Status as text: teal and coin read 2.80 and 1.98:1 on white, so a badge's word takes these inks instead. `danger` stays a whole-colour alias because the admin charts draw with it. */
 	--color-danger: var(--color-coral);
 	--color-success-ink: var(--color-teal-ink);
+	--color-info-ink: var(--color-sky-ink);
 	--color-warning-ink: var(--color-orange-ink);
 	--color-danger-ink: var(--color-coral-deep);
 
@@ -306,6 +307,19 @@
 		min-height: 7rem;
 		resize: vertical;
 	}
+	/* An exclusion's reason carries the colour of what it means: something to fix, something waiting on the pipeline, something waiting on the maker, or something already settled. */
+	.hl-reason--danger {
+		color: var(--color-danger-ink);
+	}
+	.hl-reason--info {
+		color: var(--color-info-ink);
+	}
+	.hl-reason--warning {
+		color: var(--color-warning-ink);
+	}
+	.hl-reason--muted {
+		color: var(--color-ink-muted);
+	}
 	.hl-hint {
 		margin: 0;
 		font-size: 0.875rem;
@@ -488,6 +502,21 @@
 		color: var(--color-ink-strong);
 		white-space: nowrap;
 	}
+	/* The way back to the maker's own dashboard, kept in the header so it is not a page inside the console's own sections. */
+	.hl-admin-dashboard {
+		flex: 0 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--color-ink);
+		white-space: nowrap;
+		text-decoration: none;
+	}
+	.hl-admin-dashboard:hover {
+		text-decoration: underline;
+	}
 	.hl-admin-email {
 		min-width: 0;
 		margin-left: auto;
@@ -506,9 +535,9 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0.1rem 0.4rem;
-		line-height: 1.2;
 		font-family: var(--font-mono);
 		font-size: 0.75rem;
+		line-height: 1.2;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: 4px;
@@ -639,6 +668,46 @@
 		}
 	}
 
+	/* Two related panels sit side by side once the console's content is wide enough for two readable columns; below that they stack. */
+	.hl-grant-pair {
+		display: grid;
+		gap: 1rem;
+	}
+	@media (min-width: 1200px) {
+		.hl-grant-pair {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	/* The fulfilment sheet's participant and status columns keep their room while the window has it, and wrap rather than push the actions out when it does not. */
+	.hl-fulfill-participant {
+		min-width: 12rem;
+	}
+	.hl-fulfill-status {
+		min-width: 10rem;
+	}
+	@media (max-width: 1297px) {
+		.hl-fulfill-participant,
+		.hl-fulfill-status {
+			min-width: 0;
+		}
+	}
+
+	/* The shop catalogue's actions column needs room for its two buttons; the slug ellipsis keeps the rest of the row inside the panel. */
+	.hl-table--shop th:last-child,
+	.hl-table--shop td:last-child {
+		min-width: 6.5rem;
+	}
+	/* Edit and Retire are one action pair, so they share the cell's width and line up instead of each ending where its label does. */
+	.hl-shop-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		align-items: stretch;
+	}
+	.hl-shop-actions .hl-btn {
+		width: 100%;
+	}
 	/* ── Tables ────────────────────────────────────────────────────────────── */
 	/* The manage control in a project's actions cell: its own width, with an owner-extension note beneath it. */
 	.hl-row-actions {
@@ -843,11 +912,12 @@
 		flex-direction: column;
 		gap: 1rem;
 	}
+	/* The search field and its button share one height, so the button stretches to the field rather than sitting shorter beside it. */
 	.hl-filters__search {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.75rem;
-		align-items: center;
+		align-items: stretch;
 	}
 	.hl-filters__search .hl-input {
 		flex: 1 1 18rem;
@@ -1062,7 +1132,9 @@
 		border-radius: var(--radius-button);
 	}
 	.hl-admin-palette-item[data-active="true"] {
+		/* Drawn inside the item: the list scrolls, so a ring outside the box is cut off at the list's edge. */
 		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
 		background: var(--color-surface-sunken);
 	}
 
@@ -1323,6 +1395,18 @@
 		flex-wrap: wrap;
 		gap: 0.35rem 0.5rem;
 		align-items: center;
+	}
+	/* Roles and their access level are badges on their own wrapping line, with the permission count quiet beneath rather than squeezing beside them. */
+	.hl-user-access {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		align-items: flex-start;
+	}
+	.hl-user-badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
 	}
 	/* The two views of the same thing sit together, so an admin never has to guess which one a name goes to. */
 	.hl-entity-links {

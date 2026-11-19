@@ -51,28 +51,31 @@ export function UserRow({ row }: Readonly<{ row: DirectoryRow }>) {
 			</td>
 			{/* Roles and access share a cell. An account with no staff role is simply a participant, so that reads as one quiet word, and only staff carry badges and an access level. */}
 			<td>
-				{row.roles.length === 0 && row.level === "none" ? <span className="hl-hint">participant</span> : null}
-				{row.roles.map(role => (
-					<Badge key={role} tone="muted">
-						{role}
-					</Badge>
-				))}
-				{row.level === "none" ? null : (
-					<div>
-						<Badge
-							title={row.granted.length > 0 ? `Can ${row.granted.join(", ")}` : "No staff permissions"}
-							tone={levelTone(row.level)}
-						>
-							{row.levelLabel}
-						</Badge>
-						{row.grantedCount > 0 ? (
-							<span className="hl-hint">
-								{" "}
-								{row.grantedCount} of {row.permissionTotal}
-							</span>
-						) : null}
-					</div>
-				)}
+				<div className="hl-user-access">
+					{row.roles.length === 0 && row.level === "none" ? <span className="hl-hint">participant</span> : null}
+					{row.roles.length > 0 || row.level !== "none" ? (
+						<div className="hl-user-badges">
+							{row.roles.map(role => (
+								<Badge key={role} tone="muted">
+									{role}
+								</Badge>
+							))}
+							{row.level === "none" ? null : (
+								<Badge
+									title={row.granted.length > 0 ? `Can ${row.granted.join(", ")}` : "No staff permissions"}
+									tone={levelTone(row.level)}
+								>
+									{row.levelLabel}
+								</Badge>
+							)}
+						</div>
+					) : null}
+					{row.grantedCount > 0 ? (
+						<span className="hl-hint">
+							{row.grantedCount} of {row.permissionTotal}
+						</span>
+					) : null}
+				</div>
 			</td>
 			<td>
 				<Badge tone={verifiedTone(row.verified)}>{statusLabel(row.verified)}</Badge>

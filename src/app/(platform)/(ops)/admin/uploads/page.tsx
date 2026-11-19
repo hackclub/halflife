@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { Button, Callout, EmptyState, Field, PageHeader, Panel, Select, Table } from "@/app/components/ui"
-import { IconFilter } from "@/app/components/ui/icons"
+import { Callout, EmptyState, Field, FilterBar, PageHeader, Panel, Select, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
@@ -46,9 +45,19 @@ function formatBytes(bytes: number): string {
 	return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`
 }
 
-function keyParts(key: string): { folder: string; owner: string } {
-	const [folder = "", owner = ""] = key.split("/")
-	return { folder, owner }
+function keyParts(key: string): { folder: string; name: string; owner: string } {
+	const [folder = "", owner = "", ...rest] = key.split("/")
+	return { folder, name: rest.join("/") || key, owner }
+}
+
+/**
+ * A stored file name, shortened in the middle. Uploads are named by a hash, and its first and last few characters are what tell one file from another, while the middle carries nothing a reader can use. The extension stays whole.
+ */
+function shortenFileName(name: string, keep = 8): string {
+	const dot = name.lastIndexOf(".")
+	const stem = dot > 0 ? name.slice(0, dot) : name
+	if (stem.length <= keep * 2 + 1) return name
+	return `${stem.slice(0, keep)}…${stem.slice(-keep)}${dot > 0 ? name.slice(dot) : ""}`
 }
 
 export default async function AdminUploadsPage({ searchParams }: Props) {
@@ -81,7 +90,14 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 			<PageHeader compact subtitle="Every object currently in the R2 bucket. This page is read-only." title="Uploads" />
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ alignItems: "center", flexWrap: "wrap" }}>
+				<FilterBar
+					footer={
+						<span className="hl-hint">
+							Showing up to 100 objects per page. Older objects continue on the next page.
+						</span>
+					}
+					resetHref="/admin/uploads"
+				>
 					<Field label="Folder">
 						<Select defaultValue={folder ?? ""} name="folder" style={{ maxWidth: "16rem" }}>
 							<option value="">All folders</option>
@@ -92,14 +108,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 							))}
 						</Select>
 					</Field>
-					<Button type="submit">
-						<IconFilter /> Filter
-					</Button>
-					<Link className="hl-hint" href="/admin/uploads">
-						Reset
-					</Link>
-				</form>
-				<span className="hl-hint">Showing up to 100 objects per page. Older objects continue on the next page.</span>
+				</FilterBar>
 			</Panel>
 
 			{isUploadConfigured() ? (
@@ -109,13 +118,14 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 					<EmptyState>No uploaded objects match this folder.</EmptyState>
 				) : listing ? (
 					<Panel>
-						<Table head={["Key", "Folder", "Owner", "Size", "Modified", "File"]}>
+						<Table head={["File", "Folder", "Owner", "Size", "Modified", "Open"]}>
 							{listing.objects.map(object => {
 								const parts = keyParts(object.key)
 								return (
 									<tr key={object.key}>
-										<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-											{object.key}
+										{/* The hash is shortened in the middle, since its ends are what tell two uploads apart, and the full key stays in the tooltip. */}
+										<td className="hl-mono" title={object.key}>
+											{shortenFileName(parts.name)}
 										</td>
 										<td>{parts.folder || "-"}</td>
 										<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>

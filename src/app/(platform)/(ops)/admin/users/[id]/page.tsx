@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { TabKeys } from "@/app/components/admin/TabKeys"
 import { type TimelineEvent, UserTimeline } from "@/app/components/admin/UserTimeline"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
@@ -186,6 +187,10 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 				compact
 				subtitle={user.email}
 				title={displayName(user, user.email)}
+			/>
+			<TabKeys
+				current={tab === "history" ? `/admin/users/${id}` : `/admin/users/${id}?tab=${tab}`}
+				hrefs={tabs.map(item => (item.id === "history" ? `/admin/users/${id}` : `/admin/users/${id}?tab=${item.id}`))}
 			/>
 
 			{/* The nickname is what every surface shows; this is the one place staff need the whole name, because the payout and shipping rows split it. */}

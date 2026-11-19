@@ -5,9 +5,10 @@ import { THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
 import {
 	CoinBucket,
+	HcbGrantCardStatus,
 	LedgerKind,
 	PhaseStatus,
-	type ShopDeliveryPreference,
+	ShopDeliveryPreference,
 	ShopFulfillmentStage,
 	ShopItemCategory,
 	ShopOrderStatus,
@@ -20,7 +21,7 @@ import db, { type DbOrTx } from "@/lib/prisma8"
 import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/program"
 import { countryOfTimezone } from "@/lib/regions"
 import { sanitize } from "@/lib/sanitize"
-import { canCancelOrder, cancelBlockedReason } from "@/lib/shop-order"
+import { canCancelOrder, cancelBlockedReason, grantCardCentsFor, isLiveShopCard } from "@/lib/shop-order"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
@@ -394,6 +395,12 @@ export async function purchase(
 			throw new HttpError("NOT_FOUND", "Item not found")
 		if (fresh.stock !== null && fresh.stock < quantity) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
 
+		// A grant card pays the item's cost to us, fixed now so a later catalogue change cannot move it. An item with no cost has no amount to put on a card, so it is refused here rather than ordered and left for staff to work out.
+		const grantCardCents =
+			deliveryPreference === ShopDeliveryPreference.GRANT_CARD ? grantCardCentsFor(fresh.costUsd, quantity) : null
+		if (deliveryPreference === ShopDeliveryPreference.GRANT_CARD && grantCardCents === null)
+			throw new HttpError("VALIDATION_FAILED", "This item has no cost to put on a grant card. Ship it instead.")
+
 		if (fresh.maxPerUser > 0) {
 			const owned = await tx.orm.public.ShopOrder.where({ shopItemId, userId })
 				.where(shopOrder => shopOrder.status.notIn([ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED]))
@@ -417,6 +424,7 @@ export async function purchase(
 
 		const created = await tx.orm.public.ShopOrder.create({
 			deliveryPreference,
+			grantCardCents,
 			idempotencyKey: idempotencyKey ?? null,
 			itemNameSnapshot: fresh.name,
 			quantity,
@@ -470,7 +478,7 @@ export async function purchase(
 }
 
 /** One order row as writes return it: scalars only, no relations loaded. */
-export type ShopOrderRow = Omit<Models.public_ShopOrder, "ledgerEntries" | "notes" | "shopItem" | "user">
+export type ShopOrderRow = Omit<Models.public_ShopOrder, "grantCards" | "ledgerEntries" | "notes" | "shopItem" | "user">
 
 /**
  * Return everything an order took: its coins, to the pots that paid, and its stock.
@@ -508,6 +516,34 @@ async function refundOrder(tx: DbOrTx, order: ShopOrderRow, actorId: string, rea
 	}
 }
 
+/**
+ * A refund would hand the buyer their coins back while the card they were sent still exists.
+ *
+ * A live card always blocks it. A cancelled card blocks it only when it was used: the org got the unspent balance back,
+ * but the spent part is value the buyer already had, so refunding the order would pay it twice. A card cancelled with
+ * nothing spent, or one that never left the site (failed or skipped), is no obstacle.
+ */
+async function assertShopCardRefundable(tx: DbOrTx, orderId: string): Promise<void> {
+	const cards = await tx.orm.public.HcbShopGrantCard.where({ shopOrderId: orderId })
+		.select("spentCents", "status")
+		.all()
+	if (cards.some(card => isLiveShopCard(card.status)))
+		throw new HttpError(
+			"CONFLICT",
+			"A grant card has been issued for this order, so it cannot be refunded. Cancel the card on the fulfilment sheet first",
+		)
+	const used = cards.find(
+		card =>
+			(card.status === HcbGrantCardStatus.CANCELED || card.status === HcbGrantCardStatus.RETURNED)
+			&& (card.spentCents === null || card.spentCents > 0),
+	)
+	if (used)
+		throw new HttpError(
+			"CONFLICT",
+			"An earlier grant card for this order was used before it was cancelled, so refunding it would pay the order twice. Resolve it with an admin first",
+		)
+}
+
 export async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrderRow> {
 	const target = await db.orm.public.ShopOrder.whereUnique({ id: orderId }).select("userId").first()
 	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
@@ -527,6 +563,7 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 				"CONFLICT",
 				"This order has already been ordered or sent, so it cannot be rejected and refunded",
 			)
+		await assertShopCardRefundable(tx, orderId)
 
 		await refundOrder(tx, order, adminId, reason)
 
@@ -557,6 +594,7 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
 		if (!order || order.userId !== userId) throw new HttpError("NOT_FOUND", "Order not found")
 		if (!canCancelOrder(order))
 			throw new HttpError("CONFLICT", cancelBlockedReason(order) ?? "This order can no longer be cancelled")
+		await assertShopCardRefundable(tx, orderId)
 
 		await refundOrder(tx, order, userId, reason ?? "cancelled by the participant")
 
@@ -593,6 +631,10 @@ export async function fulfillOrder(
 		if (order.status === ShopOrderStatus.FULFILLED) throw new HttpError("CONFLICT", "This order is already fulfilled")
 		if (order.status === ShopOrderStatus.REJECTED) throw new HttpError("CONFLICT", "This order was rejected")
 		if (order.status === ShopOrderStatus.CANCELLED) throw new HttpError("CONFLICT", "This order was cancelled")
+		// A card that is pending, issued or awaiting a check has taken the order's value. It is paid by card, so it cannot also be shipped. A card's own path marks the order fulfilled when it lands.
+		const cards = await tx.orm.public.HcbShopGrantCard.where({ shopOrderId: orderId }).select("status").all()
+		if (cards.some(card => isLiveShopCard(card.status)))
+			throw new HttpError("CONFLICT", "This order is being paid by grant card, so it cannot also be shipped")
 		// A penalty or a fraud flag that lands after the purchase still stops the goods: the order was placed while the account was in good standing, but fulfilling it now would ship money to an account under review. The purchase path checks the same gate.
 		await assertPayoutAllowed(tx, order.userId)
 

@@ -3,14 +3,15 @@
 import Link from "next/link"
 import { useState } from "react"
 import { ManageButton, ManageRow, ManageSection } from "@/app/components/admin/ProjectManage"
+import { ActionButton } from "@/app/components/forms/ActionButton"
 import { OrderDecision } from "@/app/components/forms/OrderDecision"
 import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
 import { Badge } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
-import type { ShopDeliveryPreference, ShopOrderStatus } from "@/lib/enums"
-import { STAGE_LABELS } from "@/lib/fulfillment"
+import { HcbGrantCardStatus, type ShopOrderStatus } from "@/lib/enums"
+import { DELIVERY_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
+import type { FulfillmentOrderJson } from "@/lib/fulfillment-sheet"
 import { formatUsd } from "@/lib/money"
-import type { FulfillmentOrderRow } from "@/lib/queries/admin"
 
 const STATUS: { [_ in ShopOrderStatus]: { label: string; tone: "success" | "warning" | "danger" | "muted" } } = {
 	CANCELLED: { label: "Cancelled by participant", tone: "muted" },
@@ -20,32 +21,45 @@ const STATUS: { [_ in ShopOrderStatus]: { label: string; tone: "success" | "warn
 	REJECTED: { label: "Rejected", tone: "danger" },
 }
 
-/** The buyer's choice, in the words staff act on. */
-const DELIVERY_LABELS: { [_ in ShopDeliveryPreference]: string } = {
-	GRANT_CARD: "Grant card requested",
-	SHIP: "Ship to address",
-}
+/** Where a shop card grant has got to, in the words the person issuing it needs. */
+const CARD_STATUS: { [_ in HcbGrantCardStatus]: { label: string; tone: "success" | "warning" | "danger" | "muted" } } =
+	{
+		AMBIGUOUS: { label: "Check on HCB", tone: "warning" },
+		CANCELED: { label: "Cancelled", tone: "muted" },
+		FAILED: { label: "Failed", tone: "danger" },
+		ISSUED: { label: "Issued", tone: "success" },
+		PENDING: { label: "In progress", tone: "warning" },
+		RETURNED: { label: "Returned by the buyer", tone: "muted" },
+		SKIPPED: { label: "Skipped", tone: "muted" },
+	}
 
 /**
  * One order on the fulfilment sheet, with every control folded into a manage panel beneath it.
  *
  * The table is a reading list: order number, who, what, what it cost and where it is. Method, stage, the decision and the record of what was decided are not columns – they are a panel, so the sheet has room for the orders rather than the forms.
  */
-export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow }>) {
+export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderJson }>) {
 	const [open, setOpen] = useState(false)
 	const active = order.status === "PENDING" || order.status === "ON_HOLD"
 	const status = STATUS[order.status]
 	const tracking = [order.trackingCarrier, order.trackingNumber].filter(Boolean).join(" ")
 	const panelId = `order-manage-${order.id}`
+	// The card's own amount is the one it was claimed with; the order's is what it would be issued for now.
+	const cardCents = order.grantCard?.amountCents ?? order.grantCardCents
+	const issueConfirm =
+		cardCents === null
+			? undefined
+			: `Issue a ${formatUsd(cardCents / 100)} HCB card grant for order #${order.orderNumber}? HCB sends the card to the buyer's account.`
 
 	return (
 		<>
 			<tr>
 				<td className="hl-mono">{order.orderNumber}</td>
-				<td style={{ minWidth: "12rem" }}>
-					<span className="hl-entity-name">{order.user.name ?? "-"}</span>
+				<td className="hl-fulfill-participant">
+					<Link className="hl-entity-name" href={`/admin/users/${order.user.id}`}>
+						{order.user.name ?? "-"}
+					</Link>
 					<div className="hl-entity-links">
-						<Link href={`/admin/users/${order.user.id}`}>Admin user</Link>
 						<Link href={`/u/${order.user.id}`}>Public profile</Link>
 					</div>
 				</td>
@@ -69,16 +83,17 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						</span>
 					)}
 				</td>
-				<td className="hl-mono" title={formatUtcDateTime(order.placedAt)}>
-					{formatUtcDateTime(order.placedAt)}
+				<td className="hl-mono" title={formatUtcDateTime(new Date(order.placedAt))}>
+					{formatUtcDateTime(new Date(order.placedAt))}
 				</td>
-				<td style={{ minWidth: "10rem" }}>
+				<td className="hl-fulfill-status">
 					<Badge tone={status.tone}>{status.label}</Badge>
 					{order.deliveryPreference ? <div className="hl-hint">{DELIVERY_LABELS[order.deliveryPreference]}</div> : null}
+					{order.grantCard ? <div className="hl-hint">Card: {CARD_STATUS[order.grantCard.status].label}</div> : null}
 					{active ? <div className="hl-hint">{STAGE_LABELS[order.fulfillmentStage]}</div> : null}
 					{tracking ? <div className="hl-hint hl-mono">{tracking}</div> : null}
 					{order.status === "CANCELLED" && order.cancelledAt ? (
-						<div className="hl-hint">{formatUtcDateTime(order.cancelledAt)}</div>
+						<div className="hl-hint">{formatUtcDateTime(new Date(order.cancelledAt))}</div>
 					) : null}
 				</td>
 				<td>
@@ -111,7 +126,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						</div>
 						<div>
 							<dt>Placed</dt>
-							<dd>{formatUtcDateTime(order.placedAt)}</dd>
+							<dd>{formatUtcDateTime(new Date(order.placedAt))}</dd>
 						</div>
 						<div>
 							<dt>Stage</dt>
@@ -126,7 +141,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						{order.fulfilledAt ? (
 							<div>
 								<dt>Fulfilled</dt>
-								<dd>{formatUtcDateTime(order.fulfilledAt)}</dd>
+								<dd>{formatUtcDateTime(new Date(order.fulfilledAt))}</dd>
 							</div>
 						) : null}
 						{tracking ? (
@@ -138,7 +153,7 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						{order.cancelledAt ? (
 							<div>
 								<dt>Cancelled</dt>
-								<dd>{formatUtcDateTime(order.cancelledAt)}</dd>
+								<dd>{formatUtcDateTime(new Date(order.cancelledAt))}</dd>
 							</div>
 						) : null}
 						{order.cancellationReason ? (
@@ -169,6 +184,74 @@ export function FulfillmentRow({ order }: Readonly<{ order: FulfillmentOrderRow 
 						orderId={order.id}
 						stage={order.fulfillmentStage}
 					/>
+					{order.deliveryPreference === "GRANT_CARD" || order.grantCard ? (
+						<div className="hl-stack hl-stack--tight" style={{ marginTop: "0.6rem" }}>
+							<p className="hl-hint">Grant card</p>
+							{cardCents === null ? (
+								<p className="hl-hint">No amount was recorded on this order, so no card can be issued.</p>
+							) : (
+								<p className="hl-hint">{formatUsd(cardCents / 100)} to the buyer&rsquo;s HCB account.</p>
+							)}
+							{order.grantCard ? (
+								<>
+									<Badge tone={CARD_STATUS[order.grantCard.status].tone}>
+										{CARD_STATUS[order.grantCard.status].label}
+									</Badge>
+									{order.grantCard.error ? <p className="hl-hint">{order.grantCard.error}</p> : null}
+									{order.grantCard.hcbCardGrantId ? (
+										<a
+											className="hl-mono"
+											href={`https://hcb.hackclub.com/grants/${order.grantCard.hcbCardGrantId}`}
+											rel="noopener noreferrer"
+											target="_blank"
+										>
+											{order.grantCard.hcbCardGrantId}
+										</a>
+									) : null}
+								</>
+							) : null}
+							<div className="hl-row">
+								{active && !order.grantCard && cardCents !== null ? (
+									<ActionButton
+										confirm={issueConfirm}
+										label="Issue grant card"
+										pendingLabel="Issuing…"
+										url={`/api/admin/shop/orders/${order.id}/grant-card`}
+									/>
+								) : null}
+								{order.grantCard?.status === HcbGrantCardStatus.FAILED
+								|| order.grantCard?.status === HcbGrantCardStatus.SKIPPED ? (
+									<ActionButton
+										confirm={issueConfirm}
+										label="Retry"
+										pendingLabel="Issuing…"
+										url={`/api/admin/shop/orders/${order.id}/grant-card`}
+									/>
+								) : null}
+								{order.grantCard
+								&& (order.grantCard.status === HcbGrantCardStatus.AMBIGUOUS
+									|| order.grantCard.status === HcbGrantCardStatus.FAILED
+									|| order.grantCard.status === HcbGrantCardStatus.PENDING) ? (
+									<ActionButton
+										label="Check HCB"
+										pendingLabel="Checking…"
+										url={`/api/admin/shop/grant-cards/${order.grantCard.id}/reconcile`}
+									/>
+								) : null}
+								{order.grantCard?.hcbCardGrantId
+								&& order.grantCard.status !== HcbGrantCardStatus.CANCELED
+								&& order.grantCard.status !== HcbGrantCardStatus.RETURNED ? (
+									<ActionButton
+										confirm="Cancel this HCB card grant? Its remaining balance goes back to the organisation, and the order will not be paid again automatically."
+										label="Cancel card"
+										pendingLabel="Cancelling…"
+										url={`/api/admin/shop/grant-cards/${order.grantCard.id}/cancel`}
+										variant="danger"
+									/>
+								) : null}
+							</div>
+						</div>
+					) : null}
 				</ManageSection>
 
 				<ManageSection title="Decision">

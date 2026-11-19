@@ -78,7 +78,7 @@ export default async function AdminLedgerPage({ searchParams }: Props) {
 						/>
 					</Field>
 					<Field label="Kind">
-						<Select defaultValue={kind ?? ""} name="kind" style={{ maxWidth: "14rem" }}>
+						<Select defaultValue={kind ?? ""} name="kind">
 							<option value="">Any kind</option>
 							{Object.values(LedgerKind).map(value => (
 								<option key={value} value={value}>
