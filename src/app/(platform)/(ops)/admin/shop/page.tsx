@@ -5,7 +5,7 @@ import { ItemCostField } from "@/app/components/forms/ItemCostField"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { ShopItemImport } from "@/app/components/forms/ShopItemImport"
 import { ShopRegionForm } from "@/app/components/forms/ShopRegionForm"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Badge, EmptyState, LinkButton, PageHeader, Panel, Table } from "@/app/components/ui"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -62,7 +62,7 @@ export default async function AdminShopPage() {
 									<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
 								</td>
 								<td className="hl-row" style={{ gap: "0.5rem" }}>
-									<Link href={`/admin/shop/${item.id}`}>Edit</Link>
+									<LinkButton href={`/admin/shop/${item.id}`}>Edit</LinkButton>
 									{item.active ? (
 										<ActionButton
 											confirm="Retire this item? Existing orders keep working."
