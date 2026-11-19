@@ -263,7 +263,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											<span className="text-navy-soft/90">
 												You can submit on tier {t.id} from {fmtHours(t.fundingHours)} of design time, the parts-funding
 												hours and nothing more. Every hour past that (once your tier&apos;s funding is achieved) earns 5
-												spendable coins.
+												spendable coins. Parts money you do not spend goes back to Half Life, never into coins.
 											</span>
 										}
 										key={t.id}

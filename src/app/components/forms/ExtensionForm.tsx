@@ -53,7 +53,7 @@ export function ExtensionForm({
 						: "No extension"}
 			</p>
 			<form
-				className="hl-row"
+				className="hl-manage-controls"
 				onSubmit={e => {
 					e.preventDefault()
 					if (value) save(new Date(value))
@@ -66,20 +66,22 @@ export function ExtensionForm({
 					type="datetime-local"
 					value={value}
 				/>
-				<Button disabled={busy !== null || !value} type="submit">
-					Set
-				</Button>
-				<Button disabled={busy !== null} onClick={() => extendBy(1)} type="button">
-					+1 day
-				</Button>
-				<Button disabled={busy !== null} onClick={() => extendBy(3)} type="button">
-					+3 days
-				</Button>
-				{current ? (
-					<Button disabled={busy !== null} onClick={() => save(null)} type="button" variant="danger">
-						Clear
+				<div className="hl-manage-actions">
+					<Button disabled={busy !== null || !value} type="submit">
+						Set
 					</Button>
-				) : null}
+					<Button disabled={busy !== null} onClick={() => extendBy(1)} type="button">
+						+1 day
+					</Button>
+					<Button disabled={busy !== null} onClick={() => extendBy(3)} type="button">
+						+3 days
+					</Button>
+					{current ? (
+						<Button disabled={busy !== null} onClick={() => save(null)} type="button" variant="danger">
+							Clear
+						</Button>
+					) : null}
+				</div>
 			</form>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 		</div>

@@ -500,8 +500,13 @@
 		padding: 0.35rem 0.8rem;
 		font-size: 0.9rem;
 	}
+	/* A key cap is a box the label sits centred in: inline-flex centres the text on both axes, and the padding is even top and bottom. */
 	.hl-admin-kbd {
-		padding: 0.05rem 0.35rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.1rem 0.4rem;
+		line-height: 1.2;
 		font-family: var(--font-mono);
 		font-size: 0.75rem;
 		background: var(--color-surface);
@@ -579,6 +584,19 @@
 			display: none;
 		}
 	}
+	/* Between a phone and the sidebar's own width the open list has room for two columns of groups, which keeps it from running past the bottom of a short screen. A narrower phone keeps one. */
+	@media (min-width: 561px) and (max-width: 760px) {
+		.hl-admin-side-inner[data-open="true"] {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 1.1rem 1.5rem;
+			align-items: start;
+		}
+		/* The grid's row gap spaces the groups here, so the stacked list's top margin would only misalign the second column. */
+		.hl-admin-side-inner[data-open="true"] > .hl-admin-group + .hl-admin-group {
+			margin-top: 0;
+		}
+	}
 	/* Helper text is the part people read on a small screen, so it gets a size they can read without zooming. */
 	@media (max-width: 600px) {
 		.hl-admin-main .hl-hint {
@@ -606,7 +624,9 @@
 		.hl-admin-body {
 			grid-template-columns: minmax(0, 1fr);
 		}
+		/* The bar is only as tall as its toggle: the grid would otherwise stretch it to take the page's spare height, leaving a blank band under "Sections". */
 		.hl-admin-side {
+			align-self: start;
 			border-right: 0;
 			border-bottom: 2px solid var(--color-border);
 		}
@@ -620,6 +640,58 @@
 	}
 
 	/* ── Tables ────────────────────────────────────────────────────────────── */
+	/* The manage control in a project's actions cell: its own width, with an owner-extension note beneath it. */
+	.hl-row-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		align-items: flex-start;
+	}
+	/* The projects table keeps its columns comfortable while the sidebar leaves room for them, and lets them wrap instead of scrolling past the edge when it does not. */
+	.hl-cell-project {
+		min-width: 15rem;
+		overflow-wrap: anywhere;
+	}
+	.hl-cell-review {
+		min-width: 14rem;
+	}
+	.hl-cell-actions {
+		min-width: 13rem;
+	}
+	@media (max-width: 1150px) {
+		.hl-cell-project,
+		.hl-cell-review,
+		.hl-cell-actions {
+			min-width: 0;
+		}
+	}
+	/* The projects list: comfortable columns while all six fit, and wrapping ones when the window is too narrow to show them without running under the actions. */
+	.hl-table--projects .hl-col-project {
+		min-width: 16rem;
+		overflow-wrap: anywhere;
+	}
+	.hl-table--projects .hl-col-owner {
+		min-width: 13rem;
+		overflow-wrap: anywhere;
+	}
+	.hl-table--projects .hl-col-theme {
+		min-width: 9rem;
+	}
+	.hl-table--projects .hl-col-review {
+		min-width: 14rem;
+	}
+	.hl-table--projects .hl-col-actions {
+		min-width: 13rem;
+	}
+	@media (max-width: 1380px) {
+		.hl-table--projects .hl-col-project,
+		.hl-table--projects .hl-col-owner,
+		.hl-table--projects .hl-col-theme,
+		.hl-table--projects .hl-col-review,
+		.hl-table--projects .hl-col-actions {
+			min-width: 0;
+		}
+	}
 	.hl-table {
 		width: 100%;
 		font-size: 0.95rem;
@@ -713,12 +785,12 @@
 	.hl-admin-main .hl-table--pin-last thead th:last-child {
 		background: var(--color-surface-sunken);
 	}
-	/* Stripes are a whisper now, and the hover row is the one that shows which line the pointer is on. */
+	/* Stripes are a whisper now, and the hover row adds just enough to follow the pointer without turning the row into a block of colour. */
 	.hl-admin-main .hl-table tbody tr:nth-child(even) {
 		background: rgb(16 15 48 / 0.025);
 	}
-	.hl-admin-main .hl-table tbody tr:hover td {
-		background: var(--color-surface-sunken);
+	.hl-admin-main .hl-table tbody tr:not(.hl-manage-row):hover td {
+		background: rgb(16 15 48 / 0.05);
 	}
 	/* Panels are a quiet border and a faint lift, so the content inside them carries the weight. The outline is kept for the console's focus rings. */
 	.hl-admin-main .hl-panel {
@@ -754,9 +826,14 @@
 	.hl-queue-item > .hl-badge {
 		align-self: flex-start;
 	}
-	/* A stage's pill drops to its own line when its cell is too narrow for both, instead of running past the cell's edge. */
+	/* A stage's pills drop to their own line when the cell is too narrow for the label and both, instead of one pill staying beside the label and the other falling alone. */
 	.hl-review-stages li {
 		flex-wrap: wrap;
+	}
+	.hl-review-stages__badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
 	}
 
 	/* ── Filter form ───────────────────────────────────────────────────────── */
@@ -813,6 +890,31 @@
 		gap: 0.4rem;
 		align-items: center;
 		font-weight: 600;
+	}
+
+	/*
+	 * A filter bar whose search row and fields share one line, once there is room: the search keeps a sensible width instead of stretching across the panel, and the footer still takes its own full-width line. Below the wrap point the two stack again.
+	 */
+	.hl-filters--inline {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-end;
+	}
+	.hl-filters--inline .hl-filters__search {
+		/* The 25rem basis is the search row's own two controls: the input and the Paste button keep one line before the fields are allowed beside them. */
+		flex: 1 1 25rem;
+		min-width: 0;
+	}
+	/* The input starts small enough to keep the Paste button beside it, then grows into whatever the row has left. */
+	.hl-filters--inline .hl-filters__search .hl-input {
+		flex-basis: 12rem;
+	}
+	.hl-filters--inline .hl-filters__grid {
+		flex: 0 1 auto;
+		min-width: 0;
+	}
+	.hl-filters--inline .hl-filters__footer {
+		flex-basis: 100%;
 	}
 
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
@@ -981,26 +1083,11 @@
 	}
 
 	/* ── Layout helpers ────────────────────────────────────────────────────── */
-	/* ── Section jump nav ──────────────────────────────────────────────────── */
-	/* A long page's sections, as one row of links that stay short. Sections clear the sticky header when reached. */
-	.hl-jump {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.4rem;
+	/* A pasted run of text with no spaces, such as a URL or a keyboard mash, wraps inside its panel rather than running past the edge. */
+	.hl-wrap-anywhere {
+		overflow-wrap: anywhere;
 	}
-	.hl-jump a {
-		padding: 0.25rem 0.7rem;
-		font-size: 0.9rem;
-		font-weight: 600;
-		color: var(--color-ink);
-		text-decoration: none;
-		background: var(--color-surface-raised);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-	}
-	.hl-jump a:hover {
-		border-color: var(--color-accent);
-	}
+
 	.hl-admin-main section[id] {
 		scroll-margin-top: 1rem;
 	}
@@ -1230,6 +1317,13 @@
 		font-weight: 700;
 		color: var(--color-ink-strong);
 	}
+	/* A directory name and its account-state badges sit on one line, spaced so the badge reads as a separate fact from the name. */
+	.hl-user-name {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem 0.5rem;
+		align-items: center;
+	}
 	/* The two views of the same thing sit together, so an admin never has to guess which one a name goes to. */
 	.hl-entity-links {
 		display: flex;
@@ -1275,7 +1369,7 @@
 	}
 	.hl-manage-panel {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
 		gap: 1.5rem;
 		padding: 1rem 1.1rem;
 	}
@@ -1283,6 +1377,28 @@
 		margin: 0 0 0.45rem;
 		font-size: 0.82rem;
 		color: var(--color-ink-strong);
+	}
+	/* Each control reads top to bottom: its input, then its buttons on a row beneath, all at one height. */
+	.hl-manage-controls {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+		align-items: flex-start;
+	}
+	.hl-manage-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.hl-manage-panel .hl-btn {
+		/* A label-sized action, not a bar across the column: a full-width button inside the table's overflow can end past the screen edge. */
+		align-self: flex-start;
+		/* Squarer than the form inputs rather than taller: the panel's buttons were reading as thick bars. */
+		height: 2.25rem;
+	}
+	/* A note sits clear of the control it describes, rather than touching the button under it. */
+	.hl-manage-panel p.hl-hint {
+		margin: 0 0 0.75rem;
 	}
 	/* A small two-column list for the read-only facts inside a manage panel, so labels line up instead of running into their values. */
 	.hl-detail-list {

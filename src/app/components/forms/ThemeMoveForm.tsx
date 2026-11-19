@@ -37,7 +37,7 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 	return (
 		<div className="hl-stack hl-stack--tight">
 			{dialog}
-			<div className="hl-row">
+			<div className="hl-manage-controls">
 				<Select
 					aria-label="Move project to theme"
 					onChange={e => {
@@ -53,9 +53,11 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 						</option>
 					))}
 				</Select>
-				<Button disabled={busy !== null || value === current} onClick={() => void save()} type="button">
-					{busy ? "Moving…" : "Move"}
-				</Button>
+				<div className="hl-manage-actions">
+					<Button disabled={busy !== null || value === current} onClick={() => void save()} type="button">
+						{busy ? "Moving…" : "Move"}
+					</Button>
+				</div>
 			</div>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 		</div>

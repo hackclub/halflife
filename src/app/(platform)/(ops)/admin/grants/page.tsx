@@ -122,7 +122,9 @@ export default async function AdminGrantsPage() {
 						{preview.eligible.map(row => (
 							<tr key={row.projectId}>
 								<td>
-									<Link href={`/admin/users/${row.ownerId}#project-${row.projectId}`}>{row.title || "Untitled"}</Link>
+									<Link href={`/admin/users/${row.ownerId}?tab=projects#project-${row.projectId}`}>
+										{row.title || "Untitled"}
+									</Link>
 									<div className="hl-hint hl-mono">{row.projectId}</div>
 								</td>
 								<td>{row.ownerName}</td>

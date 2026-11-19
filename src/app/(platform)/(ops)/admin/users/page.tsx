@@ -44,6 +44,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
 			<Panel>
 				<FilterBar
+					inline
 					leading={
 						<div className="hl-filters__search">
 							<TextInput

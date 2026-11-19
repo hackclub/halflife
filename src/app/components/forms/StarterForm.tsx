@@ -40,7 +40,7 @@ export function StarterForm({
 	return (
 		<div className="hl-stack hl-stack--tight">
 			{dialog}
-			<div className="hl-row">
+			<div className="hl-manage-controls">
 				<Select
 					aria-label="Starter project"
 					onChange={e => setValue(e.target.value)}
@@ -54,9 +54,11 @@ export function StarterForm({
 						</option>
 					))}
 				</Select>
-				<Button disabled={busy !== null || value === (current ?? NONE)} onClick={() => void save()} type="button">
-					{busy ? "Saving…" : "Save starter"}
-				</Button>
+				<div className="hl-manage-actions">
+					<Button disabled={busy !== null || value === (current ?? NONE)} onClick={() => void save()} type="button">
+						{busy ? "Saving…" : "Save starter"}
+					</Button>
+				</div>
 			</div>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 		</div>
