@@ -746,12 +746,12 @@
 	.hl-admin-main .hl-table--pin-last thead th:last-child {
 		background: var(--color-surface-sunken);
 	}
-	/* Stripes are a whisper now, and the hover row is the one that shows which line the pointer is on. */
+	/* Stripes are a whisper now, and the hover row adds just enough to follow the pointer without turning the row into a block of colour. */
 	.hl-admin-main .hl-table tbody tr:nth-child(even) {
 		background: rgb(16 15 48 / 0.025);
 	}
 	.hl-admin-main .hl-table tbody tr:hover td {
-		background: var(--color-surface-sunken);
+		background: rgb(16 15 48 / 0.05);
 	}
 	/* Panels are a quiet border and a faint lift, so the content inside them carries the weight. The outline is kept for the console's focus rings. */
 	.hl-admin-main .hl-panel {
