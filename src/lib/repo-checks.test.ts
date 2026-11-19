@@ -1,5 +1,32 @@
 import { describe, expect, test } from "bun:test"
-import { readmeImageCount } from "@/lib/repo-checks"
+import { readmeImageCount, readmeSchematicImage } from "@/lib/repo-checks"
+
+describe("readmeSchematicImage", () => {
+	test("finds a schematic named in the alt text", () => {
+		expect(readmeSchematicImage("![Schematic of the board](assets/board.png)")).toBe(true)
+	})
+
+	test("finds a schematic named in the path", () => {
+		expect(readmeSchematicImage("![The board](assets/schematic-v2.png)")).toBe(true)
+	})
+
+	test("finds the usual short file name", () => {
+		expect(readmeSchematicImage("![Board](assets/sch.png)")).toBe(true)
+	})
+
+	test("follows a reference-style image to its definition", () => {
+		const readme = ["![The board][board]", "", "[board]: assets/schematic.png"].join("\n")
+		expect(readmeSchematicImage(readme)).toBe(true)
+	})
+
+	test("does not take a board photo for a schematic", () => {
+		expect(readmeSchematicImage("![Finished board](assets/board.jpg)")).toBe(false)
+	})
+
+	test("is false when the README has no images", () => {
+		expect(readmeSchematicImage("A keypad with a schematic in the repo.")).toBe(false)
+	})
+})
 
 describe("readmeImageCount", () => {
 	test("counts a Markdown image on one line", () => {

@@ -91,13 +91,13 @@ export const EXPERIENCE_OPTIONS = [
  * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own, and a week with none offers no starter at all rather than handing out another week's guide.
  */
 export interface StarterProject {
+	/**
+	 * The week 1 build cap: about a Tier 1 design week and no more, which the project page says before a maker takes it on. Only Starbie is held to it; the other starters are not capped.
+	 */
+	readonly capped?: boolean
 	readonly description: string
 	readonly guideUrl: string
 	readonly id: string
-	/**
-	 * A starter that asks more than the usual Tier 1 design week, so the "about N hours, no more" pace warning does not apply to it.
-	 */
-	readonly longerBuild?: boolean
 	/** What goes on the board, for the card's parts line. */
 	readonly parts: readonly string[]
 	/** Left out for a starter that is a set of guides rather than one board, so there are no project files to link. */
@@ -109,6 +109,7 @@ export interface StarterProject {
 
 export const STARTER_PROJECTS = [
 	{
+		capped: true,
 		// The project's own README, trimmed.
 		description: "A tiny motion-controlled digital pet, basically a desktop Tamagotchi. Totally not a Starboy.",
 		guideUrl: "https://github.com/SharKingStudios/Starbie/blob/main/Week%201%20Guide.md",
@@ -136,7 +137,6 @@ export const STARTER_PROJECTS = [
 			"Learn PCB design by creating your own custom MIDI keypad with switches, sliders, rotary encoders, neopixels and capacitive touch!",
 		guideUrl: "https://github.com/KaiPereira/MIDI-Keypad/blob/master/README.md",
 		id: "midi",
-		longerBuild: true,
 		parts: ["ESP32-S3-Zero", "Kailh Choc switches", "Slide potentiometers", "EC11 rotary encoder", "SK6812 neopixels"],
 		repoUrl: "https://github.com/KaiPereira/MIDI-Keypad",
 		themes: [Theme.SYNTH],

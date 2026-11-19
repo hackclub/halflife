@@ -44,3 +44,10 @@ export function summariseNps(scores: Iterable<number>): NpsSummary {
 		score: responses === 0 ? null : Math.round(((promoters - detractors) / responses) * 100),
 	}
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Whether an account joined less than a day ago. The prompt is held back for that long, because it asks for a score before someone has had a chance to use the site. Once a full day has passed it is asked as normal.
+ */
+export const isWithinFirstDay = (joinedAt: Date, now: Date): boolean => now.getTime() - joinedAt.getTime() < DAY_MS

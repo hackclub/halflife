@@ -41,15 +41,29 @@ export async function addressReminderNeeded(userId: string): Promise<boolean> {
 		.select("id")
 		.first()
 	if (!approved) return false
+	return (await addressGap(userId)) === "no_address_on_file"
+}
 
+/**
+ * Whether a maker who is handing in a design has no mailing address on their Hack Club account yet.
+ *
+ * Parts are posted to that address once the design is approved, so a missing one is worth saying before the hand-in rather than after the approval. The same throttled read as the reminder above, and the same answer rules: nothing is said when addresses are not stored here, or when the account has no HCA link to add one to.
+ */
+export async function handInAddressMissing(userId: string): Promise<boolean> {
+	if (!PULL_PII) return false
+	return (await addressGap(userId)) === "no_address_on_file"
+}
+
+/** The address gap for one person, asking HCA again at most once per resync window. */
+async function addressGap(userId: string): Promise<string | null> {
 	const now = Date.now()
 	const last = lastSyncAt.get(userId) ?? 0
 	const due = now - last >= ADDRESS_RESYNC_MS
 	if (due) {
-		// Bounded rather than unbounded: only approved makers reach this, and an old entry is no worse than a miss.
+		// Bounded rather than unbounded: an old entry is no worse than a miss.
 		if (lastSyncAt.size > 10_000) lastSyncAt.clear()
 		lastSyncAt.set(userId, now)
 	}
 	const { gap } = await readAddressSnapshot(userId, { sync: due })
-	return gap === "no_address_on_file"
+	return gap
 }

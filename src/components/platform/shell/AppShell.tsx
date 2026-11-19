@@ -20,6 +20,7 @@ import {
 } from "@/components/platform/icons"
 import { AddressReminder } from "@/components/platform/modals/AddressReminder"
 import { GoalModal } from "@/components/platform/modals/GoalModal"
+import { IdentityReminder } from "@/components/platform/modals/IdentityReminder"
 import { Overlays } from "@/components/platform/onboarding/Overlays"
 import { EventScheduleButton } from "@/components/platform/shell/EventScheduleButton"
 import { StickerSheetBanner } from "@/components/promo/StickerSheetBanner"
@@ -339,6 +340,7 @@ export function AppShell({
 			</nav>
 
 			<AddressReminder blocked={goalOpen || onDoomscroller} />
+			<IdentityReminder blocked={goalOpen || onDoomscroller} />
 			<Overlays />
 			<GoalModal onClose={() => setGoalOpen(false)} open={goalOpen} />
 		</>
