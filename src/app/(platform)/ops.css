@@ -654,6 +654,18 @@
 		}
 	}
 
+	/* Two related panels sit side by side once the console's content is wide enough for two readable columns; below that they stack. */
+	.hl-grant-pair {
+		display: grid;
+		gap: 1rem;
+	}
+	@media (min-width: 1200px) {
+		.hl-grant-pair {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			align-items: start;
+		}
+	}
+
 	/* ── Tables ────────────────────────────────────────────────────────────── */
 	/* The manage control in a project's actions cell: its own width, with an owner-extension note beneath it. */
 	.hl-row-actions {

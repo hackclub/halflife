@@ -75,24 +75,26 @@ export default async function AdminGrantsPage() {
 				<HcbConnectForm connected={hcbConnected !== null} />
 			</Panel>
 
-			<Panel title="Issue card grants">
-				<IssueGrantCardsForm initial={preview} />
-			</Panel>
+			<div className="hl-grant-pair">
+				<Panel title="Issue card grants">
+					<IssueGrantCardsForm initial={preview} />
+				</Panel>
 
-			<Panel title="HCB CSV import">
-				<p className="hl-hint">
-					No HCB API token? Generate an import file instead: it carries the same ready projects and amounts, and
-					uploading it on HCB creates the cards there.
-				</p>
-				<ExportGrantCardsCsvForm
-					initial={{
-						eligibleCount: preview.eligible.length,
-						fingerprint: preview.fingerprint,
-						payoutSource: preview.payoutSource,
-						totalCents: preview.totalCents,
-					}}
-				/>
-			</Panel>
+				<Panel title="HCB CSV import">
+					<p className="hl-hint">
+						No HCB API token? Generate an import file instead: it carries the same ready projects and amounts, and
+						uploading it on HCB creates the cards there.
+					</p>
+					<ExportGrantCardsCsvForm
+						initial={{
+							eligibleCount: preview.eligible.length,
+							fingerprint: preview.fingerprint,
+							payoutSource: preview.payoutSource,
+							totalCents: preview.totalCents,
+						}}
+					/>
+				</Panel>
+			</div>
 
 			<Panel title="Generated CSV files" wide>
 				{csvExports.length === 0 ? (
