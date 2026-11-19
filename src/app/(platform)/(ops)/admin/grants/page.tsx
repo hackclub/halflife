@@ -5,6 +5,7 @@ import { HcbConnectForm } from "@/app/components/forms/HcbConnectForm"
 import { IssueGrantCardsForm } from "@/app/components/forms/IssueGrantCardsForm"
 import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { themeLabel } from "@/lib/config/program"
+import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardBatchStatus, PayoutSource } from "@/lib/enums"
 import { listGrantCardBatches, listGrantCardExports, previewCardGrants } from "@/lib/grant-cards"
 import { readStoredRefreshToken } from "@/lib/hcb-credential"
@@ -101,7 +102,7 @@ export default async function AdminGrantsPage() {
 						{csvExports.map(csvExport => (
 							<tr key={csvExport.batchId}>
 								<td className="hl-mono">{csvExport.batchId}</td>
-								<td>{csvExport.createdAt.toLocaleString()}</td>
+								<td>{formatUtcDateTime(csvExport.createdAt)}</td>
 								<td className="hl-mono">{csvExport.count}</td>
 								<td className="hl-mono">{formatUsd(csvExport.totalCents / 100)}</td>
 								<td>
@@ -164,7 +165,7 @@ export default async function AdminGrantsPage() {
 										{batch.id}
 									</Link>
 								</td>
-								<td>{batch.createdAt.toLocaleString()}</td>
+								<td>{formatUtcDateTime(batch.createdAt)}</td>
 								<td>
 									<Badge tone={BATCH_TONE[batch.status] ?? "muted"}>
 										{batch.status === HcbGrantCardBatchStatus.PROCESSING ? "processing" : batch.status.toLowerCase()}

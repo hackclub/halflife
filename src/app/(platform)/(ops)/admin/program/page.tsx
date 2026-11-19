@@ -13,7 +13,7 @@ import { ariWebhookUrl, findUnsyncedAriSubmissions, isAriConfigured, isAriWebhoo
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
-import { formatDeadline } from "@/lib/deadline"
+import { formatDeadline, formatUtcDate } from "@/lib/deadline"
 import { Phase } from "@/lib/enums"
 import { ireMode, ireWebhookUrl, isIreConfigured } from "@/lib/ire-platform"
 import { findUnsyncedIreSubmissions } from "@/lib/ire-shadow"
@@ -224,7 +224,7 @@ export default async function AdminProgramPage() {
 								<td>{d.phase.toLowerCase()}</td>
 								<td>{d.participant}</td>
 								<td className="hl-mono">{d.messageCount}</td>
-								<td className="hl-mono">{d.createdAt.toDateString()}</td>
+								<td className="hl-mono">{formatUtcDate(d.createdAt)}</td>
 								<td className="hl-row">
 									<Link href={`/review/${d.submissionId}`}>Open thread</Link>
 								</td>

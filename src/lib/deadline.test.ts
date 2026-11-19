@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { formatDeadline, formatShortDate, formatUtcDateTime, toLocalInput } from "@/lib/deadline"
+import { formatDeadline, formatShortDate, formatUtcDate, formatUtcDateTime, toLocalInput } from "@/lib/deadline"
 
 describe("formatDeadline", () => {
 	test("reads the deadline in the program timezone", () => {
@@ -22,6 +22,11 @@ describe("formatShortDate / formatUtcDateTime", () => {
 
 	test("pins audit timestamps to UTC", () => {
 		expect(formatUtcDateTime(new Date("2026-10-05T23:59:00Z"))).toBe("5 Oct 2026, 23:59")
+	})
+
+	test("trims every month to three letters, September included", () => {
+		expect(formatUtcDateTime(new Date("2026-09-18T22:00:00Z"))).toBe("18 Sep 2026, 22:00")
+		expect(formatUtcDate(new Date("2026-09-18T22:00:00Z"))).toBe("18 Sep 2026")
 	})
 })
 
