@@ -500,8 +500,13 @@
 		padding: 0.35rem 0.8rem;
 		font-size: 0.9rem;
 	}
+	/* A key cap is a box the label sits centred in: inline-flex centres the text on both axes, and the padding is even top and bottom. */
 	.hl-admin-kbd {
-		padding: 0.05rem 0.35rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.1rem 0.4rem;
+		line-height: 1.2;
 		font-family: var(--font-mono);
 		font-size: 0.75rem;
 		background: var(--color-surface);
