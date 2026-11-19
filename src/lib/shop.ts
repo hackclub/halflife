@@ -21,7 +21,7 @@ import db, { type DbOrTx } from "@/lib/prisma8"
 import { getShopAccess, SHOP_CLOSED_MESSAGE, shopGraceAccess } from "@/lib/program"
 import { countryOfTimezone } from "@/lib/regions"
 import { sanitize } from "@/lib/sanitize"
-import { canCancelOrder, cancelBlockedReason, grantCardCentsFor } from "@/lib/shop-order"
+import { canCancelOrder, cancelBlockedReason, grantCardCentsFor, isLiveShopCard } from "@/lib/shop-order"
 import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 /**
@@ -527,13 +527,7 @@ async function assertShopCardRefundable(tx: DbOrTx, orderId: string): Promise<vo
 	const cards = await tx.orm.public.HcbShopGrantCard.where({ shopOrderId: orderId })
 		.select("spentCents", "status")
 		.all()
-	const live = cards.find(
-		card =>
-			card.status === HcbGrantCardStatus.PENDING
-			|| card.status === HcbGrantCardStatus.ISSUED
-			|| card.status === HcbGrantCardStatus.AMBIGUOUS,
-	)
-	if (live)
+	if (cards.some(card => isLiveShopCard(card.status)))
 		throw new HttpError(
 			"CONFLICT",
 			"A grant card has been issued for this order, so it cannot be refunded. Cancel the card on the fulfilment sheet first",
@@ -637,6 +631,10 @@ export async function fulfillOrder(
 		if (order.status === ShopOrderStatus.FULFILLED) throw new HttpError("CONFLICT", "This order is already fulfilled")
 		if (order.status === ShopOrderStatus.REJECTED) throw new HttpError("CONFLICT", "This order was rejected")
 		if (order.status === ShopOrderStatus.CANCELLED) throw new HttpError("CONFLICT", "This order was cancelled")
+		// A card that is pending, issued or awaiting a check has taken the order's value. It is paid by card, so it cannot also be shipped. A card's own path marks the order fulfilled when it lands.
+		const cards = await tx.orm.public.HcbShopGrantCard.where({ shopOrderId: orderId }).select("status").all()
+		if (cards.some(card => isLiveShopCard(card.status)))
+			throw new HttpError("CONFLICT", "This order is being paid by grant card, so it cannot also be shipped")
 		// A penalty or a fraud flag that lands after the purchase still stops the goods: the order was placed while the account was in good standing, but fulfilling it now would ship money to an account under review. The purchase path checks the same gate.
 		await assertPayoutAllowed(tx, order.userId)
 

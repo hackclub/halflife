@@ -523,10 +523,12 @@ A shop order can ask for its value as a card instead of shipping (`ShopDeliveryP
 
 `HcbShopGrantCard` is that card's record: one row per attempt, and at most one live row per order. Staff issue it from the order's panel on `/admin/fulfillment`:
 
-- **Issue** claims a pending row, rechecks the order, the account and the HCB balance, creates the grant and records it. Pressing it again resolves to the card already issued rather than making a second one.
+- **Issue** claims a pending row under the buyer's credit lock, rechecks the order, the account and the HCB balance, creates the grant and records it. Recording the card marks the order fulfilled in the same transaction, so the buyer can no longer cancel it. Pressing Issue again resolves to the card already issued rather than making a second one.
 - **Check HCB** reconciles an ambiguous, failed or abandoned attempt the same way the project batch does. A failure that may have committed is never retried before the list has been read.
-- **Cancel** reads what the card has spent, then returns the remaining balance to the organisation and records the spend on the row. A cancelled shop card is not reissued automatically, so the part the buyer already spent cannot be paid twice.
+- **Cancel** reads what the card has spent, then returns the remaining balance to the organisation and records the spend on the row. A cancelled shop card is not reissued automatically, so the part the buyer already spent cannot be paid twice. If nothing was spent, the order is reopened to pending, so it can be shipped, refunded or cancelled as usual. If anything was spent, the order stays fulfilled and an admin settles it.
 
 The amount is the order's, not a BOM, so shop cards do not appear in the project preview, batch or CSV export. `claimedGrantIds` includes them, so a reconcile on either path cannot pair a shop grant with a project row or the other way round.
 
-A refund is refused while the order has a live card, whether the buyer cancels or staff reject it. Refunding would leave the buyer with the coins and the card. A cancelled card only allows a refund when it spent nothing: one that was used keeps the refund blocked, because the buyer already had that value. Issuing a card does not yet mark the order fulfilled; that remains a separate decision on the order.
+A refund is refused while the order has a live card, whether the buyer cancels or staff reject it. Refunding would leave the buyer with the coins and the card. A cancelled card only allows a refund when it spent nothing: one that was used keeps the refund blocked, because the buyer already had that value.
+
+Shipping is refused while a card is live, so an order is paid either by card or by post, never both. Card issue, cancel and refund all take the buyer's credit lock, the same one shipping and refunds take.

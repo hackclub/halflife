@@ -1,6 +1,7 @@
 import "server-only"
 import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
-import { HcbGrantCardStatus, PayoutSource } from "@/lib/enums"
+import { lockUserCredit } from "@/lib/currency"
+import { HcbGrantCardStatus, PayoutSource, ShopOrderStatus } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
 import { grantCardPurpose } from "@/lib/grant-card-policy"
 import { ABANDONED_CARD_ATTEMPT_MS, claimedGrantIds } from "@/lib/grant-cards"
@@ -25,6 +26,7 @@ import {
 	shopGrantCardInstructions,
 	shopGrantCardPurpose,
 } from "@/lib/shop-grant-card-policy"
+import { isLiveShopCard } from "@/lib/shop-order"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
@@ -69,11 +71,6 @@ function listCards(client: DbOrTx, orderId: string) {
 }
 
 type ShopGrantCardRow = Awaited<ReturnType<typeof listCards>>[number]
-
-const isLive = (status: HcbGrantCardStatus): boolean =>
-	status === HcbGrantCardStatus.PENDING
-	|| status === HcbGrantCardStatus.ISSUED
-	|| status === HcbGrantCardStatus.AMBIGUOUS
 
 /** A card the buyer kept, handed back, or that was cancelled: the order has been paid once and a batch must not pay it again on its own. */
 const isSettled = (status: HcbGrantCardStatus): boolean =>
@@ -124,7 +121,11 @@ async function markAmbiguous(id: string, reason: string): Promise<void> {
 	})
 }
 
-/** Record the grant HCB made and the action that made it in one transaction, so a card that exists on HCB always has its row. */
+/**
+ * Record the grant HCB made, and mark the order fulfilled, in one transaction: a card that exists on HCB always has its row, and an issued card always means a fulfilled order.
+ *
+ * The order's owner is fixed at purchase, so reading it before the transaction is safe. The credit lock is what serialises this with a refund or a shipment. The order update is conditional on it still being open. If it is not, the card is still recorded, because the money has already moved, and the audit says the order was not fulfilled.
+ */
 async function markIssued(
 	claimed: { amountCents: number; id: string; purpose: string | null },
 	orderId: string,
@@ -133,7 +134,9 @@ async function markIssued(
 	admin: Admin,
 	request: RequestInfo,
 ): Promise<void> {
+	const { userId } = await db.orm.public.ShopOrder.whereUnique({ id: orderId }).select("userId").firstOrThrow()
 	await db.transaction(async tx => {
+		await lockUserCredit(tx, userId)
 		await tx.orm.public.HcbShopGrantCard.where({ id: claimed.id }).update({
 			cardId: grant.cardId,
 			error: null,
@@ -142,6 +145,13 @@ async function markIssued(
 			issuedAt: formatDbTimestamp(new Date()),
 			status: HcbGrantCardStatus.ISSUED,
 		})
+		const fulfilled = await tx.orm.public.ShopOrder.where({ id: orderId })
+			.where(order => order.status.in([ShopOrderStatus.PENDING, ShopOrderStatus.ON_HOLD]))
+			.updateAndCount({
+				fulfilledAt: formatDbTimestamp(new Date()),
+				lastActorId: admin.id,
+				status: ShopOrderStatus.FULFILLED,
+			})
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_ISSUE_GRANT_CARD,
 			actorEmail: admin.email,
@@ -150,6 +160,7 @@ async function markIssued(
 			metadata: {
 				amountCents: claimed.amountCents,
 				cardId: grant.cardId,
+				fulfilled: fulfilled === 1,
 				grantId: grant.id,
 				orderId,
 				purpose,
@@ -176,7 +187,7 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 	const cards = await listCards(db, orderId)
 	const issued = cards.find(card => card.status === HcbGrantCardStatus.ISSUED)
 	if (issued) return toOutcome(issued)
-	const inFlight = cards.find(card => isLive(card.status))
+	const inFlight = cards.find(card => isLiveShopCard(card.status))
 	if (inFlight)
 		throw new HttpError(
 			"CONFLICT",
@@ -215,13 +226,15 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 	// second tab or a stale page. Everything the card will pay is re-read here, not trusted from above.
 	const claimed = await db
 		.transaction(async tx => {
+			// The credit lock is the one a refund, a cancellation and a shipment take, so none of them can run between this check and the claim.
+			await lockUserCredit(tx, order.userId)
 			await lockKey(tx, "grant-cards:issue")
 			const fresh = await loadOrder(tx, orderId)
 			if (!fresh?.user) throw new HttpError("CONFLICT", "The buyer's account no longer exists")
 			const freshBlock = shopGrantCardBlockReason(fresh, payoutBlockReason(fresh.user), verified)
 			if (freshBlock) throw new HttpError("CONFLICT", freshBlock)
 			const freshCards = await tx.orm.public.HcbShopGrantCard.where({ shopOrderId: orderId }).select("status").all()
-			if (freshCards.some(card => isLive(card.status) || isSettled(card.status)))
+			if (freshCards.some(card => isLiveShopCard(card.status) || isSettled(card.status)))
 				throw new HttpError("CONFLICT", "This order already has a card grant")
 			const freshAmount = fresh.grantCardCents
 			if (freshAmount === null || freshAmount <= 0)
@@ -400,13 +413,22 @@ export async function cancelShopGrantCard(id: string, admin: Admin): Promise<Sho
 
 	await cancelCardGrant(row.hcbCardGrantId)
 	const { ip, userAgent } = await requestInfo()
+	const { userId } = await db.orm.public.ShopOrder.whereUnique({ id: row.shopOrderId }).select("userId").firstOrThrow()
 	await db.transaction(async tx => {
+		await lockUserCredit(tx, userId)
 		await tx.orm.public.HcbShopGrantCard.where({ id }).update({
 			canceledAt: formatDbTimestamp(new Date()),
 			hcbStatus: "canceled",
 			spentCents,
 			status: HcbGrantCardStatus.CANCELED,
 		})
+		// Nothing was used, so the buyer had no value from the card and the order is open again: staff or the buyer can then ship, refund or cancel it. A card that was used leaves the order fulfilled, because the buyer already had that value and an admin settles it.
+		const reopened =
+			spentCents === 0
+				? await tx.orm.public.ShopOrder.where({ id: row.shopOrderId, status: ShopOrderStatus.FULFILLED })
+						.where(order => order.trackingNumber.isNull())
+						.updateAndCount({ fulfilledAt: null, lastActorId: admin.id, status: ShopOrderStatus.PENDING })
+				: 0
 		await logAuditTx(tx, {
 			action: AuditAction.ADMIN_CANCEL_GRANT_CARD,
 			actorEmail: admin.email,
@@ -416,6 +438,7 @@ export async function cancelShopGrantCard(id: string, admin: Admin): Promise<Sho
 				amountCents: row.amountCents,
 				grantId: row.hcbCardGrantId,
 				orderId: row.shopOrderId,
+				orderReopened: reopened === 1,
 				spentCents,
 			},
 			targetId: row.shopOrderId,

@@ -1,4 +1,15 @@
-import { ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
+import { HcbGrantCardStatus, ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
+
+/**
+ * Whether a shop card still stands: pending, issued, or ambiguous. Each of these has moved money or may have, so the order cannot be shipped, refunded or paid again while one is live.
+ */
+export function isLiveShopCard(status: HcbGrantCardStatus): boolean {
+	return (
+		status === HcbGrantCardStatus.PENDING
+		|| status === HcbGrantCardStatus.ISSUED
+		|| status === HcbGrantCardStatus.AMBIGUOUS
+	)
+}
 
 /**
  * What a grant card for an order pays, in cents: the item's cost to us, times the quantity. Null when the item has no cost or the cost rounds to nothing, because then there is no amount a card could carry.

@@ -1,6 +1,23 @@
 import { describe, expect, test } from "bun:test"
-import { ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
-import { canCancelOrder, cancelBlockedReason, grantCardCentsFor } from "@/lib/shop-order"
+import { HcbGrantCardStatus, ShopFulfillmentStage, ShopOrderStatus } from "@/lib/enums"
+import { canCancelOrder, cancelBlockedReason, grantCardCentsFor, isLiveShopCard } from "@/lib/shop-order"
+
+describe("isLiveShopCard", () => {
+	test("pending, issued and ambiguous cards are live", () => {
+		for (const status of [HcbGrantCardStatus.PENDING, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS])
+			expect(isLiveShopCard(status)).toBe(true)
+	})
+
+	test("failed, skipped, cancelled and returned cards are not", () => {
+		for (const status of [
+			HcbGrantCardStatus.FAILED,
+			HcbGrantCardStatus.SKIPPED,
+			HcbGrantCardStatus.CANCELED,
+			HcbGrantCardStatus.RETURNED,
+		])
+			expect(isLiveShopCard(status)).toBe(false)
+	})
+})
 
 const order = (status: ShopOrderStatus, fulfillmentStage: ShopFulfillmentStage) => ({ fulfillmentStage, status })
 
