@@ -757,7 +757,7 @@
 	.hl-admin-main .hl-table tbody tr:nth-child(even) {
 		background: rgb(16 15 48 / 0.025);
 	}
-	.hl-admin-main .hl-table tbody tr:hover td {
+	.hl-admin-main .hl-table tbody tr:not(.hl-manage-row):hover td {
 		background: rgb(16 15 48 / 0.05);
 	}
 	/* Panels are a quiet border and a faint lift, so the content inside them carries the weight. The outline is kept for the console's focus rings. */
