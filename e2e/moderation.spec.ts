@@ -14,7 +14,7 @@ test("an admin suspends, then bans, a participant", async ({ admin, openAs }) =>
 	// More than one row of each, so a bulk hide that updates a single row fails here instead of passing quietly.
 	await seedReelsWithComment(user.id)
 
-	await admin.goto(`/admin/users/${user.id}`)
+	await admin.goto(`/admin/users/${user.id}?tab=moderation`)
 	await expect(admin.getByRole("heading", { level: 1, name: "E2E Participant" })).toBeVisible()
 
 	// ── Suspend ────────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ test("an admin suspends, then bans, a participant", async ({ admin, openAs }) =>
 	expect(await refused.json()).toMatchObject({ error: { code: "ACCOUNT_SUSPENDED" } })
 
 	// ── Lift the suspension ────────────────────────────────────────────────────
-	await admin.goto(`/admin/users/${user.id}`)
+	await admin.goto(`/admin/users/${user.id}?tab=moderation`)
 	await waitForHydration(admin.getByRole("button", { name: "Lift suspension" }))
 	await admin.getByRole("button", { name: "Lift suspension" }).click()
 	await expect(admin.getByText("No penalty on record")).toBeVisible({ timeout: 15_000 })
@@ -62,7 +62,7 @@ test("an admin suspends, then bans, a participant", async ({ admin, openAs }) =>
 	await expect(participantPage).toHaveURL(/\/$/)
 
 	// ── Lift the ban, restoring only what the ban itself hid ───────────────────
-	await admin.goto(`/admin/users/${user.id}`)
+	await admin.goto(`/admin/users/${user.id}?tab=moderation`)
 	await waitForHydration(admin.getByRole("button", { name: "Lift ban" }))
 	await admin.getByRole("button", { name: "Lift ban" }).click()
 	await expect(admin.getByText("No penalty on record")).toBeVisible({ timeout: 15_000 })
@@ -78,7 +78,7 @@ test("an admin suspends, then bans, a participant", async ({ admin, openAs }) =>
 test("a suspended participant cannot spend, report or log work", async ({ admin, openAs }) => {
 	const { page, user } = await openAs({ onboarding: "complete" })
 
-	await admin.goto(`/admin/users/${user.id}`)
+	await admin.goto(`/admin/users/${user.id}?tab=moderation`)
 	const reason = admin.getByLabel("Penalty reason")
 	const form = admin.locator("form").filter({ has: reason })
 	await waitForHydration(form)

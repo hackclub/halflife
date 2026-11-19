@@ -986,26 +986,6 @@
 		overflow-wrap: anywhere;
 	}
 
-	/* ── Section jump nav ──────────────────────────────────────────────────── */
-	/* A long page's sections, as one row of links that stay short. Sections clear the sticky header when reached. */
-	.hl-jump {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.4rem;
-	}
-	.hl-jump a {
-		padding: 0.25rem 0.7rem;
-		font-size: 0.9rem;
-		font-weight: 600;
-		color: var(--color-ink);
-		text-decoration: none;
-		background: var(--color-surface-raised);
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-	}
-	.hl-jump a:hover {
-		border-color: var(--color-accent);
-	}
 	.hl-admin-main section[id] {
 		scroll-margin-top: 1rem;
 	}

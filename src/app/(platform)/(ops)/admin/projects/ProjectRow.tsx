@@ -49,7 +49,7 @@ export function ProjectRow({
 					<span className="hl-entity-name">{data.title || "Untitled"}</span>
 					{/* The participant's project page opens for its owner only, so the admin link goes to the owner's page, where the project is listed. The public link is the read-only project page. */}
 					<div className="hl-entity-links">
-						<Link href={`/admin/users/${data.ownerId}#project-${data.id}`}>Admin project</Link>
+						<Link href={`/admin/users/${data.ownerId}?tab=projects#project-${data.id}`}>Admin project</Link>
 						<Link href={`/projects/${data.id}`}>Public project</Link>
 					</div>
 					{/* One line for where the project lives: its repository when it has one, otherwise its ID. The full ID stays in the tooltip. */}
