@@ -136,25 +136,27 @@ export function ProgramSettingsForm({
 				<span>Sync devlogs and BOMs to repos</span>
 			</label>
 
-			<Field hint="How long the shop stays open after someone's last review." label="Shop grace days">
-				<TextInput
-					max="90"
-					min="0"
-					onChange={e => setForm({ ...form, shopGraceDays: Number(e.target.value) })}
-					type="number"
-					value={form.shopGraceDays}
-				/>
-			</Field>
+			<div className="hl-field-pair">
+				<Field hint="How long the shop stays open after someone's last review." label="Shop grace days">
+					<TextInput
+						max="90"
+						min="0"
+						onChange={e => setForm({ ...form, shopGraceDays: Number(e.target.value) })}
+						type="number"
+						value={form.shopGraceDays}
+					/>
+				</Field>
 
-			<Field label="Review claim TTL (minutes)">
-				<TextInput
-					max="240"
-					min="5"
-					onChange={e => setForm({ ...form, reviewClaimTtlMinutes: Number(e.target.value) })}
-					type="number"
-					value={form.reviewClaimTtlMinutes}
-				/>
-			</Field>
+				<Field label="Review claim TTL (minutes)">
+					<TextInput
+						max="240"
+						min="5"
+						onChange={e => setForm({ ...form, reviewClaimTtlMinutes: Number(e.target.value) })}
+						type="number"
+						value={form.reviewClaimTtlMinutes}
+					/>
+				</Field>
+			</div>
 
 			<div>
 				<Button disabled={busy !== null} type="submit" variant="primary">
