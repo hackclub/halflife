@@ -83,14 +83,14 @@ export function ThemedProjectRow({
 	return (
 		<>
 			<tr id={`project-${data.id}`}>
-				<td style={{ minWidth: "15rem", overflowWrap: "anywhere" }}>
+				<td className="hl-cell-project">
 					<span className="hl-entity-name">{data.themeLabel}</span>
 					<div className="hl-hint">{data.title}</div>
 					<div className="hl-entity-links">
 						<Link href={`/projects/${data.id}`}>Public project</Link>
 					</div>
 				</td>
-				<td style={{ minWidth: "14rem" }}>
+				<td className="hl-cell-review">
 					<ReviewStages
 						buildStatus={data.buildStatus}
 						designFunding={data.designFunding}
@@ -104,7 +104,7 @@ export function ThemedProjectRow({
 					{data.grantSent ? <div className="hl-hint">top-up sent</div> : null}
 				</td>
 				<td className="hl-mono">{data.approvedHours ?? "-"}</td>
-				<td style={{ minWidth: "13rem" }}>
+				<td className="hl-cell-actions">
 					{hasActions ? (
 						<ManageButton onToggle={() => setOpen(value => !value)} open={open} panelId={panelId} />
 					) : (

@@ -635,6 +635,24 @@
 	}
 
 	/* ── Tables ────────────────────────────────────────────────────────────── */
+	/* The projects table keeps its columns comfortable while the sidebar leaves room for them, and lets them wrap instead of scrolling past the edge when it does not. */
+	.hl-cell-project {
+		min-width: 15rem;
+		overflow-wrap: anywhere;
+	}
+	.hl-cell-review {
+		min-width: 14rem;
+	}
+	.hl-cell-actions {
+		min-width: 13rem;
+	}
+	@media (max-width: 1150px) {
+		.hl-cell-project,
+		.hl-cell-review,
+		.hl-cell-actions {
+			min-width: 0;
+		}
+	}
 	.hl-table {
 		width: 100%;
 		font-size: 0.95rem;
@@ -1325,6 +1343,8 @@
 		gap: 0.5rem;
 	}
 	.hl-manage-panel .hl-btn {
+		/* A label-sized action, not a bar across the column: a full-width button inside the table's overflow can end past the screen edge. */
+		align-self: flex-start;
 		height: 2.75rem;
 	}
 	/* A note sits clear of the control it describes, rather than touching the button under it. */
