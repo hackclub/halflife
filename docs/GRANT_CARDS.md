@@ -519,6 +519,12 @@ Starter cards are issued through `scripts/starter-funding-export.ts`. With no fl
 
 ## Shop orders
 
+### Legacy orders (placed before the delivery choice)
+
+Orders placed before `deliveryPreference` existed keep it null, and nothing sets it until the countries we can ship to and the start of fulfilment are settled. The **Legacy DMs** tab on `/admin/fulfillment` messages those buyers on Slack. Each buyer gets one DM listing their open legacy orders, with a ship it and a grant card button per order.
+
+`LegacyShopDm` records every DM sent or tested, and `LegacyShopDmOrder` each order a DM lists. A partial unique index on the order allows only one PENDING or SENT row, so an order is never messaged twice. A failed post releases its orders. A button press is stored on the DM's order row as the buyer's `choice`. It does not touch the order, and only the buyer the DM went to can press it while the order is still open.
+
 A shop order can ask for its value as a card instead of shipping (`ShopDeliveryPreference.GRANT_CARD`). The order carries `grantCardCents`, fixed at purchase from the item's cost to us times the quantity. An item with no cost is refused at checkout when a card is asked for, because there is no amount to put on it. The HCB purpose is `Half Life prize – <item>`, the instructions name the order and ask the buyer to purchase the item, and the invitation names the item too.
 
 `HcbShopGrantCard` is that card's record: one row per attempt, and at most one live row per order. Staff issue it from the order's panel on `/admin/fulfillment`:
