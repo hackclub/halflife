@@ -277,13 +277,14 @@ function TestPanel() {
 			<div className="hl-row" style={{ alignItems: "flex-end", gap: "0.75rem" }}>
 				<Field label="Slack user ID">
 					<TextInput
+						className="h-11"
 						onChange={event => setSlackId(event.target.value)}
 						placeholder="U0123ABCDE"
 						spellCheck={false}
 						value={slackId}
 					/>
 				</Field>
-				<Button disabled={busy || slackId.trim() === ""} onClick={() => void sendTest()} type="button">
+				<Button className="h-11" disabled={busy || slackId.trim() === ""} onClick={() => void sendTest()} type="button">
 					{busy ? "Sending…" : "Send test"}
 				</Button>
 			</div>
