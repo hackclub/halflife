@@ -186,7 +186,19 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 					</div>
 				}
 				compact
-				subtitle={<CopyEmail email={user.email} />}
+				subtitle={
+					<div className="hl-row">
+						<CopyEmail email={user.email} />
+						<a
+							className="hl-hint"
+							href={`https://hcb.hackclub.com/ysws-half-life/card_grants/card_overview?q=${encodeURIComponent(user.email)}`}
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							Grant cards on HCB
+						</a>
+					</div>
+				}
 				title={displayName(user, user.email)}
 			/>
 			<TabKeys
