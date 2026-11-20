@@ -12,6 +12,8 @@ export function TabKeys({ current, hrefs }: Readonly<{ current: string; hrefs: s
 	useEffect(() => {
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key !== "[" && event.key !== "]") return
+			// Holding a key repeats it; one press moves one tab, so a held key must not push a route per repeat.
+			if (event.repeat) return
 			if (event.metaKey || event.ctrlKey || event.altKey) return
 			const { target } = event
 			if (
