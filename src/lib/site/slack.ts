@@ -114,6 +114,18 @@ export function postMessage(
 	)
 }
 
+/** The bot's direct-message channel with a user, opened if it does not exist yet. Throws when Slack refuses (an unknown user, a missing scope), so a caller records the send as failed rather than sent. */
+export async function openDirectMessage(slackId: string): Promise<string> {
+	const result = await callSlackApi(
+		z.object({ ...envelopeShape, channel: z.object({ id: z.string() }).optional() }),
+		"conversations.open",
+		{ users: slackId },
+	)
+	if (!result.ok || !result.channel)
+		throw new Error(`conversations.open failed for ${slackId}: ${result.error ?? "no channel"}`)
+	return result.channel.id
+}
+
 export function updateMessage(
 	channel: string,
 	ts: string,

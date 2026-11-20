@@ -10,6 +10,7 @@ import {
 	ShopItemCategory,
 	Theme,
 } from "@/lib/enums"
+import { isSlackUserId } from "@/lib/legacy-shop-dm-policy"
 import { boundedText, cuid, httpsUrl, isTimeZone, phaseSchema } from "@/lib/schemas/common"
 import { MAX_SESSION_HOURS } from "@/lib/schemas/session"
 
@@ -131,6 +132,27 @@ export const shopGrantCardBatchSchema = z
 		orderIds: z.array(z.string().trim().min(1).max(64)).min(1).max(SHOP_GRANT_CARD_BATCH_MAX),
 		saveToItem: z.boolean().default(false),
 		shopItemId: z.string().trim().min(1).max(64),
+	})
+	.strict()
+
+/** How many buyers one legacy-order send may message. Each is a Slack call pair, so a send is kept small enough to finish in one request. */
+export const LEGACY_SHOP_DM_SEND_MAX = 25
+
+/** The buyers the admin picked from the preview. Duplicates are dropped rather than sent twice. */
+export const legacyShopDmSendSchema = z
+	.object({
+		userIds: z
+			.array(z.string().trim().min(1).max(64))
+			.min(1)
+			.max(LEGACY_SHOP_DM_SEND_MAX)
+			.transform(ids => [...new Set(ids)]),
+	})
+	.strict()
+
+/** A Slack user ID typed into the test form. Checked as a shape only: Slack itself says whether the user exists. */
+export const legacyShopDmTestSchema = z
+	.object({
+		slackId: z.string().trim().refine(isSlackUserId, "Enter a Slack user ID, such as U0123ABCDE"),
 	})
 	.strict()
 

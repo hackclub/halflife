@@ -482,7 +482,10 @@ export async function purchase(
 }
 
 /** One order row as writes return it: scalars only, no relations loaded. */
-export type ShopOrderRow = Omit<Models.public_ShopOrder, "grantCards" | "ledgerEntries" | "notes" | "shopItem" | "user">
+export type ShopOrderRow = Omit<
+	Models.public_ShopOrder,
+	"grantCards" | "ledgerEntries" | "legacyShopDmOrders" | "notes" | "shopItem" | "user"
+>
 
 /**
  * Return everything an order took: its coins, to the pots that paid, and its stock.
