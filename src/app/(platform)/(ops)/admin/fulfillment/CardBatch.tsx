@@ -1,12 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { z } from "zod"
 import { Button, Callout, EmptyState, Field, Panel, Table, TextArea } from "@/app/components/ui"
 import { useConfirm } from "@/app/components/ui/useConfirm"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { formatUsd } from "@/lib/money"
+import { SHOP_GRANT_CARD_BATCH_MAX } from "@/lib/schemas/admin"
 import type { BatchBlockedOrder, BatchGroup, BatchSendOutcome } from "@/lib/shop-grant-card-batch"
 import { sendJsonParsed, useAction } from "@/lib/use-action"
 
@@ -41,6 +43,8 @@ const cardWord = (n: number) => (n === 1 ? "card" : "cards")
 export function CardBatch({ blocked, groups }: Readonly<{ blocked: BatchBlockedOrder[]; groups: BatchGroup[] }>) {
 	return (
 		<>
+			{groups.length > 0 ? <SendEverythingPanel groups={groups} /> : null}
+
 			<Panel title="Bulk card send">
 				<p className="hl-hint" style={{ margin: 0 }}>
 					Only orders whose buyer chose a grant card instead of shipping are listed. Each card is locked to the merchant
@@ -86,6 +90,115 @@ export function CardBatch({ blocked, groups }: Readonly<{ blocked: BatchBlockedO
 				</Panel>
 			) : null}
 		</>
+	)
+}
+
+function chunkOf<T>(items: readonly T[], size: number): T[][] {
+	const chunks: T[][] = []
+	for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size))
+	return chunks
+}
+
+/**
+ * Every item's waiting cards in one send. Each item goes with the merchant IDs saved on it, so the allowlist is never guessed: an item with none saved is left out and named, since a card with no lock is worse than one not yet sent. What is typed into an item panel but not saved is not included.
+ */
+function SendEverythingPanel({ groups }: Readonly<{ groups: BatchGroup[] }>) {
+	const router = useRouter()
+	const [busy, setBusy] = useState(false)
+	const [error, setError] = useState<string | null>(null)
+	const [outcomes, setOutcomes] = useState<BatchSendOutcome[] | null>(null)
+	const { confirm, dialog } = useConfirm()
+
+	const ready = groups.filter(group => group.configuredMerchantIds.length > 0)
+	const unlocked = groups.filter(group => group.configuredMerchantIds.length === 0)
+	const orderCount = ready.reduce((n, group) => n + group.orders.length, 0)
+	const totalCents = ready.reduce((n, group) => n + group.totalCents, 0)
+	const failures = outcomes?.filter(outcome => !outcome.sent) ?? []
+	const sent = outcomes?.filter(outcome => outcome.sent).length ?? 0
+
+	async function sendAll() {
+		const answer = await confirm({
+			confirmLabel: `Send ${orderCount} ${cardWord(orderCount)}`,
+			message: `Send ${orderCount} ${cardWord(orderCount)} across ${ready.length} ${ready.length === 1 ? "item" : "items"}, ${formatUsd(
+				totalCents / 100,
+			)} in total? Each card is locked to the merchant IDs saved on its item. Each order is marked fulfilled once its card is issued, and the buyer can no longer cancel it.`,
+			title: "Send every card",
+		})
+		if (answer === null) return
+		setBusy(true)
+		setError(null)
+		const collected: BatchSendOutcome[] = []
+		const requests = ready.flatMap(group =>
+			chunkOf(
+				group.orders.map(order => order.id),
+				SHOP_GRANT_CARD_BATCH_MAX,
+			).map(chunk => ({ chunk, group })),
+		)
+		try {
+			for (const { chunk, group } of requests) {
+				const result = await sendJsonParsed(sendResultSchema, "/api/admin/shop/grant-cards/batch", {
+					body: {
+						grantCardMerchantIds: group.configuredMerchantIds,
+						orderIds: chunk,
+						saveToItem: false,
+						shopItemId: group.shopItemId,
+					},
+				})
+				if (!result.ok) {
+					setError(result.message)
+					return
+				}
+				collected.push(...result.data.outcomes)
+			}
+		} finally {
+			// Whatever went through is recorded and the page re-read, even when a later request was refused.
+			setOutcomes(collected)
+			setBusy(false)
+			router.refresh()
+		}
+	}
+
+	return (
+		<Panel title="Send every card">
+			<p className="hl-hint" style={{ margin: 0 }}>
+				Sends every waiting card for every item, each locked to the merchant IDs saved on that item. Change an
+				item&apos;s IDs in its panel below and save them to include the change here.
+			</p>
+			{unlocked.length > 0 ? (
+				<Callout tone="warning">
+					Left out, because no merchant IDs are saved on them yet: {unlocked.map(group => group.itemName).join(", ")}.
+				</Callout>
+			) : null}
+			{error ? <Callout tone="danger">{error}</Callout> : null}
+			{sent > 0 ? (
+				<Callout tone="info">
+					Issued {sent} {cardWord(sent)}. Orders that did not go through are still waiting below.
+				</Callout>
+			) : null}
+			{failures.length > 0 ? (
+				<Callout tone="danger">
+					<strong>
+						{failures.length} {cardWord(failures.length)} not issued
+					</strong>
+					<ul style={{ margin: "0.4rem 0 0", paddingLeft: "1.1rem" }}>
+						{failures.map(outcome => (
+							<li key={outcome.orderId}>
+								Order #{outcome.orderNumber}: {outcome.error ?? "HCB did not confirm the card"}
+							</li>
+						))}
+					</ul>
+				</Callout>
+			) : null}
+			<div className="hl-row" style={{ alignItems: "center", gap: "0.75rem" }}>
+				<Button disabled={busy || orderCount === 0} onClick={() => void sendAll()} type="button" variant="primary">
+					{busy ? "Sending…" : `Send ${orderCount} ${cardWord(orderCount)} · ${formatUsd(totalCents / 100)}`}
+				</Button>
+				<span className="hl-hint">
+					{ready.length} {ready.length === 1 ? "item" : "items"} with saved IDs
+				</span>
+			</div>
+			{dialog}
+		</Panel>
 	)
 }
 
