@@ -63,8 +63,14 @@ export function CardBatch({ blocked, groups }: Readonly<{ blocked: BatchBlockedO
 						{blocked.map(order => (
 							<tr key={order.orderNumber}>
 								<td className="hl-mono">{order.orderNumber}</td>
-								<td>{order.userName}</td>
-								<td>{order.itemName}</td>
+								<td>
+									<Link className="hl-entity-name" href={`/admin/users/${order.user.id}`}>
+										{order.user.name}
+									</Link>
+								</td>
+								<td>
+									<Link href={`/admin/shop/${order.shopItemId}`}>{order.itemName}</Link>
+								</td>
 								<td className="hl-hint">{order.reason}</td>
 							</tr>
 						))}
