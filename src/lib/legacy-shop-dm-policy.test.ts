@@ -134,3 +134,20 @@ describe("groupLegacyShopBuyers", () => {
 		expect(buyers[0]?.skipReason).toContain("too many for one DM")
 	})
 })
+
+describe("order links", () => {
+	test("the order number links to its anchor on the buyer's orders page", () => {
+		const message = legacyShopMessage(
+			[{ choice: null, itemName: "Sticker", orderId: "ord_1", orderNumber: 12 }],
+			false,
+			"https://example.test",
+		)
+		expect(JSON.stringify(message.blocks)).toContain("<https://example.test/shop/orders#order-ord_1|Order #12>")
+	})
+
+	test("without an origin the order number is plain text", () => {
+		const message = legacyShopMessage([{ choice: null, itemName: "Sticker", orderId: "ord_1", orderNumber: 12 }], false)
+		expect(JSON.stringify(message.blocks)).not.toContain("<https://")
+		expect(JSON.stringify(message.blocks)).toContain("Order #12")
+	})
+})

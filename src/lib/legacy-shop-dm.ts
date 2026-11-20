@@ -10,6 +10,7 @@ import {
 	type LegacyShopUser,
 	legacyShopMessage,
 } from "@/lib/legacy-shop-dm-policy"
+import { configuredOrigin } from "@/lib/origin"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { openDirectMessage, postMessage, type SlackBlock } from "@/lib/site/slack"
 import { formatDbTimestamp } from "@/lib/time"
@@ -221,7 +222,7 @@ async function sendToBuyer(buyer: LegacyShopBuyer, sentById: string): Promise<Le
 
 	let posted: { channel: string; ts: string }
 	try {
-		posted = await postDirect(buyer.slackId, legacyShopMessage(lines, false))
+		posted = await postDirect(buyer.slackId, legacyShopMessage(lines, false, configuredOrigin()))
 	} catch (err) {
 		const error = errorText(err)
 		await settleLegacyShopDm(dmId, { error })
@@ -324,5 +325,5 @@ export async function recordLegacyShopChoice(input: {
 		}))
 		.sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0))
 
-	return { channel: dm.channel, message: legacyShopMessage(lines, false), ok: true, ts: dm.ts }
+	return { channel: dm.channel, message: legacyShopMessage(lines, false, configuredOrigin()), ok: true, ts: dm.ts }
 }

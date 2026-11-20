@@ -73,8 +73,10 @@ export interface LegacyShopLine {
 const escapeMrkdwn = (text: string): string =>
 	text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 
-function lineBlocks(line: LegacyShopLine, test: boolean): SlackBlock[] {
-	const heading = line.orderNumber === null ? "Sample order" : `Order #${line.orderNumber}`
+function lineBlocks(line: LegacyShopLine, test: boolean, origin: string | null): SlackBlock[] {
+	const label = line.orderNumber === null ? "Sample order" : `Order #${line.orderNumber}`
+	// The link goes to the buyer's own orders page, where each order has an anchor. The sample line has no order, so it stays plain.
+	const heading = origin && line.orderId ? `<${origin}/shop/orders#order-${line.orderId}|${label}>` : label
 	const current = line.choice ? `Your choice: ${CHOICE_LABELS[line.choice]}` : "No choice yet"
 	const button = (choice: "GRANT_CARD" | "SHIP"): SlackBlock => ({
 		action_id: `${LEGACY_SHOP_ACTION_PREFIX}${choice}`,
@@ -100,11 +102,15 @@ function lineBlocks(line: LegacyShopLine, test: boolean): SlackBlock[] {
 }
 
 /** The DM for one buyer, or the test DM when `test` is set. Its fallback text is what a notification shows. */
-export function legacyShopMessage(lines: LegacyShopLine[], test: boolean): { blocks: SlackBlock[]; text: string } {
+export function legacyShopMessage(
+	lines: LegacyShopLine[],
+	test: boolean,
+	origin: string | null = null,
+): { blocks: SlackBlock[]; text: string } {
 	const intro: SlackBlock = { text: { text: test ? TEST_INTRO : BUYER_INTRO, type: "mrkdwn" }, type: "section" }
 	const note: SlackBlock = { text: { text: ADDRESS_NOTE, type: "mrkdwn" }, type: "section" }
 	return {
-		blocks: [intro, ...lines.flatMap(line => lineBlocks(line, test)), note],
+		blocks: [intro, ...lines.flatMap(line => lineBlocks(line, test, origin)), note],
 		text: test ? "Test: Half Life shop delivery message" : "Your Half Life shop orders need a delivery choice",
 	}
 }

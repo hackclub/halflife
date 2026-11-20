@@ -94,7 +94,7 @@ export function OrdersList({ orders }: { orders: ShopOrderPublic[] }) {
 					const fulfilled = when(order.fulfilledAt)
 					const stage = order.fulfillmentStage
 					return (
-						<li key={order.id}>
+						<li id={`order-${order.id}`} key={order.id}>
 							<Panel className="bg-paper p-4 sm:p-5" radius={18} tone="line">
 								<div className="flex flex-wrap items-start justify-between gap-3">
 									<div className="min-w-0">
