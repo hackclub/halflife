@@ -33,17 +33,17 @@ const CARD_STATUS: { [_ in HcbGrantCardStatus]: { label: string; tone: "success"
 		SKIPPED: { label: "Skipped", tone: "muted" },
 	}
 
-/** The sheet's address with a stage added, keeping the filters already in it. */
-function stageHref(filters: string, stage: string): string {
+/** The sheet's address with a status added, keeping the filters already in it. */
+function statusHref(filters: string, status: string): string {
 	const params = new URLSearchParams(filters)
-	params.set("stage", stage)
+	params.set("status", status)
 	return `/admin/fulfillment?${params.toString()}`
 }
 
 /**
  * One order on the fulfilment sheet, with every control folded into a manage panel beneath it.
  *
- * The table is a reading list: order number, who, what, what it cost and where it is. Method, stage, the decision and the record of what was decided are not columns – they are a panel, so the sheet has room for the orders rather than the forms. `filters` is the sheet's current query without a stage, so a row's status can add one.
+ * The table is a reading list: order number, who, what, what it cost and where it is. Method, stage, the decision and the record of what was decided are not columns – they are a panel, so the sheet has room for the orders rather than the forms. `filters` is the sheet's current query, so a row's status can set its own status in it.
  */
 export function FulfillmentRow({ filters, order }: Readonly<{ filters: string; order: FulfillmentOrderJson }>) {
 	const [open, setOpen] = useState(false)
@@ -95,10 +95,7 @@ export function FulfillmentRow({ filters, order }: Readonly<{ filters: string; o
 					{formatUtcDateTime(new Date(order.placedAt))}
 				</td>
 				<td className="hl-fulfill-status">
-					<Link
-						href={stageHref(filters, order.fulfillmentStage)}
-						title={`Show only ${STAGE_LABELS[order.fulfillmentStage]} orders`}
-					>
+					<Link href={statusHref(filters, order.status)} title={`Show only ${status.label.toLowerCase()} orders`}>
 						<Badge tone={status.tone}>{status.label}</Badge>
 					</Link>
 					{order.deliveryPreference ? <div className="hl-hint">{DELIVERY_LABELS[order.deliveryPreference]}</div> : null}
