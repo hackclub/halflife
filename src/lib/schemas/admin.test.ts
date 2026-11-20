@@ -14,6 +14,8 @@ import {
 	projectExtensionSchema,
 	roleChangeSchema,
 	rsvpSchema,
+	SHOP_GRANT_CARD_BATCH_MAX,
+	shopGrantCardBatchSchema,
 	shopItemSchema,
 	shopItemUpdateSchema,
 	shopRegionSchema,
@@ -195,6 +197,35 @@ describe("programSettingsSchema", () => {
 		expect(programSettingsSchema.safeParse({ reviewClaimTtlMinutes: 4 }).success).toBe(false)
 		expect(programSettingsSchema.safeParse({ reviewClaimTtlMinutes: 30 }).success).toBe(true)
 		expect(programSettingsSchema.safeParse({ unknown: true }).success).toBe(false)
+	})
+})
+
+describe("shopGrantCardBatchSchema", () => {
+	const body = {
+		grantCardMerchantIds: ["ZIEMZSLZHABHDPK"],
+		orderIds: ["order-1"],
+		saveToItem: true,
+		shopItemId: "soldering-kit",
+	}
+
+	test("accepts one item's orders with an allowlist", () => {
+		expect(shopGrantCardBatchSchema.safeParse(body).success).toBe(true)
+	})
+
+	test("refuses a send with no merchant lock", () => {
+		expect(shopGrantCardBatchSchema.safeParse({ ...body, grantCardMerchantIds: [] }).success).toBe(false)
+		expect(shopGrantCardBatchSchema.safeParse({ ...body, grantCardMerchantIds: [""] }).success).toBe(false)
+	})
+
+	test("refuses an empty or oversized batch, and unknown keys", () => {
+		expect(shopGrantCardBatchSchema.safeParse({ ...body, orderIds: [] }).success).toBe(false)
+		expect(
+			shopGrantCardBatchSchema.safeParse({
+				...body,
+				orderIds: Array.from({ length: SHOP_GRANT_CARD_BATCH_MAX + 1 }, (_, i) => `order-${i}`),
+			}).success,
+		).toBe(false)
+		expect(shopGrantCardBatchSchema.safeParse({ ...body, extra: 1 }).success).toBe(false)
 	})
 })
 

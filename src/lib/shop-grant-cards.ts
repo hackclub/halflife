@@ -3,7 +3,7 @@ import { AuditAction, logAuditTx, requestInfo } from "@/lib/audit"
 import { lockUserCredit } from "@/lib/currency"
 import { HcbGrantCardStatus, PayoutSource, ShopOrderStatus } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
-import { merchantIdsEqual } from "@/lib/grant-card-policy"
+import { merchantIdsEqual, normalizeMerchantIds } from "@/lib/grant-card-policy"
 import { ABANDONED_CARD_ATTEMPT_MS, claimedGrantIds } from "@/lib/grant-cards"
 import { isIdentityVerified } from "@/lib/hca-profile"
 import {
@@ -26,7 +26,7 @@ import {
 	shopGrantCardInviteMessage,
 	shopGrantCardPurpose,
 } from "@/lib/shop-grant-card-policy"
-import { isLiveShopCard } from "@/lib/shop-order"
+import { isLiveShopCard, isSettledShopCard } from "@/lib/shop-order"
 import { formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
@@ -82,10 +82,6 @@ function listCards(client: DbOrTx, orderId: string) {
 }
 
 type ShopGrantCardRow = Awaited<ReturnType<typeof listCards>>[number]
-
-/** A card the buyer kept, handed back, or that was cancelled: the order has been paid once and a batch must not pay it again on its own. */
-const isSettled = (status: HcbGrantCardStatus): boolean =>
-	status === HcbGrantCardStatus.CANCELED || status === HcbGrantCardStatus.RETURNED
 
 async function assertReadyToIssue(): Promise<void> {
 	const settings = await getProgramSettings()
@@ -206,12 +202,28 @@ async function markIssued(
 	})
 }
 
+export interface ShopGrantCardIssueOptions {
+	/**
+	 * The merchant allowlist this send chose, for a bulk batch that fills it in per item. Omitted, the order's own snapshot is used, which is what the single-order panel does. It is stored on the attempt, so a later reconcile checks the lock the card was actually issued with.
+	 */
+	merchantIds?: readonly string[]
+}
+
 /**
  * Issue the card for one order.
  *
  * A double click resolves to the card that was already issued rather than making a second one. A card that was cancelled or returned stops the order being paid again here: that is an admin decision, not something a retry does on its own.
  */
-export async function issueShopGrantCard(orderId: string, admin: Admin): Promise<ShopGrantCardOutcome> {
+export async function issueShopGrantCard(
+	orderId: string,
+	admin: Admin,
+	options: ShopGrantCardIssueOptions = {},
+): Promise<ShopGrantCardOutcome> {
+	const overrideMerchantIds = options.merchantIds === undefined ? null : normalizeMerchantIds(options.merchantIds)
+	// An empty override would quietly issue an unrestricted card, which is the opposite of what a batch asks for. The order's own snapshot may be empty – that has always meant "anywhere" – but an explicit list may not be.
+	if (overrideMerchantIds !== null && overrideMerchantIds.length === 0)
+		throw new HttpError("VALIDATION_FAILED", "A grant card needs at least one merchant ID")
+
 	await assertReadyToIssue()
 
 	const order = await loadOrder(db, orderId)
@@ -229,7 +241,7 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 				? "A card grant for this order is already in progress"
 				: "This order's card grant is ambiguous. Check it against HCB first",
 		)
-	const settled = cards.find(card => isSettled(card.status))
+	const settled = cards.find(card => isSettledShopCard(card.status))
 	if (settled)
 		throw new HttpError(
 			"CONFLICT",
@@ -268,7 +280,7 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 			const freshBlock = shopGrantCardBlockReason(fresh, payoutBlockReason(fresh.user), verified)
 			if (freshBlock) throw new HttpError("CONFLICT", freshBlock)
 			const freshCards = await tx.orm.public.HcbShopGrantCard.where({ shopOrderId: orderId }).select("status").all()
-			if (freshCards.some(card => isLiveShopCard(card.status) || isSettled(card.status)))
+			if (freshCards.some(card => isLiveShopCard(card.status) || isSettledShopCard(card.status)))
 				throw new HttpError("CONFLICT", "This order already has a card grant")
 			const freshAmount = fresh.grantCardCents
 			if (freshAmount === null || freshAmount <= 0)
@@ -277,7 +289,7 @@ export async function issueShopGrantCard(orderId: string, admin: Admin): Promise
 				amountCents: freshAmount,
 				claimedAt: formatDbTimestamp(now),
 				email,
-				grantCardMerchantIds: fresh.grantCardMerchantIds,
+				grantCardMerchantIds: overrideMerchantIds ?? fresh.grantCardMerchantIds,
 				purpose,
 				shopOrderId: orderId,
 			})

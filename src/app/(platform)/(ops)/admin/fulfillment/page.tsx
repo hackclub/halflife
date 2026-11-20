@@ -13,6 +13,8 @@ import { PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import { listPrinterAwards } from "@/lib/queries/admin"
 import { listFulfillmentOrders } from "@/lib/queries/fulfillment"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
+import { listShopGrantCardBatch } from "@/lib/shop-grant-card-batch"
+import { CardBatch } from "./CardBatch"
 import { FulfillmentList } from "./FulfillmentList"
 
 export const metadata: Metadata = {
@@ -46,6 +48,7 @@ const AWARD_TONES = {
 /** The tabs in the order the chips and the [ and ] keys step through them. */
 const TABS = [
 	{ id: "orders", label: "Orders" },
+	{ id: "batch", label: "Card batch" },
 	{ id: "printers", label: "Printers" },
 ] as const
 
@@ -60,9 +63,10 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	const tab: FulfillmentTab = TABS.find(item => item.id === search.tab)?.id ?? "orders"
 
 	const filters = fulfillmentFiltersFrom(search)
-	const [orders, awards] = await Promise.all([
+	const [orders, awards, batch] = await Promise.all([
 		tab === "orders" ? listFulfillmentOrders(filters, { limit: FULFILLMENT_PAGE_SIZE }) : null,
 		tab === "printers" ? listPrinterAwards() : null,
+		tab === "batch" ? listShopGrantCardBatch() : null,
 	])
 
 	// The rows below load more through the same filters, so the list's address carries them all.
@@ -177,6 +181,8 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					</Panel>
 				</>
 			) : null}
+
+			{batch ? <CardBatch blocked={batch.blocked} groups={batch.groups} /> : null}
 
 			{awards ? (
 				<Panel title="Printers earned">

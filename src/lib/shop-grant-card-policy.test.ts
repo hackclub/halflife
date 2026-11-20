@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { ShopDeliveryPreference, ShopOrderStatus } from "@/lib/enums"
 import {
+	shopGrantCardBatchBlockReason,
 	shopGrantCardBlockReason,
 	shopGrantCardInstructions,
 	shopGrantCardInviteMessage,
@@ -46,6 +47,34 @@ describe("shopGrantCardBlockReason", () => {
 
 	test("an unverified buyer is refused", () => {
 		expect(shopGrantCardBlockReason(order(), null, false)).toContain("identity")
+	})
+})
+
+describe("shopGrantCardBatchBlockReason", () => {
+	const ready = { ...order(), hasLiveCard: false, hasSettledCard: false }
+
+	test("a card order with no card yet belongs in the batch", () => {
+		expect(shopGrantCardBatchBlockReason(ready, null)).toBeNull()
+	})
+
+	test("a held order belongs in the batch", () => {
+		expect(shopGrantCardBatchBlockReason({ ...ready, status: ShopOrderStatus.ON_HOLD }, null)).toBeNull()
+	})
+
+	test("an order that asked for shipping is never swept in", () => {
+		expect(
+			shopGrantCardBatchBlockReason({ ...ready, deliveryPreference: ShopDeliveryPreference.SHIP }, null),
+		).toContain("did not ask")
+	})
+
+	test("an order whose card is live or settled is left for the single-order panel", () => {
+		expect(shopGrantCardBatchBlockReason({ ...ready, hasLiveCard: true }, null)).toContain("in progress")
+		expect(shopGrantCardBatchBlockReason({ ...ready, hasSettledCard: true }, null)).toContain("cancelled or returned")
+	})
+
+	test("the amount and account checks are the single-order ones", () => {
+		expect(shopGrantCardBatchBlockReason({ ...ready, grantCardCents: null }, null)).toContain("no grant card amount")
+		expect(shopGrantCardBatchBlockReason(ready, "Account is banned")).toBe("Account is banned")
 	})
 })
 

@@ -37,6 +37,20 @@ export function shopGrantCardBlockReason(
 	return null
 }
 
+/**
+ * Why a bulk send leaves this order out, or null when it belongs in the batch.
+ *
+ * It is `shopGrantCardBlockReason` plus the one thing the single-order panel can see from the row and this cannot: whether a card already exists. The identity check is deliberately not made here – it reads HCA and belongs to the issue itself, which reports it per order – so the listing never hides an order it could have paid.
+ */
+export function shopGrantCardBatchBlockReason(
+	order: ShopGrantCardOrder & { hasLiveCard: boolean; hasSettledCard: boolean },
+	payoutBlock: string | null,
+): string | null {
+	if (order.hasLiveCard) return "A card for this order is already in progress or issued"
+	if (order.hasSettledCard) return "An earlier card for this order was cancelled or returned"
+	return shopGrantCardBlockReason(order, payoutBlock, true)
+}
+
 /** What HCB shows on the grant: the order and the item, which is all a shop card has. */
 export function shopGrantCardInstructions(orderNumber: number, itemName: string): string {
 	return `Order #${orderNumber}. Please use to purchase "${itemName}"`
