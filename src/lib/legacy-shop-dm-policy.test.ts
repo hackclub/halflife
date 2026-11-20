@@ -155,7 +155,7 @@ describe("order links", () => {
 
 	test("without an origin the order number is plain text", () => {
 		const message = legacyShopMessage([{ choice: null, itemName: "Sticker", orderId: "ord_1", orderNumber: 12 }], false)
-		expect(JSON.stringify(message.blocks)).not.toContain("<https://")
+		expect(JSON.stringify(message.blocks)).not.toContain("/shop/orders#order-")
 		expect(JSON.stringify(message.blocks)).toContain("Order #12")
 	})
 })
