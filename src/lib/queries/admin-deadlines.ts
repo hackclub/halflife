@@ -5,9 +5,10 @@ import { parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 /** Where an extension hangs: the whole account, one program week, or one project. */
 export type ExtensionKind = "user" | "week" | "project"
 
-/** One live extension, whoever holds it and whatever it covers. */
+/** One extension, live or expired, whoever holds it and whatever it covers. */
 export interface DeadlineExtension {
 	email: string
+	expired: boolean
 	expiresAt: Date
 	kind: ExtensionKind
 	projectId: string | null
@@ -18,21 +19,22 @@ export interface DeadlineExtension {
 	week: number | null
 }
 
-/** Every live extension, soonest first, plus how many expired ones stayed out of the list. */
+/** Every extension on record, split into the live and expired counts the tabs show. */
 export interface DeadlineSummary {
-	expiredHidden: number
+	active: number
+	activeProject: number
+	activeUser: number
+	activeWeek: number
+	expired: number
 	items: DeadlineExtension[]
-	projectActive: number
-	userActive: number
-	weekActive: number
 }
 
 /**
- * Every extension still running, from all three places one can hang.
+ * Every extension on record, from all three places one can hang.
  *
- * A user extension covers every project its owner holds, so passed weeks take journal entries again and work can be submitted past a global close. A week extension stays on the week and covers its project once one exists, including weeks with no project row yet. A project extension covers that project only. Only rows expiring in the future are listed; the expired count is reported so the page can say how many it hid.
+ * A user extension covers every project its owner holds, so passed weeks take journal entries again and work can be submitted past a global close. A week extension stays on the week and covers its project once one exists, including weeks with no project row yet. A project extension covers that project only. Live rows come first, soonest to run out first; expired rows follow, most recently expired first. The counts are per kind for live rows and in total for expired ones, so the tabs and stats can be read without a second pass.
  */
-export async function listActiveExtensions(flags?: { includePii?: boolean }): Promise<DeadlineSummary> {
+export async function listExtensions(flags?: { includePii?: boolean }): Promise<DeadlineSummary> {
 	const includePii = flags?.includePii ?? false
 	const now = new Date()
 	const [users, projects, weeks] = await Promise.all([
@@ -50,16 +52,12 @@ export async function listActiveExtensions(flags?: { includePii?: boolean }): Pr
 	])
 
 	const items: DeadlineExtension[] = []
-	let expiredHidden = 0
 	for (const user of users) {
 		const expiresAt = parseNullableTimestamp(user.submissionExtensionUntil)
 		if (!expiresAt) continue
-		if (expiresAt <= now) {
-			expiredHidden += 1
-			continue
-		}
 		items.push({
 			email: user.email,
+			expired: expiresAt <= now,
 			expiresAt,
 			kind: "user",
 			projectId: null,
@@ -75,12 +73,9 @@ export async function listActiveExtensions(flags?: { includePii?: boolean }): Pr
 		if (!project.user) throw new Error(`project ${project.id} has no owner`)
 		const expiresAt = parseNullableTimestamp(project.submissionExtensionUntil)
 		if (!expiresAt) continue
-		if (expiresAt <= now) {
-			expiredHidden += 1
-			continue
-		}
 		items.push({
 			email: project.user.email,
+			expired: expiresAt <= now,
 			expiresAt,
 			kind: "project",
 			projectId: project.id,
@@ -96,12 +91,9 @@ export async function listActiveExtensions(flags?: { includePii?: boolean }): Pr
 		if (!extension.user)
 			throw new Error(`week extension for user ${extension.userId} week ${extension.week} has no owner`)
 		const expiresAt = parseDbTimestamp(extension.submissionExtensionUntil)
-		if (expiresAt <= now) {
-			expiredHidden += 1
-			continue
-		}
 		items.push({
 			email: extension.user.email,
+			expired: expiresAt <= now,
 			expiresAt,
 			kind: "week",
 			projectId: null,
@@ -112,15 +104,19 @@ export async function listActiveExtensions(flags?: { includePii?: boolean }): Pr
 			week: extension.week,
 		})
 	}
-	items.sort((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime())
+
+	const live = items.filter(item => !item.expired).toSorted((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime())
+	const lapsed = items.filter(item => item.expired).toSorted((a, b) => b.expiresAt.getTime() - a.expiresAt.getTime())
 
 	// The same rule as the user directory: the owner's contact details leave the server for ADMIN/AUDITOR only. A REVIEWER/FULFILLER gets names with no email to scrape.
-	const shown = includePii ? items : items.map(item => ({ ...item, email: "" }))
+	const sorted = [...live, ...lapsed]
+	const shown = includePii ? sorted : sorted.map(item => ({ ...item, email: "" }))
 	return {
-		expiredHidden,
+		active: live.length,
+		activeProject: live.filter(item => item.kind === "project").length,
+		activeUser: live.filter(item => item.kind === "user").length,
+		activeWeek: live.filter(item => item.kind === "week").length,
+		expired: lapsed.length,
 		items: shown,
-		projectActive: items.filter(item => item.kind === "project").length,
-		userActive: items.filter(item => item.kind === "user").length,
-		weekActive: items.filter(item => item.kind === "week").length,
 	}
 }
