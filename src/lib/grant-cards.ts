@@ -1395,6 +1395,34 @@ export async function listGrantCardBatches(limit = 10): Promise<GrantCardBatchSu
 	return rows.map(toBatchSummary)
 }
 
+export interface IssuedGrantCardRow {
+	amountCents: number
+	batchId: string
+	hcbCardGrantId: string | null
+	id: string
+	issuedAt: Date | null
+	projectId: string
+	title: string
+}
+
+/** Every card grant HCB has issued, newest first. Returned and cancelled cards are left out: they are no longer live. */
+export async function listIssuedGrantCards(): Promise<IssuedGrantCardRow[]> {
+	const rows = await db.orm.public.HcbGrantCard.where({ status: HcbGrantCardStatus.ISSUED })
+		.orderBy([card => card.issuedAt.desc(), card => card.id.desc()])
+		.select("amountCents", "batchId", "hcbCardGrantId", "id", "issuedAt", "themeProjectId")
+		.include("themeProject", project => project.select("title"))
+		.all()
+	return rows.map(card => ({
+		amountCents: card.amountCents,
+		batchId: card.batchId,
+		hcbCardGrantId: card.hcbCardGrantId,
+		id: card.id,
+		issuedAt: parseNullableTimestamp(card.issuedAt),
+		projectId: card.themeProjectId,
+		title: card.themeProject?.title ?? "",
+	}))
+}
+
 export interface CsvExportReconcileRow {
 	amountCents: number
 	email: string

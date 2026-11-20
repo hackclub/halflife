@@ -54,7 +54,11 @@ export function CardBatch({ blocked, groups }: Readonly<{ blocked: BatchBlockedO
 					<EmptyState>No order is waiting on a grant card with an amount to send.</EmptyState>
 				</Panel>
 			) : (
-				groups.map(group => <BatchItemPanel group={group} key={group.shopItemId} />)
+				<div className="hl-batch-grid">
+					{groups.map(group => (
+						<BatchItemPanel group={group} key={group.shopItemId} />
+					))}
+				</div>
 			)}
 
 			{blocked.length > 0 ? (
