@@ -1,6 +1,7 @@
 import { fmtHours } from "@/lib/numbers"
 import { DAY_MS } from "@/lib/time"
 import "server-only"
+import { RESEARCH_TIME_STATEMENT } from "@/lib/airtable/research-statement"
 import { NO_FEATURES_RECORDED } from "@/lib/airtable/unified-justification"
 import { scheduledWeekFor } from "@/lib/config/program"
 import type { Phase, Theme } from "@/lib/enums"
@@ -71,15 +72,14 @@ export interface JustificationValues {
 export { NO_FEATURES_RECORDED, reviewerTechnicalFeaturesCell } from "@/lib/airtable/unified-justification"
 
 /**
- * The `Justification - Additional Justification` cell: the reviewer's "Justification notes" (blank when there are none), with a link to the project on Half Life at the end.
+ * The `Justification - Additional Justification` cell: the reviewer's "Justification notes" (blank when there are none), then the research-time statement, then a link to the project on Half Life.
  *
- * The link is written with every value of the column, including a cleared note, so anyone reading the row can get from it to the project. With no public origin configured `url` is "", and the note stands on its own rather than a link that starts at `/`.
+ * The statement and the link are written with every value of the column, including a cleared note, so anyone reading the row can get from it to the project. With no public origin configured `url` is "", and the cell ends at the statement rather than at a link that starts at `/`. A note that already carries the statement has it taken out first, so the cell never holds it twice.
  */
 export function additionalJustificationCell(notes: string | null | undefined, url: string): string {
-	const note = notes?.trim() ?? ""
-	if (!url) return note
-	const link = `Project on Half Life: ${url}`
-	return note ? `${note}\n\n${link}` : link
+	const note = notes?.replaceAll(RESEARCH_TIME_STATEMENT, "").trim() ?? ""
+	const link = url ? `Project on Half Life: ${url}` : ""
+	return [note, RESEARCH_TIME_STATEMENT, link].filter(Boolean).join("\n\n")
 }
 
 /** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */

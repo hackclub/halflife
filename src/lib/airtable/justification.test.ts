@@ -5,28 +5,37 @@ import {
 	NO_FEATURES_RECORDED,
 	reviewerTechnicalFeaturesCell,
 } from "@/lib/airtable/justification"
+import { RESEARCH_TIME_STATEMENT } from "@/lib/airtable/research-statement"
 
 const url = "https://halflife.hackclub.com/projects/prj_1"
 
 describe("additionalJustificationCell", () => {
-	test("puts the link after the reviewer's note", () => {
-		expect(additionalJustificationCell("Solid PCB work.", url)).toBe(`Solid PCB work.\n\nProject on Half Life: ${url}`)
-	})
-
-	test("trims the note before adding the link", () => {
-		expect(additionalJustificationCell("  Solid PCB work.  \n", url)).toBe(
-			`Solid PCB work.\n\nProject on Half Life: ${url}`,
+	test("puts the statement after the reviewer's note and the link after the statement", () => {
+		expect(additionalJustificationCell("Solid PCB work.", url)).toBe(
+			`Solid PCB work.\n\n${RESEARCH_TIME_STATEMENT}\n\nProject on Half Life: ${url}`,
 		)
 	})
 
-	test("a cleared or blank note leaves the link on its own", () => {
-		expect(additionalJustificationCell(null, url)).toBe(`Project on Half Life: ${url}`)
-		expect(additionalJustificationCell("   ", url)).toBe(`Project on Half Life: ${url}`)
+	test("trims the note before adding the statement and the link", () => {
+		expect(additionalJustificationCell("  Solid PCB work.  \n", url)).toBe(
+			`Solid PCB work.\n\n${RESEARCH_TIME_STATEMENT}\n\nProject on Half Life: ${url}`,
+		)
 	})
 
-	test("with no origin configured there is no link to write, only the note", () => {
-		expect(additionalJustificationCell("Solid PCB work.", "")).toBe("Solid PCB work.")
-		expect(additionalJustificationCell(null, "")).toBe("")
+	test("a cleared or blank note leaves the statement and the link", () => {
+		expect(additionalJustificationCell(null, url)).toBe(`${RESEARCH_TIME_STATEMENT}\n\nProject on Half Life: ${url}`)
+		expect(additionalJustificationCell("   ", url)).toBe(`${RESEARCH_TIME_STATEMENT}\n\nProject on Half Life: ${url}`)
+	})
+
+	test("with no origin configured the cell ends at the statement", () => {
+		expect(additionalJustificationCell("Solid PCB work.", "")).toBe(`Solid PCB work.\n\n${RESEARCH_TIME_STATEMENT}`)
+		expect(additionalJustificationCell(null, "")).toBe(RESEARCH_TIME_STATEMENT)
+	})
+
+	test("a note that already carries the statement does not get it twice", () => {
+		expect(additionalJustificationCell(`Solid PCB work.\n\n${RESEARCH_TIME_STATEMENT}`, url)).toBe(
+			`Solid PCB work.\n\n${RESEARCH_TIME_STATEMENT}\n\nProject on Half Life: ${url}`,
+		)
 	})
 })
 
