@@ -30,6 +30,13 @@ export const cancelOrderSchema = z
 	})
 	.strict()
 
+/** The delivery a buyer picks for an open order. */
+export const changeDeliveryPreferenceSchema = z
+	.object({
+		deliveryPreference: z.enum(["SHIP", "GRANT_CARD"]),
+	})
+	.strict()
+
 /**
  * A participant picking which region's prices their shop shows. Null is base pricing. The region has to exist and be active – checked in the route, so a deactivated region falls back to base rather than stranding anyone.
  */

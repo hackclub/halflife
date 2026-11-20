@@ -129,3 +129,5 @@ console.error(
 if (unmappedTopUps > 0)
 	console.error(`${unmappedTopUps} hand top-up(s) on a grant no project record names, so they were left out`)
 console.error(apply ? "Applied." : "Dry run: nothing written. Re-run with --apply to write.")
+
+await db.close()
