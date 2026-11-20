@@ -142,7 +142,7 @@ export function composeJustification(input: JustificationInput): string {
 	return [
 		context.intro,
 		`This project was approved at ${approvalStamp(input.approvedAt, context.timeZone)}`,
-		`The project was checked to ensure it meets our requirements of a "shipped" hardware project, which is publicly available here: ${context.submittingUrl} Journaling time was then verified/deflated by @${input.reviewer} to ensure it meets our policies, publicly available here: ${context.journalingUrl}`,
+		`The project was checked to ensure it meets our requirements of a "shipped" hardware project, which are set out here: ${context.submittingUrl} Journaling time was then verified/deflated by @${input.reviewer} to ensure it meets our policies, set out here: ${context.journalingUrl}`,
 		[
 			`Time evidence: ${entries.length} journal entries${range}, ${fromHours(input.claimedHours)}h claimed, ${fromHours(input.approvedHours)}h counted after review.`,
 			hackatime,
