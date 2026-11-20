@@ -141,17 +141,8 @@ function BatchItemPanel({ group }: Readonly<{ group: BatchGroup }>) {
 
 	return (
 		<Panel
-			actions={
-				<Link className="hl-hint" href={`/admin/shop/${group.shopItemId}`}>
-					Edit item
-				</Link>
-			}
-			title={
-				<>
-					<Link href={`/admin/shop/${group.shopItemId}`}>{group.itemName}</Link>{" "}
-					<span className="hl-hint">{chosen.length} selected</span>
-				</>
-			}
+			actions={<span className="hl-hint">{chosen.length} selected</span>}
+			title={<Link href={`/admin/shop/${group.shopItemId}`}>{group.itemName}</Link>}
 		>
 			<Table head={["", "#", "Participant", "Placed", "Amount"]}>
 				<tr>
