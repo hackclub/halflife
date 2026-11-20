@@ -593,6 +593,7 @@ namespace public {
     ledgerEntries        LedgerEntry[]
     notes                ShopOrderNote[]
     grantCards           HcbShopGrantCard[]
+    legacyShopDmOrders   LegacyShopDmOrder[]
     user                 User                            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
     shopItem             ShopItem                        @relation(fields: [shopItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
@@ -630,6 +631,46 @@ namespace public {
     @@index([shopOrderId], name: "hcb_shop_grant_card_shopOrderId_live_key", unique: true, where: sql`("status" IN ('PENDING'::"HcbGrantCardStatus", 'ISSUED'::"HcbGrantCardStatus", 'AMBIGUOUS'::"HcbGrantCardStatus"))`)
     @@index([hcbCardGrantId], map: "hcb_shop_grant_card_hcbCardGrantId_key", unique: true)
     @@map("hcb_shop_grant_card")
+  }
+
+  /// One Slack DM from the admin fulfilment tab. A buyer's DM lists each of their orders that was placed before the delivery choice existed; a test DM goes to an arbitrary Slack ID and lists no orders. Every send is kept here, sent or failed, so the tab can show who was messaged.
+  model LegacyShopDm {
+    id          String                 @id @onCreate(cuid(2))
+    /// Null on a test DM, which is not any buyer's.
+    userId      String?
+    slackId     String
+    test        Boolean                @default(false)
+    /// The admin who pressed send. Kept as an ID rather than a relation so the history outlives the account.
+    sentById    String?
+    status      pg.enum(LegacyShopDmStatus) @default("PENDING")
+    /// The DM's channel and message timestamp, so a button click can rewrite the message it came from.
+    channel     String?
+    ts          String?
+    error       String?
+    createdAt   TimestampString(3)     @default(now())
+    sentAt      TimestampString(3)?
+    orders      LegacyShopDmOrder[]
+
+    @@index([userId], map: "legacy_shop_dm_userId_idx")
+    @@index([createdAt], map: "legacy_shop_dm_createdAt_idx")
+    @@map("legacy_shop_dm")
+  }
+
+  /// One order listed in a LegacyShopDm. The partial unique index is what stops an order being messaged twice: a row that is PENDING or SENT holds it, and a FAILED row releases it so the order can be sent again.
+  model LegacyShopDmOrder {
+    id          String                 @id @onCreate(cuid(2))
+    dmId        String
+    shopOrderId String
+    status      pg.enum(LegacyShopDmStatus) @default("PENDING")
+    /// The buyer's answer to the DM's buttons. Null until they press one. The order's own deliveryPreference is not touched by it.
+    choice      pg.enum(ShopDeliveryPreference)?
+    choiceAt    TimestampString(3)?
+    dm          LegacyShopDm           @relation(fields: [dmId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
+    shopOrder   ShopOrder              @relation(fields: [shopOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
+
+    @@index([dmId], map: "legacy_shop_dm_order_dmId_idx")
+    @@index([shopOrderId], name: "legacy_shop_dm_order_shopOrderId_live_key", unique: true, where: sql`("status" IN ('PENDING'::"LegacyShopDmStatus", 'SENT'::"LegacyShopDmStatus"))`)
+    @@map("legacy_shop_dm_order")
   }
 
   model LedgerEntry {
@@ -1295,6 +1336,12 @@ namespace public {
     FULFILLED = "FULFILLED"
     REJECTED = "REJECTED"
     CANCELLED = "CANCELLED"
+  }
+
+  native_enum LegacyShopDmStatus {
+    PENDING = "PENDING"
+    SENT = "SENT"
+    FAILED = "FAILED"
   }
 
   native_enum ShopFulfillmentMethod {
