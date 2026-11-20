@@ -28,6 +28,7 @@ interface Search {
 	from?: SearchParamValue
 	method?: SearchParamValue
 	stage?: SearchParamValue
+	status?: SearchParamValue
 	tab?: SearchParamValue
 	to?: SearchParamValue
 }
@@ -44,6 +45,14 @@ const AWARD_TONES = {
 	REVOKED: "danger",
 	SHIPPED: "success",
 } as const
+
+/** The order statuses the sheet lists, in plain words. Pending and fulfilled are separate here even when a grant card leaves both in the same stage. */
+const ORDER_STATUS_LABELS: { [_: string]: string } = {
+	CANCELLED: "Cancelled by participant",
+	FULFILLED: "Fulfilled",
+	ON_HOLD: "On hold",
+	PENDING: "Pending",
+}
 
 /** The tabs in the order the chips and the [ and ] keys step through them. */
 const TABS = [
@@ -76,6 +85,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 			from: search.from,
 			method: search.method,
 			stage: search.stage,
+			status: search.status,
 			to: search.to,
 		}).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== ""),
 	)
@@ -84,9 +94,13 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	listParams.set("limit", String(FULFILLMENT_PAGE_SIZE))
 	// A row's status links to the sheet filtered to its stage, so the address keeps the other filters but not the page's own stage.
 	const linkParams = new URLSearchParams(
-		Object.entries({ delivery: search.delivery, from: search.from, method: search.method, to: search.to }).filter(
-			(entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== "",
-		),
+		Object.entries({
+			delivery: search.delivery,
+			from: search.from,
+			method: search.method,
+			status: search.status,
+			to: search.to,
+		}).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== ""),
 	)
 
 	return (
@@ -149,6 +163,16 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 										<option value="">Any method</option>
 										<option value="NONE">Method not chosen</option>
 										{Object.entries(METHOD_LABELS).map(([value, label]) => (
+											<option key={value} value={value}>
+												{label}
+											</option>
+										))}
+									</Select>
+								</Field>
+								<Field label="Status">
+									<Select defaultValue={filters.status ?? ""} name="status">
+										<option value="">Any status</option>
+										{Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
 											<option key={value} value={value}>
 												{label}
 											</option>

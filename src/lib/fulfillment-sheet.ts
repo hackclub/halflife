@@ -1,6 +1,10 @@
 import "server-only"
 import { ShopDeliveryPreference, ShopFulfillmentMethod, ShopFulfillmentStage } from "@/lib/enums"
-import type { FulfillmentFilters, FulfillmentOrderRow } from "@/lib/queries/fulfillment"
+import {
+	FULFILLMENT_ORDER_STATUSES,
+	type FulfillmentFilters,
+	type FulfillmentOrderRow,
+} from "@/lib/queries/fulfillment"
 import { DAY_MS } from "@/lib/time"
 
 /** How many orders one page of the fulfilment sheet holds. */
@@ -12,6 +16,7 @@ export interface FulfillmentSearch {
 	from?: string
 	method?: string
 	stage?: string
+	status?: string
 	to?: string
 }
 
@@ -32,6 +37,7 @@ export function fulfillmentFiltersFrom(s: FulfillmentSearch): FulfillmentFilters
 		placedBefore: to ? new Date(to.getTime() + DAY_MS) : undefined,
 		placedFrom: utcDay(s.from),
 		stage: Object.values(ShopFulfillmentStage).find(x => x === s.stage),
+		status: FULFILLMENT_ORDER_STATUSES.find(x => x === s.status),
 	}
 }
 

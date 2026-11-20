@@ -14,6 +14,7 @@ const query = paginationQuery.extend({
 	from: z.string().optional(),
 	method: z.string().optional(),
 	stage: z.string().optional(),
+	status: z.string().optional(),
 	to: z.string().optional(),
 })
 
