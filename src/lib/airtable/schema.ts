@@ -37,7 +37,7 @@ export function formulaRef(field: FieldDef): string {
  *
  * The names are NOT ours to choose: they are the base's own, copied verbatim from its field list, and Hack Club's pipeline reads them. A typo here means a field silently goes unfilled (see the drop-and-retry in lib/airtable/ysws).
  *
- * Every row is written by Half Life at submit time, as "Pending Review"; review itself happens on ari.hackclub.com, which moves the row on from there. The `Automation - …` columns belong to the pipeline and are never written here – `Automation - Submit to Unified YSWS` in particular is what sends a row onward, and that is a reviewer's call, not a submitter's.
+ * Every row is written by Half Life at submit time, as "Pending Review"; review happens on ari.hackclub.com or on Half Life's own review screen, and the decision moves the row on from there. The `Automation - …` columns belong to the pipeline, with one exception: `Automation - Submit to Unified YSWS`, which sends a row onward. That is an admin's call at T2 for a website approval (see lib/airtable/unified-review), and stays a hand tick in the base for an Ari one – never a submitter's.
  */
 export const YSWS_SUBMISSION = {
 	fields: {
@@ -82,7 +82,7 @@ export const YSWS_SUBMISSION = {
 		lastName: f<string>("fldYswsLastName", "Last Name"),
 		// The hours figure the payout pipeline reads for an approved row. When a review cut the claimed total it holds the approved hours; otherwise it holds the claimed (self-reported) hours, so it is never blank for an approved submission. Cleared on a reversal so a stale figure cannot outlive its approval.
 		overrideHoursSpent: f<number>("fldYswsOverrideHoursSpent", "Optional - Override Hours Spent"),
-		// Hand-written by the program team in the base, never by Half Life. When it holds text, the pipeline sends it as the justification in place of every `Justification - …` column (see `unifiedJustification` in lib/airtable/unified-justification).
+		// When it holds text, the pipeline sends it as the justification in place of every `Justification - …` column (see `unifiedJustification` in lib/airtable/unified-justification). A website approval writes its account in Fabricate's format here (see lib/review-platform/justification) and a reversal clears it; on a row only Ari has decided it is the program team's, and Half Life leaves it alone.
 		overrideHoursSpentJustification: f<string>(
 			"fldYswsOverrideHoursSpentJustification",
 			"Optional - Override Hours Spent Justification",
@@ -111,6 +111,8 @@ export const YSWS_SUBMISSION = {
 		// A plain checkbox, true when the maker took one of the week's starter projects rather than bringing their own idea (see `starterProjectId` on ThemeProject). Written for the reviewer, who judges a starter by whether it was made the maker's own rather than as a finished build (see STARTER_MODIFICATION_NOTE in lib/config/onboarding); the base needs the fact, not which starter it was.
 		starterProject: f<boolean>("fldYswsStarterProject", "Starter project"),
 		state: f<string>("fldYswsState", "State / Province"),
+		// The checkbox that sends a row to the unified database. Ticked by T2 when an admin approves a website decision (see lib/airtable/unified-review); the pipeline then stamps `Automation - First Submitted At`.
+		submitToUnified: f<boolean>("", "Automation - Submit to Unified YSWS"),
 		tier: f<string>("fldYswsTier", "Tier"),
 		// Written by the pipeline's automation, read by us: it identifies the row's twin in the unified base, which is the only safe way to remove it.
 		unifiedRecordId: f<string>("fldYswsUnifiedRecordId", "Automation - YSWS Record ID"),

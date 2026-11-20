@@ -20,7 +20,7 @@ import {
 	timelapseLinks,
 } from "@/lib/airtable/justification"
 import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
-import type { JustificationRow, JustificationRowMissing } from "@/lib/airtable/unified-justification"
+import { overrideCells, parseUnifiedOverrides } from "@/lib/airtable/unified-overrides"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { projectUrl } from "@/lib/app-url"
 import { bomTotalUsd } from "@/lib/bom-policy"
@@ -51,7 +51,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Kept in the audit row each successful write leaves (see trackSideEffect), because the table has no column of ours to find the row by. A later "removed" entry means the row was deleted on unsubmit, so the next submission starts a fresh one.
  */
-async function lastRecordId(themeProjectId: string, phase: Phase): Promise<string | null> {
+export async function lastRecordId(themeProjectId: string, phase: Phase): Promise<string | null> {
 	const rows = await db.orm.public.AuditLog.where({ action: "AIRTABLE_SYNC_SUCCESS", targetId: themeProjectId })
 		.orderBy(entry => entry.createdAt.desc())
 		.limit(50)
@@ -150,8 +150,19 @@ export function reviewOverrideValues(title: string, week: number | null): { [_: 
 	}
 }
 
-/** The fields for this submission, exactly as the table names them. */
-async function fieldsFor(themeProjectId: string, phase: Phase) {
+/**
+ * The fields for this submission, exactly as the table names them.
+ *
+ * While the phase stands approved, what an admin changed at T2 is laid over Half Life's own values (see lib/airtable/unified-overrides), so a refresh cannot undo a correction made before the row went to the unified database.
+ *
+ * `preview` is T2 asking what Half Life would write, to show beside each override: without the overrides, and without the address-gap trace a real write leaves, which a page view must not add to the audit log each time it is opened.
+ */
+export async function yswsFieldsFor(
+	themeProjectId: string,
+	phase: Phase,
+	opts?: { preview: boolean },
+): Promise<{ [_: string]: unknown } | null> {
+	const preview = opts?.preview ?? false
 	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
 		.include("bomItems", items => items.select("name", "purpose", "quantity", "unitCostUsd"))
 		.include("hackatimeLinks", links => links.where({ phase }).select("hackatimeProject"))
@@ -167,7 +178,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 
 	// Fresh from HCA, so the address a grant ships to is the one on file today rather than the one from whenever they last signed in.
 	const { gap, pii, user } = await readAddressSnapshot(project.userId)
-	await noteAddressGap(gap, themeProjectId, phase)
+	if (!preview) await noteAddressGap(gap, themeProjectId, phase)
 
 	const week = scheduledWeekFor(project.theme, phase)
 	const settings = await getProgramSettings()
@@ -270,7 +281,22 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	})
 	// An attachment is written as a URL Airtable fetches, so the bytes stay in R2 and the base only references them.
 	if (cover) fields[fieldKey(YSWS_SUBMISSION.fields.screenshot)] = [{ url: cover }]
+	if (!preview && phaseStatus === PhaseStatus.approved)
+		Object.assign(fields, await standingOverrideCells(themeProjectId, phase))
 	return fields
+}
+
+/** The T2 overrides of the approval that stands for this phase, as cells. None when T2 has not saved any. */
+async function standingOverrideCells(themeProjectId: string, phase: Phase): Promise<{ [_: string]: unknown }> {
+	const submissions = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId }).select("id").all()
+	if (submissions.length === 0) return {}
+	const review = await db.orm.public.SubmissionReview.where({ invalidated: false, result: ReviewResult.APPROVED })
+		.where(row => row.submissionId.in(submissions.map(submission => submission.id)))
+		.where(row => row.unifiedOverrides.isNotNull())
+		.orderBy(row => row.createdAt.desc())
+		.select("unifiedOverrides")
+		.first()
+	return review ? overrideCells(parseUnifiedOverrides(review.unifiedOverrides)) : {}
 }
 
 /**
@@ -297,7 +323,7 @@ export async function syncSubmissionToYsws(
 ): Promise<{ recordId: string; dropped: string[] } | { skipped: string }> {
 	const settings = await getProgramSettings()
 	if (!settings.airtableSyncEnabled) return { skipped: "sync_disabled" }
-	const fields = await fieldsFor(themeProjectId, phase)
+	const fields = await yswsFieldsFor(themeProjectId, phase)
 	if (!fields) return { skipped: "project_not_found" }
 	return withYswsWriteLock(themeProjectId, phase, async () =>
 		writeYswsRecord(fields, await lastRecordId(themeProjectId, phase), { themeProjectId }),
@@ -406,77 +432,6 @@ async function approvalAlternateTracking(themeProjectId: string, phase: Phase, r
 	})
 }
 
-/**
- * The submission's row as an approval would find it, for the review screen's preview of `Automation - Unified Justification`.
- *
- * Read from the base when it can be, because that is what the decision reads too: the claimed hours a deflation is measured against, and the evidence columns, which for the pre-season imports exist nowhere else. When it cannot – sync off, no key (as in local development), no row yet, or a failed read – the row is rebuilt from Postgres the way hand-in writes it, and `missing` says why, so the preview can say an approval will not write it.
- */
-export async function readJustificationRow(
-	themeProjectId: string,
-	phase: Phase,
-): Promise<{ missing: JustificationRowMissing | null; row: JustificationRow }> {
-	const read = await (async (): Promise<JustificationRowMissing | ReviewRowValues> => {
-		const settings = await getProgramSettings()
-		if (!settings.airtableSyncEnabled) return "sync_disabled"
-		const config = getAirtableConfig()
-		if (!config) return "not_configured"
-		const recordId = await lastRecordId(themeProjectId, phase)
-		if (!recordId) return "no_row"
-		return (await readReviewRow(config, recordId)) ?? "unreadable"
-	})()
-	const row = typeof read === "string" ? await localReviewRow(themeProjectId, phase) : read
-	return {
-		missing: typeof read === "string" ? read : null,
-		row: {
-			alternateTracking: await approvalAlternateTracking(themeProjectId, phase, row),
-			claimedHours: row.selfReportedHours,
-			hackatimeId: row.hackatimeId,
-			hackatimeProjects: row.hackatimeProjects,
-			lapseLinks: row.lapseLinks,
-			overrideJustification: row.overrideJustification,
-		},
-	}
-}
-
-/**
- * The row's evidence columns and claimed hours as hand-in writes them (see `fieldsFor`), from Postgres alone. The override justification is the program team's, written only in the base, so it is empty here.
- */
-async function localReviewRow(themeProjectId: string, phase: Phase): Promise<ReviewRowValues> {
-	const [project, settings, breakdown] = await Promise.all([
-		db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
-			.select("theme")
-			.include("user", user => user.select("hackatimeUserId"))
-			.include("hackatimeLinks", links => links.where({ phase }).select("hackatimeProject"))
-			.include("workSessions", sessions =>
-				sessions
-					.where({ deletedAt: null, phase })
-					.select("id")
-					.include("timelapses", timelapse => timelapse.select("externalId", "objectKey", "playbackUrl", "provider")),
-			)
-			.firstOrThrow(),
-		getProgramSettings(),
-		getHoursBreakdown(themeProjectId, phase),
-	])
-	const values = justificationValues(
-		{
-			bomItems: [],
-			description: null,
-			hackatimeProjects: project.hackatimeLinks.map(link => link.hackatimeProject),
-			hackatimeUserId: project.user?.hackatimeUserId ?? null,
-			lapseLinks: timelapseLinks(project.workSessions.flatMap(session => session.timelapses)),
-			workSessions: [],
-		},
-		{ eventStart: settings.eventStartDate, phase, theme: project.theme },
-	)
-	return {
-		hackatimeId: values.hackatimeId ?? "",
-		hackatimeProjects: values.hackatimeProjects ?? "",
-		lapseLinks: values.lapseLinks ?? "",
-		overrideJustification: "",
-		selfReportedHours: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
-	}
-}
-
 /** The six shipping-address cells, keyed as the row writes them. */
 function addressCells(pii: DecryptedAddress): { [_: string]: string } {
 	const { addressLine1, addressLine2, city, country, state, zip } = YSWS_SUBMISSION.fields
@@ -488,6 +443,19 @@ function addressCells(pii: DecryptedAddress): { [_: string]: string } {
 		[fieldKey(state)]: pii.state ?? "",
 		[fieldKey(zip)]: pii.zip ?? "",
 	}
+}
+
+/** Whether a website approval of this phase ever wrote its account to the row, so the column is Half Life's to clear. */
+async function wroteOverrideJustification(themeProjectId: string, phase: Phase): Promise<boolean> {
+	const submissions = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId }).select("id").all()
+	if (submissions.length === 0) return false
+	const written = await db.orm.public.SubmissionReview.where(review =>
+		review.submissionId.in(submissions.map(submission => submission.id)),
+	)
+		.where(review => review.justification.isNotNull())
+		.select("id")
+		.first()
+	return written !== null
 }
 
 /**
@@ -503,6 +471,8 @@ function addressCells(pii: DecryptedAddress): { [_: string]: string } {
  *
  * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the decision (the first of Ari's two passes). Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
  *
+ * `overrideJustification` is a website approval's account in Fabricate's format (see lib/review-platform/justification), written to `Optional - Override Hours Spent Justification`, which the pipeline sends in place of every `Justification - …` column. Undefined leaves the column alone – every Ari decision, so its row keeps the formula – except that a status other than approved clears text a website approval wrote there, since that approval no longer stands.
+ *
  * `deflationReason` is Ari's `review.justification.deflation_reason`: the reviewer's own account of why they approved fewer hours than the row claims. It is preferred for `Justification - Deflation Justification`; without it that column falls back to the review's internal reason. The maker-facing note is never used there – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it says nothing about the cut.
  *
  * The review's internal reason is also written to `Justification - Additional Justification`, which is where the pipeline reads Ari's "Justification notes" (`review.audit_note`) from, with a link to the project after it (see `additionalJustificationCell`). `justificationNotes` is that note; undefined leaves the column alone (an older caller), null clears the note for a decision that no longer stands and leaves the link.
@@ -517,6 +487,7 @@ export async function syncReviewDecisionToYsws(
 	reviewerEmail?: string | null,
 	deflationReason?: string | null,
 	justificationNotes?: string | null,
+	overrideJustification?: string | null,
 ): Promise<{ updated: boolean; reason?: string; noteFailed?: string; reviewerFailed?: string }> {
 	const settings = await getProgramSettings()
 	if (!settings.airtableSyncEnabled) return { reason: "sync_disabled", updated: false }
@@ -529,6 +500,7 @@ export async function syncReviewDecisionToYsws(
 		alternateTracking: alternateTrackingField,
 		deflationJustification: deflationField,
 		overrideHoursSpent,
+		overrideHoursSpentJustification,
 		pass1Reviewer,
 		reviewStatus,
 		reviewerNotes,
@@ -547,6 +519,7 @@ export async function syncReviewDecisionToYsws(
 	const alternateFields: { [_: string]: unknown } = {}
 	const additionalFields: { [_: string]: unknown } = {}
 	const specificFields: { [_: string]: unknown } = {}
+	const overrideJustificationFields: { [_: string]: unknown } = {}
 	let reviewerWritable = false
 	const config = getAirtableConfig()
 	if (config) {
@@ -560,6 +533,7 @@ export async function syncReviewDecisionToYsws(
 				alternateTrackingField.name,
 				additionalJustification.name,
 				specificFeaturesField.name,
+				overrideHoursSpentJustification.name,
 			])
 		} catch (err) {
 			// A probe failure is not a reason to lose the status; the next decision retries it.
@@ -572,6 +546,13 @@ export async function syncReviewDecisionToYsws(
 		const hasDeflationColumns = writable.has(overrideHoursSpent.name) && writable.has(deflationField.name)
 		const hasAlternateColumn = writable.has(alternateTrackingField.name)
 		const hasSpecificColumn = writable.has(specificFeaturesField.name)
+		if (writable.has(overrideHoursSpentJustification.name)) {
+			const key = fieldKey(overrideHoursSpentJustification)
+			if (overrideJustification !== undefined) overrideJustificationFields[key] = overrideJustification ?? ""
+			// A website approval's account replaces every other column in the pipeline, so once that approval no longer stands its text must not either. Only text Half Life wrote is cleared: on a row that never had a website approval the column is the program team's.
+			else if (status !== YSWS_REVIEW_STATUS.approved && (await wroteOverrideJustification(themeProjectId, phase)))
+				overrideJustificationFields[key] = ""
+		}
 		// The reviewer's "Justification notes", written verbatim, with the project link after it. Undefined is a caller that does not know the column; null or blank clears the note, so a reversal or a decision with no note cannot leave the previous review's words on the row.
 		if (writable.has(additionalJustification.name) && justificationNotes !== undefined)
 			additionalFields[fieldKey(additionalJustification)] = additionalJustificationCell(
@@ -642,6 +623,7 @@ export async function syncReviewDecisionToYsws(
 		...alternateFields,
 		...additionalFields,
 		...specificFields,
+		...overrideJustificationFields,
 		...addressFields,
 	}
 	const moved = await updateYswsRecord(recordId, complete)
@@ -655,6 +637,7 @@ export async function syncReviewDecisionToYsws(
 		...alternateFields,
 		...additionalFields,
 		...specificFields,
+		...overrideJustificationFields,
 	})
 	if (!core.ok) {
 		const statusOnly = await updateYswsRecord(recordId, statusField)
@@ -672,7 +655,7 @@ export async function syncReviewDecisionToYsws(
 /**
  * Put a decision on the submission's Airtable row, for Loops, and log whatever did not land.
  *
- * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is Ari's dedicated justification for a cut, which is preferred over the review's internal note in the deflation column. `justificationNotes` is Ari's "Justification notes" (`review.audit_note`), written to `Justification - Additional Justification`; omit it to leave that column alone, or pass null to clear it.
+ * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is Ari's dedicated justification for a cut, which is preferred over the review's internal note in the deflation column. `justificationNotes` is Ari's "Justification notes" (`review.audit_note`), written to `Justification - Additional Justification`; omit it to leave that column alone, or pass null to clear it. `overrideJustification` is a website approval's signed account, for `Optional - Override Hours Spent Justification` (see `syncReviewDecisionToYsws`).
  *
  * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. On the Ari path that is load-bearing – a throw becomes a 5xx and a redelivery of a decision that has already been applied.
  */
@@ -684,6 +667,7 @@ export async function mirrorReviewDecision(
 	reviewerEmail?: string | null,
 	deflationReason?: string | null,
 	justificationNotes?: string | null,
+	overrideJustification?: string | null,
 ): Promise<void> {
 	const mirrored = await syncReviewDecisionToYsws(
 		themeProjectId,
@@ -693,6 +677,7 @@ export async function mirrorReviewDecision(
 		reviewerEmail,
 		deflationReason,
 		justificationNotes,
+		overrideJustification,
 	)
 	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
 	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")

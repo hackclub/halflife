@@ -33,5 +33,7 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 		week: /^\d{1,2}$/.test(params.week ?? "") ? Number(params.week) : null,
 	}
 	const queue = await getQueue({ cursor: params.cursor, facets, kind, mine, status, viewer })
-	return <QueueView filters={{ ...facets, kind, mine, status }} queue={queue} />
+	return (
+		<QueueView canReviewUnified={viewer.canReviewUnified} filters={{ ...facets, kind, mine, status }} queue={queue} />
+	)
 }

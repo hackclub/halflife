@@ -127,6 +127,8 @@ export interface FinalizeInput {
 	grantUsdOverride?: number | null
 	/** Replaces the computed hours total outright. */
 	hoursOverride?: number | null
+	/** An approval's signed account in Fabricate's format, from the review screen (see lib/review-platform/justification). Null for Ari's decisions and for anything but an approval. */
+	justification?: string | null
 	/** Internal note, never shown to the submitter; kept on the review and in the audit row. */
 	reason?: string | null
 	result: ReviewResult
@@ -349,6 +351,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			frozenTimelapseSeconds: breakdown.timelapseSeconds,
 			grantUsdOverride: input.grantUsdOverride ?? null,
 			hoursOverride: input.hoursOverride ?? null,
+			justification: approving ? (input.justification ?? null) : null,
 			pass: ReviewPass.FINAL,
 			reason: input.reason ?? null,
 			result: input.result,

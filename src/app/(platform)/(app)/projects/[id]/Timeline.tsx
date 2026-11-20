@@ -103,7 +103,8 @@ const PHASE = { BUILD: "build", DESIGN: "design" } as const
 function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean }) {
 	if (item.kind === "session")
 		return (
-			<article>
+			// The anchor an approval's justification links each devlog to (see lib/review-platform/justification).
+			<article className="scroll-mt-6" id={`entry-${item.id}`}>
 				<header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 					<h3 className="text-[0.95rem] font-extrabold text-navy">Journal entry</h3>
 					<span className="hand text-[0.84rem] text-teal-ink tabular-nums">

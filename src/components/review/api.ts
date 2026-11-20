@@ -1,7 +1,5 @@
 "use client"
 
-import type { JustificationRow, JustificationRowMissing } from "@/lib/airtable/unified-justification"
-
 /**
  * The review platform's writes, all through routes that already exist.
  *
@@ -97,10 +95,11 @@ export const saveSessionHours = (
 
 export type DecisionBody =
 	| {
-			deflationReason?: string
 			feedback: string
 			grantUsdOverride?: number
 			hoursOverride?: number
+			/** The approval's justification without its sign-off, which the server appends (see lib/review-platform/justification). */
+			justification?: string
 			reason?: string
 			result: "APPROVED"
 			technicalFeatures?: string
@@ -111,12 +110,6 @@ export type DecisionBody =
 
 export const decide = (submissionId: string, body: DecisionBody): Promise<unknown> =>
 	request(`/api/review/submissions/${encodeURIComponent(submissionId)}/decision`, { body })
-
-/** The submission's Airtable row as an approval would find it, for the unified-justification preview. */
-export const justificationRow = (
-	submissionId: string,
-): Promise<{ missing: JustificationRowMissing | null; row: JustificationRow }> =>
-	request(`/api/reviews/${encodeURIComponent(submissionId)}/justification`, { method: "GET" })
 
 export const overrideDecision = (
 	projectId: string,
@@ -131,3 +124,9 @@ export const closeDispute = (disputeId: string): Promise<unknown> =>
 
 export const sendDisputeBack = (disputeId: string): Promise<unknown> =>
 	request(`/api/admin/disputes/${encodeURIComponent(disputeId)}/send-back`)
+
+/** T2: save an approval's unified fields to its Airtable row, or approve it, which also sends it to the unified database. */
+export const saveUnified = (
+	reviewId: string,
+	body: { approve: boolean; fields: { [_: string]: string }; screenshots: string[] },
+): Promise<{ sent: boolean }> => request(`/api/review/unified/${encodeURIComponent(reviewId)}`, { body })

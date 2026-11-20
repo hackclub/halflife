@@ -24,6 +24,8 @@ export const decisionSchema = z.discriminatedUnion("result", [
 			feedback: boundedText(8000).default(""),
 			grantUsdOverride: z.number().int().min(0).max(500).optional(),
 			hoursOverride: z.number().min(0).max(MAX_APPROVED_HOURS).optional(),
+			/** The account the review screen composes in Fabricate's format, for `Optional - Override Hours Spent Justification`. The server appends the sign-off. Absent from a decision made by an older page, which leaves that column to the formula. */
+			justification: boundedText(20_000).optional(),
 			reason: boundedText(8000).optional(),
 			result: z.literal(ReviewResult.APPROVED),
 			/** The reviewer's account of what the maker built, for the Airtable `Justification - Specific Technical Features` column. Ari sends the same thing as `justification.technical_features`. */
