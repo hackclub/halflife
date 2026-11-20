@@ -95,9 +95,9 @@ describe("legacyShopMessage", () => {
 
 describe("groupLegacyShopBuyers", () => {
 	const slackIds = new Map([
-		["u_a", "U0AAAAAAA"],
-		["u_b", "U0BBBBBBB"],
-		["u_c", null],
+		["u_a", { name: "Ada", slackId: "U0AAAAAAA" }],
+		["u_b", { name: "Bea", slackId: "U0BBBBBBB" }],
+		["u_c", { name: null, slackId: null }],
 	])
 
 	test("groups orders by buyer, oldest order first", () => {
@@ -109,6 +109,7 @@ describe("groupLegacyShopBuyers", () => {
 		const a = buyers.find(buyer => buyer.userId === "u_a")
 		expect(a?.orders.map(o => o.orderId)).toEqual(["o1", "o3"])
 		expect(a?.skipReason).toBeNull()
+		expect(a?.name).toBe("Ada")
 	})
 
 	test("orders a live DM already lists are left out", () => {

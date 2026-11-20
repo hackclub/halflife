@@ -110,7 +110,14 @@ export interface LegacyShopOrderRow {
 	userId: string
 }
 
+/** What the grouping needs to know about a buyer's account. */
+export interface LegacyShopUser {
+	name: string | null
+	slackId: string | null
+}
+
 export interface LegacyShopBuyer {
+	name: string | null
 	orders: LegacyShopOrderRow[]
 	/** Why this buyer cannot be messaged, or null when they can. */
 	skipReason: string | null
@@ -126,7 +133,7 @@ export interface LegacyShopBuyer {
 export function groupLegacyShopBuyers(
 	orders: LegacyShopOrderRow[],
 	sentOrderIds: ReadonlySet<string>,
-	slackIds: ReadonlyMap<string, string | null>,
+	users: ReadonlyMap<string, LegacyShopUser>,
 ): LegacyShopBuyer[] {
 	const byUser = new Map<string, LegacyShopOrderRow[]>()
 	for (const order of orders) {
@@ -137,8 +144,10 @@ export function groupLegacyShopBuyers(
 	}
 
 	return [...byUser].map(([userId, list]) => {
-		const slackId = slackIds.get(userId) ?? null
+		const user = users.get(userId)
+		const slackId = user?.slackId ?? null
 		return {
+			name: user?.name ?? null,
 			orders: list.sort((a, b) => a.orderNumber - b.orderNumber),
 			skipReason: legacyShopSkipReason(slackId, list.length),
 			slackId,

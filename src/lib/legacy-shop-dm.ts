@@ -1,11 +1,13 @@
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
+import { displayName } from "@/lib/display-name"
 import { LegacyShopDmStatus, type ShopDeliveryPreference, ShopOrderStatus } from "@/lib/enums"
 import {
 	groupLegacyShopBuyers,
 	type LegacyShopBuyer,
 	type LegacyShopLine,
 	type LegacyShopOrderRow,
+	type LegacyShopUser,
 	legacyShopMessage,
 } from "@/lib/legacy-shop-dm-policy"
 import db, { isUniqueViolation } from "@/lib/prisma8"
@@ -45,6 +47,7 @@ export interface LegacyShopDmRecord {
 	status: LegacyShopDmStatus
 	test: boolean
 	userId: string | null
+	userName: string | null
 }
 
 export interface LegacyShopPreview {
@@ -69,20 +72,22 @@ async function eligibleBuyers(): Promise<LegacyShopBuyer[]> {
 		.select("shopOrderId")
 		.all()
 	const userIds = [...new Set(open.map(order => order.userId))]
-	const users =
-		userIds.length === 0
-			? []
-			: await db.orm.public.User.where(user => user.id.in(userIds))
-					.select("id", "slackId")
-					.all()
-	const slackIds = new Map(users.map(user => [user.id, user.slackId] as const))
+	const users = userIds.length === 0 ? new Map<string, LegacyShopUser>() : await usersById(userIds)
 	const rows: LegacyShopOrderRow[] = open.map(order => ({
 		itemName: order.itemNameSnapshot,
 		orderId: order.id,
 		orderNumber: order.orderNumber,
 		userId: order.userId,
 	}))
-	return groupLegacyShopBuyers(rows, new Set(listed.map(row => row.shopOrderId)), slackIds)
+	return groupLegacyShopBuyers(rows, new Set(listed.map(row => row.shopOrderId)), users)
+}
+
+/** The display name and Slack ID of each named user, read in one query. */
+async function usersById(userIds: readonly string[]): Promise<Map<string, LegacyShopUser>> {
+	const rows = await db.orm.public.User.where(user => user.id.in([...userIds]))
+		.select("displayName", "id", "name", "slackId")
+		.all()
+	return new Map(rows.map(user => [user.id, { name: displayName(user), slackId: user.slackId }] as const))
 }
 
 /** The most recent DMs, each with the orders it listed and what the buyer chose. */
@@ -93,6 +98,9 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 		.select("createdAt", "error", "id", "sentAt", "slackId", "status", "test", "userId")
 		.all()
 	if (dms.length === 0) return []
+
+	const userIds = [...new Set(dms.flatMap(dm => (dm.userId ? [dm.userId] : [])))]
+	const users = userIds.length === 0 ? new Map<string, LegacyShopUser>() : await usersById(userIds)
 
 	const rows = await db.orm.public.LegacyShopDmOrder.where(row => row.dmId.in(dms.map(dm => dm.id)))
 		.select("choice", "choiceAt", "dmId", "shopOrderId", "status")
@@ -119,6 +127,7 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 		status: dm.status,
 		test: dm.test,
 		userId: dm.userId,
+		userName: dm.userId ? (users.get(dm.userId)?.name ?? null) : null,
 	}))
 }
 
