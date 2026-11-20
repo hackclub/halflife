@@ -1,10 +1,7 @@
-import { deflationFor, deflationJustification, deflationReasonText } from "@/lib/airtable/deflation"
-import { withResearchStatement } from "@/lib/airtable/research-statement"
-
 /**
- * `Automation - Unified Justification`, as the base's formula builds it, so a reviewer can read what a decision will put in the unified database before making it.
+ * `Automation - Unified Justification`, as the base's formula builds it.
  *
- * No `server-only` here: the review screen's decision panel builds its preview in the browser from what the reviewer is typing. Everything a decision derives from the row – the evidence columns, the claimed hours, the alternate-tracking text – is read on the server and handed over (see `/api/reviews/[id]/justification`).
+ * Ari's decisions are sent through this formula: the evidence columns, the reviewer's technical features, the deflation line and the internal note, each under its heading. A website approval is not – it writes its own account to `Optional - Override Hours Spent Justification`, which the formula sends in place of all of them (see lib/review-platform/justification).
  */
 
 /**
@@ -50,46 +47,4 @@ export function unifiedJustification(columns: UnifiedJustificationColumns): stri
 		section("ALTERNATE TRACKING METHOD", columns.alternateTracking),
 		section("ADDITIONAL JUSTIFICATION", columns.additionalJustification),
 	].join("")
-}
-
-/** The row as a decision will find it, read on the server. */
-export interface JustificationRow {
-	/** The text an approval writes to `Justification - Alternate Tracking Method`: empty when the row has Hackatime or Lapse evidence. */
-	alternateTracking: string
-	/** `Hours spent (self reported)`, which a deflation is measured against. Null when the cell is empty. */
-	claimedHours: number | null
-	hackatimeId: string
-	hackatimeProjects: string
-	lapseLinks: string
-	overrideJustification: string
-}
-
-/** Why there is no row to preview a justification from. */
-export type JustificationRowMissing = "sync_disabled" | "not_configured" | "no_row" | "unreadable"
-
-/** What the reviewer is about to approve with. */
-export interface ApprovalDraft {
-	approvedHours: number
-	deflationReason: string
-	internalNote: string
-	technicalFeatures: string
-}
-
-/**
- * The unified justification an approval would produce, worked out the way `syncReviewDecisionToYsws` writes the columns: the deflation text from the cut and the reviewer's reason for it (falling back to the internal note), the internal note as the additional justification, and the technical features or the marker.
- */
-export function previewUnifiedJustification(row: JustificationRow, draft: ApprovalDraft): string {
-	const deflation = deflationFor(draft.approvedHours, row.claimedHours)
-	const reason = deflationReasonText(draft.deflationReason, draft.internalNote)
-	return unifiedJustification({
-		// The cell as the base will hold it, minus the project link, which the preview has no address for.
-		additionalJustification: withResearchStatement(draft.internalNote.trim()),
-		alternateTracking: row.alternateTracking,
-		deflationJustification: deflation ? deflationJustification(deflation, reason) : "",
-		hackatimeId: row.hackatimeId,
-		hackatimeProjects: row.hackatimeProjects,
-		lapseLinks: row.lapseLinks,
-		overrideJustification: row.overrideJustification,
-		specificTechnicalFeatures: reviewerTechnicalFeaturesCell(draft.technicalFeatures),
-	})
 }

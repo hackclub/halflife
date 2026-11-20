@@ -11,11 +11,19 @@ const SHEET_FILE = /\(property\s+"Sheet\s?file"\s+"([^"]+)"/g
 const FIRST_SUPPORTED_VERSION = 20211014
 const BOARD_CONTENT = /\((footprint|module|segment|arc|via|zone|gr_\w+)\s/
 const SILKSCREEN_LAYERS = ['F.SilkS', 'B.SilkS', 'F.Fab', 'B.Fab', 'Dwgs.User']
+const ICON_FONT = '24px "Material Symbols Outlined"'
+const ICON_FONT_WAIT_MS = 10_000
 
 let kicanvas: Promise<unknown> | null = null
 
+// KiCanvas draws its icons as Material Symbols ligatures. The font is only fetched once an icon first renders, and its `font-display: block` shows the ligature names as text if that takes over 3 s, so it is loaded before KiCanvas draws anything. A font that fails or stalls never holds the viewer up past the cap.
+function loadIconFont() {
+  const timeout = new Promise((resolve) => setTimeout(resolve, ICON_FONT_WAIT_MS))
+  return Promise.race([document.fonts.load(ICON_FONT, 'layers').catch(() => undefined), timeout])
+}
+
 function loadKiCanvas() {
-  kicanvas ??= import('../vendor/kicanvas.js')
+  kicanvas ??= Promise.all([import('../vendor/kicanvas.js'), loadIconFont()])
   return kicanvas
 }
 

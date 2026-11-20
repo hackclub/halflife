@@ -29,7 +29,7 @@ import {
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { scheduleRepoSync } from "@/lib/repo-sync"
 import { withFields } from "@/lib/rows"
-import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { sanitize } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
 import { stampSessionTiming } from "@/lib/submissions"
@@ -237,7 +237,8 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		}
 
 		const created = await tx.orm.public.WorkSession.create({
-			content: data.content ? sanitizeHtml(data.content) : null,
+			// Markdown, stored as typed: every reader renders it safely (see `sanitize` in lib/sanitize), and escaping it here put "&lt;" into the entry.
+			content: data.content || null,
 			effectiveDate: workedDay,
 			hoursClaimed: data.hoursClaimed,
 			hoursSource: data.hoursSource,

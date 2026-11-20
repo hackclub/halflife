@@ -5,6 +5,7 @@
  */
 import type { BomLine } from "@/lib/bom-schema"
 import type { HoursBreakdown } from "@/lib/hours"
+import type { JustificationContext } from "@/lib/review-platform/justification"
 
 export type ReviewStatus = "pending" | "approved" | "returned" | "rejected"
 export type ReviewKind = "design" | "build"
@@ -15,6 +16,8 @@ export interface ReviewViewer {
 	canOverride: boolean
 	/** REVIEW_HOURS: approve journal and Hackatime hours. */
 	canReviewHours: boolean
+	/** REVIEW_UNIFIED: check a website approval's Airtable row and send it to the unified database (T2). */
+	canReviewUnified: boolean
 	/** MANAGE_CREDIT: set a grant amount, or raise a tier past what the maker asked for. */
 	canSetGrant: boolean
 	displayName: string
@@ -116,11 +119,15 @@ export interface ReviewDecision {
 	feedback: string
 	grantUsd: number | null
 	hours: number | null
+	/** A website approval's justification as written to the row. Null for Ari's decisions, which go through the base's formula. */
+	justification: string | null
 	reason: string | null
 	reviewedAt: string
 	reviewerName: string
 	technicalFeatures: string | null
 	tier: number | null
+	/** A website approval's T2 state: when it reached the unified database, or null while it waits. Null for Ari's decisions, which T2 does not see. */
+	unified: { reviewId: string; sentAt: string | null } | null
 }
 
 export interface ReviewShip {
@@ -207,10 +214,54 @@ export interface ReviewDetail {
 	dispute: ReviewDispute | null
 	entries: ReviewEntry[]
 	history: ReviewHistoryItem[]
+	/** What the decision panel composes the approval's justification from. */
+	justification: JustificationContext
 	maker: ReviewMaker
 	makerShips: ReviewRow[]
 	nextId: string | null
 	project: ReviewProject
 	ship: ReviewShip
 	tiers: ReviewTier[]
+}
+
+/** One editable column on the T2 screen. */
+export interface UnifiedField {
+	/** What Half Life writes on its own, which "reset" puts back. */
+	generated: string
+	/** A key of `YSWS_SUBMISSION.fields` (see `UNIFIED_EDITABLE`). */
+	key: string
+	/** The base's own column name. */
+	label: string
+	/** What the row will hold: the generated value, or the admin's override of it. */
+	value: string
+}
+
+/** A website approval as T2 checks it before it goes to the unified database. */
+export interface UnifiedReviewDetail {
+	/** Why the row can't be written from here, or null when it can. */
+	airtableProblem: string | null
+	claimedHours: number
+	/** For a build: when its design reached the unified database, "" when it hasn't. Null for a design. */
+	designSentAt: string | null
+	fields: UnifiedField[]
+	generatedScreenshots: string[]
+	/** The approval's id (`SubmissionReview.id`), which the T2 address is keyed by. */
+	id: string
+	kind: ReviewKind
+	makerName: string
+	maxScreenshots: number
+	nextId: string | null
+	/** Where this approval sits in the waiting queue, 1-based. Null once it has been sent. */
+	position: number | null
+	projectId: string
+	projectName: string
+	reviewedAt: string
+	reviewerName: string
+	screenshotOptions: string[]
+	screenshots: string[]
+	/** When it reached the unified database, and who sent it from T2 – null for one ticked by hand in the base. Null while it waits. */
+	sent: { at: string; by: string | null } | null
+	submissionId: string
+	tier: number | null
+	total: number
 }

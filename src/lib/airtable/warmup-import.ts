@@ -25,7 +25,7 @@ import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
-import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { sanitize } from "@/lib/sanitize"
 import { trackSideEffect } from "@/lib/side-effects"
 import { escapeLikePattern } from "@/lib/text"
 import { formatDbTimestamp } from "@/lib/time"
@@ -406,8 +406,8 @@ function importRow(
 
 		if (journalParts.length > 0 || row.hours !== null)
 			await tx.orm.public.WorkSession.create({
-				// Journal content renders as rich text, so it keeps safe markup and loses everything else – the same sanitiser the journal route applies.
-				content: journalParts.length > 0 ? sanitizeHtml(journalParts.join("\n\n")) : null,
+				// Journal content is Markdown, stored as typed – the same as the journal route – and made safe where it is rendered.
+				content: journalParts.length > 0 ? journalParts.join("\n\n") : null,
 				createdAt: createdAtText,
 				effectiveDate: effectiveDateFor(createdAt, programTimezone),
 				hoursClaimed: row.hours ?? 0,

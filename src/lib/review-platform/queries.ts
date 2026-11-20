@@ -1,5 +1,6 @@
 import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
+import { appBaseUrl, projectUrl } from "@/lib/app-url"
 import { listBom } from "@/lib/bom"
 import { STARTER_PROJECTS } from "@/lib/config/onboarding"
 import { projectDisplayTitle, scheduleForWeek, themeLabel, WARMUP_THEME } from "@/lib/config/program"
@@ -10,6 +11,8 @@ import { getHoursBreakdown } from "@/lib/hours"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
+import { getProgramSettings } from "@/lib/program"
+import { approvalStamp, type JustificationContext, justificationSignOff } from "@/lib/review-platform/justification"
 import { renderReviewMarkdown } from "@/lib/review-platform/markdown"
 import { githubRepoFrom } from "@/lib/review-platform/repo"
 import type {
@@ -411,6 +414,37 @@ function timelapseLinks(
 	})
 }
 
+/**
+ * What the decision panel composes an approval's justification from (see lib/review-platform/justification).
+ *
+ * The links are absolute because the text leaves Half Life: it is read in the unified database by people who have never opened the platform. With no public origin they are empty rather than starting at `/`.
+ */
+function justificationContext(opts: {
+	hackatimeId: string | null
+	hackatimeProjects: string[]
+	kind: "design" | "build"
+	projectId: string
+	repoLink: string | null
+	submittedAt: Date
+	theme: string
+	timeZone: string
+	title: string
+	viewer: ReviewViewer
+}): JustificationContext {
+	const base = appBaseUrl()
+	return {
+		hackatimeId: opts.hackatimeId,
+		hackatimeProjects: opts.hackatimeProjects,
+		intro: `This is the ${opts.kind} submission of ${opts.title} for Half Life (${opts.theme}). Submitted ${approvalStamp(opts.submittedAt, opts.timeZone)}.`,
+		journalingUrl: base ? `${base}/docs/journalling` : "",
+		projectUrl: projectUrl(opts.projectId),
+		repoLink: opts.repoLink,
+		signOff: justificationSignOff(opts.viewer.displayName),
+		submittingUrl: base ? `${base}/docs/submitting` : "",
+		timeZone: opts.timeZone,
+	}
+}
+
 export async function getReviewDetail(submissionId: string, viewer: ReviewViewer): Promise<ReviewDetail | null> {
 	const row = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
 		.include("claim", claim => claim.include("reviewer", reviewer => reviewer.select("displayName", "id", "name")))
@@ -428,7 +462,16 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		)
 		.include("themeProject", proj =>
 			proj.include("user", user =>
-				user.select("displayName", "email", "fraudFlagged", "id", "name", "slackId", "verificationStatus"),
+				user.select(
+					"displayName",
+					"email",
+					"fraudFlagged",
+					"hackatimeUserId",
+					"id",
+					"name",
+					"slackId",
+					"verificationStatus",
+				),
 			),
 		)
 		.first()
@@ -438,7 +481,7 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 	// Your own work is not reviewable by you, so it is not visible here either – the same null the console returns, which does not confirm that the submission exists.
 	if (project.userId === viewer.id) return null
 
-	const [breakdown, sessions, history, makerSubmissions, bom, next, links] = await Promise.all([
+	const [breakdown, sessions, history, makerSubmissions, bom, next, links, settings] = await Promise.all([
 		getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
 		db.orm.public.WorkSession.where({ deletedAt: null, phase: row.phase, themeProjectId: row.themeProjectId })
 			.include("media", media => media.orderBy(m => m.sortOrder.asc()))
@@ -468,6 +511,7 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		db.orm.public.HackatimeLink.where({ phase: row.phase, themeProjectId: row.themeProjectId })
 			.select("hackatimeProject")
 			.all(),
+		getProgramSettings(),
 	])
 
 	const now = new Date()
@@ -569,6 +613,18 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		dispute,
 		entries,
 		history: earlier,
+		justification: justificationContext({
+			hackatimeId: maker.hackatimeUserId,
+			hackatimeProjects: links.map(link => link.hackatimeProject),
+			kind: row.phase === Phase.DESIGN ? "design" : "build",
+			projectId: project.id,
+			repoLink: project.githubRepo,
+			submittedAt,
+			theme: themeLabel(project.theme),
+			timeZone: settings.programTimezone,
+			title: projectDisplayTitle(project),
+			viewer,
+		}),
 		maker: {
 			email: viewer.seesEmail ? maker.email : null,
 			fraudFlagged: viewer.seesRiskFlags ? maker.fraudFlagged : false,
@@ -601,11 +657,19 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 						feedback: standing.feedback,
 						grantUsd: standing.grantUsdOverride ?? standing.frozenGrantUsd,
 						hours: standing.hoursOverride ?? standing.frozenApprovedHours,
+						justification: standing.justification,
 						reason: viewer.seesRiskFlags ? standing.reason : null,
 						reviewedAt: shortDate(parseDbTimestamp(standing.createdAt)),
 						reviewerName: deciderName(standing, viewer),
 						technicalFeatures: standing.technicalFeatures,
 						tier: standing.tierOverride ?? standing.frozenTier,
+						unified:
+							standing.reviewerId === null
+								? null
+								: {
+										reviewId: standing.id,
+										sentAt: standing.unifiedApprovedAt ? shortDate(parseDbTimestamp(standing.unifiedApprovedAt)) : null,
+									},
 					}
 				: null,
 			fundingCapUsd: row.fundingCapUsd,
