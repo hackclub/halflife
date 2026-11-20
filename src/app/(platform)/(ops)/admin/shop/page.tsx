@@ -119,6 +119,19 @@ export default async function AdminShopPage({ searchParams }: Props) {
 	)
 }
 
+/** The catalogue with its status changed, keeping the other filters. */
+function catalogueHref(
+	filters: Readonly<{ category?: ShopItemCategory; gated: boolean; q?: string }>,
+	status: ItemStatus,
+): string {
+	const params = new URLSearchParams()
+	if (filters.q) params.set("q", filters.q)
+	if (filters.category) params.set("category", filters.category)
+	if (filters.gated) params.set("gated", "1")
+	params.set("status", status)
+	return `/admin/shop?${params.toString()}`
+}
+
 /** The catalogue, filtered by the bar above it. Only its query runs when this tab is open. */
 async function CatalogueTab({
 	category,
@@ -176,7 +189,8 @@ async function CatalogueTab({
 						</Select>
 					</Field>
 					<Field label="Status">
-						<Select defaultValue={status} name="status">
+						{/* The select is uncontrolled, so it keeps whatever it was first given: the key remounts it when a status badge sets the filter, or the bar would say "Any status" over a filtered list. */}
+						<Select defaultValue={status} key={status} name="status">
 							<option value="all">Any status</option>
 							<option value="active">Active</option>
 							<option value="retired">Retired</option>
@@ -211,7 +225,12 @@ async function CatalogueTab({
 								<td>{item.stock ?? "∞"}</td>
 								<td>{item.requiresPrinterQualified ? "all 5 projects" : "no"}</td>
 								<td>
-									<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
+									<Link
+										href={catalogueHref({ category, gated, q }, item.active ? "active" : "retired")}
+										title={item.active ? "Show only active items" : "Show only retired items"}
+									>
+										<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
+									</Link>
 								</td>
 								<td className="hl-shop-actions">
 									<LinkButton href={`/admin/shop/${item.id}`}>Edit</LinkButton>
