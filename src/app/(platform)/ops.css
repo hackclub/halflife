@@ -1761,6 +1761,21 @@ html:has(.hl-admin) {
 		grid-template-columns: repeat(2, minmax(0, 14rem));
 	}
 }
+/* The card batch's item panels sit side by side as tiles once there is room for two beside the sidebar. */
+.hl-batch-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1rem;
+	align-items: start;
+}
+.hl-batch-grid > * {
+	min-width: 0;
+}
+@media (min-width: 64rem) {
+	.hl-batch-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
 /* A disabled control reads as unavailable, not as a faded primary: neutral ground and muted text. */
 .hl-admin-main .hl-btn:disabled {
 	color: var(--color-ink-muted);

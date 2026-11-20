@@ -9,7 +9,7 @@ import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/compone
 import { themeLabel } from "@/lib/config/program"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardBatchStatus, PayoutSource } from "@/lib/enums"
-import { listGrantCardBatches, listGrantCardExports, previewCardGrants } from "@/lib/grant-cards"
+import { listGrantCardBatches, listGrantCardExports, listIssuedGrantCards, previewCardGrants } from "@/lib/grant-cards"
 import { readStoredRefreshToken } from "@/lib/hcb-credential"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -35,6 +35,7 @@ const TABS = [
 	{ id: "ready", label: "Ready" },
 	{ id: "excluded", label: "Excluded" },
 	{ id: "batches", label: "Batches" },
+	{ id: "issued", label: "Issued" },
 ] as const
 
 type GrantTab = (typeof TABS)[number]["id"]
@@ -51,16 +52,18 @@ export default async function AdminGrantsPage({ searchParams }: Props) {
 	const { tab: requestedTab } = firstValues(await searchParams)
 	const tab: GrantTab = TABS.find(item => item.id === requestedTab)?.id ?? "issue"
 
-	const [preview, batches, csvExports, hcbConnected] = await Promise.all([
+	const [preview, batches, csvExports, hcbConnected, issued] = await Promise.all([
 		previewCardGrants(),
 		listGrantCardBatches(20),
 		listGrantCardExports(20),
 		readStoredRefreshToken(),
+		listIssuedGrantCards(),
 	])
 
 	const hrefs = TABS.map(item => tabHref(item.id))
 	const counts: { [_ in GrantTab]?: number } = {
 		excluded: preview.excluded.length,
+		issued: issued.length,
 		ready: preview.eligible.length,
 	}
 
@@ -238,6 +241,39 @@ export default async function AdminGrantsPage({ searchParams }: Props) {
 						)}
 					</Panel>
 				</>
+			) : null}
+
+			{tab === "issued" ? (
+				<Panel title="Issued cards" wide>
+					{issued.length === 0 ? (
+						<EmptyState>No card grant has been issued yet.</EmptyState>
+					) : (
+						<Table head={["Project", "Amount", "Issued", "HCB grant", "Batch"]}>
+							{issued.map(card => (
+								<tr key={card.id}>
+									<td>
+										{card.title || "Untitled"}
+										<div className="hl-hint hl-mono">{card.projectId}</div>
+									</td>
+									<td className="hl-mono">{formatUsd(card.amountCents / 100)}</td>
+									<td>{card.issuedAt ? formatUtcDateTime(card.issuedAt) : "-"}</td>
+									<td className="hl-mono">
+										{card.hcbCardGrantId ? (
+											<a href={`https://hcb.hackclub.com/grants/${card.hcbCardGrantId}`}>{card.hcbCardGrantId}</a>
+										) : (
+											"-"
+										)}
+									</td>
+									<td>
+										<Link className="hl-mono" href={`/admin/grants/${card.batchId}`}>
+											{card.batchId}
+										</Link>
+									</td>
+								</tr>
+							))}
+						</Table>
+					)}
+				</Panel>
 			) : null}
 		</div>
 	)
