@@ -84,7 +84,7 @@ export function EntryReview({ entry, onSaving }: { entry: ReviewEntry; onSaving(
 						setNote(e.target.value)
 						change({ approved: badMinutes ? "invalid" : approved, note: e.target.value })
 					}}
-					placeholder="Why deflated (visible to staff only)"
+					placeholder="Why deflated (staff only, and quoted in the unified justification)"
 					style={{ flex: "1 1 14rem" }}
 					value={note}
 				/>

@@ -2,12 +2,14 @@ import { after } from "next/server"
 import { mirrorReviewDecision, reviewStatusForResult } from "@/lib/airtable/sync"
 import { fail, ok, parseBody } from "@/lib/api"
 import { ENTRY_TIER } from "@/lib/config/tiers"
-import { Phase } from "@/lib/enums"
+import { displayName } from "@/lib/display-name"
+import { Phase, ReviewResult } from "@/lib/enums"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { notifyReviewOutcome } from "@/lib/notifications"
 import { hasPermission, Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
 import { finalizeReview } from "@/lib/review"
+import { signedJustification } from "@/lib/review-platform/justification"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { decisionSchema } from "@/lib/schemas/review"
 
@@ -60,14 +62,20 @@ export const POST = withWritePermission(
 		const feedback = sanitize(body.feedback ?? "")
 		// The reviewer's internal note, which is the console's equivalent of Ari's "Justification notes".
 		const reason = "reason" in body ? sanitizeOptional(body.reason) : null
-		// Ari's `justification.deflation_reason`: why the hours came down, kept out of the internal note so the deflation column says only that.
+		// Ari's `justification.deflation_reason`: why the hours came down, kept out of the internal note so the deflation column says only that. The review screen no longer sends one – its justification quotes each entry's own note – but a page opened before that change still may.
 		const deflationReason = "deflationReason" in body ? sanitizeOptional(body.deflationReason) : null
+		// The account the screen composed, signed here so an approval cannot go out without the sign-off. Plain text that is only ever shown as text (the base, and a textarea), so it is trimmed rather than run through `sanitize`, which would write `&amp;` into the record.
+		const justification =
+			"justification" in body && body.justification
+				? signedJustification(body.justification, displayName(gate.user, "Reviewer"))
+				: null
 
 		const outcome = await finalizeReview({
 			enforceClaimCeiling: !hasPermission(gate.roles, Permission.MANAGE_CREDIT),
 			feedback,
 			grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
 			hoursOverride: "hoursOverride" in body ? (body.hoursOverride ?? null) : null,
+			justification,
 			reason,
 			result: body.result,
 			reviewerEmail: gate.user.email,
@@ -89,6 +97,8 @@ export const POST = withWritePermission(
 				gate.user.email,
 				deflationReason,
 				reason,
+				// Undefined from a page that composed none, which leaves the column to the formula.
+				outcome.result === ReviewResult.APPROVED ? (justification ?? undefined) : undefined,
 			)
 			await notifyReviewOutcome({
 				decidedBy: "console",

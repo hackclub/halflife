@@ -84,7 +84,7 @@ namespace public {
     publicReels                 PublicReel[]
     reviewClaims                ReviewClaim[]
     reviewDisputes              ReviewDispute[]
-    reviewsGiven                SubmissionReview[]
+    reviewsGiven                SubmissionReview[]           @relation(name: "SubmissionReview_reviewer")
     roles                       UserRole[]
     sessions                    Session[]
     shopOrderNotes              ShopOrderNote[]
@@ -96,6 +96,7 @@ namespace public {
     shopRegion                  ShopRegion?                  @relation(fields: [shopRegionId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
     reportsAgainst              ContentReport[]              @relation(name: "ContentReport_targetUser")
     reportsMade                 ContentReport[]              @relation(name: "ContentReport_reporter")
+    unifiedApprovals            SubmissionReview[]           @relation(name: "SubmissionReview_unifiedApprovedBy")
 
     @@index([email], map: "user_email_key", unique: true)
     @@index([slackId], map: "user_slackId_key", unique: true)
@@ -1038,9 +1039,18 @@ namespace public {
     frozenFundingHours     Float?
     frozenBankHours        Float?
     frozenPrinterGoalId    String?
+    /// The approval's account in Fabricate's format, sign-off included, written to `Optional - Override Hours Spent Justification`. Only a decision made on the review screen has one; Ari's decisions keep the separate `Justification - …` columns.
+    justification          String?
+    /// T2: the Airtable fields an admin changed from what Half Life generates, by the base's own column name. Merged into every later write of the row, so a refresh cannot undo them.
+    unifiedOverrides       Jsonb?
+    /// When T2 sent this approval to the unified database, or when it was found already there.
+    unifiedApprovedAt      TimestampString(3)?
+    /// Who approved it at T2. Null with `unifiedApprovedAt` set means it reached the unified database without T2 (ticked by hand in the base).
+    unifiedApprovedById    String?
     createdAt              TimestampString(3)    @default(now())
     submission             PhaseSubmission       @relation(fields: [submissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-    reviewer               User?                 @relation(fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: "submission_review_reviewerId_createdAt_idx")
+    reviewer               User?                 @relation(name: "SubmissionReview_reviewer", fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: "submission_review_reviewerId_createdAt_idx")
+    unifiedApprovedBy      User?                 @relation(name: "SubmissionReview_unifiedApprovedBy", fields: [unifiedApprovedById], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
 
     @@index([submissionId], map: "submission_review_submissionId_idx")
     @@index([reviewerId, createdAt], map: "submission_review_reviewerId_createdAt_idx")

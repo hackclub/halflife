@@ -67,7 +67,16 @@ function FacetSelect({ all, label, onChange, options, value }: FacetSelectProps)
  *
  * Fabricate's reviewer pledge card is not here – Half Life has no pledges.
  */
-export function QueueView({ filters: rendered, queue }: { filters: Filters; queue: ReviewQueue }) {
+export function QueueView({
+	canReviewUnified,
+	filters: rendered,
+	queue,
+}: {
+	/** REVIEW_UNIFIED: show the way to T2, where website approvals are checked before they go to the unified database. */
+	canReviewUnified: boolean
+	filters: Filters
+	queue: ReviewQueue
+}) {
 	const router = useRouter()
 	const [pending, startTransition] = useTransition()
 	const [filters, pick] = useOptimistic(rendered)
@@ -90,7 +99,17 @@ export function QueueView({ filters: rendered, queue }: { filters: Filters; queu
 
 	return (
 		<>
-			<PageHead eyebrow="Ships" title="Review queue" />
+			<PageHead
+				actions={
+					canReviewUnified ? (
+						<Link className="btn btn--outline" href="/reviews/unified">
+							T2 review
+						</Link>
+					) : null
+				}
+				eyebrow="Ships"
+				title="Review queue"
+			/>
 			<div className="form__actions" style={{ marginBottom: "var(--space-2)" }}>
 				<div className="tabs" style={{ border: 0, margin: 0 }}>
 					{STATUSES.map(status => (

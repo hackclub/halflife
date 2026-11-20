@@ -9,7 +9,6 @@ import {
 	closeDispute,
 	type DecisionBody,
 	decide,
-	justificationRow,
 	overrideDecision,
 	releaseQuietly,
 	replyToDispute,
@@ -27,19 +26,14 @@ import { ResizeHandle } from "@/components/review/ResizeHandle"
 import { ShipTable } from "@/components/review/ShipTable"
 import { Field, FormErrors, isSafeUrl, PageHead, Paper, SafeLink, StatusTag, TierTag } from "@/components/review/ui"
 import { HardLink } from "@/components/site/HardLink"
-import { deflationFor } from "@/lib/airtable/deflation"
-import {
-	type ApprovalDraft,
-	type JustificationRow,
-	type JustificationRowMissing,
-	previewUnifiedJustification,
-} from "@/lib/airtable/unified-justification"
-import { round2 } from "@/lib/money"
-import { fmtHours } from "@/lib/numbers"
+import { composeJustification, editBeforeTail, mergeEdits } from "@/lib/review-platform/justification"
 import type { ReviewDetail, ReviewViewer } from "@/lib/review-platform/types"
 
 /** Half Life's redirect to the maker's Telescreen profile (lib/review-platform/telescreen). */
 const telescreenHref = (submissionId: string): string => `/api/reviews/${encodeURIComponent(submissionId)}/telescreen`
+
+/** The moment an approval is sent, which its justification is stamped with. A call rather than `new Date()` inline, which reads as impure render to the linter even inside a handler. */
+const approvalTime = (): Date => new Date()
 
 /** Where moving on from a ship goes: the next one, which `?claim` has claim itself on arrival (see `useClaimOnArrival`) so a run of reviews needs no "Claim review" between them, or the queue when there is none. */
 const nextShipHref = (nextId: string | null): string => (nextId ? `/reviews/${nextId}?claim` : "/reviews")
@@ -59,7 +53,7 @@ const TAB_LABELS: readonly (readonly [ReviewTab, string])[] = Object.freeze([
 /**
  * The review screen: Fabricate's `Admin/Ships/Show`, on Half Life's data.
  *
- * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check (Robert, Spork, cart, README, follow-up and experience checks, image reuse), the repo checklist, Slack threads, scraps and the early kit, staff notes and flags, review telemetry and the YSWS justification composer – Half Life writes that record itself from the decision, and the panel previews what it will write. Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
+ * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check (Robert, Spork, cart, README, follow-up and experience checks, image reuse), the repo checklist, Slack threads, scraps and the early kit, staff notes and flags, and review telemetry. The YSWS justification composer is kept: a decision made here writes Fabricate's account to the row (see lib/review-platform/justification). Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
  */
 export function ShipReview({
 	detail,
@@ -645,8 +639,10 @@ function DecisionPanel({
 	const [feedback, setFeedback, clearFeedback] = useDraft(draft("feedback"))
 	const [reason, setReason, clearReason] = useDraft(draft("reason"))
 	const [technicalFeatures, setTechnicalFeatures, clearTechnicalFeatures] = useDraft(draft("features"))
-	const [deflationReason, setDeflationReason, clearDeflationReason] = useDraft(draft("deflation"))
-	const airtable = useJustificationRow(ship.id, ship.reviewable)
+	// The reviewer's edits of the generated justification, kept as the text they edited and the text it was generated from, so later deflation can be merged in under them (see `mergeEdits`).
+	const [justificationBase, setJustificationBase, clearJustificationBase] = useDraft(draft("justification-base"))
+	const [justificationText, setJustificationText, clearJustificationText] = useDraft(draft("justification"))
+	const [shownAt] = useState(() => new Date())
 
 	// A reviewer may lower a tier or keep it; raising it past what the maker asked for mints parts money, which is MANAGE_CREDIT's call. The decision route enforces this; the select only stops offering what would be refused.
 	const tierCap = viewer.canSetGrant ? null : project.requestedTier
@@ -658,14 +654,42 @@ function DecisionPanel({
 	const funded = design && !ship.fundingDeclined
 	const awardUsd = grantUsd ?? picked?.grantUsd ?? null
 
-	// What the approval will freeze (see `finalizeReview`), measured against the claim the row holds – or, until the row is read, the figure hand-in wrote there.
-	const approvedHours = hoursValue ?? detail.breakdown.computedTotal
-	const claimedHours =
-		airtable && "row" in airtable
-			? airtable.row.claimedHours
-			: round2(detail.breakdown.journalHoursClaimed + detail.breakdown.hackatimeHours)
-	const deflation = hoursInvalid ? null : deflationFor(approvedHours, claimedHours)
-	const approval: ApprovalDraft = { approvedHours, deflationReason, internalNote: reason, technicalFeatures }
+	// What the approval will freeze (see `finalizeReview`), against the claim hand-in wrote to the row's `Hours spent (self reported)`.
+	const approvedHours = (hoursInvalid ? null : hoursValue) ?? detail.breakdown.computedTotal
+	const claimedHours = detail.breakdown.journalHoursClaimed + detail.breakdown.hackatimeHours
+	const signOff = `\n\n${detail.justification.signOff}`
+	const generatedAt = (approvedAt: Date): string =>
+		composeJustification({
+			approvedAt,
+			approvedHours,
+			claimedHours,
+			context: detail.justification,
+			entries: detail.entries,
+			hackatimeHours: detail.breakdown.hackatimeHours,
+			reviewer: viewer.displayName,
+			technicalFeatures,
+		})
+	const justificationAt = (approvedAt: Date): string =>
+		justificationBase
+			? mergeEdits(justificationBase, justificationText, generatedAt(approvedAt))
+			: generatedAt(approvedAt)
+
+	function editJustification(field: HTMLTextAreaElement): void {
+		const { body, caret } = editBeforeTail(
+			`${justificationAt(shownAt)}${signOff}`,
+			field.value,
+			field.selectionStart,
+			signOff,
+		)
+		setJustificationBase(generatedAt(shownAt))
+		setJustificationText(body)
+		if (body + signOff !== field.value) requestAnimationFrame(() => field.setSelectionRange(caret, caret))
+	}
+
+	function revertJustification(): void {
+		clearJustificationBase()
+		clearJustificationText()
+	}
 
 	async function act(action: Action): Promise<void> {
 		onErrors([])
@@ -673,10 +697,10 @@ function DecisionPanel({
 		const body: DecisionBody =
 			action === "approve"
 				? {
-						...(deflation && deflationReason.trim() ? { deflationReason: deflationReason.trim() } : {}),
 						feedback: feedback.trim(),
 						...(grantUsd !== null && viewer.canSetGrant ? { grantUsdOverride: grantUsd } : {}),
 						...(hoursValue === null ? {} : { hoursOverride: hoursValue }),
+						justification: justificationAt(approvalTime()),
 						...(reason.trim() ? { reason: reason.trim() } : {}),
 						result: "APPROVED",
 						...(technicalFeatures.trim() ? { technicalFeatures: technicalFeatures.trim() } : {}),
@@ -690,7 +714,7 @@ function DecisionPanel({
 			clearFeedback()
 			clearReason()
 			clearTechnicalFeatures()
-			clearDeflationReason()
+			revertJustification()
 			router.push(nextShipHref(detail.nextId))
 			router.refresh()
 		} catch (err) {
@@ -810,22 +834,6 @@ function DecisionPanel({
 							value={technicalFeatures}
 						/>
 					</Field>
-					<Field
-						hint={
-							deflation
-								? `${fmtHours(deflation.claimedHours)} claimed, ${fmtHours(deflation.approvedHours)} approved. Staff only. Why the hours came down, for the deflation justification. Left empty, the internal note is used.`
-								: "Nothing is cut yet, so this isn't sent. Deflate entries on the Deflation tab first."
-						}
-						id="deflation_reason"
-						label="Deflation reason"
-					>
-						<textarea
-							className="field__textarea field__textarea--line"
-							id="deflation_reason"
-							onChange={e => setDeflationReason(e.target.value)}
-							value={deflationReason}
-						/>
-					</Field>
 				</fieldset>
 				<div className="form__actions">
 					<button
@@ -879,72 +887,31 @@ function DecisionPanel({
 						)}
 					</div>
 				) : null}
-				<JustificationPreview airtable={airtable} draft={approval} />
+				<fieldset className="review-lock review-lock--contents" disabled={!mine || !ship.reviewable}>
+					<Field
+						className="field--grow"
+						hint={
+							justificationBase ? (
+								<button className="btn btn--ghost btn--sm" onClick={revertJustification} type="button">
+									Revert to generated
+								</button>
+							) : (
+								"Sent to the unified database on approval. Each entry's deflation note is quoted, so say why on the Deflation tab."
+							)
+						}
+						id="justification"
+						label="Justification for the YSWS record"
+					>
+						<textarea
+							className="field__textarea"
+							id="justification"
+							onChange={e => editJustification(e.target)}
+							value={`${justificationAt(shownAt)}${signOff}`}
+						/>
+					</Field>
+				</fieldset>
 			</div>
 		</Paper>
-	)
-}
-
-type JustificationRead = { missing: JustificationRowMissing | null; row: JustificationRow } | { failed: string }
-
-/** The submission's Airtable row – or Half Life's own version of it, when the base can't be read – fetched once per open decision, or null while it loads. */
-function useJustificationRow(submissionId: string, reviewable: boolean): JustificationRead | null {
-	const [read, setRead] = useState<JustificationRead | null>(null)
-	useEffect(() => {
-		if (!reviewable) return
-		let live = true
-		void (async () => {
-			let result: JustificationRead
-			try {
-				result = await justificationRow(submissionId)
-			} catch (err) {
-				result = { failed: err instanceof Error ? err.message : "Couldn't read the Airtable row" }
-			}
-			if (live) setRead(result)
-		})()
-		return () => {
-			live = false
-		}
-	}, [submissionId, reviewable])
-	return read
-}
-
-/** Why the preview was built from Half Life's own records instead of the Airtable row. */
-const MISSING_ROW: { [_ in JustificationRowMissing]: string } = Object.freeze({
-	no_row: "Built from Half Life's records: this submission has no Airtable row, so an approval won't write it.",
-	not_configured: "Built from Half Life's records: Airtable isn't configured here, so an approval won't write it.",
-	sync_disabled: "Built from Half Life's records: Airtable sync is off, so an approval won't write it.",
-	unreadable:
-		"Built from Half Life's records: the Airtable row couldn't be read. An approval still writes the status, but leaves the justification columns as they are.",
-})
-
-/**
- * `Automation - Unified Justification` as an approval would leave it: the base's formula over the row's evidence and what the reviewer has typed (see lib/airtable/unified-justification).
- */
-function JustificationPreview({ airtable, draft }: { airtable: JustificationRead | null; draft: ApprovalDraft }) {
-	const [open, setOpen] = useStoredToggle("halflife:review-justification-preview")
-	const body =
-		airtable === null ? (
-			<p className="field__hint">Reading the Airtable row…</p>
-		) : "failed" in airtable ? (
-			<p className="field__error">{airtable.failed}</p>
-		) : (
-			<>
-				<p className="field__hint">
-					{airtable.missing
-						? MISSING_ROW[airtable.missing]
-						: airtable.row.overrideJustification
-							? "The row's Override Hours Spent Justification is filled in, so the pipeline sends that instead of anything typed here."
-							: "What the unified database receives if you approve now."}
-				</p>
-				<pre className="field__preview">{previewUnifiedJustification(airtable.row, draft)}</pre>
-			</>
-		)
-	return (
-		<details className="field" onToggle={e => setOpen(e.currentTarget.open)} open={open}>
-			<summary className="field__label">Unified justification preview</summary>
-			{body}
-		</details>
 	)
 }
 
@@ -1037,6 +1004,33 @@ function DecidedPanel({
 				) : null}
 				<dt>Features</dt>
 				<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.technicalFeatures || "—"}</dd>
+				{decision?.unified && ship.status === "approved" ? (
+					<>
+						<dt>Unified</dt>
+						<dd>
+							{decision.unified.sentAt ? `Sent on ${decision.unified.sentAt}` : "Waiting for T2"}
+							{viewer.canReviewUnified ? (
+								<>
+									{" · "}
+									<Link href={`/reviews/unified/${decision.unified.reviewId}`}>
+										{decision.unified.sentAt ? "Open T2" : "Check at T2"}
+									</Link>
+								</>
+							) : null}
+						</dd>
+					</>
+				) : null}
+				{decision?.justification ? (
+					<>
+						<dt>Justification</dt>
+						<dd>
+							<details>
+								<summary>What the unified database receives</summary>
+								<pre className="field__preview">{decision.justification}</pre>
+							</details>
+						</dd>
+					</>
+				) : null}
 			</dl>
 			{undo ? (
 				<button

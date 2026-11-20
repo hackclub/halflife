@@ -1,11 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { RESEARCH_TIME_STATEMENT } from "@/lib/airtable/research-statement"
-import {
-	NO_FEATURES_RECORDED,
-	previewUnifiedJustification,
-	type UnifiedJustificationColumns,
-	unifiedJustification,
-} from "@/lib/airtable/unified-justification"
+import { type UnifiedJustificationColumns, unifiedJustification } from "@/lib/airtable/unified-justification"
 
 const empty: UnifiedJustificationColumns = Object.freeze({
 	additionalJustification: "",
@@ -52,49 +46,5 @@ describe("unifiedJustification", () => {
 		expect(unifiedJustification({ ...empty, hackatimeId: "1", overrideJustification: "Hand-written." })).toBe(
 			"Hand-written.",
 		)
-	})
-})
-
-describe("previewUnifiedJustification", () => {
-	const row = Object.freeze({
-		alternateTracking: "",
-		claimedHours: 10,
-		hackatimeId: "1",
-		hackatimeProjects: "",
-		lapseLinks: "",
-		overrideJustification: "",
-	})
-
-	test("prefers the deflation reason over the internal note for the cut", () => {
-		const text = previewUnifiedJustification(row, {
-			approvedHours: 8,
-			deflationReason: "Capped at 8h.",
-			internalNote: "Looks good.",
-			technicalFeatures: "",
-		})
-		expect(text).toContain(
-			"[DEFLATION JUSTIFICATION]\n Deflated from 10h claimed to 8h approved (2h removed). Capped at 8h.",
-		)
-		expect(text).toContain("[ADDITIONAL JUSTIFICATION]\nLooks good.")
-		expect(text).toContain(`[SPECIFIC TECHNICAL FEATURES]\n${NO_FEATURES_RECORDED}`)
-	})
-
-	test("falls back to the internal note, and writes no deflation when nothing was cut", () => {
-		const cut = previewUnifiedJustification(row, {
-			approvedHours: 9,
-			deflationReason: " ",
-			internalNote: "Duplicate entry.",
-			technicalFeatures: "x",
-		})
-		expect(cut).toContain("(1h removed). Duplicate entry.")
-		const whole = previewUnifiedJustification(row, {
-			approvedHours: 10,
-			deflationReason: "ignored",
-			internalNote: "",
-			technicalFeatures: "x",
-		})
-		expect(whole).not.toContain("[DEFLATION JUSTIFICATION]")
-		// The research-time statement is on every Additional Justification cell, so the section is there even with no note.
-		expect(whole).toContain(`[ADDITIONAL JUSTIFICATION]\n${RESEARCH_TIME_STATEMENT}`)
 	})
 })

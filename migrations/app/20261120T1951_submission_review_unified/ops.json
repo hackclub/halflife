@@ -1,0 +1,294 @@
+[
+  {
+    "id": "column.public.submission_review.justification",
+    "label": "Add column \"justification\" to \"submission_review\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "justification",
+        "table": "submission_review"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"justification\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "justification"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"justification\" on \"submission_review\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"justification\"",
+        "sql": "ALTER TABLE \"public\".\"submission_review\" ADD COLUMN \"justification\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"justification\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "justification"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"justification\" on \"submission_review\""
+        }
+      },
+      {
+        "description": "verify column \"justification\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "justification",
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.submission_review.unifiedApprovedAt",
+    "label": "Add column \"unifiedApprovedAt\" to \"submission_review\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "unifiedApprovedAt",
+        "table": "submission_review"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"unifiedApprovedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedApprovedAt"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"unifiedApprovedAt\" on \"submission_review\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"unifiedApprovedAt\"",
+        "sql": "ALTER TABLE \"public\".\"submission_review\" ADD COLUMN \"unifiedApprovedAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"unifiedApprovedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedApprovedAt"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"unifiedApprovedAt\" on \"submission_review\""
+        }
+      },
+      {
+        "description": "verify column \"unifiedApprovedAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedApprovedAt",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.submission_review.unifiedApprovedById",
+    "label": "Add column \"unifiedApprovedById\" to \"submission_review\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "unifiedApprovedById",
+        "table": "submission_review"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"unifiedApprovedById\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedApprovedById"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"unifiedApprovedById\" on \"submission_review\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"unifiedApprovedById\"",
+        "sql": "ALTER TABLE \"public\".\"submission_review\" ADD COLUMN \"unifiedApprovedById\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"unifiedApprovedById\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedApprovedById"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"unifiedApprovedById\" on \"submission_review\""
+        }
+      },
+      {
+        "description": "verify column \"unifiedApprovedById\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedApprovedById",
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.submission_review.unifiedOverrides",
+    "label": "Add column \"unifiedOverrides\" to \"submission_review\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "unifiedOverrides",
+        "table": "submission_review"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"unifiedOverrides\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedOverrides"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"unifiedOverrides\" on \"submission_review\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"unifiedOverrides\"",
+        "sql": "ALTER TABLE \"public\".\"submission_review\" ADD COLUMN \"unifiedOverrides\" jsonb"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"unifiedOverrides\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedOverrides"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"unifiedOverrides\" on \"submission_review\""
+        }
+      },
+      {
+        "description": "verify column \"unifiedOverrides\" has type \"jsonb\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "submission_review",
+          "unifiedOverrides",
+          "jsonb"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.submission_review.submission_review_unifiedApprovedById_fkey",
+    "label": "Add foreign key \"submission_review_unifiedApprovedById_fkey\" on \"submission_review\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "submission_review_unifiedApprovedById_fkey",
+        "table": "submission_review"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"submission_review_unifiedApprovedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "submission_review_unifiedApprovedById_fkey",
+          "public",
+          "\"public\".\"submission_review\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"submission_review_unifiedApprovedById_fkey\" on \"submission_review\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"submission_review_unifiedApprovedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"submission_review\"\nADD CONSTRAINT \"submission_review_unifiedApprovedById_fkey\"\nFOREIGN KEY (\"unifiedApprovedById\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE SET NULL\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"submission_review_unifiedApprovedById_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "submission_review_unifiedApprovedById_fkey",
+          "public",
+          "\"public\".\"submission_review\"",
+          "f",
+          "[\"unifiedApprovedById\"]",
+          "\"public\".\"user\"",
+          "[\"id\"]",
+          "n",
+          "c"
+        ]
+      }
+    ]
+  }
+]

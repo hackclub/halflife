@@ -23,6 +23,12 @@ export enum Permission {
 	REVIEW_HOURS = "REVIEW_HOURS",
 	/** Claim and decide design/build submissions. */
 	REVIEW_SUBMISSIONS = "REVIEW_SUBMISSIONS",
+	/**
+	 * T2: check a website approval's Airtable row, edit what it sends, and tick it through to the unified database.
+	 *
+	 * ADMIN only, as on Fabricate. It is the last look before a project reaches the unified database, and card issuance waits on that, so it sits above the reviewer's own call rather than beside it.
+	 */
+	REVIEW_UNIFIED = "REVIEW_UNIFIED",
 	VIEW_AUDIT_LOG = "VIEW_AUDIT_LOG",
 	/** Read the upload bucket index; no mutation permission is implied. */
 	VIEW_UPLOADS = "VIEW_UPLOADS",
