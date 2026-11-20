@@ -108,8 +108,14 @@ function SendPanel({ buyers }: Readonly<{ buyers: LegacyShopBuyer[] }>) {
 	const failed = outcomes?.filter(outcome => outcome.status === "FAILED") ?? []
 	const slackIdOf = (userId: string): string => buyers.find(buyer => buyer.userId === userId)?.slackId ?? userId
 
+	const allChosen = eligible.length > 0 && chosen.length === eligible.length
+
 	function toggle(userId: string) {
 		setPicked(current => (current.includes(userId) ? current.filter(id => id !== userId) : [...current, userId]))
+	}
+
+	function toggleAll() {
+		setPicked(allChosen ? [] : eligible.map(buyer => buyer.userId))
 	}
 
 	async function send() {
@@ -182,6 +188,14 @@ function SendPanel({ buyers }: Readonly<{ buyers: LegacyShopBuyer[] }>) {
 				<EmptyState>No open legacy order is waiting for a DM.</EmptyState>
 			) : (
 				<Table head={["", "User", "Slack ID", "Orders", "Items"]}>
+					<tr>
+						<td>
+							<input aria-label="Message every buyer" checked={allChosen} onChange={toggleAll} type="checkbox" />
+						</td>
+						<td className="hl-hint" colSpan={4}>
+							{allChosen ? "Every buyer is included" : "Choose the buyers to message"}
+						</td>
+					</tr>
 					{eligible.map(buyer => (
 						<tr key={buyer.userId}>
 							<td>
