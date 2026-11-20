@@ -141,7 +141,7 @@
 		"tailwindcss": "^4.3.5",
 		"typescript": "~7.0.2"
 	},
-	"packageManager": "bun@1.4.4",
+	"packageManager": "bun@1.4.5",
 	"patchedDependencies": {
 		"@tracespace/plotter@5.0.0-alpha.0": "patches/@tracespace%2Fplotter@5.0.0-alpha.0.patch"
 	}
