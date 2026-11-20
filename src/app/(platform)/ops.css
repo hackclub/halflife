@@ -307,6 +307,22 @@
 		min-height: 7rem;
 		resize: vertical;
 	}
+	/*
+	 * An exclusion's reason is also the filter for it, so its cell is a button. It takes the cell's own type and colour rather than a button's, because the tone below is what says what the reason means; the underline on hover and focus is the only thing that marks it as a control. Declared before the tones so a reason's colour wins over the inherited one.
+	 */
+	.hl-reason-filter {
+		padding: 0;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		cursor: pointer;
+		background: none;
+		border: 0;
+	}
+	.hl-reason-filter:hover,
+	.hl-reason-filter:focus-visible {
+		text-decoration: underline;
+	}
 	/* An exclusion's reason carries the colour of what it means: something to fix, something waiting on the pipeline, something waiting on the maker, or something already settled. */
 	.hl-reason--danger {
 		color: var(--color-danger-ink);
@@ -1015,6 +1031,10 @@
 	.hl-filters--search-inline > .hl-filters__grid {
 		flex: 0 1 14rem;
 		grid-template-columns: minmax(0, 1fr);
+	}
+	/* A field holding sentences rather than a status word – the excluded list's reasons – is wider, so the reason in force is not cut off after a word and a half. */
+	.hl-filters--search-inline > .hl-filters__grid--reason {
+		flex-basis: 18rem;
 	}
 
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
