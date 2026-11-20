@@ -15,9 +15,10 @@ import type { FundingState } from "@/lib/funding-state"
 /** One themed project on a participant's admin page. */
 export interface ThemedProjectRowData extends ProjectManageData {
 	approvedHours: number | null
-	cardGrantSent: boolean
 	/** Where an approved design's money stands, when it has a grant to wait on. */
 	designFunding: FundingState | null
+	/** The issued card grant, when there is one: linked to its row on the grant cards page, and to its HCB grant. */
+	issuedCard: { hcbCardGrantId: string | null; id: string } | null
 	themeLabel: string
 	tier: number | null
 	title: string
@@ -54,7 +55,17 @@ export function ThemedProjectRow({
 				<td>{data.tier ?? "-"}</td>
 				<td>
 					{data.grantUsd === null ? "-" : `$${data.grantUsd}`}
-					{data.cardGrantSent ? <div className="hl-hint">card grant issued</div> : null}
+					{data.issuedCard ? (
+						<div className="hl-hint">
+							<Link href={`/admin/grants?tab=issued#card-${data.issuedCard.id}`}>card grant issued</Link>
+							{data.issuedCard.hcbCardGrantId ? (
+								<>
+									{" · "}
+									<a href={`https://hcb.hackclub.com/grants/${data.issuedCard.hcbCardGrantId}`}>view on HCB</a>
+								</>
+							) : null}
+						</div>
+					) : null}
 					{data.grantSent ? <div className="hl-hint">top-up sent</div> : null}
 				</td>
 				<td className="hl-mono">{data.approvedHours ?? "-"}</td>
