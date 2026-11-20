@@ -6,6 +6,7 @@ import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/compone
 import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardStatus } from "@/lib/enums"
 import { getGrantCardBatch } from "@/lib/grant-cards"
+import { hcbGrantUrl } from "@/lib/hcb-grant-url"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -87,11 +88,7 @@ export default async function GrantCardBatchPage({ params }: Props) {
 									<Badge tone={STATUS_TONE[card.status] ?? "muted"}>{card.status.toLowerCase()}</Badge>
 								</td>
 								<td className="hl-mono">
-									{card.hcbCardGrantId ? (
-										<a href={`https://hcb.hackclub.com/grants/${card.hcbCardGrantId}`}>{card.hcbCardGrantId}</a>
-									) : (
-										"-"
-									)}
+									{card.hcbCardGrantId ? <a href={hcbGrantUrl(card.hcbCardGrantId)}>{card.hcbCardGrantId}</a> : "-"}
 								</td>
 								<td className="hl-hint">{card.error ?? "-"}</td>
 								<td>

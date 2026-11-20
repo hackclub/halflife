@@ -11,6 +11,7 @@ import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardStatus, type ShopOrderStatus } from "@/lib/enums"
 import { DELIVERY_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import type { FulfillmentOrderJson } from "@/lib/fulfillment-sheet"
+import { hcbGrantUrl } from "@/lib/hcb-grant-url"
 import { formatUsd } from "@/lib/money"
 
 const STATUS: { [_ in ShopOrderStatus]: { label: string; tone: "success" | "warning" | "danger" | "muted" } } = {
@@ -216,7 +217,7 @@ export function FulfillmentRow({ filters, order }: Readonly<{ filters: string; o
 									{order.grantCard.hcbCardGrantId ? (
 										<a
 											className="hl-mono"
-											href={`https://hcb.hackclub.com/grants/${order.grantCard.hcbCardGrantId}`}
+											href={hcbGrantUrl(order.grantCard.hcbCardGrantId)}
 											rel="noopener noreferrer"
 											target="_blank"
 										>
