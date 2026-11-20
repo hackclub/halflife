@@ -48,6 +48,7 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 						category: item.category,
 						costUsd: item.costUsd,
 						description: item.description,
+						grantCardMerchantIds: item.grantCardMerchantIds,
 						id: item.id,
 						imageUrl: item.imageUrl,
 						name: item.name,

@@ -114,6 +114,26 @@ export const printerAwardUpdateSchema = z
 	})
 	.strict()
 
+/** A Stripe merchant network ID as HCB stores it: the Yellow Pages value, not the MCC. */
+const merchantIdSchema = z.string().trim().min(1).max(64)
+
+/** How many cards one bulk send may create. Each is a separate HCB call, so a batch is kept small enough to finish in one request. */
+export const SHOP_GRANT_CARD_BATCH_MAX = 25
+
+/**
+ * One item's share of a bulk card send.
+ *
+ * The allowlist is required here rather than defaulted from the item: a bulk send is how a whole run of orders gets paid at once, and an empty list would quietly make every card in it unrestricted. `saveToItem` keeps the list on the catalogue item for the orders that come after.
+ */
+export const shopGrantCardBatchSchema = z
+	.object({
+		grantCardMerchantIds: z.array(merchantIdSchema).min(1, "Enter at least one merchant ID").max(100),
+		orderIds: z.array(z.string().trim().min(1).max(64)).min(1).max(SHOP_GRANT_CARD_BATCH_MAX),
+		saveToItem: z.boolean().default(false),
+		shopItemId: z.string().trim().min(1).max(64),
+	})
+	.strict()
+
 /** A shop item's fields with no defaults, so the create and update schemas can each decide what an absent field means. */
 const shopItemFields = Object.freeze({
 	active: z.boolean(),
@@ -121,6 +141,7 @@ const shopItemFields = Object.freeze({
 	/** Dollars, rounded to the cent on write. */
 	costUsd: z.number().min(0).max(100_000).nullable().optional(),
 	description: boundedText(2000, 1),
+	grantCardMerchantIds: z.array(merchantIdSchema).max(100),
 	id: z
 		.string()
 		.trim()
@@ -141,6 +162,7 @@ export const shopItemSchema = z
 		...shopItemFields,
 		active: shopItemFields.active.default(true),
 		category: shopItemFields.category.default("PRINTER_UPGRADE"),
+		grantCardMerchantIds: shopItemFields.grantCardMerchantIds.default([]),
 		maxPerUser: shopItemFields.maxPerUser.default(1),
 		requiresPrinterQualified: shopItemFields.requiresPrinterQualified.default(true),
 		sortOrder: shopItemFields.sortOrder.default(0),

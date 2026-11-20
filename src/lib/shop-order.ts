@@ -11,6 +11,11 @@ export function isLiveShopCard(status: HcbGrantCardStatus): boolean {
 	)
 }
 
+/** A card the buyer kept, handed back, or that was cancelled: the order has been paid once and a batch must not pay it again on its own. */
+export function isSettledShopCard(status: HcbGrantCardStatus): boolean {
+	return status === HcbGrantCardStatus.CANCELED || status === HcbGrantCardStatus.RETURNED
+}
+
 /**
  * What a grant card for an order pays, in cents: the item's cost to us, times the quantity. Null when the item has no cost or the cost rounds to nothing, because then there is no amount a card could carry.
  *

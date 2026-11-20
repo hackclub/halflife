@@ -1,7 +1,12 @@
 import "server-only"
 import { z } from "zod"
 import { HttpError } from "@/lib/errors"
-import { GRANT_CARD_PURPOSE } from "@/lib/grant-card-policy"
+import {
+	GRANT_CARD_PURPOSE,
+	merchantIdsEqual,
+	normalizeMerchantIds,
+	PRIZE_GRANT_CARD_PURPOSE,
+} from "@/lib/grant-card-policy"
 import { readStoredRefreshToken, storeRefreshToken } from "@/lib/hcb-credential"
 import { isRecord } from "@/lib/unknown"
 
@@ -25,6 +30,7 @@ const TokenBody = z.object({
 	refresh_token: z.string().optional(),
 })
 const CardGrantBody = z.object({
+	allowed_merchants: z.union([z.string(), z.array(z.string())]).nullish(),
 	amount_cents: z.number().optional(),
 	card_id: z.string().nullish(),
 	created_at: z.string().nullish(),
@@ -38,6 +44,7 @@ const CardGrantBody = z.object({
 		.optional(),
 	email: z.string().nullish(),
 	id: z.string().optional(),
+	merchant_lock: z.union([z.string(), z.array(z.string())]).nullish(),
 	purpose: z.string().nullish(),
 	status: z.string().optional(),
 	user: z.object({ email: z.string().nullish() }).nullish(),
@@ -368,11 +375,15 @@ export function reconcileDisbursement(
 
 /** A card grant as the organisation list and the create response describe it. */
 export interface HcbCardGrantSummary {
+	/** The effective merchant allowlist, which also includes the organisation's setting. Null when HCB did not say. */
+	allowedMerchants: string[] | null
 	amountCents: number
 	cardId: string | null
 	createdAt: string | null
 	email: string | null
 	id: string
+	/** The card's own merchant allowlist, before the organisation's setting. Null when HCB did not say. */
+	merchantLock: string[] | null
 	purpose: string | null
 	status: string | null
 }
@@ -382,13 +393,25 @@ const ListedCardGrantBody = CardGrantBody.extend({
 	id: z.string(),
 })
 
+/** HCB serialises a lock as either a comma-separated string or an array, depending on the endpoint. */
+function readMerchantList(value: string | string[] | null | undefined): string[] | null {
+	if (value === null || value === undefined) return null
+	if (Array.isArray(value)) return value.map(id => id.trim()).filter(Boolean)
+	return value
+		.split(",")
+		.map(id => id.trim())
+		.filter(Boolean)
+}
+
 function toCardGrantSummary(data: z.infer<typeof ListedCardGrantBody>): HcbCardGrantSummary {
 	return {
+		allowedMerchants: readMerchantList(data.allowed_merchants),
 		amountCents: data.amount_cents,
 		cardId: data.card_id ?? null,
 		createdAt: data.created_at ?? null,
 		email: readOwnerEmail(data.user) ?? readOwnerEmail({ email: data.email }),
 		id: data.id,
+		merchantLock: readMerchantList(data.merchant_lock),
 		purpose: data.purpose ?? null,
 		status: data.status ?? null,
 	}
@@ -427,6 +450,8 @@ export interface CreateCardGrantInput {
 	email: string
 	instructions: string
 	inviteMessage: string
+	/** Stripe merchant network IDs. Empty or omitted means the card is unrestricted. */
+	merchantIds?: readonly string[]
 	/** Constant; which project, if any, rides along in the instructions. */
 	purpose: string
 }
@@ -435,16 +460,31 @@ export interface CreateCardGrantInput {
  * Issue a card grant from the organisation's balance.
  *
  * A recipient with no HCB account gets an invitation; `cardId` stays null until they activate it, so a null card is a successfully issued grant rather than a failure.
+ *
+ * `merchant_lock` is a comma-separated string on HCB's side. Sending an array would be filtered by the endpoint's strong parameters, so the list is joined here.
  */
+export function cardGrantCreateBody(input: CreateCardGrantInput): {
+	amount_cents: number
+	email: string
+	instructions: string
+	invite_message: string
+	merchant_lock?: string
+	purpose: string
+} {
+	const merchantIds = normalizeMerchantIds(input.merchantIds ?? [])
+	return {
+		amount_cents: input.amountCents,
+		email: input.email,
+		instructions: input.instructions,
+		invite_message: input.inviteMessage,
+		...(merchantIds.length > 0 ? { merchant_lock: merchantIds.join(",") } : {}),
+		purpose: input.purpose,
+	}
+}
+
 export async function createCardGrant(input: CreateCardGrantInput): Promise<HcbCardGrantSummary> {
 	const res = await hcbFetch(`/api/v4/organizations/${encodeURIComponent(orgSlug())}/card_grants`, {
-		body: JSON.stringify({
-			amount_cents: input.amountCents,
-			email: input.email,
-			instructions: input.instructions,
-			invite_message: input.inviteMessage,
-			purpose: input.purpose,
-		}),
+		body: JSON.stringify(cardGrantCreateBody(input)),
 		headers: { "content-type": "application/json" },
 		method: "POST",
 		timeoutMs: 20_000,
@@ -501,9 +541,17 @@ export interface CardGrantExpectation {
 	amountCents: number
 	attemptedAt: Date
 	email: string
+	/**
+	 * The merchant allowlist the attempt asked for. Omitted for project cards, which have no lock; an empty array
+	 * still checks that HCB issued an unrestricted card rather than skipping the comparison.
+	 */
+	merchantIds?: readonly string[]
 	/** What the create sent: now the constant, while it was still a marker or a link. */
 	purpose: string
 }
+
+/** The prefixes a bare purpose may carry. Shop cards moved from the parts prefix to the prize prefix, so both have to reconcile. */
+const BARE_PURPOSES = new Set([GRANT_CARD_PURPOSE, PRIZE_GRANT_CARD_PURPOSE])
 
 /**
  * Whether a listed grant's purpose is the one an attempt sent.
@@ -516,8 +564,12 @@ export interface CardGrantExpectation {
  */
 export function purposeMatches(listed: string | null, expected: string): boolean {
 	if (listed === expected) return true
-	if (expected !== GRANT_CARD_PURPOSE) return false
-	return typeof listed === "string" && listed.startsWith(GRANT_CARD_PURPOSE)
+	if (!BARE_PURPOSES.has(expected)) return false
+	if (typeof listed !== "string") return false
+	if (listed.startsWith(expected)) return true
+	// A shop row from before the prize prefix was stored falls back to the bare prize line; its card still says
+	// `Half Life parts – …`. Matching the wider prefix here is what lets that row reconcile instead of retrying.
+	return expected === PRIZE_GRANT_CARD_PURPOSE && listed.startsWith(GRANT_CARD_PURPOSE)
 }
 
 /** HCB's card grant ids carry a `cdg_` prefix, and the site stores either form, so compare on the bare one. */
@@ -562,8 +614,20 @@ export function reconcileCardGrantIssue(
 	// Same project and amount under an unreadable or different owner: a human has to look, never a retry.
 	if (candidates.length === 0) return { kind: "ambiguous" }
 
+	// A card with a different merchant lock is a different card. A lock HCB did not report could be either, so it
+	// stays a question for a human rather than becoming an absent answer that invites a second card.
+	const lockChecked =
+		expected.merchantIds === undefined
+			? candidates
+			: candidates.filter(
+					row => row.merchantLock === null || merchantIdsEqual(expected.merchantIds ?? [], row.merchantLock),
+				)
+	if (expected.merchantIds !== undefined && lockChecked.some(row => row.merchantLock === null))
+		return { kind: "ambiguous" }
+	if (lockChecked.length === 0) return { kind: "absent" }
+
 	const dated: { at: number; id: string }[] = []
-	for (const row of candidates) {
+	for (const row of lockChecked) {
 		const at = row.createdAt ? Date.parse(row.createdAt) : Number.NaN
 		if (!Number.isFinite(at)) return { kind: "ambiguous" }
 		dated.push({ at, id: row.id })

@@ -66,6 +66,9 @@ export function UserRow({ row, filters }: Readonly<{ row: DirectoryRow; filters:
 						</Link>
 					) : null}
 				</div>
+				<div className="hl-entity-links">
+					<Link href={`/u/${row.id}`}>Public profile</Link>
+				</div>
 				{row.fraudFlagged ? (
 					<div>
 						<Link href={directoryHref(filters, { state: "flagged" })} title="Show only fraud-flagged accounts">

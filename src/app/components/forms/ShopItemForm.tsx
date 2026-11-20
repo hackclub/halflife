@@ -18,6 +18,7 @@ export interface ShopItemInitial {
 	category: ShopItemCategory
 	costUsd: number | null
 	description: string
+	grantCardMerchantIds: readonly string[]
 	id: string
 	imageUrl: string | null
 	name: string
@@ -29,11 +30,24 @@ const blank = {
 	category: "PRINTER_UPGRADE",
 	costUsd: "",
 	description: "",
+	grantCardMerchantIds: "",
 	id: "",
 	imageUrl: "",
 	name: "",
 	priceCredits: "50",
 	requiresPrinterQualified: true,
+}
+
+/** Merchant IDs pasted as commas or line breaks, trimmed and deduplicated, so a list from Yellow Pages can be pasted whole. */
+function parseMerchantIds(value: string): string[] {
+	return [
+		...new Set(
+			value
+				.split(/[\s,]+/)
+				.map(id => id.trim())
+				.filter(Boolean),
+		),
+	]
 }
 
 /**
@@ -64,6 +78,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					category: item.category,
 					costUsd: item.costUsd === null ? "" : String(item.costUsd),
 					description: item.description,
+					grantCardMerchantIds: item.grantCardMerchantIds.join(", "),
 					id: item.id,
 					imageUrl: item.imageUrl ?? "",
 					name: item.name,
@@ -99,6 +114,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			category: form.category,
 			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
 			description: form.description,
+			grantCardMerchantIds: parseMerchantIds(form.grantCardMerchantIds),
 			imageUrl: form.imageUrl.trim() === "" ? null : form.imageUrl.trim(),
 			name: form.name,
 			priceCredits: Number(form.priceCredits),
@@ -211,6 +227,17 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					step="0.01"
 					type="number"
 					value={form.costUsd}
+				/>
+			</Field>
+			<Field
+				className="hl-form-wide"
+				hint="Comma or line separated Stripe merchant network IDs. Blank lets the grant card be used anywhere. Lock only items that are bought from one known vendor."
+				label="Grant card merchant IDs"
+			>
+				<TextArea
+					onChange={e => setForm({ ...form, grantCardMerchantIds: e.target.value })}
+					placeholder="e.g. ZIEMZSLZHABHDPK, BCY7WW5ESKW7NNL"
+					value={form.grantCardMerchantIds}
 				/>
 			</Field>
 			<label className="hl-row hl-form-wide" style={{ gap: "0.5rem" }}>

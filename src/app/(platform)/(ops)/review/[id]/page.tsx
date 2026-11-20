@@ -73,6 +73,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 							body: m.body,
 							fromReviewer: m.fromReviewer,
 							id: m.id,
+							reviewerName: m.author ? displayName(m.author) : null,
 						})),
 						note: submission.dispute.note,
 						outcome: submission.dispute.outcome,

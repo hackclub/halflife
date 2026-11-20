@@ -18,6 +18,9 @@ export const GRANT_CARD_PURPOSE_MAX = 30
 /** What every card's purpose starts with. */
 export const GRANT_CARD_PURPOSE = "Half Life parts"
 
+/** What a shop prize card's purpose starts with. */
+export const PRIZE_GRANT_CARD_PURPOSE = "Half Life prize"
+
 const PURPOSE_SEPARATOR = " – "
 
 /**
@@ -57,14 +60,16 @@ export function grantCardProjectUrl(projectId: string, origin: string | null): s
 }
 
 /**
- * The purpose stored on HCB: the parts line, then the project's name, cut to the most HCB fits. The reconciler matches on equality here, so a card's purpose must be the one it was claimed with: a batch stores it on its row, and only a row from before that has none falls back to the bare line.
+ * The purpose stored on HCB: the prefix line, then the item or project name, cut to the most HCB fits. The reconciler matches on equality here, so a card's purpose must be the one it was claimed with: a batch stores it on its row, and only a row from before that has none falls back to the bare line.
  */
-export function grantCardPurpose(title?: string | null): string {
+export function grantCardPurpose(title?: string | null, prefix = GRANT_CARD_PURPOSE): string {
+	const base = prefix.trim() || GRANT_CARD_PURPOSE
 	const name = (title ?? "").replaceAll(/\s+/g, " ").trim()
-	if (!name) return GRANT_CARD_PURPOSE
-	const room = GRANT_CARD_PURPOSE_MAX - GRANT_CARD_PURPOSE.length - PURPOSE_SEPARATOR.length
+	if (!name) return base
+	const room = GRANT_CARD_PURPOSE_MAX - base.length - PURPOSE_SEPARATOR.length
+	if (room <= 0) return base.slice(0, GRANT_CARD_PURPOSE_MAX)
 	const cut = name.length <= room ? name : `${fitWhole(name, room - 1)}…`
-	return `${GRANT_CARD_PURPOSE}${PURPOSE_SEPARATOR}${cut}`
+	return `${base}${PURPOSE_SEPARATOR}${cut}`
 }
 
 /** The longest run of whole characters from the start that fits in `budget` UTF-16 units, so a surrogate pair is never split. */
@@ -114,4 +119,18 @@ export function grantCardFingerprint(
 		.map(row => `${row.projectId}:${row.amountCents}:${row.email.trim().toLowerCase()}`)
 		.toSorted((a, b) => a.localeCompare(b))
 	return createHash("sha256").update(ordered.join("\n")).digest("hex")
+}
+
+/** Trim empty entries and duplicates, keeping the order the admin entered. Merchant IDs are case-sensitive. */
+export function normalizeMerchantIds(ids: readonly string[]): string[] {
+	return [...new Set(ids.map(id => id.trim()).filter(Boolean))]
+}
+
+/** Whether two merchant allowlists name the same set, regardless of order or duplicate entries. */
+export function merchantIdsEqual(left: readonly string[], right: readonly string[]): boolean {
+	const a = normalizeMerchantIds(left)
+	const b = normalizeMerchantIds(right)
+	if (a.length !== b.length) return false
+	const wanted = new Set(b)
+	return a.every(id => wanted.has(id))
 }

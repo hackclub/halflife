@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test"
 import {
+	GRANT_CARD_PURPOSE_MAX,
 	grantCardAmountCents,
 	grantCardCapUsd,
 	grantCardFingerprint,
 	grantCardInstructions,
 	grantCardPurpose,
+	merchantIdsEqual,
+	normalizeMerchantIds,
+	PRIZE_GRANT_CARD_PURPOSE,
 	remainingAfterCancelledCards,
 } from "@/lib/grant-card-policy"
 
@@ -76,6 +80,12 @@ describe("grant card policy", () => {
 		expect(grantCardPurpose(null)).toBe("Half Life parts")
 	})
 
+	test("a custom prefix carries its own bare line and still fits HCB's limit", () => {
+		expect(grantCardPurpose("Iron", PRIZE_GRANT_CARD_PURPOSE)).toBe("Half Life prize – Iron")
+		expect(grantCardPurpose(null, PRIZE_GRANT_CARD_PURPOSE)).toBe("Half Life prize")
+		expect(grantCardPurpose("A very long item name", PRIZE_GRANT_CARD_PURPOSE)).toHaveLength(GRANT_CARD_PURPOSE_MAX)
+	})
+
 	test("the instructions name the project and carry its link when an origin is known", () => {
 		expect(grantCardInstructions("Bloom", "prj_1", "https://halflife.hackclub.com")).toBe(
 			"Parts for Bloom – https://halflife.hackclub.com/projects/prj_1",
@@ -99,6 +109,19 @@ describe("grant card policy", () => {
 				{ amountCents: 200, email: "b@example.com", projectId: "p2" },
 			]),
 		)
+	})
+})
+
+describe("merchant allowlists", () => {
+	test("trims blanks and duplicates without changing the order", () => {
+		expect(normalizeMerchantIds([" AAA ", "BBB", "AAA", ""])).toEqual(["AAA", "BBB"])
+	})
+
+	test("two lists match as sets, and an empty list is a real answer", () => {
+		expect(merchantIdsEqual(["AAA", "BBB"], ["BBB", "AAA"])).toBe(true)
+		expect(merchantIdsEqual(["AAA"], ["AAA", "BBB"])).toBe(false)
+		expect(merchantIdsEqual([], [])).toBe(true)
+		expect(merchantIdsEqual([], ["AAA"])).toBe(false)
 	})
 })
 

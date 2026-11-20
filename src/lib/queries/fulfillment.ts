@@ -46,6 +46,7 @@ export interface FulfillmentFilters {
 export interface FulfillmentGrantCardRow {
 	amountCents: number
 	error: string | null
+	grantCardMerchantIds: readonly string[]
 	hcbCardGrantId: string | null
 	id: string
 	status: Models.public_HcbShopGrantCard["status"]
@@ -62,6 +63,7 @@ export interface FulfillmentOrderRow {
 	fulfillmentStage: ShopFulfillmentStage
 	grantCard: FulfillmentGrantCardRow | null
 	grantCardCents: Models.public_ShopOrder["grantCardCents"]
+	grantCardMerchantIds: readonly string[]
 	holdReason: string | null
 	id: string
 	itemNameSnapshot: string
@@ -87,9 +89,11 @@ export interface FulfillmentOrderModel {
 	fulfillmentMethod: Models.public_ShopOrder["fulfillmentMethod"]
 	fulfillmentStage: Models.public_ShopOrder["fulfillmentStage"]
 	grantCardCents: Models.public_ShopOrder["grantCardCents"]
+	grantCardMerchantIds: readonly string[]
 	grantCards: {
 		amountCents: number
 		error: string | null
+		grantCardMerchantIds: readonly string[]
 		hcbCardGrantId: string | null
 		id: string
 		status: Models.public_HcbShopGrantCard["status"]
@@ -158,6 +162,7 @@ export async function listFulfillmentOrders(
 			"fulfillmentMethod",
 			"fulfillmentStage",
 			"grantCardCents",
+			"grantCardMerchantIds",
 			"holdReason",
 			"id",
 			"itemNameSnapshot",
@@ -172,7 +177,7 @@ export async function listFulfillmentOrders(
 		)
 		.include("grantCards", cards =>
 			cards
-				.select("amountCents", "error", "hcbCardGrantId", "id", "status")
+				.select("amountCents", "error", "grantCardMerchantIds", "hcbCardGrantId", "id", "status")
 				// The sheet acts on the newest attempt; older failures and cancellations stay as its history.
 				.orderBy([card => card.createdAt.desc(), card => card.id.desc()]),
 		)
@@ -190,6 +195,7 @@ export async function listFulfillmentOrders(
 			fulfillmentMethod: row.fulfillmentMethod,
 			fulfillmentStage: row.fulfillmentStage,
 			grantCardCents: row.grantCardCents,
+			grantCardMerchantIds: row.grantCardMerchantIds,
 			grantCards: row.grantCards,
 			holdReason: row.holdReason,
 			id: row.id,

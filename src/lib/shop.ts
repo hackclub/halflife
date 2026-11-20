@@ -29,7 +29,10 @@ import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/l
  *
  * `costUsd` is deliberately absent: it is what Hack Club pays for the item, not what it costs the buyer. The old `...item` spread shipped it to the browser in the RSC payload even though nothing rendered it.
  */
-export type ShopItemPublic = Omit<Models.public_ShopItem, "costUsd" | "orders" | "regionPrices">
+export type ShopItemPublic = Omit<
+	Models.public_ShopItem,
+	"costUsd" | "grantCardMerchantIds" | "orders" | "regionPrices"
+>
 
 /**
  * The buyer's own view of an order, shared by the purchase response and the order list so the two cannot drift. `unitCostUsd` (what Hack Club pays), the encrypted address/phone and `lastActorId` are staff-side and never selected. Timestamps are Dates, parsed from the PostgreSQL text Prisma 8 returns.
@@ -90,7 +93,7 @@ export const shopOrderPublicFields = [
  *
  * What the buyer wrote about the order. Staff are the ones who fulfil it, so it is theirs to read; the buyer's own view above leaves it out, because it is a note to staff rather than part of the order's state.
  */
-export const shopOrderStaffFields = [...shopOrderPublicFields, "unitCostUsd", "userId"] as const
+export const shopOrderStaffFields = [...shopOrderPublicFields, "grantCardMerchantIds", "unitCostUsd", "userId"] as const
 
 /** One staff-view row as Prisma 8 reads it: timestamps stay text until each reader parses them. */
 export type ShopOrderStaffRow = Pick<Models.public_ShopOrder, (typeof shopOrderStaffFields)[number]> & {
@@ -425,6 +428,7 @@ export async function purchase(
 		const created = await tx.orm.public.ShopOrder.create({
 			deliveryPreference,
 			grantCardCents,
+			grantCardMerchantIds: deliveryPreference === ShopDeliveryPreference.GRANT_CARD ? fresh.grantCardMerchantIds : [],
 			idempotencyKey: idempotencyKey ?? null,
 			itemNameSnapshot: fresh.name,
 			quantity,

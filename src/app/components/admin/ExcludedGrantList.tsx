@@ -66,7 +66,7 @@ export function ExcludedGrantList({ rows }: Readonly<{ rows: ExcludedGrantRow[] 
 						value={query}
 					/>
 				</div>
-				<div className="hl-filters__grid">
+				<div className="hl-filters__grid hl-filters__grid--reason">
 					<Field label="Reason">
 						<Select
 							onChange={event => {
@@ -118,7 +118,20 @@ export function ExcludedGrantList({ rows }: Readonly<{ rows: ExcludedGrantRow[] 
 									row.ownerName
 								)}
 							</td>
-							<td className={`hl-reason--${row.tone}`}>{row.reason}</td>
+							<td>
+								{/* The reason is the filter for it, the way a theme or tier is elsewhere in the console: pressing one narrows the list to it, and the Reason select above shows what was picked. */}
+								<button
+									className={`hl-reason-filter hl-reason--${row.tone}`}
+									onClick={() => {
+										setReason(row.reason)
+										setShown(STEP)
+									}}
+									title={`Show only ${row.reason}`}
+									type="button"
+								>
+									{row.reason}
+								</button>
+							</td>
 						</tr>
 					))}
 				</Table>

@@ -1,0 +1,353 @@
+[
+  {
+    "id": "column.public.hcb_shop_grant_card.grantCardMerchantIds",
+    "label": "Add column \"grantCardMerchantIds\" to \"hcb_shop_grant_card\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "grantCardMerchantIds",
+        "table": "hcb_shop_grant_card"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"grantCardMerchantIds\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_shop_grant_card",
+          "grantCardMerchantIds"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"grantCardMerchantIds\" on \"hcb_shop_grant_card\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"grantCardMerchantIds\"",
+        "sql": "ALTER TABLE \"public\".\"hcb_shop_grant_card\" ADD COLUMN \"grantCardMerchantIds\" text[] DEFAULT '{}' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"grantCardMerchantIds\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_shop_grant_card",
+          "grantCardMerchantIds"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"grantCardMerchantIds\" on \"hcb_shop_grant_card\""
+        }
+      },
+      {
+        "description": "verify column \"grantCardMerchantIds\" has type \"text[]\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_shop_grant_card",
+          "grantCardMerchantIds",
+          "text[]"
+        ]
+      },
+      {
+        "description": "verify column \"grantCardMerchantIds\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_shop_grant_card",
+          "grantCardMerchantIds",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.shop_item.grantCardMerchantIds",
+    "label": "Add column \"grantCardMerchantIds\" to \"shop_item\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "grantCardMerchantIds",
+        "table": "shop_item"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"grantCardMerchantIds\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_item",
+          "grantCardMerchantIds"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"grantCardMerchantIds\" on \"shop_item\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"grantCardMerchantIds\"",
+        "sql": "ALTER TABLE \"public\".\"shop_item\" ADD COLUMN \"grantCardMerchantIds\" text[] DEFAULT '{}' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"grantCardMerchantIds\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_item",
+          "grantCardMerchantIds"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"grantCardMerchantIds\" on \"shop_item\""
+        }
+      },
+      {
+        "description": "verify column \"grantCardMerchantIds\" has type \"text[]\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "shop_item",
+          "grantCardMerchantIds",
+          "text[]"
+        ]
+      },
+      {
+        "description": "verify column \"grantCardMerchantIds\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_item",
+          "grantCardMerchantIds",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.shop_order.grantCardMerchantIds",
+    "label": "Add column \"grantCardMerchantIds\" to \"shop_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "grantCardMerchantIds",
+        "table": "shop_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"grantCardMerchantIds\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "grantCardMerchantIds"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"grantCardMerchantIds\" on \"shop_order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"grantCardMerchantIds\"",
+        "sql": "ALTER TABLE \"public\".\"shop_order\" ADD COLUMN \"grantCardMerchantIds\" text[] DEFAULT '{}' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"grantCardMerchantIds\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "grantCardMerchantIds"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"grantCardMerchantIds\" on \"shop_order\""
+        }
+      },
+      {
+        "description": "verify column \"grantCardMerchantIds\" has type \"text[]\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "grantCardMerchantIds",
+          "text[]"
+        ]
+      },
+      {
+        "description": "verify column \"grantCardMerchantIds\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "shop_order",
+          "grantCardMerchantIds",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.hcb_shop_grant_card.hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09",
+    "label": "Add check constraint \"hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09\" on \"hcb_shop_grant_card\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09",
+        "table": "hcb_shop_grant_card"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09",
+          "public",
+          "\"public\".\"hcb_shop_grant_card\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09\" on \"hcb_shop_grant_card\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09\"",
+        "sql": "ALTER TABLE \"public\".\"hcb_shop_grant_card\" ADD CONSTRAINT \"hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09\" CHECK (array_position(\"grantCardMerchantIds\", NULL) IS NULL)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "hcb_shop_grant_card_grantCardMerchantIds_elem_not_null_f610ed09",
+          "public",
+          "\"public\".\"hcb_shop_grant_card\"",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.shop_item.shop_item_grantCardMerchantIds_elem_not_null_f610ed09",
+    "label": "Add check constraint \"shop_item_grantCardMerchantIds_elem_not_null_f610ed09\" on \"shop_item\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "shop_item_grantCardMerchantIds_elem_not_null_f610ed09",
+        "table": "shop_item"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"shop_item_grantCardMerchantIds_elem_not_null_f610ed09\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shop_item_grantCardMerchantIds_elem_not_null_f610ed09",
+          "public",
+          "\"public\".\"shop_item\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"shop_item_grantCardMerchantIds_elem_not_null_f610ed09\" on \"shop_item\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"shop_item_grantCardMerchantIds_elem_not_null_f610ed09\"",
+        "sql": "ALTER TABLE \"public\".\"shop_item\" ADD CONSTRAINT \"shop_item_grantCardMerchantIds_elem_not_null_f610ed09\" CHECK (array_position(\"grantCardMerchantIds\", NULL) IS NULL)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"shop_item_grantCardMerchantIds_elem_not_null_f610ed09\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "shop_item_grantCardMerchantIds_elem_not_null_f610ed09",
+          "public",
+          "\"public\".\"shop_item\"",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.shop_order.shop_order_grantCardMerchantIds_elem_not_null_f610ed09",
+    "label": "Add check constraint \"shop_order_grantCardMerchantIds_elem_not_null_f610ed09\" on \"shop_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "shop_order_grantCardMerchantIds_elem_not_null_f610ed09",
+        "table": "shop_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"shop_order_grantCardMerchantIds_elem_not_null_f610ed09\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shop_order_grantCardMerchantIds_elem_not_null_f610ed09",
+          "public",
+          "\"public\".\"shop_order\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"shop_order_grantCardMerchantIds_elem_not_null_f610ed09\" on \"shop_order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"shop_order_grantCardMerchantIds_elem_not_null_f610ed09\"",
+        "sql": "ALTER TABLE \"public\".\"shop_order\" ADD CONSTRAINT \"shop_order_grantCardMerchantIds_elem_not_null_f610ed09\" CHECK (array_position(\"grantCardMerchantIds\", NULL) IS NULL)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"shop_order_grantCardMerchantIds_elem_not_null_f610ed09\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "shop_order_grantCardMerchantIds_elem_not_null_f610ed09",
+          "public",
+          "\"public\".\"shop_order\"",
+          "c"
+        ]
+      }
+    ]
+  }
+]

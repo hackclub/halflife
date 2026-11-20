@@ -540,6 +540,8 @@ namespace public {
     category                 pg.enum(ShopItemCategory) @default("PRINTER_UPGRADE")
     priceCredits             Int
     costUsd                  Float?
+    /// Stripe merchant network IDs a grant card for this item may spend at. Empty means the card is unrestricted.
+    grantCardMerchantIds     String[]                  @default([])
     maxPerUser               Int                       @default(1)
     stock                    Int?
     requiresPrinterQualified Boolean                   @default(true)
@@ -566,6 +568,8 @@ namespace public {
     unitCostUsd          Float?
     /// What a grant card for this order pays, in cents: the item's cost to us times the quantity, fixed at purchase so a later catalogue price change cannot change the card. Null on an order that is not a grant card.
     grantCardCents       Int?
+    /// The item's merchant allowlist at purchase. Empty means the card is unrestricted. Snapshotted so a later catalogue edit cannot change an order already placed.
+    grantCardMerchantIds String[]                        @default([])
     stockDebited         Boolean?
     status               pg.enum(ShopOrderStatus)        @default("PENDING")
     holdReason           String?
@@ -606,6 +610,8 @@ namespace public {
     shopOrderId    String
     email          String
     amountCents    Int
+    /// The merchant allowlist this attempt asked HCB for. Empty means the card is unrestricted.
+    grantCardMerchantIds String[]               @default([])
     status         pg.enum(HcbGrantCardStatus) @default("PENDING")
     hcbCardGrantId String?
     hcbStatus      String?

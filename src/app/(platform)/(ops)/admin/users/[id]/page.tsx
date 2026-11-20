@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { CopyEmail } from "@/app/components/admin/CopyEmail"
 import { TabKeys } from "@/app/components/admin/TabKeys"
 import { type TimelineEvent, UserTimeline } from "@/app/components/admin/UserTimeline"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -185,7 +186,7 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 					</div>
 				}
 				compact
-				subtitle={user.email}
+				subtitle={<CopyEmail email={user.email} />}
 				title={displayName(user, user.email)}
 			/>
 			<TabKeys

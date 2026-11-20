@@ -53,6 +53,7 @@ export function FulfillmentRow({ filters, order }: Readonly<{ filters: string; o
 	const panelId = `order-manage-${order.id}`
 	// The card's own amount is the one it was claimed with; the order's is what it would be issued for now.
 	const cardCents = order.grantCard?.amountCents ?? order.grantCardCents
+	const merchantIds = order.grantCard?.grantCardMerchantIds ?? order.grantCardMerchantIds
 	const issueConfirm =
 		cardCents === null
 			? undefined
@@ -204,6 +205,11 @@ export function FulfillmentRow({ filters, order }: Readonly<{ filters: string; o
 							) : (
 								<p className="hl-hint">{formatUsd(cardCents / 100)} to the buyer&rsquo;s HCB account.</p>
 							)}
+							{merchantIds.length > 0 ? (
+								<p className="hl-hint">
+									Usable only at merchant IDs: <span className="hl-mono">{merchantIds.join(", ")}</span>
+								</p>
+							) : null}
 							{order.grantCard ? (
 								<>
 									<Badge tone={CARD_STATUS[order.grantCard.status].tone}>

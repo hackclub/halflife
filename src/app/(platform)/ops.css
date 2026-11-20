@@ -307,6 +307,22 @@
 		min-height: 7rem;
 		resize: vertical;
 	}
+	/*
+	 * An exclusion's reason is also the filter for it, so its cell is a button. It takes the cell's own type and colour rather than a button's, because the tone below is what says what the reason means; the underline on hover and focus is the only thing that marks it as a control. Declared before the tones so a reason's colour wins over the inherited one.
+	 */
+	.hl-reason-filter {
+		padding: 0;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		cursor: pointer;
+		background: none;
+		border: 0;
+	}
+	.hl-reason-filter:hover,
+	.hl-reason-filter:focus-visible {
+		text-decoration: underline;
+	}
 	/* An exclusion's reason carries the colour of what it means: something to fix, something waiting on the pipeline, something waiting on the maker, or something already settled. */
 	.hl-reason--danger {
 		color: var(--color-danger-ink);
@@ -529,12 +545,13 @@
 		padding: 0.35rem 0.8rem;
 		font-size: 0.9rem;
 	}
-	/* A key cap is a box the label sits centred in: inline-flex centres the text on both axes, and the padding is even top and bottom. */
+	/*
+	 * A key cap is a box the label sits centred in: inline-flex centres the text across the box, and the padding puts it on the box's centre line. That padding is not even top and bottom: a mono face's ascent leaves more room above the capitals than the baseline leaves below them, so centring the line box alone drew the letters a pixel and a half high, with the cap's floor taking the difference.
+	 */
 	.hl-admin-kbd {
 		display: inline-flex;
-		align-items: center;
 		justify-content: center;
-		padding: 0.1rem 0.4rem;
+		padding: 0.2rem 0.4rem 0;
 		font-family: var(--font-mono);
 		font-size: 0.75rem;
 		line-height: 1.2;
@@ -1015,6 +1032,10 @@
 		flex: 0 1 14rem;
 		grid-template-columns: minmax(0, 1fr);
 	}
+	/* A field holding sentences rather than a status word – the excluded list's reasons – is wider, so the reason in force is not cut off after a word and a half. */
+	.hl-filters--search-inline > .hl-filters__grid--reason {
+		flex-basis: 18rem;
+	}
 
 	/* A count beside a label: quieter than the label, so the number reads as a figure rather than part of the name. */
 	.hl-count {
@@ -1064,6 +1085,39 @@
 	.hl-attention span {
 		font-size: 0.9rem;
 		color: var(--color-ink-muted);
+	}
+
+	/*
+	 * ── Overview: needs attention beside the headline figures ────────────────
+	 * The summary opens on the work waiting on staff and the three figures that size the programme. On a narrow summary the figures take their own row, which is how the tab read before there was room for both; once the band is wide enough they share one, rather than leaving the attention cards on a line of their own with half a panel's width empty beside them.
+	 *
+	 * The band is its own container, so the switch follows the room the console actually has: folding the sidebar away is enough to bring the two together, without a viewport breakpoint that would put them side by side in a column that cannot hold them.
+	 */
+	.hl-overview-band {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+		/* Beside the panel the figures sit on its floor, so the row of cards and the row of figures share a bottom edge instead of the figures hanging under the panel's title. A wrapped line holds one item, which makes the alignment moot there. */
+		align-items: end;
+		container-type: inline-size;
+	}
+	@container (min-width: 63rem) {
+		/* The figures keep a rail a stat wide; the panel takes whatever is left. */
+		.hl-overview-band > .hl-panel {
+			flex: 1 1 0;
+		}
+		.hl-overview-figures {
+			flex: 0 0 26rem;
+		}
+		/* Three cards on one line, so each gives up its declared minimum rather than the third dropping onto a second row of its own. The panel has the room for this only because the cards shrink with it. */
+		.hl-overview-band .hl-attention a {
+			flex: 0 1 11rem;
+			min-width: 0;
+		}
+		.hl-overview-figures .hl-stat {
+			flex: 1 1 8rem;
+			min-width: 0;
+		}
 	}
 
 	/* ── File inputs ───────────────────────────────────────────────────────── */
@@ -1119,15 +1173,17 @@
 	.hl-admin-side a {
 		font-size: 0.95rem;
 	}
-	/* A select is as wide as its longest option needs, not the whole form: the admin's short choice lists would otherwise stretch across the page. */
-	.hl-admin-main .hl-select {
+	/* A select is as wide as its longest option needs, not the whole form: the admin's short choice lists and the review console's decision fields would otherwise stretch across the page. */
+	.hl-admin-main .hl-select,
+	.hl-shell .hl-select {
 		align-self: flex-start;
 		width: auto;
 		min-width: 12rem;
 		max-width: 100%;
 	}
 	/* A select in a filter grid fills its column rather than sizing to its longest option, so a row of filters has one width for every control and one gap between every pair. */
-	.hl-admin-main .hl-filters__grid .hl-select {
+	.hl-admin-main .hl-filters__grid .hl-select,
+	.hl-shell .hl-filters__grid .hl-select {
 		width: 100%;
 		min-width: 0;
 	}
@@ -1688,8 +1744,9 @@ html:has(.hl-admin) {
 		width: 100%;
 	}
 }
-/* A number is a short value – days, minutes, cents – so it takes a field's own width rather than the whole form's, the way a select in the console does. */
-.hl-admin-main .hl-input[type="number"] {
+/* A number is a short value – hours, days, cents – so it takes a field's own width rather than the whole form's, the way a select in the console does. */
+.hl-admin-main .hl-input[type="number"],
+.hl-shell .hl-input[type="number"] {
 	width: min(100%, 9rem);
 }
 /* Two short fields beside each other once there is room for both, stacked when there is not. */
