@@ -61,7 +61,8 @@ export async function checkUnified(opts: {
 	email: string
 	playableUrl: string
 }): Promise<UnifiedCheck> {
-	const apiKey = process.env.AIRTABLE_API_KEY
+	// A key of its own when there is one: Half Life's own key can't read the unified base.
+	const apiKey = process.env.AIRTABLE_UNIFIED_API_KEY || process.env.AIRTABLE_API_KEY
 	const baseId = process.env.AIRTABLE_UNIFIED_BASE_ID
 	const table = process.env.AIRTABLE_UNIFIED_APPROVED_TABLE
 	if (!apiKey || !baseId || !table) return { configured: false }
