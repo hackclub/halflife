@@ -144,7 +144,8 @@ function BatchItemPanel({ group }: Readonly<{ group: BatchGroup }>) {
 			}
 			title={
 				<>
-					{group.itemName} <span className="hl-hint">{chosen.length} selected</span>
+					<Link href={`/admin/shop/${group.shopItemId}`}>{group.itemName}</Link>{" "}
+					<span className="hl-hint">{chosen.length} selected</span>
 				</>
 			}
 		>
