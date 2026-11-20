@@ -1076,8 +1076,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 1rem;
-		/* Beside the panel the figures centre on it, so they line up with the attention cards rather than with the panel's title. A wrapped line holds one item, which makes the alignment moot there. */
-		align-items: center;
+		/* Beside the panel the figures sit on its floor, so the row of cards and the row of figures share a bottom edge instead of the figures hanging under the panel's title. A wrapped line holds one item, which makes the alignment moot there. */
+		align-items: end;
 		container-type: inline-size;
 	}
 	@container (min-width: 63rem) {
