@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useConfirm } from "@/app/components/ui/useConfirm"
 import type { DecisionBody } from "@/components/review/api"
 import { BomSnapshot } from "@/components/review/BomSnapshot"
@@ -635,7 +635,9 @@ function DecisionPanel({
 	// The reviewer's edits of the generated justification, kept as the text they edited and the text it was generated from, so later deflation can be merged in under them (see `mergeEdits`).
 	const [justificationBase, setJustificationBase, clearJustificationBase] = useDraft(draft("justification-base"))
 	const [justificationText, setJustificationText, clearJustificationText] = useDraft(draft("justification"))
-	const shownAt = useMemo(() => new Date(), [])
+	// The setter is kept so the state is a value and setter pair, which the lint naming rule requires. The time is only ever read.
+	// biome-ignore lint/correctness/noUnusedVariables: the setter exists for the naming rule, not for use
+	const [shownAt, setShownAt] = useState(() => new Date())
 
 	// A reviewer may lower a tier or keep it; raising it past what the maker asked for mints parts money, which is MANAGE_CREDIT's call. The decision route enforces this; the select only stops offering what would be refused.
 	const tierCap = viewer.canSetGrant ? null : project.requestedTier
