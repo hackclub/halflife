@@ -92,7 +92,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	const filterKey = filterParams.toString()
 	const listParams = new URLSearchParams(filterParams)
 	listParams.set("limit", String(FULFILLMENT_PAGE_SIZE))
-	// A row's status links to the sheet filtered to its stage, so the address keeps the other filters but not the page's own stage.
+	// A row's status links to the sheet filtered to its own status, so the address keeps the other filters and the row's status replaces the page's.
 	const linkParams = new URLSearchParams(
 		Object.entries({
 			delivery: search.delivery,
