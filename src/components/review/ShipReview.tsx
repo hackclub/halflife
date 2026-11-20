@@ -74,6 +74,13 @@ export function ShipReview({
 }
 
 /**
+ * Rewrites the address without a navigation, and tells Next's router about it.
+ *
+ * Next only picks up a `replaceState` whose state is not its own, so passing `history.state` on would leave the router on the old address: the next `router.refresh()` – a claim runs one – puts that address back, and a refresh that falls back to a full page load loads it.
+ */
+const replaceAddress = (url: URL): void => history.replaceState(null, "", url)
+
+/**
  * The open tab, and whether the file viewer has been opened yet (it stays mounted once it has, so going back to it does not re-read the repository).
  *
  * The tab is kept in the address as well, so a reload lands back on it. `router.refresh()` – which every deflation autosave runs – turns into a full page load when the server answers with a different build (any deploy since the page opened) or an error, and without this that load drops the reviewer back on the submission tab mid-edit.
@@ -88,7 +95,7 @@ function useReviewTab(initialTab: ReviewTab): { filesOpened: boolean; showTab(ne
 		const url = new URL(location.href)
 		if (next === "submission") url.searchParams.delete("tab")
 		else url.searchParams.set("tab", next)
-		history.replaceState(history.state, "", url)
+		replaceAddress(url)
 	}
 
 	return { filesOpened, showTab, tab }
@@ -115,7 +122,7 @@ function useClaimOnArrival({
 		const url = new URL(location.href)
 		if (!url.searchParams.has("claim")) return
 		url.searchParams.delete("claim")
-		history.replaceState(history.state, "", url)
+		replaceAddress(url)
 		if (mine) return
 		const moveOn = (): void => router.replace(nextShipHref(nextId))
 		if (!canClaim) {
