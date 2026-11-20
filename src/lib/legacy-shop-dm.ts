@@ -124,7 +124,7 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 		error: dm.error,
 		id: dm.id,
 		orders: rows
-			.filter(row => row.dmId === dm.id && row.shopOrder)
+			.filter(row => row.dmId === dm.id && Boolean(row.shopOrder))
 			.map(row => ({
 				choice: row.choice,
 				choiceAt: row.choiceAt,
@@ -133,7 +133,7 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 				orderNumber: row.shopOrder?.orderNumber ?? 0,
 				status: row.status,
 			}))
-			.sort((a, b) => a.orderNumber - b.orderNumber),
+			.toSorted((a, b) => a.orderNumber - b.orderNumber),
 		recipientId: recipients.get(dm.slackId)?.id ?? null,
 		recipientName: recipients.get(dm.slackId)?.name ?? null,
 		sentAt: dm.sentAt,
@@ -323,7 +323,7 @@ export async function recordLegacyShopChoice(input: {
 			orderId: line.shopOrderId,
 			orderNumber: line.shopOrder?.orderNumber ?? null,
 		}))
-		.sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0))
+		.toSorted((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0))
 
 	return { channel: dm.channel, message: legacyShopMessage(lines, false, configuredOrigin()), ok: true, ts: dm.ts }
 }

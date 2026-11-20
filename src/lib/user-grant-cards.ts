@@ -85,7 +85,7 @@ export async function getUserGrantCards(userId: string): Promise<UserGrantCards>
 				status: card.status,
 			})),
 		)
-		.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+		.toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
 
 	return { project: projectRows, shop }
 }

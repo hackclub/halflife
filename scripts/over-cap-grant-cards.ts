@@ -115,4 +115,8 @@ async function main(): Promise<void> {
 	console.error(`${over} card(s) issued over their maximum, out of ${issued.length} card(s) checked`)
 }
 
-await main().finally(() => db.close())
+try {
+	await main()
+} finally {
+	await db.close()
+}

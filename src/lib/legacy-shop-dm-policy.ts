@@ -161,7 +161,7 @@ export function groupLegacyShopBuyers(
 		const slackId = user?.slackId ?? null
 		return {
 			name: user?.name ?? null,
-			orders: list.sort((a, b) => a.orderNumber - b.orderNumber),
+			orders: list.toSorted((a, b) => a.orderNumber - b.orderNumber),
 			skipReason: legacyShopSkipReason(slackId, list.length),
 			slackId,
 			userId,
