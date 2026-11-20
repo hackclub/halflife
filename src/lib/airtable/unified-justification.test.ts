@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { RESEARCH_TIME_STATEMENT } from "@/lib/airtable/research-statement"
 import {
 	NO_FEATURES_RECORDED,
 	previewUnifiedJustification,
@@ -93,6 +94,7 @@ describe("previewUnifiedJustification", () => {
 			technicalFeatures: "x",
 		})
 		expect(whole).not.toContain("[DEFLATION JUSTIFICATION]")
-		expect(whole).not.toContain("[ADDITIONAL JUSTIFICATION]")
+		// The research-time statement is on every Additional Justification cell, so the section is there even with no note.
+		expect(whole).toContain(`[ADDITIONAL JUSTIFICATION]\n${RESEARCH_TIME_STATEMENT}`)
 	})
 })
