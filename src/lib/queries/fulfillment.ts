@@ -40,6 +40,8 @@ export interface FulfillmentFilters {
 	/** Inclusive, from the start of this instant. */
 	placedFrom?: Date
 	stage?: ShopFulfillmentStage
+	/** The order's own status, so pending and fulfilled can be told apart within one stage. */
+	status?: ShopOrderStatus
 }
 
 /** The latest card attempt on an order, if it has one. Older attempts are history; the sheet acts on the newest. */
@@ -123,7 +125,7 @@ export async function listFulfillmentOrders(
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
 	// Every filter ANDs, as the old AND array did: the cursor pages within the filtered list rather than cancelling a filter out.
-	const { delivery, method, placedBefore, placedFrom, stage } = filters
+	const { delivery, method, placedBefore, placedFrom, stage, status } = filters
 	let filtered = db.orm.public.ShopOrder.where(order => order.status.in(FULFILLMENT_ORDER_STATUSES)).orderBy([
 		order => order.placedAt.desc(),
 		order => order.id.desc(),
@@ -146,6 +148,7 @@ export async function listFulfillmentOrders(
 				? or(order.status.eq(ShopOrderStatus.CANCELLED), order.fulfillmentStage.eq(ShopFulfillmentStage.CANCELLED))
 				: and(order.fulfillmentStage.eq(stage), order.status.neq(ShopOrderStatus.CANCELLED)),
 		)
+	if (status) filtered = filtered.where({ status })
 	const position = readCursor(opts.cursor)
 	// The sheet is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
 	const paged =
