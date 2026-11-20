@@ -637,6 +637,7 @@ function DecisionPanel({
 	const [justificationText, setJustificationText, clearJustificationText] = useDraft(draft("justification"))
 	// The setter is kept so the state is a value and setter pair, which the lint naming rule requires. The time is only ever read.
 	// biome-ignore lint/correctness/noUnusedVariables: the setter exists for the naming rule, not for use
+	// oxlint-disable-next-line eslint/no-unused-vars -- the same setter, kept for the same rule
 	const [shownAt, setShownAt] = useState(() => new Date())
 
 	// A reviewer may lower a tier or keep it; raising it past what the maker asked for mints parts money, which is MANAGE_CREDIT's call. The decision route enforces this; the select only stops offering what would be refused.
