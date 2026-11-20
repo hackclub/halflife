@@ -41,10 +41,20 @@ import type { ReviewDetail, ReviewViewer } from "@/lib/review-platform/types"
 /** Half Life's redirect to the maker's Telescreen profile (lib/review-platform/telescreen). */
 const telescreenHref = (submissionId: string): string => `/api/reviews/${encodeURIComponent(submissionId)}/telescreen`
 
+/** Where moving on from a ship goes: the next one, which `?claim` has claim itself on arrival (see `useClaimOnArrival`) so a run of reviews needs no "Claim review" between them, or the queue when there is none. */
+const nextShipHref = (nextId: string | null): string => (nextId ? `/reviews/${nextId}?claim` : "/reviews")
+
 const FileViewer = lazy(() => import("@/components/review/FileViewer"))
 
 type ReviewTab = "submission" | "deflation" | "files"
 type Action = "approve" | "return" | "reject"
+
+/** The tabs in the order they are shown. */
+const TAB_LABELS: readonly (readonly [ReviewTab, string])[] = Object.freeze([
+	["submission", "Submission"],
+	["files", "Files"],
+	["deflation", "Deflation"],
+])
 
 /**
  * The review screen: Fabricate's `Admin/Ships/Show`, on Half Life's data.
@@ -53,6 +63,40 @@ type Action = "approve" | "return" | "reject"
  */
 export function ShipReview({ detail, viewer }: { detail: ReviewDetail; viewer: ReviewViewer }) {
 	return <ShipReviewInner detail={detail} key={detail.ship.id} viewer={viewer} />
+}
+
+/**
+ * Arriving from the ship before – a decision, a skip or "n" (see `nextShipHref`) – claims this ship straight away.
+ *
+ * The flag comes off the address first, so a reload or a second effect run does not claim again. A ship that cannot be claimed – taken in the meantime, decided, or not in review – is passed over for the one after it, carrying the flag on, and replaced in history so going back does not land on it.
+ */
+function useClaimOnArrival({
+	canClaim,
+	claim,
+	mine,
+	nextId,
+}: {
+	canClaim: boolean
+	claim(): Promise<boolean>
+	mine: boolean
+	nextId: string | null
+}): void {
+	const router = useRouter()
+	useEffect(() => {
+		const url = new URL(location.href)
+		if (!url.searchParams.has("claim")) return
+		url.searchParams.delete("claim")
+		history.replaceState(history.state, "", url)
+		if (mine) return
+		const moveOn = (): void => router.replace(nextShipHref(nextId))
+		if (!canClaim) {
+			moveOn()
+			return
+		}
+		void (async () => {
+			if (!(await claim())) moveOn()
+		})()
+	}, [canClaim, claim, mine, nextId, router])
 }
 
 function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: ReviewViewer }) {
@@ -139,20 +183,24 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 		if (next === "files") setFilesOpened(true)
 	}
 
-	const claim = useCallback(async () => {
+	const claim = useCallback(async (): Promise<boolean> => {
 		setErrors([])
 		try {
 			await claimSubmission(ship.id)
 			setNow(Date.now())
 			router.refresh()
+			return true
 		} catch (err) {
 			setErrors([err instanceof Error ? err.message : "Couldn't claim this review"])
+			return false
 		}
 	}, [router, ship.id])
 
+	useClaimOnArrival({ canClaim, claim, mine, nextId: detail.nextId })
+
 	const skip = useCallback(async () => {
 		if (mine) await releaseQuietly(ship.id)
-		router.push(detail.nextId ? `/reviews/${detail.nextId}` : "/reviews")
+		router.push(nextShipHref(detail.nextId))
 	}, [detail.nextId, mine, router, ship.id])
 
 	const toggleDecision = useCallback(() => setDecisionOpen(!decisionOpen), [decisionOpen, setDecisionOpen])
@@ -164,7 +212,7 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 			if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable='true']")) return
 			if (e.key === "c" && canClaim) void claim()
 			else if (e.key === "s" && pending) void skip()
-			else if (e.key === "n" && detail.nextId) router.push(`/reviews/${detail.nextId}`)
+			else if (e.key === "n" && detail.nextId) router.push(nextShipHref(detail.nextId))
 			else if (e.key === "d" && filesView) toggleDecision()
 			else return
 			e.preventDefault()
@@ -226,27 +274,16 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 			/>
 
 			<nav aria-label="Review sections" className="tabs tabs--review">
-				<button
-					className={tab === "submission" ? "tabs__tab is-active" : "tabs__tab"}
-					onClick={() => showTab("submission")}
-					type="button"
-				>
-					Submission
-				</button>
-				<button
-					className={tab === "files" ? "tabs__tab is-active" : "tabs__tab"}
-					onClick={() => showTab("files")}
-					type="button"
-				>
-					Files
-				</button>
-				<button
-					className={tab === "deflation" ? "tabs__tab is-active" : "tabs__tab"}
-					onClick={() => showTab("deflation")}
-					type="button"
-				>
-					Deflation
-				</button>
+				{TAB_LABELS.map(([id, label]) => (
+					<button
+						className={tab === id ? "tabs__tab is-active" : "tabs__tab"}
+						key={id}
+						onClick={() => showTab(id)}
+						type="button"
+					>
+						{label}
+					</button>
+				))}
 				<div className="tabs__aside">
 					{isSafeUrl(project.repoLink) ? (
 						<SafeLink className="btn btn--outline" href={project.repoLink}>
@@ -616,7 +653,7 @@ function DecisionPanel({
 			clearReason()
 			clearTechnicalFeatures()
 			clearDeflationReason()
-			router.push(detail.nextId ? `/reviews/${detail.nextId}` : "/reviews")
+			router.push(nextShipHref(detail.nextId))
 			router.refresh()
 		} catch (err) {
 			onErrors([err instanceof Error ? err.message : "Couldn't record this decision"])
