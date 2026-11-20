@@ -29,7 +29,7 @@ const CHOICE_LABELS: { [_: string]: string } = {
 }
 
 const BUYER_INTRO =
-	"Some of your Half Life shop orders were placed before you could choose how to get them. For each one, tell us whether to ship the item to you or give you a grant card for its value. We'll confirm when physical fulfilment opens and what it covers before anything is sent."
+	"Some of your Half Life shop orders were placed before you could choose how to get them. For each one, tell us whether to ship the item to you or give you a grant card for its value. We'll confirm when physical fulfilment opens and what it covers before anything is sent. Physical items always ship to your primary mailing address as configured in <https://auth.hackclub.com/addresses|Hack Club Auth>."
 
 const TEST_INTRO =
 	"Test message from the Half Life admin panel. The buttons are here to check how the message looks; pressing them changes no order."
