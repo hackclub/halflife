@@ -72,8 +72,11 @@ export function DisputeThread({
 	const [body, setBody] = useState("")
 	const open = dispute.resolvedAt === null
 
-	const who = (fromReviewer: boolean): string =>
-		fromReviewer === (viewer === "reviewer") ? "You" : fromReviewer ? "A reviewer" : "The maker"
+	// A reviewer reading the thread sees who wrote each reviewer message; the maker never does, so the name is only ever read here.
+	const who = (part: { fromReviewer: boolean; reviewerName?: string | null }): string => {
+		if (part.fromReviewer && viewer === "reviewer") return part.reviewerName ?? "A reviewer"
+		return part.fromReviewer === (viewer === "reviewer") ? "You" : part.fromReviewer ? "A reviewer" : "The maker"
+	}
 
 	function reply() {
 		if (!body.trim()) return refuse("Write a reply first.")
@@ -100,7 +103,7 @@ export function DisputeThread({
 				{parts.map(part => (
 					<li className={skin.item} key={part.id}>
 						<span className={skin.meta}>
-							{who(part.fromReviewer)} · {fmtDate(part.at)}
+							{who(part)} · {fmtDate(part.at)}
 						</span>
 						<p className={skin.body}>{part.body}</p>
 					</li>

@@ -80,6 +80,8 @@ export interface DisputeMessage {
 	/** A reviewer wrote it, as opposed to the maker who raised the dispute. */
 	fromReviewer: boolean
 	id: string
+	/** The reviewer's name, for the review console only. The maker's page never gets it, so a maker sees "A reviewer". */
+	reviewerName?: string | null
 }
 
 /** A maker's dispute on a phase's latest decision, with the thread under it. */
