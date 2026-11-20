@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react"
 import { isVideoUrl } from "@/components/review/format"
+import { useMediaSrc } from "@/components/review/runtime"
 import { Icon } from "@/components/review/ui"
 
 /** A grid of thumbnails that opens into a full-screen viewer. Fabricate's `ImageGallery`, unchanged in behaviour. */
 export function ImageGallery({ urls }: { urls: string[] }) {
+	const mediaSrc = useMediaSrc()
 	const [index, setIndex] = useState<number | null>(null)
 	const dialog = useRef<HTMLDialogElement>(null)
 	const multiple = urls.length > 1
@@ -36,7 +38,7 @@ export function ImageGallery({ urls }: { urls: string[] }) {
 						}}
 					>
 						{isVideoUrl(url) ? (
-							<video muted playsInline preload="metadata" src={url} />
+							<video muted playsInline preload="metadata" src={mediaSrc(url)} />
 						) : (
 							<img alt="" loading="lazy" src={url} />
 						)}
@@ -61,7 +63,7 @@ export function ImageGallery({ urls }: { urls: string[] }) {
 					<>
 						{isVideoUrl(current) ? (
 							// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
-							<video autoPlay className="viewer__image" controls playsInline src={current} />
+							<video autoPlay className="viewer__image" controls playsInline src={mediaSrc(current)} />
 						) : (
 							<img alt="" className="viewer__image" src={current} />
 						)}

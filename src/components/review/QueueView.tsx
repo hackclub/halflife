@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useOptimistic, useTransition } from "react"
 import { ShipTable } from "@/components/review/ShipTable"
 import { PageHead, Paper } from "@/components/review/ui"
+import { HardLink } from "@/components/site/HardLink"
 import type { ReviewOption, ReviewQueue, ReviewStatus } from "@/lib/review-platform/types"
 
 interface Filters {
@@ -89,6 +90,9 @@ export function QueueView({
 		return () => window.clearInterval(id)
 	}, [pending, router])
 
+	// What "Save for offline" downloads: this page of the queue, the ones still to be decided. A full page load (HardLink), because the offline page runs under its own service worker.
+	const offlineIds = queue.rows.filter(row => row.status === "pending").map(row => row.id)
+
 	const set = (patch: Partial<Filters>): void => {
 		const next = { ...filters, ...patch }
 		startTransition(() => {
@@ -101,11 +105,21 @@ export function QueueView({
 		<>
 			<PageHead
 				actions={
-					canReviewUnified ? (
-						<Link className="btn btn--outline" href="/reviews/unified">
-							T2 review
-						</Link>
-					) : null
+					<>
+						{canReviewUnified ? (
+							<Link className="btn btn--outline btn--sm" href="/reviews/unified">
+								T2 review
+							</Link>
+						) : null}
+						{offlineIds.length > 0 ? (
+							<HardLink className="btn btn--outline btn--sm" href={`/reviews/offline?add=${offlineIds.join(",")}`}>
+								Save {offlineIds.length} for offline
+							</HardLink>
+						) : null}
+						<HardLink className="btn btn--ghost btn--sm" href="/reviews/offline">
+							Offline reviews
+						</HardLink>
+					</>
 				}
 				eyebrow="Ships"
 				title="Review queue"

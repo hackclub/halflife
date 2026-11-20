@@ -3,6 +3,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react"
 import { formatDuration } from "@/components/review/format"
 import { type LapseVideo, lapseId, loadLapse } from "@/components/review/lapse"
+import { useMediaSrc } from "@/components/review/runtime"
 import { Icon, SafeLink } from "@/components/review/ui"
 
 /**
@@ -78,6 +79,7 @@ export function TimelapsePlayer({
 	url: string
 }) {
 	const canPlay = Boolean(playable) && lapseId(url) !== null
+	const mediaSrc = useMediaSrc()
 	const [open, setOpen] = useState(Boolean(defaultOpen) && canPlay)
 	const [enlarged, setEnlarged] = useState(false)
 	const [video, setVideo] = useState<LapseVideo | null>(null)
@@ -106,7 +108,7 @@ export function TimelapsePlayer({
 		let live = true
 		void (async () => {
 			try {
-				const loaded = await loadLapse(url)
+				const loaded = await loadLapse(url, mediaSrc)
 				if (live) setVideo(loaded)
 			} catch {
 				if (live) setStatus("failed")
@@ -115,7 +117,7 @@ export function TimelapsePlayer({
 		return () => {
 			live = false
 		}
-	}, [canPlay, url])
+	}, [canPlay, mediaSrc, url])
 
 	useEffect(() => {
 		if (!enlarged) return
@@ -170,7 +172,7 @@ export function TimelapsePlayer({
 	async function load(): Promise<void> {
 		setStatus("loading")
 		try {
-			setVideo(await loadLapse(url))
+			setVideo(await loadLapse(url, mediaSrc))
 			setStatus("idle")
 		} catch {
 			setStatus("failed")

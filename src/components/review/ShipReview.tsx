@@ -1,19 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useConfirm } from "@/app/components/ui/useConfirm"
-import {
-	claim as claimSubmission,
-	closeDispute,
-	type DecisionBody,
-	decide,
-	overrideDecision,
-	releaseQuietly,
-	replyToDispute,
-	sendDisputeBack,
-} from "@/components/review/api"
+import type { DecisionBody } from "@/components/review/api"
 import { BomSnapshot } from "@/components/review/BomSnapshot"
 import { ClaimTimer } from "@/components/review/ClaimTimer"
 import { EntryReview, type EntrySave } from "@/components/review/EntryReview"
@@ -23,6 +13,7 @@ import { ImageGallery } from "@/components/review/ImageGallery"
 import { JournalEntryView } from "@/components/review/JournalEntryView"
 import { MarkdownEditor } from "@/components/review/MarkdownEditor"
 import { ResizeHandle } from "@/components/review/ResizeHandle"
+import { useReviewRuntime } from "@/components/review/runtime"
 import { ShipTable } from "@/components/review/ShipTable"
 import { Field, FormErrors, isSafeUrl, PageHead, Paper, SafeLink, StatusTag, TierTag } from "@/components/review/ui"
 import { HardLink } from "@/components/site/HardLink"
@@ -111,14 +102,14 @@ function useClaimOnArrival({
 	mine: boolean
 	nextId: string | null
 }): void {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	useEffect(() => {
 		const url = new URL(location.href)
 		if (!url.searchParams.has("claim")) return
 		url.searchParams.delete("claim")
 		replaceAddress(url)
 		if (mine) return
-		const moveOn = (): void => router.replace(nextShipHref(nextId))
+		const moveOn = (): void => runtime.replace(nextShipHref(nextId))
 		if (!canClaim) {
 			moveOn()
 			return
@@ -126,7 +117,7 @@ function useClaimOnArrival({
 		void (async () => {
 			if (!(await claim())) moveOn()
 		})()
-	}, [canClaim, claim, mine, nextId, router])
+	}, [canClaim, claim, mine, nextId, runtime])
 }
 
 function ShipReviewInner({
@@ -138,7 +129,7 @@ function ShipReviewInner({
 	initialTab: ReviewTab
 	viewer: ReviewViewer
 }) {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	const { breakdown, entries, maker, project, ship } = detail
 	const pending = ship.status === "pending"
 	const design = ship.kind === "design"
@@ -211,29 +202,29 @@ function ShipReviewInner({
 		const path = `/reviews/${ship.id}`
 		return () => {
 			if (location.pathname === path) return
-			void releaseQuietly(ship.id, true)
+			void runtime.releaseQuietly(ship.id, true)
 		}
-	}, [mine, ship.id])
+	}, [mine, runtime, ship.id])
 
 	const claim = useCallback(async (): Promise<boolean> => {
 		setErrors([])
 		try {
-			await claimSubmission(ship.id)
+			await runtime.claim(ship.id)
 			setNow(Date.now())
-			router.refresh()
+			runtime.refresh()
 			return true
 		} catch (err) {
 			setErrors([err instanceof Error ? err.message : "Couldn't claim this review"])
 			return false
 		}
-	}, [router, ship.id])
+	}, [runtime, ship.id])
 
 	useClaimOnArrival({ canClaim, claim, mine, nextId: detail.nextId })
 
 	const skip = useCallback(async () => {
-		if (mine) await releaseQuietly(ship.id)
-		router.push(nextShipHref(detail.nextId))
-	}, [detail.nextId, mine, router, ship.id])
+		if (mine) await runtime.releaseQuietly(ship.id)
+		runtime.push(nextShipHref(detail.nextId))
+	}, [detail.nextId, mine, runtime, ship.id])
 
 	const toggleDecision = useCallback(() => setDecisionOpen(!decisionOpen), [decisionOpen, setDecisionOpen])
 
@@ -244,14 +235,14 @@ function ShipReviewInner({
 			if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable='true']")) return
 			if (e.key === "c" && canClaim) void claim()
 			else if (e.key === "s" && pending) void skip()
-			else if (e.key === "n" && detail.nextId) router.push(nextShipHref(detail.nextId))
+			else if (e.key === "n" && detail.nextId) runtime.push(nextShipHref(detail.nextId))
 			else if (e.key === "d" && filesView) toggleDecision()
 			else return
 			e.preventDefault()
 		}
 		window.addEventListener("keydown", onKey)
 		return () => window.removeEventListener("keydown", onKey)
-	}, [canClaim, claim, detail.nextId, filesView, pending, router, skip, toggleDecision])
+	}, [canClaim, claim, detail.nextId, filesView, pending, runtime, skip, toggleDecision])
 
 	const claimedSeconds = entries.reduce((sum, e) => sum + e.secondsSpent, 0)
 	const countedSeconds = entries.reduce(
@@ -391,7 +382,9 @@ function ShipReviewInner({
 					<Notices detail={detail} />
 					<Paper
 						meta={
-							ship.claimExpiresAt && (mine || takenBy) ? (
+							runtime.offline && mine ? (
+								"Reviewing offline: the claim is taken when you send it"
+							) : ship.claimExpiresAt && (mine || takenBy) ? (
 								<>
 									Claimed by {mine ? "you" : takenBy} · <ClaimTimer expiresAt={ship.claimExpiresAt} />
 								</>
@@ -629,7 +622,7 @@ function DecisionPanel({
 	takenBy: string | null
 	viewer: ReviewViewer
 }) {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	const { project, ship, tiers } = detail
 	const design = ship.kind === "design"
 	const draft = (field: string): string => `submission:${ship.id}:${field}`
@@ -710,13 +703,13 @@ function DecisionPanel({
 					? { feedback: feedback.trim(), result: "RETURNED", ...(reason.trim() ? { reason: reason.trim() } : {}) }
 					: { feedback: feedback.trim(), reason: reason.trim(), result: "REJECTED" }
 		try {
-			await decide(ship.id, body)
+			await runtime.decide(ship.id, body)
 			clearFeedback()
 			clearReason()
 			clearTechnicalFeatures()
 			revertJustification()
-			router.push(nextShipHref(detail.nextId))
-			router.refresh()
+			runtime.push(nextShipHref(detail.nextId))
+			runtime.refresh()
 		} catch (err) {
 			onErrors([err instanceof Error ? err.message : "Couldn't record this decision"])
 		} finally {
@@ -926,7 +919,7 @@ function DecidedPanel({
 	onErrors(errors: string[]): void
 	viewer: ReviewViewer
 }) {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	const { project, ship } = detail
 	const { decision } = ship
 	const [busy, setBusy] = useState(false)
@@ -955,12 +948,12 @@ function DecidedPanel({
 		onErrors([])
 		setBusy(true)
 		try {
-			await overrideDecision(project.id, {
+			await runtime.overrideDecision(project.id, {
 				action,
 				phase: ship.kind === "design" ? "DESIGN" : "BUILD",
 				reason: reason.trim(),
 			})
-			router.refresh()
+			runtime.refresh()
 		} catch (err) {
 			onErrors([err instanceof Error ? err.message : "Couldn't undo this decision"])
 		} finally {
@@ -1056,7 +1049,7 @@ function DisputePaper({
 	detail: ReviewDetail
 	onError(errors: string[]): void
 }) {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	const { dispute } = detail
 	const [reply, setReply] = useState("")
 	const [busy, setBusy] = useState(false)
@@ -1078,7 +1071,7 @@ function DisputePaper({
 		try {
 			await task()
 			done?.()
-			router.refresh()
+			runtime.refresh()
 		} catch (err) {
 			onError([err instanceof Error ? err.message : "Couldn't update the dispute"])
 		} finally {
@@ -1127,7 +1120,7 @@ function DisputePaper({
 							disabled={busy || !reply.trim()}
 							onClick={() =>
 								void run(
-									() => replyToDispute(dispute.id, reply.trim()),
+									() => runtime.replyToDispute(dispute.id, reply.trim()),
 									() => setReply(""),
 								)
 							}
@@ -1139,7 +1132,9 @@ function DisputePaper({
 							className="btn btn--ghost btn--sm"
 							disabled={busy}
 							onClick={() =>
-								void confirmThen("Close this dispute and let the decision stand?", () => closeDispute(dispute.id))
+								void confirmThen("Close this dispute and let the decision stand?", () =>
+									runtime.closeDispute(dispute.id),
+								)
 							}
 							type="button"
 						>
@@ -1151,7 +1146,7 @@ function DisputePaper({
 								disabled={busy}
 								onClick={() =>
 									void confirmThen("Uphold the dispute and send this phase back to the queue?", () =>
-										sendDisputeBack(dispute.id),
+										runtime.sendDisputeBack(dispute.id),
 									)
 								}
 								type="button"
