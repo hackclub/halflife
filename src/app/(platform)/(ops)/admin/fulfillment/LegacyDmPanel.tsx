@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { z } from "zod"
@@ -52,6 +53,27 @@ function chunkOf<T>(items: readonly T[], size: number): T[][] {
 	const chunks: T[][] = []
 	for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size))
 	return chunks
+}
+
+/** The buyer's profile in the admin panel. */
+function UserLink({ name, userId }: Readonly<{ name: string | null; userId: string }>) {
+	return <Link href={`/admin/users/${userId}`}>{name ?? "No name"}</Link>
+}
+
+/** Each order as a link to its row on the Orders tab, filtered to that order. */
+function OrderLinks({ orders }: Readonly<{ orders: { orderId: string; orderNumber: number }[] }>) {
+	return (
+		<>
+			{orders.map((order, index) => (
+				<span key={order.orderId}>
+					{index > 0 ? ", " : null}
+					<Link className="hl-mono" href={`/admin/fulfillment?order=${order.orderId}`}>
+						#{order.orderNumber}
+					</Link>
+				</span>
+			))}
+		</>
+	)
 }
 
 /**
@@ -159,7 +181,7 @@ function SendPanel({ buyers }: Readonly<{ buyers: LegacyShopBuyer[] }>) {
 			{eligible.length === 0 ? (
 				<EmptyState>No open legacy order is waiting for a DM.</EmptyState>
 			) : (
-				<Table head={["", "Slack ID", "Orders", "Items"]}>
+				<Table head={["", "User", "Slack ID", "Orders", "Items"]}>
 					{eligible.map(buyer => (
 						<tr key={buyer.userId}>
 							<td>
@@ -170,8 +192,13 @@ function SendPanel({ buyers }: Readonly<{ buyers: LegacyShopBuyer[] }>) {
 									type="checkbox"
 								/>
 							</td>
+							<td>
+								<UserLink name={buyer.name} userId={buyer.userId} />
+							</td>
 							<td className="hl-mono">{buyer.slackId}</td>
-							<td className="hl-mono">{buyer.orders.map(order => `#${order.orderNumber}`).join(", ")}</td>
+							<td>
+								<OrderLinks orders={buyer.orders} />
+							</td>
 							<td>{buyer.orders.map(order => order.itemName).join(", ")}</td>
 						</tr>
 					))}
@@ -191,11 +218,16 @@ function SendPanel({ buyers }: Readonly<{ buyers: LegacyShopBuyer[] }>) {
 					<p className="hl-hint" style={{ margin: 0 }}>
 						Not messaged:
 					</p>
-					<Table head={["Slack ID", "Orders", "Left out because"]}>
+					<Table head={["User", "Slack ID", "Orders", "Left out because"]}>
 						{skipped.map(buyer => (
 							<tr key={buyer.userId}>
+								<td>
+									<UserLink name={buyer.name} userId={buyer.userId} />
+								</td>
 								<td className="hl-mono">{buyer.slackId ?? "none"}</td>
-								<td className="hl-mono">{buyer.orders.map(order => `#${order.orderNumber}`).join(", ")}</td>
+								<td>
+									<OrderLinks orders={buyer.orders} />
+								</td>
 								<td>{buyer.skipReason}</td>
 							</tr>
 						))}
@@ -243,7 +275,7 @@ function TestPanel() {
 				counted as a buyer&rsquo;s DM and changes no order.
 			</p>
 			<div className="hl-row" style={{ alignItems: "flex-end", gap: "0.75rem" }}>
-				<Field hint="A user ID starts with U or W, for example U0123ABCDE." label="Slack user ID">
+				<Field label="Slack user ID">
 					<TextInput
 						onChange={event => setSlackId(event.target.value)}
 						placeholder="U0123ABCDE"
@@ -255,6 +287,9 @@ function TestPanel() {
 					{busy ? "Sending…" : "Send test"}
 				</Button>
 			</div>
+			<p className="hl-hint" style={{ margin: 0 }}>
+				A user ID starts with U or W, for example U0123ABCDE.
+			</p>
 			{result ? <Callout tone={result.tone}>{result.text}</Callout> : null}
 		</Panel>
 	)
@@ -266,20 +301,19 @@ function HistoryPanel({ history }: Readonly<{ history: LegacyShopDmRecord[] }>) 
 			{history.length === 0 ? (
 				<EmptyState>No DM has been sent yet.</EmptyState>
 			) : (
-				<Table head={["Sent", "To", "Orders", "Status", "Answers"]}>
+				<Table head={["Sent", "User", "To", "Orders", "Status", "Answers"]}>
 					{history.map(dm => (
 						<tr key={dm.id}>
 							<td className="hl-mono">{formatUtcDateTime(parseDbTimestamp(dm.sentAt ?? dm.createdAt))}</td>
+							<td>
+								{dm.userId ? <UserLink name={dm.userName} userId={dm.userId} /> : <span className="hl-hint">Test</span>}
+							</td>
 							<td className="hl-mono">
 								{dm.slackId}
 								{dm.test ? <span className="hl-hint"> · test</span> : null}
 							</td>
-							<td className="hl-mono">
-								{dm.orders.length === 0 ? (
-									<span className="hl-hint">None</span>
-								) : (
-									dm.orders.map(order => `#${order.orderNumber}`).join(", ")
-								)}
+							<td>
+								{dm.orders.length === 0 ? <span className="hl-hint">None</span> : <OrderLinks orders={dm.orders} />}
 							</td>
 							<td>
 								<Badge tone={STATUS_TONES[dm.status]}>{STATUS_LABELS[dm.status]}</Badge>
