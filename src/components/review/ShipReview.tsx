@@ -635,10 +635,9 @@ function DecisionPanel({
 	// The reviewer's edits of the generated justification, kept as the text they edited and the text it was generated from, so later deflation can be merged in under them (see `mergeEdits`).
 	const [justificationBase, setJustificationBase, clearJustificationBase] = useDraft(draft("justification-base"))
 	const [justificationText, setJustificationText, clearJustificationText] = useDraft(draft("justification"))
-	// The setter is kept so the state is a value and setter pair, which the lint naming rule requires. The time is only ever read.
-	// biome-ignore lint/correctness/noUnusedVariables: the setter exists for the naming rule, not for use
-	// oxlint-disable-next-line eslint/no-unused-vars -- the same setter, kept for the same rule
-	const [shownAt, setShownAt] = useState(() => new Date())
+	// The setter is unused: it is kept so the state reads as a value and setter pair, which the naming rule requires.
+	// biome-ignore lint/correctness/noUnusedVariables: the setter is kept for the naming rule
+	const [shownAt, setShownAt] = useState(() => new Date()) // oxlint-disable-line eslint/no-unused-vars
 
 	// A reviewer may lower a tier or keep it; raising it past what the maker asked for mints parts money, which is MANAGE_CREDIT's call. The decision route enforces this; the select only stops offering what would be refused.
 	const tierCap = viewer.canSetGrant ? null : project.requestedTier
