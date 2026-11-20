@@ -1,6 +1,6 @@
 import type { FileKind, HurtFile } from '../types'
 import type { HurtIconName } from '../ui/HurtIcon'
-import { isBomPage } from '../core/classify'
+import { displayKind } from '../core/classify'
 
 const ICONS: Record<FileKind, HurtIconName> = {
   model: 'cube',
@@ -30,7 +30,7 @@ const ICONS: Record<FileKind, HurtIconName> = {
 }
 
 export function kindIcon(file: HurtFile): HurtIconName {
-  return file.risky ? 'warning' : ICONS[isBomPage(file) ? 'ibom' : file.kind]
+  return file.risky ? 'warning' : ICONS[displayKind(file)]
 }
 
 const LABELS: Record<FileKind, string> = {
@@ -61,5 +61,5 @@ const LABELS: Record<FileKind, string> = {
 }
 
 export function kindLabel(file: HurtFile) {
-  return LABELS[isBomPage(file) ? 'ibom' : file.kind]
+  return LABELS[displayKind(file)]
 }
