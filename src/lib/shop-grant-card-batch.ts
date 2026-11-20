@@ -42,7 +42,8 @@ export interface BatchBlockedOrder {
 	itemName: string
 	orderNumber: number
 	reason: string
-	userName: string
+	shopItemId: string
+	user: { id: string; name: string }
 }
 
 export interface ShopGrantCardBatch {
@@ -95,7 +96,8 @@ export async function listShopGrantCardBatch(): Promise<ShopGrantCardBatch> {
 				itemName: row.shopItem.name,
 				orderNumber: row.orderNumber,
 				reason,
-				userName: displayName(row.user, "Unknown"),
+				shopItemId: row.shopItem.id,
+				user: { id: row.user.id, name: displayName(row.user, "Unknown") },
 			})
 			continue
 		}
