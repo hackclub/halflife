@@ -142,27 +142,30 @@ async function SummaryTab() {
 
 	return (
 		<>
-			<Panel title="Needs attention">
-				<nav aria-label="Work waiting on staff" className="hl-attention">
-					<Link data-zero={counters.pendingOrders === 0 ? "true" : undefined} href="/admin/fulfillment">
-						<strong>{fmtInt(counters.pendingOrders)}</strong>
-						<span>orders to fulfil</span>
-					</Link>
-					<Link data-zero={counters.pendingReviews === 0 ? "true" : undefined} href="/reviews">
-						<strong>{fmtInt(counters.pendingReviews)}</strong>
-						<span>projects awaiting review</span>
-					</Link>
-					<Link data-zero={reportCounts.OPEN === 0 ? "true" : undefined} href="/admin/reports">
-						<strong>{fmtInt(reportCounts.OPEN)}</strong>
-						<span>open reports</span>
-					</Link>
-				</nav>
-			</Panel>
+			{/* The figures sit beside the work waiting on staff once the summary is wide enough for both; below that they keep their own row. */}
+			<div className="hl-overview-band">
+				<Panel title="Needs attention">
+					<nav aria-label="Work waiting on staff" className="hl-attention">
+						<Link data-zero={counters.pendingOrders === 0 ? "true" : undefined} href="/admin/fulfillment">
+							<strong>{fmtInt(counters.pendingOrders)}</strong>
+							<span>orders to fulfil</span>
+						</Link>
+						<Link data-zero={counters.pendingReviews === 0 ? "true" : undefined} href="/reviews">
+							<strong>{fmtInt(counters.pendingReviews)}</strong>
+							<span>projects awaiting review</span>
+						</Link>
+						<Link data-zero={reportCounts.OPEN === 0 ? "true" : undefined} href="/admin/reports">
+							<strong>{fmtInt(reportCounts.OPEN)}</strong>
+							<span>open reports</span>
+						</Link>
+					</nav>
+				</Panel>
 
-			<div className="hl-row">
-				<Stat label="Participants" value={counters.participants} />
-				<Stat label="Active today" value={activeUsers.today} />
-				<Stat label="Printers earned" value={counters.shipped} />
+				<div className="hl-row hl-overview-figures">
+					<Stat label="Participants" value={counters.participants} />
+					<Stat label="Active today" value={activeUsers.today} />
+					<Stat label="Printers earned" value={counters.shipped} />
+				</div>
 			</div>
 
 			<Panel

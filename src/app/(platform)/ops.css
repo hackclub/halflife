@@ -1066,6 +1066,39 @@
 		color: var(--color-ink-muted);
 	}
 
+	/*
+	 * ── Overview: needs attention beside the headline figures ────────────────
+	 * The summary opens on the work waiting on staff and the three figures that size the programme. On a narrow summary the figures take their own row, which is how the tab read before there was room for both; once the band is wide enough they share one, rather than leaving the attention cards on a line of their own with half a panel's width empty beside them.
+	 *
+	 * The band is its own container, so the switch follows the room the console actually has: folding the sidebar away is enough to bring the two together, without a viewport breakpoint that would put them side by side in a column that cannot hold them.
+	 */
+	.hl-overview-band {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+		/* Beside the panel the figures centre on it, so they line up with the attention cards rather than with the panel's title. A wrapped line holds one item, which makes the alignment moot there. */
+		align-items: center;
+		container-type: inline-size;
+	}
+	@container (min-width: 63rem) {
+		/* The figures keep a rail a stat wide; the panel takes whatever is left. */
+		.hl-overview-band > .hl-panel {
+			flex: 1 1 0;
+		}
+		.hl-overview-figures {
+			flex: 0 0 26rem;
+		}
+		/* Three cards on one line, so each gives up its declared minimum rather than the third dropping onto a second row of its own. The panel has the room for this only because the cards shrink with it. */
+		.hl-overview-band .hl-attention a {
+			flex: 0 1 11rem;
+			min-width: 0;
+		}
+		.hl-overview-figures .hl-stat {
+			flex: 1 1 8rem;
+			min-width: 0;
+		}
+	}
+
 	/* ── File inputs ───────────────────────────────────────────────────────── */
 	/* A file field reads as a drop target rather than an empty text box. */
 	.hl-admin-main input[type="file"] {
