@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { sanitize, sanitizeHtml, sanitizeOptional } from "@/lib/sanitize"
+import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 
 describe("sanitize", () => {
 	test("strips all markup and trims", () => {
@@ -23,26 +23,6 @@ describe("sanitize", () => {
 	test("decodes text that was stored escaped", () => {
 		expect(sanitize("PCB Design &amp; Fabrication")).toBe("PCB Design & Fabrication")
 		expect(sanitize("a starbie variant!! &lt;3")).toBe("a starbie variant!! <3")
-	})
-})
-
-describe("sanitizeHtml", () => {
-	test("keeps safe rich-text markup", () => {
-		expect(sanitizeHtml("<b>bold</b> <i>it</i>")).toBe("<b>bold</b> <i>it</i>")
-		expect(sanitizeHtml("<p>hi</p>")).toBe("<p>hi</p>")
-	})
-
-	test("keeps safe link attributes", () => {
-		expect(sanitizeHtml('<a href="https://x.com" title="t" target="_blank" rel="noopener">l</a>')).toBe(
-			'<a href="https://x.com" title="t" target="_blank" rel="noopener">l</a>',
-		)
-	})
-
-	test("strips scripts, handlers, styles and data attributes", () => {
-		expect(sanitizeHtml("<p>hi</p><script>alert(1)</script>")).toBe("<p>hi</p>")
-		expect(sanitizeHtml('<a href="https://x.com" onclick="evil()">l</a>')).toBe('<a href="https://x.com">l</a>')
-		expect(sanitizeHtml('<p style="color:red">x</p>')).toBe("<p>x</p>")
-		expect(sanitizeHtml('<p data-x="1">y</p>')).toBe("<p>y</p>")
 	})
 })
 

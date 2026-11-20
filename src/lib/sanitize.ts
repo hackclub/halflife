@@ -1,7 +1,9 @@
 import { sanitize as domPurifySanitize } from "isomorphic-dompurify"
 
 /**
- * Zod validates shape; these validate content. They are not substitutes for each other, and both run on every free-text field before it is persisted.
+ * Zod validates shape; these validate content. They are not substitutes for each other, and both run on every plain-text field before it is persisted.
+ *
+ * Journal entries are the exception: they are Markdown, stored as typed, and made safe where they are rendered – as React elements on the platform (components/platform/Markdown), through DOMPurify on the review screen (lib/review-platform/markdown), and through `sanitize` on the way to Ari. Escaping them on the way in broke the Markdown itself: a quote stopped being a quote and code showed "&lt;".
  */
 
 /**
@@ -13,16 +15,6 @@ export function sanitize(input: string): string {
 	return (
 		domPurifySanitize(input, { ALLOWED_ATTR: [], ALLOWED_TAGS: [], RETURN_DOM_FRAGMENT: true }).textContent ?? ""
 	).trim()
-}
-
-/** Allows safe markup. Only for journal content, which renders as rich text. */
-export function sanitizeHtml(input: string): string {
-	return domPurifySanitize(input, {
-		ALLOW_DATA_ATTR: false,
-		ALLOWED_ATTR: ["href", "title", "target", "rel"],
-		ALLOWED_TAGS: ["b", "i", "em", "strong", "a", "p", "br", "ul", "ol", "li", "blockquote", "code", "pre"],
-		FORBID_ATTR: ["style", "on*"],
-	})
 }
 
 export function sanitizeOptional(input: string | null | undefined): string | null {

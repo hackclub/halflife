@@ -22,7 +22,7 @@ import {
 	workedDayFor,
 } from "@/lib/program"
 import { scheduleRepoSync } from "@/lib/repo-sync"
-import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { sanitize } from "@/lib/sanitize"
 import { sessionUpdateSchema } from "@/lib/schemas/session"
 import { reconcileSessionTimelapses } from "@/lib/session-timelapses"
 import { recomputeStreak } from "@/lib/streak"
@@ -143,7 +143,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 			)
 			.updateAndCount({
 				...(data.title === undefined ? {} : { title: sanitize(data.title) }),
-				...(data.content === undefined ? {} : { content: data.content ? sanitizeHtml(data.content) : null }),
+				...(data.content === undefined ? {} : { content: data.content || null }),
 				...(data.hoursClaimed === undefined ? {} : { hoursClaimed: data.hoursClaimed }),
 				...(data.hoursSource === undefined ? {} : { hoursSource: data.hoursSource }),
 				...(movingDay ? { effectiveDate: nextDay } : {}),

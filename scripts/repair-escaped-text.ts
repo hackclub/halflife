@@ -6,7 +6,7 @@ import { sanitize } from "../src/lib/sanitize"
  *
  * Until `sanitize` returned the fragment's text, it returned DOMPurify's serialised HTML, so a maker's "<3" was stored as "&lt;3" and "PCB Design & Fabrication" as "PCB Design &amp; Fabrication" – and every reader shows these fields as text, so the entities showed on the page, in Airtable, and (escaped once more) in Slack. Running a stored value through today's `sanitize` decodes it exactly: the markup was already stripped when it was written, so all that changes is the entities.
  *
- * The columns are the plain-text ones `sanitize` writes. Journal bodies (`work_session.content`) are not among them: they are Markdown stored through `sanitizeHtml`, and are left to a decision of their own.
+ * The columns are the plain-text ones `sanitize` writes, plus journal bodies (`work_session.content`). Those are Markdown that used to be stored through a `sanitizeHtml` with the same escaping, and are now stored as typed. They are not run back through `sanitize`, which would strip Markdown that looks like a tag (`Vec<u8>`); they get the exact inverse of what DOMPurify's serialiser does to text instead (see `unescapeText`). Markup the old sanitiser removed outright is gone either way.
  *
  * Read-only unless `--commit` is passed. Run with `bun --conditions=react-server scripts/repair-escaped-text.ts [--commit]` against the database in `DATABASE_URL`.
  */
@@ -31,6 +31,15 @@ const COLUMNS: { [table: string]: readonly string[] } = Object.freeze({
 /** What DOMPurify's serialiser produces for text: the three it must escape, and a no-break space. */
 const ESCAPED = "&(amp|lt|gt|nbsp);"
 
+/**
+ * The inverse of DOMPurify's escaping of text: `<`, `>` and the no-break space, then `&` last, so text that was escaped once is unescaped once (`&amp;lt;` comes back as `&lt;`, not `<`).
+ */
+const unescapeText = (value: string): string =>
+	value.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&nbsp;", "\u00A0").replaceAll("&amp;", "&")
+
+/** Journal bodies: Markdown, decoded rather than sanitised. */
+const DECODED: { [table: string]: readonly string[] } = Object.freeze({ work_session: ["content"] })
+
 const commit = process.argv.includes("--commit")
 const url = process.env.DATABASE_URL
 if (!url) throw new Error("DATABASE_URL is not set")
@@ -43,8 +52,13 @@ const existing = await client.query<{ column_name: string; table_name: string }>
 )
 const present = new Set(existing.rows.map(row => `${row.table_name}.${row.column_name}`))
 
+const passes = [
+	...Object.entries(COLUMNS).map(([table, columns]) => ({ columns, repair: sanitize, table })),
+	...Object.entries(DECODED).map(([table, columns]) => ({ columns, repair: unescapeText, table })),
+]
+
 let changed = 0
-for (const [table, columns] of Object.entries(COLUMNS))
+for (const { columns, repair, table } of passes)
 	for (const column of columns) {
 		if (!present.has(`${table}.${column}`)) continue
 		// Identifiers from the list above, checked against the schema, so quoting them is enough.
@@ -53,11 +67,13 @@ for (const [table, columns] of Object.entries(COLUMNS))
 			[ESCAPED],
 		)
 		for (const row of rows.rows) {
-			const fixed = sanitize(row.value)
+			const fixed = repair(row.value)
 			if (fixed === row.value) continue
 			changed++
+			// Around the first escape, so a long journal entry shows what changes rather than how it opens.
+			const at = Math.max(0, row.value.search(/&(amp|lt|gt|nbsp);/) - 30)
 			console.log(
-				`${table}.${column} ${row.id}: ${JSON.stringify(row.value.slice(0, 80))} → ${JSON.stringify(fixed.slice(0, 80))}`,
+				`${table}.${column} ${row.id}: ${JSON.stringify(row.value.slice(at, at + 80))} → ${JSON.stringify(fixed.slice(at, at + 70))}`,
 			)
 			if (commit) await client.query(`update "${table}" set "${column}" = $1 where "id" = $2`, [fixed, row.id])
 		}
