@@ -11,6 +11,7 @@ import {
 } from "@/app/components/admin/ProjectManagePanel"
 import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import type { FundingState } from "@/lib/funding-state"
+import { hcbGrantUrl } from "@/lib/hcb-grant-url"
 
 /** One themed project on a participant's admin page. */
 export interface ThemedProjectRowData extends ProjectManageData {
@@ -61,7 +62,7 @@ export function ThemedProjectRow({
 							{data.issuedCard.hcbCardGrantId ? (
 								<>
 									{" · "}
-									<a href={`https://hcb.hackclub.com/grants/${data.issuedCard.hcbCardGrantId}`}>view on HCB</a>
+									<a href={hcbGrantUrl(data.issuedCard.hcbCardGrantId)}>view on HCB</a>
 								</>
 							) : null}
 						</div>
