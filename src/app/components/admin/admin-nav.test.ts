@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { type AdminNavGroup, isAdminNavActive, paletteEntries } from "./admin-nav"
+import {
+	type AdminNavGroup,
+	exactUser,
+	isAdminNavActive,
+	isUserIdentifier,
+	type PaletteUser,
+	paletteEntries,
+} from "./admin-nav"
 
 const groups: AdminNavGroup[] = [
 	{
@@ -52,5 +59,56 @@ describe("paletteEntries", () => {
 	test("no user search without the users page in the sidebar", () => {
 		const withoutUsers = [{ items: [{ href: "/admin/deadlines", label: "Deadlines" }], label: "Programme" }]
 		expect(paletteEntries(withoutUsers, "ada").some(entry => entry.group === "Search")).toBe(false)
+	})
+
+	test("a person named outright is the top row, opening their profile", () => {
+		const ada = { email: "ada@example.com", id: "usr_1", name: "Ada", slackId: "U0BER1GR3GX" }
+		const entries = paletteEntries(groups, "U0BER1GR3GX", ada)
+		expect(entries[0]).toEqual({ group: "User", href: "/admin/users/usr_1", label: "Open Ada" })
+		expect(entries.at(-1)?.group).toBe("Search")
+	})
+
+	test("no profile row without a person to open", () => {
+		expect(paletteEntries(groups, "U0BER1GR3GX").some(entry => entry.group === "User")).toBe(false)
+	})
+
+	test("no profile row without the users page in the sidebar", () => {
+		const withoutUsers = [{ items: [{ href: "/admin/deadlines", label: "Deadlines" }], label: "Programme" }]
+		const ada = { email: "ada@example.com", id: "usr_1", name: "Ada", slackId: null }
+		expect(paletteEntries(withoutUsers, "ada@example.com", ada).some(entry => entry.group === "User")).toBe(false)
+	})
+})
+
+describe("isUserIdentifier", () => {
+	test("an email address or a Slack ID names a user", () => {
+		expect(isUserIdentifier("ada@example.com")).toBe(true)
+		expect(isUserIdentifier(" U0BER1GR3GX ")).toBe(true)
+		expect(isUserIdentifier("u0ber1gr3gx")).toBe(true)
+	})
+
+	test("a name or a partial query does not", () => {
+		expect(isUserIdentifier("ada")).toBe(false)
+		expect(isUserIdentifier("ada@")).toBe(false)
+		expect(isUserIdentifier("U12")).toBe(false)
+	})
+})
+
+describe("exactUser", () => {
+	const users: PaletteUser[] = [
+		{ email: "ada@example.com", id: "usr_1", name: "Ada", slackId: "U0BER1GR3GX" },
+		{ email: "grace@example.com", id: "usr_2", name: null, slackId: null },
+	]
+
+	test("matches an email in any case", () => {
+		expect(exactUser("ADA@example.com", users)?.id).toBe("usr_1")
+	})
+
+	test("matches a Slack ID in any case", () => {
+		expect(exactUser("u0ber1gr3gx", users)?.id).toBe("usr_1")
+	})
+
+	test("does not match a partial address or a name", () => {
+		expect(exactUser("ada", users)).toBeUndefined()
+		expect(exactUser("ada@example", users)).toBeUndefined()
 	})
 })

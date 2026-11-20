@@ -151,29 +151,49 @@ const PIN_LIMIT = 12
 
 const BOM_PAGE = /(^|[^a-z])i?bom([^a-z]|$)|interactive|bill[ _-]?of[ _-]?materials/i
 
-const sniffedPages = new WeakMap<HurtFile, boolean>()
+// EasyEDA Standard exports its schematics and boards as plain `.json` (`SCH_name_date.json`, `PCB_name_date.json`). Only the content says for sure which JSON files are designs; this name only decides which ones are sniffed first.
+const EASYEDA_JSON = /^(sch|pcb|panel|easyeda)[_ -]|easyeda/i
+
+// Whether a sniffed file is the special kind its extension can hide: an interactive BOM for `.html`, an EasyEDA document for `.json`.
+const sniffed = new WeakMap<HurtFile, boolean>()
 let sniffedVersion = 0
 
+const sniffable = (f: HurtFile) => f.kind === 'html' || f.ext === 'json'
+
 export function isBomPage(f: HurtFile) {
-  return f.kind === 'ibom' || (f.kind === 'html' && sniffedPages.get(f) === true)
+  return f.kind === 'ibom' || (f.kind === 'html' && sniffed.get(f) === true)
+}
+
+export function isEasyEdaJson(f: HurtFile) {
+  return f.kind === 'easyeda' || (f.ext === 'json' && sniffed.get(f) === true)
+}
+
+export function displayKind(f: HurtFile): FileKind {
+  if (isBomPage(f)) return 'ibom'
+  if (isEasyEdaJson(f)) return 'easyeda'
+  return f.kind
 }
 
 export function namedLikeBomPage(f: HurtFile) {
   return BOM_PAGE.test(f.name)
 }
 
-export function pageSniffed(f: HurtFile) {
-  return sniffedPages.has(f)
+export function namedLikeEasyEda(f: HurtFile) {
+  return EASYEDA_JSON.test(f.name)
 }
 
-export function noteBomPage(f: HurtFile, bom: boolean) {
-  if (f.kind !== 'html' || sniffedPages.get(f) === bom) return false
-  sniffedPages.set(f, bom)
+export function wasSniffed(f: HurtFile) {
+  return sniffed.has(f)
+}
+
+export function noteSniffed(f: HurtFile, match: boolean) {
+  if (!sniffable(f) || sniffed.get(f) === match) return false
+  sniffed.set(f, match)
   sniffedVersion++
   return true
 }
 
-export function bomPagesVersion() {
+export function sniffVersion() {
   return sniffedVersion
 }
 
@@ -199,6 +219,7 @@ export function pinnedGroups(files: HurtFile[]): PinGroup[] {
           f.kind === 'eagle' ||
           f.kind === 'altium' ||
           f.kind === 'fritzing' ||
+          isEasyEdaJson(f) ||
           (f.kind === 'librepcb' && f.ext !== 'lp')) &&
         !f.name.startsWith('_autosave-'),
     )
@@ -384,6 +405,7 @@ const PCB_RANK: Record<string, number> = {
 const AMBIGUOUS_PCB_RANK = 5
 
 function pcbRank(f: HurtFile) {
+  if (f.ext === 'json') return /^sch/i.test(f.name) ? PCB_RANK.sch : PCB_RANK.brd
   return (f.kind === 'eagle' ? AMBIGUOUS_PCB_RANK : 0) + (PCB_RANK[f.ext] ?? 3)
 }
 

@@ -20,6 +20,8 @@ export interface DirectoryRow {
 	penalty: string
 	permissionTotal: number
 	roles: string[]
+	/** Null unless the caller may see contact details, the same as the email. */
+	slackId: string | null
 	verified: string
 }
 
@@ -38,6 +40,7 @@ export const toDirectoryRow = (user: DirectoryUser): DirectoryRow => {
 		penalty: penaltyFor(user.bannedAt, user.suspendedUntil),
 		permissionTotal: PERMISSION_COUNT,
 		roles: user.roles.map(entry => entry.role.toLowerCase()),
+		slackId: user.slackId,
 		verified: user.verificationStatus ?? "unknown",
 	}
 }
