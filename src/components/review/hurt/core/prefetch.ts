@@ -2,14 +2,15 @@ import { useSyncExternalStore } from 'react'
 import type { FileSource, HurtFile } from '../types'
 import { loadRepo, shipEndpoints } from './api'
 import {
-  bomPagesVersion,
   isBackup,
   isBomPage,
   isLibraryPath,
   namedLikeBomPage,
-  noteBomPage,
-  pageSniffed,
+  namedLikeEasyEda,
+  noteSniffed,
   pinnedGroups,
+  sniffVersion,
+  wasSniffed,
 } from './classify'
 import { readHead } from './source'
 import { detectEda } from './eda'
@@ -30,7 +31,10 @@ interface Job {
 const MAX_FILE_BYTES = 150 * 1024 * 1024
 const MAX_REPO_BYTES = 750 * 1024 * 1024
 const PAGE_SNIFF_LIMIT = 60
+const JSON_SNIFF_LIMIT = 40
+const JSON_SNIFF_BYTES = 4096
 const PAGE_SNIFF_CONCURRENCY = 4
+const NOT_EASYEDA_JSON = /^(package(-lock)?|tsconfig.*|jsconfig|composer|bower|manifest|launch|settings|tasks|extensions|c_cpp_properties|keyboard|info|config|\.?[a-z]+rc)\.json$/i
 const MAX_FILES = 400
 const MAX_CAD_SOURCE_BYTES = 4 * 1024 * 1024
 const MAX_BLEND_BYTES = 50 * 1024 * 1024
@@ -64,12 +68,12 @@ export function usePrepStatus(source: FileSource, path: string) {
   return useSyncExternalStore(subscribe, () => statuses.get(`${source.id}|${path}`))
 }
 
-export function useBomPagesVersion() {
-  return useSyncExternalStore(subscribe, bomPagesVersion)
+export function useSniffVersion() {
+  return useSyncExternalStore(subscribe, sniffVersion)
 }
 
-export function noteSniffedPage(file: HurtFile, bom: boolean) {
-  if (noteBomPage(file, bom)) notify()
+export function noteSniffedFile(file: HurtFile, match: boolean) {
+  if (noteSniffed(file, match)) notify()
 }
 
 export function prepStatus(source: FileSource, path: string) {
@@ -122,16 +126,24 @@ export function preprocess(source: FileSource, rank = 0) {
 }
 
 async function sniffPages(source: FileSource) {
-  const pages = source.files
-    .filter((f) => f.kind === 'html' && f.size > 0 && !isLibraryPath(f.path) && !pageSniffed(f))
+  const unsniffed = source.files.filter((f) => f.size > 0 && !isLibraryPath(f.path) && !wasSniffed(f))
+  const pages = unsniffed
+    .filter((f) => f.kind === 'html')
     .sort((a, b) => Number(namedLikeBomPage(b)) - Number(namedLikeBomPage(a)))
     .slice(0, PAGE_SNIFF_LIMIT)
+    .map((file) => ({ file, bytes: SNIFF_BYTES, test: isBomHtml }))
+  const designs = unsniffed
+    .filter((f) => f.ext === 'json' && !NOT_EASYEDA_JSON.test(f.name))
+    .sort((a, b) => Number(namedLikeEasyEda(b)) - Number(namedLikeEasyEda(a)) || b.size - a.size)
+    .slice(0, JSON_SNIFF_LIMIT)
+    .map((file) => ({ file, bytes: JSON_SNIFF_BYTES, test: (head: Uint8Array) => detectEda(head, 'json') === 'easyeda' }))
+  const jobs = [...pages, ...designs]
   let next = 0
   const worker = async () => {
-    while (next < pages.length) {
-      const file = pages[next++]
-      const head = await readHead(source, file.path, SNIFF_BYTES).catch(() => null)
-      if (head) noteSniffedPage(file, isBomHtml(head))
+    while (next < jobs.length) {
+      const { file, bytes, test } = jobs[next++]
+      const head = await readHead(source, file.path, bytes).catch(() => null)
+      if (head) noteSniffedFile(file, test(head))
     }
   }
   await Promise.all(Array.from({ length: PAGE_SNIFF_CONCURRENCY }, worker))
@@ -229,7 +241,7 @@ function plan(source: FileSource) {
         run: async () => {
           const bytes = await source.read(file.path)
           const bom = isBomHtml(new Uint8Array(bytes))
-          noteSniffedPage(file, bom)
+          noteSniffedFile(file, bom)
           if (!bom) return bytes
           return import('../viewers/ibom/load').then((m) => m.prepareIbom(source, file)).catch(() => bytes)
         },

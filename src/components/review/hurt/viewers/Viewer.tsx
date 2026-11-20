@@ -7,7 +7,7 @@ import { readHead } from '../core/source'
 import { formatBytes } from '../core/format'
 import { delegatedFile, detectEda, EDA_EXTENSIONS } from '../core/eda'
 import { isBomHtml, SNIFF_BYTES } from './ibom/sniff'
-import { noteSniffedPage } from '../core/prefetch'
+import { noteSniffedFile } from '../core/prefetch'
 import { isPsd, isXcf, libarchiveFormat } from './office/magic'
 import { Gate, Loading, LoadingSize } from '../ui/parts'
 import ErrorBoundary from '../ui/ErrorBoundary'
@@ -59,7 +59,7 @@ function needsSniff(file: HurtFile) {
 function sniff(file: HurtFile, bytes: Uint8Array): HurtFile {
   if (file.kind === 'html') {
     const bom = isBomHtml(bytes)
-    noteSniffedPage(file, bom)
+    noteSniffedFile(file, bom)
     return bom ? { ...file, kind: 'ibom' } : file
   }
   const head = new TextDecoder('latin1').decode(bytes.subarray(0, 512))
@@ -74,7 +74,11 @@ function sniff(file: HurtFile, bytes: Uint8Array): HurtFile {
   }
   if (file.ext === 'ai') return head.startsWith('%PDF') ? as('pdf') : as('binary')
   if (file.ext === 'cmp' && head.startsWith('Cmp-Mod')) return as('text')
-  if (file.ext === 'json' && /"editorVersion"\s*:/.test(head) && /"docType"\s*:/.test(head)) return as('easyeda')
+  if (file.ext === 'json') {
+    const easyeda = /"editorVersion"\s*:/.test(head) && /"docType"\s*:/.test(head)
+    noteSniffedFile(file, easyeda)
+    if (easyeda) return as('easyeda')
+  }
   if (text && file.kind !== 'binary') return file
   if (head.startsWith('ISO-10303-21')) return as('model', 'step')
   if (head.startsWith('BLENDER')) return as('model', 'blend')

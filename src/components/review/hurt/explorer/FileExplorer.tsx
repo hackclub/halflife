@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { FileSource, HurtFile } from '../types'
 import { formatBytes } from '../core/format'
-import { isBomPage, isLibraryPath, pinnedGroups } from '../core/classify'
-import { useBomPagesVersion, usePrepStatus } from '../core/prefetch'
+import { displayKind, isLibraryPath, pinnedGroups } from '../core/classify'
+import { usePrepStatus, useSniffVersion } from '../core/prefetch'
 import { useSizeVersion } from '../core/source'
 import HurtIcon from '../ui/HurtIcon'
 import { kindIcon, kindLabel } from './icons'
@@ -38,7 +38,7 @@ function buildTree(files: HurtFile[]) {
   }
   const mark = (folder: Folder): boolean => {
     const own =
-      folder.files.some((f) => (f.kind === 'html' ? isBomPage(f) : !['text', 'binary', 'image'].includes(f.kind))) &&
+      folder.files.some((f) => !['html', 'text', 'binary', 'image'].includes(displayKind(f))) &&
       !isLibraryPath(folder.path)
     const nested = folder.folders.map(mark).some(Boolean)
     folder.interesting = own || nested
@@ -64,7 +64,7 @@ export default function FileExplorer({
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const sniffed = useBomPagesVersion()
+  const sniffed = useSniffVersion()
   const groups = useMemo(() => pinnedGroups(source.files), [source, sniffed, sizes])
   const tree = useMemo(() => buildTree(source.files), [source])
   const list = useRef<HTMLDivElement>(null)
