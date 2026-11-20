@@ -2,8 +2,35 @@
 
 import { useRouter } from "next/navigation"
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react"
+import { z } from "zod"
 import { Modal } from "@/app/components/ui/Modal"
-import { type AdminNavGroup, type AdminPaletteEntry, paletteEntries } from "./admin-nav"
+import {
+	type AdminNavGroup,
+	type AdminPaletteEntry,
+	exactUser,
+	isUserIdentifier,
+	type PaletteUser,
+	paletteEntries,
+} from "./admin-nav"
+
+/** The users directory's first page, as far as the palette reads it. */
+const directoryPage = z.object({
+	items: z.array(z.object({ email: z.string(), id: z.string(), name: z.string(), slackId: z.string().nullable() })),
+})
+
+/** The directory's users matching a query, for the palette to tell whether one of them is named outright. Empty when the request fails or is cancelled. */
+const findUsers = async (term: string, signal: AbortSignal): Promise<PaletteUser[]> => {
+	try {
+		const res = await fetch(`/api/admin/users?q=${encodeURIComponent(term)}`, { signal })
+		if (!res.ok) return []
+		const parsed = directoryPage.safeParse(await res.json())
+		if (!parsed.success) return []
+		// The directory shows "-" for an account with no name, so that placeholder is not a name here.
+		return parsed.data.items.map(user => ({ ...user, name: user.name === "-" ? null : user.name }))
+	} catch {
+		return []
+	}
+}
 
 /**
  * Jump to any admin page from the keyboard, and search the users directory without leaving the keyboard either. Opened with Ctrl K or Cmd K from anywhere in the console, or the button in the header.
@@ -13,7 +40,10 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 	const [open, setOpen] = useState(false)
 	const [query, setQuery] = useState("")
 	const [active, setActive] = useState(0)
+	// The directory's answer for the query it was asked, so an answer for an earlier query is never shown for a later one.
+	const [lookup, setLookup] = useState<{ query: string; users: PaletteUser[] } | null>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
+	const term = query.trim()
 
 	// The modal focuses its first control, which is the close button, so the field is focused explicitly once it is open.
 	useEffect(() => {
@@ -30,7 +60,23 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 		return () => window.removeEventListener("keydown", onKey)
 	}, [])
 
-	const entries = paletteEntries(groups, query)
+	// Only an email address or a Slack ID is looked up, and only once typing has paused, so a name does not send a request per keystroke.
+	useEffect(() => {
+		if (!isUserIdentifier(term)) return
+		const controller = new AbortController()
+		const lookUp = async (): Promise<void> => {
+			const users = await findUsers(term, controller.signal)
+			setLookup({ query: term, users })
+		}
+		const timer = window.setTimeout(() => void lookUp(), 200)
+		return () => {
+			window.clearTimeout(timer)
+			controller.abort()
+		}
+	}, [term])
+
+	const person = lookup?.query === term ? exactUser(term, lookup.users) : undefined
+	const entries = paletteEntries(groups, query, person)
 	const current = Math.min(active, Math.max(entries.length - 1, 0))
 
 	const close = (): void => {
@@ -80,7 +126,7 @@ export function AdminPalette({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 							setActive(0)
 						}}
 						onKeyDown={onInputKey}
-						placeholder="Go to a page, or type a name or email to find a user"
+						placeholder="Go to a page, or type a name, email or Slack ID to find a user"
 						ref={inputRef}
 						value={query}
 					/>
