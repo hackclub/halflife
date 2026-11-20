@@ -8,8 +8,10 @@ import type { SlackBlock } from "@/lib/site/slack"
  * Kept out of the database and Slack modules so the rules can be tested without either. The send and the click handler both build on these.
  */
 
-/** The action ID on the DM's buttons. Test buttons use it too, and are told apart by their value. */
-export const LEGACY_SHOP_CHOICE_ACTION = "legacy_shop_choice"
+/**
+ * The prefix of every DM button's action ID. Slack wants action IDs unique within a block, so each button adds its choice to the prefix. Test buttons use the same IDs and are told apart by their value.
+ */
+export const LEGACY_SHOP_ACTION_PREFIX = "legacy_shop_choice:"
 
 /**
  * A Slack block holds at most 50 blocks, and each order takes two (its text and its buttons), with one for the intro. A buyer with more orders than this is skipped rather than split, because one DM per buyer is the point.
@@ -71,7 +73,7 @@ function lineBlocks(line: LegacyShopLine, test: boolean): SlackBlock[] {
 	const heading = line.orderNumber === null ? "Sample order" : `Order #${line.orderNumber}`
 	const current = line.choice ? `Your choice: ${CHOICE_LABELS[line.choice]}` : "No choice yet"
 	const button = (choice: "GRANT_CARD" | "SHIP"): SlackBlock => ({
-		action_id: LEGACY_SHOP_CHOICE_ACTION,
+		action_id: `${LEGACY_SHOP_ACTION_PREFIX}${choice}`,
 		text: { emoji: true, text: CHOICE_LABELS[choice], type: "plain_text" },
 		type: "button",
 		value: legacyShopButtonValue({ choice, orderId: line.orderId ?? undefined, test: test || undefined }),

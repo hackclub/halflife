@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
 	groupLegacyShopBuyers,
 	isSlackUserId,
-	LEGACY_SHOP_CHOICE_ACTION,
+	LEGACY_SHOP_ACTION_PREFIX,
 	LEGACY_SHOP_DM_MAX_ORDERS,
 	type LegacyShopOrderRow,
 	legacyShopButtonValue,
@@ -60,7 +60,8 @@ describe("legacyShopMessage", () => {
 				: [],
 		)
 		expect(buttons).toHaveLength(4)
-		expect(buttons.every(button => button.action_id === LEGACY_SHOP_CHOICE_ACTION)).toBe(true)
+		expect(buttons.every(button => button.action_id.startsWith(LEGACY_SHOP_ACTION_PREFIX))).toBe(true)
+		expect(new Set(buttons.slice(0, 2).map(button => button.action_id)).size).toBe(2)
 		expect(parseLegacyShopButtonValue(buttons[0]?.value)?.orderId).toBe("ord_1")
 		expect(parseLegacyShopButtonValue(buttons[3]?.value)?.orderId).toBe("ord_2")
 	})
