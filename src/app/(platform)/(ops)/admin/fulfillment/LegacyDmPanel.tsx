@@ -67,9 +67,7 @@ function OrderLinks({ orders }: Readonly<{ orders: { orderId: string; orderNumbe
 			{orders.map((order, index) => (
 				<span key={order.orderId}>
 					{index > 0 ? ", " : null}
-					<Link className="hl-mono" href={`/admin/fulfillment?order=${order.orderId}`}>
-						#{order.orderNumber}
-					</Link>
+					<Link href={`/admin/fulfillment?order=${order.orderId}`}>#{order.orderNumber}</Link>
 				</span>
 			))}
 		</>
