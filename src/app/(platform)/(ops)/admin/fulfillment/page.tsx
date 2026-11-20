@@ -7,6 +7,7 @@ import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
 import { DELIVERY_LABELS, METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { FULFILLMENT_PAGE_SIZE, fulfillmentFiltersFrom, toFulfillmentJson } from "@/lib/fulfillment-sheet"
+import { listLegacyShopPreview } from "@/lib/legacy-shop-dm"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { PRINTER_AWARD_LABELS } from "@/lib/printer-award"
@@ -16,6 +17,7 @@ import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { listShopGrantCardBatch } from "@/lib/shop-grant-card-batch"
 import { CardBatch } from "./CardBatch"
 import { FulfillmentList } from "./FulfillmentList"
+import { LegacyDmPanel } from "./LegacyDmPanel"
 
 export const metadata: Metadata = {
 	title: "Fulfillment",
@@ -27,6 +29,7 @@ interface Search {
 	delivery?: SearchParamValue
 	from?: SearchParamValue
 	method?: SearchParamValue
+	order?: SearchParamValue
 	stage?: SearchParamValue
 	status?: SearchParamValue
 	tab?: SearchParamValue
@@ -58,6 +61,7 @@ const ORDER_STATUS_LABELS: { [_: string]: string } = {
 const TABS = [
 	{ id: "orders", label: "Orders" },
 	{ id: "batch", label: "Card batch" },
+	{ id: "dms", label: "Legacy DMs" },
 	{ id: "printers", label: "Printers" },
 ] as const
 
@@ -72,10 +76,11 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	const tab: FulfillmentTab = TABS.find(item => item.id === search.tab)?.id ?? "orders"
 
 	const filters = fulfillmentFiltersFrom(search)
-	const [orders, awards, batch] = await Promise.all([
+	const [orders, awards, batch, dms] = await Promise.all([
 		tab === "orders" ? listFulfillmentOrders(filters, { limit: FULFILLMENT_PAGE_SIZE }) : null,
 		tab === "printers" ? listPrinterAwards() : null,
 		tab === "batch" ? listShopGrantCardBatch() : null,
+		tab === "dms" ? listLegacyShopPreview() : null,
 	])
 
 	// The rows below load more through the same filters, so the list's address carries them all.
@@ -84,6 +89,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 			delivery: search.delivery,
 			from: search.from,
 			method: search.method,
+			order: search.order,
 			stage: search.stage,
 			status: search.status,
 			to: search.to,
@@ -207,6 +213,8 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 			) : null}
 
 			{batch ? <CardBatch blocked={batch.blocked} groups={batch.groups} /> : null}
+
+			{dms ? <LegacyDmPanel preview={dms} /> : null}
 
 			{awards ? (
 				<Panel title="Printers earned">

@@ -1,0 +1,418 @@
+[
+  {
+    "id": "createNativeEnumType.LegacyShopDmStatus",
+    "label": "Create enum type \"LegacyShopDmStatus\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "LegacyShopDmStatus"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create enum type \"LegacyShopDmStatus\"",
+        "sql": "CREATE TYPE \"public\".\"LegacyShopDmStatus\" AS ENUM ('PENDING', 'SENT', 'FAILED')",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.legacy_shop_dm",
+    "label": "Create table \"legacy_shop_dm\"",
+    "summary": "Creates table \"legacy_shop_dm\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "legacy_shop_dm"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"legacy_shop_dm\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"legacy_shop_dm\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"legacy_shop_dm\"",
+        "sql": "CREATE TABLE \"public\".\"legacy_shop_dm\" (\n  \"channel\" text,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"error\" text,\n  \"id\" text NOT NULL,\n  \"sentAt\" timestamp(3),\n  \"sentById\" text,\n  \"slackId\" text NOT NULL,\n  \"status\" \"LegacyShopDmStatus\" DEFAULT 'PENDING'::\"LegacyShopDmStatus\" NOT NULL,\n  \"test\" bool DEFAULT false NOT NULL,\n  \"ts\" text,\n  \"userId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"legacy_shop_dm\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"legacy_shop_dm\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.legacy_shop_dm_order",
+    "label": "Create table \"legacy_shop_dm_order\"",
+    "summary": "Creates table \"legacy_shop_dm_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "legacy_shop_dm_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"legacy_shop_dm_order\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_order\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"legacy_shop_dm_order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"legacy_shop_dm_order\"",
+        "sql": "CREATE TABLE \"public\".\"legacy_shop_dm_order\" (\n  \"choice\" \"ShopDeliveryPreference\",\n  \"choiceAt\" timestamp(3),\n  \"dmId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"shopOrderId\" text NOT NULL,\n  \"status\" \"LegacyShopDmStatus\" DEFAULT 'PENDING'::\"LegacyShopDmStatus\" NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"legacy_shop_dm_order\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_order\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"legacy_shop_dm_order\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "index.legacy_shop_dm.legacy_shop_dm_createdAt_idx",
+    "label": "Create index \"legacy_shop_dm_createdAt_idx\" on \"legacy_shop_dm\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "legacy_shop_dm_createdAt_idx",
+        "table": "legacy_shop_dm"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"legacy_shop_dm_createdAt_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_createdAt_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"legacy_shop_dm_createdAt_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"legacy_shop_dm_createdAt_idx\"",
+        "sql": "CREATE INDEX \"legacy_shop_dm_createdAt_idx\" ON \"public\".\"legacy_shop_dm\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"legacy_shop_dm_createdAt_idx\" exists on \"legacy_shop_dm\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_createdAt_idx\"",
+          "i",
+          "I",
+          "\"public\".\"legacy_shop_dm\"",
+          "btree",
+          "[\"createdAt\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.legacy_shop_dm.legacy_shop_dm_userId_idx",
+    "label": "Create index \"legacy_shop_dm_userId_idx\" on \"legacy_shop_dm\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "legacy_shop_dm_userId_idx",
+        "table": "legacy_shop_dm"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"legacy_shop_dm_userId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_userId_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"legacy_shop_dm_userId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"legacy_shop_dm_userId_idx\"",
+        "sql": "CREATE INDEX \"legacy_shop_dm_userId_idx\" ON \"public\".\"legacy_shop_dm\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"legacy_shop_dm_userId_idx\" exists on \"legacy_shop_dm\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_userId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"legacy_shop_dm\"",
+          "btree",
+          "[\"userId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.legacy_shop_dm_order.legacy_shop_dm_order_dmId_idx",
+    "label": "Create index \"legacy_shop_dm_order_dmId_idx\" on \"legacy_shop_dm_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "legacy_shop_dm_order_dmId_idx",
+        "table": "legacy_shop_dm_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"legacy_shop_dm_order_dmId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_order_dmId_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"legacy_shop_dm_order_dmId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"legacy_shop_dm_order_dmId_idx\"",
+        "sql": "CREATE INDEX \"legacy_shop_dm_order_dmId_idx\" ON \"public\".\"legacy_shop_dm_order\" (\"dmId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"legacy_shop_dm_order_dmId_idx\" exists on \"legacy_shop_dm_order\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_order_dmId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"legacy_shop_dm_order\"",
+          "btree",
+          "[\"dmId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.legacy_shop_dm_order.legacy_shop_dm_order_shopOrderId_live_key_4459003e",
+    "label": "Create index \"legacy_shop_dm_order_shopOrderId_live_key_4459003e\" on \"legacy_shop_dm_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "legacy_shop_dm_order_shopOrderId_live_key_4459003e",
+        "table": "legacy_shop_dm_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"legacy_shop_dm_order_shopOrderId_live_key_4459003e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_order_shopOrderId_live_key_4459003e\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"legacy_shop_dm_order_shopOrderId_live_key_4459003e\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"legacy_shop_dm_order_shopOrderId_live_key_4459003e\"",
+        "sql": "CREATE UNIQUE INDEX \"legacy_shop_dm_order_shopOrderId_live_key_4459003e\" ON \"public\".\"legacy_shop_dm_order\" (\"shopOrderId\") WHERE ((\"status\" IN ('PENDING'::\"LegacyShopDmStatus\", 'SENT'::\"LegacyShopDmStatus\")))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"legacy_shop_dm_order_shopOrderId_live_key_4459003e\" exists on \"legacy_shop_dm_order\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NOT NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"legacy_shop_dm_order_shopOrderId_live_key_4459003e\"",
+          "i",
+          "I",
+          "\"public\".\"legacy_shop_dm_order\"",
+          "btree",
+          "[\"shopOrderId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.legacy_shop_dm_order.legacy_shop_dm_order_dmId_fkey",
+    "label": "Add foreign key \"legacy_shop_dm_order_dmId_fkey\" on \"legacy_shop_dm_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "legacy_shop_dm_order_dmId_fkey",
+        "table": "legacy_shop_dm_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"legacy_shop_dm_order_dmId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "legacy_shop_dm_order_dmId_fkey",
+          "public",
+          "\"public\".\"legacy_shop_dm_order\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"legacy_shop_dm_order_dmId_fkey\" on \"legacy_shop_dm_order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"legacy_shop_dm_order_dmId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"legacy_shop_dm_order\"\nADD CONSTRAINT \"legacy_shop_dm_order_dmId_fkey\"\nFOREIGN KEY (\"dmId\")\nREFERENCES \"public\".\"legacy_shop_dm\" (\"id\")\nON DELETE RESTRICT\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"legacy_shop_dm_order_dmId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "legacy_shop_dm_order_dmId_fkey",
+          "public",
+          "\"public\".\"legacy_shop_dm_order\"",
+          "f",
+          "[\"dmId\"]",
+          "\"public\".\"legacy_shop_dm\"",
+          "[\"id\"]",
+          "r",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.legacy_shop_dm_order.legacy_shop_dm_order_shopOrderId_fkey",
+    "label": "Add foreign key \"legacy_shop_dm_order_shopOrderId_fkey\" on \"legacy_shop_dm_order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "legacy_shop_dm_order_shopOrderId_fkey",
+        "table": "legacy_shop_dm_order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"legacy_shop_dm_order_shopOrderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "legacy_shop_dm_order_shopOrderId_fkey",
+          "public",
+          "\"public\".\"legacy_shop_dm_order\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"legacy_shop_dm_order_shopOrderId_fkey\" on \"legacy_shop_dm_order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"legacy_shop_dm_order_shopOrderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"legacy_shop_dm_order\"\nADD CONSTRAINT \"legacy_shop_dm_order_shopOrderId_fkey\"\nFOREIGN KEY (\"shopOrderId\")\nREFERENCES \"public\".\"shop_order\" (\"id\")\nON DELETE RESTRICT\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"legacy_shop_dm_order_shopOrderId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "legacy_shop_dm_order_shopOrderId_fkey",
+          "public",
+          "\"public\".\"legacy_shop_dm_order\"",
+          "f",
+          "[\"shopOrderId\"]",
+          "\"public\".\"shop_order\"",
+          "[\"id\"]",
+          "r",
+          "c"
+        ]
+      }
+    ]
+  }
+]
