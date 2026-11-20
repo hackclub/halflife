@@ -1173,15 +1173,17 @@
 	.hl-admin-side a {
 		font-size: 0.95rem;
 	}
-	/* A select is as wide as its longest option needs, not the whole form: the admin's short choice lists would otherwise stretch across the page. */
-	.hl-admin-main .hl-select {
+	/* A select is as wide as its longest option needs, not the whole form: the admin's short choice lists and the review console's decision fields would otherwise stretch across the page. */
+	.hl-admin-main .hl-select,
+	.hl-shell .hl-select {
 		align-self: flex-start;
 		width: auto;
 		min-width: 12rem;
 		max-width: 100%;
 	}
 	/* A select in a filter grid fills its column rather than sizing to its longest option, so a row of filters has one width for every control and one gap between every pair. */
-	.hl-admin-main .hl-filters__grid .hl-select {
+	.hl-admin-main .hl-filters__grid .hl-select,
+	.hl-shell .hl-filters__grid .hl-select {
 		width: 100%;
 		min-width: 0;
 	}
@@ -1742,8 +1744,9 @@ html:has(.hl-admin) {
 		width: 100%;
 	}
 }
-/* A number is a short value – days, minutes, cents – so it takes a field's own width rather than the whole form's, the way a select in the console does. */
-.hl-admin-main .hl-input[type="number"] {
+/* A number is a short value – hours, days, cents – so it takes a field's own width rather than the whole form's, the way a select in the console does. */
+.hl-admin-main .hl-input[type="number"],
+.hl-shell .hl-input[type="number"] {
 	width: min(100%, 9rem);
 }
 /* Two short fields beside each other once there is room for both, stacked when there is not. */
