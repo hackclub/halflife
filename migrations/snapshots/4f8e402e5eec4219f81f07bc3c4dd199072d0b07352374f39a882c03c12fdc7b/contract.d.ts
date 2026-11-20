@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'958d284fc863faa4c86a9a0decc4939f67491a031db04d2cccb03440927816bc'>;
+  StorageHashBase<'4f8e402e5eec4219f81f07bc3c4dd199072d0b07352374f39a882c03c12fdc7b'>;
 export type ExecutionHash =
   ExecutionHashBase<'6e69755392f00def721572f5947bdf1c39ff43dc256c6f78a68c33d182a3da04'>;
 export type ProfileHash =
@@ -1839,6 +1839,7 @@ export namespace Models {
     id: FieldOutputTypes['public']['SubmissionReview']['id'];
     invalidated: FieldOutputTypes['public']['SubmissionReview']['invalidated'];
     invalidatedAt: FieldOutputTypes['public']['SubmissionReview']['invalidatedAt'];
+    justification: FieldOutputTypes['public']['SubmissionReview']['justification'];
     pass: FieldOutputTypes['public']['SubmissionReview']['pass'];
     reason: FieldOutputTypes['public']['SubmissionReview']['reason'];
     result: FieldOutputTypes['public']['SubmissionReview']['result'];
@@ -1848,9 +1849,13 @@ export namespace Models {
     submissionId: FieldOutputTypes['public']['SubmissionReview']['submissionId'];
     technicalFeatures: FieldOutputTypes['public']['SubmissionReview']['technicalFeatures'];
     tierOverride: FieldOutputTypes['public']['SubmissionReview']['tierOverride'];
+    unifiedApprovedAt: FieldOutputTypes['public']['SubmissionReview']['unifiedApprovedAt'];
+    unifiedApprovedById: FieldOutputTypes['public']['SubmissionReview']['unifiedApprovedById'];
+    unifiedOverrides: FieldOutputTypes['public']['SubmissionReview']['unifiedOverrides'];
     reviewer: public_User | null;
     submission: public_PhaseSubmission;
-    readonly [RelationKeys]?: 'reviewer' | 'submission';
+    unifiedApprovedBy: public_User | null;
+    readonly [RelationKeys]?: 'reviewer' | 'submission' | 'unifiedApprovedBy';
   };
   export type public_SyncRunLog = {
     actorId: FieldOutputTypes['public']['SyncRunLog']['actorId'];
@@ -2038,6 +2043,7 @@ export namespace Models {
     shopRegion: public_ShopRegion | null;
     syncRunLogs: public_SyncRunLog[];
     themeProjects: public_ThemeProject[];
+    unifiedApprovals: public_SubmissionReview[];
     uploadHandoffs: public_UploadHandoff[];
     uploadedObjects: public_UploadedObject[];
     weekExtensions: public_WeekExtension[];
@@ -2067,6 +2073,7 @@ export namespace Models {
       | 'shopRegion'
       | 'syncRunLogs'
       | 'themeProjects'
+      | 'unifiedApprovals'
       | 'uploadHandoffs'
       | 'uploadedObjects'
       | 'weekExtensions';
@@ -7092,6 +7099,12 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly precision: 3 };
                   readonly many: false;
                 };
+                readonly justification: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
                 readonly pass: {
                   readonly dataType: 'pg/enum';
                   readonly codecId: 'pg/enum@1';
@@ -7152,6 +7165,25 @@ type ContractBase = Omit<
                   readonly nullable: true;
                   readonly many: false;
                 };
+                readonly unifiedApprovedAt: {
+                  readonly dataType: 'pg/timestamp';
+                  readonly codecId: 'pg/timestamp-string@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly precision: 3 };
+                  readonly many: false;
+                };
+                readonly unifiedApprovedById: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly unifiedOverrides: {
+                  readonly dataType: 'pg/jsonb';
+                  readonly codecId: 'pg/jsonb@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [];
@@ -7185,6 +7217,18 @@ type ContractBase = Omit<
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'submission_review';
                     readonly columns: readonly ['reviewerId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'submission_review';
+                    readonly columns: readonly ['unifiedApprovedById'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
@@ -13361,6 +13405,10 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly precision: 3 };
                 };
               };
+              readonly justification: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly pass: {
                 readonly nullable: false;
                 readonly type: {
@@ -13405,6 +13453,22 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
+              readonly unifiedApprovedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamp-string@1';
+                  readonly typeParams: { readonly precision: 3 };
+                };
+              };
+              readonly unifiedApprovedById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly unifiedOverrides: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
+              };
             };
             readonly relations: {
               readonly reviewer: {
@@ -13425,6 +13489,15 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly on: {
                   readonly localFields: readonly ['submissionId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly unifiedApprovedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['unifiedApprovedById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -13452,6 +13525,7 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly invalidated: { readonly column: 'invalidated' };
                 readonly invalidatedAt: { readonly column: 'invalidatedAt' };
+                readonly justification: { readonly column: 'justification' };
                 readonly pass: { readonly column: 'pass' };
                 readonly reason: { readonly column: 'reason' };
                 readonly result: { readonly column: 'result' };
@@ -13461,6 +13535,9 @@ type ContractBase = Omit<
                 readonly submissionId: { readonly column: 'submissionId' };
                 readonly technicalFeatures: { readonly column: 'technicalFeatures' };
                 readonly tierOverride: { readonly column: 'tierOverride' };
+                readonly unifiedApprovedAt: { readonly column: 'unifiedApprovedAt' };
+                readonly unifiedApprovedById: { readonly column: 'unifiedApprovedById' };
+                readonly unifiedOverrides: { readonly column: 'unifiedOverrides' };
               };
             };
           };
@@ -14653,6 +14730,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['userId'];
+                };
+              };
+              readonly unifiedApprovals: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'SubmissionReview';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['unifiedApprovedById'];
                 };
               };
               readonly uploadHandoffs: {
