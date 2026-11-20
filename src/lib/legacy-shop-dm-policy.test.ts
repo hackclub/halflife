@@ -61,8 +61,8 @@ describe("legacyShopMessage", () => {
 		)
 		expect(buttons).toHaveLength(4)
 		expect(buttons.every(button => button.action_id === LEGACY_SHOP_CHOICE_ACTION)).toBe(true)
-		expect(parseLegacyShopButtonValue(buttons[0].value)?.orderId).toBe("ord_1")
-		expect(parseLegacyShopButtonValue(buttons[3].value)?.orderId).toBe("ord_2")
+		expect(parseLegacyShopButtonValue(buttons[0]?.value)?.orderId).toBe("ord_1")
+		expect(parseLegacyShopButtonValue(buttons[3]?.value)?.orderId).toBe("ord_2")
 	})
 
 	test("the current choice is shown per order", () => {
@@ -113,7 +113,7 @@ describe("groupLegacyShopBuyers", () => {
 
 	test("orders a live DM already lists are left out", () => {
 		const buyers = groupLegacyShopBuyers([order("o1", "u_a", 1), order("o2", "u_a", 2)], new Set(["o1"]), slackIds)
-		expect(buyers[0].orders.map(o => o.orderId)).toEqual(["o2"])
+		expect(buyers[0]?.orders.map(o => o.orderId)).toEqual(["o2"])
 	})
 
 	test("a buyer whose orders are all sent does not appear", () => {
@@ -123,12 +123,12 @@ describe("groupLegacyShopBuyers", () => {
 
 	test("a buyer with no Slack ID is listed but skipped", () => {
 		const buyers = groupLegacyShopBuyers([order("o1", "u_c", 1)], new Set(), slackIds)
-		expect(buyers[0].skipReason).toBe("No Slack ID on the account")
+		expect(buyers[0]?.skipReason).toBe("No Slack ID on the account")
 	})
 
 	test("a buyer with too many orders is listed but skipped", () => {
 		const many = Array.from({ length: LEGACY_SHOP_DM_MAX_ORDERS + 1 }, (_, i) => order(`o${i}`, "u_a", i + 1))
 		const buyers = groupLegacyShopBuyers(many, new Set(), slackIds)
-		expect(buyers[0].skipReason).toContain("too many for one DM")
+		expect(buyers[0]?.skipReason).toContain("too many for one DM")
 	})
 })

@@ -8,9 +8,8 @@ import type { SlackBlock } from "@/lib/site/slack"
  * Kept out of the database and Slack modules so the rules can be tested without either. The send and the click handler both build on these.
  */
 
-/** The action IDs on the DM's buttons. The interactions route dispatches on them. */
+/** The action ID on the DM's buttons. Test buttons use it too, and are told apart by their value. */
 export const LEGACY_SHOP_CHOICE_ACTION = "legacy_shop_choice"
-export const LEGACY_SHOP_TEST_ACTION = "legacy_shop_test"
 
 /**
  * A Slack block holds at most 50 blocks, and each order takes two (its text and its buttons), with one for the intro. A buyer with more orders than this is skipped rather than split, because one DM per buyer is the point.
