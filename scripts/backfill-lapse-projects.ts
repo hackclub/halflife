@@ -80,3 +80,5 @@ for (const [owner, clips] of byOwner) {
 console.log(
 	`clips with no project: ${rows.length} across ${byOwner.size} makers; resolved ${resolved}, Lapse named none ${unnamed}, Lapse never answered ${failed}, no Lapse link ${unasked}, write failures ${writeFailures}.${commit ? "" : " Dry run: re-run with --commit."}`,
 )
+
+await db.close()

@@ -67,9 +67,7 @@ function OrderLinks({ orders }: Readonly<{ orders: { orderId: string; orderNumbe
 			{orders.map((order, index) => (
 				<span key={order.orderId}>
 					{index > 0 ? ", " : null}
-					<Link className="hl-mono" href={`/admin/fulfillment?order=${order.orderId}`}>
-						#{order.orderNumber}
-					</Link>
+					<Link href={`/admin/fulfillment?order=${order.orderId}`}>#{order.orderNumber}</Link>
 				</span>
 			))}
 		</>
@@ -108,8 +106,14 @@ function SendPanel({ buyers }: Readonly<{ buyers: LegacyShopBuyer[] }>) {
 	const failed = outcomes?.filter(outcome => outcome.status === "FAILED") ?? []
 	const slackIdOf = (userId: string): string => buyers.find(buyer => buyer.userId === userId)?.slackId ?? userId
 
+	const allChosen = eligible.length > 0 && chosen.length === eligible.length
+
 	function toggle(userId: string) {
 		setPicked(current => (current.includes(userId) ? current.filter(id => id !== userId) : [...current, userId]))
+	}
+
+	function toggleAll() {
+		setPicked(allChosen ? [] : eligible.map(buyer => buyer.userId))
 	}
 
 	async function send() {
@@ -182,6 +186,14 @@ function SendPanel({ buyers }: Readonly<{ buyers: LegacyShopBuyer[] }>) {
 				<EmptyState>No open legacy order is waiting for a DM.</EmptyState>
 			) : (
 				<Table head={["", "User", "Slack ID", "Orders", "Items"]}>
+					<tr>
+						<td>
+							<input aria-label="Message every buyer" checked={allChosen} onChange={toggleAll} type="checkbox" />
+						</td>
+						<td className="hl-hint" colSpan={4}>
+							{allChosen ? "Every buyer is included" : "Choose the buyers to message"}
+						</td>
+					</tr>
 					{eligible.map(buyer => (
 						<tr key={buyer.userId}>
 							<td>
@@ -307,7 +319,11 @@ function HistoryPanel({ history }: Readonly<{ history: LegacyShopDmRecord[] }>) 
 						<tr key={dm.id}>
 							<td className="hl-mono">{formatUtcDateTime(parseDbTimestamp(dm.sentAt ?? dm.createdAt))}</td>
 							<td>
-								{dm.userId ? <UserLink name={dm.userName} userId={dm.userId} /> : <span className="hl-hint">Test</span>}
+								{dm.recipientId ? (
+									<UserLink name={dm.recipientName} userId={dm.recipientId} />
+								) : (
+									<span className="hl-hint">{dm.test ? "Test, no account" : "No account"}</span>
+								)}
 							</td>
 							<td className="hl-mono">
 								{dm.slackId}

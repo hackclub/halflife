@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server"
 import { z } from "zod"
 import { recordLegacyShopChoice } from "@/lib/legacy-shop-dm"
-import { LEGACY_SHOP_CHOICE_ACTION, parseLegacyShopButtonValue } from "@/lib/legacy-shop-dm-policy"
+import { LEGACY_SHOP_ACTION_PREFIX, parseLegacyShopButtonValue } from "@/lib/legacy-shop-dm-policy"
 import {
 	addReaction,
 	checkChannelMembership,
@@ -509,7 +509,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 				else if (action?.action_id === "mark_resolved_by_author") await handleSelfResolve(payload, action)
 				else if (action?.action_id === "mark_helped_from_thread") await handleThreadMarkHelped(payload, action)
 				else if (action?.action_id === "reopen_ticket") await handleReopen(payload, action)
-				else if (action?.action_id === LEGACY_SHOP_CHOICE_ACTION) await handleLegacyShopChoice(payload, action)
+				else if (action?.action_id.startsWith(LEGACY_SHOP_ACTION_PREFIX)) await handleLegacyShopChoice(payload, action)
 			} catch (err) {
 				// The response is already sent and Slack has its 200, so the log is the only trace a failure leaves.
 				console.error("[slack] interaction handler threw:", err)

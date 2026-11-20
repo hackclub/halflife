@@ -10,6 +10,7 @@ import {
 	type LegacyShopUser,
 	legacyShopMessage,
 } from "@/lib/legacy-shop-dm-policy"
+import { configuredOrigin } from "@/lib/origin"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { openDirectMessage, postMessage, type SlackBlock } from "@/lib/site/slack"
 import { formatDbTimestamp } from "@/lib/time"
@@ -42,12 +43,13 @@ export interface LegacyShopDmRecord {
 	error: string | null
 	id: string
 	orders: LegacyShopDmOrderRecord[]
+	/** The account whose Slack ID is the DM's recipient today, or null when no account has that ID. */
+	recipientId: string | null
+	recipientName: string | null
 	sentAt: string | null
 	slackId: string
 	status: LegacyShopDmStatus
 	test: boolean
-	userId: string | null
-	userName: string | null
 }
 
 export interface LegacyShopPreview {
@@ -82,6 +84,17 @@ async function eligibleBuyers(): Promise<LegacyShopBuyer[]> {
 	return groupLegacyShopBuyers(rows, new Set(listed.map(row => row.shopOrderId)), users)
 }
 
+/** The account holding each Slack ID, read in one query. Slack IDs with no account are absent from the map. */
+async function usersBySlackId(slackIds: readonly string[]): Promise<Map<string, { id: string; name: string | null }>> {
+	if (slackIds.length === 0) return new Map()
+	const rows = await db.orm.public.User.where(user => user.slackId.in([...slackIds]))
+		.select("displayName", "id", "name", "slackId")
+		.all()
+	return new Map(
+		rows.flatMap(user => (user.slackId ? [[user.slackId, { id: user.id, name: displayName(user) }] as const] : [])),
+	)
+}
+
 /** The display name and Slack ID of each named user, read in one query. */
 async function usersById(userIds: readonly string[]): Promise<Map<string, LegacyShopUser>> {
 	const rows = await db.orm.public.User.where(user => user.id.in([...userIds]))
@@ -99,8 +112,7 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 		.all()
 	if (dms.length === 0) return []
 
-	const userIds = [...new Set(dms.flatMap(dm => (dm.userId ? [dm.userId] : [])))]
-	const users = userIds.length === 0 ? new Map<string, LegacyShopUser>() : await usersById(userIds)
+	const recipients = await usersBySlackId([...new Set(dms.map(dm => dm.slackId))])
 
 	const rows = await db.orm.public.LegacyShopDmOrder.where(row => row.dmId.in(dms.map(dm => dm.id)))
 		.select("choice", "choiceAt", "dmId", "shopOrderId", "status")
@@ -112,7 +124,7 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 		error: dm.error,
 		id: dm.id,
 		orders: rows
-			.filter(row => row.dmId === dm.id && row.shopOrder)
+			.filter(row => row.dmId === dm.id && Boolean(row.shopOrder))
 			.map(row => ({
 				choice: row.choice,
 				choiceAt: row.choiceAt,
@@ -121,13 +133,13 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 				orderNumber: row.shopOrder?.orderNumber ?? 0,
 				status: row.status,
 			}))
-			.sort((a, b) => a.orderNumber - b.orderNumber),
+			.toSorted((a, b) => a.orderNumber - b.orderNumber),
+		recipientId: recipients.get(dm.slackId)?.id ?? null,
+		recipientName: recipients.get(dm.slackId)?.name ?? null,
 		sentAt: dm.sentAt,
 		slackId: dm.slackId,
 		status: dm.status,
 		test: dm.test,
-		userId: dm.userId,
-		userName: dm.userId ? (users.get(dm.userId)?.name ?? null) : null,
 	}))
 }
 
@@ -210,7 +222,7 @@ async function sendToBuyer(buyer: LegacyShopBuyer, sentById: string): Promise<Le
 
 	let posted: { channel: string; ts: string }
 	try {
-		posted = await postDirect(buyer.slackId, legacyShopMessage(lines, false))
+		posted = await postDirect(buyer.slackId, legacyShopMessage(lines, false, configuredOrigin()))
 	} catch (err) {
 		const error = errorText(err)
 		await settleLegacyShopDm(dmId, { error })
@@ -311,7 +323,7 @@ export async function recordLegacyShopChoice(input: {
 			orderId: line.shopOrderId,
 			orderNumber: line.shopOrder?.orderNumber ?? null,
 		}))
-		.sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0))
+		.toSorted((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0))
 
-	return { channel: dm.channel, message: legacyShopMessage(lines, false), ok: true, ts: dm.ts }
+	return { channel: dm.channel, message: legacyShopMessage(lines, false, configuredOrigin()), ok: true, ts: dm.ts }
 }

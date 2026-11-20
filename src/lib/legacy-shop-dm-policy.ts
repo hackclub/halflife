@@ -8,13 +8,15 @@ import type { SlackBlock } from "@/lib/site/slack"
  * Kept out of the database and Slack modules so the rules can be tested without either. The send and the click handler both build on these.
  */
 
-/** The action ID on the DM's buttons. Test buttons use it too, and are told apart by their value. */
-export const LEGACY_SHOP_CHOICE_ACTION = "legacy_shop_choice"
+/**
+ * The prefix of every DM button's action ID. Slack wants action IDs unique within a block, so each button adds its choice to the prefix. Test buttons use the same IDs and are told apart by their value.
+ */
+export const LEGACY_SHOP_ACTION_PREFIX = "legacy_shop_choice:"
 
 /**
- * A Slack block holds at most 50 blocks, and each order takes two (its text and its buttons), with one for the intro. A buyer with more orders than this is skipped rather than split, because one DM per buyer is the point.
+ * A Slack message holds at most 50 blocks: one for the intro, two per order (its text and its buttons), and one for the closing note. A buyer with more orders than this is skipped rather than split, because one DM per buyer is the point.
  */
-export const LEGACY_SHOP_DM_MAX_ORDERS = 24
+export const LEGACY_SHOP_DM_MAX_ORDERS = 23
 
 const SLACK_USER_ID = /^[UW][A-Z0-9]{5,}$/
 
@@ -27,7 +29,11 @@ const CHOICE_LABELS: { [_: string]: string } = {
 }
 
 const BUYER_INTRO =
-	"A few of your Half Life shop orders were placed before you could choose how to get them. For each one, tell us whether to ship the item to you or give you a grant card for its value. Nothing changes yet: we'll confirm when fulfilment opens and what it covers before anything is sent."
+	"Some of your Half Life shop orders were placed before you could choose how to get them. For each one, tell us whether to ship the item to you or give you a grant card for its value. We'll confirm when physical fulfilment opens and what it covers before anything is sent."
+
+/** Closes every buyer and test DM, after the orders. */
+const ADDRESS_NOTE =
+	"Physical items always ship to your primary mailing address as configured in <https://auth.hackclub.com/addresses|Hack Club Auth>."
 
 const TEST_INTRO =
 	"Test message from the Half Life admin panel. The buttons are here to check how the message looks; pressing them changes no order."
@@ -67,11 +73,13 @@ export interface LegacyShopLine {
 const escapeMrkdwn = (text: string): string =>
 	text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 
-function lineBlocks(line: LegacyShopLine, test: boolean): SlackBlock[] {
-	const heading = line.orderNumber === null ? "Sample order" : `Order #${line.orderNumber}`
+function lineBlocks(line: LegacyShopLine, test: boolean, origin: string | null): SlackBlock[] {
+	const label = line.orderNumber === null ? "Sample order" : `Order #${line.orderNumber}`
+	// The link goes to the buyer's own orders page, where each order has an anchor. The sample line has no order, so it stays plain.
+	const heading = origin && line.orderId ? `<${origin}/shop/orders#order-${line.orderId}|${label}>` : label
 	const current = line.choice ? `Your choice: ${CHOICE_LABELS[line.choice]}` : "No choice yet"
 	const button = (choice: "GRANT_CARD" | "SHIP"): SlackBlock => ({
-		action_id: LEGACY_SHOP_CHOICE_ACTION,
+		action_id: `${LEGACY_SHOP_ACTION_PREFIX}${choice}`,
 		text: { emoji: true, text: CHOICE_LABELS[choice], type: "plain_text" },
 		type: "button",
 		value: legacyShopButtonValue({ choice, orderId: line.orderId ?? undefined, test: test || undefined }),
@@ -94,10 +102,15 @@ function lineBlocks(line: LegacyShopLine, test: boolean): SlackBlock[] {
 }
 
 /** The DM for one buyer, or the test DM when `test` is set. Its fallback text is what a notification shows. */
-export function legacyShopMessage(lines: LegacyShopLine[], test: boolean): { blocks: SlackBlock[]; text: string } {
+export function legacyShopMessage(
+	lines: LegacyShopLine[],
+	test: boolean,
+	origin: string | null = null,
+): { blocks: SlackBlock[]; text: string } {
 	const intro: SlackBlock = { text: { text: test ? TEST_INTRO : BUYER_INTRO, type: "mrkdwn" }, type: "section" }
+	const note: SlackBlock = { text: { text: ADDRESS_NOTE, type: "mrkdwn" }, type: "section" }
 	return {
-		blocks: [intro, ...lines.flatMap(line => lineBlocks(line, test))],
+		blocks: [intro, ...lines.flatMap(line => lineBlocks(line, test, origin)), note],
 		text: test ? "Test: Half Life shop delivery message" : "Your Half Life shop orders need a delivery choice",
 	}
 }
@@ -148,7 +161,7 @@ export function groupLegacyShopBuyers(
 		const slackId = user?.slackId ?? null
 		return {
 			name: user?.name ?? null,
-			orders: list.sort((a, b) => a.orderNumber - b.orderNumber),
+			orders: list.toSorted((a, b) => a.orderNumber - b.orderNumber),
 			skipReason: legacyShopSkipReason(slackId, list.length),
 			slackId,
 			userId,

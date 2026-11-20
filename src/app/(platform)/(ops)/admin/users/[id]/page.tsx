@@ -28,7 +28,9 @@ import { getProgramSettings, isPhaseDecided } from "@/lib/program"
 import { getUserDetail } from "@/lib/queries/admin"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { parseDbTimestamp } from "@/lib/time"
+import { getUserGrantCards } from "@/lib/user-grant-cards"
 import { ThemedProjectRow } from "./ThemedProjectRow"
+import { UserGrantCards } from "./UserGrantCards"
 import { WeekExtensionForm } from "./WeekExtensionForm"
 
 export const metadata: Metadata = {
@@ -37,7 +39,16 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic"
 
-type Tab = "email" | "extensions" | "history" | "ledger" | "moderation" | "orders" | "projects" | "roles"
+type Tab =
+	| "email"
+	| "extensions"
+	| "grant-cards"
+	| "history"
+	| "ledger"
+	| "moderation"
+	| "orders"
+	| "projects"
+	| "roles"
 
 /** The account's panels, in the order the page shows them. A tab is the only panel on the page, so switching one changes what is read rather than where the reader has scrolled to. */
 const TABS: { id: Tab; label: string }[] = [
@@ -49,6 +60,7 @@ const TABS: { id: Tab; label: string }[] = [
 	{ id: "projects", label: "Projects" },
 	{ id: "ledger", label: "Ledger" },
 	{ id: "orders", label: "Orders" },
+	{ id: "grant-cards", label: "Grant cards" },
 ]
 
 /** The tab the URL names, or null when it names none this page has. */
@@ -118,6 +130,7 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 	})
 	const requested = tabFrom(requestedTab)
 	const tab = requested && tabs.some(item => item.id === requested) ? requested : "history"
+	const grantCards = tab === "grant-cards" ? await getUserGrantCards(id) : null
 
 	const weekExtensionByWeek = new Map(user.weekExtensions.map(extension => [extension.week, extension]))
 	const now = new Date()
@@ -403,6 +416,8 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 					)}
 				</Panel>
 			) : null}
+
+			{grantCards ? <UserGrantCards cards={grantCards} userId={id} /> : null}
 
 			{tab === "orders" ? (
 				<Panel title="Orders">

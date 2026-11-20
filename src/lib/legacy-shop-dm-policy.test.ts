@@ -2,13 +2,29 @@ import { describe, expect, test } from "bun:test"
 import {
 	groupLegacyShopBuyers,
 	isSlackUserId,
-	LEGACY_SHOP_CHOICE_ACTION,
+	LEGACY_SHOP_ACTION_PREFIX,
 	LEGACY_SHOP_DM_MAX_ORDERS,
 	type LegacyShopOrderRow,
 	legacyShopButtonValue,
 	legacyShopMessage,
 	parseLegacyShopButtonValue,
 } from "@/lib/legacy-shop-dm-policy"
+import type { SlackBlock } from "@/lib/site/slack"
+
+/** The buttons in a message's action blocks, read through a type guard rather than a cast. */
+function buttonsIn(blocks: SlackBlock[]): ButtonLike[] {
+	return blocks.flatMap(block =>
+		block.type === "actions" && Array.isArray(block.elements) ? block.elements.filter(isButtonLike) : [],
+	)
+}
+
+interface ButtonLike {
+	action_id: string
+	value: string
+}
+
+const isButtonLike = (value: unknown): value is ButtonLike =>
+	typeof value === "object" && value !== null && "action_id" in value && "value" in value
 
 const order = (orderId: string, userId: string, orderNumber: number): LegacyShopOrderRow => ({
 	itemName: `Item ${orderId}`,
@@ -54,13 +70,10 @@ describe("legacyShopMessage", () => {
 			],
 			false,
 		)
-		const buttons = message.blocks.flatMap(block =>
-			block.type === "actions" && Array.isArray(block.elements)
-				? (block.elements as { action_id: string; value: string }[])
-				: [],
-		)
+		const buttons = buttonsIn(message.blocks)
 		expect(buttons).toHaveLength(4)
-		expect(buttons.every(button => button.action_id === LEGACY_SHOP_CHOICE_ACTION)).toBe(true)
+		expect(buttons.every(button => button.action_id.startsWith(LEGACY_SHOP_ACTION_PREFIX))).toBe(true)
+		expect(new Set(buttons.slice(0, 2).map(button => button.action_id)).size).toBe(2)
 		expect(parseLegacyShopButtonValue(buttons[0]?.value)?.orderId).toBe("ord_1")
 		expect(parseLegacyShopButtonValue(buttons[3]?.value)?.orderId).toBe("ord_2")
 	})
@@ -83,11 +96,7 @@ describe("legacyShopMessage", () => {
 
 	test("a test message carries no order and marks its buttons as test", () => {
 		const message = legacyShopMessage([{ choice: null, itemName: "Sample", orderId: null, orderNumber: null }], true)
-		const values = message.blocks.flatMap(block =>
-			block.type === "actions" && Array.isArray(block.elements)
-				? (block.elements as { value: string }[]).map(element => parseLegacyShopButtonValue(element.value))
-				: [],
-		)
+		const values = buttonsIn(message.blocks).map(button => parseLegacyShopButtonValue(button.value))
 		expect(values.every(value => value?.test === true && value.orderId === undefined)).toBe(true)
 		expect(message.text).toContain("Test")
 	})
@@ -131,5 +140,22 @@ describe("groupLegacyShopBuyers", () => {
 		const many = Array.from({ length: LEGACY_SHOP_DM_MAX_ORDERS + 1 }, (_, i) => order(`o${i}`, "u_a", i + 1))
 		const buyers = groupLegacyShopBuyers(many, new Set(), slackIds)
 		expect(buyers[0]?.skipReason).toContain("too many for one DM")
+	})
+})
+
+describe("order links", () => {
+	test("the order number links to its anchor on the buyer's orders page", () => {
+		const message = legacyShopMessage(
+			[{ choice: null, itemName: "Sticker", orderId: "ord_1", orderNumber: 12 }],
+			false,
+			"https://example.test",
+		)
+		expect(JSON.stringify(message.blocks)).toContain("<https://example.test/shop/orders#order-ord_1|Order #12>")
+	})
+
+	test("without an origin the order number is plain text", () => {
+		const message = legacyShopMessage([{ choice: null, itemName: "Sticker", orderId: "ord_1", orderNumber: 12 }], false)
+		expect(JSON.stringify(message.blocks)).not.toContain("/shop/orders#order-")
+		expect(JSON.stringify(message.blocks)).toContain("Order #12")
 	})
 })
