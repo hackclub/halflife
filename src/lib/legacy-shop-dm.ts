@@ -18,7 +18,7 @@ import { formatDbTimestamp } from "@/lib/time"
  * Every send is claimed in the database before Slack is called. A claimed order is PENDING or SENT, and the partial unique index on `LegacyShopDmOrder.shopOrderId` refuses a second claim, so a repeated send or a second admin cannot message the same order twice. A send that fails releases its orders.
  */
 
-const OPEN_STATUSES = [ShopOrderStatus.PENDING, ShopOrderStatus.ON_HOLD]
+const OPEN_STATUSES: ShopOrderStatus[] = [ShopOrderStatus.PENDING, ShopOrderStatus.ON_HOLD]
 const LIVE_DM_STATUSES = [LegacyShopDmStatus.PENDING, LegacyShopDmStatus.SENT]
 
 /** How many past DMs the tab lists. */
