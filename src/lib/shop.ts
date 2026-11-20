@@ -661,7 +661,11 @@ export async function changeDeliveryPreference(
 			lastActorId: userId,
 		})
 		if (!updated) throw new HttpError("CONFLICT", "This order was decided by someone else")
-		return toShopOrderPublic(updated)
+		// Read back through the buyer's field list: the write returns every column, and the encrypted and staff-side ones are not the buyer's to see.
+		const fresh = await tx.orm.public.ShopOrder.whereUnique({ id: orderId })
+			.select(...shopOrderPublicFields)
+			.firstOrThrow()
+		return toShopOrderPublic(fresh)
 	})
 }
 
