@@ -11,6 +11,7 @@ import { formatUtcDateTime } from "@/lib/deadline"
 import { HcbGrantCardBatchStatus, PayoutSource } from "@/lib/enums"
 import { listGrantCardBatches, listGrantCardExports, listIssuedGrantCards, previewCardGrants } from "@/lib/grant-cards"
 import { readStoredRefreshToken } from "@/lib/hcb-credential"
+import { hcbGrantUrl } from "@/lib/hcb-grant-url"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -258,11 +259,7 @@ export default async function AdminGrantsPage({ searchParams }: Props) {
 									<td className="hl-mono">{formatUsd(card.amountCents / 100)}</td>
 									<td>{card.issuedAt ? formatUtcDateTime(card.issuedAt) : "-"}</td>
 									<td className="hl-mono">
-										{card.hcbCardGrantId ? (
-											<a href={`https://hcb.hackclub.com/grants/${card.hcbCardGrantId}`}>{card.hcbCardGrantId}</a>
-										) : (
-											"-"
-										)}
+										{card.hcbCardGrantId ? <a href={hcbGrantUrl(card.hcbCardGrantId)}>{card.hcbCardGrantId}</a> : "-"}
 									</td>
 									<td>
 										<Link className="hl-mono" href={`/admin/grants/${card.batchId}`}>
