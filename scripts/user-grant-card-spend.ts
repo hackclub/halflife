@@ -45,4 +45,4 @@ async function main(): Promise<void> {
 	console.error(`${cards.length} issued grant card(s) for ${user.email}`)
 }
 
-await main()
+await main().finally(() => db.close())
