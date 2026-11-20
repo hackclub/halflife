@@ -325,7 +325,6 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 								data={{
 									approvedHours: project.approvedHours,
 									buildStatus: project.buildStatus,
-									cardGrantSent: project.hcbGrantCards.some(card => card.status === "ISSUED"),
 									designFunding: fundingByProject.get(project.id) ?? null,
 									designStatus: project.designStatus,
 									extension: project.submissionExtensionUntil?.toISOString() ?? null,
@@ -333,6 +332,7 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 									// A grant is decided with the design, so one on an undecided project is an artefact of an import rather than money owed.
 									grantUsd: project.designStatus === PhaseStatus.approved ? project.grantUsd : null,
 									id: project.id,
+									issuedCard: project.hcbGrantCards.find(card => card.status === "ISSUED") ?? null,
 									journal: project.workSessions.map(session => {
 										const status = statusFor(project, session.phase)
 										return {

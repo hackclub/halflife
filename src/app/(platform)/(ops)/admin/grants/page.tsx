@@ -250,7 +250,7 @@ export default async function AdminGrantsPage({ searchParams }: Props) {
 					) : (
 						<Table head={["Project", "Amount", "Issued", "HCB grant", "Batch"]}>
 							{issued.map(card => (
-								<tr key={card.id}>
+								<tr id={`card-${card.id}`} key={card.id}>
 									<td>
 										{card.title || "Untitled"}
 										<div className="hl-hint hl-mono">{card.projectId}</div>
