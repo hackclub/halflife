@@ -529,12 +529,13 @@
 		padding: 0.35rem 0.8rem;
 		font-size: 0.9rem;
 	}
-	/* A key cap is a box the label sits centred in: inline-flex centres the text on both axes, and the padding is even top and bottom. */
+	/*
+	 * A key cap is a box the label sits centred in: inline-flex centres the text across the box, and the padding puts it on the box's centre line. That padding is not even top and bottom: a mono face's ascent leaves more room above the capitals than the baseline leaves below them, so centring the line box alone drew the letters a pixel and a half high, with the cap's floor taking the difference.
+	 */
 	.hl-admin-kbd {
 		display: inline-flex;
-		align-items: center;
 		justify-content: center;
-		padding: 0.1rem 0.4rem;
+		padding: 0.2rem 0.4rem 0;
 		font-family: var(--font-mono);
 		font-size: 0.75rem;
 		line-height: 1.2;
