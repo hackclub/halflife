@@ -319,7 +319,11 @@ function HistoryPanel({ history }: Readonly<{ history: LegacyShopDmRecord[] }>) 
 						<tr key={dm.id}>
 							<td className="hl-mono">{formatUtcDateTime(parseDbTimestamp(dm.sentAt ?? dm.createdAt))}</td>
 							<td>
-								{dm.userId ? <UserLink name={dm.userName} userId={dm.userId} /> : <span className="hl-hint">Test</span>}
+								{dm.recipientId ? (
+									<UserLink name={dm.recipientName} userId={dm.recipientId} />
+								) : (
+									<span className="hl-hint">{dm.test ? "Test, no account" : "No account"}</span>
+								)}
 							</td>
 							<td className="hl-mono">
 								{dm.slackId}

@@ -42,12 +42,13 @@ export interface LegacyShopDmRecord {
 	error: string | null
 	id: string
 	orders: LegacyShopDmOrderRecord[]
+	/** The account whose Slack ID is the DM's recipient today, or null when no account has that ID. */
+	recipientId: string | null
+	recipientName: string | null
 	sentAt: string | null
 	slackId: string
 	status: LegacyShopDmStatus
 	test: boolean
-	userId: string | null
-	userName: string | null
 }
 
 export interface LegacyShopPreview {
@@ -82,6 +83,17 @@ async function eligibleBuyers(): Promise<LegacyShopBuyer[]> {
 	return groupLegacyShopBuyers(rows, new Set(listed.map(row => row.shopOrderId)), users)
 }
 
+/** The account holding each Slack ID, read in one query. Slack IDs with no account are absent from the map. */
+async function usersBySlackId(slackIds: readonly string[]): Promise<Map<string, { id: string; name: string | null }>> {
+	if (slackIds.length === 0) return new Map()
+	const rows = await db.orm.public.User.where(user => user.slackId.in([...slackIds]))
+		.select("displayName", "id", "name", "slackId")
+		.all()
+	return new Map(
+		rows.flatMap(user => (user.slackId ? [[user.slackId, { id: user.id, name: displayName(user) }] as const] : [])),
+	)
+}
+
 /** The display name and Slack ID of each named user, read in one query. */
 async function usersById(userIds: readonly string[]): Promise<Map<string, LegacyShopUser>> {
 	const rows = await db.orm.public.User.where(user => user.id.in([...userIds]))
@@ -99,8 +111,7 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 		.all()
 	if (dms.length === 0) return []
 
-	const userIds = [...new Set(dms.flatMap(dm => (dm.userId ? [dm.userId] : [])))]
-	const users = userIds.length === 0 ? new Map<string, LegacyShopUser>() : await usersById(userIds)
+	const recipients = await usersBySlackId([...new Set(dms.map(dm => dm.slackId))])
 
 	const rows = await db.orm.public.LegacyShopDmOrder.where(row => row.dmId.in(dms.map(dm => dm.id)))
 		.select("choice", "choiceAt", "dmId", "shopOrderId", "status")
@@ -122,12 +133,12 @@ async function recentLegacyShopDms(): Promise<LegacyShopDmRecord[]> {
 				status: row.status,
 			}))
 			.sort((a, b) => a.orderNumber - b.orderNumber),
+		recipientId: recipients.get(dm.slackId)?.id ?? null,
+		recipientName: recipients.get(dm.slackId)?.name ?? null,
 		sentAt: dm.sentAt,
 		slackId: dm.slackId,
 		status: dm.status,
 		test: dm.test,
-		userId: dm.userId,
-		userName: dm.userId ? (users.get(dm.userId)?.name ?? null) : null,
 	}))
 }
 
