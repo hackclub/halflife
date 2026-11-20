@@ -1766,7 +1766,6 @@ html:has(.hl-admin) {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
 	gap: 1rem;
-	align-items: start;
 }
 .hl-batch-grid > * {
 	min-width: 0;
