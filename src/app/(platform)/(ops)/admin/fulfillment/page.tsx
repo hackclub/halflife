@@ -29,6 +29,7 @@ interface Search {
 	delivery?: SearchParamValue
 	from?: SearchParamValue
 	method?: SearchParamValue
+	order?: SearchParamValue
 	stage?: SearchParamValue
 	status?: SearchParamValue
 	tab?: SearchParamValue
@@ -88,6 +89,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 			delivery: search.delivery,
 			from: search.from,
 			method: search.method,
+			order: search.order,
 			stage: search.stage,
 			status: search.status,
 			to: search.to,

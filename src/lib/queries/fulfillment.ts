@@ -35,6 +35,8 @@ export interface FulfillmentFilters {
 	delivery?: ShopDeliveryPreference | "NONE"
 	/** `"NONE"` is an order nobody has chosen a method for yet. */
 	method?: ShopFulfillmentMethod | "NONE"
+	/** Only this order. */
+	orderId?: string
 	/** Exclusive. */
 	placedBefore?: Date
 	/** Inclusive, from the start of this instant. */
@@ -139,6 +141,7 @@ export async function listFulfillmentOrders(
 		)
 	if (delivery === "NONE") filtered = filtered.where(order => order.deliveryPreference.isNull())
 	else if (delivery) filtered = filtered.where({ deliveryPreference: delivery })
+	if (filters.orderId) filtered = filtered.where({ id: filters.orderId })
 	if (method === "NONE") filtered = filtered.where(order => order.fulfillmentMethod.isNull())
 	else if (method) filtered = filtered.where({ fulfillmentMethod: method })
 	if (stage)

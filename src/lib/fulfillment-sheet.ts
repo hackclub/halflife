@@ -15,6 +15,8 @@ export interface FulfillmentSearch {
 	delivery?: string
 	from?: string
 	method?: string
+	/** One order by its ID, so a link from elsewhere can show just that order. */
+	order?: string
 	stage?: string
 	status?: string
 	to?: string
@@ -33,6 +35,7 @@ export function fulfillmentFiltersFrom(s: FulfillmentSearch): FulfillmentFilters
 	return {
 		delivery: s.delivery === "NONE" ? "NONE" : Object.values(ShopDeliveryPreference).find(d => d === s.delivery),
 		method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find(m => m === s.method),
+		orderId: s.order && s.order.length <= 64 ? s.order : undefined,
 		// The "to" day is inclusive, so the bound is the midnight after it.
 		placedBefore: to ? new Date(to.getTime() + DAY_MS) : undefined,
 		placedFrom: utcDay(s.from),
