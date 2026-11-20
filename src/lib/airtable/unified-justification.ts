@@ -1,4 +1,5 @@
 import { deflationFor, deflationJustification, deflationReasonText } from "@/lib/airtable/deflation"
+import { withResearchStatement } from "@/lib/airtable/research-statement"
 
 /**
  * `Automation - Unified Justification`, as the base's formula builds it, so a reviewer can read what a decision will put in the unified database before making it.
@@ -81,7 +82,8 @@ export function previewUnifiedJustification(row: JustificationRow, draft: Approv
 	const deflation = deflationFor(draft.approvedHours, row.claimedHours)
 	const reason = deflationReasonText(draft.deflationReason, draft.internalNote)
 	return unifiedJustification({
-		additionalJustification: draft.internalNote.trim(),
+		// The cell as the base will hold it, minus the project link, which the preview has no address for.
+		additionalJustification: withResearchStatement(draft.internalNote.trim()),
 		alternateTracking: row.alternateTracking,
 		deflationJustification: deflation ? deflationJustification(deflation, reason) : "",
 		hackatimeId: row.hackatimeId,
