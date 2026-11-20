@@ -618,6 +618,54 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
 }
 
 /**
+ * The buyer changing how an open order is delivered: shipped to their address, or a grant card for its value.
+ *
+ * Only while the order is still open and nothing has been ordered from a vendor, the same window as cancelling. Coins do not move, because the price is the same either way. A grant card takes the item's cost and merchant allowlist as they are now, and a switch to shipping clears them. A live card on the order refuses the switch, so a card that may already exist is never left behind an order that now ships.
+ */
+export async function changeDeliveryPreference(
+	orderId: string,
+	userId: string,
+	deliveryPreference: ShopDeliveryPreference,
+): Promise<ShopOrderPublic> {
+	const target = await db.orm.public.ShopOrder.where({ id: orderId, userId }).select("userId").first()
+	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
+
+	return db.transaction(async tx => {
+		await lockUserCredit(tx, userId)
+
+		const order = await tx.orm.public.ShopOrder.whereUnique({ id: orderId }).first()
+		if (!order || order.userId !== userId) throw new HttpError("NOT_FOUND", "Order not found")
+		if (!canCancelOrder(order))
+			throw new HttpError("CONFLICT", "This order is already being fulfilled, so its delivery cannot change")
+		if (order.deliveryPreference === deliveryPreference) return toShopOrderPublic(order)
+
+		const cards = await tx.orm.public.HcbShopGrantCard.where({ shopOrderId: orderId }).select("status").all()
+		if (cards.some(card => isLiveShopCard(card.status)))
+			throw new HttpError("CONFLICT", "A grant card for this order already exists, so its delivery cannot change")
+
+		const item = await tx.orm.public.ShopItem.whereUnique({ id: order.shopItemId })
+			.select("costUsd", "grantCardMerchantIds")
+			.first()
+		const grantCardCents =
+			deliveryPreference === ShopDeliveryPreference.GRANT_CARD
+				? grantCardCentsFor(item?.costUsd ?? null, order.quantity)
+				: null
+		if (deliveryPreference === ShopDeliveryPreference.GRANT_CARD && grantCardCents === null)
+			throw new HttpError("VALIDATION_FAILED", "This item has no cost to put on a grant card. Ship it instead.")
+
+		const [updated] = await tx.orm.public.ShopOrder.where({ id: orderId, status: order.status }).updateAll({
+			deliveryPreference,
+			grantCardCents,
+			grantCardMerchantIds:
+				deliveryPreference === ShopDeliveryPreference.GRANT_CARD && item ? item.grantCardMerchantIds : [],
+			lastActorId: userId,
+		})
+		if (!updated) throw new HttpError("CONFLICT", "This order was decided by someone else")
+		return toShopOrderPublic(updated)
+	})
+}
+
+/**
  * Mark an order shipped.
  *
  * Serialized against `rejectOrder` on the same per-user credit lock, because a fulfill only reads the order and `rejectOrder` only mutates credit: without a shared lock the two interleave, the refund lands and the goods still ship. The conditional `updateMany` is the second guard, for a decision that landed between the lock being taken and the write.
