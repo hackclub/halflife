@@ -32,6 +32,36 @@ export function OrdersList({ orders }: { orders: ShopOrderPublic[] }) {
 	const [error, setError] = useState<string | null>(null)
 	const [notice, setNotice] = useState<string | null>(null)
 
+	async function changeDelivery(order: ShopOrderPublic, deliveryPreference: "SHIP" | "GRANT_CARD") {
+		if (busy) return
+
+		setBusy(order.id)
+		setError(null)
+		setNotice(null)
+		try {
+			const res = await fetch(`/api/shop/orders/${order.id}/delivery`, {
+				body: JSON.stringify({ deliveryPreference }),
+				headers: { "content-type": "application/json" },
+				method: "POST",
+			})
+			const payload: unknown = await res.json().catch(() => null)
+			if (!res.ok) {
+				setError(errorMessage(payload, refusalMessage(res.status, "That delivery could not be changed")))
+				return
+			}
+			setNotice(
+				deliveryPreference === "SHIP"
+					? `Order #${order.orderNumber} will ship to your address.`
+					: `Order #${order.orderNumber} will be paid as a grant card for its value.`,
+			)
+			router.refresh()
+		} catch {
+			setError("Could not reach the server. Your order is unchanged. Try again.")
+		} finally {
+			setBusy(null)
+		}
+	}
+
 	async function cancel(order: ShopOrderPublic) {
 		if (busy) return
 
@@ -149,6 +179,28 @@ export function OrdersList({ orders }: { orders: ShopOrderPublic[] }) {
 										<p>{cancelBlockedReason(order)}</p>
 									) : null}
 								</div>
+
+								{cancelable && (
+									<div className="mt-3 flex flex-wrap items-center gap-2">
+										<span className="hand mr-auto text-[0.82rem] text-navy-soft">Delivery</span>
+										<Button
+											disabled={busy !== null}
+											onClick={() => void changeDelivery(order, "SHIP")}
+											size="sm"
+											variant={order.deliveryPreference === "SHIP" ? "solid" : "outline"}
+										>
+											{busy === order.id ? "Saving…" : "Ship it"}
+										</Button>
+										<Button
+											disabled={busy !== null}
+											onClick={() => void changeDelivery(order, "GRANT_CARD")}
+											size="sm"
+											variant={order.deliveryPreference === "GRANT_CARD" ? "solid" : "outline"}
+										>
+											Grant card
+										</Button>
+									</div>
+								)}
 
 								{cancelable && (
 									<div className="mt-3 flex flex-wrap items-center justify-end gap-2">
