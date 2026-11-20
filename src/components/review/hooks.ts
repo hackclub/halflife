@@ -32,7 +32,7 @@ export function useDraft(name: string, initial = ""): readonly [string, (value: 
 export type AutosaveStatus = "saving" | "saved" | { error: string } | null
 
 /**
- * Saves the latest value once edits pause, straight away on flush, and on unmount with keepalive so leaving the page does not drop the last change. Saves run one at a time, so an older value never lands after a newer one.
+ * Saves the latest value once edits pause, straight away on flush, and on unmount or page hide with keepalive so leaving the page does not drop the last change. Saves run one at a time, so an older value never lands after a newer one.
  */
 export function useAutosave<T>(
 	save: (value: T, keepalive: boolean) => Promise<void>,
@@ -77,6 +77,13 @@ export function useAutosave<T>(
 	)
 
 	useEffect(() => () => flush(true), [flush])
+
+	// A full page load unmounts nothing, so the cleanup above never sees it. Without this, an edit typed while `router.refresh()` falls back to a reload would be dropped.
+	useEffect(() => {
+		const onHide = (): void => flush(true)
+		window.addEventListener("pagehide", onHide)
+		return () => window.removeEventListener("pagehide", onHide)
+	}, [flush])
 
 	return { change, flush, status }
 }

@@ -46,7 +46,7 @@ const nextShipHref = (nextId: string | null): string => (nextId ? `/reviews/${ne
 
 const FileViewer = lazy(() => import("@/components/review/FileViewer"))
 
-type ReviewTab = "submission" | "deflation" | "files"
+export type ReviewTab = "submission" | "deflation" | "files"
 type Action = "approve" | "return" | "reject"
 
 /** The tabs in the order they are shown. */
@@ -61,8 +61,37 @@ const TAB_LABELS: readonly (readonly [ReviewTab, string])[] = Object.freeze([
  *
  * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check (Robert, Spork, cart, README, follow-up and experience checks, image reuse), the repo checklist, Slack threads, scraps and the early kit, staff notes and flags, review telemetry and the YSWS justification composer – Half Life writes that record itself from the decision, and the panel previews what it will write. Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
  */
-export function ShipReview({ detail, viewer }: { detail: ReviewDetail; viewer: ReviewViewer }) {
-	return <ShipReviewInner detail={detail} key={detail.ship.id} viewer={viewer} />
+export function ShipReview({
+	detail,
+	initialTab = "submission",
+	viewer,
+}: {
+	detail: ReviewDetail
+	initialTab?: ReviewTab
+	viewer: ReviewViewer
+}) {
+	return <ShipReviewInner detail={detail} initialTab={initialTab} key={detail.ship.id} viewer={viewer} />
+}
+
+/**
+ * The open tab, and whether the file viewer has been opened yet (it stays mounted once it has, so going back to it does not re-read the repository).
+ *
+ * The tab is kept in the address as well, so a reload lands back on it. `router.refresh()` – which every deflation autosave runs – turns into a full page load when the server answers with a different build (any deploy since the page opened) or an error, and without this that load drops the reviewer back on the submission tab mid-edit.
+ */
+function useReviewTab(initialTab: ReviewTab): { filesOpened: boolean; showTab(next: ReviewTab): void; tab: ReviewTab } {
+	const [tab, setTab] = useState<ReviewTab>(initialTab)
+	const [filesOpened, setFilesOpened] = useState(initialTab === "files")
+
+	function showTab(next: ReviewTab): void {
+		setTab(next)
+		if (next === "files") setFilesOpened(true)
+		const url = new URL(location.href)
+		if (next === "submission") url.searchParams.delete("tab")
+		else url.searchParams.set("tab", next)
+		history.replaceState(history.state, "", url)
+	}
+
+	return { filesOpened, showTab, tab }
 }
 
 /**
@@ -99,15 +128,22 @@ function useClaimOnArrival({
 	}, [canClaim, claim, mine, nextId, router])
 }
 
-function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: ReviewViewer }) {
+function ShipReviewInner({
+	detail,
+	initialTab,
+	viewer,
+}: {
+	detail: ReviewDetail
+	initialTab: ReviewTab
+	viewer: ReviewViewer
+}) {
 	const router = useRouter()
 	const { breakdown, entries, maker, project, ship } = detail
 	const pending = ship.status === "pending"
 	const design = ship.kind === "design"
 
 	const [now, setNow] = useState(() => Date.now())
-	const [tab, setTab] = useState<ReviewTab>("submission")
-	const [filesOpened, setFilesOpened] = useState(false)
+	const { filesOpened, showTab, tab } = useReviewTab(initialTab)
 	const [decisionOpen, setDecisionOpen] = useStoredToggle("halflife:review-decision")
 	const [decisionWidth, setDecisionWidth] = useStoredWidth("halflife:review-decision-width", 416)
 	const [errors, setErrors] = useState<string[]>([])
@@ -177,11 +213,6 @@ function ShipReviewInner({ detail, viewer }: { detail: ReviewDetail; viewer: Rev
 			void releaseQuietly(ship.id, true)
 		}
 	}, [mine, ship.id])
-
-	function showTab(next: ReviewTab): void {
-		setTab(next)
-		if (next === "files") setFilesOpened(true)
-	}
 
 	const claim = useCallback(async (): Promise<boolean> => {
 		setErrors([])
