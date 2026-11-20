@@ -367,7 +367,7 @@ export interface UserDetail {
 		designSpendableCoins: number | null
 		designStatus: Models.public_ThemeProject["designStatus"]
 		grantUsd: number | null
-		hcbGrantCards: { id: string; status: string }[]
+		hcbGrantCards: { hcbCardGrantId: string | null; id: string; status: string }[]
 		hcbGrantTopUps: { id: string }[]
 		id: string
 		requestedTier: number | null
@@ -464,7 +464,7 @@ export async function getUserDetail(
 				.where({ deletedAt: null })
 				.include("hcbGrantCards", cards =>
 					cards
-						.select("id", "status")
+						.select("hcbCardGrantId", "id", "status")
 						.where({ phase: "DESIGN" })
 						.where(card => card.supersededAt.isNull()),
 				)
