@@ -14,9 +14,9 @@ import type { SlackBlock } from "@/lib/site/slack"
 export const LEGACY_SHOP_ACTION_PREFIX = "legacy_shop_choice:"
 
 /**
- * A Slack block holds at most 50 blocks, and each order takes two (its text and its buttons), with one for the intro. A buyer with more orders than this is skipped rather than split, because one DM per buyer is the point.
+ * A Slack message holds at most 50 blocks: one for the intro, two per order (its text and its buttons), and one for the closing note. A buyer with more orders than this is skipped rather than split, because one DM per buyer is the point.
  */
-export const LEGACY_SHOP_DM_MAX_ORDERS = 24
+export const LEGACY_SHOP_DM_MAX_ORDERS = 23
 
 const SLACK_USER_ID = /^[UW][A-Z0-9]{5,}$/
 
@@ -29,7 +29,11 @@ const CHOICE_LABELS: { [_: string]: string } = {
 }
 
 const BUYER_INTRO =
-	"Some of your Half Life shop orders were placed before you could choose how to get them. For each one, tell us whether to ship the item to you or give you a grant card for its value. We'll confirm when physical fulfilment opens and what it covers before anything is sent. Physical items always ship to your primary mailing address as configured in <https://auth.hackclub.com/addresses|Hack Club Auth>."
+	"Some of your Half Life shop orders were placed before you could choose how to get them. For each one, tell us whether to ship the item to you or give you a grant card for its value. We'll confirm when physical fulfilment opens and what it covers before anything is sent."
+
+/** Closes every buyer and test DM, after the orders. */
+const ADDRESS_NOTE =
+	"Physical items always ship to your primary mailing address as configured in <https://auth.hackclub.com/addresses|Hack Club Auth>."
 
 const TEST_INTRO =
 	"Test message from the Half Life admin panel. The buttons are here to check how the message looks; pressing them changes no order."
@@ -98,8 +102,9 @@ function lineBlocks(line: LegacyShopLine, test: boolean): SlackBlock[] {
 /** The DM for one buyer, or the test DM when `test` is set. Its fallback text is what a notification shows. */
 export function legacyShopMessage(lines: LegacyShopLine[], test: boolean): { blocks: SlackBlock[]; text: string } {
 	const intro: SlackBlock = { text: { text: test ? TEST_INTRO : BUYER_INTRO, type: "mrkdwn" }, type: "section" }
+	const note: SlackBlock = { text: { text: ADDRESS_NOTE, type: "mrkdwn" }, type: "section" }
 	return {
-		blocks: [intro, ...lines.flatMap(line => lineBlocks(line, test))],
+		blocks: [intro, ...lines.flatMap(line => lineBlocks(line, test)), note],
 		text: test ? "Test: Half Life shop delivery message" : "Your Half Life shop orders need a delivery choice",
 	}
 }
