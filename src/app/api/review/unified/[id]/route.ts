@@ -22,7 +22,7 @@ const bodySchema = z
 /**
  * T2: save an admin's fields for a website approval and write them to its Airtable row, or approve it, which also ticks `Automation - Submit to Unified YSWS` (see lib/review-platform/unified).
  *
- * REVIEW_UNIFIED is ADMIN's alone. The rules beyond it – not your own project, not an approval you made at T1, not one already sent – are enforced by `saveUnifiedReview`.
+ * REVIEW_UNIFIED is ADMIN's alone. The rules beyond it – not your own project, not one already sent – are enforced by `saveUnifiedReview`.
  */
 export const POST = withWritePermission(
 	Permission.REVIEW_UNIFIED,
