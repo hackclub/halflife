@@ -638,6 +638,8 @@ function DecisionPanel({
 	// The setter is unused: it is kept so the state reads as a value and setter pair, which the naming rule requires.
 	// biome-ignore lint/correctness/noUnusedVariables: the setter is kept for the naming rule
 	const [shownAt, setShownAt] = useState(() => new Date()) // oxlint-disable-line eslint/no-unused-vars
+	// A pasted picture is a placeholder in the message until it lands, so nothing is sent while one is on its way.
+	const [uploadingImage, setUploadingImage] = useState(false)
 
 	// A reviewer may lower a tier or keep it; raising it past what the maker asked for mints parts money, which is MANAGE_CREDIT's call. The decision route enforces this; the select only stops offering what would be refused.
 	const tierCap = viewer.canSetGrant ? null : project.requestedTier
@@ -802,7 +804,12 @@ function DecisionPanel({
 						id="reason_md"
 						label="Message to the maker"
 					>
-						<MarkdownEditor id="reason_md" onChange={setFeedback} value={feedback} />
+						<MarkdownEditor
+							id="reason_md"
+							onChange={setFeedback}
+							onUploadingChange={setUploadingImage}
+							value={feedback}
+						/>
 					</Field>
 					<Field
 						hint="Staff only. Required to reject. Kept on the review and in the audit log."
@@ -837,6 +844,7 @@ function DecisionPanel({
 							!mine
 							|| !ship.reviewable
 							|| busy
+							|| uploadingImage
 							|| (design && !picked)
 							|| grantInvalid
 							|| hoursInvalid
@@ -851,7 +859,7 @@ function DecisionPanel({
 					</button>
 					<button
 						className="btn btn--ghost btn--return"
-						disabled={!mine || !ship.reviewable || busy || !feedback.trim()}
+						disabled={!mine || !ship.reviewable || busy || uploadingImage || !feedback.trim()}
 						onClick={() => void act("return")}
 						type="button"
 					>
@@ -859,7 +867,7 @@ function DecisionPanel({
 					</button>
 					<button
 						className="btn btn--ghost btn--reject"
-						disabled={!mine || !ship.reviewable || busy || !feedback.trim() || !reason.trim()}
+						disabled={!mine || !ship.reviewable || busy || uploadingImage || !feedback.trim() || !reason.trim()}
 						onClick={() => void act("reject")}
 						type="button"
 					>
