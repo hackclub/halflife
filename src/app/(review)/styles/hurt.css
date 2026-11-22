@@ -536,6 +536,7 @@ button.hurt-cadsource__ref:hover { background: var(--panel-wash); }
 .hurt-ibom__table tbody tr.is-selected { background: var(--panel-wash-heavy); color: var(--color-paper); }
 .hurt-ibom__table tbody tr.is-selected .hurt-grid__n:first-child { color: var(--color-ok); }
 .hurt-ibom__table td { max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hurt-ibom__table tbody tr.is-selected td { white-space: normal; overflow-wrap: anywhere; }
 .hurt-ibom__table .hurt-grid__n, .hurt-ibom__side-cell { white-space: nowrap; }
 .hurt-ibom__table .hurt-ibom__refs { min-width: 8rem; max-width: 16rem; white-space: normal; overflow-wrap: break-word; color: var(--color-bone); }
 .hurt-ibom__excluded { flex: none; margin: 0; padding: 0.5rem 0.75rem; border-top: var(--border-hair) solid var(--hurt-line); font-weight: 400; color: var(--color-grey-3); overflow-wrap: anywhere; max-height: 5.5rem; overflow: auto; }

@@ -17,7 +17,11 @@ interface Params {
  */
 const FILES: { [_: string]: { file: string; type: string } } = Object.freeze({
 	"libarchive.wasm": { file: "libarchive-wasm/dist/libarchive.wasm", type: "application/wasm" },
-	"occt-import-js.wasm": { file: "occt-import-js/dist/occt-import-js.wasm", type: "application/wasm" },
+	// Not a package: Fabricate's own OpenCascade build, vendored with the viewer (the runner image keeps src/).
+	"occt-import-js.wasm": {
+		file: "../src/components/review/hurt/vendor/occt/occt-import-js.wasm",
+		type: "application/wasm",
+	},
 	"pdfjs/pdf.worker.min.mjs": { file: "pdfjs-dist/build/pdf.worker.min.mjs", type: "text/javascript; charset=utf-8" },
 })
 
