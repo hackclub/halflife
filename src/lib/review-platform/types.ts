@@ -240,7 +240,59 @@ export interface ReviewDetail {
 	notes: ReviewNote[]
 	project: ReviewProject
 	ship: ReviewShip
+	/** Telescreen's Robert fraud review and Spork copy check on this project (see lib/telescreen). */
+	telescreen: ReviewTelescreen
 	tiers: ReviewTier[]
+}
+
+/** Robert's fraud review of the project, as Fabricate's Robert card shows it. */
+export interface ReviewRobert {
+	/** Fields that point at two different people in Robert. */
+	conflicts: string[]
+	creditedHours: number | null
+	error: string | null
+	outcomeAt: string | null
+	outcomeReason: string | null
+	outcomeStatus: string | null
+	reviewedAt: string | null
+	reviewerName: string | null
+	reviewFields: (readonly [string, string | number | boolean])[]
+	reviewNote: string | null
+	sentBy: string | null
+	/** `awaiting_review`, `awaiting_outcome`, `rejected_fraud` or `decided`; null before Robert has it. */
+	state: string | null
+	submittedAt: string | null
+	syncedAt: string | null
+	trustScore: number | null
+}
+
+/** A repo Spork found a near-identical KiCad board (`pcb`) or STEP model (`cad`) in. */
+export interface ReviewSporkMatch {
+	/** How much of this design is in that repo, 0-1. */
+	containment: number | null
+	mode: string | null
+	repo: string | null
+	url: string | null
+}
+
+export interface ReviewSporkVerdict {
+	at: string | null
+	by: string | null
+	verdict: "real" | "false_flag"
+}
+
+export interface ReviewTelescreen {
+	/** Every repo Spork flagged, from its direct screen and Robert's, best match per repo first. */
+	matches: ReviewSporkMatch[]
+	robert: ReviewRobert | null
+	robertConfigured: boolean
+	/** Robert's Spork saw another person submit this exact repo. */
+	robertSporkSameRepo: boolean
+	/** The last direct Spork screen, null before one ran. */
+	spork: { checkedAt: string | null; error: string | null } | null
+	sporkConfigured: boolean
+	/** A reviewer's call on the flag, while it still covers every flagged repo. */
+	sporkVerdict: ReviewSporkVerdict | null
 }
 
 /** One editable column on the T2 screen. */

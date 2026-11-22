@@ -1,6 +1,6 @@
 # Orchard jobs
 
-Step definitions for the eleven scheduled jobs, plus the `orchard job` commands that create them. `docs/RUNBOOK.md` has the jobs table; this directory is what actually recreates them.
+Step definitions for the twelve scheduled jobs, plus the `orchard job` commands that create them. `docs/RUNBOOK.md` has the jobs table; this directory is what actually recreates them.
 
 Every job is a single `app` step pointed at the Half-Life deployment, so the command runs inside the app image with the deployment's own environment. `INTEGRATION_API_KEY` is already there – no job duplicates it.
 
@@ -20,6 +20,7 @@ Repeat per job with the cron from the table below. To change an existing job's s
 |---|---|---|
 | `claim-sweep` | `*/5 * * * *` | public ingress |
 | `rsvp-drain` | `*/10 * * * *` | cluster-internal |
+| `telescreen-sync` | `*/10 * * * *` | cluster-internal |
 | `hackatime-sync` | `*/15 * * * *` | public ingress |
 | `airtable-retry` | `17 * * * *` | public ingress |
 | `ari-retry` | `23 * * * *` | public ingress |
@@ -44,9 +45,9 @@ That sandbox keeps no deployment environment either, so `envVars` on a script st
 
 **`curl -f`.** Without it curl exits 0 on a 500 and the job stays green forever while doing nothing.
 
-## Why two jobs use the cluster-internal URL
+## Why three jobs use the cluster-internal URL
 
-`loops-sync` and `rsvp-drain` talk to the Airtable base in batches of ten records across 6,348 rows, so they run for minutes. Cloudflare sits in front of `halflife.hackclub.com` and caps the proxy read timeout at about 100 seconds, so a request through the public ingress comes back `504` no matter how the step is configured – the route's own `maxDuration` of 300s is already past what the edge will wait for.
+`loops-sync` and `rsvp-drain` talk to the Airtable base in batches of ten records across 6,348 rows, so they run for minutes, and `telescreen-sync` waits on Spork, which takes minutes on a big STEP model. Cloudflare sits in front of `halflife.hackclub.com` and caps the proxy read timeout at about 100 seconds, so a request through the public ingress comes back `504` no matter how the step is configured – the route's own `maxDuration` of 300s is already past what the edge will wait for.
 
 Those two point at `half-life.ysws-half-life.svc.cluster.local:3000` instead, which resolves to the ClusterIP and skips Cloudflare entirely. The app step's pod is in the same namespace, so it reaches the service directly. `src/proxy.ts` still runs, and `/api/integrations` is already excluded from basic auth there, so `REQUIRE_BASICAUTH` does not get in the way.
 
