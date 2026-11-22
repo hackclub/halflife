@@ -9,7 +9,9 @@ import { serveWorker, transferablesOf } from '../../core/workers'
 import { readBlend } from '../blender/read'
 import { unescapeXml } from '../cadsource/shared'
 import { readFusion, readFusionHistory, type FusionShape } from '../fusion/read'
-import { readParasolid, type ParasolidModel } from '../parasolid/read'
+import { readParasolid, type ParasolidModel, type ParasolidShape } from '../parasolid/read'
+import { assemblyComponents } from '../parasolid/assembly'
+import { solidworksSections } from '../cadsource/solidworks'
 import { readDwg } from '../dwg/read'
 import { hasTessellatedFaces, isFacetedStep, readFacetedStep, readTessellatedStep } from './stepMesh'
 import { stepOrigin, type StepOrigin } from './stepHeader'
@@ -680,41 +682,142 @@ async function readAutocad(
   return solidModel(await readDwg(new Uint8Array(bytes as ArrayBuffer), String(name ?? '')), progress)
 }
 
+async function meshSolids(shapes: ParasolidShape[], progress: (message: string, expect?: number) => void) {
+  const reader = await loadOcct()
+  progress(
+    'Tessellating solids',
+    shapes.reduce((sum, shape) => sum + tessellateMs(shape), 0),
+  )
+  let failed = 0
+  const meshed = shapes.map((shape) => {
+    const content = new TextEncoder().encode(shape.step)
+    const result = reader.ReadStepFile(content, meshParams(content.byteLength))
+    if (!result.success) {
+      failed++
+      return []
+    }
+    failed += unmeshed(result)
+    return partsFromOcct(result, shape.name, appearance(shape)).parts.map((part) => ({ ...part, name: shape.name }))
+  })
+  return { meshed, failed }
+}
+
+function finishSolid(
+  parts: ModelPart[],
+  root: ModelNode,
+  data: { up: 'y' | 'z'; warnings: string[]; preview: ModelPreview | null; hidden?: number[] },
+  empty: string,
+) {
+  if (parts.length === 0) {
+    const reason = data.warnings[0] ?? empty
+    if (!data.preview) throw new Error(reason)
+    if (data.warnings.length === 0) data.warnings.push(reason)
+  }
+  const { up, ...rest } = data
+  return finishModel(parts, root, { unit: 'mm', upAxis: up, ...rest }, null)
+}
+
 async function solidModel(model: ParasolidModel, progress: (message: string, expect?: number) => void) {
   const preview = await savedPreview(model.preview)
   const warnings = [...model.warnings]
   const parts: ModelPart[] = []
   const root: ModelNode = { name: '', parts: [], children: [] }
   if (model.shapes.length > 0) {
-    const reader = await loadOcct()
-    progress(
-      'Tessellating solids',
-      model.shapes.reduce((sum, shape) => sum + tessellateMs(shape), 0),
-    )
-    let failed = 0
-    for (const shape of model.shapes) {
-      const content = new TextEncoder().encode(shape.step)
-      const result = reader.ReadStepFile(content, meshParams(content.byteLength))
-      if (!result.success) {
-        failed++
-        continue
-      }
-      failed += unmeshed(result)
-      for (const part of partsFromOcct(result, shape.name, appearance(shape)).parts) {
-        root.parts.push(parts.length)
-        parts.push({ ...part, name: shape.name })
-      }
+    const { meshed, failed } = await meshSolids(model.shapes, progress)
+    for (const part of meshed.flat()) {
+      root.parts.push(parts.length)
+      parts.push(part)
     }
     if (failed > 0) warnings.push(`${failed} bodies could not be turned into triangles and are missing.`)
   }
-  if (parts.length === 0) {
-    const reason =
-      warnings[0] ??
-      (model.shapes.length ? 'None of the bodies in this file could be shown.' : 'This file has no solid bodies in it.')
-    if (!preview) throw new Error(reason)
-    if (warnings.length === 0) warnings.push(reason)
+  return finishSolid(
+    parts,
+    root,
+    { up: model.up, warnings, preview },
+    model.shapes.length ? 'None of the bodies in this file could be shown.' : 'This file has no solid bodies in it.',
+  )
+}
+
+async function readSldasmFiles({ bytes }: Record<string, unknown>) {
+  const components = await assemblyComponents(new Uint8Array(bytes as ArrayBuffer))
+  return { result: [...new Set(components.filter((c) => !c.virtual).map((c) => c.file))] }
+}
+
+async function readSldasm(
+  { bytes, parts: files }: Record<string, unknown>,
+  progress: (message: string, expect?: number) => void,
+) {
+  progress('Reading the assembly')
+  const data = new Uint8Array(bytes as ArrayBuffer)
+  const available = files as Record<string, ArrayBuffer>
+  const components = await assemblyComponents(data)
+  const preview = await savedPreview(await solidworksSections(data).read('PreviewPNG'))
+  const warnings = new Set<string>()
+  const missing = new Set<string>()
+  const inside = new Set<string>()
+  const keys = new Map<string, number>()
+  const shapes: ParasolidShape[] = []
+  const ranges: [number, number][] = []
+  for (const component of components) {
+    const key = `${component.file.toLowerCase()}|${component.config}`
+    if (keys.has(key)) continue
+    keys.set(key, ranges.length)
+    const part = component.virtual ? undefined : available[component.file.toLowerCase()]
+    if (!part) {
+      ;(component.virtual ? inside : missing).add(component.file)
+      ranges.push([shapes.length, shapes.length])
+      continue
+    }
+    progress(`Reading ${component.file}`)
+    const model = await readParasolid(new Uint8Array(part), component.file, component.config)
+    model.warnings.forEach((warning) => warnings.add(warning))
+    ranges.push([shapes.length, shapes.length + model.shapes.length])
+    shapes.push(...model.shapes)
   }
-  return finishModel(parts, root, { unit: 'mm', upAxis: model.up, warnings, preview }, null)
+  const { meshed, failed } = shapes.length > 0 ? await meshSolids(shapes, progress) : { meshed: [], failed: 0 }
+  progress('Placing components')
+  const parts: ModelPart[] = []
+  const hidden: number[] = []
+  const root: ModelNode = { name: '', parts: [], children: [] }
+  const nodes = new Map<string, ModelNode>([['', root]])
+  const nodeFor = (path: string[]) => {
+    let key = ''
+    let node = root
+    for (const label of path) {
+      key += `/${label}`
+      let next = nodes.get(key)
+      if (!next) {
+        next = { name: label, parts: [], children: [] }
+        node.children.push(next)
+        nodes.set(key, next)
+      }
+      node = next
+    }
+    return node
+  }
+  for (const component of components) {
+    const [start, end] = ranges[keys.get(`${component.file.toLowerCase()}|${component.config}`)!]
+    const node = nodeFor([...component.path, component.name])
+    const bodies = meshed.slice(start, end).flat()
+    for (const part of bodies) {
+      if (component.hidden) hidden.push(parts.length)
+      node.parts.push(parts.length)
+      parts.push(placedPart({ ...part, name: bodies.length > 1 ? part.name : component.name }, component.matrix))
+    }
+  }
+  const list = [...warnings]
+  if (missing.size > 0)
+    list.unshift(
+      `${missing.size === 1 ? '1 part is' : `${missing.size} parts are`} not in this repository, so ${missing.size === 1 ? 'it is' : 'they are'} missing: ${[...missing].join(', ')}.`,
+    )
+  if (inside.size > 0) list.unshift(`Parts stored inside the assembly can't be shown yet: ${[...inside].join(', ')}.`)
+  if (failed > 0) list.push(`${failed} bodies could not be turned into triangles and are missing.`)
+  return finishSolid(
+    parts,
+    root,
+    { up: 'y', warnings: list, preview, hidden },
+    components.length ? 'None of the parts in this assembly could be shown.' : 'This assembly has no parts in it.',
+  )
 }
 
 async function readStl({ bytes }: Record<string, unknown>, progress: (message: string) => void) {
@@ -761,6 +864,8 @@ serveWorker({
   fusion: readF3d,
   fusionHistory: readF3dHistory,
   parasolid: readXt,
+  sldasm: readSldasm,
+  sldasmFiles: readSldasmFiles,
   dwg: readAutocad,
   stl: readStl,
   '3mf': read3mf,

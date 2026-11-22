@@ -1,4 +1,5 @@
 import { StepWriter } from '../brep/step'
+import { attr, xmlText } from '../cadsource/shared'
 import { isSwContainer, solidworksSections } from '../cadsource/solidworks'
 import { inflateTo } from '../office/inflate'
 import { XtBrep } from './brep'
@@ -8,6 +9,8 @@ const PARASOLID_MILLIMETRES = 1000
 const MAGIC = [0x23, 0x1d, 0xd5, 0x71, 0xda, 0x81, 0x48, 0xa2, 0xa8, 0x58, 0x98, 0xb2, 0x1b, 0x89, 0xef, 0x99]
 const BODY_SECTION = /(-Partition|\/LocalBodies)$/
 const SKIPPED_SECTION = /Ghost/
+const SECTION_CONFIG = /Config-(\d+)-/
+const ACTIVE_CONFIG = /<swConfiguration\s[^<>]*swMostRecentConfiguration="YES"[^<>]*>/
 const MAX_TRANSMIT = 512 * 1024 * 1024
 const MAX_RECORDS = 1_000_000
 const TRANSMIT = 'TRANSMIT FILE'
@@ -95,15 +98,29 @@ function shapes(model: XtModel, name: string, warnings: Set<string>) {
   return out
 }
 
-export async function readParasolid(bytes: Uint8Array, name: string): Promise<ParasolidModel> {
+async function activeConfig(container: ReturnType<typeof solidworksSections>) {
+  const features = await container.read('swXmlContents/Features')
+  const tag = features ? ACTIVE_CONFIG.exec(xmlText(features))?.[0] : undefined
+  const id = tag ? Number(attr(tag, 'swID')) : NaN
+  return Number.isInteger(id) ? id : null
+}
+
+export async function readParasolid(bytes: Uint8Array, name: string, config?: number | null): Promise<ParasolidModel> {
   const warnings = new Set<string>()
   if (!isSwContainer(bytes)) {
     const model = readXt(bytes)
     return { shapes: shapes(model, name, warnings), preview: null, up: 'z', warnings: [...warnings] }
   }
   const container = solidworksSections(bytes)
+  const wanted = config ?? (await activeConfig(container))
+  const inConfig = (section: string) => {
+    const id = SECTION_CONFIG.exec(section)?.[1]
+    return wanted === null || id === undefined || Number(id) === wanted
+  }
   const found: ParasolidShape[] = []
-  for (const section of container.names.filter((n) => BODY_SECTION.test(n) && !SKIPPED_SECTION.test(n))) {
+  for (const section of container.names.filter(
+    (n) => BODY_SECTION.test(n) && !SKIPPED_SECTION.test(n) && inConfig(n),
+  )) {
     const data = await container.read(section)
     if (!data) continue
     for (const transmit of await transmits(data))
