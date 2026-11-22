@@ -38,9 +38,9 @@ export async function deleteBlockReason(
 
 	// The three submissions a phase is given are counted per project row, so a soft delete and a new project would hand back a fresh three and put the old rejections out of a reviewer's sight. A project whose phase has spent its budget stays.
 	const submissions = await (client ?? db).orm.public.PhaseSubmission.where({ themeProjectId: project.id })
-		.select("createdAt", "phase")
+		.select("createdAt", "id", "phase")
 		.all()
-	const stamps = submissions.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), phase: row.phase }))
+	const stamps = submissions.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), id: row.id, phase: row.phase }))
 	if ([Phase.DESIGN, Phase.BUILD].some(phase => submissionBudget(stamps, phase).used >= SUBMISSION_LIMIT))
 		return "This project has used all its submissions for a phase, so it can't be deleted"
 

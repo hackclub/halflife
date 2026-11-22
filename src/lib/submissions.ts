@@ -144,10 +144,10 @@ export async function submitPhase(
 	}
 
 	const submissionRows = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
-		.select("createdAt", "phase")
+		.select("createdAt", "id", "phase")
 		.all()
 	const budget = submissionBudget(
-		submissionRows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), phase: row.phase })),
+		submissionRows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), id: row.id, phase: row.phase })),
 		phase,
 	)
 
@@ -289,10 +289,10 @@ export async function submitPhase(
 		// The budget is re-read on the transaction client for the same reason as the gate: a hand-in that landed between the pre-check and this write must be part of the count. The conditional claim below is what actually serialises two submits; this is the refusal that says why.
 		if (accessProject && statusFor(accessProject, phase) === PhaseStatus.update_requested) {
 			const currentRows = await tx.orm.public.PhaseSubmission.where({ phase, themeProjectId })
-				.select("createdAt", "phase")
+				.select("createdAt", "id", "phase")
 				.all()
 			const current = submissionBudget(
-				currentRows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), phase: row.phase })),
+				currentRows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), id: row.id, phase: row.phase })),
 				phase,
 			)
 			if (current.resubmissions >= RESUBMISSION_LIMIT) throw new HttpError("SUBMISSION_LIMIT", SUBMISSION_LIMIT_MESSAGE)

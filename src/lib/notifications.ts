@@ -277,10 +277,10 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 			phase: notice.phase,
 			themeProjectId: notice.themeProjectId,
 		})
-			.select("createdAt", "phase")
+			.select("createdAt", "id", "phase")
 			.all()
 		submissionsLeft = submissionBudget(
-			rows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), phase: row.phase })),
+			rows.map(row => ({ createdAt: parseDbTimestamp(row.createdAt), id: row.id, phase: row.phase })),
 			notice.phase,
 		).remaining
 	}

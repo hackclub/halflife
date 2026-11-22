@@ -248,7 +248,7 @@ async function loadStoreRows(userId: string) {
 			submission.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
 		)
 			.orderBy(submission => submission.createdAt.asc())
-			.select("createdAt", "phase", "themeProjectId")
+			.select("createdAt", "id", "phase", "themeProjectId")
 			.all(),
 		// Not in a transaction: this is a read for display, and BEGIN and COMMIT are two more round trips to a database ~110ms away from a laptop – the slowest part of the whole snapshot. Spending still reads its balance inside the transaction that spends it.
 		getBalances(db, userId),
