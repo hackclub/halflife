@@ -144,6 +144,8 @@ export interface ReviewDecision {
 
 export interface ReviewShip {
 	ageDays: number
+	/** The viewer's own decision, recent enough and still standing, so they can put the ship back into review (see `takeBackDecision`). */
+	canTakeBack: boolean
 	claimExpiresAt: string | null
 	claimedByViewer: boolean
 	claimerName: string | null
@@ -228,6 +230,8 @@ export interface ReviewDetail {
 	history: ReviewHistoryItem[]
 	/** What the decision panel composes the approval's justification from. */
 	justification: JustificationContext
+	/** The ship the viewer last decided, when it is not this one. */
+	lastDecisionId: string | null
 	maker: ReviewMaker
 	makerShips: ReviewRow[]
 	nextId: string | null

@@ -241,6 +241,7 @@ export function OfflineReviews() {
 				})
 			},
 			sendDisputeBack: needsConnection,
+			takeBack: needsConnection,
 		}
 	}, [loadOpen, open, openId, packs, reload])
 

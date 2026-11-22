@@ -20,7 +20,7 @@ import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
 import { assertPayoutAllowed } from "@/lib/moderation"
-import { statusFor } from "@/lib/phase"
+import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
@@ -779,4 +779,82 @@ export async function reopenPhase(
 		targetId: themeProjectId,
 		targetType: "ThemeProject",
 	})
+}
+
+/** How long a reviewer may take back their own decision. Past it, a reversal is an admin's override. */
+export const TAKE_BACK_WINDOW_MS = 60 * 60 * 1000
+
+const STATUS_FOR_RESULT: { readonly [_ in ReviewResult]: PhaseStatus } = Object.freeze({
+	[ReviewResult.APPROVED]: PhaseStatus.approved,
+	[ReviewResult.REJECTED]: PhaseStatus.rejected,
+	[ReviewResult.RETURNED]: PhaseStatus.update_requested,
+})
+
+/**
+ * Put a ship a reviewer just decided back into review, claimed by them, so they can change the decision.
+ *
+ * Ari's requeue on a reviewer's own say-so: an approval or rejection is unwound by `unapprovePhase`/`reopenPhase` (with their guards on money that has already moved), then the decision is invalidated and the phase goes back to `in_review`. Only the reviewer's own standing decision on the latest hand-in, within `TAKE_BACK_WINDOW_MS`, while the phase still holds it, and not once T2 has sent it on. The maker has already been told; deciding again tells them again.
+ */
+export async function takeBackDecision(
+	submissionId: string,
+	reviewer: { email: string | null; id: string },
+): Promise<{ feedback: string; phase: Phase; themeProjectId: string }> {
+	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
+		.include("reviews", reviews => reviews.where({ invalidated: false }).orderBy(review => review.createdAt.desc()))
+		.include("themeProject", project => project.select("buildStatus", "designStatus", "id"))
+		.first()
+	if (!submission?.themeProject) throw new HttpError("NOT_FOUND", "Submission not found")
+	const { phase, themeProjectId } = submission
+	const [standing] = submission.reviews
+	if (!submission.resolvedAt || !submission.resolvedResult || !standing)
+		throw new HttpError("CONFLICT", "This ship has no decision to take back")
+	if (standing.reviewerId !== reviewer.id)
+		throw new HttpError("FORBIDDEN", "Only the reviewer who decided can take it back")
+	if (Date.now() - parseDbTimestamp(standing.createdAt).getTime() > TAKE_BACK_WINDOW_MS)
+		throw new HttpError("CONFLICT", "It's been over an hour, so ask an admin to override this decision")
+	if (standing.unifiedApprovedAt) throw new HttpError("CONFLICT", "This approval has already been sent on at T2")
+	const expected = STATUS_FOR_RESULT[submission.resolvedResult]
+	if (statusFor(submission.themeProject, phase) !== expected)
+		throw new HttpError("CONFLICT", "The project has moved on since this decision")
+	const latest = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
+		.orderBy(row => row.createdAt.desc())
+		.select("id")
+		.first()
+	if (latest?.id !== submissionId) throw new HttpError("CONFLICT", "The maker has handed in again since this decision")
+
+	const reason = "Taken back by its reviewer"
+	if (expected === PhaseStatus.approved)
+		await unapprovePhase(themeProjectId, phase, reviewer.id, reviewer.email, reason)
+	else if (expected === PhaseStatus.rejected)
+		await reopenPhase(themeProjectId, phase, reviewer.id, reviewer.email, reason)
+
+	const nowText = formatDbTimestamp(new Date())
+	await db.transaction(async tx => {
+		// Conditional on the state the steps above leave, so a resubmission or an override in between is not overwritten.
+		const moved = await tx.orm.public.ThemeProject.where({ id: themeProjectId })
+			.where(row =>
+				phase === Phase.DESIGN
+					? row.designStatus.eq(PhaseStatus.update_requested)
+					: row.buildStatus.eq(PhaseStatus.update_requested),
+			)
+			.updateAndCount(phaseStatusUpdate(phase, PhaseStatus.in_review))
+		if (moved !== 1) throw new HttpError("CONFLICT", "The project moved while the decision was being taken back")
+		await tx.orm.public.SubmissionReview.where({ invalidated: false, submissionId }).updateAll({
+			invalidated: true,
+			invalidatedAt: nowText,
+		})
+		await tx.orm.public.PhaseSubmission.where({ id: submissionId }).update({ resolvedAt: null, resolvedResult: null })
+	})
+
+	await logAudit({
+		action: AuditAction.ADMIN_REOPEN_PHASE,
+		actorEmail: reviewer.email,
+		actorId: reviewer.id,
+		metadata: { phase, reason, submissionId, takenBack: submission.resolvedResult },
+		targetId: themeProjectId,
+		targetType: "ThemeProject",
+	})
+
+	await claimSubmission(submissionId, reviewer.id)
+	return { feedback: standing.feedback, phase, themeProjectId }
 }

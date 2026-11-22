@@ -12,6 +12,7 @@ import {
 	replyToDispute,
 	saveSessionHours,
 	sendDisputeBack,
+	takeBack,
 } from "@/components/review/api"
 
 /**
@@ -41,6 +42,7 @@ export interface ReviewRuntime {
 		keepalive?: boolean,
 	): Promise<unknown>
 	sendDisputeBack(disputeId: string): Promise<unknown>
+	takeBack(submissionId: string): Promise<{ feedback: string }>
 }
 
 const ReviewRuntimeContext = createContext<ReviewRuntime | null>(null)
@@ -71,6 +73,7 @@ export function useReviewRuntime(): ReviewRuntime {
 				replyToDispute,
 				saveSessionHours,
 				sendDisputeBack,
+				takeBack,
 			}),
 		[router],
 	)
