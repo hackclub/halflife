@@ -594,7 +594,12 @@ export async function getReviewDetail(
 			timelapseSeconds: session.timelapses.reduce((sum, t) => sum + (t.coveredSeconds ?? t.runtimeSeconds ?? 0), 0),
 			timelapseUrls: timelapseLinks(session.timelapses),
 			// Most entries' titles are the opening of their own body, which would print the same sentence twice; those read by date instead, as Fabricate's untitled entries do.
-			title: (session.content ?? "").trimStart().startsWith(session.title.trim()) ? "" : session.title,
+			// A title that is an image line is never a real one: it was cut from the body at 200 characters, and the body's image URLs have since been rewritten, so it no longer matches the body either.
+			title:
+				session.title.trimStart().startsWith("![")
+				|| (session.content ?? "").trimStart().startsWith(session.title.trim())
+					? ""
+					: session.title,
 		}
 	})
 
