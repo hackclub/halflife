@@ -6,28 +6,21 @@ import { useEffect, useOptimistic, useTransition } from "react"
 import { ShipTable } from "@/components/review/ShipTable"
 import { PageHead, Paper } from "@/components/review/ui"
 import { HardLink } from "@/components/site/HardLink"
+import { type QueueFilters, queueFilterParams } from "@/lib/review-platform/queue-filters"
 import type { ReviewOption, ReviewQueue, ReviewStatus } from "@/lib/review-platform/types"
 
-interface Filters {
-	kind: "" | "design" | "build"
+interface Filters extends QueueFilters {
 	mine: boolean
-	starter: string
 	status: ReviewStatus
-	tier: number | null
-	week: number | null
 }
 
 const STATUSES: readonly ReviewStatus[] = Object.freeze(["pending", "approved", "returned", "rejected"])
 const KINDS: readonly Filters["kind"][] = Object.freeze(["", "design", "build"])
 
 const queueHref = (filters: Filters, cursor?: string | null): string => {
-	const params = new URLSearchParams()
+	const params = queueFilterParams(filters)
 	if (filters.status !== "pending") params.set("status", filters.status)
-	if (filters.kind) params.set("kind", filters.kind)
 	if (filters.mine) params.set("mine", "1")
-	if (filters.week !== null) params.set("week", String(filters.week))
-	if (filters.tier !== null) params.set("tier", String(filters.tier))
-	if (filters.starter) params.set("starter", filters.starter)
 	if (cursor) params.set("cursor", cursor)
 	const query = params.toString()
 	return query ? `/reviews?${query}` : "/reviews"
@@ -176,7 +169,7 @@ export function QueueView({
 			</div>
 			<div aria-busy={pending} className="review-queue__rows">
 				<Paper variant="tight">
-					<ShipTable rows={queue.rows} />
+					<ShipTable queueQuery={queueFilterParams(rendered).toString()} rows={queue.rows} />
 				</Paper>
 			</div>
 			{queue.previous !== null || queue.next !== null ? (

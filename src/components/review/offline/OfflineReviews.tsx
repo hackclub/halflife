@@ -91,6 +91,8 @@ function offlineDetail(detail: ReviewDetail, packs: OfflinePack[], outbox: Outbo
 	return {
 		...detail,
 		nextId: next?.id ?? null,
+		// A pack downloaded before "Flags & notes" has no notes.
+		notes: detail.notes ?? [],
 		ship: {
 			...detail.ship,
 			claimExpiresAt: detail.ship.status === "pending" ? OFFLINE_CLAIM_UNTIL : null,

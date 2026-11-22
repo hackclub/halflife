@@ -86,3 +86,14 @@ export const reviewQueueQuery = paginationQuery.extend({
 })
 
 export const overrideSchema = z.object({ phase: phaseSchema, reason: boundedText(2000, 1) }).strict()
+
+/** A note or flag from the review screen (see `ReviewNote`). The ship it is written from says which project and maker it is about. */
+export const reviewNoteSchema = z
+	.object({
+		body: boundedText(8000, 1),
+		/** A flag is always on the project. */
+		flag: z.boolean().default(false),
+		subject: z.enum(["ship", "project", "maker"]),
+		submissionId: cuid,
+	})
+	.strict()

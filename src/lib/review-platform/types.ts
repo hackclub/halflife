@@ -115,6 +115,18 @@ export interface ReviewDispute {
 	resolvedAt: string | null
 }
 
+/** A reviewer's note, or the project's standing flag, from "Flags & notes". Never shown to the maker. */
+export interface ReviewNote {
+	at: string
+	author: string
+	authorId: string
+	body: string
+	flag: boolean
+	id: string
+	/** What it is about: this ship, an earlier ship of the project (or one since unsubmitted), the project, or the maker on any project. A flag is always on the project. */
+	subject: "ship" | "earlier-ship" | "project" | "maker"
+}
+
 export interface ReviewDecision {
 	feedback: string
 	grantUsd: number | null
@@ -219,6 +231,7 @@ export interface ReviewDetail {
 	maker: ReviewMaker
 	makerShips: ReviewRow[]
 	nextId: string | null
+	notes: ReviewNote[]
 	project: ReviewProject
 	ship: ReviewShip
 	tiers: ReviewTier[]

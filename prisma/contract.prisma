@@ -84,6 +84,8 @@ namespace public {
     publicReels                 PublicReel[]
     reviewClaims                ReviewClaim[]
     reviewDisputes              ReviewDispute[]
+    reviewNotesAbout            ReviewNote[]                 @relation(name: "ReviewNote_maker")
+    reviewNotesWritten          ReviewNote[]                 @relation(name: "ReviewNote_author")
     reviewsGiven                SubmissionReview[]           @relation(name: "SubmissionReview_reviewer")
     roles                       UserRole[]
     sessions                    Session[]
@@ -217,6 +219,7 @@ namespace public {
     publicReels              PublicReel[]
     reports                  ContentReport[]
     repoSyncRuns             RepoSyncRun[]
+    reviewNotes              ReviewNote[]
     ireShips              IreShip[]
     submissions              PhaseSubmission[]
     workSessions             WorkSession[]
@@ -933,6 +936,27 @@ namespace public {
 
     @@index([disputeId, createdAt], map: "review_dispute_message_disputeId_createdAt_idx")
     @@map("review_dispute_message")
+  }
+
+  /// A reviewer's note for other reviewers, or a flag on a project, from the review screen. Never shown to the maker. A note is on one ship (`submissionId` set), on the project (`themeProjectId` alone) or on the maker (neither), so a maker note follows them to every project. `submissionId` has no foreign key because unsubmitting deletes the ship and the note should outlive it. A flag is a project note with `flag` set; clearing it keeps the row.
+  model ReviewNote {
+    id             String              @id @onCreate(cuid(2))
+    makerId        String
+    themeProjectId String?
+    submissionId   String?
+    authorId       String
+    body           String
+    flag           Boolean             @default(false)
+    clearedAt      TimestampString(3)?
+    clearedById    String?
+    createdAt      TimestampString(3)  @default(now())
+    maker          User                @relation(name: "ReviewNote_maker", fields: [makerId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "review_note_makerId_idx")
+    author         User                @relation(name: "ReviewNote_author", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
+    themeProject   ThemeProject?       @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "review_note_themeProjectId_idx")
+
+    @@index([makerId], map: "review_note_makerId_idx")
+    @@index([themeProjectId], map: "review_note_themeProjectId_idx")
+    @@map("review_note")
   }
 
   model RsvpBuffer {
