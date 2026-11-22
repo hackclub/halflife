@@ -18,6 +18,7 @@ import { useReviewRuntime } from "@/components/review/runtime"
 import { ShipTable } from "@/components/review/ShipTable"
 import { Field, FormErrors, isSafeUrl, PageHead, Paper, SafeLink, StatusTag, TierTag } from "@/components/review/ui"
 import { HardLink } from "@/components/site/HardLink"
+import { writeStored } from "@/lib/browser-state"
 import { composeJustification, editBeforeTail, mergeEdits } from "@/lib/review-platform/justification"
 import type { ReviewDetail, ReviewViewer } from "@/lib/review-platform/types"
 
@@ -285,7 +286,7 @@ function ShipReviewInner({
 				eyebrow={
 					<>
 						<span style={{ whiteSpace: "nowrap" }}>
-							<Link href={backHref}>←</Link> · {project.theme} ·{" "}
+							<BackLinks back={backHref} last={detail.lastDecisionId} /> {project.theme} ·{" "}
 							{viewer.isAdmin ? <HardLink href={`/admin/users/${maker.id}`}>{maker.name}</HardLink> : maker.name} ·
 							submitted{" "}
 							<span className={pending ? `tone-${ageTone(ship.ageDays)}` : undefined}>{ship.ageDays}d ago</span>{" "}
@@ -585,6 +586,24 @@ function ShipReviewInner({
 					)}
 				</aside>
 			</div>
+		</>
+	)
+}
+
+/** Back to the queue, and to the ship the viewer decided last, for when they remember something after moving on. */
+function BackLinks({ back, last }: { back: string; last: string | null }) {
+	return (
+		<>
+			<Link href={back}>←</Link> ·
+			{last ? (
+				<>
+					{" "}
+					<Link href={`/reviews/${last}`} title="The ship you decided last">
+						↩ last review
+					</Link>{" "}
+					·
+				</>
+			) : null}
 		</>
 	)
 }
@@ -983,6 +1002,31 @@ function DecidedPanel({
 		}
 	}
 
+	async function takeBack(): Promise<void> {
+		const sure = await confirm({
+			confirmLabel: "Take back",
+			message:
+				ship.status === "approved"
+					? "The approval's credit is taken back and the ship goes back into review, claimed by you, with your message ready to edit. The maker has already been told; deciding again tells them again."
+					: "The ship goes back into review, claimed by you, with your message ready to edit. The maker has already been told; deciding again tells them again.",
+			title: "Take back this decision?",
+		})
+		// Null on cancel; confirming with no input field gives the empty string.
+		if (sure === null) return
+		onErrors([])
+		setBusy(true)
+		try {
+			const { feedback } = await runtime.takeBack(ship.id)
+			// Into the decision panel's draft (see `useDraft`), so the message only needs the part that was forgotten.
+			writeStored(`halflife:review-draft:submission:${ship.id}:feedback`, feedback || null)
+			runtime.refresh()
+		} catch (err) {
+			onErrors([err instanceof Error ? err.message : "Couldn't take this decision back"])
+		} finally {
+			setBusy(false)
+		}
+	}
+
 	return (
 		<Paper title="Decision">
 			{reverseDialog}
@@ -1050,6 +1094,18 @@ function DecidedPanel({
 					type="button"
 				>
 					{undo === "unapprove" ? "Undo approval" : "Reopen"}
+				</button>
+			) : null}
+			{ship.canTakeBack ? (
+				<button
+					className="btn btn--outline btn--sm"
+					disabled={busy}
+					onClick={() => void takeBack()}
+					style={{ marginLeft: undo ? "var(--space-1)" : undefined, marginTop: "var(--space-1)" }}
+					title="Put this ship back into review so you can change your decision"
+					type="button"
+				>
+					Take back decision
 				</button>
 			) : null}
 		</Paper>

@@ -12,6 +12,7 @@ import { lapseTimelapseUrl } from "@/lib/lapse"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
+import { TAKE_BACK_WINDOW_MS } from "@/lib/review"
 import { approvalStamp, type JustificationContext, justificationSignOff } from "@/lib/review-platform/justification"
 import { renderReviewMarkdown } from "@/lib/review-platform/markdown"
 import type { QueueFacets, QueueFilters } from "@/lib/review-platform/queue-filters"
@@ -503,44 +504,50 @@ export async function getReviewDetail(
 	// Your own work is not reviewable by you, so it is not visible here either – the same null the console returns, which does not confirm that the submission exists.
 	if (project.userId === viewer.id) return null
 
-	const [breakdown, sessions, history, makerSubmissions, bom, next, links, settings, notes] = await Promise.all([
-		getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
-		db.orm.public.WorkSession.where({ deletedAt: null, phase: row.phase, themeProjectId: row.themeProjectId })
-			.include("media", media => media.orderBy(m => m.sortOrder.asc()))
-			.include("timelapses")
-			.orderBy(session => session.createdAt.asc())
-			.all(),
-		db.orm.public.PhaseSubmission.where({ themeProjectId: row.themeProjectId })
-			.where(submission => submission.id.neq(row.id))
-			.include("reviews", reviews =>
-				reviews
-					.where({ invalidated: false })
-					.include("reviewer", reviewer => reviewer.select("displayName", "name"))
-					.orderBy(review => review.createdAt.desc()),
-			)
-			.orderBy(submission => submission.createdAt.desc())
-			.all(),
-		submissionRows()
-			.where(submission =>
-				submission.themeProject.some(other => and(other.userId.eq(maker.id), other.deletedAt.isNull())),
-			)
-			.select("createdAt", "id", "phase", "resolvedAt", "resolvedResult", "themeProjectId")
-			.orderBy(submission => submission.createdAt.desc())
-			.limit(30)
-			.all(),
-		listBom(row.themeProjectId),
-		row.resolvedAt ? Promise.resolve(null) : nextPending(viewer, row, filters),
-		db.orm.public.HackatimeLink.where({ phase: row.phase, themeProjectId: row.themeProjectId })
-			.select("hackatimeProject")
-			.all(),
-		getProgramSettings(),
-		// Notes on the maker follow them to every project; the rest are this project's. A cleared flag is only a record.
-		db.orm.public.ReviewNote.where({ clearedAt: null, makerId: maker.id })
-			.where(note => or(note.themeProjectId.isNull(), note.themeProjectId.eq(project.id)))
-			.include("author", author => author.select("displayName", "name"))
-			.orderBy(note => note.createdAt.asc())
-			.all(),
-	])
+	const [breakdown, sessions, history, makerSubmissions, bom, next, links, settings, notes, lastDecision] =
+		await Promise.all([
+			getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
+			db.orm.public.WorkSession.where({ deletedAt: null, phase: row.phase, themeProjectId: row.themeProjectId })
+				.include("media", media => media.orderBy(m => m.sortOrder.asc()))
+				.include("timelapses")
+				.orderBy(session => session.createdAt.asc())
+				.all(),
+			db.orm.public.PhaseSubmission.where({ themeProjectId: row.themeProjectId })
+				.where(submission => submission.id.neq(row.id))
+				.include("reviews", reviews =>
+					reviews
+						.where({ invalidated: false })
+						.include("reviewer", reviewer => reviewer.select("displayName", "name"))
+						.orderBy(review => review.createdAt.desc()),
+				)
+				.orderBy(submission => submission.createdAt.desc())
+				.all(),
+			submissionRows()
+				.where(submission =>
+					submission.themeProject.some(other => and(other.userId.eq(maker.id), other.deletedAt.isNull())),
+				)
+				.select("createdAt", "id", "phase", "resolvedAt", "resolvedResult", "themeProjectId")
+				.orderBy(submission => submission.createdAt.desc())
+				.limit(30)
+				.all(),
+			listBom(row.themeProjectId),
+			row.resolvedAt ? Promise.resolve(null) : nextPending(viewer, row, filters),
+			db.orm.public.HackatimeLink.where({ phase: row.phase, themeProjectId: row.themeProjectId })
+				.select("hackatimeProject")
+				.all(),
+			getProgramSettings(),
+			// Notes on the maker follow them to every project; the rest are this project's. A cleared flag is only a record.
+			db.orm.public.ReviewNote.where({ clearedAt: null, makerId: maker.id })
+				.where(note => or(note.themeProjectId.isNull(), note.themeProjectId.eq(project.id)))
+				.include("author", author => author.select("displayName", "name"))
+				.orderBy(note => note.createdAt.asc())
+				.all(),
+			// The viewer's own most recent decision, for the header's way back to it.
+			db.orm.public.SubmissionReview.where({ invalidated: false, reviewerId: viewer.id })
+				.orderBy(review => review.createdAt.desc())
+				.select("submissionId")
+				.first(),
+		])
 
 	const now = new Date()
 	const submittedAt = parseDbTimestamp(row.createdAt)
@@ -549,6 +556,19 @@ export async function getReviewDetail(
 	const claimLive = status === "pending" && claimExpires !== null && claimExpires > now
 	const standing = row.reviews.find(review => !review.invalidated) ?? null
 	const phaseStatus = statusFor(project, row.phase)
+	// The same conditions `takeBackDecision` enforces, so the button shows only where it would work.
+	const canTakeBack =
+		standing !== null
+		&& standing.reviewerId === viewer.id
+		&& standing.unifiedApprovedAt === null
+		&& now.getTime() - parseDbTimestamp(standing.createdAt).getTime() < TAKE_BACK_WINDOW_MS
+		&& phaseStatus
+			=== (status === "approved"
+				? PhaseStatus.approved
+				: status === "rejected"
+					? PhaseStatus.rejected
+					: PhaseStatus.update_requested)
+		&& !history.some(other => other.phase === row.phase && other.createdAt > row.createdAt)
 
 	const entries: ReviewEntry[] = sessions.map(session => {
 		const images = session.media.flatMap(m => {
@@ -653,6 +673,7 @@ export async function getReviewDetail(
 			title: projectDisplayTitle(project),
 			viewer,
 		}),
+		lastDecisionId: lastDecision && lastDecision.submissionId !== row.id ? lastDecision.submissionId : null,
 		maker: {
 			email: viewer.seesEmail ? maker.email : null,
 			fraudFlagged: viewer.seesRiskFlags ? maker.fraudFlagged : false,
@@ -692,6 +713,7 @@ export async function getReviewDetail(
 		},
 		ship: {
 			ageDays: ageDays(submittedAt, now),
+			canTakeBack,
 			claimExpiresAt: claimLive && claimExpires !== null ? claimExpires.toISOString() : null,
 			claimedByViewer: claimLive && row.claim?.reviewerId === viewer.id,
 			claimerName: claimLive ? displayName(row.claim?.reviewer, "Another reviewer") : null,

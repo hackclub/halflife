@@ -111,6 +111,10 @@ export type DecisionBody =
 export const decide = (submissionId: string, body: DecisionBody): Promise<unknown> =>
 	request(`/api/review/submissions/${encodeURIComponent(submissionId)}/decision`, { body })
 
+/** Take back your own decision: the ship goes back into review, claimed by you. Answers with the message that was sent. */
+export const takeBack = (submissionId: string): Promise<{ feedback: string }> =>
+	request(`/api/review/submissions/${encodeURIComponent(submissionId)}/take-back`)
+
 export const overrideDecision = (
 	projectId: string,
 	body: { action: "unapprove" | "reopen"; phase: "DESIGN" | "BUILD"; reason: string },
