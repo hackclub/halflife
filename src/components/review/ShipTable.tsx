@@ -13,15 +13,19 @@ import type { ReviewRow } from "@/lib/review-platform/types"
  * Half Life's counterparts stand in for Fabricate-only columns: the project's theme for its tracking method, and the requested or approved tier for its scraps award. The project links to the staff console's project view rather than a public page, because a Half Life project has no public page of its own.
  */
 export function ShipTable({
+	queueQuery = "",
 	rows,
 	showMaker = true,
 	showProject = true,
 }: {
+	/** The queue filters to carry onto the review screen, so its "next ship" stays within them. */
+	queueQuery?: string
 	rows: ReviewRow[]
 	showMaker?: boolean
 	showProject?: boolean
 }) {
 	const router = useRouter()
+	const href = (id: string): string => `/reviews/${id}${queueQuery ? `?${queueQuery}` : ""}`
 	if (rows.length === 0) return <p className="field__hint">Nothing here.</p>
 	return (
 		<div className="table-wrap">
@@ -43,11 +47,11 @@ export function ShipTable({
 							className="table__row--link"
 							key={row.id}
 							onClick={e => {
-								if (!(e.target instanceof Element && e.target.closest("a"))) router.push(`/reviews/${row.id}`)
+								if (!(e.target instanceof Element && e.target.closest("a"))) router.push(href(row.id))
 							}}
 						>
 							<td>
-								<Link href={`/reviews/${row.id}`}>
+								<Link href={href(row.id)}>
 									<StatusTag status={row.kind} /> {row.themeLabel}
 								</Link>{" "}
 								<TierTag requested={row.tier === null} tier={row.tier ?? row.requestedTier} />

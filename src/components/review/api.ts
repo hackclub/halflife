@@ -130,3 +130,15 @@ export const saveUnified = (
 	reviewId: string,
 	body: { approve: boolean; fields: { [_: string]: string }; screenshots: string[] },
 ): Promise<{ sent: boolean }> => request(`/api/review/unified/${encodeURIComponent(reviewId)}`, { body })
+
+/** A note for other reviewers, or a flag on the project, written from this ship (see "Flags & notes"). Online only: it is not part of what a decision needs, so the offline outbox does not carry it. */
+export const addReviewNote = (body: {
+	body: string
+	flag: boolean
+	subject: "ship" | "project" | "maker"
+	submissionId: string
+}): Promise<{ id: string }> => request("/api/review/notes", { body })
+
+/** Removes a note, or clears a flag. */
+export const removeReviewNote = (id: string): Promise<unknown> =>
+	request(`/api/review/notes/${encodeURIComponent(id)}`, { method: "DELETE" })

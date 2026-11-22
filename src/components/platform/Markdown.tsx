@@ -71,6 +71,11 @@ export function inline(text: string, key: string): ReactNode[] {
 	return out
 }
 
+/** Plain text with only its Markdown images drawn, for a reviewer's note to the maker: everything else stays as typed, so its line breaks and underscores read as they always have. */
+export function textWithImages(text: string, key: string): ReactNode[] {
+	return text.split(/(!\[[^\]]*\]\([^)\s]+\))/).flatMap((part, n) => (n % 2 ? inline(part, `${key}-${n}`) : [part]))
+}
+
 const HEADING = ["text-[1.15rem]", "text-[1.05rem]", "text-[0.98rem]"]
 
 export function Markdown({ source, className }: { source: string; className?: string }) {

@@ -13,6 +13,7 @@ import { ImageGallery } from "@/components/review/ImageGallery"
 import { JournalEntryView } from "@/components/review/JournalEntryView"
 import { MarkdownEditor } from "@/components/review/MarkdownEditor"
 import { ResizeHandle } from "@/components/review/ResizeHandle"
+import { ReviewNotes, shipNoteText } from "@/components/review/ReviewNotes"
 import { useReviewRuntime } from "@/components/review/runtime"
 import { ShipTable } from "@/components/review/ShipTable"
 import { Field, FormErrors, isSafeUrl, PageHead, Paper, SafeLink, StatusTag, TierTag } from "@/components/review/ui"
@@ -26,8 +27,15 @@ const telescreenHref = (submissionId: string): string => `/api/reviews/${encodeU
 /** The moment an approval is sent, which its justification is stamped with. A call rather than `new Date()` inline, which reads as impure render to the linter even inside a handler. */
 const approvalTime = (): Date => new Date()
 
-/** Where moving on from a ship goes: the next one, which `?claim` has claim itself on arrival (see `useClaimOnArrival`) so a run of reviews needs no "Claim review" between them, or the queue when there is none. */
-const nextShipHref = (nextId: string | null): string => (nextId ? `/reviews/${nextId}?claim` : "/reviews")
+/**
+ * Where moving on from a ship goes: the next one, which `?claim` has claim itself on arrival (see `useClaimOnArrival`) so a run of reviews needs no "Claim review" between them, or the queue when there is none.
+ *
+ * `queueQuery` is the queue filters the run started from (see lib/review-platform/queue-filters), carried on so the ship after that is picked within them too.
+ */
+const nextShipHref = (nextId: string | null, queueQuery: string): string =>
+	nextId ? `/reviews/${nextId}?claim${queueQuery ? `&${queueQuery}` : ""}` : queueHref(queueQuery)
+
+const queueHref = (queueQuery: string): string => (queueQuery ? `/reviews?${queueQuery}` : "/reviews")
 
 const FileViewer = lazy(() => import("@/components/review/FileViewer"))
 
@@ -44,18 +52,28 @@ const TAB_LABELS: readonly (readonly [ReviewTab, string])[] = Object.freeze([
 /**
  * The review screen: Fabricate's `Admin/Ships/Show`, on Half Life's data.
  *
- * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check (Robert, Spork, cart, README, follow-up and experience checks, image reuse), the repo checklist, Slack threads, scraps and the early kit, staff notes and flags, and review telemetry. The YSWS justification composer is kept: a decision made here writes Fabricate's account to the row (see lib/review-platform/justification). Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
+ * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check (Robert, Spork, cart, README, follow-up and experience checks, image reuse), the repo checklist, Slack threads, scraps and the early kit, and review telemetry. Flags and notes are kept, and take the place of the decision's internal note (see ReviewNotes). The YSWS justification composer is kept: a decision made here writes Fabricate's account to the row (see lib/review-platform/justification). Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
  */
 export function ShipReview({
 	detail,
 	initialTab = "submission",
+	queueQuery = "",
 	viewer,
 }: {
 	detail: ReviewDetail
 	initialTab?: ReviewTab
+	queueQuery?: string
 	viewer: ReviewViewer
 }) {
-	return <ShipReviewInner detail={detail} initialTab={initialTab} key={detail.ship.id} viewer={viewer} />
+	return (
+		<ShipReviewInner
+			detail={detail}
+			initialTab={initialTab}
+			key={detail.ship.id}
+			links={{ back: queueHref(queueQuery), next: nextShipHref(detail.nextId, queueQuery) }}
+			viewer={viewer}
+		/>
+	)
 }
 
 /**
@@ -95,12 +113,12 @@ function useClaimOnArrival({
 	canClaim,
 	claim,
 	mine,
-	nextId,
+	nextHref,
 }: {
 	canClaim: boolean
 	claim(): Promise<boolean>
 	mine: boolean
-	nextId: string | null
+	nextHref: string
 }): void {
 	const runtime = useReviewRuntime()
 	useEffect(() => {
@@ -109,7 +127,7 @@ function useClaimOnArrival({
 		url.searchParams.delete("claim")
 		replaceAddress(url)
 		if (mine) return
-		const moveOn = (): void => runtime.replace(nextShipHref(nextId))
+		const moveOn = (): void => runtime.replace(nextHref)
 		if (!canClaim) {
 			moveOn()
 			return
@@ -117,16 +135,18 @@ function useClaimOnArrival({
 		void (async () => {
 			if (!(await claim())) moveOn()
 		})()
-	}, [canClaim, claim, mine, nextId, runtime])
+	}, [canClaim, claim, mine, nextHref, runtime])
 }
 
 function ShipReviewInner({
 	detail,
 	initialTab,
+	links: { back: backHref, next: nextHref },
 	viewer,
 }: {
 	detail: ReviewDetail
 	initialTab: ReviewTab
+	links: { back: string; next: string }
 	viewer: ReviewViewer
 }) {
 	const runtime = useReviewRuntime()
@@ -219,12 +239,12 @@ function ShipReviewInner({
 		}
 	}, [runtime, ship.id])
 
-	useClaimOnArrival({ canClaim, claim, mine, nextId: detail.nextId })
+	useClaimOnArrival({ canClaim, claim, mine, nextHref })
 
 	const skip = useCallback(async () => {
 		if (mine) await runtime.releaseQuietly(ship.id)
-		runtime.push(nextShipHref(detail.nextId))
-	}, [detail.nextId, mine, runtime, ship.id])
+		runtime.push(nextHref)
+	}, [mine, nextHref, runtime, ship.id])
 
 	const toggleDecision = useCallback(() => setDecisionOpen(!decisionOpen), [decisionOpen, setDecisionOpen])
 
@@ -235,14 +255,14 @@ function ShipReviewInner({
 			if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable='true']")) return
 			if (e.key === "c" && canClaim) void claim()
 			else if (e.key === "s" && pending) void skip()
-			else if (e.key === "n" && detail.nextId) runtime.push(nextShipHref(detail.nextId))
+			else if (e.key === "n" && detail.nextId) runtime.push(nextHref)
 			else if (e.key === "d" && filesView) toggleDecision()
 			else return
 			e.preventDefault()
 		}
 		window.addEventListener("keydown", onKey)
 		return () => window.removeEventListener("keydown", onKey)
-	}, [canClaim, claim, detail.nextId, filesView, pending, runtime, skip, toggleDecision])
+	}, [canClaim, claim, detail.nextId, filesView, nextHref, pending, runtime, skip, toggleDecision])
 
 	const claimedSeconds = entries.reduce((sum, e) => sum + e.secondsSpent, 0)
 	const countedSeconds = entries.reduce(
@@ -265,7 +285,7 @@ function ShipReviewInner({
 				eyebrow={
 					<>
 						<span style={{ whiteSpace: "nowrap" }}>
-							<Link href="/reviews">←</Link> · {project.theme} ·{" "}
+							<Link href={backHref}>←</Link> · {project.theme} ·{" "}
 							{viewer.isAdmin ? <HardLink href={`/admin/users/${maker.id}`}>{maker.name}</HardLink> : maker.name} ·
 							submitted{" "}
 							<span className={pending ? `tone-${ageTone(ship.ageDays)}` : undefined}>{ship.ageDays}d ago</span>{" "}
@@ -464,6 +484,8 @@ function ShipReviewInner({
 						) : null}
 					</Paper>
 
+					<ReviewNotes detail={detail} viewer={viewer} />
+
 					{detail.dispute ? (
 						<DisputePaper canSendBack={viewer.canOverride} detail={detail} onError={setErrors} />
 					) : null}
@@ -543,6 +565,7 @@ function ShipReviewInner({
 							errors={errors}
 							failedEntry={failedEntry ?? null}
 							mine={mine}
+							nextHref={nextHref}
 							onActing={setActing}
 							onErrors={setErrors}
 							onShowEntry={id => {
@@ -603,6 +626,7 @@ function DecisionPanel({
 	errors,
 	failedEntry,
 	mine,
+	nextHref,
 	onActing,
 	onErrors,
 	onShowEntry,
@@ -615,6 +639,7 @@ function DecisionPanel({
 	errors: string[]
 	failedEntry: string | null
 	mine: boolean
+	nextHref: string
 	onActing(acting: boolean): void
 	onErrors(errors: string[]): void
 	onShowEntry(id: string): void
@@ -630,7 +655,6 @@ function DecisionPanel({
 	const [grant, setGrant] = useDraft(draft("grant"))
 	const [hoursOverride, setHoursOverride] = useDraft(draft("hours"))
 	const [feedback, setFeedback, clearFeedback] = useDraft(draft("feedback"))
-	const [reason, setReason, clearReason] = useDraft(draft("reason"))
 	const [technicalFeatures, setTechnicalFeatures, clearTechnicalFeatures] = useDraft(draft("features"))
 	// The reviewer's edits of the generated justification, kept as the text they edited and the text it was generated from, so later deflation can be merged in under them (see `mergeEdits`).
 	const [justificationBase, setJustificationBase, clearJustificationBase] = useDraft(draft("justification-base"))
@@ -638,6 +662,8 @@ function DecisionPanel({
 	// The setter is unused: it is kept so the state reads as a value and setter pair, which the naming rule requires.
 	// biome-ignore lint/correctness/noUnusedVariables: the setter is kept for the naming rule
 	const [shownAt, setShownAt] = useState(() => new Date()) // oxlint-disable-line eslint/no-unused-vars
+	// A pasted picture is a placeholder in the message until it lands, so nothing is sent while one is on its way.
+	const [uploadingImage, setUploadingImage] = useState(false)
 
 	// A reviewer may lower a tier or keep it; raising it past what the maker asked for mints parts money, which is MANAGE_CREDIT's call. The decision route enforces this; the select only stops offering what would be refused.
 	const tierCap = viewer.canSetGrant ? null : project.requestedTier
@@ -648,6 +674,8 @@ function DecisionPanel({
 	const hoursInvalid = hoursValue !== null && (!Number.isFinite(hoursValue) || hoursValue < 0)
 	const funded = design && !ship.fundingDeclined
 	const awardUsd = grantUsd ?? picked?.grantUsd ?? null
+	// The decision's internal note is this ship's notes under "Flags & notes".
+	const reason = shipNoteText(detail.notes)
 
 	// What the approval will freeze (see `finalizeReview`), against the claim hand-in wrote to the row's `Hours spent (self reported)`.
 	const approvedHours = (hoursInvalid ? null : hoursValue) ?? detail.breakdown.computedTotal
@@ -707,10 +735,9 @@ function DecisionPanel({
 		try {
 			await runtime.decide(ship.id, body)
 			clearFeedback()
-			clearReason()
 			clearTechnicalFeatures()
 			revertJustification()
-			runtime.push(nextShipHref(detail.nextId))
+			runtime.push(nextHref)
 			runtime.refresh()
 		} catch (err) {
 			onErrors([err instanceof Error ? err.message : "Couldn't record this decision"])
@@ -798,23 +825,15 @@ function DecisionPanel({
 						</Field>
 					) : null}
 					<Field
-						hint="Required to return or reject. Shown on the project page and sent to the maker."
+						hint="Required to return or reject. Shown on the project page and sent to the maker. Rejecting also needs a note on this ship under Flags & notes."
 						id="reason_md"
 						label="Message to the maker"
 					>
-						<MarkdownEditor id="reason_md" onChange={setFeedback} value={feedback} />
-					</Field>
-					<Field
-						hint="Staff only. Required to reject. Kept on the review and in the audit log."
-						id="internal_note"
-						label="Internal note"
-					>
-						<textarea
-							className="field__textarea"
-							id="internal_note"
-							onChange={e => setReason(e.target.value)}
-							style={{ minHeight: "5rem" }}
-							value={reason}
+						<MarkdownEditor
+							id="reason_md"
+							onChange={setFeedback}
+							onUploadingChange={setUploadingImage}
+							value={feedback}
 						/>
 					</Field>
 					<Field
@@ -837,6 +856,7 @@ function DecisionPanel({
 							!mine
 							|| !ship.reviewable
 							|| busy
+							|| uploadingImage
 							|| (design && !picked)
 							|| grantInvalid
 							|| hoursInvalid
@@ -851,7 +871,7 @@ function DecisionPanel({
 					</button>
 					<button
 						className="btn btn--ghost btn--return"
-						disabled={!mine || !ship.reviewable || busy || !feedback.trim()}
+						disabled={!mine || !ship.reviewable || busy || uploadingImage || !feedback.trim()}
 						onClick={() => void act("return")}
 						type="button"
 					>
@@ -859,7 +879,7 @@ function DecisionPanel({
 					</button>
 					<button
 						className="btn btn--ghost btn--reject"
-						disabled={!mine || !ship.reviewable || busy || !feedback.trim() || !reason.trim()}
+						disabled={!mine || !ship.reviewable || busy || uploadingImage || !feedback.trim() || !reason.trim()}
 						onClick={() => void act("reject")}
 						type="button"
 					>
@@ -991,12 +1011,6 @@ function DecidedPanel({
 				) : null}
 				<dt>Message</dt>
 				<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.feedback || "—"}</dd>
-				{viewer.seesRiskFlags ? (
-					<>
-						<dt>Internal</dt>
-						<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.reason || "—"}</dd>
-					</>
-				) : null}
 				<dt>Features</dt>
 				<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.technicalFeatures || "—"}</dd>
 				{decision?.unified && ship.status === "approved" ? (

@@ -34,15 +34,16 @@ async function slackCall(method: string, body: { [_: string]: unknown }): Promis
 	return data
 }
 
-export async function postMessage(channel: string, text: string): Promise<void> {
-	await slackCall("chat.postMessage", { channel, text })
+/** `text` is still sent with `blocks`: it is what the notification and any client that cannot draw blocks show. */
+export async function postMessage(channel: string, text: string, blocks?: readonly unknown[]): Promise<void> {
+	await slackCall("chat.postMessage", { channel, text, ...(blocks ? { blocks } : {}) })
 }
 
-export async function sendDM(slackId: string, text: string): Promise<void> {
+export async function sendDM(slackId: string, text: string, blocks?: readonly unknown[]): Promise<void> {
 	const opened = await slackCall("conversations.open", {
 		users: slackId,
 	})
 	const channel = isRecord(opened.channel) && typeof opened.channel.id === "string" ? opened.channel.id : null
 	if (!channel) throw new Error(`Slack conversations.open returned no channel for ${slackId}`)
-	await postMessage(channel, text)
+	await postMessage(channel, text, blocks)
 }

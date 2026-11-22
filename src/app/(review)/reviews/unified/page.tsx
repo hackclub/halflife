@@ -26,7 +26,7 @@ export default async function UnifiedQueuePage() {
 			<Paper>
 				<p className="field__hint">
 					Nothing is waiting for T2. Website approvals show up here once they&rsquo;re approved, except your own
-					projects and the ones you approved yourself.
+					projects.
 				</p>
 			</Paper>
 		</>

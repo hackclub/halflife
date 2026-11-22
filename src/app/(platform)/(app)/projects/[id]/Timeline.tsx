@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react"
 import { IconCheck, IconFilm, IconPencil, IconPlay, IconWarning } from "@/components/platform/icons"
-import { Markdown } from "@/components/platform/Markdown"
+import { Markdown, textWithImages } from "@/components/platform/Markdown"
 import { ReportButton } from "@/components/platform/report/ReportButton"
 import { Chip } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
@@ -191,7 +191,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 			</p>
 			{item.comments && (
 				<blockquote className="mt-2 max-w-[68ch] rounded-xl bg-black/[.04] px-4 py-3 text-[0.88rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
-					{item.comments}
+					{textWithImages(item.comments, "note")}
 				</blockquote>
 			)}
 		</div>

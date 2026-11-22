@@ -29,6 +29,7 @@ export type ThemeProjectRow = Omit<
 	| "ledgerEntries"
 	| "bomItems"
 	| "repoSyncRuns"
+	| "reviewNotes"
 	| "reports"
 	| "ireShips"
 >

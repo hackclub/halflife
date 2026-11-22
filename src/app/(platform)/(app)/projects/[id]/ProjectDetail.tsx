@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { DisputeThread } from "@/components/disputes/DisputeThread"
 import { IconBook, IconWarning } from "@/components/platform/icons"
+import { textWithImages } from "@/components/platform/Markdown"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { Button, Chip, Panel } from "@/components/platform/ui"
@@ -410,7 +411,7 @@ function ReviewState({
 
 							{p.comments && (
 								<p className="rounded-xl bg-cream px-3.5 py-2.5 text-[0.9rem] leading-snug text-navy-soft">
-									{p.comments}
+									{textWithImages(p.comments, "note")}
 								</p>
 							)}
 
@@ -526,7 +527,7 @@ function DecisionNotice({
 								{p.comments ? (
 									// Pre-lined, so a reviewer's own line breaks survive: their note is often a list, and reflowing it into one paragraph loses which request ended and the next began.
 									<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
-										{p.comments}
+										{textWithImages(p.comments, "note")}
 									</p>
 								) : (
 									<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">
@@ -582,7 +583,7 @@ function DecisionNotice({
 							</div>
 							{p.comments ? (
 								<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
-									{p.comments}
+									{textWithImages(p.comments, "note")}
 								</p>
 							) : (
 								<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">

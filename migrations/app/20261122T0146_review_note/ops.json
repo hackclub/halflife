@@ -1,0 +1,303 @@
+[
+  {
+    "id": "table.review_note",
+    "label": "Create table \"review_note\"",
+    "summary": "Creates table \"review_note\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "review_note"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"review_note\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"review_note\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"review_note\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"review_note\"",
+        "sql": "CREATE TABLE \"public\".\"review_note\" (\n  \"authorId\" text NOT NULL,\n  \"body\" text NOT NULL,\n  \"clearedAt\" timestamp(3),\n  \"clearedById\" text,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"flag\" bool DEFAULT false NOT NULL,\n  \"id\" text NOT NULL,\n  \"makerId\" text NOT NULL,\n  \"submissionId\" text,\n  \"themeProjectId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"review_note\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"review_note\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"review_note\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "index.review_note.review_note_makerId_idx",
+    "label": "Create index \"review_note_makerId_idx\" on \"review_note\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "review_note_makerId_idx",
+        "table": "review_note"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"review_note_makerId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"review_note_makerId_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"review_note_makerId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"review_note_makerId_idx\"",
+        "sql": "CREATE INDEX \"review_note_makerId_idx\" ON \"public\".\"review_note\" (\"makerId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"review_note_makerId_idx\" exists on \"review_note\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"review_note_makerId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"review_note\"",
+          "btree",
+          "[\"makerId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.review_note.review_note_themeProjectId_idx",
+    "label": "Create index \"review_note_themeProjectId_idx\" on \"review_note\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "review_note_themeProjectId_idx",
+        "table": "review_note"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"review_note_themeProjectId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"review_note_themeProjectId_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"review_note_themeProjectId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"review_note_themeProjectId_idx\"",
+        "sql": "CREATE INDEX \"review_note_themeProjectId_idx\" ON \"public\".\"review_note\" (\"themeProjectId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"review_note_themeProjectId_idx\" exists on \"review_note\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"review_note_themeProjectId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"review_note\"",
+          "btree",
+          "[\"themeProjectId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.review_note.review_note_makerId_fkey",
+    "label": "Add foreign key \"review_note_makerId_fkey\" on \"review_note\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "review_note_makerId_fkey",
+        "table": "review_note"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"review_note_makerId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "review_note_makerId_fkey",
+          "public",
+          "\"public\".\"review_note\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"review_note_makerId_fkey\" on \"review_note\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"review_note_makerId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"review_note\"\nADD CONSTRAINT \"review_note_makerId_fkey\"\nFOREIGN KEY (\"makerId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"review_note_makerId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "review_note_makerId_fkey",
+          "public",
+          "\"public\".\"review_note\"",
+          "f",
+          "[\"makerId\"]",
+          "\"public\".\"user\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.review_note.review_note_authorId_fkey",
+    "label": "Add foreign key \"review_note_authorId_fkey\" on \"review_note\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "review_note_authorId_fkey",
+        "table": "review_note"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"review_note_authorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "review_note_authorId_fkey",
+          "public",
+          "\"public\".\"review_note\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"review_note_authorId_fkey\" on \"review_note\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"review_note_authorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"review_note\"\nADD CONSTRAINT \"review_note_authorId_fkey\"\nFOREIGN KEY (\"authorId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE RESTRICT\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"review_note_authorId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "review_note_authorId_fkey",
+          "public",
+          "\"public\".\"review_note\"",
+          "f",
+          "[\"authorId\"]",
+          "\"public\".\"user\"",
+          "[\"id\"]",
+          "r",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.review_note.review_note_themeProjectId_fkey",
+    "label": "Add foreign key \"review_note_themeProjectId_fkey\" on \"review_note\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "review_note_themeProjectId_fkey",
+        "table": "review_note"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"review_note_themeProjectId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "review_note_themeProjectId_fkey",
+          "public",
+          "\"public\".\"review_note\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"review_note_themeProjectId_fkey\" on \"review_note\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"review_note_themeProjectId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"review_note\"\nADD CONSTRAINT \"review_note_themeProjectId_fkey\"\nFOREIGN KEY (\"themeProjectId\")\nREFERENCES \"public\".\"theme_project\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"review_note_themeProjectId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "review_note_themeProjectId_fkey",
+          "public",
+          "\"public\".\"review_note\"",
+          "f",
+          "[\"themeProjectId\"]",
+          "\"public\".\"theme_project\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  }
+]

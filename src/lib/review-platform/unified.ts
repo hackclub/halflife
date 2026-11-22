@@ -122,13 +122,11 @@ async function settleAlreadySent(waiting: readonly Waiting[]): Promise<Set<strin
 	return new Set(settled.map(item => item.id))
 }
 
-/** What waits for this admin at T2: nobody checks their own project, or an approval they made at T1. */
+/** What waits for this admin at T2: nobody checks their own project. */
 export async function unifiedQueue(viewerId: string): Promise<string[]> {
 	const waiting = await waitingApprovals()
 	const sent = await settleAlreadySent(waiting)
-	return waiting
-		.filter(item => !sent.has(item.id) && item.userId !== viewerId && item.reviewerId !== viewerId)
-		.map(item => item.id)
+	return waiting.filter(item => !sent.has(item.id) && item.userId !== viewerId).map(item => item.id)
 }
 
 /** Every editable column, from a map that may lack some: a missing one reads as empty. Listed out so the compiler checks it against `UNIFIED_EDITABLE`. */
@@ -248,7 +246,7 @@ export async function getUnifiedReview(reviewId: string, viewerId: string): Prom
 	const maker = project?.user
 	if (!review || !submission || !project || !maker || project.deletedAt) return null
 	if (review.invalidated || review.result !== ReviewResult.APPROVED || review.reviewerId === null) return null
-	if (project.userId === viewerId || review.reviewerId === viewerId) return null
+	if (project.userId === viewerId) return null
 
 	const [generated, options, problem, queue] = await Promise.all([
 		generatedValues({ justification: review.justification, phase: submission.phase, themeProjectId: project.id }),
@@ -351,8 +349,6 @@ export async function saveUnifiedReview(
 	if (statusFor(project, submission.phase) !== PhaseStatus.approved)
 		throw new HttpError("PHASE_LOCKED", "This phase is no longer approved")
 	if (project.userId === adminId) throw new HttpError("FORBIDDEN", "You can't send your own project to Unified")
-	if (review.reviewerId === adminId)
-		throw new HttpError("FORBIDDEN", "You approved this at T1, so someone else has to check it at T2")
 	if (input.approve && review.unifiedApprovedAt)
 		throw new HttpError("ALREADY_RESOLVED", "This approval was already sent to Unified")
 

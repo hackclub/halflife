@@ -14,6 +14,7 @@ import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { approvalStamp, type JustificationContext, justificationSignOff } from "@/lib/review-platform/justification"
 import { renderReviewMarkdown } from "@/lib/review-platform/markdown"
+import type { QueueFacets, QueueFilters } from "@/lib/review-platform/queue-filters"
 import { githubRepoFrom } from "@/lib/review-platform/repo"
 import type {
 	ReviewDetail,
@@ -113,6 +114,16 @@ async function deciderNames(submissionIds: string[], viewer: ReviewViewer): Prom
 	return names
 }
 
+/** The projects among these with a standing reviewer flag (see `ReviewNote`), which the queue shows as flagged. */
+async function flaggedProjects(projectIds: string[]): Promise<Set<string>> {
+	if (projectIds.length === 0) return new Set()
+	const flags = await db.orm.public.ReviewNote.where({ clearedAt: null, flag: true })
+		.where(note => note.themeProjectId.in(projectIds))
+		.select("themeProjectId")
+		.all()
+	return new Set(flags.flatMap(flag => (flag.themeProjectId ? [flag.themeProjectId] : [])))
+}
+
 interface RowSource {
 	claim: { expiresAt: string; reviewer: { displayName: string | null; id: string; name: string | null } | null } | null
 	createdAt: string
@@ -136,7 +147,7 @@ async function toRows(
 	opts: { resubmissions?: Set<string> } = {},
 ): Promise<ReviewRow[]> {
 	const now = new Date()
-	const [hours, deciders] = await Promise.all([
+	const [hours, deciders, flagged] = await Promise.all([
 		claimedHoursFor(
 			rows.flatMap(row => (row.themeProject ? [{ phase: row.phase, themeProjectId: row.themeProject.id }] : [])),
 		),
@@ -144,6 +155,7 @@ async function toRows(
 			rows.filter(row => row.resolvedAt).map(row => row.id),
 			viewer,
 		),
+		flaggedProjects([...new Set(rows.flatMap(row => (row.themeProject ? [row.themeProject.id] : [])))]),
 	])
 	return rows.flatMap(row => {
 		const project = row.themeProject
@@ -157,7 +169,7 @@ async function toRows(
 			{
 				ageDays: ageDays(submittedAt, now),
 				claimExpiresAt: claimLive && expiresAt !== null ? expiresAt.toISOString() : null,
-				flagged: viewer.seesRiskFlags && maker.fraudFlagged,
+				flagged: (viewer.seesRiskFlags && maker.fraudFlagged) || flagged.has(project.id),
 				hoursClaimed: roundHours(hours.get(`${project.id}:${row.phase}`) ?? 0),
 				id: row.id,
 				kind: row.phase === Phase.DESIGN ? "design" : "build",
@@ -216,19 +228,6 @@ export function weekLabel(week: number): string {
 	if (!schedule) return `Week ${week}`
 	return `Week ${week} · ${themeLabel(schedule.theme.id)} ${schedule.phase === Phase.DESIGN ? "design" : "build"}`
 }
-
-/** The queue's narrowing filters, each null or "" for everything. */
-export interface QueueFacets {
-	/** "any" for every starter, "none" for the maker's own idea, or one starter's id. */
-	starter: string
-	/** The tier the row's badge shows: the approved tier once there is one, the requested tier before. */
-	tier: number | null
-	/** The program week the submission is scheduled for – its theme's week, not the week it was handed in. */
-	week: number | null
-}
-
-export const isStarterFilter = (value: string | undefined): value is string =>
-	value === "any" || value === "none" || STARTER_PROJECTS.some(starter => starter.id === value)
 
 interface FacetRow {
 	starter: string | null
@@ -384,17 +383,36 @@ export async function getQueue(opts: {
 	}
 }
 
-/** The oldest pending submission after this one that the viewer could pick up next. */
-async function nextPending(viewer: ReviewViewer, after: { createdAt: string; id: string }): Promise<string | null> {
+/** The oldest pending submission after this one that the viewer could pick up next, within the queue filters they started from. */
+async function nextPending(
+	viewer: ReviewViewer,
+	after: { createdAt: string; id: string },
+	filters: QueueFilters | null,
+): Promise<string | null> {
 	const live = formatDbTimestamp(new Date())
 	const next = await db.orm.public.PhaseSubmission.where({ resolvedAt: null })
-		.where(submission =>
-			and(
-				submission.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.neq(viewer.id))),
+		.where(submission => {
+			const conditions = [
+				submission.themeProject.some(project => {
+					const projectConditions = [project.deletedAt.isNull(), project.userId.neq(viewer.id)]
+					const tier = filters?.tier ?? null
+					const starter = filters?.starter ?? ""
+					if (tier !== null)
+						projectConditions.push(
+							or(project.tier.eq(tier), and(project.tier.isNull(), project.requestedTier.eq(tier))),
+						)
+					if (starter === "any") projectConditions.push(project.starterProjectId.isNotNull())
+					else if (starter === "none") projectConditions.push(project.starterProjectId.isNull())
+					else if (starter) projectConditions.push(project.starterProjectId.eq(starter))
+					return and(...projectConditions)
+				}),
 				submission.id.neq(after.id),
 				submission.createdAt.gte(after.createdAt),
-			),
-		)
+			]
+			if (filters?.kind) conditions.push(submission.phase.eq(filters.kind === "design" ? Phase.DESIGN : Phase.BUILD))
+			if (filters && filters.week !== null) conditions.push(submission.scheduledWeek.eq(filters.week))
+			return and(...conditions)
+		})
 		// Skips work someone else is already in the middle of.
 		.where(submission => submission.claim.none(claim => and(claim.reviewerId.neq(viewer.id), claim.expiresAt.gt(live))))
 		.select("id")
@@ -445,7 +463,11 @@ function justificationContext(opts: {
 	}
 }
 
-export async function getReviewDetail(submissionId: string, viewer: ReviewViewer): Promise<ReviewDetail | null> {
+export async function getReviewDetail(
+	submissionId: string,
+	viewer: ReviewViewer,
+	filters: QueueFilters | null = null,
+): Promise<ReviewDetail | null> {
 	const row = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
 		.include("claim", claim => claim.include("reviewer", reviewer => reviewer.select("displayName", "id", "name")))
 		.include("dispute", disp =>
@@ -481,7 +503,7 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 	// Your own work is not reviewable by you, so it is not visible here either – the same null the console returns, which does not confirm that the submission exists.
 	if (project.userId === viewer.id) return null
 
-	const [breakdown, sessions, history, makerSubmissions, bom, next, links, settings] = await Promise.all([
+	const [breakdown, sessions, history, makerSubmissions, bom, next, links, settings, notes] = await Promise.all([
 		getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
 		db.orm.public.WorkSession.where({ deletedAt: null, phase: row.phase, themeProjectId: row.themeProjectId })
 			.include("media", media => media.orderBy(m => m.sortOrder.asc()))
@@ -507,11 +529,17 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 			.limit(30)
 			.all(),
 		listBom(row.themeProjectId),
-		row.resolvedAt ? Promise.resolve(null) : nextPending(viewer, row),
+		row.resolvedAt ? Promise.resolve(null) : nextPending(viewer, row, filters),
 		db.orm.public.HackatimeLink.where({ phase: row.phase, themeProjectId: row.themeProjectId })
 			.select("hackatimeProject")
 			.all(),
 		getProgramSettings(),
+		// Notes on the maker follow them to every project; the rest are this project's. A cleared flag is only a record.
+		db.orm.public.ReviewNote.where({ clearedAt: null, makerId: maker.id })
+			.where(note => or(note.themeProjectId.isNull(), note.themeProjectId.eq(project.id)))
+			.include("author", author => author.select("displayName", "name"))
+			.orderBy(note => note.createdAt.asc())
+			.all(),
 	])
 
 	const now = new Date()
@@ -636,6 +664,21 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		},
 		makerShips: (await toRows(makerSubmissions, viewer)).filter(other => other.id !== row.id),
 		nextId: next,
+		notes: notes.map(note => ({
+			at: shortDate(parseDbTimestamp(note.createdAt)),
+			author: displayName(note.author, "A reviewer"),
+			authorId: note.authorId,
+			body: note.body,
+			flag: note.flag,
+			id: note.id,
+			subject: note.submissionId
+				? note.submissionId === row.id
+					? "ship"
+					: "earlier-ship"
+				: note.themeProjectId
+					? "project"
+					: "maker",
+		})),
 		project: {
 			description: project.description,
 			githubRepo: githubRepoFrom(project.githubRepo),

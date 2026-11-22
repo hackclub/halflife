@@ -6,6 +6,7 @@ import { participantProjectTitle } from "@/lib/config/program"
 import { Phase, ReviewResult } from "@/lib/enums"
 import { ireSubmissionUrl } from "@/lib/ire-url"
 import type { InputJsonObject } from "@/lib/json"
+import { safeSrc } from "@/lib/markdown"
 import db from "@/lib/prisma8"
 import { formatProgramDate, getProgramSettings } from "@/lib/program"
 import { SUBMISSION_LIMIT, submissionBudget } from "@/lib/resubmissions"
@@ -164,9 +165,13 @@ async function deliverToMaker(input: {
 	if (!slackId) return
 
 	// Every word here except our own link is interpolated: the reviewer's note from Ari, the maker's project title, a send's refusal reason. Slack mrkdwn turns `<@U…>`, `<!channel>` and `<url|text>` into mentions and links, so the text is escaped before it goes out; the link is ours and stays live.
-	const lines = plainLines(input).map(escapeSlackText)
 	const url = projectUrl(input.themeProjectId)
 	const link = url ? `\n<${url}|Open the project>` : ""
+	const images = noteImages(input.note)
+	// Mrkdwn has no image syntax, so a pasted picture is its bare link in the text and an image block in the blocks.
+	const plain = `${plainLines({ ...input, note: images.linked })
+		.map(escapeSlackText)
+		.join("\n\n")}${link}`
 
 	await trackSideEffect(
 		"slack",
@@ -176,8 +181,49 @@ async function deliverToMaker(input: {
 			targetId: input.themeProjectId,
 			targetType: "ThemeProject",
 		},
-		() => sendDM(slackId, `${lines.join("\n\n")}${link}`),
+		async () => {
+			if (images.urls.length === 0) return sendDM(slackId, plain)
+			const text = `${plainLines({ ...input, note: images.stripped })
+				.map(escapeSlackText)
+				.join("\n\n")}${link}`
+			const blocks = [
+				...chunk(text, SECTION_LIMIT).map(part => ({ text: { text: part, type: "mrkdwn" }, type: "section" })),
+				...images.urls.map(src => ({ alt_text: "Image from the reviewer", image_url: src, type: "image" })),
+			]
+			// Slack fetches each picture itself and refuses the whole message when one will not load, which must not cost the maker the decision.
+			await sendDM(slackId, plain, blocks).catch(async (err: unknown) => {
+				console.warn("[notifications] image blocks refused, sending text only:", err)
+				await sendDM(slackId, plain)
+			})
+		},
 	)
+}
+
+/** Slack's ceiling on one section block's text. */
+const SECTION_LIMIT = 3000
+const MAX_IMAGE_BLOCKS = 10
+const MD_IMAGE = /!\[[^\]]*\]\(([^)\s]+)\)/g
+
+/** A reviewer's note with its Markdown images taken out: as bare links for plain text, removed for blocks, and the sources Slack can draw. */
+function noteImages(note: string | null): { linked: string | null; stripped: string | null; urls: string[] } {
+	if (!note) return { linked: note, stripped: note, urls: [] }
+	const urls: string[] = []
+	for (const m of note.matchAll(MD_IMAGE)) {
+		const src = m[1] === undefined ? undefined : safeSrc(m[1])
+		if (src?.startsWith("https://") && !urls.includes(src) && urls.length < MAX_IMAGE_BLOCKS) urls.push(src)
+	}
+	const linked = note.replaceAll(MD_IMAGE, (_, src: string) => src)
+	const stripped = note
+		.replaceAll(MD_IMAGE, (_whole, src: string) => (urls.includes(src) ? "" : src))
+		.replaceAll(/\n{3,}/g, "\n\n")
+		.trim()
+	return { linked, stripped: stripped || null, urls }
+}
+
+function chunk(text: string, size: number): string[] {
+	const parts: string[] = []
+	for (let at = 0; at < text.length; at += size) parts.push(text.slice(at, at + size))
+	return parts
 }
 
 /**
