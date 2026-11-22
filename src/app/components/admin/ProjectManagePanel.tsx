@@ -3,6 +3,7 @@
 import { ProjectControls } from "@/app/components/admin/ProjectControls"
 import { ManageSection } from "@/app/components/admin/ProjectManage"
 import { ActionButton } from "@/app/components/forms/ActionButton"
+import { BomSyncForm } from "@/app/components/forms/BomSyncForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
 import { JournalHoursEditor, type JournalHoursEntry } from "@/app/components/forms/JournalHoursEditor"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
@@ -32,6 +33,8 @@ export interface ProjectManageFlags {
 	canMoveTheme: boolean
 	canOverride: boolean
 	canSendGrant: boolean
+	/** Pull the parts list from the repo, and put a pull back. */
+	canSyncBom: boolean
 }
 
 /** Whether a phase is one the maker can hand in from here: not yet handed in, or sent back to fix. */
@@ -45,6 +48,7 @@ export function hasProjectActions(data: ProjectManageData, flags: ProjectManageF
 		flags.canExtend
 		|| flags.canMoveTheme
 		|| (flags.canSendGrant && grantAvailable(data))
+		|| flags.canSyncBom
 		|| (flags.canEditHours && data.journal.length > 0)
 		|| (flags.canOverride && overrideAvailable(data))
 	)
@@ -94,6 +98,11 @@ export function ProjectManageSections({
 				theme={data.theme}
 				userExtension={data.userExtension}
 			/>
+			{flags.canSyncBom ? (
+				<ManageSection title="Parts list">
+					<BomSyncForm projectId={data.id} />
+				</ManageSection>
+			) : null}
 			{hoursAction ? (
 				<ManageSection title="Journal hours">
 					<JournalHoursEditor entries={data.journal} />

@@ -50,7 +50,14 @@ export function projectAccessFor(roles: Role[]): { flags: ProjectManageFlags; in
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
 	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
 	// The same controls as a user's themed projects. Sending a grant needs the owner's identity checked, which this list does not look up row by row, so it stays on the user page.
-	const flags = { canEditHours: canOverride, canExtend, canMoveTheme, canOverride, canSendGrant: false }
+	const flags = {
+		canEditHours: canOverride,
+		canExtend,
+		canMoveTheme,
+		canOverride,
+		canSendGrant: false,
+		canSyncBom: canMoveTheme,
+	}
 	// The owner's email and Slack ID are contact details: they leave the server for ADMIN/AUDITOR only, exactly as the user directory does.
 	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
 	return { flags, includePii }
