@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { useConfirm } from "@/app/components/ui/useConfirm"
 import { addReviewNote, removeReviewNote } from "@/components/review/api"
 import { useDraft, useStoredToggle } from "@/components/review/hooks"
 import { useReviewRuntime } from "@/components/review/runtime"
 import { FormErrors, Paper, StatusTag } from "@/components/review/ui"
+import { useReviewConfirm } from "@/components/review/useReviewConfirm"
 import type { ReviewDetail, ReviewNote, ReviewViewer } from "@/lib/review-platform/types"
 
 type View = "flag" | "note" | null
@@ -47,7 +47,7 @@ export function ReviewNotes({ detail, viewer }: { detail: ReviewDetail; viewer: 
 	const [errors, setErrors] = useState<string[]>([])
 	const [busy, setBusy] = useState(false)
 	const [shown, setShown] = useStoredToggle("halflife:review-notes")
-	const { confirm, dialog: confirmDialog } = useConfirm()
+	const { confirm, dialog: confirmDialog } = useReviewConfirm()
 
 	const flag = detail.notes.find(note => note.flag) ?? null
 	const notes = detail.notes.filter(note => !note.flag)

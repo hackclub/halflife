@@ -97,3 +97,21 @@ export const reviewNoteSchema = z
 		submissionId: cuid,
 	})
 	.strict()
+
+/** Re-deflating journal entries on an approval that already stands (see `adjustApprovedHours`). */
+export const adjustHoursSchema = z
+	.object({
+		entries: z
+			.array(
+				z
+					.object({
+						comments: boundedText(2000).optional(),
+						hoursApproved: z.number().min(0).max(MAX_SESSION_HOURS),
+						id: cuid,
+					})
+					.strict(),
+			)
+			.min(1)
+			.max(200),
+	})
+	.strict()

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useContext, useMemo } from "react"
 import {
+	adjustHours,
 	claim,
 	closeDispute,
 	type DecisionBody,
@@ -21,6 +22,10 @@ import {
  * Online, this is the API in `api.ts` and the Next router, unchanged. The offline page (`/reviews/offline`) provides its own, which keeps writes in the outbox and moves between downloaded submissions without asking the server for anything, so the same screen works with no connection.
  */
 export interface ReviewRuntime {
+	adjustHours(
+		submissionId: string,
+		entries: { comments: string; hoursApproved: number; id: string }[],
+	): Promise<{ approvedHours: number; unrecovered: number }>
 	claim(submissionId: string): Promise<{ expiresAt: string }>
 	closeDispute(disputeId: string): Promise<unknown>
 	decide(submissionId: string, body: DecisionBody): Promise<unknown>
@@ -60,6 +65,7 @@ export function useReviewRuntime(): ReviewRuntime {
 	const fallback = useMemo<ReviewRuntime>(
 		() =>
 			Object.freeze({
+				adjustHours,
 				claim,
 				closeDispute,
 				decide,
