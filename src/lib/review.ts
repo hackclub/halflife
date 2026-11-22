@@ -781,9 +781,6 @@ export async function reopenPhase(
 	})
 }
 
-/** How long a reviewer may take back their own decision. Past it, a reversal is an admin's override. */
-export const TAKE_BACK_WINDOW_MS = 60 * 60 * 1000
-
 const STATUS_FOR_RESULT: { readonly [_ in ReviewResult]: PhaseStatus } = Object.freeze({
 	[ReviewResult.APPROVED]: PhaseStatus.approved,
 	[ReviewResult.REJECTED]: PhaseStatus.rejected,
@@ -793,7 +790,7 @@ const STATUS_FOR_RESULT: { readonly [_ in ReviewResult]: PhaseStatus } = Object.
 /**
  * Put a ship a reviewer just decided back into review, claimed by them, so they can change the decision.
  *
- * Ari's requeue on a reviewer's own say-so: an approval or rejection is unwound by `unapprovePhase`/`reopenPhase` (with their guards on money that has already moved), then the decision is invalidated and the phase goes back to `in_review`. Only the reviewer's own standing decision on the latest hand-in, within `TAKE_BACK_WINDOW_MS`, while the phase still holds it, and not once T2 has sent it on. The maker has already been told; deciding again tells them again.
+ * Ari's requeue on a reviewer's own say-so: an approval or rejection is unwound by `unapprovePhase`/`reopenPhase` (with their guards on money that has already moved), then the decision is invalidated and the phase goes back to `in_review`. Only the reviewer's own standing decision on the latest hand-in, while the phase still holds it, and not once T2 has sent it on. The maker has already been told; deciding again tells them again.
  */
 export async function takeBackDecision(
 	submissionId: string,
@@ -810,8 +807,6 @@ export async function takeBackDecision(
 		throw new HttpError("CONFLICT", "This ship has no decision to take back")
 	if (standing.reviewerId !== reviewer.id)
 		throw new HttpError("FORBIDDEN", "Only the reviewer who decided can take it back")
-	if (Date.now() - parseDbTimestamp(standing.createdAt).getTime() > TAKE_BACK_WINDOW_MS)
-		throw new HttpError("CONFLICT", "It's been over an hour, so ask an admin to override this decision")
 	if (standing.unifiedApprovedAt) throw new HttpError("CONFLICT", "This approval has already been sent on at T2")
 	const expected = STATUS_FOR_RESULT[submission.resolvedResult]
 	if (statusFor(submission.themeProject, phase) !== expected)
@@ -857,4 +852,168 @@ export async function takeBackDecision(
 
 	await claimSubmission(submissionId, reviewer.id)
 	return { feedback: standing.feedback, phase, themeProjectId }
+}
+
+export interface HoursAdjustment {
+	comments: string | null
+	hoursApproved: number
+	id: string
+}
+
+/**
+ * Change what journal entries count as on an approval that already stands, and re-pay it at the new total.
+ *
+ * The decision stays and the maker is not messaged; only the frozen hours, the coins and the ledger move, reconciled to the new target the same way an approval is, so nothing is paid twice. Open to the approval's own reviewer until T2 sends it on, and not to an approval whose total was set by an hours override, which deflation does not reach. A design whose grant buys more hours than the new total is refused, as `finalizeReview` refuses it.
+ */
+export async function adjustApprovedHours(
+	submissionId: string,
+	reviewer: { email: string | null; id: string },
+	adjustments: readonly HoursAdjustment[],
+	options: { canExceedClaim: boolean },
+): Promise<{ approvedHours: number; phase: Phase; themeProjectId: string; unrecovered: number }> {
+	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
+		.include("reviews", reviews => reviews.where({ invalidated: false }).orderBy(review => review.createdAt.desc()))
+		.include("themeProject", owner => owner.select("buildStatus", "designStatus", "id", "userId"))
+		.first()
+	const project = submission?.themeProject
+	if (!submission || !project) throw new HttpError("NOT_FOUND", "Submission not found")
+	if (project.userId === reviewer.id) throw new HttpError("FORBIDDEN", "You cannot approve hours on your own work")
+	const { phase, themeProjectId } = submission
+	const [standing] = submission.reviews
+	if (submission.resolvedResult !== ReviewResult.APPROVED || standing?.result !== ReviewResult.APPROVED)
+		throw new HttpError("CONFLICT", "Only an approval's hours can be adjusted")
+	if (standing.reviewerId !== reviewer.id)
+		throw new HttpError("FORBIDDEN", "Only the reviewer who approved can adjust its hours")
+	if (standing.unifiedApprovedAt) throw new HttpError("CONFLICT", "This approval has already been sent on at T2")
+	if (standing.hoursOverride !== null)
+		throw new HttpError(
+			"CONFLICT",
+			"This approval set its hours by override, so deflation doesn't change it. Take the decision back instead",
+		)
+	const latest = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId })
+		.orderBy(row => row.createdAt.desc())
+		.select("id")
+		.first()
+	if (latest?.id !== submissionId) throw new HttpError("CONFLICT", "The maker has handed in again since this approval")
+
+	const ids = adjustments.map(adjustment => adjustment.id)
+	const nowText = formatDbTimestamp(new Date())
+	const result = await db.transaction(async tx => {
+		await lockUserCredit(tx, project.userId)
+
+		// Under the lock: an un-approval, a take-back or T2 that committed since the read above must win.
+		const fresh = await tx.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+			.select("buildStatus", "designStatus")
+			.first()
+		if (!fresh || statusFor(fresh, phase) !== PhaseStatus.approved)
+			throw new HttpError("CONFLICT", "This phase is no longer approved")
+		const review = await tx.orm.public.SubmissionReview.whereUnique({ id: standing.id }).first()
+		if (!review || review.invalidated || review.unifiedApprovedAt)
+			throw new HttpError("CONFLICT", "This approval has changed since the page loaded")
+
+		const sessions = await tx.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
+			.where(session => session.id.in(ids))
+			.select("hoursApproved", "hoursClaimed", "id")
+			.all()
+		if (sessions.length !== new Set(ids).size) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
+		// The same ceiling the hours route draws: cutting or restating is a reviewer's call, paying above the claim is MANAGE_CREDIT's.
+		if (!options.canExceedClaim) {
+			const ceilings = new Map(sessions.map(row => [row.id, Math.max(row.hoursClaimed, row.hoursApproved ?? 0)]))
+			if (adjustments.some(adjustment => adjustment.hoursApproved > (ceilings.get(adjustment.id) ?? 0)))
+				throw new HttpError("FORBIDDEN", "Approving more hours than were logged requires the MANAGE_CREDIT permission")
+		}
+		for (const adjustment of adjustments)
+			await tx.orm.public.WorkSession.where({ id: adjustment.id }).update({
+				hoursApproved: adjustment.hoursApproved,
+				reviewComments: adjustment.comments,
+				reviewedAt: nowText,
+				reviewedById: reviewer.id,
+			})
+
+		const breakdown = await getHoursBreakdown(themeProjectId, phase, { client: tx })
+		const approvedHours = breakdown.computedTotal
+		let coins: CoinSplit
+		if (phase === Phase.DESIGN) {
+			const tier = review.frozenTier
+			if (!tier || !isTierId(tier)) throw new HttpError("CONFLICT", "This approval has no tier to pay against")
+			// The block the approval was measured against. Without it there is no way to tell which hours the grant already bought, and guessing pays them twice.
+			if (review.frozenFundingHours === null)
+				throw new HttpError("CONFLICT", "This approval doesn't record its funded hours. Take the decision back instead")
+			const fundedHours = review.frozenFundingHours
+			if (fundedHours > 0 && approvedHours < fundedHours)
+				throw new HttpError(
+					"VALIDATION_FAILED",
+					`Tier ${tier}'s grant funds ${fundedHours} hours and this would approve ${approvedHours}h. Take the decision back to change the tier`,
+				)
+			coins = designCoinsFor(tier, approvedHours, { fundedHours })
+		} else coins = buildCoinsFor(approvedHours)
+
+		await tx.orm.public.SubmissionReview.where({ id: review.id }).update({
+			frozenApprovedHours: approvedHours,
+			frozenBankedCoins: coins.banked,
+			frozenEntryCount: breakdown.journalEntryCount,
+			frozenHackatimeHours: breakdown.hackatimeHours,
+			frozenJournalHours: breakdown.journalHours,
+			frozenSpendableCoins: coins.spendable,
+			frozenTimelapseSeconds: breakdown.timelapseSeconds,
+		})
+		await tx.orm.public.ThemeProject.where({ id: themeProjectId }).update(
+			phase === Phase.DESIGN
+				? {
+						designApprovedHours: approvedHours,
+						designBankedCoins: coins.banked,
+						designSpendableCoins: coins.spendable,
+					}
+				: { approvedHours, buildCoins: coins.spendable },
+		)
+
+		const note = `Hours adjusted after approval: ${approvedHours}h`
+		const [bankedKind, spendableKind] =
+			phase === Phase.DESIGN
+				? [LedgerKind.DESIGN_BANKED_HOURS, LedgerKind.DESIGN_EXCESS_HOURS]
+				: [LedgerKind.BUILD_BANKED_HOURS, LedgerKind.BUILD_HOURS]
+		const banked = await reconcileGrant(tx, {
+			bucket: CoinBucket.BANKED,
+			createdById: reviewer.id,
+			kind: bankedKind,
+			note,
+			target: coins.banked,
+			themeProjectId,
+			userId: project.userId,
+		})
+		const spendable = await reconcileGrant(tx, {
+			createdById: reviewer.id,
+			kind: spendableKind,
+			note,
+			target: coins.spendable,
+			themeProjectId,
+			userId: project.userId,
+		})
+		await ensurePrinterAward(tx, project.userId)
+
+		return {
+			approvedHours,
+			before: review.frozenApprovedHours,
+			unrecovered: banked.unrecovered + spendable.unrecovered,
+		}
+	})
+
+	await logAudit({
+		action: AuditAction.REVIEW_APPROVE_HOURS,
+		actorEmail: reviewer.email,
+		actorId: reviewer.id,
+		metadata: {
+			adjustedAfterApproval: true,
+			after: result.approvedHours,
+			before: result.before,
+			entries: ids,
+			phase,
+			submissionId,
+			unrecoveredCoins: result.unrecovered,
+		},
+		targetId: themeProjectId,
+		targetType: "ThemeProject",
+	})
+
+	return { approvedHours: result.approvedHours, phase, themeProjectId, unrecovered: result.unrecovered }
 }

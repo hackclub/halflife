@@ -12,7 +12,6 @@ import { lapseTimelapseUrl } from "@/lib/lapse"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
-import { TAKE_BACK_WINDOW_MS } from "@/lib/review"
 import { approvalStamp, type JustificationContext, justificationSignOff } from "@/lib/review-platform/justification"
 import { renderReviewMarkdown } from "@/lib/review-platform/markdown"
 import type { QueueFacets, QueueFilters } from "@/lib/review-platform/queue-filters"
@@ -561,13 +560,20 @@ export async function getReviewDetail(
 		standing !== null
 		&& standing.reviewerId === viewer.id
 		&& standing.unifiedApprovedAt === null
-		&& now.getTime() - parseDbTimestamp(standing.createdAt).getTime() < TAKE_BACK_WINDOW_MS
 		&& phaseStatus
 			=== (status === "approved"
 				? PhaseStatus.approved
 				: status === "rejected"
 					? PhaseStatus.rejected
 					: PhaseStatus.update_requested)
+		&& !history.some(other => other.phase === row.phase && other.createdAt > row.createdAt)
+	const canAdjustHours =
+		viewer.canReviewHours
+		&& status === "approved"
+		&& phaseStatus === PhaseStatus.approved
+		&& standing?.reviewerId === viewer.id
+		&& standing.unifiedApprovedAt === null
+		&& standing.hoursOverride === null
 		&& !history.some(other => other.phase === row.phase && other.createdAt > row.createdAt)
 
 	const entries: ReviewEntry[] = sessions.map(session => {
@@ -713,6 +719,7 @@ export async function getReviewDetail(
 		},
 		ship: {
 			ageDays: ageDays(submittedAt, now),
+			canAdjustHours,
 			canTakeBack,
 			claimExpiresAt: claimLive && claimExpires !== null ? claimExpires.toISOString() : null,
 			claimedByViewer: claimLive && row.claim?.reviewerId === viewer.id,

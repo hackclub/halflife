@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { useConfirm } from "@/app/components/ui/useConfirm"
+import { AdjustableJournal } from "@/components/review/AdjustHours"
 import type { DecisionBody } from "@/components/review/api"
 import { BomSnapshot } from "@/components/review/BomSnapshot"
 import { ClaimTimer } from "@/components/review/ClaimTimer"
@@ -17,10 +17,11 @@ import { ReviewNotes, shipNoteText } from "@/components/review/ReviewNotes"
 import { useReviewRuntime } from "@/components/review/runtime"
 import { ShipTable } from "@/components/review/ShipTable"
 import { Field, FormErrors, isSafeUrl, PageHead, Paper, SafeLink, StatusTag, TierTag } from "@/components/review/ui"
+import { useReviewConfirm } from "@/components/review/useReviewConfirm"
 import { HardLink } from "@/components/site/HardLink"
-import { writeStored } from "@/lib/browser-state"
+import { readStored, writeStored } from "@/lib/browser-state"
 import { composeJustification, editBeforeTail, mergeEdits } from "@/lib/review-platform/justification"
-import type { ReviewDetail, ReviewViewer } from "@/lib/review-platform/types"
+import type { ReviewDetail, ReviewEntry, ReviewViewer } from "@/lib/review-platform/types"
 
 /** Half Life's redirect to the maker's Telescreen profile (lib/review-platform/telescreen). */
 const telescreenHref = (submissionId: string): string => `/api/reviews/${encodeURIComponent(submissionId)}/telescreen`
@@ -139,6 +140,49 @@ function useClaimOnArrival({
 	}, [canClaim, claim, mine, nextHref, runtime])
 }
 
+/**
+ * Puts the review's scroll box back where it was when `router.refresh()` – which every deflation autosave runs – falls back to a full page load (see `useReviewTab`).
+ *
+ * The box is `#app-main`, not the window (see "Half Life" in styles/app.css), so the browser's own restoration leaves it at the top. The position is written on pagehide and only read back by a load a few seconds later. Images and players load after mount, so the position is kept trying as the box grows, until it is reached, the reviewer scrolls, or a few seconds pass.
+ */
+function useKeepScrollAcrossReload(shipId: string): void {
+	useEffect(() => {
+		const main = document.querySelector<HTMLElement>("#app-main")
+		if (!main) return
+		const key = `halflife:review-scroll:${shipId}`
+		const onHide = (): void => writeStored(key, `${Date.now()}:${main.scrollTop}`)
+		window.addEventListener("pagehide", onHide)
+
+		let stop = (): void => {}
+		const [at = 0, top = 0] = (readStored(key) ?? "").split(":").map(Number)
+		writeStored(key, null)
+		if (top > 0 && Date.now() - at < 10_000) {
+			const restore = (): void => {
+				main.scrollTop = top
+				if (main.scrollTop >= top - 1) stop()
+			}
+			const grow = new ResizeObserver(restore)
+			for (const child of main.children) grow.observe(child)
+			const timer = window.setTimeout(() => stop(), 5000)
+			stop = () => {
+				grow.disconnect()
+				window.clearTimeout(timer)
+				main.removeEventListener("wheel", stop)
+				main.removeEventListener("touchstart", stop)
+				main.removeEventListener("keydown", stop)
+			}
+			main.addEventListener("wheel", stop, { passive: true })
+			main.addEventListener("touchstart", stop, { passive: true })
+			main.addEventListener("keydown", stop)
+			restore()
+		}
+		return () => {
+			stop()
+			window.removeEventListener("pagehide", onHide)
+		}
+	}, [shipId])
+}
+
 function ShipReviewInner({
 	detail,
 	initialTab,
@@ -157,6 +201,7 @@ function ShipReviewInner({
 
 	const [now, setNow] = useState(() => Date.now())
 	const { filesOpened, showTab, tab } = useReviewTab(initialTab)
+	useKeepScrollAcrossReload(ship.id)
 	const [decisionOpen, setDecisionOpen] = useStoredToggle("halflife:review-decision")
 	const [decisionWidth, setDecisionWidth] = useStoredWidth("halflife:review-decision-width", 416)
 	const [errors, setErrors] = useState<string[]>([])
@@ -381,22 +426,16 @@ function ShipReviewInner({
 					{pending && !mine ? (
 						<p className="field__hint">Claim this review to change what an entry counts as.</p>
 					) : null}
-					<div className="timeline">
-						{entries.map(entry => (
-							<JournalEntryView
-								entry={entry}
-								key={entry.id}
-								reviewer={
-									pending && viewer.canReviewHours && entry.countsHours ? (
-										<fieldset className="review-lock" disabled={!mine}>
-											<EntryReview entry={entry} onSaving={entrySaving} />
-										</fieldset>
-									) : undefined
-								}
-							/>
-						))}
-						{entries.length === 0 ? <p className="field__hint">No journal entries for this phase.</p> : null}
-					</div>
+					{ship.canAdjustHours ? (
+						<AdjustableJournal approvedHours={ship.decision?.hours ?? null} entries={entries} shipId={ship.id} />
+					) : (
+						<PendingJournal
+							editable={pending && viewer.canReviewHours}
+							entries={entries}
+							mine={mine}
+							onSaving={entrySaving}
+						/>
+					)}
 				</div>
 
 				<div className="review-layout__main" hidden={tab !== "submission"}>
@@ -587,6 +626,38 @@ function ShipReviewInner({
 				</aside>
 			</div>
 		</>
+	)
+}
+
+/** The journal as a pending ship shows it, each entry's deflation autosaved while the viewer holds the claim. */
+function PendingJournal({
+	editable,
+	entries,
+	mine,
+	onSaving,
+}: {
+	editable: boolean
+	entries: readonly ReviewEntry[]
+	mine: boolean
+	onSaving(id: string, state: EntrySave): void
+}) {
+	return (
+		<div className="timeline">
+			{entries.map(entry => (
+				<JournalEntryView
+					entry={entry}
+					key={entry.id}
+					reviewer={
+						editable && entry.countsHours ? (
+							<fieldset className="review-lock" disabled={!mine}>
+								<EntryReview entry={entry} onSaving={onSaving} />
+							</fieldset>
+						) : undefined
+					}
+				/>
+			))}
+			{entries.length === 0 ? <p className="field__hint">No journal entries for this phase.</p> : null}
+		</div>
 	)
 }
 
@@ -972,7 +1043,7 @@ function DecidedPanel({
 				? "reopen"
 				: null
 
-	const { confirm, dialog: reverseDialog } = useConfirm()
+	const { confirm, dialog: reverseDialog } = useReviewConfirm()
 
 	async function reverse(action: "unapprove" | "reopen"): Promise<void> {
 		const reason = await confirm({
@@ -1126,7 +1197,7 @@ function DisputePaper({
 	const [reply, setReply] = useState("")
 	const [busy, setBusy] = useState(false)
 	const replyField = useRef<HTMLTextAreaElement>(null)
-	const { confirm, dialog } = useConfirm()
+	const { confirm, dialog } = useReviewConfirm()
 	if (!dispute) return null
 	const open = dispute.resolvedAt === null
 

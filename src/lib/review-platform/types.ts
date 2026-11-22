@@ -144,6 +144,8 @@ export interface ReviewDecision {
 
 export interface ReviewShip {
 	ageDays: number
+	/** The viewer's own approval, not yet sent on at T2 and not set by an hours override, so its entries can be re-deflated and re-paid (see `adjustApprovedHours`). */
+	canAdjustHours: boolean
 	/** The viewer's own decision, recent enough and still standing, so they can put the ship back into review (see `takeBackDecision`). */
 	canTakeBack: boolean
 	claimExpiresAt: string | null

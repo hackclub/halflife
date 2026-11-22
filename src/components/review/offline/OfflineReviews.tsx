@@ -187,6 +187,7 @@ export function OfflineReviews() {
 		}
 		const needsConnection = (): Promise<never> => Promise.reject(new ReviewApiError("OFFLINE", NEEDS_CONNECTION))
 		return {
+			adjustHours: needsConnection,
 			claim: () => Promise.resolve({ expiresAt: OFFLINE_CLAIM_UNTIL }),
 			closeDispute: needsConnection,
 			async decide(submissionId, body) {

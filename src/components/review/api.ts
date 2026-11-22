@@ -111,6 +111,13 @@ export type DecisionBody =
 export const decide = (submissionId: string, body: DecisionBody): Promise<unknown> =>
 	request(`/api/review/submissions/${encodeURIComponent(submissionId)}/decision`, { body })
 
+/** Re-deflate entries on your own approval and re-pay it at the new total. */
+export const adjustHours = (
+	submissionId: string,
+	entries: { comments: string; hoursApproved: number; id: string }[],
+): Promise<{ approvedHours: number; unrecovered: number }> =>
+	request(`/api/review/submissions/${encodeURIComponent(submissionId)}/hours`, { body: { entries } })
+
 /** Take back your own decision: the ship goes back into review, claimed by you. Answers with the message that was sent. */
 export const takeBack = (submissionId: string): Promise<{ feedback: string }> =>
 	request(`/api/review/submissions/${encodeURIComponent(submissionId)}/take-back`)
