@@ -1253,9 +1253,9 @@ function decodeEasyEdaText(value: string): string {
     .replace(/\\n/g, '\n')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
 }
 
 function normalizeColor(value: string | undefined, fallback: string | null): string | null {

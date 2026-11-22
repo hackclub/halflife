@@ -161,7 +161,8 @@ const SUMMARY = /\b(sub\s*)?totals?\b|\bsum\b/i
 const THOUSANDS = /^-?\d{1,3}(,\d{3})+$/
 
 function money(cell: string) {
-  const cleaned = cell.replace(/[^\d.,-]/g, '')
+  const prefixed = cell.match(/(-?)[$€£¥₹]\s*(\d[\d.,]*)/)
+  const cleaned = prefixed ? prefixed[1] + prefixed[2] : cell.match(/-?\d[\d.,]*/)?.[0]
   if (!cleaned) return null
   const comma = cleaned.lastIndexOf(',')
   const dot = cleaned.lastIndexOf('.')
@@ -180,6 +181,7 @@ function bomTotal(rows: string[][]) {
   const summary = (row: string[]) => row.some((c, i) => i <= valueCol && c.length <= 40 && SUMMARY.test(c))
   const body = rows.slice(1).filter((r) => !summary(r))
   const symbol = body.map((r) => r[valueCol]?.match(/[$€£¥₹]/)?.[0]).find(Boolean) ?? ''
+  const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.01, b * 0.02)
   let sum = 0
   let columnSum = 0
   let counted = 0
@@ -187,6 +189,7 @@ function bomTotal(rows: string[][]) {
     const price = money(row[valueCol] ?? '')
     const value = totalCol >= 0 ? price : (money(row[qtyCol] ?? '') ?? 0) * (price ?? NaN)
     if (value === null || !Number.isFinite(value)) continue
+    if (counted > 0 && row.slice(0, valueCol).every((c) => !c.trim()) && near(price!, columnSum)) continue
     sum += value
     columnSum += price!
     counted++
@@ -202,7 +205,6 @@ function bomTotal(rows: string[][]) {
     .map((r) => money(r[valueCol] ?? ''))
     .filter((v): v is number => v !== null && v > 0)
     .pop()
-  const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.01, b * 0.02)
   const column = `the ${header[priceCol]} column`
   if (stated === undefined)
     return { text: show(columnSum), basis: `${column} (${product} gives ${show(sum)})`, counted }
