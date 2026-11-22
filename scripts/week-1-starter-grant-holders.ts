@@ -141,4 +141,8 @@ async function main(): Promise<void> {
 	)
 }
 
-await main()
+try {
+	await main()
+} finally {
+	await db.close()
+}

@@ -71,3 +71,5 @@ console.log(
 		2,
 	),
 )
+
+await db.close()

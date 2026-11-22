@@ -71,56 +71,6 @@ function slug(text: string): string {
 		.slice(0, 60)
 }
 
-/**
- * Rich journal HTML, cut down to markdown.
- *
- * The stored content is sanitised HTML (headings, lists, images, links, bold). Rather than ship an HTML-to-markdown dependency for one integration, the tags that matter are mapped and everything else is stripped to its text: an entry with a paragraph and a photo keeps both, and an entry using a tag nothing here knows about keeps its words. Images are left as their markdown form so a README-style render on GitHub shows the picture.
- */
-function htmlToMarkdown(html: string): string {
-	const mapped = html
-		// Block ends become line breaks first, so a <p>a</p><p>b</p> does not run the two together.
-		.replaceAll(/<\/(p|div|h[1-6]|li|blockquote)>/gi, "\n\n")
-		.replaceAll(/<br\s*\/?>/gi, "\n")
-		// Headings: GitHub renders `###` and is indifferent to which level was stored, so the entry's own hierarchy is kept.
-		.replaceAll(
-			/<h([1-6])[^>]*>(.*?)<\/h\1>/gis,
-			(_m, level: string, inner: string) => `${"#".repeat(Number(level))} ${inner.trim()}\n\n`,
-		)
-		// Images before links: an <a> wrapping an <img> would otherwise swallow it.
-		.replaceAll(/<img[^>]*?src=["']([^"']+)["'][^>]*?alt=["']([^"']*)["'][^>]*>/gi, "![$2]($1)")
-		.replaceAll(/<img[^>]*?alt=["']([^"']*)["'][^>]*?src=["']([^"']+)["'][^>]*>/gi, "![$1]($2)")
-		.replaceAll(/<img[^>]*?src=["']([^"']+)["'][^>]*>/gi, "![]($1)")
-		.replaceAll(/<a[^>]*?href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis, "[$2]($1)")
-		.replaceAll(/<(strong|b)>(.*?)<\/\1>/gis, "**$2**")
-		.replaceAll(/<(em|i)>(.*?)<\/\1>/gis, "_$2_")
-		.replaceAll(/<code>(.*?)<\/code>/gis, "`$1`")
-		.replaceAll(/<li[^>]*>/gi, "- ")
-
-	// Tags left over by the mappings above are stripped to a fixed point: deleting one match can, in general, make the text on either side join into a new tag, so a single pass is not a complete sanitizer (`js/incomplete-multi-character-sanitization`). Repeat until the string stops changing; each pass that does anything removes at least `<x>`, so it always terminates.
-	let text = mapped
-	let previous = ""
-	do {
-		previous = text
-		text = text.replaceAll(/<[^>]+>/g, "")
-	} while (text !== previous)
-
-	return decodeEntities(text)
-		.replaceAll(/[ \t]+\n/g, "\n")
-		.replaceAll(/\n{3,}/g, "\n\n")
-		.trim()
-}
-
-function decodeEntities(text: string): string {
-	// `&amp;` is unescaped LAST. Decoding it first would turn the literal text `&amp;lt;` into `&lt;` and then into `<` in the same pass – unescaping twice, so text the author escaped once came out as live markup. Every other entity above must also run before this one for the same reason.
-	return text
-		.replaceAll("&nbsp;", " ")
-		.replaceAll("&lt;", "<")
-		.replaceAll("&gt;", ">")
-		.replaceAll("&quot;", '"')
-		.replaceAll(/&#0?39;/g, "'")
-		.replaceAll("&amp;", "&")
-}
-
 /** A table row, keeping empty cells rather than dropping the column. */
 function row(...cells: (string | number | null | undefined)[]): string {
 	return `| ${cells.map(c => (c === null || c === undefined || c === "" ? "-" : String(c))).join(" | ")} |`
@@ -217,7 +167,8 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 			`**${fmtHours(claimed)}**${adjusted ? ` _(${fmtHours(entry.hoursClaimed)} logged, adjusted by a reviewer)_` : ""}`,
 			"",
 		)
-		if (entry.content) lines.push(htmlToMarkdown(entry.content), "")
+		// The entry is Markdown already, so it goes in as written. GitHub sanitises what it renders, and this is the maker's own repository.
+		if (entry.content?.trim()) lines.push(entry.content.trim(), "")
 		for (const clip of entry.timelapses) if (clip.url) lines.push(`[Timelapse](${clip.url})`, "")
 	}
 

@@ -58,7 +58,10 @@ function timelapseOf(body: unknown): LapseTimelapse | undefined {
 	return isRecord(timelapse) ? timelapse : undefined
 }
 
-async function preload(id: string): Promise<LapseVideo> {
+const sameUrl = (url: string): string => url
+
+/** `mediaSrc` is where the video and its poster are actually read from: Lapse's own address online, the downloaded copy offline (see `ReviewRuntime.mediaSrc`). */
+async function preload(id: string, mediaSrc: (url: string) => string): Promise<LapseVideo> {
 	const res = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`, { credentials: "omit" })
 	if (!res.ok) throw new Error(`Lapse returned ${res.status}`)
 	const body: unknown = await res.json()
@@ -71,22 +74,22 @@ async function preload(id: string): Promise<LapseVideo> {
 	element.playsInline = true
 	element.preload = "auto"
 	if (typeof timelapse?.thumbnailUrl === "string" && timelapse.thumbnailUrl.startsWith("https://"))
-		element.poster = timelapse.thumbnailUrl
+		element.poster = mediaSrc(timelapse.thumbnailUrl)
 	const tracked = typeof timelapse?.duration === "number" && timelapse.duration > 0 ? timelapse.duration : 0
 
 	const { promise, reject, resolve } = Promise.withResolvers<LapseVideo>()
 	element.addEventListener("loadeddata", () => resolve({ element, tracked }), { once: true })
 	element.addEventListener("error", () => reject(new Error("Video failed to load")), { once: true })
-	element.src = playback
+	element.src = mediaSrc(playback)
 	return promise
 }
 
-export function loadLapse(url: string): Promise<LapseVideo> {
+export function loadLapse(url: string, mediaSrc: (url: string) => string = sameUrl): Promise<LapseVideo> {
 	const id = lapseId(url)
 	if (!id) return Promise.reject(new Error("Not a Lapse link"))
 	let video = videos.get(id)
 	if (!video) {
-		const loading = throttled(() => preload(id))
+		const loading = throttled(() => preload(id, mediaSrc))
 		videos.set(id, loading)
 		// A failed load is forgotten, so the next player to ask tries again.
 		void (async () => {

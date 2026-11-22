@@ -9,6 +9,7 @@ import { ireLive, isIreConfigured } from "@/lib/ire-platform"
 import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import db from "@/lib/prisma8"
 import { trackSideEffect } from "@/lib/side-effects"
+import { isRobertConfigured, isSporkConfigured, screenWithSpork, submitToRobert } from "@/lib/telescreen"
 
 interface Actor {
 	email: string
@@ -98,6 +99,12 @@ export function propagateSubmission(
 				)
 			})
 	}
+
+	// Telescreen's fraud review and copy check, as Fabricate runs them on every ship (see lib/telescreen). Each keeps its own failure on the project's row for the review screen, and `telescreen-sync` replays what was missed.
+	if (isRobertConfigured())
+		after(() => submitToRobert(themeProjectId).catch(err => console.error("[submit] robert failed:", err)))
+	if (isSporkConfigured())
+		after(() => screenWithSpork(themeProjectId).catch(err => console.error("[submit] spork failed:", err)))
 
 	// Warm the Hackatime cache now so the reviewer opens a page with fresh numbers instead of waiting on the API. Nobody waits for it.
 	after(async () => {

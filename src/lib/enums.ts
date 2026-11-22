@@ -191,6 +191,14 @@ export const LedgerKind = {
 
 export type LedgerKind = (typeof LedgerKind)[keyof typeof LedgerKind]
 
+export const LegacyShopDmStatus = {
+	FAILED: "FAILED",
+	PENDING: "PENDING",
+	SENT: "SENT",
+} as const satisfies { [K in Members<"LegacyShopDmStatus">]: K }
+
+export type LegacyShopDmStatus = (typeof LegacyShopDmStatus)[keyof typeof LegacyShopDmStatus]
+
 export const MediaType = {
 	IMAGE: "IMAGE",
 	VIDEO: "VIDEO",

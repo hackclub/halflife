@@ -41,9 +41,9 @@ export function stepOrigin(text: string): StepOrigin | null {
   const header = end > 0 ? head.slice(0, end) : head
   const fields = headerFields(header, 'FILE_NAME')
   const description = headerFields(header, 'FILE_DESCRIPTION')
-  const signature = [...fields.slice(2), ...description].join(' ')
-  for (const [pattern, system, up, fixed, read] of SYSTEMS)
-    if (pattern.test(signature)) return { system, version: read?.(signature) ?? null, up, fixed }
+  for (const signature of [fields.slice(2).join(' '), description.join(' ')])
+    for (const [pattern, system, up, fixed, read] of SYSTEMS)
+      if (pattern.test(signature)) return { system, version: read?.(signature) ?? null, up, fixed }
   return null
 }
 

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import { formatDuration, isVideoUrl } from "@/components/review/format"
 import { ImageGallery } from "@/components/review/ImageGallery"
+import { useMediaSrc } from "@/components/review/runtime"
 import { TimelapsePlayer } from "@/components/review/TimelapsePlayer"
 import { Paper, StatusTag } from "@/components/review/ui"
 import type { ReviewEntry } from "@/lib/review-platform/types"
@@ -21,6 +22,7 @@ const entryDate = (iso: string): string =>
  * Lapse recordings play in Fabricate's own player, open by default as on Fabricate's review screen; a recording uploaded to Half Life's own bucket is a plain video.
  */
 export function JournalEntryView({ entry, reviewer }: { entry: ReviewEntry; reviewer?: ReactNode }) {
+	const mediaSrc = useMediaSrc()
 	const title = entry.title.trim()
 	const date = entryDate(entry.date)
 	return (
@@ -57,7 +59,7 @@ export function JournalEntryView({ entry, reviewer }: { entry: ReviewEntry; revi
 					{entry.timelapseUrls.map(url =>
 						isVideoUrl(url) ? (
 							// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
-							<video className="entry__lapse-video" controls key={url} playsInline preload="none" src={url} />
+							<video className="entry__lapse-video" controls key={url} playsInline preload="none" src={mediaSrc(url)} />
 						) : (
 							<TimelapsePlayer defaultOpen key={url} playable url={url} />
 						),

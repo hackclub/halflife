@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 import { QueueView } from "@/components/review/QueueView"
-import { isTierId } from "@/lib/config/tiers"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import { getQueue, isReviewStatus, isStarterFilter } from "@/lib/review-platform/queries"
+import { getQueue, isReviewStatus } from "@/lib/review-platform/queries"
+import { queueFiltersFrom } from "@/lib/review-platform/queue-filters"
 import { reviewViewerFor } from "@/lib/review-platform/viewer"
 
 export const metadata: Metadata = { title: "Review queue" }
@@ -24,14 +24,10 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 	const viewer = reviewViewerFor(await requirePermissionPage(Permission.REVIEW_SUBMISSIONS))
 	const params = await searchParams
 	const status = isReviewStatus(params.status) ? params.status : "pending"
-	const kind = params.kind === "design" || params.kind === "build" ? params.kind : ""
 	const mine = params.mine === "1"
-	const tier = Number(params.tier)
-	const facets = {
-		starter: isStarterFilter(params.starter) ? params.starter : "",
-		tier: isTierId(tier) ? tier : null,
-		week: /^\d{1,2}$/.test(params.week ?? "") ? Number(params.week) : null,
-	}
+	const { kind, ...facets } = queueFiltersFrom(params)
 	const queue = await getQueue({ cursor: params.cursor, facets, kind, mine, status, viewer })
-	return <QueueView filters={{ ...facets, kind, mine, status }} queue={queue} />
+	return (
+		<QueueView canReviewUnified={viewer.canReviewUnified} filters={{ ...facets, kind, mine, status }} queue={queue} />
+	)
 }

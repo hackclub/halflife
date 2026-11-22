@@ -28,7 +28,7 @@ function commitAt(commits: CommitData[], iso: string | null) {
   return commits.find((c) => c.date && Date.parse(c.date) <= time) ?? null
 }
 
-function presets(commits: CommitData[], ships: ShipMark[], shipId: string | null): Preset[] {
+export function presets(commits: CommitData[], ships: ShipMark[], shipId: string | null): Preset[] {
   const head = commits[0]?.sha
   if (!head) return []
   const list: Preset[] = []

@@ -18,7 +18,7 @@ import { HttpError } from "@/lib/errors"
 import db from "@/lib/prisma8"
 import { getProgramSettings, projectEditLockReason, weekClosesAt, weekNumberForDate } from "@/lib/program"
 import { ensureThemeProject } from "@/lib/provisioning"
-import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { sanitize } from "@/lib/sanitize"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 
 /**
@@ -266,7 +266,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 			const title = sanitize(answer.title)
 			if (!title) throw new HttpError("VALIDATION_FAILED", "Give your project a name")
 			projectData.title = title
-			projectData.description = sanitizeHtml(answer.description)
+			projectData.description = sanitize(answer.description)
 			// Writing your own description means you are no longer taking the starter build, so the tier stops being locked to 1.
 			projectData.starterProjectId = null
 			break

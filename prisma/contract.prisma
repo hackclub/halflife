@@ -84,7 +84,9 @@ namespace public {
     publicReels                 PublicReel[]
     reviewClaims                ReviewClaim[]
     reviewDisputes              ReviewDispute[]
-    reviewsGiven                SubmissionReview[]
+    reviewNotesAbout            ReviewNote[]                 @relation(name: "ReviewNote_maker")
+    reviewNotesWritten          ReviewNote[]                 @relation(name: "ReviewNote_author")
+    reviewsGiven                SubmissionReview[]           @relation(name: "SubmissionReview_reviewer")
     roles                       UserRole[]
     sessions                    Session[]
     shopOrderNotes              ShopOrderNote[]
@@ -96,6 +98,7 @@ namespace public {
     shopRegion                  ShopRegion?                  @relation(fields: [shopRegionId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
     reportsAgainst              ContentReport[]              @relation(name: "ContentReport_targetUser")
     reportsMade                 ContentReport[]              @relation(name: "ContentReport_reporter")
+    unifiedApprovals            SubmissionReview[]           @relation(name: "SubmissionReview_unifiedApprovedBy")
 
     @@index([email], map: "user_email_key", unique: true)
     @@index([slackId], map: "user_slackId_key", unique: true)
@@ -216,8 +219,10 @@ namespace public {
     publicReels              PublicReel[]
     reports                  ContentReport[]
     repoSyncRuns             RepoSyncRun[]
+    reviewNotes              ReviewNote[]
     ireShips              IreShip[]
     submissions              PhaseSubmission[]
+    telescreenCheck          TelescreenCheck?
     workSessions             WorkSession[]
     user                     User                 @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -593,6 +598,7 @@ namespace public {
     ledgerEntries        LedgerEntry[]
     notes                ShopOrderNote[]
     grantCards           HcbShopGrantCard[]
+    legacyShopDmOrders   LegacyShopDmOrder[]
     user                 User                            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
     shopItem             ShopItem                        @relation(fields: [shopItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
@@ -630,6 +636,46 @@ namespace public {
     @@index([shopOrderId], name: "hcb_shop_grant_card_shopOrderId_live_key", unique: true, where: sql`("status" IN ('PENDING'::"HcbGrantCardStatus", 'ISSUED'::"HcbGrantCardStatus", 'AMBIGUOUS'::"HcbGrantCardStatus"))`)
     @@index([hcbCardGrantId], map: "hcb_shop_grant_card_hcbCardGrantId_key", unique: true)
     @@map("hcb_shop_grant_card")
+  }
+
+  /// One Slack DM from the admin fulfilment tab. A buyer's DM lists each of their orders that was placed before the delivery choice existed; a test DM goes to an arbitrary Slack ID and lists no orders. Every send is kept here, sent or failed, so the tab can show who was messaged.
+  model LegacyShopDm {
+    id          String                 @id @onCreate(cuid(2))
+    /// Null on a test DM, which is not any buyer's.
+    userId      String?
+    slackId     String
+    test        Boolean                @default(false)
+    /// The admin who pressed send. Kept as an ID rather than a relation so the history outlives the account.
+    sentById    String?
+    status      pg.enum(LegacyShopDmStatus) @default("PENDING")
+    /// The DM's channel and message timestamp, so a button click can rewrite the message it came from.
+    channel     String?
+    ts          String?
+    error       String?
+    createdAt   TimestampString(3)     @default(now())
+    sentAt      TimestampString(3)?
+    orders      LegacyShopDmOrder[]
+
+    @@index([userId], map: "legacy_shop_dm_userId_idx")
+    @@index([createdAt], map: "legacy_shop_dm_createdAt_idx")
+    @@map("legacy_shop_dm")
+  }
+
+  /// One order listed in a LegacyShopDm. The partial unique index is what stops an order being messaged twice: a row that is PENDING or SENT holds it, and a FAILED row releases it so the order can be sent again.
+  model LegacyShopDmOrder {
+    id          String                 @id @onCreate(cuid(2))
+    dmId        String
+    shopOrderId String
+    status      pg.enum(LegacyShopDmStatus) @default("PENDING")
+    /// The buyer's answer to the DM's buttons. Null until they press one. The order's own deliveryPreference is not touched by it.
+    choice      pg.enum(ShopDeliveryPreference)?
+    choiceAt    TimestampString(3)?
+    dm          LegacyShopDm           @relation(fields: [dmId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
+    shopOrder   ShopOrder              @relation(fields: [shopOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
+
+    @@index([dmId], map: "legacy_shop_dm_order_dmId_idx")
+    @@index([shopOrderId], name: "legacy_shop_dm_order_shopOrderId_live_key", unique: true, where: sql`("status" IN ('PENDING'::"LegacyShopDmStatus", 'SENT'::"LegacyShopDmStatus"))`)
+    @@map("legacy_shop_dm_order")
   }
 
   model LedgerEntry {
@@ -714,6 +760,41 @@ namespace public {
     @@index([remoteId], map: "ire_ship_remoteId_key", unique: true)
     @@index([closedAt], map: "ire_ship_closedAt_idx")
     @@map("ire_ship")
+  }
+
+  /// Telescreen's checks on a project, as Fabricate keeps them: its Robert fraud review (one Robert project per Half Life project, externalId `halflife-project-<id>`) and the latest direct Spork screen of its repo, with a reviewer's call on a Spork flag. See lib/telescreen.
+  model TelescreenCheck {
+    id              String              @id @onCreate(cuid(2))
+    themeProjectId  String
+    robertId        String?
+    robertState     String?
+    trustScore      Int?
+    reviewNote      String?
+    reviewFields    Jsonb?
+    reviewerName    String?
+    reviewedAt      String?
+    outcomeStatus   String?
+    outcomeReason   String?
+    outcomeAt       String?
+    creditedSeconds Int?
+    conflicts       Jsonb?
+    robertSpork     Jsonb?
+    sentByName      String?
+    submittedAt     TimestampString(3)?
+    syncedAt        TimestampString(3)?
+    robertError     String?
+    sporkResult     Jsonb?
+    sporkCheckedAt  TimestampString(3)?
+    sporkError      String?
+    sporkVerdict    Jsonb?
+    createdAt       TimestampString(3)  @default(now())
+    updatedAt       TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    themeProject    ThemeProject        @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([themeProjectId], map: "telescreen_check_themeProjectId_key", unique: true)
+    @@index([robertId], map: "telescreen_check_robertId_key", unique: true)
+    @@index([robertState], map: "telescreen_check_robertState_idx")
+    @@map("telescreen_check")
   }
 
   model PostLike {
@@ -893,6 +974,27 @@ namespace public {
     @@map("review_dispute_message")
   }
 
+  /// A reviewer's note for other reviewers, or a flag on a project, from the review screen. Never shown to the maker. A note is on one ship (`submissionId` set), on the project (`themeProjectId` alone) or on the maker (neither), so a maker note follows them to every project. `submissionId` has no foreign key because unsubmitting deletes the ship and the note should outlive it. A flag is a project note with `flag` set; clearing it keeps the row.
+  model ReviewNote {
+    id             String              @id @onCreate(cuid(2))
+    makerId        String
+    themeProjectId String?
+    submissionId   String?
+    authorId       String
+    body           String
+    flag           Boolean             @default(false)
+    clearedAt      TimestampString(3)?
+    clearedById    String?
+    createdAt      TimestampString(3)  @default(now())
+    maker          User                @relation(name: "ReviewNote_maker", fields: [makerId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "review_note_makerId_idx")
+    author         User                @relation(name: "ReviewNote_author", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: false)
+    themeProject   ThemeProject?       @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: "review_note_themeProjectId_idx")
+
+    @@index([makerId], map: "review_note_makerId_idx")
+    @@index([themeProjectId], map: "review_note_themeProjectId_idx")
+    @@map("review_note")
+  }
+
   model RsvpBuffer {
     id                      String              @id @onCreate(cuid(2))
     email                   String
@@ -1038,9 +1140,18 @@ namespace public {
     frozenFundingHours     Float?
     frozenBankHours        Float?
     frozenPrinterGoalId    String?
+    /// The approval's account in Fabricate's format, sign-off included, written to `Optional - Override Hours Spent Justification`. Only a decision made on the review screen has one; Ari's decisions keep the separate `Justification - …` columns.
+    justification          String?
+    /// T2: the Airtable fields an admin changed from what Half Life generates, by the base's own column name. Merged into every later write of the row, so a refresh cannot undo them.
+    unifiedOverrides       Jsonb?
+    /// When T2 sent this approval to the unified database, or when it was found already there.
+    unifiedApprovedAt      TimestampString(3)?
+    /// Who approved it at T2. Null with `unifiedApprovedAt` set means it reached the unified database without T2 (ticked by hand in the base).
+    unifiedApprovedById    String?
     createdAt              TimestampString(3)    @default(now())
     submission             PhaseSubmission       @relation(fields: [submissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-    reviewer               User?                 @relation(fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: "submission_review_reviewerId_createdAt_idx")
+    reviewer               User?                 @relation(name: "SubmissionReview_reviewer", fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, index: "submission_review_reviewerId_createdAt_idx")
+    unifiedApprovedBy      User?                 @relation(name: "SubmissionReview_unifiedApprovedBy", fields: [unifiedApprovedById], references: [id], onDelete: SetNull, onUpdate: Cascade, index: false)
 
     @@index([submissionId], map: "submission_review_submissionId_idx")
     @@index([reviewerId, createdAt], map: "submission_review_reviewerId_createdAt_idx")
@@ -1295,6 +1406,12 @@ namespace public {
     FULFILLED = "FULFILLED"
     REJECTED = "REJECTED"
     CANCELLED = "CANCELLED"
+  }
+
+  native_enum LegacyShopDmStatus {
+    PENDING = "PENDING"
+    SENT = "SENT"
+    FAILED = "FAILED"
   }
 
   native_enum ShopFulfillmentMethod {

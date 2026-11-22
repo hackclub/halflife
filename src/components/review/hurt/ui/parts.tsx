@@ -143,6 +143,10 @@ export function Loading({ progress, message }: { progress?: number | null; messa
 }
 
 export function Failure({ message, children }: { message: string; children?: ReactNode }) {
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('hurt:failure', { detail: message }))
+  }, [message])
+
   return (
     <div className="hurt-state hurt-state--error" role="alert">
       <HurtIcon name="warning" />

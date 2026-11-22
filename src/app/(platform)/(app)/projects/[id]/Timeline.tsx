@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react"
 import { IconCheck, IconFilm, IconPencil, IconPlay, IconWarning } from "@/components/platform/icons"
-import { Markdown } from "@/components/platform/Markdown"
+import { Markdown, textWithImages } from "@/components/platform/Markdown"
 import { ReportButton } from "@/components/platform/report/ReportButton"
 import { Chip } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
@@ -103,7 +103,8 @@ const PHASE = { BUILD: "build", DESIGN: "design" } as const
 function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean }) {
 	if (item.kind === "session")
 		return (
-			<article>
+			// The anchor an approval's justification links each devlog to (see lib/review-platform/justification).
+			<article className="scroll-mt-6" id={`entry-${item.id}`}>
 				<header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 					<h3 className="text-[0.95rem] font-extrabold text-navy">Journal entry</h3>
 					<span className="hand text-[0.84rem] text-teal-ink tabular-nums">
@@ -190,7 +191,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 			</p>
 			{item.comments && (
 				<blockquote className="mt-2 max-w-[68ch] rounded-xl bg-black/[.04] px-4 py-3 text-[0.88rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
-					{item.comments}
+					{textWithImages(item.comments, "note")}
 				</blockquote>
 			)}
 		</div>

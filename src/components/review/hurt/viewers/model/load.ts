@@ -10,7 +10,7 @@ import type { ModelData, ModelHistory } from './analyze'
 import { THREEMF_UNSUPPORTED } from './threemf'
 import { OCCT_LIMIT } from './server'
 
-const VERSION = 12
+const VERSION = 13
 const RESTART_AFTER_BYTES = 20e6
 const SLOW_BYTES = 30e6
 const SPEED_KEY = 'hurt:read-speed'

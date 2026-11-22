@@ -5,28 +5,22 @@ import { useRouter } from "next/navigation"
 import { useEffect, useOptimistic, useTransition } from "react"
 import { ShipTable } from "@/components/review/ShipTable"
 import { PageHead, Paper } from "@/components/review/ui"
+import { HardLink } from "@/components/site/HardLink"
+import { type QueueFilters, queueFilterParams } from "@/lib/review-platform/queue-filters"
 import type { ReviewOption, ReviewQueue, ReviewStatus } from "@/lib/review-platform/types"
 
-interface Filters {
-	kind: "" | "design" | "build"
+interface Filters extends QueueFilters {
 	mine: boolean
-	starter: string
 	status: ReviewStatus
-	tier: number | null
-	week: number | null
 }
 
 const STATUSES: readonly ReviewStatus[] = Object.freeze(["pending", "approved", "returned", "rejected"])
 const KINDS: readonly Filters["kind"][] = Object.freeze(["", "design", "build"])
 
 const queueHref = (filters: Filters, cursor?: string | null): string => {
-	const params = new URLSearchParams()
+	const params = queueFilterParams(filters)
 	if (filters.status !== "pending") params.set("status", filters.status)
-	if (filters.kind) params.set("kind", filters.kind)
 	if (filters.mine) params.set("mine", "1")
-	if (filters.week !== null) params.set("week", String(filters.week))
-	if (filters.tier !== null) params.set("tier", String(filters.tier))
-	if (filters.starter) params.set("starter", filters.starter)
 	if (cursor) params.set("cursor", cursor)
 	const query = params.toString()
 	return query ? `/reviews?${query}` : "/reviews"
@@ -67,7 +61,16 @@ function FacetSelect({ all, label, onChange, options, value }: FacetSelectProps)
  *
  * Fabricate's reviewer pledge card is not here – Half Life has no pledges.
  */
-export function QueueView({ filters: rendered, queue }: { filters: Filters; queue: ReviewQueue }) {
+export function QueueView({
+	canReviewUnified,
+	filters: rendered,
+	queue,
+}: {
+	/** REVIEW_UNIFIED: show the way to T2, where website approvals are checked before they go to the unified database. */
+	canReviewUnified: boolean
+	filters: Filters
+	queue: ReviewQueue
+}) {
 	const router = useRouter()
 	const [pending, startTransition] = useTransition()
 	const [filters, pick] = useOptimistic(rendered)
@@ -80,6 +83,9 @@ export function QueueView({ filters: rendered, queue }: { filters: Filters; queu
 		return () => window.clearInterval(id)
 	}, [pending, router])
 
+	// What "Save for offline" downloads: this page of the queue, the ones still to be decided. A full page load (HardLink), because the offline page runs under its own service worker.
+	const offlineIds = queue.rows.filter(row => row.status === "pending").map(row => row.id)
+
 	const set = (patch: Partial<Filters>): void => {
 		const next = { ...filters, ...patch }
 		startTransition(() => {
@@ -90,7 +96,27 @@ export function QueueView({ filters: rendered, queue }: { filters: Filters; queu
 
 	return (
 		<>
-			<PageHead eyebrow="Ships" title="Review queue" />
+			<PageHead
+				actions={
+					<>
+						{canReviewUnified ? (
+							<Link className="btn btn--outline btn--sm" href="/reviews/unified">
+								T2 review
+							</Link>
+						) : null}
+						{offlineIds.length > 0 ? (
+							<HardLink className="btn btn--outline btn--sm" href={`/reviews/offline?add=${offlineIds.join(",")}`}>
+								Save {offlineIds.length} for offline
+							</HardLink>
+						) : null}
+						<HardLink className="btn btn--ghost btn--sm" href="/reviews/offline">
+							Offline reviews
+						</HardLink>
+					</>
+				}
+				eyebrow="Ships"
+				title="Review queue"
+			/>
 			<div className="form__actions" style={{ marginBottom: "var(--space-2)" }}>
 				<div className="tabs" style={{ border: 0, margin: 0 }}>
 					{STATUSES.map(status => (
@@ -143,7 +169,7 @@ export function QueueView({ filters: rendered, queue }: { filters: Filters; queu
 			</div>
 			<div aria-busy={pending} className="review-queue__rows">
 				<Paper variant="tight">
-					<ShipTable rows={queue.rows} />
+					<ShipTable queueQuery={queueFilterParams(rendered).toString()} rows={queue.rows} />
 				</Paper>
 			</div>
 			{queue.previous !== null || queue.next !== null ? (

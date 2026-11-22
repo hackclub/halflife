@@ -24,6 +24,8 @@ export const decisionSchema = z.discriminatedUnion("result", [
 			feedback: boundedText(8000).default(""),
 			grantUsdOverride: z.number().int().min(0).max(500).optional(),
 			hoursOverride: z.number().min(0).max(MAX_APPROVED_HOURS).optional(),
+			/** The account the review screen composes in Fabricate's format, for `Optional - Override Hours Spent Justification`. The server appends the sign-off. Absent from a decision made by an older page, which leaves that column to the formula. */
+			justification: boundedText(20_000).optional(),
 			reason: boundedText(8000).optional(),
 			result: z.literal(ReviewResult.APPROVED),
 			/** The reviewer's account of what the maker built, for the Airtable `Justification - Specific Technical Features` column. Ari sends the same thing as `justification.technical_features`. */
@@ -84,3 +86,32 @@ export const reviewQueueQuery = paginationQuery.extend({
 })
 
 export const overrideSchema = z.object({ phase: phaseSchema, reason: boundedText(2000, 1) }).strict()
+
+/** A note or flag from the review screen (see `ReviewNote`). The ship it is written from says which project and maker it is about. */
+export const reviewNoteSchema = z
+	.object({
+		body: boundedText(8000, 1),
+		/** A flag is always on the project. */
+		flag: z.boolean().default(false),
+		subject: z.enum(["ship", "project", "maker"]),
+		submissionId: cuid,
+	})
+	.strict()
+
+/** Re-deflating journal entries on an approval that already stands (see `adjustApprovedHours`). */
+export const adjustHoursSchema = z
+	.object({
+		entries: z
+			.array(
+				z
+					.object({
+						comments: boundedText(2000).optional(),
+						hoursApproved: z.number().min(0).max(MAX_SESSION_HOURS),
+						id: cuid,
+					})
+					.strict(),
+			)
+			.min(1)
+			.max(200),
+	})
+	.strict()

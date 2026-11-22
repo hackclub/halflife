@@ -1,5 +1,6 @@
 import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
+import { appBaseUrl, projectUrl } from "@/lib/app-url"
 import { listBom } from "@/lib/bom"
 import { STARTER_PROJECTS } from "@/lib/config/onboarding"
 import { projectDisplayTitle, scheduleForWeek, themeLabel, WARMUP_THEME } from "@/lib/config/program"
@@ -10,7 +11,10 @@ import { getHoursBreakdown } from "@/lib/hours"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
+import { getProgramSettings } from "@/lib/program"
+import { approvalStamp, type JustificationContext, justificationSignOff } from "@/lib/review-platform/justification"
 import { renderReviewMarkdown } from "@/lib/review-platform/markdown"
+import type { QueueFacets, QueueFilters } from "@/lib/review-platform/queue-filters"
 import { githubRepoFrom } from "@/lib/review-platform/repo"
 import type {
 	ReviewDetail,
@@ -24,6 +28,7 @@ import type {
 	ReviewViewer,
 } from "@/lib/review-platform/types"
 import { planAriJournals } from "@/lib/review-ship"
+import { telescreenForReview } from "@/lib/telescreen"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
@@ -110,6 +115,16 @@ async function deciderNames(submissionIds: string[], viewer: ReviewViewer): Prom
 	return names
 }
 
+/** The projects among these with a standing reviewer flag (see `ReviewNote`), which the queue shows as flagged. */
+async function flaggedProjects(projectIds: string[]): Promise<Set<string>> {
+	if (projectIds.length === 0) return new Set()
+	const flags = await db.orm.public.ReviewNote.where({ clearedAt: null, flag: true })
+		.where(note => note.themeProjectId.in(projectIds))
+		.select("themeProjectId")
+		.all()
+	return new Set(flags.flatMap(flag => (flag.themeProjectId ? [flag.themeProjectId] : [])))
+}
+
 interface RowSource {
 	claim: { expiresAt: string; reviewer: { displayName: string | null; id: string; name: string | null } | null } | null
 	createdAt: string
@@ -133,7 +148,7 @@ async function toRows(
 	opts: { resubmissions?: Set<string> } = {},
 ): Promise<ReviewRow[]> {
 	const now = new Date()
-	const [hours, deciders] = await Promise.all([
+	const [hours, deciders, flagged] = await Promise.all([
 		claimedHoursFor(
 			rows.flatMap(row => (row.themeProject ? [{ phase: row.phase, themeProjectId: row.themeProject.id }] : [])),
 		),
@@ -141,6 +156,7 @@ async function toRows(
 			rows.filter(row => row.resolvedAt).map(row => row.id),
 			viewer,
 		),
+		flaggedProjects([...new Set(rows.flatMap(row => (row.themeProject ? [row.themeProject.id] : [])))]),
 	])
 	return rows.flatMap(row => {
 		const project = row.themeProject
@@ -154,7 +170,7 @@ async function toRows(
 			{
 				ageDays: ageDays(submittedAt, now),
 				claimExpiresAt: claimLive && expiresAt !== null ? expiresAt.toISOString() : null,
-				flagged: viewer.seesRiskFlags && maker.fraudFlagged,
+				flagged: (viewer.seesRiskFlags && maker.fraudFlagged) || flagged.has(project.id),
 				hoursClaimed: roundHours(hours.get(`${project.id}:${row.phase}`) ?? 0),
 				id: row.id,
 				kind: row.phase === Phase.DESIGN ? "design" : "build",
@@ -213,19 +229,6 @@ export function weekLabel(week: number): string {
 	if (!schedule) return `Week ${week}`
 	return `Week ${week} · ${themeLabel(schedule.theme.id)} ${schedule.phase === Phase.DESIGN ? "design" : "build"}`
 }
-
-/** The queue's narrowing filters, each null or "" for everything. */
-export interface QueueFacets {
-	/** "any" for every starter, "none" for the maker's own idea, or one starter's id. */
-	starter: string
-	/** The tier the row's badge shows: the approved tier once there is one, the requested tier before. */
-	tier: number | null
-	/** The program week the submission is scheduled for – its theme's week, not the week it was handed in. */
-	week: number | null
-}
-
-export const isStarterFilter = (value: string | undefined): value is string =>
-	value === "any" || value === "none" || STARTER_PROJECTS.some(starter => starter.id === value)
 
 interface FacetRow {
 	starter: string | null
@@ -381,17 +384,36 @@ export async function getQueue(opts: {
 	}
 }
 
-/** The oldest pending submission after this one that the viewer could pick up next. */
-async function nextPending(viewer: ReviewViewer, after: { createdAt: string; id: string }): Promise<string | null> {
+/** The oldest pending submission after this one that the viewer could pick up next, within the queue filters they started from. */
+async function nextPending(
+	viewer: ReviewViewer,
+	after: { createdAt: string; id: string },
+	filters: QueueFilters | null,
+): Promise<string | null> {
 	const live = formatDbTimestamp(new Date())
 	const next = await db.orm.public.PhaseSubmission.where({ resolvedAt: null })
-		.where(submission =>
-			and(
-				submission.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.neq(viewer.id))),
+		.where(submission => {
+			const conditions = [
+				submission.themeProject.some(project => {
+					const projectConditions = [project.deletedAt.isNull(), project.userId.neq(viewer.id)]
+					const tier = filters?.tier ?? null
+					const starter = filters?.starter ?? ""
+					if (tier !== null)
+						projectConditions.push(
+							or(project.tier.eq(tier), and(project.tier.isNull(), project.requestedTier.eq(tier))),
+						)
+					if (starter === "any") projectConditions.push(project.starterProjectId.isNotNull())
+					else if (starter === "none") projectConditions.push(project.starterProjectId.isNull())
+					else if (starter) projectConditions.push(project.starterProjectId.eq(starter))
+					return and(...projectConditions)
+				}),
 				submission.id.neq(after.id),
 				submission.createdAt.gte(after.createdAt),
-			),
-		)
+			]
+			if (filters?.kind) conditions.push(submission.phase.eq(filters.kind === "design" ? Phase.DESIGN : Phase.BUILD))
+			if (filters && filters.week !== null) conditions.push(submission.scheduledWeek.eq(filters.week))
+			return and(...conditions)
+		})
 		// Skips work someone else is already in the middle of.
 		.where(submission => submission.claim.none(claim => and(claim.reviewerId.neq(viewer.id), claim.expiresAt.gt(live))))
 		.select("id")
@@ -411,7 +433,42 @@ function timelapseLinks(
 	})
 }
 
-export async function getReviewDetail(submissionId: string, viewer: ReviewViewer): Promise<ReviewDetail | null> {
+/**
+ * What the decision panel composes an approval's justification from (see lib/review-platform/justification).
+ *
+ * The links are absolute because the text leaves Half Life: it is read in the unified database by people who have never opened the platform. With no public origin they are empty rather than starting at `/`.
+ */
+function justificationContext(opts: {
+	hackatimeId: string | null
+	hackatimeProjects: string[]
+	kind: "design" | "build"
+	projectId: string
+	repoLink: string | null
+	submittedAt: Date
+	theme: string
+	timeZone: string
+	title: string
+	viewer: ReviewViewer
+}): JustificationContext {
+	const base = appBaseUrl()
+	return {
+		hackatimeId: opts.hackatimeId,
+		hackatimeProjects: opts.hackatimeProjects,
+		intro: `This is the ${opts.kind} submission of ${opts.title} for Half Life (${opts.theme}). Submitted ${approvalStamp(opts.submittedAt, opts.timeZone)}.`,
+		journalingUrl: base ? `${base}/docs/journalling` : "",
+		projectUrl: projectUrl(opts.projectId),
+		repoLink: opts.repoLink,
+		signOff: justificationSignOff(opts.viewer.displayName),
+		submittingUrl: base ? `${base}/docs/submitting` : "",
+		timeZone: opts.timeZone,
+	}
+}
+
+export async function getReviewDetail(
+	submissionId: string,
+	viewer: ReviewViewer,
+	filters: QueueFilters | null = null,
+): Promise<ReviewDetail | null> {
 	const row = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
 		.include("claim", claim => claim.include("reviewer", reviewer => reviewer.select("displayName", "id", "name")))
 		.include("dispute", disp =>
@@ -428,7 +485,16 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		)
 		.include("themeProject", proj =>
 			proj.include("user", user =>
-				user.select("displayName", "email", "fraudFlagged", "id", "name", "slackId", "verificationStatus"),
+				user.select(
+					"displayName",
+					"email",
+					"fraudFlagged",
+					"hackatimeUserId",
+					"id",
+					"name",
+					"slackId",
+					"verificationStatus",
+				),
 			),
 		)
 		.first()
@@ -438,37 +504,51 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 	// Your own work is not reviewable by you, so it is not visible here either – the same null the console returns, which does not confirm that the submission exists.
 	if (project.userId === viewer.id) return null
 
-	const [breakdown, sessions, history, makerSubmissions, bom, next, links] = await Promise.all([
-		getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
-		db.orm.public.WorkSession.where({ deletedAt: null, phase: row.phase, themeProjectId: row.themeProjectId })
-			.include("media", media => media.orderBy(m => m.sortOrder.asc()))
-			.include("timelapses")
-			.orderBy(session => session.createdAt.asc())
-			.all(),
-		db.orm.public.PhaseSubmission.where({ themeProjectId: row.themeProjectId })
-			.where(submission => submission.id.neq(row.id))
-			.include("reviews", reviews =>
-				reviews
-					.where({ invalidated: false })
-					.include("reviewer", reviewer => reviewer.select("displayName", "name"))
-					.orderBy(review => review.createdAt.desc()),
-			)
-			.orderBy(submission => submission.createdAt.desc())
-			.all(),
-		submissionRows()
-			.where(submission =>
-				submission.themeProject.some(other => and(other.userId.eq(maker.id), other.deletedAt.isNull())),
-			)
-			.select("createdAt", "id", "phase", "resolvedAt", "resolvedResult", "themeProjectId")
-			.orderBy(submission => submission.createdAt.desc())
-			.limit(30)
-			.all(),
-		listBom(row.themeProjectId),
-		row.resolvedAt ? Promise.resolve(null) : nextPending(viewer, row),
-		db.orm.public.HackatimeLink.where({ phase: row.phase, themeProjectId: row.themeProjectId })
-			.select("hackatimeProject")
-			.all(),
-	])
+	const [breakdown, sessions, history, makerSubmissions, bom, next, links, settings, notes, lastDecision, telescreen] =
+		await Promise.all([
+			getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
+			db.orm.public.WorkSession.where({ deletedAt: null, phase: row.phase, themeProjectId: row.themeProjectId })
+				.include("media", media => media.orderBy(m => m.sortOrder.asc()))
+				.include("timelapses")
+				.orderBy(session => session.createdAt.asc())
+				.all(),
+			db.orm.public.PhaseSubmission.where({ themeProjectId: row.themeProjectId })
+				.where(submission => submission.id.neq(row.id))
+				.include("reviews", reviews =>
+					reviews
+						.where({ invalidated: false })
+						.include("reviewer", reviewer => reviewer.select("displayName", "name"))
+						.orderBy(review => review.createdAt.desc()),
+				)
+				.orderBy(submission => submission.createdAt.desc())
+				.all(),
+			submissionRows()
+				.where(submission =>
+					submission.themeProject.some(other => and(other.userId.eq(maker.id), other.deletedAt.isNull())),
+				)
+				.select("createdAt", "id", "phase", "resolvedAt", "resolvedResult", "themeProjectId")
+				.orderBy(submission => submission.createdAt.desc())
+				.limit(30)
+				.all(),
+			listBom(row.themeProjectId),
+			row.resolvedAt ? Promise.resolve(null) : nextPending(viewer, row, filters),
+			db.orm.public.HackatimeLink.where({ phase: row.phase, themeProjectId: row.themeProjectId })
+				.select("hackatimeProject")
+				.all(),
+			getProgramSettings(),
+			// Notes on the maker follow them to every project; the rest are this project's. A cleared flag is only a record.
+			db.orm.public.ReviewNote.where({ clearedAt: null, makerId: maker.id })
+				.where(note => or(note.themeProjectId.isNull(), note.themeProjectId.eq(project.id)))
+				.include("author", author => author.select("displayName", "name"))
+				.orderBy(note => note.createdAt.asc())
+				.all(),
+			// The viewer's own most recent decision, for the header's way back to it.
+			db.orm.public.SubmissionReview.where({ invalidated: false, reviewerId: viewer.id })
+				.orderBy(review => review.createdAt.desc())
+				.select("submissionId")
+				.first(),
+			telescreenForReview(row.themeProjectId),
+		])
 
 	const now = new Date()
 	const submittedAt = parseDbTimestamp(row.createdAt)
@@ -477,6 +557,26 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 	const claimLive = status === "pending" && claimExpires !== null && claimExpires > now
 	const standing = row.reviews.find(review => !review.invalidated) ?? null
 	const phaseStatus = statusFor(project, row.phase)
+	// The same conditions `takeBackDecision` enforces, so the button shows only where it would work.
+	const canTakeBack =
+		standing !== null
+		&& standing.reviewerId === viewer.id
+		&& standing.unifiedApprovedAt === null
+		&& phaseStatus
+			=== (status === "approved"
+				? PhaseStatus.approved
+				: status === "rejected"
+					? PhaseStatus.rejected
+					: PhaseStatus.update_requested)
+		&& !history.some(other => other.phase === row.phase && other.createdAt > row.createdAt)
+	const canAdjustHours =
+		viewer.canReviewHours
+		&& status === "approved"
+		&& phaseStatus === PhaseStatus.approved
+		&& standing?.reviewerId === viewer.id
+		&& standing.unifiedApprovedAt === null
+		&& standing.hoursOverride === null
+		&& !history.some(other => other.phase === row.phase && other.createdAt > row.createdAt)
 
 	const entries: ReviewEntry[] = sessions.map(session => {
 		const images = session.media.flatMap(m => {
@@ -496,7 +596,12 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 			timelapseSeconds: session.timelapses.reduce((sum, t) => sum + (t.coveredSeconds ?? t.runtimeSeconds ?? 0), 0),
 			timelapseUrls: timelapseLinks(session.timelapses),
 			// Most entries' titles are the opening of their own body, which would print the same sentence twice; those read by date instead, as Fabricate's untitled entries do.
-			title: (session.content ?? "").trimStart().startsWith(session.title.trim()) ? "" : session.title,
+			// A title that is an image line is never a real one: it was cut from the body at 200 characters, and the body's image URLs have since been rewritten, so it no longer matches the body either.
+			title:
+				session.title.trimStart().startsWith("![")
+				|| (session.content ?? "").trimStart().startsWith(session.title.trim())
+					? ""
+					: session.title,
 		}
 	})
 
@@ -569,6 +674,19 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		dispute,
 		entries,
 		history: earlier,
+		justification: justificationContext({
+			hackatimeId: maker.hackatimeUserId,
+			hackatimeProjects: links.map(link => link.hackatimeProject),
+			kind: row.phase === Phase.DESIGN ? "design" : "build",
+			projectId: project.id,
+			repoLink: project.githubRepo,
+			submittedAt,
+			theme: themeLabel(project.theme),
+			timeZone: settings.programTimezone,
+			title: projectDisplayTitle(project),
+			viewer,
+		}),
+		lastDecisionId: lastDecision && lastDecision.submissionId !== row.id ? lastDecision.submissionId : null,
 		maker: {
 			email: viewer.seesEmail ? maker.email : null,
 			fraudFlagged: viewer.seesRiskFlags ? maker.fraudFlagged : false,
@@ -580,6 +698,21 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		},
 		makerShips: (await toRows(makerSubmissions, viewer)).filter(other => other.id !== row.id),
 		nextId: next,
+		notes: notes.map(note => ({
+			at: shortDate(parseDbTimestamp(note.createdAt)),
+			author: displayName(note.author, "A reviewer"),
+			authorId: note.authorId,
+			body: note.body,
+			flag: note.flag,
+			id: note.id,
+			subject: note.submissionId
+				? note.submissionId === row.id
+					? "ship"
+					: "earlier-ship"
+				: note.themeProjectId
+					? "project"
+					: "maker",
+		})),
 		project: {
 			description: project.description,
 			githubRepo: githubRepoFrom(project.githubRepo),
@@ -593,6 +726,8 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 		},
 		ship: {
 			ageDays: ageDays(submittedAt, now),
+			canAdjustHours,
+			canTakeBack,
 			claimExpiresAt: claimLive && claimExpires !== null ? claimExpires.toISOString() : null,
 			claimedByViewer: claimLive && row.claim?.reviewerId === viewer.id,
 			claimerName: claimLive ? displayName(row.claim?.reviewer, "Another reviewer") : null,
@@ -601,11 +736,19 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 						feedback: standing.feedback,
 						grantUsd: standing.grantUsdOverride ?? standing.frozenGrantUsd,
 						hours: standing.hoursOverride ?? standing.frozenApprovedHours,
+						justification: standing.justification,
 						reason: viewer.seesRiskFlags ? standing.reason : null,
 						reviewedAt: shortDate(parseDbTimestamp(standing.createdAt)),
 						reviewerName: deciderName(standing, viewer),
 						technicalFeatures: standing.technicalFeatures,
 						tier: standing.tierOverride ?? standing.frozenTier,
+						unified:
+							standing.reviewerId === null
+								? null
+								: {
+										reviewId: standing.id,
+										sentAt: standing.unifiedApprovedAt ? shortDate(parseDbTimestamp(standing.unifiedApprovedAt)) : null,
+									},
 					}
 				: null,
 			fundingCapUsd: row.fundingCapUsd,
@@ -624,6 +767,7 @@ export async function getReviewDetail(submissionId: string, viewer: ReviewViewer
 			submittedAt: shortDate(submittedAt),
 			submittedInWeek: row.submittedInWeek,
 		},
+		telescreen,
 		tiers: TIERS.map(tier => ({ estimate: tier.estimate, grantUsd: tier.grantUsd, id: tier.id, name: tier.name })),
 	}
 }

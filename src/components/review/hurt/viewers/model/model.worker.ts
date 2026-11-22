@@ -1,6 +1,7 @@
-import occtimportjs from 'occt-import-js'
-// Half Life: served by app/api/reviews/assets from the installed package, in place of Vite's `?url` import.
-const occtWasm = '/api/reviews/assets/occt-import-js.wasm'
+import occtimportjs from '../../vendor/occt/occt-import-js.js'
+// Half Life: served by app/api/reviews/assets from vendor/occt, in place of Vite's `?url` import.
+// `v` is the wasm's sha256 prefix: browsers cache the asset for a day, so bump it whenever the wasm changes or they pair the new glue with the old build.
+const occtWasm = '/api/reviews/assets/occt-import-js.wasm?v=d71697d4'
 import { Matrix4, Quaternion, Vector3 } from 'three'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { openZip } from '../../core/archive'
@@ -181,12 +182,6 @@ const READ_MS_EACH: Record<string, number> = {
   NEXT_ASSEMBLY_USAGE_OCCURRENCE: 12,
 }
 const COUNTED = new RegExp(`=\\s*(${Object.keys(READ_MS_EACH).join('|')})\\s*\\(`, 'g')
-const TORUS =
-  /#(\d+)\s*=\s*(?:DEGENERATE_)?TOROIDAL_SURFACE\s*\(\s*'[^']*'\s*,\s*#(\d+)\s*,\s*([-+\d.Ee]+)\s*,\s*([-+\d.Ee]+)/g
-const POINT = /#(\d+)\s*=\s*CARTESIAN_POINT\s*\(\s*'[^']*'\s*,\s*\(([^)]*)\)/g
-const FACE = /#(\d+)\s*=\s*(?:ADVANCED_FACE|FACE_SURFACE)\s*\(\s*'[^']*'\s*,\s*\([^)]*\)\s*,\s*#(\d+)/g
-const SHELL = /(=\s*(?:CLOSED|OPEN)_SHELL\s*\(\s*'[^']*'\s*,\s*\()([^)]*)\)/g
-
 function expectedReadMs(text: string, bytes: number) {
   const megabytes = bytes / 1e6
   let ms = READ_MS.base + READ_MS.megabyte * megabytes + READ_MS.megabyteSquared * megabytes ** 2
@@ -194,65 +189,12 @@ function expectedReadMs(text: string, bytes: number) {
   return ms
 }
 
-// Self-intersecting tori bigger than the whole model, trimmed to a tiny patch, take OpenCascade minutes each to mesh.
-function hugeTori(text: string) {
-  const tori = Array.from(text.matchAll(TORUS)).flatMap(([, id, placement, major, minor]) =>
-    Number(minor) > Number(major) ? [{ id, placement, radius: Number(major) }] : [],
-  )
-  const huge = new Set<string>()
-  const centres = new Set<string>()
-  for (;;) {
-    const left = tori.filter(({ id }) => !huge.has(id))
-    const extent = stepExtent(
-      text,
-      centres,
-      left.reduce((max, { radius }) => Math.max(max, radius), 0),
-    )
-    const found = left.filter(({ radius }) => radius > extent)
-    if (found.length === 0) return huge
-    for (const { id, placement } of found) {
-      huge.add(id)
-      const centre = text.match(
-        new RegExp(`#${placement}\\s*=\\s*AXIS2_PLACEMENT_3D\\s*\\(\\s*'[^']*'\\s*,\\s*#(\\d+)`),
-      )
-      if (centre) centres.add(centre[1])
-    }
-  }
-}
-
-function stepExtent(text: string, skip: Set<string>, enough: number) {
-  let extent = 0
-  for (const [, id, coords] of text.matchAll(POINT)) {
-    if (skip.has(id)) continue
-    for (const value of coords.split(',')) extent = Math.max(extent, Math.abs(Number(value)))
-    if (extent >= enough) break
-  }
-  return extent
-}
-
-function withoutFacesOn(text: string, surfaces: Set<string>) {
-  const faces = new Set<string>()
-  for (const [, face, surface] of text.matchAll(FACE)) if (surfaces.has(surface)) faces.add(face)
-  let skipped = 0
-  const trimmed = text.replace(SHELL, (shell, head: string, list: string) => {
-    const kept = list.split(',').filter((ref) => !faces.has(ref.trim().slice(1)))
-    if (kept.length === 0 || kept.length === list.split(',').length) return shell
-    skipped += list.split(',').length - kept.length
-    return `${head}${kept.join(',')})`
-  })
-  return { trimmed, skipped }
-}
-
 function readStepText(content: Uint8Array) {
   const text = new TextDecoder().decode(content)
   const origin = stepOrigin(text)
   const faceted = isFacetedStep(text) ? readFacetedStep(text) : null
   if (faceted) return { faceted, origin }
-  const expect = expectedReadMs(text, content.byteLength)
-  const huge = hugeTori(text)
-  if (huge.size === 0) return { faceted, origin, expect }
-  const { trimmed, skipped } = withoutFacesOn(text, huge)
-  return { faceted, origin, expect, skipped, trimmed: skipped ? new TextEncoder().encode(trimmed) : undefined }
+  return { faceted, origin, expect: expectedReadMs(text, content.byteLength) }
 }
 
 function exportedFrom(origin: StepOrigin | null | undefined) {
@@ -263,7 +205,7 @@ function exportedFrom(origin: StepOrigin | null | undefined) {
 
 async function readOcct({ bytes, ext }: Record<string, unknown>, progress: (message: string, expect?: number) => void) {
   const content = new Uint8Array(bytes as ArrayBuffer)
-  const { faceted, origin, expect, skipped, trimmed } = ext === 'step' || ext === 'stp' ? readStepText(content) : {}
+  const { faceted, origin, expect } = ext === 'step' || ext === 'stp' ? readStepText(content) : {}
   if (faceted) {
     progress('Finding edges')
     const parts = faceted.map(analyzePart)
@@ -281,7 +223,7 @@ async function readOcct({ bytes, ext }: Record<string, unknown>, progress: (mess
       ? reader.ReadIgesFile(content, params)
       : ext === 'brep' || ext === 'brp'
         ? reader.ReadBrepFile(content, params)
-        : reader.ReadStepFile(trimmed ?? content, params)
+        : reader.ReadStepFile(content, params)
   const params = meshParams(content.byteLength)
   const result = read(params)
   if (!result.success) throw new Error('OpenCascade could not read this file.')
@@ -317,14 +259,7 @@ async function readOcct({ bytes, ext }: Record<string, unknown>, progress: (mess
       unit: 'mm',
       upAxis: uprightAxis(parts, origin),
       info: exportedFrom(origin),
-      warnings: [
-        ...(failed > 0 ? [`${failed} of ${total} shapes could not be turned into triangles and are missing.`] : []),
-        ...(skipped
-          ? [
-              `Left out ${skipped} tiny ${skipped === 1 ? 'face' : 'faces'} on curved surfaces far bigger than the model, which OpenCascade takes minutes to mesh.`,
-            ]
-          : []),
-      ],
+      warnings: failed > 0 ? [`${failed} of ${total} shapes could not be turned into triangles and are missing.`] : [],
     },
     'This file has no solid geometry in it, so the export is empty.',
   )
@@ -581,16 +516,18 @@ async function readFcstd({ bytes }: Record<string, unknown>, progress: (message:
   )
 }
 
-const TESSELLATE_MS = { shape: 3, megabyte: 150, face: 0.43, spline: 1.4 }
-const MAX_SPLINE_SPANS = 1024
+// Splines thousands of knot spans long, like a modelled thread, add about 5.5 ms a span past the first thousand.
+const TESSELLATE_MS = { shape: 3, megabyte: 150, face: 0.43, spline: 1.4, longSpan: 5.5 }
+const LONG_SPLINE_SPANS = 1000
 
-function tessellateMs(shape: { step: string | null; faces: number; splines: number }) {
+function tessellateMs(shape: { step: string | null; faces: number; splines: number; spans?: number }) {
   if (!shape.step) return 0
   return (
     TESSELLATE_MS.shape +
     (TESSELLATE_MS.megabyte * shape.step.length) / 1e6 +
     TESSELLATE_MS.face * shape.faces +
-    TESSELLATE_MS.spline * shape.splines
+    TESSELLATE_MS.spline * shape.splines +
+    TESSELLATE_MS.longSpan * Math.max(0, (shape.spans ?? 0) - LONG_SPLINE_SPANS)
   )
 }
 
@@ -614,10 +551,9 @@ async function savedPreview(png: Uint8Array | null): Promise<ModelPreview | null
 async function meshShapes(shapes: Map<string, FusionShape>, progress: (message: string, expect?: number) => void) {
   const reader = [...shapes.values()].some((shape) => shape.step) ? await loadOcct() : null
   let expect = 0
-  for (const shape of shapes.values()) if (shape.spans <= MAX_SPLINE_SPANS) expect += tessellateMs(shape)
+  for (const shape of shapes.values()) expect += tessellateMs(shape)
   progress('Tessellating solids', expect)
   const meshed = new Map<string, ModelPart[]>()
-  const skipped = new Set<string>()
   let failed = 0
   for (const [key, shape] of shapes) {
     if (shape.mesh) {
@@ -626,10 +562,6 @@ async function meshShapes(shapes: Map<string, FusionShape>, progress: (message: 
       continue
     }
     if (!shape.step || !reader) continue
-    if (shape.spans > MAX_SPLINE_SPANS) {
-      skipped.add(key)
-      continue
-    }
     const content = new TextEncoder().encode(shape.step)
     const result = reader.ReadStepFile(content, meshParams(content.byteLength))
     if (!result.success) {
@@ -639,7 +571,7 @@ async function meshShapes(shapes: Map<string, FusionShape>, progress: (message: 
     failed += unmeshed(result)
     meshed.set(key, partsFromOcct(result, undefined, appearance(shape)).parts)
   }
-  return { meshed, failed, skipped }
+  return { meshed, failed }
 }
 
 async function readF3d({ bytes, name }: Record<string, unknown>, progress: (message: string, expect?: number) => void) {
@@ -654,7 +586,7 @@ async function readF3d({ bytes, name }: Record<string, unknown>, progress: (mess
   const keys: string[] = []
   const root: ModelNode = { name: '', parts: [], children: [] }
   if (fusion.instances.length > 0) {
-    const { meshed, failed, skipped } = await meshShapes(fusion.shapes, progress)
+    const { meshed, failed } = await meshShapes(fusion.shapes, progress)
     progress('Placing components')
     const nodes = new Map<string, ModelNode>([['', root]])
     const nodeFor = (path: string[]) => {
@@ -684,11 +616,6 @@ async function readF3d({ bytes, name }: Record<string, unknown>, progress: (mess
       }
     }
     if (failed > 0) warnings.push(`${failed} bodies could not be turned into triangles and are missing.`)
-    const tooDetailed = [...new Set(fusion.instances.filter((i) => skipped.has(i.shape)).map((i) => i.name))]
-    if (tooDetailed.length > 0)
-      warnings.push(
-        `Left out ${tooDetailed.slice(0, 3).join(', ')}${tooDetailed.length > 3 ? ` and ${tooDetailed.length - 3} more` : ''}: ${tooDetailed.length === 1 ? 'it has' : 'they have'} curved faces so long, like a modelled thread, that OpenCascade takes minutes to mesh them.`,
-      )
   }
   if (parts.length === 0) {
     const reason =

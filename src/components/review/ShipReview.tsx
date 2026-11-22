@@ -1,48 +1,45 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { useConfirm } from "@/app/components/ui/useConfirm"
-import {
-	claim as claimSubmission,
-	closeDispute,
-	type DecisionBody,
-	decide,
-	justificationRow,
-	overrideDecision,
-	releaseQuietly,
-	replyToDispute,
-	sendDisputeBack,
-} from "@/components/review/api"
+import { AdjustableJournal } from "@/components/review/AdjustHours"
+import type { DecisionBody } from "@/components/review/api"
 import { BomSnapshot } from "@/components/review/BomSnapshot"
 import { ClaimTimer } from "@/components/review/ClaimTimer"
 import { EntryReview, type EntrySave } from "@/components/review/EntryReview"
+import { ExperienceCheck } from "@/components/review/ExperienceCheck"
 import { ageTone, formatDollars, formatDuration, formatHours } from "@/components/review/format"
 import { useDraft, useStoredToggle, useStoredWidth } from "@/components/review/hooks"
 import { ImageGallery } from "@/components/review/ImageGallery"
 import { JournalEntryView } from "@/components/review/JournalEntryView"
 import { MarkdownEditor } from "@/components/review/MarkdownEditor"
 import { ResizeHandle } from "@/components/review/ResizeHandle"
+import { ReviewNotes, shipNoteText } from "@/components/review/ReviewNotes"
+import { useReviewRuntime } from "@/components/review/runtime"
 import { ShipTable } from "@/components/review/ShipTable"
+import { TelescreenCards, TelescreenTags } from "@/components/review/TelescreenCards"
 import { Field, FormErrors, isSafeUrl, PageHead, Paper, SafeLink, StatusTag, TierTag } from "@/components/review/ui"
+import { useReviewConfirm } from "@/components/review/useReviewConfirm"
 import { HardLink } from "@/components/site/HardLink"
-import { deflationFor } from "@/lib/airtable/deflation"
-import {
-	type ApprovalDraft,
-	type JustificationRow,
-	type JustificationRowMissing,
-	previewUnifiedJustification,
-} from "@/lib/airtable/unified-justification"
-import { round2 } from "@/lib/money"
-import { fmtHours } from "@/lib/numbers"
-import type { ReviewDetail, ReviewViewer } from "@/lib/review-platform/types"
+import { readStored, writeStored } from "@/lib/browser-state"
+import { composeJustification, editBeforeTail, mergeEdits } from "@/lib/review-platform/justification"
+import type { ReviewDetail, ReviewEntry, ReviewViewer } from "@/lib/review-platform/types"
 
 /** Half Life's redirect to the maker's Telescreen profile (lib/review-platform/telescreen). */
 const telescreenHref = (submissionId: string): string => `/api/reviews/${encodeURIComponent(submissionId)}/telescreen`
 
-/** Where moving on from a ship goes: the next one, which `?claim` has claim itself on arrival (see `useClaimOnArrival`) so a run of reviews needs no "Claim review" between them, or the queue when there is none. */
-const nextShipHref = (nextId: string | null): string => (nextId ? `/reviews/${nextId}?claim` : "/reviews")
+/** The moment an approval is sent, which its justification is stamped with. A call rather than `new Date()` inline, which reads as impure render to the linter even inside a handler. */
+const approvalTime = (): Date => new Date()
+
+/**
+ * Where moving on from a ship goes: the next one, which `?claim` has claim itself on arrival (see `useClaimOnArrival`) so a run of reviews needs no "Claim review" between them, or the queue when there is none.
+ *
+ * `queueQuery` is the queue filters the run started from (see lib/review-platform/queue-filters), carried on so the ship after that is picked within them too.
+ */
+const nextShipHref = (nextId: string | null, queueQuery: string): string =>
+	nextId ? `/reviews/${nextId}?claim${queueQuery ? `&${queueQuery}` : ""}` : queueHref(queueQuery)
+
+const queueHref = (queueQuery: string): string => (queueQuery ? `/reviews?${queueQuery}` : "/reviews")
 
 const FileViewer = lazy(() => import("@/components/review/FileViewer"))
 
@@ -59,19 +56,36 @@ const TAB_LABELS: readonly (readonly [ReviewTab, string])[] = Object.freeze([
 /**
  * The review screen: Fabricate's `Admin/Ships/Show`, on Half Life's data.
  *
- * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check (Robert, Spork, cart, README, follow-up and experience checks, image reuse), the repo checklist, Slack threads, scraps and the early kit, staff notes and flags, review telemetry and the YSWS justification composer – Half Life writes that record itself from the decision, and the panel previews what it will write. Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
+ * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check but the experience check (cart, README, follow-up, image reuse, and Claude's look at a Spork flag), the repo checklist, Slack threads, scraps and the early kit, and review telemetry. Flags and notes are kept, and take the place of the decision's internal note (see ReviewNotes). The YSWS justification composer is kept: a decision made here writes Fabricate's account to the row (see lib/review-platform/justification). Robert and Spork are kept (see lib/telescreen). Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
  */
 export function ShipReview({
 	detail,
 	initialTab = "submission",
+	queueQuery = "",
 	viewer,
 }: {
 	detail: ReviewDetail
 	initialTab?: ReviewTab
+	queueQuery?: string
 	viewer: ReviewViewer
 }) {
-	return <ShipReviewInner detail={detail} initialTab={initialTab} key={detail.ship.id} viewer={viewer} />
+	return (
+		<ShipReviewInner
+			detail={detail}
+			initialTab={initialTab}
+			key={detail.ship.id}
+			links={{ back: queueHref(queueQuery), next: nextShipHref(detail.nextId, queueQuery) }}
+			viewer={viewer}
+		/>
+	)
 }
+
+/**
+ * Rewrites the address without a navigation, and tells Next's router about it.
+ *
+ * Next only picks up a `replaceState` whose state is not its own, so passing `history.state` on would leave the router on the old address: the next `router.refresh()` – a claim runs one – puts that address back, and a refresh that falls back to a full page load loads it.
+ */
+const replaceAddress = (url: URL): void => history.replaceState(null, "", url)
 
 /**
  * The open tab, and whether the file viewer has been opened yet (it stays mounted once it has, so going back to it does not re-read the repository).
@@ -88,7 +102,7 @@ function useReviewTab(initialTab: ReviewTab): { filesOpened: boolean; showTab(ne
 		const url = new URL(location.href)
 		if (next === "submission") url.searchParams.delete("tab")
 		else url.searchParams.set("tab", next)
-		history.replaceState(history.state, "", url)
+		replaceAddress(url)
 	}
 
 	return { filesOpened, showTab, tab }
@@ -103,21 +117,21 @@ function useClaimOnArrival({
 	canClaim,
 	claim,
 	mine,
-	nextId,
+	nextHref,
 }: {
 	canClaim: boolean
 	claim(): Promise<boolean>
 	mine: boolean
-	nextId: string | null
+	nextHref: string
 }): void {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	useEffect(() => {
 		const url = new URL(location.href)
 		if (!url.searchParams.has("claim")) return
 		url.searchParams.delete("claim")
-		history.replaceState(history.state, "", url)
+		replaceAddress(url)
 		if (mine) return
-		const moveOn = (): void => router.replace(nextShipHref(nextId))
+		const moveOn = (): void => runtime.replace(nextHref)
 		if (!canClaim) {
 			moveOn()
 			return
@@ -125,25 +139,71 @@ function useClaimOnArrival({
 		void (async () => {
 			if (!(await claim())) moveOn()
 		})()
-	}, [canClaim, claim, mine, nextId, router])
+	}, [canClaim, claim, mine, nextHref, runtime])
+}
+
+/**
+ * Puts the review's scroll box back where it was when `router.refresh()` – which every deflation autosave runs – falls back to a full page load (see `useReviewTab`).
+ *
+ * The box is `#app-main`, not the window (see "Half Life" in styles/app.css), so the browser's own restoration leaves it at the top. The position is written on pagehide and only read back by a load a few seconds later. Images and players load after mount, so the position is kept trying as the box grows, until it is reached, the reviewer scrolls, or a few seconds pass.
+ */
+function useKeepScrollAcrossReload(shipId: string): void {
+	useEffect(() => {
+		const main = document.querySelector<HTMLElement>("#app-main")
+		if (!main) return
+		const key = `halflife:review-scroll:${shipId}`
+		const onHide = (): void => writeStored(key, `${Date.now()}:${main.scrollTop}`)
+		window.addEventListener("pagehide", onHide)
+
+		let stop = (): void => {}
+		const [at = 0, top = 0] = (readStored(key) ?? "").split(":").map(Number)
+		writeStored(key, null)
+		if (top > 0 && Date.now() - at < 10_000) {
+			const restore = (): void => {
+				main.scrollTop = top
+				if (main.scrollTop >= top - 1) stop()
+			}
+			const grow = new ResizeObserver(restore)
+			for (const child of main.children) grow.observe(child)
+			const timer = window.setTimeout(() => stop(), 5000)
+			stop = () => {
+				grow.disconnect()
+				window.clearTimeout(timer)
+				main.removeEventListener("wheel", stop)
+				main.removeEventListener("touchstart", stop)
+				main.removeEventListener("keydown", stop)
+			}
+			main.addEventListener("wheel", stop, { passive: true })
+			main.addEventListener("touchstart", stop, { passive: true })
+			main.addEventListener("keydown", stop)
+			restore()
+		}
+		return () => {
+			stop()
+			window.removeEventListener("pagehide", onHide)
+		}
+	}, [shipId])
 }
 
 function ShipReviewInner({
 	detail,
 	initialTab,
+	links: { back: backHref, next: nextHref },
 	viewer,
 }: {
 	detail: ReviewDetail
 	initialTab: ReviewTab
+	links: { back: string; next: string }
 	viewer: ReviewViewer
 }) {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	const { breakdown, entries, maker, project, ship } = detail
 	const pending = ship.status === "pending"
 	const design = ship.kind === "design"
 
 	const [now, setNow] = useState(() => Date.now())
 	const { filesOpened, showTab, tab } = useReviewTab(initialTab)
+	useKeepScrollAcrossReload(ship.id)
 	const [decisionOpen, setDecisionOpen] = useStoredToggle("halflife:review-decision")
 	const [decisionWidth, setDecisionWidth] = useStoredWidth("halflife:review-decision-width", 416)
 	const [errors, setErrors] = useState<string[]>([])
@@ -210,29 +270,29 @@ function ShipReviewInner({
 		const path = `/reviews/${ship.id}`
 		return () => {
 			if (location.pathname === path) return
-			void releaseQuietly(ship.id, true)
+			void runtime.releaseQuietly(ship.id, true)
 		}
-	}, [mine, ship.id])
+	}, [mine, runtime, ship.id])
 
 	const claim = useCallback(async (): Promise<boolean> => {
 		setErrors([])
 		try {
-			await claimSubmission(ship.id)
+			await runtime.claim(ship.id)
 			setNow(Date.now())
-			router.refresh()
+			runtime.refresh()
 			return true
 		} catch (err) {
 			setErrors([err instanceof Error ? err.message : "Couldn't claim this review"])
 			return false
 		}
-	}, [router, ship.id])
+	}, [runtime, ship.id])
 
-	useClaimOnArrival({ canClaim, claim, mine, nextId: detail.nextId })
+	useClaimOnArrival({ canClaim, claim, mine, nextHref })
 
 	const skip = useCallback(async () => {
-		if (mine) await releaseQuietly(ship.id)
-		router.push(nextShipHref(detail.nextId))
-	}, [detail.nextId, mine, router, ship.id])
+		if (mine) await runtime.releaseQuietly(ship.id)
+		runtime.push(nextHref)
+	}, [mine, nextHref, runtime, ship.id])
 
 	const toggleDecision = useCallback(() => setDecisionOpen(!decisionOpen), [decisionOpen, setDecisionOpen])
 
@@ -243,14 +303,14 @@ function ShipReviewInner({
 			if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable='true']")) return
 			if (e.key === "c" && canClaim) void claim()
 			else if (e.key === "s" && pending) void skip()
-			else if (e.key === "n" && detail.nextId) router.push(nextShipHref(detail.nextId))
+			else if (e.key === "n" && detail.nextId) runtime.push(nextHref)
 			else if (e.key === "d" && filesView) toggleDecision()
 			else return
 			e.preventDefault()
 		}
 		window.addEventListener("keydown", onKey)
 		return () => window.removeEventListener("keydown", onKey)
-	}, [canClaim, claim, detail.nextId, filesView, pending, router, skip, toggleDecision])
+	}, [canClaim, claim, detail.nextId, filesView, nextHref, pending, runtime, skip, toggleDecision])
 
 	const claimedSeconds = entries.reduce((sum, e) => sum + e.secondsSpent, 0)
 	const countedSeconds = entries.reduce(
@@ -273,7 +333,7 @@ function ShipReviewInner({
 				eyebrow={
 					<>
 						<span style={{ whiteSpace: "nowrap" }}>
-							<Link href="/reviews">←</Link> · {project.theme} ·{" "}
+							<BackLinks back={backHref} last={detail.lastDecisionId} /> {project.theme} ·{" "}
 							{viewer.isAdmin ? <HardLink href={`/admin/users/${maker.id}`}>{maker.name}</HardLink> : maker.name} ·
 							submitted{" "}
 							<span className={pending ? `tone-${ageTone(ship.ageDays)}` : undefined}>{ship.ageDays}d ago</span>{" "}
@@ -293,6 +353,7 @@ function ShipReviewInner({
 								<StatusTag label={`Identity ${maker.verificationStatus}`} status="unverified" />
 							</>
 						) : null}
+						<TelescreenTags telescreen={detail.telescreen} />
 						{detail.dispute && !detail.dispute.resolvedAt ? (
 							<>
 								{" "}
@@ -368,29 +429,26 @@ function ShipReviewInner({
 					{pending && !mine ? (
 						<p className="field__hint">Claim this review to change what an entry counts as.</p>
 					) : null}
-					<div className="timeline">
-						{entries.map(entry => (
-							<JournalEntryView
-								entry={entry}
-								key={entry.id}
-								reviewer={
-									pending && viewer.canReviewHours && entry.countsHours ? (
-										<fieldset className="review-lock" disabled={!mine}>
-											<EntryReview entry={entry} onSaving={entrySaving} />
-										</fieldset>
-									) : undefined
-								}
-							/>
-						))}
-						{entries.length === 0 ? <p className="field__hint">No journal entries for this phase.</p> : null}
-					</div>
+					{ship.canAdjustHours ? (
+						<AdjustableJournal approvedHours={ship.decision?.hours ?? null} entries={entries} shipId={ship.id} />
+					) : (
+						<PendingJournal
+							editable={pending && viewer.canReviewHours}
+							entries={entries}
+							mine={mine}
+							onSaving={entrySaving}
+						/>
+					)}
 				</div>
 
 				<div className="review-layout__main" hidden={tab !== "submission"}>
 					<Notices detail={detail} />
+					<TelescreenCards isAdmin={viewer.isAdmin} shipId={ship.id} telescreen={detail.telescreen} />
 					<Paper
 						meta={
-							ship.claimExpiresAt && (mine || takenBy) ? (
+							runtime.offline && mine ? (
+								"Reviewing offline: the claim is taken when you send it"
+							) : ship.claimExpiresAt && (mine || takenBy) ? (
 								<>
 									Claimed by {mine ? "you" : takenBy} · <ClaimTimer expiresAt={ship.claimExpiresAt} />
 								</>
@@ -470,6 +528,8 @@ function ShipReviewInner({
 						) : null}
 					</Paper>
 
+					<ReviewNotes detail={detail} viewer={viewer} />
+
 					{detail.dispute ? (
 						<DisputePaper canSendBack={viewer.canOverride} detail={detail} onError={setErrors} />
 					) : null}
@@ -526,6 +586,8 @@ function ShipReviewInner({
 						</dl>
 					</Paper>
 
+					{runtime.offline ? null : <ExperienceCheck shipId={ship.id} />}
+
 					<Paper title="Other ships by this maker">
 						<ShipTable rows={detail.makerShips} showMaker={false} />
 					</Paper>
@@ -549,6 +611,7 @@ function ShipReviewInner({
 							errors={errors}
 							failedEntry={failedEntry ?? null}
 							mine={mine}
+							nextHref={nextHref}
 							onActing={setActing}
 							onErrors={setErrors}
 							onShowEntry={id => {
@@ -568,6 +631,56 @@ function ShipReviewInner({
 					)}
 				</aside>
 			</div>
+		</>
+	)
+}
+
+/** The journal as a pending ship shows it, each entry's deflation autosaved while the viewer holds the claim. */
+function PendingJournal({
+	editable,
+	entries,
+	mine,
+	onSaving,
+}: {
+	editable: boolean
+	entries: readonly ReviewEntry[]
+	mine: boolean
+	onSaving(id: string, state: EntrySave): void
+}) {
+	return (
+		<div className="timeline">
+			{entries.map(entry => (
+				<JournalEntryView
+					entry={entry}
+					key={entry.id}
+					reviewer={
+						editable && entry.countsHours ? (
+							<fieldset className="review-lock" disabled={!mine}>
+								<EntryReview entry={entry} onSaving={onSaving} />
+							</fieldset>
+						) : undefined
+					}
+				/>
+			))}
+			{entries.length === 0 ? <p className="field__hint">No journal entries for this phase.</p> : null}
+		</div>
+	)
+}
+
+/** Back to the queue, and to the ship the viewer decided last, for when they remember something after moving on. */
+function BackLinks({ back, last }: { back: string; last: string | null }) {
+	return (
+		<>
+			<Link href={back}>←</Link> ·
+			{last ? (
+				<>
+					{" "}
+					<Link href={`/reviews/${last}`} title="The ship you decided last">
+						↩ last review
+					</Link>{" "}
+					·
+				</>
+			) : null}
 		</>
 	)
 }
@@ -609,6 +722,7 @@ function DecisionPanel({
 	errors,
 	failedEntry,
 	mine,
+	nextHref,
 	onActing,
 	onErrors,
 	onShowEntry,
@@ -621,6 +735,7 @@ function DecisionPanel({
 	errors: string[]
 	failedEntry: string | null
 	mine: boolean
+	nextHref: string
 	onActing(acting: boolean): void
 	onErrors(errors: string[]): void
 	onShowEntry(id: string): void
@@ -628,7 +743,7 @@ function DecisionPanel({
 	takenBy: string | null
 	viewer: ReviewViewer
 }) {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	const { project, ship, tiers } = detail
 	const design = ship.kind === "design"
 	const draft = (field: string): string => `submission:${ship.id}:${field}`
@@ -636,10 +751,15 @@ function DecisionPanel({
 	const [grant, setGrant] = useDraft(draft("grant"))
 	const [hoursOverride, setHoursOverride] = useDraft(draft("hours"))
 	const [feedback, setFeedback, clearFeedback] = useDraft(draft("feedback"))
-	const [reason, setReason, clearReason] = useDraft(draft("reason"))
 	const [technicalFeatures, setTechnicalFeatures, clearTechnicalFeatures] = useDraft(draft("features"))
-	const [deflationReason, setDeflationReason, clearDeflationReason] = useDraft(draft("deflation"))
-	const airtable = useJustificationRow(ship.id, ship.reviewable)
+	// The reviewer's edits of the generated justification, kept as the text they edited and the text it was generated from, so later deflation can be merged in under them (see `mergeEdits`).
+	const [justificationBase, setJustificationBase, clearJustificationBase] = useDraft(draft("justification-base"))
+	const [justificationText, setJustificationText, clearJustificationText] = useDraft(draft("justification"))
+	// The setter is unused: it is kept so the state reads as a value and setter pair, which the naming rule requires.
+	// biome-ignore lint/correctness/noUnusedVariables: the setter is kept for the naming rule
+	const [shownAt, setShownAt] = useState(() => new Date()) // oxlint-disable-line eslint/no-unused-vars
+	// A pasted picture is a placeholder in the message until it lands, so nothing is sent while one is on its way.
+	const [uploadingImage, setUploadingImage] = useState(false)
 
 	// A reviewer may lower a tier or keep it; raising it past what the maker asked for mints parts money, which is MANAGE_CREDIT's call. The decision route enforces this; the select only stops offering what would be refused.
 	const tierCap = viewer.canSetGrant ? null : project.requestedTier
@@ -650,15 +770,45 @@ function DecisionPanel({
 	const hoursInvalid = hoursValue !== null && (!Number.isFinite(hoursValue) || hoursValue < 0)
 	const funded = design && !ship.fundingDeclined
 	const awardUsd = grantUsd ?? picked?.grantUsd ?? null
+	// The decision's internal note is this ship's notes under "Flags & notes".
+	const reason = shipNoteText(detail.notes)
 
-	// What the approval will freeze (see `finalizeReview`), measured against the claim the row holds – or, until the row is read, the figure hand-in wrote there.
-	const approvedHours = hoursValue ?? detail.breakdown.computedTotal
-	const claimedHours =
-		airtable && "row" in airtable
-			? airtable.row.claimedHours
-			: round2(detail.breakdown.journalHoursClaimed + detail.breakdown.hackatimeHours)
-	const deflation = hoursInvalid ? null : deflationFor(approvedHours, claimedHours)
-	const approval: ApprovalDraft = { approvedHours, deflationReason, internalNote: reason, technicalFeatures }
+	// What the approval will freeze (see `finalizeReview`), against the claim hand-in wrote to the row's `Hours spent (self reported)`.
+	const approvedHours = (hoursInvalid ? null : hoursValue) ?? detail.breakdown.computedTotal
+	const claimedHours = detail.breakdown.journalHoursClaimed + detail.breakdown.hackatimeHours
+	const signOff = `\n\n${detail.justification.signOff}`
+	const generatedAt = (approvedAt: Date): string =>
+		composeJustification({
+			approvedAt,
+			approvedHours,
+			claimedHours,
+			context: detail.justification,
+			entries: detail.entries,
+			hackatimeHours: detail.breakdown.hackatimeHours,
+			reviewer: viewer.displayName,
+			technicalFeatures,
+		})
+	const justificationAt = (approvedAt: Date): string =>
+		justificationBase
+			? mergeEdits(justificationBase, justificationText, generatedAt(approvedAt))
+			: generatedAt(approvedAt)
+
+	function editJustification(field: HTMLTextAreaElement): void {
+		const { body, caret } = editBeforeTail(
+			`${justificationAt(shownAt)}${signOff}`,
+			field.value,
+			field.selectionStart,
+			signOff,
+		)
+		setJustificationBase(generatedAt(shownAt))
+		setJustificationText(body)
+		if (body + signOff !== field.value) requestAnimationFrame(() => field.setSelectionRange(caret, caret))
+	}
+
+	function revertJustification(): void {
+		clearJustificationBase()
+		clearJustificationText()
+	}
 
 	async function act(action: Action): Promise<void> {
 		onErrors([])
@@ -666,10 +816,10 @@ function DecisionPanel({
 		const body: DecisionBody =
 			action === "approve"
 				? {
-						...(deflation && deflationReason.trim() ? { deflationReason: deflationReason.trim() } : {}),
 						feedback: feedback.trim(),
 						...(grantUsd !== null && viewer.canSetGrant ? { grantUsdOverride: grantUsd } : {}),
 						...(hoursValue === null ? {} : { hoursOverride: hoursValue }),
+						justification: justificationAt(approvalTime()),
 						...(reason.trim() ? { reason: reason.trim() } : {}),
 						result: "APPROVED",
 						...(technicalFeatures.trim() ? { technicalFeatures: technicalFeatures.trim() } : {}),
@@ -679,13 +829,12 @@ function DecisionPanel({
 					? { feedback: feedback.trim(), result: "RETURNED", ...(reason.trim() ? { reason: reason.trim() } : {}) }
 					: { feedback: feedback.trim(), reason: reason.trim(), result: "REJECTED" }
 		try {
-			await decide(ship.id, body)
+			await runtime.decide(ship.id, body)
 			clearFeedback()
-			clearReason()
 			clearTechnicalFeatures()
-			clearDeflationReason()
-			router.push(nextShipHref(detail.nextId))
-			router.refresh()
+			revertJustification()
+			runtime.push(nextHref)
+			runtime.refresh()
 		} catch (err) {
 			onErrors([err instanceof Error ? err.message : "Couldn't record this decision"])
 		} finally {
@@ -772,23 +921,15 @@ function DecisionPanel({
 						</Field>
 					) : null}
 					<Field
-						hint="Required to return or reject. Shown on the project page and sent to the maker."
+						hint="Required to return or reject. Shown on the project page and sent to the maker. Rejecting also needs a note on this ship under Flags & notes."
 						id="reason_md"
 						label="Message to the maker"
 					>
-						<MarkdownEditor id="reason_md" onChange={setFeedback} value={feedback} />
-					</Field>
-					<Field
-						hint="Staff only. Required to reject. Kept on the review and in the audit log."
-						id="internal_note"
-						label="Internal note"
-					>
-						<textarea
-							className="field__textarea"
-							id="internal_note"
-							onChange={e => setReason(e.target.value)}
-							style={{ minHeight: "5rem" }}
-							value={reason}
+						<MarkdownEditor
+							id="reason_md"
+							onChange={setFeedback}
+							onUploadingChange={setUploadingImage}
+							value={feedback}
 						/>
 					</Field>
 					<Field
@@ -803,22 +944,6 @@ function DecisionPanel({
 							value={technicalFeatures}
 						/>
 					</Field>
-					<Field
-						hint={
-							deflation
-								? `${fmtHours(deflation.claimedHours)} claimed, ${fmtHours(deflation.approvedHours)} approved. Staff only. Why the hours came down, for the deflation justification. Left empty, the internal note is used.`
-								: "Nothing is cut yet, so this isn't sent. Deflate entries on the Deflation tab first."
-						}
-						id="deflation_reason"
-						label="Deflation reason"
-					>
-						<textarea
-							className="field__textarea field__textarea--line"
-							id="deflation_reason"
-							onChange={e => setDeflationReason(e.target.value)}
-							value={deflationReason}
-						/>
-					</Field>
 				</fieldset>
 				<div className="form__actions">
 					<button
@@ -827,6 +952,7 @@ function DecisionPanel({
 							!mine
 							|| !ship.reviewable
 							|| busy
+							|| uploadingImage
 							|| (design && !picked)
 							|| grantInvalid
 							|| hoursInvalid
@@ -841,7 +967,7 @@ function DecisionPanel({
 					</button>
 					<button
 						className="btn btn--ghost btn--return"
-						disabled={!mine || !ship.reviewable || busy || !feedback.trim()}
+						disabled={!mine || !ship.reviewable || busy || uploadingImage || !feedback.trim()}
 						onClick={() => void act("return")}
 						type="button"
 					>
@@ -849,7 +975,7 @@ function DecisionPanel({
 					</button>
 					<button
 						className="btn btn--ghost btn--reject"
-						disabled={!mine || !ship.reviewable || busy || !feedback.trim() || !reason.trim()}
+						disabled={!mine || !ship.reviewable || busy || uploadingImage || !feedback.trim() || !reason.trim()}
 						onClick={() => void act("reject")}
 						type="button"
 					>
@@ -872,72 +998,31 @@ function DecisionPanel({
 						)}
 					</div>
 				) : null}
-				<JustificationPreview airtable={airtable} draft={approval} />
+				<fieldset className="review-lock review-lock--contents" disabled={!mine || !ship.reviewable}>
+					<Field
+						className="field--grow"
+						hint={
+							justificationBase ? (
+								<button className="btn btn--ghost btn--sm" onClick={revertJustification} type="button">
+									Revert to generated
+								</button>
+							) : (
+								"Sent to the unified database on approval. Each entry's deflation note is quoted, so say why on the Deflation tab."
+							)
+						}
+						id="justification"
+						label="Justification for the YSWS record"
+					>
+						<textarea
+							className="field__textarea"
+							id="justification"
+							onChange={e => editJustification(e.target)}
+							value={`${justificationAt(shownAt)}${signOff}`}
+						/>
+					</Field>
+				</fieldset>
 			</div>
 		</Paper>
-	)
-}
-
-type JustificationRead = { missing: JustificationRowMissing | null; row: JustificationRow } | { failed: string }
-
-/** The submission's Airtable row – or Half Life's own version of it, when the base can't be read – fetched once per open decision, or null while it loads. */
-function useJustificationRow(submissionId: string, reviewable: boolean): JustificationRead | null {
-	const [read, setRead] = useState<JustificationRead | null>(null)
-	useEffect(() => {
-		if (!reviewable) return
-		let live = true
-		void (async () => {
-			let result: JustificationRead
-			try {
-				result = await justificationRow(submissionId)
-			} catch (err) {
-				result = { failed: err instanceof Error ? err.message : "Couldn't read the Airtable row" }
-			}
-			if (live) setRead(result)
-		})()
-		return () => {
-			live = false
-		}
-	}, [submissionId, reviewable])
-	return read
-}
-
-/** Why the preview was built from Half Life's own records instead of the Airtable row. */
-const MISSING_ROW: { [_ in JustificationRowMissing]: string } = Object.freeze({
-	no_row: "Built from Half Life's records: this submission has no Airtable row, so an approval won't write it.",
-	not_configured: "Built from Half Life's records: Airtable isn't configured here, so an approval won't write it.",
-	sync_disabled: "Built from Half Life's records: Airtable sync is off, so an approval won't write it.",
-	unreadable:
-		"Built from Half Life's records: the Airtable row couldn't be read. An approval still writes the status, but leaves the justification columns as they are.",
-})
-
-/**
- * `Automation - Unified Justification` as an approval would leave it: the base's formula over the row's evidence and what the reviewer has typed (see lib/airtable/unified-justification).
- */
-function JustificationPreview({ airtable, draft }: { airtable: JustificationRead | null; draft: ApprovalDraft }) {
-	const [open, setOpen] = useStoredToggle("halflife:review-justification-preview")
-	const body =
-		airtable === null ? (
-			<p className="field__hint">Reading the Airtable row…</p>
-		) : "failed" in airtable ? (
-			<p className="field__error">{airtable.failed}</p>
-		) : (
-			<>
-				<p className="field__hint">
-					{airtable.missing
-						? MISSING_ROW[airtable.missing]
-						: airtable.row.overrideJustification
-							? "The row's Override Hours Spent Justification is filled in, so the pipeline sends that instead of anything typed here."
-							: "What the unified database receives if you approve now."}
-				</p>
-				<pre className="field__preview">{previewUnifiedJustification(airtable.row, draft)}</pre>
-			</>
-		)
-	return (
-		<details className="field" onToggle={e => setOpen(e.currentTarget.open)} open={open}>
-			<summary className="field__label">Unified justification preview</summary>
-			{body}
-		</details>
 	)
 }
 
@@ -952,7 +1037,7 @@ function DecidedPanel({
 	onErrors(errors: string[]): void
 	viewer: ReviewViewer
 }) {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	const { project, ship } = detail
 	const { decision } = ship
 	const [busy, setBusy] = useState(false)
@@ -964,7 +1049,7 @@ function DecidedPanel({
 				? "reopen"
 				: null
 
-	const { confirm, dialog: reverseDialog } = useConfirm()
+	const { confirm, dialog: reverseDialog } = useReviewConfirm()
 
 	async function reverse(action: "unapprove" | "reopen"): Promise<void> {
 		const reason = await confirm({
@@ -981,14 +1066,39 @@ function DecidedPanel({
 		onErrors([])
 		setBusy(true)
 		try {
-			await overrideDecision(project.id, {
+			await runtime.overrideDecision(project.id, {
 				action,
 				phase: ship.kind === "design" ? "DESIGN" : "BUILD",
 				reason: reason.trim(),
 			})
-			router.refresh()
+			runtime.refresh()
 		} catch (err) {
 			onErrors([err instanceof Error ? err.message : "Couldn't undo this decision"])
+		} finally {
+			setBusy(false)
+		}
+	}
+
+	async function takeBack(): Promise<void> {
+		const sure = await confirm({
+			confirmLabel: "Take back",
+			message:
+				ship.status === "approved"
+					? "The approval's credit is taken back and the ship goes back into review, claimed by you, with your message ready to edit. The maker has already been told; deciding again tells them again."
+					: "The ship goes back into review, claimed by you, with your message ready to edit. The maker has already been told; deciding again tells them again.",
+			title: "Take back this decision?",
+		})
+		// Null on cancel; confirming with no input field gives the empty string.
+		if (sure === null) return
+		onErrors([])
+		setBusy(true)
+		try {
+			const { feedback } = await runtime.takeBack(ship.id)
+			// Into the decision panel's draft (see `useDraft`), so the message only needs the part that was forgotten.
+			writeStored(`halflife:review-draft:submission:${ship.id}:feedback`, feedback || null)
+			runtime.refresh()
+		} catch (err) {
+			onErrors([err instanceof Error ? err.message : "Couldn't take this decision back"])
 		} finally {
 			setBusy(false)
 		}
@@ -1022,14 +1132,35 @@ function DecidedPanel({
 				) : null}
 				<dt>Message</dt>
 				<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.feedback || "—"}</dd>
-				{viewer.seesRiskFlags ? (
-					<>
-						<dt>Internal</dt>
-						<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.reason || "—"}</dd>
-					</>
-				) : null}
 				<dt>Features</dt>
 				<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.technicalFeatures || "—"}</dd>
+				{decision?.unified && ship.status === "approved" ? (
+					<>
+						<dt>Unified</dt>
+						<dd>
+							{decision.unified.sentAt ? `Sent on ${decision.unified.sentAt}` : "Waiting for T2"}
+							{viewer.canReviewUnified ? (
+								<>
+									{" · "}
+									<Link href={`/reviews/unified/${decision.unified.reviewId}`}>
+										{decision.unified.sentAt ? "Open T2" : "Check at T2"}
+									</Link>
+								</>
+							) : null}
+						</dd>
+					</>
+				) : null}
+				{decision?.justification ? (
+					<>
+						<dt>Justification</dt>
+						<dd>
+							<details>
+								<summary>What the unified database receives</summary>
+								<pre className="field__preview">{decision.justification}</pre>
+							</details>
+						</dd>
+					</>
+				) : null}
 			</dl>
 			{undo ? (
 				<button
@@ -1040,6 +1171,18 @@ function DecidedPanel({
 					type="button"
 				>
 					{undo === "unapprove" ? "Undo approval" : "Reopen"}
+				</button>
+			) : null}
+			{ship.canTakeBack ? (
+				<button
+					className="btn btn--outline btn--sm"
+					disabled={busy}
+					onClick={() => void takeBack()}
+					style={{ marginLeft: undo ? "var(--space-1)" : undefined, marginTop: "var(--space-1)" }}
+					title="Put this ship back into review so you can change your decision"
+					type="button"
+				>
+					Take back decision
 				</button>
 			) : null}
 		</Paper>
@@ -1055,12 +1198,12 @@ function DisputePaper({
 	detail: ReviewDetail
 	onError(errors: string[]): void
 }) {
-	const router = useRouter()
+	const runtime = useReviewRuntime()
 	const { dispute } = detail
 	const [reply, setReply] = useState("")
 	const [busy, setBusy] = useState(false)
 	const replyField = useRef<HTMLTextAreaElement>(null)
-	const { confirm, dialog } = useConfirm()
+	const { confirm, dialog } = useReviewConfirm()
 	if (!dispute) return null
 	const open = dispute.resolvedAt === null
 
@@ -1077,7 +1220,7 @@ function DisputePaper({
 		try {
 			await task()
 			done?.()
-			router.refresh()
+			runtime.refresh()
 		} catch (err) {
 			onError([err instanceof Error ? err.message : "Couldn't update the dispute"])
 		} finally {
@@ -1126,7 +1269,7 @@ function DisputePaper({
 							disabled={busy || !reply.trim()}
 							onClick={() =>
 								void run(
-									() => replyToDispute(dispute.id, reply.trim()),
+									() => runtime.replyToDispute(dispute.id, reply.trim()),
 									() => setReply(""),
 								)
 							}
@@ -1138,7 +1281,9 @@ function DisputePaper({
 							className="btn btn--ghost btn--sm"
 							disabled={busy}
 							onClick={() =>
-								void confirmThen("Close this dispute and let the decision stand?", () => closeDispute(dispute.id))
+								void confirmThen("Close this dispute and let the decision stand?", () =>
+									runtime.closeDispute(dispute.id),
+								)
 							}
 							type="button"
 						>
@@ -1150,7 +1295,7 @@ function DisputePaper({
 								disabled={busy}
 								onClick={() =>
 									void confirmThen("Uphold the dispute and send this phase back to the queue?", () =>
-										sendDisputeBack(dispute.id),
+										runtime.sendDisputeBack(dispute.id),
 									)
 								}
 								type="button"

@@ -15,6 +15,7 @@ export function reviewViewerFor({ roles, user }: PageContext): ReviewViewer {
 	return {
 		canOverride: hasPermission(roles, Permission.OVERRIDE_DECISIONS),
 		canReviewHours: hasPermission(roles, Permission.REVIEW_HOURS),
+		canReviewUnified: hasPermission(roles, Permission.REVIEW_UNIFIED),
 		canSetGrant: hasPermission(roles, Permission.MANAGE_CREDIT),
 		displayName: displayName(user, "Reviewer"),
 		id: user.id,

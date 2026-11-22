@@ -130,7 +130,13 @@ function layerOf(id: string, data: Fields) {
   }
 }
 
-function toV2(doc: EpruDoc): ProDocument {
+function originOf(origin: unknown) {
+  if (typeof origin !== 'string') return origin
+  const [h, v] = origin.split('_')
+  return h in ALIGN && v in ALIGN ? ALIGN[h] * 3 + ALIGN[v] + 1 : origin
+}
+
+function toV2(doc: EpruDoc, devices?: Map<string, Fields>): ProDocument {
   const docType = doc.docType === 'FOOTPRINT' ? 'FOOTPRINT' : 'PCB'
   const records: ProRecord[] = [['DOCTYPE', docType, '1.8']]
   for (const { type, id, data: d } of doc.records) {
@@ -204,16 +210,20 @@ function toV2(doc: EpruDoc): ProDocument {
           d.strokeWidth,
           0,
           0,
-          d.origin,
+          originOf(d.origin),
           d.angle,
         ])
         break
       case 'COMPONENT':
         records.push(['COMPONENT', id, 0, d.layerId, d.x, d.y, d.angle, d.attrs ?? {}])
         break
-      case 'ATTR':
+      case 'ATTR': {
         records.push(['ATTR', id, 0, d.parentId, d.layerId, d.x, d.y, d.key, d.value])
+        const footprint = d.key === 'Device' ? devices?.get(String(d.value))?.Footprint : null
+        if (typeof footprint === 'string' && footprint)
+          records.push(['ATTR', `${id}:fp`, 0, d.parentId, d.layerId, d.x, d.y, 'Footprint', footprint])
         break
+      }
     }
   }
   return { docType, records }
@@ -320,7 +330,7 @@ function symbolToV2(doc: EpruDoc): ProDocument {
       type === 'PIN'
         ? [['PIN', id, d.display === false ? 0 : 1, 0, d.x, flipY(d.y), d.length, d.rotation ?? 0]]
         : type === 'ATTR'
-          ? [v3Attr(id, d, styles)]
+          ? [v3Attr(id, byPart.has(String(d.parentId)) ? { ...d, parentId: '' } : d, styles)]
           : type === 'TABLE'
             ? tableToV2(id, d, styles)
             : shape
@@ -399,12 +409,12 @@ async function readEpro2(zip: Archive): Promise<EasyEdaExtra> {
     if (/\.epru$/i.test(entry.name))
       docs.push(...parseEpru(decoder.decode(await zip.read(entry).catch(() => undefined))))
   const devices = new Map<string, Fields>()
+  for (const doc of docs) if (doc.docType === 'DEVICE') devices.set(doc.uuid, (metaOf(doc).attributes ?? {}) as Fields)
   for (const doc of docs) {
-    if (doc.docType === 'DEVICE') devices.set(doc.uuid, (metaOf(doc).attributes ?? {}) as Fields)
     if (doc.docType === 'SYMBOL') archive.symbols.set(doc.uuid, symbolToV2(doc))
     if (doc.docType === 'FOOTPRINT') archive.footprints.set(doc.uuid, toV2(doc))
     if (doc.docType !== 'PCB') continue
-    archive.pcbs.set(doc.uuid, toV2(doc))
+    archive.pcbs.set(doc.uuid, toV2(doc, devices))
     archive.projectInfo!.pcbs.push({ uuid: doc.uuid, name: doc.title || doc.uuid })
   }
   const converted = new Set<string>()

@@ -1,5 +1,7 @@
 import { after, NextResponse } from "next/server"
 import { z } from "zod"
+import { recordLegacyShopChoice } from "@/lib/legacy-shop-dm"
+import { LEGACY_SHOP_ACTION_PREFIX, parseLegacyShopButtonValue } from "@/lib/legacy-shop-dm-policy"
 import {
 	addReaction,
 	checkChannelMembership,
@@ -445,6 +447,35 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 	}
 }
 
+/**
+ * A button on a legacy-order DM: the buyer saying ship it or grant card for one of their orders.
+ *
+ * A test DM's buttons carry `test` and are answered with a note, so pressing one changes nothing. A real press is refused unless the clicker is the person the DM went to; the rewrite of the message happens only once the answer is recorded.
+ */
+async function handleLegacyShopChoice(payload: InteractionPayload, action: BlockAction) {
+	const value = parseLegacyShopButtonValue(action.value)
+	if (!value) return
+
+	if (value.test) {
+		if (payload.response_url)
+			await respondEphemeral(payload.response_url, "This was a test message. Nothing was recorded.")
+		return
+	}
+	if (!value.orderId) return
+
+	const outcome = await recordLegacyShopChoice({
+		choice: value.choice,
+		orderId: value.orderId,
+		slackUserId: payload.user.id,
+	})
+	if (!outcome.ok) {
+		if (payload.response_url) await respondEphemeral(payload.response_url, outcome.reason)
+		return
+	}
+
+	await updateMessage(outcome.channel, outcome.ts, outcome.message.text, outcome.message.blocks)
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
 	const slackRequest = await readVerifiedSlackRequest(request)
 	if (!slackRequest.ok) return NextResponse.json({ ok: false }, { status: slackRequest.status })
@@ -478,6 +509,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 				else if (action?.action_id === "mark_resolved_by_author") await handleSelfResolve(payload, action)
 				else if (action?.action_id === "mark_helped_from_thread") await handleThreadMarkHelped(payload, action)
 				else if (action?.action_id === "reopen_ticket") await handleReopen(payload, action)
+				else if (action?.action_id.startsWith(LEGACY_SHOP_ACTION_PREFIX)) await handleLegacyShopChoice(payload, action)
 			} catch (err) {
 				// The response is already sent and Slack has its 200, so the log is the only trace a failure leaves.
 				console.error("[slack] interaction handler threw:", err)
