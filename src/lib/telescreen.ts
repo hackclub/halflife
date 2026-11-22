@@ -32,6 +32,7 @@ const FRAUD_MAX_SCORE = 4
 const CLEAN_MIN_SCORE = 8
 const MAX_JOURNAL_ENTRIES = 500
 const HTTP_URL = /^https?:\/\/\S+$/i
+const MARKDOWN_IMAGE = /!\[[^\]]*\]\(\s*<?([^)\s>]+)/g
 const UNRESOLVED = new Set([null, "awaiting_review", "awaiting_outcome"])
 export const SPORK_VERDICTS = ["real", "false_flag"] as const
 export type SporkVerdict = (typeof SPORK_VERDICTS)[number]
@@ -220,10 +221,13 @@ async function robertPayload(themeProjectId: string): Promise<object> {
 		return {
 			content: [session.content ?? "", ...timelapses.map(url => `Timelapse: ${url}`)].filter(Boolean).join("\n\n"),
 			hours: Math.round(session.hoursClaimed * 100) / 100,
-			images: session.media.flatMap(m => {
-				const url = publicUrlFor(m.objectKey)
-				return url && HTTP_URL.test(url) ? [url] : []
-			}),
+			// Half Life journals keep their pictures inline in the markdown, so those are sent as Robert's images too.
+			images: [
+				...new Set([
+					...session.media.flatMap(m => publicUrlFor(m.objectKey) ?? []),
+					...[...(session.content ?? "").matchAll(MARKDOWN_IMAGE)].map(m => m[1] ?? ""),
+				]),
+			].filter(url => HTTP_URL.test(url)),
 			loggedAt: session.effectiveDate
 				? new Date(`${session.effectiveDate}T00:00:00Z`).toISOString()
 				: parseDbTimestamp(session.createdAt).toISOString(),
