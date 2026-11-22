@@ -7,6 +7,7 @@ import type { DecisionBody } from "@/components/review/api"
 import { BomSnapshot } from "@/components/review/BomSnapshot"
 import { ClaimTimer } from "@/components/review/ClaimTimer"
 import { EntryReview, type EntrySave } from "@/components/review/EntryReview"
+import { ExperienceCheck } from "@/components/review/ExperienceCheck"
 import { ageTone, formatDollars, formatDuration, formatHours } from "@/components/review/format"
 import { useDraft, useStoredToggle, useStoredWidth } from "@/components/review/hooks"
 import { ImageGallery } from "@/components/review/ImageGallery"
@@ -54,7 +55,7 @@ const TAB_LABELS: readonly (readonly [ReviewTab, string])[] = Object.freeze([
 /**
  * The review screen: Fabricate's `Admin/Ships/Show`, on Half Life's data.
  *
- * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check (Robert, Spork, cart, README, follow-up and experience checks, image reuse), the repo checklist, Slack threads, scraps and the early kit, and review telemetry. Flags and notes are kept, and take the place of the decision's internal note (see ReviewNotes). The YSWS justification composer is kept: a decision made here writes Fabricate's account to the row (see lib/review-platform/justification). Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
+ * Kept from Fabricate: the three tabs, the claim and its timer, per-entry deflation, the resizable decision panel, drafts that survive a reload, and the c/s/n/d keys. Left out because Half Life has nothing they could run on: every AI check but the experience check (Robert, Spork, cart, README, follow-up, image reuse), the repo checklist, Slack threads, scraps and the early kit, and review telemetry. Flags and notes are kept, and take the place of the decision's internal note (see ReviewNotes). The YSWS justification composer is kept: a decision made here writes Fabricate's account to the row (see lib/review-platform/justification). Added because Half Life has them and Fabricate does not: Hackatime hours in the hours total, disputes, and the fraud and verification warnings.
  */
 export function ShipReview({
 	detail,
@@ -581,6 +582,8 @@ function ShipReviewInner({
 							) : null}
 						</dl>
 					</Paper>
+
+					{runtime.offline ? null : <ExperienceCheck shipId={ship.id} />}
 
 					<Paper title="Other ships by this maker">
 						<ShipTable rows={detail.makerShips} showMaker={false} />
