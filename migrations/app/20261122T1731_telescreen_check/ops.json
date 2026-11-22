@@ -1,0 +1,247 @@
+[
+  {
+    "id": "table.telescreen_check",
+    "label": "Create table \"telescreen_check\"",
+    "summary": "Creates table \"telescreen_check\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "telescreen_check"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"telescreen_check\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"telescreen_check\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"telescreen_check\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"telescreen_check\"",
+        "sql": "CREATE TABLE \"public\".\"telescreen_check\" (\n  \"conflicts\" jsonb,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"creditedSeconds\" int4,\n  \"id\" text NOT NULL,\n  \"outcomeAt\" text,\n  \"outcomeReason\" text,\n  \"outcomeStatus\" text,\n  \"reviewFields\" jsonb,\n  \"reviewNote\" text,\n  \"reviewedAt\" text,\n  \"reviewerName\" text,\n  \"robertError\" text,\n  \"robertId\" text,\n  \"robertSpork\" jsonb,\n  \"robertState\" text,\n  \"sentByName\" text,\n  \"sporkCheckedAt\" timestamp(3),\n  \"sporkError\" text,\n  \"sporkResult\" jsonb,\n  \"sporkVerdict\" jsonb,\n  \"submittedAt\" timestamp(3),\n  \"syncedAt\" timestamp(3),\n  \"themeProjectId\" text NOT NULL,\n  \"trustScore\" int4,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"telescreen_check\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"telescreen_check\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"telescreen_check\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "index.telescreen_check.telescreen_check_robertId_key",
+    "label": "Create index \"telescreen_check_robertId_key\" on \"telescreen_check\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "telescreen_check_robertId_key",
+        "table": "telescreen_check"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"telescreen_check_robertId_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"telescreen_check_robertId_key\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"telescreen_check_robertId_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"telescreen_check_robertId_key\"",
+        "sql": "CREATE UNIQUE INDEX \"telescreen_check_robertId_key\" ON \"public\".\"telescreen_check\" (\"robertId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"telescreen_check_robertId_key\" exists on \"telescreen_check\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"telescreen_check_robertId_key\"",
+          "i",
+          "I",
+          "\"public\".\"telescreen_check\"",
+          "btree",
+          "[\"robertId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.telescreen_check.telescreen_check_robertState_idx",
+    "label": "Create index \"telescreen_check_robertState_idx\" on \"telescreen_check\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "telescreen_check_robertState_idx",
+        "table": "telescreen_check"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"telescreen_check_robertState_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"telescreen_check_robertState_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"telescreen_check_robertState_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"telescreen_check_robertState_idx\"",
+        "sql": "CREATE INDEX \"telescreen_check_robertState_idx\" ON \"public\".\"telescreen_check\" (\"robertState\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"telescreen_check_robertState_idx\" exists on \"telescreen_check\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"telescreen_check_robertState_idx\"",
+          "i",
+          "I",
+          "\"public\".\"telescreen_check\"",
+          "btree",
+          "[\"robertState\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.telescreen_check.telescreen_check_themeProjectId_key",
+    "label": "Create index \"telescreen_check_themeProjectId_key\" on \"telescreen_check\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "telescreen_check_themeProjectId_key",
+        "table": "telescreen_check"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"telescreen_check_themeProjectId_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"telescreen_check_themeProjectId_key\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"telescreen_check_themeProjectId_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"telescreen_check_themeProjectId_key\"",
+        "sql": "CREATE UNIQUE INDEX \"telescreen_check_themeProjectId_key\" ON \"public\".\"telescreen_check\" (\"themeProjectId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"telescreen_check_themeProjectId_key\" exists on \"telescreen_check\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"telescreen_check_themeProjectId_key\"",
+          "i",
+          "I",
+          "\"public\".\"telescreen_check\"",
+          "btree",
+          "[\"themeProjectId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.telescreen_check.telescreen_check_themeProjectId_fkey",
+    "label": "Add foreign key \"telescreen_check_themeProjectId_fkey\" on \"telescreen_check\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "telescreen_check_themeProjectId_fkey",
+        "table": "telescreen_check"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"telescreen_check_themeProjectId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "telescreen_check_themeProjectId_fkey",
+          "public",
+          "\"public\".\"telescreen_check\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"telescreen_check_themeProjectId_fkey\" on \"telescreen_check\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"telescreen_check_themeProjectId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"telescreen_check\"\nADD CONSTRAINT \"telescreen_check_themeProjectId_fkey\"\nFOREIGN KEY (\"themeProjectId\")\nREFERENCES \"public\".\"theme_project\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"telescreen_check_themeProjectId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "telescreen_check_themeProjectId_fkey",
+          "public",
+          "\"public\".\"telescreen_check\"",
+          "f",
+          "[\"themeProjectId\"]",
+          "\"public\".\"theme_project\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  }
+]

@@ -115,6 +115,7 @@ The step files these jobs were created from are committed in `jobs/steps/`, with
 | `claim-sweep` | `*/5 * * * *` | `POST /api/integrations/claim-sweep` | ingress |
 | `hackatime-sync` | `*/15 * * * *` | `POST /api/integrations/hackatime-sync` | ingress |
 | `rsvp-drain` | `*/10 * * * *` | `POST /api/integrations/rsvp-drain` | **internal** |
+| `telescreen-sync` | `*/10 * * * *` | `POST /api/integrations/telescreen-sync` | **internal** |
 | `airtable-retry` | `17 * * * *` | `POST /api/integrations/airtable-retry` | ingress |
 | `ari-retry` | `23 * * * *` | `POST /api/integrations/ari-retry` | ingress |
 | `ire-retry` | `37 * * * *` | `POST /api/integrations/ire-retry` | ingress |

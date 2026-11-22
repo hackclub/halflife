@@ -12,6 +12,7 @@ import { finalizeReview } from "@/lib/review"
 import { signedJustification } from "@/lib/review-platform/justification"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { decisionSchema } from "@/lib/schemas/review"
+import { isRobertConfigured, submitToRobert } from "@/lib/telescreen"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -109,6 +110,12 @@ export const POST = withWritePermission(
 				themeProjectId: outcome.themeProjectId,
 			})
 		})
+
+		// An approval sends the project to Robert again, so its journal there is the one that was approved (see lib/telescreen).
+		if (outcome.result === ReviewResult.APPROVED && isRobertConfigured())
+			after(() =>
+				submitToRobert(outcome.themeProjectId).catch(err => console.error("[review] robert resend failed:", err)),
+			)
 
 		return ok({ outcome })
 	},

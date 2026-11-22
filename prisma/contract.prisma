@@ -222,6 +222,7 @@ namespace public {
     reviewNotes              ReviewNote[]
     ireShips              IreShip[]
     submissions              PhaseSubmission[]
+    telescreenCheck          TelescreenCheck?
     workSessions             WorkSession[]
     user                     User                 @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -759,6 +760,41 @@ namespace public {
     @@index([remoteId], map: "ire_ship_remoteId_key", unique: true)
     @@index([closedAt], map: "ire_ship_closedAt_idx")
     @@map("ire_ship")
+  }
+
+  /// Telescreen's checks on a project, as Fabricate keeps them: its Robert fraud review (one Robert project per Half Life project, externalId `halflife-project-<id>`) and the latest direct Spork screen of its repo, with a reviewer's call on a Spork flag. See lib/telescreen.
+  model TelescreenCheck {
+    id              String              @id @onCreate(cuid(2))
+    themeProjectId  String
+    robertId        String?
+    robertState     String?
+    trustScore      Int?
+    reviewNote      String?
+    reviewFields    Jsonb?
+    reviewerName    String?
+    reviewedAt      String?
+    outcomeStatus   String?
+    outcomeReason   String?
+    outcomeAt       String?
+    creditedSeconds Int?
+    conflicts       Jsonb?
+    robertSpork     Jsonb?
+    sentByName      String?
+    submittedAt     TimestampString(3)?
+    syncedAt        TimestampString(3)?
+    robertError     String?
+    sporkResult     Jsonb?
+    sporkCheckedAt  TimestampString(3)?
+    sporkError      String?
+    sporkVerdict    Jsonb?
+    createdAt       TimestampString(3)  @default(now())
+    updatedAt       TimestampString(3)  @onCreate(now()) @onUpdate(now())
+    themeProject    ThemeProject        @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade, index: false)
+
+    @@index([themeProjectId], map: "telescreen_check_themeProjectId_key", unique: true)
+    @@index([robertId], map: "telescreen_check_robertId_key", unique: true)
+    @@index([robertState], map: "telescreen_check_robertState_idx")
+    @@map("telescreen_check")
   }
 
   model PostLike {

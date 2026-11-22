@@ -28,6 +28,7 @@ import type {
 	ReviewViewer,
 } from "@/lib/review-platform/types"
 import { planAriJournals } from "@/lib/review-ship"
+import { telescreenForReview } from "@/lib/telescreen"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
@@ -503,7 +504,7 @@ export async function getReviewDetail(
 	// Your own work is not reviewable by you, so it is not visible here either – the same null the console returns, which does not confirm that the submission exists.
 	if (project.userId === viewer.id) return null
 
-	const [breakdown, sessions, history, makerSubmissions, bom, next, links, settings, notes, lastDecision] =
+	const [breakdown, sessions, history, makerSubmissions, bom, next, links, settings, notes, lastDecision, telescreen] =
 		await Promise.all([
 			getHoursBreakdown(row.themeProjectId, row.phase, { live: false }),
 			db.orm.public.WorkSession.where({ deletedAt: null, phase: row.phase, themeProjectId: row.themeProjectId })
@@ -546,6 +547,7 @@ export async function getReviewDetail(
 				.orderBy(review => review.createdAt.desc())
 				.select("submissionId")
 				.first(),
+			telescreenForReview(row.themeProjectId),
 		])
 
 	const now = new Date()
@@ -765,6 +767,7 @@ export async function getReviewDetail(
 			submittedAt: shortDate(submittedAt),
 			submittedInWeek: row.submittedInWeek,
 		},
+		telescreen,
 		tiers: TIERS.map(tier => ({ estimate: tier.estimate, grantUsd: tier.grantUsd, id: tier.id, name: tier.name })),
 	}
 }
