@@ -1,17 +1,13 @@
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
 import { bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
-import { type ImportedBomLine, parseBomCsv, type SkippedRow } from "@/lib/bom-csv"
-import { BOM_CSV_PATTERN } from "@/lib/config/repo-checks"
+import { readRepoBom } from "@/lib/bom-import"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
-import { findRepoFilePath, readRepoFile } from "@/lib/repo-checks"
-import { repoRefFromLink } from "@/lib/repo-ref"
 import { scheduleRepoSync } from "@/lib/repo-sync"
-import { BOM_PATH } from "@/lib/repo-sync-files"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { bomImportSchema } from "@/lib/schemas/project"
 
@@ -29,46 +25,6 @@ export const dynamic = "force-dynamic"
 
 interface Params {
 	params: Promise<{ id: string }>
-}
-
-interface RepoBom {
-	lines: ImportedBomLine[]
-	path: string
-	skipped: SkippedRow[]
-}
-
-/**
- * The repo's BOM CSV, found, read and parsed – or a sentence saying why not.
- *
- * `limit` is what the import may add, so the overflow is reported as skipped by the parser rather than by the caller.
- */
-async function readRepoBom(repoLink: string | null, limit: number): Promise<RepoBom | { error: string }> {
-	if (!repoLink) return { error: "This project has no repo linked yet. Add one, then import." }
-
-	if (!repoRefFromLink(repoLink))
-		return {
-			error:
-				"Half Life can only read repos on GitHub or GitLab. This project's repo is on another service, so its parts have to be added by hand.",
-		}
-
-	// The sync owns BOM.csv at the repo root. When the maker's own export sits beside it, read that instead: the generated copy can only echo what the platform already holds.
-	const path = await findRepoFilePath(repoLink, BOM_CSV_PATTERN, { avoid: BOM_PATH })
-	if (!path)
-		return {
-			error: "No bom*.csv file was found in the repo. Export one from your design tool and push it, then try again.",
-		}
-
-	const csv = await readRepoFile(repoLink, path)
-	if (csv === null)
-		return {
-			error: `Could not read ${path} from the repo. It may be too large, or on a service Half Life cannot read.`,
-		}
-
-	const parsed = parseBomCsv(csv, { limit })
-	if (!parsed.header)
-		return { error: `${path} does not look like a BOM table: no header row with part names was found.` }
-
-	return { lines: parsed.lines, path, skipped: parsed.skipped }
 }
 
 export const POST = withWriteSession(async (req: Request, { params, gate }: Params & AuthedContext) => {
