@@ -1,7 +1,16 @@
 "use client"
 
 import Link from "next/link"
-import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
+import {
+	type CSSProperties,
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react"
 import { AdjustableJournal } from "@/components/review/AdjustHours"
 import type { DecisionBody } from "@/components/review/api"
 import { BomSnapshot } from "@/components/review/BomSnapshot"
@@ -60,19 +69,16 @@ const TAB_LABELS: readonly (readonly [ReviewTab, string])[] = Object.freeze([
  */
 export function ShipReview({
 	detail,
-	initialTab = "submission",
 	queueQuery = "",
 	viewer,
 }: {
 	detail: ReviewDetail
-	initialTab?: ReviewTab
 	queueQuery?: string
 	viewer: ReviewViewer
 }) {
 	return (
 		<ShipReviewInner
 			detail={detail}
-			initialTab={initialTab}
 			key={detail.ship.id}
 			links={{ back: queueHref(queueQuery), next: nextShipHref(detail.nextId, queueQuery) }}
 			viewer={viewer}
@@ -87,25 +93,31 @@ export function ShipReview({
  */
 const replaceAddress = (url: URL): void => history.replaceState(null, "", url)
 
+const subscribeNothing = (): (() => void) => () => undefined
+
+/** The tab the address's `#hash` names, if any. */
+const tabFromHash = (): ReviewTab | null => TAB_LABELS.find(([id]) => `#${id}` === location.hash)?.[0] ?? null
+
 /**
  * The open tab, and whether the file viewer has been opened yet (it stays mounted once it has, so going back to it does not re-read the repository).
  *
- * The tab is kept in the address as well, so a reload lands back on it. `router.refresh()` – which every deflation autosave runs – turns into a full page load when the server answers with a different build (any deploy since the page opened) or an error, and without this that load drops the reviewer back on the submission tab mid-edit.
+ * The tab is kept in the address's hash as well, so a reload lands back on it. `router.refresh()` – which every deflation autosave runs – turns into a full page load when the server answers with a different build (any deploy since the page opened) or an error, and without this that load drops the reviewer back on the submission tab mid-edit. It is the hash and not a `?tab=` because Next keys the page by its query: the first refresh after a query change re-renders the page under a new key, remounting the whole screen, which drops the reviewer's focus and scrolls them to the top.
  */
-function useReviewTab(initialTab: ReviewTab): { filesOpened: boolean; showTab(next: ReviewTab): void; tab: ReviewTab } {
-	const [tab, setTab] = useState<ReviewTab>(initialTab)
-	const [filesOpened, setFilesOpened] = useState(initialTab === "files")
+function useReviewTab(): { filesOpened: boolean; showTab(next: ReviewTab): void; tab: ReviewTab } {
+	const [picked, setPicked] = useState<ReviewTab | null>(null)
+	const [filesPicked, setFilesPicked] = useState(false)
+	const fromHash = useSyncExternalStore(subscribeNothing, tabFromHash, () => null)
+	const tab = picked ?? fromHash ?? "submission"
 
 	function showTab(next: ReviewTab): void {
-		setTab(next)
-		if (next === "files") setFilesOpened(true)
+		setPicked(next)
+		if (next === "files") setFilesPicked(true)
 		const url = new URL(location.href)
-		if (next === "submission") url.searchParams.delete("tab")
-		else url.searchParams.set("tab", next)
+		url.hash = next === "submission" ? "" : next
 		replaceAddress(url)
 	}
 
-	return { filesOpened, showTab, tab }
+	return { filesOpened: filesPicked || tab === "files", showTab, tab }
 }
 
 /**
@@ -187,12 +199,10 @@ function useKeepScrollAcrossReload(shipId: string): void {
 
 function ShipReviewInner({
 	detail,
-	initialTab,
 	links: { back: backHref, next: nextHref },
 	viewer,
 }: {
 	detail: ReviewDetail
-	initialTab: ReviewTab
 	links: { back: string; next: string }
 	viewer: ReviewViewer
 }) {
@@ -202,7 +212,7 @@ function ShipReviewInner({
 	const design = ship.kind === "design"
 
 	const [now, setNow] = useState(() => Date.now())
-	const { filesOpened, showTab, tab } = useReviewTab(initialTab)
+	const { filesOpened, showTab, tab } = useReviewTab()
 	useKeepScrollAcrossReload(ship.id)
 	const [decisionOpen, setDecisionOpen] = useStoredToggle("halflife:review-decision")
 	const [decisionWidth, setDecisionWidth] = useStoredWidth("halflife:review-decision-width", 416)

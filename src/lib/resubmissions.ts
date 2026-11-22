@@ -1,3 +1,4 @@
+import { UNCOUNTED_SUBMISSION_IDS } from "@/lib/config/uncounted-submissions"
 import type { Phase } from "@/lib/enums"
 
 /**
@@ -20,9 +21,11 @@ export const RESUBMISSIONS_COUNTED_FROM = Date.parse("2026-10-27T20:55:00.000Z")
 /** The refusal, in the maker's terms. Shared so the route, the sheet and the project page say the same thing. */
 export const SUBMISSION_LIMIT_MESSAGE = `You've used all ${SUBMISSION_LIMIT} submissions for this phase. If you think this decision is wrong, dispute it on the project page or ask a reviewer in Slack.`
 
-/** The two fields every hand-in carries that the limit reads. Structural, so a submission row or a store row can be passed as-is. */
+/** The fields every hand-in carries that the limit reads. Structural, so a submission row or a store row can be passed as-is. */
 export interface ResubmissionStamp {
 	createdAt: Date
+	/** Read so a hand-in in `UNCOUNTED_SUBMISSION_IDS` can be left out of the count. */
+	id: string
 	phase: Phase
 }
 
@@ -47,15 +50,18 @@ export interface SubmissionBudget {
 export function submissionBudget(submissions: readonly ResubmissionStamp[], phase: Phase): SubmissionBudget {
 	let before = 0
 	let after = 0
+	let uncounted = 0
 	for (const submission of submissions) {
 		if (submission.phase !== phase) continue
-		if (submission.createdAt.getTime() < RESUBMISSIONS_COUNTED_FROM) before += 1
+		// Still a hand-in for `submitted`, but spends nothing: the next one takes its place in the count.
+		if (UNCOUNTED_SUBMISSION_IDS.has(submission.id)) uncounted += 1
+		else if (submission.createdAt.getTime() < RESUBMISSIONS_COUNTED_FROM) before += 1
 		else after += 1
 	}
 
 	// The initial hand-in is part of the three. If the phase was already being submitted before the policy, every hand-in since is a resubmission and the history before it stands as the first.
 	const resubmissions = Math.max(0, after - (before === 0 ? 1 : 0))
-	const submitted = before + after > 0
-	const used = submitted ? Math.min(SUBMISSION_LIMIT, resubmissions + 1) : 0
+	const submitted = before + after + uncounted > 0
+	const used = before + after > 0 ? Math.min(SUBMISSION_LIMIT, resubmissions + 1) : 0
 	return { limit: SUBMISSION_LIMIT, remaining: SUBMISSION_LIMIT - used, resubmissions, submitted, used }
 }

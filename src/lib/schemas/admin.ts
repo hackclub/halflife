@@ -376,3 +376,9 @@ export const subscribeSchema = z
 		utmSource: boundedText(128).optional(),
 	})
 	.strict()
+
+/** An admin's repo sync of one project's parts list. Without `apply` it only reads the file and says what it holds. */
+export const bomRepoSyncSchema = z.object({ apply: z.boolean().default(false) }).strict()
+
+/** Put back the parts list one sync replaced, named by the audit row that sync wrote. */
+export const bomUndoSchema = z.object({ auditId: cuid }).strict()

@@ -18,7 +18,7 @@ interface Picture {
 }
 
 const FEATURE_LIMIT = 60
-const SOLID_EXTENSIONS = new Set(['sldprt'])
+const SOLID_EXTENSIONS = new Set(['sldprt', 'sldasm'])
 
 const ModelViewer = lazy(() => import('../model/ModelViewer'))
 
@@ -302,7 +302,9 @@ function CadSource({ file, source, onOpen, onSolid }: ViewerProps & { onSolid?: 
       {ready && (
         <p className="hurt-note">
           {onSolid
-            ? 'The 3D model is rebuilt from the Parasolid bodies saved in this file.'
+            ? file.ext === 'sldasm'
+              ? 'The 3D model is put together from the Parasolid bodies saved in the parts this assembly uses.'
+              : 'The 3D model is rebuilt from the Parasolid bodies saved in this file.'
             : `${ready.info.family} stores geometry in a closed format that only ${ready.info.family} can open.`}{' '}
           {ready.pictures.length > 0 ? 'These are the preview images and properties' : 'These are the properties'}{' '}
           {ready.info.family} saved inside the file.{' '}

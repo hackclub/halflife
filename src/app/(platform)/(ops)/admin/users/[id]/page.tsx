@@ -383,6 +383,7 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 									canMoveTheme,
 									canOverride,
 									canSendGrant,
+									canSyncBom: canMoveTheme,
 								}}
 								key={project.id}
 							/>
