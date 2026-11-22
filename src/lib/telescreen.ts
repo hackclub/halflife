@@ -212,12 +212,20 @@ async function robertPayload(themeProjectId: string): Promise<object> {
 		.all()
 	if (sessions.length === 0) throw new TelescreenError("This project has no journal entries", 422)
 
+	// Robert keeps one entry per title and time, and every untitled Half Life entry is "Work session" at midnight on its date, so repeats on a day are numbered. The first keeps its plain title, which is what a resend matches against, so resending adds only the entries Robert was missing.
+	const seen = new Map<string, number>()
 	const journal = sessions.map(session => {
 		const timelapses = session.timelapses.flatMap(t => {
 			if (t.provider === "lapse" && t.externalId) return [lapseTimelapseUrl(t.externalId)]
 			const url = t.playbackUrl ?? publicUrlFor(t.objectKey)
 			return url ? [url] : []
 		})
+		const loggedAt = session.effectiveDate
+			? new Date(`${session.effectiveDate}T00:00:00Z`).toISOString()
+			: parseDbTimestamp(session.createdAt).toISOString()
+		const title = session.title.trim() || `Entry ${session.id}`
+		const repeat = (seen.get(`${title}|${loggedAt}`) ?? 0) + 1
+		seen.set(`${title}|${loggedAt}`, repeat)
 		return {
 			content: [session.content ?? "", ...timelapses.map(url => `Timelapse: ${url}`)].filter(Boolean).join("\n\n"),
 			hours: Math.round(session.hoursClaimed * 100) / 100,
@@ -228,10 +236,8 @@ async function robertPayload(themeProjectId: string): Promise<object> {
 					...[...(session.content ?? "").matchAll(MARKDOWN_IMAGE)].map(m => m[1] ?? ""),
 				]),
 			].filter(url => HTTP_URL.test(url)),
-			loggedAt: session.effectiveDate
-				? new Date(`${session.effectiveDate}T00:00:00Z`).toISOString()
-				: parseDbTimestamp(session.createdAt).toISOString(),
-			title: session.title.trim() || `Entry ${session.id}`,
+			loggedAt,
+			title: repeat === 1 ? title : `${title} (${repeat})`,
 		}
 	})
 
