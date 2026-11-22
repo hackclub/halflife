@@ -27,14 +27,6 @@ export const BomSyncMetadataSchema = z.object({
 })
 export type BomSyncMetadata = z.infer<typeof BomSyncMetadataSchema>
 
-/** The metadata an `ADMIN_UNDO_BOM_SYNC` row carries: which sync it reverses, and the list on each side of the reversal. */
-export const BomUndoMetadataSchema = z.object({
-	after: BomSnapshotSchema,
-	before: BomSnapshotSchema,
-	undoes: z.string(),
-})
-export type BomUndoMetadata = z.infer<typeof BomUndoMetadataSchema>
-
 /** The line's content, with nothing a database row adds on top of it. */
 export function snapshotLine(line: BomSnapshotLine): BomSnapshotLine {
 	return {

@@ -1,14 +1,7 @@
 import "server-only"
 import { requestInfo } from "@/lib/audit"
 import type { ImportedBomLine } from "@/lib/bom-csv"
-import {
-	type BomSnapshotLine,
-	type BomSyncMetadata,
-	BomSyncMetadataSchema,
-	type BomUndoMetadata,
-	BomUndoMetadataSchema,
-	snapshotLine,
-} from "@/lib/bom-sync-model"
+import { type BomSnapshotLine, type BomSyncMetadata, BomSyncMetadataSchema, snapshotLine } from "@/lib/bom-sync-model"
 import { AuditAction } from "@/lib/enums"
 import type { JsonObject } from "@/lib/json"
 import { round2 } from "@/lib/money"
@@ -86,12 +79,6 @@ export function snapshotFromImport(line: ImportedBomLine): BomSnapshotLine {
 /** The sync's audit payload, read back from a stored row, or null when the row does not have the shape a sync wrote. */
 export function readSyncMetadata(metadata: unknown): BomSyncMetadata | null {
 	const parsed = BomSyncMetadataSchema.safeParse(metadata)
-	return parsed.success ? parsed.data : null
-}
-
-/** The undo's audit payload, read back from a stored row, or null when the row does not have that shape. */
-export function readUndoMetadata(metadata: unknown): BomUndoMetadata | null {
-	const parsed = BomUndoMetadataSchema.safeParse(metadata)
 	return parsed.success ? parsed.data : null
 }
 
