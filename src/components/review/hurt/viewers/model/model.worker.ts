@@ -1,6 +1,7 @@
 import occtimportjs from '../../vendor/occt/occt-import-js.js'
 // Half Life: served by app/api/reviews/assets from vendor/occt, in place of Vite's `?url` import.
-const occtWasm = '/api/reviews/assets/occt-import-js.wasm'
+// `v` is the wasm's sha256 prefix: browsers cache the asset for a day, so bump it whenever the wasm changes or they pair the new glue with the old build.
+const occtWasm = '/api/reviews/assets/occt-import-js.wasm?v=d71697d4'
 import { Matrix4, Quaternion, Vector3 } from 'three'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { openZip } from '../../core/archive'
