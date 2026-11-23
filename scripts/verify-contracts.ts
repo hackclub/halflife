@@ -959,18 +959,20 @@ async function checkHackatimeSpans(): Promise<void> {
 	// The subtraction as the ledger applies it: a journal entry claiming two hours with a two-hour recording, beside a link reporting two hours tracked over the same period. Five hours claimed, three hours of actual work.
 	const { rollUpHours } = await import("../src/lib/hours")
 	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/lib/enums")
+	// A recording counts against a link only when it names that link's Hackatime project, so the fixtures name the same project on both sides.
 	const oneEntry = [
 		{
 			hoursApproved: null,
 			hoursClaimed: 2,
 			hoursSource: Source.MANUAL,
-			timelapses: [{ coveredSeconds: 7200, recordedAt: new Date(1_700_000_000_000) }],
+			timelapses: [{ coveredSeconds: 7200, hackatimeProject: "firmware", recordedAt: new Date(1_700_000_000_000) }],
 		},
 	]
 	const twoHoursTracked = [
 		{
 			cachedSeconds: 7200,
 			cachedSpans: { from: 1_699_000_000, spans: [{ end: 1_700_007_200, start: 1_700_000_000 }], to: 1_701_000_000 },
+			hackatimeProject: "firmware",
 			hoursApproved: null,
 		},
 	]
@@ -984,7 +986,11 @@ async function checkHackatimeSpans(): Promise<void> {
 	check("rollup · the subtracted overlap is reported", deduped.hackatimeOverlapSeconds === 7200)
 
 	// Genuinely different work on the same project stays additive: an hour of building that was never recorded, plus an hour recorded and tracked.
-	const distinct = rollUpHours(oneEntry, [{ cachedSeconds: 3600, cachedSpans: null, hoursApproved: null }], null)
+	const distinct = rollUpHours(
+		oneEntry,
+		[{ cachedSeconds: 3600, cachedSpans: null, hackatimeProject: "firmware", hoursApproved: null }],
+		null,
+	)
 	check(
 		"rollup · untracked hours still add to a journal entry",
 		distinct.computedTotal === 3,
@@ -1017,6 +1023,38 @@ async function checkHackatimeSpans(): Promise<void> {
 		`got ${overridden.computedTotal}`,
 	)
 
+	// A devlog whose recording names no Hackatime project is tracked, not deduplicated: Lapse did not say what was being tracked, so the link's time stays in and the sitting is counted on both sides.
+	const unnamedRecording = [
+		{
+			hoursApproved: null,
+			hoursClaimed: 2,
+			hoursSource: Source.MANUAL,
+			timelapses: [{ coveredSeconds: 7200, hackatimeProject: null, recordedAt: new Date(1_700_000_000_000) }],
+		},
+	]
+	const unnamedTotal = rollUpHours(unnamedRecording, twoHoursTracked, null)
+	check(
+		"rollup · a recording with no project is tracked, not deduplicated",
+		unnamedTotal.computedTotal === 4 && unnamedTotal.hackatimeOverlapSeconds === 0,
+		`got total ${unnamedTotal.computedTotal}, overlap ${unnamedTotal.hackatimeOverlapSeconds}`,
+	)
+
+	// A recording that names a different project is not this link's to subtract, even when it sits in the same phase.
+	const otherProjectRecording = [
+		{
+			hoursApproved: null,
+			hoursClaimed: 2,
+			hoursSource: Source.MANUAL,
+			timelapses: [{ coveredSeconds: 7200, hackatimeProject: "macropad", recordedAt: new Date(1_700_000_000_000) }],
+		},
+	]
+	const otherProjectTotal = rollUpHours(otherProjectRecording, twoHoursTracked, null)
+	check(
+		"rollup · a same-phase recording naming another project does not deduplicate this link",
+		otherProjectTotal.computedTotal === 4 && otherProjectTotal.hackatimeHours === 2,
+		`got total ${otherProjectTotal.computedTotal}, hackatime ${otherProjectTotal.hackatimeHours}`,
+	)
+
 	// The common case: nobody records anything, so there is nothing to compare and the two tools add up as they always did.
 	const noTimelapses = [{ hoursApproved: null, hoursClaimed: 3, hoursSource: Source.MANUAL }]
 	check(
@@ -1031,7 +1069,7 @@ async function checkHackatimeSpans(): Promise<void> {
 					hoursApproved: null,
 					hoursClaimed: 2,
 					hoursSource: Source.HACKATIME_TRACKED,
-					timelapses: [{ coveredSeconds: 7200, recordedAt: new Date(1_700_000_000_000) }],
+					timelapses: [{ coveredSeconds: 7200, hackatimeProject: "firmware", recordedAt: new Date(1_700_000_000_000) }],
 				},
 			],
 			twoHoursTracked,
@@ -1049,7 +1087,11 @@ async function checkHackatimeSpans(): Promise<void> {
 	check("rollup · the phase enum is the one the schema defines", ReviewPhase.DESIGN === "DESIGN")
 
 	// A cold span cache is the complaint this whole check exists for: the same sitting, the same link, and the total silently doubles because the subtraction could not run. The number is now flagged, so a screen showing it can say the check never happened rather than presenting an inflated total as fact.
-	const coldCache = rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: null }], null)
+	const coldCache = rollUpHours(
+		oneEntry,
+		[{ cachedSeconds: 7200, cachedSpans: null, hackatimeProject: "firmware", hoursApproved: null }],
+		null,
+	)
 	check(
 		"rollup · a cold span cache is reported as unchecked",
 		coldCache.hackatimeOverlapUnknown && coldCache.hackatimeOverlapSeconds === 0,
@@ -1107,22 +1149,20 @@ async function checkHackatimeSpans(): Promise<void> {
 		`unknown=${crossCold.hackatimeOverlapUnknown}, total=${crossCold.computedTotal}`,
 	)
 
-	// The window selection itself: the own phase's recordings always count, and a recording elsewhere counts only under this link's name.
-	const ownWindow = { end: 100, start: 0 }
+	// The window selection itself: a recording counts against a link only under that link's project name, whichever phase it was journalled in.
+	const namedHere = { hackatimeProject: "firmware", window: { end: 100, start: 0 } }
 	const namedElsewhere = { hackatimeProject: "firmware", window: { end: 200, start: 150 } }
-	const otherElsewhere = { hackatimeProject: "macropad", window: { end: 400, start: 350 } }
+	const otherName = { hackatimeProject: "macropad", window: { end: 400, start: 350 } }
+	const unnamed = { hackatimeProject: null, window: { end: 600, start: 500 } }
 	check(
-		"overlap · a link always takes its own phase's recordings",
-		windowsForLink([ownWindow], [], "firmware").length === 1,
+		"overlap · a link takes every recording that names its project, in any phase",
+		windowsForLink([namedHere, namedElsewhere], "firmware").length === 2,
 	)
 	check(
-		"overlap · a recording elsewhere counts only under the link's own project name",
-		windowsForLink([], [namedElsewhere, otherElsewhere], "firmware").length === 1,
+		"overlap · a recording under another project name is left out, even in the same phase",
+		windowsForLink([namedHere, otherName], "firmware").length === 1,
 	)
-	check(
-		"overlap · a recording elsewhere under another name is left out",
-		windowsForLink([], [otherElsewhere], "firmware").length === 0,
-	)
+	check("overlap · a recording with no project name is left out", windowsForLink([unnamed], "firmware").length === 0)
 
 	// A caller that narrows its Prisma select hands over `undefined` where a number was expected, and `undefined !== null` used to read as an override and add NaN to the total. NaN is the worst shape of wrong here: it renders as "NaNh" in one place and leaves the rest of the phase looking fine.
 	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source

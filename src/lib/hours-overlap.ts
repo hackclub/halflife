@@ -168,23 +168,15 @@ export interface RecordedWindow {
 /**
  * Every recording window a link's tracked time is deduplicated against.
  *
- * Two sets, and both are needed:
+ * A recording counts against a link only when it names that link's Hackatime project, whichever phase or week it was journalled in. The recording's own `hackatimeProject` – what Hackatime was tracking when it was filmed – is the one fact that ties a sitting to the link its time arrives through, so a link in the same phase is no closer to a recording than one in another week.
  *
- * - The recordings beside the link in its own (project, phase), taken whatever Hackatime project they name: the span intersection below decides whether they overlap, exactly as it always has, and legacy rows carry no project name to match on.
- *
- * - This maker's recordings ELSEWHERE that name this project. Without this set a sitting journalled in one week and tracked against a link in another was paid for on both sides: the recording was never compared to the link it was made under, because the two live on different rows.
- *
- * A recording that names a different project is deliberately left out of the second set. It may still intersect this link's spans by coincidence, but the maker told us which project was being tracked while it ran, and subtracting against the wrong one is an underpayment dressed up as deduplication.
+ * A recording that names no project is evidence only: Lapse did not say what was tracked, so nothing can be subtracted against it. One that names a different project is left out for the same reason. It may still intersect this link's spans by coincidence, but subtracting against the wrong project is an underpayment dressed up as deduplication.
  */
-export function windowsForLink(
-	ownPhase: readonly Interval[],
-	elsewhere: readonly RecordedWindow[],
-	hackatimeProject: string,
-): Interval[] {
-	const windows: Interval[] = [...ownPhase]
-	for (const recording of elsewhere) if (recording.hackatimeProject === hackatimeProject) windows.push(recording.window)
-
-	return windows
+export function windowsForLink(recordings: readonly RecordedWindow[], hackatimeProject: string): Interval[] {
+	if (!hackatimeProject) return []
+	return recordings
+		.filter(recording => recording.hackatimeProject === hackatimeProject)
+		.map(recording => recording.window)
 }
 
 /**

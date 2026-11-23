@@ -8,7 +8,6 @@ import {
 	cachedSpansCover,
 	capSubtraction,
 	type HackatimeSpan,
-	type Interval,
 	overlapSeconds,
 	parseCachedSpans,
 	type RecordedWindow,
@@ -75,7 +74,7 @@ export async function getHoursBreakdown(
 			.first(),
 		client.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
 			.select("hoursApproved", "hoursClaimed", "hoursSource")
-			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "recordedAt"))
+			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
 			.all(),
 		client.orm.public.HackatimeLink.where({ phase, themeProjectId })
 			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "id")
@@ -85,8 +84,8 @@ export async function getHoursBreakdown(
 	let journalHours = 0
 	let journalHoursClaimed = 0
 	let timelapseSeconds = 0
-	// The wall-clock windows this phase's journal has already claimed through a recording. Collected first because it is what every link below is measured against.
-	const journalWindows: Interval[] = []
+	// The wall-clock windows this phase's journal has already claimed through a recording, each with the Hackatime project it named. Collected first because it is what every link below is measured against.
+	const journalRecordings: RecordedWindow[] = []
 
 	for (const s of sessions) {
 		// A tracked entry contributes no journal time, and its timelapses must not land in a coverage ratio whose denominator excludes them either.
@@ -94,7 +93,7 @@ export async function getHoursBreakdown(
 		for (const t of s.timelapses) {
 			timelapseSeconds += t.coveredSeconds ?? 0
 			const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
-			if (window) journalWindows.push(window)
+			if (window) journalRecordings.push({ hackatimeProject: t.hackatimeProject, window })
 		}
 		journalHours += s.hoursApproved ?? s.hoursClaimed
 		journalHoursClaimed += s.hoursClaimed
@@ -141,7 +140,7 @@ export async function getHoursBreakdown(
 		}
 
 		// Subtract the minutes this link counted that a journal entry with a recording already claimed. Without this the same sitting is paid twice. A phase with no recording at all – beside the link or elsewhere under its name – has nothing to compare, and no request to make.
-		const linkWindows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject)
+		const linkWindows = windowsForLink([...journalRecordings, ...elsewhere], link.hackatimeProject)
 		const linkSpanWindow = spanWindowFor(linkWindows)
 		if (linkSpanWindow) {
 			const spans = await resolveSpans(link, {
@@ -233,7 +232,7 @@ async function resolveSpans(
 /**
  * A maker's recordings on every project and phase except the one given, each with the Hackatime project it named.
  *
- * These are the windows that let a link find a recording made somewhere other than beside it. The exclusion is only an optimisation – `windowsForLink` would ignore the own-phase ones anyway once they are already in its own set – but it keeps this query to the rows that can actually add a window.
+ * These are the windows that let a link find a recording made somewhere other than beside it. The own-phase recordings are left out because the caller already holds them, and repeating them would add rows without adding a window.
  */
 async function elsewhereRecordings(
 	client: DbOrTx,
@@ -277,7 +276,7 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 				.first(),
 			db.orm.public.WorkSession.where({ deletedAt: null, phase, themeProjectId })
 				.where(session => session.hoursSource.neq(HoursSource.HACKATIME_TRACKED))
-				.include("timelapses", timelapse => timelapse.select("coveredSeconds", "recordedAt"))
+				.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
 				.all(),
 			db.orm.public.HackatimeLink.where({ hoursApproved: null, phase, themeProjectId })
 				.select("hackatimeProject", "id")
@@ -286,17 +285,18 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 		const hackatimeUserId = project?.user ? project.user.hackatimeUserId : null
 		if (!hackatimeUserId || !project || links.length === 0) return
 
-		const ownWindows = sessions.flatMap(s =>
+		const ownRecordings = sessions.flatMap(s =>
 			s.timelapses.flatMap(t => {
 				const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
-				return window ? [window] : []
+				return window ? [{ hackatimeProject: t.hackatimeProject, window }] : []
 			}),
 		)
 		// The recordings on this maker's other projects and phases, so a link whose time was journalled in another week is warmed for the window that actually matters to it. Fetched once for the phase rather than once per link.
 		const elsewhere = await elsewhereRecordings(db, project.userId, themeProjectId, phase)
+		const recordings = [...ownRecordings, ...elsewhere]
 
 		for (const link of links) {
-			const spanWindow = spanWindowFor(windowsForLink(ownWindows, elsewhere, link.hackatimeProject))
+			const spanWindow = spanWindowFor(windowsForLink(recordings, link.hackatimeProject))
 			if (!spanWindow) continue
 			const result = await fetchProjectSpans(hackatimeUserId, link.hackatimeProject, spanWindow)
 			await db.orm.public.HackatimeLink.where({ id: link.id }).update(
@@ -325,8 +325,6 @@ export interface SpansWarmTarget {
 	userId: string
 }
 
-const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
-
 /**
  * Warm the span cache for a batch of links, for the scheduled sync.
  *
@@ -346,7 +344,7 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 			.where(session =>
 				session.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.in(userIds))),
 			)
-			.select("id", "phase", "themeProjectId")
+			.select("id")
 			.include("themeProject", project => project.select("userId"))
 			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
 			.all(),
@@ -356,20 +354,14 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 			.all(),
 	])
 
-	const windowsByPhase = new Map<string, Interval[]>()
 	const recordingsByUser = new Map<string, RecordedWindow[]>()
 	for (const s of sessions) {
 		if (!s.themeProject) throw new Error(`session ${s.id} has no project`)
-		const k = key(s.themeProjectId, s.phase)
-		const list = windowsByPhase.get(k) ?? []
 		const made = recordingsByUser.get(s.themeProject.userId) ?? []
 		for (const t of s.timelapses) {
 			const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
-			if (!window) continue
-			list.push(window)
-			made.push({ hackatimeProject: t.hackatimeProject, window })
+			if (window) made.push({ hackatimeProject: t.hackatimeProject, window })
 		}
-		windowsByPhase.set(k, list)
 		recordingsByUser.set(s.themeProject.userId, made)
 	}
 	const userByProject = new Map(
@@ -382,12 +374,8 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 	let warmed = 0
 	let failed = 0
 	for (const target of targets) {
-		// The recordings beside the link, plus this maker's recordings elsewhere that name its project – the same union `getHoursBreakdown` deduplicates against, so a warmed cache answers the question that will actually be asked.
-		const windows = windowsForLink(
-			windowsByPhase.get(key(target.themeProjectId, target.phase)) ?? [],
-			recordingsByUser.get(target.userId) ?? [],
-			target.hackatimeProject,
-		)
+		// This maker's recordings that name the link's project, wherever they were journalled – the same set `getHoursBreakdown` deduplicates against, so a warmed cache answers the question that will actually be asked.
+		const windows = windowsForLink(recordingsByUser.get(target.userId) ?? [], target.hackatimeProject)
 		const spanWindow = spanWindowFor(windows)
 		// No recording that could overlap this link means nothing to deduplicate, and no request worth making.
 		if (!spanWindow) continue
@@ -476,14 +464,14 @@ export function rollUpHours(
 	effectiveHours: number
 } {
 	let journalHours = 0
-	const journalWindows: Interval[] = []
+	const journalRecordings: RecordedWindow[] = []
 	for (const s of sessions) {
 		// A HACKATIME_TRACKED session still exists as evidence but contributes zero: its time already arrives through the link.
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 		journalHours += storedHours(s.hoursApproved ?? s.hoursClaimed)
 		for (const t of s.timelapses ?? []) {
 			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
-			if (window) journalWindows.push(window)
+			if (window) journalRecordings.push({ hackatimeProject: t.hackatimeProject ?? null, window })
 		}
 	}
 
@@ -498,8 +486,8 @@ export function rollUpHours(
 		}
 		let seconds = storedHours(link.cachedSeconds)
 		const cached = parseCachedSpans(link.cachedSpans)
-		// The recordings beside the link and the ones elsewhere under its name. Empty means nothing to compare, and nothing to warn about.
-		const windows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject ?? "")
+		// The recordings that name this link's project, beside it or elsewhere. Empty means nothing to compare, and nothing to warn about.
+		const windows = windowsForLink([...journalRecordings, ...elsewhere], link.hackatimeProject ?? "")
 		if (windows.length > 0) {
 			// Spans cached for some other stretch of time say nothing about these recordings, so they count as no cache at all, as they do in getHoursBreakdown.
 			const span = spanWindowFor(windows)

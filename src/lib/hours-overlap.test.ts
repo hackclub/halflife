@@ -116,16 +116,19 @@ describe("parseCachedSpans / cachedSpansCover", () => {
 })
 
 describe("windowsForLink / spanWindowFor", () => {
-	test("keeps own-phase windows and matching elsewhere recordings", () => {
-		const own = [{ end: 10, start: 0 }]
+	test("keeps only the recordings that name the link's project", () => {
 		const matching = { end: 30, start: 20 }
-		const elsewhere = [
+		const recordings = [
 			{ hackatimeProject: "a", window: matching },
 			{ hackatimeProject: "b", window: { end: 50, start: 40 } },
+			{ hackatimeProject: null, window: { end: 10, start: 0 } },
 		]
-		const [first] = own
-		if (!first) throw new Error("fixture is empty")
-		expect(windowsForLink(own, elsewhere, "a")).toEqual([first, matching])
+		expect(windowsForLink(recordings, "a")).toEqual([matching])
+	})
+
+	test("a recording that names no project is never a window for a link", () => {
+		expect(windowsForLink([{ hackatimeProject: null, window: { end: 10, start: 0 } }], "a")).toEqual([])
+		expect(windowsForLink([{ hackatimeProject: null, window: { end: 10, start: 0 } }], "")).toEqual([])
 	})
 
 	test("spans every window with an hour of slack either side", () => {
