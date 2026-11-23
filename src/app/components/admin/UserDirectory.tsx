@@ -69,6 +69,11 @@ export function UserRow({ row, filters }: Readonly<{ row: DirectoryRow; filters:
 				</div>
 				<div className="hl-entity-links">
 					<Link href={`/u/${row.id}`}>Public profile</Link>
+					{row.airtableUrl ? (
+						<a href={row.airtableUrl} rel="noopener noreferrer" target="_blank">
+							Airtable
+						</a>
+					) : null}
 				</div>
 				{row.fraudFlagged ? (
 					<div>
