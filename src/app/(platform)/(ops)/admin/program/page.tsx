@@ -96,6 +96,7 @@ export default async function AdminProgramPage({ searchParams }: Props) {
 async function SeasonTab() {
 	const settings = await getProgramSettings()
 	const startYmd = settings.eventStartDate.toISOString().slice(0, 10)
+	// oxlint-disable-next-line react/purity -- async server page, rendered once per request, so this time is never reused
 	const now = new Date()
 	const schedule = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
 		const n = i + 1

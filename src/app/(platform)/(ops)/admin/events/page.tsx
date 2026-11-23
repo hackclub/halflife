@@ -20,6 +20,7 @@ export default async function AdminEventsPage() {
 	// The header is about what participants will see next, so a draft must not be announced here. The list below still shows drafts, marked as such.
 	const upcoming = nextEvent(
 		events.filter(event => event.published),
+		// oxlint-disable-next-line react/purity -- async server page, rendered once per request, so this time is never reused
 		new Date(),
 	)
 

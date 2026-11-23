@@ -133,6 +133,7 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 	const grantCards = tab === "grant-cards" ? await getUserGrantCards(id) : null
 
 	const weekExtensionByWeek = new Map(user.weekExtensions.map(extension => [extension.week, extension]))
+	// oxlint-disable-next-line react/purity -- async server page, rendered once per request, so this time is never reused
 	const now = new Date()
 	const weekExtensionOptions = Array.from({ length: TOTAL_WEEKS }, (_, index) => {
 		const week = index + 1

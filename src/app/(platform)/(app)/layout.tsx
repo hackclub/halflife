@@ -27,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 	// The lower bound is a cut-off, not a "has not started" filter. An event that began an hour ago and runs for two more is happening now, and dropping it would make the header count down to the next one while this one is still on.
 	const [snapshot, events, settings] = await Promise.all([
 		getStoreSnapshot(user.id),
+		// oxlint-disable-next-line react/purity -- async server page, rendered once per request, so this time is never reused
 		listUpcomingEvents(new Date(), 24),
 		getProgramSettings(),
 	])

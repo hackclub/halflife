@@ -37,6 +37,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	const search = firstValues(await searchParams)
 	const filters = projectFiltersFrom(search)
 	const { flags, includePii } = projectAccessFor(roles)
+	// oxlint-disable-next-line react/purity -- async server page, rendered once per request, so this time is never reused
 	const now = new Date()
 	const { items, nextCursor } = await listProjects({ ...filters, limit: PROJECT_PAGE_SIZE }, { includePii })
 	const rows = items.map(project => toProjectRow(project, now))
