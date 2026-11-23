@@ -111,8 +111,8 @@ export function EventForm({
 								aria-checked={option.id === colour}
 								aria-label={option.label}
 								className={cx(
-									"size-8 rounded-full border-2 transition-transform",
-									option.id === colour ? "border-navy" : "border-line hover:scale-110",
+									"hl-colour-swatch size-8 rounded-full border-2 transition-transform",
+									option.id === colour ? undefined : "hover:scale-110",
 								)}
 								key={option.id}
 								onClick={() => setColour(option.id)}

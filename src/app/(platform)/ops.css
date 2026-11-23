@@ -285,6 +285,16 @@
 	}
 
 	/* ── Fields ────────────────────────────────────────────────────────────── */
+	/*
+	 * The colour swatches on the event form: the selected one used the platform navy rim, which vanished against a dark panel. The rim takes the console's heading ink instead, so it flips with the theme and always separates from the ground.
+	 */
+	.hl-colour-swatch {
+		border-color: var(--color-line);
+	}
+	.hl-colour-swatch[aria-checked="true"] {
+		border-color: var(--color-ink-strong);
+	}
+
 	.hl-label-text {
 		display: block;
 		margin-bottom: 0.35rem;
@@ -418,13 +428,13 @@
 	/* An alert carries a wash of its own hue, border, ground and text alike, so the warning or danger reads before the sentence does. The text inks are the badge inks, which clear 4.5:1 on that wash in both modes. Mixed with the card ground rather than left transparent, so one value follows light and dark. */
 	.hl-callout--danger {
 		color: var(--color-danger-ink);
-		border-color: var(--color-flame);
 		background: color-mix(in srgb, var(--color-flame) 10%, var(--color-surface-raised));
+		border-color: var(--color-flame);
 	}
 	.hl-callout--warning {
 		color: var(--color-warning-ink);
-		border-color: var(--color-coin);
 		background: color-mix(in srgb, var(--color-coin) 10%, var(--color-surface-raised));
+		border-color: var(--color-coin);
 	}
 	/* A plain explanation, not a problem to act on – the deduplicated hours notice is the reader being told why a number is smaller than expected. */
 	.hl-callout--info {
@@ -1825,6 +1835,7 @@ html[data-theme="dark"] .ops-root:has(.hl-admin) {
 	--color-surface-sunken: #241f33; /* hover fills, a step up again */
 	--color-border: #555062; /* still a quiet rule, as in light mode */
 	--color-line-soft: #555062; /* the scrollbar takes the same rule */
+	--color-line: #4a4560; /* pale rules would outshine the selected swatch's rim, so the unselected ones step back here */
 	--color-field-edge: #7d789b; /* 4.1:1 on cards, where a field needs a visible edge */
 	--color-ink: #e8e3f4; /* 16.7:1 on the ground */
 	--color-ink-strong: #f1ebfa; /* 18:1 on the ground */
