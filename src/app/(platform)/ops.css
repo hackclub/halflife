@@ -18,6 +18,8 @@
 	--color-surface: var(--color-cream); /* page ground – warm off-white, not pure white */
 	--color-surface-raised: var(--color-paper); /* cards sitting on the ground */
 	--color-surface-sunken: #f2ecec;
+	/* A control's own ground: one step down from the card it sits on, so a field or an idle button reads as an object rather than a hole. In light mode `sunken` is already that step down; the dark block darkens it explicitly, because there `sunken` is the hover lift. */
+	--color-field-fill: var(--color-surface-sunken);
 	--color-border: #cacedd;
 	/* A field's edge, which has to meet 3:1 where a panel's need not: `line` is 1.72:1 on a white field. 3.68:1. */
 	--color-field-edge: var(--color-field);
@@ -230,7 +232,7 @@
 		color: var(--color-ink-strong);
 		text-decoration: none;
 		cursor: pointer;
-		background: var(--color-surface-raised);
+		background: var(--color-field-fill);
 		border: 2px solid var(--color-ink-strong);
 		border-radius: var(--radius-button);
 	}
@@ -309,9 +311,13 @@
 		padding: 0.6rem 0.75rem;
 		font: inherit;
 		color: var(--color-ink);
-		background: var(--color-surface-raised);
+		background: var(--color-field-fill);
 		border: 2px solid var(--color-field-edge);
 		border-radius: var(--radius-button);
+	}
+	/* A select opens a list, so it is a button as much as a field. */
+	.hl-select {
+		cursor: pointer;
 	}
 	.hl-textarea {
 		min-height: 7rem;
@@ -1740,11 +1746,11 @@ html:has(.hl-admin) {
 	font-size: 0.85rem;
 	border-width: 1px;
 }
-/* A read-only field looks fixed: sunken ground and muted text, so nobody mistakes it for a box to type in. */
+/* A read-only field looks fixed: the field ground with muted text, so nobody mistakes it for a box to type in. */
 .hl-admin-main .hl-input[readonly] {
 	color: var(--color-ink-muted);
 	cursor: default;
-	background: var(--color-surface-sunken);
+	background: var(--color-field-fill);
 }
 /* A filter bar whose fields come in groups – the date range, then the selects – wraps by group rather than one field at a time, so a row never ends with a single field stranded on the next line. */
 .hl-filters__grid:has(> .hl-filter-group) {
@@ -1803,7 +1809,7 @@ html:has(.hl-admin) {
 .hl-admin-main .hl-btn:disabled {
 	color: var(--color-ink-muted);
 	cursor: not-allowed;
-	background: var(--color-surface-sunken);
+	background: var(--color-field-fill);
 	border-color: var(--color-border);
 	opacity: 1;
 }
@@ -1834,6 +1840,7 @@ html[data-theme="dark"] .ops-root:has(.hl-admin) {
 	--color-surface: #000000; /* the ground: pure black, with the raised cards still a step above it */
 	--color-surface-raised: #1d1929; /* cards, one step up from the ground */
 	--color-surface-sunken: #241f33; /* hover fills, a step up again */
+	--color-field-fill: #17131f; /* controls sit darker than the card, where the hover lift sits lighter */
 	--color-border: #555062; /* still a quiet rule, as in light mode */
 	--color-line-soft: #555062; /* the scrollbar takes the same rule */
 	--color-line: #4a4560; /* pale rules would outshine the selected swatch's rim, so the unselected ones step back here */
