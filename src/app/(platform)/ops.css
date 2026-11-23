@@ -1802,3 +1802,27 @@ html:has(.hl-admin) {
 		min-width: 0;
 	}
 }
+
+/*
+ * The console's dark mode, switched by the store in `lib/admin-theme.ts` on the html element. The `:has(.hl-admin)` keeps it on the pages that carry the toggle: the review queue shares this wrapper, and a dark page with no way back to light is a trap. Every override is a token, so the `.hl-*` classes and the charts' inline `var()` fills follow without a second stylesheet.
+ */
+html[data-theme="dark"] .ops-root:has(.hl-admin) {
+	--color-surface: #141021; /* the ground: a deep warm navy, not pure black */
+	--color-surface-raised: #1d1929; /* cards, one step up from the ground */
+	--color-surface-sunken: #241f33; /* hover fills, a step up again */
+	--color-border: #555062; /* still a quiet rule, as in light mode */
+	--color-line-soft: #555062; /* the scrollbar takes the same rule */
+	--color-field-edge: #7d789b; /* 4.1:1 on cards, where a field needs a visible edge */
+	--color-ink: #e8e3f4; /* 14.9:1 on the ground */
+	--color-ink-strong: #f1ebfa; /* 16:1 on the ground */
+	--color-ink-muted: #9a95b1; /* 6.5:1 on the ground, 6:1 on cards */
+	/* The badge and reason inks are dark-on-light hues in light mode. Kept in their own hues here, out of the 2.5-3.2:1 range they would read at on a dark card. */
+	--color-success-ink: #5dd4bd;
+	--color-info-ink: #82cce8;
+	--color-warning-ink: #f3b95f;
+	--color-danger-ink: #f38b8b; /* also the danger button's fill, with the dark card colour as its label */
+	--color-accent-bright: #2e8cae; /* the sign and primary buttons: sky-deep, so a light label keeps 3.3:1 */
+	--color-mint: #008f78; /* selection and hover: the light ink-strong keeps 3.5:1 on it */
+	--color-paper: #0e0c18; /* the active sidebar pill turns light, so its label turns dark */
+	color-scheme: dark;
+}

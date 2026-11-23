@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { AdminPalette } from "./AdminPalette"
 import { AdminSidebar } from "./AdminSidebar"
 import type { AdminNavGroup } from "./admin-nav"
+import { ThemeToggle } from "./ThemeToggle"
 
 /**
  * The admin console's frame: a slim header with search and the signed-in address, a sidebar of grouped sections, and the page filling the rest of the window. The page gets the full width of the window rather than the reading column the rest of the ops console uses, because its tables are the widest things on the site.
@@ -20,6 +21,7 @@ export function AdminFrame({
 					Back to dashboard
 				</Link>
 				<AdminPalette groups={groups} />
+				<ThemeToggle />
 				<span className="hl-muted hl-admin-email">{email}</span>
 			</header>
 			<div className="hl-admin-body">
