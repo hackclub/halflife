@@ -387,12 +387,13 @@ async function checkFetchRetry(): Promise<void> {
 	const originalSetTimeout = globalThis.setTimeout
 	await (async () => {
 		// Node's own timers hand arguments through setTimeout (a socket's connect timeout gets its context that way), and those keep the real timer. Only the retry's plain wait, which takes none, runs at once.
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
+		// oxlint-disable typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		globalThis.setTimeout = ((fn: (...args: unknown[]) => void, ms?: number, ...args: unknown[]) => {
 			if (args.length > 0) return originalSetTimeout(fn, ms, ...args)
 			fn()
 			return 0
 		}) as unknown as typeof setTimeout
+		// oxlint-enable typescript/no-unsafe-type-assertion
 		try {
 			// A transport error twice, then success: two failures, one answer.
 			let attempts = 0
