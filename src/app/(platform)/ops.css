@@ -415,12 +415,14 @@
 		border: 2px solid var(--color-accent);
 		border-radius: var(--radius-button);
 	}
-	/* An alert carries a wash of its own hue, so the warning or danger reads before the sentence does. Mixed with the card ground rather than left transparent, so one value follows light and dark. */
+	/* An alert carries a wash of its own hue, border, ground and text alike, so the warning or danger reads before the sentence does. The text inks are the badge inks, which clear 4.5:1 on that wash in both modes. Mixed with the card ground rather than left transparent, so one value follows light and dark. */
 	.hl-callout--danger {
+		color: var(--color-danger-ink);
 		border-color: var(--color-flame);
 		background: color-mix(in srgb, var(--color-flame) 10%, var(--color-surface-raised));
 	}
 	.hl-callout--warning {
+		color: var(--color-warning-ink);
 		border-color: var(--color-coin);
 		background: color-mix(in srgb, var(--color-coin) 10%, var(--color-surface-raised));
 	}
