@@ -322,30 +322,30 @@ export function useStoreWrites({ facts, router, setFacts }: StoreWritesOptions):
 			const clips = evidence?.clips ?? []
 			// Server first, unlike the other writes here. An entry's timelapses are checked against Lapse, and a refusal is something the maker has to fix in the sheet – patching the trail first would show a node done for an entry that was never saved.
 			const route = routeOf(id)
-			if (route) {
-				let res: Response
-				try {
-					res = await fetch(`/api/projects/${route.projectId}/sessions`, {
-						body: JSON.stringify({
-							content: body,
-							hoursClaimed: round2(minutes / 60),
-							phase: route.phase,
-							// Only sent when the maker chose a day, so an entry for today goes exactly as it did before.
-							...(workedOn ? { workedOn } : {}),
-							timelapses: clips.map(lapseId => ({ lapseId })),
-							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
-							title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
-						}),
-						headers: { "content-type": "application/json" },
-						method: "POST",
-					})
-				} catch {
-					return "Could not reach the server. Your entry is still here. Try again."
-				}
-				if (!res.ok) {
-					const err: unknown = await res.json().catch(() => null)
-					return errorMessage(err, "The entry was not saved. Try again.")
-				}
+			// Without a route there is no server row to write, and a local-only entry would read as saved until the next refresh dropped it. Refuse, as editSession does.
+			if (!route) return "This step has no project to log against yet. Refresh and try again."
+			let res: Response
+			try {
+				res = await fetch(`/api/projects/${route.projectId}/sessions`, {
+					body: JSON.stringify({
+						content: body,
+						hoursClaimed: round2(minutes / 60),
+						phase: route.phase,
+						// Only sent when the maker chose a day, so an entry for today goes exactly as it did before.
+						...(workedOn ? { workedOn } : {}),
+						timelapses: clips.map(lapseId => ({ lapseId })),
+						// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
+						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
+					}),
+					headers: { "content-type": "application/json" },
+					method: "POST",
+				})
+			} catch {
+				return "Could not reach the server. Your entry is still here. Try again."
+			}
+			if (!res.ok) {
+				const err: unknown = await res.json().catch(() => null)
+				return errorMessage(err, "The entry was not saved. Try again.")
 			}
 
 			setFacts(f => {
