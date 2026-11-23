@@ -5,10 +5,12 @@ import { RESUBMISSIONS_COUNTED_FROM, submissionBudget } from "@/lib/resubmission
 const DAY = 24 * 60 * 60 * 1000
 const sincePolicy = (days: number, phase: Phase = Phase.DESIGN) => ({
 	createdAt: new Date(RESUBMISSIONS_COUNTED_FROM + days * DAY),
+	id: `since-${days}`,
 	phase,
 })
 const beforePolicy = (days: number, phase: Phase = Phase.DESIGN) => ({
 	createdAt: new Date(RESUBMISSIONS_COUNTED_FROM - days * DAY),
+	id: `before-${days}`,
 	phase,
 })
 
@@ -64,7 +66,7 @@ describe("submissionBudget", () => {
 	})
 
 	test("a hand-in at the exact start counts", () => {
-		const atStart = { createdAt: new Date(RESUBMISSIONS_COUNTED_FROM), phase: Phase.DESIGN }
+		const atStart = { createdAt: new Date(RESUBMISSIONS_COUNTED_FROM), id: "at-start", phase: Phase.DESIGN }
 		expect(submissionBudget([atStart], Phase.DESIGN).used).toBe(1)
 		expect(submissionBudget([atStart, atStart], Phase.DESIGN).used).toBe(2)
 	})

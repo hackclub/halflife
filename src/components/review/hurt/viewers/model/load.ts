@@ -9,8 +9,9 @@ import { importWithThree } from './meshImport'
 import type { ModelData, ModelHistory } from './analyze'
 import { THREEMF_UNSUPPORTED } from './threemf'
 import { OCCT_LIMIT } from './server'
+import { resolveReference } from '../cadsource/load'
 
-const VERSION = 13
+const VERSION = 14
 const RESTART_AFTER_BYTES = 20e6
 const SLOW_BYTES = 30e6
 const SPEED_KEY = 'hurt:read-speed'
@@ -37,6 +38,7 @@ const TASKS: Record<string, string> = {
   xmt_txt: 'parasolid',
   xmt_bin: 'parasolid',
   sldprt: 'parasolid',
+  sldasm: 'sldasm',
   dwg: 'dwg',
 }
 
@@ -147,6 +149,8 @@ async function readModel(
   })
   checkContent(bytes)
   if (task === 'occt' && bytes.byteLength > OCCT_LIMIT) throw tooLarge(bytes.byteLength)
+  const parts =
+    task === 'sldasm' ? await assemblyParts(source, file, bytes, client, controller.signal, notify) : undefined
   const slow = task !== 'stl' && bytes.byteLength > SLOW_BYTES
   notify(null, 'Processing')
   let estimate: Estimate | null = null
@@ -158,7 +162,7 @@ async function readModel(
   const model = await client
     .call<ModelData>(
       task,
-      { bytes, ext: file.ext, name: file.name.slice(0, file.name.length - file.ext.length - 1) },
+      { bytes, parts, ext: file.ext, name: file.name.slice(0, file.name.length - file.ext.length - 1) },
       {
         signal: controller.signal,
         onProgress: (message, expect) => {
@@ -178,6 +182,31 @@ async function readModel(
   if (bytes.byteLength > RESTART_AFTER_BYTES && !client.busy) client.restart()
   await cachePut(key, model, sizeOf(model))
   return model
+}
+
+async function assemblyParts(
+  source: FileSource,
+  file: HurtFile,
+  bytes: ArrayBuffer,
+  client: WorkerClient,
+  signal: AbortSignal,
+  notify: Progress,
+) {
+  const names = await client.call<string[]>('sldasmFiles', { bytes }, { signal })
+  const found = names.flatMap((name) => {
+    const part = resolveReference(name, file, source.files)
+    return part ? [[name.toLowerCase(), part] as const] : []
+  })
+  let done = 0
+  notify(0, 'Downloading parts')
+  const parts = await Promise.all(
+    found.map(async ([name, part]) => {
+      const data = await source.read(part.path, { signal })
+      notify(++done / found.length, 'Downloading parts')
+      return [name, data] as const
+    }),
+  )
+  return Object.fromEntries(parts)
 }
 
 export async function loadModelHistory(
