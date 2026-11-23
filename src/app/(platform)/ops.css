@@ -1434,6 +1434,10 @@
 		background: var(--color-accent);
 		border-color: var(--color-accent);
 	}
+	/* A count is muted against a panel, but the selected chip fills with sky: the muted ink read 1.2:1 on it. Take the chip's own colour instead, leaving weight and figures as the quieter cues. */
+	.hl-chip[aria-current="true"] .hl-count {
+		color: inherit;
+	}
 
 	/* ── Dispute thread ────────────────────────────────────────────────────── */
 	/*
