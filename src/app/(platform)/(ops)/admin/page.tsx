@@ -172,7 +172,7 @@ async function SummaryTab() {
 
 			<Panel
 				actions={
-					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
+					<span className="hl-hint hl-note--inline">
 						from the dashboard prompt
 					</span>
 				}
@@ -206,7 +206,7 @@ async function SummaryTab() {
 						/>
 					</div>
 				)}
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus the
 					detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from the same
 					Signups table the dashboard&apos;s prompt writes to, cached for a minute.
@@ -215,7 +215,7 @@ async function SummaryTab() {
 
 			<Panel
 				actions={
-					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
+					<span className="hl-hint hl-note--inline">
 						each project counted once, in the state its card shows
 					</span>
 				}
@@ -243,7 +243,7 @@ async function SummaryTab() {
 					</div>
 				</div>
 				{counters.pendingReviewsUnsent > 0 && (
-					<p className="hl-hint" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+					<p className="hl-hint hl-note hl-note--tight">
 						<span className="hl-mono">{fmtInt(counters.pendingReviewsUnsent)}</span> more are handed in and in review
 						here but never reached Ari, so no reviewer has them. See{" "}
 						<Link href="/admin/program">what broke, and a Retry for each</Link>.
@@ -258,7 +258,7 @@ async function SummaryTab() {
 						</tr>
 					))}
 				</Table>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
 					changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved. It
 					is the same state the project&apos;s card shows, so a design approved while its build is still in review reads
@@ -303,7 +303,7 @@ async function PeopleTab() {
 					<MetricPie format={fmtInt} pick={r => r.users} rows={areas} title="Users" />
 					<MetricPie format={fmtHours} pick={r => r.hours} rows={areas} title="Hours" />
 				</div>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Continents group each account&apos;s timezone; Unknown has none on file. Hours count journal devlogs
 					(reviewer-adjusted where set) plus linked Hackatime time, attributed to the author&apos;s region.
 				</p>
@@ -331,7 +331,7 @@ async function PeopleTab() {
 						title="Hours"
 					/>
 				</div>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Countries map each account&apos;s timezone; zones with nothing to place read as Unknown.
 				</p>
 			</Panel>
@@ -342,7 +342,7 @@ async function PeopleTab() {
 					measure="First project choice"
 					rows={firstProjects.map(s => ({ label: s.label, value: s.users }))}
 				/>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Users who finished setup and still have their week-one project. Starter names come from the catalogue; Custom
 					project means they named their own idea.
 				</p>
@@ -354,7 +354,7 @@ async function PeopleTab() {
 					measure="Identity status"
 					rows={verification.map(s => ({ label: s.label, value: s.users }))}
 				/>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Hack Club Auth&apos;s own reading of each account, taken at its last sign-in or purchase. Only a verified
 					identity can be paid; needs verification is somebody part-way through IDV, and not asked is an account no
 					sign-in has reported on yet.
@@ -387,7 +387,7 @@ async function ActivityTab() {
 			<ProgrammeFilterProvider programmeStart={programmeStart}>
 				<Panel title="Daily active users">
 					<DauChart days={activeUsers.days} />
-					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					<p className="hl-hint hl-note">
 						A person counts once a day, and only once that day&apos;s tracked time reaches 15 minutes. A visit with no
 						time logged does not count, and neither do three devlogs where one would have done. Days are
 						program-timezone effective dates, the day the work counted for. The bars behind the line are each
@@ -398,14 +398,14 @@ async function ActivityTab() {
 
 				<Panel title="Activity over time">
 					<ActivityStrip days={activity} />
-					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					<p className="hl-hint hl-note">
 						Days are program-timezone effective dates, the day the work counted for. Hours count journal devlogs only.
 					</p>
 				</Panel>
 
 				<Panel title="Activity per user over time">
 					<ActivityStrip days={activity} perUser />
-					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					<p className="hl-hint hl-note">
 						One person&apos;s average working day rather than the programme&apos;s total. Read beside the chart above,
 						the totals say how much was done and this says how thinly it was spread, so a busy day and a flat average
 						together mean the work was going somewhere, and both rising means more people joined in.
@@ -415,7 +415,7 @@ async function ActivityTab() {
 
 			<Panel title="Hours per user by goal">
 				<GoalHoursChart days={activityByGoal} />
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					The same hours split by what each maker said they are here for. Where the three lines separate, the goal
 					question is saying something about effort; where they move together, it is saying something about the
 					programme.
@@ -424,7 +424,7 @@ async function ActivityTab() {
 
 			<Panel title="Projects per week">
 				<ProjectsByWeekChart weeks={projectsByWeek} />
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					What people are building, by the week it is for. A project sits in its theme&apos;s design week once the
 					design has been handed in, and in the build week once the build has, so the two PCBs blocks are different
 					projects, not one cohort counted twice.
@@ -733,7 +733,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 
 	return (
 		<div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+			<p className="hl-hint hl-note--lead">
 				{lines.map((line, i) => (
 					<span key={line.label} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
 						<span
@@ -796,7 +796,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 					<DayAxis days={days} labelEvery={labelEvery} />
 				</div>
 			</div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+			<p className="hl-hint hl-note hl-note--tight">
 				Hours per person who logged something that day, so a line says what one of those people did rather than how many
 				there were. All three share one scale, so the lines can be read against each other. A maker who has not answered
 				the goal prompt yet is on no line. Days are program-timezone effective dates; hours count journal devlogs only.
@@ -850,7 +850,7 @@ function seasonBands(weeks: WeekColumn[]) {
 /** The four kinds, as the swatch-and-label row both per-week charts put above their plot. */
 function ProjectKindLegend() {
 	return (
-		<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+		<p className="hl-hint hl-note--lead">
 			{PROJECT_KIND.map((kind, i) => (
 				<span key={kind.key} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
 					<span
@@ -985,7 +985,7 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 					<WeekAxisLabels weeks={weeks} />
 				</div>
 			</div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+			<p className="hl-hint hl-note hl-note--tight">
 				Their stage, by the week that stage runs in: a project is in a week&apos;s column once that phase has been
 				handed in, and appears in both of its theme&apos;s weeks only when it has reached both stages. Design months
 				before the build is a different piece of work. A project that has been described and not yet handed in is in no
@@ -1083,7 +1083,7 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 					<WeekAxisLabels weeks={weeks} />
 				</div>
 			</div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+			<p className="hl-hint hl-note hl-note--tight">
 				Hours logged for each week, attributed to the phase they were logged in, so a week&apos;s column is its own part
 				of its projects, not their whole story, and every hour is counted once. The same projects the chart above
 				counts, read as work rather than as headcount; a week can be busy there and flat here when its projects are
@@ -1124,7 +1124,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 				<Stat label="Median hours" value={data.median === null ? "-" : fmtHours(data.median)} />
 				<Stat label="Total hours" value={fmtHours(data.totalHours)} />
 			</div>
-			<p className="hl-hint" style={{ fontSize: "0.75rem", margin: "0 0 0.5rem" }}>
+			<p className="hl-hint hl-note--legend">
 				<span
 					aria-hidden="true"
 					style={{
@@ -1249,7 +1249,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 					))}
 				</figcaption>
 			</figure>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+			<p className="hl-hint hl-note">
 				Both series share one scale, so a pale bar taller than the solid one means the band holds more of the
 				programme&apos;s hours than of its people. Hours count journal devlogs (reviewer-adjusted where set) plus linked
 				Hackatime time, the same hours the geography panels total, and a sitting that was both journalled and tracked
