@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { PhoneHandoff } from "@/app/components/forms/PhoneHandoff"
 import { Button, Callout, Field, Panel, Select, TextArea, TextInput } from "@/app/components/ui"
-import { errorMessage } from "@/lib/api-error"
+import { ignoredBody, readErrorMessage, readJson } from "@/lib/api-error"
 import { isVideoFile, VIDEO_ACCEPT, VIDEO_TYPE_MESSAGE } from "@/lib/uploads/video-accept"
 import { uploadFile } from "@/lib/use-handoff"
 
@@ -75,20 +75,20 @@ export function PostComposer({
 			}
 
 			setStage("posting")
-			const created = await fetch("/api/posts", {
-				body: JSON.stringify({
-					caption,
-					kind,
-					objectKey,
-					themeProjectId: projectId === "" ? null : projectId,
+			await readJson(
+				await fetch("/api/posts", {
+					body: JSON.stringify({
+						caption,
+						kind,
+						objectKey,
+						themeProjectId: projectId === "" ? null : projectId,
+					}),
+					headers: { "Content-Type": "application/json" },
+					method: "POST",
 				}),
-				headers: { "Content-Type": "application/json" },
-				method: "POST",
-			})
-			if (!created.ok) {
-				setError(errorMessage(await created.json().catch(() => null), `Could not post (${created.status})`))
-				return
-			}
+				ignoredBody,
+				"Could not post",
+			)
 
 			setCaption("")
 			setProjectId("")
@@ -96,7 +96,13 @@ export function PostComposer({
 			if (fileRef.current) fileRef.current.value = ""
 			router.refresh()
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Something went wrong")
+			setError(
+				readErrorMessage(
+					err,
+					"The server's answer was not in the expected shape",
+					"Could not reach the server. Try again.",
+				),
+			)
 		} finally {
 			setStage("idle")
 		}

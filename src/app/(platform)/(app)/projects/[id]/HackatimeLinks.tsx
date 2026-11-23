@@ -5,12 +5,12 @@ import { useCallback, useEffect, useState } from "react"
 import { z } from "zod"
 import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/icons"
 import { Button, inputClass, Panel } from "@/components/platform/ui"
+import { ApiRequestError, ignoredBody, readJson } from "@/lib/api-error"
 import { linkHackatime } from "@/lib/auth-client"
 import { cx } from "@/lib/cx"
 import { messageOf } from "@/lib/errors"
 import { fmtHours } from "@/lib/projects"
 import type { Phase } from "@/lib/types"
-import { isRecord } from "@/lib/unknown"
 
 const LinkSchema = z.object({
 	hackatimeProject: z.string(),
@@ -28,31 +28,10 @@ type Account =
 	| { state: "linked"; projects: { name: string; totalSeconds: number }[] }
 	| { state: "error" }
 
-const ErrorBodySchema = z.object({
-	error: z.object({ code: z.string().optional(), message: z.string().optional() }).optional(),
-})
 const LinkPageSchema = z.object({ links: z.array(LinkSchema) })
 const HackatimeProjectsSchema = z.object({
 	projects: z.array(z.object({ name: z.string(), totalSeconds: z.number() })),
 })
-
-/** Read the body and turn a refusal into the error the panel shows. */
-async function ensureOk(res: Response): Promise<unknown> {
-	const body: unknown = await res.json().catch(() => null)
-	const envelope = ErrorBodySchema.safeParse(body)
-	if (!res.ok)
-		throw Object.assign(
-			new Error((envelope.success ? envelope.data.error?.message : undefined) ?? "Something went wrong"),
-			{ code: envelope.success ? envelope.data.error?.code : undefined },
-		)
-	return body
-}
-
-async function read<S extends z.ZodType>(schema: S, res: Response): Promise<z.infer<S>> {
-	const parsed = schema.safeParse(await ensureOk(res))
-	if (!parsed.success) throw new Error("The server's answer was not in the expected shape")
-	return parsed.data
-}
 
 /**
  * Hours that came from the editor rather than the journal.
@@ -80,16 +59,20 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 				fetch(`/api/hackatime/projects?${projectsQuery}`, { cache: "no-store" }),
 			])
 			try {
-				setLinks((await read(LinkPageSchema, linksRes)).links)
+				setLinks((await readJson(linksRes, LinkPageSchema, "Could not load your Hackatime links")).links)
 			} catch (err) {
 				setError(messageOf(err))
 				setLinks([])
 			}
 			try {
-				const { projects } = await read(HackatimeProjectsSchema, projectsRes)
+				const { projects } = await readJson(
+					projectsRes,
+					HackatimeProjectsSchema,
+					"Could not load your Hackatime projects",
+				)
 				setAccount({ projects, state: "linked" })
 			} catch (err) {
-				if (isRecord(err) && err.code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
+				if (err instanceof ApiRequestError && err.code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
 				else {
 					setAccount({ projects: [], state: "linked" })
 					setError(messageOf(err))
@@ -134,7 +117,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 
 	const link = () =>
 		run("link", async () => {
-			await ensureOk(
+			await readJson(
 				await fetch(`/api/projects/${projectId}/hackatime`, {
 					body: JSON.stringify({
 						hackatimeProject: picked,
@@ -143,13 +126,19 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 					headers: { "content-type": "application/json" },
 					method: "POST",
 				}),
+				ignoredBody,
+				"Could not link that Hackatime project",
 			)
 			setPicked("")
 		})
 
 	const unlink = (id: string) =>
 		run(id, async () => {
-			await ensureOk(await fetch(`/api/projects/${projectId}/hackatime/${id}`, { method: "DELETE" }))
+			await readJson(
+				await fetch(`/api/projects/${projectId}/hackatime/${id}`, { method: "DELETE" }),
+				ignoredBody,
+				"Could not unlink that Hackatime project",
+			)
 		})
 
 	const linkedNames = new Set(links?.map(l => l.hackatimeProject))
