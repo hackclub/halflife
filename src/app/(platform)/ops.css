@@ -436,9 +436,10 @@
 		background: color-mix(in srgb, var(--color-coin) 10%, var(--color-surface-raised));
 		border-color: var(--color-coin);
 	}
-	/* A plain explanation, not a problem to act on – the deduplicated hours notice is the reader being told why a number is smaller than expected. */
+	/* A plain explanation, not a problem to act on – the deduplicated hours notice is the reader being told why a number is smaller than expected. It takes the alert family's wash and text hue, in mint and its readable ink, so a note reads as the same kind of thing as a warning without borrowing its colour. */
 	.hl-callout--info {
-		background: var(--color-surface);
+		color: var(--color-success-ink);
+		background: color-mix(in srgb, var(--color-mint) 10%, var(--color-surface-raised));
 		border-color: var(--color-mint);
 	}
 
@@ -1849,4 +1850,20 @@ html[data-theme="dark"] .ops-root:has(.hl-admin) {
 	--color-mint: #008f78; /* selection and hover: the light ink-strong keeps 3.5:1 on it */
 	--color-paper: #0e0c18; /* the active sidebar pill turns light, so its label turns dark */
 	color-scheme: dark;
+}
+
+/*
+ * Callout copy in the dark console takes a step of white beyond its ink. The badge inks are sized for a word on a chip; read as a paragraph on a washed panel, the same value sits a touch dimmer than it should. Light mode's inks already read right on their panels.
+ */
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout {
+	color: color-mix(in srgb, var(--color-ink) 85%, white);
+}
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout--danger {
+	color: color-mix(in srgb, var(--color-danger-ink) 85%, white);
+}
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout--warning {
+	color: color-mix(in srgb, var(--color-warning-ink) 85%, white);
+}
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout--info {
+	color: color-mix(in srgb, var(--color-success-ink) 85%, white);
 }
