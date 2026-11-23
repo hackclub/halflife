@@ -3,19 +3,30 @@ import { applyAdminTheme, getAdminTheme, getServerAdminTheme, setAdminTheme, tog
 
 const g = globalThis as { localStorage?: unknown; document?: unknown }
 
+const fakeStorage = (): Storage => {
+	const items = new Map<string, string>()
+	return {
+		clear: (): void => items.clear(),
+		getItem: (key: string): string | null => items.get(key) ?? null,
+		key: (index: number): string | null => [...items.keys()][index] ?? null,
+		get length(): number {
+			return items.size
+		},
+		removeItem: (key: string): void => void items.delete(key),
+		setItem: (key: string, value: string): void => void items.set(key, value),
+	}
+}
+
 let previousStorage: unknown
 let previousDocument: unknown
 let dataset: { [_: string]: string | undefined }
+let storage: Storage
 
 beforeEach(() => {
 	previousStorage = g.localStorage
 	previousDocument = g.document
-	const items = new Map<string, string>()
-	g.localStorage = {
-		getItem: (key: string) => items.get(key) ?? null,
-		removeItem: (key: string): void => void items.delete(key),
-		setItem: (key: string, value: string): void => void items.set(key, value),
-	}
+	storage = fakeStorage()
+	g.localStorage = storage
 	dataset = {}
 	g.document = { documentElement: { dataset } }
 })
@@ -46,7 +57,6 @@ describe("admin theme", () => {
 	})
 
 	test("an unknown stored value falls back to light", () => {
-		const storage = g.localStorage as { setItem: (key: string, value: string) => void }
 		storage.setItem("half-life:admin:theme", "midnight")
 		expect(getAdminTheme()).toBe("light")
 	})
