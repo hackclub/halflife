@@ -531,17 +531,20 @@ export async function hidePost(postId: string, moderatorId: string, reason: stri
 }
 
 export async function restorePost(postId: string): Promise<void> {
+	// A reel a ban hid comes back through the unban, not here: restoring it now would republish a banned member's reel.
 	const count = await db.orm.public.Post.where({
 		deletedAt: null,
 		id: postId,
 		status: PostStatus.HIDDEN,
-	}).updateAndCount({
-		hiddenAt: null,
-		hiddenByBanAt: null,
-		hiddenById: null,
-		hiddenReason: null,
-		status: PostStatus.PUBLISHED,
 	})
+		.where(post => post.hiddenByBanAt.isNull())
+		.updateAndCount({
+			hiddenAt: null,
+			hiddenByBanAt: null,
+			hiddenById: null,
+			hiddenReason: null,
+			status: PostStatus.PUBLISHED,
+		})
 	if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 }
 
@@ -551,6 +554,7 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 			.where(target => target.hiddenAt.isNull())
 			.updateAndCount({
 				hiddenAt: formatDbTimestamp(new Date()),
+				hiddenByBanAt: null,
 				hiddenById: moderatorId,
 				hiddenReason: sanitize(reason),
 			})
@@ -564,8 +568,10 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 /** Put a hidden comment back. The mirror of `hideComment`, count included: a comment in the feed is a comment in the count. */
 export async function restoreComment(commentId: string): Promise<void> {
 	await db.transaction(async tx => {
+		// Only a comment a moderator hid: one a ban hid comes back through the unban, which is the only path that can undo that hide.
 		const count = await tx.orm.public.PostComment.where({ deletedAt: null, id: commentId })
 			.where(target => target.hiddenAt.isNotNull())
+			.where(target => target.hiddenByBanAt.isNull())
 			.updateAndCount({
 				hiddenAt: null,
 				hiddenById: null,
