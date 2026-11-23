@@ -18,6 +18,8 @@
 	--color-surface: var(--color-cream); /* page ground – warm off-white, not pure white */
 	--color-surface-raised: var(--color-paper); /* cards sitting on the ground */
 	--color-surface-sunken: #f2ecec;
+	/* A control's own ground: one step down from the card it sits on, so a field or an idle button reads as an object rather than a hole. In light mode `sunken` is already that step down; the dark block darkens it explicitly, because there `sunken` is the hover lift. */
+	--color-field-fill: var(--color-surface-sunken);
 	--color-border: #cacedd;
 	/* A field's edge, which has to meet 3:1 where a panel's need not: `line` is 1.72:1 on a white field. 3.68:1. */
 	--color-field-edge: var(--color-field);
@@ -230,7 +232,7 @@
 		color: var(--color-ink-strong);
 		text-decoration: none;
 		cursor: pointer;
-		background: var(--color-surface-raised);
+		background: var(--color-field-fill);
 		border: 2px solid var(--color-ink-strong);
 		border-radius: var(--radius-button);
 	}
@@ -309,9 +311,13 @@
 		padding: 0.6rem 0.75rem;
 		font: inherit;
 		color: var(--color-ink);
-		background: var(--color-surface-raised);
+		background: var(--color-field-fill);
 		border: 2px solid var(--color-field-edge);
 		border-radius: var(--radius-button);
+	}
+	/* A select opens a list, so it is a button as much as a field. */
+	.hl-select {
+		cursor: pointer;
 	}
 	.hl-textarea {
 		min-height: 7rem;
@@ -608,7 +614,10 @@
 		letter-spacing: 0.08em;
 	}
 	.hl-admin-side a {
-		display: block;
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		justify-content: space-between;
 		padding: 0.3rem 0.6rem;
 		font-weight: 600;
 		color: var(--color-ink);
@@ -622,6 +631,36 @@
 	.hl-admin-side a[aria-current="page"] {
 		color: var(--color-paper);
 		background: var(--color-ink-strong);
+	}
+	/* A page being navigated to sits between the hover ground and the solid pill, so the click answers before the route lands while the pill still means "here". Mixed with the ink the pill is made of, so it stays in that order in both themes. */
+	.hl-admin-side a.hl-pending {
+		color: var(--color-ink);
+		background: color-mix(in srgb, var(--color-ink-strong) 30%, var(--color-surface-sunken));
+	}
+	/* The shortcut a tab answers to while Alt is held: a key cap at the far end, where a menu's accelerator sits. */
+	.hl-hotkey {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		padding: 0.05rem 0.35rem;
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		line-height: 1.4;
+		color: var(--color-ink-muted);
+		background: var(--color-field-fill);
+		border: 1px solid var(--color-border);
+		border-radius: 4px;
+	}
+	/* The header's back link is inline text rather than a flex row, so its cap needs the gap the sidebar gets from `gap`. */
+	.hl-admin-dashboard .hl-hotkey {
+		margin-left: 0.5rem;
+	}
+	/* On the current page the tab is a solid pill, so the cap takes the pill's own ink rather than a ground of its own. */
+	.hl-admin-side a[aria-current="page"] .hl-hotkey {
+		color: inherit;
+		background: transparent;
+		border-color: color-mix(in srgb, currentColor 45%, transparent);
 	}
 	/* The sections toggle: a single bar on a phone that opens the list, hidden on a desktop where the list is always shown. */
 	.hl-admin-menu-toggle {
@@ -1458,6 +1497,20 @@
 	.hl-chip[aria-current="true"] .hl-count {
 		color: inherit;
 	}
+	/* A page tab's number, drawn in the markup so the server can render it and revealed while Alt is held. */
+	.hl-tab-key {
+		display: none;
+		margin-left: 0.4rem;
+	}
+	html[data-alt-held="true"] .hl-admin .hl-tab-key {
+		display: inline-flex;
+	}
+	/* The selected chip is a solid fill, so its number takes the chip's own ink rather than a ground of its own. */
+	html[data-alt-held="true"] .hl-chip[aria-current="true"] .hl-tab-key {
+		color: inherit;
+		background: transparent;
+		border-color: color-mix(in srgb, currentColor 45%, transparent);
+	}
 
 	/* ── Dispute thread ────────────────────────────────────────────────────── */
 	/*
@@ -1740,11 +1793,11 @@ html:has(.hl-admin) {
 	font-size: 0.85rem;
 	border-width: 1px;
 }
-/* A read-only field looks fixed: sunken ground and muted text, so nobody mistakes it for a box to type in. */
+/* A read-only field looks fixed: the field ground with muted text, so nobody mistakes it for a box to type in. */
 .hl-admin-main .hl-input[readonly] {
 	color: var(--color-ink-muted);
 	cursor: default;
-	background: var(--color-surface-sunken);
+	background: var(--color-field-fill);
 }
 /* A filter bar whose fields come in groups – the date range, then the selects – wraps by group rather than one field at a time, so a row never ends with a single field stranded on the next line. */
 .hl-filters__grid:has(> .hl-filter-group) {
@@ -1803,7 +1856,7 @@ html:has(.hl-admin) {
 .hl-admin-main .hl-btn:disabled {
 	color: var(--color-ink-muted);
 	cursor: not-allowed;
-	background: var(--color-surface-sunken);
+	background: var(--color-field-fill);
 	border-color: var(--color-border);
 	opacity: 1;
 }
@@ -1834,6 +1887,7 @@ html[data-theme="dark"] .ops-root:has(.hl-admin) {
 	--color-surface: #000000; /* the ground: pure black, with the raised cards still a step above it */
 	--color-surface-raised: #1d1929; /* cards, one step up from the ground */
 	--color-surface-sunken: #241f33; /* hover fills, a step up again */
+	--color-field-fill: #17131f; /* controls sit darker than the card, where the hover lift sits lighter */
 	--color-border: #555062; /* still a quiet rule, as in light mode */
 	--color-line-soft: #555062; /* the scrollbar takes the same rule */
 	--color-line: #4a4560; /* pale rules would outshine the selected swatch's rim, so the unselected ones step back here */

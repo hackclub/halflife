@@ -8,7 +8,7 @@ import { textWithImages } from "@/components/platform/Markdown"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { Button, Chip, Panel } from "@/components/platform/ui"
-import { errorMessage } from "@/lib/api-error"
+import { errorMessage, ignoredBody, readErrorMessage, readJson } from "@/lib/api-error"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
@@ -45,20 +45,25 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 		setSaving(true)
 		setError(null)
 		try {
-			const res = await fetch(`/api/projects/${projectId}/dispute`, {
-				body: JSON.stringify({ note: note.trim(), phase }),
-				headers: { "content-type": "application/json" },
-				method: "POST",
-			})
-			if (!res.ok) {
-				const payload: unknown = await res.json().catch(() => null)
-				setError(errorMessage(payload, `That did not send (${res.status})`))
-				return
-			}
+			await readJson(
+				await fetch(`/api/projects/${projectId}/dispute`, {
+					body: JSON.stringify({ note: note.trim(), phase }),
+					headers: { "content-type": "application/json" },
+					method: "POST",
+				}),
+				ignoredBody,
+				"That did not send",
+			)
 			router.refresh()
 			onClose()
-		} catch {
-			setError("Could not reach the server. Try again.")
+		} catch (err) {
+			setError(
+				readErrorMessage(
+					err,
+					"The server's answer was not in the expected shape. Try again.",
+					"Could not reach the server. Try again.",
+				),
+			)
 		} finally {
 			setSaving(false)
 		}

@@ -73,9 +73,10 @@ export default async function AdminGrantsPage({ searchParams }: Props) {
 			<PageHeader
 				actions={
 					<div className="hl-row">
-						{TABS.map(item => (
+						{TABS.map((item, index) => (
 							<Link
 								aria-current={item.id === tab || undefined}
+								aria-keyshortcuts={`Alt+${index + 1}`}
 								className="hl-chip"
 								href={tabHref(item.id)}
 								key={item.id}
@@ -87,6 +88,7 @@ export default async function AdminGrantsPage({ searchParams }: Props) {
 										<span className="hl-count">{counts[item.id]}</span>
 									</>
 								)}
+								<kbd className="hl-hotkey hl-tab-key">{index + 1}</kbd>
 							</Link>
 						))}
 					</div>

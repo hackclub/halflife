@@ -4,7 +4,7 @@ import { useState } from "react"
 import { z } from "zod"
 import { Button, Callout } from "@/app/components/ui"
 import { useConfirm } from "@/app/components/ui/useConfirm"
-import { errorMessage } from "@/lib/api-error"
+import { readErrorMessage, readJson } from "@/lib/api-error"
 
 const ImportOutcomeSchema = z.object({
 	ari: z.enum(["sent", "failed", "not_configured", "not_attempted"]),
@@ -83,21 +83,15 @@ export function AirtableImportForm({
 		setError(null)
 		setSummary(null)
 		try {
-			const res = await fetch("/api/admin/program/import-airtable", { method: "POST" })
-			if (!res.ok) {
-				const payload: unknown = await res.json().catch(() => null)
-				setError(errorMessage(payload, `Import failed (${res.status})`))
-				return
-			}
-			const parsed = z.object({ summary: ImportSummarySchema }).safeParse(await res.json().catch(() => null))
-			if (!parsed.success) {
-				setError("The server's answer was not in the expected shape")
-				return
-			}
-			setSummary(parsed.data.summary)
+			const { summary: imported } = await readJson(
+				await fetch("/api/admin/program/import-airtable", { method: "POST" }),
+				z.object({ summary: ImportSummarySchema }),
+				"Import failed",
+			)
+			setSummary(imported)
 			router.refresh()
-		} catch {
-			setError("Could not reach the server")
+		} catch (err) {
+			setError(readErrorMessage(err, "The server's answer was not in the expected shape", "Could not reach the server"))
 		} finally {
 			setBusy(false)
 		}

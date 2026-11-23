@@ -23,6 +23,33 @@ export const isAdminNavActive = (pathname: string, href: string): boolean => {
 	return pathname === href || pathname.startsWith(`${href}/`)
 }
 
+/**
+ * The key each console page answers to while Alt is held.
+ *
+ * Most are the page's own initial. Where two pages want the same letter the one people reach more often keeps it: Reports takes R and Referrals E from rEferrals; the rest of the clashes take the next free letter of their name (progrAm, eVents, audIt, fulfillMent, reViews). Uploads has every letter taken, so it takes the first free letter left. The chips put the key on show while Alt is held, so the odd one out is discoverable rather than memorised.
+ */
+export const ADMIN_HOTKEYS: { [_: string]: string } = {
+	"/admin": "o",
+	"/admin/audit": "i",
+	"/admin/deadlines": "d",
+	"/admin/events": "v",
+	"/admin/feed": "f",
+	"/admin/fulfillment": "m",
+	"/admin/grants": "g",
+	"/admin/ledger": "l",
+	"/admin/program": "a",
+	"/admin/projects": "p",
+	"/admin/referrals": "e",
+	"/admin/reports": "r",
+	"/admin/shop": "s",
+	"/admin/uploads": "h",
+	"/admin/users": "u",
+	"/reviews": "w",
+}
+
+/** The key a page answers to, or undefined for a page that has none. */
+export const adminHotkey = (href: string): string | undefined => ADMIN_HOTKEYS[href]
+
 /** The fields of a directory user the palette needs to recognise one by their email or Slack ID. */
 export interface PaletteUser {
 	email: string

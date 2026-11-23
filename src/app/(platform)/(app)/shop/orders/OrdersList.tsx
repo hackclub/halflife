@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Chip, Panel } from "@/components/platform/ui"
-import { errorMessage, refusalMessage } from "@/lib/api-error"
+import { ignoredBody, readErrorMessage, readJson } from "@/lib/api-error"
 import type { ShopOrderStatus } from "@/lib/enums"
 import { STAGE_LABELS } from "@/lib/fulfillment"
 import type { ShopOrderPublic } from "@/lib/shop"
@@ -39,24 +39,29 @@ export function OrdersList({ orders }: { orders: ShopOrderPublic[] }) {
 		setError(null)
 		setNotice(null)
 		try {
-			const res = await fetch(`/api/shop/orders/${order.id}/delivery`, {
-				body: JSON.stringify({ deliveryPreference }),
-				headers: { "content-type": "application/json" },
-				method: "POST",
-			})
-			const payload: unknown = await res.json().catch(() => null)
-			if (!res.ok) {
-				setError(errorMessage(payload, refusalMessage(res.status, "That delivery could not be changed")))
-				return
-			}
+			await readJson(
+				await fetch(`/api/shop/orders/${order.id}/delivery`, {
+					body: JSON.stringify({ deliveryPreference }),
+					headers: { "content-type": "application/json" },
+					method: "POST",
+				}),
+				ignoredBody,
+				"That delivery could not be changed",
+			)
 			setNotice(
 				deliveryPreference === "SHIP"
 					? `Order #${order.orderNumber} will ship to your address.`
 					: `Order #${order.orderNumber} will be paid as a grant card for its value.`,
 			)
 			router.refresh()
-		} catch {
-			setError("Could not reach the server. Your order is unchanged. Try again.")
+		} catch (err) {
+			setError(
+				readErrorMessage(
+					err,
+					"The server's answer was not in the expected shape. Your order is unchanged.",
+					"Could not reach the server. Your order is unchanged. Try again.",
+				),
+			)
 		} finally {
 			setBusy(null)
 		}
@@ -69,21 +74,26 @@ export function OrdersList({ orders }: { orders: ShopOrderPublic[] }) {
 		setError(null)
 		setNotice(null)
 		try {
-			const res = await fetch(`/api/shop/orders/${order.id}/cancel`, {
-				body: JSON.stringify({}),
-				headers: { "content-type": "application/json" },
-				method: "POST",
-			})
-			const payload: unknown = await res.json().catch(() => null)
-			if (!res.ok) {
-				setError(errorMessage(payload, refusalMessage(res.status, "That order could not be cancelled")))
-				return
-			}
+			await readJson(
+				await fetch(`/api/shop/orders/${order.id}/cancel`, {
+					body: JSON.stringify({}),
+					headers: { "content-type": "application/json" },
+					method: "POST",
+				}),
+				ignoredBody,
+				"That order could not be cancelled",
+			)
 			setConfirming(null)
 			setNotice(`Order #${order.orderNumber} cancelled. ${order.totalCredits} coins are back in your balance.`)
 			router.refresh()
-		} catch {
-			setError("Could not reach the server. Your order is unchanged. Try again.")
+		} catch (err) {
+			setError(
+				readErrorMessage(
+					err,
+					"The server's answer was not in the expected shape. Your order is unchanged.",
+					"Could not reach the server. Your order is unchanged. Try again.",
+				),
+			)
 		} finally {
 			setBusy(null)
 		}

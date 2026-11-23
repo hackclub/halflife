@@ -73,9 +73,10 @@ export default async function AdminReportsPage({
 			<PageHeader
 				actions={
 					<div className="hl-row">
-						{FILTERS.map(f => (
+						{FILTERS.map((f, index) => (
 							<Link
 								aria-current={f.id === filter || undefined}
+								aria-keyshortcuts={`Alt+${index + 1}`}
 								className="hl-chip"
 								href={f.id === "open" ? "/admin/reports" : `/admin/reports?status=${f.id}`}
 								key={f.id}
@@ -84,6 +85,7 @@ export default async function AdminReportsPage({
 								<span className="hl-count">
 									{f.status === "ALL" ? counts.OPEN + counts.RESOLVED + counts.DISMISSED : counts[f.status]}
 								</span>
+								<kbd className="hl-hotkey hl-tab-key">{index + 1}</kbd>
 							</Link>
 						))}
 					</div>

@@ -6,7 +6,7 @@ import { useState } from "react"
 import { IconArrowRight, IconFilm, IconPlus, IconTrash, IconX } from "@/components/platform/icons"
 import { PublicReelModal } from "@/components/platform/modals/CheckpointModals"
 import { Button, Chip, Panel } from "@/components/platform/ui"
-import { errorMessage } from "@/lib/api-error"
+import { ignoredBody, readErrorMessage, readJson } from "@/lib/api-error"
 import { fmtDate } from "@/lib/projects"
 import { PLATFORM_INFO } from "@/lib/public-reels"
 import type { MyReel, MyReelGroup } from "@/lib/queries/reels"
@@ -94,16 +94,17 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd(): void; onCh
 		setDeleting(true)
 		setError(null)
 		try {
-			const res = await fetch(`/api/posts/${reel.id}`, { method: "DELETE" })
-			if (!res.ok) {
-				const body: unknown = await res.json().catch(() => null)
-				setError(errorMessage(body, "That reel didn't delete. Try again."))
-				return
-			}
+			await readJson(await fetch(`/api/posts/${reel.id}`, { method: "DELETE" }), ignoredBody, "That reel didn't delete")
 			setConfirming(false)
 			onChanged()
-		} catch {
-			setError("That reel didn't delete. Try again.")
+		} catch (err) {
+			setError(
+				readErrorMessage(
+					err,
+					"The server's answer was not in the expected shape. Try again.",
+					"That reel didn't delete. Try again.",
+				),
+			)
 		} finally {
 			setDeleting(false)
 		}
@@ -113,11 +114,20 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd(): void; onCh
 		setRemoving(id)
 		setError(null)
 		try {
-			const res = await fetch(`/api/public-reels/${id}`, { method: "DELETE" })
-			if (!res.ok) throw new Error(String(res.status))
+			await readJson(
+				await fetch(`/api/public-reels/${id}`, { method: "DELETE" }),
+				ignoredBody,
+				"That link didn't remove",
+			)
 			onChanged()
-		} catch {
-			setError("That link didn't remove. Try again.")
+		} catch (err) {
+			setError(
+				readErrorMessage(
+					err,
+					"The server's answer was not in the expected shape. Try again.",
+					"That link didn't remove. Try again.",
+				),
+			)
 		} finally {
 			setRemoving(null)
 		}
