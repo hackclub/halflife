@@ -1,3 +1,4 @@
+import { or } from "@prisma/orm-postgres/orm-client"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import type { CalendarEvent } from "@/lib/events"
 import db from "@/lib/prisma8"
@@ -28,7 +29,8 @@ const toCalendarEvent = (event: Models.public_ProgramEvent): CalendarEvent => ({
  */
 export async function listUpcomingEvents(from: Date, take: number): Promise<CalendarEvent[]> {
 	const rows = await db.orm.public.ProgramEvent.where({ published: true })
-		.where(event => event.startsAt.gte(formatDbTimestamp(from)))
+		// Either still ahead, or started and not yet ended. An open-ended event that has started has no end to compare, so it is dropped, as `eventIsLive` drops it.
+		.where(event => or(event.startsAt.gte(formatDbTimestamp(from)), event.endsAt.gt(formatDbTimestamp(from))))
 		.orderBy(event => event.startsAt.asc())
 		.limit(take)
 		.all()
