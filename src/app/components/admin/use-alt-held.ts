@@ -28,5 +28,18 @@ export function useAltHeld(): boolean {
 		}
 	}, [])
 
+	// The page tabs' number caps are drawn in the markup and revealed from CSS, so one hook instance lights every page's numbers without a listener per cap.
+	useEffect(() => {
+		if (held) document.documentElement.dataset.altHeld = "true"
+		else delete document.documentElement.dataset.altHeld
+	}, [held])
+
+	useEffect(
+		() => () => {
+			delete document.documentElement.dataset.altHeld
+		},
+		[],
+	)
+
 	return held
 }

@@ -4,16 +4,27 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 
 /**
- * Lets `[` and `]` step through a page's tabs, in the order the chips above it are drawn, wrapping at either end. A key typed into a field is left alone, and so is one pressed with a modifier.
+ * Lets `[` and `]` step through a page's tabs, in the order the chips above it are drawn, wrapping at either end; Alt and a tab's number jumps straight to it. A key typed into a field is left alone, and so is one pressed with a modifier.
  */
 export function TabKeys({ current, hrefs }: Readonly<{ current: string; hrefs: string[] }>) {
 	const router = useRouter()
 
 	useEffect(() => {
 		const onKey = (event: KeyboardEvent) => {
-			if (event.key !== "[" && event.key !== "]") return
 			// Holding a key repeats it; one press moves one tab, so a held key must not push a route per repeat.
 			if (event.repeat) return
+			// Alt and the number the chip shows, by the order the chips are drawn. The typed digit first, the physical one second, for Option+digit on a Mac.
+			if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+				const typed = /^[1-9]$/.test(event.key) ? Number(event.key) : 0
+				const physical = event.code.startsWith("Digit") ? Number(event.code.slice(5)) : 0
+				const position = typed || physical
+				const href = position > 0 ? hrefs[position - 1] : undefined
+				if (href === undefined) return
+				event.preventDefault()
+				router.push(href)
+				return
+			}
+			if (event.key !== "[" && event.key !== "]") return
 			if (event.metaKey || event.ctrlKey || event.altKey) return
 			const { target } = event
 			if (

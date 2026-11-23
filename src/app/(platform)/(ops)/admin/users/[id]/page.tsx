@@ -186,14 +186,16 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 				actions={
 					<div className="hl-row">
 						{user.fraudFlagged ? <Badge tone="danger">flagged</Badge> : null}
-						{tabs.map(item => (
+						{tabs.map((item, index) => (
 							<Link
 								aria-current={item.id === tab || undefined}
+								aria-keyshortcuts={`Alt+${index + 1}`}
 								className="hl-chip"
 								href={item.id === "history" ? `/admin/users/${id}` : `/admin/users/${id}?tab=${item.id}`}
 								key={item.id}
 							>
 								{item.label}
+								<kbd className="hl-hotkey hl-tab-key">{index + 1}</kbd>
 							</Link>
 						))}
 					</div>

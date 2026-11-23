@@ -639,7 +639,10 @@
 	}
 	/* The shortcut a tab answers to while Alt is held: a key cap at the far end, where a menu's accelerator sits. */
 	.hl-hotkey {
+		display: inline-flex;
 		flex: none;
+		align-items: center;
+		justify-content: center;
 		padding: 0.05rem 0.35rem;
 		font-family: var(--font-mono);
 		font-size: 0.68rem;
@@ -1493,6 +1496,20 @@
 	/* A count is muted against a panel, but the selected chip fills with sky: the muted ink read 1.2:1 on it. Take the chip's own colour instead, leaving weight and figures as the quieter cues. */
 	.hl-chip[aria-current="true"] .hl-count {
 		color: inherit;
+	}
+	/* A page tab's number, drawn in the markup so the server can render it and revealed while Alt is held. */
+	.hl-tab-key {
+		display: none;
+		margin-left: 0.4rem;
+	}
+	html[data-alt-held="true"] .hl-admin .hl-tab-key {
+		display: inline-flex;
+	}
+	/* The selected chip is a solid fill, so its number takes the chip's own ink rather than a ground of its own. */
+	html[data-alt-held="true"] .hl-chip[aria-current="true"] .hl-tab-key {
+		color: inherit;
+		background: transparent;
+		border-color: color-mix(in srgb, currentColor 45%, transparent);
 	}
 
 	/* ── Dispute thread ────────────────────────────────────────────────────── */

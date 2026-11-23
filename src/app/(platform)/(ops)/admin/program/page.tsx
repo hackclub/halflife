@@ -60,14 +60,16 @@ export default async function AdminProgramPage({ searchParams }: Props) {
 			<PageHeader
 				actions={
 					<div className="hl-row">
-						{TABS.map(item => (
+						{TABS.map((item, index) => (
 							<Link
 								aria-current={item.id === tab || undefined}
+								aria-keyshortcuts={`Alt+${index + 1}`}
 								className="hl-chip"
 								href={tabHref(item.id)}
 								key={item.id}
 							>
 								{item.label}
+								<kbd className="hl-hotkey hl-tab-key">{index + 1}</kbd>
 							</Link>
 						))}
 					</div>
