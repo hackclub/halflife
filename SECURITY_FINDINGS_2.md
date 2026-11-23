@@ -56,7 +56,7 @@ Low
   - An old Ari decision can land on a resubmission Ari never saw.
 - Deleted content: deleted or hidden reels stay live in storage.
 - Spam: comments have no rate limit, and the rate limiter keeps counts per server, so limits multiply as you add servers.
-- CI: the lint workflows hold a token that can push to main, which auto-deploys, while running third-party code. Their actions aren't pinned to exact versions.
+- CI: the lint workflows hold a token that can push to main, which reaches the auto-deploying prod branch through a release PR, while running third-party code. Their actions aren't pinned to exact versions.
 - Defence in depth:
   - The CSP has no script-src.
   - The image optimiser's cache can be bypassed to burn CPU.
