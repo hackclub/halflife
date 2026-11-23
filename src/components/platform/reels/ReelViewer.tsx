@@ -201,10 +201,9 @@ export function ReelViewer() {
 				ref={stage}
 			>
 				<div
-					className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain"
+					className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain [overflow-anchor:none]"
 					ref={scroller}
 					// `overflow-anchor: none` because the end slide renders before the next page arrives, and the reels are then inserted ABOVE it. Scroll anchoring reads that as content growing over the reader and holds their position – which meant landing on "that is everything" instead of the newest reel, with the feed sitting unseen above it.
-					style={{ overflowAnchor: "none" }}
 				>
 					{(restoring ? [] : feed.items).map((reel, i) => (
 						<div

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { z } from "zod"
 import { ok, parseQuery } from "@/lib/api"
-import { toDirectoryRow } from "@/lib/directory-rows"
+import { toDirectoryRows } from "@/lib/directory-rows"
 import { withPermission } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 import { hasRole, Permission, Role } from "@/lib/permissions"
@@ -22,5 +22,5 @@ export const GET = withPermission(Permission.VIEW_USERS, async (req: NextRequest
 
 	const includePii = hasRole(gate.roles, Role.ADMIN) || hasRole(gate.roles, Role.AUDITOR)
 	const page = await listUsers(parsed.data, { includePii })
-	return ok({ items: page.items.map(toDirectoryRow), nextCursor: page.nextCursor })
+	return ok({ items: await toDirectoryRows(page.items, includePii), nextCursor: page.nextCursor })
 })

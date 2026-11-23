@@ -62,10 +62,10 @@ export default function Faq() {
 							key={faq.q}
 							style={{ padding: FIELD.padding }}
 						>
-							<dt className="font-display font-bold" style={{ fontSize: FIELD.question, lineHeight: 1.1 }}>
+							<dt className="font-display font-bold leading-[1.1]" style={{ fontSize: FIELD.question }}>
 								{faq.q}
 							</dt>
-							<dd className="mt-[0.85em] text-hl-paper" style={{ fontSize: FIELD.answer, lineHeight: 1.45 }}>
+							<dd className="mt-[0.85em] text-hl-paper leading-[1.45]" style={{ fontSize: FIELD.answer }}>
 								{faq.a}
 							</dd>
 						</div>

@@ -127,7 +127,7 @@ export function YAxis({
 }) {
 	const edge = side === "left" ? { right: 6 } : { left: 6 }
 	return (
-		<div style={{ height: `${CHART_H}px`, position: "relative", width }}>
+		<div className="relative" style={{ height: `${CHART_H}px`, width }}>
 			{ticks.map((tick, i) => (
 				<span
 					aria-hidden="true"
@@ -184,13 +184,9 @@ export function DayAxis({ days, labelEvery }: { days: readonly { day: string }[]
 			{days.map((d, i) =>
 				i % labelEvery === 0 ? (
 					<div
+						className="overflow-hidden text-ellipsis whitespace-nowrap"
 						key={d.day}
-						style={{
-							gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-							whiteSpace: "nowrap",
-						}}
+						style={{ gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}` }}
 					>
 						{d.day.slice(5)}
 					</div>

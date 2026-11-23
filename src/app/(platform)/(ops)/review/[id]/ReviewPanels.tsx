@@ -179,9 +179,7 @@ export function ReviewEvidence({ claimedByMe, detail }: { claimedByMe: boolean; 
 								<td>
 									{session.title}
 									{session.content ? (
-										<div className="hl-hint" style={{ whiteSpace: "pre-wrap" }}>
-											{session.content.slice(0, 600)}
-										</div>
+										<div className="hl-hint [white-space:pre-wrap]">{session.content.slice(0, 600)}</div>
 									) : null}
 									{session.hoursSource === "HACKATIME_TRACKED" ? (
 										<div className="hl-hint">counted via Hackatime, so it contributes 0 to the journal total</div>
@@ -199,12 +197,13 @@ export function ReviewEvidence({ claimedByMe, detail }: { claimedByMe: boolean; 
 								</td>
 								<td>
 									{session.media.map(m => (
-										<a href={m.url ?? "#"} key={m.id} style={{ marginRight: "0.5rem" }}>
+										<a className="mr-2" href={m.url ?? "#"} key={m.id}>
 											{m.type.toLowerCase()}
 										</a>
 									))}
 									{session.timelapses.map(t => (
 										<a
+											className="mr-2"
 											href={
 												t.provider === "lapse" && t.externalId
 													? lapseTimelapseUrl(t.externalId)
@@ -212,7 +211,6 @@ export function ReviewEvidence({ claimedByMe, detail }: { claimedByMe: boolean; 
 											}
 											key={t.id}
 											rel="noreferrer"
-											style={{ marginRight: "0.5rem" }}
 											target="_blank"
 										>
 											{t.provider === "lapse" ? "lapse" : "timelapse"}

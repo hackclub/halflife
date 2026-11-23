@@ -62,7 +62,7 @@ export function Panel({
 			id={id}
 		>
 			{(isTruthy(title) || isTruthy(actions)) && (
-				<div className="hl-row" style={{ justifyContent: "space-between" }}>
+				<div className="hl-row justify-between">
 					{isTruthy(title) ? <h2 style={{ fontSize: "1.05rem", margin: 0 }}>{title}</h2> : <span />}
 					{actions}
 				</div>

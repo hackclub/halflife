@@ -40,10 +40,7 @@ export default async function AdminFeedComposePage() {
 					<PostComposer canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} projects={options} />
 				</div>
 				<Panel title="Before you post">
-					<ul
-						className="hl-hint"
-						style={{ display: "flex", flexDirection: "column", gap: "0.5rem", margin: 0, paddingLeft: "1.1rem" }}
-					>
+					<ul className="hl-hint flex-col" style={{ display: "flex", gap: "0.5rem", margin: 0, paddingLeft: "1.1rem" }}>
 						<li>A video is the reel itself. Use mp4, webm or mov.</li>
 						<li>Announcements are pinned above every other reel and are only visible to feed managers.</li>
 						<li>A project link is optional. Idea and progress reels usually have one.</li>

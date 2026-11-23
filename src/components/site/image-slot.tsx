@@ -65,12 +65,11 @@ export default function ImageSlot({
 			{/* measured grid */}
 			<div
 				aria-hidden
-				className="absolute inset-0 opacity-30"
+				className="absolute inset-0 opacity-30 [mask-image:radial-gradient(120%_120%_at_50%_50%,_#000_25%,_transparent_78%)]"
 				style={{
 					backgroundImage: `repeating-linear-gradient(to right, ${t.rule} 0 1px, transparent 1px ${
 						2.25 * scale
 					}rem), repeating-linear-gradient(to bottom, ${t.rule} 0 1px, transparent 1px ${2.25 * scale}rem)`,
-					maskImage: "radial-gradient(120% 120% at 50% 50%, #000 25%, transparent 78%)",
 				}}
 			/>
 			{/* registration ticks */}
@@ -94,12 +93,8 @@ export default function ImageSlot({
 			{!backdrop && (
 				<div className="absolute inset-0 flex flex-col items-center justify-center gap-[0.35em] px-4 text-center">
 					<span
-						className={`font-display font-bold uppercase ${t.title}`}
-						style={{
-							fontSize: `${0.95 * scale}rem`,
-							letterSpacing: "0.14em",
-							lineHeight: 1.1,
-						}}
+						className={`font-display font-bold uppercase ${t.title} [letter-spacing:0.14em] leading-[1.1]`}
+						style={{ fontSize: `${0.95 * scale}rem` }}
 					>
 						{label}
 					</span>

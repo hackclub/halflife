@@ -11,6 +11,7 @@ import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { PenaltyCard } from "@/app/components/forms/PenaltyCard"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, Table } from "@/app/components/ui"
+import { type ProjectAirtableLinks, projectAirtableLinks } from "@/lib/airtable/links"
 import { CREDIT_NAME_PLURAL, scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { formatUtcDateTime } from "@/lib/deadline"
@@ -82,12 +83,17 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 	// Fresh from HCA, not the status stored at the last sign-in: a maker who verified since then must not be shown a locked payout, and the routes check the same answer. Only asked when this page can issue something, because it may call HCA.
 	const identityVerified = canManageCredit ? await isIdentityVerified(id) : false
 
+	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
 	const detail = await getUserDetail(id, {
-		includeSensitive: hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR),
+		includeSensitive: includePii,
 	})
 	if (!detail) notFound()
 
 	const { user, balances, ledger, orders, printer } = detail
+	// The Airtable rows are contact-bearing, so they are read only for the callers who see the rest of the contact details.
+	const airtableLinks = includePii
+		? await projectAirtableLinks(user.themeProjects.map(project => project.id))
+		: new Map<string, ProjectAirtableLinks>()
 	const summary = permissionSummary(user.roles.map(r => r.role))
 	const canManageRoles = hasPermission(roles, Permission.MANAGE_ROLES)
 	const canManageUsers = hasPermission(roles, Permission.MANAGE_USERS)
@@ -350,6 +356,7 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 						{user.themeProjects.map(project => (
 							<ThemedProjectRow
 								data={{
+									airtableLinks: airtableLinks.get(project.id) ?? {},
 									approvedHours: project.approvedHours,
 									buildStatus: project.buildStatus,
 									designFunding: fundingByProject.get(project.id) ?? null,

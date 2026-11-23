@@ -53,7 +53,7 @@ export function useConfirm(): { dialog: ReactNode; confirm(options: ConfirmOptio
 					/>
 				</Field>
 			) : null}
-			<div className="hl-row" style={{ justifyContent: "flex-end" }}>
+			<div className="hl-row [justify-content:flex-end]">
 				<Button onClick={() => close(null)} type="button">
 					Cancel
 				</Button>

@@ -123,7 +123,7 @@ export function RobertCard({
 				{robert.reviewNote ? (
 					<>
 						<dt>Reviewer note</dt>
-						<dd style={{ whiteSpace: "pre-wrap" }}>{robert.reviewNote}</dd>
+						<dd className="[white-space:pre-wrap]">{robert.reviewNote}</dd>
 					</>
 				) : null}
 				{robert.reviewerName ? (

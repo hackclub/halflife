@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
-import { bomData, bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
+import { bomData, bomLockReason, listBom, MAX_BOM_ITEMS, syncBomToAirtable } from "@/lib/bom"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { dollars } from "@/lib/money"
@@ -75,6 +75,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	})
 
 	after(() => scheduleRepoSync(id))
+	after(() => syncBomToAirtable(id, gate.user))
 
 	return ok({ items: await listBom(id) }, { status: 201 })
 })
@@ -121,6 +122,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	})
 
 	after(() => scheduleRepoSync(id))
+	after(() => syncBomToAirtable(id, gate.user))
 
 	return ok({ taxShippingUsd: updated.bomTaxShippingUsd ?? 0 })
 })

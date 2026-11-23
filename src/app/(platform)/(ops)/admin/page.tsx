@@ -171,11 +171,7 @@ async function SummaryTab() {
 			</div>
 
 			<Panel
-				actions={
-					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						from the dashboard prompt
-					</span>
-				}
+				actions={<span className="hl-hint hl-note--inline">from the dashboard prompt</span>}
 				title="Net Promoter Score"
 			>
 				{nps === null ? (
@@ -183,15 +179,7 @@ async function SummaryTab() {
 				) : nps.responses === 0 ? (
 					<EmptyState>Nobody has answered the NPS question yet.</EmptyState>
 				) : (
-					<div
-						style={{
-							alignItems: "center",
-							display: "flex",
-							flexWrap: "wrap",
-							gap: "1.5rem",
-							justifyContent: "space-between",
-						}}
-					>
+					<div className="flex flex-wrap items-center justify-between gap-6">
 						<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
 						<ShareDonut
 							centerLabel="responses"
@@ -206,7 +194,7 @@ async function SummaryTab() {
 						/>
 					</div>
 				)}
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus the
 					detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from the same
 					Signups table the dashboard&apos;s prompt writes to, cached for a minute.
@@ -215,21 +203,11 @@ async function SummaryTab() {
 
 			<Panel
 				actions={
-					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						each project counted once, in the state its card shows
-					</span>
+					<span className="hl-hint hl-note--inline">each project counted once, in the state its card shows</span>
 				}
 				title="Reviewer activity"
 			>
-				<div
-					style={{
-						alignItems: "center",
-						display: "flex",
-						flexWrap: "wrap",
-						gap: "1.5rem",
-						justifyContent: "space-between",
-					}}
-				>
+				<div className="flex flex-wrap items-center justify-between gap-6">
 					<ShareDonut
 						centerLabel="submitted"
 						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
@@ -237,13 +215,13 @@ async function SummaryTab() {
 						measure="Project review status"
 						rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
 					/>
-					<div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+					<div className="flex flex-col gap-3">
 						<Stat label="Reviewed today" value={reviewer.reviewedToday} />
 						<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
 					</div>
 				</div>
 				{counters.pendingReviewsUnsent > 0 && (
-					<p className="hl-hint" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+					<p className="hl-hint hl-note hl-note--tight">
 						<span className="hl-mono">{fmtInt(counters.pendingReviewsUnsent)}</span> more are handed in and in review
 						here but never reached Ari, so no reviewer has them. See{" "}
 						<Link href="/admin/program">what broke, and a Retry for each</Link>.
@@ -258,7 +236,7 @@ async function SummaryTab() {
 						</tr>
 					))}
 				</Table>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
 					changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved. It
 					is the same state the project&apos;s card shows, so a design approved while its build is still in review reads
@@ -292,32 +270,18 @@ async function PeopleTab() {
 			</Panel>
 
 			<Panel title="Users & hours by continent">
-				<div
-					style={{
-						alignItems: "start",
-						display: "grid",
-						gap: "1.5rem",
-						gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))",
-					}}
-				>
+				<div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] items-start gap-6">
 					<MetricPie format={fmtInt} pick={r => r.users} rows={areas} title="Users" />
 					<MetricPie format={fmtHours} pick={r => r.hours} rows={areas} title="Hours" />
 				</div>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Continents group each account&apos;s timezone; Unknown has none on file. Hours count journal devlogs
 					(reviewer-adjusted where set) plus linked Hackatime time, attributed to the author&apos;s region.
 				</p>
 			</Panel>
 
 			<Panel title="Users & hours by country">
-				<div
-					style={{
-						alignItems: "start",
-						display: "grid",
-						gap: "1.5rem",
-						gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))",
-					}}
-				>
+				<div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] items-start gap-6">
 					<MetricPie
 						format={fmtInt}
 						pick={r => r.users}
@@ -331,7 +295,7 @@ async function PeopleTab() {
 						title="Hours"
 					/>
 				</div>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Countries map each account&apos;s timezone; zones with nothing to place read as Unknown.
 				</p>
 			</Panel>
@@ -342,7 +306,7 @@ async function PeopleTab() {
 					measure="First project choice"
 					rows={firstProjects.map(s => ({ label: s.label, value: s.users }))}
 				/>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Users who finished setup and still have their week-one project. Starter names come from the catalogue; Custom
 					project means they named their own idea.
 				</p>
@@ -354,7 +318,7 @@ async function PeopleTab() {
 					measure="Identity status"
 					rows={verification.map(s => ({ label: s.label, value: s.users }))}
 				/>
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					Hack Club Auth&apos;s own reading of each account, taken at its last sign-in or purchase. Only a verified
 					identity can be paid; needs verification is somebody part-way through IDV, and not asked is an account no
 					sign-in has reported on yet.
@@ -387,7 +351,7 @@ async function ActivityTab() {
 			<ProgrammeFilterProvider programmeStart={programmeStart}>
 				<Panel title="Daily active users">
 					<DauChart days={activeUsers.days} />
-					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					<p className="hl-hint hl-note">
 						A person counts once a day, and only once that day&apos;s tracked time reaches 15 minutes. A visit with no
 						time logged does not count, and neither do three devlogs where one would have done. Days are
 						program-timezone effective dates, the day the work counted for. The bars behind the line are each
@@ -398,14 +362,14 @@ async function ActivityTab() {
 
 				<Panel title="Activity over time">
 					<ActivityStrip days={activity} />
-					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					<p className="hl-hint hl-note">
 						Days are program-timezone effective dates, the day the work counted for. Hours count journal devlogs only.
 					</p>
 				</Panel>
 
 				<Panel title="Activity per user over time">
 					<ActivityStrip days={activity} perUser />
-					<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					<p className="hl-hint hl-note">
 						One person&apos;s average working day rather than the programme&apos;s total. Read beside the chart above,
 						the totals say how much was done and this says how thinly it was spread, so a busy day and a flat average
 						together mean the work was going somewhere, and both rising means more people joined in.
@@ -415,7 +379,7 @@ async function ActivityTab() {
 
 			<Panel title="Hours per user by goal">
 				<GoalHoursChart days={activityByGoal} />
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					The same hours split by what each maker said they are here for. Where the three lines separate, the goal
 					question is saying something about effort; where they move together, it is saying something about the
 					programme.
@@ -424,7 +388,7 @@ async function ActivityTab() {
 
 			<Panel title="Projects per week">
 				<ProjectsByWeekChart weeks={projectsByWeek} />
-				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				<p className="hl-hint hl-note">
 					What people are building, by the week it is for. A project sits in its theme&apos;s design week once the
 					design has been handed in, and in the build week once the build has, so the two PCBs blocks are different
 					projects, not one cohort counted twice.
@@ -580,20 +544,20 @@ function MetricPie({
 		.join(", ")
 
 	return (
-		<figure style={{ margin: 0 }}>
-			<figcaption style={{ fontWeight: 800, marginBottom: "0.5rem", textAlign: "center" }}>
+		<figure className="m-0">
+			<figcaption className="mb-2 text-center font-extrabold">
 				{heading} · {format(total)}
 			</figcaption>
-			<div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+			<div className="flex flex-wrap items-center gap-4">
 				<svg
 					aria-label={`${heading} by share: ${summary}${colored.length > 3 ? ", and more" : ""}`}
+					className="size-44 shrink-0"
 					role="img"
-					style={{ flexShrink: 0, height: "11rem", width: "11rem" }}
 					viewBox="0 0 200 200"
 				>
 					{only ? (
 						<>
-							<circle cx={CX} cy={CY} r={R} style={{ fill: only.color }} />
+							<circle cx={CX} cy={CY} fill={only.color} r={R} />
 							<circle cx={CX} cy={CY} fill="#fff" r={HOLE} />
 						</>
 					) : (
@@ -607,8 +571,10 @@ function MetricPie({
 							return (
 								<path
 									d={`M ${outerFrom.x} ${outerFrom.y} A ${R} ${R} 0 ${large} 1 ${outerTo.x} ${outerTo.y} L ${innerTo.x} ${innerTo.y} A ${HOLE} ${HOLE} 0 ${large} 0 ${innerFrom.x} ${innerFrom.y} Z`}
+									fill={w.color}
 									key={w.label}
-									style={{ fill: w.color, stroke: "#fff", strokeWidth: 2 }}
+									stroke="#fff"
+									strokeWidth={2}
 								>
 									<title>{`${w.label}: ${format(w.value)} (${w.pct.toFixed(1)}%)`}</title>
 								</path>
@@ -616,51 +582,33 @@ function MetricPie({
 						})
 					)}
 					<text
-						style={{ fill: "var(--color-ink-strong)", fontSize: "1.35rem", fontWeight: 800 }}
+						className="fill-(--color-ink-strong) text-[1.35rem] font-extrabold"
 						textAnchor="middle"
 						x={CX}
 						y={CY - 2}
 					>
 						{format(total)}
 					</text>
-					<text style={{ fill: "var(--color-ink-muted)", fontSize: "0.8rem" }} textAnchor="middle" x={CX} y={CY + 20}>
+					<text className="fill-(--color-ink-muted) text-[0.8rem]" textAnchor="middle" x={CX} y={CY + 20}>
 						total {heading.toLowerCase()}
 					</text>
 				</svg>
-				<table
-					style={{
-						borderCollapse: "collapse",
-						flex: "1 1 10rem",
-						fontSize: "0.82rem",
-						fontVariantNumeric: "tabular-nums",
-						minWidth: "10rem",
-					}}
-				>
+				<table className="min-w-40 flex-[1_1_10rem] border-collapse text-[0.82rem] tabular-nums">
 					<tbody>
 						{colored.map(s => (
 							<tr key={s.label}>
-								<td style={{ padding: "0.15rem 0.75rem 0.15rem 0" }}>
-									<span style={{ alignItems: "center", display: "inline-flex", gap: "0.45rem" }}>
+								<td className="py-[0.15rem] pr-3 pl-0">
+									<span className="inline-flex items-center gap-[0.45rem]">
 										<span
 											aria-hidden="true"
-											style={{
-												background: s.color,
-												borderRadius: "3px",
-												display: "inline-block",
-												flexShrink: 0,
-												height: "0.7rem",
-												width: "0.7rem",
-											}}
+											className="inline-block size-[0.7rem] shrink-0 rounded-[3px]"
+											style={{ background: s.color }}
 										/>
-										<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-											{s.label}
-										</span>
+										<span className="overflow-hidden text-ellipsis whitespace-nowrap">{s.label}</span>
 									</span>
 								</td>
-								<td style={{ padding: "0.15rem 0.75rem 0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>
-									{format(s.value)}
-								</td>
-								<td style={{ padding: "0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>{s.pct.toFixed(1)}%</td>
+								<td className="py-[0.15rem] pr-3 pl-0 text-right whitespace-nowrap">{format(s.value)}</td>
+								<td className="py-[0.15rem] text-right whitespace-nowrap">{s.pct.toFixed(1)}%</td>
 							</tr>
 						))}
 					</tbody>
@@ -733,25 +681,19 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 
 	return (
 		<div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+			<p className="hl-hint hl-note--lead">
 				{lines.map((line, i) => (
-					<span key={line.label} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
+					<span className={i === 0 ? undefined : "ml-4"} key={line.label}>
 						<span
 							aria-hidden="true"
-							style={{
-								background: line.colour,
-								display: "inline-block",
-								height: "0.15rem",
-								marginRight: "0.35rem",
-								verticalAlign: "middle",
-								width: "0.7rem",
-							}}
+							className="mr-[0.35rem] inline-block h-[0.15rem] w-[0.7rem] align-middle"
+							style={{ background: line.colour }}
 						/>
 						{line.label} (averaging {fmtHours(line.mean)})
 					</span>
 				))}
 			</p>
-			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
+			<div className="grid grid-cols-[auto_minmax(0,1fr)] items-start">
 				<YAxis caption="h" format={t => fmtHours(t).replace("h", "")} ticks={ticks} yFor={yFor} />
 
 				<div>
@@ -759,9 +701,9 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 						aria-label={`Hours per active user per day from ${first} to ${last}, one line per goal: ${lines
 							.map(l => `${l.label} peaking at ${fmtHours(Math.max(...l.values))}`)
 							.join("; ")}`}
+						className="block"
 						height={CHART_H}
 						role="img"
-						style={{ display: "block" }}
 						width="100%"
 					>
 						<GridLines ticks={ticks} yFor={yFor} />
@@ -796,7 +738,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 					<DayAxis days={days} labelEvery={labelEvery} />
 				</div>
 			</div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+			<p className="hl-hint hl-note hl-note--tight">
 				Hours per person who logged something that day, so a line says what one of those people did rather than how many
 				there were. All three share one scale, so the lines can be read against each other. A maker who has not answered
 				the goal prompt yet is on no line. Days are program-timezone effective dates; hours count journal devlogs only.
@@ -850,20 +792,13 @@ function seasonBands(weeks: WeekColumn[]) {
 /** The four kinds, as the swatch-and-label row both per-week charts put above their plot. */
 function ProjectKindLegend() {
 	return (
-		<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+		<p className="hl-hint hl-note--lead">
 			{PROJECT_KIND.map((kind, i) => (
-				<span key={kind.key} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
+				<span className={i === 0 ? undefined : "ml-4"} key={kind.key}>
 					<span
 						aria-hidden="true"
-						style={{
-							background: kind.colour,
-							borderRadius: "2px",
-							display: "inline-block",
-							height: "0.7rem",
-							marginRight: "0.35rem",
-							verticalAlign: "middle",
-							width: "0.7rem",
-						}}
+						className="mr-[0.35rem] inline-block size-[0.7rem] rounded-[2px] align-middle"
+						style={{ background: kind.colour }}
 					/>
 					{kind.label}
 				</span>
@@ -877,33 +812,25 @@ function WeekAxisLabels({ weeks }: { weeks: WeekColumn[] }) {
 	return (
 		<>
 			<div
+				className="mt-1 grid text-center text-[0.6rem] text-(--color-ink-muted)"
 				style={{
-					color: "var(--color-ink-muted)",
-					display: "grid",
-					fontSize: "0.6rem",
 					gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
-					marginTop: "4px",
 					paddingLeft: pct(EDGE),
 					paddingRight: pct(EDGE),
-					textAlign: "center",
 				}}
 			>
 				{weeks.map(week => (
-					<div key={week.week} style={{ overflowWrap: "anywhere" }}>
+					<div className="wrap-anywhere" key={week.week}>
 						{week.label}
 					</div>
 				))}
 			</div>
 			<div
+				className="mt-[2px] grid text-center text-[0.58rem] text-(--color-ink-muted)"
 				style={{
-					color: "var(--color-ink-muted)",
-					display: "grid",
-					fontSize: "0.58rem",
 					gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
-					marginTop: "2px",
 					paddingLeft: pct(EDGE),
 					paddingRight: pct(EDGE),
-					textAlign: "center",
 				}}
 			>
 				{seasonBands(weeks).map(band => (
@@ -948,7 +875,7 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 	return (
 		<div>
 			<ProjectKindLegend />
-			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
+			<div className="grid grid-cols-[auto_minmax(0,1fr)] items-start">
 				<YAxis caption="projects" format={fmtInt} ticks={ticks} yFor={yFor} />
 
 				<div>
@@ -956,9 +883,9 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 						aria-label={`Projects being built for each week: ${weeks
 							.map((week, i) => `${weekNameOf(week)} ${fmtInt(totals[i] ?? 0)}`)
 							.join(", ")}`}
+						className="block"
 						height={CHART_H}
 						role="img"
-						style={{ display: "block" }}
 						width="100%"
 					>
 						<GridLines ticks={ticks} yFor={yFor} />
@@ -985,7 +912,7 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 					<WeekAxisLabels weeks={weeks} />
 				</div>
 			</div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+			<p className="hl-hint hl-note hl-note--tight">
 				Their stage, by the week that stage runs in: a project is in a week&apos;s column once that phase has been
 				handed in, and appears in both of its theme&apos;s weeks only when it has reached both stages. Design months
 				before the build is a different piece of work. A project that has been described and not yet handed in is in no
@@ -1024,7 +951,7 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 	return (
 		<div>
 			<ProjectKindLegend />
-			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
+			<div className="grid grid-cols-[auto_minmax(0,1fr)] items-start">
 				<YAxis caption="hours" format={t => fmtHours(t).replace("h", "")} ticks={ticks} yFor={yFor} />
 
 				<div>
@@ -1032,9 +959,9 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 						aria-label={`Hours logged for each week: ${weeks
 							.map((week, i) => `${weekNameOf(week)} ${fmtHours(totals[i] ?? 0)}`)
 							.join(", ")}`}
+						className="block"
 						height={CHART_H}
 						role="img"
-						style={{ display: "block" }}
 						width="100%"
 					>
 						<GridLines ticks={ticks} yFor={yFor} />
@@ -1067,10 +994,10 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 							if (total === 0) return null
 							return (
 								<text
+									className="tabular-nums"
 									fill="var(--color-ink-muted)"
 									fontSize="0.6rem"
 									key={`hlab-${week.week}`}
-									style={{ fontVariantNumeric: "tabular-nums" }}
 									textAnchor="middle"
 									x={pct(centreOf(i))}
 									y={yFor(total) - 4}
@@ -1083,7 +1010,7 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 					<WeekAxisLabels weeks={weeks} />
 				</div>
 			</div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+			<p className="hl-hint hl-note hl-note--tight">
 				Hours logged for each week, attributed to the phase they were logged in, so a week&apos;s column is its own part
 				of its projects, not their whole story, and every hour is counted once. The same projects the chart above
 				counts, read as work rather than as headcount; a week can be busy there and flat here when its projects are
@@ -1119,103 +1046,63 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 
 	return (
 		<div>
-			<div className="hl-row" style={{ gap: "1.25rem", marginBottom: "0.9rem" }}>
+			{/* Inline gap: `.hl-row` sets its own unlayered gap, which would beat a utility here. */}
+			<div className="hl-row mb-[0.9rem]" style={{ gap: "1.25rem" }}>
 				<Stat label="Accounts with hours" value={fmtInt(data.withHours)} />
 				<Stat label="Median hours" value={data.median === null ? "-" : fmtHours(data.median)} />
 				<Stat label="Total hours" value={fmtHours(data.totalHours)} />
 			</div>
-			<p className="hl-hint" style={{ fontSize: "0.75rem", margin: "0 0 0.5rem" }}>
+			<p className="hl-hint hl-note--legend">
 				<span
 					aria-hidden="true"
-					style={{
-						background: "var(--color-accent)",
-						borderRadius: "2px",
-						display: "inline-block",
-						height: "0.7rem",
-						marginRight: "0.35rem",
-						verticalAlign: "baseline",
-						width: "0.7rem",
-					}}
+					className="mr-[0.35rem] inline-block size-[0.7rem] rounded-[2px] align-baseline bg-(--color-accent)"
 				/>
 				share of accounts
+				{/* Same colour and opacity as the bar itself, so the key and the mark cannot drift apart. */}
 				<span
 					aria-hidden="true"
-					style={{
-						// Same colour and opacity as the bar itself, so the key and the mark cannot drift apart.
-						background: "var(--color-magenta)",
-						borderRadius: "2px",
-						display: "inline-block",
-						height: "0.7rem",
-						marginLeft: "1rem",
-						marginRight: "0.35rem",
-						opacity: 0.3,
-						verticalAlign: "baseline",
-						width: "0.7rem",
-					}}
+					className="mr-[0.35rem] ml-4 inline-block size-[0.7rem] rounded-[2px] align-baseline bg-(--color-magenta) opacity-30"
 				/>
 				share of hours
 			</p>
-			<figure style={{ margin: 0 }}>
+			<figure className="m-0">
 				{/* The plot carries its own height and its columns stretch to fill it. Both are load-bearing: a percentage bar has nothing to resolve against inside an auto-height parent, and `align-items: end` would stop the column growing into one – which is how this chart rendered no bars at all. */}
 				<div
 					aria-label={`Participants and hours by hours logged: ${summary}`}
+					className="grid h-44 gap-x-[3px]"
 					role="img"
-					style={{
-						columnGap: "3px",
-						display: "grid",
-						gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)`,
-						height: "11rem",
-					}}
+					style={{ gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)` }}
 				>
 					{data.buckets.map((b, i) => {
 						const share = shares[i] ?? { byAccounts: 0, byHours: 0 }
 						return (
 							// The tooltip hangs on the whole column rather than on a bar. Both bars are absolutely positioned and the hours one is painted last, so a title on the solid bar would be covered by the translucent one wherever the hours bar is the taller – exactly the half of the chart the tooltip is most worth reading. The column is the common ancestor, so hovering anywhere in it, bars included, reaches the one tooltip.
 							<div
+								className="flex min-w-0 flex-col"
 								key={b.label}
-								style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
 								title={`${b.label}h: ${fmtInt(b.participants)} participants · ${fmtPct(
 									share.byAccounts,
 								)} of accounts with hours · ${fmtHours(b.hours)}, ${fmtPct(share.byHours)} of all hours`}
 							>
 								<span
 									aria-hidden="true"
-									style={{
-										color: "var(--color-ink-muted)",
-										fontSize: "0.7rem",
-										fontVariantNumeric: "tabular-nums",
-										lineHeight: 1,
-										paddingBottom: "0.55rem",
-										textAlign: "center",
-									}}
+									className="pb-[0.55rem] text-center text-[0.7rem] leading-none text-(--color-ink-muted) tabular-nums"
 								>
 									{b.participants > 0 ? fmtInt(b.participants) : ""}
 								</span>
 								{/* flex: 1 so the bars take the space the count label does not. Both bars are pinned to the floor and drawn full-width so they overlap; the hours bar sits on top, translucent, so a band that is hours-heavy reads as a pale cap over the solid bar and one that is people-heavy reads as a solid cap over the pale. */}
-								<div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+								<div className="relative min-h-0 flex-1">
 									<div
+										className="absolute inset-x-0 bottom-0 rounded-t-[3px]"
 										style={{
 											background: b.participants === 0 ? "var(--color-surface-sunken)" : "var(--color-accent)",
-											borderRadius: "3px 3px 0 0",
-											bottom: 0,
 											height: `${(share.byAccounts / scale) * 100}%`,
-											left: 0,
-											position: "absolute",
-											right: 0,
 										}}
 									/>
 									<div
 										aria-hidden="true"
-										style={{
-											background: "var(--color-magenta)",
-											borderRadius: "3px 3px 0 0",
-											bottom: 0,
-											height: `${(share.byHours / scale) * 100}%`,
-											left: 0,
-											opacity: 0.3,
-											position: "absolute",
-											right: 0,
-										}}
+										className="absolute inset-x-0 bottom-0 rounded-t-[3px] bg-(--color-magenta) opacity-30"
+										style={{ height: `${(share.byHours / scale) * 100}%` }}
 									/>
 								</div>
 							</div>
@@ -1224,24 +1111,13 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 				</div>
 				<figcaption
 					aria-hidden="true"
-					style={{
-						columnGap: "3px",
-						display: "grid",
-						gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)`,
-						marginTop: "0.3rem",
-					}}
+					className="mt-[0.3rem] grid gap-x-[3px]"
+					style={{ gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)` }}
 				>
 					{data.buckets.map(b => (
 						<span
+							className="overflow-hidden text-center text-[0.6rem] text-ellipsis whitespace-nowrap text-(--color-ink-muted)"
 							key={b.label}
-							style={{
-								color: "var(--color-ink-muted)",
-								fontSize: "0.6rem",
-								overflow: "hidden",
-								textAlign: "center",
-								textOverflow: "ellipsis",
-								whiteSpace: "nowrap",
-							}}
 							title={b.label}
 						>
 							{b.label}
@@ -1249,7 +1125,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 					))}
 				</figcaption>
 			</figure>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+			<p className="hl-hint hl-note">
 				Both series share one scale, so a pale bar taller than the solid one means the band holds more of the
 				programme&apos;s hours than of its people. Hours count journal devlogs (reviewer-adjusted where set) plus linked
 				Hackatime time, the same hours the geography panels total, and a sitting that was both journalled and tracked
@@ -1314,18 +1190,11 @@ function ShareDonut({
 	}))
 	const summary = rows.map(r => `${r.label} ${Math.round((r.value / total) * 100)}%`).join(", ")
 	return (
-		<div
-			style={{
-				alignItems: "center",
-				display: "flex",
-				flexWrap: "wrap",
-				gap: "1.5rem",
-			}}
-		>
+		<div className="flex flex-wrap items-center gap-6">
 			<svg
 				aria-label={`${measure}${centerLabel ? `, ${fmtInt(total)} ${centerLabel} in total` : ""}: ${summary}`}
+				className="size-44 shrink-0"
 				role="img"
-				style={{ flexShrink: 0, height: "11rem", width: "11rem" }}
 				viewBox="0 0 42 42"
 			>
 				<circle cx="21" cy="21" fill="none" r={R} stroke="var(--color-surface-sunken)" strokeWidth="7" />
@@ -1348,13 +1217,8 @@ function ShareDonut({
 				{centerLabel ? (
 					<>
 						<text
+							className="fill-(--color-ink-strong) text-[6px] font-extrabold tabular-nums"
 							dominantBaseline="middle"
-							style={{
-								fill: "var(--color-ink-strong)",
-								fontSize: "6px",
-								fontVariantNumeric: "tabular-nums",
-								fontWeight: 800,
-							}}
 							textAnchor="middle"
 							x="21"
 							y="19.4"
@@ -1362,8 +1226,8 @@ function ShareDonut({
 							{fmtInt(total)}
 						</text>
 						<text
+							className="fill-(--color-ink-muted) text-[2.9px]"
 							dominantBaseline="middle"
-							style={{ fill: "var(--color-ink-muted)", fontSize: "2.9px" }}
 							textAnchor="middle"
 							x="21"
 							y="24"
@@ -1373,27 +1237,22 @@ function ShareDonut({
 					</>
 				) : null}
 			</svg>
-			<table style={{ borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
+			<table className="border-collapse tabular-nums">
 				<tbody>
 					{rows.map((row, i) => (
 						<tr key={row.label}>
-							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0" }}>
-								<span style={{ alignItems: "center", display: "inline-flex", gap: "0.5rem" }}>
+							<td className="py-[0.2rem] pr-3 pl-0">
+								<span className="inline-flex items-center gap-2">
 									<span
 										aria-hidden="true"
-										style={{
-											background: colors?.[i] ?? palette[i % palette.length],
-											borderRadius: "2px",
-											flexShrink: 0,
-											height: "0.7rem",
-											width: "0.7rem",
-										}}
+										className="size-[0.7rem] shrink-0 rounded-[2px]"
+										style={{ background: colors?.[i] ?? palette[i % palette.length] }}
 									/>
-									<span style={{ fontWeight: 700 }}>{row.label}</span>
+									<span className="font-bold">{row.label}</span>
 								</span>
 							</td>
-							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0", textAlign: "right" }}>{fmtInt(row.value)}</td>
-							<td style={{ padding: "0.2rem 0", textAlign: "right" }}>{Math.round((row.value / total) * 100)}%</td>
+							<td className="py-[0.2rem] pr-3 pl-0 text-right">{fmtInt(row.value)}</td>
+							<td className="py-[0.2rem] text-right">{Math.round((row.value / total) * 100)}%</td>
 						</tr>
 					))}
 				</tbody>
