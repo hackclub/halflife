@@ -1,20 +1,20 @@
 /**
  * The staff console's remembered light/dark mode.
  *
- * This is a browser preference: no account field, no migration, no request. `browser-storage` keeps the write for the visit even where storage is blocked, and a `storage` event from another tab reads the mode afresh here. The attribute on `<html>` is what CSS reads; `ops.css` scopes its dark overrides to `.ops-root`, so leaving the console leaves the rest of the platform light.
+ * This is a browser preference: no account field, no migration, no request. `browser-storage` keeps the write for the visit even where storage is blocked, and a `storage` event from another tab reads the mode afresh here. The attribute on `<html>` is what CSS reads; `ops.css` scopes its dark overrides to the admin frame, so leaving the console leaves the rest of the platform light. `ThemeBootScript` puts the remembered attribute on `<html>` before the first paint.
  */
 
 import { readStored, subscribeStorage, writeStored } from "./browser-storage"
 
 export type AdminTheme = "light" | "dark"
 
-const KEY = "half-life:admin:theme"
+export const ADMIN_THEME_KEY = "half-life:admin:theme"
 
 const isTheme = (value: string | null): value is AdminTheme => value === "light" || value === "dark"
 
 /** The remembered mode, or the console default when there is none or it is nonsense. */
 export function getAdminTheme(): AdminTheme {
-	const value = readStored(KEY)
+	const value = readStored(ADMIN_THEME_KEY)
 	return isTheme(value) ? value : "light"
 }
 
@@ -35,7 +35,7 @@ export function applyAdminTheme(theme: AdminTheme): void {
 
 export function setAdminTheme(theme: AdminTheme): void {
 	applyAdminTheme(theme)
-	writeStored(KEY, theme)
+	writeStored(ADMIN_THEME_KEY, theme)
 }
 
 /** Returns the new mode so a caller can announce it without reading storage twice. */
