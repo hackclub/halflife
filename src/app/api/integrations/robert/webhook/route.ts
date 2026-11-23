@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { ZodError } from "zod"
 import { readBoundedText } from "@/lib/api"
 import { applyRobertWebhook, validRobertSignature } from "@/lib/telescreen"
 
@@ -18,7 +19,8 @@ export async function POST(request: Request): Promise<Response> {
 	try {
 		await applyRobertWebhook(body)
 	} catch (err) {
-		if (err instanceof SyntaxError) return new NextResponse(null, { status: 400 })
+		// A body that is not JSON, or not the shape Robert documents, will not parse on a retry either: a 400 tells Robert to stop, where a 500 would have it resend forever.
+		if (err instanceof SyntaxError || err instanceof ZodError) return new NextResponse(null, { status: 400 })
 		throw err
 	}
 	return new NextResponse(null, { status: 204 })
