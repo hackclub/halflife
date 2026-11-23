@@ -1,0 +1,182 @@
+[
+  {
+    "id": "column.public.hackatime_link.cachedOverlap",
+    "label": "Add column \"cachedOverlap\" to \"hackatime_link\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "cachedOverlap",
+        "table": "hackatime_link"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"cachedOverlap\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "cachedOverlap"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"cachedOverlap\" on \"hackatime_link\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"cachedOverlap\"",
+        "sql": "ALTER TABLE \"public\".\"hackatime_link\" ADD COLUMN \"cachedOverlap\" jsonb"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"cachedOverlap\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "cachedOverlap"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"cachedOverlap\" on \"hackatime_link\""
+        }
+      },
+      {
+        "description": "verify column \"cachedOverlap\" has type \"jsonb\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "cachedOverlap",
+          "jsonb"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.hackatime_link.overlapFetchError",
+    "label": "Add column \"overlapFetchError\" to \"hackatime_link\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "overlapFetchError",
+        "table": "hackatime_link"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"overlapFetchError\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "overlapFetchError"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"overlapFetchError\" on \"hackatime_link\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"overlapFetchError\"",
+        "sql": "ALTER TABLE \"public\".\"hackatime_link\" ADD COLUMN \"overlapFetchError\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"overlapFetchError\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "overlapFetchError"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"overlapFetchError\" on \"hackatime_link\""
+        }
+      },
+      {
+        "description": "verify column \"overlapFetchError\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "overlapFetchError",
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.hackatime_link.overlapFetchedAt",
+    "label": "Add column \"overlapFetchedAt\" to \"hackatime_link\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "overlapFetchedAt",
+        "table": "hackatime_link"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"overlapFetchedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "overlapFetchedAt"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"overlapFetchedAt\" on \"hackatime_link\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"overlapFetchedAt\"",
+        "sql": "ALTER TABLE \"public\".\"hackatime_link\" ADD COLUMN \"overlapFetchedAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"overlapFetchedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "overlapFetchedAt"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"overlapFetchedAt\" on \"hackatime_link\""
+        }
+      },
+      {
+        "description": "verify column \"overlapFetchedAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "hackatime_link",
+          "overlapFetchedAt",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  }
+]

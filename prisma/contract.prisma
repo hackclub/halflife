@@ -388,6 +388,11 @@ namespace public {
     cachedSeconds    Int?
     cachedAt         TimestampString(3)?
     lastFetchError   String?
+    // Hackatime seconds measured inside each Lapse recording window that names this project. See lib/hours.
+    cachedOverlap    Jsonb?
+    overlapFetchedAt TimestampString(3)?
+    overlapFetchError String?
+    // Superseded by cachedOverlap: no longer written or read. Dropped in a later migration.
     cachedSpans      Jsonb?
     spansFetchedAt   TimestampString(3)?
     spansFetchError  String?
