@@ -1,7 +1,7 @@
 import { and } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
-import { bomData, bomLockReason, listBom } from "@/lib/bom"
+import { bomData, bomLockReason, listBom, syncBomToAirtable } from "@/lib/bom"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import db from "@/lib/prisma8"
@@ -64,6 +64,7 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 		if (changed !== 1) throw new HttpError("NOT_FOUND", "Part not found")
 	})
 	after(() => scheduleRepoSync(id))
+	after(() => syncBomToAirtable(id, gate.user))
 	return ok({ items: await listBom(id) })
 })
 
@@ -90,5 +91,6 @@ export const DELETE = withWriteSession(async (_req: Request, { params, gate }: P
 		if (removed !== 1) throw new HttpError("NOT_FOUND", "Part not found")
 	})
 	after(() => scheduleRepoSync(id))
+	after(() => syncBomToAirtable(id, gate.user))
 	return ok({ items: await listBom(id) })
 })

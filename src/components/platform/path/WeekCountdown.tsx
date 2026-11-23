@@ -62,11 +62,8 @@ export function WeekCountdown({ week }: { week: Week }) {
 				{/* The tear belongs on the fill, not on the type: the same split the week banner uses, so the plate's edge is torn tape and the figures inside it stay crisp. */}
 				<div
 					aria-hidden="true"
-					className="torn absolute inset-0 rounded"
-					style={{
-						background: week.accent,
-						boxShadow: "0 3px 6px rgba(28,26,89,.12), 0 16px 34px -18px rgba(28,26,89,.5)",
-					}}
+					className="torn absolute inset-0 rounded [box-shadow:0_3px_6px_rgba(28,26,89,.12),_0_16px_34px_-18px_rgba(28,26,89,.5)]"
+					style={{ background: week.accent }}
 				/>
 				<div className="relative">
 					<p className="label flex items-center justify-center gap-1.5">
@@ -100,7 +97,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 								: `${parts.days} days and ${parts.hours} hours left on ${extension === "project" ? `week ${week.id}'s` : "your"} extension, which ends ${deadline ?? "this week"}.`}
 					</p>
 					{deadline && (
-						<p className="label mt-2" style={{ background: pill, borderRadius: 999, padding: "0.3rem 0.9rem" }}>
+						<p className="label mt-2 rounded-[999px] p-[0.3rem_0.9rem]" style={{ background: pill }}>
 							{extension === null ? "closes" : "extension ends"} {deadline}
 						</p>
 					)}

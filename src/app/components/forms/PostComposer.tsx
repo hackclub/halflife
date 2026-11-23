@@ -159,8 +159,8 @@ export function PostComposer({
 				<div>
 					<progress
 						aria-label="Uploading the video"
+						className="h-[0.6rem] w-full"
 						max={1}
-						style={{ height: "0.6rem", width: "100%" }}
 						value={progress < 1 ? progress : undefined}
 					/>
 					<p className="hl-hint">{progress < 1 ? `Uploading… ${Math.round(progress * 100)}%` : "Sent. Storing it…"}</p>

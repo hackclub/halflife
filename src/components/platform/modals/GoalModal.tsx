@@ -284,8 +284,7 @@ function GoalCard({
 				<span className="absolute -top-3 left-1/2 z-10 block w-[86px] -translate-x-1/2 -rotate-2 motion-safe:animate-[hl-pop_.3s_cubic-bezier(.16,1,.3,1)]">
 					<span
 						aria-hidden="true"
-						className="torn-soft absolute inset-0 block rounded-[3px] bg-gold"
-						style={{ boxShadow: "0 2px 5px rgba(28,26,89,.14)" }}
+						className="torn-soft absolute inset-0 block rounded-[3px] bg-gold [box-shadow:0_2px_5px_rgba(28,26,89,.14)]"
 					/>
 					<span className="label relative block py-[5px] text-center text-[0.58rem] tracking-[0.14em] text-navy">
 						selected

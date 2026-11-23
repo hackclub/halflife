@@ -159,7 +159,7 @@ export default function SignupForm({
 							src={brushstroke}
 						/>
 						{/* The 0.7em that separates the promise from the field. It was `mb-[0.7em]` and generated no rule at all, so the two were flush: the sentence sat directly on the slot it is asking you to fill. */}
-						<div style={{ marginBottom: "0.7em" }}>{intro}</div>
+						<div className="mb-[0.7em]">{intro}</div>
 					</>
 				) : null}
 
@@ -173,10 +173,7 @@ export default function SignupForm({
 
 						  It briefly also carried the image slot's registration ticks, its measured grid and an uppercase legend. At 33px tall none of that resolved: the grid ran three cells deep and the ticks were 8px specks, so it read as detail for its own sake rather than as an instrument. One surface, one boundary, one accent does the job the five of them were failing to.
 						 */}
-						<div
-							className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${pending ? "opacity-70" : ""}`}
-							style={{ height: "2.1667em" }}
-						>
+						<div className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${pending ? "opacity-70" : ""} h-[2.1667em]`}>
 							<input
 								// Always described by the line below: the eligibility note when there is nothing wrong, the error when there is. Pointing at it only on error meant the note was on screen but not in the accessibility tree.
 								aria-describedby={`${id}-msg`}
@@ -213,9 +210,8 @@ export default function SignupForm({
 						  "sign up/log in" is nearly twice the word "sign up!" was, and on a phone the swash's inset leaves the row about 175px at 320: on one line it left the field 58px there and 108 at 390, against the ~120 "email address" needs. Below 520 it stacks at the slash instead, and the button's side padding tightens to match a word half as wide. Two lines at 0.85em and `leading-none`, plus the gap, are 1.82em of the button's 2.1667, so the row keeps its height and the field gets back the second half's width.
 						 */}
 						<button
-							className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white active:brightness-95 disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em]"
+							className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white active:brightness-95 disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em] h-[2.1667em]"
 							disabled={pending}
-							style={{ height: "2.1667em" }}
 							type="submit"
 						>
 							<span
@@ -243,9 +239,9 @@ export default function SignupForm({
 			  Paper, not the soft tint the placeholder uses: this sits on the hero plate rather than in the field's own ink slot, and the plate is only 60% opaque over the painting – soft paper falls to 3.44:1 there, where paper holds 5.28:1. Regular weight against the error's semibold, so the two read apart at a glance as well as by colour.
 			 */}
 			<p
-				className={`mt-[0.45em] ${status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"}`}
+				className={`mt-[0.45em] ${status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"} min-h-[1.4em]`}
 				id={`${id}-msg`}
-				style={{ fontSize: "0.6em", minHeight: "1.4em" }}
+				style={{ fontSize: "0.6em" }}
 			>
 				{status === "error" ? message : BRAND.eligibility}
 			</p>

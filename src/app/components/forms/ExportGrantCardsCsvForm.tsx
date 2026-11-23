@@ -95,7 +95,7 @@ export function ExportGrantCardsCsvForm({ initial }: Readonly<{ initial: ExportP
 					The {initial.eligibleCount} projects are recorded as exported, so they drop out of future previews and cannot
 					land in a second file.
 				</p>
-				<div className="hl-row" style={{ justifyContent: "flex-end" }}>
+				<div className="hl-row [justify-content:flex-end]">
 					<Button onClick={() => setConfirming(false)} type="button">
 						Cancel
 					</Button>

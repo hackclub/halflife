@@ -92,7 +92,7 @@ export function ActionButton({
 					<Field label="Reason">
 						<TextArea onChange={e => setReason(e.target.value)} rows={4} value={reason} />
 					</Field>
-					<div className="hl-row" style={{ justifyContent: "flex-end" }}>
+					<div className="hl-row [justify-content:flex-end]">
 						<Button onClick={() => setAsking(false)} type="button">
 							Cancel
 						</Button>

@@ -790,6 +790,34 @@ export async function syncProjectCoverToYsws(
 	return { updated }
 }
 
+/**
+ * Put a project's parts total on its design row, after its parts list changed.
+ *
+ * `Requested funding` is the one column the list feeds (see `yswsFieldsFor`), and it is written at hand-in only. A list edited after that, including after the design is approved, would otherwise leave the row asking for the old figure. Only the design row carries it, so only that one is written, and nothing else on the row is touched: an approved row's decision columns are the admin refresh's to move.
+ *
+ * The figure follows `yswsFieldsFor`: the parts total under the base payout, and $0 otherwise, so a card-grant project's row is never given a figure to pay.
+ */
+export async function syncProjectBomToYsws(
+	themeProjectId: string,
+): Promise<{ updated: Phase[] } | { skipped: string }> {
+	const settings = await getProgramSettings()
+	if (!settings.airtableSyncEnabled) return { skipped: "sync_disabled" }
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId })
+		.include("bomItems", items => items.select("quantity", "unitCostUsd"))
+		.first()
+	if (!project) return { skipped: "project_not_found" }
+
+	const recordId = await lastRecordId(themeProjectId, Phase.DESIGN)
+	if (!recordId) return { skipped: "no_row" }
+	const requestedFunding =
+		settings.payoutSource === PayoutSource.AIRTABLE ? bomTotalUsd(project.bomItems, project.bomTaxShippingUsd) : 0
+	const result = await updateYswsRecord(recordId, {
+		[fieldKey(YSWS_SUBMISSION.fields.requestedFunding)]: requestedFunding,
+	})
+	if (!result.ok) throw new Error(`Could not update the parts funding on the design row: ${result.reason}`)
+	return { updated: [Phase.DESIGN] }
+}
+
 /** Remove a submission's row, and its unified-base twin, when it is taken back. */
 export async function removeSubmissionFromYsws(
 	themeProjectId: string,

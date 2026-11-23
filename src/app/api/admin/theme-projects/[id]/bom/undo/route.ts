@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
-import { bomLockReason } from "@/lib/bom"
+import { bomLockReason, syncBomToAirtable } from "@/lib/bom"
 import { currentBomLines, latestBomEvent, readSyncMetadata, recordBomAudit, replaceBomLines } from "@/lib/bom-sync"
 import { bomUndoBlock } from "@/lib/bom-sync-model"
 import { AuditAction } from "@/lib/enums"
@@ -67,6 +67,7 @@ export const POST = withWritePermission(
 		})
 
 		after(() => scheduleRepoSync(id))
+		after(() => syncBomToAirtable(id, gate.user))
 
 		return ok({ auditId: restored.auditId, restored: restored.count, undid: parsed.data.auditId })
 	},

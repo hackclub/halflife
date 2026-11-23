@@ -26,8 +26,8 @@ const row = (s: FlowStep, prevWidth: number, bottomWidth: number, prevLabel: str
 			</>
 		)}
 
-		<div style={{ minHeight: "3.8rem", minWidth: 0 }}>
-			<div style={{ fontWeight: 700 }}>
+		<div className="min-h-[3.8rem] min-w-0">
+			<div className="font-bold">
 				{s.label}
 				{baseline && (
 					<span className="hl-hint" style={{ fontSize: "0.72rem", fontWeight: 400 }}>
@@ -41,11 +41,7 @@ const row = (s: FlowStep, prevWidth: number, bottomWidth: number, prevLabel: str
 			</div>
 		</div>
 
-		<div
-			aria-hidden="true"
-			style={{ height: "2.75rem", position: "relative" }}
-			title={`${s.label}: ${s.count} people · ${s.hint}`}
-		>
+		<div aria-hidden="true" className="h-11 relative" title={`${s.label}: ${s.count} people · ${s.hint}`}>
 			<div
 				style={{
 					inset: 0,
@@ -55,15 +51,9 @@ const row = (s: FlowStep, prevWidth: number, bottomWidth: number, prevLabel: str
 				}}
 			/>
 			{/* The headcount rides inside the band, white on a dark pill so a thin tail's number stays legible even where it overflows the band onto the panel. */}
-			<span
-				style={{
-					display: "grid",
-					inset: 0,
-					placeItems: "center",
-					position: "absolute",
-				}}
-			>
+			<span className="[inset:0] [place-items:center] absolute" style={{ display: "grid" }}>
 				<span
+					className="leading-[1.35]"
 					style={{
 						background: "rgba(0,0,0,.4)",
 						borderRadius: "999px",
@@ -71,7 +61,6 @@ const row = (s: FlowStep, prevWidth: number, bottomWidth: number, prevLabel: str
 						fontSize: "0.88rem",
 						fontVariantNumeric: "tabular-nums",
 						fontWeight: 800,
-						lineHeight: 1.35,
 						padding: "0 0.4rem",
 						whiteSpace: "nowrap",
 					}}
@@ -117,17 +106,10 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 
 	return (
 		// width:100% – the panel is a flex column, where auto margins alone shrink-wrap this to its content instead of filling the panel.
-		<div style={{ margin: "0 auto", maxWidth: "56rem", width: "100%" }}>
+		<div className="m-[0_auto] max-w-[56rem] w-full">
 			<div
-				className="hl-hint"
-				style={{
-					alignItems: "center",
-					display: "flex",
-					gap: "0.5rem",
-					justifyContent: "center",
-					marginBottom: "0.6rem",
-					marginTop: "1rem",
-				}}
+				className="hl-hint items-center justify-center"
+				style={{ display: "flex", gap: "0.5rem", marginBottom: "0.6rem", marginTop: "1rem" }}
 			>
 				<span>no loss</span>
 				<span
@@ -143,13 +125,8 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 			</div>
 
 			<div
-				style={{
-					alignItems: "center",
-					columnGap: "1rem",
-					display: "grid",
-					gridTemplateColumns: "15rem minmax(0,1fr)",
-					rowGap: "0.1rem",
-				}}
+				className="items-center gap-x-4 gap-y-[0.1rem]"
+				style={{ display: "grid", gridTemplateColumns: "15rem minmax(0,1fr)" }}
 			>
 				{rows.map((s, i) =>
 					row(s, i === 0 ? 100 : (widths[i - 1] ?? 100), widths[i] ?? 0, rows[i - 1]?.label, i === 0),

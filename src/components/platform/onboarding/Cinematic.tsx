@@ -217,11 +217,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 					<p className="label mb-3 text-navy-faint">The Doomscroller</p>
 					<div className="flex flex-col gap-3">
 						{MOCK_REELS.map(r => (
-							<div
-								className="relative overflow-hidden rounded-xl bg-navy"
-								key={r.who}
-								style={{ aspectRatio: "9 / 13" }}
-							>
+							<div className="relative overflow-hidden rounded-xl bg-navy [aspect-ratio:9_/_13]" key={r.who}>
 								<Image alt="" className="object-cover" fill sizes="552px" src={r.shot} />
 								<div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-2.5 pt-8">
 									<p className="text-[0.72rem] font-bold text-white">{r.who}</p>
@@ -283,8 +279,8 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 
 			{/* ---- the prize, at the bottom of the run ---- */}
 			<div
-				className="absolute flex flex-col items-center rounded-3xl border-[3px] border-gold-deep bg-gold-pale px-12 py-8"
-				style={{ height: PRIZE_H, left: COL_X - 300, top: PRIZE_TOP, width: 600 }}
+				className="absolute flex flex-col items-center rounded-3xl border-[3px] border-gold-deep bg-gold-pale px-12 py-8 w-[600px]"
+				style={{ height: PRIZE_H, left: COL_X - 300, top: PRIZE_TOP }}
 			>
 				<PrinterPhoto className="mt-3 size-70 rounded-2xl border border-gold-deep/40" id={goal.id} sizes="560px" />
 				<p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">{goal.name}</p>
@@ -305,18 +301,12 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 				const week = WEEK_META[i] ?? plotted
 				return (
 					<div
-						className="absolute top-0 left-1/2"
+						className="absolute top-0 left-1/2 -ml-95 [transform-origin:center_top] w-[760px]"
 						key={week.id}
 						ref={el => {
 							refs.current[i] = el
 						}}
-						style={{
-							display: "none",
-							height: BANNER_H,
-							marginLeft: -380,
-							transformOrigin: "center top",
-							width: 760,
-						}}
+						style={{ display: "none", height: BANNER_H }}
 					>
 						{/* The tear belongs to the plaque, never to the type. `.torn` is a displacement filter, so on a container it drags the glyphs about with the edges – and this one is re-scaled every frame by the camera, which rasterises the filtered result at one size and stretches it to another. The real trail's banner separates them the same way. */}
 						<span aria-hidden="true" className="torn absolute inset-0 rounded" style={{ background: week.accent }} />
@@ -492,9 +482,8 @@ export function Cinematic() {
 
 			{/* The title is part of the scene: it sits at the head of the trail and leaves the frame the way the weeks do, by the camera falling away from it. */}
 			<div
-				className="pointer-events-none absolute inset-x-0 top-0 z-20 px-6 text-center"
+				className="pointer-events-none absolute inset-x-0 top-0 z-20 px-6 text-center [transform:translateY(50vh)]"
 				ref={title}
-				style={{ transform: "translateY(50vh)" }}
 			>
 				<div className="-translate-y-1/2">
 					<div className="motion-safe:animate-[hl-rise_.6s_cubic-bezier(.16,1,.3,1)_both]">

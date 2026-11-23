@@ -16,9 +16,7 @@ export function OpsShell({
 			<nav className="hl-nav">
 				<strong>{title}</strong>
 				{nav}
-				<span className="hl-muted" style={{ marginLeft: "auto" }}>
-					{email}
-				</span>
+				<span className="hl-muted ml-auto">{email}</span>
 			</nav>
 			<main className="hl-shell">{children}</main>
 		</>

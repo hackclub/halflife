@@ -336,7 +336,7 @@ export function OfflineReviews() {
 	if (openId && stored?.detail.ship.id === openId && viewer)
 		return (
 			<ReviewRuntimeProvider runtime={runtime}>
-				<div className="form__actions" style={{ marginBottom: "var(--space-1)" }}>
+				<div className="form__actions mb-[var(--space-1)]">
 					<button className="btn btn--ghost btn--sm" onClick={() => open(null)} type="button">
 						← Offline reviews
 					</button>

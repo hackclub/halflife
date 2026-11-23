@@ -118,7 +118,7 @@ export function QueueView({
 				eyebrow="Ships"
 				title="Review queue"
 			/>
-			<div className="form__actions" style={{ marginBottom: "var(--space-2)" }}>
+			<div className="form__actions mb-[var(--space-2)]">
 				<div className="tabs" style={{ border: 0, margin: 0 }}>
 					{STATUSES.map(status => (
 						<button

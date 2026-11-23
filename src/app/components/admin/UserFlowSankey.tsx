@@ -263,11 +263,12 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	return (
 		<div>
 			{/* A horizontal scroller. The journey is now as long as the funnel's, so the drawing is wider than the panel on every screen and is read by scrolling rather than by shrinking. `overscroll-behavior-x: contain` keeps a sideways trackpad flick at the end of the diagram from turning into a browser back/forward gesture. */}
-			<div style={{ overflowX: "auto", overscrollBehaviorX: "contain", paddingBottom: "0.25rem" }}>
+			<div className="[overflow-x:auto] [overscroll-behavior-x:contain] pb-1">
 				<svg
 					aria-label={`Participant journey as a Sankey diagram across ${stages.length} stages. ${summary}`}
+					className="m-[0_auto]"
 					role="img"
-					style={{ display: "block", height: "auto", margin: "0 auto", width: `${W}px` }}
+					style={{ display: "block", height: "auto", width: `${W}px` }}
 					viewBox={`0 0 ${W} ${H + HEADER_H + FOOT_H}`}
 				>
 					<defs>
@@ -334,7 +335,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 										>
 											{fmt(node.value)}
 											{showNames ? (
-												<tspan dx={font * 0.36} style={{ fill: "var(--color-ink-muted)", fontWeight: 400 }}>
+												<tspan className="fill-(--color-ink-muted) font-normal" dx={font * 0.36}>
 													{node.label}
 												</tspan>
 											) : null}
@@ -347,8 +348,9 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 					{stages.map((stage, i) => (
 						<text
+							className="font-bold"
 							key={stage.label}
-							style={{ fill: "var(--color-ink-muted)", fontSize: `${font * 0.92}px`, fontWeight: 700 }}
+							style={{ fill: "var(--color-ink-muted)", fontSize: `${font * 0.92}px` }}
 							textAnchor="start"
 							x={xOf(i)}
 							y={HEADER_H - 12}

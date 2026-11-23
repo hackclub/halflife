@@ -150,7 +150,7 @@ export default memo(function AssemblyTree({
                 aria-selected={isSelected}
                 aria-expanded={row.children.length ? expanded.has(key) : undefined}
                 className={`hurt-tree__row${isSelected ? ' is-selected' : ''}${allHidden ? ' is-hidden' : ''}`}
-                style={{ top: (start + i) * ROW_HEIGHT, paddingLeft: `${0.4 + row.depth * 0.9}rem` }}
+                style={{ top: (start + i) * ROW_HEIGHT, '--depth': row.depth } as React.CSSProperties}
                 onClick={(e) => onSelect(row.parts, e.shiftKey || e.metaKey || e.ctrlKey)}
                 onDoubleClick={() => onFocus(row.parts)}
               >

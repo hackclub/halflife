@@ -43,12 +43,12 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 
 	return (
 		<form
-			className="hl-stack hl-stack--tight"
+			className="hl-stack hl-stack--tight min-w-48"
 			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
-			style={{ gap: "0.4rem", minWidth: "12rem" }}
+			style={{ gap: "0.4rem" }}
 		>
 			<Select
 				aria-label="Next printer award status"

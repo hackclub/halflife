@@ -33,18 +33,16 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady(objectKey: string):
 					{/* Server-rendered SVG from our own origin – the token is never sent to a third-party QR service. */}
 					<div
 						aria-label="QR code linking to the upload page"
+						className="h-50 w-50"
 						dangerouslySetInnerHTML={{ __html: minted.qrSvg }}
 						role="img"
-						style={{ height: 200, width: 200 }}
 					/>
 					<p className="hl-hint" style={{ margin: 0 }}>
 						Scan it with your phone camera. The code works once and expires shortly.
 					</p>
 					<details>
 						<summary className="hl-hint">Can&rsquo;t scan it?</summary>
-						<p className="hl-mono" style={{ wordBreak: "break-all" }}>
-							{minted.url}
-						</p>
+						<p className="hl-mono [word-break:break-all]">{minted.url}</p>
 					</details>
 					<p className="hl-hint">Waiting for your phone…</p>
 				</div>

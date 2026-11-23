@@ -197,7 +197,7 @@ export function FulfillmentRow({ filters, order }: Readonly<{ filters: string; o
 						stage={order.fulfillmentStage}
 					/>
 					{order.deliveryPreference === "GRANT_CARD" || order.grantCard ? (
-						<div className="hl-stack hl-stack--tight" style={{ marginTop: "0.6rem" }}>
+						<div className="hl-stack hl-stack--tight mt-[0.6rem]">
 							<p className="hl-hint">Grant card</p>
 							{cardCents === null ? (
 								<p className="hl-hint">No amount was recorded on this order, so no card can be issued.</p>
