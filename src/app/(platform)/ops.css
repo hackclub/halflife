@@ -415,11 +415,14 @@
 		border: 2px solid var(--color-accent);
 		border-radius: var(--radius-button);
 	}
+	/* An alert carries a wash of its own hue, so the warning or danger reads before the sentence does. Mixed with the card ground rather than left transparent, so one value follows light and dark. */
 	.hl-callout--danger {
 		border-color: var(--color-flame);
+		background: color-mix(in srgb, var(--color-flame) 10%, var(--color-surface-raised));
 	}
 	.hl-callout--warning {
 		border-color: var(--color-coin);
+		background: color-mix(in srgb, var(--color-coin) 10%, var(--color-surface-raised));
 	}
 	/* A plain explanation, not a problem to act on – the deduplicated hours notice is the reader being told why a number is smaller than expected. */
 	.hl-callout--info {
