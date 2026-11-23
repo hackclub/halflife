@@ -22,7 +22,7 @@ import { ireQueueUrl } from "@/lib/ire-url"
 import { configuredOrigin } from "@/lib/origin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange, weekOpensAt } from "@/lib/program"
+import { currentWeekNumber, getProgramSettings, weekClosesAt, weekOpensAt } from "@/lib/program"
 import { getOpenDisputes } from "@/lib/queries/review"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 
@@ -100,17 +100,13 @@ async function SeasonTab() {
 	const schedule = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
 		const n = i + 1
 		const slot = scheduleForWeek(n)
-		const range = weekDateRange(settings, n)
 		const closesAt = weekClosesAt(settings, n)
 		const opensAt = weekOpensAt(settings, n)
-		// The program's own timezone, because the week is drawn in wall-clock days there: formatting the range in UTC would show the first day's date an hour early in New York and the last day's an hour late.
-		const day = { day: "numeric", month: "short", timeZone: settings.programTimezone, weekday: "short" } as const
 		return {
+			// Both columns print through the same formatter, in the program's own timezone, so the two dates read as one pair: "Mon, Sep 7 at 12:00 AM" and "Sun, Sep 13 at 11:59 PM".
 			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
 			label: slot ? `${themeLabel(slot.theme.id)} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "-",
-			runs: range
-				? `${range.start.toLocaleDateString("en-US", day)} - ${range.end.toLocaleDateString("en-US", day)}`
-				: "-",
+			opens: formatDeadline(opensAt, settings.programTimezone, "short"),
 			state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
 			week: n,
 		}
@@ -123,12 +119,12 @@ async function SeasonTab() {
 			</Panel>
 
 			<Panel title="Schedule">
-				<Table head={["Week", "Theme", "Runs", "Closes", ""]}>
+				<Table head={["Week", "Theme", "Opens", "Closes", ""]}>
 					{schedule.map(w => (
 						<tr key={w.week}>
 							<td className="hl-mono">{w.week}</td>
 							<td>{w.label}</td>
-							<td>{w.runs}</td>
+							<td>{w.opens}</td>
 							<td className="hl-mono">{w.closes}</td>
 							<td>
 								<Badge tone={w.state === "passed" ? "muted" : w.state === "current" ? "success" : "warning"}>
