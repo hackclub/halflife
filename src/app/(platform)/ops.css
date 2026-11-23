@@ -1922,6 +1922,13 @@ html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout--info {
 	color: color-mix(in srgb, var(--color-success-ink) 85%, white);
 }
 
+/*
+ * The paired links under a name ("Public project", "view on HCB") take the accent ink, which is the light-mode navy. On the dark card that reads at about 1.1:1, so the dark console takes the info ink, which clears about 9.6:1 on the card.
+ */
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-entity-links a {
+	color: var(--color-info-ink);
+}
+
 /* Chart and panel notes: the console's small hint text, used for the explanation under a chart or panel. Appended last, so they outrank `.hl-admin-main .hl-hint` on large screens, which is what the inline styles these replace always did. */
 .hl-hint.hl-note {
 	margin-top: 0.75rem;
