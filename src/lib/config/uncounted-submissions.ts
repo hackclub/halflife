@@ -2,6 +2,8 @@
  * Hand-ins that do not count towards a phase's submission limit.
  *
  * The week 2 (CAD) projects returned in the automated parts-list check of 2026-11-22. Some of those returns asked for less than they read as (a Printing Legion quote from makers printing their own parts), so every maker it reached gets the submission back rather than having to weigh a fix against their last resubmission.
+ *
+ * Also the week 2 projects returned the same day because their makers had not finished Hack Club Auth's identity check: a return they can only fix outside Half Life should not cost them a submission.
  */
 export const UNCOUNTED_SUBMISSION_IDS: ReadonlySet<string> = new Set([
 	"aatll91x1tug4c2tdhakhlny",
@@ -64,12 +66,14 @@ export const UNCOUNTED_SUBMISSION_IDS: ReadonlySet<string> = new Set([
 	"cmvep0g2q08za01rcktorguff",
 	"cmvep65ex092d01rc6c3zd3sy",
 	"cmvepe2gn095k01rck4yoe2vx",
+	"cmveppl0k09b001rcnqh0uzqc",
 	"cmvepprdj09be01rczhnnipgf",
 	"cmveppzrr09bo01rccge7tzxz",
 	"cmveprj3409cu01rcw1mahvjh",
 	"cmvepvpc309fc01rcjp6i9tqt",
 	"cmvepx4ga09g601rcl9uwaq86",
 	"cmvepzpv509i001rcz74mhs3h",
+	"cmveq0qag09j501rc1jte8uib",
 	"cmveq37yd09ld01rcz6mcgfel",
 	"cmveq3v2z09m001rct56paddw",
 	"cmveq4zgv09n301rcc7r27ppd",
@@ -113,6 +117,7 @@ export const UNCOUNTED_SUBMISSION_IDS: ReadonlySet<string> = new Set([
 	"k024imt15tzfap9vcvbumrg4",
 	"l35jg3s5h0wmnobl101rjxl3",
 	"ly7a207yq3qbm65qmufl29mb",
+	"ofx8tuax6fwq7zy6ylwlc7ty",
 	"pgqzo90nuuad29gklcmg8hkk",
 	"q1qqehvaix3gxdd4qa3izfpi",
 	"qs74aejw0t6sgrmdrrdy2h06",
