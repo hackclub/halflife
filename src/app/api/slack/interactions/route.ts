@@ -32,8 +32,6 @@ import {
 	ticketSection,
 } from "@/lib/site/tickets"
 
-export const runtime = "nodejs"
-
 const BlockActionSchema = z.object({ action_id: z.string(), value: z.string().optional() })
 type BlockAction = z.infer<typeof BlockActionSchema>
 

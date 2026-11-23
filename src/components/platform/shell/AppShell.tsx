@@ -187,7 +187,7 @@ export function AppShell({
 							className="hidden w-16 shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px sm:block lg:hidden"
 							href={PLATFORM_HOME}
 						>
-							<Image alt="" className="h-auto w-full" priority sizes="64px" src={logoArt} />
+							<Image alt="" className="h-auto w-full" preload sizes="64px" src={logoArt} />
 						</Link>
 						<div className="min-w-0 flex-1" />
 

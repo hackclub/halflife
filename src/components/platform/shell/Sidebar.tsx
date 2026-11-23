@@ -45,7 +45,7 @@ export function Sidebar({ className }: { className?: string }) {
 
 	return (
 		<div className={cx("flex flex-col gap-5", className)}>
-			{/* The same artwork the landing page leads with, so the platform reads as the place the site sent you. Sized to the rail, not to its own pixels: the file is drawn large, and priority because it is above the fold on every page. */}
+			{/* The same artwork the landing page leads with, so the platform reads as the place the site sent you. Sized to the rail, not to its own pixels: the file is drawn large, and preloaded because it is above the fold on every page. */}
 			<Link
 				aria-label="Half Life home"
 				className="block w-44 shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px xl:w-50"
@@ -54,7 +54,7 @@ export function Sidebar({ className }: { className?: string }) {
 				<Image
 					alt=""
 					className="h-auto w-full drop-shadow-[0_3px_6px_rgb(28_26_89/0.18)]"
-					priority
+					preload
 					sizes="200px"
 					src={logoArt}
 				/>

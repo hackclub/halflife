@@ -6,8 +6,6 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { ireMode, isIreWebhookConfigured } from "@/lib/ire-platform"
 import { applyIreWebhook } from "@/lib/ire-review"
 
-// Signature checks need Node's Web Crypto, not the edge runtime.
-export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 

@@ -3,8 +3,6 @@ import { NextResponse } from "next/server"
 import { readBoundedText } from "@/lib/api"
 import { applyAriWebhook, isAriWebhookConfigured } from "@/lib/ari"
 
-// Signature checks need Node's Web Crypto, not the edge runtime.
-export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 

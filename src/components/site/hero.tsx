@@ -291,7 +291,7 @@ function HackClubFlag() {
 			target="_blank"
 		>
 			{/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped source at this boundary */}
-			<Image alt="Hack Club" className="w-full" priority src={flagArt as StaticImageData} />
+			<Image alt="Hack Club" className="w-full" preload src={flagArt as StaticImageData} />
 		</a>
 	)
 }
@@ -320,7 +320,7 @@ function HeroArt() {
 					alt=""
 					className="object-cover"
 					fill
-					priority
+					preload
 					quality={90}
 					sizes="100vw"
 					src={bgArt}

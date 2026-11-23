@@ -55,7 +55,7 @@ export default function Wordmark({
 						alt=""
 						className="object-contain"
 						fill
-						priority
+						preload
 						// The old src was an `.svg`, which next/image serves unoptimized – no srcset, no quality, `sizes` declared for the `fill` contract and nothing else. A png goes through the optimizer, so both now matter: 90 to match the rest of the page's artwork, since 75 on a flat two-colour wordmark is where banding shows first.
 						quality={90}
 						sizes={sizes}
