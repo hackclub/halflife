@@ -23,7 +23,7 @@ jobs:
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
               with:
-                  # `bun install` runs dependency install scripts on a push to main, and main auto-deploys. The
+                  # `bun install` runs dependency install scripts on a push to main, which reaches prod through a release PR, and prod auto-deploys. The
                   # checkout token is NOT persisted: it is supplied to the push alone, from the environment.
                   persist-credentials: false
                   ref: ${{ github.head_ref || github.ref_name }}

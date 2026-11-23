@@ -288,7 +288,7 @@ A fourth pass over the repository at `21c1edeb`, focused on the 518 commits sinc
     - `/api/upload/from-url` reserves 100 MiB of the 128 MiB shared pool for up to 10 s per request (`src/app/api/upload/from-url/route.ts:33`).
     - The `img-src` allowlist admits every `*.hackclub.com` and `*.dunkirk.sh` host plus two legacy third-party hosts.
 34. **CI, scripts and the client.**
-    - The lint workflows still run `bun install` with a `contents: write` token persisted in `.git/config` on pushes to `main`, which auto-deploys (`.github/workflows/oxlint.yml:14-42`, `biome.yml:14-15`). Split them into a read-only lint job and a no-install push job, or set `persist-credentials: false`.
+    - The lint workflows still run `bun install` with a `contents: write` token persisted in `.git/config` on pushes to `main`, which reaches the auto-deploying `prod` through a release PR (`.github/workflows/oxlint.yml:14-42`, `biome.yml:14-15`). Split them into a read-only lint job and a no-install push job, or set `persist-credentials: false`.
     - `scripts/backfill-airtable-addresses.ts:394-398` writes its report to a hard-coded `/tmp/opencode` with default permissions.
     - A journal entry saved before its project row exists reports success and discards the draft (`src/lib/store-writes.ts:324-375`). Return an error when `routeOf(id)` is null.
     - `/signed-out` still logs a user out on a cross-site top-level navigation; it only checks `Sec-Fetch-Dest`. Low impact.
