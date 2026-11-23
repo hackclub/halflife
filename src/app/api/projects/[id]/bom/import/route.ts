@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import { fail, ok, parseBody } from "@/lib/api"
-import { bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
+import { bomLockReason, listBom, MAX_BOM_ITEMS, syncBomToAirtable } from "@/lib/bom"
 import { readRepoBom } from "@/lib/bom-import"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
@@ -98,6 +98,7 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	})
 
 	after(() => scheduleRepoSync(id))
+	after(() => syncBomToAirtable(id, gate.user))
 
 	return ok({
 		imported: result.lines.length,
