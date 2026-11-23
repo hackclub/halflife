@@ -3,7 +3,7 @@ import { useId, useState } from "react"
 import { Button } from "@/components/platform/ui"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { formatShortDate } from "@/lib/deadline"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import type { Checkpoint } from "@/lib/types"
 import { weekName } from "./checkpoint-shared"
 import { Modal, ModalTitle } from "./Modal"
@@ -17,7 +17,8 @@ import { Modal, ModalTitle } from "./Modal"
  * Opening it again is almost always "I need to change something", so it says where the week stands and offers the one thing that allows a change: taking it back out of review. Nothing is lost by it – the entries, parts list and details stay as they are, and this same checkpoint hands it in again.
  */
 export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
-	const { setOpenCheckpoint, unsubmitPhase, weekOfCheckpoint, stateOf } = useStore()
+	const { unsubmitPhase, weekOfCheckpoint, stateOf } = useStore()
+	const { setOpenCheckpoint } = useStoreUi()
 	const week = weekOfCheckpoint(checkpoint)
 	const handedIn = stateOf(checkpoint.id).at
 	const titleId = useId()

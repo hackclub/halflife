@@ -5,14 +5,15 @@ import { IconCamera, IconFilm, IconMic, IconVolume, IconVolumeOff } from "@/comp
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { Button, Field, TextInput } from "@/components/platform/ui"
 import { attrUrl } from "@/lib/attr-url"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import type { Checkpoint } from "@/lib/types"
 import { readReelDraft, weekName, writeReelDraft } from "./checkpoint-shared"
 import { Modal, ModalTitle } from "./Modal"
 import { PublicReelModal } from "./PublicReelModal"
 
 export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
-	const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
+	const { postReel, stateOf, weekOf } = useStore()
+	const { setOpenCheckpoint } = useStoreUi()
 	const week = weekOf(checkpoint.weekId)
 	const { done } = stateOf(checkpoint.id)
 	// A reel draft is restored once, when the sheet opens, and never changes while it is open – so it is a value to read, not one to set.

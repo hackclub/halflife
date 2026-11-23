@@ -13,7 +13,7 @@ import { countImages, proseLength } from "@/lib/markdown"
 import { round2 } from "@/lib/money"
 import { fmtHours } from "@/lib/numbers"
 import { MAX_SESSION_HOURS } from "@/lib/schemas/session"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
 import { cleanBodyForAutosave, isWeeksProject, stashJournalDraft, weekName } from "./checkpoint-shared"
 import { JournalEntryTab, JournalTabSwitcher, JournalTimelapseTab } from "./JournalTabs"
@@ -113,7 +113,6 @@ const dayLabel = (day: string, today: string): string =>
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const {
-		setOpenCheckpoint,
 		logSession,
 		editSession,
 		complete,
@@ -125,6 +124,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		hoursOf,
 		participantGoal,
 	} = useStore()
+	const { setOpenCheckpoint } = useStoreUi()
 
 	const week = weekOfCheckpoint(checkpoint)
 

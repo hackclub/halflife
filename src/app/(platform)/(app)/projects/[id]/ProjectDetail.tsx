@@ -18,7 +18,7 @@ import { FUNDING_STATE_TEXT, fundingChipTone } from "@/lib/funding-state"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewChipTone } from "@/lib/review-state"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import type { Project } from "@/lib/types"
 import { BomEditor } from "./BomEditor"
 import { HackatimeLinks } from "./HackatimeLinks"
@@ -182,7 +182,8 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
  * The warm-up's own trail, flattened onto its page: what it has logged against what submitting asks, the next entry to write, and its one submit. The sheets these open are the season's own journal and submit sheets, run on the warm-up's week 0, so writing and handing in work the same way everywhere.
  */
 function WarmupWork({ projectId }: { projectId: string }) {
-	const { warmupWeekOf, hoursOf, passedOf, statusOf, deadlineOf, stateOf, setOpenCheckpoint, projects } = useStore()
+	const { warmupWeekOf, hoursOf, passedOf, statusOf, deadlineOf, stateOf, projects } = useStore()
+	const { setOpenCheckpoint } = useStoreUi()
 	const warmupWeek = warmupWeekOf(projectId)
 	if (!warmupWeek) return null
 	const project = projects.find(p => p.id === projectId)
@@ -387,7 +388,7 @@ function ReviewState({
 	/** No cover image, no hand-in: the same gate the submit sheet and the server hold. */
 	hasCover: boolean
 }) {
-	const { setOpenCheckpoint } = useStore()
+	const { setOpenCheckpoint } = useStoreUi()
 	const [disputing, setDisputing] = useState<"DESIGN" | "BUILD" | null>(null)
 
 	return (
@@ -509,7 +510,7 @@ function DecisionNotice({
 	/** No cover image, no hand-in: the same gate the submit sheet and the server hold. */
 	hasCover: boolean
 }) {
-	const { setOpenCheckpoint } = useStore()
+	const { setOpenCheckpoint } = useStoreUi()
 	const returned = phases.filter(p => p.status === "update_requested")
 	const rejected = phases.filter(p => p.status === "rejected")
 	if (returned.length === 0 && rejected.length === 0) return null
@@ -646,11 +647,11 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 		warmupWeekOf,
 		weekHours,
 		hoursOf,
-		hydrated,
 		unsubmitPhase,
 		statusOf,
 		overlapUnchecked: overlapUncheckedWeek,
 	} = useStore()
+	const { hydrated } = useStoreUi()
 	const project = projects.find(p => p.id === id)
 
 	// A miss here is real: the id is someone else's, or the project was deleted.

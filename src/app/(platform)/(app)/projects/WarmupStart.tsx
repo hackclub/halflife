@@ -6,13 +6,14 @@ import { IconArrowRight } from "@/components/platform/icons"
 import { WarmupModal } from "@/components/platform/modals/WarmupModal"
 import { Button, Panel } from "@/components/platform/ui"
 import { WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 
 /**
  * Where the intro sends someone who arrives before week 1: the way into a warm-up project. Shown while week 1 has not opened. A maker may start as many warm-ups as they like, so once they have one it steps back to a single line above their projects instead of leading the page.
  */
 export function WarmupStart() {
-	const { hydrated, projects, weekStarted, weekOpensOn, warmupDeadline } = useStore()
+	const { projects, weekStarted, weekOpensOn, warmupDeadline } = useStore()
+	const { hydrated } = useStoreUi()
 	const [open, setOpen] = useState(false)
 
 	if (!hydrated || weekStarted(1)) return null

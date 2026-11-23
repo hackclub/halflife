@@ -10,7 +10,7 @@ import { isFreestyle } from "@/lib/config/freestyle"
 import { MIN_HOURS_PER_WEEK, type PrinterGoal, printerById } from "@/lib/config/printers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
-import { useStore } from "@/lib/store"
+import { useStoreUi } from "@/lib/store"
 import flightControllerShot from "../../../../public/projects/flightcontroller.png"
 import hexapodShot from "../../../../public/projects/hexapod.png"
 import macropadShot from "../../../../public/projects/macropad.png"
@@ -342,7 +342,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
  * Cinematic
  * ------------------------------------------------------------------ */
 export function Cinematic() {
-	const { setPhase, reducedMotion } = useStore()
+	const { setPhase, reducedMotion } = useStoreUi()
 	const camera = useRef<HTMLDivElement>(null)
 	const banners = useRef<(HTMLDivElement | null)[]>([])
 	const title = useRef<HTMLDivElement>(null)

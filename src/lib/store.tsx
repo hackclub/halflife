@@ -72,7 +72,6 @@ interface Ctx {
 	currentCheckpointId: string | null
 	/** When a week stops taking entries, a warm-up's included. */
 	deadlineOf(week: Week): string | null
-	doomscrollerOpen: boolean
 	/**
 	 * Correct a finished entry's words, hours, and timelapses. Null once saved, or why it was refused. The clips are the full desired set of Lapse attachments; the server keeps, adds, and releases the difference.
 	 */
@@ -92,13 +91,10 @@ interface Ctx {
 	 * Mark the first checkpoint done, on the API's say-so. Patched rather than awaited so the goal prompt can take over from the onboarding modal without a frame of the tab tour in between.
 	 */
 	finishOnboarding(): void
-	/** End the tab tour, finished or skipped, and remember it was seen. */
-	finishTour(): void
 	/** The printer your earnings are paced against. See config/printers. */
 	goalId: string
 	/** What a week is worth, a warm-up's included. See `weekHours`. */
 	hoursOf(week: Week): number
-	hydrated: boolean
 	/** Whether a checkpoint is held until a deleted reel is re-recorded. */
 	isHeld(id: string): boolean
 	/** Whether a checkpoint is shut because its week's time ran out. */
@@ -126,8 +122,6 @@ interface Ctx {
 	manualHoursByDay: StoreSnapshot["manualHoursByDay"]
 	/** Whether the first checkpoint has been completed. */
 	onboardingDone: boolean
-	/** id of the checkpoint whose modal is open, if any */
-	openCheckpoint: string | null
 	/**
 	 * Whether this week's hours may still count one sitting twice, because the overlap between a Lapse recording and Hackatime could not be checked.
 	 *
@@ -146,7 +140,6 @@ interface Ctx {
 	 * Coins the logged hours of weeks 1..weekId will earn once reviewed, that are not in `printerFund` yet. Coins are minted at approval, so the fund alone says a week nobody has reviewed earned nothing; pacing reads both.
 	 */
 	pendingCoins(weekId: number): number
-	phase: IntroPhase
 	/** Where a week stands with review. "draft" when nothing is recorded. */
 	phaseStatusOf(weekId: number): string
 	/**
@@ -155,30 +148,16 @@ interface Ctx {
 	 * Resolves to the new post's id, or to the reason it did not land. The reason is the server's own rather than a guess: a maker held up by an owed reel, or by an upload the server will not accept, used to be told their connection had failed, with no way to work out why.
 	 */
 	postReel(id: string, caption: string, objectKey: string): Promise<PostReelResult>
-	/**
-	 * Admins only: week 5's participant copy as it reads from midnight on its first day, when Breadboard Computer becomes Freestyle, shown now. Only what this browser renders changes; pages the server writes out switch at midnight itself. Always false for anyone else.
-	 */
-	previewFreestyle: boolean
 	/** The whole balance. Every coin counts toward the printer goal. */
 	printerFund: number
 	progress: { [_: string]: CheckpointState }
 	projects: Project[]
-	/**
-	 * Admins only: wipe your own setup answers and run the whole first run again, setup checkpoint included. Resolves to an error message, or null.
-	 */
-	redoOnboarding(): Promise<string | null>
-	reducedMotion: boolean
-	reset(): void
 	setBypassLocks(on: boolean): void
-	setDoomscroller(open: boolean): void
-	setOpenCheckpoint(id: string | null): void
 	/**
 	 * Record what this participant is here for, with the printer if the answer is a printer. Resolves to null once saved, or to the server's reason for refusing – the prompt that calls it is uncloseable, so a silent failure would strand somebody.
 	 */
 	setParticipantGoal(goal: ParticipantGoal, printerGoalId?: string): Promise<string | null>
 
-	setPhase(p: IntroPhase): void
-	setPreviewFreestyle(on: boolean): void
 	/**
 	 * Set or clear a project's repo link. Resolves to null once saved, or to the server's reason for refusing (a phase in review, say), so an inline editor can say so instead of quietly reverting.
 	 */
@@ -189,11 +168,6 @@ interface Ctx {
 	 * The submit sheet awaits this before handing the phase in: the server prices the parts list and gates the hours against the stored request, so a hand-in sent before the request lands is read at the previous tier.
 	 */
 	setProjectTier(id: string, tier: 1 | 2 | 3): Promise<string | null>
-	/** Show the share prompt after a hand-in, or clear it. */
-	setSharePost(share: SharePost | null): void
-	setTourStep(n: number): void
-	/** The share prompt waiting after a hand-in, if any. Cleared when it closes. */
-	sharePost: SharePost | null
 	stateOf(id: string): CheckpointState
 	/** Where a week stands with review, a warm-up's included. */
 	statusOf(week: Week): string
@@ -205,7 +179,6 @@ interface Ctx {
 	 * Every hour on the record – journalled in entries and tracked some other way (Hackatime, a reviewer's adjustment) – summed across the season's weeks and every warm-up. Zero until the first session lands.
 	 */
 	totalHours: number
-	tourStep: number
 	/**
 	 * Take a phase in review back out of it. Null once done, or the server's reason. A trail submit passes its checkpoint id; a project with no checkpoint to address it by (a warm-up project) passes itself directly.
 	 */
@@ -247,7 +220,41 @@ interface Ctx {
 	weeks: Week[]
 }
 
+/**
+ * The store's browser-only half: what is open on this screen, and the first-run ceremony.
+ *
+ * Split from the facts so opening a checkpoint, starting the tour or flipping the Doomscroller does not hand a new context value to every component that reads the trail – those reads are the bulk of the app, and none of them depend on a modal being open.
+ */
+export interface UiCtx {
+	doomscrollerOpen: boolean
+	/** End the tab tour, finished or skipped, and remember it was seen. */
+	finishTour(): void
+	hydrated: boolean
+	/** id of the checkpoint whose modal is open, if any */
+	openCheckpoint: string | null
+	phase: IntroPhase
+	/**
+	 * Admins only: week 5's participant copy as it reads from midnight on its first day, when Breadboard Computer becomes Freestyle, shown now. Always false for anyone else.
+	 */
+	previewFreestyle: boolean
+	/** Admins only: wipe your own setup answers and run the whole first run again. Resolves to an error message, or null. */
+	redoOnboarding(): Promise<string | null>
+	reducedMotion: boolean
+	reset(): void
+	setDoomscroller(open: boolean): void
+	setOpenCheckpoint(id: string | null): void
+	setPhase(p: IntroPhase): void
+	setPreviewFreestyle(on: boolean): void
+	/** Show the share prompt after a hand-in, or clear it. */
+	setSharePost(share: SharePost | null): void
+	setTourStep(n: number): void
+	/** The share prompt waiting after a hand-in, if any. Cleared when it closes. */
+	sharePost: SharePost | null
+	tourStep: number
+}
+
 const StoreContext = createContext<Ctx | null>(null)
+const StoreUiContext = createContext<UiCtx | null>(null)
 
 export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot; children: ReactNode }) {
 	const router = useRouter()
@@ -400,48 +407,31 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			complete,
 			currentCheckpointId,
 			deadlineOf,
-			doomscrollerOpen: ceremony.doomscrollerOpen,
 			editSession,
 			ensureProject,
 			finishOnboarding,
-			finishTour,
 			hoursOf,
-			hydrated,
 			isHeld,
 			isPassed,
 			isUnlocked: isOpen,
 			linkSyncRepoToProject,
 			lockReason,
 			logSession,
-			openCheckpoint,
 			overlapUnchecked,
 			passedOf,
 			pendingCoins,
-			phase,
 			phaseStatusOf,
 			postReel,
-			previewFreestyle,
 			// A printer can be paid for out of either pot, so the goal tracker reads the total. Everything else in the shop takes `coins` alone.
 			printerFund: facts.coins + facts.bankedCoins,
-			redoOnboarding,
-			reducedMotion,
-			reset,
 			setBypassLocks,
-			setDoomscroller,
-			setOpenCheckpoint,
 			setParticipantGoal,
-			setPhase,
-			setPreviewFreestyle,
 			setProjectRepo,
 			setProjectTier,
-			setSharePost,
-			setTourStep,
-			sharePost,
 			stateOf,
 			statusOf,
 			submitPhase,
 			totalHours,
-			tourStep,
 			unsubmitPhase,
 			updateProject,
 			warmupDeadline,
@@ -463,7 +453,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			allCheckpoints,
 			bypassCheckpoint,
 			bypassLocks,
-			ceremony,
 			complete,
 			currentCheckpointId,
 			deadlineOf,
@@ -471,42 +460,26 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			ensureProject,
 			facts,
 			finishOnboarding,
-			finishTour,
 			hoursOf,
-			hydrated,
 			isHeld,
 			isOpen,
 			isPassed,
 			linkSyncRepoToProject,
 			lockReason,
 			logSession,
-			openCheckpoint,
 			overlapUnchecked,
 			passedOf,
 			pendingCoins,
-			phase,
 			phaseStatusOf,
 			postReel,
-			previewFreestyle,
-			redoOnboarding,
-			reducedMotion,
-			reset,
 			setBypassLocks,
-			setPreviewFreestyle,
-			setDoomscroller,
-			setOpenCheckpoint,
 			setParticipantGoal,
-			setPhase,
 			setProjectRepo,
 			setProjectTier,
-			setSharePost,
-			setTourStep,
-			sharePost,
 			stateOf,
 			statusOf,
 			submitPhase,
 			totalHours,
-			tourStep,
 			unsubmitPhase,
 			updateProject,
 			warmupDeadline,
@@ -525,12 +498,65 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		],
 	)
 
-	return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
+	// Separate from the facts above, so a modal opening or the tour moving does not rebuild the value every trail component reads.
+	const ui = useMemo<UiCtx>(
+		() => ({
+			doomscrollerOpen: ceremony.doomscrollerOpen,
+			finishTour,
+			hydrated,
+			openCheckpoint,
+			phase,
+			previewFreestyle,
+			redoOnboarding,
+			reducedMotion,
+			reset,
+			setDoomscroller,
+			setOpenCheckpoint,
+			setPhase,
+			setPreviewFreestyle,
+			setSharePost,
+			setTourStep,
+			sharePost,
+			tourStep,
+		}),
+		[
+			ceremony.doomscrollerOpen,
+			finishTour,
+			hydrated,
+			openCheckpoint,
+			phase,
+			previewFreestyle,
+			reducedMotion,
+			redoOnboarding,
+			reset,
+			setDoomscroller,
+			setOpenCheckpoint,
+			setPhase,
+			setPreviewFreestyle,
+			setSharePost,
+			setTourStep,
+			sharePost,
+			tourStep,
+		],
+	)
+
+	return (
+		<StoreContext.Provider value={value}>
+			<StoreUiContext.Provider value={ui}>{children}</StoreUiContext.Provider>
+		</StoreContext.Provider>
+	)
 }
 
 export function useStore(): Ctx {
 	const ctx = useContext(StoreContext)
 	if (!ctx) throw new Error("useStore must be used inside StoreProvider")
+	return ctx
+}
+
+/** The browser-only half of the store: what is open, and the first-run ceremony. */
+export function useStoreUi(): UiCtx {
+	const ctx = useContext(StoreUiContext)
+	if (!ctx) throw new Error("useStoreUi must be used inside StoreProvider")
 	return ctx
 }
 
