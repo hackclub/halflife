@@ -133,7 +133,7 @@ const nowText = (): string => formatDbTimestamp(new Date())
 
 /** Robert's JSON shapes are its own; anything this module stores is checked against the schemas above first. */
 const json = (value: unknown): JsonValue =>
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a JSON round trip is JSON by construction
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion, unicorn/prefer-structured-clone -- a JSON round trip is JSON by construction; structuredClone would keep Dates as Dates and let undefined through
 	JSON.parse(JSON.stringify(value ?? null)) as JsonValue
 
 async function robertRequest(method: "GET" | "POST", path: string, body?: unknown): Promise<unknown> {

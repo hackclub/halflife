@@ -113,9 +113,13 @@ export const POST = withWritePermission(
 
 		// An approval sends the project to Robert again, so its journal there is the one that was approved (see lib/telescreen).
 		if (outcome.result === ReviewResult.APPROVED && isRobertConfigured())
-			after(() =>
-				submitToRobert(outcome.themeProjectId).catch(err => console.error("[review] robert resend failed:", err)),
-			)
+			after(async () => {
+				try {
+					await submitToRobert(outcome.themeProjectId)
+				} catch (err) {
+					console.error("[review] robert resend failed:", err)
+				}
+			})
 
 		return ok({ outcome })
 	},

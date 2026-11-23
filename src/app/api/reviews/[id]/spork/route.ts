@@ -38,7 +38,13 @@ export const POST = withWritePermission(
 			return ok({ ok: true })
 		}
 		if (!isSporkConfigured()) return fail("NOT_CONFIGURED", "Spork isn't set up. Add SPORK_API_KEY first.")
-		after(() => screenWithSpork(project.id).catch(err => console.error("[spork] screen failed:", err)))
+		after(async () => {
+			try {
+				await screenWithSpork(project.id)
+			} catch (err) {
+				console.error("[spork] screen failed:", err)
+			}
+		})
 		return ok({ queued: true }, { status: 202 })
 	},
 )
