@@ -1322,6 +1322,9 @@ export async function cancelGrantCard(
 	if (!row.hcbCardGrantId) throw new HttpError("CONFLICT", "This grant has no HCB id to cancel")
 	if (row.status === HcbGrantCardStatus.CANCELED)
 		return toOutcome(row, HcbGrantCardStatus.CANCELED, row.error, row.hcbCardGrantId)
+	// A returned card is already settled: the maker gave the balance back. Writing CANCELED over it would drop the record of that return.
+	if (row.status === HcbGrantCardStatus.RETURNED)
+		throw new HttpError("CONFLICT", "The maker already returned this grant")
 
 	// Read the spend before cancelling: HCB returns the unspent balance to the org on cancel, so afterwards there is
 	// no way to tell how much of the card was used. A number we cannot read means the project would be payable in
