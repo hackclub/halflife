@@ -80,7 +80,6 @@ export default async function AdminDeadlinesPage({ searchParams }: Props) {
 	const summary = await listExtensions({ includePii })
 	const inTab = summary.items.filter(item => item.expired === (tab === "expired"))
 	const items = kind ? inTab.filter(item => item.kind === kind) : inTab
-	// oxlint-disable-next-line react/purity -- async server page, rendered once per request, so this time is never reused
 	const now = new Date()
 
 	return (
