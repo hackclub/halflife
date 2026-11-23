@@ -500,14 +500,17 @@ export function rollUpHours(
 		const cached = parseCachedSpans(link.cachedSpans)
 		// The recordings beside the link and the ones elsewhere under its name. Empty means nothing to compare, and nothing to warn about.
 		const windows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject ?? "")
-		if (windows.length > 0)
-			if (cached) {
+		if (windows.length > 0) {
+			// Spans cached for some other stretch of time say nothing about these recordings, so they count as no cache at all, as they do in getHoursBreakdown.
+			const span = spanWindowFor(windows)
+			if (cached && span && cachedSpansCover(cached, span.fromSeconds, span.toSeconds)) {
 				const overlap = capSubtraction(seconds, overlapSeconds(windows, cached.spans))
 				hackatimeOverlapSeconds += overlap
 				seconds -= overlap
 			}
 			// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
 			else hackatimeOverlapUnknown = true
+		}
 
 		hackatimeHours += seconds / 3600
 	}
