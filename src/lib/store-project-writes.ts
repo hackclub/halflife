@@ -20,7 +20,7 @@ interface ProjectWritesOptions {
 }
 
 export interface ProjectWrites {
-	addProject(p: Omit<Project, "id">): void
+	addProject(p: Omit<Project, "id">): Promise<string | null>
 	ensureProject(weekId: number): Promise<string | null>
 	linkSyncRepoToProject(id: string): Promise<string | null>
 	setProjectRepo(id: string, url: string | null): Promise<string | null>
@@ -70,32 +70,32 @@ export function useProjectWrites({ facts, router, setFacts }: ProjectWritesOptio
 	 * Naming a week's project – filling in the row its checkpoint made when it was opened (ensureProject). A second project for the same week is refused rather than queued behind the first, where nothing would ever read it.
 	 */
 	const addProject = useCallback(
-		(p: Omit<Project, "id">) => {
-			void (async () => {
-				try {
-					// Normally made when the checkpoint opened; made here if that request had not landed yet, so a quick "Create project" still has a row.
-					const id = await ensureProject(p.weekId)
-					if (!id) return
-					setFacts(f =>
-						f.projects.some(existing => existing.weekId === p.weekId)
-							? f
-							: { ...f, projects: [...f.projects, { ...p, id }] },
-					)
-					await send(
-						`/api/projects/${id}`,
-						{
-							description: p.description,
-							requestedTier: p.tier,
-							title: p.name,
-							...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
-							...(p.starterProjectId === undefined ? {} : { starterProjectId: p.starterProjectId }),
-						},
-						"PATCH",
-					)
-				} finally {
-					router.refresh()
-				}
-			})()
+		async (p: Omit<Project, "id">): Promise<string | null> => {
+			// Normally made when the checkpoint opened; made here if that request had not landed yet, so a quick "Create project" still has a row.
+			const id = await ensureProject(p.weekId)
+			if (!id) {
+				router.refresh()
+				return "The project could not be created. Try again."
+			}
+			setFacts(f =>
+				f.projects.some(existing => existing.weekId === p.weekId)
+					? f
+					: { ...f, projects: [...f.projects, { ...p, id }] },
+			)
+			const saved = await send(
+				`/api/projects/${id}`,
+				{
+					description: p.description,
+					requestedTier: p.tier,
+					title: p.name,
+					...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
+					...(p.starterProjectId === undefined ? {} : { starterProjectId: p.starterProjectId }),
+				},
+				"PATCH",
+			)
+			router.refresh()
+			// The row exists by now, so a retry from the sheet reuses it through ensureProject and sends the details again.
+			return saved ? null : "The project was created, but its details did not save. Try again."
 		},
 		[ensureProject, router, setFacts],
 	)

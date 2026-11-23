@@ -54,7 +54,7 @@ export interface SharePost {
 export type PostReelResult = { postId: string; error?: undefined } | { postId?: undefined; error: string }
 
 interface Ctx {
-	addProject(p: Omit<Project, "id">): void
+	addProject(p: Omit<Project, "id">): Promise<string | null>
 	allCheckpoints: Checkpoint[]
 	/** Legacy locked coins. Drains to zero; kept so old rows still add up. */
 	bankedCoins: number
