@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { type ReactNode, useRef, useState } from "react"
 import { WeekPainting } from "@/components/platform/art"
@@ -18,7 +19,7 @@ import { uploadFile } from "@/lib/use-handoff"
 /**
  * The way back off a project page, to the list it was opened from.
  */
-export function ProjectBackLink({ href, label }: Readonly<{ href: string; label: string }>) {
+export function ProjectBackLink<R extends string>({ href, label }: Readonly<{ href: Route<R>; label: string }>) {
 	return (
 		<Link
 			className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"

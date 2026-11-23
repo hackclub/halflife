@@ -1,3 +1,4 @@
+import type { Route } from "next"
 import Link from "next/link"
 import { Badge, type BadgeTone, statusLabel, statusTone } from "@/app/components/ui"
 import { IconHammer, IconPencil } from "@/app/components/ui/icons"
@@ -20,10 +21,10 @@ export function ReviewStages({
 	designHref = null,
 	designStatus,
 }: Readonly<{
-	buildHref?: string | null
+	buildHref?: Route | null
 	buildStatus: string
 	designFunding?: FundingState | null
-	designHref?: string | null
+	designHref?: Route | null
 	designStatus: string
 }>) {
 	return (

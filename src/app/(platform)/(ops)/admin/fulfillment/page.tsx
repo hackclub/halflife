@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { TabKeys } from "@/app/components/admin/TabKeys"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
@@ -67,7 +67,7 @@ const TABS = [
 
 type FulfillmentTab = (typeof TABS)[number]["id"]
 
-const tabHref = (id: FulfillmentTab) => (id === "orders" ? "/admin/fulfillment" : `/admin/fulfillment?tab=${id}`)
+const tabHref = (id: FulfillmentTab): Route => (id === "orders" ? "/admin/fulfillment" : `/admin/fulfillment?tab=${id}`)
 
 export default async function AdminFulfillmentPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.FULFILL_ORDERS)

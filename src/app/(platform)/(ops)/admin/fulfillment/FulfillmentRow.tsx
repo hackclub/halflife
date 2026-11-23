@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { useState } from "react"
 import { ManageButton, ManageRow, ManageSection } from "@/app/components/admin/ProjectManage"
@@ -35,7 +36,7 @@ const CARD_STATUS: { [_ in HcbGrantCardStatus]: { label: string; tone: "success"
 	}
 
 /** The sheet's address with a status added, keeping the filters already in it. */
-function statusHref(filters: string, status: string): string {
+function statusHref(filters: string, status: string): Route {
 	const params = new URLSearchParams(filters)
 	params.set("status", status)
 	return `/admin/fulfillment?${params.toString()}`

@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge, Button, EmptyState, statusLabel, Table } from "@/app/components/ui"
@@ -39,7 +40,7 @@ export interface DirectoryFilters {
 }
 
 /** The directory's address with one filter changed, keeping the others. The empty values are the defaults, so they are left out. */
-function directoryHref(filters: DirectoryFilters, next: Partial<DirectoryFilters>): string {
+function directoryHref(filters: DirectoryFilters, next: Partial<DirectoryFilters>): Route {
 	const merged = { ...filters, ...next }
 	const params = new URLSearchParams()
 	if (merged.q) params.set("q", merged.q)

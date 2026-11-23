@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { TabKeys } from "@/app/components/admin/TabKeys"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -24,6 +24,7 @@ import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekOpensAt } from "@/lib/program"
 import { getOpenDisputes } from "@/lib/queries/review"
+import { uncheckedRoute } from "@/lib/routes"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 
 export const metadata: Metadata = {
@@ -42,7 +43,7 @@ const TABS = [
 
 type ProgramTab = (typeof TABS)[number]["id"]
 
-const tabHref = (id: ProgramTab) => (id === "season" ? "/admin/program" : `/admin/program?tab=${id}`)
+const tabHref = (id: ProgramTab): Route => (id === "season" ? "/admin/program" : `/admin/program?tab=${id}`)
 
 interface Props {
 	searchParams: Promise<{ tab?: SearchParamValue }>
@@ -415,7 +416,8 @@ async function IntegrationsTab() {
 						<td>Queue</td>
 						{ireQueue ? (
 							<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-								<Link href={ireQueue}>{ireQueue}</Link>
+								{/* Operator-configured, so it may be a path or an absolute URL. */}
+								<Link href={uncheckedRoute(ireQueue)}>{ireQueue}</Link>
 							</td>
 						) : (
 							<td className="hl-hint">Set IRE_API_URL or IRE_BASE to link the queue</td>

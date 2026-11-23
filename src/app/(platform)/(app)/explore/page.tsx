@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconArrowRight, IconClock, IconFlame } from "@/components/platform/icons"
@@ -45,7 +45,7 @@ const EXCERPT_CHARS = 280
 
 function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 	const { text, cut } = excerpt(entry.body, EXCERPT_CHARS)
-	const href = `/projects/${entry.projectId}#${entry.id}`
+	const href: Route<`/projects/${string}#${string}`> = `/projects/${entry.projectId}#${entry.id}`
 	return (
 		// `min-w-0` and `overflow-wrap: anywhere` on the card itself, so nothing in it – the entry, a project or author name – can be wider than the column: a grid item is otherwise as wide as its longest unbroken word, and one pasted URL carried the card, and then the page, off the right edge.
 		<Panel

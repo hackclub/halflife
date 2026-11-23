@@ -1,8 +1,10 @@
+import type { Route } from "next"
+import { uncheckedRoute } from "@/lib/routes"
 /** One place the admin console can go: a page inside the app, or a page on another part of the site that needs a full load. */
 export interface AdminNavItem {
 	/** Leave the client router for this one, as a plain link does. */
 	hard?: boolean
-	href: string
+	href: Route
 	label: string
 }
 
@@ -92,7 +94,7 @@ export const paletteEntries = (groups: AdminNavGroup[], query: string, person?: 
 		? [
 				{
 					group: "User",
-					href: `/admin/users/${person.id}`,
+					href: uncheckedRoute(`/admin/users/${person.id}`),
 					label: `Open ${person.name ?? person.email}`,
 				},
 			]

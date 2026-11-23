@@ -1,3 +1,4 @@
+import type { Route } from "next"
 import Link from "next/link"
 import type { ComponentPropsWithRef, ReactNode } from "react"
 import { HangingSign } from "@/components/sign/HangingSign"
@@ -31,11 +32,11 @@ export function Button({
 /**
  * A link that is a button. The kit's own `Button` cannot be one: an `<a>` that navigates and a `<button>` that submits are different elements, and hand-writing `className="hl-btn"` on a `<Link>` is how a variant quietly goes missing. Pass the same `variant` here and Next's `Link` keeps the rest.
  */
-export function LinkButton({
+export function LinkButton<R extends string>({
 	variant = "default",
 	className,
 	...props
-}: Readonly<ComponentPropsWithRef<typeof Link> & { variant?: Variant }>) {
+}: Readonly<Omit<ComponentPropsWithRef<typeof Link>, "href"> & { href: Route<R>; variant?: Variant }>) {
 	return <Link {...props} className={withClass(variantClass[variant], className)} />
 }
 
@@ -177,7 +178,7 @@ export function FilterBar({
 	children: ReactNode
 	footer?: ReactNode
 	leading?: ReactNode
-	resetHref: string
+	resetHref: Route
 }>) {
 	// A search row starts its own band, and a bar with no notes of its own can keep the actions on the fields' line rather than giving them a row with nothing beside them.
 	const className = [

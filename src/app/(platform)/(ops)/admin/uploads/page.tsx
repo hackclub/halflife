@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { Callout, EmptyState, Field, FilterBar, PageHeader, Panel, Select, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -77,7 +77,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 			listError = "The upload bucket could not be listed. Check its S3 configuration and credentials."
 		}
 
-	const pageHref = (cursor?: string) => {
+	const pageHref = (cursor?: string): Route => {
 		const params = new URLSearchParams()
 		if (folder) params.set("folder", folder)
 		if (cursor) params.set("cursor", cursor)

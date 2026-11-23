@@ -23,7 +23,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 	const can = (permission: Permission): boolean => hasPermission(roles, permission)
 
 	// A section with no pages left is dropped, so the sidebar never shows a heading over nothing.
-	const groups: AdminNavGroup[] = [
+	const sections: AdminNavGroup[] = [
 		{
 			items: [{ href: "/admin", label: "Overview" }],
 			label: "Overview",
@@ -76,7 +76,8 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 			],
 			label: "System",
 		},
-	].filter(group => group.items.length > 0)
+	]
+	const groups = sections.filter(group => group.items.length > 0)
 
 	return (
 		<AdminFrame email={user.email} groups={groups}>

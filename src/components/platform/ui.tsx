@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import type { ButtonHTMLAttributes, ComponentProps, ComponentPropsWithRef, ReactNode, Ref } from "react"
 import { cx } from "@/lib/cx"
@@ -137,14 +138,14 @@ export function Button({ variant = "solid", size = "md", full, className, childr
 /**
  * A navigation action drawn as a button. The kit's `Button` cannot be a link, and hand-copying its classes is how the gold CTA drifted; this takes the same variant and size set and renders Next's `Link`.
  */
-export function LinkButton({
+export function LinkButton<R extends string>({
 	variant = "solid",
 	size = "md",
 	full,
 	className,
 	children,
 	...rest
-}: Readonly<ComponentProps<typeof Link> & ButtonStyleProps>) {
+}: Readonly<Omit<ComponentProps<typeof Link>, "href"> & ButtonStyleProps & { href: Route<R> }>) {
 	return (
 		<Link className={buttonClass({ className, full, size, variant })} {...rest}>
 			{children}

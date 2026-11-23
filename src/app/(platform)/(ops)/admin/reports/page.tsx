@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { TabKeys } from "@/app/components/admin/TabKeys"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -243,7 +243,7 @@ interface Subject {
 	hidden: boolean
 	hideLabel: string
 	hideUrl: string | null
-	href: string
+	href: Route<`/admin/users/${string}` | `/projects/${string}` | `/projects/${string}#${string}`>
 	kind: string
 	preview: string
 	restoreUrl: string | null

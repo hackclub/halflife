@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import type { MouseEvent, ReactNode } from "react"
 
@@ -10,7 +11,7 @@ import type { MouseEvent, ReactNode } from "react"
  *
  * Modified clicks are left alone so "open in new tab" still works.
  */
-export function HardLink({
+export function HardLink<R extends string>({
 	"aria-keyshortcuts": ariaKeyShortcuts,
 	"aria-label": ariaLabel,
 	children,
@@ -21,7 +22,7 @@ export function HardLink({
 	"aria-label"?: string
 	children: ReactNode
 	className?: string
-	href: string
+	href: Route<R>
 }) {
 	const go = (event: MouseEvent<HTMLAnchorElement>) => {
 		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return

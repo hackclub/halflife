@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { uncheckedRoute } from "@/lib/routes"
 import {
 	ADMIN_HOTKEYS,
 	type AdminNavGroup,
@@ -75,14 +76,18 @@ describe("paletteEntries", () => {
 	})
 
 	test("no user search without the users page in the sidebar", () => {
-		const withoutUsers = [{ items: [{ href: "/admin/deadlines", label: "Deadlines" }], label: "Programme" }]
+		const withoutUsers: AdminNavGroup[] = [
+			{ items: [{ href: "/admin/deadlines", label: "Deadlines" }], label: "Programme" },
+		]
 		expect(paletteEntries(withoutUsers, "ada").some(entry => entry.group === "Search")).toBe(false)
 	})
 
 	test("a person named outright is the top row, opening their profile", () => {
 		const ada = { email: "ada@example.com", id: "usr_1", name: "Ada", slackId: "U0BER1GR3GX" }
 		const entries = paletteEntries(groups, "U0BER1GR3GX", ada)
-		expect(entries[0]).toEqual({ group: "User", href: "/admin/users/usr_1", label: "Open Ada" })
+		expect(entries[0]?.group).toBe("User")
+		expect(entries[0]?.href).toBe(uncheckedRoute("/admin/users/usr_1"))
+		expect(entries[0]?.label).toBe("Open Ada")
 		expect(entries.at(-1)?.group).toBe("Search")
 	})
 
@@ -91,7 +96,9 @@ describe("paletteEntries", () => {
 	})
 
 	test("no profile row without the users page in the sidebar", () => {
-		const withoutUsers = [{ items: [{ href: "/admin/deadlines", label: "Deadlines" }], label: "Programme" }]
+		const withoutUsers: AdminNavGroup[] = [
+			{ items: [{ href: "/admin/deadlines", label: "Deadlines" }], label: "Programme" },
+		]
 		const ada = { email: "ada@example.com", id: "usr_1", name: "Ada", slackId: null }
 		expect(paletteEntries(withoutUsers, "ada@example.com", ada).some(entry => entry.group === "User")).toBe(false)
 	})

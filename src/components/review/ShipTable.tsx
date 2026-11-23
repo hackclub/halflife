@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ClaimTimer } from "@/components/review/ClaimTimer"
@@ -25,7 +26,8 @@ export function ShipTable({
 	showProject?: boolean
 }) {
 	const router = useRouter()
-	const href = (id: string): string => `/reviews/${id}${queueQuery ? `?${queueQuery}` : ""}`
+	const href = (id: string): Route<`/reviews/${string}` | `/reviews/${string}?${string}`> =>
+		`/reviews/${id}${queueQuery ? `?${queueQuery}` : ""}`
 	if (rows.length === 0) return <p className="field__hint">Nothing here.</p>
 	return (
 		<div className="table-wrap">

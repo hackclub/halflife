@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import {
 	type CSSProperties,
@@ -35,7 +36,8 @@ import { composeJustification, editBeforeTail, mergeEdits } from "@/lib/review-p
 import type { ReviewDetail, ReviewEntry, ReviewViewer } from "@/lib/review-platform/types"
 
 /** Half Life's redirect to the maker's Telescreen profile (lib/review-platform/telescreen). */
-const telescreenHref = (submissionId: string): string => `/api/reviews/${encodeURIComponent(submissionId)}/telescreen`
+const telescreenHref = (submissionId: string): Route<`/api/reviews/${string}/telescreen`> =>
+	`/api/reviews/${encodeURIComponent(submissionId)}/telescreen`
 
 /** The moment an approval is sent, which its justification is stamped with. A call rather than `new Date()` inline, which reads as impure render to the linter even inside a handler. */
 const approvalTime = (): Date => new Date()
@@ -45,10 +47,10 @@ const approvalTime = (): Date => new Date()
  *
  * `queueQuery` is the queue filters the run started from (see lib/review-platform/queue-filters), carried on so the ship after that is picked within them too.
  */
-const nextShipHref = (nextId: string | null, queueQuery: string): string =>
+const nextShipHref = (nextId: string | null, queueQuery: string): Route<`/reviews/${string}?claim${string}`> | Route =>
 	nextId ? `/reviews/${nextId}?claim${queueQuery ? `&${queueQuery}` : ""}` : queueHref(queueQuery)
 
-const queueHref = (queueQuery: string): string => (queueQuery ? `/reviews?${queueQuery}` : "/reviews")
+const queueHref = (queueQuery: string): Route => (queueQuery ? `/reviews?${queueQuery}` : "/reviews")
 
 const FileViewer = lazy(() => import("@/components/review/FileViewer"))
 
@@ -203,7 +205,7 @@ function ShipReviewInner({
 	viewer,
 }: {
 	detail: ReviewDetail
-	links: { back: string; next: string }
+	links: { back: ReturnType<typeof queueHref>; next: ReturnType<typeof nextShipHref> }
 	viewer: ReviewViewer
 }) {
 	const runtime = useReviewRuntime()
@@ -680,7 +682,7 @@ function PendingJournal({
 }
 
 /** Back to the queue, and to the ship the viewer decided last, for when they remember something after moving on. */
-function BackLinks({ back, last }: { back: string; last: string | null }) {
+function BackLinks({ back, last }: { back: Route; last: string | null }) {
 	return (
 		<>
 			<Link href={back}>←</Link> ·

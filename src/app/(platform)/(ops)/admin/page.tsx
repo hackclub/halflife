@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { ActivityStrip, DauChart, ProgrammeFilterProvider } from "@/app/components/admin/ActivityCharts"
 import { ActivityShareChart } from "@/app/components/admin/ActivityShareChart"
@@ -81,7 +81,7 @@ const TABS = [
 
 type OverviewTab = (typeof TABS)[number]["id"]
 
-const tabHref = (id: OverviewTab) => (id === "summary" ? "/admin" : `/admin?tab=${id}`)
+const tabHref = (id: OverviewTab): Route => (id === "summary" ? "/admin" : `/admin?tab=${id}`)
 
 interface Props {
 	searchParams: Promise<{ tab?: SearchParamValue }>

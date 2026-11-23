@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { useState } from "react"
 import { ManageButton, ManageRow } from "@/app/components/admin/ProjectManage"
@@ -25,7 +26,7 @@ export interface ProjectRowData extends ProjectManageData {
 }
 
 /** The projects list with one filter changed, keeping the others. */
-function filteredHref(filters: string, key: string, value: string): string {
+function filteredHref(filters: string, key: string, value: string): Route {
 	const params = new URLSearchParams(filters)
 	params.set(key, value)
 	return `/admin/projects?${params.toString()}`
