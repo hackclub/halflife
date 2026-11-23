@@ -106,6 +106,12 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 					.build(),
 			)
 			if (resolved) continue
+			// A hand-in made after the failed withdraw is the live ship now. Ari keys a ship by project and phase, so withdrawing that id here would take the new hand-in back out of review.
+			const handedInAgain = await db.orm.public.PhaseSubmission.where({ phase, themeProjectId: targetId })
+				.where(submission => submission.createdAt.gt(failure.createdAt))
+				.select("id")
+				.first()
+			if (handedInAgain) continue
 
 			const result = await trackSideEffect(
 				"ari",
