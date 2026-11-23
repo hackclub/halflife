@@ -76,8 +76,8 @@ export const GET = withSession(async (_req: Request, { params, gate }: Params & 
 			withFields(link, {
 				cachedAt: parseNullableTimestamp(link.cachedAt),
 				createdAt: parseDbTimestamp(link.createdAt),
+				overlapFetchedAt: parseNullableTimestamp(link.overlapFetchedAt),
 				reviewedAt: parseNullableTimestamp(link.reviewedAt),
-				spansFetchedAt: parseNullableTimestamp(link.spansFetchedAt),
 			}),
 		),
 		namedAt: parseNullableTimestamp(row.namedAt),

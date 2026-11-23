@@ -160,7 +160,7 @@ const parseSessionRow = (row: SessionRow) => {
 }
 
 const parseLinkRow = (row: LinkRow) =>
-	parseTimestampFields(row, ["cachedAt", "createdAt", "reviewedAt", "spansFetchedAt"])
+	parseTimestampFields(row, ["cachedAt", "createdAt", "overlapFetchedAt", "reviewedAt"])
 
 const parsePriorReviewRow = (row: PriorReviewRow) => {
 	const { submission } = row

@@ -3,16 +3,15 @@ import { avatarUrl } from "@/lib/avatar"
 import { getThemeDef, themeLabel } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { displayName } from "@/lib/display-name"
-import { HoursSource, Phase, PostStatus, Theme } from "@/lib/enums"
+import { Phase, PostStatus, Theme } from "@/lib/enums"
 import { type FeedItem, getCreatorReels } from "@/lib/feed"
-import { rollUpHours } from "@/lib/hours"
-import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
+import { makerRecordings, rollUpHours } from "@/lib/hours"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
-import { parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
+import { parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -85,13 +84,12 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 					.where(post => post.status.eq(PostStatus.PUBLISHED)),
 			)
 			.include("hackatimeLinks", links =>
-				links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
+				links.select("cachedOverlap", "cachedSeconds", "hackatimeProject", "hoursApproved", "phase"),
 			)
 			.include("workSessions", sessions =>
 				sessions
 					.select("content", "createdAt", "hoursApproved", "hoursClaimed", "hoursSource", "phase")
-					.where({ deletedAt: null })
-					.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt")),
+					.where({ deletedAt: null }),
 			)
 			.all(),
 		getCreatorReels(userId, viewerId, PROFILE_REELS),
@@ -110,17 +108,8 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 	// A row is made when its checkpoint is opened, before the project has a name. An unnamed one is not a project anybody started, so it stays off the list.
 	const projects = projectRows.filter(project => project.namedAt !== null && project.title !== "")
 
-	// Every recording this maker has, whatever project or phase it was attached to. A link finds the ones made under its own project by the name the recording carried, so a clip journalled in one week is deduplicated against a link on another – the same rule the ledger and the trail use.
-	const recordings: RecordedWindow[] = projectRows
-		.flatMap(project => project.workSessions)
-		.flatMap(session =>
-			session.hoursSource === HoursSource.HACKATIME_TRACKED
-				? []
-				: session.timelapses.flatMap(timelapse => {
-						const window = timelapseWindow(parseNullableTimestamp(timelapse.recordedAt), timelapse.coveredSeconds)
-						return window ? [{ hackatimeProject: timelapse.hackatimeProject, window }] : []
-					}),
-		)
+	// Every recording this maker holds under a Hackatime project name, on any project, phase or entry. A link is measured against the ones that name it, so a clip journalled in one week is deduplicated against a link on another – the same rule the ledger and the trail use.
+	const recordings = await makerRecordings(db, userId)
 
 	const today = effectiveDateFor(new Date(), settings.programTimezone)
 
@@ -144,11 +133,6 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 						hoursApproved: session.hoursApproved,
 						hoursClaimed: session.hoursClaimed,
 						hoursSource: session.hoursSource,
-						timelapses: session.timelapses.map(timelapse => ({
-							coveredSeconds: timelapse.coveredSeconds,
-							hackatimeProject: timelapse.hackatimeProject,
-							recordedAt: parseNullableTimestamp(timelapse.recordedAt),
-						})),
 					})),
 				p.hackatimeLinks.filter(link => link.phase === phase),
 				phase === Phase.DESIGN ? p.designApprovedHours : p.approvedHours,

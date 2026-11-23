@@ -7,7 +7,7 @@ import { PhaseStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
 import { fetchProjectSeconds, phaseWeekWindow } from "@/lib/hackatime"
-import { warmLinkSpans } from "@/lib/hours"
+import { warmLinkOverlap } from "@/lib/hours"
 import { lockKey } from "@/lib/locks"
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
@@ -163,11 +163,11 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		targetType: "HackatimeLink",
 	})
 
-	// The tracked intervals, warmed as the link lands rather than left to the next scheduled run. Linking is the moment a phase starts showing Hackatime hours, and for up to a quarter of an hour after it the phase would show the link's whole total with no recording overlap taken off – the same inflated figure this whole path exists to prevent, arriving at exactly the moment someone is looking at it. Off the response path, and swallowed: a failed warm is the cold cache the sync will retry.
+	// The Hackatime overlap, measured as the link lands rather than left to the next scheduled run. Linking is the moment a phase starts showing Hackatime hours, and for up to a quarter of an hour after it the phase would show the link's whole total with no recording overlap taken off – the same inflated figure this whole path exists to prevent, arriving at exactly the moment someone is looking at it. Off the response path, and swallowed: a failed warm is the cold cache the sync will retry.
 	after(() =>
-		warmLinkSpans([
+		warmLinkOverlap([
 			{
-				cachedSpans: null,
+				cachedOverlap: null,
 				hackatimeProject: link.hackatimeProject,
 				id: link.id,
 				phase: link.phase,

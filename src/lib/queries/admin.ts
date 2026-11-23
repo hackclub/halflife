@@ -29,8 +29,7 @@ import {
 	Theme,
 } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
-import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
+import { type LinkRow, recordingsByOwner, rollUpHours, type SessionRow } from "@/lib/hours"
 import { pctOf, round1 } from "@/lib/numbers"
 import { decodeCursor, encodeCursor, readCursor } from "@/lib/pagination"
 import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
@@ -1262,21 +1261,21 @@ export interface CountryStat {
  *
  * Regions come from each account's timezone – the only per-user geography with real coverage (see lib/regions). Hours are attributed to the author's region, never to a project's.
  *
- * `timelapses` and `cachedSpans` are selected even though this file is a report rather than a ledger, because `rollUpHours` is what decides whether a sitting is counted once or twice and it can only answer from those two. Reading the cache without them is how this panel came to report the same hours twice: the seconds were fresh and the spans were never asked for, so there was nothing to subtract against.
+ * `cachedOverlap` and every maker's recordings are read even though this file is a report rather than a ledger, because `rollUpHours` is what decides whether a sitting is counted once or twice and it can only answer from those. Reading the cache without them is how this panel came to report the same hours twice: the seconds were fresh and the overlap was never measured, so there was nothing to subtract against.
  */
 async function loadRegionInputs() {
-	const [users, sessions, links] = await Promise.all([
+	const [users, sessions, links, recordings] = await Promise.all([
 		db.orm.public.User.select("id", "timezone").all(),
 		db.orm.public.WorkSession.where({ deletedAt: null })
 			.where(session => session.themeProject.some(project => project.deletedAt.isNull()))
 			.select("hoursApproved", "hoursClaimed", "hoursSource", "id", "phase", "themeProjectId")
 			.include("themeProject", project => project.select("userId"))
-			.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
 			.all(),
 		db.orm.public.HackatimeLink.where(link => link.themeProject.some(project => project.deletedAt.isNull()))
-			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "id", "phase", "themeProjectId")
+			.select("cachedOverlap", "cachedSeconds", "hackatimeProject", "hoursApproved", "id", "phase", "themeProjectId")
 			.include("themeProject", project => project.select("userId"))
 			.all(),
+		recordingsByOwner(db, null),
 	])
 	return {
 		links: links.map(link => {
@@ -1284,17 +1283,11 @@ async function loadRegionInputs() {
 			if (!themeProject) throw new Error(`hackatime link ${link.id} has no project`)
 			return withFields(link, { themeProject })
 		}),
+		recordings,
 		sessions: sessions.map(session => {
 			const { themeProject } = session
 			if (!themeProject) throw new Error(`session ${session.id} has no project`)
-			return withFields(session, {
-				themeProject,
-				timelapses: session.timelapses.map(timelapse =>
-					withFields(timelapse, {
-						recordedAt: parseNullableTimestamp(timelapse.recordedAt),
-					}),
-				),
-			})
+			return withFields(session, { themeProject })
 		}),
 		users,
 	}
@@ -1315,7 +1308,7 @@ export interface HoursByUser {
 	/**
 	 * Phases where a link's minutes could not be measured against the journal's recordings, so the overlap was not subtracted.
 	 *
-	 * Non-zero means some of these totals are an over-count, and it says how much is unverified rather than leaving a deduplicated-looking number to be read as one. It is cold when the span cache is cold: `hackatime-sync` warms it every 15 minutes, and a phase that has never had one warmed is the reason the ledger reports the same unknown.
+	 * Non-zero means some of these totals are an over-count, and it says how much is unverified rather than leaving a deduplicated-looking number to be read as one. It is cold when the overlap has never been measured: `hackatime-sync` measures it every 15 minutes, and a phase that has never had one measured is the reason the ledger reports the same unknown.
 	 */
 	overlapUnknownPhases: number
 }
@@ -1335,7 +1328,6 @@ const phaseKey = (themeProjectId: string, phase: Phase) => `${themeProjectId}:${
  */
 function hoursByUser(inputs: RegionInputs): HoursByUser {
 	const phases = new Map<string, HoursByPhase>()
-	const recordingsByUser = new Map<string, RecordedWindow[]>()
 	const forPhase = (themeProjectId: string, phase: Phase, userId: string): HoursByPhase => {
 		const key = phaseKey(themeProjectId, phase)
 		let held = phases.get(key)
@@ -1346,16 +1338,7 @@ function hoursByUser(inputs: RegionInputs): HoursByUser {
 		return held
 	}
 
-	for (const s of inputs.sessions) {
-		forPhase(s.themeProjectId, s.phase, s.themeProject.userId).sessions.push(s)
-		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
-		const made = recordingsByUser.get(s.themeProject.userId) ?? []
-		for (const t of s.timelapses) {
-			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
-			if (window) made.push({ hackatimeProject: t.hackatimeProject, window })
-		}
-		recordingsByUser.set(s.themeProject.userId, made)
-	}
+	for (const s of inputs.sessions) forPhase(s.themeProjectId, s.phase, s.themeProject.userId).sessions.push(s)
 	for (const l of inputs.links) forPhase(l.themeProjectId, l.phase, l.themeProject.userId).links.push(l)
 
 	const hours = new Map<string, number>()
@@ -1365,7 +1348,7 @@ function hoursByUser(inputs: RegionInputs): HoursByUser {
 			held.sessions,
 			held.links,
 			null,
-			recordingsByUser.get(held.userId) ?? [],
+			inputs.recordings.get(held.userId) ?? [],
 		)
 		if (hackatimeOverlapUnknown) overlapUnknownPhases += 1
 		hours.set(held.userId, (hours.get(held.userId) ?? 0) + computedTotal)
@@ -1841,32 +1824,18 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		.where(project => project.namedAt.isNotNull())
 		.select("designStatus", "requestedTier", "starterProjectId", "theme", "tier", "userId")
 		.include("hackatimeLinks", links =>
-			links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
+			links.select("cachedOverlap", "cachedSeconds", "hackatimeProject", "hoursApproved", "phase"),
 		)
 		.include("workSessions", sessions =>
-			sessions
-				.select("hoursApproved", "hoursClaimed", "hoursSource", "phase")
-				.where({ deletedAt: null })
-				.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt")),
+			sessions.select("hoursApproved", "hoursClaimed", "hoursSource", "phase").where({ deletedAt: null }),
 		)
 		.all()
 
 	const clusters = new Map<number, WeekHoursCluster>()
 	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 
-	// Each maker's recordings, whatever project or phase they were attached to, so a link is measured against the ones that name its project even when they live on another week's project.
-	const recordingsByUser = new Map<string, RecordedWindow[]>()
-	for (const project of projects) {
-		const made = recordingsByUser.get(project.userId) ?? []
-		for (const s of project.workSessions) {
-			if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
-			for (const t of s.timelapses) {
-				const window = timelapseWindow(parseNullableTimestamp(t.recordedAt), t.coveredSeconds)
-				if (window) made.push({ hackatimeProject: t.hackatimeProject, window })
-			}
-		}
-		recordingsByUser.set(project.userId, made)
-	}
+	// Every maker's recordings under a Hackatime project name, whatever project or phase they were attached to, so a link is measured against the ones that name its project even when they live on another week's project.
+	const recordingsByUser = await recordingsByOwner(db, [...new Set(projects.map(p => p.userId))])
 
 	for (const project of projects) {
 		const column = projectColumn(project)
@@ -1874,17 +1843,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 
 		// Grouped by phase for the journal/link arithmetic, but the recordings a link is deduplicated against cross phases and projects by project name (see `windowsForLink`).
 		for (const phase of [Phase.DESIGN, Phase.BUILD]) {
-			const sessions = project.workSessions
-				.filter(s => s.phase === phase)
-				.map(session =>
-					withFields(session, {
-						timelapses: session.timelapses.map(timelapse =>
-							withFields(timelapse, {
-								recordedAt: parseNullableTimestamp(timelapse.recordedAt),
-							}),
-						),
-					}),
-				)
+			const sessions = project.workSessions.filter(s => s.phase === phase)
 			const links = project.hackatimeLinks.filter(l => l.phase === phase)
 			if (sessions.length === 0 && links.length === 0) continue
 

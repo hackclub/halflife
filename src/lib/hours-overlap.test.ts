@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import {
-	cachedSpansCover,
 	capSubtraction,
+	clipWindow,
 	mergeIntervals,
-	overlapSeconds,
-	parseCachedSpans,
-	spanWindowFor,
+	overlapFromCache,
+	overlapWindowsFor,
+	parseCachedOverlap,
 	timelapseWindow,
 	windowsForLink,
 } from "@/lib/hours-overlap"
@@ -38,22 +38,6 @@ describe("mergeIntervals", () => {
 	})
 })
 
-describe("overlapSeconds", () => {
-	test("measures the shared seconds once", () => {
-		const first = [
-			{ end: 10, start: 0 },
-			{ end: 30, start: 20 },
-		]
-		const second = [{ end: 25, start: 5 }]
-		expect(overlapSeconds(first, second)).toBe(10)
-	})
-
-	test("is zero when the sets never touch", () => {
-		expect(overlapSeconds([{ end: 5, start: 0 }], [{ end: 10, start: 5 }])).toBe(0)
-		expect(overlapSeconds([], [{ end: 10, start: 0 }])).toBe(0)
-	})
-})
-
 describe("capSubtraction", () => {
 	test("caps the overlap at what is available", () => {
 		expect(capSubtraction(100, 30)).toBe(30)
@@ -82,40 +66,7 @@ describe("timelapseWindow", () => {
 	})
 })
 
-describe("parseCachedSpans / cachedSpansCover", () => {
-	test("reads back what was written", () => {
-		const cached = { from: 0, spans: [{ end: 10, start: 0 }], to: 100 }
-		expect(parseCachedSpans(cached)).toEqual(cached)
-	})
-
-	test("rejects foreign shapes and drops bad rows", () => {
-		expect(parseCachedSpans(null)).toBeNull()
-		expect(parseCachedSpans([])).toBeNull()
-		expect(parseCachedSpans({ from: 0, spans: [], to: "x" })).toBeNull()
-		expect(
-			parseCachedSpans({
-				from: 0,
-				spans: [
-					{ end: 1, start: 5 },
-					{ end: 10, start: 0 },
-				],
-				to: 100,
-			}),
-		).toEqual({
-			from: 0,
-			spans: [{ end: 10, start: 0 }],
-			to: 100,
-		})
-	})
-
-	test("checks the window the cache was fetched for", () => {
-		const cached = { from: 0, spans: [], to: 100 }
-		expect(cachedSpansCover(cached, 10, 90)).toBe(true)
-		expect(cachedSpansCover(cached, 10, 101)).toBe(false)
-	})
-})
-
-describe("windowsForLink / spanWindowFor", () => {
+describe("windowsForLink", () => {
 	test("keeps only the recordings that name the link's project", () => {
 		const matching = { end: 30, start: 20 }
 		const recordings = [
@@ -126,18 +77,88 @@ describe("windowsForLink / spanWindowFor", () => {
 		expect(windowsForLink(recordings, "a")).toEqual([matching])
 	})
 
-	test("a recording that names no project is never a window for a link", () => {
-		expect(windowsForLink([{ hackatimeProject: null, window: { end: 10, start: 0 } }], "a")).toEqual([])
-		expect(windowsForLink([{ hackatimeProject: null, window: { end: 10, start: 0 } }], "")).toEqual([])
+	test("a recording with no project name is never a window for a link", () => {
+		const unnamed = [{ hackatimeProject: null, window: { end: 10, start: 0 } }]
+		expect(windowsForLink(unnamed, "a")).toEqual([])
+		expect(windowsForLink(unnamed, "")).toEqual([])
 	})
 
-	test("spans every window with an hour of slack either side", () => {
+	test("overlapWindowsFor merges the named windows", () => {
+		const recordings = [
+			{ hackatimeProject: "a", window: { end: 30, start: 0 } },
+			{ hackatimeProject: "a", window: { end: 50, start: 20 } },
+		]
+		expect(overlapWindowsFor(recordings, "a")).toEqual([{ end: 50, start: 0 }])
+	})
+})
+
+describe("clipWindow", () => {
+	test("keeps only the part of a window inside the week", () => {
+		expect(clipWindow({ end: 100, start: 50 }, { fromSeconds: 80, toSeconds: 200 })).toEqual({ end: 100, start: 80 })
+	})
+
+	test("is null when the window misses the week", () => {
+		expect(clipWindow({ end: 100, start: 50 }, { fromSeconds: 100, toSeconds: 200 })).toBeNull()
+	})
+
+	test("leaves the window alone without a week", () => {
+		expect(clipWindow({ end: 100, start: 50 }, null)).toEqual({ end: 100, start: 50 })
+	})
+})
+
+describe("parseCachedOverlap / overlapFromCache", () => {
+	const measured = { windows: [{ end: 100, seconds: 40, start: 0 }] }
+
+	test("reads back what was written", () => {
+		expect(parseCachedOverlap(measured)).toEqual([{ end: 100, seconds: 40, start: 0 }])
+	})
+
+	test("a value this did not write is no measurement", () => {
+		expect(parseCachedOverlap(null)).toBeNull()
+		expect(parseCachedOverlap([])).toBeNull()
+		expect(parseCachedOverlap({ spans: [], to: 1 })).toBeNull()
+	})
+
+	test("drops malformed rows rather than trusting them", () => {
 		expect(
-			spanWindowFor([
-				{ end: 10, start: 0 },
-				{ end: 30, start: 20 },
-			]),
-		).toEqual({ fromSeconds: -3600, toSeconds: 3630 })
-		expect(spanWindowFor([])).toBeNull()
+			parseCachedOverlap({
+				windows: [{ end: 100, seconds: 40, start: 0 }, { end: 5, seconds: 1, start: 9 }, { seconds: 1 }],
+			}),
+		).toEqual([{ end: 100, seconds: 40, start: 0 }])
+	})
+
+	test("sums the measured seconds for exactly the windows asked about", () => {
+		const cache = parseCachedOverlap({
+			windows: [
+				{ end: 100, seconds: 40, start: 0 },
+				{ end: 300, seconds: 25, start: 200 },
+			],
+		})
+		expect(
+			overlapFromCache(
+				[
+					{ end: 100, start: 0 },
+					{ end: 300, start: 200 },
+				],
+				cache,
+			),
+		).toBe(65)
+		expect(overlapFromCache([], cache)).toBe(0)
+	})
+
+	test("a window that was never measured is unchecked, not zero", () => {
+		const cache = parseCachedOverlap(measured)
+		expect(
+			overlapFromCache(
+				[
+					{ end: 100, start: 0 },
+					{ end: 300, start: 200 },
+				],
+				cache,
+			),
+		).toBeNull()
+		expect(overlapFromCache([{ end: 100, start: 0 }], null)).toBeNull()
+		// A window that only shares an end with a measured one is a different window.
+		expect(overlapFromCache([{ end: 100, start: 10 }], cache)).toBeNull()
 	})
 })
