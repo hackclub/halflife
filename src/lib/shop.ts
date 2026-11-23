@@ -292,13 +292,6 @@ export async function getShopOrdersFor(userId: string, limit = 50): Promise<Shop
 }
 
 /**
- * Buy something.
- *
- * The whole thing runs under a per-user advisory lock. The ledger's `@@unique([shopOrderId, kind, bucket])` only stops one order being charged twice – two concurrent purchases mint two different order ids and collide with nothing, so without the lock ten parallel requests all read the same balance and all succeed.
- *
- * `note` is the buyer's own words for the staff who fulfil the order. It is written inside the transaction, against the order, with the buyer as its author – so a note that is accepted is a note that is kept, rather than one that is silently dropped on the floor.
- */
-/**
  * The order a retried purchase already made, if there is one. Read ahead of the shop, item and qualification gates as well as inside the transaction: a retry after the shop has closed, or the item has been retired, must still get back the order whose coins were spent. A key whose order was refused afterwards is not a success to hand back.
  */
 async function replayPurchase(conn: DbOrTx, userId: string, idempotencyKey: string): Promise<ShopOrderPublic | null> {
@@ -311,6 +304,109 @@ async function replayPurchase(conn: DbOrTx, userId: string, idempotencyKey: stri
 	return toShopOrderPublic(existing)
 }
 
+/**
+ * The shop is open for this buyer: the programme has it open, or it closed inside a grace window they still have. Read inside the transaction so a close that lands between the pre-check and the lock still stops the purchase.
+ */
+async function assertShopOpenFor(tx: DbOrTx, userId: string): Promise<void> {
+	const settings = await tx.orm.public.ProgramSettings.whereUnique({ id: "singleton" }).first()
+	if (!settings?.shopOpen) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
+	if (!settings.shopClosesAt || parseDbTimestamp(settings.shopClosesAt) > new Date()) return
+
+	const [awaitingReview, lastReview] = await Promise.all([
+		tx.orm.public.ThemeProject.where({ deletedAt: null, userId })
+			.where(project => or(project.designStatus.eq("in_review"), project.buildStatus.eq("in_review")))
+			.aggregate(a => ({ count: a.count() })),
+		tx.orm.public.ThemeProject.where({ deletedAt: null, userId }).aggregate(a => ({
+			buildReviewedAt: a.max("buildReviewedAt"),
+			designReviewedAt: a.max("designReviewedAt"),
+		})),
+	])
+	const grace = shopGraceAccess(settings, {
+		awaitingReview: awaitingReview.count,
+		buildReviewedAt: parseNullableTimestamp(lastReview.buildReviewedAt),
+		designReviewedAt: parseNullableTimestamp(lastReview.designReviewedAt),
+	})
+	if (!grace.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
+}
+
+/** Printer parts are behind the printer qualification, which counts only approved, unshipped-or-not projects in both phases. Re-checked under the lock for the same reason as the shop gate. */
+async function assertPrinterUnlocked(tx: DbOrTx, userId: string): Promise<void> {
+	const shipped = await tx.orm.public.ThemeProject.where({
+		buildStatus: PhaseStatus.approved,
+		deletedAt: null,
+		designStatus: PhaseStatus.approved,
+		userId,
+	}).aggregate(a => ({ count: a.count() }))
+	if (shipped.count < THEMES_REQUIRED_FOR_PRINTER)
+		throw new HttpError("ITEM_LOCKED", "This item is locked for your account")
+}
+
+/** How many of this item the buyer already holds, not counting refused or cancelled orders, must leave room for `quantity` more. */
+async function assertWithinPurchaseLimit(
+	tx: DbOrTx,
+	userId: string,
+	item: Pick<Models.public_ShopItem, "id" | "maxPerUser">,
+	quantity: number,
+): Promise<void> {
+	if (item.maxPerUser <= 0) return
+	const owned = await tx.orm.public.ShopOrder.where({ shopItemId: item.id, userId })
+		.where(shopOrder => shopOrder.status.notIn([ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED]))
+		.aggregate(a => ({ quantity: a.sum("quantity") }))
+	const held = owned.quantity ?? 0
+	if (held + quantity > item.maxPerUser)
+		throw new HttpError(
+			"PURCHASE_LIMIT",
+			held > 0
+				? `You already have ${held} of this item. The limit is ${item.maxPerUser} per person.`
+				: `Limit ${item.maxPerUser} per person`,
+		)
+}
+
+/**
+ * Take the price out of the buyer's coins. Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy banked pot for whatever is left. Writing the whole debit against SPENDABLE would drive that pot negative whenever the coins happen to sit in BANKED, and a negative pot is a state nothing else in the app is willing to create. The refund path reads these rows back, so each pot is given back exactly what it paid.
+ */
+async function debitPurchase(
+	tx: DbOrTx,
+	args: { balances: Balances; name: string; orderId: string; quantity: number; totalCredits: number; userId: string },
+): Promise<void> {
+	let remaining = args.totalCredits
+	for (const bucket of [CoinBucket.SPENDABLE, CoinBucket.BANKED]) {
+		if (remaining <= 0) break
+		const available = bucket === CoinBucket.SPENDABLE ? args.balances.spendable : args.balances.banked
+		const amount = Math.min(Math.max(available, 0), remaining)
+		if (amount <= 0) continue
+		await appendLedgerEntry(tx, {
+			amount: -amount,
+			bucket,
+			createdById: args.userId,
+			kind: LedgerKind.SHOP_PURCHASE,
+			note: `${args.quantity}× ${args.name}`,
+			shopOrderId: args.orderId,
+			userId: args.userId,
+		})
+		remaining -= amount
+	}
+	// Only reachable when a pot is already negative, which the combined check above cannot see. The purchase is refused rather than deepening the hole.
+	if (remaining > 0) throw new HttpError("INSUFFICIENT_CREDIT", `You need ${remaining} more to buy this`)
+}
+
+/** Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser matches no row and rolls back. */
+async function decrementStock(tx: DbOrTx, shopItemId: string, quantity: number): Promise<void> {
+	const stockPlan = tx.raw
+		.sql`UPDATE "shop_item" SET "stock" = "stock" - ${quantity} WHERE "id" = ${shopItemId} AND "stock" >= ${quantity}`
+		.affectedCount()
+		.build()
+	const { affectedRows } = await tx.execute(stockPlan)
+	if (affectedRows !== 1) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
+}
+
+/**
+ * Buy something.
+ *
+ * The whole thing runs under a per-user advisory lock. The ledger's `@@unique([shopOrderId, kind, bucket])` only stops one order being charged twice – two concurrent purchases mint two different order ids and collide with nothing, so without the lock ten parallel requests all read the same balance and all succeed.
+ *
+ * `note` is the buyer's own words for the staff who fulfil the order. It is written inside the transaction, against the order, with the buyer as its author – so a note that is accepted is a note that is kept, rather than one that is silently dropped on the floor.
+ */
 export async function purchase(
 	userId: string,
 	shopItemId: string,
@@ -355,35 +451,8 @@ export async function purchase(
 		if (freshBuyer?.fraudFlagged) throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
 
 		// Re-checked inside the transaction: the pre-check above ran against reads taken before the lock, so a shop-close or a qualification-revoke in between must not still complete. Read off the transaction so this sees a consistent snapshot.
-		const settings = await tx.orm.public.ProgramSettings.whereUnique({ id: "singleton" }).first()
-		if (!settings?.shopOpen) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
-		if (settings.shopClosesAt && parseDbTimestamp(settings.shopClosesAt) <= new Date()) {
-			const [awaitingReview, lastReview] = await Promise.all([
-				tx.orm.public.ThemeProject.where({ deletedAt: null, userId })
-					.where(project => or(project.designStatus.eq("in_review"), project.buildStatus.eq("in_review")))
-					.aggregate(a => ({ count: a.count() })),
-				tx.orm.public.ThemeProject.where({ deletedAt: null, userId }).aggregate(a => ({
-					buildReviewedAt: a.max("buildReviewedAt"),
-					designReviewedAt: a.max("designReviewedAt"),
-				})),
-			])
-			const grace = shopGraceAccess(settings, {
-				awaitingReview: awaitingReview.count,
-				buildReviewedAt: parseNullableTimestamp(lastReview.buildReviewedAt),
-				designReviewedAt: parseNullableTimestamp(lastReview.designReviewedAt),
-			})
-			if (!grace.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
-		}
-		if (item.requiresPrinterQualified) {
-			const shipped = await tx.orm.public.ThemeProject.where({
-				buildStatus: PhaseStatus.approved,
-				deletedAt: null,
-				designStatus: PhaseStatus.approved,
-				userId,
-			}).aggregate(a => ({ count: a.count() }))
-			if (shipped.count < THEMES_REQUIRED_FOR_PRINTER)
-				throw new HttpError("ITEM_LOCKED", "This item is locked for your account")
-		}
+		await assertShopOpenFor(tx, userId)
+		if (item.requiresPrinterQualified) await assertPrinterUnlocked(tx, userId)
 
 		// The buyer's region, re-read here rather than trusted from the shelf: the price on the order is whatever this resolves to, so display and charge cannot drift apart.
 		const buyer = await tx.orm.public.User.whereUnique({ id: userId })
@@ -415,19 +484,7 @@ export async function purchase(
 		if (deliveryPreference === ShopDeliveryPreference.GRANT_CARD && grantCardCents === null)
 			throw new HttpError("VALIDATION_FAILED", "This item has no cost to put on a grant card. Ship it instead.")
 
-		if (fresh.maxPerUser > 0) {
-			const owned = await tx.orm.public.ShopOrder.where({ shopItemId, userId })
-				.where(shopOrder => shopOrder.status.notIn([ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED]))
-				.aggregate(a => ({ quantity: a.sum("quantity") }))
-			const held = owned.quantity ?? 0
-			if (held + quantity > fresh.maxPerUser)
-				throw new HttpError(
-					"PURCHASE_LIMIT",
-					held > 0
-						? `You already have ${held} of this item. The limit is ${fresh.maxPerUser} per person.`
-						: `Limit ${fresh.maxPerUser} per person`,
-				)
-		}
+		await assertWithinPurchaseLimit(tx, userId, fresh, quantity)
 
 		const unitPrice = regional?.priceCredits ?? fresh.priceCredits
 		const totalCredits = unitPrice * quantity
@@ -457,36 +514,16 @@ export async function purchase(
 		// The buyer's note, kept against the order with the buyer as its author. Written here, inside the transaction, so it lands with the order it belongs to: a note that is accepted but not kept is worse than no note at all, because the staff reading the order would have no way to know one was sent.
 		if (body) await tx.orm.public.ShopOrderNote.create({ authorId: userId, body, orderId: order.id })
 
-		// Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy banked pot for whatever is left. Writing the whole debit against SPENDABLE would drive that pot negative whenever the coins happen to sit in BANKED, and a negative pot is a state nothing else in the app is willing to create. The refund path reads these rows back, so each pot is given back exactly what it paid.
-		let remaining = totalCredits
-		for (const bucket of [CoinBucket.SPENDABLE, CoinBucket.BANKED]) {
-			if (remaining <= 0) break
-			const available = bucket === CoinBucket.SPENDABLE ? balances.spendable : balances.banked
-			const amount = Math.min(Math.max(available, 0), remaining)
-			if (amount <= 0) continue
-			await appendLedgerEntry(tx, {
-				amount: -amount,
-				bucket,
-				createdById: userId,
-				kind: LedgerKind.SHOP_PURCHASE,
-				note: `${quantity}× ${fresh.name}`,
-				shopOrderId: order.id,
-				userId,
-			})
-			remaining -= amount
-		}
-		// Only reachable when a pot is already negative, which the combined check above cannot see. The purchase is refused rather than deepening the hole.
-		if (remaining > 0) throw new HttpError("INSUFFICIENT_CREDIT", `You need ${remaining} more to buy this`)
+		await debitPurchase(tx, {
+			balances,
+			name: fresh.name,
+			orderId: order.id,
+			quantity,
+			totalCredits,
+			userId,
+		})
 
-		if (fresh.stock !== null) {
-			// Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser matches no row and rolls back.
-			const stockPlan = tx.raw
-				.sql`UPDATE "shop_item" SET "stock" = "stock" - ${quantity} WHERE "id" = ${shopItemId} AND "stock" >= ${quantity}`
-				.affectedCount()
-				.build()
-			const { affectedRows } = await tx.execute(stockPlan)
-			if (affectedRows !== 1) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
-		}
+		if (fresh.stock !== null) await decrementStock(tx, shopItemId, quantity)
 
 		return order
 	})
