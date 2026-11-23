@@ -120,7 +120,6 @@ export default async function ExplorePage() {
 	const { user } = await requireSessionPage()
 	const [entries, settings] = await Promise.all([getJournalFeed(), getProgramSettings()])
 
-	// oxlint-disable-next-line react/purity -- async server page, rendered once per request, so this time is never reused
 	const now = new Date()
 	const today = effectiveDateFor(now, settings.programTimezone)
 	const yesterday = effectiveDateFor(new Date(now.getTime() - DAY_MS), settings.programTimezone)
