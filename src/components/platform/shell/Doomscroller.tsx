@@ -44,6 +44,17 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?(): void; cla
 					/>
 				))}
 				{feed.error && <p className="hand shrink-0 py-6 text-center text-[0.8rem] text-coral-deep">{feed.error}</p>}
+				{/* With nothing loaded there is no "More" to press, so a failed first page gets its own retry. With no cursor, handleMore asks for the first page again. */}
+				{feed.error && feed.items.length === 0 && (
+					<button
+						className="label shrink-0 rounded-full border-2 border-line py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+						disabled={feed.loading}
+						onClick={feed.handleMore}
+						type="button"
+					>
+						{feed.loading ? "Loading…" : "Try again"}
+					</button>
+				)}
 				{!feed.error && feed.items.length === 0 && !feed.loading && (
 					<p className="hand shrink-0 py-6 text-center text-[0.8rem] text-navy-soft">
 						nothing here yet. post the first one.

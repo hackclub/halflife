@@ -4,7 +4,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { withWritePermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
-import db from "@/lib/prisma8"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import { sanitize } from "@/lib/sanitize"
 import { parseShopCsv } from "@/lib/shop-csv"
 
@@ -42,7 +42,13 @@ export const POST = withWritePermission(Permission.MANAGE_SHOP, async (req: Requ
 		name: sanitize(item.name),
 	}))
 	// One statement, so a slug added in the meantime fails the whole batch rather than leaving half of it behind.
-	await db.orm.public.ShopItem.createAll(data)
+	try {
+		await db.orm.public.ShopItem.createAll(data)
+	} catch (err) {
+		// The pre-check was run before this insert, so a slug added in between lands here as the unique violation it is.
+		if (isUniqueViolation(err)) return fail("CONFLICT", "A slug in this file already exists in the shop")
+		throw err
+	}
 
 	await Promise.all(
 		data.map(item =>

@@ -5,7 +5,7 @@ import { IconClock } from "@/components/platform/icons"
 import { EventCalendar } from "@/components/platform/shell/EventCalendar"
 import { useBrowserTimeZone, useClock } from "@/lib/browser-state"
 import { cx } from "@/lib/cx"
-import { type CalendarEvent, eventIsUpcoming, eventRangeLabel, msUntilStart, nextEvent } from "@/lib/events"
+import { type CalendarEvent, eventIsLive, eventRangeLabel, msUntilStart, nextEvent } from "@/lib/events"
 import { countdownParts, pad2 } from "@/lib/site/countdown"
 
 /**
@@ -37,7 +37,7 @@ export function EventScheduleButton({
 
 	const next = useMemo(() => nextEvent(events, now ?? new Date(0)), [events, now])
 	const parts = countdownParts(next && now ? msUntilStart(next, now) : 0)
-	const live = next !== null && now !== null && !eventIsUpcoming(next, now)
+	const live = next !== null && now !== null && eventIsLive(next, now)
 	// A weekly call is days away, so the days lead and the clock follows: `3d 04:12`, never `76:12`, which reads as a number nobody counts to. The seconds are rendered as their own node so a phone can drop them: three characters of a header row that is counted out to the pixel, and a minute still ticks.
 	const clock =
 		parts.days > 0

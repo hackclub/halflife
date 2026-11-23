@@ -22,7 +22,7 @@ import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from
 import { assertPayoutAllowed } from "@/lib/moderation"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
-import db from "@/lib/prisma8"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
@@ -58,7 +58,9 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 	try {
 		await db.orm.public.ReviewClaim.create({ expiresAt: expiresAtText, reviewerId, submissionId })
 		return { expiresAt, ok: true }
-	} catch {
+	} catch (err) {
+		// Only the unique violation means someone else holds it. Anything else is a real failure, and reporting it as a held claim would send the reviewer to a name that is not there.
+		if (!isUniqueViolation(err)) throw err
 		const held = await db.orm.public.ReviewClaim.where({ submissionId })
 			.include("reviewer", reviewer => reviewer.select("displayName", "name"))
 			.first()
@@ -574,6 +576,13 @@ export async function unapprovePhase(
 		if (!fresh || statusFor(fresh, phase) !== PhaseStatus.approved)
 			throw new HttpError("CONFLICT", "That phase is no longer approved")
 
+		// A build is only approved, and only paid, on top of an approved design. Un-approving the design under a build that is still in review or approved would leave that build for an un-approved design, so the build has to be taken back first.
+		if (
+			phase === Phase.DESIGN
+			&& (fresh.buildStatus === PhaseStatus.approved || fresh.buildStatus === PhaseStatus.in_review)
+		)
+			throw new HttpError("CONFLICT", "Take the build back before un-approving the design")
+
 		// A grant send holds no credit lock while HCB is called, so a design un-approval must not race it: the money would be sent for an approval that no longer stands, and the sent row would block a later send. `sendGrant` marks the row errored before it throws, which is what lets this same check pass on the retry after the window.
 		if (phase === Phase.DESIGN) {
 			const inFlight = await tx.orm.public.HcbGrantTopUp.where({
@@ -609,8 +618,9 @@ export async function unapprovePhase(
 
 			// A sent top-up is money that has moved, and a live CSV row is a card the org may already have created from
 			// the file. Either would leave the maker funded for a design that no longer stands.
+			// Either mark, for the same reason the card batch reads both: a payment HCB answered for is money that moved, even if marking it sent failed afterwards.
 			const paidTopUp = await tx.orm.public.HcbGrantTopUp.where({ phase: Phase.DESIGN, themeProjectId })
-				.where(topUp => topUp.sentAt.isNotNull())
+				.where(topUp => or(topUp.sentAt.isNotNull(), topUp.transactionId.isNotNull()))
 				.select("id")
 				.first()
 			if (paidTopUp)

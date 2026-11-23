@@ -35,18 +35,26 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	}
 
 	const taken = await db.orm.public.PublicReel.where(reel => reel.url.in(links.map(l => l.url)))
-		.select("url", "userId")
+		.select("url", "postId", "userId")
 		.all()
+	const attached = new Set<string>()
 	for (const row of taken) {
 		const link = links.find(l => l.url === row.url)
-		if (link && row.userId !== gate.user.id)
+		if (!link) continue
+		if (row.userId !== gate.user.id) {
 			errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
+			continue
+		}
+		if (row.postId === post.id) attached.add(row.url)
+		else
+			errors[link.platform] =
+				`That ${PLATFORM_INFO[link.platform].label} post is already attached to another of your reels.`
 	}
 	if (Object.keys(errors).length > 0)
 		return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })
 
-	const mine = new Set(taken.map(t => t.url))
-	const fresh = links.filter(l => !mine.has(l.url))
+	// Only a link already on this reel is saved in advance. Anything else is new, and the unique url still settles a race.
+	const fresh = links.filter(l => !attached.has(l.url))
 	if (fresh.length > 0)
 		await db.orm.public.PublicReel.createAll(
 			fresh.map(l => ({

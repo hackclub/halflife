@@ -109,17 +109,13 @@ function fetchOptions(source: string, from: number): string {
 }
 
 /** The store posts through a helper rather than calling fetch directly. */
-// The `${…}` below are the shape of a path, written out by hand on purpose: the point of the table is to state what the client is believed to send, and interpolating a real value would check the wrong thing.
+// The `[id]` segments below are the route's own shape, written out by hand on purpose: the point of the table is to state what the client is believed to send, and interpolating a real value would check the wrong thing.
 const STORE_CALLS: { path: string; methods: string[] }[] = [
 	{ methods: ["POST"], path: "/api/onboarding" },
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ methods: ["PATCH"], path: "/api/projects/${id}" },
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ methods: ["POST"], path: "/api/projects/${id}/sessions" },
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ methods: ["POST"], path: "/api/projects/${id}/submit" },
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ methods: ["POST"], path: "/api/projects/${id}/link-sync-repo" },
+	{ methods: ["PATCH"], path: "/api/projects/[id]" },
+	{ methods: ["POST"], path: "/api/projects/[id]/sessions" },
+	{ methods: ["POST"], path: "/api/projects/[id]/submit" },
+	{ methods: ["POST"], path: "/api/projects/[id]/link-sync-repo" },
 	{ methods: ["POST"], path: "/api/posts" },
 	{ methods: ["PATCH"], path: "/api/goal" },
 ]
@@ -128,8 +124,7 @@ const STORE_CALLS: { path: string; methods: string[] }[] = [
  * The repo-sync control selects its method from a variable, so the walker above cannot see which it uses. Stated here instead, which is the point of the script: a method that drifts becomes a 405 the UI cannot explain.
  */
 const COMPONENT_CALLS: { path: string; methods: string[] }[] = [
-	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ methods: ["GET", "POST", "PUT"], path: "/api/projects/${projectId}/repo-sync" },
+	{ methods: ["GET", "POST", "PUT"], path: "/api/projects/[projectId]/repo-sync" },
 ]
 
 const routes = routeTable()
@@ -387,12 +382,13 @@ async function checkFetchRetry(): Promise<void> {
 	const originalSetTimeout = globalThis.setTimeout
 	await (async () => {
 		// Node's own timers hand arguments through setTimeout (a socket's connect timeout gets its context that way), and those keep the real timer. Only the retry's plain wait, which takes none, runs at once.
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
+		// oxlint-disable typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		globalThis.setTimeout = ((fn: (...args: unknown[]) => void, ms?: number, ...args: unknown[]) => {
 			if (args.length > 0) return originalSetTimeout(fn, ms, ...args)
 			fn()
 			return 0
 		}) as unknown as typeof setTimeout
+		// oxlint-enable typescript/no-unsafe-type-assertion
 		try {
 			// A transport error twice, then success: two failures, one answer.
 			let attempts = 0

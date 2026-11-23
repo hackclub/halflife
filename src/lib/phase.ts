@@ -1,4 +1,4 @@
-import { Phase, type PhaseStatus } from "@/lib/enums"
+import { Phase, PhaseStatus } from "@/lib/enums"
 
 /**
  * A project's two phase statuses.
@@ -26,3 +26,13 @@ export function phaseStatusUpdate(
 ): { designStatus: PhaseStatus } | { buildStatus: PhaseStatus } {
 	return phase === Phase.DESIGN ? { designStatus: status } : { buildStatus: status }
 }
+
+/**
+ * The statuses a phase can be edited in: not yet handed in, or sent back for changes.
+ *
+ * Shared rather than repeated at each of the session and Hackatime-link writes, which each re-check it inside their transaction so a submit that commits in between refuses the write instead of landing on a frozen week.
+ */
+export const EDITABLE_PHASE_STATUSES: readonly PhaseStatus[] = Object.freeze([
+	PhaseStatus.draft,
+	PhaseStatus.update_requested,
+])

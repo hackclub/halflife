@@ -23,6 +23,12 @@ describe("designCoinsFor", () => {
 	test("an undeclined approval at the funded floor still earns nothing", () => {
 		expect(designCoinsFor(1, 6).spendable).toBe(0)
 	})
+
+	test("a fraction over the funded block mints the coins it is worth, not one more", () => {
+		// 7.4 - 6 is 1.4000000000000004 as a float, which used to tip 7 coins over into 8.
+		expect(designCoinsFor(1, 7.4).spendable).toBe(7)
+		expect(designCoinsFor(1, 6.2).spendable).toBe(1)
+	})
 })
 
 describe("buildCoinsFor", () => {

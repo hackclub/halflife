@@ -133,7 +133,7 @@ const nowText = (): string => formatDbTimestamp(new Date())
 
 /** Robert's JSON shapes are its own; anything this module stores is checked against the schemas above first. */
 const json = (value: unknown): JsonValue =>
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a JSON round trip is JSON by construction
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion, unicorn/prefer-structured-clone -- a JSON round trip is JSON by construction; structuredClone would keep Dates as Dates and let undefined through
 	JSON.parse(JSON.stringify(value ?? null)) as JsonValue
 
 async function robertRequest(method: "GET" | "POST", path: string, body?: unknown): Promise<unknown> {
@@ -373,14 +373,17 @@ export async function applyRobertWebhook(body: string): Promise<void> {
 	const payload = webhookSchema.parse(JSON.parse(body))
 	if (payload.event !== "outcome.set" || !payload.outcome || !payload.projectId) return
 	const check = await db.orm.public.TelescreenCheck.where({ robertId: payload.projectId })
-		.select("id", "reviewFields", "reviewNote", "trustScore")
+		.select("id", "outcomeAt", "reviewFields", "reviewNote", "trustScore")
 		.first()
 	if (!check) return
 	const { outcome } = payload
+	// A delivery older than the one already recorded is a replay inside the signature window. The newer result is the one that stands, so the replay is dropped rather than writing an old decision back over it.
+	const reviewedAt = outcome.reviewedAt ?? null
+	if (reviewedAt && check.outcomeAt && Date.parse(check.outcomeAt) >= Date.parse(reviewedAt)) return
 	const score = outcome.trustScore ?? null
 	const fraud = score !== null && score <= FRAUD_MAX_SCORE
 	await db.orm.public.TelescreenCheck.where({ id: check.id }).update({
-		outcomeAt: outcome.reviewedAt ?? null,
+		outcomeAt: reviewedAt,
 		outcomeReason: outcome.reason ?? null,
 		outcomeStatus: outcome.status ?? null,
 		reviewFields: outcome.reviewFields ? json(outcome.reviewFields) : (check.reviewFields ?? undefined),

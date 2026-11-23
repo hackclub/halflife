@@ -198,7 +198,7 @@ async function main() {
 		// A holder rather than a `let`: the tree body is captured inside the fetch closure, and a plain `let` would be narrowed to null across it.
 		const captured: { tree: TreeEntry[] | null } = { tree: null }
 		let blobs = 0
-		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
+		// oxlint-disable typescript/no-unsafe-type-assertion -- verification script over an untyped source
 		globalThis.fetch = ((url: string, init: RequestInit = {}) => {
 			const method = init.method ?? "GET"
 			const u = url
@@ -210,7 +210,6 @@ async function main() {
 			if (method === "POST" && u.endsWith("/git/blobs")) return json({ sha: `blob${blobs++}` })
 			if (method === "POST" && u.endsWith("/git/trees")) {
 				if (typeof init.body !== "string") throw new TypeError("expected a JSON string body")
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 				captured.tree = (JSON.parse(init.body) as { tree: TreeEntry[] }).tree
 				return json({ sha: "tree1" })
 			}
@@ -218,6 +217,7 @@ async function main() {
 			if (method === "PATCH" && u.includes("/git/refs/heads/")) return json({})
 			return json({ message: `unexpected ${method} ${u}` }, 500)
 		}) as typeof fetch
+		// oxlint-enable typescript/no-unsafe-type-assertion
 
 		await commitFiles(
 			creds,

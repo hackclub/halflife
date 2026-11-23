@@ -497,7 +497,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		.include("hackatimeLinks", links =>
 			links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
 		)
-		.include("user", owner => owner.select("displayName", "id", "name"))
+		.include("user", owner => owner.select("bannedAt", "displayName", "id", "name"))
 		.include("workSessions", sessions =>
 			sessions
 				.select("content", "createdAt", "hoursApproved", "hoursClaimed", "hoursSource", "id", "phase", "title")
@@ -522,7 +522,8 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 	// A row nobody has started is a placeholder made at sign-up, not a project – the same test the trail uses when
 	// it lists projects, rather than the analytics stamp: a submitted and approved project is started even if the
 	// stamp never landed, and anyone holding a grant-card link to it should not land on "No such project".
-	if (!fetched?.user) return null
+	// A banned member's projects leave the public site with the rest of their trail, as their profile does, rather than staying readable by URL.
+	if (!fetched?.user || fetched.user.bannedAt) return null
 	const started =
 		fetched.namedAt !== null
 		|| Boolean(fetched.description?.trim())

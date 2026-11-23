@@ -3,7 +3,7 @@ import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { Phase, PhaseStatus } from "@/lib/enums"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
-import { statusFor } from "@/lib/phase"
+import { EDITABLE_PHASE_STATUSES, statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 
@@ -12,7 +12,6 @@ interface Params {
 }
 
 /** Statuses in which a phase's links may still be removed: a draft, or one an admin or reviewer sent back for changes. */
-const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
 export const DELETE = withWriteSession(async (_req: Request, { params, gate }: Params & AuthedContext) => {
 	const { id, linkId } = await params

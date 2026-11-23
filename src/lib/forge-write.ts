@@ -620,8 +620,9 @@ async function initializeEmptyGitHubRepo(
 /** `path -> blob sha` for one tree, so an unchanged file can be spotted. */
 async function currentBlobShas(creds: ForgeCredentials, base: string, treeSha: string): Promise<Map<string, string>> {
 	const res = await call(creds, `${base}/git/trees/${treeSha}?recursive=1`, { method: "GET" })
+	// A tree that cannot be read has to fail the sync. An empty map would count every file as changed and write an empty commit.
+	if (!res.ok) await throwForgeError(creds.forge, res)
 	const out = new Map<string, string>()
-	if (!res.ok) return out
 	const body = TreeBody.parse(await res.json())
 	for (const entry of body.tree ?? []) if (entry.type === "blob") out.set(entry.path, entry.sha)
 	return out

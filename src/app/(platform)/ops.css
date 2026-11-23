@@ -285,6 +285,16 @@
 	}
 
 	/* ── Fields ────────────────────────────────────────────────────────────── */
+	/*
+	 * The colour swatches on the event form: the selected one used the platform navy rim, which vanished against a dark panel. The rim takes the console's heading ink instead, so it flips with the theme and always separates from the ground.
+	 */
+	.hl-colour-swatch {
+		border-color: var(--color-line);
+	}
+	.hl-colour-swatch[aria-checked="true"] {
+		border-color: var(--color-ink-strong);
+	}
+
 	.hl-label-text {
 		display: block;
 		margin-bottom: 0.35rem;
@@ -415,15 +425,21 @@
 		border: 2px solid var(--color-accent);
 		border-radius: var(--radius-button);
 	}
+	/* An alert carries a wash of its own hue, border, ground and text alike, so the warning or danger reads before the sentence does. The text inks are the badge inks, which clear 4.5:1 on that wash in both modes. Mixed with the card ground rather than left transparent, so one value follows light and dark. */
 	.hl-callout--danger {
+		color: var(--color-danger-ink);
+		background: color-mix(in srgb, var(--color-flame) 10%, var(--color-surface-raised));
 		border-color: var(--color-flame);
 	}
 	.hl-callout--warning {
+		color: var(--color-warning-ink);
+		background: color-mix(in srgb, var(--color-coin) 10%, var(--color-surface-raised));
 		border-color: var(--color-coin);
 	}
-	/* A plain explanation, not a problem to act on – the deduplicated hours notice is the reader being told why a number is smaller than expected. */
+	/* A plain explanation, not a problem to act on – the deduplicated hours notice is the reader being told why a number is smaller than expected. It takes the alert family's wash and text hue, in mint and its readable ink, so a note reads as the same kind of thing as a warning without borrowing its colour. */
 	.hl-callout--info {
-		background: var(--color-surface);
+		color: var(--color-success-ink);
+		background: color-mix(in srgb, var(--color-mint) 10%, var(--color-surface-raised));
 		border-color: var(--color-mint);
 	}
 
@@ -1434,6 +1450,14 @@
 		background: var(--color-accent);
 		border-color: var(--color-accent);
 	}
+	/* A word space alone left the number touching the label. Padding sits it off the word, so the figure reads as a separate count rather than the last character of the name. */
+	.hl-chip .hl-count {
+		padding-left: 0.4rem;
+	}
+	/* A count is muted against a panel, but the selected chip fills with sky: the muted ink read 1.2:1 on it. Take the chip's own colour instead, leaving weight and figures as the quieter cues. */
+	.hl-chip[aria-current="true"] .hl-count {
+		color: inherit;
+	}
 
 	/* ── Dispute thread ────────────────────────────────────────────────────── */
 	/*
@@ -1801,4 +1825,45 @@ html:has(.hl-admin) {
 		flex: 1 1 8rem;
 		min-width: 0;
 	}
+}
+
+/*
+ * The console's dark mode, switched by the store in `lib/admin-theme.ts` on the html element. The `:has(.hl-admin)` keeps it on the pages that carry the toggle: the review queue shares this wrapper, and a dark page with no way back to light is a trap. Every override is a token, so the `.hl-*` classes and the charts' inline `var()` fills follow without a second stylesheet.
+ */
+html[data-theme="dark"] .ops-root:has(.hl-admin) {
+	--color-surface: #000000; /* the ground: pure black, with the raised cards still a step above it */
+	--color-surface-raised: #1d1929; /* cards, one step up from the ground */
+	--color-surface-sunken: #241f33; /* hover fills, a step up again */
+	--color-border: #555062; /* still a quiet rule, as in light mode */
+	--color-line-soft: #555062; /* the scrollbar takes the same rule */
+	--color-line: #4a4560; /* pale rules would outshine the selected swatch's rim, so the unselected ones step back here */
+	--color-field-edge: #7d789b; /* 4.1:1 on cards, where a field needs a visible edge */
+	--color-ink: #e8e3f4; /* 16.7:1 on the ground */
+	--color-ink-strong: #f1ebfa; /* 18:1 on the ground */
+	--color-ink-muted: #9a95b1; /* 7.3:1 on the ground, 6:1 on cards */
+	/* The badge and reason inks are dark-on-light hues in light mode. Kept in their own hues here, out of the 2.5-3.2:1 range they would read at on a dark card. */
+	--color-success-ink: #5dd4bd;
+	--color-info-ink: #82cce8;
+	--color-warning-ink: #f3b95f;
+	--color-danger-ink: #f38b8b; /* also the danger button's fill, with the dark card colour as its label */
+	--color-accent-bright: #2e8cae; /* the sign and primary buttons: sky-deep, so a light label keeps 3.3:1 */
+	--color-mint: #008f78; /* selection and hover: the light ink-strong keeps 3.5:1 on it */
+	--color-paper: #0e0c18; /* the active sidebar pill turns light, so its label turns dark */
+	color-scheme: dark;
+}
+
+/*
+ * Callout copy in the dark console takes a step of white beyond its ink. The badge inks are sized for a word on a chip; read as a paragraph on a washed panel, the same value sits a touch dimmer than it should. Light mode's inks already read right on their panels.
+ */
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout {
+	color: color-mix(in srgb, var(--color-ink) 85%, white);
+}
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout--danger {
+	color: color-mix(in srgb, var(--color-danger-ink) 85%, white);
+}
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout--warning {
+	color: color-mix(in srgb, var(--color-warning-ink) 85%, white);
+}
+html[data-theme="dark"] .ops-root:has(.hl-admin) .hl-callout--info {
+	color: color-mix(in srgb, var(--color-success-ink) 85%, white);
 }

@@ -36,13 +36,18 @@ const DIRECTORIES: { [_: string]: { dir: string; types: { [ext: string]: string 
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 
+/** A lookup by the URL's own text, which is only ever a key of the table it was written for. A plain object would also answer to `constructor` and `__proto__`. */
+function own<T>(table: { [_: string]: T }, key: string): T | undefined {
+	return Object.hasOwn(table, key) ? table[key] : undefined
+}
+
 function resolveAsset(segments: string[]): { file: string; type: string } | null {
-	const exact = FILES[segments.join("/")]
+	const exact = own(FILES, segments.join("/"))
 	if (exact) return exact
 	const name = segments.at(-1)
-	const directory = DIRECTORIES[segments.slice(0, -1).join("/")]
+	const directory = own(DIRECTORIES, segments.slice(0, -1).join("/"))
 	if (!name || !directory || !NAME.test(name) || name.includes("..")) return null
-	const type = directory.types[name.split(".").pop() ?? ""]
+	const type = own(directory.types, name.split(".").pop() ?? "")
 	return type ? { file: `${directory.dir}/${name}`, type } : null
 }
 

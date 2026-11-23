@@ -500,14 +500,17 @@ export function rollUpHours(
 		const cached = parseCachedSpans(link.cachedSpans)
 		// The recordings beside the link and the ones elsewhere under its name. Empty means nothing to compare, and nothing to warn about.
 		const windows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject ?? "")
-		if (windows.length > 0)
-			if (cached) {
+		if (windows.length > 0) {
+			// Spans cached for some other stretch of time say nothing about these recordings, so they count as no cache at all, as they do in getHoursBreakdown.
+			const span = spanWindowFor(windows)
+			if (cached && span && cachedSpansCover(cached, span.fromSeconds, span.toSeconds)) {
 				const overlap = capSubtraction(seconds, overlapSeconds(windows, cached.spans))
 				hackatimeOverlapSeconds += overlap
 				seconds -= overlap
 			}
 			// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
 			else hackatimeOverlapUnknown = true
+		}
 
 		hackatimeHours += seconds / 3600
 	}
@@ -580,5 +583,7 @@ export function buildCoinsFor(approvedHours: number): CoinSplit {
  * Capped, because `approvedHours` can come from a reviewer typing into a box and a fat-fingered 1000 should not mint five thousand coins.
  */
 function earnCoins(hours: number): number {
-	return Math.min(Math.ceil(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
+	// Rounded to millionths before the ceiling: the funded block is subtracted as a float, so 7.4 - 6 arrives as 1.4000000000000004 and times 5 as 7.000000000000002, which would otherwise mint an extra coin.
+	const coins = Math.round(hours * COINS_PER_HOUR * 1e6) / 1e6
+	return Math.min(Math.ceil(coins), MAX_COINS_PER_PROJECT)
 }

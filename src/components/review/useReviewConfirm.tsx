@@ -25,10 +25,10 @@ export function useReviewConfirm(): { dialog: ReactNode; confirm(options: Confir
 		else if (!pending && dialog.open) dialog.close()
 	}, [pending])
 
-	const confirm = (options: ConfirmOptions): Promise<string | null> => {
+	const confirm = (request: ConfirmOptions): Promise<string | null> => {
 		const { promise, resolve } = Promise.withResolvers<string | null>()
 		setText("")
-		setPending({ options, resolve })
+		setPending({ options: request, resolve })
 		return promise
 	}
 

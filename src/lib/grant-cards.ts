@@ -179,11 +179,12 @@ async function buildPreview(
 				.where({ phase: Phase.DESIGN })
 				.where(card => card.supersededAt.isNull()),
 		)
+		// A top-up counts as paid once HCB has answered, even if the audit write that marks it sent then failed: the transaction id is recorded on that path too, and a card issued over a payment that did land is money twice over.
 		.include("hcbGrantTopUps", topUps =>
 			topUps
 				.select("id")
 				.where({ phase: Phase.DESIGN })
-				.where(topUp => topUp.sentAt.isNotNull()),
+				.where(topUp => or(topUp.sentAt.isNotNull(), topUp.transactionId.isNotNull())),
 		)
 		.include("hcbCardGrantExports", exports => exports.select("id").where(export_ => export_.supersededAt.isNull()))
 		.all()
@@ -1322,14 +1323,21 @@ export async function cancelGrantCard(
 	if (!row.hcbCardGrantId) throw new HttpError("CONFLICT", "This grant has no HCB id to cancel")
 	if (row.status === HcbGrantCardStatus.CANCELED)
 		return toOutcome(row, HcbGrantCardStatus.CANCELED, row.error, row.hcbCardGrantId)
+	// A returned card is already settled: the maker gave the balance back. Writing CANCELED over it would drop the record of that return.
+	if (row.status === HcbGrantCardStatus.RETURNED)
+		throw new HttpError("CONFLICT", "The maker already returned this grant")
 
 	// Read the spend before cancelling: HCB returns the unspent balance to the org on cancel, so afterwards there is
 	// no way to tell how much of the card was used. A number we cannot read means the project would be payable in
 	// full again, so the cancellation is refused rather than recorded blind.
-	const spend = await readCardGrantSpend(row.hcbCardGrantId)
+	//
+	// It is written to the row before HCB is called, and a retry uses what is already there. HCB cannot be un-cancelled, so the pair cannot be made atomic; recording the figure first means a failure between the two leaves a cancelled card whose spend is still known, rather than one that has to be read from a card that is gone.
+	const knownSpent = row.spentCents
+	const spend = knownSpent === null ? await readCardGrantSpend(row.hcbCardGrantId) : null
 	const spentCents =
-		spend.spentCents
-		?? (spend.amountCents !== null && spend.balanceCents !== null
+		knownSpent
+		?? spend?.spentCents
+		?? (spend?.amountCents !== null && spend?.amountCents !== undefined && spend.balanceCents !== null
 			? Math.max(0, spend.amountCents - spend.balanceCents)
 			: null)
 	if (spentCents === null)
@@ -1337,6 +1345,7 @@ export async function cancelGrantCard(
 			"CONFLICT",
 			"HCB could not say what this card has spent, so cancelling it would make the project payable in full again. Try again once HCB answers.",
 		)
+	if (knownSpent === null) await db.orm.public.HcbGrantCard.where({ id }).update({ spentCents })
 
 	await cancelCardGrant(row.hcbCardGrantId)
 	const { ip, userAgent } = await requestInfo()

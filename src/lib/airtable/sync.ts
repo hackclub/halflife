@@ -669,16 +669,23 @@ export async function mirrorReviewDecision(
 	justificationNotes?: string | null,
 	overrideJustification?: string | null,
 ): Promise<void> {
-	const mirrored = await syncReviewDecisionToYsws(
-		themeProjectId,
-		phase,
-		status,
-		note,
-		reviewerEmail,
-		deflationReason,
-		justificationNotes,
-		overrideJustification,
-	)
+	let mirrored: Awaited<ReturnType<typeof syncReviewDecisionToYsws>>
+	try {
+		mirrored = await syncReviewDecisionToYsws(
+			themeProjectId,
+			phase,
+			status,
+			note,
+			reviewerEmail,
+			deflationReason,
+			justificationNotes,
+			overrideJustification,
+		)
+	} catch (err) {
+		// The reads before the write can fail too (settings, the row's id), and the promise above is that nothing here reaches the caller: on the Ari path a throw is a 5xx and a redelivery of a decision that has already been applied.
+		console.error(`[airtable] could not set the review status for ${themeProjectId} (${phase}):`, err)
+		return
+	}
 	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
 	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
 		console.error(

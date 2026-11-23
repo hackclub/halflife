@@ -97,3 +97,22 @@ export function IconX(p: P) {
 		</Ico>
 	)
 }
+
+/** The sun, for light mode: a disc with eight rays. */
+export function IconSun(p: P) {
+	return (
+		<Ico {...p}>
+			<circle cx="12" cy="12" r="4.2" />
+			<path d="M12 2.3v2.2M12 21.7v-2.2M2.3 12h2.2M21.7 12h-2.2M5.1 5.1l1.6 1.6M19 19l-1.6-1.6M5.1 18.9l1.6-1.6M19 5.1l-1.6 1.6" />
+		</Ico>
+	)
+}
+
+/** The moon, for dark mode: two arcs, with the left side cut away. */
+export function IconMoon(p: P) {
+	return (
+		<Ico {...p}>
+			<path d="M9.03 4.57A8 8 0 1 1 9.03 19.43A7.5 7.5 0 0 0 9.03 4.57Z" />
+		</Ico>
+	)
+}

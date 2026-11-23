@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { ThemeBootScript } from "@/app/components/admin/ThemeBootScript"
 import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
 import { SketchDefs } from "@/components/platform/art"
 import { platformFontVariables } from "@/components/platform/fonts"
@@ -33,6 +34,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 			<head>
 				<PlausibleAnalytics />
 				<PromoBootScript />
+				<ThemeBootScript />
 			</head>
 			<body data-world="platform">
 				<WorldGuard world="platform" />
