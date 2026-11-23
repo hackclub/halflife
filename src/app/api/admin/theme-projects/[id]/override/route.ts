@@ -1,11 +1,12 @@
 import { after } from "next/server"
 import { z } from "zod"
 import { mirrorReviewDecision, reviewStatusFor } from "@/lib/airtable/sync"
-import { ok, parseBody } from "@/lib/api"
+import { fail, ok, parseBody } from "@/lib/api"
 import { PhaseStatus } from "@/lib/enums"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { notifyReviewOutcome } from "@/lib/notifications"
 import { Permission } from "@/lib/permissions"
+import db from "@/lib/prisma8"
 import { reopenPhase, unapprovePhase } from "@/lib/review"
 import { sanitize } from "@/lib/sanitize"
 import { overrideSchema } from "@/lib/schemas/review"
@@ -33,6 +34,11 @@ export const POST = withWritePermission(
 		const parsed = await parseBody(req, bodySchema)
 		if (parsed.error) return parsed.error
 		const { action, phase, reason } = parsed.data
+
+		// Same rule as the other admin actions on a project: an admin cannot reverse a decision on their own work, which would also hand them a week's extension on it.
+		const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id }).select("userId").first()
+		if (!project) return fail("NOT_FOUND", "Project not found")
+		if (project.userId === gate.user.id) return fail("FORBIDDEN", "You cannot override a decision on your own project")
 
 		const note = sanitize(reason)
 		if (action === "unapprove")

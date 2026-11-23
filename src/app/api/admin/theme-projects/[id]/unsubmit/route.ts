@@ -2,6 +2,7 @@ import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
+import db from "@/lib/prisma8"
 import { phaseReasonSchema } from "@/lib/schemas/admin"
 import { withdrawFromReview } from "@/lib/submissions"
 import { propagateWithdrawal } from "@/lib/withdraw-effects"
@@ -24,8 +25,12 @@ export const POST = withWritePermission(
 		if (parsed.error) return parsed.error
 		const { phase, reason } = parsed.data
 
+		// Checked before the withdraw, which commits: refusing after it would leave the hand-in gone from review while the audit row, and the notices to Airtable, Loops and Ari, never happened.
+		const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id }).select("userId").first()
+		if (!project) return fail("NOT_FOUND", "Project not found")
+		if (project.userId === gate.user.id) return fail("FORBIDDEN", "You cannot unsubmit your own project")
+
 		const { userId } = await withdrawFromReview(id, phase)
-		if (userId === gate.user.id) return fail("FORBIDDEN", "You cannot unsubmit your own project")
 
 		await logAudit({
 			action: AuditAction.ADMIN_UNSUBMIT_PHASE,
