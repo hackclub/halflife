@@ -1,8 +1,8 @@
-import Link from "next/link"
 import type { ReactNode } from "react"
 import { AdminPalette } from "./AdminPalette"
 import { AdminSidebar } from "./AdminSidebar"
 import type { AdminNavGroup } from "./admin-nav"
+import { DashboardLink } from "./DashboardLink"
 import { ThemeToggle } from "./ThemeToggle"
 
 /**
@@ -17,9 +17,7 @@ export function AdminFrame({
 		<div className="hl-admin">
 			<header className="hl-admin-top">
 				<strong className="hl-admin-brand">Half-Life admin</strong>
-				<Link className="hl-admin-dashboard" href="/dashboard">
-					Back to dashboard
-				</Link>
+				<DashboardLink />
 				<AdminPalette groups={groups} />
 				<ThemeToggle />
 				<span className="hl-muted hl-admin-email">{email}</span>

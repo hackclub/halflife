@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { type MouseEvent as ReactMouseEvent, useEffect, useMemo, useState } from "react"
 import { HardLink } from "@/components/site/HardLink"
 import { ADMIN_HOTKEYS, type AdminNavGroup, type AdminNavItem, isAdminNavActive } from "./admin-nav"
+import { useAltHeld } from "./use-alt-held"
 
 /**
  * The admin sections down the left of the console. Grouped, so the eye finds a page by its area rather than scanning one long row, and fixed in the column so a long page does not take the navigation away.
@@ -19,7 +20,7 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 	// The list is open for the page it was opened on, so choosing another page folds it away again without an effect.
 	const [openPath, setOpenPath] = useState<string | null>(null)
 	const open = openPath === pathname
-	const [altHeld, setAltHeld] = useState(false)
+	const altHeld = useAltHeld()
 	// The page a click or shortcut is heading for, lit before the router has swapped the page.
 	const [pendingHref, setPendingHref] = useState<string | null>(null)
 	// The item each key opens, so a hard link can still leave the router for a full load.
@@ -35,11 +36,6 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 
 	useEffect(() => {
 		const onKeyDown = (event: globalThis.KeyboardEvent): void => {
-			if (event.key === "Alt") {
-				// AltGr arrives as Ctrl+Alt, and that is typing, not a shortcut.
-				if (!event.ctrlKey && !event.metaKey && !event.shiftKey) setAltHeld(true)
-				return
-			}
 			if (event.repeat || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
 			// The typed letter first, so a non-QWERTY layout answers to the key it prints; the physical code second, because Option+letter on a Mac types a character and `key` stops being a letter.
 			const typed = event.key.length === 1 ? event.key.toLowerCase() : ""
@@ -54,19 +50,8 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 			}
 			router.push(item.href)
 		}
-		const onKeyUp = (event: globalThis.KeyboardEvent): void => {
-			if (event.key === "Alt") setAltHeld(false)
-		}
-		// Losing focus mid-Alt never sends the keyup, so the chips would stay on show.
-		const onBlur = (): void => setAltHeld(false)
 		window.addEventListener("keydown", onKeyDown)
-		window.addEventListener("keyup", onKeyUp)
-		window.addEventListener("blur", onBlur)
-		return () => {
-			window.removeEventListener("keydown", onKeyDown)
-			window.removeEventListener("keyup", onKeyUp)
-			window.removeEventListener("blur", onBlur)
-		}
+		return () => window.removeEventListener("keydown", onKeyDown)
 	}, [router, shortcuts])
 
 	// The highlight is optimistic: it stops once the page it was heading for is the page shown, and the timeout clears a navigation that never lands.
