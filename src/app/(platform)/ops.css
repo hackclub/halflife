@@ -632,10 +632,10 @@
 		color: var(--color-paper);
 		background: var(--color-ink-strong);
 	}
-	/* A page being navigated to takes the hover ground at once, so the click answers before the route lands while the solid pill still means "here". */
+	/* A page being navigated to sits between the hover ground and the solid pill, so the click answers before the route lands while the pill still means "here". Mixed with the ink the pill is made of, so it stays in that order in both themes. */
 	.hl-admin-side a.hl-pending {
 		color: var(--color-ink);
-		background: var(--color-surface-sunken);
+		background: color-mix(in srgb, var(--color-ink-strong) 30%, var(--color-surface-sunken));
 	}
 	/* The shortcut a tab answers to while Alt is held: a key cap at the far end, where a menu's accelerator sits. */
 	.hl-hotkey {
