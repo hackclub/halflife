@@ -649,6 +649,10 @@
 		border: 1px solid var(--color-border);
 		border-radius: 4px;
 	}
+	/* The header's back link is inline text rather than a flex row, so its cap needs the gap the sidebar gets from `gap`. */
+	.hl-admin-dashboard .hl-hotkey {
+		margin-left: 0.5rem;
+	}
 	/* On the current page the tab is a solid pill, so the cap takes the pill's own ink rather than a ground of its own. */
 	.hl-admin-side a[aria-current="page"] .hl-hotkey {
 		color: inherit;
