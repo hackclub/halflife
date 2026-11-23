@@ -574,6 +574,13 @@ export async function unapprovePhase(
 		if (!fresh || statusFor(fresh, phase) !== PhaseStatus.approved)
 			throw new HttpError("CONFLICT", "That phase is no longer approved")
 
+		// A build is only approved, and only paid, on top of an approved design. Un-approving the design under a build that is still in review or approved would leave that build for an un-approved design, so the build has to be taken back first.
+		if (
+			phase === Phase.DESIGN
+			&& (fresh.buildStatus === PhaseStatus.approved || fresh.buildStatus === PhaseStatus.in_review)
+		)
+			throw new HttpError("CONFLICT", "Take the build back before un-approving the design")
+
 		// A grant send holds no credit lock while HCB is called, so a design un-approval must not race it: the money would be sent for an approval that no longer stands, and the sent row would block a later send. `sendGrant` marks the row errored before it throws, which is what lets this same check pass on the retry after the window.
 		if (phase === Phase.DESIGN) {
 			const inFlight = await tx.orm.public.HcbGrantTopUp.where({
