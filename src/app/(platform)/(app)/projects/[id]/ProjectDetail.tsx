@@ -712,7 +712,6 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 					<CoverImage
 						accent={week.accent}
 						fallback={data.fallbackThumbnail}
-						locked={data.editLocked}
 						projectId={project.id}
 						theme={week.theme}
 						url={data.coverImageUrl}

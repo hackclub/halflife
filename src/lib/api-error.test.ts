@@ -62,7 +62,13 @@ const response = (body: string, status = 200, type = "application/json"): Respon
 const schema = z.object({ id: z.string() })
 
 /** Settle a rejection into a value, so a test can assert on the error itself. */
-const settle = (promise: Promise<unknown>): Promise<unknown> => promise.catch((err: unknown) => err)
+async function settle(promise: Promise<unknown>): Promise<unknown> {
+	try {
+		return await promise
+	} catch (err) {
+		return err
+	}
+}
 
 describe("readJson", () => {
 	test("returns the parsed body of a success", async () => {
