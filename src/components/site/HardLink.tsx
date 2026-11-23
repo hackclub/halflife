@@ -11,11 +11,13 @@ import type { MouseEvent, ReactNode } from "react"
  * Modified clicks are left alone so "open in new tab" still works.
  */
 export function HardLink({
+	"aria-keyshortcuts": ariaKeyShortcuts,
 	"aria-label": ariaLabel,
 	children,
 	className,
 	href,
 }: {
+	"aria-keyshortcuts"?: string
 	"aria-label"?: string
 	children: ReactNode
 	className?: string
@@ -28,7 +30,7 @@ export function HardLink({
 	}
 
 	return (
-		<Link aria-label={ariaLabel} className={className} href={href} onClick={go}>
+		<Link aria-keyshortcuts={ariaKeyShortcuts} aria-label={ariaLabel} className={className} href={href} onClick={go}>
 			{children}
 		</Link>
 	)

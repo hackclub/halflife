@@ -614,7 +614,10 @@
 		letter-spacing: 0.08em;
 	}
 	.hl-admin-side a {
-		display: block;
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		justify-content: space-between;
 		padding: 0.3rem 0.6rem;
 		font-weight: 600;
 		color: var(--color-ink);
@@ -628,6 +631,24 @@
 	.hl-admin-side a[aria-current="page"] {
 		color: var(--color-paper);
 		background: var(--color-ink-strong);
+	}
+	/* The shortcut a tab answers to while Alt is held: a key cap at the far end, where a menu's accelerator sits. */
+	.hl-hotkey {
+		flex: none;
+		padding: 0.05rem 0.35rem;
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		line-height: 1.4;
+		color: var(--color-ink-muted);
+		background: var(--color-field-fill);
+		border: 1px solid var(--color-border);
+		border-radius: 4px;
+	}
+	/* On the current page the tab is a solid pill, so the cap takes the pill's own ink rather than a ground of its own. */
+	.hl-admin-side a[aria-current="page"] .hl-hotkey {
+		color: inherit;
+		background: transparent;
+		border-color: color-mix(in srgb, currentColor 45%, transparent);
 	}
 	/* The sections toggle: a single bar on a phone that opens the list, hidden on a desktop where the list is always shown. */
 	.hl-admin-menu-toggle {

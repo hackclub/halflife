@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+	ADMIN_HOTKEYS,
 	type AdminNavGroup,
 	exactUser,
 	isAdminNavActive,
@@ -18,6 +19,23 @@ const groups: AdminNavGroup[] = [
 	},
 	{ items: [{ href: "/admin/deadlines", label: "Deadlines" }], label: "Programme" },
 ]
+
+describe("admin hotkeys", () => {
+	test("every page answers to one lowercase letter, and no two pages agree", () => {
+		const keys = Object.values(ADMIN_HOTKEYS)
+		expect(new Set(keys).size).toBe(keys.length)
+		for (const key of keys) expect(key).toMatch(/^[a-z]$/)
+	})
+
+	test("only console pages carry one", () => {
+		for (const href of Object.keys(ADMIN_HOTKEYS))
+			expect(href === "/reviews" || href === "/admin" || href.startsWith("/admin/")).toBe(true)
+	})
+
+	test("the sidebar's own pages are on the map", () => {
+		for (const group of groups) for (const item of group.items) expect(ADMIN_HOTKEYS[item.href]).toBeDefined()
+	})
+})
 
 describe("isAdminNavActive", () => {
 	test("the overview matches only itself", () => {
