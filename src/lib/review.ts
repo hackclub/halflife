@@ -22,7 +22,7 @@ import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from
 import { assertPayoutAllowed } from "@/lib/moderation"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
-import db from "@/lib/prisma8"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
@@ -58,7 +58,9 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 	try {
 		await db.orm.public.ReviewClaim.create({ expiresAt: expiresAtText, reviewerId, submissionId })
 		return { expiresAt, ok: true }
-	} catch {
+	} catch (err) {
+		// Only the unique violation means someone else holds it. Anything else is a real failure, and reporting it as a held claim would send the reviewer to a name that is not there.
+		if (!isUniqueViolation(err)) throw err
 		const held = await db.orm.public.ReviewClaim.where({ submissionId })
 			.include("reviewer", reviewer => reviewer.select("displayName", "name"))
 			.first()
