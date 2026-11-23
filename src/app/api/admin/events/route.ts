@@ -72,18 +72,27 @@ export const DELETE = withWritePermission(Permission.MANAGE_PROGRAM, async (_req
 	const { programTimezone } = await getProgramSettings()
 	const threshold = startOfDay(new Date(), programTimezone)
 
-	const count = await db.orm.public.ProgramEvent.where(event =>
-		event.startsAt.gte(formatDbTimestamp(threshold)),
-	).deleteAndCount()
+	// Read before deleting: the audit row is the only record left of a cleared calendar, and "12 events" cannot be restored or even explained afterwards. The delete then names those rows, so an event added in between survives rather than vanishing unlogged.
+	const upcoming = await db.orm.public.ProgramEvent.where(event => event.startsAt.gte(formatDbTimestamp(threshold)))
+		.select("id", "published", "startsAt", "title")
+		.orderBy(event => event.startsAt.asc())
+		.all()
+
+	if (upcoming.length > 0)
+		await db.orm.public.ProgramEvent.where(event => event.id.in(upcoming.map(row => row.id))).deleteAndCount()
 
 	await logAudit({
 		action: AuditAction.ADMIN_DELETE_PROGRAM_EVENT,
 		actorEmail: gate.user.email,
 		actorId: gate.user.id,
-		metadata: { threshold: threshold.toISOString(), upcomingCleared: count },
+		metadata: {
+			events: upcoming.map(row => ({ id: row.id, published: row.published, startsAt: row.startsAt, title: row.title })),
+			threshold: threshold.toISOString(),
+			upcomingCleared: upcoming.length,
+		},
 		targetId: null,
 		targetType: "ProgramEvent",
 	})
 
-	return ok({ deleted: count })
+	return ok({ deleted: upcoming.length })
 })
