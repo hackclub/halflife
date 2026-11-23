@@ -617,13 +617,7 @@ function Aside(props: AsideProps) {
 			<h3 className="font-display font-bold" style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}>
 				{aside.title}
 			</h3>
-			<p
-				style={{
-					fontSize: u(ASIDE.bodySize),
-					lineHeight: 1.5,
-					marginTop: u(ASIDE.gap),
-				}}
-			>
+			<p className="leading-[1.5]" style={{ fontSize: u(ASIDE.bodySize), marginTop: u(ASIDE.gap) }}>
 				{aside.body}
 			</p>
 			{/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}

@@ -81,17 +81,17 @@ export default function WeekCountdown() {
 				<p className="font-display text-[0.66rem] font-bold uppercase tracking-[0.18em]">{label}</p>
 				{counting ? (
 					<div
-						className="mt-0.5 flex items-baseline justify-center gap-[0.4em] font-display font-bold tabular-nums"
-						style={{ fontSize: "clamp(1.5rem, 6vw, 2.25rem)", lineHeight: 1 }}
+						className="mt-0.5 flex items-baseline justify-center gap-[0.4em] font-display font-bold tabular-nums leading-[1]"
+						style={{ fontSize: "clamp(1.5rem, 6vw, 2.25rem)" }}
 					>
 						{COUNTDOWN_UNITS.map(unit => (
-							<span className="inline-flex flex-col items-center" key={unit.key} style={{ lineHeight: 1 }}>
+							<span className="inline-flex flex-col items-center leading-[1]" key={unit.key}>
 								<span style={{ fontSize: "1em" }}>
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}
 								</span>
 								<span
-									className="font-display font-bold uppercase"
-									style={{ fontSize: "0.24em", letterSpacing: "0.14em", lineHeight: 1 }}
+									className="font-display font-bold uppercase [letter-spacing:0.14em] leading-[1]"
+									style={{ fontSize: "0.24em" }}
 								>
 									{unit.label}
 								</span>

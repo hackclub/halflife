@@ -192,21 +192,12 @@ export default function BuildCarousel() {
 		<section
 			aria-labelledby="build-heading"
 			// The comp gives this section no ground of its own: it runs between the process band above and the FAQ band below on the page's own ink, and the belt carries no colour either. The cards are the whole event.
-			className="hl-ground-hex relative bg-hl-paper text-hl-blue"
+			className="hl-ground-hex relative bg-hl-paper text-hl-blue [container-type:inline-size]"
 			id="what-can-i-build"
 			ref={sectionRef}
-			style={{
-				containerType: "inline-size",
-				paddingBottom: "clamp(3rem, 9.028cqw, 156px)",
-			}}
+			style={{ paddingBottom: "clamp(3rem, 9.028cqw, 156px)" }}
 		>
-			<div
-				className="px-4 sm:px-8"
-				style={{
-					paddingBottom: "clamp(2rem, 5.613cqw, 97px)",
-					paddingTop: "clamp(2rem, 2.546cqw, 44px)",
-				}}
-			>
+			<div className="px-4 sm:px-8 pb-[clamp(2rem,_5.613cqw,_97px)] pt-[clamp(2rem,_2.546cqw,_44px)]">
 				<h2
 					className="text-center font-display font-bold tracking-[-0.02em] text-hl-blue-deep"
 					id="build-heading"
@@ -282,11 +273,11 @@ export default function BuildCarousel() {
 										className="flex flex-col items-center justify-center bg-hl-yellow-pale text-center"
 										style={{ flex: `0 0 ${BAND_H}` }}
 									>
-										<p className="font-body whitespace-nowrap text-hl-ink" style={{ fontSize: LABEL, lineHeight: 1.1 }}>
+										<p className="font-body whitespace-nowrap text-hl-ink leading-[1.1]" style={{ fontSize: LABEL }}>
 											{card.label}
 										</p>
 
-										<div className="flex items-center gap-[0.7em]" style={{ fontSize: CREDIT, marginTop: "0.55em" }}>
+										<div className="flex items-center gap-[0.7em] mt-[0.55em]" style={{ fontSize: CREDIT }}>
 											<p className="font-body whitespace-nowrap text-hl-ink/80">{card.credit}</p>
 
 											{card.repo ? (

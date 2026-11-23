@@ -151,10 +151,7 @@ export default function Hero() {
 					<SignupForm
 						fontSize={onPlateU(30)}
 						intro={
-							<p
-								className="font-tagline whitespace-nowrap text-hl-paper"
-								style={{ fontSize: u(32.8), lineHeight: 1.1 }}
-							>
+							<p className="font-tagline whitespace-nowrap text-hl-paper leading-[1.1]" style={{ fontSize: u(32.8) }}>
 								{BRAND.tagline}
 							</p>
 						}
@@ -205,11 +202,8 @@ export default function Hero() {
 							fontSize="clamp(1rem, 4.2vw, 1.375rem)"
 							intro={
 								<p
-									className="mx-auto max-w-[34ch] font-tagline text-hl-paper"
-									style={{
-										fontSize: "clamp(1.05rem, 4.1vw, 1.5rem)",
-										lineHeight: 1.25,
-									}}
+									className="mx-auto max-w-[34ch] font-tagline text-hl-paper leading-[1.25]"
+									style={{ fontSize: "clamp(1.05rem, 4.1vw, 1.5rem)" }}
 								>
 									{BRAND.tagline}
 								</p>
