@@ -179,11 +179,12 @@ async function buildPreview(
 				.where({ phase: Phase.DESIGN })
 				.where(card => card.supersededAt.isNull()),
 		)
+		// A top-up counts as paid once HCB has answered, even if the audit write that marks it sent then failed: the transaction id is recorded on that path too, and a card issued over a payment that did land is money twice over.
 		.include("hcbGrantTopUps", topUps =>
 			topUps
 				.select("id")
 				.where({ phase: Phase.DESIGN })
-				.where(topUp => topUp.sentAt.isNotNull()),
+				.where(topUp => or(topUp.sentAt.isNotNull(), topUp.transactionId.isNotNull())),
 		)
 		.include("hcbCardGrantExports", exports => exports.select("id").where(export_ => export_.supersededAt.isNull()))
 		.all()

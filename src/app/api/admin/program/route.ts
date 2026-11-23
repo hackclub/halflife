@@ -1,5 +1,7 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { PayoutSource, Phase } from "@/lib/enums"
+import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { withPermission, withWritePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -22,6 +24,25 @@ export const PATCH = withWritePermission(Permission.MANAGE_PROGRAM, async (req: 
 
 	const before = await getProgramSettings()
 	const { eventStartDate, shopClosesAt, submissionsCloseAt, ...rest } = parsed.data
+
+	// Moving payouts off top-ups while one is in flight would hand the same design to a card batch: the top-up has claimed its row but not paid yet, and nothing else can see it. Only a send old enough to be abandoned is ignored, the same window the grant retry uses.
+	if (
+		rest.payoutSource !== undefined
+		&& rest.payoutSource !== before.payoutSource
+		&& rest.payoutSource !== PayoutSource.AIRTABLE
+	) {
+		const inFlight = await db.orm.public.HcbGrantTopUp.where({ phase: Phase.DESIGN, sentAt: null })
+			.where(topUp => topUp.error.isNull())
+			.where(topUp => topUp.createdAt.gt(formatDbTimestamp(new Date(Date.now() - ABANDONED_ATTEMPT_MS))))
+			.select("id")
+			.first()
+		if (inFlight)
+			return fail(
+				"CONFLICT",
+				"A grant top-up is being sent right now. Wait for it to finish before changing the payout source",
+			)
+	}
+
 	const row = await db.orm.public.ProgramSettings.where({ id: "singleton" }).update({
 		...rest,
 		...(eventStartDate === undefined ? {} : { eventStartDate: formatDbTimestamp(eventStartDate) }),

@@ -318,8 +318,11 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		throw new HttpError("CONFLICT", "The grant amount changed. Reload and try again")
 	}
 
+	// Hoisted so a failure after HCB has answered still records which payment it was: the audit write below is the only other place the transaction id lands, and if that fails the row would otherwise say only "failed" about money that moved.
+	let answered: { ownerEmail: string | null; transactionId: string | null } | null = null
 	try {
 		const { ownerEmail, transactionId } = await topUpCardGrant(hashid, amountCents)
+		answered = { ownerEmail, transactionId }
 		await memoOrReport(transactionId, memo, {
 			adminEmail: input.adminEmail,
 			adminId: input.adminId,
@@ -348,9 +351,11 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
 		// Only a row that has not been sent yet is a failure. A row that was marked sent says the money moved, and saying otherwise on top of that would send the next attempt looking for a payment that is there.
+		//
+		// When HCB had already answered, the transaction id is kept with the error: the money moved, and the checks that read a top-up as paid look for either mark, so a failed audit write cannot leave a paid project looking unpaid to a card batch.
 		await db.orm.public.HcbGrantTopUp.where({ id: rowId })
 			.where(row => row.sentAt.isNull())
-			.updateAndCount({ error: message })
+			.updateAndCount({ error: message, ...(answered?.transactionId ? { transactionId: answered.transactionId } : {}) })
 			.catch(() => undefined)
 		throw err
 	}

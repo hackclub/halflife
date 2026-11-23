@@ -618,8 +618,9 @@ export async function unapprovePhase(
 
 			// A sent top-up is money that has moved, and a live CSV row is a card the org may already have created from
 			// the file. Either would leave the maker funded for a design that no longer stands.
+			// Either mark, for the same reason the card batch reads both: a payment HCB answered for is money that moved, even if marking it sent failed afterwards.
 			const paidTopUp = await tx.orm.public.HcbGrantTopUp.where({ phase: Phase.DESIGN, themeProjectId })
-				.where(topUp => topUp.sentAt.isNotNull())
+				.where(topUp => or(topUp.sentAt.isNotNull(), topUp.transactionId.isNotNull()))
 				.select("id")
 				.first()
 			if (paidTopUp)
