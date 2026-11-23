@@ -47,7 +47,7 @@ export function Modal({
 			ref={ref}
 		>
 			<div className="hl-panel hl-stack hl-stack--tight">
-				<div className="hl-row" style={{ justifyContent: "space-between" }}>
+				<div className="hl-row justify-between">
 					<h2 id={titleId} style={{ fontSize: "1.05rem", margin: 0 }}>
 						{title}
 					</h2>

@@ -40,7 +40,7 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 
 	return (
 		<div className="hl-stack">
-			<div id="event-form" style={{ scrollMarginTop: "1rem" }}>
+			<div className="[scroll-margin-top:1rem]" id="event-form">
 				<Panel title={editing ? "Editing an event" : "Add an event"}>
 					{/* Keyed by the row being edited, so opening a different event remounts the form and its `useState` initialisers run again. Without the key the first render's values stick, and Edit opens a blank form. The version also changes when the form closes, which is what resets it after a save or Clear. */}
 					<EventForm

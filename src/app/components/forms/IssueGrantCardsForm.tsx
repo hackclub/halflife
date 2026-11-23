@@ -227,7 +227,7 @@ export function IssueGrantCardsForm({ initial }: Readonly<{ initial: PreviewData
 					project&apos;s BOM total, including tax and shipping.
 				</p>
 				{batchId ? <p className="hl-hint hl-mono">Batch {batchId}</p> : null}
-				<div className="hl-row" style={{ justifyContent: "flex-end" }}>
+				<div className="hl-row [justify-content:flex-end]">
 					<Button onClick={() => setConfirming(false)} type="button">
 						Cancel
 					</Button>

@@ -57,10 +57,7 @@ function useProgrammeFilter(): ProgrammeFilter {
 function ProgrammeToggle() {
 	const { programmeOnly, setProgrammeOnly } = useProgrammeFilter()
 	return (
-		<label
-			className="hl-row"
-			style={{ cursor: "pointer", fontSize: "0.78rem", gap: "0.4rem", marginBottom: "0.75rem" }}
-		>
+		<label className="hl-row [cursor:pointer] text-[0.78rem] mb-3" style={{ gap: "0.4rem" }}>
 			<input
 				aria-label="Exclude weeks before the programme began"
 				checked={programmeOnly}
@@ -161,32 +158,19 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
 				<span
 					aria-hidden="true"
-					style={{
-						background: "var(--color-accent)",
-						display: "inline-block",
-						height: "0.15rem",
-						marginRight: "0.35rem",
-						verticalAlign: "middle",
-						width: "0.7rem",
-					}}
+					className="mr-[0.35rem] align-middle"
+					style={{ background: "var(--color-accent)", display: "inline-block", height: "0.15rem", width: "0.7rem" }}
 				/>
 				{legendHours}
 				<span
 					aria-hidden="true"
-					style={{
-						background: "var(--color-magenta)",
-						display: "inline-block",
-						height: "0.15rem",
-						marginLeft: "1rem",
-						marginRight: "0.35rem",
-						verticalAlign: "middle",
-						width: "0.7rem",
-					}}
+					className="ml-4 mr-[0.35rem] align-middle"
+					style={{ background: "var(--color-magenta)", display: "inline-block", height: "0.15rem", width: "0.7rem" }}
 				/>
 				{legendDevlogs}
 			</p>
 			{/* The two scale columns are grid siblings of the chart, so they share its row. Each label is placed at the exact pixel its gridline sits on, so the two scales read off one row rather than eyeballed. */}
-			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto" }}>
+			<div className="items-start" style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto" }}>
 				<YAxis
 					caption="h"
 					format={t => fmtHours(t).replace("h", "")}
@@ -378,33 +362,25 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
 				<span
 					aria-hidden="true"
-					style={{
-						background: "var(--color-teal)",
-						display: "inline-block",
-						height: "0.15rem",
-						marginRight: "0.35rem",
-						verticalAlign: "middle",
-						width: "0.7rem",
-					}}
+					className="mr-[0.35rem] align-middle"
+					style={{ background: "var(--color-teal)", display: "inline-block", height: "0.15rem", width: "0.7rem" }}
 				/>
 				active users (15+ minutes tracked), averaging {fmtInt(Math.round(mean))} a day, peaking at {fmtInt(peak)}
 				<span
 					aria-hidden="true"
+					className="ml-4 mr-[0.35rem] align-middle"
 					style={{
 						background: "var(--color-teal-soft)",
 						display: "inline-block",
 						height: "0.55rem",
-						marginLeft: "1rem",
-						marginRight: "0.35rem",
 						opacity: 0.45,
-						verticalAlign: "middle",
 						width: "0.55rem",
 					}}
 				/>
 				weekly average
 			</p>
 			{/* One scale column, pinned to the chart's own row so each label sits on the gridline it names. */}
-			<div style={{ alignItems: "start", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
+			<div className="items-start" style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
 				<YAxis
 					caption="users"
 					colour="var(--color-teal-ink)"
@@ -457,6 +433,7 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 						{weekBars.map(bar =>
 							bar.fits ? (
 								<text
+									className="tabular-nums"
 									fill="var(--color-teal-ink)"
 									fontSize="0.65rem"
 									fontWeight="600"
@@ -465,7 +442,6 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 									stroke="var(--color-surface-raised)"
 									strokeLinejoin="round"
 									strokeWidth="2"
-									style={{ fontVariantNumeric: "tabular-nums" }}
 									textAnchor="middle"
 									x={pct((bar.left + bar.right) / 2)}
 									y={bar.top - 4}

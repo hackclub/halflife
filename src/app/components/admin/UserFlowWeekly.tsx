@@ -48,8 +48,8 @@ const row = (step: WeekFlowStep, prev: WeekFlowStep | undefined, topWidth: numbe
 				</>
 			) : null}
 
-			<div style={{ minHeight: "3.8rem", minWidth: 0 }}>
-				<div style={{ fontWeight: 700 }}>{step.label}</div>
+			<div className="min-h-[3.8rem] min-w-0">
+				<div className="font-bold">{step.label}</div>
 				<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
 					{step.hint}
 				</div>
@@ -57,7 +57,7 @@ const row = (step: WeekFlowStep, prev: WeekFlowStep | undefined, topWidth: numbe
 
 			<div
 				aria-hidden="true"
-				style={{ height: "2.75rem", position: "relative" }}
+				className="h-11 relative"
 				title={`${step.label}: ${fmtInt(step.count)} people · ${step.ofSignupsPct}% of signups`}
 			>
 				{step.count > 0 ? (
@@ -74,17 +74,13 @@ const row = (step: WeekFlowStep, prev: WeekFlowStep | undefined, topWidth: numbe
 				) : (
 					// Nobody in an open week is a finding, so the stage stays on the page as a hairline and a zero rather than disappearing.
 					<div
-						style={{
-							borderTop: "1px dashed var(--color-line-soft)",
-							left: `${(100 - topWidth) / 2}%`,
-							position: "absolute",
-							top: "50%",
-							width: `${topWidth}%`,
-						}}
+						className="[border-top:1px_dashed_var(--color-line-soft)] absolute top-[50%]"
+						style={{ left: `${(100 - topWidth) / 2}%`, width: `${topWidth}%` }}
 					/>
 				)}
-				<span style={{ display: "grid", inset: 0, placeItems: "center", position: "absolute" }}>
+				<span className="[inset:0] [place-items:center] absolute" style={{ display: "grid" }}>
 					<span
+						className="leading-[1.35]"
 						style={{
 							background: "rgba(0,0,0,.4)",
 							borderRadius: "999px",
@@ -92,7 +88,6 @@ const row = (step: WeekFlowStep, prev: WeekFlowStep | undefined, topWidth: numbe
 							fontSize: "0.88rem",
 							fontVariantNumeric: "tabular-nums",
 							fontWeight: 800,
-							lineHeight: 1.35,
 							padding: "0 0.4rem",
 							whiteSpace: "nowrap",
 						}}
@@ -126,16 +121,10 @@ export function UserFlowWeekly({ steps }: { steps: WeekFlowStep[] }) {
 
 	return (
 		// width:100% – the panel is a flex column, where auto margins alone shrink-wrap this to its content instead of filling the panel.
-		<div style={{ margin: "0 auto", maxWidth: "56rem", width: "100%" }}>
+		<div className="m-[0_auto] max-w-[56rem] w-full">
 			<div
-				className="hl-hint"
-				style={{
-					display: "flex",
-					gap: "0.5rem",
-					justifyContent: "center",
-					marginBottom: "0.25rem",
-					marginTop: "1rem",
-				}}
+				className="hl-hint justify-center"
+				style={{ display: "flex", gap: "0.5rem", marginBottom: "0.25rem", marginTop: "1rem" }}
 			>
 				{peak > 0
 					? `bands scale to the busiest week in view · ${fmtInt(peak)} people`
@@ -143,14 +132,8 @@ export function UserFlowWeekly({ steps }: { steps: WeekFlowStep[] }) {
 			</div>
 
 			<div
-				className="hl-hint"
-				style={{
-					alignItems: "center",
-					display: "flex",
-					gap: "0.5rem",
-					justifyContent: "center",
-					marginBottom: "0.6rem",
-				}}
+				className="hl-hint items-center justify-center"
+				style={{ display: "flex", gap: "0.5rem", marginBottom: "0.6rem" }}
 			>
 				<span>no drop</span>
 				<span
@@ -166,13 +149,8 @@ export function UserFlowWeekly({ steps }: { steps: WeekFlowStep[] }) {
 			</div>
 
 			<div
-				style={{
-					alignItems: "center",
-					columnGap: "1rem",
-					display: "grid",
-					gridTemplateColumns: "15rem minmax(0,1fr)",
-					rowGap: "0.1rem",
-				}}
+				className="items-center gap-x-4 gap-y-[0.1rem]"
+				style={{ display: "grid", gridTemplateColumns: "15rem minmax(0,1fr)" }}
 			>
 				{steps.map((step, i) =>
 					row(step, steps[i - 1], i === 0 ? (widths[0] ?? 0) : (widths[i - 1] ?? 0), widths[i] ?? 0),

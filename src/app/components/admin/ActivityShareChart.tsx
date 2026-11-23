@@ -40,11 +40,12 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 
 	return (
 		<div>
-			<div style={{ overflowX: "auto" }}>
+			<div className="[overflow-x:auto]">
 				<svg
 					aria-label={`Share of the ${fmtInt(share.total)} makers who finished onboarding who did each activity: ${summary}`}
+					className="min-w-95"
 					role="img"
-					style={{ display: "block", height: "auto", minWidth: "380px", width: "100%" }}
+					style={{ display: "block", height: "auto", width: "100%" }}
 					viewBox={`0 0 ${W} ${H}`}
 				>
 					{[0, 0.25, 0.5, 0.75, 1].map(t => (
@@ -59,8 +60,9 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 								{...(t === 0 ? {} : { strokeDasharray: "2 3" })}
 							/>
 							<text
+								className="text-[10px] tabular-nums"
 								dominantBaseline="middle"
-								style={{ fill: "var(--color-ink-muted)", fontSize: "10px", fontVariantNumeric: "tabular-nums" }}
+								style={{ fill: "var(--color-ink-muted)" }}
 								textAnchor="end"
 								x={PAD_L - 6}
 								y={yOf(t)}
@@ -84,12 +86,8 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 									<title>{`${a.label}: ${fmtInt(a.users)} of ${fmtInt(share.total)} finishers (${(a.share * 100).toFixed(1)}%)`}</title>
 								</rect>
 								<text
-									style={{
-										fill: "var(--color-ink-strong)",
-										fontSize: "11px",
-										fontVariantNumeric: "tabular-nums",
-										fontWeight: 700,
-									}}
+									className="text-[11px] tabular-nums font-bold"
+									style={{ fill: "var(--color-ink-strong)" }}
 									textAnchor="middle"
 									x={xOf(i) + colW / 2}
 									y={yOf(a.share) - 7}
@@ -97,7 +95,8 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 									{(a.share * 100).toFixed(1)}%
 								</text>
 								<text
-									style={{ fill: "var(--color-ink-muted)", fontSize: "11px" }}
+									className="text-[11px]"
+									style={{ fill: "var(--color-ink-muted)" }}
 									textAnchor="middle"
 									x={xOf(i) + colW / 2}
 									y={H - PAD_B + 18}

@@ -104,7 +104,7 @@ export function EventForm({
 				{/* Outside `Field`, which renders a `<label>`: a radio group is not its control, and nesting the two would make the label's own name ambiguous. */}
 				<div className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 					<span className="hl-label-text">Colour</span>
-					<span aria-label="Colour" className="hl-row" role="radiogroup" style={{ gap: "0.4rem", minHeight: "2.5rem" }}>
+					<span aria-label="Colour" className="hl-row min-h-10" role="radiogroup" style={{ gap: "0.4rem" }}>
 						{EVENT_COLOURS.map(option => (
 							// biome-ignore lint/a11y/useSemanticElements: a radio option drawn as a swatch.
 							<button

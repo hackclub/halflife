@@ -84,9 +84,10 @@ export function UserFlowDiagram({
 		>
 			<div
 				aria-label="User flow diagram"
+				className="justify-center"
 				onKeyDown={onKeyDown}
 				role="tablist"
-				style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}
+				style={{ display: "flex", gap: "0.5rem" }}
 			>
 				{TABS.map(tab => {
 					const selected = tab.id === active
@@ -121,7 +122,7 @@ export function UserFlowDiagram({
 				)}
 			</div>
 
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem", textAlign: "center" }}>
+			<p className="hl-hint text-center" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 				{current?.hint}
 			</p>
 		</Panel>

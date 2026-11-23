@@ -33,12 +33,12 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 
 	return (
 		<form
-			className="hl-stack hl-stack--tight"
+			className="hl-stack hl-stack--tight min-w-24"
 			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
-			style={{ gap: "0.3rem", minWidth: "6rem" }}
+			style={{ gap: "0.3rem" }}
 		>
 			<TextInput
 				aria-label="Approved hours"
