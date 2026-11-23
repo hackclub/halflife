@@ -580,5 +580,7 @@ export function buildCoinsFor(approvedHours: number): CoinSplit {
  * Capped, because `approvedHours` can come from a reviewer typing into a box and a fat-fingered 1000 should not mint five thousand coins.
  */
 function earnCoins(hours: number): number {
-	return Math.min(Math.ceil(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
+	// Rounded to millionths before the ceiling: the funded block is subtracted as a float, so 7.4 - 6 arrives as 1.4000000000000004 and times 5 as 7.000000000000002, which would otherwise mint an extra coin.
+	const coins = Math.round(hours * COINS_PER_HOUR * 1e6) / 1e6
+	return Math.min(Math.ceil(coins), MAX_COINS_PER_PROJECT)
 }
