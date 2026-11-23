@@ -92,7 +92,7 @@ Half-Life deploys to **Orchard**, org **YSWS** (`ysws`). Not Vercel, not Coolify
 
 9. **Seed.** `exec_in_pod` → `bun prisma/seed.ts`. Idempotent; it creates the settings row and the starter shop items without overwriting anything an admin changed.
 
-10. **Enable auto-deploy** on `main` (`enable_auto_deploy`).
+10. **Enable auto-deploy** on `prod` (`enable_auto_deploy`). Only `prod` auto-deploys; `main` does not.
 
 11. **Sign in once** with an address listed in `SUPERADMIN_EMAILS` and confirm `/admin` loads.
 
@@ -317,7 +317,7 @@ Most of these routes accept `?dryRun=true` and return what they would have done 
 
 ## Routine operations
 
-**Deploy** – merge to `main`; auto-deploy builds and rolls.
+**Deploy** – merge to `prod`; auto-deploy builds and rolls. Only `prod` auto-deploys. `main` is the integration branch and does not deploy, so promote `main` to `prod` with a PR to release.
 
 **Roll back** – `rollback_deployment` reverts the *image*, not the *database*. A release containing a destructive migration is not rollback-safe. Keep migrations additive (add nullable, backfill, drop in a later release) and this never comes up.
 
