@@ -1434,6 +1434,10 @@
 		background: var(--color-accent);
 		border-color: var(--color-accent);
 	}
+	/* A word space alone left the number touching the label. Padding sits it off the word, so the figure reads as a separate count rather than the last character of the name. */
+	.hl-chip .hl-count {
+		padding-left: 0.4rem;
+	}
 	/* A count is muted against a panel, but the selected chip fills with sky: the muted ink read 1.2:1 on it. Take the chip's own colour instead, leaving weight and figures as the quieter cues. */
 	.hl-chip[aria-current="true"] .hl-count {
 		color: inherit;
