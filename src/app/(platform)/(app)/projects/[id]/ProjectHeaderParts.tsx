@@ -137,6 +137,8 @@ export function ProjectSection({
  * The project's thumbnail – what its card and the review queue show.
  *
  * Until one is uploaded the newest picture in the journal stands in, and before there is one of those, the week's own scene on the week's colour, so an empty project still looks like the week it belongs to rather than a grey box. Changing it is one button on the image itself: pick a file, it uploads, the page re-reads.
+ *
+ * It is offered whatever state the project is in. A cover is what a card shows rather than a claim about the work, so it stays the maker's to change after hand-in and after a decision, when every other detail is final; a phase under review is no exception, and the picture on its Airtable row is updated with it.
  */
 export function CoverImage({
 	projectId,
@@ -144,7 +146,6 @@ export function CoverImage({
 	fallback,
 	theme,
 	accent,
-	locked,
 }: {
 	projectId: string
 	/** The one the maker chose. */
@@ -153,7 +154,6 @@ export function CoverImage({
 	fallback: ProjectThumbnail | null
 	theme: string
 	accent: string
-	locked: string | null
 }) {
 	const shown: ProjectThumbnail | null = url ? { kind: "image", url } : fallback
 	const { updateProject } = useStore()
@@ -235,38 +235,34 @@ export function CoverImage({
 				)}
 			</div>
 
-			{!locked && (
-				<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-					<input
-						accept={IMAGE_ACCEPT}
-						aria-hidden="true"
-						className="sr-only"
-						onChange={e => void pick(e.target.files?.[0])}
-						ref={input}
-						tabIndex={-1}
-						type="file"
-					/>
-					<Button className="-ml-3.5" disabled={busy} onClick={() => input.current?.click()} size="sm" variant="ghost">
-						<IconCamera className="text-base" /> {url ? "Change cover image" : "Add a cover image"}
-					</Button>
-					{url && (
-						<button
-							className="hand text-[0.8rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
-							disabled={busy}
-							onClick={() => void clear()}
-							type="button"
-						>
-							remove
-						</button>
-					)}
-				</div>
-			)}
-			{!locked && (
-				<p className="hand mt-1 text-[0.8rem] leading-snug text-navy-soft">
-					Your cover has to be a photo or screenshot of the project itself: the first thing a reviewer sees, so not a
-					logo or a stock photo.
-				</p>
-			)}
+			<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+				<input
+					accept={IMAGE_ACCEPT}
+					aria-hidden="true"
+					className="sr-only"
+					onChange={e => void pick(e.target.files?.[0])}
+					ref={input}
+					tabIndex={-1}
+					type="file"
+				/>
+				<Button className="-ml-3.5" disabled={busy} onClick={() => input.current?.click()} size="sm" variant="ghost">
+					<IconCamera className="text-base" /> {url ? "Change cover image" : "Add a cover image"}
+				</Button>
+				{url && (
+					<button
+						className="hand text-[0.8rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
+						disabled={busy}
+						onClick={() => void clear()}
+						type="button"
+					>
+						remove
+					</button>
+				)}
+			</div>
+			<p className="hand mt-1 text-[0.8rem] leading-snug text-navy-soft">
+				Your cover has to be a photo or screenshot of the project itself: the first thing a reviewer sees, so not a logo
+				or a stock photo.
+			</p>
 			{error && (
 				<p className="mt-1 text-[0.8rem] font-semibold text-coral-deep" role="alert">
 					{error}

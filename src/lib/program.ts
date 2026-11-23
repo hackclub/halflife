@@ -472,13 +472,17 @@ export const FROZEN_PHASE_STATUSES: PhaseStatus[] = [PhaseStatus.in_review, Phas
 /**
  * The keys of a project patch that would actually change the project.
  *
- * A tier the project already has is not a change. The submit sheet sends its tier with every hand-in, so a decided design would otherwise refuse the build's hand-in over a tier nobody moved – the lock is about what changes, not about what the request mentions.
+ * A tier the project already has is not a change. The submit sheet sends its tier with every hand-in, so a decided design would otherwise refuse the build's hand-in over a tier nobody moved – the lock is about what changes, not about what the request mentions. A cover image the project already has is not a change either, for the same reason: re-sending the current key must not count as an edit to a project whose details are final.
  */
 export function changedProjectKeys(
-	project: { requestedTier: number | null },
+	project: { coverImageKey?: string | null; requestedTier: number | null },
 	patch: { [_: string]: unknown },
 ): string[] {
-	return Object.keys(patch).filter(key => key !== "requestedTier" || patch.requestedTier !== project.requestedTier)
+	return Object.keys(patch).filter(
+		key =>
+			(key !== "requestedTier" || patch.requestedTier !== project.requestedTier)
+			&& (key !== "coverImageKey" || patch.coverImageKey !== project.coverImageKey),
+	)
 }
 
 /**
