@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { Badge, Button, EmptyState, Table } from "@/app/components/ui"
 import { formatUtcDateTime } from "@/lib/deadline"
@@ -48,7 +49,7 @@ export function LedgerList({
 		initialRows,
 		isPage: isLedgerPage,
 	})
-	const kindHref = (kind: LedgerKind) => {
+	const kindHref = (kind: LedgerKind): Route => {
 		const params = new URLSearchParams(filters)
 		params.set("kind", kind)
 		return `/admin/ledger?${params.toString()}`

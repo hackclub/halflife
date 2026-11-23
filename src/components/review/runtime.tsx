@@ -15,6 +15,7 @@ import {
 	sendDisputeBack,
 	takeBack,
 } from "@/components/review/api"
+import { uncheckedRoute } from "@/lib/routes"
 
 /**
  * What the review screen does that needs the server: its writes and its moves between pages.
@@ -72,10 +73,10 @@ export function useReviewRuntime(): ReviewRuntime {
 				mediaSrc: sameUrl,
 				offline: false,
 				overrideDecision,
-				push: (href: string) => router.push(href),
+				push: (href: string) => router.push(uncheckedRoute(href)),
 				refresh: () => router.refresh(),
 				releaseQuietly,
-				replace: (href: string) => router.replace(href),
+				replace: (href: string) => router.replace(uncheckedRoute(href)),
 				replyToDispute,
 				saveSessionHours,
 				sendDisputeBack,

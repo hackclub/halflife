@@ -14,7 +14,6 @@ import {
 import { Permission } from "@/lib/permissions"
 
 export const dynamic = "force-dynamic"
-export const runtime = "nodejs"
 
 const bodySchema = z.object({ confirm: z.boolean().optional() }).strict()
 

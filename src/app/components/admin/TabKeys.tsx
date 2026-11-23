@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { uncheckedRoute } from "@/lib/routes"
 
 /**
  * Lets `[` and `]` step through a page's tabs, in the order the chips above it are drawn, wrapping at either end; Alt and a tab's number jumps straight to it. A key typed into a field is left alone, and so is one pressed with a modifier.
@@ -21,7 +22,7 @@ export function TabKeys({ current, hrefs }: Readonly<{ current: string; hrefs: s
 				const href = position > 0 ? hrefs[position - 1] : undefined
 				if (href === undefined) return
 				event.preventDefault()
-				router.push(href)
+				router.push(uncheckedRoute(href))
 				return
 			}
 			if (event.key !== "[" && event.key !== "]") return
@@ -39,7 +40,7 @@ export function TabKeys({ current, hrefs }: Readonly<{ current: string; hrefs: s
 			const href = hrefs[(index + step + hrefs.length) % hrefs.length]
 			if (href === undefined) return
 			event.preventDefault()
-			router.push(href)
+			router.push(uncheckedRoute(href))
 		}
 		window.addEventListener("keydown", onKey)
 		return () => window.removeEventListener("keydown", onKey)

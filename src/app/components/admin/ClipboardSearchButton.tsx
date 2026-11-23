@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/app/components/ui"
 import { IconClipboard } from "@/app/components/ui/icons"
+import { uncheckedRoute } from "@/lib/routes"
 
 interface Props {
 	/** The page that takes a `q` search parameter, such as `/admin/users`. */
@@ -29,7 +30,7 @@ export function ClipboardSearchButton({ path }: Props) {
 				setError("The clipboard is empty.")
 				return
 			}
-			router.push(`${path}?${new URLSearchParams({ q: text })}`)
+			router.push(uncheckedRoute(`${path}?${new URLSearchParams({ q: text })}`))
 		} catch {
 			// The browser may ask for permission or refuse outright outside a secure context. Say so, rather than leaving the button looking like it did nothing.
 			setError("Could not read the clipboard. Check this site's permissions.")

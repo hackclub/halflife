@@ -756,6 +756,40 @@ export async function mirrorAriPhaseToYsws(
 	}
 }
 
+/**
+ * Put a project's current cover on the rows it already has.
+ *
+ * A cover stays the maker's to change after hand-in and after a decision (see the project PATCH route), but the row was written with whatever picture the project had at the time – and that row is what reviewers and the pipeline see. Every phase that has a row gets the new attachment; a phase never handed in has none, and one taken back on unsubmit reads as none too (see `lastRecordId`).
+ *
+ * Only the Screenshot column is written. An approved row is not rewritten from local values here: that is the admin refresh's job, and it is theirs because it also moves the decision's columns. Clearing the cover clears the attachment, so the base does not keep showing a picture the maker has taken down.
+ */
+export async function syncProjectCoverToYsws(
+	themeProjectId: string,
+): Promise<{ updated: Phase[] } | { skipped: string }> {
+	const settings = await getProgramSettings()
+	if (!settings.airtableSyncEnabled) return { skipped: "sync_disabled" }
+	const project = await db.orm.public.ThemeProject.whereUnique({ id: themeProjectId }).select("coverImageKey").first()
+	if (!project) return { skipped: "project_not_found" }
+
+	// An attachment is written as a URL Airtable fetches, so the bytes stay in R2 and the base only references them.
+	const cover = publicUrlFor(project.coverImageKey)
+	const screenshot = fieldKey(YSWS_SUBMISSION.fields.screenshot)
+	const updated: Phase[] = []
+	const failed: string[] = []
+	for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
+		const recordId = await lastRecordId(themeProjectId, phase)
+		if (!recordId) continue
+		const result = await updateYswsRecord(recordId, { [screenshot]: cover ? [{ url: cover }] : [] })
+		if (result.ok) updated.push(phase)
+		else failed.push(`${phase} (${result.reason})`)
+	}
+	// A project with no rows yet – never handed in, or everything taken back – has nothing to update, and logging that as a completed side effect would say a write happened that did not.
+	if (updated.length === 0 && failed.length === 0) return { skipped: "no_row" }
+	// A row deleted in the base shows up here rather than throwing on the first phase, so the other phase is still written and the audit row names both.
+	if (failed.length > 0) throw new Error(`Could not update the cover on: ${failed.join(", ")}`)
+	return { updated }
+}
+
 /** Remove a submission's row, and its unified-base twin, when it is taken back. */
 export async function removeSubmissionFromYsws(
 	themeProjectId: string,

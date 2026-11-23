@@ -1,7 +1,7 @@
 import { and } from "@prisma/orm-postgres/orm-client"
 import { after } from "next/server"
 import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
-import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
+import { removeSubmissionFromYsws, syncProjectCoverToYsws } from "@/lib/airtable/sync"
 import { markProjectCreated, recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
@@ -155,11 +155,14 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 	const changing = changedProjectKeys(project, data)
 	if (changing.length === 0) return ok({ project: withoutReviewerIds(project) })
 
+	// A cover image is what a card shows, not a claim about the work, so it is the one detail that stays the maker's to change after hand-in and after a decision – a project already approved and paid can still get a better picture. A patch that touches only the cover skips the submission window and the phase locks below. Everything else is held to them.
+	const coverOnly = changing.length === 1 && data.coverImageKey !== undefined
+
 	const access = await getSubmissionAccess(gate.user.id, id)
-	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+	if (!access.open && !coverOnly) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
 
 	// Editing the thing a reviewer is currently reading changes what they are deciding on halfway through.
-	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
+	if (!coverOnly && (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review))
 		return fail("PHASE_LOCKED", "A phase is in review, so unsubmit before editing")
 
 	// A starter can only be taken if it is one of this week's: anyone may switch to one from the project page after creation, beginner or not – the tier-1 scoping below is what keeps a starter a starter, not who was offered it during onboarding.
@@ -179,14 +182,14 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 			return fail("VALIDATION_FAILED", "Starter projects are fixed to tier 1")
 	}
 
-	// A decided phase is frozen: what the decision was made against is the record, so the details cannot be rewritten under it. One exception: after the design is decided the build still has to be handed in, and the submit gate refuses a description below its floor or one still carrying the starter's text, so a request that changes only the description is allowed until the build itself is in review or decided. Everything else stays frozen.
+	// A decided phase is frozen: what the decision was made against is the record, so the details cannot be rewritten under it. Two exceptions. After the design is decided the build still has to be handed in, and the submit gate refuses a description below its floor or one still carrying the starter's text, so a request that changes only the description is allowed until the build itself is in review or decided. And the cover is never frozen (see `coverOnly` above). Everything else stays frozen.
 	const editLock = projectEditLockReason(project)
 	const descriptionOnly =
 		editLock !== null
 		&& changing.length === 1
 		&& data.description !== undefined
 		&& projectDescriptionLockReason(project) === null
-	if (editLock && !descriptionOnly) return fail("PHASE_LOCKED", editLock)
+	if (editLock && !descriptionOnly && !coverOnly) return fail("PHASE_LOCKED", editLock)
 
 	// Taking a starter without also asking for tier 1 would leave a starter at a bigger tier, which the check above only catches when the tier changes.
 	if (data.starterProjectId && (data.requestedTier ?? project.requestedTier) !== 1)
@@ -200,11 +203,11 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 		return fail("VALIDATION_FAILED", "Upload the cover image first")
 	if (data.coverImageKey) await requireConfirmedUpload(gate.user.id, data.coverImageKey, ["covers"])
 
-	// Conditional on the state just checked, so a submit or a decision that lands between the read above and this write is not edited out from under the reviewer reading it. It carries the ownership check and the live-row check with it, so a project that was deleted or handed to somebody else in the meantime is not written either.
+	// Conditional on the state just checked, so a submit or a decision that lands between the read above and this write is not edited out from under the reviewer reading it. It carries the ownership check and the live-row check with it, so a project that was deleted or handed to somebody else in the meantime is not written either. The two exceptions pin the write to the statuses read above, since the phase lock has already said they are frozen: a description or a cover change must leave them exactly as they were.
 	const updated = await db.transaction(async tx => {
 		const claimed = await tx.orm.public.ThemeProject.where({ deletedAt: null, id, userId: gate.user.id })
 			.where(row =>
-				descriptionOnly
+				descriptionOnly || coverOnly
 					? and(row.buildStatus.eq(project.buildStatus), row.designStatus.eq(project.designStatus))
 					: and(row.buildStatus.notIn(FROZEN_PHASE_STATUSES), row.designStatus.notIn(FROZEN_PHASE_STATUSES)),
 			)
@@ -246,6 +249,22 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 		targetId: id,
 		targetType: "ThemeProject",
 	})
+
+	// The rows this project already has were written with the cover it had at hand-in – and a reviewer, and later the pipeline, reads the picture there rather than on this page. So a changed cover is put on each of them. After the response, so a slow Airtable never holds up the save; a failure lands in the audit log like any other side effect, and an admin refresh from the project's admin page rewrites the row whole.
+	if (data.coverImageKey !== undefined)
+		after(async () => {
+			await trackSideEffect(
+				"airtable",
+				{
+					actorEmail: gate.user.email,
+					actorId: gate.user.id,
+					metadata: { coverImageKey: data.coverImageKey },
+					targetId: id,
+					targetType: "ThemeProject",
+				},
+				() => syncProjectCoverToYsws(id),
+			)
+		})
 
 	// Reviewer anonymity, as the GET above: this returns the whole row, and a decided phase leaves the reviewer's id on it even after a return or a reopen. Participant pages never show who decided.
 	return ok({ project: withoutReviewerIds(updated) })

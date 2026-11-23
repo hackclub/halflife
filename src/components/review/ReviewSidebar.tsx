@@ -28,7 +28,7 @@ export function ReviewSidebar({ admin }: { admin: boolean }) {
 	return (
 		<aside className="docs-rail">
 			<HardLink aria-label="Half Life home" className="docs-logo review-logo" href={PLATFORM_HOME}>
-				<Image alt="" priority sizes="176px" src={logoArt} />
+				<Image alt="" preload sizes="176px" src={logoArt} />
 			</HardLink>
 
 			<details className="docs-nav" open ref={nav}>

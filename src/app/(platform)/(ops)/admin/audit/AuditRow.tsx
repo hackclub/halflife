@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { useState } from "react"
 import {
@@ -29,7 +30,10 @@ export interface AuditRowData {
 }
 
 /** Where a target lives in the console, when its type names a page that can look it up. */
-function targetHref(targetType: string | null, targetId: string | null): string | null {
+function targetHref(
+	targetType: string | null,
+	targetId: string | null,
+): Route<`/admin/users/${string}` | `/admin/projects?q=${string}` | "/admin/program"> | null {
 	if (!targetId) return null
 	switch (targetType) {
 		case "User":

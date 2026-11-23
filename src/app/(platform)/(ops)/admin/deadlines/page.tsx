@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { TabKeys } from "@/app/components/admin/TabKeys"
 import { Badge, type BadgeTone, Button, EmptyState, PageHeader, Panel, Select, Stat, Table } from "@/app/components/ui"
@@ -24,7 +24,7 @@ const TABS: { id: Tab; label: string }[] = [
 	{ id: "expired", label: "Expired" },
 ]
 
-const tabHref = (id: Tab, kind?: ExtensionKind): string => {
+const tabHref = (id: Tab, kind?: ExtensionKind): Route => {
 	const params = new URLSearchParams()
 	if (id === "expired") params.set("tab", "expired")
 	if (kind) params.set("kind", kind)

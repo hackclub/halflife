@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { ExcludedGrantList } from "@/app/components/admin/ExcludedGrantList"
 import { TabKeys } from "@/app/components/admin/TabKeys"
@@ -41,7 +41,7 @@ const TABS = [
 
 type GrantTab = (typeof TABS)[number]["id"]
 
-const tabHref = (id: GrantTab) => (id === "issue" ? "/admin/grants" : `/admin/grants?tab=${id}`)
+const tabHref = (id: GrantTab): Route => (id === "issue" ? "/admin/grants" : `/admin/grants?tab=${id}`)
 
 interface Props {
 	searchParams: Promise<{ tab?: SearchParamValue }>

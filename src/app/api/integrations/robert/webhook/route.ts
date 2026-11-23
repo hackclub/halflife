@@ -3,7 +3,6 @@ import { ZodError } from "zod"
 import { readBoundedText } from "@/lib/api"
 import { applyRobertWebhook, validRobertSignature } from "@/lib/telescreen"
 
-export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 /**

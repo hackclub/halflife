@@ -5,14 +5,15 @@ import { useEffect, useState } from "react"
 import { OnboardingFlow } from "@/components/platform/onboarding/OnboardingFlow"
 import { Button } from "@/components/platform/ui"
 import { OnboardingResponseSchema, type OnboardingView } from "@/lib/onboarding-view"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import { Modal, ModalTitle } from "./Modal"
 
 /**
  * The dashboard's Get started checkpoint. The standalone onboarding page is intentionally not a second implementation: this modal consumes the same `/api/onboarding` state machine and view model as the server flow.
  */
 export function FirstCheckpoint() {
-	const { setOpenCheckpoint, setPhase, finishOnboarding } = useStore()
+	const { finishOnboarding } = useStore()
+	const { setOpenCheckpoint, setPhase } = useStoreUi()
 	const router = useRouter()
 	const [view, setView] = useState<OnboardingView | null>(null)
 	const [error, setError] = useState<string | null>(null)

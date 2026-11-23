@@ -1,5 +1,5 @@
 import { or } from "@prisma/orm-postgres/orm-client"
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { TabKeys } from "@/app/components/admin/TabKeys"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -55,7 +55,7 @@ const TABS = [
 
 type ShopTab = (typeof TABS)[number]["id"]
 
-const tabHref = (id: ShopTab) => (id === "catalogue" ? "/admin/shop" : `/admin/shop?tab=${id}`)
+const tabHref = (id: ShopTab): Route => (id === "catalogue" ? "/admin/shop" : `/admin/shop?tab=${id}`)
 
 interface Search {
 	category?: SearchParamValue
@@ -125,7 +125,7 @@ export default async function AdminShopPage({ searchParams }: Props) {
 function catalogueHref(
 	filters: Readonly<{ category?: ShopItemCategory; gated: boolean; q?: string }>,
 	status: ItemStatus,
-): string {
+): Route {
 	const params = new URLSearchParams()
 	if (filters.q) params.set("q", filters.q)
 	if (filters.category) params.set("category", filters.category)

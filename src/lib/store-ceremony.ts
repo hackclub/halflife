@@ -205,21 +205,43 @@ export function useStoreCeremony({
 		writeStored(KEY, null)
 	}, [])
 
-	return {
-		bypassCheckpoint,
-		bypassLocks,
-		doomscrollerOpen: ceremony.doomscrollerOpen,
-		finishTour,
-		hydrated,
-		isBypassed: id => bypassed.includes(id),
-		phase,
-		previewFreestyle,
-		reducedMotion,
-		reseedCeremony,
-		resetCeremony,
-		setBypassLocks,
-		setDoomscroller,
-		setPhase,
-		setPreviewFreestyle,
-	}
+	const isBypassed = useCallback((id: string) => bypassed.includes(id), [bypassed])
+
+	// One object for the whole run of a render, so the trail's store can depend on it without rebuilding everything it hands out. Without this, every member below was a new reference each render and the store's own memo never held.
+	return useMemo(
+		() => ({
+			bypassCheckpoint,
+			bypassLocks,
+			doomscrollerOpen: ceremony.doomscrollerOpen,
+			finishTour,
+			hydrated,
+			isBypassed,
+			phase,
+			previewFreestyle,
+			reducedMotion,
+			reseedCeremony,
+			resetCeremony,
+			setBypassLocks,
+			setDoomscroller,
+			setPhase,
+			setPreviewFreestyle,
+		}),
+		[
+			bypassCheckpoint,
+			bypassLocks,
+			ceremony.doomscrollerOpen,
+			finishTour,
+			hydrated,
+			isBypassed,
+			phase,
+			previewFreestyle,
+			reducedMotion,
+			reseedCeremony,
+			resetCeremony,
+			setBypassLocks,
+			setDoomscroller,
+			setPhase,
+			setPreviewFreestyle,
+		],
+	)
 }

@@ -13,7 +13,7 @@ import {
 import { FirstCheckpoint } from "@/components/platform/modals/FirstCheckpoint"
 import { GoalModal } from "@/components/platform/modals/GoalModal"
 import { PLATFORM_HOME } from "@/lib/routes"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import { Cinematic } from "./Cinematic"
 import { Spotlight } from "./Spotlight"
 
@@ -62,7 +62,8 @@ const TOUR = [
 ]
 
 function CheckpointModal({ id }: { id: string }) {
-	const { allCheckpoints, weekOfCheckpoint, statusOf, sharePost, setSharePost, setOpenCheckpoint } = useStore()
+	const { allCheckpoints, weekOfCheckpoint, statusOf } = useStore()
+	const { sharePost, setSharePost, setOpenCheckpoint } = useStoreUi()
 	const cp = allCheckpoints.find(c => c.id === id)
 	if (!cp) return null
 	// A hand-in that posted its closing reel celebrates first. The hand-in's refresh flips the week to in_review underneath, and without this branch the unsubmit sheet below would take the modal a frame after the celebration lands.
@@ -102,21 +103,9 @@ function CheckpointModal({ id }: { id: string }) {
 }
 
 export function Overlays() {
-	const {
-		hydrated,
-		phase,
-		setPhase,
-		openCheckpoint,
-		setOpenCheckpoint,
-		tourStep,
-		setTourStep,
-		finishTour,
-		currentCheckpointId,
-		isPassed,
-		weekStarted,
-		onboardingDone,
-		participantGoal,
-	} = useStore()
+	const { currentCheckpointId, isPassed, weekStarted, onboardingDone, participantGoal } = useStore()
+	const { hydrated, phase, setPhase, openCheckpoint, setOpenCheckpoint, tourStep, setTourStep, finishTour } =
+		useStoreUi()
 	const pathname = usePathname()
 	const router = useRouter()
 

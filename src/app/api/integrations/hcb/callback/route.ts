@@ -11,9 +11,8 @@ import {
 import { Permission } from "@/lib/permissions"
 import { isRecord } from "@/lib/unknown"
 
-// A browser redirect from HCB that writes the credential, so it must run per request on Node.
+// A browser redirect from HCB that writes the credential, so it must run per request.
 export const dynamic = "force-dynamic"
-export const runtime = "nodejs"
 
 const DEFAULT_BASE = "https://hcb.hackclub.com"
 

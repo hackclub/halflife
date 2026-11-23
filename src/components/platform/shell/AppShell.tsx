@@ -27,7 +27,7 @@ import { StickerSheetBanner } from "@/components/promo/StickerSheetBanner"
 import { cx } from "@/lib/cx"
 import type { CalendarEvent } from "@/lib/events"
 import { PLATFORM_HOME } from "@/lib/routes"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import logoArt from "../../../../public/art/logo.png"
 import { AccountMenu } from "./AccountMenu"
 import { DoomscrollerFeed } from "./Doomscroller"
@@ -85,7 +85,7 @@ export function AppShell({
 	timezone: string | null
 }) {
 	const pathname = usePathname()
-	const { doomscrollerOpen, setDoomscroller, phase } = useStore()
+	const { doomscrollerOpen, setDoomscroller, phase } = useStoreUi()
 	const backdropRef = useRef<HTMLDivElement>(null)
 
 	const cinematic = phase === "cinematic"
@@ -187,7 +187,7 @@ export function AppShell({
 							className="hidden w-16 shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px sm:block lg:hidden"
 							href={PLATFORM_HOME}
 						>
-							<Image alt="" className="h-auto w-full" priority sizes="64px" src={logoArt} />
+							<Image alt="" className="h-auto w-full" preload sizes="64px" src={logoArt} />
 						</Link>
 						<div className="min-w-0 flex-1" />
 

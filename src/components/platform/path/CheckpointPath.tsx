@@ -22,7 +22,7 @@ import { THEMES } from "@/lib/config/program"
 import { cx } from "@/lib/cx"
 import { Theme } from "@/lib/enums"
 import { fmtHours } from "@/lib/numbers"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
 
 /** Horizontal swing of the trail, as a percentage of the column width. */
@@ -113,19 +113,9 @@ function CheckpointNode({
 	/** One half of a fork: both arms are live, and neither is the recommendation. */
 	choice?: boolean
 }) {
-	const {
-		stateOf,
-		isUnlocked,
-		isPassed,
-		isHeld,
-		lockReason,
-		setOpenCheckpoint,
-		phase,
-		weekSubmitted,
-		phaseStatusOf,
-		viewer,
-		bypassCheckpoint,
-	} = useStore()
+	const { stateOf, isUnlocked, isPassed, isHeld, lockReason, weekSubmitted, phaseStatusOf, viewer, bypassCheckpoint } =
+		useStore()
+	const { setOpenCheckpoint, phase } = useStoreUi()
 	const st = stateOf(checkpoint.id)
 	const unlocked = isUnlocked(checkpoint.id)
 	// Its week ran out of time. Done or not, it is the record now: no redo, no more entries, and the tooltip says only that.
@@ -599,7 +589,8 @@ function GrandPrize() {
 }
 
 export function CheckpointPath() {
-	const { currentCheckpointId, hydrated, phase, weeks, stateOf, isPassed } = useStore()
+	const { currentCheckpointId, weeks, stateOf, isPassed } = useStore()
+	const { hydrated, phase } = useStoreUi()
 	const scrolled = useRef(false)
 
 	useEffect(() => {

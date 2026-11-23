@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useOptimistic, useTransition } from "react"
@@ -17,7 +18,7 @@ interface Filters extends QueueFilters {
 const STATUSES: readonly ReviewStatus[] = Object.freeze(["pending", "approved", "returned", "rejected"])
 const KINDS: readonly Filters["kind"][] = Object.freeze(["", "design", "build"])
 
-const queueHref = (filters: Filters, cursor?: string | null): string => {
+const queueHref = (filters: Filters, cursor?: string | null): Route => {
 	const params = queueFilterParams(filters)
 	if (filters.status !== "pending") params.set("status", filters.status)
 	if (filters.mine) params.set("mine", "1")

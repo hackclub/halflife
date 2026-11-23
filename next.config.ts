@@ -83,6 +83,10 @@ const nextConfig: NextConfig = {
 			path: { browser: "./src/components/review/browser-stub.ts" },
 		},
 	},
+	/**
+	 * Type-checks every link and navigation target against the routes that exist, so a renamed page fails the build rather than turning into a 404. A route assembled from data is a `string` by the time it reaches a link; those go through `uncheckedRoute` in lib/routes, which names the one place the compiler cannot check.
+	 */
+	typedRoutes: true,
 }
 
 export default nextConfig

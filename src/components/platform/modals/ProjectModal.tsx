@@ -13,7 +13,7 @@ import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/numbers"
 import { validateRepoField } from "@/lib/repo"
-import { usePrinterPace, useStore, weekListPhrase } from "@/lib/store"
+import { usePrinterPace, useStore, useStoreUi, weekListPhrase } from "@/lib/store"
 import type { Checkpoint } from "@/lib/types"
 import { Modal, ModalTitle } from "./Modal"
 
@@ -21,7 +21,8 @@ import { Modal, ModalTitle } from "./Modal"
  * Project creation (weeks 2-5, and week 1 once its project is deleted)
  * ================================================================== */
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
-	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf, projects } = useStore()
+	const { complete, addProject, ensureProject, experience, weekOf, projects } = useStore()
+	const { setOpenCheckpoint } = useStoreUi()
 	const week = weekOf(checkpoint.weekId)
 	const pace = usePrinterPace()
 	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.

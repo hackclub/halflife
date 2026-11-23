@@ -11,7 +11,7 @@ import { Button, LinkButton } from "@/components/platform/ui"
 import { parseDismissedAt } from "@/lib/address-reminder"
 import { useStoredValue, writeStored } from "@/lib/browser-state"
 import { IDENTITY_REMINDER_KEY, IDENTITY_REMINDER_SNOOZE_MS, identityReminderDue } from "@/lib/identity-reminder"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import { isRecord } from "@/lib/unknown"
 
 /** Where a maker goes to verify their identity with Hack Club. */
@@ -43,7 +43,8 @@ async function readNeeded(): Promise<boolean | null> {
  * The same shape as the address reminder, and a nudge rather than a gate: it can be closed, it comes back a day later, and nothing on the site waits for it. Verification is slow on HCA's side, so the copy says so and says the work can carry on in the meantime. It waits its turn like the other prompts, and it re-checks when the maker returns from HCA so a finished verification makes it go away.
  */
 export function IdentityReminder({ blocked = false }: { blocked?: boolean }) {
-	const { hydrated, openCheckpoint, participantGoal, phase } = useStore()
+	const { participantGoal } = useStore()
+	const { hydrated, openCheckpoint, phase } = useStoreUi()
 	const dismissedAt = parseDismissedAt(useStoredValue(IDENTITY_REMINDER_KEY))
 	const [needed, setNeeded] = useState(false)
 	const [loaded, setLoaded] = useState(false)

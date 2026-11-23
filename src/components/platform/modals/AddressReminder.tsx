@@ -12,7 +12,7 @@ import {
 	parseDismissedAt,
 } from "@/lib/address-reminder"
 import { useStoredValue, writeStored } from "@/lib/browser-state"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import { isRecord } from "@/lib/unknown"
 
 /** Where a maker adds or checks the address we ship to. */
@@ -46,7 +46,8 @@ async function readNeeded(): Promise<boolean | null> {
  * It waits its turn: the intro ceremony, the goal question and picker, an open checkpoint, the Doomscroller and the NPS prompt all own the screen first, so this never opens two dialogs at once. Return from Hack Club Auth and it checks again, so an address added while it was open makes it disappear rather than linger for the rest of the snooze.
  */
 export function AddressReminder({ blocked = false }: { blocked?: boolean }) {
-	const { hydrated, openCheckpoint, participantGoal, phase } = useStore()
+	const { participantGoal } = useStore()
+	const { hydrated, openCheckpoint, phase } = useStoreUi()
 	// Read through the browser store, so a dismissal on another tab counts here too and nothing has to copy storage into state.
 	const dismissedAt = parseDismissedAt(useStoredValue(ADDRESS_REMINDER_KEY))
 	const [needed, setNeeded] = useState(false)

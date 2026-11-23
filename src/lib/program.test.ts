@@ -68,6 +68,16 @@ describe("changedProjectKeys", () => {
 	test("keeps every other field", () => {
 		expect(changedProjectKeys({ requestedTier: 1 }, { description: "x", title: "y" })).toEqual(["description", "title"])
 	})
+
+	test("leaves out a cover the project already has", () => {
+		expect(
+			changedProjectKeys({ coverImageKey: "covers/u/a.png", requestedTier: 2 }, { coverImageKey: "covers/u/a.png" }),
+		).toEqual([])
+		expect(
+			changedProjectKeys({ coverImageKey: "covers/u/a.png", requestedTier: 2 }, { coverImageKey: "covers/u/b.png" }),
+		).toEqual(["coverImageKey"])
+		expect(changedProjectKeys({ coverImageKey: null, requestedTier: 2 }, { coverImageKey: null })).toEqual([])
+	})
 })
 
 describe("projectEditLockReason", () => {

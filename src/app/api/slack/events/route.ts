@@ -24,8 +24,7 @@ import {
 	ticketSection,
 } from "@/lib/site/tickets"
 
-// Signature verification needs Node's crypto, not the edge runtime.
-export const runtime = "nodejs"
+// Signature verification uses Node's crypto; keep this route on the default runtime.
 
 interface SlackEvent {
 	bot_id?: string

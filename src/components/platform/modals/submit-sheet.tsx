@@ -11,7 +11,7 @@ import { ENTRY_TIER, getTier, type Tier } from "@/lib/config/tiers"
 import { PhaseStatus } from "@/lib/enums"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { SUBMISSION_LIMIT } from "@/lib/resubmissions"
-import { useStore } from "@/lib/store"
+import { useStore, useStoreUi } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
 import { BomResponseSchema, isWeeksProject, weekName } from "./checkpoint-shared"
 import type { UploadedImage } from "./ImageUploads"
@@ -99,7 +99,6 @@ export interface SubmitSheet {
  */
 export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 	const {
-		setOpenCheckpoint,
 		submitPhase,
 		postReel,
 		projects,
@@ -109,9 +108,9 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		printerFund,
 		pendingCoins,
 		goalId,
-		setSharePost,
 		statusOf,
 	} = useStore()
+	const { setOpenCheckpoint, setSharePost } = useStoreUi()
 	const week = weekOfCheckpoint(checkpoint)
 	const isBuild = week.phase === "build"
 
