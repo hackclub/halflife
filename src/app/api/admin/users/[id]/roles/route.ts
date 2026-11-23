@@ -4,7 +4,7 @@ import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { lockKey } from "@/lib/locks"
 import { Permission, Role } from "@/lib/permissions"
-import db from "@/lib/prisma8"
+import db, { isUniqueViolation } from "@/lib/prisma8"
 import { roleChangeSchema } from "@/lib/schemas/admin"
 
 interface Params {
@@ -30,7 +30,13 @@ export const POST = withWritePermission(
 			.first()
 		if (existing) return fail("CONFLICT", "That user already holds this role")
 
-		await db.orm.public.UserRole.create({ grantedBy: gate.user.id, role: parsed.data.role, userId: id })
+		// Two grants racing past the check above both reach the insert; the unique index lets one win, and the other is the same conflict the check reports.
+		try {
+			await db.orm.public.UserRole.create({ grantedBy: gate.user.id, role: parsed.data.role, userId: id })
+		} catch (err) {
+			if (isUniqueViolation(err)) return fail("CONFLICT", "That user already holds this role")
+			throw err
+		}
 
 		await logAudit({
 			action: AuditAction.ADMIN_GRANT_ROLE,
