@@ -1145,9 +1145,9 @@ function DecidedPanel({
 					</>
 				) : null}
 				<dt>Message</dt>
-				<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.feedback || "—"}</dd>
+				<dd className="[white-space:pre-wrap]">{decision?.feedback || "—"}</dd>
 				<dt>Features</dt>
-				<dd style={{ whiteSpace: "pre-wrap" }}>{decision?.technicalFeatures || "—"}</dd>
+				<dd className="[white-space:pre-wrap]">{decision?.technicalFeatures || "—"}</dd>
 				{decision?.unified && ship.status === "approved" ? (
 					<>
 						<dt>Unified</dt>
@@ -1267,7 +1267,7 @@ function DisputePaper({
 				</ul>
 			) : null}
 			{open ? (
-				<div className="form" style={{ marginTop: "var(--space-1)" }}>
+				<div className="form mt-[var(--space-1)]">
 					<textarea
 						aria-label="Reply to the maker"
 						className="field__textarea"
