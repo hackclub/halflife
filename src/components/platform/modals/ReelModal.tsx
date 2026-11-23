@@ -217,7 +217,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 				<div className="mx-auto w-45 md:w-full">
 					<p className="label mb-2 text-navy-soft">Preview</p>
-					<div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "9 / 16" }}>
+					<div className="relative overflow-hidden rounded-xl [aspect-ratio:9_/_16]">
 						{clip ? (
 							<>
 								{/* The clip itself, looping the way the Doomscroller will show it. Without a URL (a draft on a deployment with no public bucket URL) it says so rather than standing a stock illustration in for someone's footage. */}

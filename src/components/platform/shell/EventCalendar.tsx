@@ -247,9 +247,9 @@ export function EventCalendar({
 						<div aria-hidden="true" className="relative mt-3" style={{ height: gridHeight }}>
 							{hours.map(hour => (
 								<span
-									className="label absolute right-1 text-[0.6rem] text-navy-faint"
+									className="label absolute right-1 text-[0.6rem] text-navy-faint [transform:translateY(-50%)]"
 									key={hour}
-									style={{ top: (hour - startHour) * HOUR_PX, transform: "translateY(-50%)" }}
+									style={{ top: (hour - startHour) * HOUR_PX }}
 								>
 									{hourLabel(hour)}
 								</span>

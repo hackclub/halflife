@@ -46,8 +46,8 @@ export function useConfirm(): { dialog: ReactNode; confirm(options: ConfirmOptio
 			<ModalTitle>{pending.options.title}</ModalTitle>
 			<p style={{ margin: 0 }}>{pending.options.message}</p>
 			{pending.options.input ? (
-				<label style={{ display: "block", marginTop: "1rem" }}>
-					<span style={{ display: "block", fontWeight: 600, marginBottom: "0.35rem" }}>
+				<label className="mt-4" style={{ display: "block" }}>
+					<span className="mb-[0.35rem]" style={{ display: "block", fontWeight: 600 }}>
 						{pending.options.input.label}
 					</span>
 					<textarea
@@ -59,7 +59,7 @@ export function useConfirm(): { dialog: ReactNode; confirm(options: ConfirmOptio
 					/>
 				</label>
 			) : null}
-			<div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1.25rem" }}>
+			<div className="[justify-content:flex-end] mt-5" style={{ display: "flex", gap: "0.75rem" }}>
 				<Button onClick={() => close(null)} type="button" variant="outline">
 					Cancel
 				</Button>

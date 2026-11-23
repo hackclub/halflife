@@ -321,11 +321,8 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
 			<div className="relative">
 				<div
 					aria-hidden="true"
-					className="torn absolute inset-0 rounded"
-					style={{
-						background: week.accent,
-						boxShadow: "0 3px 6px rgba(28,26,89,.12), 0 16px 34px -18px rgba(28,26,89,.5)",
-					}}
+					className="torn absolute inset-0 rounded [box-shadow:0_3px_6px_rgba(28,26,89,.12),_0_16px_34px_-18px_rgba(28,26,89,.5)]"
+					style={{ background: week.accent }}
 				/>
 				{/* Text takes `onAccent`: navy on every week but music, whose magenta is the only fill white reads on. It was white throughout, 1.98:1 on the orange week and 2.37 on the sky one. */}
 				<div
@@ -421,7 +418,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 				dots.push(
 					<span
 						aria-hidden="true"
-						className="absolute size-[7px] rounded-full bg-line-strong/45"
+						className="absolute size-[7px] rounded-full bg-line-strong/45 [transform:translate(-50%,_-50%)]"
 						key={`${i}-${j}-${f}`}
 						style={{
 							left:
@@ -429,7 +426,6 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 									? `${leftOf(i, 0) + ((FORK_AT[j] ?? FORK_AT[0]) - leftOf(i, 0)) * f}%`
 									: `${offsetAt(i + f, phase)}%`,
 							top: offsetOf(here.full, here.beats, ` + ${f} * ${stride} + ${size} / 2`),
-							transform: "translate(-50%, -50%)",
 						}}
 					/>,
 				)
@@ -447,12 +443,8 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 							{row.length > 1 && (
 								<p
 									aria-hidden="true"
-									className="hand absolute text-[0.78rem] text-navy-faint"
-									style={{
-										left: "50%",
-										top: offsetOf(f, b, " + var(--node) / 2"),
-										transform: "translate(-50%, -50%)",
-									}}
+									className="hand absolute text-[0.78rem] text-navy-faint left-[50%] [transform:translate(-50%,_-50%)]"
+									style={{ top: offsetOf(f, b, " + var(--node) / 2") }}
 								>
 									or
 								</p>
@@ -482,9 +474,9 @@ function GhostNode({ top, left }: { top: string; left: string }) {
 	return (
 		<div
 			aria-label="More journal entries land here as you log them, and the trail grows"
-			className="absolute flex w-[var(--node-sm)] flex-col items-center"
+			className="absolute flex w-[var(--node-sm)] flex-col items-center [transform:translateX(-50%)]"
 			role="img"
-			style={{ left, top, transform: "translateX(-50%)" }}
+			style={{ left, top }}
 		>
 			<span
 				aria-hidden="true"
