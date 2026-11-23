@@ -41,12 +41,14 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	for (const row of taken) {
 		const link = links.find(l => l.url === row.url)
 		if (!link) continue
-		if (row.userId !== gate.user.id)
+		if (row.userId !== gate.user.id) {
 			errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
-		else if (row.postId !== post.id)
+			continue
+		}
+		if (row.postId === post.id) attached.add(row.url)
+		else
 			errors[link.platform] =
 				`That ${PLATFORM_INFO[link.platform].label} post is already attached to another of your reels.`
-		else attached.add(row.url)
 	}
 	if (Object.keys(errors).length > 0)
 		return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })
