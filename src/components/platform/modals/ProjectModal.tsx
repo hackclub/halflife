@@ -33,6 +33,30 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [name, setName] = useState(existing?.name ?? "")
 	const [saving, setSaving] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
+
+	const createProject = async (): Promise<void> => {
+		setSaving(true)
+		const error = await addProject({
+			buildStatus: "draft",
+			description: desc.trim(),
+			designStatus: "draft",
+			githubRepo: validateRepoField(repo).url,
+			name: name.trim(),
+			starter: starterId !== null,
+			starterProjectId: starterId,
+			tier,
+			weekId: week.id,
+		})
+		setSaving(false)
+		// The checkpoint is only done, and the sheet only closes, once the project has really been saved. Otherwise the trail shows a node done that the next refresh takes back.
+		if (error) {
+			setSaveError(error)
+			return
+		}
+		complete(checkpoint.id, { artefacts: 1 })
+		setOpenCheckpoint(null)
+	}
+
 	const [desc, setDesc] = useState(existing?.description ?? "")
 	const [tier, setTier] = useState<1 | 2 | 3>(
 		existing?.tier ?? (experience === "lots" ? 3 : experience === "some" ? 2 : 1),
@@ -98,32 +122,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					{stage === "details" && (
 						<>
 							{saveError && <p className="hand text-[0.8rem] text-coral-deep">{saveError}</p>}
-							<Button
-								disabled={!ok || saving}
-								onClick={async () => {
-									setSaving(true)
-									const error = await addProject({
-										buildStatus: "draft",
-										description: desc.trim(),
-										designStatus: "draft",
-										githubRepo: validateRepoField(repo).url,
-										name: name.trim(),
-										starter: starterId !== null,
-										starterProjectId: starterId,
-										tier,
-										weekId: week.id,
-									})
-									setSaving(false)
-									// The checkpoint is only done, and the sheet only closes, once the project has really been saved. Otherwise the trail shows a node done that the next refresh takes back.
-									if (error) {
-										setSaveError(error)
-										return
-									}
-									complete(checkpoint.id, { artefacts: 1 })
-									setOpenCheckpoint(null)
-								}}
-								variant="solid"
-							>
+							<Button disabled={!ok || saving} onClick={() => void createProject()} variant="solid">
 								Create project <IconArrowRight className="text-base" />
 							</Button>
 						</>
