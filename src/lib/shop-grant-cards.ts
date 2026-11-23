@@ -459,10 +459,13 @@ export async function cancelShopGrantCard(id: string, admin: Admin): Promise<Sho
 	// Read the spend before cancelling: HCB returns the unspent balance to the org, so afterwards there is no way to
 	// tell how much of the card was used. A number we cannot read is refused rather than recorded blind, because the
 	// refund guard needs it to decide whether the order is safe to refund.
-	const spend = await readCardGrantSpend(row.hcbCardGrantId)
+	// Recorded before HCB is called, and reused by a retry: the card cannot be un-cancelled, so a failure between the two steps must still leave the spend known.
+	const knownSpent = row.spentCents
+	const spend = knownSpent === null ? await readCardGrantSpend(row.hcbCardGrantId) : null
 	const spentCents =
-		spend.spentCents
-		?? (spend.amountCents !== null && spend.balanceCents !== null
+		knownSpent
+		?? spend?.spentCents
+		?? (spend?.amountCents !== null && spend?.amountCents !== undefined && spend.balanceCents !== null
 			? Math.max(0, spend.amountCents - spend.balanceCents)
 			: null)
 	if (spentCents === null)
@@ -470,6 +473,7 @@ export async function cancelShopGrantCard(id: string, admin: Admin): Promise<Sho
 			"CONFLICT",
 			"HCB could not say what this card has spent, so cancelling it would leave the order's refund unsafe. Try again once HCB answers.",
 		)
+	if (knownSpent === null) await db.orm.public.HcbShopGrantCard.where({ id }).update({ spentCents })
 
 	await cancelCardGrant(row.hcbCardGrantId)
 	const { ip, userAgent } = await requestInfo()
