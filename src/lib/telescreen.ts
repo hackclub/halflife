@@ -373,14 +373,17 @@ export async function applyRobertWebhook(body: string): Promise<void> {
 	const payload = webhookSchema.parse(JSON.parse(body))
 	if (payload.event !== "outcome.set" || !payload.outcome || !payload.projectId) return
 	const check = await db.orm.public.TelescreenCheck.where({ robertId: payload.projectId })
-		.select("id", "reviewFields", "reviewNote", "trustScore")
+		.select("id", "outcomeAt", "reviewFields", "reviewNote", "trustScore")
 		.first()
 	if (!check) return
 	const { outcome } = payload
+	// A delivery older than the one already recorded is a replay inside the signature window. The newer result is the one that stands, so the replay is dropped rather than writing an old decision back over it.
+	const reviewedAt = outcome.reviewedAt ?? null
+	if (reviewedAt && check.outcomeAt && Date.parse(check.outcomeAt) >= Date.parse(reviewedAt)) return
 	const score = outcome.trustScore ?? null
 	const fraud = score !== null && score <= FRAUD_MAX_SCORE
 	await db.orm.public.TelescreenCheck.where({ id: check.id }).update({
-		outcomeAt: outcome.reviewedAt ?? null,
+		outcomeAt: reviewedAt,
 		outcomeReason: outcome.reason ?? null,
 		outcomeStatus: outcome.status ?? null,
 		reviewFields: outcome.reviewFields ? json(outcome.reviewFields) : (check.reviewFields ?? undefined),
