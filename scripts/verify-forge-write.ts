@@ -210,7 +210,6 @@ async function main() {
 			if (method === "POST" && u.endsWith("/git/blobs")) return json({ sha: `blob${blobs++}` })
 			if (method === "POST" && u.endsWith("/git/trees")) {
 				if (typeof init.body !== "string") throw new TypeError("expected a JSON string body")
-				// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- verification script over an untyped source
 				captured.tree = (JSON.parse(init.body) as { tree: TreeEntry[] }).tree
 				return json({ sha: "tree1" })
 			}
