@@ -298,6 +298,19 @@ export async function getShopOrdersFor(userId: string, limit = 50): Promise<Shop
  *
  * `note` is the buyer's own words for the staff who fulfil the order. It is written inside the transaction, against the order, with the buyer as its author – so a note that is accepted is a note that is kept, rather than one that is silently dropped on the floor.
  */
+/**
+ * The order a retried purchase already made, if there is one. Read ahead of the shop, item and qualification gates as well as inside the transaction: a retry after the shop has closed, or the item has been retired, must still get back the order whose coins were spent. A key whose order was refused afterwards is not a success to hand back.
+ */
+async function replayPurchase(conn: DbOrTx, userId: string, idempotencyKey: string): Promise<ShopOrderPublic | null> {
+	const existing = await conn.orm.public.ShopOrder.where({ idempotencyKey, userId })
+		.select(...shopOrderPublicFields)
+		.first()
+	if (!existing) return null
+	if (existing.status === ShopOrderStatus.REJECTED || existing.status === ShopOrderStatus.CANCELLED)
+		throw new HttpError("CONFLICT", "That order has already been rejected or cancelled")
+	return toShopOrderPublic(existing)
+}
+
 export async function purchase(
 	userId: string,
 	shopItemId: string,
@@ -306,6 +319,11 @@ export async function purchase(
 	idempotencyKey?: string,
 	note?: string | null,
 ): Promise<ShopOrderPublic> {
+	if (idempotencyKey) {
+		const replay = await replayPurchase(db, userId, idempotencyKey)
+		if (replay) return replay
+	}
+
 	const access = await getShopAccess(userId)
 	if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
@@ -380,15 +398,8 @@ export async function purchase(
 						.first()
 		// A retried request – double-tap, proxy retry, two tabs sharing one key – resolves to the order it already made rather than charging again. The same per-user lock serializes the two, so the loser always sees the winner's row.
 		if (idempotencyKey) {
-			const existing = await tx.orm.public.ShopOrder.where({ idempotencyKey, userId })
-				.select(...shopOrderPublicFields)
-				.first()
-			if (existing) {
-				// A key whose order was refused afterwards is not a success to hand back. The order was rejected and refunded, this request creates nothing, and returning it as a fresh purchase would tell the caller it owns a thing it never received.
-				if (existing.status === ShopOrderStatus.REJECTED || existing.status === ShopOrderStatus.CANCELLED)
-					throw new HttpError("CONFLICT", "That order has already been rejected or cancelled")
-				return toShopOrderPublic(existing)
-			}
+			const replay = await replayPurchase(tx, userId, idempotencyKey)
+			if (replay) return replay
 		}
 
 		// Re-read stock inside the transaction; the catalogue page may be stale.
