@@ -95,3 +95,18 @@ describe("console palette", () => {
 		expect(platform["--color-ink"]).toBe("#262a2d")
 	})
 })
+
+describe("dark console palette", () => {
+	const css = read("../../(platform)/ops.css")
+	const opener = 'html[data-theme="dark"] .ops-root:has(.hl-admin)'
+
+	test("is scoped to the pages that carry the toggle", () => {
+		expect(css).toContain(`${opener} {`)
+	})
+
+	test("flips the ground and text tokens", () => {
+		const dark = colors(css, opener)
+		expect(dark["--color-surface"]).toBe("#141021")
+		expect(dark["--color-ink"]).toBe("#e8e3f4")
+	})
+})

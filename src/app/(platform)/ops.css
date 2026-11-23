@@ -1804,9 +1804,9 @@ html:has(.hl-admin) {
 }
 
 /*
- * The console's dark mode, switched by the store in `lib/admin-theme.ts` on the html element. Scoped like the rest of this file: the attribute travels with a client-side navigation, but the maker's platform pages keep their cream ground. Every override is a token, so the `.hl-*` classes and the charts' inline `var()` fills follow without a second stylesheet.
+ * The console's dark mode, switched by the store in `lib/admin-theme.ts` on the html element. The `:has(.hl-admin)` keeps it on the pages that carry the toggle: the review queue shares this wrapper, and a dark page with no way back to light is a trap. Every override is a token, so the `.hl-*` classes and the charts' inline `var()` fills follow without a second stylesheet.
  */
-html[data-theme="dark"] .ops-root {
+html[data-theme="dark"] .ops-root:has(.hl-admin) {
 	--color-surface: #141021; /* the ground: a deep warm navy, not pure black */
 	--color-surface-raised: #1d1929; /* cards, one step up from the ground */
 	--color-surface-sunken: #241f33; /* hover fills, a step up again */
