@@ -10,7 +10,7 @@ import { type AuthedContext, withWriteSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { lockKey } from "@/lib/locks"
-import { statusFor } from "@/lib/phase"
+import { EDITABLE_PHASE_STATUSES, statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import {
 	getProgramSettings,
@@ -33,7 +33,6 @@ interface Params {
 }
 
 /** Statuses in which a phase's entries may still be edited or deleted: a draft, or one an admin or reviewer sent back for changes. */
-const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
 function loadOwned(userId: string, projectId: string, sessionId: string) {
 	return db.orm.public.WorkSession.where({ deletedAt: null, id: sessionId, themeProjectId: projectId })
