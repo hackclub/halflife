@@ -2,7 +2,7 @@ import { fail, ok, parseBody, rateLimitedInMemory } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { withWriteSession } from "@/lib/guards"
 import db, { isUniqueViolation } from "@/lib/prisma8"
-import { REPORT_TARGET_LABELS, type ReportTarget } from "@/lib/reports"
+import { REPORT_TARGET_LABELS } from "@/lib/reports"
 import { createReportSchema } from "@/lib/schemas/report"
 
 export const dynamic = "force-dynamic"
@@ -20,7 +20,7 @@ export const POST = withWriteSession(async (req: Request, { gate }) => {
 	if (rateLimitedInMemory(`report:${gate.user.id}`, 10, 60_000))
 		return fail("RATE_LIMITED", "Slow down a second, then try again.")
 
-	const label = REPORT_TARGET_LABELS[target as ReportTarget].toLowerCase()
+	const label = REPORT_TARGET_LABELS[target].toLowerCase()
 
 	// The row has to exist, be live, and be someone else's. Each target reads its own table; the author id is what the self-report and duplicate guards below compare against.
 	let authorId: string | null = null
