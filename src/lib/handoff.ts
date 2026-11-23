@@ -188,14 +188,17 @@ export async function completeHandoffObject(
 
 	const verified = await verifyStoredUpload(file.objectKey, "video", file.contentType, HANDOFF_MAX_UPLOAD_BYTES)
 
-	// Claim after the bytes are known good, but before recording them. Two phones on one QR both get this far; only one wins the guarded update, and the loser's own copy is removed.
+	// Claim after the bytes are known good, but before recording them. Two phones on one QR both get this far; only one wins the guarded update.
 	const claimed = await db.orm.public.UploadHandoff.where({ id: target.id, usedAt: null })
 		.where(row => row.expiresAt.gt(formatDbTimestamp(new Date())))
 		.updateAndCount({ usedAt: formatDbTimestamp(new Date()) })
 	if (claimed !== 1) {
-		await deleteObject(file.objectKey).catch(err =>
-			console.error("[handoff] could not remove a losing upload:", file.objectKey, err),
-		)
+		// Both requests name the one key this handoff minted, so when another request won, that object is the winner's upload and must stay. Only an unclaimed handoff (expired, or never spent) leaves this copy behind.
+		const winner = await db.orm.public.UploadHandoff.whereUnique({ id: target.id }).select("usedAt").first()
+		if (!winner?.usedAt)
+			await deleteObject(file.objectKey).catch(err =>
+				console.error("[handoff] could not remove an unclaimed upload:", file.objectKey, err),
+			)
 		throw new HttpError("CONFLICT", "This link has already been used")
 	}
 
@@ -281,7 +284,8 @@ export async function getHandoffStatus(id: string, userId: string): Promise<Hand
 		.first()
 	if (!row) return null
 
-	if (row.objectKey)
+	// The key is written as soon as the phone is handed its upload URL, before any bytes arrive, so only a spent handoff (one the phone has confirmed) counts as ready. Otherwise the desktop would stop polling and post a key that is not an upload yet.
+	if (row.usedAt && row.objectKey)
 		// The URL comes along so the desktop can play what the phone filmed before it is posted; it is minted here, at read time, like every other one.
 		return {
 			contentType: row.contentType,
