@@ -627,8 +627,9 @@
 	.hl-admin-side a:hover {
 		background: var(--color-surface-sunken);
 	}
-	/* The current page is the brand navy with light text, rather than navy on the pale accent, which reads as too faint on a bright screen. */
-	.hl-admin-side a[aria-current="page"] {
+	/* The current page is the brand navy with light text, rather than navy on the pale accent, which reads as too faint on a bright screen. A page being navigated to takes the same pill at once, so the click answers before the route lands. */
+	.hl-admin-side a[aria-current="page"],
+	.hl-admin-side a.hl-pending {
 		color: var(--color-paper);
 		background: var(--color-ink-strong);
 	}
@@ -645,7 +646,8 @@
 		border-radius: 4px;
 	}
 	/* On the current page the tab is a solid pill, so the cap takes the pill's own ink rather than a ground of its own. */
-	.hl-admin-side a[aria-current="page"] .hl-hotkey {
+	.hl-admin-side a[aria-current="page"] .hl-hotkey,
+	.hl-admin-side a.hl-pending .hl-hotkey {
 		color: inherit;
 		background: transparent;
 		border-color: color-mix(in srgb, currentColor 45%, transparent);

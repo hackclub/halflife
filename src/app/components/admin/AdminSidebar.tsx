@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { type MouseEvent as ReactMouseEvent, useEffect, useMemo, useState } from "react"
 import { HardLink } from "@/components/site/HardLink"
 import { ADMIN_HOTKEYS, type AdminNavGroup, type AdminNavItem, isAdminNavActive } from "./admin-nav"
 
@@ -20,6 +20,8 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 	const [openPath, setOpenPath] = useState<string | null>(null)
 	const open = openPath === pathname
 	const [altHeld, setAltHeld] = useState(false)
+	// The page a click or shortcut is heading for, lit before the router has swapped the page.
+	const [pendingHref, setPendingHref] = useState<string | null>(null)
 	// The item each key opens, so a hard link can still leave the router for a full load.
 	const shortcuts = useMemo(() => {
 		const byKey = new Map<string, AdminNavItem>()
@@ -45,6 +47,7 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 			const item = shortcuts.get(typed) ?? shortcuts.get(physical)
 			if (!item) return
 			event.preventDefault()
+			setPendingHref(item.href)
 			if (item.hard) {
 				window.location.assign(item.href)
 				return
@@ -66,8 +69,30 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 		}
 	}, [router, shortcuts])
 
+	// The highlight is optimistic: it stops once the page it was heading for is the page shown, and the timeout clears a navigation that never lands.
+	useEffect(() => {
+		if (pendingHref === null) return
+		const timer = window.setTimeout(() => setPendingHref(null), 6000)
+		return () => window.clearTimeout(timer)
+	}, [pendingHref])
+
+	// Back and forward change the page with no click in between, so the pill from the last click has no landing to wait for.
+	useEffect(() => {
+		const clear = (): void => setPendingHref(null)
+		window.addEventListener("popstate", clear)
+		return () => window.removeEventListener("popstate", clear)
+	}, [])
+
+	// A click lights the destination before the router does. Modified clicks open elsewhere and leave this page as it is.
+	const onClickCapture = (event: ReactMouseEvent<HTMLElement>): void => {
+		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+		const anchor = event.target instanceof Element ? event.target.closest("a") : null
+		const href = anchor?.getAttribute("href")
+		if (href) setPendingHref(href)
+	}
+
 	return (
-		<nav aria-label="Admin sections" className="hl-admin-side">
+		<nav aria-label="Admin sections" className="hl-admin-side" onClickCapture={onClickCapture}>
 			<button
 				aria-controls="admin-sections"
 				aria-expanded={open}
@@ -83,6 +108,7 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 						<div className="hl-admin-group-label">{group.label}</div>
 						{group.items.map(item => {
 							const active = isAdminNavActive(pathname, item.href)
+							const pending = pendingHref === item.href && pendingHref !== pathname && !active
 							const key = ADMIN_HOTKEYS[item.href]
 							const body = (
 								<>
@@ -94,6 +120,7 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 								return (
 									<HardLink
 										aria-keyshortcuts={key ? `Alt+${key.toUpperCase()}` : undefined}
+										className={pending ? "hl-pending" : undefined}
 										href={item.href}
 										key={item.href}
 									>
@@ -104,7 +131,7 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 								<Link
 									aria-current={active ? "page" : undefined}
 									aria-keyshortcuts={key ? `Alt+${key.toUpperCase()}` : undefined}
-									className="hl-admin-link"
+									className={pending ? "hl-admin-link hl-pending" : "hl-admin-link"}
 									href={item.href}
 									key={item.href}
 								>
