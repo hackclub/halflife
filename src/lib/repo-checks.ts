@@ -309,7 +309,8 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 			forge,
 			`projects/${project}/repository/tree?ref=HEAD&recursive=true&per_page=100&page=${page}`,
 		)
-		if (!more.ok) break
+		// A later page that fails must not pass for the end of the tree: the walk would then look shorter than it is, and the file checks would act on a partial list.
+		if (!more.ok) throw new ForgeUnavailableError("The repository's file list could not be read in full. Try again.")
 		res = more
 	}
 
