@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { ClipboardSearchButton } from "@/app/components/admin/ClipboardSearchButton"
 import { UserDirectory } from "@/app/components/admin/UserDirectory"
 import { Field, FilterBar, PageHeader, Panel, Select, TextInput } from "@/app/components/ui"
-import { toDirectoryRow } from "@/lib/directory-rows"
+import { toDirectoryRows } from "@/lib/directory-rows"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasRole, Permission, Role } from "@/lib/permissions"
 import { listUsers, USER_STATES, type UserState } from "@/lib/queries/admin"
@@ -49,7 +49,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 	const verified = includePii ? askedVerified : ""
 
 	const page = await listUsers({ limit: 50, q, state, verified: verified || undefined }, { includePii })
-	const rows = page.items.map(toDirectoryRow)
+	const rows = await toDirectoryRows(page.items, includePii)
 
 	return (
 		<div className="hl-stack">

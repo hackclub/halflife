@@ -15,6 +15,8 @@ import { hcbGrantUrl } from "@/lib/hcb-grant-url"
 
 /** One themed project on a participant's admin page. */
 export interface ThemedProjectRowData extends ProjectManageData {
+	/** The project's rows in the Airtable submission table, by phase. Empty unless the caller may see contact details. */
+	airtableLinks: { BUILD?: string; DESIGN?: string }
 	approvedHours: number | null
 	/** Where an approved design's money stands, when it has a grant to wait on. */
 	designFunding: FundingState | null
@@ -44,6 +46,16 @@ export function ThemedProjectRow({
 					<div className="hl-hint">{data.title}</div>
 					<div className="hl-entity-links">
 						<Link href={`/projects/${data.id}`}>Public project</Link>
+						{data.airtableLinks.DESIGN ? (
+							<a href={data.airtableLinks.DESIGN} rel="noopener noreferrer" target="_blank">
+								Airtable design
+							</a>
+						) : null}
+						{data.airtableLinks.BUILD ? (
+							<a href={data.airtableLinks.BUILD} rel="noopener noreferrer" target="_blank">
+								Airtable build
+							</a>
+						) : null}
 					</div>
 				</td>
 				<td className="hl-cell-review">
