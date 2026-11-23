@@ -40,11 +40,14 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
 	// Each filter is taken as the single value the URL named: a repeated parameter arrives as an array, and an array where a string was expected is not a value this page can read.
 	const { q, state: stateParam, verified: verifiedParam } = firstValues(await searchParams)
-	// An unknown state in the URL reads as "Everyone" rather than an error, and an unknown identity status is dropped.
-	const state: UserState = USER_STATES.find(value => value === stateParam) ?? "all"
-	const verified = verifiedParam !== undefined && Object.hasOwn(VERIFIED_LABELS, verifiedParam) ? verifiedParam : ""
-
 	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
+	// An unknown state in the URL reads as "Everyone" rather than an error, and an unknown identity status is dropped. The fraud and identity filters are the admin and auditor view: anyone else gets the everyone list, as listUsers would refuse them.
+	const askedState: UserState = USER_STATES.find(value => value === stateParam) ?? "all"
+	const state: UserState = !includePii && (askedState === "flagged" || askedState === "unverified") ? "all" : askedState
+	const askedVerified =
+		verifiedParam !== undefined && Object.hasOwn(VERIFIED_LABELS, verifiedParam) ? verifiedParam : ""
+	const verified = includePii ? askedVerified : ""
+
 	const page = await listUsers({ limit: 50, q, state, verified: verified || undefined }, { includePii })
 	const rows = page.items.map(toDirectoryRow)
 

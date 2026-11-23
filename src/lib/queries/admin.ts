@@ -28,6 +28,7 @@ import {
 	ShopOrderStatus,
 	Theme,
 } from "@/lib/enums"
+import { HttpError } from "@/lib/errors"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
@@ -80,6 +81,10 @@ export async function listUsers(
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
+	// The filters that pick out fraud flags or identity status are a list of who is flagged or unverified. Blanking the values on the way out does not stop the list itself being the leak, so they are refused for callers without PII rather than served with the values hidden.
+	const piiFilter = opts.state === "flagged" || opts.state === "unverified" || opts.verified !== undefined
+	if (!includePii && piiFilter)
+		throw new HttpError("FORBIDDEN", "Only admins and auditors can filter by fraud or verification status")
 	const ordered = db.orm.public.User.orderBy([user => user.createdAt.desc(), user => user.id.desc()])
 	// Without PII the search box matches names only. Matching an address or a Slack id would turn the directory into a registration oracle: anybody holding VIEW_USERS could confirm whether a given person has an account here.
 	const term = opts.q
