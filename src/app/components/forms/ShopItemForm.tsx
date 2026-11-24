@@ -214,7 +214,7 @@ export function ShopItemForm({
 					/>
 				) : null}
 			</Field>
-			<Field label="Price (coins)">
+			<Field className="hl-field-fit" label="Price (coins)">
 				<TextInput
 					min="0"
 					onChange={e => setForm({ ...form, priceCredits: e.target.value })}
