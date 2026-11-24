@@ -19,6 +19,8 @@ const suffix = Math.random().toString(36).slice(2, 8)
 const itemId = `merchant-test-${suffix}`
 const actor = { email: null, id: null }
 
+const codeOf = (caught: unknown): unknown => (caught instanceof HttpError ? caught.code : undefined)
+
 async function flatIds(): Promise<string[]> {
 	const item = await db.orm.public.ShopItem.whereUnique({ id: itemId }).select("grantCardMerchantIds").first()
 	return [...(item?.grantCardMerchantIds ?? [])].toSorted()
@@ -65,16 +67,16 @@ describe.skipIf(!scratch)("grant card merchants against a database", () => {
 
 	test("a merchant still linked to an item cannot be archived", async () => {
 		await link([alpha])
-		const error = await setGrantCardMerchantArchived(alpha, true, actor).catch((caught: unknown) => caught)
+		const error = await setGrantCardMerchantArchived(alpha, true, actor).catch((err: unknown) => err)
 		expect(error).toBeInstanceOf(HttpError)
-		expect((error as HttpError).code).toBe("CONFLICT")
+		expect(codeOf(error)).toBe("CONFLICT")
 	})
 
 	test("an archived merchant cannot be linked, and restoring it lets it be linked again", async () => {
 		await link([])
 		await setGrantCardMerchantArchived(beta, true, actor)
-		const refused = await link([beta]).catch((caught: unknown) => caught)
-		expect((refused as HttpError).code).toBe("VALIDATION_FAILED")
+		const refused = await link([beta]).catch((err: unknown) => err)
+		expect(codeOf(refused)).toBe("VALIDATION_FAILED")
 		await setGrantCardMerchantArchived(beta, false, actor)
 		expect(await link([beta])).toEqual(["2", "3"])
 	})
@@ -86,8 +88,8 @@ describe.skipIf(!scratch)("grant card merchants against a database", () => {
 
 	test("linking a merchant that does not exist is refused and changes nothing", async () => {
 		await link([beta])
-		const error = await link([beta, "no-such-merchant"]).catch((caught: unknown) => caught)
-		expect((error as HttpError).code).toBe("VALIDATION_FAILED")
+		const error = await link([beta, "no-such-merchant"]).catch((err: unknown) => err)
+		expect(codeOf(error)).toBe("VALIDATION_FAILED")
 		expect(await flatIds()).toEqual(["2", "3"])
 	})
 

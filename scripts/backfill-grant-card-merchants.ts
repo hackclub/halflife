@@ -23,9 +23,9 @@ async function main() {
 		console.log("every item with merchant IDs already links to a merchant")
 		return
 	}
-	for (const item of todo) {
+	for (const item of todo) 
 		console.log(`${item.name}: ${item.grantCardMerchantIds.length} IDs -> merchant "item-${item.id}"`)
-	}
+	
 	if (!apply) {
 		console.log(
 			`\ndry run: ${todo.length} item${todo.length === 1 ? "" : "s"} would be backfilled. Pass --apply to write.`,
