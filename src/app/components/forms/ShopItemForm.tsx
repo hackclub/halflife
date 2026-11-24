@@ -234,44 +234,53 @@ export function ShopItemForm({
 					/>
 				</Field>
 			</div>
-			<Field
-				className="hl-form-wide"
-				hint="The merchants a grant card for this item may be spent at. None means the card can be used anywhere. Manage the merchants and their IDs on the merchants page."
-				label="Grant card merchants"
+			{/* Not a Field: a Field wraps its controls in a label, and clicking a label's empty space presses its first button, which here was AliExpress. */}
+			<fieldset
+				className="hl-stack hl-stack--tight hl-form-wide"
+				style={{ border: 0, gap: "0.25rem", margin: 0, minWidth: 0, padding: 0 }}
 			>
-				{merchants.length === 0 ? (
-					<p className="hl-hint" style={{ margin: 0 }}>
-						No merchants yet.
-					</p>
-				) : (
-					<div className="hl-chips">
-						{merchants.map(merchant => {
-							const selected = form.grantCardMerchants.includes(merchant.id)
-							return (
-								<button
-									aria-pressed={selected}
-									className="hl-chip"
-									key={merchant.id}
-									onClick={() =>
-										setForm({
-											...form,
-											grantCardMerchants: selected
-												? form.grantCardMerchants.filter(id => id !== merchant.id)
-												: [...form.grantCardMerchants, merchant.id],
-										})
-									}
-									type="button"
-								>
-									{merchant.name}
-									<span className="hl-merchant-count">
-										{merchant.idCount} {merchant.idCount === 1 ? "ID" : "IDs"}
-									</span>
-								</button>
-							)
-						})}
-					</div>
-				)}
-			</Field>
+				<legend className="hl-label-text" style={{ padding: 0 }}>
+					Grant card merchants
+				</legend>
+				<div>
+					{merchants.length === 0 ? (
+						<p className="hl-hint" style={{ margin: 0 }}>
+							No merchants yet.
+						</p>
+					) : (
+						<div className="hl-chips">
+							{merchants.map(merchant => {
+								const selected = form.grantCardMerchants.includes(merchant.id)
+								return (
+									<button
+										aria-pressed={selected}
+										className="hl-chip"
+										key={merchant.id}
+										onClick={() =>
+											setForm({
+												...form,
+												grantCardMerchants: selected
+													? form.grantCardMerchants.filter(id => id !== merchant.id)
+													: [...form.grantCardMerchants, merchant.id],
+											})
+										}
+										type="button"
+									>
+										{merchant.name}
+										<span className="hl-merchant-count">
+											{merchant.idCount} {merchant.idCount === 1 ? "ID" : "IDs"}
+										</span>
+									</button>
+								)
+							})}
+						</div>
+					)}
+				</div>
+				<span className="hl-hint">
+					The merchants a grant card for this item may be spent at. None means the card can be used anywhere. Manage the
+					merchants and their IDs on the merchants page.
+				</span>
+			</fieldset>
 			<label className="hl-row hl-form-wide" style={{ gap: "0.5rem" }}>
 				<input
 					checked={form.requiresPrinterQualified}
