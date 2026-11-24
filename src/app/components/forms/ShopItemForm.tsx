@@ -140,7 +140,7 @@ export function ShopItemForm({
 	const previewUrl = previewImageUrl(form.imageUrl)
 
 	return (
-		<form className="hl-form-grid" onSubmit={submit}>
+		<form className="hl-form-grid" onSubmit={submit} style={{ columnGap: "0.5rem" }}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{saved ? <Callout>Saved.</Callout> : null}
 			<Field
