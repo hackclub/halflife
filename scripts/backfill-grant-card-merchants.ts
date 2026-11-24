@@ -27,7 +27,9 @@ async function main() {
 		console.log(`${item.name}: ${item.grantCardMerchantIds.length} IDs -> merchant "item-${item.id}"`)
 	}
 	if (!apply) {
-		console.log(`\ndry run: ${todo.length} item${todo.length === 1 ? "" : "s"} would be backfilled. Pass --apply to write.`)
+		console.log(
+			`\ndry run: ${todo.length} item${todo.length === 1 ? "" : "s"} would be backfilled. Pass --apply to write.`,
+		)
 		return
 	}
 
