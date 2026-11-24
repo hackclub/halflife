@@ -85,9 +85,6 @@ export default async function AdminShopPage({ searchParams }: Props) {
 			<PageHeader
 				actions={
 					<div className="hl-row">
-						<Link className="hl-chip" href="/admin/shop/merchants">
-							Merchants
-						</Link>
 						{TABS.map((item, index) => (
 							<Link
 								aria-current={item.id === tab || undefined}

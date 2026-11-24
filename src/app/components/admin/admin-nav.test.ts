@@ -48,6 +48,12 @@ describe("isAdminNavActive", () => {
 		expect(isAdminNavActive("/admin/users/abc", "/admin/users")).toBe(true)
 		expect(isAdminNavActive("/admin/usersx", "/admin/users")).toBe(false)
 	})
+
+	test("Shop is not active on the merchants page, which has its own item", () => {
+		expect(isAdminNavActive("/admin/shop/merchants", "/admin/shop")).toBe(false)
+		expect(isAdminNavActive("/admin/shop/merchants", "/admin/shop/merchants")).toBe(true)
+		expect(isAdminNavActive("/admin/shop/basic-soldering-iron", "/admin/shop")).toBe(true)
+	})
 })
 
 const pages = <T extends { group: string }>(entries: T[]): T[] => entries.filter(entry => entry.group !== "Search")

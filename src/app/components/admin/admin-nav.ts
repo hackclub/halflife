@@ -22,6 +22,9 @@ export interface AdminPaletteEntry extends AdminNavItem {
 /** Whether a path is inside a nav item: `/admin` only ever matches itself, every other item also matches what sits below it. */
 export const isAdminNavActive = (pathname: string, href: string): boolean => {
 	if (href === "/admin") return pathname === "/admin"
+	// Merchants has its own sidebar item under Shop, so Shop covers only the rest of /admin/shop.
+	if (href === "/admin/shop" && (pathname === "/admin/shop/merchants" || pathname.startsWith("/admin/shop/merchants/")))
+		return false
 	return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -44,6 +47,7 @@ export const ADMIN_HOTKEYS: { [_: string]: string } = {
 	"/admin/referrals": "e",
 	"/admin/reports": "r",
 	"/admin/shop": "s",
+	"/admin/shop/merchants": "n",
 	"/admin/uploads": "h",
 	"/admin/users": "u",
 	"/reviews": "w",
