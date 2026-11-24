@@ -13,7 +13,6 @@ import {
 	EmptyState,
 	Field,
 	FilterBar,
-	LinkButton,
 	PageHeader,
 	Panel,
 	Select,
@@ -214,9 +213,9 @@ async function CatalogueTab({
 						{items.map(item => (
 							<tr key={item.id}>
 								<td>
-									<span className="hl-mono" title={item.id}>
+									<Link className="hl-mono" href={`/admin/shop/${item.id}`} title={item.id}>
 										{item.id}
-									</span>
+									</Link>
 								</td>
 								<td>
 									<Link href={`/admin/shop/${item.id}`}>{item.name}</Link>
@@ -237,7 +236,6 @@ async function CatalogueTab({
 									</Link>
 								</td>
 								<td className="hl-shop-actions">
-									<LinkButton href={`/admin/shop/${item.id}`}>Edit</LinkButton>
 									{item.active ? (
 										<ActionButton
 											confirm="Retire this item? Existing orders keep working."
