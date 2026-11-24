@@ -1144,6 +1144,12 @@ function DecidedPanel({
 						<dd>{formatHours(decision.hours)}</dd>
 					</>
 				) : null}
+				{decision?.deflationReason ? (
+					<>
+						<dt>Deflation</dt>
+						<dd style={{ whiteSpace: "pre-wrap" }}>{decision.deflationReason}</dd>
+					</>
+				) : null}
 				<dt>Message</dt>
 				<dd className="[white-space:pre-wrap]">{decision?.feedback || "—"}</dd>
 				<dt>Features</dt>

@@ -1128,6 +1128,8 @@ namespace public {
     feedback               String
     reason                 String?
     technicalFeatures      String?
+    /// Ari's `review.justification.deflation_reason`: why the reviewer approved fewer hours than were claimed. Kept so the review screen and the Airtable backfills have it without replaying the webhook.
+    deflationReason        String?
     invalidated            Boolean               @default(false)
     invalidatedAt          TimestampString(3)?
     hoursOverride          Float?

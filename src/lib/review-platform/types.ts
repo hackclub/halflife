@@ -128,6 +128,8 @@ export interface ReviewNote {
 }
 
 export interface ReviewDecision {
+	/** Why fewer hours were approved than claimed, when Ari's reviewer said. */
+	deflationReason: string | null
 	feedback: string
 	grantUsd: number | null
 	hours: number | null

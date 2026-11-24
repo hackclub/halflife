@@ -114,6 +114,8 @@ function extensionUpdate(project: { submissionExtensionUntil: string | null }): 
 }
 
 export interface FinalizeInput {
+	/** Ari's `review.justification.deflation_reason`: why fewer hours were approved than claimed. */
+	deflationReason?: string | null
 	/**
 	 * Whether a reviewer's numbers may exceed what the maker asked for: more hours than the phase logged, or a tier above the one requested.
 	 *
@@ -336,6 +338,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				.updateAll({ reviewedAt: formatDbTimestamp(new Date()), reviewedById: input.reviewerId })
 
 		await tx.orm.public.SubmissionReview.create({
+			deflationReason: input.deflationReason?.trim() || null,
 			feedback: input.feedback,
 			frozenApprovedHours: approvedHours,
 			frozenBankedCoins: coins?.banked ?? null,
