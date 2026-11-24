@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { diffMerchantLinks, merchantSlug, unionMerchantIds } from "./grant-card-merchants"
+import { diffMerchantLinks, isArchived, merchantSlug, unionMerchantIds } from "./grant-card-merchants"
 
 describe("diffMerchantLinks", () => {
 	test("adds the wanted merchants that are not linked yet", () => {
@@ -49,5 +49,13 @@ describe("merchantSlug", () => {
 
 	test("falls back to a fixed key when nothing is left", () => {
 		expect(merchantSlug("!!!")).toBe("merchant")
+	})
+})
+
+describe("isArchived", () => {
+	test("an unset archive timestamp means active, whether it reads as null or undefined", () => {
+		expect(isArchived(null)).toBe(false)
+		expect(isArchived(undefined)).toBe(false)
+		expect(isArchived("2026-11-24 20:09:00.000")).toBe(true)
 	})
 })

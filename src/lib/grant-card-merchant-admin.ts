@@ -2,7 +2,7 @@ import "server-only"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
 import { syncItemMerchantIds } from "@/lib/grant-card-merchant-links"
-import { diffMerchantLinks, merchantSlug } from "@/lib/grant-card-merchants"
+import { diffMerchantLinks, isArchived, merchantSlug } from "@/lib/grant-card-merchants"
 import db, { type DbOrTx } from "@/lib/prisma8"
 import { formatDbTimestamp } from "@/lib/time"
 
@@ -26,7 +26,7 @@ export async function setItemMerchants(
 			.all()
 		if (found.length !== wanted.length)
 			throw new HttpError("VALIDATION_FAILED", "One of those merchants no longer exists. Reload and try again")
-		if (found.some(merchant => merchant.archivedAt !== null))
+		if (found.some(merchant => isArchived(merchant.archivedAt)))
 			throw new HttpError("VALIDATION_FAILED", "An archived merchant cannot be linked. Restore it first")
 	}
 
@@ -115,7 +115,7 @@ export async function updateGrantCardMerchant(id: string, input: MerchantInput, 
 export async function setGrantCardMerchantArchived(id: string, archived: boolean, actor: Actor) {
 	const before = await db.orm.public.GrantCardMerchant.whereUnique({ id }).first()
 	if (!before) throw new HttpError("NOT_FOUND", "Merchant not found")
-	if ((before.archivedAt !== null) === archived)
+	if (isArchived(before.archivedAt) === archived)
 		throw new HttpError("CONFLICT", archived ? `${before.name} is already archived` : `${before.name} is not archived`)
 	if (archived) {
 		const linked = await db.orm.public.ShopItemGrantCardMerchant.where({ merchantId: id }).select("shopItemId").all()
@@ -132,7 +132,7 @@ export async function setGrantCardMerchantArchived(id: string, archived: boolean
 		actorId: actor.id,
 		metadata: {
 			after: { archived, name: before.name },
-			before: { archived: before.archivedAt !== null, name: before.name },
+			before: { archived: isArchived(before.archivedAt), name: before.name },
 			reason: archived ? "Grant card merchant archived" : "Grant card merchant restored",
 		},
 		targetId: id,

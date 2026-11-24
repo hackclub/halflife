@@ -2,6 +2,7 @@ import type { Metadata, Route } from "next"
 import Link from "next/link"
 import { GrantCardMerchantsPanel } from "@/app/components/forms/GrantCardMerchantsPanel"
 import { PageHeader } from "@/app/components/ui"
+import { isArchived } from "@/lib/grant-card-merchants"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -58,9 +59,9 @@ export default async function AdminGrantCardMerchantsPage({
 			<GrantCardMerchantsPanel
 				archived={archived}
 				merchants={merchants
-					.filter(merchant => (merchant.archivedAt !== null) === archived)
+					.filter(merchant => isArchived(merchant.archivedAt) === archived)
 					.map(merchant => ({
-						archived: merchant.archivedAt !== null,
+						archived: isArchived(merchant.archivedAt),
 						id: merchant.id,
 						itemCount: counts.get(merchant.id) ?? 0,
 						merchantIds: merchant.merchantIds,
