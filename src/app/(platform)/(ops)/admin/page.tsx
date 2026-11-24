@@ -558,7 +558,7 @@ function MetricPie({
 					{only ? (
 						<>
 							<circle cx={CX} cy={CY} fill={only.color} r={R} />
-							<circle cx={CX} cy={CY} fill="#fff" r={HOLE} />
+							<circle cx={CX} cy={CY} r={HOLE} style={{ fill: "var(--color-surface-raised)" }} />
 						</>
 					) : (
 						wedges.map(w => {
@@ -573,8 +573,8 @@ function MetricPie({
 									d={`M ${outerFrom.x} ${outerFrom.y} A ${R} ${R} 0 ${large} 1 ${outerTo.x} ${outerTo.y} L ${innerTo.x} ${innerTo.y} A ${HOLE} ${HOLE} 0 ${large} 0 ${innerFrom.x} ${innerFrom.y} Z`}
 									fill={w.color}
 									key={w.label}
-									stroke="#fff"
 									strokeWidth={2}
+									style={{ stroke: "var(--color-surface-raised)" }}
 								>
 									<title>{`${w.label}: ${format(w.value)} (${w.pct.toFixed(1)}%)`}</title>
 								</path>
