@@ -1485,10 +1485,26 @@
 		border: 2px solid var(--color-border);
 		border-radius: 999px;
 	}
-	.hl-chip:hover {
+	/* A link tab lights its border on hover. A pill tints its background instead, so a hover that lingers never looks like the selected accent. */
+	a.hl-chip:hover {
 		border-color: var(--color-accent);
 	}
-	.hl-chip[aria-current="true"] {
+	button.hl-chip:hover:not([aria-pressed="true"]) {
+		background: color-mix(in srgb, var(--color-surface-raised), var(--color-ink) 8%);
+	}
+	/* A toggle pill is a button, so it takes the page font and a pointer; pressed matches the selected tab. */
+	button.hl-chip {
+		font: inherit;
+		cursor: pointer;
+	}
+	/* A merchant pill's ID count reads quieter than its name, selected or not. */
+	.hl-chip .hl-merchant-count {
+		padding-left: 0.4rem;
+		font-weight: 400;
+		opacity: 0.7;
+	}
+	.hl-chip[aria-current="true"],
+	.hl-chip[aria-pressed="true"] {
 		color: var(--color-accent-ink);
 		background: var(--color-accent);
 		border-color: var(--color-accent);

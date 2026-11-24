@@ -140,7 +140,7 @@ export function ShopItemForm({
 	const previewUrl = previewImageUrl(form.imageUrl)
 
 	return (
-		<form className="hl-form-grid" onSubmit={submit}>
+		<form className="hl-form-grid" onSubmit={submit} style={{ columnGap: "0.5rem" }}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{saved ? <Callout>Saved.</Callout> : null}
 			<Field
@@ -214,56 +214,73 @@ export function ShopItemForm({
 					/>
 				) : null}
 			</Field>
-			<Field label="Price (coins)">
-				<TextInput
-					min="0"
-					onChange={e => setForm({ ...form, priceCredits: e.target.value })}
-					type="number"
-					value={form.priceCredits}
-				/>
-			</Field>
-			<Field hint="Per unit, tax and shipping included. Shown on the fulfillment sheet." label="Cost to us (USD)">
-				<TextInput
-					min="0"
-					onChange={e => setForm({ ...form, costUsd: e.target.value })}
-					step="0.01"
-					type="number"
-					value={form.costUsd}
-				/>
-			</Field>
-			<Field
-				className="hl-form-wide"
-				hint="The merchants a grant card for this item may be spent at. None means the card can be used anywhere. Manage the merchants and their IDs on the merchants page."
-				label="Grant card merchants"
+			<div className="hl-row hl-form-wide" style={{ alignItems: "flex-start", gap: "1.25rem" }}>
+				<Field label="Price (coins)">
+					<TextInput
+						min="0"
+						onChange={e => setForm({ ...form, priceCredits: e.target.value })}
+						style={{ width: "9rem" }}
+						type="number"
+						value={form.priceCredits}
+					/>
+				</Field>
+				<Field hint="Per unit, tax and shipping included. Shown on the fulfillment sheet." label="Cost to us (USD)">
+					<TextInput
+						min="0"
+						onChange={e => setForm({ ...form, costUsd: e.target.value })}
+						step="0.01"
+						type="number"
+						value={form.costUsd}
+					/>
+				</Field>
+			</div>
+			{/* Not a Field: a Field wraps its controls in a label, and clicking a label's empty space presses its first button, which here was AliExpress. */}
+			<fieldset
+				className="hl-stack hl-stack--tight hl-form-wide"
+				style={{ border: 0, gap: "0.25rem", margin: 0, minWidth: 0, padding: 0 }}
 			>
-				{merchants.length === 0 ? (
-					<p className="hl-hint" style={{ margin: 0 }}>
-						No merchants yet.
-					</p>
-				) : (
-					<div className="hl-row" style={{ flexWrap: "wrap", gap: "0.5rem 1.25rem" }}>
-						{merchants.map(merchant => (
-							<label className="hl-row" key={merchant.id} style={{ gap: "0.4rem" }}>
-								<input
-									checked={form.grantCardMerchants.includes(merchant.id)}
-									onChange={e =>
-										setForm({
-											...form,
-											grantCardMerchants: e.target.checked
-												? [...form.grantCardMerchants, merchant.id]
-												: form.grantCardMerchants.filter(id => id !== merchant.id),
-										})
-									}
-									type="checkbox"
-								/>
-								<span>
-									{merchant.name} <span className="hl-hint">({merchant.idCount} IDs)</span>
-								</span>
-							</label>
-						))}
-					</div>
-				)}
-			</Field>
+				<legend className="hl-label-text" style={{ padding: 0 }}>
+					Grant card merchants
+				</legend>
+				<div>
+					{merchants.length === 0 ? (
+						<p className="hl-hint" style={{ margin: 0 }}>
+							No merchants yet.
+						</p>
+					) : (
+						<div className="hl-chips">
+							{merchants.map(merchant => {
+								const selected = form.grantCardMerchants.includes(merchant.id)
+								return (
+									<button
+										aria-pressed={selected}
+										className="hl-chip"
+										key={merchant.id}
+										onClick={() =>
+											setForm({
+												...form,
+												grantCardMerchants: selected
+													? form.grantCardMerchants.filter(id => id !== merchant.id)
+													: [...form.grantCardMerchants, merchant.id],
+											})
+										}
+										type="button"
+									>
+										{merchant.name}
+										<span className="hl-merchant-count">
+											{merchant.idCount} {merchant.idCount === 1 ? "ID" : "IDs"}
+										</span>
+									</button>
+								)
+							})}
+						</div>
+					)}
+				</div>
+				<span className="hl-hint">
+					The merchants a grant card for this item may be spent at. None means the card can be used anywhere. Manage the
+					merchants and their IDs on the merchants page.
+				</span>
+			</fieldset>
 			<label className="hl-row hl-form-wide" style={{ gap: "0.5rem" }}>
 				<input
 					checked={form.requiresPrinterQualified}
