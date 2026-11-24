@@ -241,26 +241,29 @@ export function ShopItemForm({
 						No merchants yet.
 					</p>
 				) : (
-					<div className="hl-row" style={{ flexWrap: "wrap", gap: "0.5rem 1.25rem" }}>
-						{merchants.map(merchant => (
-							<label className="hl-row" key={merchant.id} style={{ gap: "0.4rem" }}>
-								<input
-									checked={form.grantCardMerchants.includes(merchant.id)}
-									onChange={e =>
+					<div className="hl-chips">
+						{merchants.map(merchant => {
+							const selected = form.grantCardMerchants.includes(merchant.id)
+							return (
+								<button
+									aria-pressed={selected}
+									className="hl-chip"
+									key={merchant.id}
+									onClick={() =>
 										setForm({
 											...form,
-											grantCardMerchants: e.target.checked
-												? [...form.grantCardMerchants, merchant.id]
-												: form.grantCardMerchants.filter(id => id !== merchant.id),
+											grantCardMerchants: selected
+												? form.grantCardMerchants.filter(id => id !== merchant.id)
+												: [...form.grantCardMerchants, merchant.id],
 										})
 									}
-									type="checkbox"
-								/>
-								<span>
-									{merchant.name} <span className="hl-hint">({merchant.idCount} IDs)</span>
-								</span>
-							</label>
-						))}
+									type="button"
+								>
+									{merchant.name}
+									<span className="hl-count">{merchant.idCount} IDs</span>
+								</button>
+							)
+						})}
 					</div>
 				)}
 			</Field>
