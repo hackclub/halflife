@@ -260,7 +260,9 @@ export function ShopItemForm({
 									type="button"
 								>
 									{merchant.name}
-									<span className="hl-merchant-count">{merchant.idCount} IDs</span>
+									<span className="hl-merchant-count">
+										{merchant.idCount} {merchant.idCount === 1 ? "ID" : "IDs"}
+									</span>
 								</button>
 							)
 						})}

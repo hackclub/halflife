@@ -114,7 +114,7 @@ function MerchantPanel({ merchant }: Readonly<{ merchant: GrantCardMerchantRow }
 	async function remove() {
 		const answer = await confirm({
 			confirmLabel: "Delete merchant",
-			message: `Delete ${merchant.name} and its ${merchant.merchantIds.length} IDs? This cannot be undone.`,
+			message: `Delete ${merchant.name} and its ${merchant.merchantIds.length} ${merchant.merchantIds.length === 1 ? "ID" : "IDs"}? This cannot be undone.`,
 			title: `Delete ${merchant.name}`,
 		})
 		if (answer === null) return
@@ -139,7 +139,10 @@ function MerchantPanel({ merchant }: Readonly<{ merchant: GrantCardMerchantRow }
 			<Field label="Source">
 				<TextInput onChange={e => setSourceNote(e.target.value)} value={sourceNote} />
 			</Field>
-			<Field hint={`${parseIds(idsText).length} IDs. Commas, spaces or line breaks.`} label="Merchant IDs">
+			<Field
+				hint={`${parseIds(idsText).length} ${parseIds(idsText).length === 1 ? "ID" : "IDs"}. Commas, spaces or line breaks.`}
+				label="Merchant IDs"
+			>
 				<TextArea onChange={e => setIdsText(e.target.value)} rows={4} value={idsText} />
 			</Field>
 			<div className="hl-row" style={{ alignItems: "center", gap: "0.75rem" }}>
