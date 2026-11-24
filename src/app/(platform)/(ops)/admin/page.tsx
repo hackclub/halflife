@@ -589,7 +589,7 @@ function MetricPie({
 					>
 						{format(total)}
 					</text>
-					<text className="fill-(--color-ink-muted) text-[0.8rem]" textAnchor="middle" x={CX} y={CY + 20}>
+					<text className="fill-(--color-ink) text-[0.8rem] font-medium" textAnchor="middle" x={CX} y={CY + 20}>
 						total {heading.toLowerCase()}
 					</text>
 				</svg>
