@@ -242,24 +242,27 @@ async function CatalogueTab({
 										<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
 									</Link>
 								</td>
-								<td className="hl-shop-actions">
-									{item.active ? (
-										<ActionButton
-											confirm="Retire this item? Existing orders keep working."
-											label="Retire"
-											method="DELETE"
-											url={`/api/admin/shop/items/${item.id}`}
-											variant="danger"
-										/>
-									) : (
-										<ActionButton
-											body={{ active: true }}
-											label="Re-list"
-											method="PATCH"
-											url={`/api/admin/shop/items/${item.id}`}
-											variant="primary"
-										/>
-									)}
+								<td>
+									{/* The stack is a div, not the cell: a flex cell stops stretching to its row, so its border sat short of the others. */}
+									<div className="hl-shop-actions">
+										{item.active ? (
+											<ActionButton
+												confirm="Retire this item? Existing orders keep working."
+												label="Retire"
+												method="DELETE"
+												url={`/api/admin/shop/items/${item.id}`}
+												variant="danger"
+											/>
+										) : (
+											<ActionButton
+												body={{ active: true }}
+												label="Re-list"
+												method="PATCH"
+												url={`/api/admin/shop/items/${item.id}`}
+												variant="primary"
+											/>
+										)}
+									</div>
 								</td>
 							</tr>
 						))}
