@@ -1444,10 +1444,6 @@
 	.hl-form-wide {
 		grid-column: 1 / -1;
 	}
-	/* A field that is only as wide as its control, rather than its grid column. */
-	.hl-field-fit {
-		justify-self: start;
-	}
 
 	/* A form reads best at a measure a person can scan, not the full width of a wide window. */
 	.hl-measure {

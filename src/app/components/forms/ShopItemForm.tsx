@@ -214,24 +214,26 @@ export function ShopItemForm({
 					/>
 				) : null}
 			</Field>
-			<Field className="hl-field-fit" label="Price (coins)">
-				<TextInput
-					min="0"
-					onChange={e => setForm({ ...form, priceCredits: e.target.value })}
-					style={{ width: "9rem" }}
-					type="number"
-					value={form.priceCredits}
-				/>
-			</Field>
-			<Field hint="Per unit, tax and shipping included. Shown on the fulfillment sheet." label="Cost to us (USD)">
-				<TextInput
-					min="0"
-					onChange={e => setForm({ ...form, costUsd: e.target.value })}
-					step="0.01"
-					type="number"
-					value={form.costUsd}
-				/>
-			</Field>
+			<div className="hl-row hl-form-wide" style={{ alignItems: "flex-start", gap: "1.25rem" }}>
+				<Field label="Price (coins)">
+					<TextInput
+						min="0"
+						onChange={e => setForm({ ...form, priceCredits: e.target.value })}
+						style={{ width: "9rem" }}
+						type="number"
+						value={form.priceCredits}
+					/>
+				</Field>
+				<Field hint="Per unit, tax and shipping included. Shown on the fulfillment sheet." label="Cost to us (USD)">
+					<TextInput
+						min="0"
+						onChange={e => setForm({ ...form, costUsd: e.target.value })}
+						step="0.01"
+						type="number"
+						value={form.costUsd}
+					/>
+				</Field>
+			</div>
 			<Field
 				className="hl-form-wide"
 				hint="The merchants a grant card for this item may be spent at. None means the card can be used anywhere. Manage the merchants and their IDs on the merchants page."
