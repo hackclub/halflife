@@ -1493,6 +1493,12 @@
 		font: inherit;
 		cursor: pointer;
 	}
+	/* A merchant pill's ID count reads quieter than its name, selected or not. */
+	.hl-chip .hl-merchant-count {
+		padding-left: 0.4rem;
+		font-weight: 400;
+		opacity: 0.7;
+	}
 	.hl-chip[aria-current="true"],
 	.hl-chip[aria-pressed="true"] {
 		color: var(--color-accent-ink);
