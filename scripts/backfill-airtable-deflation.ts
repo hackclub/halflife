@@ -6,7 +6,7 @@ import {
 	getAirtableConfig,
 	withRateLimitRetry,
 } from "../src/lib/airtable/client"
-import { deflationFor, deflationJustification, numberCell } from "../src/lib/airtable/deflation"
+import { deflationFor, deflationJustification, deflationReasonText, numberCell } from "../src/lib/airtable/deflation"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
@@ -21,7 +21,7 @@ import db from "../src/lib/prisma8"
  *
  * The claimed figure is the row's own `Hours spent (self reported)`, because that is the number the base already shows. The approved figure is the phase's frozen hours on ThemeProject (`designApprovedHours`/`approvedHours`), falling back to the standing review's frozen value for a decision old enough to predate the project column. A row with no frozen approved hours is reported as unknown rather than guessed at.
  *
- * The deflation explanation is the standing review's internal `reason` – the reviewer's own audit note – and never the project's review comments, which are the note the maker was sent.
+ * The deflation explanation is Ari's own deflation reason when the standing review kept one, else its internal `reason` – the reviewer's own audit note – and never the project's review comments, which are the note the maker was sent.
  *
  * Only approved rows are touched. A row that is back in review, returned or rejected is left alone: nothing here can say whether the hours it holds were meant to stay, and the live mirror clears them when that decision is made.
  *
@@ -31,6 +31,7 @@ import db from "../src/lib/prisma8"
 const commit = process.argv.includes("--commit")
 
 interface StandingReview {
+	deflationReason: string | null
 	frozenApprovedHours: number | null
 	hoursOverride: number | null
 	reason: string | null
@@ -115,7 +116,7 @@ async function main() {
 	const reviews = await db.orm.public.SubmissionReview.where({ invalidated: false })
 		.where(review => review.submission.some(submission => submission.themeProjectId.in(projects.map(p => p.id))))
 		.orderBy(review => review.createdAt.desc())
-		.select("frozenApprovedHours", "hoursOverride", "reason")
+		.select("deflationReason", "frozenApprovedHours", "hoursOverride", "reason")
 		.include("submission", submission => submission.select("phase", "themeProjectId"))
 		.all()
 	const standing = new Map<string, StandingReview>()
@@ -172,7 +173,10 @@ async function main() {
 			const deflation = deflationFor(approved, row.selfReportedHours)
 			const fields = deflation
 				? {
-						[keys.justification]: deflationJustification(deflation, review?.reason ?? null),
+						[keys.justification]: deflationJustification(
+							deflation,
+							deflationReasonText(review?.deflationReason, review?.reason),
+						),
 						[keys.override]: deflation.approvedHours,
 					}
 				: {

@@ -154,6 +154,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 
 	try {
 		await finalizeReview({
+			deflationReason: event.review.justification?.deflation_reason ?? null,
 			feedback,
 			grantExtension: opts.announce !== false,
 			grantUsdOverride,

@@ -412,6 +412,7 @@ async function applyDecision(
 
 	try {
 		await finalizeReview({
+			deflationReason: event.review.justification?.deflation_reason ?? null,
 			feedback,
 			grantExtension: opts.announce !== false,
 			grantUsdOverride,
@@ -431,6 +432,7 @@ async function applyDecision(
 		if (err instanceof HttpError && err.code === "ALREADY_RESOLVED" && (makerNote || auditNote || technicalFeatures)) {
 			const adopted = await adoptStatusPlaceholder({
 				auditNote,
+				deflationReason: event.review.justification?.deflation_reason?.trim() || null,
 				note: makerNote,
 				phase,
 				result,
@@ -752,7 +754,7 @@ export interface ReconcileSummary {
 interface AriShipStatusWithReview extends AriShipStatus {
 	review?: {
 		audit_note?: string | null
-		justification?: { technical_features?: string | null } | null
+		justification?: { deflation_reason?: string | null; technical_features?: string | null } | null
 		note_to_maker?: string
 		reviewer?: { email?: string | null } | null
 	} | null
@@ -769,10 +771,15 @@ function decisionEventFromStatus(status: AriShipStatusWithReview, standing: Stan
 	const note = status.review?.note_to_maker?.trim() ?? ""
 	const reviewerEmail = status.review?.reviewer?.email ?? null
 	const technicalFeatures = status.review?.justification?.technical_features?.trim()
+	const deflationReason = status.review?.justification?.deflation_reason?.trim()
+	const justification = {
+		...(deflationReason ? { deflation_reason: deflationReason } : {}),
+		...(technicalFeatures ? { technical_features: technicalFeatures } : {}),
+	}
 	const review = {
 		note_to_maker: note,
 		reviewer: reviewerEmail ? { email: reviewerEmail, slack_id: null } : null,
-		...(technicalFeatures ? { justification: { technical_features: technicalFeatures } } : {}),
+		...(deflationReason || technicalFeatures ? { justification } : {}),
 	}
 	const ship = {
 		authors: [],
@@ -982,6 +989,7 @@ function isStatusPlaceholder(
  */
 async function adoptStatusPlaceholder(input: {
 	auditNote: string | null
+	deflationReason?: string | null
 	note: string | null
 	phase: Phase
 	result: ReviewResult
@@ -1002,6 +1010,7 @@ async function adoptStatusPlaceholder(input: {
 
 	await writeStatusReviewNote({
 		auditNote: input.auditNote,
+		deflationReason: input.deflationReason,
 		note: input.note,
 		phase: input.phase,
 		result: input.result,
@@ -1020,6 +1029,7 @@ async function adoptStatusPlaceholder(input: {
  */
 async function writeStatusReviewNote(input: {
 	auditNote: string | null
+	deflationReason?: string | null
 	note: string | null
 	phase: Phase
 	result: ReviewResult
@@ -1035,6 +1045,7 @@ async function writeStatusReviewNote(input: {
 		await tx.orm.public.SubmissionReview.where({ id: input.reviewId }).update({
 			...(note ? { feedback: note } : {}),
 			...(input.auditNote ? { reason: input.auditNote } : {}),
+			...(input.deflationReason ? { deflationReason: input.deflationReason } : {}),
 			reviewerEmail: input.reviewerEmail,
 			// Ari names a decision by the reviewer's address, so the label follows the address exactly as the webhook path does (see `ariReviewerLabel`).
 			reviewerName: input.reviewerEmail ?? "Ari",
@@ -1111,6 +1122,7 @@ export async function repairStatusDecisions(opts: { commit?: boolean; limit?: nu
 
 		await writeStatusReviewNote({
 			auditNote: status.review?.audit_note?.trim() || null,
+			deflationReason: status.review?.justification?.deflation_reason?.trim() || null,
 			note,
 			phase,
 			result: review.result,

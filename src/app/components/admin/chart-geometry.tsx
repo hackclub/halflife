@@ -110,7 +110,7 @@ export function GridLines({
  */
 export function YAxis({
 	caption,
-	colour = "var(--color-accent-ink)",
+	colour = "var(--color-axis-hours)",
 	format,
 	side = "left",
 	ticks,

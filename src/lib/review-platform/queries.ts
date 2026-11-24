@@ -733,6 +733,7 @@ export async function getReviewDetail(
 			claimerName: claimLive ? displayName(row.claim?.reviewer, "Another reviewer") : null,
 			decision: standing
 				? {
+						deflationReason: standing.deflationReason,
 						feedback: standing.feedback,
 						grantUsd: standing.grantUsdOverride ?? standing.frozenGrantUsd,
 						hours: standing.hoursOverride ?? standing.frozenApprovedHours,
