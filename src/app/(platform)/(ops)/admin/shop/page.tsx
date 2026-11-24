@@ -22,6 +22,7 @@ import {
 } from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
 import type { Models } from "@/app/generated/prisma8/contract.d"
+import { listGrantCardMerchantOptions } from "@/lib/grant-card-merchant-admin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -77,12 +78,16 @@ export default async function AdminShopPage({ searchParams }: Props) {
 	const category = Object.keys(CATEGORY_LABEL).find((value): value is ShopItemCategory => value === search.category)
 	const status: ItemStatus = search.status === "active" || search.status === "retired" ? search.status : "all"
 	const gated = search.gated === "1"
+	const merchants = tab === "new" ? await listGrantCardMerchantOptions() : []
 
 	return (
 		<div className="hl-stack">
 			<PageHeader
 				actions={
 					<div className="hl-row">
+						<Link className="hl-chip" href="/admin/shop/merchants">
+							Merchants
+						</Link>
 						{TABS.map((item, index) => (
 							<Link
 								aria-current={item.id === tab || undefined}
@@ -106,7 +111,7 @@ export default async function AdminShopPage({ searchParams }: Props) {
 
 			{tab === "new" ? (
 				<Panel title="Add an item">
-					<ShopItemForm />
+					<ShopItemForm merchants={merchants} />
 				</Panel>
 			) : null}
 

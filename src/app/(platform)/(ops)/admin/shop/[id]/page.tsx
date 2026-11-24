@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { ItemRegionPrices } from "@/app/components/forms/ItemRegionPrices"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { Badge, PageHeader, Panel } from "@/app/components/ui"
+import { linkedGrantCardMerchantIds, listGrantCardMerchantOptions } from "@/lib/grant-card-merchant-admin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -18,13 +19,15 @@ export const dynamic = "force-dynamic"
 export default async function AdminShopItemPage({ params }: { params: Promise<{ id: string }> }) {
 	await requirePermissionPage(Permission.MANAGE_SHOP)
 	const { id } = await params
-	const [item, regions] = await Promise.all([
+	const [item, regions, merchants, linkedMerchantIds] = await Promise.all([
 		db.orm.public.ShopItem.whereUnique({ id })
 			.include("regionPrices", prices => prices.select("regionId", "priceCredits"))
 			.first(),
 		db.orm.public.ShopRegion.select("id", "name")
 			.orderBy([r => r.sortOrder.asc(), r => r.name.asc()])
 			.all(),
+		listGrantCardMerchantOptions(),
+		linkedGrantCardMerchantIds(id),
 	])
 	if (!item) notFound()
 
@@ -48,13 +51,14 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 						category: item.category,
 						costUsd: item.costUsd,
 						description: item.description,
-						grantCardMerchantIds: item.grantCardMerchantIds,
+						grantCardMerchants: linkedMerchantIds,
 						id: item.id,
 						imageUrl: item.imageUrl,
 						name: item.name,
 						priceCredits: item.priceCredits,
 						requiresPrinterQualified: item.requiresPrinterQualified,
 					}}
+					merchants={merchants}
 				/>
 			</Panel>
 			<Panel title="Regional prices">

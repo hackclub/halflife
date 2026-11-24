@@ -129,3 +129,17 @@ export async function deleteGrantCardMerchant(id: string, actor: Actor) {
 		targetType: "GrantCardMerchant",
 	})
 }
+
+/** Every merchant, by name, with how many IDs it holds: what the item form needs to offer. */
+export async function listGrantCardMerchantOptions(): Promise<{ id: string; idCount: number; name: string }[]> {
+	const merchants = await db.orm.public.GrantCardMerchant.orderBy(merchant => merchant.name.asc())
+		.select("id", "merchantIds", "name")
+		.all()
+	return merchants.map(merchant => ({ id: merchant.id, idCount: merchant.merchantIds.length, name: merchant.name }))
+}
+
+/** The IDs of the merchants an item is linked to. */
+export async function linkedGrantCardMerchantIds(shopItemId: string): Promise<string[]> {
+	const links = await db.orm.public.ShopItemGrantCardMerchant.where({ shopItemId }).select("merchantId").all()
+	return links.map(link => link.merchantId)
+}
