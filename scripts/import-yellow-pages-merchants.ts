@@ -35,7 +35,7 @@ async function yellowPagesIds(): Promise<Map<string, string[]>> {
 	const text = await response.text()
 	const found = new Map<string, string[]>()
 	for (const record of text.split(/\n(?=- )/)) {
-		const name = (/^\s*name:\s*"?([^"#\n]+?)"?\s*(#.*)?$/m.exec(record))?.[1]
+		const name = /^\s*name:\s*"?([^"#\n]+?)"?\s*(#.*)?$/m.exec(record)?.[1]
 		if (!name || !WANTED.includes(name)) continue
 		// The name is quoted on its own line too, and it is not an ID, so only the lines above it are read.
 		const idLines = record
