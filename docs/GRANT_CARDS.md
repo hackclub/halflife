@@ -525,7 +525,9 @@ A maker can hand a parts card back on HCB. HCB cancels the grant and returns its
 
 Only the maker cancelling their own grant. Recipients can cancel their own grants on HCB, so the sync must tell that apart from a cancel made by someone else (an admin on HCB, or a cancel the site made itself through `cancelGrantCard` or the shop path). Cancels the site made are already `CANCELED` before the sync reads them, so the sync never sees them as returns. Cancels made on HCB by anyone else must not pay coins.
 
-Open: confirm which HCB field, if any, names who cancelled a card grant. Until that is confirmed, a return is recorded but not credited, and an admin credits it by hand.
+HCB's own grant page names the canceller. A returned grant reads "This grant has been canceled. Canceled by Max … The card no longer works, and the unspent balance went back to YSWS - Half Life", and its ledger shows a "Returning canceled grant to Max" transfer equal to the leftover (a $21.97 grant with $15.42 spent returned $6.55).
+
+Open: the API field behind that "Canceled by" line is not yet confirmed. The HCB MCP tools in this environment are not authorised (every call returns `invalid_auth`), so it has to be checked with a token that can read card grants, against a grant returned by its recipient and one cancelled by an admin. Until it is, a return is recorded but not credited, and an admin credits it by hand.
 
 ### Amount
 
