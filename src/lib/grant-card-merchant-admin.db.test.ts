@@ -23,7 +23,7 @@ async function flatIds(): Promise<string[]> {
 	return [...(item?.grantCardMerchantIds ?? [])].toSorted()
 }
 
-async function link(merchantIds: string[]): Promise<string[]> {
+function link(merchantIds: string[]): Promise<string[]> {
 	return db.transaction(tx => setItemMerchants(tx, itemId, merchantIds))
 }
 
@@ -64,7 +64,7 @@ describe.skipIf(!scratch)("grant card merchants against a database", () => {
 
 	test("a merchant still linked to an item cannot be deleted", async () => {
 		await link([alpha])
-		const error = await deleteGrantCardMerchant(alpha, actor).catch(caught => caught)
+		const error = await deleteGrantCardMerchant(alpha, actor).catch((caught: unknown) => caught)
 		expect(error).toBeInstanceOf(HttpError)
 		expect((error as HttpError).code).toBe("CONFLICT")
 	})
@@ -76,7 +76,7 @@ describe.skipIf(!scratch)("grant card merchants against a database", () => {
 
 	test("linking a merchant that does not exist is refused and changes nothing", async () => {
 		await link([beta])
-		const error = await link([beta, "no-such-merchant"]).catch(caught => caught)
+		const error = await link([beta, "no-such-merchant"]).catch((caught: unknown) => caught)
 		expect((error as HttpError).code).toBe("VALIDATION_FAILED")
 		expect(await flatIds()).toEqual(["2", "3"])
 	})
