@@ -143,7 +143,10 @@ export const grantCardMerchantSchema = z
 	})
 	.strict()
 
-export const grantCardMerchantUpdateSchema = grantCardMerchantSchema.partial().strict()
+export const grantCardMerchantUpdateSchema = grantCardMerchantSchema
+	.partial()
+	.extend({ archived: z.boolean().optional() })
+	.strict()
 
 /** How many buyers one legacy-order send may message. Each is a Slack call pair, so a send is kept small enough to finish in one request. */
 export const LEGACY_SHOP_DM_SEND_MAX = 25

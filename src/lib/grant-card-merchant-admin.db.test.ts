@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { HttpError } from "@/lib/errors"
 import {
 	createGrantCardMerchant,
-	deleteGrantCardMerchant,
+	setGrantCardMerchantArchived,
 	setItemMerchants,
 	updateGrantCardMerchant,
 } from "@/lib/grant-card-merchant-admin"
@@ -62,11 +62,20 @@ describe.skipIf(!scratch)("grant card merchants against a database", () => {
 		expect(await flatIds()).toEqual(["2", "3"])
 	})
 
-	test("a merchant still linked to an item cannot be deleted", async () => {
+	test("a merchant still linked to an item cannot be archived", async () => {
 		await link([alpha])
-		const error = await deleteGrantCardMerchant(alpha, actor).catch((caught: unknown) => caught)
+		const error = await setGrantCardMerchantArchived(alpha, true, actor).catch((caught: unknown) => caught)
 		expect(error).toBeInstanceOf(HttpError)
 		expect((error as HttpError).code).toBe("CONFLICT")
+	})
+
+	test("an archived merchant cannot be linked, and restoring it lets it be linked again", async () => {
+		await link([])
+		await setGrantCardMerchantArchived(beta, true, actor)
+		const refused = await link([beta]).catch((caught: unknown) => caught)
+		expect((refused as HttpError).code).toBe("VALIDATION_FAILED")
+		await setGrantCardMerchantArchived(beta, false, actor)
+		expect(await link([beta])).toEqual(["2", "3"])
 	})
 
 	test("clearing every merchant leaves the item unrestricted", async () => {

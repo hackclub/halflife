@@ -4,6 +4,7 @@ import { HttpError } from "@/lib/errors"
 import { syncItemMerchantIds } from "@/lib/grant-card-merchant-links"
 import { diffMerchantLinks, merchantSlug } from "@/lib/grant-card-merchants"
 import db, { type DbOrTx } from "@/lib/prisma8"
+import { formatDbTimestamp } from "@/lib/time"
 
 interface Actor {
 	email: string | null
@@ -21,10 +22,12 @@ export async function setItemMerchants(
 	const wanted = [...new Set(merchantIds)]
 	if (wanted.length > 0) {
 		const found = await tx.orm.public.GrantCardMerchant.where(merchant => merchant.id.in(wanted))
-			.select("id")
+			.select("id", "archivedAt")
 			.all()
 		if (found.length !== wanted.length)
 			throw new HttpError("VALIDATION_FAILED", "One of those merchants no longer exists. Reload and try again")
+		if (found.some(merchant => merchant.archivedAt !== null))
+			throw new HttpError("VALIDATION_FAILED", "An archived merchant cannot be linked. Restore it first")
 	}
 
 	const current = await tx.orm.public.ShopItemGrantCardMerchant.where({ shopItemId }).select("merchantId").all()
@@ -106,31 +109,41 @@ export async function updateGrantCardMerchant(id: string, input: MerchantInput, 
 	return merchant
 }
 
-/** Only a merchant no item uses can go. A linked one is unlinked from its items first, so the lists never lose a merchant silently. */
-export async function deleteGrantCardMerchant(id: string, actor: Actor) {
+/**
+ * Archive a merchant, or restore it. Only a merchant no item uses can be archived: an archived one keeps its IDs, so it can come back, but no item can be linked to it while it is archived.
+ */
+export async function setGrantCardMerchantArchived(id: string, archived: boolean, actor: Actor) {
 	const before = await db.orm.public.GrantCardMerchant.whereUnique({ id }).first()
 	if (!before) throw new HttpError("NOT_FOUND", "Merchant not found")
-	const linked = await db.orm.public.ShopItemGrantCardMerchant.where({ merchantId: id }).select("shopItemId").all()
-	if (linked.length > 0)
-		throw new HttpError("CONFLICT", `${before.name} is still linked to ${linked.length} item(s). Unlink it first`)
+	if ((before.archivedAt !== null) === archived)
+		throw new HttpError("CONFLICT", archived ? `${before.name} is already archived` : `${before.name} is not archived`)
+	if (archived) {
+		const linked = await db.orm.public.ShopItemGrantCardMerchant.where({ merchantId: id }).select("shopItemId").all()
+		if (linked.length > 0)
+			throw new HttpError("CONFLICT", `${before.name} is still linked to ${linked.length} item(s). Unlink it first`)
+	}
 
-	await db.orm.public.GrantCardMerchant.where({ id }).delete()
+	await db.orm.public.GrantCardMerchant.where({ id }).update({
+		archivedAt: archived ? formatDbTimestamp(new Date()) : null,
+	})
 	await logAudit({
 		action: AuditAction.ADMIN_UPDATE_SHOP_ITEM,
 		actorEmail: actor.email,
 		actorId: actor.id,
 		metadata: {
-			before: { merchantIds: [...before.merchantIds], name: before.name },
-			reason: "Grant card merchant deleted",
+			after: { archived, name: before.name },
+			before: { archived: before.archivedAt !== null, name: before.name },
+			reason: archived ? "Grant card merchant archived" : "Grant card merchant restored",
 		},
 		targetId: id,
 		targetType: "GrantCardMerchant",
 	})
 }
 
-/** Every merchant, by name, with how many IDs it holds: what the item form needs to offer. */
+/** Every active merchant, by name, with how many IDs it holds: what the item form needs to offer. */
 export async function listGrantCardMerchantOptions(): Promise<{ id: string; idCount: number; name: string }[]> {
-	const merchants = await db.orm.public.GrantCardMerchant.orderBy(merchant => merchant.name.asc())
+	const merchants = await db.orm.public.GrantCardMerchant.where(merchant => merchant.archivedAt.isNull())
+		.orderBy(merchant => merchant.name.asc())
 		.select("id", "merchantIds", "name")
 		.all()
 	return merchants.map(merchant => ({ id: merchant.id, idCount: merchant.merchantIds.length, name: merchant.name }))

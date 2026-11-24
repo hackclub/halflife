@@ -6,6 +6,7 @@ import { useConfirm } from "@/app/components/ui/useConfirm"
 import { sendJson, useAction } from "@/lib/use-action"
 
 export interface GrantCardMerchantRow {
+	archived: boolean
 	id: string
 	itemCount: number
 	merchantIds: readonly string[]
@@ -26,13 +27,16 @@ function parseIds(value: string): string[] {
 }
 
 /** The merchants a grant card can be spent at, each with its IDs. Edits recompute every linked item's list at once. */
-export function GrantCardMerchantsPanel({ merchants }: Readonly<{ merchants: readonly GrantCardMerchantRow[] }>) {
+export function GrantCardMerchantsPanel({
+	archived,
+	merchants,
+}: Readonly<{ archived: boolean; merchants: readonly GrantCardMerchantRow[] }>) {
 	return (
 		<>
-			<NewMerchantPanel />
+			{archived ? null : <NewMerchantPanel />}
 			{merchants.length === 0 ? (
-				<Panel title="Merchants">
-					<EmptyState>No merchants yet.</EmptyState>
+				<Panel title={archived ? "Archived" : "Merchants"}>
+					<EmptyState>{archived ? "No archived merchants." : "No merchants yet."}</EmptyState>
 				</Panel>
 			) : (
 				merchants.map(merchant => <MerchantPanel key={merchant.id} merchant={merchant} />)
@@ -113,17 +117,26 @@ function MerchantPanel({ merchant }: Readonly<{ merchant: GrantCardMerchantRow }
 		)
 	}
 
-	async function remove() {
+	async function archive() {
 		const answer = await confirm({
-			confirmLabel: "Delete merchant",
-			message: `Delete ${merchant.name} and its ${merchant.merchantIds.length} ${merchant.merchantIds.length === 1 ? "ID" : "IDs"}? This cannot be undone.`,
-			title: `Delete ${merchant.name}`,
+			confirmLabel: "Archive merchant",
+			message: `Archive ${merchant.name}? Its ${merchant.merchantIds.length} ${merchant.merchantIds.length === 1 ? "ID" : "IDs"} are kept, and it can be restored from the archived tab. No item can be linked to it while it is archived.`,
+			title: `Archive ${merchant.name}`,
 		})
 		if (answer === null) return
 		setError(null)
 		void run(
-			"delete",
-			() => sendJson(`/api/admin/shop/merchants/${merchant.id}`, { method: "DELETE" }),
+			"archive",
+			() => sendJson(`/api/admin/shop/merchants/${merchant.id}`, { body: { archived: true }, method: "PATCH" }),
+			() => router.refresh(),
+		)
+	}
+
+	function restore() {
+		setError(null)
+		void run(
+			"restore",
+			() => sendJson(`/api/admin/shop/merchants/${merchant.id}`, { body: { archived: false }, method: "PATCH" }),
 			() => router.refresh(),
 		)
 	}
@@ -153,10 +166,18 @@ function MerchantPanel({ merchant }: Readonly<{ merchant: GrantCardMerchantRow }
 				<Button disabled={busy !== null || name.trim() === ""} onClick={save} type="button" variant="primary">
 					{busy === "save" ? "Saving…" : "Save changes"}
 				</Button>
-				<Button disabled={busy !== null || merchant.itemCount > 0} onClick={() => void remove()} type="button">
-					{busy === "delete" ? "Deleting…" : "Delete"}
-				</Button>
-				{merchant.itemCount > 0 ? <span className="hl-hint">Unlink it from its items before deleting.</span> : null}
+				{merchant.archived ? (
+					<Button disabled={busy !== null} onClick={() => void restore()} type="button">
+						{busy === "restore" ? "Restoring…" : "Restore"}
+					</Button>
+				) : (
+					<Button disabled={busy !== null || merchant.itemCount > 0} onClick={() => void archive()} type="button">
+						{busy === "archive" ? "Archiving…" : "Archive merchant"}
+					</Button>
+				)}
+				{merchant.itemCount > 0 && !merchant.archived ? (
+					<span className="hl-hint">Unlink it from its items before archiving.</span>
+				) : null}
 			</div>
 			{dialog}
 		</Panel>
