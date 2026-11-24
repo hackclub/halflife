@@ -1,0 +1,233 @@
+[
+  {
+    "id": "addNativeEnumValue.LedgerKind.GRANT_CARD_RETURN",
+    "label": "Add value \"GRANT_CARD_RETURN\" to enum type \"LedgerKind\"",
+    "summary": "Adds value \"GRANT_CARD_RETURN\" to enum type \"LedgerKind\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "LedgerKind"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"LedgerKind\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "LedgerKind",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"LedgerKind\""
+        }
+      },
+      {
+        "description": "ensure value \"GRANT_CARD_RETURN\" is absent from enum type \"LedgerKind\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "LedgerKind",
+          "GRANT_CARD_RETURN"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"GRANT_CARD_RETURN\" in enum type \"LedgerKind\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"GRANT_CARD_RETURN\" to enum type \"LedgerKind\"",
+        "sql": "ALTER TYPE \"public\".\"LedgerKind\" ADD VALUE 'GRANT_CARD_RETURN'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"GRANT_CARD_RETURN\" exists on enum type \"LedgerKind\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "LedgerKind",
+          "GRANT_CARD_RETURN"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"GRANT_CARD_RETURN\" in enum type \"LedgerKind\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "column.public.hcb_grant_card.coinsCreditedAt",
+    "label": "Add column \"coinsCreditedAt\" to \"hcb_grant_card\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "coinsCreditedAt",
+        "table": "hcb_grant_card"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"coinsCreditedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "coinsCreditedAt"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"coinsCreditedAt\" on \"hcb_grant_card\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"coinsCreditedAt\"",
+        "sql": "ALTER TABLE \"public\".\"hcb_grant_card\" ADD COLUMN \"coinsCreditedAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"coinsCreditedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "coinsCreditedAt"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"coinsCreditedAt\" on \"hcb_grant_card\""
+        }
+      },
+      {
+        "description": "verify column \"coinsCreditedAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "coinsCreditedAt",
+          "timestamp(3) without time zone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.hcb_grant_card.returnCoins",
+    "label": "Add column \"returnCoins\" to \"hcb_grant_card\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "returnCoins",
+        "table": "hcb_grant_card"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"returnCoins\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "returnCoins"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"returnCoins\" on \"hcb_grant_card\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"returnCoins\"",
+        "sql": "ALTER TABLE \"public\".\"hcb_grant_card\" ADD COLUMN \"returnCoins\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"returnCoins\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "returnCoins"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"returnCoins\" on \"hcb_grant_card\""
+        }
+      },
+      {
+        "description": "verify column \"returnCoins\" has type \"integer\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "hcb_grant_card",
+          "returnCoins",
+          "integer"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ledger_entry.ledger_entry_grantCardReturn_key",
+    "label": "Create index \"ledger_entry_grantCardReturn_key\" on \"ledger_entry\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ledger_entry_grantCardReturn_key",
+        "table": "ledger_entry"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ledger_entry_grantCardReturn_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ledger_entry_grantCardReturn_key\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"ledger_entry_grantCardReturn_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ledger_entry_grantCardReturn_key\"",
+        "sql": "CREATE UNIQUE INDEX \"ledger_entry_grantCardReturn_key\" ON \"public\".\"ledger_entry\" (\"themeProjectId\", \"kind\") WHERE ((\"kind\" = 'GRANT_CARD_RETURN'::\"LedgerKind\"))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ledger_entry_grantCardReturn_key\" exists on \"ledger_entry\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NOT NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"ledger_entry_grantCardReturn_key\"",
+          "i",
+          "I",
+          "\"public\".\"ledger_entry\"",
+          "btree",
+          "[\"themeProjectId\",\"kind\"]"
+        ]
+      }
+    ]
+  }
+]
