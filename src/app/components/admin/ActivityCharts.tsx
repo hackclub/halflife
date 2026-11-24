@@ -247,7 +247,7 @@ export function ActivityStrip({ days: allDays, perUser = false }: { days: DayAct
 
 				<YAxis
 					caption="devlogs"
-					colour="var(--color-magenta)"
+					colour="var(--color-axis-magenta)"
 					format={fmtCount}
 					side="right"
 					ticks={devlogTicks}
@@ -383,7 +383,7 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 			<div className="items-start" style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" }}>
 				<YAxis
 					caption="users"
-					colour="var(--color-teal-ink)"
+					colour="var(--color-axis-teal)"
 					format={fmtInt}
 					ticks={ticks}
 					width="2.6rem"
@@ -434,7 +434,7 @@ export function DauChart({ days: allDays }: { days: ActiveDay[] }) {
 							bar.fits ? (
 								<text
 									className="tabular-nums"
-									fill="var(--color-teal-ink)"
+									fill="var(--color-axis-teal)"
 									fontSize="0.65rem"
 									fontWeight="600"
 									key={`w${bar.week}`}

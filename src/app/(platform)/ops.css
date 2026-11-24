@@ -36,6 +36,10 @@
 	--color-accent: var(--color-sky); /* primary blue */
 	--color-accent-bright: #61cdf1; /* the header sign */
 	--color-accent-ink: var(--color-navy);
+	/* Chart scale labels, one per series, so the dark console can lift each without touching the button and link inks. */
+	--color-axis-hours: var(--color-accent-ink);
+	--color-axis-teal: var(--color-teal-ink);
+	--color-axis-magenta: var(--color-magenta);
 
 	/* The console uses the platform's teal, mint and magenta by inheritance. */
 	--color-teal-soft: var(--color-teal-mid);
@@ -1901,6 +1905,10 @@ html[data-theme="dark"] .ops-root:has(.hl-admin) {
 	--color-warning-ink: #f3b95f;
 	--color-danger-ink: #f38b8b; /* also the danger button's fill, with the dark card colour as its label */
 	--color-accent-bright: #2e8cae; /* the sign and primary buttons: sky-deep, so a light label keeps 3.3:1 */
+	/* Chart scale labels on the dark card, each lifted from its series hue to read as text. */
+	--color-axis-hours: #82cce8;
+	--color-axis-teal: #5dd4bd;
+	--color-axis-magenta: #e77ed6;
 	--color-mint: #008f78; /* selection and hover: the light ink-strong keeps 3.5:1 on it */
 	--color-paper: #0e0c18; /* the active sidebar pill turns light, so its label turns dark */
 	color-scheme: dark;
