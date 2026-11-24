@@ -113,13 +113,13 @@ describe("shopItemSchema / shopItemUpdateSchema", () => {
 		expect(shopItemUpdateSchema.safeParse({}).success).toBe(true)
 	})
 
-	test("a merchant allowlist is optional, non-empty and capped", () => {
+	test("a merchant allowlist is optional, non-empty and uncapped", () => {
 		expect(shopItemSchema.safeParse({ ...validItem, grantCardMerchantIds: ["AAAPLASTIC"] }).success).toBe(true)
 		expect(shopItemUpdateSchema.safeParse({ grantCardMerchantIds: ["AAAPLASTIC"] }).success).toBe(true)
 		expect(shopItemUpdateSchema.safeParse({ grantCardMerchantIds: [""] }).success).toBe(false)
 		expect(
-			shopItemUpdateSchema.safeParse({ grantCardMerchantIds: Array.from({ length: 101 }, (_, i) => `M${i}`) }).success,
-		).toBe(false)
+			shopItemUpdateSchema.safeParse({ grantCardMerchantIds: Array.from({ length: 1517 }, (_, i) => `M${i}`) }).success,
+		).toBe(true)
 	})
 
 	test("an update carries only the fields it was sent, never the create defaults", () => {

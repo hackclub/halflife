@@ -128,7 +128,7 @@ export const SHOP_GRANT_CARD_BATCH_MAX = 25
  */
 export const shopGrantCardBatchSchema = z
 	.object({
-		grantCardMerchantIds: z.array(merchantIdSchema).min(1, "Enter at least one merchant ID").max(100),
+		grantCardMerchantIds: z.array(merchantIdSchema).min(1, "Enter at least one merchant ID"),
 		orderIds: z.array(z.string().trim().min(1).max(64)).min(1).max(SHOP_GRANT_CARD_BATCH_MAX),
 		saveToItem: z.boolean().default(false),
 		shopItemId: z.string().trim().min(1).max(64),
@@ -163,7 +163,7 @@ const shopItemFields = Object.freeze({
 	/** Dollars, rounded to the cent on write. */
 	costUsd: z.number().min(0).max(100_000).nullable().optional(),
 	description: boundedText(2000, 1),
-	grantCardMerchantIds: z.array(merchantIdSchema).max(100),
+	grantCardMerchantIds: z.array(merchantIdSchema),
 	id: z
 		.string()
 		.trim()
