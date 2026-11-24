@@ -2,6 +2,7 @@ import { AdminFrame } from "@/app/components/admin/AdminFrame"
 import type { AdminNavGroup, AdminNavItem } from "@/app/components/admin/admin-nav"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
+import { uncheckedRoute } from "@/lib/routes"
 
 export const dynamic = "force-dynamic"
 
@@ -53,7 +54,10 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 					{ href: "/admin/grants", label: "Grants" },
 					{ href: "/admin/ledger", label: "Ledger" },
 				]),
-				...pages(can(Permission.MANAGE_SHOP), [{ href: "/admin/shop", label: "Shop" }]),
+				...pages(can(Permission.MANAGE_SHOP), [
+					{ href: "/admin/shop", label: "Shop" },
+					{ href: uncheckedRoute("/admin/shop/merchants"), label: "Merchants" },
+				]),
 				...pages(can(Permission.FULFILL_ORDERS), [{ href: "/admin/fulfillment", label: "Fulfillment" }]),
 			],
 			label: "Money",

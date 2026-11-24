@@ -35,6 +35,10 @@ export const submitSchema = z
 	.object({
 		/** R2 keys for evidence handed in with the submission. */
 		attachmentKeys: z.array(z.string().max(500)).max(10).default([]),
+		/** What the maker says they changed since the review that returned this phase. The route requires it on a resubmission and drops it on a first hand-in. */
+		changesSinceLast: boundedText(4000).optional(),
+		/** The maker's optional notes for the reviewer about the project. */
+		extraNotes: boundedText(4000).optional(),
 		/**
 		 * The maker ticked the box saying they want no parts funding for this project. Design only: a build carries no parts money, so the route refuses it there rather than recording a meaningless flag.
 		 */

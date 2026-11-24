@@ -3,6 +3,8 @@ import { EventColour, Phase, PrinterAwardStatus, Role, ShopItemCategory } from "
 import {
 	creditAdjustSchema,
 	disputeMessageSchema,
+	grantCardMerchantSchema,
+	grantCardMerchantUpdateSchema,
 	grantSchema,
 	itemRegionPriceSchema,
 	orderDecisionSchema,
@@ -94,7 +96,7 @@ describe("shopItemSchema / shopItemUpdateSchema", () => {
 			expect(parsed.data).toMatchObject({
 				active: true,
 				category: "PRINTER_UPGRADE",
-				grantCardMerchantIds: [],
+				grantCardMerchants: [],
 				maxPerUser: 1,
 				stock: null,
 			})
@@ -113,13 +115,19 @@ describe("shopItemSchema / shopItemUpdateSchema", () => {
 		expect(shopItemUpdateSchema.safeParse({}).success).toBe(true)
 	})
 
-	test("a merchant allowlist is optional, non-empty and capped", () => {
-		expect(shopItemSchema.safeParse({ ...validItem, grantCardMerchantIds: ["AAAPLASTIC"] }).success).toBe(true)
-		expect(shopItemUpdateSchema.safeParse({ grantCardMerchantIds: ["AAAPLASTIC"] }).success).toBe(true)
-		expect(shopItemUpdateSchema.safeParse({ grantCardMerchantIds: [""] }).success).toBe(false)
-		expect(
-			shopItemUpdateSchema.safeParse({ grantCardMerchantIds: Array.from({ length: 101 }, (_, i) => `M${i}`) }).success,
-		).toBe(false)
+	test("an item links to merchants by ID, optionally, without any free-text IDs", () => {
+		expect(shopItemSchema.safeParse({ ...validItem, grantCardMerchants: ["merchant-1"] }).success).toBe(true)
+		expect(shopItemUpdateSchema.safeParse({ grantCardMerchants: ["merchant-1"] }).success).toBe(true)
+		expect(shopItemUpdateSchema.safeParse({ grantCardMerchants: [""] }).success).toBe(false)
+		expect(shopItemUpdateSchema.safeParse({ grantCardMerchantIds: ["AAAPLASTIC"] }).success).toBe(false)
+	})
+
+	test("a merchant takes a name, a source note and any number of IDs", () => {
+		const merchant = { merchantIds: Array.from({ length: 1517 }, (_, i) => `M${i}`), name: "Amazon" }
+		expect(grantCardMerchantSchema.safeParse(merchant).success).toBe(true)
+		expect(grantCardMerchantSchema.safeParse({ name: "" }).success).toBe(false)
+		expect(grantCardMerchantSchema.safeParse({ ...merchant, merchantIds: [""] }).success).toBe(false)
+		expect(grantCardMerchantUpdateSchema.safeParse({ sourceNote: "yellow_pages" }).success).toBe(true)
 	})
 
 	test("an update carries only the fields it was sent, never the create defaults", () => {
@@ -204,7 +212,6 @@ describe("shopGrantCardBatchSchema", () => {
 	const body = {
 		grantCardMerchantIds: ["ZIEMZSLZHABHDPK"],
 		orderIds: ["order-1"],
-		saveToItem: true,
 		shopItemId: "soldering-kit",
 	}
 
@@ -239,5 +246,13 @@ describe("rsvpSchema / subscribeSchema", () => {
 
 	test("shop categories default sanely", () => {
 		expect(shopItemSchema.safeParse({ ...validItem, category: ShopItemCategory.PRINTER }).success).toBe(true)
+	})
+})
+
+describe("grantCardMerchantUpdateSchema", () => {
+	test("archiving alone sends nothing else, so the IDs and note are left as they are", () => {
+		const parsed = grantCardMerchantUpdateSchema.safeParse({ archived: true })
+		expect(parsed.success).toBe(true)
+		if (parsed.success) expect(parsed.data).toEqual({ archived: true })
 	})
 })

@@ -207,6 +207,14 @@ export async function yswsFieldsFor(
 	const journalUrl = await findRepoFile(project.githubRepo, /(^|\/)journal\.md$/i)
 	const cover = publicUrlFor(project.coverImageKey)
 	const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+	// The hand-in in front of the row: its account of what changed belongs to it, so a first hand-in writes a blank and an approved row keeps what was there.
+	const openSubmission =
+		phaseStatus === PhaseStatus.in_review
+			? await db.orm.public.PhaseSubmission.where({ phase, resolvedAt: null, themeProjectId })
+					.orderBy(submission => submission.createdAt.desc())
+					.select("changesSinceLast")
+					.first()
+			: null
 
 	// The alternate method only exists when there is no tracked evidence to name. It is written at hand-in so the row is never handed to a reviewer without one. An approved row is left alone here: an admin refresh must not overwrite what a reviewer wrote.
 	const hasTrackedEvidence = Boolean(user.hackatimeUserId) || project.hackatimeLinks.length > 0 || lapseLinks.length > 0
@@ -247,6 +255,7 @@ export async function yswsFieldsFor(
 		addressLine1: pii.line1 ?? "",
 		addressLine2: pii.line2 ?? "",
 		alternateTracking,
+		changesSinceLast: phaseStatus === PhaseStatus.in_review ? (openSubmission?.changesSinceLast ?? "") : undefined,
 		city: pii.city ?? "",
 		country: pii.country ?? "",
 		description: project.description ?? "",

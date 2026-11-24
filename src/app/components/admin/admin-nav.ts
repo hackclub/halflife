@@ -22,6 +22,9 @@ export interface AdminPaletteEntry extends AdminNavItem {
 /** Whether a path is inside a nav item: `/admin` only ever matches itself, every other item also matches what sits below it. */
 export const isAdminNavActive = (pathname: string, href: string): boolean => {
 	if (href === "/admin") return pathname === "/admin"
+	// Merchants has its own sidebar item under Shop, so Shop covers only the rest of /admin/shop.
+	if (href === "/admin/shop" && (pathname === "/admin/shop/merchants" || pathname.startsWith("/admin/shop/merchants/")))
+		return false
 	return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -44,9 +47,19 @@ export const ADMIN_HOTKEYS: { [_: string]: string } = {
 	"/admin/referrals": "e",
 	"/admin/reports": "r",
 	"/admin/shop": "s",
+	"/admin/shop/merchants": "n",
 	"/admin/uploads": "h",
 	"/admin/users": "u",
 	"/reviews": "w",
+}
+
+/**
+ * The shortcut letter a key press asks for. A typed letter always answers, so a non-QWERTY layout gets the key it prints (Dvorak's C sits where QWERTY's I is, so C must not open I's page). Only a key that types no letter falls back to its physical position: Option+letter on a Mac types a symbol, and the physical key is then the letter it means.
+ */
+export const hotkeyLetter = (key: string, code: string): string => {
+	const typed = key.toLowerCase()
+	if (/^[a-z]$/.test(typed)) return typed
+	return code.startsWith("Key") ? code.slice(3).toLowerCase() : ""
 }
 
 /** The key a page answers to, or undefined for a page that has none. */

@@ -31,7 +31,7 @@ import { formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/l
  */
 export type ShopItemPublic = Omit<
 	Models.public_ShopItem,
-	"costUsd" | "grantCardMerchantIds" | "orders" | "regionPrices"
+	"costUsd" | "grantCardMerchantIds" | "grantCardMerchants" | "orders" | "regionPrices"
 >
 
 /**

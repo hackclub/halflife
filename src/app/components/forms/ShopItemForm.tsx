@@ -18,7 +18,8 @@ export interface ShopItemInitial {
 	category: ShopItemCategory
 	costUsd: number | null
 	description: string
-	grantCardMerchantIds: readonly string[]
+	/** The IDs of the grant card merchants the item is linked to. */
+	grantCardMerchants: readonly string[]
 	id: string
 	imageUrl: string | null
 	name: string
@@ -26,28 +27,23 @@ export interface ShopItemInitial {
 	requiresPrinterQualified: boolean
 }
 
+/** A merchant the item form can link to. */
+export interface GrantCardMerchantOption {
+	id: string
+	idCount: number
+	name: string
+}
+
 const blank = {
 	category: "PRINTER_UPGRADE",
 	costUsd: "",
 	description: "",
-	grantCardMerchantIds: "",
+	grantCardMerchants: [] as string[],
 	id: "",
 	imageUrl: "",
 	name: "",
 	priceCredits: "50",
 	requiresPrinterQualified: true,
-}
-
-/** Merchant IDs pasted as commas or line breaks, trimmed and deduplicated, so a list from Yellow Pages can be pasted whole. */
-function parseMerchantIds(value: string): string[] {
-	return [
-		...new Set(
-			value
-				.split(/[\s,]+/)
-				.map(id => id.trim())
-				.filter(Boolean),
-		),
-	]
 }
 
 /**
@@ -70,7 +66,13 @@ function previewImageUrl(value: string): string | null {
 /**
  * Add a shop item, or edit one when `item` is given. The slug is fixed once an item exists, because orders and analytics refer to it. Per-person limit, stock and shelf order are left to their defaults (one per person, unlimited stock, first) and an edit never sends them, so an item that already has them keeps them.
  */
-export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
+export function ShopItemForm({
+	item,
+	merchants,
+}: {
+	item?: ShopItemInitial
+	merchants: readonly GrantCardMerchantOption[]
+}) {
 	const editing = item !== undefined
 	const [form, setForm] = useState(
 		item
@@ -78,7 +80,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					category: item.category,
 					costUsd: item.costUsd === null ? "" : String(item.costUsd),
 					description: item.description,
-					grantCardMerchantIds: item.grantCardMerchantIds.join(", "),
+					grantCardMerchants: [...item.grantCardMerchants],
 					id: item.id,
 					imageUrl: item.imageUrl ?? "",
 					name: item.name,
@@ -114,7 +116,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			category: form.category,
 			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
 			description: form.description,
-			grantCardMerchantIds: parseMerchantIds(form.grantCardMerchantIds),
+			grantCardMerchants: form.grantCardMerchants,
 			imageUrl: form.imageUrl.trim() === "" ? null : form.imageUrl.trim(),
 			name: form.name,
 			priceCredits: Number(form.priceCredits),
@@ -138,7 +140,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 	const previewUrl = previewImageUrl(form.imageUrl)
 
 	return (
-		<form className="hl-form-grid" onSubmit={submit}>
+		<form className="hl-form-grid" onSubmit={submit} style={{ columnGap: "0.5rem" }}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{saved ? <Callout>Saved.</Callout> : null}
 			<Field
@@ -212,34 +214,73 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					/>
 				) : null}
 			</Field>
-			<Field label="Price (coins)">
-				<TextInput
-					min="0"
-					onChange={e => setForm({ ...form, priceCredits: e.target.value })}
-					type="number"
-					value={form.priceCredits}
-				/>
-			</Field>
-			<Field hint="Per unit, tax and shipping included. Shown on the fulfillment sheet." label="Cost to us (USD)">
-				<TextInput
-					min="0"
-					onChange={e => setForm({ ...form, costUsd: e.target.value })}
-					step="0.01"
-					type="number"
-					value={form.costUsd}
-				/>
-			</Field>
-			<Field
-				className="hl-form-wide"
-				hint="Comma or line separated Stripe merchant network IDs. Blank lets the grant card be used anywhere. Lock only items that are bought from one known vendor."
-				label="Grant card merchant IDs"
+			<div className="hl-row hl-form-wide" style={{ alignItems: "flex-start", gap: "1.25rem" }}>
+				<Field label="Price (coins)">
+					<TextInput
+						min="0"
+						onChange={e => setForm({ ...form, priceCredits: e.target.value })}
+						style={{ width: "9rem" }}
+						type="number"
+						value={form.priceCredits}
+					/>
+				</Field>
+				<Field hint="Per unit, tax and shipping included. Shown on the fulfillment sheet." label="Cost to us (USD)">
+					<TextInput
+						min="0"
+						onChange={e => setForm({ ...form, costUsd: e.target.value })}
+						step="0.01"
+						type="number"
+						value={form.costUsd}
+					/>
+				</Field>
+			</div>
+			{/* Not a Field: a Field wraps its controls in a label, and clicking a label's empty space presses its first button, which here was AliExpress. */}
+			<fieldset
+				className="hl-stack hl-stack--tight hl-form-wide"
+				style={{ border: 0, gap: "0.25rem", margin: 0, minWidth: 0, padding: 0 }}
 			>
-				<TextArea
-					onChange={e => setForm({ ...form, grantCardMerchantIds: e.target.value })}
-					placeholder="e.g. ZIEMZSLZHABHDPK, BCY7WW5ESKW7NNL"
-					value={form.grantCardMerchantIds}
-				/>
-			</Field>
+				<legend className="hl-label-text" style={{ padding: 0 }}>
+					Grant card merchants
+				</legend>
+				<div>
+					{merchants.length === 0 ? (
+						<p className="hl-hint" style={{ margin: 0 }}>
+							No merchants yet.
+						</p>
+					) : (
+						<div className="hl-chips">
+							{merchants.map(merchant => {
+								const selected = form.grantCardMerchants.includes(merchant.id)
+								return (
+									<button
+										aria-pressed={selected}
+										className="hl-chip"
+										key={merchant.id}
+										onClick={() =>
+											setForm({
+												...form,
+												grantCardMerchants: selected
+													? form.grantCardMerchants.filter(id => id !== merchant.id)
+													: [...form.grantCardMerchants, merchant.id],
+											})
+										}
+										type="button"
+									>
+										{merchant.name}
+										<span className="hl-merchant-count">
+											{merchant.idCount} {merchant.idCount === 1 ? "ID" : "IDs"}
+										</span>
+									</button>
+								)
+							})}
+						</div>
+					)}
+				</div>
+				<span className="hl-hint">
+					The merchants a grant card for this item may be spent at. None means the card can be used anywhere. Manage the
+					merchants and their IDs on the merchants page.
+				</span>
+			</fieldset>
 			<label className="hl-row hl-form-wide" style={{ gap: "0.5rem" }}>
 				<input
 					checked={form.requiresPrinterQualified}

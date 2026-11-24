@@ -13,7 +13,6 @@ import {
 	EmptyState,
 	Field,
 	FilterBar,
-	LinkButton,
 	PageHeader,
 	Panel,
 	Select,
@@ -22,6 +21,7 @@ import {
 } from "@/app/components/ui"
 import { IconSearch } from "@/app/components/ui/icons"
 import type { Models } from "@/app/generated/prisma8/contract.d"
+import { listGrantCardMerchantOptions } from "@/lib/grant-card-merchant-admin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -77,6 +77,7 @@ export default async function AdminShopPage({ searchParams }: Props) {
 	const category = Object.keys(CATEGORY_LABEL).find((value): value is ShopItemCategory => value === search.category)
 	const status: ItemStatus = search.status === "active" || search.status === "retired" ? search.status : "all"
 	const gated = search.gated === "1"
+	const merchants = tab === "new" ? await listGrantCardMerchantOptions() : []
 
 	return (
 		<div className="hl-stack">
@@ -106,7 +107,7 @@ export default async function AdminShopPage({ searchParams }: Props) {
 
 			{tab === "new" ? (
 				<Panel title="Add an item">
-					<ShopItemForm />
+					<ShopItemForm merchants={merchants} />
 				</Panel>
 			) : null}
 
@@ -212,14 +213,21 @@ async function CatalogueTab({
 						{items.map(item => (
 							<tr key={item.id}>
 								<td>
-									<span className="hl-mono" title={item.id}>
+									<Link className="hl-mono" href={`/admin/shop/${item.id}`} title={item.id}>
 										{item.id}
-									</span>
+									</Link>
 								</td>
 								<td>
 									<Link href={`/admin/shop/${item.id}`}>{item.name}</Link>
 								</td>
-								<td>{CATEGORY_LABEL[item.category]}</td>
+								<td>
+									<Link
+										href={catalogueHref({ category: item.category, gated, q }, status)}
+										title="Show only this category"
+									>
+										{CATEGORY_LABEL[item.category]}
+									</Link>
+								</td>
 								<td>{item.priceCredits}</td>
 								<td>
 									<ItemCostField costUsd={item.costUsd} itemId={item.id} />
@@ -234,25 +242,27 @@ async function CatalogueTab({
 										<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
 									</Link>
 								</td>
-								<td className="hl-shop-actions">
-									<LinkButton href={`/admin/shop/${item.id}`}>Edit</LinkButton>
-									{item.active ? (
-										<ActionButton
-											confirm="Retire this item? Existing orders keep working."
-											label="Retire"
-											method="DELETE"
-											url={`/api/admin/shop/items/${item.id}`}
-											variant="danger"
-										/>
-									) : (
-										<ActionButton
-											body={{ active: true }}
-											label="Re-list"
-											method="PATCH"
-											url={`/api/admin/shop/items/${item.id}`}
-											variant="primary"
-										/>
-									)}
+								<td>
+									{/* The stack is a div, not the cell: a flex cell stops stretching to its row, so its border sat short of the others. */}
+									<div className="hl-shop-actions">
+										{item.active ? (
+											<ActionButton
+												confirm="Retire this item? Existing orders keep working."
+												label="Retire"
+												method="DELETE"
+												url={`/api/admin/shop/items/${item.id}`}
+												variant="danger"
+											/>
+										) : (
+											<ActionButton
+												body={{ active: true }}
+												label="Re-list"
+												method="PATCH"
+												url={`/api/admin/shop/items/${item.id}`}
+												variant="primary"
+											/>
+										)}
+									</div>
 								</td>
 							</tr>
 						))}

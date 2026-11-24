@@ -36,6 +36,10 @@
 	--color-accent: var(--color-sky); /* primary blue */
 	--color-accent-bright: #61cdf1; /* the header sign */
 	--color-accent-ink: var(--color-navy);
+	/* Chart scale labels, one per series, so the dark console can lift each without touching the button and link inks. */
+	--color-axis-hours: var(--color-accent-ink);
+	--color-axis-teal: var(--color-teal-ink);
+	--color-axis-magenta: var(--color-magenta);
 
 	/* The console uses the platform's teal, mint and magenta by inheritance. */
 	--color-teal-soft: var(--color-teal-mid);
@@ -1481,10 +1485,26 @@
 		border: 2px solid var(--color-border);
 		border-radius: 999px;
 	}
-	.hl-chip:hover {
+	/* A link tab lights its border on hover. A pill tints its background instead, so a hover that lingers never looks like the selected accent. */
+	a.hl-chip:hover {
 		border-color: var(--color-accent);
 	}
-	.hl-chip[aria-current="true"] {
+	button.hl-chip:hover:not([aria-pressed="true"]) {
+		background: color-mix(in srgb, var(--color-surface-raised), var(--color-ink) 8%);
+	}
+	/* A toggle pill is a button, so it takes the page font and a pointer; pressed matches the selected tab. */
+	button.hl-chip {
+		font: inherit;
+		cursor: pointer;
+	}
+	/* A merchant pill's ID count reads quieter than its name, selected or not. */
+	.hl-chip .hl-merchant-count {
+		padding-left: 0.4rem;
+		font-weight: 400;
+		opacity: 0.7;
+	}
+	.hl-chip[aria-current="true"],
+	.hl-chip[aria-pressed="true"] {
 		color: var(--color-accent-ink);
 		background: var(--color-accent);
 		border-color: var(--color-accent);
@@ -1833,9 +1853,15 @@ html:has(.hl-admin) {
 	gap: 0.75rem 1rem;
 	align-items: start;
 }
+.hl-field-pair--wide {
+	grid-template-columns: minmax(0, 1fr);
+}
 @media (min-width: 48rem) {
 	.hl-field-pair {
 		grid-template-columns: repeat(2, minmax(0, 14rem));
+	}
+	.hl-field-pair--wide {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
 /* The card batch's item panels sit side by side as tiles once there is room for two beside the sidebar. */
@@ -1901,6 +1927,10 @@ html[data-theme="dark"] .ops-root:has(.hl-admin) {
 	--color-warning-ink: #f3b95f;
 	--color-danger-ink: #f38b8b; /* also the danger button's fill, with the dark card colour as its label */
 	--color-accent-bright: #2e8cae; /* the sign and primary buttons: sky-deep, so a light label keeps 3.3:1 */
+	/* Chart scale labels on the dark card, each lifted from its series hue to read as text. */
+	--color-axis-hours: #82cce8;
+	--color-axis-teal: #5dd4bd;
+	--color-axis-magenta: #e77ed6;
 	--color-mint: #008f78; /* selection and hover: the light ink-strong keeps 3.5:1 on it */
 	--color-paper: #0e0c18; /* the active sidebar pill turns light, so its label turns dark */
 	color-scheme: dark;

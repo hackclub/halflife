@@ -86,6 +86,16 @@ export function ReviewProject({ detail }: { detail: SubmissionDetailView }) {
 					<strong>Submission note:</strong> {submission.notes}
 				</Callout>
 			) : null}
+			{submission.changesSinceLast ? (
+				<Callout>
+					<strong>Changes since last review:</strong> {submission.changesSinceLast}
+				</Callout>
+			) : null}
+			{submission.extraNotes ? (
+				<Callout>
+					<strong>Maker&apos;s notes:</strong> {submission.extraNotes}
+				</Callout>
+			) : null}
 		</Panel>
 	)
 }

@@ -565,9 +565,39 @@ namespace public {
     updatedAt                TimestampString(3)        @onCreate(now()) @onUpdate(now())
     orders                   ShopOrder[]
     regionPrices             ShopItemRegionPrice[]
+    grantCardMerchants       ShopItemGrantCardMerchant[]
 
     @@index([active, sortOrder], map: "shop_item_active_sortOrder_idx")
     @@map("shop_item")
+  }
+
+  /// A vendor a grant card may spend at, entered once and linked to any number of shop items. merchantIds are the Stripe merchant network IDs (Yellow Pages values), with no cap on how many.
+  model GrantCardMerchant {
+    id          String                       @id @onCreate(cuid(2))
+    name        String
+    slug        String                       @unique
+    /// Where the IDs came from, for example "yellow_pages: Amazon". Free text, for whoever edits the merchant next.
+    sourceNote  String                       @default("")
+    merchantIds String[]                     @default([])
+    /// Set when the merchant is archived. An archived merchant keeps its IDs and can be restored, but no item can be linked to it.
+    archivedAt  TimestampString(3)?
+    createdAt   TimestampString(3)           @default(now())
+    updatedAt   TimestampString(3)           @onCreate(now()) @onUpdate(now())
+    shopItems   ShopItemGrantCardMerchant[]
+
+    @@map("grant_card_merchant")
+  }
+
+  /// Links a shop item to the merchants its grant card may spend at. The item's allowlist is the union of its merchants' IDs.
+  model ShopItemGrantCardMerchant {
+    shopItemId  String
+    merchantId  String
+    shopItem    ShopItem          @relation(fields: [shopItemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    merchant    GrantCardMerchant @relation(fields: [merchantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+    @@id([shopItemId, merchantId])
+    @@index([merchantId], map: "shop_item_grant_card_merchant_merchantId_idx")
+    @@map("shop_item_grant_card_merchant")
   }
 
   model ShopOrder {
@@ -718,6 +748,10 @@ namespace public {
     themeProjectId         String
     phase                  pg.enum(Phase)
     notes                  String?
+    /// The maker's optional notes for the reviewer about the project, written on the submit sheet. Any hand-in can carry them.
+    extraNotes             String?
+    /// What the maker says they changed since the review that returned this phase. Asked of every resubmission, and null on a first hand-in.
+    changesSinceLast       String?
     attachmentKeys         String?[]?             @default([])
     submittedInWeek        Int?
     scheduledWeek          Int?
@@ -1134,6 +1168,8 @@ namespace public {
     feedback               String
     reason                 String?
     technicalFeatures      String?
+    /// Ari's `review.justification.deflation_reason`: why the reviewer approved fewer hours than were claimed. Kept so the review screen and the Airtable backfills have it without replaying the webhook.
+    deflationReason        String?
     invalidated            Boolean               @default(false)
     invalidatedAt          TimestampString(3)?
     hoursOverride          Float?
