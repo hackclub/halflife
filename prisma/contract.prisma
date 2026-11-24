@@ -735,8 +735,6 @@ namespace public {
     shopOrder      ShopOrder?          @relation(fields: [shopOrderId], references: [id], onDelete: SetNull, onUpdate: Cascade, index: "ledger_entry_shopOrderId_kind_bucket_key")
 
     @@index([shopOrderId, kind, bucket], map: "ledger_entry_shopOrderId_kind_bucket_key", unique: true)
-    /// A project's returned parts card is credited at most once.
-    @@index([themeProjectId, kind], map: "ledger_entry_grantCardReturn_key", unique: true, where: sql`("kind" = 'GRANT_CARD_RETURN'::"LedgerKind")`)
     @@index([userId, createdAt], map: "ledger_entry_userId_createdAt_idx")
     @@index([userId, themeProjectId, kind], map: "ledger_entry_userId_themeProjectId_kind_idx")
     @@index([userId, bucket], map: "ledger_entry_userId_bucket_idx")
