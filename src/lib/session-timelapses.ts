@@ -77,7 +77,7 @@ export async function reconcileSessionTimelapses(
 				hackatimeProject: t.hackatimeProject,
 				playbackUrl: t.playbackUrl,
 				provider: "lapse",
-				// The recording's own start, and the project Lapse saw while it ran, so the hours rollup can intersect this window with Hackatime's spans instead of paying for the same sitting twice.
+				// The recording's own start, and the project Lapse saw while it ran, so the hours rollup can ask Hackatime about this window instead of paying for the same sitting twice.
 				recordedAt: t.recordedAt === null ? null : formatDbTimestamp(new Date(t.recordedAt)),
 				thumbnailUrl: t.thumbnailUrl,
 				workSessionId: sessionId,

@@ -1,5 +1,4 @@
 import "server-only"
-import { and } from "@prisma/orm-postgres/orm-client"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
@@ -7,8 +6,7 @@ import { displayName } from "@/lib/display-name"
 import { HoursSource, Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/lib/enums"
 import type { FundingState } from "@/lib/funding-state"
 import { designFundingStates } from "@/lib/funding-state-queries"
-import { rollUpHours } from "@/lib/hours"
-import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
+import { makerRecordings, rollUpHours } from "@/lib/hours"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import db from "@/lib/prisma8"
@@ -495,7 +493,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 				.where({ deletedAt: null, status: PostStatus.PUBLISHED }),
 		)
 		.include("hackatimeLinks", links =>
-			links.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase"),
+			links.select("cachedOverlap", "cachedSeconds", "hackatimeProject", "hoursApproved", "phase"),
 		)
 		.include("user", owner => owner.select("bannedAt", "displayName", "id", "name"))
 		.include("workSessions", sessions =>
@@ -546,22 +544,8 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		),
 	}
 
-	// The owner's recordings across every project, so a link here is deduplicated against a clip journalled on another week exactly as it is on their own page. Reading only this project's entries would count the same sitting twice whenever the clip was logged elsewhere.
-	const ownerSessions = await db.orm.public.WorkSession.where({ deletedAt: null })
-		.where(session =>
-			session.themeProject.some(ownerProject => and(ownerProject.deletedAt.isNull(), ownerProject.userId.eq(user.id))),
-		)
-		.select("hoursSource")
-		.include("timelapses", timelapse => timelapse.select("coveredSeconds", "hackatimeProject", "recordedAt"))
-		.all()
-	const recordings: RecordedWindow[] = ownerSessions.flatMap(session =>
-		session.hoursSource === HoursSource.HACKATIME_TRACKED
-			? []
-			: session.timelapses.flatMap(timelapse => {
-					const window = timelapseWindow(parseNullableTimestamp(timelapse.recordedAt), timelapse.coveredSeconds)
-					return window ? [{ hackatimeProject: timelapse.hackatimeProject, window }] : []
-				}),
-	)
+	// Every recording the owner holds under a Hackatime project name, on any project, phase or entry, so a link here is deduplicated against a clip journalled on another week exactly as it is on their own page.
+	const recordings = await makerRecordings(db, user.id)
 
 	// The same total the owner's page and their profile show. A visitor reading only the journal entries would see a
 	// different number from the one beside the same project on the maker's profile, which is the discrepancy this answers.
@@ -573,11 +557,6 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 					hoursApproved: session.hoursApproved,
 					hoursClaimed: session.hoursClaimed,
 					hoursSource: session.hoursSource,
-					timelapses: session.timelapses.map(timelapse => ({
-						coveredSeconds: timelapse.coveredSeconds,
-						hackatimeProject: timelapse.hackatimeProject,
-						recordedAt: parseNullableTimestamp(timelapse.recordedAt),
-					})),
 				})),
 			fetched.hackatimeLinks.filter(link => link.phase === phase),
 			phase === Phase.DESIGN ? fetched.designApprovedHours : fetched.approvedHours,

@@ -15,8 +15,7 @@ import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { HardwareExperience, HoursSource, type ParticipantGoal, Phase, PhaseStatus, Role, Theme } from "@/lib/enums"
 import { designFundingStates } from "@/lib/funding-state-queries"
-import { rollUpHours } from "@/lib/hours"
-import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
+import { makerRecordings, rollUpHours } from "@/lib/hours"
 import { round2 } from "@/lib/money"
 import { getUserRoles, hasPermission, hasRole, Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
@@ -237,8 +236,8 @@ async function loadStoreRows(userId: string) {
 		db.orm.public.HackatimeLink.where(link =>
 			link.themeProject.some(project => and(project.deletedAt.isNull(), project.userId.eq(userId))),
 		)
-			// cachedSpans comes along because `rollUpHours` is what the ledger uses, and a trail that reported a different Hackatime total from the one a reviewer approves is the disagreement this file already warns about – the same minutes must not be payable twice on one screen and once off it.
-			.select("cachedSeconds", "cachedSpans", "hackatimeProject", "hoursApproved", "phase", "themeProjectId")
+			// cachedOverlap comes along because `rollUpHours` is what the ledger uses, and a trail that reported a different Hackatime total from the one a reviewer approves is the disagreement this file already warns about – the same minutes must not be payable twice on one screen and once off it.
+			.select("cachedOverlap", "cachedSeconds", "hackatimeProject", "hoursApproved", "phase", "themeProjectId")
 			.all(),
 		db.orm.public.Post.where({ deletedAt: null, userId })
 			.orderBy(post => post.createdAt.asc())
@@ -351,15 +350,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		withFields(submission, { createdAt: parseDbTimestamp(submission.createdAt) }),
 	)
 
-	// Every recording this maker has, whatever project or phase it was attached to, each with the Hackatime project it named. A link finds the ones made under its own project by that name (`windowsForLink`), which is how a clip journalled in one week is deduplicated against a link in another.
-	const recordings: RecordedWindow[] = sessions.flatMap(s =>
-		s.hoursSource === HoursSource.HACKATIME_TRACKED
-			? []
-			: s.timelapses.flatMap(t => {
-					const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
-					return window ? [{ hackatimeProject: t.hackatimeProject, window }] : []
-				}),
-	)
+	// Every recording this maker holds under a Hackatime project name, on any project, phase or entry. A link is measured against the ones that name it, which is how a clip journalled in one week is deduplicated against a link in another.
+	const recordings = await makerRecordings(db, userId)
 
 	const byTheme = new Map(projects.map(p => [p.theme, p]))
 	const progress: { [_: string]: CheckpointSnapshot } = {}

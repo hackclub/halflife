@@ -7,7 +7,7 @@ import { scheduledWeekFor } from "@/lib/config/program"
 import { HoursSource, Phase, PhaseStatus, type Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withWriteSession } from "@/lib/guards"
-import { refreshOverlapSpans } from "@/lib/hours"
+import { refreshOverlap } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { lockKey } from "@/lib/locks"
 import { EDITABLE_PHASE_STATUSES, statusFor } from "@/lib/phase"
@@ -167,8 +167,8 @@ export const PATCH = withWriteSession(async (req: Request, { params, gate }: Par
 		await recomputeWeek(gate.user.id, session.weekNumber)
 	if (data.hoursClaimed !== undefined || movingDay) await recomputeActiveDays(gate.user.id)
 
-	// Attaching, dropping or swapping a recording moves the window Hackatime's hours are deduplicated against, so the cached spans covering it are refetched off the response path. `addIds` is the narrower truth for a pure reattach of clips already on this entry, but a removal narrows the window just as much, so the cache is warmed whenever the clip set was touched at all.
-	if (want !== null) after(() => refreshOverlapSpans(id, session.phase))
+	// Attaching, dropping or swapping a recording moves the window Hackatime's hours are deduplicated against, so the overlap it changes is measured again off the response path. `addIds` is the narrower truth for a pure reattach of clips already on this entry, but a removal narrows the window just as much, so the cache is warmed whenever the clip set was touched at all.
+	if (want !== null) after(() => refreshOverlap(id, session.phase))
 
 	after(() => scheduleRepoSync(id))
 

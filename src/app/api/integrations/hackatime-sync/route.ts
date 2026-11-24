@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { ok } from "@/lib/api"
 import { refreshLinkCache } from "@/lib/hackatime"
-import { warmLinkSpans } from "@/lib/hours"
+import { warmLinkOverlap } from "@/lib/hours"
 import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 import db from "@/lib/prisma8"
 import { recordSyncRun } from "@/lib/sync-run-log"
@@ -25,9 +25,9 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		//
 		// NULLS FIRST is not a detail: the partial index on cachedAt over the links waiting for a reviewer is built in that order, so this walks the index and takes the batch it needs rather than sorting the table four times an hour.
 		.orderBy(link => link.cachedAt.asc({ nulls: "first" }))
-		// cachedSpans rides along so the warm below can tell a link that already answers from one whose cache was never written or was fetched for a narrower window, and the owner's id so a recording attached under another project can be found and warmed for.
+		// cachedOverlap rides along so the warm below can tell a link whose recordings are already measured from one that is not, and the owner's id so a recording attached under another project can be found and warmed for.
 		.include("themeProject", project => project.select("userId"))
-		.select("cachedSpans", "hackatimeProject", "id", "phase", "themeProjectId")
+		.select("cachedOverlap", "hackatimeProject", "id", "phase", "themeProjectId")
 		.limit(BATCH_SIZE)
 		.all()
 
@@ -41,14 +41,14 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		else updated++
 	}
 
-	// The tracked intervals the deduplication depends on, warmed here rather than only when a recording is attached or a reviewer approves. Without this the seconds above are fresh while the spans stay cold, and every screen that reads the cache in between reports the same sitting twice – which is the complaint this run exists to end.
-	const spans = await warmLinkSpans(
+	// The Hackatime overlap the deduplication depends on, warmed here rather than only when a recording is attached or a reviewer approves. Without this the seconds above are fresh while the overlap stays unmeasured, and every screen that reads the cache in between reports the same sitting twice – which is the complaint this run exists to end.
+	const overlap = await warmLinkOverlap(
 		// The FK makes themeProject non-null in the database, but the contract types every relation as nullable; an orphan row (which the FK forbids) is skipped rather than warming against an empty id.
 		links.flatMap(l =>
 			l.themeProject
 				? [
 						{
-							cachedSpans: l.cachedSpans,
+							cachedOverlap: l.cachedOverlap,
 							hackatimeProject: l.hackatimeProject,
 							id: l.id,
 							phase: l.phase,
@@ -64,9 +64,9 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		durationMs: Date.now() - started,
 		failed,
 		limited: links.length === BATCH_SIZE,
+		overlapFailed: overlap.failed,
+		overlapWarmed: overlap.warmed,
 		scanned: links.length,
-		spansFailed: spans.failed,
-		spansWarmed: spans.warmed,
 		updated,
 	}
 	await recordSyncRun("hackatime", summary)

@@ -7,7 +7,7 @@ import { scheduledWeekFor } from "@/lib/config/program"
 import { HoursSource, MediaType, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import { type AuthedContext, withSession, withWriteSession } from "@/lib/guards"
-import { refreshOverlapSpans } from "@/lib/hours"
+import { refreshOverlap } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { lockKey } from "@/lib/locks"
 import { decodeCursor, encodeCursor, paginationQuery } from "@/lib/pagination"
@@ -304,8 +304,8 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 	// The new entry lands in the repo, after this response has gone out. The scheduling read is cheap and no-ops for a project with the sync off.
 	after(() => scheduleRepoSync(id))
 
-	// Same reasoning, for the overlap cache: a recording just widened the window the Hackatime hours are deduplicated against, so the spans covering it are fetched here rather than at approval – where the reviewer would otherwise see one Hackatime total and approve a different one.
-	if (timelapses.length > 0) after(() => refreshOverlapSpans(id, data.phase))
+	// Same reasoning, for the overlap measurement: a recording just widened the window the Hackatime hours are deduplicated against, so the overlap it changes is measured here rather than at approval – where the reviewer would otherwise see one Hackatime total and approve a different one.
+	if (timelapses.length > 0) after(() => refreshOverlap(id, data.phase))
 
 	return ok({ session }, { status: 201 })
 })

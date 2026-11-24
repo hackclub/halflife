@@ -189,11 +189,10 @@ async function main() {
 	//
 	// A maker can journal and record a sitting in one week and link the tracked time on another. The recording and the link live on different rows, so nothing used to compare them and the sitting was paid for on both sides. The recording's own Hackatime project is what pairs them.
 	const crossT = 1_700_000_000_000
+	// Hackatime's own answer for the recording window: 2h tracked inside it on the macropad project.
 	await db.orm.public.HackatimeLink.where({ themeProjectId: pcb.id }).updateAll({
-		cachedSpans: {
-			from: crossT / 1000 - 3600,
-			spans: [{ end: crossT / 1000 + 7200, start: crossT / 1000 }],
-			to: crossT / 1000 + 7200 + 3600,
+		cachedOverlap: {
+			windows: [{ end: crossT / 1000 + 7200, seconds: 7200, start: crossT / 1000 }],
 		},
 	})
 	const cad = await db.orm.public.ThemeProject.where({ theme: Theme.CAD, userId: user.id }).firstOrThrow()

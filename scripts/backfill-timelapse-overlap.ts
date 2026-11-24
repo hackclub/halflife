@@ -1,6 +1,6 @@
 import "../src/lib/auth"
 import type { Phase } from "../src/lib/enums"
-import { refreshOverlapSpans } from "../src/lib/hours"
+import { refreshOverlap } from "../src/lib/hours"
 import { lapseCredentials, verifyOwnTimelapses } from "../src/lib/lapse"
 import db from "../src/lib/prisma8"
 import { formatDbTimestamp } from "../src/lib/time"
@@ -80,7 +80,7 @@ async function main() {
 		}
 	}
 
-	// Warm the cached spans for every phase that just gained a window, so the review screen shows the deduplicated total rather than discovering the overlap at approval time.
+	// Measure the Hackatime overlap for every phase that just gained a window, so the review screen shows the deduplicated total rather than discovering the overlap at approval time.
 	const phases = new Map<string, { themeProjectId: string; phase: Phase }>()
 	for (const row of rows) {
 		const session = row.workSession
@@ -91,7 +91,7 @@ async function main() {
 		})
 	}
 
-	for (const target of phases.values()) await refreshOverlapSpans(target.themeProjectId, target.phase)
+	for (const target of phases.values()) await refreshOverlap(target.themeProjectId, target.phase)
 
 	console.log(
 		`timelapse overlap: ${filled} of ${rows.length} recordings given a start time, ${unfillable} left undeduplicated, ${((Date.now() - started) / 1000).toFixed(1)}s`,
