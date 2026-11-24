@@ -248,3 +248,11 @@ describe("rsvpSchema / subscribeSchema", () => {
 		expect(shopItemSchema.safeParse({ ...validItem, category: ShopItemCategory.PRINTER }).success).toBe(true)
 	})
 })
+
+describe("grantCardMerchantUpdateSchema", () => {
+	test("archiving alone sends nothing else, so the IDs and note are left as they are", () => {
+		const parsed = grantCardMerchantUpdateSchema.safeParse({ archived: true })
+		expect(parsed.success).toBe(true)
+		if (parsed.success) expect(parsed.data).toEqual({ archived: true })
+	})
+})
