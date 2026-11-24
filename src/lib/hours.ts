@@ -281,9 +281,10 @@ export async function refreshOverlap(themeProjectId: string, phase: Phase): Prom
 		const hackatimeUserId = project?.user ? project.user.hackatimeUserId : null
 		if (!hackatimeUserId || !project || links.length === 0) return
 
-		const week = await phaseWeekWindow(project.theme, phase, project.userId, themeProjectId)
 		const recordings = await makerRecordings(db, project.userId)
-		for (const link of links) await warmLink(link, hackatimeUserId, week, recordings)
+		// The week is read once for the phase, however many links it covers.
+		const week = phaseWeekWindow(project.theme, phase, project.userId, themeProjectId)
+		for (const link of links) await warmLink(link, hackatimeUserId, () => week, recordings)
 	} catch {
 		// A cache warm that failed is the same as one that never ran.
 	}
@@ -325,8 +326,8 @@ export async function warmLinkOverlap(
 	])
 	const projectById = new Map(projects.map(p => [p.id, p] as const))
 
-	// The week each project-phase counts is the same for every link on it, so it is read once per batch.
-	const weeks = new Map<string, { fromSeconds: number; toSeconds: number } | null>()
+	// The week each project-phase counts is the same for every link on it, so it is read at most once per batch, and only for a link that needs measuring.
+	const weeks = new Map<string, Promise<{ fromSeconds: number; toSeconds: number } | null>>()
 	let warmed = 0
 	let failed = 0
 	for (const target of targets) {
@@ -334,11 +335,11 @@ export async function warmLinkOverlap(
 		const hackatimeUserId = project?.user?.hackatimeUserId ?? null
 		if (!project || !hackatimeUserId) continue
 		const k = key(target.themeProjectId, target.phase)
-		if (!weeks.has(k)) weeks.set(k, await phaseWeekWindow(project.theme, target.phase, project.userId, project.id))
+		if (!weeks.has(k)) weeks.set(k, phaseWeekWindow(project.theme, target.phase, project.userId, project.id))
 		const outcome = await warmLink(
 			{ cachedOverlap: target.cachedOverlap, hackatimeProject: target.hackatimeProject, id: target.id },
 			hackatimeUserId,
-			weeks.get(k) ?? null,
+			() => weeks.get(k) ?? Promise.resolve(null),
 			recordingsByUser.get(target.userId) ?? [],
 		)
 		if (outcome === "warmed") warmed += 1
@@ -355,14 +356,14 @@ export async function warmLinkOverlap(
 async function warmLink(
 	link: { cachedOverlap?: unknown; hackatimeProject: string; id: string },
 	hackatimeUserId: string,
-	week: { fromSeconds: number; toSeconds: number } | null,
+	weekOf: () => Promise<{ fromSeconds: number; toSeconds: number } | null>,
 	recordings: readonly RecordedWindow[],
 ): Promise<"warmed" | "cached" | "failed" | "none"> {
 	const windows = overlapWindowsFor(recordings, link.hackatimeProject)
 	if (windows.length === 0) return "none"
 	if (overlapFromCache(windows, parseCachedOverlap(link.cachedOverlap)) !== null) return "cached"
 
-	const measured = await measureOverlap(hackatimeUserId, link.hackatimeProject, windows, week)
+	const measured = await measureOverlap(hackatimeUserId, link.hackatimeProject, windows, await weekOf())
 	if (measured.error) {
 		// Recorded, never used to decide anything. The next run tries again, and until it succeeds the reading is flagged as unchecked rather than quietly believed.
 		await db.orm.public.HackatimeLink.where({ id: link.id })
