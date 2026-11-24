@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { unionMerchantIds } from "./grant-card-merchants"
+import { merchantSlug, unionMerchantIds } from "./grant-card-merchants"
 
 describe("unionMerchantIds", () => {
 	test("no merchants means an unrestricted card", () => {
@@ -16,5 +16,20 @@ describe("unionMerchantIds", () => {
 
 	test("a merchant with no IDs adds nothing", () => {
 		expect(unionMerchantIds([[], ["X"]])).toEqual(["X"])
+	})
+})
+
+describe("merchantSlug", () => {
+	test("lowercases and hyphenates a name", () => {
+		expect(merchantSlug("Costco Wholesale")).toBe("costco-wholesale")
+		expect(merchantSlug("Robu.in")).toBe("robu-in")
+	})
+
+	test("drops accents and edge punctuation", () => {
+		expect(merchantSlug("  Café Déjà!  ")).toBe("cafe-deja")
+	})
+
+	test("falls back to a fixed key when nothing is left", () => {
+		expect(merchantSlug("!!!")).toBe("merchant")
 	})
 })
