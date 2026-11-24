@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { HttpError } from "@/lib/errors"
 import {
 	createGrantCardMerchant,
+	listGrantCardMerchantOptions,
 	setGrantCardMerchantArchived,
 	setItemMerchants,
 	updateGrantCardMerchant,
@@ -88,5 +89,13 @@ describe.skipIf(!scratch)("grant card merchants against a database", () => {
 		const error = await link([beta, "no-such-merchant"]).catch((caught: unknown) => caught)
 		expect((error as HttpError).code).toBe("VALIDATION_FAILED")
 		expect(await flatIds()).toEqual(["2", "3"])
+	})
+
+	test("an archived merchant is not offered to items, and comes back when restored", async () => {
+		await link([])
+		await setGrantCardMerchantArchived(beta, true, actor)
+		expect((await listGrantCardMerchantOptions()).map(option => option.id)).not.toContain(beta)
+		await setGrantCardMerchantArchived(beta, false, actor)
+		expect((await listGrantCardMerchantOptions()).map(option => option.id)).toContain(beta)
 	})
 })
