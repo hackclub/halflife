@@ -1485,12 +1485,9 @@
 		border: 2px solid var(--color-border);
 		border-radius: 999px;
 	}
-	/* A link tab lights its border on hover. A pill tints its background instead, so a hover that lingers never looks like the selected accent. */
+	/* A link tab lights its border on hover. Merchant pills take no hover style: a hover that lingers on one of them read as selected. */
 	a.hl-chip:hover {
 		border-color: var(--color-accent);
-	}
-	button.hl-chip:hover:not([aria-pressed="true"]) {
-		background: color-mix(in srgb, var(--color-surface-raised), var(--color-ink) 8%);
 	}
 	/* A toggle pill is a button, so it takes the page font and a pointer; pressed matches the selected tab. */
 	button.hl-chip {
