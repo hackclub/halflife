@@ -5,6 +5,19 @@ export function unionMerchantIds(lists: readonly (readonly string[])[]): string[
 	return [...new Set(lists.flat())]
 }
 
+/** Which links to add and which to remove to turn the current merchant links into the wanted ones. */
+export function diffMerchantLinks(
+	current: readonly string[],
+	wanted: readonly string[],
+): { add: string[]; remove: string[] } {
+	const have = new Set(current)
+	const want = new Set(wanted)
+	return {
+		add: [...want].filter(id => !have.has(id)),
+		remove: [...have].filter(id => !want.has(id)),
+	}
+}
+
 /** The stable key a merchant is looked up by: its name, lowercased, with runs of anything else as a hyphen. */
 export function merchantSlug(name: string): string {
 	const slug = name

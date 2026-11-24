@@ -2,7 +2,7 @@ import "server-only"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
 import { syncItemMerchantIds } from "@/lib/grant-card-merchant-links"
-import { merchantSlug } from "@/lib/grant-card-merchants"
+import { diffMerchantLinks, merchantSlug } from "@/lib/grant-card-merchants"
 import db, { type DbOrTx } from "@/lib/prisma8"
 
 interface Actor {
@@ -28,15 +28,13 @@ export async function setItemMerchants(
 	}
 
 	const current = await tx.orm.public.ShopItemGrantCardMerchant.where({ shopItemId }).select("merchantId").all()
-	const have = new Set(current.map(link => link.merchantId))
-	const want = new Set(wanted)
-	for (const link of current) {
-		if (!want.has(link.merchantId))
-			await tx.orm.public.ShopItemGrantCardMerchant.where({ merchantId: link.merchantId, shopItemId }).delete()
-	}
-	for (const merchantId of wanted) {
-		if (!have.has(merchantId)) await tx.orm.public.ShopItemGrantCardMerchant.create({ merchantId, shopItemId })
-	}
+	const { add, remove } = diffMerchantLinks(
+		current.map(link => link.merchantId),
+		wanted,
+	)
+	for (const merchantId of remove)
+		await tx.orm.public.ShopItemGrantCardMerchant.where({ merchantId, shopItemId }).delete()
+	for (const merchantId of add) await tx.orm.public.ShopItemGrantCardMerchant.create({ merchantId, shopItemId })
 
 	return syncItemMerchantIds(tx, shopItemId)
 }

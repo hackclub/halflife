@@ -1,5 +1,23 @@
 import { describe, expect, test } from "bun:test"
-import { merchantSlug, unionMerchantIds } from "./grant-card-merchants"
+import { diffMerchantLinks, merchantSlug, unionMerchantIds } from "./grant-card-merchants"
+
+describe("diffMerchantLinks", () => {
+	test("adds the wanted merchants that are not linked yet", () => {
+		expect(diffMerchantLinks([], ["a", "b"])).toEqual({ add: ["a", "b"], remove: [] })
+	})
+
+	test("removes links no longer wanted and keeps the rest", () => {
+		expect(diffMerchantLinks(["a", "b"], ["b", "c"])).toEqual({ add: ["c"], remove: ["a"] })
+	})
+
+	test("does nothing when the links already match", () => {
+		expect(diffMerchantLinks(["a", "b"], ["b", "a"])).toEqual({ add: [], remove: [] })
+	})
+
+	test("clearing every link removes them all", () => {
+		expect(diffMerchantLinks(["a", "b"], [])).toEqual({ add: [], remove: ["a", "b"] })
+	})
+})
 
 describe("unionMerchantIds", () => {
 	test("no merchants means an unrestricted card", () => {
