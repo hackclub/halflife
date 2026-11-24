@@ -712,6 +712,10 @@ namespace public {
     themeProjectId         String
     phase                  pg.enum(Phase)
     notes                  String?
+    /// The maker's optional notes for the reviewer about the project, written on the submit sheet. Any hand-in can carry them.
+    extraNotes             String?
+    /// What the maker says they changed since the review that returned this phase. Asked of every resubmission, and null on a first hand-in.
+    changesSinceLast       String?
     attachmentKeys         String?[]?             @default([])
     submittedInWeek        Int?
     scheduledWeek          Int?

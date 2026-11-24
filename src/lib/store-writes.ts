@@ -19,6 +19,8 @@ const PostedReelBody = z.object({ post: z.object({ id: z.string() }).optional() 
 /** The extra statements a hand-in can carry. */
 export interface SubmitExtras {
 	attachmentKeys?: string[]
+	changesSinceLast?: string
+	extraNotes?: string
 	fundingDeclined?: boolean
 	noMicrocontroller?: boolean
 	notes?: string
@@ -203,6 +205,8 @@ export function useStoreWrites({ facts, router, setFacts }: StoreWritesOptions):
 					body: JSON.stringify({
 						phase: route.phase,
 						...(extra.notes ? { notes: extra.notes } : {}),
+						...(extra.extraNotes ? { extraNotes: extra.extraNotes } : {}),
+						...(extra.changesSinceLast ? { changesSinceLast: extra.changesSinceLast } : {}),
 						attachmentKeys: extra.attachmentKeys ?? [],
 						// Only ever sent as true, so a stale tick from a cart that has since shrunk cannot ride along on the next one. Same for a declined grant: the server records what this hand-in said, not what a previous one did.
 						...(extra.partialFundingAccepted ? { partialFundingAccepted: true } : {}),

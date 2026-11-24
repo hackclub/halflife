@@ -117,6 +117,14 @@ function accessOpenOnClient(
 	return false
 }
 
+/** What the maker wrote for the reviewer on the submit sheet, beyond the build write-up in `notes`. */
+export interface SubmissionMakerNotes {
+	/** What changed since the review that returned this phase. Required on a resubmission, and dropped on a first hand-in. */
+	changesSinceLast?: string | null
+	/** Optional notes about the project, on any hand-in. */
+	extraNotes?: string | null
+}
+
 /** Options for a submission made on someone else's behalf. `force` skips the programme's timing gates and the repo checks, and nothing else. */
 export interface SubmitOptions {
 	force?: boolean
@@ -131,6 +139,7 @@ export async function submitPhase(
 	partialFundingAccepted = false,
 	fundingDeclined = false,
 	noMicrocontroller = false,
+	makerNotes: SubmissionMakerNotes = {},
 	options: SubmitOptions = {},
 ): Promise<Omit<Models.public_PhaseSubmission, "claim" | "dispute" | "reviews" | "themeProject">> {
 	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: themeProjectId, userId }).first()
@@ -153,6 +162,12 @@ export async function submitPhase(
 
 	const eligible = canSubmitPhase(project, phase, budget.resubmissions)
 	if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
+
+	// A resubmission says what changed since the review that returned it, as Fabricate asks: the reviewer reads it first, and it is what the old "I fixed everything" box stood in for. A forced submit is an admin's, with nothing for the maker to answer. A first hand-in has no last review, so anything sent is dropped rather than stored.
+	const resubmitting = statusFor(project, phase) === PhaseStatus.update_requested
+	const changesSinceLast = resubmitting ? (makerNotes.changesSinceLast ?? null) : null
+	if (resubmitting && !changesSinceLast && !options.force)
+		throw new HttpError("VALIDATION_FAILED", "Say what you changed since the last submission before resubmitting")
 
 	// The Ari SDK refuses a ship without a description. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
 	//
@@ -310,6 +325,8 @@ export async function submitPhase(
 
 		return tx.orm.public.PhaseSubmission.create({
 			attachmentKeys,
+			changesSinceLast,
+			extraNotes: makerNotes.extraNotes ?? null,
 			fundingCapUsd: agreedPartial ? funding.capUsd : null,
 			fundingDeclined: phase === Phase.DESIGN && fundingDeclined,
 			noMicrocontroller: firmwareWaived,

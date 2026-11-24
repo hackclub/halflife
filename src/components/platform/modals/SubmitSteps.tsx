@@ -379,23 +379,25 @@ export function PartsStep({ sheet }: { sheet: SubmitSheet }) {
 export function ReelStep({ sheet }: { sheet: SubmitSheet }) {
 	const {
 		acknowledgedAll,
-		acknowledgedFixed,
 		acknowledgedLimit,
 		acknowledgedNoMore,
 		bomTotal,
+		changesSinceLast,
 		clip,
 		closingPostId,
+		extraNotes,
 		isBuild,
 		reelCheckpointId,
 		resubmitting,
 		reuseClosingReel,
 		setAcknowledgedAll,
-		setAcknowledgedFixed,
 		setAcknowledgedLimit,
 		setAcknowledgedNoMore,
+		setChangesSinceLast,
 		setClip,
 		setClipUrl,
 		setClosingPostId,
+		setExtraNotes,
 		setWorks,
 		setWriteup,
 		tier,
@@ -476,6 +478,42 @@ export function ReelStep({ sheet }: { sheet: SubmitSheet }) {
 				</div>
 			)}
 
+			{/* What the reviewer reads first, beside the work. A resubmission says what changed since the review that returned it, as Fabricate asks; the notes are optional on any hand-in. */}
+			<div className="mt-6 grid gap-4">
+				{resubmitting && (
+					<Field
+						hint="Go through the reviewer's feedback and say how you addressed each point. Reviewers read this first."
+						id="changes-since-last"
+						label="What did you change since the last submission?"
+					>
+						<textarea
+							className={cx(inputClass, "resize-none")}
+							id="changes-since-last"
+							maxLength={4000}
+							onChange={e => setChangesSinceLast(e.target.value)}
+							placeholder="Added the cart screenshots for both vendors, moved the decoupling caps next to the RP2040, and pushed the KiCad project files the reviewer couldn't find."
+							rows={4}
+							value={changesSinceLast}
+						/>
+					</Field>
+				)}
+				<Field
+					hint="Optional. Anything the reviewer should know that isn't already in the project or reels."
+					id="extra-notes"
+					label="Extra notes about your project"
+				>
+					<textarea
+						className={cx(inputClass, "resize-none")}
+						id="extra-notes"
+						maxLength={4000}
+						onChange={e => setExtraNotes(e.target.value)}
+						placeholder="The enclosure is in a separate folder because it's printed in two parts. Hackatime missed my first evening, so that session is journaled by hand."
+						rows={3}
+						value={extraNotes}
+					/>
+				</Field>
+			</div>
+
 			<div className="mt-6 flex flex-wrap items-center gap-2.5">
 				<Chip tone="teal">
 					<IconCheck className="text-[0.9rem]" /> Files attached
@@ -493,12 +531,10 @@ export function ReelStep({ sheet }: { sheet: SubmitSheet }) {
 
 			<SubmissionAcknowledgements
 				acknowledgedAll={acknowledgedAll}
-				acknowledgedFixed={acknowledgedFixed}
 				acknowledgedLimit={acknowledgedLimit}
 				acknowledgedNoMore={acknowledgedNoMore}
 				resubmitting={resubmitting}
 				setAcknowledgedAll={setAcknowledgedAll}
-				setAcknowledgedFixed={setAcknowledgedFixed}
 				setAcknowledgedLimit={setAcknowledgedLimit}
 				setAcknowledgedNoMore={setAcknowledgedNoMore}
 			/>

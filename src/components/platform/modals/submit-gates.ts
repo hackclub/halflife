@@ -5,6 +5,8 @@ import { SUBMISSION_LIMIT } from "@/lib/resubmissions"
 export interface SubmitGates {
 	acknowledgementsComplete: boolean
 	carts: number
+	/** What the maker says changed since the last review. Only asked of a resubmission. */
+	changesSinceLast: string
 	clip: string | null
 	descriptionBlocker: string
 	descriptionReady: boolean
@@ -14,6 +16,7 @@ export interface SubmitGates {
 	isBuild: boolean
 	outOfSubmissions: boolean
 	repoReady: boolean
+	resubmitting: boolean
 	starterDescriptionBlocker: string
 	starterDescriptionReady: boolean
 	step: number
@@ -29,6 +32,7 @@ export interface SubmitGates {
 export function canAdvance({
 	acknowledgementsComplete,
 	carts,
+	changesSinceLast,
 	clip,
 	descriptionReady,
 	fundingDeclined,
@@ -37,12 +41,14 @@ export function canAdvance({
 	isBuild,
 	outOfSubmissions,
 	repoReady,
+	resubmitting,
 	starterDescriptionReady,
 	step,
 	tierBlocked,
 	works,
 	writeup,
 }: SubmitGates): boolean {
+	const changesReady = !resubmitting || changesSinceLast.trim().length > 0
 	return Boolean(
 		step === 1
 			? repoReady
@@ -52,6 +58,7 @@ export function canAdvance({
 					&& starterDescriptionReady
 					&& !outOfSubmissions
 					&& acknowledgementsComplete
+					&& changesReady
 					&& (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
@@ -63,7 +70,8 @@ export function canAdvance({
 						&& descriptionReady
 						&& starterDescriptionReady
 						&& !outOfSubmissions
-						&& acknowledgementsComplete,
+						&& acknowledgementsComplete
+						&& changesReady,
 	)
 }
 
@@ -72,6 +80,7 @@ export function nextBlocker(gates: SubmitGates): string | null {
 	const {
 		acknowledgementsComplete,
 		carts,
+		changesSinceLast,
 		clip,
 		descriptionBlocker,
 		descriptionReady,
@@ -80,6 +89,7 @@ export function nextBlocker(gates: SubmitGates): string | null {
 		hasCover,
 		isBuild,
 		outOfSubmissions,
+		resubmitting,
 		starterDescriptionBlocker,
 		starterDescriptionReady,
 		step,
@@ -92,6 +102,8 @@ export function nextBlocker(gates: SubmitGates): string | null {
 	if (step === 1) return null
 	if (outOfSubmissions)
 		return `All ${SUBMISSION_LIMIT} submissions for this phase are used. Dispute the review or ask a reviewer in Slack.`
+	if (step === total && resubmitting && !changesSinceLast.trim())
+		return "Say what you changed since the last submission before resubmitting."
 	if (step === total && !acknowledgementsComplete) return "Tick every acknowledgement above before submitting."
 	// These two block whichever of the later steps is showing.
 	if (tierBlocked)
