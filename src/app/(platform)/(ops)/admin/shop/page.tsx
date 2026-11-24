@@ -13,7 +13,6 @@ import {
 	EmptyState,
 	Field,
 	FilterBar,
-	LinkButton,
 	PageHeader,
 	Panel,
 	Select,
@@ -85,9 +84,6 @@ export default async function AdminShopPage({ searchParams }: Props) {
 			<PageHeader
 				actions={
 					<div className="hl-row">
-						<Link className="hl-chip" href="/admin/shop/merchants">
-							Merchants
-						</Link>
 						{TABS.map((item, index) => (
 							<Link
 								aria-current={item.id === tab || undefined}
@@ -217,14 +213,21 @@ async function CatalogueTab({
 						{items.map(item => (
 							<tr key={item.id}>
 								<td>
-									<span className="hl-mono" title={item.id}>
+									<Link className="hl-mono" href={`/admin/shop/${item.id}`} title={item.id}>
 										{item.id}
-									</span>
+									</Link>
 								</td>
 								<td>
 									<Link href={`/admin/shop/${item.id}`}>{item.name}</Link>
 								</td>
-								<td>{CATEGORY_LABEL[item.category]}</td>
+								<td>
+									<Link
+										href={catalogueHref({ category: item.category, gated, q }, status)}
+										title="Show only this category"
+									>
+										{CATEGORY_LABEL[item.category]}
+									</Link>
+								</td>
 								<td>{item.priceCredits}</td>
 								<td>
 									<ItemCostField costUsd={item.costUsd} itemId={item.id} />
@@ -240,7 +243,6 @@ async function CatalogueTab({
 									</Link>
 								</td>
 								<td className="hl-shop-actions">
-									<LinkButton href={`/admin/shop/${item.id}`}>Edit</LinkButton>
 									{item.active ? (
 										<ActionButton
 											confirm="Retire this item? Existing orders keep working."

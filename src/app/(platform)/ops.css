@@ -1488,7 +1488,19 @@
 	.hl-chip:hover {
 		border-color: var(--color-accent);
 	}
-	.hl-chip[aria-current="true"] {
+	/* A toggle pill is a button, so it takes the page font and a pointer; pressed matches the selected tab. */
+	button.hl-chip {
+		font: inherit;
+		cursor: pointer;
+	}
+	/* A merchant pill's ID count reads quieter than its name, selected or not. */
+	.hl-chip .hl-merchant-count {
+		padding-left: 0.4rem;
+		font-weight: 400;
+		opacity: 0.7;
+	}
+	.hl-chip[aria-current="true"],
+	.hl-chip[aria-pressed="true"] {
 		color: var(--color-accent-ink);
 		background: var(--color-accent);
 		border-color: var(--color-accent);
