@@ -26,6 +26,10 @@ export const POST = withWriteSession(async (req: Request, { params, gate }: Para
 		parsed.data.partialFundingAccepted,
 		parsed.data.fundingDeclined,
 		parsed.data.noMicrocontroller,
+		{
+			changesSinceLast: sanitizeOptional(parsed.data.changesSinceLast),
+			extraNotes: sanitizeOptional(parsed.data.extraNotes),
+		},
 	)
 
 	await markSubmission(gate.user.id)

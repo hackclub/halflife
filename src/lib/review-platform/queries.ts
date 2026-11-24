@@ -728,6 +728,7 @@ export async function getReviewDetail(
 			ageDays: ageDays(submittedAt, now),
 			canAdjustHours,
 			canTakeBack,
+			changesSinceLast: row.changesSinceLast,
 			claimExpiresAt: claimLive && claimExpires !== null ? claimExpires.toISOString() : null,
 			claimedByViewer: claimLive && row.claim?.reviewerId === viewer.id,
 			claimerName: claimLive ? displayName(row.claim?.reviewer, "Another reviewer") : null,
@@ -752,6 +753,7 @@ export async function getReviewDetail(
 									},
 					}
 				: null,
+			extraNotes: row.extraNotes,
 			fundingCapUsd: row.fundingCapUsd,
 			fundingDeclined: row.fundingDeclined,
 			id: row.id,

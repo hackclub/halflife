@@ -21,7 +21,6 @@ import { useConfirm } from "./useConfirm"
 
 export interface SubmitSheet {
 	acknowledgedAll: boolean
-	acknowledgedFixed: boolean
 	acknowledgedLimit: boolean
 	acknowledgedNoMore: boolean
 	bom: { items: BomLine[]; taxShippingUsd: number } | null
@@ -31,6 +30,7 @@ export interface SubmitSheet {
 	bomTotal: number
 	canAdvance: boolean
 	carts: UploadedImage[]
+	changesSinceLast: string
 	clip: string | null
 	closeSheet(): void
 	closingPostId: string | null
@@ -39,6 +39,7 @@ export interface SubmitSheet {
 	declinedFunding: boolean
 	descriptionLength: number
 	descriptionReady: boolean
+	extraNotes: string
 	firmwareMissing: boolean
 	funding: { shortfallUsd: number; totalUsd: number }
 	fundingDeclined: boolean
@@ -61,14 +62,15 @@ export interface SubmitSheet {
 	selectedTier: Tier
 	setAcceptsPartialFunding: Dispatch<SetStateAction<boolean>>
 	setAcknowledgedAll: Dispatch<SetStateAction<boolean>>
-	setAcknowledgedFixed: Dispatch<SetStateAction<boolean>>
 	setAcknowledgedLimit: Dispatch<SetStateAction<boolean>>
 	setAcknowledgedNoMore: Dispatch<SetStateAction<boolean>>
 	setCarts: Dispatch<SetStateAction<UploadedImage[]>>
+	setChangesSinceLast: Dispatch<SetStateAction<string>>
 	setClip: Dispatch<SetStateAction<string | null>>
 	setClipUrl: Dispatch<SetStateAction<string | null>>
 	setClosingPostId: Dispatch<SetStateAction<string | null>>
 	setDeclinedFunding: Dispatch<SetStateAction<boolean>>
+	setExtraNotes: Dispatch<SetStateAction<string>>
 	setNoMicrocontroller: Dispatch<SetStateAction<boolean>>
 	setRepoResult: Dispatch<SetStateAction<RepoCheckResult | null>>
 	setStep: Dispatch<SetStateAction<number>>
@@ -165,17 +167,18 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 	// Handed in: the reel that closed the week is offered for posting online.
 	const [works, setWorks] = useState<"yes" | "no" | null>(null)
 	const [writeup, setWriteup] = useState("")
+	// What the maker writes for the reviewer: notes on any hand-in, and on a resubmission what changed since the review that returned it, which stands in for the old "I fixed everything" box.
+	const [extraNotes, setExtraNotes] = useState("")
+	const [changesSinceLast, setChangesSinceLast] = useState("")
 	// Null while checking. The server runs the same checks at submit, so this only decides whether the sheet lets you get that far.
 	const [repoResult, setRepoResult] = useState<RepoCheckResult | null>(null)
 	const [submitting, setSubmitting] = useState(false)
 	const [submitError, setSubmitError] = useState<string | null>(null)
-	// The acknowledgements a maker makes before handing a phase in. The reviewer-note one only exists when a review has sent the phase back; the limit ones apply to every submission, the first included.
+	// The acknowledgements a maker makes before handing a phase in. They apply to every submission, the first included.
 	const [acknowledgedLimit, setAcknowledgedLimit] = useState(false)
 	const [acknowledgedNoMore, setAcknowledgedNoMore] = useState(false)
-	const [acknowledgedFixed, setAcknowledgedFixed] = useState(false)
 	const [acknowledgedAll, setAcknowledgedAll] = useState(false)
-	const acknowledgementsComplete =
-		acknowledgedLimit && acknowledgedNoMore && acknowledgedAll && (!resubmitting || acknowledgedFixed)
+	const acknowledgementsComplete = acknowledgedLimit && acknowledgedNoMore && acknowledgedAll
 
 	// The closing reel is a reel like any other and goes on the trail under its own key, so the week's timeline shows it where it happened rather than swallowing it inside the submission.
 	const reelCheckpointId = week.projectId ? `wu-${week.projectId}-reel-submission` : `w${week.id}-reel-submission`
@@ -260,6 +263,7 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 	const gates: SubmitGates = {
 		acknowledgementsComplete,
 		carts: carts.length,
+		changesSinceLast,
 		clip,
 		descriptionBlocker,
 		descriptionReady,
@@ -269,6 +273,7 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		isBuild,
 		outOfSubmissions,
 		repoReady,
+		resubmitting,
 		starterDescriptionBlocker,
 		starterDescriptionReady,
 		step,
@@ -313,6 +318,8 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		}
 		const refused = await submitPhase(checkpoint.id, {
 			attachmentKeys: carts.map(c => c.objectKey),
+			changesSinceLast: resubmitting ? changesSinceLast.trim() || undefined : undefined,
+			extraNotes: extraNotes.trim() || undefined,
 			fundingDeclined,
 			noMicrocontroller: firmwareMissing && noMicrocontroller,
 			notes: isBuild ? buildNotes : undefined,
@@ -363,7 +370,6 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 
 	return {
 		acknowledgedAll,
-		acknowledgedFixed,
 		acknowledgedLimit,
 		acknowledgedNoMore,
 		bom,
@@ -373,6 +379,7 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		bomTotal,
 		canAdvance,
 		carts,
+		changesSinceLast,
 		clip,
 		closeSheet: () => setOpenCheckpoint(null),
 		closingPostId,
@@ -380,6 +387,7 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		declinedFunding,
 		descriptionLength,
 		descriptionReady,
+		extraNotes,
 		firmwareMissing,
 		funding,
 		fundingDeclined,
@@ -402,14 +410,15 @@ export function useSubmitSheet(checkpoint: Checkpoint): SubmitSheet {
 		selectedTier,
 		setAcceptsPartialFunding,
 		setAcknowledgedAll,
-		setAcknowledgedFixed,
 		setAcknowledgedLimit,
 		setAcknowledgedNoMore,
 		setCarts,
+		setChangesSinceLast,
 		setClip,
 		setClipUrl,
 		setClosingPostId,
 		setDeclinedFunding,
+		setExtraNotes,
 		setNoMicrocontroller,
 		setRepoResult,
 		setStep,

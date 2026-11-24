@@ -145,22 +145,18 @@ export function BomTable({
 /** The checkboxes a maker clears before handing in, including the extra one a resubmission carries. */
 export function SubmissionAcknowledgements({
 	acknowledgedAll,
-	acknowledgedFixed,
 	acknowledgedLimit,
 	acknowledgedNoMore,
 	resubmitting,
 	setAcknowledgedAll,
-	setAcknowledgedFixed,
 	setAcknowledgedLimit,
 	setAcknowledgedNoMore,
 }: {
 	acknowledgedAll: boolean
-	acknowledgedFixed: boolean
 	acknowledgedLimit: boolean
 	acknowledgedNoMore: boolean
 	resubmitting: boolean
 	setAcknowledgedAll(value: boolean): void
-	setAcknowledgedFixed(value: boolean): void
 	setAcknowledgedLimit(value: boolean): void
 	setAcknowledgedNoMore(value: boolean): void
 }) {
@@ -178,11 +174,6 @@ export function SubmissionAcknowledgements({
 				<Acknowledgement checked={acknowledgedNoMore} onChange={setAcknowledgedNoMore}>
 					I understand that if I run out of submissions, I cannot submit this phase again.
 				</Acknowledgement>
-				{resubmitting && (
-					<Acknowledgement checked={acknowledgedFixed} onChange={setAcknowledgedFixed}>
-						I have fixed everything the reviewer asked for in the note above.
-					</Acknowledgement>
-				)}
 				<Acknowledgement checked={acknowledgedAll} onChange={setAcknowledgedAll}>
 					I have checked the work above is mine, and that everything the reviewer needs to see is in the project or
 					reels.

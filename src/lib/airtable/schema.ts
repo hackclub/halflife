@@ -54,6 +54,8 @@ export const YSWS_SUBMISSION = {
 		// Only set while the phase is `second_pass`; cleared when it leaves. The same instant as the phase timestamp, kept separately so “in second pass since” is a filter rather than a comparison.
 		ariSecondPassSince: f<string>("fldYswsAriSecondPassSince", "Ari - Second pass since"),
 		birthday: f<string>("fldYswsBirthday", "Birthday"),
+		// What the maker says they changed since the review that returned this phase, from the submit sheet (`PhaseSubmission.changesSinceLast`). Fabricate's base has the same column under the same name.
+		changesSinceLast: f<string>("fldAB8ZEdSkWfjGrr", "Changes since last review"),
 		city: f<string>("fldYswsCity", "City"),
 		codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
 		country: f<string>("fldYswsCountry", "Country"),
