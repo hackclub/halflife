@@ -68,12 +68,14 @@ function NewMerchantPanel() {
 	return (
 		<Panel title="Add a merchant">
 			{error ? <Callout tone="danger">{error}</Callout> : null}
-			<Field label="Name">
-				<TextInput onChange={e => setName(e.target.value)} value={name} />
-			</Field>
-			<Field hint="Where the IDs came from, for example yellow_pages: Amazon." label="Source">
-				<TextInput onChange={e => setSourceNote(e.target.value)} value={sourceNote} />
-			</Field>
+			<div className="hl-field-pair hl-field-pair--wide">
+				<Field label="Name">
+					<TextInput onChange={e => setName(e.target.value)} value={name} />
+				</Field>
+				<Field hint="Where the IDs came from, for example yellow_pages: Amazon." label="Source">
+					<TextInput onChange={e => setSourceNote(e.target.value)} value={sourceNote} />
+				</Field>
+			</div>
 			<Field hint="Commas, spaces or line breaks. No limit on how many." label="Merchant IDs">
 				<TextArea onChange={e => setIdsText(e.target.value)} rows={4} value={idsText} />
 			</Field>
@@ -133,12 +135,14 @@ function MerchantPanel({ merchant }: Readonly<{ merchant: GrantCardMerchantRow }
 		>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{saved ? <Callout>Saved. Linked items were recomputed.</Callout> : null}
-			<Field label="Name">
-				<TextInput onChange={e => setName(e.target.value)} value={name} />
-			</Field>
-			<Field label="Source">
-				<TextInput onChange={e => setSourceNote(e.target.value)} value={sourceNote} />
-			</Field>
+			<div className="hl-field-pair hl-field-pair--wide">
+				<Field label="Name">
+					<TextInput onChange={e => setName(e.target.value)} value={name} />
+				</Field>
+				<Field label="Source">
+					<TextInput onChange={e => setSourceNote(e.target.value)} value={sourceNote} />
+				</Field>
+			</div>
 			<Field
 				hint={`${parseIds(idsText).length} ${parseIds(idsText).length === 1 ? "ID" : "IDs"}. Commas, spaces or line breaks.`}
 				label="Merchant IDs"

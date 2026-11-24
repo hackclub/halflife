@@ -1857,6 +1857,9 @@ html:has(.hl-admin) {
 	.hl-field-pair {
 		grid-template-columns: repeat(2, minmax(0, 14rem));
 	}
+	.hl-field-pair--wide {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 /* The card batch's item panels sit side by side as tiles once there is room for two beside the sidebar. */
 .hl-batch-grid {
