@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { type MouseEvent as ReactMouseEvent, useEffect, useMemo, useState } from "react"
 import { HardLink } from "@/components/site/HardLink"
-import { ADMIN_HOTKEYS, type AdminNavGroup, type AdminNavItem, isAdminNavActive } from "./admin-nav"
+import { ADMIN_HOTKEYS, type AdminNavGroup, type AdminNavItem, hotkeyLetter, isAdminNavActive } from "./admin-nav"
 import { useAltHeld } from "./use-alt-held"
 
 /**
@@ -37,10 +37,7 @@ export function AdminSidebar({ groups }: Readonly<{ groups: AdminNavGroup[] }>) 
 	useEffect(() => {
 		const onKeyDown = (event: globalThis.KeyboardEvent): void => {
 			if (event.repeat || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
-			// The typed letter first, so a non-QWERTY layout answers to the key it prints; the physical code second, because Option+letter on a Mac types a character and `key` stops being a letter.
-			const typed = event.key.length === 1 ? event.key.toLowerCase() : ""
-			const physical = event.code.startsWith("Key") ? event.code.slice(3).toLowerCase() : ""
-			const item = shortcuts.get(typed) ?? shortcuts.get(physical)
+			const item = shortcuts.get(hotkeyLetter(event.key, event.code))
 			if (!item) return
 			event.preventDefault()
 			setPendingHref(item.href)

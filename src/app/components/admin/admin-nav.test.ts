@@ -4,6 +4,7 @@ import {
 	ADMIN_HOTKEYS,
 	type AdminNavGroup,
 	exactUser,
+	hotkeyLetter,
 	isAdminNavActive,
 	isUserIdentifier,
 	type PaletteUser,
@@ -20,6 +21,24 @@ const groups: AdminNavGroup[] = [
 	},
 	{ items: [{ href: "/admin/deadlines", label: "Deadlines" }], label: "Programme" },
 ]
+
+describe("hotkeyLetter", () => {
+	test("a typed letter answers to what it prints, whatever its physical key", () => {
+		// Dvorak: the key that types c is QWERTY's i.
+		expect(hotkeyLetter("c", "KeyI")).toBe("c")
+		expect(hotkeyLetter("O", "KeyS")).toBe("o")
+	})
+
+	test("a key that types no letter falls back to its physical position", () => {
+		// Option+C on a Mac types ç.
+		expect(hotkeyLetter("ç", "KeyC")).toBe("c")
+	})
+
+	test("keys that are not letters have no shortcut", () => {
+		expect(hotkeyLetter("1", "Digit1")).toBe("")
+		expect(hotkeyLetter("Dead", "Quote")).toBe("")
+	})
+})
 
 describe("admin hotkeys", () => {
 	test("every page answers to one lowercase letter, and no two pages agree", () => {
