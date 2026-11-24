@@ -1,6 +1,7 @@
 import "server-only"
 import { HcbGrantCardStatus } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
+import { creditPendingReturns } from "@/lib/grant-card-return-credit"
 import { type GrantDisbursement, listCardGrantDisbursements, listOrganizationCardGrants } from "@/lib/hcb"
 import db from "@/lib/prisma8"
 import { formatDbTimestamp } from "@/lib/time"
@@ -95,6 +96,12 @@ export interface BufferTopUpSyncResult {
 	recorded: number
 	/** Issued or ambiguous card rows the sync marked RETURNED. */
 	returnedMarked: number
+	/** Returns whose coins were paid this run. */
+	returnsCredited: number
+	/** Returns left uncredited because the maker did not cancel them, or their canceller is not known. */
+	returnsHeld: number
+	/** Returns left uncredited because HCB did not report their spend, so the next run retries them. */
+	returnsUnpriced: number
 	topUpsFound: number
 }
 
@@ -169,6 +176,8 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 				returnedAt: formatDbTimestamp(new Date(card.returnedAt)),
 				status: HcbGrantCardStatus.RETURNED,
 			})
+	// Every return not yet paid, including ones marked on an earlier run whose spend could not be read.
+	const credits = input.dryRun ? { credited: 0, held: 0, unpriced: 0 } : await creditPendingReturns()
 
 	if (!input.dryRun && fresh.length > 0)
 		await db.orm.public.HcbBufferTopUp.createAll(
@@ -187,6 +196,9 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		grantsScanned: list.rows.length,
 		recorded: input.dryRun ? 0 : fresh.length,
 		returnedMarked: input.dryRun ? 0 : returned.length,
+		returnsCredited: credits.credited,
+		returnsHeld: credits.held,
+		returnsUnpriced: credits.unpriced,
 		topUpsFound,
 	}
 }
