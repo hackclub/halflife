@@ -1,0 +1,348 @@
+[
+  {
+    "id": "table.grant_card_merchant",
+    "label": "Create table \"grant_card_merchant\"",
+    "summary": "Creates table \"grant_card_merchant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "grant_card_merchant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"grant_card_merchant\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"grant_card_merchant\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"grant_card_merchant\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"grant_card_merchant\"",
+        "sql": "CREATE TABLE \"public\".\"grant_card_merchant\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"merchantIds\" text[] DEFAULT '{}' NOT NULL,\n  \"name\" text NOT NULL,\n  \"slug\" text NOT NULL,\n  \"sourceNote\" text DEFAULT '' NOT NULL,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"grant_card_merchant_merchantIds_elem_not_null_d17ab448\" CHECK (array_position(\"merchantIds\", NULL) IS NULL)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"grant_card_merchant\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"grant_card_merchant\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"grant_card_merchant\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.shop_item_grant_card_merchant",
+    "label": "Create table \"shop_item_grant_card_merchant\"",
+    "summary": "Creates table \"shop_item_grant_card_merchant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "shop_item_grant_card_merchant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"shop_item_grant_card_merchant\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shop_item_grant_card_merchant\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"shop_item_grant_card_merchant\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"shop_item_grant_card_merchant\"",
+        "sql": "CREATE TABLE \"public\".\"shop_item_grant_card_merchant\" (\n  \"merchantId\" text NOT NULL,\n  \"shopItemId\" text NOT NULL,\n  PRIMARY KEY (\"shopItemId\", \"merchantId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"shop_item_grant_card_merchant\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"shop_item_grant_card_merchant\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"shop_item_grant_card_merchant\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "unique.grant_card_merchant.grant_card_merchant_slug_key",
+    "label": "Add unique constraint on \"grant_card_merchant\" (slug)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "grant_card_merchant_slug_key",
+        "table": "grant_card_merchant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"grant_card_merchant_slug_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "grant_card_merchant_slug_key",
+          "public",
+          "\"public\".\"grant_card_merchant\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"grant_card_merchant_slug_key\" on \"grant_card_merchant\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"grant_card_merchant_slug_key\"",
+        "sql": "ALTER TABLE \"public\".\"grant_card_merchant\" ADD CONSTRAINT \"grant_card_merchant_slug_key\" UNIQUE (\"slug\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"grant_card_merchant_slug_key\" exists on (slug)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "grant_card_merchant_slug_key",
+          "public",
+          "\"public\".\"grant_card_merchant\"",
+          "u",
+          "[\"slug\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.shop_item_grant_card_merchant.shop_item_grant_card_merchant_merchantId_idx",
+    "label": "Create index \"shop_item_grant_card_merchant_merchantId_idx\" on \"shop_item_grant_card_merchant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "shop_item_grant_card_merchant_merchantId_idx",
+        "table": "shop_item_grant_card_merchant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"shop_item_grant_card_merchant_merchantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shop_item_grant_card_merchant_merchantId_idx\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"shop_item_grant_card_merchant_merchantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"shop_item_grant_card_merchant_merchantId_idx\"",
+        "sql": "CREATE INDEX \"shop_item_grant_card_merchant_merchantId_idx\" ON \"public\".\"shop_item_grant_card_merchant\" (\"merchantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"shop_item_grant_card_merchant_merchantId_idx\" exists on \"shop_item_grant_card_merchant\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"shop_item_grant_card_merchant_merchantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"shop_item_grant_card_merchant\"",
+          "btree",
+          "[\"merchantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.shop_item_grant_card_merchant.shop_item_grant_card_merchant_shopItemId_idx_8d36bb89",
+    "label": "Create index \"shop_item_grant_card_merchant_shopItemId_idx_8d36bb89\" on \"shop_item_grant_card_merchant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "shop_item_grant_card_merchant_shopItemId_idx_8d36bb89",
+        "table": "shop_item_grant_card_merchant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"shop_item_grant_card_merchant_shopItemId_idx_8d36bb89\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shop_item_grant_card_merchant_shopItemId_idx_8d36bb89\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"shop_item_grant_card_merchant_shopItemId_idx_8d36bb89\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"shop_item_grant_card_merchant_shopItemId_idx_8d36bb89\"",
+        "sql": "CREATE INDEX \"shop_item_grant_card_merchant_shopItemId_idx_8d36bb89\" ON \"public\".\"shop_item_grant_card_merchant\" (\"shopItemId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"shop_item_grant_card_merchant_shopItemId_idx_8d36bb89\" exists on \"shop_item_grant_card_merchant\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"shop_item_grant_card_merchant_shopItemId_idx_8d36bb89\"",
+          "i",
+          "I",
+          "\"public\".\"shop_item_grant_card_merchant\"",
+          "btree",
+          "[\"shopItemId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.shop_item_grant_card_merchant.shop_item_grant_card_merchant_shopItemId_fkey",
+    "label": "Add foreign key \"shop_item_grant_card_merchant_shopItemId_fkey\" on \"shop_item_grant_card_merchant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "shop_item_grant_card_merchant_shopItemId_fkey",
+        "table": "shop_item_grant_card_merchant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"shop_item_grant_card_merchant_shopItemId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shop_item_grant_card_merchant_shopItemId_fkey",
+          "public",
+          "\"public\".\"shop_item_grant_card_merchant\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"shop_item_grant_card_merchant_shopItemId_fkey\" on \"shop_item_grant_card_merchant\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"shop_item_grant_card_merchant_shopItemId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"shop_item_grant_card_merchant\"\nADD CONSTRAINT \"shop_item_grant_card_merchant_shopItemId_fkey\"\nFOREIGN KEY (\"shopItemId\")\nREFERENCES \"public\".\"shop_item\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"shop_item_grant_card_merchant_shopItemId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "shop_item_grant_card_merchant_shopItemId_fkey",
+          "public",
+          "\"public\".\"shop_item_grant_card_merchant\"",
+          "f",
+          "[\"shopItemId\"]",
+          "\"public\".\"shop_item\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.shop_item_grant_card_merchant.shop_item_grant_card_merchant_merchantId_fkey",
+    "label": "Add foreign key \"shop_item_grant_card_merchant_merchantId_fkey\" on \"shop_item_grant_card_merchant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "shop_item_grant_card_merchant_merchantId_fkey",
+        "table": "shop_item_grant_card_merchant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"shop_item_grant_card_merchant_merchantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shop_item_grant_card_merchant_merchantId_fkey",
+          "public",
+          "\"public\".\"shop_item_grant_card_merchant\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"shop_item_grant_card_merchant_merchantId_fkey\" on \"shop_item_grant_card_merchant\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"shop_item_grant_card_merchant_merchantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"shop_item_grant_card_merchant\"\nADD CONSTRAINT \"shop_item_grant_card_merchant_merchantId_fkey\"\nFOREIGN KEY (\"merchantId\")\nREFERENCES \"public\".\"grant_card_merchant\" (\"id\")\nON DELETE RESTRICT\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"shop_item_grant_card_merchant_merchantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "shop_item_grant_card_merchant_merchantId_fkey",
+          "public",
+          "\"public\".\"shop_item_grant_card_merchant\"",
+          "f",
+          "[\"merchantId\"]",
+          "\"public\".\"grant_card_merchant\"",
+          "[\"id\"]",
+          "r",
+          "c"
+        ]
+      }
+    ]
+  }
+]
