@@ -218,6 +218,7 @@ export function ShopItemForm({
 				<TextInput
 					min="0"
 					onChange={e => setForm({ ...form, priceCredits: e.target.value })}
+					style={{ width: "9rem" }}
 					type="number"
 					value={form.priceCredits}
 				/>
