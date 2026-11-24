@@ -18,7 +18,8 @@ export interface ShopItemInitial {
 	category: ShopItemCategory
 	costUsd: number | null
 	description: string
-	grantCardMerchantIds: readonly string[]
+	/** The IDs of the grant card merchants the item is linked to. */
+	grantCardMerchants: readonly string[]
 	id: string
 	imageUrl: string | null
 	name: string
@@ -26,28 +27,23 @@ export interface ShopItemInitial {
 	requiresPrinterQualified: boolean
 }
 
+/** A merchant the item form can link to. */
+export interface GrantCardMerchantOption {
+	id: string
+	idCount: number
+	name: string
+}
+
 const blank = {
 	category: "PRINTER_UPGRADE",
 	costUsd: "",
 	description: "",
-	grantCardMerchantIds: "",
+	grantCardMerchants: [] as string[],
 	id: "",
 	imageUrl: "",
 	name: "",
 	priceCredits: "50",
 	requiresPrinterQualified: true,
-}
-
-/** Merchant IDs pasted as commas or line breaks, trimmed and deduplicated, so a list from Yellow Pages can be pasted whole. */
-function parseMerchantIds(value: string): string[] {
-	return [
-		...new Set(
-			value
-				.split(/[\s,]+/)
-				.map(id => id.trim())
-				.filter(Boolean),
-		),
-	]
 }
 
 /**
@@ -70,7 +66,13 @@ function previewImageUrl(value: string): string | null {
 /**
  * Add a shop item, or edit one when `item` is given. The slug is fixed once an item exists, because orders and analytics refer to it. Per-person limit, stock and shelf order are left to their defaults (one per person, unlimited stock, first) and an edit never sends them, so an item that already has them keeps them.
  */
-export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
+export function ShopItemForm({
+	item,
+	merchants,
+}: {
+	item?: ShopItemInitial
+	merchants: readonly GrantCardMerchantOption[]
+}) {
 	const editing = item !== undefined
 	const [form, setForm] = useState(
 		item
@@ -78,7 +80,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					category: item.category,
 					costUsd: item.costUsd === null ? "" : String(item.costUsd),
 					description: item.description,
-					grantCardMerchantIds: item.grantCardMerchantIds.join(", "),
+					grantCardMerchants: [...item.grantCardMerchants],
 					id: item.id,
 					imageUrl: item.imageUrl ?? "",
 					name: item.name,
@@ -114,7 +116,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			category: form.category,
 			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
 			description: form.description,
-			grantCardMerchantIds: parseMerchantIds(form.grantCardMerchantIds),
+			grantCardMerchants: form.grantCardMerchants,
 			imageUrl: form.imageUrl.trim() === "" ? null : form.imageUrl.trim(),
 			name: form.name,
 			priceCredits: Number(form.priceCredits),
@@ -231,14 +233,36 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			</Field>
 			<Field
 				className="hl-form-wide"
-				hint="Comma or line separated Stripe merchant network IDs. Blank lets the grant card be used anywhere. Lock only items that are bought from one known vendor."
-				label="Grant card merchant IDs"
+				hint="The merchants a grant card for this item may be spent at. None means the card can be used anywhere. Manage the merchants and their IDs on the merchants page."
+				label="Grant card merchants"
 			>
-				<TextArea
-					onChange={e => setForm({ ...form, grantCardMerchantIds: e.target.value })}
-					placeholder="e.g. ZIEMZSLZHABHDPK, BCY7WW5ESKW7NNL"
-					value={form.grantCardMerchantIds}
-				/>
+				{merchants.length === 0 ? (
+					<p className="hl-hint" style={{ margin: 0 }}>
+						No merchants yet.
+					</p>
+				) : (
+					<div className="hl-row" style={{ flexWrap: "wrap", gap: "0.5rem 1.25rem" }}>
+						{merchants.map(merchant => (
+							<label className="hl-row" key={merchant.id} style={{ gap: "0.4rem" }}>
+								<input
+									checked={form.grantCardMerchants.includes(merchant.id)}
+									onChange={e =>
+										setForm({
+											...form,
+											grantCardMerchants: e.target.checked
+												? [...form.grantCardMerchants, merchant.id]
+												: form.grantCardMerchants.filter(id => id !== merchant.id),
+										})
+									}
+									type="checkbox"
+								/>
+								<span>
+									{merchant.name} <span className="hl-hint">({merchant.idCount} IDs)</span>
+								</span>
+							</label>
+						))}
+					</div>
+				)}
 			</Field>
 			<label className="hl-row hl-form-wide" style={{ gap: "0.5rem" }}>
 				<input
