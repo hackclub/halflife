@@ -575,6 +575,8 @@ namespace public {
     /// Where the IDs came from, for example "yellow_pages: Amazon". Free text, for whoever edits the merchant next.
     sourceNote  String                       @default("")
     merchantIds String[]                     @default([])
+    /// Set when the merchant is archived. An archived merchant keeps its IDs and can be restored, but no item can be linked to it.
+    archivedAt  TimestampString(3)?
     createdAt   TimestampString(3)           @default(now())
     updatedAt   TimestampString(3)           @onCreate(now()) @onUpdate(now())
     shopItems   ShopItemGrantCardMerchant[]

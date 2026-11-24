@@ -135,15 +135,26 @@ export const shopGrantCardBatchSchema = z
 	.strict()
 
 /** A grant card merchant: a vendor, with every Stripe network ID it can be charged under. There is no cap on the IDs. */
+/** A merchant's fields with no defaults, so the create and update schemas can each decide what an absent field means. A default survives `.partial()`, which would blank the IDs and note of an edit that sent only `archived`. */
+const grantCardMerchantFields = Object.freeze({
+	merchantIds: z.array(merchantIdSchema),
+	name: boundedText(120, 1),
+	sourceNote: z.string().trim().max(300),
+})
+
 export const grantCardMerchantSchema = z
 	.object({
-		merchantIds: z.array(merchantIdSchema).default([]),
-		name: boundedText(120, 1),
-		sourceNote: z.string().trim().max(300).default(""),
+		...grantCardMerchantFields,
+		merchantIds: grantCardMerchantFields.merchantIds.default([]),
+		sourceNote: grantCardMerchantFields.sourceNote.default(""),
 	})
 	.strict()
 
-export const grantCardMerchantUpdateSchema = grantCardMerchantSchema.partial().strict()
+/** An edit changes only the fields it sends, and `archived` archives or restores the merchant. */
+export const grantCardMerchantUpdateSchema = z
+	.object({ ...grantCardMerchantFields, archived: z.boolean() })
+	.partial()
+	.strict()
 
 /** How many buyers one legacy-order send may message. Each is a Slack call pair, so a send is kept small enough to finish in one request. */
 export const LEGACY_SHOP_DM_SEND_MAX = 25
