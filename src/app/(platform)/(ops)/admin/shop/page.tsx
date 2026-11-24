@@ -220,7 +220,14 @@ async function CatalogueTab({
 								<td>
 									<Link href={`/admin/shop/${item.id}`}>{item.name}</Link>
 								</td>
-								<td>{CATEGORY_LABEL[item.category]}</td>
+								<td>
+									<Link
+										href={catalogueHref({ category: item.category, gated, q }, status)}
+										title="Show only this category"
+									>
+										{CATEGORY_LABEL[item.category]}
+									</Link>
+								</td>
 								<td>{item.priceCredits}</td>
 								<td>
 									<ItemCostField costUsd={item.costUsd} itemId={item.id} />
