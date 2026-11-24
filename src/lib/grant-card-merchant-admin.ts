@@ -7,7 +7,7 @@ import db, { type DbOrTx } from "@/lib/prisma8"
 
 interface Actor {
 	email: string | null
-	id: string
+	id: string | null
 }
 
 /**
