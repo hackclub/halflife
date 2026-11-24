@@ -517,6 +517,47 @@ Buffer top-ups: money added by hand on HCB straight into a card grant, usually w
 
 Starter cards are issued through `scripts/starter-funding-export.ts`. With no flags it prints the HCB import file for starters who need a new parts + PCB card, and writes a report of every starter's target and owed amount. `--record` records those new cards on the site before the file is used, so the site and HCB agree. `--confirm <file>` records the totals an admin confirmed on HCB after a manual top-up. It refuses the whole file on any problem and is a dry run unless `--apply` is passed. A confirmed total supersedes the live row it replaces, so a project is never paid twice.
 
+## Returned parts cards
+
+A maker can hand a parts card back on HCB. HCB cancels the grant and returns its balance to the organisation, and the daily sync records the return. The maker is then paid coins for the funding they did not use.
+
+### Who triggers it
+
+Only the maker cancelling their own grant. Recipients can cancel their own grants on HCB, so the sync must tell that apart from a cancel made by someone else (an admin on HCB, or a cancel the site made itself through `cancelGrantCard` or the shop path). Cancels the site made are already `CANCELED` before the sync reads them, so the sync never sees them as returns. Cancels made on HCB by anyone else must not pay coins.
+
+Open: confirm which HCB field, if any, names who cancelled a card grant. Until that is confirmed, a return is recorded but not credited, and an admin credits it by hand.
+
+### Amount
+
+The coins are measured against the tier's funded block, not against the card's leftover balance:
+
+- `blockCents = tier.fundingHours × COINS_PER_HOUR × 100`. A funded hour is worth 5 coins, and one coin is one dollar, so tier 1 is $30.
+- `spentFromBlockCents = min(spentCents, amountCents)`. `amountCents` is the BOM-sized grant, which excludes buffer top-ups. Anything spent beyond it came from buffer money, so it does not reduce the block.
+- `coins = floor(max(0, blockCents − spentFromBlockCents) / 100)`.
+
+The reason is that approval already pays only hours past the tier's funded block, whatever the card's size (`review.ts` sets `fundedHours` to `tier.fundingHours` whenever a grant is issued). A card smaller than the block therefore leaves part of the block unpaid, and that part is what the return pays. Measuring against the leftover would pay less than declining:
+
+- Tier 1, BOM $15, nothing spent, 6 approved hours. Approval mints 0 coins. The return pays 30, which is what declining pays (6 hours × 5).
+- Tier 1, BOM $15, $5 spent. The return pays 25.
+- Tier 1, BOM $50, nothing spent. The return pays 30, not 50. BOM above the block pays nothing.
+- Anything spent over the block pays 0.
+
+The remainder cents from `floor` stay with the organisation, and the ledger note records them.
+
+### Ledger and idempotency
+
+- A new `LedgerKind.GRANT_CARD_RETURN`, with `themeProjectId` set. Its note names the block, the spend, and the cents left over.
+- A partial unique index on `ledger_entry (themeProjectId, kind)` where `kind = GRANT_CARD_RETURN`, so a project is credited at most once.
+- `HcbGrantCard.coinsCreditedAt` is set in the same transaction as the ledger row. The sync also picks up `RETURNED` rows where it is still null, so a return whose spend read failed is retried on the next run.
+- The credit runs inside `lockUserCredit`, the first statement of the transaction, as every other credit does.
+- Spend cannot be read: the row stays `RETURNED` and uncredited, and the sync reports it. Nothing is guessed.
+
+### Scope
+
+- Design parts cards only, including the week-1 starter cards. Shop cards (`HcbShopGrantCard`) are never credited here: a returned shop card is a buyer's refund, not funding.
+- The credit does not count against `MAX_COINS_PER_PROJECT`. The amount comes from HCB, not from a typed number, so the cap's fat-finger guard does not apply.
+- Un-approving a design does not reverse a return credit. Only an admin reversal, with its own ledger note, takes it back.
+
 ## Shop orders
 
 ### Legacy orders (placed before the delivery choice)
