@@ -150,10 +150,14 @@ export interface ReviewShip {
 	canAdjustHours: boolean
 	/** The viewer's own decision, recent enough and still standing, so they can put the ship back into review (see `takeBackDecision`). */
 	canTakeBack: boolean
+	/** What the maker says changed since the review that returned this phase. Only a resubmission made since the field existed has it. */
+	changesSinceLast: string | null
 	claimExpiresAt: string | null
 	claimedByViewer: boolean
 	claimerName: string | null
 	decision: ReviewDecision | null
+	/** The maker's optional notes about the project, from the submit sheet. */
+	extraNotes: string | null
 	fundingCapUsd: number | null
 	fundingDeclined: boolean
 	id: string

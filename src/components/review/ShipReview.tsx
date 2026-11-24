@@ -473,6 +473,12 @@ function ShipReviewInner({
 						title="Submission"
 					>
 						{ship.notes ? <p style={{ whiteSpace: "pre-wrap" }}>{ship.notes}</p> : null}
+						{ship.extraNotes ? (
+							<>
+								<p className="field__label">Maker&rsquo;s notes</p>
+								<p style={{ whiteSpace: "pre-wrap" }}>{ship.extraNotes}</p>
+							</>
+						) : null}
 						{project.description ? (
 							<p className="field__hint" style={{ whiteSpace: "pre-wrap" }}>
 								{project.description}
@@ -548,36 +554,7 @@ function ShipReviewInner({
 						<DisputePaper canSendBack={viewer.canOverride} detail={detail} onError={setErrors} />
 					) : null}
 
-					<Paper title="Earlier ships of this project">
-						{detail.history.length > 0 ? (
-							<ul className="paper-stack" style={{ gap: "0.75rem" }}>
-								{detail.history.map(item => (
-									<li key={item.id}>
-										<p className="entry__date">
-											<Link href={`/reviews/${item.id}`}>
-												<StatusTag status={item.kind} />
-											</Link>
-											{" · "}
-											<StatusTag status={item.status} />
-											{item.status === "approved" && item.kind === "design" && item.tier !== null
-												? ` T${item.tier}`
-												: ""}
-											{" · "}
-											{item.reviewerName ?? "—"} · {item.reviewedAt ?? item.submittedAt}
-										</p>
-										{item.feedback ? <p style={{ whiteSpace: "pre-wrap" }}>{item.feedback}</p> : null}
-										{item.reason ? (
-											<p className="field__hint" style={{ whiteSpace: "pre-wrap" }}>
-												Internal: {item.reason}
-											</p>
-										) : null}
-									</li>
-								))}
-							</ul>
-						) : (
-							<p className="field__hint">Nothing here.</p>
-						)}
-					</Paper>
+					<EarlierShips detail={detail} />
 
 					<Paper title="Maker">
 						<dl className="dl">
@@ -650,6 +627,49 @@ function ShipReviewInner({
 }
 
 /** The journal as a pending ship shows it, each entry's deflation autosaved while the viewer holds the claim. */
+/** The project's earlier hand-ins and their reviews, led by what the maker says changed since the last one (Fabricate's "Changes since last review"). */
+function EarlierShips({ detail }: { detail: ReviewDetail }) {
+	return (
+		<Paper title="Earlier ships of this project">
+			{detail.ship.changesSinceLast ? (
+				<>
+					<p className="field__label">Changes since last review</p>
+					<p style={{ whiteSpace: "pre-wrap" }}>{detail.ship.changesSinceLast}</p>
+					<p className="field__label" style={{ marginTop: "var(--space-1)" }}>
+						Previous reviews
+					</p>
+				</>
+			) : null}
+			{detail.history.length > 0 ? (
+				<ul className="paper-stack" style={{ gap: "0.75rem" }}>
+					{detail.history.map(item => (
+						<li key={item.id}>
+							<p className="entry__date">
+								<Link href={`/reviews/${item.id}`}>
+									<StatusTag status={item.kind} />
+								</Link>
+								{" · "}
+								<StatusTag status={item.status} />
+								{item.status === "approved" && item.kind === "design" && item.tier !== null ? ` T${item.tier}` : ""}
+								{" · "}
+								{item.reviewerName ?? "—"} · {item.reviewedAt ?? item.submittedAt}
+							</p>
+							{item.feedback ? <p style={{ whiteSpace: "pre-wrap" }}>{item.feedback}</p> : null}
+							{item.reason ? (
+								<p className="field__hint" style={{ whiteSpace: "pre-wrap" }}>
+									Internal: {item.reason}
+								</p>
+							) : null}
+						</li>
+					))}
+				</ul>
+			) : (
+				<p className="field__hint">Nothing here.</p>
+			)}
+		</Paper>
+	)
+}
+
 function PendingJournal({
 	editable,
 	entries,
