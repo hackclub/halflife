@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'bc3144d4b8894f37ee227ecb93838fc2bee71f668b14061ec1c771bb07911bb4'>;
+  StorageHashBase<'b395cee2c1f695f30f220472921381e01930065704a5f11100205389b8db8546'>;
 export type ExecutionHash =
   ExecutionHashBase<'f235c5a20aa979040ecf5b8f8f9f18f109c228d79f1e306e665889ae64e6c9b1'>;
 export type ProfileHash =
@@ -1470,7 +1470,9 @@ export namespace Models {
     ariSubmissionId: FieldOutputTypes['public']['PhaseSubmission']['ariSubmissionId'];
     ariSyncedAt: FieldOutputTypes['public']['PhaseSubmission']['ariSyncedAt'];
     attachmentKeys: FieldOutputTypes['public']['PhaseSubmission']['attachmentKeys'];
+    changesSinceLast: FieldOutputTypes['public']['PhaseSubmission']['changesSinceLast'];
     createdAt: FieldOutputTypes['public']['PhaseSubmission']['createdAt'];
+    extraNotes: FieldOutputTypes['public']['PhaseSubmission']['extraNotes'];
     fundingCapUsd: FieldOutputTypes['public']['PhaseSubmission']['fundingCapUsd'];
     fundingDeclined: FieldOutputTypes['public']['PhaseSubmission']['fundingDeclined'];
     id: FieldOutputTypes['public']['PhaseSubmission']['id'];
@@ -4534,12 +4536,24 @@ type ContractBase = Omit<
                   };
                   readonly many: { readonly elementNullable: true };
                 };
+                readonly changesSinceLast: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
                 readonly createdAt: {
                   readonly dataType: 'pg/timestamp';
                   readonly codecId: 'pg/timestamp-string@1';
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                   readonly typeParams: { readonly precision: 3 };
+                  readonly many: false;
+                };
+                readonly extraNotes: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
                   readonly many: false;
                 };
                 readonly fundingCapUsd: {
@@ -11612,6 +11626,10 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
                 readonly many: { readonly elementNullable: true };
               };
+              readonly changesSinceLast: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -11619,6 +11637,10 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamp-string@1';
                   readonly typeParams: { readonly precision: 3 };
                 };
+              };
+              readonly extraNotes: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly fundingCapUsd: {
                 readonly nullable: true;
@@ -11761,7 +11783,9 @@ type ContractBase = Omit<
                 readonly ariSubmissionId: { readonly column: 'ariSubmissionId' };
                 readonly ariSyncedAt: { readonly column: 'ariSyncedAt' };
                 readonly attachmentKeys: { readonly column: 'attachmentKeys' };
+                readonly changesSinceLast: { readonly column: 'changesSinceLast' };
                 readonly createdAt: { readonly column: 'createdAt' };
+                readonly extraNotes: { readonly column: 'extraNotes' };
                 readonly fundingCapUsd: { readonly column: 'fundingCapUsd' };
                 readonly fundingDeclined: { readonly column: 'fundingDeclined' };
                 readonly id: { readonly column: 'id' };
