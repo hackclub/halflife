@@ -72,7 +72,3 @@ None of this should conflict with the formatting or linting rules of Biome or ox
 
 - Do not hard-wrap. Never split a sentence over multiple lines
 	- If the new line is after a semicolon or is a new sentence, OK
-
-## Product copy
-
-- Parts money is only for parts. A parts card handed back by its maker pays coins for the tier's funded block that was not spent on parts, one coin per dollar, never for the card's leftover balance alone. Otherwise coins come only from approved hours past a tier's funded block.
