@@ -1,5 +1,4 @@
 import "server-only"
-import { AuditAction, logAudit } from "@/lib/audit"
 import { displayName } from "@/lib/display-name"
 import { HcbGrantCardStatus, ShopDeliveryPreference, ShopOrderStatus } from "@/lib/enums"
 import { HttpError, messageOf } from "@/lib/errors"
@@ -32,6 +31,8 @@ export interface BatchGroup {
 	/** What the catalogue item holds now, so the field opens filled in when somebody has set it before. */
 	configuredMerchantIds: string[]
 	itemName: string
+	/** The merchants the item links to, by name, so the page can say where its cards may be spent. */
+	merchantNames: string[]
 	orders: BatchOrder[]
 	shopItemId: string
 	totalCents: number
@@ -83,6 +84,14 @@ export async function listShopGrantCardBatch(): Promise<ShopGrantCardBatch> {
 
 	const groups = new Map<string, BatchGroup>()
 	const blocked: BatchBlockedOrder[] = []
+	const merchantNames = new Map<string, string[]>()
+	const links = await db.orm.public.ShopItemGrantCardMerchant.select("merchantId", "shopItemId")
+		.include("merchant", merchant => merchant.select("name"))
+		.all()
+	for (const link of links) {
+		if (!link.merchant) continue
+		merchantNames.set(link.shopItemId, [...(merchantNames.get(link.shopItemId) ?? []), link.merchant.name])
+	}
 
 	for (const row of rows) {
 		if (!row.shopItem) throw new Error(`order ${row.id} has no item`)
@@ -105,6 +114,7 @@ export async function listShopGrantCardBatch(): Promise<ShopGrantCardBatch> {
 		const group = groups.get(row.shopItem.id) ?? {
 			configuredMerchantIds: [...row.shopItem.grantCardMerchantIds],
 			itemName: row.shopItem.name,
+			merchantNames: merchantNames.get(row.shopItem.id) ?? [],
 			orders: [],
 			shopItemId: row.shopItem.id,
 			totalCents: 0,
@@ -136,7 +146,6 @@ export async function sendShopGrantCardBatch(
 	input: {
 		grantCardMerchantIds: readonly string[]
 		orderIds: readonly string[]
-		saveToItem: boolean
 		shopItemId: string
 	},
 	admin: Admin,
@@ -166,27 +175,6 @@ export async function sendShopGrantCardBatch(
 				"CONFLICT",
 				`Order #${order.orderNumber} is no longer waiting for a card. Reload and try again`,
 			)
-	}
-
-	if (input.saveToItem) {
-		const before = [...item.grantCardMerchantIds]
-		const after = merchantIds
-		// Kept on the item so the orders that come after do not need the list typed again. Written before the cards so a crash halfway still leaves the next attempt prefilled.
-		if (before.length !== after.length || before.some((id, i) => id !== after[i])) {
-			await db.orm.public.ShopItem.where({ id: item.id }).update({ grantCardMerchantIds: after })
-			await logAudit({
-				action: AuditAction.ADMIN_UPDATE_SHOP_ITEM,
-				actorEmail: admin.email,
-				actorId: admin.id,
-				metadata: {
-					after: { grantCardMerchantIds: after },
-					before: { grantCardMerchantIds: before },
-					reason: "Saved with a bulk grant card send",
-				},
-				targetId: item.id,
-				targetType: "ShopItem",
-			})
-		}
 	}
 
 	const outcomes: BatchSendOutcome[] = []

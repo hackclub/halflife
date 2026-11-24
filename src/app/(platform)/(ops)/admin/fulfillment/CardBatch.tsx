@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { z } from "zod"
-import { Button, Callout, EmptyState, Field, Panel, Table, TextArea } from "@/app/components/ui"
+import { Button, Callout, EmptyState, Panel, Table } from "@/app/components/ui"
 import { useConfirm } from "@/app/components/ui/useConfirm"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { formatUsd } from "@/lib/money"
@@ -21,24 +21,12 @@ const outcomeSchema = z.object({
 
 const sendResultSchema = z.object({ outcomes: z.array(outcomeSchema) })
 
-/** The item form's rule for the same field: commas, whitespace or new lines between IDs, duplicates dropped. */
-function parseMerchantIds(value: string): string[] {
-	return [
-		...new Set(
-			value
-				.split(/[\s,]+/)
-				.map(id => id.trim())
-				.filter(Boolean),
-		),
-	]
-}
-
 const cardWord = (n: number) => (n === 1 ? "card" : "cards")
 
 /**
- * The bulk card send: one panel per item, because the merchant allowlist and the amount are the item's.
+ * The bulk card send: one panel per item, because the merchants the cards may be spent at are the item's.
  *
- * Every listed order already asked for a card – the page's query is what decides that – so this only chooses who is included, what the cards are locked to, and whether the lock is kept on the catalogue. Issuing goes through the single-order path, which marks the order fulfilled in the same transaction.
+ * Every listed order already asked for a card – the page's query is what decides that – so this only chooses who is included. The merchants come from the item's links, never typed here. Issuing goes through the single-order path, which marks the order fulfilled in the same transaction.
  */
 export function CardBatch({ blocked, groups }: Readonly<{ blocked: BatchBlockedOrder[]; groups: BatchGroup[] }>) {
 	return (
@@ -47,8 +35,8 @@ export function CardBatch({ blocked, groups }: Readonly<{ blocked: BatchBlockedO
 
 			<Panel title="Bulk card send">
 				<p className="hl-hint" style={{ margin: 0 }}>
-					Only orders whose buyer chose a grant card instead of shipping are listed. Each card is locked to the merchant
-					IDs you enter for its item, and sending it marks the order fulfilled, so the buyer can no longer cancel it.
+					Only orders whose buyer chose a grant card instead of shipping are listed. Each card may only be spent at the
+					merchants linked to its item, and sending it marks the order fulfilled, so the buyer can no longer cancel it.
 					Orders that cannot be sent yet are listed below rather than disappearing from the sheet.
 				</p>
 			</Panel>
@@ -100,7 +88,7 @@ function chunkOf<T>(items: readonly T[], size: number): T[][] {
 }
 
 /**
- * Every item's waiting cards in one send. Each item goes with the merchant IDs saved on it, so the allowlist is never guessed: an item with none saved is left out and named, since a card with no lock is worse than one not yet sent. What is typed into an item panel but not saved is not included.
+ * Every item's waiting cards in one send. Each item goes with the merchants linked to it, so the allowlist is never guessed: an item with none linked is left out and named, since a card with no lock is worse than one not yet sent.
  */
 function SendEverythingPanel({ groups }: Readonly<{ groups: BatchGroup[] }>) {
 	const router = useRouter()
@@ -121,7 +109,7 @@ function SendEverythingPanel({ groups }: Readonly<{ groups: BatchGroup[] }>) {
 			confirmLabel: `Send ${orderCount} ${cardWord(orderCount)}`,
 			message: `Send ${orderCount} ${cardWord(orderCount)} across ${ready.length} ${ready.length === 1 ? "item" : "items"}, ${formatUsd(
 				totalCents / 100,
-			)} in total? Each card is locked to the merchant IDs saved on its item. Each order is marked fulfilled once its card is issued, and the buyer can no longer cancel it.`,
+			)} in total? Each card is locked to the merchants linked to its item. Each order is marked fulfilled once its card is issued, and the buyer can no longer cancel it.`,
 			title: "Send every card",
 		})
 		if (answer === null) return
@@ -140,7 +128,6 @@ function SendEverythingPanel({ groups }: Readonly<{ groups: BatchGroup[] }>) {
 					body: {
 						grantCardMerchantIds: group.configuredMerchantIds,
 						orderIds: chunk,
-						saveToItem: false,
 						shopItemId: group.shopItemId,
 					},
 				})
@@ -161,12 +148,12 @@ function SendEverythingPanel({ groups }: Readonly<{ groups: BatchGroup[] }>) {
 	return (
 		<Panel title="Send every card">
 			<p className="hl-hint" style={{ margin: 0 }}>
-				Sends every waiting card for every item, each locked to the merchant IDs saved on that item. Change an
-				item&apos;s IDs in its panel below and save them to include the change here.
+				Sends every waiting card for every item, each locked to the merchants linked to that item. Change an item&apos;s
+				merchants on its shop page to include the change here.
 			</p>
 			{unlocked.length > 0 ? (
 				<Callout tone="warning">
-					Left out, because no merchant IDs are saved on them yet: {unlocked.map(group => group.itemName).join(", ")}.
+					Left out, because no merchants are linked to them yet: {unlocked.map(group => group.itemName).join(", ")}.
 				</Callout>
 			) : null}
 			{error ? <Callout tone="danger">{error}</Callout> : null}
@@ -194,7 +181,7 @@ function SendEverythingPanel({ groups }: Readonly<{ groups: BatchGroup[] }>) {
 					{busy ? "Sending…" : `Send ${orderCount} ${cardWord(orderCount)} · ${formatUsd(totalCents / 100)}`}
 				</Button>
 				<span className="hl-hint">
-					{ready.length} {ready.length === 1 ? "item" : "items"} with saved IDs
+					{ready.length} {ready.length === 1 ? "item" : "items"} with merchants linked
 				</span>
 			</div>
 			{dialog}
@@ -203,14 +190,12 @@ function SendEverythingPanel({ groups }: Readonly<{ groups: BatchGroup[] }>) {
 }
 
 function BatchItemPanel({ group }: Readonly<{ group: BatchGroup }>) {
-	const [allowlist, setAllowlist] = useState(group.configuredMerchantIds.join(", "))
 	const [selected, setSelected] = useState<string[]>(() => group.orders.map(order => order.id))
-	const [saveToItem, setSaveToItem] = useState(true)
 	const [outcomes, setOutcomes] = useState<BatchSendOutcome[] | null>(null)
 	const { busy, error, run } = useAction()
 	const { confirm, dialog } = useConfirm()
 
-	const merchantIds = parseMerchantIds(allowlist)
+	const merchantIds = group.configuredMerchantIds
 	const chosen = group.orders.filter(order => selected.includes(order.id))
 	const totalCents = chosen.reduce((n, order) => n + order.amountCents, 0)
 	// Read off what is still listed rather than the raw selection: after a partial send the orders that went through are gone, and the ones left should still read as all chosen.
@@ -233,7 +218,7 @@ function BatchItemPanel({ group }: Readonly<{ group: BatchGroup }>) {
 			confirmLabel: `Send ${chosen.length} ${cardWord(chosen.length)}`,
 			message: `Send ${chosen.length} ${cardWord(chosen.length)} for "${group.itemName}", ${formatUsd(
 				totalCents / 100,
-			)} in total, usable only at ${merchantIds.join(", ")}? Each order is marked fulfilled once its card is issued, and the buyer can no longer cancel it.`,
+			)} in total, usable only at ${group.merchantNames.join(", ")}? Each order is marked fulfilled once its card is issued, and the buyer can no longer cancel it.`,
 			title: `Send ${group.itemName} ${cardWord(chosen.length)}`,
 		})
 		if (answer === null) return
@@ -244,7 +229,6 @@ function BatchItemPanel({ group }: Readonly<{ group: BatchGroup }>) {
 					body: {
 						grantCardMerchantIds: merchantIds,
 						orderIds: chosen.map(order => order.id),
-						saveToItem,
 						shopItemId: group.shopItemId,
 					},
 				}),
@@ -293,30 +277,16 @@ function BatchItemPanel({ group }: Readonly<{ group: BatchGroup }>) {
 				))}
 			</Table>
 
-			<Field
-				hint={
-					group.configuredMerchantIds.length === 0
-						? "This item has no allowlist yet. Enter the vendor's Stripe merchant network IDs before sending, or the cards would be usable anywhere."
-						: "Defaults to the item's allowlist. Blank lets a card be used anywhere, so at least one ID is required here."
-				}
-				label="Grant card merchant IDs"
-			>
-				<TextArea
-					onChange={event => setAllowlist(event.target.value)}
-					placeholder="e.g. ZIEMZSLZHABHDPK, BCY7WW5ESKW7NNL"
-					rows={2}
-					value={allowlist}
-				/>
-			</Field>
-
-			<label className="hl-row" style={{ gap: "0.5rem" }}>
-				<input checked={saveToItem} onChange={event => setSaveToItem(event.target.checked)} type="checkbox" />
-				<span>Save this allowlist to the item for the orders that come after</span>
-			</label>
+			<p className="hl-hint" style={{ margin: 0 }}>
+				{merchantIds.length > 0
+					? `Usable only at ${group.merchantNames.join(", ")} (${merchantIds.length} IDs).`
+					: "No merchants are linked to this item yet."}{" "}
+				<Link href={`/admin/shop/${group.shopItemId}`}>Change them on the item</Link>
+			</p>
 
 			{merchantIds.length === 0 ? (
 				<Callout tone="warning">
-					Enter at least one merchant ID. A card with no lock could be spent with any vendor.
+					Link at least one merchant to this item before sending. A card with no lock could be spent with any vendor.
 				</Callout>
 			) : null}
 			{error ? <Callout tone="danger">{error}</Callout> : null}
@@ -349,9 +319,6 @@ function BatchItemPanel({ group }: Readonly<{ group: BatchGroup }>) {
 				>
 					{sending ? "Sending…" : `Send ${chosen.length} ${cardWord(chosen.length)} · ${formatUsd(totalCents / 100)}`}
 				</Button>
-				<span className="hl-hint">
-					{merchantIds.length > 0 ? `Locked to ${merchantIds.join(", ")}` : "No merchant lock entered yet"}
-				</span>
 			</div>
 			{dialog}
 		</Panel>

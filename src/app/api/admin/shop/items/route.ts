@@ -1,5 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { setItemMerchants } from "@/lib/grant-card-merchant-admin"
 import { withPermission, withWritePermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
@@ -23,13 +24,19 @@ export const POST = withWritePermission(Permission.MANAGE_SHOP, async (req: Requ
 	const existing = await db.orm.public.ShopItem.whereUnique({ id: data.id }).select("id").first()
 	if (existing) return fail("CONFLICT", "An item with that id already exists")
 
-	const item = await db.orm.public.ShopItem.create({
-		...data,
-		costUsd: dollars(data.costUsd ?? null),
-		description: sanitize(data.description),
-		imageUrl: data.imageUrl ?? null,
-		name: sanitize(data.name),
+	const { grantCardMerchants, ...fields } = data
+	const item = await db.transaction(async tx => {
+		const created = await tx.orm.public.ShopItem.create({
+			...fields,
+			costUsd: dollars(fields.costUsd ?? null),
+			description: sanitize(fields.description),
+			imageUrl: fields.imageUrl ?? null,
+			name: sanitize(fields.name),
+		})
+		await setItemMerchants(tx, created.id, grantCardMerchants)
+		return tx.orm.public.ShopItem.whereUnique({ id: created.id }).first()
 	})
+	if (!item) return fail("NOT_FOUND", "Item not found")
 
 	await logAudit({
 		action: AuditAction.ADMIN_CREATE_SHOP_ITEM,
