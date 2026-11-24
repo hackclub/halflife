@@ -1,6 +1,6 @@
 # HCB grant cards
 
-Status: implementation plan.
+Status: partly built. Returned parts cards are recorded and held; no coins are paid for a return until HCB's canceller field is verified (see Returned parts cards).
 
 Bulk-issue HCB card grants to approved Half Life projects, with HCB replacing the Airtable/YSWS payout pipeline.
 
@@ -519,15 +519,15 @@ Starter cards are issued through `scripts/starter-funding-export.ts`. With no fl
 
 ## Returned parts cards
 
-A maker can hand a parts card back on HCB. HCB cancels the grant and returns its balance to the organisation, and the daily sync records the return. The maker is then paid coins for the funding they did not use.
+A maker can hand a parts card back on HCB. HCB cancels the grant and returns its balance to the organisation, and the daily sync records the return. The maker is then paid coins for the funding they did not use, once the return is confirmed as their own.
 
 ### Who triggers it
 
 Only the maker cancelling their own grant. Recipients can cancel their own grants on HCB, so the sync must tell that apart from a cancel made by someone else (an admin on HCB, or a cancel the site made itself through `cancelGrantCard` or the shop path). Cancels the site made are already `CANCELED` before the sync reads them, so the sync never sees them as returns. Cancels made on HCB by anyone else must not pay coins.
 
-HCB's own grant page names the canceller. A returned grant reads "This grant has been canceled. Canceled by Max … The card no longer works, and the unspent balance went back to YSWS - Half Life", and its ledger shows a "Returning canceled grant to Max" transfer equal to the leftover (a $21.97 grant with $15.42 spent returned $6.55).
+HCB's own grant page names the canceller. A returned grant reads "This grant has been canceled. Canceled by <maker> … The card no longer works, and the unspent balance went back to YSWS - Half Life", and its ledger shows a "Returning canceled grant to <maker>" transfer equal to the leftover.
 
-Open: the API field behind that "Canceled by" line is not yet confirmed. The HCB MCP tools in this environment are not authorised (every call returns `invalid_auth`), so it has to be checked with a token that can read card grants, against a grant returned by its recipient and one cancelled by an admin. Until it is, a return is recorded but not credited, and an admin credits it by hand.
+Open: the API field behind that "Canceled by" line is not yet confirmed. The HCB MCP tools in this environment are not authorised (every call returns `invalid_auth`), so it has to be checked with a token that can read card grants, against a grant returned by its recipient and one cancelled by an admin. Until it is, the sync passes no canceller to the credit step, so every return is recorded and held and nothing is paid. Held returns are not credited by hand yet either; that needs its own admin action.
 
 ### Amount
 
@@ -548,11 +548,11 @@ The remainder cents from `floor` stay with the organisation, and the ledger note
 
 ### Ledger and idempotency
 
-- A new `LedgerKind.GRANT_CARD_RETURN`, with `themeProjectId` set. Its note names the block, the spend, and the cents left over.
-- A partial unique index on `ledger_entry (themeProjectId, kind)` where `kind = GRANT_CARD_RETURN`, so a project is credited at most once.
-- `HcbGrantCard.coinsCreditedAt` is set in the same transaction as the ledger row. The sync also picks up `RETURNED` rows where it is still null, so a return whose spend read failed is retried on the next run.
-- The credit runs inside `lockUserCredit`, the first statement of the transaction, as every other credit does.
-- Spend cannot be read: the row stays `RETURNED` and uncredited, and the sync reports it. Nothing is guessed.
+- A `LedgerKind.GRANT_CARD_RETURN` row, with `themeProjectId` set. Its note names the unpaid part of the block and the cents left over.
+- The credit runs inside `lockUserCredit`, the first statement of the transaction, as every other credit does. A project belongs to one maker, so that one lock covers every credit to the project. Inside it, the card is re-checked against `coinsCreditedAt`, and the project's ledger is checked for a return already paid.
+- A project is paid at most once. A second returned card on a project that already has a `GRANT_CARD_RETURN` row is stamped with `returnCoins = 0` and no ledger row, so the sync stops retrying it. This is enforced in code rather than by a database index: the schema check does not accept the partial index as introspected.
+- `HcbGrantCard.coinsCreditedAt` and `returnCoins` are set in the same transaction as the ledger row. The sync picks up every `RETURNED` row where `coinsCreditedAt` is still null, so a return whose spend read failed is retried on the next run.
+- Spend cannot be read: the row stays `RETURNED` and uncredited, and the sync counts it as unpriced.
 
 ### Scope
 
