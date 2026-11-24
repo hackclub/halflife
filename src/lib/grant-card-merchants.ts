@@ -30,4 +30,4 @@ export function merchantSlug(name: string): string {
 }
 
 /** Whether a merchant's archive timestamp is set. Read by truthiness, because an unset column may come back as undefined as well as null. */
-export const isArchived = (archivedAt: string | null | undefined): boolean => Boolean(archivedAt)
+export const isArchived: (archivedAt: string | null | undefined) => boolean = Boolean

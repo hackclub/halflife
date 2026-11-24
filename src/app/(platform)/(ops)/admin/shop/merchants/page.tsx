@@ -53,8 +53,8 @@ export default async function AdminGrantCardMerchantsPage({
 				))}
 			</div>
 			<p className="hl-hint" style={{ margin: 0 }}>
-				A grant card for an item may be spent at any merchant linked to that item. Each merchant's IDs are entered once
-				here, not on each item.
+				A grant card for an item may be spent at any merchant linked to that item. Each merchant&apos;s IDs are entered
+				once here, not on each item.
 			</p>
 			<GrantCardMerchantsPanel
 				archived={archived}
