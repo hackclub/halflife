@@ -1,5 +1,6 @@
 import { fail, ok, parseBody } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { setItemMerchants } from "@/lib/grant-card-merchant-admin"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
 import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
@@ -23,11 +24,18 @@ export const PATCH = withWritePermission(
 		const before = await db.orm.public.ShopItem.whereUnique({ id }).first()
 		if (!before) return fail("NOT_FOUND", "Item not found")
 
-		const item = await db.orm.public.ShopItem.where({ id }).update({
-			...data,
-			...(data.name === undefined ? {} : { name: sanitize(data.name) }),
-			...(data.description === undefined ? {} : { description: sanitize(data.description) }),
-			...(data.costUsd === undefined ? {} : { costUsd: dollars(data.costUsd) }),
+		const { grantCardMerchants, ...fields } = data
+		const item = await db.transaction(async tx => {
+			const updated = await tx.orm.public.ShopItem.where({ id }).update({
+				...fields,
+				...(fields.name === undefined ? {} : { name: sanitize(fields.name) }),
+				...(fields.description === undefined ? {} : { description: sanitize(fields.description) }),
+				...(fields.costUsd === undefined ? {} : { costUsd: dollars(fields.costUsd) }),
+			})
+			if (!updated) return null
+			if (grantCardMerchants !== undefined) await setItemMerchants(tx, id, grantCardMerchants)
+			// Read back after the links are set, so the flat list in the response is the one the links produced.
+			return tx.orm.public.ShopItem.whereUnique({ id }).first()
 		})
 		if (!item) return fail("NOT_FOUND", "Item not found")
 
