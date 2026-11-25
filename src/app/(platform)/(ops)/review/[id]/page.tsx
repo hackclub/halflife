@@ -1,17 +1,15 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ActionButton } from "@/app/components/forms/ActionButton"
-import { Badge, Callout, PageHeader, Panel, statusLabel, statusTone } from "@/app/components/ui"
+import { Badge, PageHeader } from "@/app/components/ui"
 import { DisputeThread } from "@/components/disputes/DisputeThread"
+import { HardLink } from "@/components/site/HardLink"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
+import { hasPermission, Permission } from "@/lib/permissions"
 import { getSubmissionDetail } from "@/lib/queries/review"
-import { ReviewBom, ReviewDecision, ReviewEvidence, ReviewHours, ReviewProject } from "./ReviewPanels"
 
 export const metadata: Metadata = {
-	title: "Review",
+	title: "Dispute",
 }
 
 export const dynamic = "force-dynamic"
@@ -20,106 +18,58 @@ interface Props {
 	params: Promise<{ id: string }>
 }
 
-export default async function ReviewDetailPage({ params }: Props) {
+/**
+ * The only thing left under /review: answering a maker's dispute. Reviewing a ship happens on /reviews/<id>, which links here when a ship has a dispute open.
+ */
+export default async function ReviewDisputePage({ params }: Props) {
 	const { user, roles } = await requirePermissionPage(Permission.REVIEW_SUBMISSIONS)
 	const { id } = await params
 
-	const detail = await getSubmissionDetail(id, user.id, {
-		includeContact: hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR),
-		includeRiskFlags:
-			hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR) || hasPermission(roles, Permission.REVIEW_HOURS),
-	})
-	if (!detail) notFound()
+	const detail = await getSubmissionDetail(id, user.id)
+	const dispute = detail?.submission.dispute
+	if (!detail || !dispute) notFound()
 
-	const { submission, breakdown, claimLive } = detail
+	const { submission, themeLabel } = detail
 	const project = submission.themeProject
-	const claimedByMe = claimLive && submission.claim?.reviewerId === user.id
 
 	return (
 		<div className="hl-stack">
 			<PageHeader
 				actions={
-					<Badge tone={statusTone(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}>
-						{statusLabel(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}
-					</Badge>
+					<Badge tone={dispute.resolvedAt ? "muted" : "warning"}>{dispute.resolvedAt ? "closed" : "open"}</Badge>
 				}
-				subtitle={`${project.user.email ? displayName(project.user, project.user.email) : (displayName(project.user) ?? "-")} · submitted ${submission.createdAt.toDateString()}`}
-				title={`${detail.themeLabel} · ${submission.phase.toLowerCase()}`}
+				subtitle={`${project.user.email ? displayName(project.user, project.user.email) : (displayName(project.user) ?? "-")} · ${submission.phase.toLowerCase()}`}
+				title={`${themeLabel} · dispute`}
 			/>
 
-			{project.user.fraudFlagged ? (
-				<Callout tone="danger">This account is flagged. Do not approve without an admin.</Callout>
-			) : null}
-			{project.user.verificationStatus !== null && project.user.verificationStatus !== "verified" ? (
-				<Callout tone="warning">
-					Identity status is “{project.user.verificationStatus ?? "unknown"}”, not verified.
-				</Callout>
-			) : null}
-			{breakdown.hackatimeStale ? (
-				<Callout tone="warning">
-					Hackatime hours could not be refreshed and may be stale. Approving will be refused until they resolve, or set
-					an explicit hours override.
-				</Callout>
-			) : null}
-
-			{submission.dispute ? (
-				<DisputeThread
-					closeUrl={`/api/admin/disputes/${submission.dispute.id}/close`}
-					dispute={{
-						at: submission.dispute.createdAt.getTime(),
-						id: submission.dispute.id,
-						messages: submission.dispute.messages.map(m => ({
-							at: m.createdAt.getTime(),
-							body: m.body,
-							fromReviewer: m.fromReviewer,
-							id: m.id,
-							reviewerName: m.author ? displayName(m.author) : null,
-						})),
-						note: submission.dispute.note,
-						outcome: submission.dispute.outcome,
-						resolvedAt: submission.dispute.resolvedAt?.getTime() ?? null,
-					}}
-					replyUrl={`/api/admin/disputes/${submission.dispute.id}/messages`}
-					sendBackUrl={
-						hasPermission(roles, Permission.OVERRIDE_DECISIONS)
-							? `/api/admin/disputes/${submission.dispute.id}/send-back`
-							: undefined
-					}
-					surface="console"
-					viewer="reviewer"
-				/>
-			) : null}
-
-			<Panel
-				actions={
-					claimLive ? (
-						<Badge tone="warning">
-							{claimedByMe ? "yours" : (displayName(submission.claim?.reviewer) ?? "claimed")} until{" "}
-							{submission.claim?.expiresAt.toLocaleTimeString()}
-						</Badge>
-					) : (
-						<Badge tone="muted">unclaimed</Badge>
-					)
+			<DisputeThread
+				closeUrl={`/api/admin/disputes/${dispute.id}/close`}
+				dispute={{
+					at: dispute.createdAt.getTime(),
+					id: dispute.id,
+					messages: dispute.messages.map(m => ({
+						at: m.createdAt.getTime(),
+						body: m.body,
+						fromReviewer: m.fromReviewer,
+						id: m.id,
+						reviewerName: m.author ? displayName(m.author) : null,
+					})),
+					note: dispute.note,
+					outcome: dispute.outcome,
+					resolvedAt: dispute.resolvedAt?.getTime() ?? null,
+				}}
+				replyUrl={`/api/admin/disputes/${dispute.id}/messages`}
+				sendBackUrl={
+					hasPermission(roles, Permission.OVERRIDE_DECISIONS)
+						? `/api/admin/disputes/${dispute.id}/send-back`
+						: undefined
 				}
-				title="Claim"
-			>
-				<div className="hl-row">
-					{claimedByMe ? (
-						<ActionButton label="Release" method="DELETE" url={`/api/review/submissions/${id}/claim`} />
-					) : (
-						<ActionButton label="Claim" url={`/api/review/submissions/${id}/claim`} variant="primary" />
-					)}
-				</div>
-			</Panel>
-
-			<ReviewHours breakdown={breakdown} />
-			<ReviewProject detail={detail} />
-			<ReviewBom detail={detail} />
-			<ReviewEvidence claimedByMe={claimedByMe} detail={detail} />
-			<ReviewDecision claimedByMe={claimedByMe} detail={detail} submissionId={id} />
+				surface="console"
+				viewer="reviewer"
+			/>
 
 			<p>
-				<Link href="/review">Back to the queue</Link>
+				<HardLink href={`/reviews/${id}`}>Open the ship on the review platform</HardLink>
 			</p>
 		</div>
 	)
