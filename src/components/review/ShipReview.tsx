@@ -731,6 +731,11 @@ function Notices({ detail }: { detail: ReviewDetail }) {
 	)
 }
 
+/** A build approval kept until its design is approved: the server answers `{ deferred: true }` instead of a decision. */
+function isDeferredDecision(response: unknown): boolean {
+	return typeof response === "object" && response !== null && "deferred" in response && response.deferred === true
+}
+
 function DecisionPanel({
 	busy,
 	detail,
@@ -775,6 +780,7 @@ function DecisionPanel({
 	const [shownAt, setShownAt] = useState(() => new Date()) // oxlint-disable-line eslint/no-unused-vars
 	// A pasted picture is a placeholder in the message until it lands, so nothing is sent while one is on its way.
 	const [uploadingImage, setUploadingImage] = useState(false)
+	const [savedNote, setSavedNote] = useState<string | null>(null)
 
 	// A reviewer may lower a tier or keep it; raising it past what the maker asked for mints parts money, which is MANAGE_CREDIT's call. The decision route enforces this; the select only stops offering what would be refused.
 	const tierCap = viewer.canSetGrant ? null : project.requestedTier
@@ -827,6 +833,7 @@ function DecisionPanel({
 
 	async function act(action: Action): Promise<void> {
 		onErrors([])
+		setSavedNote(null)
 		onActing(true)
 		const body: DecisionBody =
 			action === "approve"
@@ -844,7 +851,12 @@ function DecisionPanel({
 					? { feedback: feedback.trim(), result: "RETURNED", ...(reason.trim() ? { reason: reason.trim() } : {}) }
 					: { feedback: feedback.trim(), reason: reason.trim(), result: "REJECTED" }
 		try {
-			await runtime.decide(ship.id, body)
+			const response = await runtime.decide(ship.id, body)
+			// Kept until the design is approved, so the hand-in stays where it is and nothing is navigated away from.
+			if (isDeferredDecision(response)) {
+				setSavedNote("Saved. It applies when the design is approved.")
+				return
+			}
 			clearFeedback()
 			clearTechnicalFeatures()
 			revertJustification()
@@ -872,6 +884,7 @@ function DecisionPanel({
 	return (
 		<Paper meta={meta} title="Decision">
 			<FormErrors errors={errors} />
+			{savedNote ? <p className="field__hint">{savedNote}</p> : null}
 			<div className="form">
 				<fieldset className="review-lock review-lock--contents" disabled={!mine || !ship.reviewable}>
 					{design ? (
