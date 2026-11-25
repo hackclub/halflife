@@ -59,6 +59,22 @@ export function returnedBy(senderEmail: string | null, grantEmail: string | null
 	return senderEmail.trim().toLowerCase() === grantEmail?.trim().toLowerCase() ? "maker" : "other"
 }
 
+/**
+ * A disbursement's kind for the report: its memo without the name after "to" or "from", so "Grant to Ellie" reads as
+ * "Grant". Null memos read as "no memo".
+ */
+export function memoKind(memo: string | null): string {
+	if (memo === null) return "no memo"
+	return memo.replace(/ (to|from) .*$/, "")
+}
+
+/** A canceled grant with no return disbursement. Carries no names or emails. */
+export interface CanceledWithoutReturn {
+	amountCents: number
+	grantId: string
+	memoKinds: string[]
+}
+
 /** One return HCB shows, for the sync's report. Carries no names or emails. */
 export interface ReturnSeen {
 	expired: boolean
@@ -206,6 +222,8 @@ export async function refuseCancelOrRecordReturn(
 
 export interface BufferTopUpSyncResult {
 	alreadyRecorded: number
+	/** Canceled grants with no return disbursement at all. Only a dry run reports them. */
+	canceledWithoutReturn: CanceledWithoutReturn[]
 	dryRun: boolean
 	/** How many grants HCB reports under each status, so the values a return can take can be read off a live run. */
 	grantStatuses: { [_: string]: number }
@@ -261,6 +279,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 	const returned: { hcbStatus: string | null; id: string; returnedAt: string; table: CardTable }[] = []
 	const grantStatuses: { [_: string]: number } = {}
 	const returnsSeen: ReturnSeen[] = []
+	const canceledWithoutReturn: CanceledWithoutReturn[] = []
 	for (const grant of list.rows) {
 		const statusKey = grant.status ?? "unreported"
 		grantStatuses[statusKey] = (grantStatuses[statusKey] ?? 0) + 1
@@ -277,6 +296,12 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 				grantId: bareGrantId(grant.id),
 				grantStatus: grant.status,
 				returnedBy: returnedBy(found.disbursement.senderEmail, grant.email),
+			})
+		if (found === null && grant.status === "canceled")
+			canceledWithoutReturn.push({
+				amountCents: grant.amountCents,
+				grantId: bareGrantId(grant.id),
+				memoKinds: [...new Set(read.rows.map(d => memoKind(d.memo)))],
 			})
 		const returnedAt = found !== null && !found.expired ? found.disbursement.createdAt : null
 		const liveCardId = liveCards.get(bareGrantId(grant.id))
@@ -316,6 +341,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 
 	return {
 		alreadyRecorded,
+		canceledWithoutReturn: input.dryRun ? canceledWithoutReturn : [],
 		dryRun: input.dryRun,
 		grantStatuses,
 		grantsScanned: list.rows.length,
