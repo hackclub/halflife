@@ -4,39 +4,39 @@ import { withIntegrationRoute } from "@/lib/integration-route"
 import db from "@/lib/prisma8"
 
 /**
- * Read-only: every admin coin adjustment on a design, with the design grant cards on the same design and maker, so a
- * grant that was returned by hand can be matched to any coins already added for it. Written to the app log as one line.
+ * Read-only: every admin coin adjustment, with the design grant cards its maker holds, so a grant that was returned by hand
+ * can be matched to any coins already added for that maker. Written to the app log as one line.
+ *
+ * An adjustment is not always tied to a design, so it is matched to the maker's design grants, whichever design they are on.
  */
 export const POST = withIntegrationRoute(async () => {
 	const adjustments = await db.orm.public.LedgerEntry.where({ kind: LedgerKind.ADMIN_ADJUSTMENT })
-		.where(entry => entry.themeProjectId.isNotNull())
 		.select("amount", "createdAt", "note", "themeProjectId", "userId")
 		.all()
-	const themeIds = [
-		...new Set(adjustments.map(entry => entry.themeProjectId).filter((id): id is string => id !== null)),
-	]
+	const userIds = [...new Set(adjustments.map(entry => entry.userId))]
 	const cards =
-		themeIds.length === 0
+		userIds.length === 0
 			? []
 			: await db.orm.public.HcbGrantCard.where({ phase: Phase.DESIGN })
-					.where(card => card.themeProjectId.in(themeIds))
+					.where(card => card.userId.in(userIds))
 					.select("amountCents", "hcbStatus", "spentCents", "status", "themeProjectId", "userId")
 					.all()
 
-	const cardsFor = (themeProjectId: string | null, userId: string) =>
+	const cardsFor = (userId: string) =>
 		cards
-			.filter(card => card.themeProjectId === themeProjectId && card.userId === userId)
+			.filter(card => card.userId === userId)
 			.map(card => ({
 				amountCents: card.amountCents,
 				hcbStatus: card.hcbStatus,
 				spentCents: card.spentCents,
 				status: card.status,
+				themeProjectId: card.themeProjectId,
 			}))
 
 	const report = {
 		adjustments: adjustments.map(entry => ({
 			amount: entry.amount,
-			cards: cardsFor(entry.themeProjectId, entry.userId),
+			cards: cardsFor(entry.userId),
 			createdAt: String(entry.createdAt),
 			note: entry.note,
 			themeProjectId: entry.themeProjectId,
