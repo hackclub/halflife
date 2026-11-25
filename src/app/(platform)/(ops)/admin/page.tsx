@@ -170,73 +170,79 @@ async function SummaryTab() {
 				</div>
 			</div>
 
-			<Panel
-				actions={<span className="hl-hint hl-note--inline">from the dashboard prompt</span>}
-				title="Net Promoter Score"
-			>
-				{nps === null ? (
-					<EmptyState>NPS is unavailable: Airtable is not configured or did not answer.</EmptyState>
-				) : nps.responses === 0 ? (
-					<EmptyState>Nobody has answered the NPS question yet.</EmptyState>
-				) : (
-					<div className="flex flex-wrap items-center justify-between gap-6">
-						<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
-						<ShareDonut
-							centerLabel="responses"
-							colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)"]}
-							empty="No NPS answers yet."
-							measure="NPS answers"
-							rows={[
-								{ label: "Promoters (9-10)", value: nps.promoters },
-								{ label: "Passives (7-8)", value: nps.passives },
-								{ label: "Detractors (0-6)", value: nps.detractors },
-							]}
-						/>
-					</div>
-				)}
-				<p className="hl-hint hl-note">
-					Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus the
-					detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from the same
-					Signups table the dashboard&apos;s prompt writes to, cached for a minute.
-				</p>
-			</Panel>
+			{/* The two panels sit side by side once the summary is wide enough for both; below that they stack. */}
+			<div className="hl-overview-pair">
+				<div className="hl-overview-pair-cols">
+					<Panel
+						actions={<span className="hl-hint hl-note--inline">from the dashboard prompt</span>}
+						title="Net Promoter Score"
+					>
+						{nps === null ? (
+							<EmptyState>NPS is unavailable: Airtable is not configured or did not answer.</EmptyState>
+						) : nps.responses === 0 ? (
+							<EmptyState>Nobody has answered the NPS question yet.</EmptyState>
+						) : (
+							<div className="flex flex-wrap items-center justify-between gap-6">
+								<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
+								<ShareDonut
+									centerLabel="responses"
+									colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)"]}
+									empty="No NPS answers yet."
+									measure="NPS answers"
+									rows={[
+										{ label: "Promoters (9-10)", value: nps.promoters },
+										{ label: "Passives (7-8)", value: nps.passives },
+										{ label: "Detractors (0-6)", value: nps.detractors },
+									]}
+								/>
+							</div>
+						)}
+						<p className="hl-hint hl-note">
+							Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus
+							the detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from
+							the same Signups table the dashboard&apos;s prompt writes to, cached for a minute.
+						</p>
+					</Panel>
 
-			<Panel
-				actions={
-					<span className="hl-hint hl-note--inline">each project counted once, in the state its card shows</span>
-				}
-				title="Reviewer activity"
-			>
-				<div className="flex flex-wrap items-center justify-between gap-6">
-					<ShareDonut
-						centerLabel="submitted"
-						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
-						empty="No projects with a review state yet."
-						measure="Project review status"
-						rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
-					/>
-					<div className="flex flex-col gap-3">
-						<Stat label="Reviewed today" value={reviewer.reviewedToday} />
-						<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
-					</div>
+					<Panel
+						actions={
+							<span className="hl-hint hl-note--inline">each project counted once, in the state its card shows</span>
+						}
+						title="Reviewer activity"
+					>
+						<div className="flex flex-wrap items-center justify-between gap-6">
+							<ShareDonut
+								centerLabel="submitted"
+								colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
+								empty="No projects with a review state yet."
+								measure="Project review status"
+								rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
+							/>
+							<div className="flex flex-col gap-3">
+								<Stat label="Reviewed today" value={reviewer.reviewedToday} />
+								<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
+							</div>
+						</div>
+						<Table head={["Outcome", "Today", "All time"]}>
+							{reviewer.byResult.map(row => (
+								<tr key={row.result}>
+									<td>{RESULT_LABEL[row.result]}</td>
+									<td className="hl-mono">{fmtInt(row.today)}</td>
+									<td className="hl-mono">{fmtInt(row.total)}</td>
+								</tr>
+							))}
+						</Table>
+						<p className="hl-hint hl-note">
+							Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
+							changes if either phase is waiting on the maker, pending if either phase is in review, otherwise
+							approved. It is the same state the project&apos;s card shows, so a design approved while its build is
+							still in review reads as pending rather than as two slices, and a resubmission does not leave a second
+							copy of the project behind. Projects that have never been submitted are left out. Console decisions are
+							included.
+						</p>
+					</Panel>
 				</div>
-				<Table head={["Outcome", "Today", "All time"]}>
-					{reviewer.byResult.map(row => (
-						<tr key={row.result}>
-							<td>{RESULT_LABEL[row.result]}</td>
-							<td className="hl-mono">{fmtInt(row.today)}</td>
-							<td className="hl-mono">{fmtInt(row.total)}</td>
-						</tr>
-					))}
-				</Table>
-				<p className="hl-hint hl-note">
-					Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
-					changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved. It
-					is the same state the project&apos;s card shows, so a design approved while its build is still in review reads
-					as pending rather than as two slices, and a resubmission does not leave a second copy of the project behind.
-					Projects that have never been submitted are left out. Console decisions are included.
-				</p>
-			</Panel>
+			</div>
 		</>
 	)
 }

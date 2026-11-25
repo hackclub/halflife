@@ -1179,6 +1179,24 @@
 		}
 	}
 
+	/*
+	 * ── Overview: NPS beside reviewer activity ──────────────────────────────
+	 * The two panels stack until the summary is wide enough for two readable columns, then sit side by side. The wrapper is the container the query reads, because a container cannot size itself; the grid is on the element inside it.
+	 */
+	.hl-overview-pair {
+		container-type: inline-size;
+	}
+	.hl-overview-pair-cols {
+		display: grid;
+		gap: 1rem;
+		align-items: start;
+	}
+	@container (min-width: 48rem) {
+		.hl-overview-pair-cols {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
 	/* ── File inputs ───────────────────────────────────────────────────────── */
 	/* A file field reads as a drop target rather than an empty text box. */
 	.hl-admin-main input[type="file"] {
