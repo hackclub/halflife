@@ -104,10 +104,6 @@ export async function sendDisputedPhaseBack(
 			)
 			.updateAll({ invalidated: true, invalidatedAt: formatDbTimestamp(new Date()) })
 		await tx.orm.public.PhaseSubmission.where({ id: submission.id }).update({
-			ariDecision: null,
-			ariShipError: null,
-			ariStatus: "review",
-			ariSubmissionId: null,
 			resolvedAt: null,
 			resolvedResult: null,
 		})
