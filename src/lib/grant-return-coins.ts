@@ -29,9 +29,17 @@ export interface GrantReturnCoinsResult {
 	skipped: { reason: string; themeProjectId: string }[]
 }
 
+/**
+ * The HCB grant statuses that mean the maker handed the balance back, and so earn coins. A converted grant reads differently and is left out on purpose: its money goes out as a reimbursement.
+ *
+ * Empty until the statuses HCB reports are read off a live run, so nothing is paid on a guess.
+ */
+export const PLAIN_RETURN_STATUSES: readonly string[] = []
+
 interface ReturnedDesignCard {
 	amountCents: number
 	hcbCardGrantId: string | null
+	hcbStatus: string | null
 	id: string
 	spentCents: number | null
 	themeProjectId: string
@@ -48,7 +56,7 @@ export async function syncGrantReturnCoins(input: { dryRun: boolean }): Promise<
 		phase: Phase.DESIGN,
 		status: HcbGrantCardStatus.RETURNED,
 	})
-		.select("amountCents", "hcbCardGrantId", "id", "spentCents", "themeProjectId", "userId")
+		.select("amountCents", "hcbCardGrantId", "hcbStatus", "id", "spentCents", "themeProjectId", "userId")
 		.all()
 
 	const byProject = new Map<string, ReturnedDesignCard[]>()
@@ -82,6 +90,10 @@ export async function syncGrantReturnCoins(input: { dryRun: boolean }): Promise<
 		}
 		if (declined.has(project.id)) {
 			skip("Parts funding was declined, so nothing was taken out of the cap")
+			continue
+		}
+		if (group.some(card => card.hcbStatus === null || !PLAIN_RETURN_STATUSES.includes(card.hcbStatus))) {
+			skip("HCB's status for this grant is not confirmed as a plain return, so it is not paid")
 			continue
 		}
 		const capUsd = grantCardCapUsd(project.grantUsd, project.tier, isWeekOneStarter(project.starterProjectId))

@@ -89,7 +89,13 @@ export function selectBufferTopUps(
 }
 
 /** Card rows that still count as live on our side, so a return HCB shows can be matched to the row that paid it. */
-const LIVE_CARD_STATUSES = [HcbGrantCardStatus.PENDING, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]
+// Returned rows stay in the scan so their HCB status is refreshed: a row returned before the status was stored has none.
+const LIVE_CARD_STATUSES = [
+	HcbGrantCardStatus.PENDING,
+	HcbGrantCardStatus.ISSUED,
+	HcbGrantCardStatus.AMBIGUOUS,
+	HcbGrantCardStatus.RETURNED,
+]
 
 type CardTable = "project" | "shop"
 
@@ -102,11 +108,16 @@ interface LiveCardRef {
  * Record that the maker handed a card back. The money has left the card, so the row is finished either way: it is no
  * longer live, and a returned card is never reissued by the system (both issue paths refuse a settled card).
  */
-export async function markCardReturned(table: CardTable, id: string, returnedAt: string): Promise<void> {
+export async function markCardReturned(
+	table: CardTable,
+	id: string,
+	returnedAt: string,
+	hcbStatus: string | null,
+): Promise<void> {
 	const error = "The maker returned this grant on HCB; its balance went back to the organisation"
 	const update = {
 		error,
-		hcbStatus: "returned",
+		hcbStatus: hcbStatus ?? "returned",
 		status: HcbGrantCardStatus.RETURNED,
 	}
 	if (table === "shop") {
@@ -149,7 +160,7 @@ export async function refuseCancelOrRecordReturn(
 		throw error
 	}
 	if (returnedAt === null) throw error
-	await markCardReturned(table, id, returnedAt)
+	await markCardReturned(table, id, returnedAt, null)
 	throw new HttpError(
 		"CONFLICT",
 		"The maker already returned this grant on HCB, so it cannot be cancelled. It is now marked returned",
@@ -159,6 +170,8 @@ export async function refuseCancelOrRecordReturn(
 export interface BufferTopUpSyncResult {
 	alreadyRecorded: number
 	dryRun: boolean
+	/** How many grants HCB reports under each status, so the values a return can take can be read off a live run. */
+	grantStatuses: { [_: string]: number }
 	grantsScanned: number
 	recorded: number
 	/** Live project or shop card rows the sync marked RETURNED. */
@@ -206,8 +219,11 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 
 	let topUpsFound = 0
 	let alreadyRecorded = 0
-	const returned: { id: string; returnedAt: string; table: CardTable }[] = []
+	const returned: { hcbStatus: string | null; id: string; returnedAt: string; table: CardTable }[] = []
+	const grantStatuses: { [_: string]: number } = {}
 	for (const grant of list.rows) {
+		const statusKey = grant.status ?? "unreported"
+		grantStatuses[statusKey] = (grantStatuses[statusKey] ?? 0) + 1
 		const read = await listCardGrantDisbursements(grant.id)
 		if (read.kind === "unreadable")
 			throw new HttpError(
@@ -216,7 +232,8 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 			)
 		const returnedAt = grantReturnedAt(read.rows)
 		const liveCardId = liveCards.get(bareGrantId(grant.id))
-		if (returnedAt !== null && liveCardId) returned.push({ id: liveCardId.id, returnedAt, table: liveCardId.table })
+		if (returnedAt !== null && liveCardId)
+			returned.push({ hcbStatus: grant.status, id: liveCardId.id, returnedAt, table: liveCardId.table })
 		for (const [index, disbursement] of selectBufferTopUps(read.rows, sitePayments, grant.id).entries()) {
 			topUpsFound++
 			const key = bufferTopUpKey(grant.id, disbursement, index)
@@ -236,7 +253,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 	}
 
 	if (!input.dryRun && returned.length > 0)
-		for (const card of returned) await markCardReturned(card.table, card.id, card.returnedAt)
+		for (const card of returned) await markCardReturned(card.table, card.id, card.returnedAt, card.hcbStatus)
 
 	if (!input.dryRun && fresh.length > 0)
 		await db.orm.public.HcbBufferTopUp.createAll(
@@ -252,6 +269,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 	return {
 		alreadyRecorded,
 		dryRun: input.dryRun,
+		grantStatuses,
 		grantsScanned: list.rows.length,
 		recorded: input.dryRun ? 0 : fresh.length,
 		returnedMarked: input.dryRun ? 0 : returned.length,
