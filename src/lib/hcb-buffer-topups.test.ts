@@ -5,6 +5,7 @@ import {
 	bufferTopUpKey,
 	grantReturn,
 	grantReturnedAt,
+	memoKind,
 	returnedBy,
 	selectBufferTopUps,
 } from "@/lib/hcb-buffer-topups"
@@ -137,5 +138,15 @@ describe("grantReturnedAt", () => {
 				disbursement({ amountCents: 6432, createdAt: null, memo: "Returning canceled grant to Ellie" }),
 			]),
 		).toBeNull()
+	})
+})
+
+describe("memoKind", () => {
+	test("drops the name after to or from, and keeps the kind", () => {
+		expect(memoKind("Grant to Ellie")).toBe("Grant")
+		expect(memoKind("Returning canceled grant to Max Lin")).toBe("Returning canceled grant")
+		expect(memoKind("Withdrawal from grant to Polo")).toBe("Withdrawal")
+		expect(memoKind("AliExpress")).toBe("AliExpress")
+		expect(memoKind(null)).toBe("no memo")
 	})
 })
