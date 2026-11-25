@@ -14,6 +14,8 @@ test("a reviewer can claim and return a design submission", async ({ openAs }) =
 	)
 	await page.getByRole("button", { name: "Claim review" }).click()
 	expect((await claimed).status()).toBe(200)
+
+	await page.reload()
 	await expect(page.getByRole("button", { name: "Return for changes" })).toBeEnabled()
 
 	await page.getByLabel("Message to the maker").fill("The schematic needs a clearer power section.")
