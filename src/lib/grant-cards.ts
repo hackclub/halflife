@@ -131,7 +131,7 @@ interface PreviewBuilder {
 }
 
 /** Whether a project is one of Week 1's starters. Those are capped at the parts + PCB target, not their tier grant. */
-const isWeekOneStarter = (starterProjectId: string | null): boolean =>
+export const isWeekOneStarter = (starterProjectId: string | null): boolean =>
 	starterProjectId !== null && starterProjectsFor(Theme.PCB).some(starter => starter.id === starterProjectId)
 
 /**
