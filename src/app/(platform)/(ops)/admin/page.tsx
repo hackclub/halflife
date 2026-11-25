@@ -218,7 +218,7 @@ async function SummaryTab() {
 								measure="Project review status"
 								rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
 							/>
-							<div className="flex flex-col gap-3">
+							<div className="flex flex-wrap gap-3">
 								<Stat label="Reviewed today" value={reviewer.reviewedToday} />
 								<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
 							</div>
