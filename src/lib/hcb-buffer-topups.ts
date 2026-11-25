@@ -131,6 +131,31 @@ export async function returnedAtForGrant(grantHashid: string): Promise<string | 
 	return grantReturnedAt(read.rows)
 }
 
+/**
+ * What to do when HCB refuses to cancel a card grant. HCB's refusal does not say why, so the grant is read back: if its
+ * disbursements show the maker already handed the balance back, the return is recorded and the caller is told that,
+ * and the row stops being live. Any other refusal, or a grant that cannot be read back, is rethrown unchanged.
+ */
+export async function refuseCancelOrRecordReturn(
+	error: unknown,
+	table: CardTable,
+	id: string,
+	grantHashid: string,
+): Promise<never> {
+	let returnedAt: string | null
+	try {
+		returnedAt = await returnedAtForGrant(grantHashid)
+	} catch {
+		throw error
+	}
+	if (returnedAt === null) throw error
+	await markCardReturned(table, id, returnedAt)
+	throw new HttpError(
+		"CONFLICT",
+		"The maker already returned this grant on HCB, so it cannot be cancelled. It is now marked returned",
+	)
+}
+
 export interface BufferTopUpSyncResult {
 	alreadyRecorded: number
 	dryRun: boolean

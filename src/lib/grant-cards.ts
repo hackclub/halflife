@@ -29,7 +29,7 @@ import {
 	readOrganizationBalanceCents,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
-import { bareGrantId, bufferTopUpCentsByGrant } from "@/lib/hcb-buffer-topups"
+import { bareGrantId, bufferTopUpCentsByGrant, refuseCancelOrRecordReturn } from "@/lib/hcb-buffer-topups"
 import { lockKey } from "@/lib/locks"
 import { payoutBlockReason } from "@/lib/moderation"
 import { formatUsd } from "@/lib/money"
@@ -1347,7 +1347,11 @@ export async function cancelGrantCard(
 		)
 	if (knownSpent === null) await db.orm.public.HcbGrantCard.where({ id }).update({ spentCents })
 
-	await cancelCardGrant(row.hcbCardGrantId)
+	try {
+		await cancelCardGrant(row.hcbCardGrantId)
+	} catch (err) {
+		await refuseCancelOrRecordReturn(err, "project", id, row.hcbCardGrantId)
+	}
 	const { ip, userAgent } = await requestInfo()
 	await db.transaction(async tx => {
 		await tx.orm.public.HcbGrantCard.where({ id }).update({
