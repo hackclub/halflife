@@ -20,12 +20,10 @@ import { parseDbTimestamp } from "@/lib/time"
  *
  * Best-effort: a decision must never fail because Slack is down, so a failure becomes a `NOTIFICATION_FAILURE` audit row rather than an error. The in-app project page is still the source of truth, so a missed message is inconvenient, not lost.
  *
- * Called after the decision transaction has committed, from both decision paths (the console route and the Ari webhook), so the two cannot drift.
+ * Called after the decision transaction has committed, from the decision routes (the review console and the admin override), so the two cannot drift.
  */
 
 export interface ReviewOutcomeNotice {
-	/** Which surface decided it, so the message can say who is asking. */
-	decidedBy: "ari" | "console"
 	/**
 	 * The reviewer's note to the maker, or null when there was none.
 	 *
@@ -37,22 +35,11 @@ export interface ReviewOutcomeNotice {
 	themeProjectId: string
 }
 
-/**
- * Who to name, on the one outcome where the answer matters.
- *
- * A returned submission is a request to do something, so the maker needs to know who is asking. Ari is the bot. A console decision was made by a volunteer, and this deliberately does not name them: a reviewer's address has no business in a participant's DM, and the project page already shows the review it came from.
- */
-function asker(decidedBy: "ari" | "console"): string {
-	if (decidedBy === "ari") return "Ari"
-	return "A Half Life reviewer"
-}
-
 /** The body of one outcome, in the voice the platform uses everywhere else. */
 function headline(
 	result: ReviewResult,
 	phase: string,
 	title: string,
-	decidedBy: "ari" | "console",
 	resubmitBy: string | null,
 	submissionsLeft: number | null,
 ): { body: string; next?: string } {
@@ -62,7 +49,8 @@ function headline(
 			return { body: `Good news: your ${what} was approved.` }
 		case ReviewResult.RETURNED:
 			return {
-				body: `${asker(decidedBy)} asked for changes on your ${what}.`,
+				// A returned submission is a request to do something, so the maker needs to know who is asking. A console decision was made by a volunteer, and this deliberately does not name them: a reviewer's address has no business in a participant's DM, and the project page already shows the review it came from.
+				body: `A Half Life reviewer asked for changes on your ${what}.`,
 				// The half that makes it actionable. What the status now permits is more work rather than less, and without this line the message reads as a verdict while the trail's own wording does the explaining somewhere a maker may never look. A return has just granted a week, so the date is worth more than "until it closes": it is the one thing the maker will come back to.
 				next:
 					submissionsLeft === 0
@@ -95,7 +83,7 @@ export interface ReviewOutcomeMessage {
  * Separated from the sending so that what a maker is actually told can be read, and checked, without a Slack call: the words are the part that is easy to get wrong and the part nobody notices until a participant is confused by one.
  */
 export function reviewOutcomeMessage(
-	notice: Pick<ReviewOutcomeNotice, "result" | "decidedBy" | "note">,
+	notice: Pick<ReviewOutcomeNotice, "result" | "note">,
 	context: { phase: Phase; title: string; resubmitBy?: string | null; submissionsLeft?: number | null },
 ): ReviewOutcomeMessage {
 	const phaseLabel = context.phase === Phase.DESIGN ? "design" : "build"
@@ -103,32 +91,11 @@ export function reviewOutcomeMessage(
 		notice.result,
 		phaseLabel,
 		context.title,
-		notice.decidedBy,
 		context.resubmitBy ?? null,
 		context.submissionsLeft ?? null,
 	)
 	const note = notice.note?.trim() || ""
 	return { note: note || null, prose: [body, ...(next ? [next] : [])] }
-}
-
-/**
- * The message for a hand-in that never reached review.
- *
- * Deliberately not built from a review outcome: nothing has been reviewed, so there is no verdict to report and no reviewer to name. Calling this "changes requested" would describe a decision nobody made.
- *
- * The reason is the send's own refusal rather than a person's note, so it reads as one of our paragraphs instead of the set-apart quote a reviewer's words get. That also means it can change between attempts as the maker edits - only the project page follows it, because the notice itself is owed once.
- */
-export function shipFailedMessage(source: { title: string; phase: Phase; reason: string }): {
-	prose: string[]
-} {
-	const phase = source.phase === Phase.DESIGN ? "design" : "build"
-	return {
-		prose: [
-			`Your ${phase} for ${source.title} was submitted, but it could not be sent for review, so nothing has been reviewed yet.`,
-			source.reason,
-			"Fix that on the project page, then submit it again. If the week still shows as in review, take it back first.",
-		],
-	}
 }
 
 /**
@@ -226,7 +193,7 @@ function chunk(text: string, size: number): string[] {
 /**
  * Tell the maker, whatever happens.
  *
- * Nothing in here may reach the caller, and on the Ari path that is load-bearing rather than tidiness. This runs inside the webhook handler, so a throw becomes a 5xx, Ari redelivers, and the redelivery finds the decision already committed – recorded as "already resolved" and swallowed. The maker would then be told nothing at all, with no record that a notification was owed, which is the single outcome this module exists to prevent. So a failure here is caught and written down, where an admin can see that somebody needs chasing.
+ * Nothing in here may reach the caller: the decision is already committed by the time this runs, so a throw would turn a finished decision into an error for the reviewer while the maker heard nothing. So a failure here is caught and written down, where an admin can see that somebody needs chasing.
  */
 export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> {
 	try {
@@ -237,7 +204,6 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
 		await logAudit({
 			action: AuditAction.NOTIFICATION_FAILURE,
 			metadata: {
-				decidedBy: notice.decidedBy,
 				error: message,
 				kind: "review_outcome",
 				phase: notice.phase,
@@ -285,54 +251,13 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 
 	await deliverToMaker({
 		kind: "review_outcome",
-		meta: { decidedBy: notice.decidedBy, result: notice.result },
+		meta: { result: notice.result },
 		note: message.note,
 		phase: notice.phase,
 		prose: message.prose,
 		slackId: project.user.slackId,
 		themeProjectId: notice.themeProjectId,
 	})
-}
-
-/**
- * Tell the maker their hand-in never reached review.
- *
- * Owed once per stuck hand-in, and the caller decides that: this is the message, and `sendSubmissionToAri` only reaches for it on the transition into a stuck state. Best-effort like every other notice – the caller is the hourly retry job, and a Slack outage must not turn one stuck hand-in into a failing job.
- */
-export async function notifyShipFailed(input: { themeProjectId: string; phase: Phase; reason: string }): Promise<void> {
-	try {
-		const project = await db.orm.public.ThemeProject.whereUnique({ id: input.themeProjectId })
-			.select("theme", "title")
-			.include("user", user => user.select("slackId"))
-			.first()
-		if (!project?.user) return
-
-		const title = participantProjectTitle(project)
-		const message = shipFailedMessage({ phase: input.phase, reason: input.reason, title })
-
-		await deliverToMaker({
-			kind: "ari_ship_failed",
-			note: null,
-			phase: input.phase,
-			prose: message.prose,
-			slackId: project.user.slackId,
-			themeProjectId: input.themeProjectId,
-		})
-	} catch (err) {
-		const message = err instanceof Error ? err.message : String(err)
-		console.error(`[notifications] ship failure notice failed for ${input.themeProjectId}:`, err)
-		await logAudit({
-			action: AuditAction.NOTIFICATION_FAILURE,
-			metadata: {
-				error: message,
-				kind: "ari_ship_failed",
-				phase: input.phase,
-				stage: "before_channels",
-			},
-			targetId: input.themeProjectId,
-			targetType: "ThemeProject",
-		}).catch(() => undefined)
-	}
 }
 
 /** Escapes the three characters Slack mrkdwn gives meaning to, so interpolated text cannot become a mention or a link. */

@@ -2,9 +2,7 @@ import "../src/lib/auth"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import type { z } from "zod"
-import type { ReviewResult as AriReviewResult } from "../src/lib/enums"
 import type { JournalEntry } from "../src/lib/repo-sync-files"
-import type { ReviewShipInput } from "../src/lib/review-ship"
 
 /**
  * The contract between the browser and the API.
@@ -343,13 +341,7 @@ async function bodies() {
 	await checkFetchRetry()
 	await checkUploadKeys()
 	await checkVideoSignatures()
-	await checkAriExternalIds()
-	await checkAriJournalTime()
-	await checkAriPending()
-	await checkAriCounts()
-	await checkShipInput()
 	await checkReviewStages()
-	await checkReviewDecision()
 	await checkHcb()
 	await checkHackatimeSeconds()
 	await checkHackatimeOverlap()
@@ -518,229 +510,6 @@ async function checkVideoSignatures(): Promise<void> {
 	for (const [name, bytes, isVideo] of videoCases)
 		check(`bytes · ${name} ${isVideo ? "is video" : "is not video"}`, isVideoBytes(bytes) === isVideo)
 }
-
-async function checkAriExternalIds(): Promise<void> {
-	/* ── 5. Ari external ids ───────────────────────────────────────────────── */
-	//
-	// One Ari ship per (project, phase), so the external id has to survive a round trip for a webhook to find the right submission.
-	const { ariExternalId, parseAriExternalId } = await import("../src/lib/ari-id")
-	const { Phase } = await import("../src/lib/enums")
-	const ariDesign = ariExternalId(me, Phase.DESIGN)
-	const ariBuild = ariExternalId(me, Phase.BUILD)
-	check("ari · design external id", ariDesign === `${me}:design`, ariDesign)
-	check("ari · build external id", ariBuild === `${me}:build`, ariBuild)
-	check("ari · design parses back", parseAriExternalId(ariDesign)?.phase === Phase.DESIGN)
-	check("ari · build parses back", parseAriExternalId(ariBuild)?.phase === Phase.BUILD)
-	check("ari · project id survives", parseAriExternalId(ariDesign)?.themeProjectId === me)
-	check("ari · rejects junk", parseAriExternalId("not-an-id") === null)
-	check("ari · rejects empty project", parseAriExternalId(":design") === null)
-}
-
-const clip = (
-	over: Partial<{
-		coveredSeconds: number | null
-		externalId: string | null
-		hackatimeProject: string | null
-		provider: string
-	}> = {},
-) => ({
-	coveredSeconds: 3600,
-	externalId: "clip_1" as string | null,
-	hackatimeProject: "The Track" as string | null,
-	provider: "lapse",
-	...over,
-})
-
-async function checkAriJournalTime(): Promise<void> {
-	/* ── 5a. Ari's journal time is net of the recording ───────────────────── */
-	//
-	// Ari adds a journal's minutes and the duration of every Lapse clip it pulls for the ship's Hackatime projects. A clip attached to an entry records that same sitting, so sending the full claim as well counted it twice – a 7.9h project read as 17h. Only a clip Ari will actually count is taken off, and never below zero.
-	const { journalMinutes } = await import("../src/lib/ari")
-	const { HoursSource } = await import("../src/lib/enums")
-	const { MANUAL, HACKATIME_TRACKED } = HoursSource
-	const counted = new Set(["The Track"])
-	check(
-		"ari · a fully recorded entry claims no devlog minutes",
-		journalMinutes({ hoursClaimed: 2, hoursSource: MANUAL, timelapses: [clip({ coveredSeconds: 7200 })] }, counted)
-			=== 0,
-	)
-	check(
-		"ari · only the unrecorded part of an entry is claimed",
-		journalMinutes({ hoursClaimed: 2, hoursSource: MANUAL, timelapses: [clip()] }, counted) === 60,
-	)
-	check(
-		"ari · a clip shorter than the claim leaves the rest",
-		journalMinutes({ hoursClaimed: 1.5, hoursSource: MANUAL, timelapses: [clip({ coveredSeconds: 1800 })] }, counted)
-			=== 60,
-	)
-	check(
-		"ari · a clip under another project is evidence only",
-		journalMinutes({ hoursClaimed: 1, hoursSource: MANUAL, timelapses: [clip({ hackatimeProject: "Other" })] }, counted)
-			=== 60,
-	)
-	check(
-		"ari · an R2 upload is evidence only",
-		journalMinutes(
-			{
-				hoursClaimed: 1,
-				hoursSource: MANUAL,
-				timelapses: [clip({ externalId: null, provider: "r2" })],
-			},
-			counted,
-		) === 60,
-	)
-	check(
-		"ari · a tracked entry contributes nothing",
-		journalMinutes({ hoursClaimed: 2, hoursSource: HACKATIME_TRACKED, timelapses: [clip()] }, counted) === 0,
-	)
-}
-
-const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
-
-async function checkAriPending(): Promise<void> {
-	const { Phase } = await import("../src/lib/enums")
-	/* ── 5b. Which hand-ins are pending at Ari ─────────────────────────────── */
-	//
-	// What the hourly retry job replays and what the admin Retry button offers: in-review phases whose NEWEST open submission has no ariSubmissionId.
-	const { selectPendingShips } = await import("../src/lib/ari-pending")
-	const { PhaseStatus } = await import("../src/lib/enums")
-	const projects = [
-		{ buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" },
-		{ buildStatus: PhaseStatus.in_review, designStatus: PhaseStatus.approved, id: "p2" },
-		{ buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.draft, id: "p3" },
-	]
-	{
-		const pending = selectPendingShips(projects, [
-			{ ariSubmissionId: null, createdAt: at(0), phase: Phase.DESIGN, themeProjectId: "p1" },
-			// Already shipped, and p3 has no open submission at all.
-			{ ariSubmissionId: "ship_1", createdAt: at(1), phase: Phase.BUILD, themeProjectId: "p2" },
-			{ ariSubmissionId: null, createdAt: at(2), phase: Phase.DESIGN, themeProjectId: "p3" },
-		])
-		check(
-			"ari · pending: only unsent in-review hand-ins",
-			pending.length === 1 && pending[0]?.themeProjectId === "p1" && pending[0]?.phase === Phase.DESIGN,
-			JSON.stringify(pending),
-		)
-	}
-	{
-		// A resubmission replaces the old row: the newest one decides.
-		const pending = selectPendingShips(projects, [
-			{ ariSubmissionId: null, createdAt: at(0), phase: Phase.DESIGN, themeProjectId: "p1" },
-			{ ariSubmissionId: "ship_2", createdAt: at(5), phase: Phase.DESIGN, themeProjectId: "p1" },
-		])
-		check("ari · pending: newest sent submission suppresses the phase", pending.length === 0)
-	}
-	{
-		const pending = selectPendingShips(projects, [
-			{ ariSubmissionId: "ship_1", createdAt: at(0), phase: Phase.DESIGN, themeProjectId: "p1" },
-			{ ariSubmissionId: null, createdAt: at(5), phase: Phase.DESIGN, themeProjectId: "p1" },
-		])
-		check(
-			"ari · pending: newest unsent submission is listed",
-			pending.length === 1 && pending[0]?.themeProjectId === "p1",
-		)
-	}
-	check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
-	check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
-}
-
-async function checkAriCounts(): Promise<void> {
-	const { Phase, PhaseStatus } = await import("../src/lib/enums")
-	/* ── 5b-iii. Ari's board, counted as Ari counts ────────────────────────── */
-	//
-	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
-	const { countAriShips } = await import("../src/lib/ari-counts")
-	const { ReviewResult } = await import("../src/lib/enums")
-	const ship = (over: Partial<Parameters<typeof countAriShips>[0][number]> = {}) => ({
-		ariSubmissionId: "ship_1",
-		createdAt: at(0),
-		id: "sub_1",
-		phase: Phase.DESIGN,
-		phaseStatus: PhaseStatus.in_review,
-		resolvedAt: null as Date | null,
-		result: null as AriReviewResult | null,
-		themeProjectId: "p1",
-		...over,
-	})
-	{
-		// A design sent back and handed in again: the changes ship stays on Ari's board beside the new pending one.
-		const counts = countAriShips([
-			ship({ id: "old", resolvedAt: at(1), result: ReviewResult.RETURNED }),
-			ship({ ariSubmissionId: "ship_2", createdAt: at(5), id: "new" }),
-		])
-		check(
-			"ari · counts: a resubmission keeps the earlier changes ship",
-			counts.changes === 1 && counts.pending === 1,
-			JSON.stringify(counts),
-		)
-	}
-	{
-		// A reverted ship is terminal at Ari: the phase waits for a new hand-in, and the old ship is not pending.
-		const counts = countAriShips([ship({ phaseStatus: PhaseStatus.update_requested })])
-		check("ari · counts: a reverted ship is not pending", counts.pending === 0, JSON.stringify(counts))
-	}
-	{
-		// Two open rows for one phase is a stale reset left behind; only the newest can be Ari's open ship.
-		const counts = countAriShips([
-			ship({ id: "old" }),
-			ship({ ariSubmissionId: "ship_2", createdAt: at(5), id: "new" }),
-		])
-		check("ari · counts: only the newest open row per phase is pending", counts.pending === 1, JSON.stringify(counts))
-	}
-	{
-		// The newest hand-in never reached Ari, so the phase is waiting on us and the older ship must not stand in for it.
-		const counts = countAriShips([ship({ id: "old" }), ship({ ariSubmissionId: null, createdAt: at(5), id: "new" })])
-		check(
-			"ari · counts: an unsent newest hand-in is counted apart",
-			counts.pending === 0 && counts.unreached === 1,
-			JSON.stringify(counts),
-		)
-	}
-	{
-		// A console decision on a hand-in Ari never received is not a ship on its board.
-		const counts = countAriShips([ship({ ariSubmissionId: null, resolvedAt: at(1), result: ReviewResult.APPROVED })])
-		check("ari · counts: a decided hand-in Ari never saw is not a ship", counts.approved === 0, JSON.stringify(counts))
-	}
-	{
-		// The same ship recorded on two rows through a data fault is still one ship at Ari.
-		const counts = countAriShips([
-			ship({ id: "a", resolvedAt: at(1), result: ReviewResult.REJECTED }),
-			ship({ id: "b", resolvedAt: at(2), result: ReviewResult.REJECTED }),
-		])
-		check("ari · counts: one ship id counts once", counts.rejected === 1, JSON.stringify(counts))
-	}
-}
-
-async function checkShipInput(): Promise<void> {
-	const { toAriShipInput } = await import("../src/lib/review-ship")
-
-	const input: ReviewShipInput = {
-		description: "A board",
-		evidence: ["commits", "devlog"],
-		external_id: "p1:design",
-		maker: { email: "maker@example.com", name: "Maker", slack_id: "U1" },
-		meta: {
-			bom: [{ name: "RP2040", qty: 1, unit_usd: 1.2 }],
-			hours: { claimed_seconds: 3600, hackatime_seconds: 0, journal_seconds: 3600, timelapse_seconds: 0 },
-			phase: "design" as const,
-			prior_reviews: [],
-			program: "half-life",
-			requested_tier: 1,
-			submission_notes: null,
-			theme: "pcb",
-			week: 1,
-		},
-		repo_url: "https://github.com/maker/board",
-		thumbnail_url: "https://example.com/board.png",
-		title: "Board",
-		track: "hardware" as const,
-	}
-	const ari = toAriShipInput(input)
-	const meta = ari.meta ?? {}
-	check("review · Ari meta stays flat", !("bom" in meta) && !("hours" in meta))
-	check("review · Ari keeps the requested tier", meta.requested_tier === 1)
-}
-
 async function checkReviewStages(): Promise<void> {
 	const { PhaseStatus } = await import("../src/lib/enums")
 	/* ── 5b-iv. The reviewer-activity ring, one state per project ──────────── */
@@ -766,38 +535,6 @@ async function checkReviewStages(): Promise<void> {
 	check(
 		"review ring · a project that never left draft is in no slice",
 		projectReviewState(PhaseStatus.draft, PhaseStatus.draft) === "not_started",
-	)
-}
-
-async function checkReviewDecision(): Promise<void> {
-	/* ── 5b-ii. The decision standing on a ship ────────────────────────────── */
-	//
-	// What the reconciliation applies when a webhook delivery never arrived. Ari's decision vocabulary ("changes") and its event name ("review.changes") are the two halves that could drift apart silently, and a decided ship must never be read from a phase that is not final.
-	const { standingDecision } = await import("../src/lib/ari-standing")
-	check(
-		"ari · standing: approved maps to its event",
-		standingDecision({ decision: "approved", phase: "reviewed" })?.event === "review.approved",
-	)
-	check(
-		"ari · standing: changes maps to its event",
-		standingDecision({ decision: "changes", phase: "reviewed" })?.event === "review.changes",
-	)
-	check(
-		"ari · standing: rejected maps to its event",
-		standingDecision({ decision: "rejected", phase: "reviewed" })?.event === "review.rejected",
-	)
-	check("ari · standing: a queued ship has no decision", standingDecision({ decision: null, phase: "review" }) === null)
-	check(
-		"ari · standing: a withdrawn ship has no decision",
-		standingDecision({ decision: "approved", phase: "withdrawn" }) === null,
-	)
-	check(
-		"ari · standing: a reverted ship has no decision",
-		standingDecision({ decision: "changes", phase: "reverted" }) === null,
-	)
-	check(
-		"ari · standing: reviewed with no decision is not a decision",
-		standingDecision({ decision: null, phase: "reviewed" }) === null,
 	)
 }
 

@@ -169,7 +169,7 @@ export async function submitPhase(
 	if (resubmitting && !changesSinceLast && !options.force)
 		throw new HttpError("VALIDATION_FAILED", "Say what you changed since the last submission before resubmitting")
 
-	// The Ari SDK refuses a ship without a description. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
+	// The description floor predates the console: the Ari integration refused a ship without one, and week one's onboarding lets the maker leave it blank (the project form for other weeks does not). It stays until it is decided whether reviewers still need it, so it is enforced here, beside the hours check, where the maker can fix it.
 	//
 	// The floor is the same 100 characters the project page and submit sheet show: a description that only repeats the title gives a reviewer nothing to decide against.
 	const descriptionLength = project.description?.trim().length ?? 0

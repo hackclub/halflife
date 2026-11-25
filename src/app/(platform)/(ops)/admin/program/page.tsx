@@ -10,13 +10,11 @@ import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui
 import { getAirtableConfig } from "@/lib/airtable/client"
 import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
-import { ariWebhookUrl, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { formatDeadline, formatUtcDate } from "@/lib/deadline"
 import { Phase } from "@/lib/enums"
-import { configuredOrigin } from "@/lib/origin"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekOpensAt } from "@/lib/program"
@@ -34,7 +32,6 @@ const TABS = [
 	{ id: "season", label: "Season" },
 	{ id: "imports", label: "Imports" },
 	{ id: "queue", label: "Queue" },
-	{ id: "integrations", label: "Integrations" },
 ] as const
 
 type ProgramTab = (typeof TABS)[number]["id"]
@@ -86,7 +83,6 @@ export default async function AdminProgramPage({ searchParams }: Props) {
 			{tab === "season" ? <SeasonTab /> : null}
 			{tab === "imports" ? <ImportsTab /> : null}
 			{tab === "queue" ? <QueueTab /> : null}
-			{tab === "integrations" ? <IntegrationsTab /> : null}
 		</div>
 	)
 }
@@ -280,53 +276,5 @@ async function QueueTab() {
 				)}
 			</Panel>
 		</>
-	)
-}
-
-/** Integrations: the callback URLs and secrets each reviewer platform needs, with the sends still stuck. */
-function IntegrationsTab() {
-	const origin = configuredOrigin()
-	const ariSending = isAriConfigured()
-	const ariReceiving = isAriWebhookConfigured()
-	// The callback URL to register with Ari, from the configured public origin and nothing else. The request's own host used to be the fallback, but that host is whatever the caller put in the `Host` header: a callback URL built from it would send every Ari delivery to a host of the caller's choosing. A deployment that configures no public origin has no callback URL to show, and says so rather than naming one.
-	const callbackUrl = origin ? ariWebhookUrl(origin) : null
-
-	return (
-		<Panel title="Ari review integration">
-			<p className="hl-hint">
-				Paste this callback URL into this program&apos;s webhook settings at ari.hackclub.com. Ari signs every delivery
-				with <code>ARI_WEBHOOK_SECRET</code>, which is a different secret from the signing one; until the secrets are
-				set, submission sends no-op and the webhook answers 503 rather than trusting an unverified body.
-			</p>
-			<Table head={["Setting", "Value", "Status"]}>
-				<tr>
-					<td>Callback URL</td>
-					{callbackUrl ? (
-						<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-							{callbackUrl}
-						</td>
-					) : (
-						<td className="hl-hint">The public app URL is not configured on this deployment</td>
-					)}
-					<td>
-						<Badge tone={ariReceiving ? "success" : "warning"}>{ariReceiving ? "listening" : "secret unset"}</Badge>
-					</td>
-				</tr>
-				<tr>
-					<td>Sending ships</td>
-					<td className="hl-mono">ARI_PROGRAM_ID · ARI_SIGNING_SECRET</td>
-					<td>
-						<Badge tone={ariSending ? "success" : "muted"}>{ariSending ? "configured" : "not configured"}</Badge>
-					</td>
-				</tr>
-				<tr>
-					<td>Failed sends</td>
-					<td className="hl-mono">POST /api/integrations/ari-retry</td>
-					<td>
-						<Badge tone="muted">hourly job</Badge>
-					</td>
-				</tr>
-			</Table>
-		</Panel>
 	)
 }

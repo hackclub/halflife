@@ -7,7 +7,6 @@
       "dependencies": {
         "@anthropic-ai/sdk": "^1.12.0",
         "@better-auth/kysely-adapter": "1.7.27",
-        "@hackclub/ari": "^0.1.1",
         "@prisma/orm-postgres": "8.0.0-rc.24",
         "@tracespace/core": "5.0.0-alpha.0",
         "@tracespace/identify-layers": "5.0.0-alpha.0",
@@ -187,7 +186,6 @@
 
     "@exodus/bytes": ["@exodus/bytes@1.16.0", "", { "peerDependencies": { "@noble/hashes": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@noble/hashes"] }, "sha512-IcpW84uEn3N7ETtNZMlxKhfl6Pec8rUNGOTBtWbK1FKhJxIFAptZyVrvVRVBimAJxJCgc3PxepxkdWWG4DVzfA=="],
 
-    "@hackclub/ari": ["@hackclub/ari@0.1.1", "", {}, "sha512-uNfYR+6HeGIlBpndeeQ8sht2gQJxdv+D2D84q403hbcWuj2iMSF4d/ED7OMZVdPv3ajxnDvt570Wn7HHD2Gh/A=="],
 
     "@img/colour": ["@img/colour@1.1.0", "", {}, "sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ=="],
 

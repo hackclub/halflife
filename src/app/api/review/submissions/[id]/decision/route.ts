@@ -102,7 +102,6 @@ export const POST = withWritePermission(
 				outcome.result === ReviewResult.APPROVED ? (justification ?? undefined) : undefined,
 			)
 			await notifyReviewOutcome({
-				decidedBy: "console",
 				// A console reviewer always writes the note themselves, so an empty one is an empty one rather than a missing field.
 				note: feedback || null,
 				phase: outcome.phase,
