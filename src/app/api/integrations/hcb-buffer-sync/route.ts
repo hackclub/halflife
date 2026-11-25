@@ -16,7 +16,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	// The job's log cannot be read back, so a dry run also writes its findings to the app log, where they can be searched.
 	if (dryRun)
 		console.info(
-			`[hcb-buffer-sync] dry run report ${JSON.stringify({ canceledWithoutReturn: buffer.canceledWithoutReturn, grantStatuses: buffer.grantStatuses, returnsSeen: buffer.returnsSeen })}`,
+			`[hcb-buffer-sync] dry run report ${JSON.stringify({ canceledWithoutReturn: buffer.canceledWithoutReturn, coins, grantStatuses: buffer.grantStatuses, returnsSeen: buffer.returnsSeen })}`,
 		)
 	return ok({ buffer, coins })
 })
