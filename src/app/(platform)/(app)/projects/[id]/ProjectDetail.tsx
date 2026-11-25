@@ -92,21 +92,22 @@ function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: 
 				rows={3}
 				value={note}
 			/>
-			<p aria-live="polite" className="hand text-right text-[0.76rem] text-navy-soft tabular-nums">
-				{note.trim().length}/10 minimum
-			</p>
 			{error && (
 				<p className="text-[0.82rem] font-semibold text-coral-deep" role="alert">
 					{error}
 				</p>
 			)}
-			<div className="flex flex-wrap gap-2">
+			{/* The count sits on the buttons' row, pushed to the right; once the row is too narrow for both it wraps to a line of its own, still on the right. */}
+			<div className="flex flex-wrap items-center gap-2">
 				<Button disabled={saving} onClick={() => void submit()} size="sm" variant="solid">
 					{saving ? "Sending…" : "Ask for a second look"}
 				</Button>
 				<Button disabled={saving} onClick={onClose} size="sm" variant="ghost">
 					Cancel
 				</Button>
+				<p aria-live="polite" className="hand ml-auto text-[0.76rem] text-navy-soft tabular-nums">
+					{note.trim().length}/10 minimum
+				</p>
 			</div>
 			<p className="hand text-[0.8rem] text-navy-soft">
 				a dispute does not approve the phase or count as a submission. It only asks a reviewer to read the review again.
