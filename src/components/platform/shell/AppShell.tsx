@@ -23,7 +23,6 @@ import { GoalModal } from "@/components/platform/modals/GoalModal"
 import { IdentityReminder } from "@/components/platform/modals/IdentityReminder"
 import { Overlays } from "@/components/platform/onboarding/Overlays"
 import { EventScheduleButton } from "@/components/platform/shell/EventScheduleButton"
-import { StickerSheetBanner } from "@/components/promo/StickerSheetBanner"
 import { cx } from "@/lib/cx"
 import type { CalendarEvent } from "@/lib/events"
 import { PLATFORM_HOME } from "@/lib/routes"
@@ -156,13 +155,6 @@ export function AppShell({
 			>
 				Skip to content
 			</a>
-
-			{/* The promo joins the shell's inert/aria-hidden state, so the intro's fixed stage cannot be tabbed out of. The skip link stays outside both. */}
-			{!onDoomscroller && (
-				<div aria-hidden={cinematic || undefined} inert={cinematic || undefined}>
-					<StickerSheetBanner cta="Submit a project" href="/projects" platform />
-				</div>
-			)}
 
 			<div
 				aria-hidden={cinematic || undefined}

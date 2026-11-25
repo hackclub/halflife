@@ -93,7 +93,7 @@ export default function ImageSlot({
 			{!backdrop && (
 				<div className="absolute inset-0 flex flex-col items-center justify-center gap-[0.35em] px-4 text-center">
 					<span
-						className={`font-display font-bold uppercase ${t.title} [letter-spacing:0.14em] leading-[1.1]`}
+						className={`font-site-display font-bold uppercase ${t.title} [letter-spacing:0.14em] leading-[1.1]`}
 						style={{ fontSize: `${0.95 * scale}rem` }}
 					>
 						{label}

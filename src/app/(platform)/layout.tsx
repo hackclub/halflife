@@ -3,7 +3,6 @@ import { ThemeBootScript } from "@/app/components/admin/ThemeBootScript"
 import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
 import { SketchDefs } from "@/components/platform/art"
 import { platformFontVariables } from "@/components/platform/fonts"
-import { PromoBootScript } from "@/components/promo/PromoBootScript"
 import { WorldGuard } from "@/components/WorldGuard"
 import "./globals.css"
 
@@ -33,7 +32,6 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 		<html className={platformFontVariables} lang="en" suppressHydrationWarning>
 			<head>
 				<PlausibleAnalytics />
-				<PromoBootScript />
 				<ThemeBootScript />
 			</head>
 			<body data-world="platform">

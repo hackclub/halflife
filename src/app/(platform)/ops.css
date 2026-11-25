@@ -1141,6 +1141,13 @@
 	.hl-attention a:not([data-zero="true"]) {
 		border-color: var(--color-accent);
 	}
+	/* The accent border is already on a link with work waiting, so the hover needs a ground of its own to show. */
+	.hl-attention a:hover {
+		background: var(--color-surface-sunken);
+	}
+	.hl-attention a:not([data-zero="true"]):hover {
+		background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
+	}
 	.hl-attention span {
 		font-size: 0.9rem;
 		color: var(--color-ink-muted);
@@ -1176,6 +1183,46 @@
 		.hl-overview-figures .hl-stat {
 			flex: 1 1 8rem;
 			min-width: 0;
+		}
+	}
+
+	/*
+	 * ── Overview: NPS beside reviewer activity ──────────────────────────────
+	 * The two panels stack until the summary is wide enough for two readable columns, then sit side by side. The wrapper is the container the query reads, because a container cannot size itself; the grid is on the element inside it.
+	 */
+	.hl-overview-pair {
+		container-type: inline-size;
+	}
+	.hl-overview-pair-cols {
+		display: grid;
+		gap: 1rem;
+		align-items: start;
+	}
+	@container (min-width: 48rem) {
+		.hl-overview-pair-cols {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	/*
+	 * ── Overview: the reviewer figures beside or below their donut ───────────
+	 * The figures take their own width and sit at the end of the row, like the NPS figure. Beside the donut they stack; once the donut wraps them onto their own line they sit in a row. The panel's wrapper is the container the switch reads: a narrow panel is where the donut wraps, so the figures take a row there.
+	 */
+	.hl-overview-reviewer {
+		min-width: 0;
+		container-type: inline-size;
+	}
+	.hl-figure-stack {
+		flex: 0 0 auto;
+	}
+	.hl-figure-stack-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	@container (min-width: 35rem) {
+		.hl-figure-stack-list {
+			flex-direction: column;
 		}
 	}
 

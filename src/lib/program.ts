@@ -13,6 +13,7 @@ import { type PayoutSource, Phase, PhaseStatus, Role, type Theme } from "@/lib/e
 import { HttpError } from "@/lib/errors"
 import { getUserRoles, hasRole } from "@/lib/permissions"
 import db, { type DbOrTx } from "@/lib/prisma8"
+import { isPhaseDecided } from "@/lib/project-lock"
 import {
 	calendarDayNumber,
 	DAY_MS,
@@ -454,15 +455,6 @@ export const SHOP_CLOSED_MESSAGE =
 	"The shop is closed. It stays open while you have work awaiting review, and for a short window after your last review."
 
 /**
- * A decided phase is frozen. Its entries are the record the decision was made against, so no edit, delete or new entry may land until an admin returns it or un-approves it – either of which moves it back to `update_requested`.
- *
- * `in_review` is a separate, softer lock: that one is released by the participant unsubmitting, so it is checked apart from this.
- */
-export function isPhaseDecided(status: PhaseStatus): boolean {
-	return status === PhaseStatus.approved || status === PhaseStatus.rejected
-}
-
-/**
  * The phase statuses in which a project's own details may no longer change: one a reviewer is reading right now, and one already decided.
  *
  * A decided phase is frozen everywhere else too – its entries, its parts list and its tier are the record the decision was made against – so the title, description, repo link, cover and artifact links cannot change under it either.
@@ -485,18 +477,7 @@ export function changedProjectKeys(
 	)
 }
 
-/**
- * Why a project's own details cannot change right now, or null when they can.
- *
- * One place, so the route that refuses the edit and the page that says so cannot disagree about which phases are frozen.
- */
-export function projectEditLockReason(project: { buildStatus: PhaseStatus; designStatus: PhaseStatus }): string | null {
-	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
-		return "In review, so it can't be edited. Unsubmit to change it"
-	if (isPhaseDecided(project.designStatus) || isPhaseDecided(project.buildStatus))
-		return "A phase of this project has been decided, so its details are final"
-	return null
-}
+export { isPhaseDecided, projectEditLockReason } from "@/lib/project-lock"
 
 /**
  * Why the description alone cannot change right now, or null when it can.

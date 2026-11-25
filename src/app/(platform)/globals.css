@@ -115,7 +115,7 @@
 	}
 }
 
-body {
+body[data-world="platform"] {
 	overscroll-behavior-y: none;
 	font-family: var(--font-display);
 	-webkit-font-smoothing: antialiased;
@@ -140,12 +140,12 @@ body {
 	mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.45) 100%);
 }
 
-::selection {
+body[data-world="platform"] ::selection {
 	color: var(--color-navy);
 	background: var(--color-mint);
 }
 
-:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+body[data-world="platform"] :where(a, button, input, textarea, select, [tabindex]):focus-visible {
 	outline: 3px solid var(--color-magenta);
 	outline-offset: 3px;
 	border-radius: 6px;

@@ -4,6 +4,7 @@ import { useId, useState } from "react"
 import { IconPencil } from "@/components/platform/icons"
 import { Button, Field, inputClass, TextInput } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
+import { projectEditLockReason } from "@/lib/project-lock"
 import { displayRepo, validateRepoField } from "@/lib/repo"
 import { README_GUIDE_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
@@ -77,6 +78,9 @@ export function RepoEditor({ project, className }: { project: Project; className
 	const [error, setError] = useState<string | null>(null)
 
 	const current = project.githubRepo ?? null
+	// The repo is frozen with the rest of the project's details, so the server refuses an edit while a phase is in review or decided. The controls are not offered then; a repo already set still shows, and an empty one has nothing to show.
+	const locked = projectEditLockReason(project) !== null
+	if (locked && !current) return null
 
 	async function save() {
 		const { url, error: invalid } = validateRepoField(draft)
@@ -110,18 +114,20 @@ export function RepoEditor({ project, className }: { project: Project; className
 						>
 							{displayRepo(current)}
 						</a>
-						<button
-							aria-label="Change the repo link"
-							className="grid size-7 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
-							onClick={() => {
-								setDraft(current)
-								setError(null)
-								setEditing(true)
-							}}
-							type="button"
-						>
-							<IconPencil className="text-sm" />
-						</button>
+						{!locked && (
+							<button
+								aria-label="Change the repo link"
+								className="grid size-7 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
+								onClick={() => {
+									setDraft(current)
+									setError(null)
+									setEditing(true)
+								}}
+								type="button"
+							>
+								<IconPencil className="text-sm" />
+							</button>
+						)}
 					</>
 				) : (
 					<button

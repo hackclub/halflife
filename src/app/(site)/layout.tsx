@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next"
 import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
-import { PromoBootScript } from "@/components/promo/PromoBootScript"
-import { StickerSheetBanner } from "@/components/promo/StickerSheetBanner"
 import { siteFontVariables } from "@/components/site/fonts"
 import { WorldGuard } from "@/components/WorldGuard"
 import "./globals.css"
@@ -27,7 +25,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 		<html className={`${siteFontVariables} h-full antialiased`} lang="en" suppressHydrationWarning>
 			<head>
 				<PlausibleAnalytics />
-				<PromoBootScript />
 			</head>
 			<body className="min-h-full flex flex-col bg-hl-ink text-hl-paper" data-world="site">
 				<WorldGuard world="site" />
@@ -37,7 +34,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 				>
 					Skip to how it works
 				</a>
-				<StickerSheetBanner />
 				{children}
 			</body>
 		</html>

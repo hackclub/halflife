@@ -1,3 +1,5 @@
+import { describeUnreachableDatabase, isDatabaseUnreachable } from "@/lib/db-error"
+
 /**
  * Browser tests must not dial third parties.
  *
@@ -15,6 +17,14 @@ function blockExternalFetch(): void {
 		if (!allowed.has(url.hostname)) throw new Error(`[e2e] blocked an external request to ${url.origin}`)
 		return originalFetch(input, init)
 	}
+}
+
+/**
+ * A request that failed because the database never answered gets one line naming the address and what to check. Next still prints its own copy of the error after this; the line is the part to read first.
+ */
+export function onRequestError(error: unknown, request: { method: string; path: string }): void {
+	if (!isDatabaseUnreachable(error)) return
+	console.error(`[db] ${describeUnreachableDatabase(error)} (${request.method} ${request.path})`)
 }
 
 /**
