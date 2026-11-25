@@ -294,7 +294,7 @@ Three palettes. Nothing crosses between the landing and the platform; the staff 
 
 **The Two Worlds Rule.** A token from one world never appears in the other. If a platform screen needs an accent, it is `sky`, not `hl-cyan`. The two palettes do not share a single value, and a screen that mixes them belongs to neither.
 
-**The One Kit Per Surface Rule.** A surface is drawn in one kit, not a blend of both. When one component has to appear in both worlds it names the surface it is on and swaps its class set (see `DisputeThread`); it does not import the other world's primitives. The console aliases the platform's shared hues (`--color-accent` is `var(--color-sky)`) and keeps only its own ink and unique tones as literals; `src/app/components/ui/ops-tokens.test.ts` fails if an alias is pasted back as a hex. The promotion strip's literal fallbacks are guarded the same way.
+**The One Kit Per Surface Rule.** A surface is drawn in one kit, not a blend of both. When one component has to appear in both worlds it names the surface it is on and swaps its class set (see `DisputeThread`); it does not import the other world's primitives. The console aliases the platform's shared hues (`--color-accent` is `var(--color-sky)`) and keeps only its own ink and unique tones as literals; `src/app/components/ui/ops-tokens.test.ts` fails if an alias is pasted back as a hex.
 
 **The Tinted Secondary Rule.** Secondary text is tinted from its own surface, never neutral grey. The landing derives `hl-ink-soft` as ink at 80% over paper and `hl-paper-soft` as paper at 78% over ink. The platform's secondary text is `navy-soft`, the navy hue lifted until it reads as a second voice.
 
