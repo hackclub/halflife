@@ -61,3 +61,33 @@ export function describeDatabaseError(error: unknown): string {
 	const meaning = meaningOf(code) ?? meaningOf(sqlState)
 	return [message, label && `(${label})`, meaning && `– ${meaning}`].filter(Boolean).join(" ")
 }
+
+/** The transport codes that mean the database never answered at all, so the fault is where it runs rather than in a query. */
+const UNREACHABLE_CODES = new Set([
+	"EAI_AGAIN",
+	"EHOSTUNREACH",
+	"ENETUNREACH",
+	"ENOTFOUND",
+	"ETIMEDOUT",
+	"ECONNREFUSED",
+])
+
+/** Whether a failure is the database not answering, as opposed to a query or a credential it refused. */
+export function isDatabaseUnreachable(error: unknown): boolean {
+	const root = innermostCause(error)
+	const code = stringField(root, "code") ?? stringField(error, "code")
+	return code !== undefined && UNREACHABLE_CODES.has(code)
+}
+
+/**
+ * One sentence for an unreachable database: the address the socket dialled, what the refusal means, and what to check. The address is the socket's own, so the password in DATABASE_URL never reaches the line.
+ */
+export function describeUnreachableDatabase(error: unknown): string {
+	const root = innermostCause(error)
+	const code = stringField(root, "code") ?? stringField(error, "code") ?? "unknown"
+	const host = stringField(root, "address")
+	const port = isRecord(root) && typeof root.port === "number" ? root.port : undefined
+	const where = host ? ` at ${host}${port === undefined ? "" : `:${port}`}` : ""
+	const meaning = CONNECTION_CODE_MEANINGS[code] ?? "the connection failed"
+	return `Half Life cannot reach its database${where}: ${meaning} (${code}). Check the database is running and that DATABASE_URL points at it.`
+}
