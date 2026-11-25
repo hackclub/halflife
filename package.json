@@ -87,7 +87,7 @@
 		"@tracespace/identify-layers": "5.0.0-alpha.0",
 		"@tracespace/parser": "5.0.0-alpha.0",
 		"better-auth": "1.7.27",
-		"dompurify": "3.4.18",
+		"dompurify": "3.5.0",
 		"dxf-viewer": "1.0.51",
 		"fzstd": "0.1.1",
 		"highlight.js": "11.12.0",
