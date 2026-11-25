@@ -75,4 +75,4 @@ None of this should conflict with the formatting or linting rules of Biome or ox
 
 ## Product copy
 
-- Parts money is only for parts. Never write, or imply, that unspent grant-card money becomes coins: a card's leftover balance goes back to Half Life when it is closed, and coins come only from approved hours past a tier's funded block.
+- Parts money is only for parts. When a grant card is handed back or converted to reimbursement, the part not spent is paid as coins, counted as the tier's grant less what was spent (top-ups do not count), and only for a project with a tier that did not decline its grant. Coins otherwise come only from approved hours past a tier's funded block.

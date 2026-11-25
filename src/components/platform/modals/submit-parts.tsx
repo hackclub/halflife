@@ -271,7 +271,7 @@ export function TierPicker({
 							</span>
 							{!fundingDeclined && (
 								<span className="hand mt-1 block text-[0.74rem] leading-snug text-navy-soft">
-									Parts money you do not spend goes back to Half Life. We encourage you to use the grant money available
+									Parts money you do not spend is paid to you as coins if you hand the card back. We encourage you to use the grant money available
 									to you to make your project the best it can be.
 								</span>
 							)}

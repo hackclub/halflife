@@ -145,7 +145,7 @@ export const DOCS: DocArticle[] = [
 				heading: "Coins",
 				list: [
 					"Design week: your tier's funded hours pay for your parts and earn no coins. Every approved hour past them earns 5 coins.",
-					"Parts money only buys parts. Any of it left unspent when your grant card is closed goes back to Half Life, and never turns into coins.",
+					"Parts money only buys parts. If you hand a grant card back or convert it to a reimbursement, the part you did not spend is paid to you as coins, up to your tier's grant amount.",
 					"If you decline parts funding, no hours are spent on parts, so every approved hour earns 5 coins.",
 					"Build week: nothing is funded, so every hour earns 5 coins.",
 					"Every coin is spendable on anything: your printer goal, or the shop.",
