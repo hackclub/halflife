@@ -144,6 +144,18 @@ export function tierForHours(hours: number): Tier | null {
 }
 
 /**
+ * The tier a design approval lands on when it approves `hours`, given the tier the reviewer chose.
+ *
+ * Approved hours that fund the chosen tier leave it alone. Fewer step it down to the highest tier those hours earn, and never up. Null when they earn no tier at all, which means no parts grant.
+ */
+export function steppedTierForHours(tier: number, hours: number): number | null {
+	if (hours >= getTierOrThrow(tier).fundingHours) return tier
+	const affordable = tierForHours(hours)
+	if (!affordable) return null
+	return Math.min(affordable.id, tier)
+}
+
+/**
  * The tier a project is priced and gated against, out of the two columns that can carry one.
  *
  * `tier` is the reviewer's decision at design approval, and is written only there. `requestedTier` is the maker's ask until then, and the API refuses to write anything else. So the decision leads once the design is approved and the ask leads before it.

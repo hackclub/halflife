@@ -3,7 +3,7 @@ import { and, or } from "@prisma/orm-postgres/orm-client"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
 import { THEME_COMPLETION_BONUS, themeLabel } from "@/lib/config/program"
-import { ENTRY_TIER, getTierOrThrow, isTierId, tierForHours } from "@/lib/config/tiers"
+import { ENTRY_TIER, getTierOrThrow, isTierId, steppedTierForHours } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import {
@@ -232,7 +232,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		)
 
 	// A declined grant defaults to nothing: the maker asked for no parts money, so approving the design must not mint one behind their back. An explicit reviewer override still wins – setting a number there is a deliberate choice, not an accident.
-	const grantUsd =
+	let grantUsd =
 		approving && phase === Phase.DESIGN && tier
 			? (input.grantUsdOverride ?? (submission.fundingDeclined ? 0 : getTierOrThrow(tier).grantUsd))
 			: project.grantUsd
@@ -240,7 +240,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	// The machine this participant is saving for is frozen alongside the tier for the pacing displays: it no longer sizes the payout, but the goal tracker still reads it to say what this week's work means for the goal. Someone who never chose one is paced against the default.
 	const goal = printerById(projectUser.printerGoalId ?? DEFAULT_GOAL_ID)
 
-	const tierDef = tier ? getTierOrThrow(tier) : null
+	let tierDef = tier ? getTierOrThrow(tier) : null
 
 	const nextStatus: PhaseStatus =
 		input.result === ReviewResult.APPROVED
@@ -294,25 +294,23 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			throw new HttpError("FORBIDDEN", "Approving more hours than were logged requires the MANAGE_CREDIT permission")
 		const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
-		// A tier's grant buys that tier's funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when the decision approves less time than was logged. Then the tier is what has to move, not the grant: a hundred dollars of parts for a five-hour week is money for work that was not done. An explicit grant override is an admin decision about the amount, so it is left alone.
+		// A tier's grant buys that tier's funded block of hours, so approved hours below the block step the tier down to the one they earn rather than paying a grant they cannot fund. Under every tier there is no parts grant at all. An explicit grant override is the reviewer's own number and is left alone, and the tier never steps up.
 		if (
 			approving
 			&& phase === Phase.DESIGN
 			&& tier
 			&& (grantUsd ?? 0) > 0
 			&& (input.grantUsdOverride === null || input.grantUsdOverride === undefined)
+			&& (approvedHours ?? 0) < getTierOrThrow(tier).fundingHours
 		) {
-			const funded = getTierOrThrow(tier).fundingHours
-			const approved = approvedHours ?? 0
-			if (approved < funded) {
-				const affordable = tierForHours(approved)
-				throw new HttpError(
-					"VALIDATION_FAILED",
-					affordable
-						? `Tier ${tier} funds ${funded} hours and this decision approves ${approved}h. Tier ${affordable.id} is the tier those hours earn.`
-						: `Tier ${tier} funds ${funded} hours and this decision approves ${approved}h, which is under every tier. Approve at least ${ENTRY_TIER.fundingHours} hours, or return the design for more work.`,
-				)
+			const next = steppedTierForHours(tier, approvedHours ?? 0)
+			if (next === null) grantUsd = 0
+			else {
+				const { grantUsd: nextGrant } = getTierOrThrow(next)
+				tier = next
+				grantUsd = nextGrant
 			}
+			tierDef = tier ? getTierOrThrow(tier) : null
 		}
 
 		// Both phases mint coins, by different rules. A design pays out only above the hours its grant bought – a declined grant (or a zero override) buys none, so every hour pays. A build has no funded block, so every hour pays. Either way every coin is spendable on anything.

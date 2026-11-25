@@ -5,6 +5,7 @@ import {
 	getTierOrThrow,
 	isTierId,
 	projectTierId,
+	steppedTierForHours,
 	TIER_IDS,
 	tierForHours,
 } from "@/lib/config/tiers"
@@ -61,5 +62,25 @@ describe("projectTierId", () => {
 		expect(projectTierId(project({ designStatus: PhaseStatus.approved, requestedTier: 3 }))).toBe(3)
 		expect(projectTierId(project({}))).toBe(ENTRY_TIER.id)
 		expect(projectTierId(project({ requestedTier: 9, tier: 2 }))).toBe(2)
+	})
+})
+
+describe("steppedTierForHours", () => {
+	test("keeps the chosen tier when the hours fund it", () => {
+		expect(steppedTierForHours(3, 20)).toBe(3)
+		expect(steppedTierForHours(1, 6)).toBe(1)
+	})
+
+	test("steps down to the tier the approved hours earn", () => {
+		expect(steppedTierForHours(3, 13)).toBe(2)
+		expect(steppedTierForHours(3, 7)).toBe(1)
+	})
+
+	test("returns null when the hours earn no tier", () => {
+		expect(steppedTierForHours(3, 5)).toBeNull()
+	})
+
+	test("never steps up", () => {
+		expect(steppedTierForHours(2, 25)).toBe(2)
 	})
 })
