@@ -198,9 +198,9 @@ async function SummaryTab() {
 							</div>
 						)}
 						<p className="hl-hint hl-note">
-							Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus
-							the detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from
-							the same Signups table the dashboard&apos;s prompt writes to, cached for a minute.
+							Promoters score 9 or 10, passives 7 or 8 and detractors 0 to 6. The score is the promoter share minus the
+							detractor share, so it runs from -100 to 100, and everyone who has answered counts once. Read from the
+							same Signups table the dashboard&apos;s prompt writes to, cached for a minute.
 						</p>
 					</Panel>
 
@@ -237,11 +237,10 @@ async function SummaryTab() {
 						</Table>
 						<p className="hl-hint hl-note">
 							Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
-							changes if either phase is waiting on the maker, pending if either phase is in review, otherwise
-							approved. It is the same state the project&apos;s card shows, so a design approved while its build is
-							still in review reads as pending rather than as two slices, and a resubmission does not leave a second
-							copy of the project behind. Projects that have never been submitted are left out. Console decisions are
-							included.
+							changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved.
+							It is the same state the project&apos;s card shows, so a design approved while its build is still in
+							review reads as pending rather than as two slices, and a resubmission does not leave a second copy of the
+							project behind. Projects that have never been submitted are left out. Console decisions are included.
 						</p>
 					</Panel>
 				</div>
