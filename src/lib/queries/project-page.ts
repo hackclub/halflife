@@ -113,8 +113,6 @@ export interface PhaseReview {
 	phase: Phase
 	/** When it was decided, epoch ms. */
 	reviewedAt: number | null
-	/** Why the maker's open hand-in never reached Ari, when it did not. Null once it has, or when there is no open hand-in. */
-	shipError: string | null
 	status: PhaseStatus
 	/**
 	 * How many submissions this phase may make in all, and how many it has used. Both are read from the submissions so the page cannot disagree with the gate.
@@ -242,7 +240,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 		)
 		.include("submissions", submissions =>
 			submissions
-				.select("ariShipError", "createdAt", "id", "phase", "resolvedAt", "resolvedResult")
+				.select("createdAt", "id", "phase", "resolvedAt", "resolvedResult")
 				.include("dispute", dispute =>
 					dispute
 						.select("createdAt", "id", "note", "outcome", "resolvedAt")
@@ -346,10 +344,6 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 			const disputed = project.submissions
 				.filter(s => s.phase === phase && Boolean(s.dispute))
 				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.dispute
-			// Only an open hand-in can be stuck: one that was decided had its marker cleared by the send that succeeded, and one that was withdrawn was deleted outright.
-			const [openShip] = project.submissions
-				.filter(s => s.phase === phase && s.resolvedAt === null)
-				.toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 			// What the maker claimed, before any reviewer cut: journal entries at their claimed hours (a HACKATIME_TRACKED entry claims nothing – its time arrives through the link) plus linked Hackatime time at its cached total. The frozen total below already folds in every reviewer cut, so the gap between the two is the deflation.
 			const claimedHours = round2(
 				project.workSessions
@@ -392,7 +386,6 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				fundingState: isDesign ? designFunding : null,
 				phase,
 				reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
-				shipError: openShip?.ariShipError ?? null,
 				status: isDesign ? project.designStatus : project.buildStatus,
 				submissionLimit: budget.limit,
 				submissionsUsed: budget.used,

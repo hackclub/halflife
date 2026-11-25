@@ -10,7 +10,6 @@ import {
 import { type FieldDef, fieldKey, YSWS_PENDING_REVIEW, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { projectWeekLabel } from "@/lib/airtable/sync"
 import { updateYswsRecord } from "@/lib/airtable/ysws"
-import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAuditTx } from "@/lib/audit"
 import { MAX_WARMUP_PROJECTS, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
@@ -24,7 +23,6 @@ import db from "@/lib/prisma8"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
 import { sanitize } from "@/lib/sanitize"
-import { trackSideEffect } from "@/lib/side-effects"
 import { escapeLikePattern } from "@/lib/text"
 import { formatDbTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
@@ -50,8 +48,6 @@ import { fetchRemoteImage } from "@/lib/uploads/remote"
 const IMPORT_ACTION = AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT
 
 export interface WarmupImportOutcome {
-	/** What the Ari send did, when the row got as far as one. */
-	ari: "sent" | "failed" | "not_configured" | "not_attempted"
 	email: string | null
 	/** Why it was skipped or failed, in an operator's terms. */
 	reason: string | null
@@ -63,7 +59,6 @@ export interface WarmupImportOutcome {
 
 export interface WarmupImportSummary {
 	alreadyImported: number
-	ariSent: number
 	failed: number
 	fetched: number
 	imported: number
@@ -459,7 +454,7 @@ function importRow(
 /**
  * Mark an imported row as in review on Airtable: its Loops status, and the week it is for.
  *
- * The import hands the project to Ari, which is now reviewing it, but it never wrote these cells. The status is only written at hand-in and on a decision, and the week is only written at hand-in too, so an imported row kept both blank until Ari decided. That is what the pre-season Fillout rows looked like.
+ * The import puts the project in front of reviewers, but it never wrote these cells. The status is only written at hand-in and on a decision, and the week is only written at hand-in too, so an imported row kept both blank until Ari decided. That is what the pre-season Fillout rows looked like.
  *
  * One request for both, so a row cannot get one without the other. Best-effort: the import has already committed by the time this runs, so a refused write is logged rather than failing the row.
  */
@@ -472,30 +467,10 @@ async function markInReview(recordId: string): Promise<void> {
 	if (!written.ok) console.error(`[airtable] warm-up import could not mark ${recordId} as in review: ${written.reason}`)
 }
 
-async function sendToAri(
-	themeProjectId: string,
-	phase: Phase,
-	actor: ImportActor,
-): Promise<WarmupImportOutcome["ari"]> {
-	if (!isAriConfigured()) return "not_configured"
-	const result = await trackSideEffect(
-		"ari",
-		{
-			actorEmail: actor.email,
-			actorId: actor.id,
-			metadata: { phase, warmupImport: true },
-			targetId: themeProjectId,
-			targetType: "ThemeProject",
-		},
-		() => sendSubmissionToAri(themeProjectId, phase),
-	)
-	return result ? "sent" : "failed"
-}
-
 /**
  * Import every warm-up row that has not been imported yet.
  *
- * Sequential on purpose: each row can download a screenshot and call Ari, and the Airtable client already rate-limits at the base's 5 req/s. `getProgramSettings` runs up front because the singleton row may need creating, which a transaction must not do while it holds a lock.
+ * Sequential on purpose: each row can download a screenshot, and the Airtable client already rate-limits at the base's 5 req/s. `getProgramSettings` runs up front because the singleton row may need creating, which a transaction must not do while it holds a lock.
  */
 export async function importWarmupProjects(actor: ImportActor): Promise<WarmupImportSummary> {
 	const config = getAirtableConfig()
@@ -511,7 +486,6 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 	const outcomes: WarmupImportOutcome[] = []
 	for (const record of records) {
 		const base: WarmupImportOutcome = {
-			ari: "not_attempted",
 			email: null,
 			reason: null,
 			recordId: record.id,
@@ -552,7 +526,6 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 					const key = await rehostScreenshot(result.userId, parsed.row.screenshotUrl)
 					if (key) await db.orm.public.ThemeProject.where({ id: result.themeProjectId }).update({ coverImageKey: key })
 				}
-				outcome.ari = await sendToAri(result.themeProjectId, parsed.row.phase, actor)
 			}
 
 			outcomes.push(outcome)
@@ -569,7 +542,6 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 	const count = (status: WarmupImportOutcome["status"]) => outcomes.filter(o => o.status === status).length
 	return {
 		alreadyImported: count("already_imported"),
-		ariSent: outcomes.filter(o => o.ari === "sent").length,
 		failed: count("failed"),
 		fetched: records.length,
 		imported: count("imported"),

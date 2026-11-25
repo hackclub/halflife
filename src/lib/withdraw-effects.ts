@@ -2,7 +2,6 @@ import "server-only"
 import { after } from "next/server"
 import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
 import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
-import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { scheduledWeekFor } from "@/lib/config/program"
 import type { Phase } from "@/lib/enums"
 import db from "@/lib/prisma8"
@@ -43,20 +42,4 @@ export function propagateWithdrawal(actor: Actor, ownerId: string, themeProjectI
 			console.error("[unsubmit] loops submitted tick failed:", err)
 		}
 	})
-
-	// Withdraw it from review too, or the queue keeps a hand-in that no longer exists in Half Life.
-	if (isAriConfigured())
-		after(async () => {
-			await trackSideEffect(
-				"ari",
-				{
-					actorEmail: actor.email,
-					actorId: actor.id,
-					metadata: { phase, withdrawn: true },
-					targetId: themeProjectId,
-					targetType: "ThemeProject",
-				},
-				() => withdrawSubmissionFromAri(themeProjectId, phase),
-			)
-		})
 }

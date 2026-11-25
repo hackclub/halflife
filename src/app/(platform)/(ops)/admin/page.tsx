@@ -220,13 +220,6 @@ async function SummaryTab() {
 						<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
 					</div>
 				</div>
-				{counters.pendingReviewsUnsent > 0 && (
-					<p className="hl-hint hl-note hl-note--tight">
-						<span className="hl-mono">{fmtInt(counters.pendingReviewsUnsent)}</span> more are handed in and in review
-						here but never reached Ari, so no reviewer has them. See{" "}
-						<Link href="/admin/program">what broke, and a Retry for each</Link>.
-					</p>
-				)}
 				<Table head={["Outcome", "Today", "All time"]}>
 					{reviewer.byResult.map(row => (
 						<tr key={row.result}>

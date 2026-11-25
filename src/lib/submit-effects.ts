@@ -2,7 +2,6 @@ import "server-only"
 import { after } from "next/server"
 import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
 import { syncSubmissionToYsws } from "@/lib/airtable/sync"
-import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import type { Phase } from "@/lib/enums"
 import { refreshLinkCache } from "@/lib/hackatime"
 import db from "@/lib/prisma8"
@@ -49,22 +48,6 @@ export function propagateSubmission(
 			console.error("[submit] loops submitted tick failed:", err)
 		}
 	})
-
-	// And into review through the SDK; Ari reports back by webhook. Only scheduled when configured, so a deployment without review secrets logs no noise; a failure lands in the audit log and the retry route.
-	if (isAriConfigured())
-		after(async () => {
-			await trackSideEffect(
-				"ari",
-				{
-					actorEmail: actor.email,
-					actorId: actor.id,
-					metadata: { phase },
-					targetId: themeProjectId,
-					targetType: "ThemeProject",
-				},
-				() => sendSubmissionToAri(themeProjectId, phase),
-			)
-		})
 
 	// Telescreen's fraud review and copy check, as Fabricate runs them on every ship (see lib/telescreen). Each keeps its own failure on the project's row for the review screen, and `telescreen-sync` replays what was missed.
 	if (isRobertConfigured())

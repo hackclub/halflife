@@ -1,12 +1,10 @@
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
 import { mirrorReviewDecision, reviewStatusFor } from "@/lib/airtable/sync"
-import { sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { Phase, PhaseStatus, ReviewDisputeOutcome } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
 import db from "@/lib/prisma8"
-import { trackSideEffect } from "@/lib/side-effects"
 import { formatDbTimestamp } from "@/lib/time"
 
 /**
@@ -135,15 +133,4 @@ export async function sendDisputedPhaseBack(
 
 	// The row follows the phase back to review; Loops triggers on decisions, so Pending Review sends nothing. The reviewer's justification is cleared with the decision it belonged to.
 	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(PhaseStatus.in_review), null, null, null, null)
-	await trackSideEffect(
-		"ari",
-		{
-			actorEmail: reviewerEmail,
-			actorId: reviewerId,
-			metadata: { disputeId, phase },
-			targetId: themeProjectId,
-			targetType: "ThemeProject",
-		},
-		() => sendSubmissionToAri(themeProjectId, phase),
-	)
 }

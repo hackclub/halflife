@@ -2,7 +2,6 @@ import "server-only"
 import { and, or } from "@prisma/orm-postgres/orm-client"
 import type { Models } from "@/app/generated/prisma8/contract.d"
 import { isActiveDay } from "@/lib/analytics"
-import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, stepIndexOf } from "@/lib/config/onboarding"
 import {
@@ -891,49 +890,23 @@ export async function listRecentPublicReels(limit = 100): Promise<PublicReelRow[
 
 export async function getAdminCounters(): Promise<{
 	pendingReviews: number
-	pendingReviewsUnsent: number
 	pendingOrders: number
 	participants: number
 	shipped: number
 }> {
-	// The open hand-ins, each phase's newest only: an older unresolved row is a ship Ari no longer holds, and counting it would put a hand-in in the queue that no reviewer can open. The same rule as the reviewer-activity ring, so the two figures on the page cannot disagree.
-	const open = await db.orm.public.PhaseSubmission.where({ resolvedAt: null })
-		.select("ariSubmissionId", "createdAt", "id", "phase", "themeProjectId")
-		.include("themeProject", project => project.select("buildStatus", "designStatus"))
-		.all()
-	const ships = countAriShips(
-		open.map(submission => {
-			if (!submission.themeProject) throw new Error(`submission ${submission.id} has no project`)
-			return {
-				ariSubmissionId: submission.ariSubmissionId,
-				createdAt: parseDbTimestamp(submission.createdAt),
-				id: submission.id,
-				phase: submission.phase,
-				phaseStatus:
-					submission.phase === Phase.DESIGN
-						? submission.themeProject.designStatus
-						: submission.themeProject.buildStatus,
-				resolvedAt: null,
-				result: null,
-				themeProjectId: submission.themeProjectId,
-			}
-		}),
-	)
+	// One open hand-in per project and phase: the same count the review queue shows, so the figure on this page and the queue cannot disagree.
+	const open = await db.orm.public.PhaseSubmission.where({ resolvedAt: null }).select("phase", "themeProjectId").all()
+	const pendingReviews = new Set(open.map(submission => `${submission.themeProjectId}:${submission.phase}`)).size
 
 	const [pendingOrders, participants, shipped] = await Promise.all([
 		db.orm.public.ShopOrder.where({ status: ShopOrderStatus.PENDING }).aggregate(a => ({ count: a.count() })),
 		db.orm.public.User.aggregate(a => ({ count: a.count() })),
 		db.orm.public.PrinterAward.where(award => award.revokedAt.isNull()).aggregate(a => ({ count: a.count() })),
 	])
-	// Sent, and Ari holds it: the figure comparable to Ari's own pending count. `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
-	const pendingReviews = ships.pending
-	// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
-	const pendingReviewsUnsent = ships.unreached
 	return {
 		participants: participants.count,
 		pendingOrders: pendingOrders.count,
 		pendingReviews,
-		pendingReviewsUnsent,
 		shipped: shipped.count,
 	}
 }

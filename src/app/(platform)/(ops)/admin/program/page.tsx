@@ -10,7 +10,7 @@ import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui
 import { getAirtableConfig } from "@/lib/airtable/client"
 import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
-import { ariWebhookUrl, findUnsyncedAriSubmissions, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
+import { ariWebhookUrl, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
@@ -197,7 +197,6 @@ async function SeasonTab() {
 /** Imports: the pre-season projects, from Airtable or a CSV export. */
 function ImportsTab() {
 	const airtableReady = getAirtableConfig() !== null
-	const ariSending = isAriConfigured()
 
 	return (
 		<>
@@ -207,12 +206,12 @@ function ImportsTab() {
 					into the <code>{YSWS_SUBMISSION.tableId}</code> table (<code>AIRTABLE_YSWS_TABLE_ID</code>). Importing files
 					each one on the maker&apos;s Warm Up track (a pre-season slot that does not use one of their five season
 					themes), creates their account if they have not signed up yet, records the self-reported hours as a work
-					session, and hands the project to Ari for review. Rows already imported, and rows Half Life itself wrote, are
+					session, and puts the project in the review queue. Rows already imported, and rows Half Life itself wrote, are
 					skipped, so the button is safe to run again. Every row becomes its own project: a maker who handed the form in
 					more than once gets every project they submitted.
 				</p>
 				{airtableReady ? (
-					<AirtableImportForm ariConfigured={ariSending} />
+					<AirtableImportForm />
 				) : (
 					<EmptyState>Airtable is not configured on this deployment, so there is nothing to import.</EmptyState>
 				)}
@@ -232,14 +231,9 @@ function ImportsTab() {
 	)
 }
 
-/** Queue: hand-ins that never reached Airtable or Ari, and disputes waiting on a second look. */
+/** Queue: hand-ins that never reached Airtable, and disputes waiting on a second look. */
 async function QueueTab() {
-	const ariSending = isAriConfigured()
-	const [unsynced, disputes, unsyncedAri] = await Promise.all([
-		findUnsyncedSubmissions(),
-		getOpenDisputes(),
-		ariSending ? findUnsyncedAriSubmissions() : Promise.resolve([]),
-	])
+	const [unsynced, disputes] = await Promise.all([findUnsyncedSubmissions(), getOpenDisputes()])
 
 	return (
 		<>
@@ -263,38 +257,6 @@ async function QueueTab() {
 						))}
 					</Table>
 				)}
-			</Panel>
-
-			<Panel title="Submissions that never reached Ari">
-				{ariSending ? (
-					unsyncedAri.length === 0 ? (
-						<EmptyState>Every submission awaiting review is in Ari.</EmptyState>
-					) : (
-						<Table head={["Project", "Phase", "Why it's stuck", ""]}>
-							{unsyncedAri.map(item => (
-								<tr key={`${item.themeProjectId}-${item.phase}`}>
-									<td className="hl-mono">{item.themeProjectId}</td>
-									<td>{item.phase.toLowerCase()}</td>
-									<td>{item.reason ?? "Not attempted yet. The retry job will pick it up."}</td>
-									<td>
-										<ActionButton
-											body={{ phase: item.phase }}
-											label="Retry"
-											url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
-										/>
-									</td>
-								</tr>
-							))}
-						</Table>
-					)
-				) : (
-					<EmptyState>Ari is not configured on this deployment, so nothing is sent there.</EmptyState>
-				)}
-				<p className="hl-hint">
-					A ship is what the reviewer sees, so a submission missing from Ari is a submission nobody will decide. The
-					hourly retry job replays these too; this button is for when you are looking at one now. Rows failing on a
-					missing Slack account or repo need the maker, not another retry.
-				</p>
 			</Panel>
 
 			<Panel title="Open review disputes">

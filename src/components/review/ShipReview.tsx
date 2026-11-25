@@ -502,25 +502,6 @@ function ShipReviewInner({
 								counted
 								{breakdown.hackatimeHours > 0 ? ` · ${formatHours(breakdown.hackatimeHours)} Hackatime` : ""}
 								{lapseLabel} · <strong>{formatHours(breakdown.effectiveHours)} total</strong>
-								{detail.ariHours.foreignSeconds > 0 ? (
-									<p className="field__hint" style={{ marginTop: 4 }}>
-										Ari adds every Lapse clip under this project, including{" "}
-										{formatDuration(detail.ariHours.foreignSeconds)} recorded for entries this hand-in does not carry,
-										so it reads {formatHours(detail.ariHours.expectedSeconds / 3600)}
-										{detail.ariHours.unabsorbedSeconds > 0
-											? ` – ${formatDuration(detail.ariHours.unabsorbedSeconds)} more than this total, because the journals could not absorb it. Credit this number, not Ari's.`
-											: ", the same total as here."}
-									</p>
-								) : null}
-								{detail.ariHours.unattributedCount > 0 ? (
-									<p className="field__hint" style={{ marginTop: 4 }}>
-										{detail.ariHours.unattributedCount} of this maker&apos;s clips (
-										{formatDuration(detail.ariHours.unattributedSeconds)}) have no Hackatime project on record or on
-										Lapse. Ari finds recordings by project, so these cannot appear in its elapsed tile: their time is
-										carried by the journal entries that use them instead. Expect Ari&apos;s elapsed figure to be lower
-										than the {formatDuration(lapseSeconds)} recorded here, not higher.
-									</p>
-								) : null}
 							</dd>
 							{design ? (
 								<>
