@@ -189,9 +189,9 @@ async function SummaryTab() {
 									empty="No NPS answers yet."
 									measure="NPS answers"
 									rows={[
-										{ label: "Promoters (9-10)", value: nps.promoters },
-										{ label: "Passives (7-8)", value: nps.passives },
-										{ label: "Detractors (0-6)", value: nps.detractors },
+										{ detail: "9-10", label: "Promoters", value: nps.promoters },
+										{ detail: "7-8", label: "Passives", value: nps.passives },
+										{ detail: "0-6", label: "Detractors", value: nps.detractors },
 									]}
 								/>
 								<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
@@ -1163,7 +1163,7 @@ function ShareDonut({
 	colors,
 	centerLabel,
 }: {
-	rows: { label: string; value: number }[]
+	rows: { label: string; value: number; detail?: string }[]
 	/** What the ring counts, for the figure's accessible name. */
 	measure: string
 	empty: string
@@ -1193,6 +1193,7 @@ function ShareDonut({
 		start: -shares.slice(0, i).reduce((n, p) => n + p, 0),
 	}))
 	const summary = rows.map(r => `${r.label} ${Math.round((r.value / total) * 100)}%`).join(", ")
+	const hasDetail = rows.some(row => row.detail !== undefined)
 	return (
 		<div className="flex flex-wrap items-center gap-6">
 			<svg
@@ -1255,6 +1256,8 @@ function ShareDonut({
 									<span className="font-bold">{row.label}</span>
 								</span>
 							</td>
+							{/* A detail, such as a score band, gets a column of its own, so the name reads without its range; the column only exists when some row has one. */}
+							{hasDetail ? <td className="py-[0.2rem] pr-3 pl-0 text-(--color-ink-muted)">{row.detail}</td> : null}
 							<td className="py-[0.2rem] pr-3 pl-0 text-right">{fmtInt(row.value)}</td>
 							<td className="py-[0.2rem] text-right">{Math.round((row.value / total) * 100)}%</td>
 						</tr>
