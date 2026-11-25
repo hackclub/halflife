@@ -1390,6 +1390,7 @@ namespace public {
     SHOP_PURCHASE = "SHOP_PURCHASE"
     SHOP_REFUND = "SHOP_REFUND"
     BUILD_BANKED_HOURS = "BUILD_BANKED_HOURS"
+    GRANT_RETURN_COINS = "GRANT_RETURN_COINS"
   }
 
   native_enum ShopItemCategory {

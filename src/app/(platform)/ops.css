@@ -1148,6 +1148,14 @@
 	.hl-attention a:not([data-zero="true"]):hover {
 		background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
 	}
+	/* The press, as on the buttons: the fill deepens and the card sinks a pixel, so a click lands as a press rather than a silent navigation. The focus ring comes from the console's stylesheet. */
+	.hl-attention a:active {
+		background: var(--color-surface-raised);
+		transform: translateY(1px);
+	}
+	.hl-attention a:not([data-zero="true"]):active {
+		background: color-mix(in srgb, var(--color-accent) 26%, var(--color-surface));
+	}
 	.hl-attention span {
 		font-size: 0.9rem;
 		color: var(--color-ink-muted);
@@ -1206,7 +1214,7 @@
 
 	/*
 	 * ── Overview: the reviewer figures beside or below their donut ───────────
-	 * The figures take their own width and sit at the end of the row, like the NPS figure. Beside the donut they stack; once the donut wraps them onto their own line they sit in a row. The panel's wrapper is the container the switch reads: a narrow panel is where the donut wraps, so the figures take a row there.
+	 * The figures take their own width and sit at the end of the row, like the NPS figure. Beside the donut they stack; once the donut wraps them onto their own line they sit in a row. The panel's wrapper is the container the switch reads, and the switch sits at the width where the donut, its legend and one figure fit side by side (about 41rem, measured from the donut at 11rem, its legend and a figure); below that the donut wraps and the figures take a row.
 	 */
 	.hl-overview-reviewer {
 		min-width: 0;
@@ -1220,7 +1228,7 @@
 		flex-wrap: wrap;
 		gap: 0.75rem;
 	}
-	@container (min-width: 35rem) {
+	@container (min-width: 41rem) {
 		.hl-figure-stack-list {
 			flex-direction: column;
 		}

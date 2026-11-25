@@ -1,0 +1,65 @@
+[
+  {
+    "id": "addNativeEnumValue.LedgerKind.GRANT_RETURN_COINS",
+    "label": "Add value \"GRANT_RETURN_COINS\" to enum type \"LedgerKind\"",
+    "summary": "Adds value \"GRANT_RETURN_COINS\" to enum type \"LedgerKind\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "LedgerKind"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"LedgerKind\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "LedgerKind",
+          "e"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "enum type \"LedgerKind\""
+        }
+      },
+      {
+        "description": "ensure value \"GRANT_RETURN_COINS\" is absent from enum type \"LedgerKind\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "LedgerKind",
+          "GRANT_RETURN_COINS"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "value \"GRANT_RETURN_COINS\" in enum type \"LedgerKind\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"GRANT_RETURN_COINS\" to enum type \"LedgerKind\"",
+        "sql": "ALTER TYPE \"public\".\"LedgerKind\" ADD VALUE 'GRANT_RETURN_COINS'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"GRANT_RETURN_COINS\" exists on enum type \"LedgerKind\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "LedgerKind",
+          "GRANT_RETURN_COINS"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "value \"GRANT_RETURN_COINS\" in enum type \"LedgerKind\""
+        }
+      }
+    ]
+  }
+]

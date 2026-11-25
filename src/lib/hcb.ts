@@ -299,6 +299,8 @@ export interface GrantDisbursement {
 	/** ISO timestamp HCB recorded the disbursement at. */
 	createdAt: string | null
 	memo: string | null
+	/** The email of the user HCB recorded as requesting the disbursement, lowercased. Null when HCB did not say. */
+	senderEmail: string | null
 	transactionId: string | null
 }
 
@@ -334,6 +336,7 @@ export async function listCardGrantDisbursements(grantHashid: string): Promise<G
 			amountCents: d.amount_cents,
 			createdAt: typeof d.created_at === "string" ? d.created_at : null,
 			memo: typeof d.memo === "string" ? d.memo : null,
+			senderEmail: readOwnerEmail(isRecord(d.sender) ? d.sender : null),
 			transactionId: typeof d.transaction_id === "string" ? d.transaction_id : null,
 		})
 	}

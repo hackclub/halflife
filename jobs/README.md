@@ -27,7 +27,7 @@ Repeat per job with the cron from the table below. To change an existing job's s
 | `printer-reconcile` | `0 8 * * *` | public ingress |
 | `slack-ticket-summary` | `0 9 * * *` | public ingress |
 | `slack-review-summary` | `0 9 * * *` | public ingress |
-| `hcb-buffer-sync` | `20 7 * * *` | cluster-internal |
+| `hcb-buffer-sync` | `20 * * * *` | cluster-internal |
 
 ## Three things that decide whether this works
 
