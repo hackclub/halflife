@@ -43,6 +43,9 @@ export const POST = withIntegrationRoute(async () => {
 			userId: entry.userId,
 		})),
 	}
-	console.info(`[grant-adjustments-report] ${JSON.stringify(report)}`)
+	const kindCounts: { [_: string]: number } = {}
+	for (const entry of await db.orm.public.LedgerEntry.select("kind").all())
+		kindCounts[entry.kind] = (kindCounts[entry.kind] ?? 0) + 1
+	console.info(`[grant-adjustments-report] ${JSON.stringify({ ...report, kindCounts })}`)
 	return ok({ adjustments: report.adjustments.length })
 })
