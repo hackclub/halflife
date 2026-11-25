@@ -4,6 +4,7 @@ import { HcbGrantCardStatus, LedgerKind, Phase } from "@/lib/enums"
 import { grantCardCapUsd } from "@/lib/grant-card-policy"
 import { isWeekOneStarter } from "@/lib/grant-cards"
 import { readCardGrantSpend } from "@/lib/hcb"
+import { PRE_ACTIVATION_STATUS } from "@/lib/hcb-buffer-topups"
 import db from "@/lib/prisma8"
 
 /**
@@ -35,6 +36,13 @@ export interface GrantReturnCoinsResult {
  * Empty until the statuses HCB reports are read off a live run, so nothing is paid on a guess.
  */
 export const PLAIN_RETURN_STATUSES: readonly string[] = []
+
+/**
+ * Whether a returned card earns coins. A grant cancelled before activation always does: the site counted it as issued, and
+ * nothing was spent, so its whole cap is unspent. Other returns earn coins only once their status is in the plain list.
+ */
+const isPayableReturn = (hcbStatus: string | null): boolean =>
+	hcbStatus === PRE_ACTIVATION_STATUS || (hcbStatus !== null && PLAIN_RETURN_STATUSES.includes(hcbStatus))
 
 interface ReturnedDesignCard {
 	amountCents: number
@@ -92,7 +100,7 @@ export async function syncGrantReturnCoins(input: { dryRun: boolean }): Promise<
 			skip("Parts funding was declined, so nothing was taken out of the cap")
 			continue
 		}
-		if (group.some(card => card.hcbStatus === null || !PLAIN_RETURN_STATUSES.includes(card.hcbStatus))) {
+		if (group.some(card => !isPayableReturn(card.hcbStatus))) {
 			skip("HCB's status for this grant is not confirmed as a plain return, so it is not paid")
 			continue
 		}
@@ -108,6 +116,11 @@ export async function syncGrantReturnCoins(input: { dryRun: boolean }): Promise<
 		for (const card of group) {
 			if (card.spentCents !== null) {
 				spent.push(card.spentCents)
+				continue
+			}
+			// Cancelled before activation: there was never a card to spend from.
+			if (card.hcbStatus === PRE_ACTIVATION_STATUS) {
+				spent.push(0)
 				continue
 			}
 			const read = card.hcbCardGrantId ? await readCardGrantSpend(card.hcbCardGrantId) : null

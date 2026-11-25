@@ -3,6 +3,7 @@ import type { GrantDisbursement } from "@/lib/hcb"
 import {
 	bareGrantId,
 	bufferTopUpKey,
+	fundsReturn,
 	grantReturn,
 	grantReturnedAt,
 	memoKind,
@@ -148,5 +149,14 @@ describe("memoKind", () => {
 		expect(memoKind("Withdrawal from grant to Polo")).toBe("Withdrawal")
 		expect(memoKind("AliExpress")).toBe("AliExpress")
 		expect(memoKind(null)).toBe("no memo")
+	})
+})
+
+describe("fundsReturn", () => {
+	test("a balance returned under HCB's funds memo is found, and a hand-back is not one", () => {
+		expect(
+			fundsReturn([disbursement({ amountCents: 2711, memo: "Return of funds from grant to Zoe" })])?.amountCents,
+		).toBe(2711)
+		expect(fundsReturn([disbursement({ memo: "Returning canceled grant to Zoe" })])).toBeNull()
 	})
 })
