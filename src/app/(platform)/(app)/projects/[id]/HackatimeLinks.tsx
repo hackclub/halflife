@@ -40,18 +40,30 @@ const HackatimeProjectsSchema = z.object({
  *
  * A link a reviewer has already put hours on cannot be removed: those hours are part of a decision, and the route refuses it, so the button does too.
  */
-export function HackatimeLinks({ projectId, phase }: { projectId: string; phase: Phase }) {
+export function HackatimeLinks({
+	defaultPhase,
+	phases,
+	projectId,
+}: {
+	/** The week the panel opens on: the one still taking hours. */
+	defaultPhase: Phase
+	/** Every week the maker can link into. A season project has both; a warm-up has its one. */
+	phases: Phase[]
+	projectId: string
+}) {
 	const router = useRouter()
+	const [phase, setPhase] = useState<Phase>(defaultPhase)
 	const [links, setLinks] = useState<Link[] | null>(null)
 	const [account, setAccount] = useState<Account>({ state: "loading" })
 	const [picked, setPicked] = useState("")
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const apiPhase = phase === "build" ? "BUILD" : "DESIGN"
 
 	const load = useCallback(async () => {
 		try {
 			const projectsQuery = new URLSearchParams({
-				phase: phase === "build" ? "BUILD" : "DESIGN",
+				phase: apiPhase,
 				projectId,
 			})
 			const [linksRes, projectsRes] = await Promise.all([
@@ -85,7 +97,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			setAccount({ state: "error" })
 			setError("Could not reach Hackatime. Check your connection and try again.")
 		}
-	}, [phase, projectId])
+	}, [apiPhase, projectId])
 
 	/** Retry after a total load failure: show the spinner again, then re-fetch. */
 	const retry = useCallback(() => {
@@ -121,7 +133,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 				await fetch(`/api/projects/${projectId}/hackatime`, {
 					body: JSON.stringify({
 						hackatimeProject: picked,
-						phase: phase === "build" ? "BUILD" : "DESIGN",
+						phase: apiPhase,
 					}),
 					headers: { "content-type": "application/json" },
 					method: "POST",
@@ -141,8 +153,10 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			)
 		})
 
+	// A Hackatime project can back only one phase, so names linked to either are taken; the list shows the phase on the tab.
 	const linkedNames = new Set(links?.map(l => l.hackatimeProject))
 	const available = account.state === "linked" ? account.projects.filter(p => !linkedNames.has(p.name)) : []
+	const shownLinks = (links ?? []).filter(l => l.phase === apiPhase)
 
 	return (
 		<>
@@ -151,6 +165,26 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 				<p className="max-w-[62ch] text-[0.9rem] leading-snug text-navy-soft">
 					Code hours count too: link the Hackatime project you wrote them in.
 				</p>
+
+				{phases.length > 1 && (
+					<div className="mt-4 flex flex-wrap items-center gap-2">
+						{phases.map(option => (
+							<Button
+								aria-pressed={phase === option}
+								disabled={busy !== null}
+								key={option}
+								onClick={() => {
+									setPicked("")
+									setPhase(option)
+								}}
+								size="sm"
+								variant={phase === option ? "teal" : "outline"}
+							>
+								{option === "build" ? "Build week" : "Design week"}
+							</Button>
+						))}
+					</div>
+				)}
 
 				{error && account.state !== "error" && (
 					<p
@@ -176,9 +210,9 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 					</div>
 				) : (
 					<>
-						{links.length > 0 && (
+						{shownLinks.length > 0 && (
 							<ul className="mt-4 grid gap-2">
-								{links.map(l => (
+								{shownLinks.map(l => (
 									<li
 										className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-cream px-3.5 py-2.5"
 										key={l.id}
