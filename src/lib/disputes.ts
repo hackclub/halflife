@@ -1,14 +1,10 @@
 import "server-only"
 import { and } from "@prisma/orm-postgres/orm-client"
 import { mirrorReviewDecision, reviewStatusFor } from "@/lib/airtable/sync"
-import { sendSubmissionToAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { Phase, PhaseStatus, ReviewDisputeOutcome } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { ireLive, isIreConfigured } from "@/lib/ire-platform"
-import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import db from "@/lib/prisma8"
-import { trackSideEffect } from "@/lib/side-effects"
 import { formatDbTimestamp } from "@/lib/time"
 
 /**
@@ -62,7 +58,7 @@ export async function closeDispute(disputeId: string, reviewerId: string, review
 /**
  * Agree with a dispute and send the hand-in back for a fresh review.
  *
- * This is Ari's requeue done from this side: the phase returns to review, the reviews behind the disputed decision are invalidated, and the hand-in is re-sent to Ari as a new ship version so a reviewer decides it there. Only the state change and its audit row are awaited; the Airtable mirror and the send are best-effort after it, because the phase is already back in review and a send that fails is replayed by `ari-retry` (the reopened submission carries a null `ariSubmissionId`, which is exactly what `selectPendingShips` looks for).
+ * The phase returns to review, the reviews behind the disputed decision are invalidated, and the hand-in is back in the review queue for a fresh decision. Only the state change and its audit row are awaited; the Airtable mirror and the send are best-effort after it, because the phase is already back in review and a send that fails is replayed by `ari-retry` (the reopened submission carries a null `ariSubmissionId`, which is exactly what `selectPendingShips` looks for).
  *
  * Refused once the phase has moved on: a decision that has since been re-reviewed or a maker who has resubmitted leaves nothing coherent to send back.
  */
@@ -108,10 +104,6 @@ export async function sendDisputedPhaseBack(
 			)
 			.updateAll({ invalidated: true, invalidatedAt: formatDbTimestamp(new Date()) })
 		await tx.orm.public.PhaseSubmission.where({ id: submission.id }).update({
-			ariDecision: null,
-			ariShipError: null,
-			ariStatus: "review",
-			ariSubmissionId: null,
 			resolvedAt: null,
 			resolvedResult: null,
 		})
@@ -137,45 +129,4 @@ export async function sendDisputedPhaseBack(
 
 	// The row follows the phase back to review; Loops triggers on decisions, so Pending Review sends nothing. The reviewer's justification is cleared with the decision it belonged to.
 	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(PhaseStatus.in_review), null, null, null, null)
-	if (ireLive()) {
-		// Ire owns the queue: the decided ship is closed, so the resend creates the next version.
-		if (isIreConfigured())
-			await trackSideEffect(
-				"ire",
-				{
-					actorEmail: reviewerEmail,
-					actorId: reviewerId,
-					metadata: { disputeId, live: true, phase },
-					targetId: themeProjectId,
-					targetType: "ThemeProject",
-				},
-				() => sendSubmissionToIre(themeProjectId, phase),
-			)
-		return
-	}
-	await trackSideEffect(
-		"ari",
-		{
-			actorEmail: reviewerEmail,
-			actorId: reviewerId,
-			metadata: { disputeId, phase },
-			targetId: themeProjectId,
-			targetType: "ThemeProject",
-		},
-		() => sendSubmissionToAri(themeProjectId, phase),
-	)
-
-	// The upheld dispute puts the hand-in back in front of reviewers, so the shadow copy follows it there too.
-	if (isIreConfigured())
-		await trackSideEffect(
-			"ire",
-			{
-				actorEmail: reviewerEmail,
-				actorId: reviewerId,
-				metadata: { disputeId, phase, shadow: true },
-				targetId: themeProjectId,
-				targetType: "ThemeProject",
-			},
-			() => sendSubmissionToIre(themeProjectId, phase),
-		)
 }

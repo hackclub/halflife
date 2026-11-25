@@ -58,7 +58,6 @@ export const POST = withWritePermission(
 				null,
 			)
 			await notifyReviewOutcome({
-				decidedBy: "console",
 				note: note || null,
 				phase,
 				// Returned, not rejected: the maker can act on this one, which is exactly what `next` tells them.

@@ -53,31 +53,140 @@ export function CardBatch({ blocked, groups }: Readonly<{ blocked: BatchBlockedO
 				</div>
 			)}
 
-			{blocked.length > 0 ? (
-				<Panel title="Requested a card, but not sendable">
-					<Table head={["#", "Participant", "Item", "Why"]}>
-						{blocked.map(order => (
-							<tr key={order.orderNumber}>
-								<td className="hl-mono">{order.orderNumber}</td>
-								<td>
-									<Link className="hl-entity-name" href={`/admin/users/${order.user.id}`}>
-										{order.user.name}
-									</Link>
-								</td>
-								<td>
-									<Link href={`/admin/shop/${order.shopItemId}`}>{order.itemName}</Link>
-								</td>
-								<td className="hl-hint">{order.reason}</td>
-							</tr>
-						))}
-					</Table>
-					<p className="hl-hint">
-						These asked for a card and still have one to receive, but nothing can be sent for them yet. A missing amount
-						means the item had no cost when it was bought, so there is nothing to put on the card.
-					</p>
-				</Panel>
-			) : null}
+			{blocked.length > 0 ? <BlockedOrders blocked={blocked} /> : null}
 		</>
+	)
+}
+
+const fillOutcomeSchema = z.object({
+	amountCents: z.number().nullable(),
+	error: z.string().nullable(),
+	filled: z.boolean(),
+	orderId: z.string(),
+	orderNumber: z.number().nullable(),
+})
+
+const fillResultSchema = z.object({ outcomes: z.array(fillOutcomeSchema) })
+
+/**
+ * The orders that asked for a card but cannot be sent. Ones with no amount can be ticked and given the item's current cost, which is what a fresh purchase would have snapshotted.
+ */
+function BlockedOrders({ blocked }: Readonly<{ blocked: BatchBlockedOrder[] }>) {
+	const [selected, setSelected] = useState<string[]>([])
+	const [outcomes, setOutcomes] = useState<z.infer<typeof fillOutcomeSchema>[] | null>(null)
+	const { busy, error, run } = useAction()
+	const { confirm, dialog } = useConfirm()
+
+	const fillable = blocked.filter(order => order.fillable)
+	const chosen = fillable.filter(order => selected.includes(order.orderId))
+	const allChosen = fillable.length > 0 && chosen.length === fillable.length
+	const filling = busy === "fill"
+	const failures = outcomes?.filter(outcome => !outcome.filled) ?? []
+	const filled = outcomes?.filter(outcome => outcome.filled).length ?? 0
+
+	function toggle(id: string) {
+		setSelected(current => (current.includes(id) ? current.filter(candidate => candidate !== id) : [...current, id]))
+	}
+
+	function toggleAll() {
+		setSelected(allChosen ? [] : fillable.map(order => order.orderId))
+	}
+
+	async function fill() {
+		const answer = await confirm({
+			confirmLabel: `Fill ${chosen.length} ${chosen.length === 1 ? "amount" : "amounts"}`,
+			message: `Give ${chosen.length} ${cardWord(chosen.length)} an amount from each item's current cost? These orders were placed before their item had a cost, so the card would carry today's cost times the quantity. The orders can then be sent as cards.`,
+			title: "Fill with current cost",
+		})
+		if (answer === null) return
+		void run(
+			"fill",
+			() =>
+				sendJsonParsed(fillResultSchema, "/api/admin/shop/orders/grant-card-amounts", {
+					body: { orderIds: chosen.map(order => order.orderId) },
+				}),
+			data => {
+				setOutcomes(data.outcomes)
+				setSelected([])
+			},
+		)
+	}
+
+	return (
+		<Panel title="Requested a card, but not sendable">
+			<Table head={["", "#", "Participant", "Item", "Why"]}>
+				<tr>
+					<td>
+						<input
+							aria-label="Include every order that can be filled"
+							checked={allChosen}
+							disabled={fillable.length === 0}
+							onChange={toggleAll}
+							type="checkbox"
+						/>
+					</td>
+					<td className="hl-hint" colSpan={4}>
+						{fillable.length === 0
+							? "Nothing here can be filled"
+							: allChosen
+								? "Every fillable order is included"
+								: "Choose the orders to fill"}
+					</td>
+				</tr>
+				{blocked.map(order => (
+					<tr key={order.orderId}>
+						<td>
+							<input
+								aria-label={`Include order #${order.orderNumber}`}
+								checked={selected.includes(order.orderId)}
+								disabled={!order.fillable}
+								onChange={() => toggle(order.orderId)}
+								type="checkbox"
+							/>
+						</td>
+						<td className="hl-mono">{order.orderNumber}</td>
+						<td>
+							<Link className="hl-entity-name" href={`/admin/users/${order.user.id}`}>
+								{order.user.name}
+							</Link>
+						</td>
+						<td>
+							<Link href={`/admin/shop/${order.shopItemId}`}>{order.itemName}</Link>
+						</td>
+						<td className="hl-hint">{order.reason}</td>
+					</tr>
+				))}
+			</Table>
+			<p className="hl-hint" style={{ margin: 0 }}>
+				These asked for a card and still have one to receive, but nothing can be sent for them yet. A missing amount
+				means the item had no cost when it was bought. Filling one takes the item&apos;s current cost times the
+				quantity.
+			</p>
+			{error ? <Callout tone="danger">{error}</Callout> : null}
+			{filled > 0 ? (
+				<Callout tone="info">
+					Filled {filled} {filled === 1 ? "amount" : "amounts"}. Reloading the page moves them to the send list.
+				</Callout>
+			) : null}
+			{failures.length > 0 ? (
+				<Callout tone="danger">
+					<strong>{failures.length} not filled</strong>
+					<ul style={{ margin: "0.4rem 0 0", paddingLeft: "1.1rem" }}>
+						{failures.map(outcome => (
+							<li key={outcome.orderId}>
+								Order #{outcome.orderNumber ?? "?"}: {outcome.error ?? "not filled"}
+							</li>
+						))}
+					</ul>
+				</Callout>
+			) : null}
+			<div className="hl-row" style={{ alignItems: "center", gap: "0.75rem" }}>
+				<Button disabled={filling || chosen.length === 0} onClick={() => void fill()} type="button">
+					{filling ? "Filling…" : `Fill with current cost · ${chosen.length} selected`}
+				</Button>
+			</div>
+			{dialog}
+		</Panel>
 	)
 }
 

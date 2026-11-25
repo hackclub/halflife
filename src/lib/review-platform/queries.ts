@@ -27,7 +27,6 @@ import type {
 	ReviewStatus,
 	ReviewViewer,
 } from "@/lib/review-platform/types"
-import { planAriJournals } from "@/lib/review-ship"
 import { telescreenForReview } from "@/lib/telescreen"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp } from "@/lib/time"
 import { publicUrlFor } from "@/lib/uploads/r2"
@@ -605,21 +604,6 @@ export async function getReviewDetail(
 		}
 	})
 
-	// The same plan the sender builds, so the panel can say what Ari will read rather than only what Half Life counts.
-	const plan = await planAriJournals(
-		maker.id,
-		sessions.map(session => ({
-			hoursClaimed: session.hoursClaimed,
-			hoursSource: session.hoursSource,
-			timelapses: session.timelapses,
-		})),
-		new Set(links.map(link => link.hackatimeProject)),
-	)
-	const expectedSeconds =
-		plan.minutes.reduce((sum, minutes) => sum + minutes * 60, 0)
-		+ plan.poolSeconds
-		+ Math.round(breakdown.hackatimeHours * 3600)
-
 	const earlier: ReviewHistoryItem[] = history.map(submission => {
 		const review = submission.reviews[0] ?? null
 		return {
@@ -659,15 +643,6 @@ export async function getReviewDetail(
 	const cover = publicUrlFor(project.coverImageKey)
 
 	return {
-		ariHours: {
-			claimedSeconds: Math.round(breakdown.computedTotal * 3600),
-			expectedSeconds,
-			foreignSeconds: plan.foreignSeconds,
-			poolSeconds: plan.poolSeconds,
-			unabsorbedSeconds: plan.unabsorbedSeconds,
-			unattributedCount: plan.unattributedCount,
-			unattributedSeconds: plan.unattributedSeconds,
-		},
 		bom,
 		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
 		breakdown,

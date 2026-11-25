@@ -475,7 +475,7 @@ export function JournalTimelapseTab({
 							claimed > 0 ? `, logged as ${fmtHours(claimed)}` : ""
 						}`}
 			</p>
-			{/* Lapse can hold a recording with no Hackatime project. Ari finds clips by project, so its elapsed tile will not show these and the reviewer reads the entry's minutes instead. Say that here rather than letting the two views disagree without an explanation. */}
+			{/* Lapse can hold a recording with no Hackatime project. The elapsed tile finds clips by project, so it will not show these and the reviewer reads the entry's minutes instead. Say that here rather than letting the two views disagree without an explanation. */}
 			{picked.some(t => !t.hackatimeProject) ? (
 				<p className="hand mt-1.5 text-center text-[0.78rem] leading-snug text-navy-soft">
 					Some of these recordings have no Hackatime project on Lapse. The reviewer&apos;s elapsed counter reads by

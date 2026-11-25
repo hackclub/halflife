@@ -767,6 +767,7 @@ namespace public {
     resolvedResult         pg.enum(ReviewResult)?
     createdAt              TimestampString(3)     @default(now())
     claim                  ReviewClaim?
+    deferredApproval       DeferredBuildApproval?
     dispute                ReviewDispute?
     reviews                SubmissionReview[]
     themeProject           ThemeProject           @relation(fields: [themeProjectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -964,6 +965,19 @@ namespace public {
 
     @@index([themeProjectId, startedAt], map: "repo_sync_run_themeProjectId_startedAt_idx")
     @@map("repo_sync_run")
+  }
+
+  /// A build approval a reviewer made before its design was approved. It is kept here rather than refused, and replayed as the decision once the design is approved (see `finalizeReview`). Cascades with the hand-in it belongs to.
+  model DeferredBuildApproval {
+    id           String             @id @onCreate(cuid(2))
+    submissionId String
+    /// The `FinalizeInput` the reviewer submitted, minus nothing: replayed unchanged.
+    decision     Jsonb
+    createdAt    TimestampString(3) @default(now())
+    submission   PhaseSubmission    @relation(fields: [submissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([submissionId], map: "deferred_build_approval_submissionId_key", unique: true)
+    @@map("deferred_build_approval")
   }
 
   model ReviewClaim {

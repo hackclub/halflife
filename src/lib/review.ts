@@ -3,7 +3,7 @@ import { and, or } from "@prisma/orm-postgres/orm-client"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
 import { THEME_COMPLETION_BONUS, themeLabel } from "@/lib/config/program"
-import { ENTRY_TIER, getTierOrThrow, isTierId, tierForHours } from "@/lib/config/tiers"
+import { ENTRY_TIER, getTierOrThrow, isTierId, steppedTierForHours } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import {
@@ -19,12 +19,15 @@ import {
 import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
+import type { JsonObject } from "@/lib/json"
 import { assertPayoutAllowed } from "@/lib/moderation"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
+import { type PublishedDecision, publishReviewDecision } from "@/lib/review-publish"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 
 // ─── Claim locks ─────────────────────────────────────────────────────────────
 
@@ -189,7 +192,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	const projectUser = project.user
 	if (!projectUser) throw new HttpError("NOT_FOUND", "Submission not found")
 	const { phase } = submission
-	// A submission row is not the authority on whether a phase is awaiting review: a revert leaves the row open while the phase goes back to its maker (lib/ari, lib/ire-review), so a stale row stays decidable forever. Deciding it would approve work nobody handed in – or, as a rejection, claw back an approval that has already paid out, which is what unapprovePhase exists for and what this path must not do without OVERRIDE_DECISIONS.
+	// A submission row is not the authority on whether a phase is awaiting review: a revert leaves the row open while the phase goes back to its maker , so a stale row stays decidable forever. Deciding it would approve work nobody handed in – or, as a rejection, claw back an approval that has already paid out, which is what unapprovePhase exists for and what this path must not do without OVERRIDE_DECISIONS.
 	if (statusFor(project, phase) !== PhaseStatus.in_review)
 		throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
 	const approving = input.result === ReviewResult.APPROVED
@@ -232,7 +235,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		)
 
 	// A declined grant defaults to nothing: the maker asked for no parts money, so approving the design must not mint one behind their back. An explicit reviewer override still wins – setting a number there is a deliberate choice, not an accident.
-	const grantUsd =
+	let grantUsd =
 		approving && phase === Phase.DESIGN && tier
 			? (input.grantUsdOverride ?? (submission.fundingDeclined ? 0 : getTierOrThrow(tier).grantUsd))
 			: project.grantUsd
@@ -240,7 +243,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	// The machine this participant is saving for is frozen alongside the tier for the pacing displays: it no longer sizes the payout, but the goal tracker still reads it to say what this week's work means for the goal. Someone who never chose one is paced against the default.
 	const goal = printerById(projectUser.printerGoalId ?? DEFAULT_GOAL_ID)
 
-	const tierDef = tier ? getTierOrThrow(tier) : null
+	let tierDef = tier ? getTierOrThrow(tier) : null
 
 	const nextStatus: PhaseStatus =
 		input.result === ReviewResult.APPROVED
@@ -294,25 +297,23 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			throw new HttpError("FORBIDDEN", "Approving more hours than were logged requires the MANAGE_CREDIT permission")
 		const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
-		// A tier's grant buys that tier's funded block of hours, so it is not paid on fewer hours than it funds. The submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when the decision approves less time than was logged. Then the tier is what has to move, not the grant: a hundred dollars of parts for a five-hour week is money for work that was not done. An explicit grant override is an admin decision about the amount, so it is left alone.
+		// A tier's grant buys that tier's funded block of hours, so approved hours below the block step the tier down to the one they earn rather than paying a grant they cannot fund. Under every tier there is no parts grant at all. An explicit grant override is the reviewer's own number and is left alone, and the tier never steps up.
 		if (
 			approving
 			&& phase === Phase.DESIGN
 			&& tier
 			&& (grantUsd ?? 0) > 0
 			&& (input.grantUsdOverride === null || input.grantUsdOverride === undefined)
+			&& (approvedHours ?? 0) < getTierOrThrow(tier).fundingHours
 		) {
-			const funded = getTierOrThrow(tier).fundingHours
-			const approved = approvedHours ?? 0
-			if (approved < funded) {
-				const affordable = tierForHours(approved)
-				throw new HttpError(
-					"VALIDATION_FAILED",
-					affordable
-						? `Tier ${tier} funds ${funded} hours and this decision approves ${approved}h. Tier ${affordable.id} is the tier those hours earn.`
-						: `Tier ${tier} funds ${funded} hours and this decision approves ${approved}h, which is under every tier. Approve at least ${ENTRY_TIER.fundingHours} hours, or return the design for more work.`,
-				)
+			const next = steppedTierForHours(tier, approvedHours ?? 0)
+			if (next === null) grantUsd = 0
+			else {
+				const { grantUsd: nextGrant } = getTierOrThrow(next)
+				tier = next
+				grantUsd = nextGrant
 			}
+			tierDef = tier ? getTierOrThrow(tier) : null
 		}
 
 		// Both phases mint coins, by different rules. A design pays out only above the hours its grant bought – a declined grant (or a zero override) buys none, so every hour pays. A build has no funded block, so every hour pays. Either way every coin is spendable on anything.
@@ -543,7 +544,96 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		targetType: "ThemeProject",
 	})
 
+	// A design approval is what a kept build approval was waiting for. The design has committed, so this runs after it and cannot undo it.
+	if (approving && phase === Phase.DESIGN)
+		await applyDeferredBuildApproval(project.id).catch(err =>
+			console.error(`[review] deferred build approval for ${project.id} failed:`, err),
+		)
+
 	return outcome
+}
+
+/** Whether a build approval was refused only because its design is not approved yet. */
+export function isDesignNotApproved(err: unknown): boolean {
+	return err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED"
+}
+
+/** What a kept decision holds: the decision as finalized, and what publishing it needs. */
+interface DeferredDecision {
+	input: FinalizeInput
+	published: PublishedDecision
+}
+
+/** Checks the shape a kept decision was written in. Its fields are only as sound as the writer that stored them. */
+function isDeferredDecision(value: unknown): value is DeferredDecision {
+	return isRecord(value) && isRecord(value.input) && isRecord(value.published)
+}
+
+/**
+ * Keep a build approval the reviewer made before its design was approved, to be applied once the design is.
+ *
+ * Only the state checks a decision makes now are repeated here; the rest is checked when it is applied. Replaces an earlier kept decision for the same hand-in.
+ */
+export async function deferBuildApproval(input: FinalizeInput, published: PublishedDecision): Promise<void> {
+	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })
+		.include("themeProject", proj => proj.include("user", user => user.select("id")))
+		.first()
+	const project = submission?.themeProject
+	if (!submission || !project?.user) throw new HttpError("NOT_FOUND", "Submission not found")
+	if (submission.phase !== Phase.BUILD)
+		throw new HttpError("VALIDATION_FAILED", "Only a build approval can wait for its design")
+	if (project.userId === input.reviewerId) throw new HttpError("FORBIDDEN", "You cannot review your own submission")
+	if (submission.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
+	if (statusFor(project, Phase.BUILD) !== PhaseStatus.in_review)
+		throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
+
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every field is plain JSON (strings, numbers, booleans, null), and the reader checks the shape again
+	const decision = structuredClone({ input, published }) as unknown as JsonObject
+	await db.transaction(async tx => {
+		await tx.orm.public.DeferredBuildApproval.where({ submissionId: input.submissionId }).deleteAndCount()
+		await tx.orm.public.DeferredBuildApproval.create({
+			decision,
+			submissionId: input.submissionId,
+		})
+	})
+	await logAudit({
+		action: AuditAction.REVIEW_APPROVE,
+		actorEmail: input.reviewerEmail,
+		actorId: input.reviewerId,
+		metadata: { deferred: true, phase: Phase.BUILD },
+		targetId: project.id,
+		targetType: "ThemeProject",
+	})
+}
+
+/**
+ * Apply the build approval kept for a project, if there is one, now that its design is approved.
+ *
+ * A kept decision is removed once it applies, or once a refusal says it never will (the hand-in is gone or decided). A claim another reviewer holds keeps it for the next design approval, and so does a failure that is not a refusal.
+ */
+async function applyDeferredBuildApproval(themeProjectId: string): Promise<void> {
+	const build = await db.orm.public.PhaseSubmission.where({ phase: Phase.BUILD, resolvedAt: null, themeProjectId })
+		.orderBy(sub => sub.createdAt.desc())
+		.include("deferredApproval")
+		.first()
+	const kept = build?.deferredApproval
+	if (!build || !kept) return
+	if (!isDeferredDecision(kept.decision)) {
+		console.error(`[review] deferred build approval ${kept.id} is not readable; removing it`)
+		await db.orm.public.DeferredBuildApproval.where({ id: kept.id }).deleteAndCount()
+		return
+	}
+	const { input, published } = kept.decision
+	let outcome: FinalizeOutcome
+	try {
+		outcome = await finalizeReview({ ...input, submissionId: build.id })
+	} catch (err) {
+		if (err instanceof HttpError && err.code === "CLAIMED_BY_OTHER") return
+		if (err instanceof HttpError) await db.orm.public.DeferredBuildApproval.where({ id: kept.id }).deleteAndCount()
+		throw err
+	}
+	await db.orm.public.DeferredBuildApproval.where({ id: kept.id }).deleteAndCount()
+	await publishReviewDecision(outcome, published)
 }
 
 /**

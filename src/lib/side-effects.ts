@@ -26,7 +26,7 @@ function metadataObject(value: InputJsonValue | undefined): InputJsonObject {
  * The reviewer never sees these failures – the audit log is the operational signal an admin queries to spot a regression, and the recovery route (`POST /api/admin/theme-projects/[id]/sync-to-airtable`) is how they fix it.
  */
 export async function trackSideEffect<T>(
-	kind: "airtable" | "slack" | "ari" | "ire",
+	kind: "airtable" | "slack",
 	ctx: SideEffectContext,
 	fn: () => Promise<T>,
 	opts: {
@@ -57,36 +57,7 @@ export async function trackSideEffect<T>(
 				targetId: ctx.targetId,
 				targetType: ctx.targetType,
 			})
-		} else if (kind === "ari" && !skipped)
-			// The send itself records the Ari submission id on the row; this is the operational trace that it happened.
-			await logAudit({
-				action: AuditAction.ARI_SYNC_SUCCESS,
-				actorEmail: ctx.actorEmail,
-				actorId: ctx.actorId,
-				metadata: {
-					...metadataObject(ctx.metadata),
-					...(result !== null && typeof result === "object" && "id" in result && typeof result.id === "string"
-						? { ariSubmissionId: result.id }
-						: {}),
-				},
-				targetId: ctx.targetId,
-				targetType: ctx.targetType,
-			})
-		else if (kind === "ire" && !skipped)
-			// The IreShip row is the durable link; this is the operator's trace that the shadow send happened.
-			await logAudit({
-				action: AuditAction.IRE_SYNC_SUCCESS,
-				actorEmail: ctx.actorEmail,
-				actorId: ctx.actorId,
-				metadata: {
-					...metadataObject(ctx.metadata),
-					...(result !== null && typeof result === "object" && "id" in result && typeof result.id === "string"
-						? { ireSubmissionId: result.id }
-						: {}),
-				},
-				targetId: ctx.targetId,
-				targetType: ctx.targetType,
-			})
+		}
 
 		return result
 	} catch (err) {
@@ -96,14 +67,7 @@ export async function trackSideEffect<T>(
 		if (rejected) console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}: ${message}`)
 		else console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}:`, err)
 		await logAudit({
-			action:
-				kind === "airtable"
-					? AuditAction.AIRTABLE_SYNC_FAILURE
-					: kind === "ari"
-						? AuditAction.ARI_SYNC_FAILURE
-						: kind === "ire"
-							? AuditAction.IRE_SYNC_FAILURE
-							: AuditAction.NOTIFICATION_FAILURE,
+			action: kind === "airtable" ? AuditAction.AIRTABLE_SYNC_FAILURE : AuditAction.NOTIFICATION_FAILURE,
 			actorEmail: ctx.actorEmail,
 			actorId: ctx.actorId,
 			metadata: { ...metadataObject(ctx.metadata), error: message },

@@ -1,0 +1,151 @@
+[
+  {
+    "id": "table.deferred_build_approval",
+    "label": "Create table \"deferred_build_approval\"",
+    "summary": "Creates table \"deferred_build_approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "deferred_build_approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"deferred_build_approval\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"deferred_build_approval\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"deferred_build_approval\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"deferred_build_approval\"",
+        "sql": "CREATE TABLE \"public\".\"deferred_build_approval\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"decision\" jsonb NOT NULL,\n  \"id\" text NOT NULL,\n  \"submissionId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"deferred_build_approval\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"deferred_build_approval\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"deferred_build_approval\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "index.deferred_build_approval.deferred_build_approval_submissionId_key",
+    "label": "Create index \"deferred_build_approval_submissionId_key\" on \"deferred_build_approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "deferred_build_approval_submissionId_key",
+        "table": "deferred_build_approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"deferred_build_approval_submissionId_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"deferred_build_approval_submissionId_key\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"deferred_build_approval_submissionId_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"deferred_build_approval_submissionId_key\"",
+        "sql": "CREATE UNIQUE INDEX \"deferred_build_approval_submissionId_key\" ON \"public\".\"deferred_build_approval\" (\"submissionId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"deferred_build_approval_submissionId_key\" exists on \"deferred_build_approval\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"deferred_build_approval_submissionId_key\"",
+          "i",
+          "I",
+          "\"public\".\"deferred_build_approval\"",
+          "btree",
+          "[\"submissionId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.deferred_build_approval.deferred_build_approval_submissionId_fkey",
+    "label": "Add foreign key \"deferred_build_approval_submissionId_fkey\" on \"deferred_build_approval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "deferred_build_approval_submissionId_fkey",
+        "table": "deferred_build_approval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"deferred_build_approval_submissionId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "deferred_build_approval_submissionId_fkey",
+          "public",
+          "\"public\".\"deferred_build_approval\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"deferred_build_approval_submissionId_fkey\" on \"deferred_build_approval\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"deferred_build_approval_submissionId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"deferred_build_approval\"\nADD CONSTRAINT \"deferred_build_approval_submissionId_fkey\"\nFOREIGN KEY (\"submissionId\")\nREFERENCES \"public\".\"phase_submission\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"deferred_build_approval_submissionId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "deferred_build_approval_submissionId_fkey",
+          "public",
+          "\"public\".\"deferred_build_approval\"",
+          "f",
+          "[\"submissionId\"]",
+          "\"public\".\"phase_submission\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  }
+]

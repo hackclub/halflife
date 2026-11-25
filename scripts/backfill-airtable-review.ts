@@ -6,9 +6,17 @@ import { currentReviewColumns } from "../src/lib/airtable/review-columns"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
 import { recordIdsFromSyncEvents, reviewStatusFor } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
-import { defaultFeedback } from "../src/lib/ari"
-import { AuditAction, Phase, PhaseStatus, type ReviewResult } from "../src/lib/enums"
+import { AuditAction, Phase, PhaseStatus, ReviewResult } from "../src/lib/enums"
 import db from "../src/lib/prisma8"
+
+/**
+ * The note an Ari decision was stored with when Ari sent none. The integration is gone, but the rows it wrote still carry this sentence, so this backfill recognises it and clears it rather than mirroring it to the maker's row.
+ */
+function defaultFeedback(result: ReviewResult): string {
+	if (result === ReviewResult.APPROVED) return "Approved by Ari."
+	if (result === ReviewResult.RETURNED) return "Ari asked for changes before this can be approved."
+	return "Ari rejected this submission."
+}
 
 /**
  * Fill `Loops - halfLifeReviewStatus`, `Loops - halfLifeReviewerNotes` and `Justification - Specific Technical Features` on the submission rows written before the mirror existed.

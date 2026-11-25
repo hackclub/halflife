@@ -18,7 +18,7 @@ export interface Tier {
 	readonly estimate: string
 	/** Hours the grant covers. These buy parts, not coins. */
 	readonly fundingHours: number
-	/** Grant paid through the YSWS pipeline, in whole USD. */
+	/** Grant in whole USD. */
 	readonly grantUsd: number
 	readonly id: 1 | 2 | 3
 	readonly name: string
@@ -141,6 +141,18 @@ export function isTierId(id: unknown): id is TierId {
 export function tierForHours(hours: number): Tier | null {
 	const affordable = TIERS.filter(t => hours >= t.fundingHours)
 	return affordable.at(-1) ?? null
+}
+
+/**
+ * The tier a design approval lands on when it approves `hours`, given the tier the reviewer chose.
+ *
+ * Approved hours that fund the chosen tier leave it alone. Fewer step it down to the highest tier those hours earn, and never up. Null when they earn no tier at all, which means no parts grant.
+ */
+export function steppedTierForHours(tier: number, hours: number): number | null {
+	if (hours >= getTierOrThrow(tier).fundingHours) return tier
+	const affordable = tierForHours(hours)
+	if (!affordable) return null
+	return Math.min(affordable.id, tier)
 }
 
 /**

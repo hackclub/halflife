@@ -3,7 +3,7 @@ import { round2 } from "@/lib/money"
 /**
  * What each project's Airtable `Funding given` should say, from the payments the site can see.
  *
- * The field used to be written by the YSWS pipeline, so once payouts moved to HCB nothing wrote it for a project that was not a Week 1 starter. This works the total out from the payment records instead, and never lowers a value a person has already set.
+ * Nothing writes this field for a project that was not a Week 1 starter, so it stays blank even when the project was paid. This works the total out from the payment records instead, and never lowers a value a person has already set.
  */
 
 export interface PaidSourcesCents {

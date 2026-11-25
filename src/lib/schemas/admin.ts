@@ -134,6 +134,13 @@ export const shopGrantCardBatchSchema = z
 	})
 	.strict()
 
+/** Orders to give a grant card amount to, each taken from its item's current cost. */
+export const shopGrantCardAmountSchema = z
+	.object({
+		orderIds: z.array(z.string().trim().min(1).max(64)).min(1).max(SHOP_GRANT_CARD_BATCH_MAX),
+	})
+	.strict()
+
 /** A grant card merchant: a vendor, with every Stripe network ID it can be charged under. There is no cap on the IDs. */
 /** A merchant's fields with no defaults, so the create and update schemas can each decide what an absent field means. A default survives `.partial()`, which would blank the IDs and note of an edit that sent only `archived`. */
 const grantCardMerchantFields = Object.freeze({

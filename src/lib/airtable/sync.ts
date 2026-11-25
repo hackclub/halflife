@@ -275,7 +275,7 @@ export async function yswsFieldsFor(
 		projectName: project.title,
 		projectWeek: projectWeekLabel(week) ?? undefined,
 		// The parts are funded once, at design. A build asks for no new money, so its row says $0 rather than repeating the design's request.
-		// Under HCB the base is evidence rather than the payer: a zero here is what stops the YSWS pipeline paying a project Half Life has already funded by card grant.
+		// Under HCB the base is evidence rather than the payer: a zero here keeps the base from showing a payable figure for a project Half Life has already funded by card grant.
 		requestedFunding: phase === Phase.DESIGN && settings.payoutSource === PayoutSource.AIRTABLE ? bomTotal : 0,
 		reviewStatus: reviewStatusFor(phaseStatus),
 		slackId: user.slackId ?? "",
@@ -390,7 +390,7 @@ async function readReviewRow(config: AirtableConfig, recordId: string): Promise<
 /**
  * The hours-override and deflation-justification columns for a decision.
  *
- * The payout pipeline reads `Optional - Override Hours Spent` for approved rows, so it must never be blank: when a review cut the claimed total, it holds the approved hours; otherwise it holds the claimed (self-reported) hours from the row. The claimed figure comes from the row rather than being recomputed here, because it is the number the base already shows and recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
+ * `Optional - Override Hours Spent` holds the hours for approved rows, so it must never be blank: when a review cut the claimed total, it holds the approved hours; otherwise it holds the claimed (self-reported) hours from the row. The claimed figure comes from the row rather than being recomputed here, because it is the number the base already shows and recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
  *
  * `Justification - Deflation Justification` is only written when hours were cut. `reason` is the reviewer's justification for the cut – Ari's own deflation reason when it carried one, else the review's internal note – and never the note to the maker, which has its own column and is quoted in the email.
  *
@@ -484,7 +484,7 @@ async function wroteOverrideJustification(themeProjectId: string, phase: Phase):
  *
  * `deflationReason` is Ari's `review.justification.deflation_reason`: the reviewer's own account of why they approved fewer hours than the row claims. It is preferred for `Justification - Deflation Justification`; without it that column falls back to the review's internal reason. The maker-facing note is never used there – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it says nothing about the cut.
  *
- * The review's internal reason is also written to `Justification - Additional Justification`, which is where the pipeline reads Ari's "Justification notes" (`review.audit_note`) from, with a link to the project after it (see `additionalJustificationCell`). `justificationNotes` is that note; undefined leaves the column alone (an older caller), null clears the note for a decision that no longer stands and leaves the link.
+ * The review's internal reason is also written to `Justification - Additional Justification`, which is the column for the reviewer's "Justification notes" note, with a link to the project after it (see `additionalJustificationCell`). `justificationNotes` is that note; undefined leaves the column alone (an older caller), null clears the note for a decision that no longer stands and leaves the link.
  *
  * The reviewer's technical features come from the standing review (`SubmissionReview.technicalFeatures`, Ari's `review.justification.technical_features`). `Justification - Specific Technical Features` carries those words and nothing else – a decision overwrites whatever an earlier account or journal text put there, and a decision made without them writes an empty cell. A refresh never re-adds the maker's account.
  */
@@ -664,9 +664,9 @@ export async function syncReviewDecisionToYsws(
 /**
  * Put a decision on the submission's Airtable row, for Loops, and log whatever did not land.
  *
- * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is Ari's dedicated justification for a cut, which is preferred over the review's internal note in the deflation column. `justificationNotes` is Ari's "Justification notes" (`review.audit_note`), written to `Justification - Additional Justification`; omit it to leave that column alone, or pass null to clear it. `overrideJustification` is a website approval's signed account, for `Optional - Override Hours Spent Justification` (see `syncReviewDecisionToYsws`).
+ * Every decision path calls this once its own change has committed – the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is the reviewer's justification for a cut, which is preferred over the review's internal note in the deflation column. `justificationNotes` is Ari's "Justification notes" (`review.audit_note`), written to `Justification - Additional Justification`; omit it to leave that column alone, or pass null to clear it. `overrideJustification` is a website approval's signed account, for `Optional - Override Hours Spent Justification` (see `syncReviewDecisionToYsws`).
  *
- * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. On the Ari path that is load-bearing – a throw becomes a 5xx and a redelivery of a decision that has already been applied.
+ * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. That is load-bearing – a throw would surface as an error on a decision that has already been applied.
  */
 export async function mirrorReviewDecision(
 	themeProjectId: string,
@@ -708,61 +708,6 @@ export async function mirrorReviewDecision(
 		console.error(
 			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the pass 1 reviewer: ${mirrored.reviewerFailed}`,
 		)
-}
-
-/**
- * Ari's phase names as an operator reads them on the row.
- *
- * Unknown values fall through unchanged rather than being dropped: a phase Ari adds later should still show up in the base, even if this map has not learned a nicer word for it.
- */
-const ARI_PHASE_LABEL: { [_: string]: string } = {
-	fraud_review: "Fraud review",
-	processing: "Processing",
-	reverted: "Reverted",
-	review: "In review",
-	reviewed: "Reviewed",
-	second_pass: "Second pass",
-	under_review: "Under review",
-	withdrawn: "Withdrawn",
-}
-
-/** Mirror a ship's current Ari phase onto its Airtable row, where an operator can see a hold or a return that Ari never pushes. */
-export async function mirrorAriPhaseToYsws(
-	themeProjectId: string,
-	phase: Phase,
-	ariPhase: string,
-	at: Date,
-): Promise<void> {
-	try {
-		const settings = await getProgramSettings()
-		if (!settings.airtableSyncEnabled) return
-		const config = getAirtableConfig()
-		if (!config) return
-		const recordId = await lastRecordId(themeProjectId, phase)
-		if (!recordId) return
-
-		const { ariReviewPhase, ariReviewPhaseAt, ariSecondPassSince } = YSWS_SUBMISSION.fields
-		const { tableId } = YSWS_SUBMISSION
-		const columns = [ariReviewPhase, ariReviewPhaseAt, ariSecondPassSince]
-		const writable = await existingColumns(
-			config,
-			tableId,
-			columns.map(column => column.name),
-		)
-		const values: { [_: string]: unknown } = {}
-		if (writable.has(ariReviewPhase.name)) values[fieldKey(ariReviewPhase)] = ARI_PHASE_LABEL[ariPhase] ?? ariPhase
-		if (writable.has(ariReviewPhaseAt.name)) values[fieldKey(ariReviewPhaseAt)] = at.toISOString()
-		if (writable.has(ariSecondPassSince.name))
-			values[fieldKey(ariSecondPassSince)] = ariPhase === "second_pass" ? at.toISOString() : null
-		if (Object.keys(values).length === 0) return
-
-		const written = await updateYswsRecord(recordId, values)
-		if (!written.ok && written.reason !== "row_gone" && written.reason !== "not_configured")
-			console.error(`[airtable] could not write the Ari phase for ${themeProjectId} (${phase}): ${written.reason}`)
-	} catch (err) {
-		// The poll must keep going for every other ship; the next run retries this one.
-		console.error(`[airtable] could not mirror the Ari phase for ${themeProjectId} (${phase}):`, err)
-	}
 }
 
 /**
