@@ -242,7 +242,7 @@ bun --conditions=react-server scripts/backfill-airtable-addresses.ts
 bun --conditions=react-server scripts/backfill-airtable-addresses.ts --commit
 ```
 
-It only fills cells that are empty, so a value already on the row is never overwritten. It looks only at rows that are still missing a required cell, reads the stored PII first, and asks HCA again only when the stored address is incomplete, so a scheduled run does not cost one HCA request per maker. Every row it still cannot fill is listed in a report with the reason; an address HCA never had cannot be backfilled, and those makers have to add one at the link above. Run it where `DATABASE_URL` points at the real database.
+It only fills cells that are empty, so a value already on the row is never overwritten. It looks only at rows that are still missing a required address cell or a name cell, reads the stored PII first, and asks HCA again only when the stored address is incomplete or the maker has no name on file, so a scheduled run does not cost one HCA request per maker. The same run fills `First Name` and `Last Name` where they are blank, split from the maker's name on their account the way the submit path splits it. A name is only stored on a sign-in sync, so a maker with none on file is refreshed with one, which also refreshes their email and verification status. Every row it still cannot fill is listed in a report with the reason; an address HCA never had cannot be backfilled, and those makers have to add one at the link above. Run it where `DATABASE_URL` points at the real database.
 
 ### The technical-features column, for the existing rows
 

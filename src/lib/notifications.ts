@@ -1,10 +1,8 @@
 import "server-only"
-import { projectUrl, reviewUrl } from "@/lib/app-url"
-import { ariReviewUrl } from "@/lib/ari-url"
+import { projectUrl, reviewDecisionUrl, reviewUrl } from "@/lib/app-url"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { participantProjectTitle } from "@/lib/config/program"
 import { Phase, ReviewResult } from "@/lib/enums"
-import { ireSubmissionUrl } from "@/lib/ire-url"
 import type { InputJsonObject } from "@/lib/json"
 import { safeSrc } from "@/lib/markdown"
 import db from "@/lib/prisma8"
@@ -348,13 +346,13 @@ function escapeSlackText(value: string): string {
  *
  * A console decision carries the reviewer's own account, so the id is one join away. An Ari decision has no account link by design (see `finalizeReview`), so the address Ari reported is matched to an account instead – the same resolution the daily review summary makes – and a reviewer with no account here pings nobody rather than the wrong person.
  *
- * The Ari link names the ship rather than the local row: Ari's path takes its own eight-character ship id, which is exactly what `ariSubmissionId` holds. The console link names the local submission because `/review/<id>` is where the dispute thread is read and answered; it is always available, unlike Ari's.
+ * Both links name the local submission: `/review/<id>` is where the dispute thread is read and answered, and `/reviews/<id>` is the decision screen on the review platform.
  */
 async function disputeContext(
 	submissionId: string,
-): Promise<{ ariUrl: string | null; ireUrl: string | null; reviewPageUrl: string; slackId: string | null }> {
+): Promise<{ decisionUrl: string; reviewPageUrl: string; slackId: string | null }> {
 	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: submissionId })
-		.select("ariSubmissionId", "phase", "themeProjectId")
+		.select("themeProjectId")
 		.include("reviews", reviews =>
 			reviews
 				.orderBy(rev => rev.createdAt.desc())
@@ -376,26 +374,9 @@ async function disputeContext(
 	}
 
 	return {
-		ariUrl: submission?.ariSubmissionId ? ariReviewUrl(submission.ariSubmissionId) : null,
-		ireUrl: await ireUrlFor(submission?.themeProjectId ?? null, submission?.phase ?? null),
+		decisionUrl: reviewDecisionUrl(submissionId),
 		reviewPageUrl: reviewUrl(submissionId),
 		slackId,
-	}
-}
-
-async function ireUrlFor(themeProjectId: string | null, phase: Phase | null): Promise<string | null> {
-	if (!themeProjectId || !phase) return null
-	try {
-		const row = await db.orm.public.IreShip.where({
-			phase,
-			themeProjectId,
-		})
-			.select("remoteId")
-			.first()
-		const remoteId = row?.remoteId ?? null
-		return remoteId ? ireSubmissionUrl(remoteId) : null
-	} catch {
-		return null
 	}
 }
 
@@ -404,7 +385,7 @@ async function ireUrlFor(themeProjectId: string | null, phase: Phase | null): Pr
  *
  * Posted to `SLACK_DISPUTES_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
  *
- * The reviewer who made the disputed decision is pinged and given links straight to the hand-in: the review console thread, where the dispute can be answered, and Ari, where the decision can be re-read and made again. Both are additions to the same channel post rather than a DM: the point is that whoever picks it up has the reviewer named and the conversation a click away. A reviewer with no account on this deployment, or a hand-in that never reached Ari, simply drops its half.
+ * The reviewer who made the disputed decision is pinged and given links straight to the hand-in: the review console thread, where the dispute can be answered, and the decision screen on the review platform, where it can be re-read and made again. Both are additions to the same channel post rather than a DM: the point is that whoever picks it up has the reviewer named and the conversation a click away. A reviewer with no account on this deployment simply drops the ping.
  */
 export async function notifyStaffDispute(input: {
 	/** The decided submission the dispute is against, so the reviewer and links can be found. */
@@ -419,7 +400,7 @@ export async function notifyStaffDispute(input: {
 	if (!channel) return
 	const phase = input.phase === Phase.DESIGN ? "design" : "build"
 
-	const { ariUrl, ireUrl, reviewPageUrl, slackId } = await disputeContext(input.submissionId)
+	const { decisionUrl, reviewPageUrl, slackId } = await disputeContext(input.submissionId)
 	const disputeUrl = projectUrl(input.themeProjectId)
 	// A participant's words land in staff's channel, where `<@U…>` and `<!channel>` are live mentions and `<url|text>` is a link; quoting does not neutralise them, so the three characters Slack mrkdwn gives meaning to are escaped. The reviewer ping and our own links are ours, so they stay outside the escaping.
 	const quoted = escapeSlackText(input.note)
@@ -431,8 +412,7 @@ export async function notifyStaffDispute(input: {
 		disputeUrl ? `<${disputeUrl}|Open the project>` : null,
 		// Empty when the deployment names no origin (lib/app-url), so the link is left out rather than sent with no URL in it.
 		reviewPageUrl ? `<${reviewPageUrl}|Open the review thread>` : null,
-		ariUrl ? `<${ariUrl}|Open the review on Ari>` : null,
-		ireUrl ? `<${ireUrl}|Open the review on Ire>` : null,
+		decisionUrl ? `<${decisionUrl}|Open the review decision>` : null,
 	].filter(link => link !== null)
 	const text = `${slackId ? `<@${slackId}> ` : ""}Review dispute on *${escapeSlackText(input.title)}* (${phase}) by ${escapeSlackText(input.participant)}:\n\n${quoted}${
 		links.length > 0 ? `\n\n${links.join("\n")}` : ""

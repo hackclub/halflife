@@ -167,7 +167,7 @@ function MerchantPanel({ merchant }: Readonly<{ merchant: GrantCardMerchantRow }
 					{busy === "save" ? "Saving…" : "Save changes"}
 				</Button>
 				{merchant.archived ? (
-					<Button disabled={busy !== null} onClick={() => void restore()} type="button">
+					<Button disabled={busy !== null} onClick={restore} type="button">
 						{busy === "restore" ? "Restoring…" : "Restore"}
 					</Button>
 				) : (

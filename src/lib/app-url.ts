@@ -50,3 +50,13 @@ export function reviewUrl(id: string): string {
 	const base = appBaseUrl()
 	return base ? `${base}/review/${id}` : ""
 }
+
+/**
+ * A hand-in's decision screen on the review platform, where the ship is claimed and decided.
+ *
+ * Same submission id as `reviewUrl`, under the platform's `/reviews` route rather than the ops console's `/review`.
+ */
+export function reviewDecisionUrl(id: string): string {
+	const base = appBaseUrl()
+	return base ? `${base}/reviews/${id}` : ""
+}

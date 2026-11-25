@@ -18,9 +18,11 @@ import db from "../src/lib/prisma8"
 import { phaseSchema } from "../src/lib/schemas/common"
 
 /**
- * Fill blank address fields on `YSWS Project Submission` rows from the maker's current address.
+ * Fill blank address and name fields on `YSWS Project Submission` rows from the maker's current details.
  *
- * Submission rows are written with the maker's shipping address at hand-in (see `fieldsFor` in lib/airtable/sync), refreshed from HCA at that point. Rows can still end up with blank address columns when PII could not be pulled or decrypted at the time, HCA had no address, or the sync ran without a usable token/key. This backfill looks only at rows that are still missing a required cell, decrypts the owner's stored PII, asks HCA again only when that stored address is incomplete, and writes any address field that is still blank on the Airtable row but now has a value.
+ * Submission rows are written with the maker's shipping address and name at hand-in (see `fieldsFor` in lib/airtable/sync), refreshed from HCA at that point. Rows can still end up with blank cells when PII could not be pulled or decrypted at the time, HCA had no address or name, or the sync ran without a usable token/key. This backfill looks only at rows that are still missing a required address cell or a name cell, decrypts the owner's stored PII, asks HCA again only when that stored address is incomplete or the owner has no name on file, and writes any field that is still blank on the Airtable row but now has a value.
+ *
+ * A name is split the way the submit path splits it: the first word is First Name, the rest is Last Name. HCA's name is only written to the account on a sign-in sync, so a refresh for a maker with no name runs that sync, which also refreshes their email and verification status.
  *
  * Only fields that are empty in Airtable are written, so existing values are never overwritten. Rows that still have missing address fields after the run are logged with a reason and written to a JSON report, so the cause can be investigated.
  *
@@ -43,11 +45,33 @@ type AddressKey = (typeof ADDRESS_FIELDS)[number][0]
 /** Address Line 2 (apt/suite) is optional; a blank there is normal and not a missing address. */
 const REQUIRED_KEYS: AddressKey[] = ADDRESS_FIELDS.map(([key]) => key).filter(key => key !== "addressLine2")
 
+const NAME_FIELDS = [
+	["firstName", YSWS_SUBMISSION.fields.firstName],
+	["lastName", YSWS_SUBMISSION.fields.lastName],
+] as const
+
+type NameKey = (typeof NAME_FIELDS)[number][0]
+
+type FieldKey = AddressKey | NameKey
+
+const EMPTY_ADDRESS: { [_ in AddressKey]: string } = {
+	addressLine1: "",
+	addressLine2: "",
+	city: "",
+	country: "",
+	state: "",
+	zip: "",
+}
+
+const EMPTY_NAME: { [_ in NameKey]: string } = { firstName: "", lastName: "" }
+
 interface CurrentRow {
 	addressLine1: string
 	addressLine2: string
 	city: string
 	country: string
+	firstName: string
+	lastName: string
 	state: string
 	zip: string
 }
@@ -62,6 +86,7 @@ interface Target {
 
 interface UserAddressInfo {
 	address: { [_ in AddressKey]: string }
+	name: { [_ in NameKey]: string }
 	reason: string | null
 }
 
@@ -90,6 +115,10 @@ function blankRequiredFields(row: CurrentRow): AddressKey[] {
 	return REQUIRED_KEYS.filter(key => !row[key])
 }
 
+function blankNameFields(row: CurrentRow): NameKey[] {
+	return NAME_FIELDS.map(([key]) => key).filter(key => !row[key])
+}
+
 /** The address cells held in a user's stored PII. */
 function storedAddress(user: Parameters<typeof decryptUserPII>[0]): { [_ in AddressKey]: string } {
 	const pii = decryptUserPII(user)
@@ -103,10 +132,16 @@ function storedAddress(user: Parameters<typeof decryptUserPII>[0]): { [_ in Addr
 	}
 }
 
-/** The current address cells for every row in the submission table, read once. */
+/** A name split the way the submit path splits it (lib/airtable/sync): the first word, then the rest. */
+function nameParts(name: string | null | undefined): { [_ in NameKey]: string } {
+	const [firstName = "", ...rest] = (name ?? "").trim().split(/\s+/)
+	return { firstName, lastName: rest.join(" ") }
+}
+
+/** The current address and name cells for every row in the submission table, read once. */
 async function currentRows(
 	config: AirtableConfig,
-	keys: { [_ in AddressKey]: string },
+	keys: { [_ in FieldKey]: string },
 ): Promise<Map<string, CurrentRow>> {
 	const qs = Object.values(keys)
 		.map(key => `fields%5B%5D=${encodeURIComponent(key)}`)
@@ -127,6 +162,8 @@ async function currentRows(
 				addressLine2: textCell(record.fields[keys.addressLine2]),
 				city: textCell(record.fields[keys.city]),
 				country: textCell(record.fields[keys.country]),
+				firstName: textCell(record.fields[keys.firstName]),
+				lastName: textCell(record.fields[keys.lastName]),
 				state: textCell(record.fields[keys.state]),
 				zip: textCell(record.fields[keys.zip]),
 			})
@@ -191,11 +228,13 @@ async function main() {
 		process.exit(1)
 	}
 
-	const keys: { [_ in AddressKey]: string } = {
+	const keys: { [_ in FieldKey]: string } = {
 		addressLine1: fieldKey(YSWS_SUBMISSION.fields.addressLine1),
 		addressLine2: fieldKey(YSWS_SUBMISSION.fields.addressLine2),
 		city: fieldKey(YSWS_SUBMISSION.fields.city),
 		country: fieldKey(YSWS_SUBMISSION.fields.country),
+		firstName: fieldKey(YSWS_SUBMISSION.fields.firstName),
+		lastName: fieldKey(YSWS_SUBMISSION.fields.lastName),
 		state: fieldKey(YSWS_SUBMISSION.fields.state),
 		zip: fieldKey(YSWS_SUBMISSION.fields.zip),
 	}
@@ -218,39 +257,38 @@ async function main() {
 	const ownerByProject = new Map(projects.map(project => [project.id, project.userId]))
 	const titleByProject = new Map(projects.map(project => [project.id, project.title]))
 
-	// Only owners of a row that is actually missing a required cell need a refresh: a complete row cannot be filled from one, and most owners have no blank row at all. Without this a scheduled run asks HCA about every owner on the books before writing anything.
+	// Only owners of a row that is actually missing a required address cell or a name cell need a refresh: a complete row cannot be filled from one, and most owners have no blank row at all. Without this a scheduled run asks HCA about every owner on the books before writing anything.
 	const userIds = new Set<string>()
 	for (const [phaseKey, recordId] of records) {
 		const row = current.get(recordId)
-		if (!row || blankRequiredFields(row).length === 0) continue
+		if (!row || (blankRequiredFields(row).length === 0 && blankNameFields(row).length === 0)) continue
 		const separator = phaseKey.indexOf(":")
 		if (separator === -1) continue
 		const userId = ownerByProject.get(phaseKey.slice(0, separator))
 		if (userId) userIds.add(userId)
 	}
 
-	// Decrypt what is stored first. A maker whose stored address is already complete needs no HCA round trip: this backfill only fills blank Airtable cells, so a refresh could not change what gets written. Asking HCA for every owner instead spends thousands of requests against its rate limit for nothing.
+	// Decrypt what is stored first. A maker whose stored address is already complete needs no HCA round trip for the address: this backfill only fills blank Airtable cells, so a refresh could not change what gets written. A maker with no name on file is asked once, with a sign-in sync, because HCA's name is only written to the account there. Asking HCA for every owner instead spends thousands of requests against its rate limit for nothing.
 	const infoByUser = new Map<string, UserAddressInfo>()
 	for (const userId of userIds) {
 		let user = await db.orm.public.User.whereUnique({ id: userId }).first()
 		if (!user) {
-			infoByUser.set(userId, {
-				address: { addressLine1: "", addressLine2: "", city: "", country: "", state: "", zip: "" },
-				reason: "User record not found",
-			})
+			infoByUser.set(userId, { address: EMPTY_ADDRESS, name: EMPTY_NAME, reason: "User record not found" })
 			continue
 		}
 		let address = storedAddress(user)
-		if (!REQUIRED_KEYS.every(key => address[key])) {
+		const needsName = !nameParts(user.name).firstName
+		if (needsName || !REQUIRED_KEYS.every(key => address[key])) {
 			try {
-				await syncHcaProfile(userId)
+				await syncHcaProfile(userId, { profile: needsName })
 			} catch (err) {
 				console.warn(`[addresses] could not refresh HCA profile for ${userId}:`, err)
 			}
 			user = await db.orm.public.User.whereUnique({ id: userId }).first()
 			if (!user) {
 				infoByUser.set(userId, {
-					address: { addressLine1: "", addressLine2: "", city: "", country: "", state: "", zip: "" },
+					address: EMPTY_ADDRESS,
+					name: EMPTY_NAME,
 					reason: "User record not found after HCA refresh",
 				})
 				continue
@@ -258,7 +296,11 @@ async function main() {
 			address = storedAddress(user)
 		}
 		const hasRequired = REQUIRED_KEYS.every(key => address[key])
-		infoByUser.set(userId, { address, reason: hasRequired ? null : await diagnoseUser(userId, false) })
+		infoByUser.set(userId, {
+			address,
+			name: nameParts(user.name),
+			reason: hasRequired ? null : await diagnoseUser(userId, false),
+		})
 	}
 	// Diagnose partial addresses too (missing required fields only; line2 alone is not partial).
 	for (const info of infoByUser.values()) {
@@ -272,6 +314,14 @@ async function main() {
 	let gone = 0
 	let complete = 0
 	let fieldsToFill = 0
+	let nameGaps = 0
+
+	function queueFill(recordId: string, phase: Phase, title: string, userId: string, fields: { [_: string]: string }) {
+		const count = Object.keys(fields).length
+		if (count === 0) return
+		fieldsToFill += count
+		updates.push({ fields, phase, recordId, title, userId })
+	}
 
 	for (const [phaseKey, recordId] of records.entries()) {
 		// The key is `${submissionId}:${phase}`, but the phase half arrives via audit metadata and was never validated there – skip a row whose phase is not a real one rather than filing it under a phase that does not exist.
@@ -289,20 +339,26 @@ async function main() {
 		const blank = blankAddressFields(row)
 		const requiredBlank = blankRequiredFields(row)
 		const userId = ownerByProject.get(projectId)
+		const title = titleByProject.get(projectId) ?? projectId
+		const info = userId ? infoByUser.get(userId) : undefined
+		const address = info?.address ?? EMPTY_ADDRESS
+
+		// A name fills whichever row it is blank on, whatever the address is doing. Only a name the owner actually has is written.
+		const fields: { [_: string]: string } = {}
+		for (const key of blankNameFields(row)) {
+			const value = info?.name[key] ?? ""
+			if (!value) {
+				nameGaps++
+				continue
+			}
+			fields[keys[key]] = value
+		}
+
 		if (requiredBlank.length === 0) {
 			complete++
 			// Still fill an available line2 opportunistically, but the row is not missing.
-			const line2 = userId && !row.addressLine2 ? (infoByUser.get(userId)?.address.addressLine2 ?? "") : ""
-			if (line2) {
-				fieldsToFill += 1
-				updates.push({
-					fields: { [keys.addressLine2]: line2 },
-					phase,
-					recordId,
-					title: titleByProject.get(projectId) ?? projectId,
-					userId: userId ?? "",
-				})
-			}
+			if (!row.addressLine2 && address.addressLine2) fields[keys.addressLine2] = address.addressLine2
+			queueFill(recordId, phase, title, userId ?? "", fields)
 			continue
 		}
 		if (!userId) {
@@ -315,46 +371,32 @@ async function main() {
 				reason: "Project owner not found",
 				recordId,
 				stillBlank: blank,
-				title: titleByProject.get(projectId) ?? projectId,
+				title,
 				userId: "",
 			})
 			continue
 		}
-		const info = infoByUser.get(userId)
-		const address = info?.address ?? { addressLine1: "", addressLine2: "", city: "", country: "", state: "", zip: "" }
 
-		const fields: { [_: string]: string } = {}
 		const filledByBackfill: AddressKey[] = []
 		for (const key of blank) {
 			if (!address[key]) continue
 			fields[keys[key]] = address[key]
 			filledByBackfill.push(key)
 		}
+		queueFill(recordId, phase, title, userId, fields)
+
 		const stillBlank = requiredBlank.filter(key => !address[key])
-		const missingValue = stillBlank
-
-		if (filledByBackfill.length > 0) {
-			fieldsToFill += filledByBackfill.length
-			updates.push({
-				fields,
-				phase,
-				recordId,
-				title: titleByProject.get(projectId) ?? projectId,
-				userId,
-			})
-		}
-
 		if (stillBlank.length > 0)
 			missing.push({
 				blankInAirtable: requiredBlank,
 				filledByBackfill: filledByBackfill.filter(key => key !== "addressLine2"),
-				missingValue,
+				missingValue: stillBlank,
 				phase,
 				projectId,
 				reason: info?.reason ?? "Address missing for unknown reason",
 				recordId,
 				stillBlank,
-				title: titleByProject.get(projectId) ?? projectId,
+				title,
 				userId,
 			})
 	}
@@ -363,7 +405,7 @@ async function main() {
 		`Projects: ${projects.length}; synced submission rows: ${records.size} (${gone} row(s) since deleted in Airtable, ${complete} already complete)`,
 	)
 	console.log(
-		`Owners with a blank row: ${userIds.size}; rows to update: ${updates.length} (${fieldsToFill} field(s)); rows still with blank address fields after backfill: ${missing.length}`,
+		`Owners with a blank row or name: ${userIds.size}; rows to update: ${updates.length} (${fieldsToFill} field(s)); rows still with blank address fields after backfill: ${missing.length}; cells still blank for a name the owner has no value for: ${nameGaps}`,
 	)
 	for (const target of updates.slice(0, 10))
 		console.log(`  fill  ${target.phase}  ${target.title}  →  ${Object.keys(target.fields).join(", ")}`)
