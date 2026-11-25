@@ -23,11 +23,48 @@ export const GRANT_RETURN_MEMO_PREFIX = "Returning canceled grant to "
  * The money has left the card, so the card is finished either way. Who cancelled it is HCB's business; the site records that the grant was returned, and that the project has been paid once.
  */
 export function grantReturnedAt(disbursements: readonly GrantDisbursement[]): string | null {
-	// HCB reports the amount unsigned, with the direction only in the memo, so the memo is what tells a return apart.
-	const returned = disbursements.find(
-		d => d.memo?.startsWith(GRANT_RETURN_MEMO_PREFIX) && typeof d.createdAt === "string",
-	)
-	return returned?.createdAt ?? null
+	const found = grantReturn(disbursements)
+	return found !== null && !found.expired ? (found.disbursement.createdAt ?? null) : null
+}
+
+/** HCB's memo for the balance going back to the organisation, after the grant expired. Seen in the sync's report, never acted on. */
+export const GRANT_EXPIRY_MEMO_PREFIX = "Returning expired grant to "
+
+export interface GrantReturn {
+	disbursement: GrantDisbursement
+	/** True when the money came back because the grant expired, not because the maker handed it back. */
+	expired: boolean
+}
+
+/**
+ * The disbursement that returned a grant's balance, preferring a hand-back to an expiry. HCB reports the amount
+ * unsigned, with the direction only in the memo, so the memo is what tells a return apart.
+ */
+export function grantReturn(disbursements: readonly GrantDisbursement[]): GrantReturn | null {
+	const dated = disbursements.filter(d => typeof d.createdAt === "string")
+	const canceled = dated.find(d => d.memo?.startsWith(GRANT_RETURN_MEMO_PREFIX))
+	if (canceled) return { disbursement: canceled, expired: false }
+	const expired = dated.find(d => d.memo?.startsWith(GRANT_EXPIRY_MEMO_PREFIX))
+	return expired ? { disbursement: expired, expired: true } : null
+}
+
+export type ReturnedBy = "maker" | "other" | "unknown"
+
+/**
+ * Who asked HCB for the return: the maker themselves, someone else, or HCB did not say. Only the email is compared, so
+ * nothing else about the sender is kept.
+ */
+export function returnedBy(senderEmail: string | null, grantEmail: string | null): ReturnedBy {
+	if (senderEmail === null) return "unknown"
+	return senderEmail.trim().toLowerCase() === grantEmail?.trim().toLowerCase() ? "maker" : "other"
+}
+
+/** One return HCB shows, for the sync's report. Carries no names or emails. */
+export interface ReturnSeen {
+	expired: boolean
+	grantId: string
+	grantStatus: string | null
+	returnedBy: ReturnedBy
 }
 
 /** HCB's card grant ids carry a `cdg_` prefix; the top-up table stores the bare hashid. Compare on the bare one. */
@@ -176,6 +213,8 @@ export interface BufferTopUpSyncResult {
 	recorded: number
 	/** Live project or shop card rows the sync marked RETURNED. */
 	returnedMarked: number
+	/** Every return HCB shows, with who asked for it. Only a dry run reports them, so a live run keeps its response small. */
+	returnsSeen: ReturnSeen[]
 	topUpsFound: number
 }
 
@@ -221,6 +260,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 	let alreadyRecorded = 0
 	const returned: { hcbStatus: string | null; id: string; returnedAt: string; table: CardTable }[] = []
 	const grantStatuses: { [_: string]: number } = {}
+	const returnsSeen: ReturnSeen[] = []
 	for (const grant of list.rows) {
 		const statusKey = grant.status ?? "unreported"
 		grantStatuses[statusKey] = (grantStatuses[statusKey] ?? 0) + 1
@@ -230,7 +270,15 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 				"INTERNAL",
 				`HCB's disbursements for grant ${bareGrantId(grant.id)} could not be read, so nothing was synced`,
 			)
-		const returnedAt = grantReturnedAt(read.rows)
+		const found = grantReturn(read.rows)
+		if (found !== null && found.disbursement.createdAt)
+			returnsSeen.push({
+				expired: found.expired,
+				grantId: bareGrantId(grant.id),
+				grantStatus: grant.status,
+				returnedBy: returnedBy(found.disbursement.senderEmail, grant.email),
+			})
+		const returnedAt = found !== null && !found.expired ? found.disbursement.createdAt : null
 		const liveCardId = liveCards.get(bareGrantId(grant.id))
 		if (returnedAt !== null && liveCardId)
 			returned.push({ hcbStatus: grant.status, id: liveCardId.id, returnedAt, table: liveCardId.table })
@@ -273,6 +321,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		grantsScanned: list.rows.length,
 		recorded: input.dryRun ? 0 : fresh.length,
 		returnedMarked: input.dryRun ? 0 : returned.length,
+		returnsSeen: input.dryRun ? returnsSeen : [],
 		topUpsFound,
 	}
 }

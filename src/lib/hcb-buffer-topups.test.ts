@@ -1,13 +1,51 @@
 import { describe, expect, test } from "bun:test"
 import type { GrantDisbursement } from "@/lib/hcb"
-import { bareGrantId, bufferTopUpKey, grantReturnedAt, selectBufferTopUps } from "@/lib/hcb-buffer-topups"
+import {
+	bareGrantId,
+	bufferTopUpKey,
+	grantReturn,
+	grantReturnedAt,
+	returnedBy,
+	selectBufferTopUps,
+} from "@/lib/hcb-buffer-topups"
 
 const disbursement = (overrides: Partial<GrantDisbursement> = {}): GrantDisbursement => ({
 	amountCents: 200,
 	createdAt: "2026-11-14T19:11:39.123Z",
 	memo: "Topup of grant to Polo",
+	senderEmail: null,
 	transactionId: "txn_1",
 	...overrides,
+})
+
+describe("grantReturn", () => {
+	test("an expired grant's return is found, but is not a hand-back", () => {
+		const found = grantReturn([
+			disbursement({ createdAt: "2026-12-01T00:00:00.000Z", memo: "Returning expired grant to Ellie" }),
+		])
+		expect(found?.expired).toBe(true)
+		expect(grantReturnedAt([disbursement({ memo: "Returning expired grant to Ellie" })])).toBeNull()
+	})
+
+	test("a hand-back wins over an expiry on the same grant", () => {
+		const found = grantReturn([
+			disbursement({ createdAt: "2026-12-01T00:00:00.000Z", memo: "Returning expired grant to Ellie" }),
+			disbursement({ createdAt: "2026-11-19T10:00:00.000Z", memo: "Returning canceled grant to Ellie" }),
+		])
+		expect(found?.expired).toBe(false)
+		expect(found?.disbursement.createdAt).toBe("2026-11-19T10:00:00.000Z")
+	})
+})
+
+describe("returnedBy", () => {
+	test("the grant's own email is the maker", () => {
+		expect(returnedBy("Maker@Example.com", "maker@example.com")).toBe("maker")
+	})
+
+	test("another sender is other, and no sender is unknown", () => {
+		expect(returnedBy("hcb-system@example.com", "maker@example.com")).toBe("other")
+		expect(returnedBy(null, "maker@example.com")).toBe("unknown")
+	})
 })
 
 describe("buffer top-ups", () => {
