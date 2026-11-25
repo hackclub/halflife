@@ -5,8 +5,15 @@ test("a reviewer can claim and return a design submission", async ({ openAs }) =
 	const submission = await seedSubmission()
 	const { page, user } = await openAs({ role: "REVIEWER" })
 
-	// `?claim` takes the review on arrival, so the decision controls open for this reviewer.
-	await page.goto(`/reviews/${submission.submissionId}?claim`)
+	await page.goto(`/reviews/${submission.submissionId}`)
+	await expect(page.getByRole("button", { name: "Claim review" })).toBeVisible()
+	const claimed = page.waitForResponse(
+		response =>
+			response.url().endsWith(`/api/review/submissions/${submission.submissionId}/claim`)
+			&& response.request().method() === "POST",
+	)
+	await page.getByRole("button", { name: "Claim review" }).click()
+	expect((await claimed).status()).toBe(200)
 	await expect(page.getByRole("button", { name: "Return for changes" })).toBeEnabled()
 
 	await page.getByLabel("Message to the maker").fill("The schematic needs a clearer power section.")
