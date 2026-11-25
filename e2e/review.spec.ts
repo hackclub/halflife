@@ -16,9 +16,10 @@ test("a reviewer can claim and return a design submission", async ({ openAs }) =
 	expect((await claimed).status()).toBe(200)
 
 	await page.reload()
+	// Returning needs a message to the maker, so the button stays disabled until one is written.
+	await page.getByLabel("Message to the maker").fill("The schematic needs a clearer power section.")
 	await expect(page.getByRole("button", { name: "Return for changes" })).toBeEnabled()
 
-	await page.getByLabel("Message to the maker").fill("The schematic needs a clearer power section.")
 	const decided = page.waitForResponse(
 		response =>
 			response.url().endsWith(`/api/review/submissions/${submission.submissionId}/decision`)
