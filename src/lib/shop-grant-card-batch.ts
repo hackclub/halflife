@@ -6,9 +6,9 @@ import { normalizeMerchantIds } from "@/lib/grant-card-policy"
 import { payoutBlockReason } from "@/lib/moderation"
 import db from "@/lib/prisma8"
 import { SHOP_GRANT_CARD_BATCH_MAX } from "@/lib/schemas/admin"
-import { shopGrantCardBatchBlockReason } from "@/lib/shop-grant-card-policy"
+import { NO_AMOUNT_REASON, shopGrantCardBatchBlockReason } from "@/lib/shop-grant-card-policy"
 import { issueShopGrantCard } from "@/lib/shop-grant-cards"
-import { isLiveShopCard, isSettledShopCard } from "@/lib/shop-order"
+import { grantCardCentsFor, isLiveShopCard, isSettledShopCard } from "@/lib/shop-order"
 import { parseDbTimestamp } from "@/lib/time"
 
 /**
@@ -40,7 +40,10 @@ export interface BatchGroup {
 
 /** An order that asked for a card but cannot be sent, and why. It stays on the page rather than disappearing from the sheet. */
 export interface BatchBlockedOrder {
+	/** Whether the fill action can give this order an amount: it has none, and its item has a cost to take one from. */
+	fillable: boolean
 	itemName: string
+	orderId: string
 	orderNumber: number
 	reason: string
 	shopItemId: string
@@ -76,9 +79,18 @@ export async function listShopGrantCardBatch(): Promise<ShopGrantCardBatch> {
 	const rows = await db.orm.public.ShopOrder.where({ deliveryPreference: ShopDeliveryPreference.GRANT_CARD })
 		.where(order => order.status.in(CANDIDATE_STATUSES))
 		.orderBy([order => order.placedAt.asc(), order => order.id.asc()])
-		.select("deliveryPreference", "grantCardCents", "id", "itemNameSnapshot", "orderNumber", "placedAt", "status")
+		.select(
+			"deliveryPreference",
+			"grantCardCents",
+			"id",
+			"itemNameSnapshot",
+			"orderNumber",
+			"placedAt",
+			"quantity",
+			"status",
+		)
 		.include("grantCards", cards => cards.select("status"))
-		.include("shopItem", item => item.select("grantCardMerchantIds", "id", "name"))
+		.include("shopItem", item => item.select("costUsd", "grantCardMerchantIds", "id", "name"))
 		.include("user", user => user.select("bannedAt", "displayName", "fraudFlagged", "id", "name", "suspendedUntil"))
 		.all()
 
@@ -102,7 +114,9 @@ export async function listShopGrantCardBatch(): Promise<ShopGrantCardBatch> {
 		const reason = shopGrantCardBatchBlockReason({ ...row, hasLiveCard, hasSettledCard }, payoutBlockReason(row.user))
 		if (reason) {
 			blocked.push({
+				fillable: reason === NO_AMOUNT_REASON && grantCardCentsFor(row.shopItem.costUsd, row.quantity) !== null,
 				itemName: row.shopItem.name,
+				orderId: row.id,
 				orderNumber: row.orderNumber,
 				reason,
 				shopItemId: row.shopItem.id,
