@@ -40,7 +40,7 @@ export default function Faq() {
 		<section aria-labelledby="faq-heading" className="hl-ground-hatch bg-hl-blue text-hl-ink" id="faq">
 			<div className="mx-auto max-w-[1615px] px-4 py-20 sm:px-8 min-[1180px]:px-[3.4vw] min-[1180px]:py-28">
 				<h2
-					className="text-center font-display font-bold tracking-[-0.025em]"
+					className="text-center font-site-display font-bold tracking-[-0.025em]"
 					id="faq-heading"
 					style={{ fontSize: "clamp(2.25rem, 5.8vw, 6rem)", lineHeight: 1 }}
 				>
@@ -62,7 +62,7 @@ export default function Faq() {
 							key={faq.q}
 							style={{ padding: FIELD.padding }}
 						>
-							<dt className="font-display font-bold leading-[1.1]" style={{ fontSize: FIELD.question }}>
+							<dt className="font-site-display font-bold leading-[1.1]" style={{ fontSize: FIELD.question }}>
 								{faq.q}
 							</dt>
 							<dd className="mt-[0.85em] text-hl-paper leading-[1.45]" style={{ fontSize: FIELD.answer }}>

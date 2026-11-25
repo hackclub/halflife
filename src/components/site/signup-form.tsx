@@ -180,7 +180,7 @@ export default function SignupForm({
 								aria-invalid={status === "error" || undefined}
 								autoComplete="email"
 								// Display face, not the body one it inherited. The control is one object – a slot cut into the plate and the word beside it – and "sign up/log in" is set in the display face, so the field's own type belongs to the same voice. Set on the input rather than scoped to `::placeholder`, so the address someone types does not change face out from under them mid-word.
-								className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
+								className="h-full w-full bg-transparent px-[0.667em] font-site-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
 								disabled={pending}
 								id={id}
 								inputMode="email"
@@ -215,7 +215,7 @@ export default function SignupForm({
 							type="submit"
 						>
 							<span
-								className={`[grid-area:1/1] flex flex-col items-center gap-[0.12em] font-display font-bold leading-none min-[520px]:flex-row min-[520px]:gap-0 ${
+								className={`[grid-area:1/1] flex flex-col items-center gap-[0.12em] font-site-display font-bold leading-none min-[520px]:flex-row min-[520px]:gap-0 ${
 									pending ? "invisible" : ""
 								}`}
 								style={{ fontSize: "0.85em" }}

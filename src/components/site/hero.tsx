@@ -258,7 +258,7 @@ function ScrollCue({
 	return (
 		<a
 			// `py-1.5` is the tap target, not spacing: the word is a 16-22px line, and 12px of vertical padding is what takes the box past the 24px floor.
-			className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
+			className={`inline-block px-2 py-1.5 font-site-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
 			href="#how-it-works"
 			style={{ ...style, fontSize, letterSpacing: "0.14em" }}
 		>

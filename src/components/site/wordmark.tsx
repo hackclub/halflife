@@ -66,7 +66,10 @@ export default function Wordmark({
 		)
 
 	return (
-		<Tag className={`font-hand leading-[0.86] text-white ${className}`} style={{ fontSize, letterSpacing: "-0.045em" }}>
+		<Tag
+			className={`font-site-hand leading-[0.86] text-white ${className}`}
+			style={{ fontSize, letterSpacing: "-0.045em" }}
+		>
 			{BRAND.name.toLowerCase()}
 		</Tag>
 	)

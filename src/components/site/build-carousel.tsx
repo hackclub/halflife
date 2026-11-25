@@ -199,7 +199,7 @@ export default function BuildCarousel() {
 		>
 			<div className="px-4 sm:px-8 pb-[clamp(2rem,_5.613cqw,_97px)] pt-[clamp(2rem,_2.546cqw,_44px)]">
 				<h2
-					className="text-center font-display font-bold tracking-[-0.02em] text-hl-blue-deep"
+					className="text-center font-site-display font-bold tracking-[-0.02em] text-hl-blue-deep"
 					id="build-heading"
 					style={{ fontSize: "clamp(2rem, 3.472cqw, 3.75rem)" }}
 				>

@@ -260,7 +260,7 @@ export default function Process() {
 				 */}
 				<h2 className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale" style={plateBox(PLATES.header)}>
 					<span
-						className="whitespace-nowrap font-display font-bold text-hl-ink"
+						className="whitespace-nowrap font-site-display font-bold text-hl-ink"
 						style={{
 							// The comp's own 100, which is now 68px at every width this layout runs at – the same trade `STAGE_CAP` already makes for the four step titles below, and the size a 1180 screen has always shown this line at.
 							fontSize: u(100),
@@ -302,7 +302,7 @@ export default function Process() {
 					style={plateBox(PLATES.design)}
 				>
 					<h3
-						className="absolute text-center font-display font-bold text-balance"
+						className="absolute text-center font-site-display font-bold text-balance"
 						style={{
 							...at(68, 38),
 							fontSize: u(40),
@@ -324,7 +324,7 @@ export default function Process() {
 				{/* Step 2 – funding */}
 				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.funding)}>
 					<h3
-						className="absolute font-display font-bold"
+						className="absolute font-site-display font-bold"
 						style={{
 							...at(94, 38),
 							fontSize: u(40),
@@ -353,7 +353,7 @@ export default function Process() {
 				{/* Step 3 – build */}
 				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.build)}>
 					<h3
-						className="absolute font-display font-bold"
+						className="absolute font-site-display font-bold"
 						style={{
 							...at(68, 42),
 							fontSize: u(40),
@@ -375,7 +375,7 @@ export default function Process() {
 				{/* Step 4 – the printer */}
 				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.printer)}>
 					<h3
-						className="absolute font-display font-bold"
+						className="absolute font-site-display font-bold"
 						style={{
 							...at(69, 52),
 							fontSize: u(40),
@@ -428,7 +428,7 @@ export default function Process() {
 					 */}
 					<div className="flex w-fit flex-col">
 						<h2
-							className="rounded-xl bg-hl-lavender-pale px-5 py-3 font-display font-bold text-balance text-hl-ink sm:px-8 sm:py-4"
+							className="rounded-xl bg-hl-lavender-pale px-5 py-3 font-site-display font-bold text-balance text-hl-ink sm:px-8 sm:py-4"
 							style={{
 								// Both ends of this clamp are measured, not chosen. The line is 7.71em wide in Urbanist bold – the comp's own 100 ran it to 84% of a 918 plate – so its size and the width it needs are the same number, and the plate is that plus its padding.
 								//
@@ -449,7 +449,9 @@ export default function Process() {
 						<li>
 							<Plate>
 								{/* Centred here for the same reason as on the stage: the picture below runs the plate's full width and places its five pairings across all of it, so the title belongs over the middle of it rather than ranged against an edge the drawing does not have. Steps 2-4 keep their left rank – their pictures are single objects sitting inside the plate. */}
-								<h3 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">{design.title}</h3>
+								<h3 className="text-center font-site-display text-2xl font-bold text-balance sm:text-3xl">
+									{design.title}
+								</h3>
 								{design.art ? (
 									<div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
 										<Image
@@ -470,7 +472,7 @@ export default function Process() {
 
 						<li>
 							<Plate>
-								<h3 className="font-display text-2xl font-bold sm:text-3xl">{funding.title}</h3>
+								<h3 className="font-site-display text-2xl font-bold sm:text-3xl">{funding.title}</h3>
 								<StepArt className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} step={funding} />
 								<p className="mt-4 font-semibold opacity-40">{funding.caption}</p>
 							</Plate>
@@ -480,7 +482,7 @@ export default function Process() {
 
 						<li>
 							<Plate>
-								<h3 className="font-display text-2xl font-bold sm:text-3xl">{build.title}</h3>
+								<h3 className="font-site-display text-2xl font-bold sm:text-3xl">{build.title}</h3>
 								<StepArt className="mt-6 aspect-[9673/4315] w-full" sizes={STEP_ART_SIZES.stacked} step={build} />
 							</Plate>
 						</li>
@@ -489,7 +491,7 @@ export default function Process() {
 
 						<li>
 							<Plate>
-								<h3 className="font-display text-2xl font-bold sm:text-3xl">{printer.title}</h3>
+								<h3 className="font-site-display text-2xl font-bold sm:text-3xl">{printer.title}</h3>
 								<StepArt className="mt-6 aspect-[8439/2948] w-full" sizes={STEP_ART_SIZES.stacked} step={printer} />
 							</Plate>
 						</li>
@@ -598,7 +600,7 @@ function Aside(props: AsideProps) {
 	if (props.stacked)
 		return (
 			<div className="rounded-xl bg-hl-lavender px-5 py-7 text-center text-hl-indigo sm:px-7">
-				<h3 className="font-display text-xl font-bold sm:text-2xl">{aside.title}</h3>
+				<h3 className="font-site-display text-xl font-bold sm:text-2xl">{aside.title}</h3>
 				<p className="mt-4 text-[0.975rem] leading-relaxed sm:text-base">{aside.body}</p>
 				{/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
 			</div>
@@ -614,7 +616,7 @@ function Aside(props: AsideProps) {
 				width: u(ASIDE.w),
 			}}
 		>
-			<h3 className="font-display font-bold" style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}>
+			<h3 className="font-site-display font-bold" style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}>
 				{aside.title}
 			</h3>
 			<p className="leading-[1.5]" style={{ fontSize: u(ASIDE.bodySize), marginTop: u(ASIDE.gap) }}>

@@ -6,9 +6,9 @@
    ───────────────────────────────────────────────────────────── */
 @theme {
 	/* Ubuntu, the same face the tagline sets. Two role tokens, one family: the roles are still worth naming separately – a heading and a tagline are different jobs and may yet want different treatment – but the page is down to two families and this is one of them. It was Urbanist, which is no longer loaded. */
-	--font-display: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
+	--font-site-display: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
 	/* The comp's brush face. Now the wordmark and the footer's column labels only: "how does it work?" moved to the display face with the other headers, so the brush is the page's signature rather than its voice. */
-	--font-hand: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
+	--font-site-hand: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
 	--font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
 	/* The hero tagline alone. Named for its role rather than its face, like the three above it – the utility is `font-tagline`, not `font-ubuntu`. */
 	--font-tagline: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
@@ -57,7 +57,7 @@
 	--color-hl-paper-soft: color-mix(in srgb, var(--color-hl-paper) 78%, #31222c);
 }
 
-html {
+html:has(> body[data-world="site"]) {
 	scroll-behavior: smooth;
 	-webkit-text-size-adjust: 100%;
 }
@@ -89,24 +89,24 @@ html {
 	}
 }
 
-body {
+body[data-world="site"] {
 	overflow-x: hidden;
 	font-family: var(--font-body);
 	color: var(--color-hl-paper);
 	background-color: var(--color-hl-ink);
 }
 
-::selection {
+body[data-world="site"] ::selection {
 	color: var(--color-hl-ink);
 	background-color: var(--color-hl-cyan);
 }
 
 /* Masterpiece is a single 400 brush weight, already heavy, with strokes that overhang their advances. Synthesised bold smears them into each other, so the browser is not allowed to invent one. */
-.font-hand {
+.font-site-hand {
 	font-synthesis-weight: none;
 }
 
-:focus-visible {
+body[data-world="site"] :focus-visible {
 	outline: 3px solid var(--color-hl-cyan);
 	outline-offset: 3px;
 }
@@ -263,6 +263,6 @@ body {
 	display: none;
 }
 
-* {
+body[data-world="site"] * {
 	corner-shape: bevel;
 }

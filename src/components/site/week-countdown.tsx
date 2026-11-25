@@ -78,10 +78,10 @@ export default function WeekCountdown() {
 				aria-live="polite"
 				className="inline-block max-w-[92vw] rounded-lg bg-hl-cyan px-4 py-1.5 text-center text-hl-ink shadow-[0_2px_0_var(--color-hl-teal-deep)]"
 			>
-				<p className="font-display text-[0.66rem] font-bold uppercase tracking-[0.18em]">{label}</p>
+				<p className="font-site-display text-[0.66rem] font-bold uppercase tracking-[0.18em]">{label}</p>
 				{counting ? (
 					<div
-						className="mt-0.5 flex items-baseline justify-center gap-[0.4em] font-display font-bold tabular-nums leading-[1]"
+						className="mt-0.5 flex items-baseline justify-center gap-[0.4em] font-site-display font-bold tabular-nums leading-[1]"
 						style={{ fontSize: "clamp(1.5rem, 6vw, 2.25rem)" }}
 					>
 						{COUNTDOWN_UNITS.map(unit => (
@@ -90,7 +90,7 @@ export default function WeekCountdown() {
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}
 								</span>
 								<span
-									className="font-display font-bold uppercase [letter-spacing:0.14em] leading-[1]"
+									className="font-site-display font-bold uppercase [letter-spacing:0.14em] leading-[1]"
 									style={{ fontSize: "0.24em" }}
 								>
 									{unit.label}

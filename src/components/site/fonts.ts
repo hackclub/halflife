@@ -4,7 +4,7 @@ import localFont from "next/font/local"
 /**
  * The landing's three faces, declared once so every document drawn in the landing's world loads the same files: the site's root layout, and the 404, which renders outside it.
  *
- * Masterpiece is the comp's own display face (Figma 275:8), self-hosted from `public/fonts`. It ships a single 400 brush weight whose strokes overhang their advances – 'I' carries 0.52em of ink on a 0.32em advance – so it is already heavy and must never be synthetically emboldened. See `.font-hand` in globals.css.
+ * Masterpiece is the comp's own display face (Figma 275:8), self-hosted from `public/fonts`. It ships a single 400 brush weight whose strokes overhang their advances – 'I' carries 0.52em of ink on a 0.32em advance – so it is already heavy and must never be synthetically emboldened. See `.font-site-hand` in globals.css.
  *
  * Licence: free, per `public/fonts/Read me.txt`, with the author asking for a donation to charity for commercial use.
  */
