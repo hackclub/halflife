@@ -1,55 +1,36 @@
 import { readAudit, readProjects, readSubmission, readSubmissionReviews, seedSubmission } from "./db"
 import { expect, test } from "./fixtures"
 
-test("a reviewer can claim and reject a design submission", async ({ openAs }) => {
+test("a reviewer can claim and return a design submission", async ({ openAs }) => {
 	const submission = await seedSubmission()
 	const { page, user } = await openAs({ role: "REVIEWER" })
 
-	await page.goto("/review")
-	await expect(page.getByRole("heading", { level: 1, name: "Review queue" })).toBeVisible()
+	// `?claim` takes the review on arrival, so the decision controls open for this reviewer.
+	await page.goto(`/reviews/${submission.submissionId}?claim`)
+	await expect(page.getByRole("button", { name: "Return for changes" })).toBeEnabled()
 
-	const row = page.getByRole("row").filter({ hasText: submission.projectTitle })
-	await expect(row).toBeVisible()
-	await row.getByRole("link", { name: "Open" }).click()
-
-	await expect(page.getByRole("button", { name: "Claim" })).toBeVisible()
-	const claimed = page.waitForResponse(
-		response =>
-			response.url().endsWith(`/api/review/submissions/${submission.submissionId}/claim`)
-			&& response.request().method() === "POST",
-	)
-	await page.getByRole("button", { name: "Claim" }).click()
-	expect((await claimed).status()).toBe(200)
-
-	await page.reload()
-	await expect(page.getByRole("button", { name: "Release" })).toBeVisible()
-
+	await page.getByLabel("Message to the maker").fill("The schematic needs a clearer power section.")
 	const decided = page.waitForResponse(
 		response =>
 			response.url().endsWith(`/api/review/submissions/${submission.submissionId}/decision`)
 			&& response.request().method() === "POST",
 	)
-	await page.getByLabel("Decision").selectOption("REJECTED")
-	await page.getByLabel("Feedback to the participant").fill("The schematic needs a clearer power section.")
-	await page.getByLabel("Internal note").fill("Rejected by the browser test suite.")
-	await page.getByRole("button", { name: "Record decision" }).click()
+	await page.getByRole("button", { name: "Return for changes" }).click()
 	expect((await decided).status()).toBe(200)
 
-	await expect(page).toHaveURL(/\/review$/)
-	await expect(page.getByRole("heading", { level: 1, name: "Review queue" })).toBeVisible()
-	await expect(page.getByRole("row").filter({ hasText: submission.projectTitle })).toHaveCount(0)
+	await expect(page).toHaveURL(/\/reviews(\?|$|\/)/)
 
 	const resolved = await readSubmission(submission.submissionId)
 	expect(resolved?.resolvedAt).not.toBeNull()
-	expect(resolved?.resolvedResult).toBe("REJECTED")
+	expect(resolved?.resolvedResult).toBe("RETURNED")
 
 	const [project] = await readProjects(submission.user.id)
-	expect(project?.designStatus).toBe("rejected")
+	expect(project?.designStatus).toBe("update_requested")
 
 	const [review] = await readSubmissionReviews(submission.submissionId)
-	expect(review?.result).toBe("REJECTED")
+	expect(review?.result).toBe("RETURNED")
 	expect(review?.feedback).toContain("clearer power section")
 
-	const audit = await readAudit("REVIEW_REJECT")
+	const audit = await readAudit("REVIEW_RETURN")
 	expect(audit?.actorEmail).toBe(user.email)
 })

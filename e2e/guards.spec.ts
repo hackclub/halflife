@@ -47,7 +47,7 @@ test("an admin sees the admin overview", async ({ admin }) => {
 })
 
 test("a reviewer sees the review queue", async ({ reviewer }) => {
-	const response = await reviewer.goto("/review")
+	const response = await reviewer.goto("/reviews")
 
 	expect(response?.status()).toBe(200)
 	await expect(reviewer.getByRole("heading", { level: 1, name: "Review queue" })).toBeVisible()
