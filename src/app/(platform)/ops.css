@@ -1148,6 +1148,14 @@
 	.hl-attention a:not([data-zero="true"]):hover {
 		background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
 	}
+	/* The press, as on the buttons: the fill deepens and the card sinks a pixel, so a click lands as a press rather than a silent navigation. The focus ring comes from the console's stylesheet. */
+	.hl-attention a:active {
+		background: var(--color-surface-raised);
+		transform: translateY(1px);
+	}
+	.hl-attention a:not([data-zero="true"]):active {
+		background: color-mix(in srgb, var(--color-accent) 26%, var(--color-surface));
+	}
 	.hl-attention span {
 		font-size: 0.9rem;
 		color: var(--color-ink-muted);
