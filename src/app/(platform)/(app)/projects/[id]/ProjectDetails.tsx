@@ -102,7 +102,7 @@ export function ProjectDetails({
 						</p>
 					)}
 					{descriptionOnly && (
-						<p className="hand max-w-56 text-right text-[0.78rem] leading-snug text-navy-soft">
+						<p className="hand max-w-80 text-right text-[0.78rem] leading-snug text-navy-soft">
 							{locked}. You can still update the description for the build.
 						</p>
 					)}
