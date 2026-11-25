@@ -2,13 +2,13 @@
 
 Status: implementation plan.
 
-Bulk-issue HCB card grants to approved Half Life projects, with HCB replacing the Airtable/YSWS payout pipeline.
+Bulk-issue HCB card grants to approved Half Life projects.
 
 ## Summary
 
 Admins get a **Grants** page with one button that previews every approved project, then creates one HCB card grant per project for the exact BOM total. Each issuance is recorded, auditable, resumable and safe to retry after a lost HCB response.
 
-The existing Airtable integration stays for submission evidence, review status and Loops emails. It stops being the thing that pays makers: the YSWS pipeline must not pay a design once HCB owns payouts.
+The existing Airtable integration stays for submission evidence, review status and Loops emails. It has never been a payout path: the YSWS table does not pay anyone, and the only payments are HCB ones.
 
 ## What already exists
 
@@ -26,7 +26,7 @@ What is missing:
 - bulk issuance,
 - batch progress and retry state,
 - reconciliation for a create whose response was lost,
-- a cutover away from Airtable payouts.
+- switching `payoutSource` to HCB, after which the legacy top-up is read-only.
 
 ## Decisions
 
@@ -40,13 +40,13 @@ What is missing:
 - **BOM over cap:** the BOM amount is paid even when it exceeds `grantUsd`. If a cap is wanted later, add `Math.min(bomTotalUsd, grantUsd)` in one place.
 - **Empty BOM:** excluded.
 - **Existing top-ups:** a project with a sent `HcbGrantTopUp` is excluded. The table stays for history.
-- **No cards have been sent yet.** This is a clean start for `HcbGrantCard`; the only historical payout path to audit is Airtable/top-up.
+- **No cards have been sent yet.** This is a clean start for `HcbGrantCard`; the only historical payout path to audit is the manual HCB top-up.
 
-The BOM total is already the figure written to Airtable as `Requested funding` (`fieldsFor` in `src/lib/airtable/sync.ts`), so paying the BOM from HCB preserves the amount the payout team has been seeing.
+The BOM total is already the figure written to Airtable as `Requested funding` under the `AIRTABLE` source (`fieldsFor` in `src/lib/airtable/sync.ts`), so the amount paid from HCB matches the figure the base records.
 
-## Cutover from Airtable payouts
+## Payout source
 
-The Airtable `YSWS Project Submission` rows are still useful. They carry the evidence, Ari status, reviewer notes and Loops columns. They must stop carrying a payable amount.
+The Airtable `YSWS Project Submission` rows carry the evidence, reviewer notes and Loops columns. Under `HCB` they must not carry a payable amount, so `Requested funding` is written as zero.
 
 ### Payout source switch
 
@@ -72,32 +72,19 @@ Update:
 - `src/lib/airtable/sync.ts` – `fieldsFor` writes `requestedFunding: 0` for a design when `payoutSource === HCB`; a build already writes `0`.
 - `src/app/api/admin/program/route.ts` – audit the change with before/after values.
 
-`airtableSyncEnabled` keeps its current meaning: whether Airtable rows and Loops columns are written at all. The payout source is separate, so turning off Airtable payouts does not stop review and email.
+`airtableSyncEnabled` keeps its current meaning: whether Airtable rows and Loops columns are written at all. The payout source is separate, so changing it does not stop review and email.
 
-### Cutover order
+### Enabling HCB
 
-1. Confirm with the YSWS/payout owner which Airtable field gates payment. In this codebase it is `Requested funding`, but the pipeline itself is outside this repository.
-2. Pause the YSWS payout automation for Half Life.
-3. Set `payoutSource = HCB`.
-4. Backfill existing approved design rows to `requestedFunding: 0`, or otherwise mark them non-payable in the pipeline. Do this before issuing cards.
-5. Audit historical payments:
+1. Backfill existing approved design rows to `requestedFunding: 0`, so the base never shows a payable figure. Do this before issuing cards.
+2. Audit historical payments:
    - every design-approved project,
-   - every `HcbGrantTopUp` row,
-   - every Airtable/pipeline payment record the payout team can provide.
+   - every `HcbGrantTopUp` row.
    Exclude any project already paid by either path.
-6. Issue a single test card grant.
-7. Enable bulk issuance.
+3. Issue a single test card grant.
+4. Enable bulk issuance.
 
-If the pipeline cannot be paused or the gating field cannot be confirmed, do not enable bulk issuance. Two payout systems running at once is the one failure this plan cannot fix after the fact.
-
-### Airtable audit trail
-
-Optional but recommended: ask ops to add two columns to `YSWS Project Submission`:
-
-- `Payout - Method` (`HCB` or `YSWS`)
-- `Payout - HCB Card Grant ID`
-
-The app can write them after a card is issued, giving the base a per-project trail without making it the payment source. If the columns are not added, the local `HcbGrantCard` row and audit log remain the source of truth.
+The audit comes before any card is issued, because two payment paths running for the same project is the one failure this plan cannot fix after the fact.
 
 ### Legacy top-up path
 
@@ -301,7 +288,6 @@ Returns:
   - fraud flagged
   - already sent through `HcbGrantTopUp`
   - existing live `HcbGrantCard`
-  - already paid by the Airtable pipeline
 - total cents
 - fingerprint
 - HCB configuration and balance state
@@ -412,7 +398,6 @@ Do not make this a single unlabelled button.
 
 ## Safety and edge cases
 
-- **Double payment with Airtable** – the cutover section is a precondition, not a suggestion.
 - **Double payment with the legacy top-up** – exclude sent top-ups and hide the manual form under `payoutSource = HCB`.
 - **One live grant per project** – partial unique index plus application checks.
 - **Identity and fraud** – fresh `isIdentityVerified` and `fraudFlagged` checks immediately before each create. Memoise verification per user within a process call so a maker with several projects is not checked several times.
@@ -476,15 +461,14 @@ bun run build
 
 ## Rollout
 
-1. Confirm the Airtable payout gate with the pipeline owner.
-2. Add HCB scopes and confirm `HCB_ORG_SLUG`, balance and refresh-token persistence.
-3. Ship schema, HCB client and preview with bulk issuance disabled.
-4. Set `payoutSource = HCB` in staging and pause the staging pipeline.
-5. Backfill staging Airtable rows to zero and issue one card grant.
-6. Verify the HCB card, invitation, local row and audit row.
-7. Repeat in production: pause pipeline, switch source, backfill, issue one.
-8. Enable bulk issuance.
-9. Keep the legacy top-up route read-only for history.
+1. Add HCB scopes and confirm `HCB_ORG_SLUG`, balance and refresh-token persistence.
+2. Ship schema, HCB client and preview with bulk issuance disabled.
+3. Set `payoutSource = HCB` in staging.
+4. Backfill staging Airtable rows to zero and issue one card grant.
+5. Verify the HCB card, invitation, local row and audit row.
+6. Repeat in production: switch source, backfill, issue one.
+7. Enable bulk issuance.
+8. Keep the legacy top-up route read-only for history.
 
 ## Definition of done
 
@@ -500,9 +484,6 @@ bun run build
 
 ## Open items
 
-- Which exact Airtable field or automation must be cleared to stop the YSWS pipeline paying.
-- Whether any historical design has already been paid by the Airtable pipeline.
-- Whether to add `Payout - Method` and `Payout - HCB Card Grant ID` columns to the Airtable base.
 - Whether a BOM total above the tier cap should be paid in full or capped at `grantUsd`.
 - Whether card grants should expire at the end of the season.
 - Where to persist the rotated HCB refresh token in production.

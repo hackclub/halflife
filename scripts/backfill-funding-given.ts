@@ -6,7 +6,7 @@ import { readStarterFundingGiven, setStarterFundingGiven, starterRecordIds } fro
 /**
  * Fills each project's Airtable `Funding given` from the payments the site can see.
  *
- * The field used to be written by the YSWS pipeline, so once HCB took over payouts nothing wrote it for a project that was not a Week 1 starter, and it stayed blank even though the project had been paid. This reads the site's payment records instead: cards the maker kept, live CSV import rows, top-ups sent through the site, and hand top-ups on HCB. It only ever raises a value.
+ * Nothing writes this field for a project that was not a Week 1 starter, so it stayed blank even though the project had been paid. This reads the site's payment records instead: cards the maker kept, live CSV import rows, top-ups sent through the site, and hand top-ups on HCB. It only ever raises a value.
  *
  *   bun run grants:backfill-funding-given
  *       Dry run. Prints what would change and writes nothing.

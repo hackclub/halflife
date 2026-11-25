@@ -25,7 +25,7 @@ export function propagateSubmission(
 	phase: Phase,
 	scheduledWeek: number | null | undefined,
 ): void {
-	// Into the YSWS table as "Pending Review" – the table reviewers work from on ari.hackclub.com. After the response, so a slow Airtable never holds up a hand-in; a failure lands in the audit log and the retry job replays it.
+	// Into the YSWS table as "Pending Review" – the table Loops reads. After the response, so a slow Airtable never holds up a hand-in; a failure lands in the audit log and the retry job replays it.
 	after(async () => {
 		await trackSideEffect(
 			"airtable",

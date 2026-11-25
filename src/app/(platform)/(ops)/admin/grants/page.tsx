@@ -111,14 +111,14 @@ export default async function AdminGrantsPage({ searchParams }: Props) {
 					<Panel title="Payout source">
 						{preview.payoutSource === PayoutSource.HCB ? (
 							<p className="hl-hint" style={{ margin: 0 }}>
-								HCB owns payouts. Airtable rows are still written for review and Loops, with a zero requested funding so
-								the YSWS pipeline cannot pay the same project again.
+								HCB pays grants. Airtable rows are still written for review and Loops, with a zero requested funding so
+								the row never shows a payable figure.
 							</p>
 						) : (
 							<p className="hl-hint" style={{ margin: 0 }}>
-								Payouts are still set to Airtable, so card issuing is locked. Change the source in{" "}
-								<Link href="/admin/program">Program settings</Link> once the YSWS pipeline is paused and existing
-								approved rows have been made non-payable.
+								Grants are still set to the Airtable source, so card issuing is locked. Change the source in{" "}
+								<Link href="/admin/program">Program settings</Link> once existing approved rows have been made
+								non-payable.
 							</p>
 						)}
 						{preview.balanceError ? <p className="hl-hint hl-mono">{preview.balanceError}</p> : null}

@@ -20,13 +20,6 @@ Half-Life deploys to **Orchard**, org **YSWS** (`ysws`). Not Vercel, not Coolify
 
 2. **Confirm GitHub is wired up.** In the Orchard UI at `/user/settings`, check your GitHub account is linked and the Orchard GitHub App is installed on the `hackclub` org. Verify with `list_github_deploy_targets`. If `hackclub` is not listed, `deploy_from_github` fails with a confusing 404 and no amount of retrying helps.
 
-   **Ari (project review).** Create the program at ari.hackclub.com, then set `ARI_PROGRAM_ID` and `ARI_SIGNING_SECRET`, register `https://<host>/api/integrations/ari/webhook` as its webhook URL, and set `ARI_WEBHOOK_SECRET` from that page – a different secret from the signing one. Until all three are set, submission sends no-op and the webhook route answers 503 rather than trusting an unverified body. Create the `ari-retry` job below so a failed send is replayed, and note that failed sends are also listed with a **Retry** button on `/admin/program`.
-   **Ire (shadow review platform).** Optional. Set `IRE_API_URL` to Ire's public HTTPS origin, `IRE_PROGRAM=half-life`, `IRE_SIGNING_SECRET` to the same value as Ire's `IRE_INGEST_SECRET`, and leave `IRE_MODE=shadow`. The Ire deployment must also run with its own `IRE_SHADOW=1`; Half Life's `IRE_MODE=shadow` labels the integration, while Ire's flag is what actually locks claims and decisions. Set `IRE_WEBHOOK_SECRET` only if you want the shadow receiver at `POST /api/integrations/ire/webhook`; it verifies deliveries and records them as ignored, never applying a decision. Do not point `ARI_*` at Ire. Create the `ire-retry` job; it replays failed sends, replaces a stale shadow copy on resubmission and withdraws copies whose local phase has left review. The admin panel's **Ire shadow integration** section lists stuck hand-ins with a **Retry** button. Run `bun run ire:parity` to compare the two open queues without writing; `bun run ire:backfill` is the one-off open-queue copy (dry run unless `--commit`).
-
-   **A decision the webhook never delivered is a backlog, not a loss.** The webhook is fire-and-forget, so registering it late (or an outage while it was down) leaves hand-ins decided in Ari and still pending here. `ari-retry` reconciles that every run, and `bun --conditions=react-server scripts/backfill-ari-reviews.ts [--commit]` drains it in one pass. A pulled decision has no note to show, because the note only travels in the outbound delivery: resend the decision from Ari's review screen and it repairs itself on arrival. Once the status response returns the final review, `bun --conditions=react-server scripts/repair-ari-decisions.ts [--commit]` rewrites them in one pass. See [BACKEND.md](./BACKEND.md) → Reviewing with Ari.
-
-   **When the Ari ship counts disagree with Ari's board.** `bun --conditions=react-server scripts/ari-review-counts.ts --ari` prints the local ship counts beside the phase Ari reports for every recorded ship id, including the states Ari's four slices omit, and names any ship whose local state disagrees. Run it with the production `DATABASE_URL` and the program's `ARI_*` secrets. A 409 `already_queued` that `ari-retry` used to retry forever is now adopted as the ship's id, so one run of the hourly job also links any hand-in whose original send response was lost.
-
 3. **Create the project and database.**
 
    ```text
@@ -117,8 +110,6 @@ The step files these jobs were created from are committed in `jobs/steps/`, with
 | `rsvp-drain` | `*/10 * * * *` | `POST /api/integrations/rsvp-drain` | **internal** |
 | `telescreen-sync` | `*/10 * * * *` | `POST /api/integrations/telescreen-sync` | **internal** |
 | `airtable-retry` | `17 * * * *` | `POST /api/integrations/airtable-retry` | ingress |
-| `ari-retry` | `23 * * * *` | `POST /api/integrations/ari-retry` | ingress |
-| `ire-retry` | `37 * * * *` | `POST /api/integrations/ire-retry` | ingress |
 | `loops-sync` | `41 * * * *` | `POST /api/integrations/loops-sync` | **internal** |
 | `printer-reconcile` | `0 8 * * *` | `POST /api/integrations/printer-reconcile` | ingress |
 | `slack-ticket-summary` | `0 9 * * *` | `POST /api/integrations/slack-ticket-summary` | ingress |
@@ -207,7 +198,7 @@ Four columns on `YSWS Project Submission` carry the maker's evidence, which the 
 
 `syncSubmissionToYsws` (`src/lib/airtable/sync.ts`) writes them at submit from `justificationValues` (`src/lib/airtable/justification.ts`). The first three are written only when there is something to write – a maker may have no Hackatime account, linked project or recording, and a blank would erase evidence the base alone holds. `Justification - Specific Technical Features` is not one of them; the decision mirror writes the reviewer's technical-features box there at decision time, and nothing else writes it.
 
-Ari's reviewer fills two separate fields, and they go to two separate columns. `review.justification.technical_features` is the reviewer's account of what the project has that accounts for the hours: it is written alone to `Justification - Specific Technical Features`, verbatim, and a decision without one writes an empty cell. `review.audit_note` – Ari's "Justification notes" field – is the reviewer's own note on the decision: it is written to `Justification - Additional Justification`, stored on the review as `SubmissionReview.reason`, cleared when a later decision withdraws the approval, and cleared on a re-submission so the row never quotes a review it no longer holds. A row still in review, or decided by a console reviewer with no reason, leaves it blank. Neither field is written to `Justification - Alternate Tracking Method`.
+The reviewer fills two separate fields, and they go to two separate columns. The technical features field is the reviewer's account of what the project has that accounts for the hours: it is written alone to `Justification - Specific Technical Features`, verbatim, and a decision without one writes an empty cell. The "Justification notes" field is the reviewer's own note on the decision: it is written to `Justification - Additional Justification`, stored on the review as `SubmissionReview.reason`, cleared when a later decision withdraws the approval, and cleared on a re-submission so the row never quotes a review it no longer holds. A row still in review, or decided by a console reviewer with no reason, leaves it blank. Neither field is written to `Justification - Alternate Tracking Method`.
 
 Rows written before that landed are completed by:
 
@@ -220,9 +211,7 @@ It only fills cells that are empty, so a value already on the row is never overw
 
 ### Reviewer columns on the review rows
 
-`Pass 1 reviewer` is a single-line text field on `YSWS Project Submission`. The live mirror fills it from the address Ari puts in the decision (`review.reviewer.email`, stored on the review as `reviewerEmail`).
-
-Only that pass is available: Ari's second pass is an organizer confirming a held decision, and no payload Half Life receives names them. The confirmation re-sends the decision under the first-pass reviewer, and the organizer exists only in Ari's internal activity log.
+`Pass 1 reviewer` is a single-line text field on `YSWS Project Submission`. The live mirror fills it from the reviewer's address stored on the review (`reviewerEmail`).
 
 Rows written before the live mirror wrote `Pass 1 reviewer` are filled by:
 
@@ -246,7 +235,7 @@ It only fills cells that are empty, so a value already on the row is never overw
 
 ### The technical-features column, for the existing rows
 
-`Justification - Specific Technical Features` used to be written at hand-in as the maker's description, parts list and journal log, with the reviewer features added under their own heading at decision time. It now carries only Ari's reviewer technical-features box, written verbatim. Rows written under the old behaviour still hold the earlier account; the decided rows are brought in line by replaying their standing decisions:
+`Justification - Specific Technical Features` used to be written at hand-in as the maker's description, parts list and journal log, with the reviewer features added under their own heading at decision time. It now carries only the reviewer's technical-features box, written verbatim. Rows written under the old behaviour still hold the earlier account; the decided rows are brought in line by replaying their standing decisions:
 
 ```bash
 bun --conditions=react-server scripts/backfill-airtable-review.ts --commit
@@ -256,10 +245,10 @@ It rewrites each decided row's `Justification - Specific Technical Features` wit
 
 ### Deflation columns
 
-A review may approve fewer hours than the maker's `Hours spent (self reported)`. The payout pipeline does not read the review, so it pays the self-reported figure unless the approved one lands on the row:
+A review may approve fewer hours than the maker's `Hours spent (self reported)`. The approved figure is written to the row so that it matches the decision:
 
 - `Optional - Override Hours Spent` – a number field. For approved rows, the approved hours when they are below the claim, else the claimed (self-reported) hours. Never left blank for an approved submission.
-- `Justification - Deflation Justification` – a long text field. The amounts cut plus the reviewer's reason for the cut when one was recorded: Ari's `justification.deflation_reason` when the decision carries it, else the review's internal audit note. The note to the maker is not used here – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it often says nothing about the cut.
+- `Justification - Deflation Justification` – a long text field. The amounts cut plus the reviewer's reason for the cut when one was recorded: the deflation reason the reviewer gave when the decision carries one, else the review's internal note. The note to the maker is not used here – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it often says nothing about the cut.
 
 `syncReviewDecisionToYsws` (`src/lib/airtable/sync.ts`) writes both in the same patch as the status, note, reviewer and Loops overrides, and clears both when a later decision withdraws the approval. The claimed figure is read from the row itself, so the override always replaces the number the base would otherwise pay. The app probes for both columns and skips them when absent.
 
@@ -274,7 +263,7 @@ It only touches approved rows, reports how many had nothing cut, and leaves a ro
 
 ### Alternate tracking method
 
-`Justification - Alternate Tracking Method` explains the hours when there is no Hackatime id, no Hackatime projects and no Lapse links to follow. The live write fills it at hand-in from the devlog entries (`N devlog entries, Xh claimed`), and an approval keeps those same facts. It deliberately does not carry the reviewer's technical features or audit note: those describe the work and the decision, not how the hours were tracked. Ari's dedicated `review.justification.technical_features` goes to `Justification - Specific Technical Features`, and its `review.audit_note` goes to `Justification - Additional Justification`.
+`Justification - Alternate Tracking Method` explains the hours when there is no Hackatime id, no Hackatime projects and no Lapse links to follow. The live write fills it at hand-in from the devlog entries (`N devlog entries, Xh claimed`), and an approval keeps those same facts. It deliberately does not carry the reviewer's technical features or audit note: those describe the work and the decision, not how the hours were tracked. The reviewer's technical features go to `Justification - Specific Technical Features`, and the "Justification notes" go to `Justification - Additional Justification`.
 
 The existing justification backfill fills the column where it is empty:
 
@@ -284,14 +273,6 @@ bun --conditions=react-server scripts/backfill-airtable-justification.ts --commi
 ```
 
 It leaves a cell that already holds something alone and writes nothing when the row has Hackatime or Lapse evidence. Run it where `DATABASE_URL` points at the real database.
-
-### Ari phase columns
-
-Ari sends no webhook when a first-pass decision is held for a second pass, nor when a second pass returns it to the queue. `ari-retry` reads `ari.ships.status` for every open ship, stores a changed phase on `PhaseSubmission.ariStatus` / `ariStatusAt`, and mirrors it to three columns on `YSWS Project Submission`:
-
-- `Ari - Review phase` – single-line text. One of `Processing`, `Fraud review`, `In review`, `Under review`, `Second pass`, `Reviewed`, `Reverted` or `Withdrawn`; a phase Ari adds later passes through under Ari's own name.
-- `Ari - Review phase at` – date field with time enabled. When the phase last changed.
-- `Ari - Second pass since` – date field with time enabled. Set only while the phase is `Second pass`, cleared when it leaves.
 
 The app probes for each column and skips it when absent, so a base without them keeps working. A row already carrying the phase is not rewritten, so a poll of unchanged ships costs no Airtable writes.
 
@@ -343,21 +324,15 @@ Triage by the status code in the step log, because they mean different things:
 
 **A grant row never reached Airtable** – `/admin/program` lists them with a retry button, and `/admin/audit?action=AIRTABLE_SYNC_FAILURE` has the errors. The `airtable-retry` job does the same sweep hourly.
 
-**An open Ari ship shows a maker's time twice** – Ari adds a journal entry's minutes to the duration of every Lapse clip it pulls, so before the ship builder netted the two a maker who devlogged and recorded the same sitting was shown both (a 7.9h project read as 17h). New sends carry the net figure; ships already in Ari keep the old one until replaced. Ari pulls clips by Hackatime project rather than by week, so a ship also carries footage from the maker's other weeks unless the builder takes the difference off the journals as it sends – it does now, and reports what the journals could not absorb. `bun run lapse:backfill-projects` (dry run; `--commit` writes) fills in the Lapse project on recordings whose row never got one, which is when a clip is netted from nowhere. It reports why each one stayed unknown, and they are not the same thing: `Lapse named none` means no later run will help, `Lapse never answered` is worth re-running, and `no Lapse link` means that maker's clips can never be attributed. `bun run verify:ari-hours` reads every open hand-in back and names any whose two totals still differ by more than two minutes – Ari reads Hackatime live where the check reads the cache, so a minute of disagreement is the fetch – and it reports how many have clips nothing could attribute, since those can still make Ari read high. Scope it with `-- --project <themeProjectId>` or `-- --limit <n>`. `bun --conditions=react-server scripts/backfill-ari-timelapses.ts` lists every in-review hand-in with a timelapse and `--commit` withdraws and re-sends each one, or pass `--project <themeProjectId>` for one. Decided ships cannot be replaced – Ari has no update-in-place, and a ship held for second pass already carries a decision, so leave it alone – but a resubmission is rebuilt with the net figure.
-
 **A project was returned before the return-extension existed** – a return now writes a week onto the returned project's `submissionExtensionUntil`, but only on the decision itself, so a project already sitting on "needs changes" from before keeps the old window and its maker may be unable to hand the fix in. `bun --conditions=react-server scripts/backfill-return-extensions.ts` reports every such project (dry run) and `--commit` gives each the same week, `reviews:backfill-return-extensions` being the same thing by name. It skips any project with an extension already running and is safe to re-run. Run it where `DATABASE_URL` points at the real database.
-
-**An approval was recorded with 0 hours, so it minted no coins** – Ari used to send `approved_hours: 0` when the field was left at its default, and that zero was accepted as authoritative: the phase was frozen at 0h and paid nothing while still reading as approved. The live path now treats a zero as "no figure" and falls back to the computed hours. `bun run backfill:zero-hours-coins` finds the approvals already affected from their frozen review row (an hour override of 0 beside frozen journal/Hackatime hours above 0), reports what each should have earned, and `--apply` reconciles the ledger to it and restores the frozen hours. It never changes grants or tiers, reports a console reviewer's explicit 0h override without paying it, and is safe to re-run. Run it where `DATABASE_URL` points at the real database.
 
 **A user says an approved project paid no coins** – `bun run audit:approved-coins` is read-only and compares every standing approval's frozen coin figure with the ledger. It separates the normal case (a design approved inside its tier's funded block, where those hours buy parts and earn no coins) from a real gap (`SHORT` – the decision says coins were earned but the ledger has less), a zero-hour approval (`ZERO_HOURS`), and a project approved without a standing approval row (`NO_APPROVAL_RECORD`). Start there before adjusting anyone's balance.
 
 **A maker submitted an entry with the wrong hours** – open the maker at `/admin/users/[id]`, expand the project under *Themed projects* and use *Journal hours* → *Correct hours* on the entry. A reason is required, and the audit row (`ADMIN_UPDATE_SESSION_HOURS`, on `/admin/audit`) records the old and new figures. A week that is in review cannot be changed, so wait for the decision. For a decided week the entry's claimed hours change but its frozen hours and coins do not, so the record and the payout disagree until the week is re-reviewed: use *Un-approve* under *Override a decision*, then review the week again. Ari keeps the figure it was sent, so a decided ship in Ari shows the old number.
 
-**A project was auto-returned for a maker who had not verified their identity** – Ari's *Identity screening* answers a ship from an unverified maker with an automated request-changes, which lands the phase on "needs changes". Turning that screen off is forward-only: the projects already returned that way are still waiting on a return that should not have been made. `bun --conditions=react-server scripts/repair-identity-returns.ts` reports every such phase (dry run) and `--commit` puts each back in review, clears its Ari ship id and puts its Airtable row back on "Pending Review", so `ari-retry` sends a fresh ship for a real review on the next hourly run. It only touches phases whose standing decision is the identity return, so a real return is left alone, and re-running is safe.
-
 Runs from before the row was mirrored left it on "Changes Requested" while the phase went back in review. The next return then writes the value the row already holds, and email-tools forwards only changed values – so the maker never hears the real decision. `--heal` reports those phases (dry run) and `--heal --commit` puts their rows back on "Pending Review" and clears the stale note. It touches only phases this script reopened and that are still in review, so a repaired phase that has since been decided is left alone. Run both where `DATABASE_URL` points at the real database.
 
-**Import the pre-season warm-up projects** – `/admin/program` → *Warm-up projects from Airtable* pulls the rows the Fillout form wrote into the `YSWS Project Submission` table (`AIRTABLE_YSWS_TABLE_ID`) into Half Life. It creates an account for any maker who has not signed in yet, files each project on the Warm Up track, records the self-reported hours, and hands the project to Ari. Safe to re-run: rows already imported, and rows Half Life itself wrote, are skipped. Anything it could not take is listed with its reason. Each row becomes its own project, so a maker who handed the form in more than once gets every project they submitted.
+**Import the pre-season warm-up projects** – `/admin/program` → *Warm-up projects from Airtable* pulls the rows the Fillout form wrote into the `YSWS Project Submission` table (`AIRTABLE_YSWS_TABLE_ID`) into Half Life. It creates an account for any maker who has not signed in yet, files each project on the Warm Up track, records the self-reported hours, and puts the project in the review queue. Safe to re-run: rows already imported, and rows Half Life itself wrote, are skipped. Anything it could not take is listed with its reason. Each row becomes its own project, so a maker who handed the form in more than once gets every project they submitted.
 
 **Scale for a launch spike** – `scale_deployment` to 2-3 replicas; the app is stateless and sessions live in Postgres. Stagger the rollout rather than going from 0 to 3 at once, so several `prisma db migrate` runs are not racing at boot (Prisma's advisory lock handles it, but there is no reason to lean on it).
 

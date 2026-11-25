@@ -32,7 +32,7 @@ import { isRecord } from "@/lib/unknown"
  * - a retry asks HCB what the previous attempt left behind before sending again: a timeout can lose the response after the money moved, and a blind resend pays twice;
  * - a failed attempt records its error and may be retried; one still in flight may not, and a row stranded by a crash is treated as in flight for a while before it may be.
  *
- * Enabling this alongside the Airtable/YSWS payout pipeline would pay twice – that ownership question is a decision, not something this code can settle.
+ * Enabling this alongside a card grant would pay twice – that ownership question is a decision, not something this code can settle.
  */
 
 /** How long a row with no error is trusted as a live request rather than a crash. */

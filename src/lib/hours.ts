@@ -183,7 +183,7 @@ export async function getHoursBreakdown(
 /**
  * Every Lapse recording this maker holds under a Hackatime project name, with the window it covers.
  *
- * Nothing filters on the entry here. A recording's Hackatime time comes off the link whether its entry is live, deleted, or a tracked entry that claims nothing (see getHoursBreakdown). Ari pulls the same clips by project name, so this is the set the two platforms have to agree on.
+ * Nothing filters on the entry here. A recording's Hackatime time comes off the link whether its entry is live, deleted, or a tracked entry that claims nothing (see getHoursBreakdown).
  */
 export async function makerRecordings(client: DbOrTx, userId: string): Promise<RecordedWindow[]> {
 	return (await recordingsByOwner(client, [userId])).get(userId) ?? []

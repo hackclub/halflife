@@ -58,7 +58,7 @@ export async function closeDispute(disputeId: string, reviewerId: string, review
 /**
  * Agree with a dispute and send the hand-in back for a fresh review.
  *
- * This is Ari's requeue done from this side: the phase returns to review, the reviews behind the disputed decision are invalidated, and the hand-in is re-sent to Ari as a new ship version so a reviewer decides it there. Only the state change and its audit row are awaited; the Airtable mirror and the send are best-effort after it, because the phase is already back in review and a send that fails is replayed by `ari-retry` (the reopened submission carries a null `ariSubmissionId`, which is exactly what `selectPendingShips` looks for).
+ * The phase returns to review, the reviews behind the disputed decision are invalidated, and the hand-in is back in the review queue for a fresh decision. Only the state change and its audit row are awaited; the Airtable mirror and the send are best-effort after it, because the phase is already back in review and a send that fails is replayed by `ari-retry` (the reopened submission carries a null `ariSubmissionId`, which is exactly what `selectPendingShips` looks for).
  *
  * Refused once the phase has moved on: a decision that has since been re-reviewed or a maker who has resubmitted leaves nothing coherent to send back.
  */

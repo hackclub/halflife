@@ -4,7 +4,7 @@ import { fmtHours } from "@/lib/numbers"
 /**
  * The hour cut a review made, and the text that explains it.
  *
- * A review approves a number of hours, and the base keeps the maker's own figure in `Hours spent (self reported)`. The payout pipeline reads `Optional - Override Hours Spent` for approved rows, so it is always filled: with the approved hours when they are lower than the claim (a deflation), and with the claimed hours otherwise. When there is a deflation, `Justification - Deflation Justification` explains why.
+ * A review approves a number of hours, and the base keeps the maker's own figure in `Hours spent (self reported)`. `Optional - Override Hours Spent` holds the figure for approved rows, so it is always filled: with the approved hours when they are lower than the claim (a deflation), and with the claimed hours otherwise. When there is a deflation, `Justification - Deflation Justification` explains why.
  *
  * Pure on purpose: the live mirror and the backfill both use these, and a test can pin the boundary between "rounded away" and "a real cut" without a base or a database.
  */

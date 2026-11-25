@@ -6,9 +6,7 @@ import { configuredOrigin } from "@/lib/origin"
  *
  * One resolver, shared with the redirect path and the phone handoff: `NEXT_PUBLIC_APP_URL` is the deployment's own answer and wins, while `BETTER_AUTH_URL` is what a local checkout usually has set. Both are read at call time rather than module load, because the same build runs in more than one environment.
  *
- * The resolution was written out separately in three modules – the review notifications, the Ari webhook URL and the repo sync's generated files – which is three chances for one of them to point at the wrong origin. Only the failure modes differed: a notification link that goes nowhere, a webhook Ari cannot reach, or a link committed into somebody's repository.
- *
- * `ari.ts` still resolves its own two, and deliberately: both need a caller-supplied or localhost fallback for asset paths that have to render, so folding them in here would have moved the webhook URL and the theme thumbnails onto production whenever a deployment left the variable unset.
+ * The resolution was written out separately in two modules – the review notifications and the repo sync's generated files – which is two chances for one of them to point at the wrong origin. Only the failure modes differed: a notification link that goes nowhere, or a link committed into somebody's repository.
  */
 
 /**

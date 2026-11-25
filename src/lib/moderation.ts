@@ -36,7 +36,7 @@ export function penaltyFor(bannedAt: string | null | undefined, suspendedUntil: 
 /**
  * Why money or goods must not leave for this account right now, or null when they may.
  *
- * Payouts take their own gate rather than trusting a route's session guard: a review decision can be applied by Ari with no session at all, a grant card is issued from a batch that reads rows, and the starter-funding CSV is built by a job. Each of those would otherwise have to remember the ban, the suspension and the fraud flag separately – and three of them forgot.
+ * Payouts take their own gate rather than trusting a route's session guard: a grant card is issued from a batch that reads rows, and the starter-funding CSV is built by a job. Each of those would otherwise have to remember the ban, the suspension and the fraud flag separately – and three of them forgot.
  *
  * A suspension is read-only by design, so a suspended maker is paid when it lifts; a ban is open-ended. The fraud flag is a review verdict rather than a penalty and an admin can clear it, so it holds the money rather than ending the account.
  */

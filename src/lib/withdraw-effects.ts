@@ -18,7 +18,7 @@ interface Actor {
  * Called once the withdrawal has committed, from inside the request, so each step runs after the response. `actor` is who did it (the maker, or an admin); `ownerId` is whose project it is.
  */
 export function propagateWithdrawal(actor: Actor, ownerId: string, themeProjectId: string, phase: Phase): void {
-	// Taken back before review, so its row goes too – otherwise reviewers on ari would see a hand-in that no longer exists. `removed` marks the row gone, so the next submission of this phase writes a fresh one.
+	// Taken back before review, so its row goes too – otherwise the Airtable row would keep a hand-in that no longer exists. `removed` marks the row gone, so the next submission of this phase writes a fresh one.
 	after(async () => {
 		await trackSideEffect(
 			"airtable",

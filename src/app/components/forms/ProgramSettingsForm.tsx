@@ -103,7 +103,7 @@ export function ProgramSettingsForm({
 			</Field>
 
 			<Field
-				hint="Which system pays makers. Airtable keeps the submission evidence and Loops columns either way; under HCB its Requested funding column is written as zero so the YSWS pipeline cannot pay twice."
+				hint="Which path pays grants. Airtable keeps the submission evidence and Loops columns either way; under HCB its Requested funding column is written as zero, so the row never shows a payable figure."
 				label="Payout source"
 			>
 				<Select
@@ -113,7 +113,7 @@ export function ProgramSettingsForm({
 					}}
 					value={form.payoutSource}
 				>
-					<option value={PayoutSource.AIRTABLE}>Airtable / YSWS pipeline</option>
+					<option value={PayoutSource.AIRTABLE}>Airtable (legacy)</option>
 					<option value={PayoutSource.HCB}>HCB card grants</option>
 				</Select>
 			</Field>

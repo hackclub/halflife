@@ -37,29 +37,23 @@ export function formulaRef(field: FieldDef): string {
  *
  * The names are NOT ours to choose: they are the base's own, copied verbatim from its field list, and Hack Club's pipeline reads them. A typo here means a field silently goes unfilled (see the drop-and-retry in lib/airtable/ysws).
  *
- * Every row is written by Half Life at submit time, as "Pending Review"; review happens on ari.hackclub.com or on Half Life's own review screen, and the decision moves the row on from there. The `Automation - …` columns belong to the pipeline, with one exception: `Automation - Submit to Unified YSWS`, which sends a row onward. That is an admin's call at T2 for a website approval (see lib/airtable/unified-review), and stays a hand tick in the base for an Ari one – never a submitter's.
+ * Every row is written by Half Life at submit time, as "Pending Review"; review happens on Half Life's review screen, and the decision moves the row on from there. The `Automation - …` columns belong to the pipeline, with one exception: `Automation - Submit to Unified YSWS`, which sends a row onward. That is an admin's call at T2 for a website approval (see lib/airtable/unified-review), and is never a submitter's.
  */
 export const YSWS_SUBMISSION = {
 	fields: {
-		// The reviewer's internal note on the standing decision – Ari's "Justification notes" field, sent as `review.audit_note` and stored on the review as `reason`. The pipeline merges it into `Automation - Unified Justification` with the evidence columns, so it is written when a decision is mirrored and cleared when the row no longer has one (see `syncReviewDecisionToYsws` in lib/airtable/sync).
+		// The reviewer's internal note on the standing decision – the "Justification notes" field, stored on the review as `reason`. The pipeline merges it into `Automation - Unified Justification` with the evidence columns, so it is written when a decision is mirrored and cleared when the row no longer has one (see `syncReviewDecisionToYsws` in lib/airtable/sync).
 		additionalJustification: f<string>("fldYswsAdditionalJustification", "Justification - Additional Justification"),
 		addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
 		addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
 		// How the hours were tracked when there is no Hackatime or Lapse evidence to point at. Written from the devlog entries at hand-in and kept that way at the decision; the reviewer's technical features and audit note have their own columns (see lib/airtable/justification).
 		alternateTracking: f<string>("fldYswsAlternateTracking", "Justification - Alternate Tracking Method"),
-		// What Ari says the ship is doing right now. Filled by the `ari-retry` status poll because Ari sends no webhook when a decision is held for its second pass or returned from one. A single-line text field, not a select: a new phase on Ari's side must not need an option created here before the write lands.
-		ariReviewPhase: f<string>("fldYswsAriReviewPhase", "Ari - Review phase"),
-		// When the phase last changed, ISO with time. A date field with time enabled, so an operator can see how long a ship has been held.
-		ariReviewPhaseAt: f<string>("fldYswsAriReviewPhaseAt", "Ari - Review phase at"),
-		// Only set while the phase is `second_pass`; cleared when it leaves. The same instant as the phase timestamp, kept separately so “in second pass since” is a filter rather than a comparison.
-		ariSecondPassSince: f<string>("fldYswsAriSecondPassSince", "Ari - Second pass since"),
 		birthday: f<string>("fldYswsBirthday", "Birthday"),
 		// What the maker says they changed since the review that returned this phase, from the submit sheet (`PhaseSubmission.changesSinceLast`). Fabricate's base has the same column under the same name.
 		changesSinceLast: f<string>("fldAB8ZEdSkWfjGrr", "Changes since last review"),
 		city: f<string>("fldYswsCity", "City"),
 		codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
 		country: f<string>("fldYswsCountry", "Country"),
-		// Why a review approved fewer hours than the row's `Hours spent (self reported)` claims, and the number it approved instead. Both are read by the payout pipeline, which uses the override in place of the self-reported figure – so they are written together and cleared together (see lib/airtable/deflation).
+		// Why a review approved fewer hours than the row's `Hours spent (self reported)` claims, and the number it approved instead. Both are written together and cleared together (see lib/airtable/deflation).
 		deflationJustification: f<string>("fldYswsDeflationJustification", "Justification - Deflation Justification"),
 		description: f<string>("fldYswsDescription", "Description"),
 		email: f<string>("fldYswsEmail", "Email"),
@@ -82,7 +76,7 @@ export const YSWS_SUBMISSION = {
 		kitStatus: f<string>("fldpsH0TKDU6dsTlt", "Kit status"),
 		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
 		lastName: f<string>("fldYswsLastName", "Last Name"),
-		// The hours figure the payout pipeline reads for an approved row. When a review cut the claimed total it holds the approved hours; otherwise it holds the claimed (self-reported) hours, so it is never blank for an approved submission. Cleared on a reversal so a stale figure cannot outlive its approval.
+		// The hours figure for an approved row. When a review cut the claimed total it holds the approved hours; otherwise it holds the claimed (self-reported) hours, so it is never blank for an approved submission. Cleared on a reversal so a stale figure cannot outlive its approval.
 		overrideHoursSpent: f<number>("fldYswsOverrideHoursSpent", "Optional - Override Hours Spent"),
 		// When it holds text, the pipeline sends it as the justification in place of every `Justification - …` column (see `unifiedJustification` in lib/airtable/unified-justification). A website approval writes its account in Fabricate's format here (see lib/review-platform/justification) and a reversal clears it; on a row only Ari has decided it is the program team's, and Half Life leaves it alone.
 		overrideHoursSpentJustification: f<string>(
@@ -101,8 +95,8 @@ export const YSWS_SUBMISSION = {
 		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
 		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
 		slackId: f<string>("fldYswsSlackId", "Slack ID"),
-		// The reviewer's own account of the build, from Ari's `technical_features`, written verbatim at decision
-		// time. This column never holds the maker's account, journal or parts list – it carries what Ari returns
+		// The reviewer's own account of the build, from the reviewer's technical features, written verbatim at decision
+		// time. This column never holds the maker's account, journal or parts list – it carries what the reviewer enters
 		// and nothing else. The pipeline merges it with the other `Justification - …` columns into one blob (see
 		// lib/airtable/justification).
 		specificTechnicalFeatures: f<string>(
@@ -127,7 +121,7 @@ export const YSWS_SUBMISSION = {
 export const YSWS_PENDING_REVIEW = "Pending Review"
 
 /**
- * The rest of what `Loops - halfLifeReviewStatus` can say, one per decision Ari reaches.
+ * The rest of what `Loops - halfLifeReviewStatus` can say, one per decision the console reaches.
  *
  * The column is Loops': it is how a maker hears their work was decided, and a decision on ari.hackclub.com writes nothing to the base on its own – the status is put on the row when the decision arrives (see `syncReviewStatusToYsws` in lib/airtable/sync). A later rewrite of the row derives the status from the phase state rather than resetting it, so the two cannot disagree.
  *

@@ -18,7 +18,7 @@ export interface Tier {
 	readonly estimate: string
 	/** Hours the grant covers. These buy parts, not coins. */
 	readonly fundingHours: number
-	/** Grant paid through the YSWS pipeline, in whole USD. */
+	/** Grant in whole USD. */
 	readonly grantUsd: number
 	readonly id: 1 | 2 | 3
 	readonly name: string

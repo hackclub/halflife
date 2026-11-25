@@ -189,7 +189,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	const projectUser = project.user
 	if (!projectUser) throw new HttpError("NOT_FOUND", "Submission not found")
 	const { phase } = submission
-	// A submission row is not the authority on whether a phase is awaiting review: a revert leaves the row open while the phase goes back to its maker (lib/ari, lib/ire-review), so a stale row stays decidable forever. Deciding it would approve work nobody handed in – or, as a rejection, claw back an approval that has already paid out, which is what unapprovePhase exists for and what this path must not do without OVERRIDE_DECISIONS.
+	// A submission row is not the authority on whether a phase is awaiting review: a revert leaves the row open while the phase goes back to its maker , so a stale row stays decidable forever. Deciding it would approve work nobody handed in – or, as a rejection, claw back an approval that has already paid out, which is what unapprovePhase exists for and what this path must not do without OVERRIDE_DECISIONS.
 	if (statusFor(project, phase) !== PhaseStatus.in_review)
 		throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
 	const approving = input.result === ReviewResult.APPROVED

@@ -17,7 +17,7 @@ import db from "../src/lib/prisma8"
 /**
  * Fill `Optional - Override Hours Spent` for approved Airtable rows, and `Justification - Deflation Justification` when a review cut the claimed total.
  *
- * The live mirror writes these from the decision itself (see `syncReviewDecisionToYsws` in lib/airtable/sync). `Optional - Override Hours Spent` is required by the payout pipeline and must never be blank for an approved row: it holds the approved hours when the review cut the claim, else the claimed (self-reported) hours from the row. `Justification - Deflation Justification` is only written when hours were cut.
+ * The live mirror writes these from the decision itself (see `syncReviewDecisionToYsws` in lib/airtable/sync). `Optional - Override Hours Spent` must never be blank for an approved row: it holds the approved hours when the review cut the claim, else the claimed (self-reported) hours from the row. `Justification - Deflation Justification` is only written when hours were cut.
  *
  * The claimed figure is the row's own `Hours spent (self reported)`, because that is the number the base already shows. The approved figure is the phase's frozen hours on ThemeProject (`designApprovedHours`/`approvedHours`), falling back to the standing review's frozen value for a decision old enough to predate the project column. A row with no frozen approved hours is reported as unknown rather than guessed at.
  *
