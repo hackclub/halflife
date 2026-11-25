@@ -12,6 +12,9 @@ export function shopGrantCardInviteMessage(itemName: string): string {
 	return `Your Half Life shop grant for "${itemName}" is ready. Accept it to get your card.`
 }
 
+/** Why an order cannot be paid because it has no amount. Shared with the fill action, which is the only thing that can clear it. */
+export const NO_AMOUNT_REASON = "This order has no grant card amount"
+
 export interface ShopGrantCardOrder {
 	deliveryPreference: ShopDeliveryPreference | null
 	grantCardCents: number | null
@@ -31,7 +34,7 @@ export function shopGrantCardBlockReason(
 	if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD)
 		return "Only a pending or held order can be paid by grant card"
 	if (order.deliveryPreference !== ShopDeliveryPreference.GRANT_CARD) return "This order did not ask for a grant card"
-	if (order.grantCardCents === null || order.grantCardCents <= 0) return "This order has no grant card amount"
+	if (order.grantCardCents === null || order.grantCardCents <= 0) return NO_AMOUNT_REASON
 	if (payoutBlock) return payoutBlock
 	if (!verified) return "The buyer's identity is not verified"
 	return null
