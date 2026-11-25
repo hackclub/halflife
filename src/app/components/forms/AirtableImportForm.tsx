@@ -9,7 +9,6 @@ import { readErrorMessage, readJson } from "@/lib/api-error"
 const ImportOutcomeSchema = z.object({
 	ari: z.enum(["sent", "failed", "not_configured", "not_attempted"]),
 	email: z.string().nullable(),
-	ire: z.enum(["sent", "failed", "not_configured", "not_attempted"]),
 	reason: z.string().nullable(),
 	recordId: z.string(),
 	status: z.enum(["imported", "already_imported", "skipped", "failed"]),
@@ -23,7 +22,6 @@ const ImportSummarySchema = z.object({
 	failed: z.number(),
 	fetched: z.number(),
 	imported: z.number(),
-	ireSent: z.number(),
 	outcomes: z.array(ImportOutcomeSchema),
 	skipped: z.number(),
 	table: z.string(),
@@ -42,13 +40,6 @@ const ARI_LABEL: { [_ in ImportOutcome["ari"]]: string } = {
 	not_attempted: "",
 	not_configured: "Ari not configured",
 	sent: "sent to Ari",
-}
-
-const IRE_LABEL: { [_ in ImportOutcome["ire"]]: string } = {
-	failed: "Ire send failed",
-	not_attempted: "",
-	not_configured: "Ire not configured",
-	sent: "copied to Ire",
 }
 
 /**
@@ -112,7 +103,6 @@ export function AirtableImportForm({
 						{ariConfigured
 							? `${summary.ariSent} sent to Ari; the rest are listed under “Submissions that never reached Ari”.`
 							: "Ari is not configured here, so those sends wait for the retry job."}
-						{summary.ireSent > 0 ? ` ${summary.ireSent} also copied to Ire.` : ""}
 					</p>
 					{problems.length > 0 ? (
 						<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
@@ -122,7 +112,6 @@ export function AirtableImportForm({
 									{outcome.email ? ` · ${outcome.email}` : ""} · {STATUS_LABEL[outcome.status]}
 									{outcome.reason ? `: ${outcome.reason}` : ""}
 									{ARI_LABEL[outcome.ari] ? ` (${ARI_LABEL[outcome.ari]})` : ""}
-									{IRE_LABEL[outcome.ire] ? ` (${IRE_LABEL[outcome.ire]})` : ""}
 								</li>
 							))}
 						</ul>

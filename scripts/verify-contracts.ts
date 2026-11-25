@@ -347,7 +347,7 @@ async function bodies() {
 	await checkAriJournalTime()
 	await checkAriPending()
 	await checkAriCounts()
-	await checkIreShadow()
+	await checkShipInput()
 	await checkReviewStages()
 	await checkReviewDecision()
 	await checkHcb()
@@ -711,45 +711,8 @@ async function checkAriCounts(): Promise<void> {
 	}
 }
 
-async function checkIreShadow(): Promise<void> {
-	const { Phase, PhaseStatus } = await import("../src/lib/enums")
-	/* ── 5b-iii. The Ire shadow lifecycle ───────────────────────────────── */
-	//
-	// Ire holds one open ship per external id, just like Ari. A resubmission therefore has to replace the old copy, and a ship Ire has already decided must never be sent back into the shadow queue.
-	const { selectPendingIreShips } = await import("../src/lib/ire-pending")
+async function checkShipInput(): Promise<void> {
 	const { toAriShipInput } = await import("../src/lib/review-ship")
-	const project = { buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" }
-	const submission = {
-		createdAt: new Date("2026-11-01T10:00:00Z"),
-		id: "s1",
-		phase: Phase.DESIGN,
-		themeProjectId: "p1",
-	}
-	const ship = (over: Partial<Parameters<typeof selectPendingIreShips>[2][number]> = {}) => ({
-		closedAt: null,
-		decision: null,
-		lastError: null,
-		lastSubmissionId: "s1",
-		phase: Phase.DESIGN,
-		remoteId: "sub_1",
-		themeProjectId: "p1",
-		...over,
-	})
-
-	check("ire · pending: no ship", selectPendingIreShips([project], [submission], []).length === 1)
-	check("ire · pending: healthy ship", selectPendingIreShips([project], [submission], [ship()]).length === 0)
-	check(
-		"ire · pending: older ship is replaced",
-		selectPendingIreShips([project], [submission], [ship({ lastSubmissionId: "s0" })]).length === 1,
-	)
-	check(
-		"ire · pending: a decided ship is not resent",
-		selectPendingIreShips([project], [submission], [ship({ closedAt: new Date(), decision: "approved" })]).length === 0,
-	)
-	check(
-		"ire · pending: a closed ship is resent while the phase is in review",
-		selectPendingIreShips([project], [submission], [ship({ closedAt: new Date() })]).length === 1,
-	)
 
 	const input: ReviewShipInput = {
 		description: "A board",

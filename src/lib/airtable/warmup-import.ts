@@ -16,8 +16,6 @@ import { MAX_WARMUP_PROJECTS, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { HoursSource, Phase, PhaseStatus, Theme } from "@/lib/enums"
 import { HttpError } from "@/lib/errors"
-import { ireLive, isIreConfigured } from "@/lib/ire-platform"
-import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import { lockKey } from "@/lib/locks"
 import { payoutBlockReason } from "@/lib/moderation"
 import { round2 } from "@/lib/money"
@@ -55,8 +53,6 @@ export interface WarmupImportOutcome {
 	/** What the Ari send did, when the row got as far as one. */
 	ari: "sent" | "failed" | "not_configured" | "not_attempted"
 	email: string | null
-	/** What the shadow Ire send did, when the row got as far as one. */
-	ire: "sent" | "failed" | "not_configured" | "not_attempted"
 	/** Why it was skipped or failed, in an operator's terms. */
 	reason: string | null
 	recordId: string
@@ -71,7 +67,6 @@ export interface WarmupImportSummary {
 	failed: number
 	fetched: number
 	imported: number
-	ireSent: number
 	outcomes: WarmupImportOutcome[]
 	skipped: number
 	table: string
@@ -482,8 +477,6 @@ async function sendToAri(
 	phase: Phase,
 	actor: ImportActor,
 ): Promise<WarmupImportOutcome["ari"]> {
-	// In live mode Ire owns review and the Ari send is skipped, not failed.
-	if (ireLive()) return "not_attempted"
 	if (!isAriConfigured()) return "not_configured"
 	const result = await trackSideEffect(
 		"ari",
@@ -495,26 +488,6 @@ async function sendToAri(
 			targetType: "ThemeProject",
 		},
 		() => sendSubmissionToAri(themeProjectId, phase),
-	)
-	return result ? "sent" : "failed"
-}
-
-async function sendToIre(
-	themeProjectId: string,
-	phase: Phase,
-	actor: ImportActor,
-): Promise<WarmupImportOutcome["ire"]> {
-	if (!isIreConfigured()) return "not_configured"
-	const result = await trackSideEffect(
-		"ire",
-		{
-			actorEmail: actor.email,
-			actorId: actor.id,
-			metadata: { live: ireLive(), phase, warmupImport: true },
-			targetId: themeProjectId,
-			targetType: "ThemeProject",
-		},
-		() => sendSubmissionToIre(themeProjectId, phase),
 	)
 	return result ? "sent" : "failed"
 }
@@ -540,7 +513,6 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 		const base: WarmupImportOutcome = {
 			ari: "not_attempted",
 			email: null,
-			ire: "not_attempted",
 			reason: null,
 			recordId: record.id,
 			status: "failed",
@@ -581,7 +553,6 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 					if (key) await db.orm.public.ThemeProject.where({ id: result.themeProjectId }).update({ coverImageKey: key })
 				}
 				outcome.ari = await sendToAri(result.themeProjectId, parsed.row.phase, actor)
-				outcome.ire = await sendToIre(result.themeProjectId, parsed.row.phase, actor)
 			}
 
 			outcomes.push(outcome)
@@ -602,7 +573,6 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 		failed: count("failed"),
 		fetched: records.length,
 		imported: count("imported"),
-		ireSent: outcomes.filter(o => o.ire === "sent").length,
 		outcomes,
 		skipped: count("skipped"),
 		table: YSWS_SUBMISSION.tableId,

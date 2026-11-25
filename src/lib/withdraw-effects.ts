@@ -5,8 +5,6 @@ import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
 import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { scheduledWeekFor } from "@/lib/config/program"
 import type { Phase } from "@/lib/enums"
-import { ireLive, isIreConfigured } from "@/lib/ire-platform"
-import { withdrawSubmissionFromIre } from "@/lib/ire-shadow"
 import db from "@/lib/prisma8"
 import { trackSideEffect } from "@/lib/side-effects"
 
@@ -46,25 +44,7 @@ export function propagateWithdrawal(actor: Actor, ownerId: string, themeProjectI
 		}
 	})
 
-	// Withdraw it from review too, or the queue keeps a hand-in that no longer exists in Half Life. In live mode Ire is the only queue; otherwise both the Ari ship and the shadow copy are withdrawn.
-	if (ireLive()) {
-		if (isIreConfigured())
-			after(async () => {
-				await trackSideEffect(
-					"ire",
-					{
-						actorEmail: actor.email,
-						actorId: actor.id,
-						metadata: { live: true, phase, withdrawn: true },
-						targetId: themeProjectId,
-						targetType: "ThemeProject",
-					},
-					() => withdrawSubmissionFromIre(themeProjectId, phase),
-				)
-			})
-		return
-	}
-
+	// Withdraw it from review too, or the queue keeps a hand-in that no longer exists in Half Life.
 	if (isAriConfigured())
 		after(async () => {
 			await trackSideEffect(
@@ -77,22 +57,6 @@ export function propagateWithdrawal(actor: Actor, ownerId: string, themeProjectI
 					targetType: "ThemeProject",
 				},
 				() => withdrawSubmissionFromAri(themeProjectId, phase),
-			)
-		})
-
-	// The shadow copy has the same problem, and its failure is replayable from the IreShip row even though the local submission was just deleted.
-	if (isIreConfigured())
-		after(async () => {
-			await trackSideEffect(
-				"ire",
-				{
-					actorEmail: actor.email,
-					actorId: actor.id,
-					metadata: { phase, withdrawn: true },
-					targetId: themeProjectId,
-					targetType: "ThemeProject",
-				},
-				() => withdrawSubmissionFromIre(themeProjectId, phase),
 			)
 		})
 }

@@ -25,7 +25,7 @@ import { parseDbTimestamp } from "@/lib/time"
 
 export interface ReviewOutcomeNotice {
 	/** Which surface decided it, so the message can say who is asking. */
-	decidedBy: "ari" | "ire" | "console"
+	decidedBy: "ari" | "console"
 	/**
 	 * The reviewer's note to the maker, or null when there was none.
 	 *
@@ -42,9 +42,8 @@ export interface ReviewOutcomeNotice {
  *
  * A returned submission is a request to do something, so the maker needs to know who is asking. Ari is the bot. A console decision was made by a volunteer, and this deliberately does not name them: a reviewer's address has no business in a participant's DM, and the project page already shows the review it came from.
  */
-function asker(decidedBy: "ari" | "ire" | "console"): string {
+function asker(decidedBy: "ari" | "console"): string {
 	if (decidedBy === "ari") return "Ari"
-	if (decidedBy === "ire") return "Ire"
 	return "A Half Life reviewer"
 }
 
@@ -53,7 +52,7 @@ function headline(
 	result: ReviewResult,
 	phase: string,
 	title: string,
-	decidedBy: "ari" | "ire" | "console",
+	decidedBy: "ari" | "console",
 	resubmitBy: string | null,
 	submissionsLeft: number | null,
 ): { body: string; next?: string } {

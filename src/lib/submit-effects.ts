@@ -5,8 +5,6 @@ import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { isAriConfigured, sendSubmissionToAri } from "@/lib/ari"
 import type { Phase } from "@/lib/enums"
 import { refreshLinkCache } from "@/lib/hackatime"
-import { ireLive, isIreConfigured } from "@/lib/ire-platform"
-import { sendSubmissionToIre } from "@/lib/ire-shadow"
 import db from "@/lib/prisma8"
 import { trackSideEffect } from "@/lib/side-effects"
 import { isRobertConfigured, isSporkConfigured, screenWithSpork, submitToRobert } from "@/lib/telescreen"
@@ -52,53 +50,21 @@ export function propagateSubmission(
 		}
 	})
 
-	// And into review. In live mode Ire owns the decision, so the hand-in goes there exclusively; otherwise Ari reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without review secrets logs no noise; a failure lands in the audit log and the retry route.
-	if (ireLive())
+	// And into review through the SDK; Ari reports back by webhook. Only scheduled when configured, so a deployment without review secrets logs no noise; a failure lands in the audit log and the retry route.
+	if (isAriConfigured())
 		after(async () => {
 			await trackSideEffect(
-				"ire",
+				"ari",
 				{
 					actorEmail: actor.email,
 					actorId: actor.id,
-					metadata: { live: true, phase },
+					metadata: { phase },
 					targetId: themeProjectId,
 					targetType: "ThemeProject",
 				},
-				() => sendSubmissionToIre(themeProjectId, phase),
+				() => sendSubmissionToAri(themeProjectId, phase),
 			)
 		})
-	else {
-		if (isAriConfigured())
-			after(async () => {
-				await trackSideEffect(
-					"ari",
-					{
-						actorEmail: actor.email,
-						actorId: actor.id,
-						metadata: { phase },
-						targetId: themeProjectId,
-						targetType: "ThemeProject",
-					},
-					() => sendSubmissionToAri(themeProjectId, phase),
-				)
-			})
-
-		// A shadow copy for Ire. Ari remains authoritative; this exists so Ire's checks and queue can be compared against Ari before any decision moves. No maker notice on failure: the maker never asked for a second review.
-		if (isIreConfigured())
-			after(async () => {
-				await trackSideEffect(
-					"ire",
-					{
-						actorEmail: actor.email,
-						actorId: actor.id,
-						metadata: { phase, shadow: true },
-						targetId: themeProjectId,
-						targetType: "ThemeProject",
-					},
-					() => sendSubmissionToIre(themeProjectId, phase),
-				)
-			})
-	}
 
 	// Telescreen's fraud review and copy check, as Fabricate runs them on every ship (see lib/telescreen). Each keeps its own failure on the project's row for the review screen, and `telescreen-sync` replays what was missed.
 	if (isRobertConfigured())
