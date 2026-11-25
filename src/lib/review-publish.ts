@@ -37,11 +37,13 @@ export async function publishReviewDecision(outcome: FinalizeOutcome, decision: 
 		themeProjectId: outcome.themeProjectId,
 	})
 	// An approval sends the project to Robert again, so its journal there is the one that was approved (see lib/telescreen).
-	if (outcome.result === ReviewResult.APPROVED && isRobertConfigured()) {
-		try {
-			await submitToRobert(outcome.themeProjectId)
-		} catch (err) {
-			console.error("[review] robert resend failed:", err)
-		}
+	if (outcome.result === ReviewResult.APPROVED && isRobertConfigured()) await resendToRobert(outcome.themeProjectId)
+}
+
+async function resendToRobert(themeProjectId: string): Promise<void> {
+	try {
+		await submitToRobert(themeProjectId)
+	} catch (err) {
+		console.error("[review] robert resend failed:", err)
 	}
 }

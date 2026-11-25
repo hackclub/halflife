@@ -27,6 +27,7 @@ import db, { isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
 import { type PublishedDecision, publishReviewDecision } from "@/lib/review-publish"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
+import { isRecord } from "@/lib/unknown"
 
 // ─── Claim locks ─────────────────────────────────────────────────────────────
 
@@ -563,6 +564,11 @@ interface DeferredDecision {
 	published: PublishedDecision
 }
 
+/** Checks the shape a kept decision was written in. Its fields are only as sound as the writer that stored them. */
+function isDeferredDecision(value: unknown): value is DeferredDecision {
+	return isRecord(value) && isRecord(value.input) && isRecord(value.published)
+}
+
 /**
  * Keep a build approval the reviewer made before its design was approved, to be applied once the design is.
  *
@@ -581,11 +587,12 @@ export async function deferBuildApproval(input: FinalizeInput, published: Publis
 	if (statusFor(project, Phase.BUILD) !== PhaseStatus.in_review)
 		throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
 
-	const decision: DeferredDecision = { input, published }
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every field is plain JSON (strings, numbers, booleans, null), and the reader checks the shape again
+	const decision = structuredClone({ input, published }) as unknown as JsonObject
 	await db.transaction(async tx => {
 		await tx.orm.public.DeferredBuildApproval.where({ submissionId: input.submissionId }).deleteAndCount()
 		await tx.orm.public.DeferredBuildApproval.create({
-			decision: JSON.parse(JSON.stringify(decision)) as JsonObject,
+			decision,
 			submissionId: input.submissionId,
 		})
 	})
@@ -611,8 +618,12 @@ async function applyDeferredBuildApproval(themeProjectId: string): Promise<void>
 		.first()
 	const kept = build?.deferredApproval
 	if (!build || !kept) return
-
-	const { input, published } = kept.decision as unknown as DeferredDecision
+	if (!isDeferredDecision(kept.decision)) {
+		console.error(`[review] deferred build approval ${kept.id} is not readable; removing it`)
+		await db.orm.public.DeferredBuildApproval.where({ id: kept.id }).deleteAndCount()
+		return
+	}
+	const { input, published } = kept.decision
 	let outcome: FinalizeOutcome
 	try {
 		outcome = await finalizeReview({ ...input, submissionId: build.id })
