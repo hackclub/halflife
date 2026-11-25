@@ -527,7 +527,7 @@ Only the maker cancelling their own grant. Recipients can cancel their own grant
 
 HCB's own grant page names the canceller. A returned grant reads "This grant has been canceled. Canceled by <maker> … The card no longer works, and the unspent balance went back to YSWS - Half Life", and its ledger shows a "Returning canceled grant to <maker>" transfer equal to the leftover.
 
-Open: the API field behind that "Canceled by" line is not yet confirmed. The HCB MCP tools in this environment are not authorised (every call returns `invalid_auth`), so it has to be checked with a token that can read card grants, against a grant returned by its recipient and one cancelled by an admin. Until it is, the sync passes no canceller to the credit step, so every return is recorded and held and nothing is paid. Held returns are not credited by hand yet either; that needs its own admin action.
+Open: the API field behind that "Canceled by" line is not yet confirmed. The HCB MCP tools in this environment are not authorised (every call returns `invalid_auth`), so it has to be checked with a token that can read card grants, against a grant returned by its recipient and one cancelled by an admin. Until it is, the sync passes no canceller to the credit step, so every return is recorded and held and nothing is paid. No admin action is needed once it is verified. Every sync retries each return that has not been credited, so a held return is paid automatically on the first run that can read its canceller and finds the maker cancelled it. A return an admin cancelled stays held, and nothing pays it.
 
 ### Amount
 
