@@ -23,6 +23,7 @@ const EARNING_KINDS: LedgerKind[] = [
 	LedgerKind.BUILD_BANKED_HOURS,
 	LedgerKind.BUILD_HOURS,
 	LedgerKind.BOM_SAVINGS,
+	LedgerKind.GRANT_RETURN_COINS,
 	LedgerKind.THEME_COMPLETION_BONUS,
 	LedgerKind.ADMIN_ADJUSTMENT,
 	LedgerKind.REVIEWER_PAYMENT,
