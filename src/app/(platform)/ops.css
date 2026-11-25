@@ -1199,22 +1199,23 @@
 
 	/*
 	 * ── Overview: the reviewer figures beside or below their donut ───────────
-	 * Beside the donut the figures have only the room left over, so they stack; once the donut wraps them onto their own line they have the panel's width and sit in a row. The box is its own container, so the switch follows the room it is given rather than a viewport breakpoint.
+	 * The figures take their own width and sit at the end of the row, like the NPS figure. Beside the donut they stack; once the donut wraps them onto their own line they sit in a row. The panel's wrapper is the container the switch reads: a narrow panel is where the donut wraps, so the figures take a row there.
 	 */
-	.hl-figure-stack {
-		flex: 1 1 12rem;
+	.hl-overview-reviewer {
 		min-width: 0;
 		container-type: inline-size;
 	}
+	.hl-figure-stack {
+		flex: 0 0 auto;
+	}
 	.hl-figure-stack-list {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
 		gap: 0.75rem;
 	}
-	@container (min-width: 28rem) {
+	@container (min-width: 35rem) {
 		.hl-figure-stack-list {
-			flex-direction: row;
-			flex-wrap: wrap;
+			flex-direction: column;
 		}
 	}
 

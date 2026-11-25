@@ -204,45 +204,49 @@ async function SummaryTab() {
 						</p>
 					</Panel>
 
-					<Panel
-						actions={
-							<span className="hl-hint hl-note--inline">each project counted once, in the state its card shows</span>
-						}
-						title="Reviewer activity"
-					>
-						<div className="flex flex-wrap items-center justify-between gap-6">
-							<ShareDonut
-								centerLabel="submitted"
-								colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
-								empty="No projects with a review state yet."
-								measure="Project review status"
-								rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
-							/>
-							{/* A column beside the donut, and a row once the donut pushes it onto its own line: the figures' own width decides, see `.hl-figure-stack`. */}
-							<div className="hl-figure-stack">
-								<div className="hl-figure-stack-list">
-									<Stat label="Reviewed today" value={reviewer.reviewedToday} />
-									<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
+					{/* The wrapper is the container the figures' stacking reads, since a panel cannot take a class here; see `.hl-overview-reviewer`. */}
+					<div className="hl-overview-reviewer">
+						<Panel
+							actions={
+								<span className="hl-hint hl-note--inline">each project counted once, in the state its card shows</span>
+							}
+							title="Reviewer activity"
+						>
+							<div className="flex flex-wrap items-center justify-between gap-6">
+								<ShareDonut
+									centerLabel="submitted"
+									colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
+									empty="No projects with a review state yet."
+									measure="Project review status"
+									rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
+								/>
+								{/* A column beside the donut, and a row once the donut pushes it onto its own line: the figures' own width decides, see `.hl-figure-stack`. */}
+								<div className="hl-figure-stack">
+									<div className="hl-figure-stack-list">
+										<Stat label="Reviewed today" value={reviewer.reviewedToday} />
+										<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
+									</div>
 								</div>
 							</div>
-						</div>
-						<Table head={["Outcome", "Today", "All time"]}>
-							{reviewer.byResult.map(row => (
-								<tr key={row.result}>
-									<td>{RESULT_LABEL[row.result]}</td>
-									<td className="hl-mono">{fmtInt(row.today)}</td>
-									<td className="hl-mono">{fmtInt(row.total)}</td>
-								</tr>
-							))}
-						</Table>
-						<p className="hl-hint hl-note">
-							Each project is counted once, in the one state it is in now: rejected if either phase was rejected, needs
-							changes if either phase is waiting on the maker, pending if either phase is in review, otherwise approved.
-							It is the same state the project&apos;s card shows, so a design approved while its build is still in
-							review reads as pending rather than as two slices, and a resubmission does not leave a second copy of the
-							project behind. Projects that have never been submitted are left out. Console decisions are included.
-						</p>
-					</Panel>
+							<Table head={["Outcome", "Today", "All time"]}>
+								{reviewer.byResult.map(row => (
+									<tr key={row.result}>
+										<td>{RESULT_LABEL[row.result]}</td>
+										<td className="hl-mono">{fmtInt(row.today)}</td>
+										<td className="hl-mono">{fmtInt(row.total)}</td>
+									</tr>
+								))}
+							</Table>
+							<p className="hl-hint hl-note">
+								Each project is counted once, in the one state it is in now: rejected if either phase was rejected,
+								needs changes if either phase is waiting on the maker, pending if either phase is in review, otherwise
+								approved. It is the same state the project&apos;s card shows, so a design approved while its build is
+								still in review reads as pending rather than as two slices, and a resubmission does not leave a second
+								copy of the project behind. Projects that have never been submitted are left out. Console decisions are
+								included.
+							</p>
+						</Panel>
+					</div>
 				</div>
 			</div>
 		</>
