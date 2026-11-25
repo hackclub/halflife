@@ -141,7 +141,7 @@ export async function submitPhase(
 	noMicrocontroller = false,
 	makerNotes: SubmissionMakerNotes = {},
 	options: SubmitOptions = {},
-): Promise<Omit<Models.public_PhaseSubmission, "claim" | "dispute" | "reviews" | "themeProject">> {
+): Promise<Omit<Models.public_PhaseSubmission, "claim" | "deferredApproval" | "dispute" | "reviews" | "themeProject">> {
 	const project = await db.orm.public.ThemeProject.where({ deletedAt: null, id: themeProjectId, userId }).first()
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 

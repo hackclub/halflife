@@ -1,18 +1,22 @@
 import { after } from "next/server"
-import { mirrorReviewDecision, reviewStatusForResult } from "@/lib/airtable/sync"
 import { fail, ok, parseBody } from "@/lib/api"
 import { ENTRY_TIER } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
-import { Phase, ReviewResult } from "@/lib/enums"
+import { Phase } from "@/lib/enums"
 import { type AuthedContext, withWritePermission } from "@/lib/guards"
-import { notifyReviewOutcome } from "@/lib/notifications"
 import { hasPermission, Permission } from "@/lib/permissions"
 import db from "@/lib/prisma8"
-import { finalizeReview } from "@/lib/review"
+import {
+	deferBuildApproval,
+	type FinalizeInput,
+	type FinalizeOutcome,
+	finalizeReview,
+	isDesignNotApproved,
+} from "@/lib/review"
 import { signedJustification } from "@/lib/review-platform/justification"
+import { publishReviewDecision } from "@/lib/review-publish"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { decisionSchema } from "@/lib/schemas/review"
-import { isRobertConfigured, submitToRobert } from "@/lib/telescreen"
 
 interface Params {
 	params: Promise<{ id: string }>
@@ -71,12 +75,11 @@ export const POST = withWritePermission(
 				? signedJustification(body.justification, displayName(gate.user, "Reviewer"))
 				: null
 
-		const outcome = await finalizeReview({
+		const decision: FinalizeInput = {
 			enforceClaimCeiling: !hasPermission(gate.roles, Permission.MANAGE_CREDIT),
 			feedback,
 			grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
 			hoursOverride: "hoursOverride" in body ? (body.hoursOverride ?? null) : null,
-			justification,
 			reason,
 			result: body.result,
 			reviewerEmail: gate.user.email,
@@ -85,40 +88,23 @@ export const POST = withWritePermission(
 			submissionId: id,
 			technicalFeatures: "technicalFeatures" in body ? sanitizeOptional(body.technicalFeatures) : null,
 			tier: "tier" in body ? (body.tier ?? null) : null,
-		})
+		}
+		const published = { deflationReason, feedback, justification, reason, reviewerEmail: gate.user.email }
+
+		let outcome: FinalizeOutcome
+		try {
+			outcome = await finalizeReview(decision)
+		} catch (err) {
+			// A build approval made before its design is approved is kept, and applied when the design is.
+			if (!isDesignNotApproved(err)) throw err
+			await deferBuildApproval(decision, published)
+			return ok({ deferred: true })
+		}
 
 		// After the response: moving the row and telling the maker must not hold up the reviewer, and a Slack or Airtable outage must not fail a decision that has already committed.
 		after(async () => {
-			// The row's Loops columns, so a decision made here reaches Loops the same way an Ari one does.
-			await mirrorReviewDecision(
-				outcome.themeProjectId,
-				outcome.phase,
-				reviewStatusForResult(outcome.result),
-				feedback || null,
-				gate.user.email,
-				deflationReason,
-				reason,
-				// Undefined from a page that composed none, which leaves the column to the formula.
-				outcome.result === ReviewResult.APPROVED ? (justification ?? undefined) : undefined,
-			)
-			await notifyReviewOutcome({
-				// A console reviewer always writes the note themselves, so an empty one is an empty one rather than a missing field.
-				note: feedback || null,
-				phase: outcome.phase,
-				result: outcome.result,
-				themeProjectId: outcome.themeProjectId,
-			})
+			await publishReviewDecision(outcome, published)
 		})
-
-		// An approval sends the project to Robert again, so its journal there is the one that was approved (see lib/telescreen).
-		if (outcome.result === ReviewResult.APPROVED && isRobertConfigured())
-			after(async () => {
-				try {
-					await submitToRobert(outcome.themeProjectId)
-				} catch (err) {
-					console.error("[review] robert resend failed:", err)
-				}
-			})
 
 		return ok({ outcome })
 	},

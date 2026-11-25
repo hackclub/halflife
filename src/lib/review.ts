@@ -19,11 +19,13 @@ import {
 import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
+import type { JsonObject } from "@/lib/json"
 import { assertPayoutAllowed } from "@/lib/moderation"
 import { phaseStatusUpdate, statusFor } from "@/lib/phase"
 import { ensurePrinterAward } from "@/lib/printer"
 import db, { isUniqueViolation } from "@/lib/prisma8"
 import { getProgramSettings } from "@/lib/program"
+import { type PublishedDecision, publishReviewDecision } from "@/lib/review-publish"
 import { DAY_MS, formatDbTimestamp, parseDbTimestamp, parseNullableTimestamp } from "@/lib/time"
 
 // ─── Claim locks ─────────────────────────────────────────────────────────────
@@ -541,7 +543,86 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		targetType: "ThemeProject",
 	})
 
+	// A design approval is what a kept build approval was waiting for. The design has committed, so this runs after it and cannot undo it.
+	if (approving && phase === Phase.DESIGN)
+		await applyDeferredBuildApproval(project.id).catch(err =>
+			console.error(`[review] deferred build approval for ${project.id} failed:`, err),
+		)
+
 	return outcome
+}
+
+/** Whether a build approval was refused only because its design is not approved yet. */
+export function isDesignNotApproved(err: unknown): boolean {
+	return err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED"
+}
+
+/** What a kept decision holds: the decision as finalized, and what publishing it needs. */
+interface DeferredDecision {
+	input: FinalizeInput
+	published: PublishedDecision
+}
+
+/**
+ * Keep a build approval the reviewer made before its design was approved, to be applied once the design is.
+ *
+ * Only the state checks a decision makes now are repeated here; the rest is checked when it is applied. Replaces an earlier kept decision for the same hand-in.
+ */
+export async function deferBuildApproval(input: FinalizeInput, published: PublishedDecision): Promise<void> {
+	const submission = await db.orm.public.PhaseSubmission.whereUnique({ id: input.submissionId })
+		.include("themeProject", proj => proj.include("user", user => user.select("id")))
+		.first()
+	const project = submission?.themeProject
+	if (!submission || !project?.user) throw new HttpError("NOT_FOUND", "Submission not found")
+	if (submission.phase !== Phase.BUILD)
+		throw new HttpError("VALIDATION_FAILED", "Only a build approval can wait for its design")
+	if (project.userId === input.reviewerId) throw new HttpError("FORBIDDEN", "You cannot review your own submission")
+	if (submission.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
+	if (statusFor(project, Phase.BUILD) !== PhaseStatus.in_review)
+		throw new HttpError("PHASE_LOCKED", "This phase is not awaiting a review")
+
+	const decision: DeferredDecision = { input, published }
+	await db.transaction(async tx => {
+		await tx.orm.public.DeferredBuildApproval.where({ submissionId: input.submissionId }).deleteAndCount()
+		await tx.orm.public.DeferredBuildApproval.create({
+			decision: JSON.parse(JSON.stringify(decision)) as JsonObject,
+			submissionId: input.submissionId,
+		})
+	})
+	await logAudit({
+		action: AuditAction.REVIEW_APPROVE,
+		actorEmail: input.reviewerEmail,
+		actorId: input.reviewerId,
+		metadata: { deferred: true, phase: Phase.BUILD },
+		targetId: project.id,
+		targetType: "ThemeProject",
+	})
+}
+
+/**
+ * Apply the build approval kept for a project, if there is one, now that its design is approved.
+ *
+ * A kept decision is removed once it applies, or once a refusal says it never will (the hand-in is gone or decided). A claim another reviewer holds keeps it for the next design approval, and so does a failure that is not a refusal.
+ */
+async function applyDeferredBuildApproval(themeProjectId: string): Promise<void> {
+	const build = await db.orm.public.PhaseSubmission.where({ phase: Phase.BUILD, resolvedAt: null, themeProjectId })
+		.orderBy(sub => sub.createdAt.desc())
+		.include("deferredApproval")
+		.first()
+	const kept = build?.deferredApproval
+	if (!build || !kept) return
+
+	const { input, published } = kept.decision as unknown as DeferredDecision
+	let outcome: FinalizeOutcome
+	try {
+		outcome = await finalizeReview({ ...input, submissionId: build.id })
+	} catch (err) {
+		if (err instanceof HttpError && err.code === "CLAIMED_BY_OTHER") return
+		if (err instanceof HttpError) await db.orm.public.DeferredBuildApproval.where({ id: kept.id }).deleteAndCount()
+		throw err
+	}
+	await db.orm.public.DeferredBuildApproval.where({ id: kept.id }).deleteAndCount()
+	await publishReviewDecision(outcome, published)
 }
 
 /**
