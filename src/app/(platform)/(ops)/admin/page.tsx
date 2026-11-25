@@ -183,7 +183,6 @@ async function SummaryTab() {
 							<EmptyState>Nobody has answered the NPS question yet.</EmptyState>
 						) : (
 							<div className="flex flex-wrap items-center justify-between gap-6">
-								<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
 								<ShareDonut
 									centerLabel="responses"
 									colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)"]}
@@ -195,6 +194,7 @@ async function SummaryTab() {
 										{ label: "Detractors (0-6)", value: nps.detractors },
 									]}
 								/>
+								<Stat label="Net Promoter Score" value={fmtNps(nps.score)} />
 							</div>
 						)}
 						<p className="hl-hint hl-note">
@@ -218,9 +218,12 @@ async function SummaryTab() {
 								measure="Project review status"
 								rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
 							/>
-							<div className="flex flex-wrap gap-3">
-								<Stat label="Reviewed today" value={reviewer.reviewedToday} />
-								<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
+							{/* A column beside the donut, and a row once the donut pushes it onto its own line: the figures' own width decides, see `.hl-figure-stack`. */}
+							<div className="hl-figure-stack">
+								<div className="hl-figure-stack-list">
+									<Stat label="Reviewed today" value={reviewer.reviewedToday} />
+									<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
+								</div>
 							</div>
 						</div>
 						<Table head={["Outcome", "Today", "All time"]}>

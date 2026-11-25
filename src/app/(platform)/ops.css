@@ -1197,6 +1197,27 @@
 		}
 	}
 
+	/*
+	 * ── Overview: the reviewer figures beside or below their donut ───────────
+	 * Beside the donut the figures have only the room left over, so they stack; once the donut wraps them onto their own line they have the panel's width and sit in a row. The box is its own container, so the switch follows the room it is given rather than a viewport breakpoint.
+	 */
+	.hl-figure-stack {
+		flex: 1 1 12rem;
+		min-width: 0;
+		container-type: inline-size;
+	}
+	.hl-figure-stack-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+	@container (min-width: 28rem) {
+		.hl-figure-stack-list {
+			flex-direction: row;
+			flex-wrap: wrap;
+		}
+	}
+
 	/* ── File inputs ───────────────────────────────────────────────────────── */
 	/* A file field reads as a drop target rather than an empty text box. */
 	.hl-admin-main input[type="file"] {
