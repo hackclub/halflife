@@ -1141,6 +1141,13 @@
 	.hl-attention a:not([data-zero="true"]) {
 		border-color: var(--color-accent);
 	}
+	/* The accent border is already on a link with work waiting, so the hover needs a ground of its own to show. */
+	.hl-attention a:hover {
+		background: var(--color-surface-sunken);
+	}
+	.hl-attention a:not([data-zero="true"]):hover {
+		background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
+	}
 	.hl-attention span {
 		font-size: 0.9rem;
 		color: var(--color-ink-muted);
