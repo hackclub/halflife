@@ -29,7 +29,7 @@ jobs:
                   persist-credentials: false
                   ref: ${{ github.head_ref || github.ref_name }}
             # Biome ships as a single binary, so there is no Bun toolchain or `bun install` (~1min) just to run the formatter. The version is pinned here to match the devDependency in bun.lock: setup-biome only reads npm, pnpm and yarn lockfiles, so left to detect it, it fell back to a release that rejects rules in biome.json.
-            - uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2
+            - uses: biomejs/setup-biome@77af1e9ce0cc32955e83b0c3e30c28ae3b81cab7 # v2
               with:
                   version: 2.6.3
 
