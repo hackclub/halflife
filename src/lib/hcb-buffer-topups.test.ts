@@ -6,9 +6,11 @@ import {
 	fundsReturn,
 	grantReturn,
 	grantReturnedAt,
+	MAKER_RETURN_STATUS,
 	memoKind,
 	returnedBy,
 	returnedById,
+	returnHcbStatus,
 	selectBufferTopUps,
 } from "@/lib/hcb-buffer-topups"
 
@@ -169,5 +171,17 @@ describe("returnedById", () => {
 		expect(returnedById("user_2", "user_1")).toBe("other")
 		expect(returnedById(null, "user_1")).toBe("unknown")
 		expect(returnedById("user_1", null)).toBe("unknown")
+	})
+})
+
+describe("returnHcbStatus", () => {
+	test("a maker's own return is payable, and an admin cancel or conversion keeps HCB's status", () => {
+		expect(returnHcbStatus({ grantStatus: "canceled", makerRequested: true, preActivation: false })).toBe(
+			MAKER_RETURN_STATUS,
+		)
+		expect(returnHcbStatus({ grantStatus: "canceled", makerRequested: false, preActivation: false })).toBe("canceled")
+		expect(returnHcbStatus({ grantStatus: "canceled", makerRequested: false, preActivation: true })).toBe(
+			"canceled before activation",
+		)
 	})
 })
