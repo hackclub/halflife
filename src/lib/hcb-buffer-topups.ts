@@ -100,12 +100,14 @@ export interface CanceledWithoutReturn {
 
 /** One return HCB shows, for the sync's report. Carries no names or emails. */
 export interface ReturnSeen {
-	/** The same check on HCB's user ids, which HCB sends where it leaves the email out. */
+	/** HCB's id for who requested the return, and the id of the grant's maker. Internal ids, no names or emails. */
 	byId: ReturnedBy
 	expired: boolean
 	grantId: string
 	grantStatus: string | null
+	makerId: string | null
 	returnedBy: ReturnedBy
+	senderId: string | null
 }
 
 /** HCB's card grant ids carry a `cdg_` prefix; the top-up table stores the bare hashid. Compare on the bare one. */
@@ -327,7 +329,9 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 				expired: found.expired,
 				grantId: bareGrantId(grant.id),
 				grantStatus: grant.status,
+				makerId: grant.ownerId,
 				returnedBy: returnedBy(found.disbursement.senderEmail, grant.email),
+				senderId: found.disbursement.senderId,
 			})
 		if (found === null && grant.status === "canceled")
 			canceledWithoutReturn.push({
