@@ -65,6 +65,15 @@ export function grantReturn(disbursements: readonly GrantDisbursement[]): GrantR
 export type ReturnedBy = "maker" | "other" | "unknown"
 
 /**
+ * The same question as `returnedBy`, asked of HCB's user ids rather than emails. An email is only present when HCB sends
+ * one, so this is the check to trust once the ids are seen to match.
+ */
+export function returnedById(senderId: string | null, ownerId: string | null): ReturnedBy {
+	if (senderId === null || ownerId === null) return "unknown"
+	return senderId === ownerId ? "maker" : "other"
+}
+
+/**
  * Who asked HCB for the return: the maker themselves, someone else, or HCB did not say. Only the email is compared, so
  * nothing else about the sender is kept.
  */
@@ -91,6 +100,8 @@ export interface CanceledWithoutReturn {
 
 /** One return HCB shows, for the sync's report. Carries no names or emails. */
 export interface ReturnSeen {
+	/** The same check on HCB's user ids, which HCB sends where it leaves the email out. */
+	byId: ReturnedBy
 	expired: boolean
 	grantId: string
 	grantStatus: string | null
@@ -312,6 +323,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 			beforeActivation !== null && found?.disbursement === beforeActivation ? PRE_ACTIVATION_STATUS : grant.status
 		if (found?.disbursement.createdAt)
 			returnsSeen.push({
+				byId: returnedById(found.disbursement.senderId, grant.ownerId),
 				expired: found.expired,
 				grantId: bareGrantId(grant.id),
 				grantStatus: grant.status,

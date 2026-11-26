@@ -8,6 +8,7 @@ import {
 	grantReturnedAt,
 	memoKind,
 	returnedBy,
+	returnedById,
 	selectBufferTopUps,
 } from "@/lib/hcb-buffer-topups"
 
@@ -16,6 +17,7 @@ const disbursement = (overrides: Partial<GrantDisbursement> = {}): GrantDisburse
 	createdAt: "2026-11-14T19:11:39.123Z",
 	memo: "Topup of grant to Polo",
 	senderEmail: null,
+	senderId: null,
 	transactionId: "txn_1",
 	...overrides,
 })
@@ -158,5 +160,14 @@ describe("fundsReturn", () => {
 			fundsReturn([disbursement({ amountCents: 2711, memo: "Return of funds from grant to Zoe" })])?.amountCents,
 		).toBe(2711)
 		expect(fundsReturn([disbursement({ memo: "Returning canceled grant to Zoe" })])).toBeNull()
+	})
+})
+
+describe("returnedById", () => {
+	test("the grant's own maker id is the maker, another id is other, and no sender id is unknown", () => {
+		expect(returnedById("user_1", "user_1")).toBe("maker")
+		expect(returnedById("user_2", "user_1")).toBe("other")
+		expect(returnedById(null, "user_1")).toBe("unknown")
+		expect(returnedById("user_1", null)).toBe("unknown")
 	})
 })
