@@ -82,7 +82,7 @@
 	"dependencies": {
 		"@anthropic-ai/sdk": "^1.13.0",
 		"@better-auth/kysely-adapter": "1.7.27",
-		"@prisma/orm-postgres": "8.0.0-rc.24",
+		"@prisma/orm-postgres": "8.0.0-rc.25",
 		"@tracespace/core": "5.0.0-alpha.0",
 		"@tracespace/identify-layers": "5.0.0-alpha.0",
 		"@tracespace/parser": "5.0.0-alpha.0",
