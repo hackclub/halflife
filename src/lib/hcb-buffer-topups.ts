@@ -279,6 +279,12 @@ export async function refuseCancelOrRecordReturn(
 	)
 }
 
+/** A project card a live run would mark RETURNED, with the HCB status it would store. A dry run hands these to the coin pass as a preview. */
+export interface PendingReturn {
+	hcbStatus: string | null
+	id: string
+}
+
 export interface BufferTopUpSyncResult {
 	alreadyRecorded: number
 	/** Canceled grants with no return disbursement at all. Only a dry run reports them. */
@@ -287,6 +293,8 @@ export interface BufferTopUpSyncResult {
 	/** How many grants HCB reports under each status, so the values a return can take can be read off a live run. */
 	grantStatuses: { [_: string]: number }
 	grantsScanned: number
+	/** The project cards a dry run would mark RETURNED, so the coin pass can preview what a live run pays. Empty on a live run, which writes them first. */
+	pendingReturns: PendingReturn[]
 	recorded: number
 	/** Live project or shop card rows the sync marked RETURNED. */
 	returnedMarked: number
@@ -416,6 +424,9 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		dryRun: input.dryRun,
 		grantStatuses,
 		grantsScanned: list.rows.length,
+		pendingReturns: input.dryRun
+			? returned.filter(r => r.table === "project").map(r => ({ hcbStatus: r.hcbStatus, id: r.id }))
+			: [],
 		recorded: input.dryRun ? 0 : fresh.length,
 		returnedMarked: input.dryRun ? 0 : returned.length,
 		returnsSeen: input.dryRun ? returnsSeen : [],

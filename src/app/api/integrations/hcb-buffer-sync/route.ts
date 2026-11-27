@@ -12,7 +12,7 @@ import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const dryRun = wantsDryRun(req)
 	const buffer = await syncBufferTopUps({ dryRun })
-	const coins = await syncGrantReturnCoins({ dryRun })
+	const coins = await syncGrantReturnCoins({ dryRun, pending: buffer.pendingReturns })
 	// The job's log cannot be read back, so a dry run also writes its findings to the app log, where they can be searched.
 	if (dryRun)
 		console.info(
