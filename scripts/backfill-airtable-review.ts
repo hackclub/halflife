@@ -21,7 +21,7 @@ function defaultFeedback(result: ReviewResult): string {
 /**
  * Fill `Loops - halfLifeReviewStatus`, `Loops - halfLifeReviewerNotes` and `Justification - Specific Technical Features` on the submission rows written before the mirror existed.
  *
- * A row is created at hand-in, as "Pending Review", and a decision reaches the base only through `mirrorReviewDecision` (lib/airtable/sync): Ari's webhook or the review console writes the status, the reviewer's note and their technical features onto the submission's row, and Loops emails the maker from there. Every row handled since that mirror landed carries all three columns; the rows already in the base do not, and this replays the state Postgres already holds onto them.
+ * A row is created at hand-in, as "Pending Review", and a decision reaches the base only through `mirrorReviewDecision` (lib/airtable/sync): the review console writes the status, the reviewer's note and their technical features onto the submission's row, and Loops emails the maker from there. Every row handled since that mirror landed carries all three columns; the rows already in the base do not, and this replays the state Postgres already holds onto them.
  *
  * The status is `reviewStatusFor` of the phase – the same mapping every write uses, so the column cannot disagree with the state it mirrors. The note is the project's standing review comment (`designReviewComments`/`buildReviewComments`), which is the string the live mirror writes for a console decision and for a reversal alike. The technical features are Ari's `review.justification.technical_features` on the standing review, written verbatim as the cell – nothing of the maker's own account is ever copied into it. Two cases need more than the comment:
  *
