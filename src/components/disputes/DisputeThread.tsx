@@ -58,7 +58,8 @@ export function DisputeThread({
 	sendBackUrl,
 }: Readonly<{
 	dispute: PhaseDispute
-	replyUrl: string
+	/** Where a reply is posted. Without it the thread is read-only, as the admin project list shows it. */
+	replyUrl?: string
 	viewer: "maker" | "reviewer"
 	/** Which world's kit draws the thread. The copy and controls are the same in both. */
 	surface?: "platform" | "console"
@@ -79,6 +80,7 @@ export function DisputeThread({
 	}
 
 	function reply() {
+		if (!replyUrl) return
 		if (!body.trim()) return refuse("Write a reply first.")
 		void run(
 			"reply",
@@ -110,7 +112,7 @@ export function DisputeThread({
 				))}
 			</ol>
 
-			{open ? (
+			{open && replyUrl ? (
 				<div className={skin.form}>
 					<label className={skin.label} htmlFor={`dispute-reply-${dispute.id}`}>
 						{viewer === "reviewer" ? "Reply to the maker" : "Add to this dispute"}
@@ -163,7 +165,9 @@ export function DisputeThread({
 						) : null}
 					</div>
 				</div>
-			) : (
+			) : null}
+			{open && !replyUrl ? <p className={skin.outcome}>Still open, waiting on a reviewer.</p> : null}
+			{open ? null : (
 				<p className={skin.outcome}>
 					{dispute.outcome === "upheld"
 						? `a reviewer sent this back for a fresh review on ${fmtDate(dispute.resolvedAt ?? dispute.at)}.`
