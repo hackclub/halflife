@@ -23,6 +23,7 @@ function grant(overrides: Partial<HcbCardGrantSummary> = {}): HcbCardGrantSummar
 		email: "maker@example.com",
 		id: "cdg_1",
 		merchantLock: [],
+		ownerId: null,
 		purpose: "Half Life parts – Robot arm",
 		status: "active",
 		...overrides,

@@ -62,10 +62,8 @@ export async function trackSideEffect<T>(
 		return result
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
-		// An upstream rejection says all it can in its message; in production its stack points into minified chunks and buries the one line an operator reads. A failure without a status is our own bug, so that one keeps its stack.
-		const rejected = typeof err === "object" && err !== null && "status" in err && "code" in err
-		if (rejected) console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}: ${message}`)
-		else console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}:`, err)
+		// One line: the failure's message is what an operator reads. A stack points into minified chunks in production, and the audit row below keeps the message.
+		console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}: ${message}`)
 		await logAudit({
 			action: kind === "airtable" ? AuditAction.AIRTABLE_SYNC_FAILURE : AuditAction.NOTIFICATION_FAILURE,
 			actorEmail: ctx.actorEmail,

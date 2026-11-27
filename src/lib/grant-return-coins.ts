@@ -1,10 +1,10 @@
 import "server-only"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
-import { HcbGrantCardStatus, LedgerKind, Phase } from "@/lib/enums"
+import { HcbGrantCardStatus, LedgerKind, Phase, PhaseStatus } from "@/lib/enums"
 import { grantCardCapUsd } from "@/lib/grant-card-policy"
 import { isWeekOneStarter } from "@/lib/grant-cards"
 import { readCardGrantSpend } from "@/lib/hcb"
-import { PRE_ACTIVATION_STATUS } from "@/lib/hcb-buffer-topups"
+import { MAKER_RETURN_STATUS, PRE_ACTIVATION_STATUS } from "@/lib/hcb-buffer-topups"
 import db from "@/lib/prisma8"
 
 /**
@@ -31,11 +31,10 @@ export interface GrantReturnCoinsResult {
 }
 
 /**
- * The HCB grant statuses that mean the maker handed the balance back, and so earn coins. A converted grant reads differently and is left out on purpose: its money goes out as a reimbursement.
- *
- * Empty until the statuses HCB reports are read off a live run, so nothing is paid on a guess.
+ * The HCB grant statuses that mean the maker handed the balance back, and so earn coins. A conversion to a reimbursement is
+ * requested by someone other than the maker, so it never gets this status and is left out on purpose.
  */
-export const PLAIN_RETURN_STATUSES: readonly string[] = []
+export const PLAIN_RETURN_STATUSES: readonly string[] = [MAKER_RETURN_STATUS]
 
 /**
  * Whether a returned card earns coins. A grant cancelled before activation always does: the site counted it as issued, and
@@ -79,7 +78,7 @@ export async function syncGrantReturnCoins(input: { dryRun: boolean }): Promise<
 		projectIds.length === 0
 			? []
 			: await db.orm.public.ThemeProject.where(project => project.id.in(projectIds))
-					.select("grantUsd", "id", "starterProjectId", "tier", "title")
+					.select("designStatus", "grantUsd", "id", "starterProjectId", "tier", "title")
 					.all()
 	const declinedRows =
 		projectIds.length === 0
@@ -95,6 +94,10 @@ export async function syncGrantReturnCoins(input: { dryRun: boolean }): Promise<
 		const group = byProject.get(project.id) ?? []
 		const skip = (reason: string): void => {
 			result.skipped.push({ reason, themeProjectId: project.id })
+		}
+		if (project.designStatus !== PhaseStatus.approved) {
+			skip("The design is not approved, so nothing is paid")
+			continue
 		}
 		if (declined.has(project.id)) {
 			skip("Parts funding was declined, so nothing was taken out of the cap")

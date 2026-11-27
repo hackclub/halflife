@@ -20,6 +20,25 @@ import { redactForLog } from "@/lib/redact"
 import { formatDbTimestamp } from "@/lib/time"
 import { isRecord } from "@/lib/unknown"
 
+/**
+ * One log argument as a single scrubbed line, for better-auth's logger.
+ *
+ * An Error prints as its name, message and cause: printed whole it dumps its stack and every property, and a refused database connection is a stack of identical `[cause]` lines. An object carrying a message (better-auth's API errors) prints as that message. Anything else is compact JSON, so an upstream response stays on one line too. Upstream provider errors can echo request fields, so every line is scrubbed of emails and tokens before it reaches the logs (L10).
+ */
+function logArgText(arg: unknown): string {
+	if (arg instanceof Error) {
+		const cause = arg.cause instanceof Error ? `: ${arg.cause.message}` : ""
+		return redactForLog(`${arg.name}: ${arg.message}${cause}`)
+	}
+	if (typeof arg === "string") return redactForLog(arg)
+	if (isRecord(arg) && typeof arg.message === "string") return redactForLog(arg.message)
+	try {
+		return redactForLog(JSON.stringify(arg) ?? String(arg))
+	} catch {
+		return "[unprintable]"
+	}
+}
+
 // Exactly the scopes enabled on Half Life's HCA app. HCA refuses the whole sign-in ("The requested scope is invalid") if any one is not, so this list has to match the app's settings, not HCA's docs. `basic_info` carries name and verification_status; `email` is asked for on its own so the standard `email_verified` claim comes with it, which the superadmin bootstrap below trusts. Asking for `verification_status` by name is refused.
 const hcaScopes = ["openid", "profile", "email", "basic_info", "slack_id"]
 if (PULL_PII) hcaScopes.push("address", "birthdate")
@@ -305,17 +324,13 @@ export const auth = betterAuth({
 				console.info(`[auth] ignored a duplicate or expired OAuth callback (state ${state})`)
 				return
 			}
-			const line = `${new Date().toISOString()} ${level.toUpperCase()} [Better Auth]: ${message}`
-			// Upstream provider errors can echo request fields; scrub emails/tokens before they reach the logs (L10).
-			// An Error prints as its name, message and cause. Printed whole, it dumps its stack and every property, and a refused database connection is a stack of identical `[cause]` lines.
-			const safeArgs = args.map(a => {
-				if (!(a instanceof Error)) return redactForLog(a)
-				const cause = a.cause instanceof Error ? `: ${a.cause.message}` : ""
-				return redactForLog(`${a.name}: ${a.message}${cause}`)
-			})
-			if (level === "error") console.error(line, ...safeArgs)
-			else if (level === "warn") console.warn(line, ...safeArgs)
-			else console.log(line, ...safeArgs)
+			// The platform stamps the time and the level on every line, so this one only names the source.
+			const line = `[Better Auth]: ${message}`
+			const text = args.map(logArgText).join(" ")
+			const full = text ? `${line} ${text}` : line
+			if (level === "error") console.error(full)
+			else if (level === "warn") console.warn(full)
+			else console.log(full)
 		},
 	},
 

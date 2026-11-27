@@ -542,6 +542,8 @@ const row = (amountCents: number, createdAt: string | null) => ({
 	amountCents,
 	createdAt,
 	memo: null,
+	senderEmail: null,
+	senderId: null,
 	transactionId: null,
 })
 

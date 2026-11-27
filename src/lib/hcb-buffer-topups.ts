@@ -39,6 +39,23 @@ export interface GrantReturn {
 /** HCB's memo for a balance returned without a cancel, as an admin cancelling a grant before it was activated sees it. */
 export const GRANT_FUNDS_RETURN_MEMO_PREFIX = "Return of funds from grant to "
 
+/** The status a grant's row takes when the maker themselves handed the balance back. Only a maker's own return is paid. */
+export const MAKER_RETURN_STATUS = "canceled by maker"
+
+/**
+ * The status a returned grant's row takes. A grant cancelled before activation and a maker's own return are payable.
+ * Anything else, such as an admin cancel or a conversion to a reimbursement, keeps HCB's own status and is held.
+ */
+export function returnHcbStatus(input: {
+	grantStatus: string | null
+	makerRequested: boolean
+	preActivation: boolean
+}): string | null {
+	if (input.preActivation) return PRE_ACTIVATION_STATUS
+	if (input.makerRequested && input.grantStatus === "canceled") return MAKER_RETURN_STATUS
+	return input.grantStatus
+}
+
 /** The status a grant's row takes when HCB cancelled it before its card was activated, so nothing was ever spent. */
 export const PRE_ACTIVATION_STATUS = "canceled before activation"
 
@@ -71,6 +88,21 @@ export type ReturnedBy = "maker" | "other" | "unknown"
 export function returnedById(senderId: string | null, ownerId: string | null): ReturnedBy {
 	if (senderId === null || ownerId === null) return "unknown"
 	return senderId === ownerId ? "maker" : "other"
+}
+
+/**
+ * HCB's own system account. When a maker returns a grant through HCB, HCB sends the balance back under this account, so a
+ * return it sends counts as the maker's. Matched by id: the name "HCB" is not something an account can be trusted to keep.
+ */
+export const HCB_SYSTEM_USER_ID = "usr_ZBtVvG"
+
+/**
+ * Whether a return counts as the maker's: sent from the grant's own account, or from HCB's system account. An admin's own
+ * account is neither, so an admin cancel stays held.
+ */
+export function returnedByMaker(senderId: string | null, ownerId: string | null): boolean {
+	if (senderId === HCB_SYSTEM_USER_ID) return true
+	return returnedById(senderId, ownerId) === "maker"
 }
 
 /**
@@ -321,8 +353,11 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		const beforeActivation = grant.status === "canceled" && grant.cardId === null ? fundsReturn(read.rows) : null
 		const found: GrantReturn | null =
 			grantReturn(read.rows) ?? (beforeActivation === null ? null : { disbursement: beforeActivation, expired: false })
-		const hcbStatus =
-			beforeActivation !== null && found?.disbursement === beforeActivation ? PRE_ACTIVATION_STATUS : grant.status
+		const hcbStatus = returnHcbStatus({
+			grantStatus: grant.status,
+			makerRequested: found !== null && !found.expired && returnedByMaker(found.disbursement.senderId, grant.ownerId),
+			preActivation: beforeActivation !== null && found?.disbursement === beforeActivation,
+		})
 		if (found?.disbursement.createdAt)
 			returnsSeen.push({
 				byId: returnedById(found.disbursement.senderId, grant.ownerId),
