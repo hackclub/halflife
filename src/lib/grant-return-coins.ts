@@ -70,11 +70,10 @@ export async function syncGrantReturnCoins(input: {
 		.select("amountCents", "hcbCardGrantId", "hcbStatus", "id", "spentCents", "status", "themeProjectId", "userId")
 		.all()
 	const cards: ReturnedDesignCard[] = []
-	for (const row of rows) 
-		// A live run has already marked its returns, so an unmarked card is not a return yet. A dry run previews the ones it would mark.
+	// A live run has already marked its returns, so an unmarked card is not a return yet. A dry run previews the ones it would mark.
+	for (const row of rows)
 		if (pendingById.has(row.id)) cards.push({ ...row, hcbStatus: pendingById.get(row.id) ?? null })
 		else if (row.status === HcbGrantCardStatus.RETURNED) cards.push(row)
-	
 
 	const byProject = new Map<string, ReturnedDesignCard[]>()
 	for (const card of cards) {
