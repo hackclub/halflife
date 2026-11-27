@@ -1,6 +1,6 @@
 import "server-only"
 import type { ProjectRowData } from "@/app/(platform)/(ops)/admin/projects/ProjectRow"
-import type { ProjectManageFlags } from "@/app/components/admin/ProjectManagePanel"
+import type { ProjectManageDispute, ProjectManageFlags } from "@/app/components/admin/ProjectManagePanel"
 import { themeLabel } from "@/lib/config/program"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
@@ -8,7 +8,7 @@ import { PhaseStatus, Theme } from "@/lib/enums"
 import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { statusFor } from "@/lib/phase"
 import { isPhaseDecided } from "@/lib/program"
-import type { ProjectDirectoryRow, ProjectFilters } from "@/lib/queries/admin"
+import type { ProjectDirectoryDispute, ProjectDirectoryRow, ProjectFilters } from "@/lib/queries/admin"
 
 /** How many projects one page of the admin list holds. */
 export const PROJECT_PAGE_SIZE = 50
@@ -63,6 +63,27 @@ export function projectAccessFor(roles: Role[]): { flags: ProjectManageFlags; in
 	return { flags, includePii }
 }
 
+/** A project's disputes as its manage panel draws them: plain JSON, with epoch times and reviewer names worked out. */
+export function toManageDisputes(disputes: ProjectDirectoryDispute[]): ProjectManageDispute[] {
+	return disputes.map(item => ({
+		dispute: {
+			at: item.createdAt.getTime(),
+			id: item.id,
+			messages: item.messages.map(message => ({
+				at: message.createdAt.getTime(),
+				body: message.body,
+				fromReviewer: message.fromReviewer,
+				id: message.id,
+				reviewerName: message.author ? displayName(message.author) : null,
+			})),
+			note: item.note,
+			outcome: item.outcome,
+			resolvedAt: item.resolvedAt?.getTime() ?? null,
+		},
+		phase: item.phase,
+	}))
+}
+
 /** One project as the list draws it. Everything is worked out on the server, so the payload is plain JSON. */
 export function toProjectRow(project: ProjectDirectoryRow, now: Date): ProjectRowData {
 	const userExtension =
@@ -72,6 +93,7 @@ export function toProjectRow(project: ProjectDirectoryRow, now: Date): ProjectRo
 	return {
 		buildStatus: project.buildStatus,
 		designStatus: project.designStatus,
+		disputes: toManageDisputes(project.disputes),
 		extension: project.submissionExtensionUntil?.toISOString() ?? null,
 		extensionLabel: project.submissionExtensionUntil ? formatUtcDateTime(project.submissionExtensionUntil) : null,
 		githubRepo: project.githubRepo,

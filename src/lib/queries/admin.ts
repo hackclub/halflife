@@ -172,6 +172,8 @@ export interface ProjectFilters {
 export interface ProjectDirectoryRow {
 	buildStatus: Models.public_ThemeProject["buildStatus"]
 	designStatus: Models.public_ThemeProject["designStatus"]
+	/** The disputes raised on this project's hand-ins, oldest hand-in first. Empty for most projects. */
+	disputes: ProjectDirectoryDispute[]
 	githubRepo: string | null
 	grantSent: boolean
 	grantUsd: number | null
@@ -200,6 +202,65 @@ export interface ProjectDirectoryRow {
 		title: string
 	}[]
 }
+
+/** One maker's dispute on a hand-in, with its thread, as the project list needs it. */
+export interface ProjectDirectoryDispute {
+	createdAt: Date
+	id: string
+	messages: {
+		author: { displayName: string | null; name: string | null } | null
+		body: string
+		createdAt: Date
+		fromReviewer: boolean
+		id: string
+	}[]
+	note: string
+	outcome: "upheld" | "stood" | null
+	phase: Phase
+	resolvedAt: Date | null
+}
+
+/** A hand-in with its dispute loaded, as the admin project reads select it. */
+interface DisputeSubmissionRow {
+	dispute: {
+		createdAt: string
+		id: string
+		messages: {
+			author: { displayName: string | null; name: string | null } | null
+			body: string
+			createdAt: string
+			fromReviewer: boolean
+			id: string
+		}[]
+		note: string
+		outcome: ProjectDirectoryDispute["outcome"]
+		resolvedAt: string | null
+	} | null
+	phase: Phase
+}
+
+/** A project's disputes, one per hand-in that has one, with the database's timestamp text parsed. */
+const projectDisputesOf = (submissions: DisputeSubmissionRow[]): ProjectDirectoryDispute[] =>
+	submissions.flatMap(({ dispute, phase }) => {
+		if (!dispute) return []
+		return [
+			{
+				createdAt: parseDbTimestamp(dispute.createdAt),
+				id: dispute.id,
+				messages: dispute.messages.map(message => ({
+					author: message.author,
+					body: message.body,
+					createdAt: parseDbTimestamp(message.createdAt),
+					fromReviewer: message.fromReviewer,
+					id: message.id,
+				})),
+				note: dispute.note,
+				outcome: dispute.outcome,
+				phase,
+				resolvedAt: parseNullableTimestamp(dispute.resolvedAt),
+			},
+		]
+	})
 
 export async function listProjects(
 	opts: ProjectFilters & { cursor?: string; limit: number },
@@ -290,6 +351,19 @@ export async function listProjects(
 				.where({ phase: "DESIGN" })
 				.where(topUp => topUp.sentAt.isNotNull()),
 		)
+		.include("submissions", submissions =>
+			submissions
+				.select("id", "phase")
+				.include("dispute", dispute =>
+					dispute.select("createdAt", "id", "note", "outcome", "resolvedAt").include("messages", messages =>
+						messages
+							.select("body", "createdAt", "fromReviewer", "id")
+							.include("author", author => author.select("displayName", "name"))
+							.orderBy(message => message.createdAt.asc()),
+					),
+				)
+				.orderBy(submission => submission.createdAt.asc()),
+		)
 		.include("user", user => user.select("displayName", "email", "id", "name", "slackId", "submissionExtensionUntil"))
 		.include("workSessions", sessions =>
 			sessions
@@ -304,6 +378,7 @@ export async function listProjects(
 		return {
 			buildStatus: row.buildStatus,
 			designStatus: row.designStatus,
+			disputes: projectDisputesOf(row.submissions),
 			githubRepo: row.githubRepo,
 			grantSent: row.hcbGrantTopUps.length > 0,
 			grantUsd: row.grantUsd,
@@ -369,6 +444,8 @@ export interface UserDetail {
 		designBankedCoins: number | null
 		designSpendableCoins: number | null
 		designStatus: Models.public_ThemeProject["designStatus"]
+		/** The disputes raised on this project's hand-ins, oldest hand-in first. */
+		disputes: ProjectDirectoryDispute[]
 		grantUsd: number | null
 		hcbGrantCards: { hcbCardGrantId: string | null; id: string; status: string }[]
 		hcbGrantTopUps: { id: string }[]
@@ -477,6 +554,19 @@ export async function getUserDetail(
 						.where({ phase: "DESIGN" })
 						.where(topUp => topUp.sentAt.isNotNull()),
 				)
+				.include("submissions", submissions =>
+					submissions
+						.select("id", "phase")
+						.include("dispute", dispute =>
+							dispute.select("createdAt", "id", "note", "outcome", "resolvedAt").include("messages", messages =>
+								messages
+									.select("body", "createdAt", "fromReviewer", "id")
+									.include("author", author => author.select("displayName", "name"))
+									.orderBy(message => message.createdAt.asc()),
+							),
+						)
+						.orderBy(submission => submission.createdAt.asc()),
+				)
 				.include("workSessions", sessions =>
 					sessions
 						.select("effectiveDate", "hoursApproved", "hoursClaimed", "id", "phase", "title")
@@ -512,8 +602,9 @@ export async function getUserDetail(
 		slackDisplayName: row.slackDisplayName,
 		slackId: row.slackId,
 		submissionExtensionUntil: parseNullableTimestamp(row.submissionExtensionUntil),
-		themeProjects: row.themeProjects.map(project => ({
+		themeProjects: row.themeProjects.map(({ submissions, ...project }) => ({
 			...project,
+			disputes: projectDisputesOf(submissions),
 			submissionExtensionUntil: parseNullableTimestamp(project.submissionExtensionUntil),
 		})),
 		verificationStatus: row.verificationStatus,

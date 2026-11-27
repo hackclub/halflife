@@ -6,13 +6,23 @@ import { ActionButton } from "@/app/components/forms/ActionButton"
 import { BomSyncForm } from "@/app/components/forms/BomSyncForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
 import { JournalHoursEditor, type JournalHoursEntry } from "@/app/components/forms/JournalHoursEditor"
+import { DisputeThread } from "@/components/disputes/DisputeThread"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
-import type { Theme } from "@/lib/enums"
+import { Phase, type Theme } from "@/lib/enums"
+import type { PhaseDispute } from "@/lib/queries/project-page"
+
+/** A maker's dispute on one of a project's hand-ins, with the phase it was raised in. */
+export interface ProjectManageDispute {
+	dispute: PhaseDispute
+	phase: Phase
+}
 
 /** What a project's manage panel acts on. Both the projects list and a user's themed projects hand this to the same panel. */
 export interface ProjectManageData {
 	buildStatus: string
 	designStatus: string
+	/** Every dispute on the project, oldest first. Only the projects list fills this, so the panel leaves the section out when it is absent. */
+	disputes?: ProjectManageDispute[]
 	/** ISO string, so the extension form edits the same instant the server holds. */
 	extension: string | null
 	grantSent: boolean
@@ -45,7 +55,8 @@ function canHandIn(status: string): boolean {
 /** Which sections a project's panel would draw. A manage button is only offered when this is true. */
 export function hasProjectActions(data: ProjectManageData, flags: ProjectManageFlags): boolean {
 	return (
-		flags.canExtend
+		(data.disputes?.length ?? 0) > 0
+		|| flags.canExtend
 		|| flags.canMoveTheme
 		|| (flags.canSendGrant && grantAvailable(data))
 		|| flags.canSyncBom
@@ -84,6 +95,20 @@ export function ProjectManageSections({
 
 	return (
 		<>
+			{data.disputes && data.disputes.length > 0 ? (
+				<ManageSection title="Disputes">
+					<div className="hl-stack">
+						{data.disputes.map(({ dispute, phase }) => (
+							<div className="hl-stack hl-stack--tight" key={dispute.id}>
+								<p className="hl-hint" style={{ marginTop: 0 }}>
+									{phase === Phase.DESIGN ? "Design" : "Build"} dispute
+								</p>
+								<DisputeThread dispute={dispute} surface="console" viewer="reviewer" />
+							</div>
+						))}
+					</div>
+				</ManageSection>
+			) : null}
 			{grantAction ? (
 				<ManageSection title="Send grant">
 					<GrantForm alreadySent={data.grantSent} amountUsd={data.grantUsd ?? 0} projectId={data.id} />
