@@ -47,7 +47,7 @@ const CardGrantBody = z.object({
 	merchant_lock: z.union([z.string(), z.array(z.string())]).nullish(),
 	purpose: z.string().nullish(),
 	status: z.string().optional(),
-	user: z.object({ email: z.string().nullish() }).nullish(),
+	user: z.object({ email: z.string().nullish(), id: z.string().nullish() }).nullish(),
 })
 
 function base(): string {
@@ -299,6 +299,10 @@ export interface GrantDisbursement {
 	/** ISO timestamp HCB recorded the disbursement at. */
 	createdAt: string | null
 	memo: string | null
+	/** The email of the user HCB recorded as requesting the disbursement, lowercased. Null when HCB did not say. */
+	senderEmail: string | null
+	/** HCB's id for the user who requested the disbursement. Null when HCB did not say. */
+	senderId: string | null
 	transactionId: string | null
 }
 
@@ -334,6 +338,8 @@ export async function listCardGrantDisbursements(grantHashid: string): Promise<G
 			amountCents: d.amount_cents,
 			createdAt: typeof d.created_at === "string" ? d.created_at : null,
 			memo: typeof d.memo === "string" ? d.memo : null,
+			senderEmail: readOwnerEmail(isRecord(d.sender) ? d.sender : null),
+			senderId: isRecord(d.sender) && typeof d.sender.id === "string" ? d.sender.id : null,
 			transactionId: typeof d.transaction_id === "string" ? d.transaction_id : null,
 		})
 	}
@@ -384,6 +390,8 @@ export interface HcbCardGrantSummary {
 	id: string
 	/** The card's own merchant allowlist, before the organisation's setting. Null when HCB did not say. */
 	merchantLock: string[] | null
+	/** HCB's id for the maker the grant was issued to. Null when HCB did not say. */
+	ownerId: string | null
 	purpose: string | null
 	status: string | null
 }
@@ -412,6 +420,7 @@ function toCardGrantSummary(data: z.infer<typeof ListedCardGrantBody>): HcbCardG
 		email: readOwnerEmail(data.user) ?? readOwnerEmail({ email: data.email }),
 		id: data.id,
 		merchantLock: readMerchantList(data.merchant_lock),
+		ownerId: data.user?.id ?? null,
 		purpose: data.purpose ?? null,
 		status: data.status ?? null,
 	}

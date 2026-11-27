@@ -1,13 +1,57 @@
 import { describe, expect, test } from "bun:test"
 import type { GrantDisbursement } from "@/lib/hcb"
-import { bareGrantId, bufferTopUpKey, grantReturnedAt, selectBufferTopUps } from "@/lib/hcb-buffer-topups"
+import {
+	bareGrantId,
+	bufferTopUpKey,
+	fundsReturn,
+	grantReturn,
+	grantReturnedAt,
+	MAKER_RETURN_STATUS,
+	memoKind,
+	returnedBy,
+	returnedById,
+	returnHcbStatus,
+	selectBufferTopUps,
+} from "@/lib/hcb-buffer-topups"
 
 const disbursement = (overrides: Partial<GrantDisbursement> = {}): GrantDisbursement => ({
 	amountCents: 200,
 	createdAt: "2026-11-14T19:11:39.123Z",
 	memo: "Topup of grant to Polo",
+	senderEmail: null,
+	senderId: null,
 	transactionId: "txn_1",
 	...overrides,
+})
+
+describe("grantReturn", () => {
+	test("an expired grant's return is found, but is not a hand-back", () => {
+		const found = grantReturn([
+			disbursement({ createdAt: "2026-12-01T00:00:00.000Z", memo: "Returning expired grant to Ellie" }),
+		])
+		expect(found?.expired).toBe(true)
+		expect(grantReturnedAt([disbursement({ memo: "Returning expired grant to Ellie" })])).toBeNull()
+	})
+
+	test("a hand-back wins over an expiry on the same grant", () => {
+		const found = grantReturn([
+			disbursement({ createdAt: "2026-12-01T00:00:00.000Z", memo: "Returning expired grant to Ellie" }),
+			disbursement({ createdAt: "2026-11-19T10:00:00.000Z", memo: "Returning canceled grant to Ellie" }),
+		])
+		expect(found?.expired).toBe(false)
+		expect(found?.disbursement.createdAt).toBe("2026-11-19T10:00:00.000Z")
+	})
+})
+
+describe("returnedBy", () => {
+	test("the grant's own email is the maker", () => {
+		expect(returnedBy("Maker@Example.com", "maker@example.com")).toBe("maker")
+	})
+
+	test("another sender is other, and no sender is unknown", () => {
+		expect(returnedBy("hcb-system@example.com", "maker@example.com")).toBe("other")
+		expect(returnedBy(null, "maker@example.com")).toBe("unknown")
+	})
 })
 
 describe("buffer top-ups", () => {
@@ -99,5 +143,45 @@ describe("grantReturnedAt", () => {
 				disbursement({ amountCents: 6432, createdAt: null, memo: "Returning canceled grant to Ellie" }),
 			]),
 		).toBeNull()
+	})
+})
+
+describe("memoKind", () => {
+	test("drops the name after to or from, and keeps the kind", () => {
+		expect(memoKind("Grant to Ellie")).toBe("Grant")
+		expect(memoKind("Returning canceled grant to Max Lin")).toBe("Returning canceled grant")
+		expect(memoKind("Withdrawal from grant to Polo")).toBe("Withdrawal")
+		expect(memoKind("AliExpress")).toBe("AliExpress")
+		expect(memoKind(null)).toBe("no memo")
+	})
+})
+
+describe("fundsReturn", () => {
+	test("a balance returned under HCB's funds memo is found, and a hand-back is not one", () => {
+		expect(
+			fundsReturn([disbursement({ amountCents: 2711, memo: "Return of funds from grant to Zoe" })])?.amountCents,
+		).toBe(2711)
+		expect(fundsReturn([disbursement({ memo: "Returning canceled grant to Zoe" })])).toBeNull()
+	})
+})
+
+describe("returnedById", () => {
+	test("the grant's own maker id is the maker, another id is other, and no sender id is unknown", () => {
+		expect(returnedById("user_1", "user_1")).toBe("maker")
+		expect(returnedById("user_2", "user_1")).toBe("other")
+		expect(returnedById(null, "user_1")).toBe("unknown")
+		expect(returnedById("user_1", null)).toBe("unknown")
+	})
+})
+
+describe("returnHcbStatus", () => {
+	test("a maker's own return is payable, and an admin cancel or conversion keeps HCB's status", () => {
+		expect(returnHcbStatus({ grantStatus: "canceled", makerRequested: true, preActivation: false })).toBe(
+			MAKER_RETURN_STATUS,
+		)
+		expect(returnHcbStatus({ grantStatus: "canceled", makerRequested: false, preActivation: false })).toBe("canceled")
+		expect(returnHcbStatus({ grantStatus: "canceled", makerRequested: false, preActivation: true })).toBe(
+			"canceled before activation",
+		)
 	})
 })

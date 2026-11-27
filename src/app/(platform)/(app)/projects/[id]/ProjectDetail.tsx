@@ -14,7 +14,9 @@ import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { getTier } from "@/lib/config/tiers"
 import { cx } from "@/lib/cx"
+import { Phase } from "@/lib/enums"
 import { FUNDING_STATE_TEXT, fundingChipTone } from "@/lib/funding-state"
+import { isPhaseDecided } from "@/lib/project-lock"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewChipTone } from "@/lib/review-state"
@@ -675,6 +677,9 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 	// The tier is final once the design decision is approved, not the moment it is handed in: a phase returned for changes is still the maker's to revise, and the week a return reopens is exactly when they would. The build week inherits the design's tier, and a warm-up's one submit claims it the same way.
 	const tierLocked = statusOf(week) === "approved"
+	// The Hackatime panel opens on the build week once the design is decided, since a decided phase takes no more hours. A season project's `week` is always its design week, so the phase has to be read from the phase list.
+	const designDecided = data.phases.some(p => p.phase === Phase.DESIGN && isPhaseDecided(p.status))
+	const hackatimeDefaultPhase = warmup ? week.phase : designDecided ? "build" : "design"
 	const grantUsd = getTier(project.tier)?.grantUsd ?? 0
 	// Kept in a local so the phase survives into the unsubmit handler below.
 	const { inReview } = data
@@ -801,7 +806,11 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 				</Panel>
 			</ProjectSection>
 
-			<HackatimeLinks phase={week.phase} projectId={project.id} />
+			<HackatimeLinks
+				defaultPhase={hackatimeDefaultPhase}
+				phases={warmup ? [week.phase] : ["design", "build"]}
+				projectId={project.id}
+			/>
 
 			{/* ---------- the parts ---------- */}
 			<ProjectSection id="bom-title" title="Bill of materials">

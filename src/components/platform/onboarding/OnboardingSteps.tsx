@@ -419,7 +419,8 @@ export function TrackingStep({ flow }: { flow: OnboardingFlowContext }) {
 				). A <strong className="text-navy">timelapse</strong> is a screenrecording or video of yourself working on your
 				project. Every approved hour you log past the funding for your chosen tier earns{" "}
 				<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>. Those funded hours pay for your
-				parts instead. Any parts money you do not spend goes back to Half Life, not coins. Coins are spent in the shop.
+				parts instead. Any parts money you do not spend is paid to you as coins if you hand the card back, up to your
+				tier's grant. Coins are spent in the shop.
 			</p>
 			<ul className="grid gap-3 sm:grid-cols-3">
 				{[

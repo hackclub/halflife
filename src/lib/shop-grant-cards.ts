@@ -15,6 +15,7 @@ import {
 	readOrganizationBalanceCents,
 	reconcileCardGrantIssue,
 } from "@/lib/hcb"
+import { refuseCancelOrRecordReturn } from "@/lib/hcb-buffer-topups"
 import { lockKey } from "@/lib/locks"
 import { payoutBlockReason } from "@/lib/moderation"
 import { formatUsd } from "@/lib/money"
@@ -475,7 +476,11 @@ export async function cancelShopGrantCard(id: string, admin: Admin): Promise<Sho
 		)
 	if (knownSpent === null) await db.orm.public.HcbShopGrantCard.where({ id }).update({ spentCents })
 
-	await cancelCardGrant(row.hcbCardGrantId)
+	try {
+		await cancelCardGrant(row.hcbCardGrantId)
+	} catch (err) {
+		await refuseCancelOrRecordReturn(err, "shop", id, row.hcbCardGrantId)
+	}
 	const { ip, userAgent } = await requestInfo()
 	const { userId } = await db.orm.public.ShopOrder.whereUnique({ id: row.shopOrderId }).select("userId").firstOrThrow()
 	await db.transaction(async tx => {
