@@ -75,4 +75,4 @@ None of this should conflict with the formatting or linting rules of Biome or ox
 
 ## Product copy
 
-- Parts money is only for parts. When a grant card is handed back, the part not spent is paid as coins, counted as the tier's grant less what was spent (top-ups do not count), and only for a project with a tier that did not decline its grant. A card converted to a reimbursement earns no coins. Coins otherwise come only from approved hours past a tier's funded block.
+- Parts money is only for parts. When a grant card is handed back, the part not spent is paid as coins, counted as the lower of the tier's grant and the approved grant, less what was spent (top-ups do not count), and only for a project with a tier that did not decline its grant. A card converted to a reimbursement earns no coins. Coins otherwise come only from approved hours past a tier's funded block.
