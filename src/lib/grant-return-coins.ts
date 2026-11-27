@@ -10,14 +10,13 @@ import db from "@/lib/prisma8"
 /**
  * Coins for a design whose grant card was handed back, or converted to a reimbursement.
  *
- * The maker could have claimed up to the project's cap, so the part of the cap they did not spend is theirs in coins: the cap less what the cards spent. Whatever was never issued counts the same as whatever came back, and top-ups add nothing, since they are not part of the cap.
+ * The maker is paid the part of the cap they did not spend: the cap less everything the grant spent. Spend counts every top-up and any amount above the tier, since the maker spent that money too, but neither raises the cap, so a top-up or an over-tier amount that comes back is not paid as coins.
  *
  * One coin is one dollar, and whole coins only, so a half-dollar left over is not paid.
  */
-export function grantReturnCoins(capUsd: number, issuedCents: number, spentCents: number): number {
+export function grantReturnCoins(capUsd: number, spentCents: number): number {
 	const capCents = Math.round(capUsd * 100)
-	const spent = Math.min(spentCents, issuedCents)
-	return Math.max(0, Math.floor((capCents - spent) / 100))
+	return Math.max(0, Math.floor((capCents - spentCents) / 100))
 }
 
 export interface GrantReturnCoinsResult {
@@ -44,7 +43,6 @@ const isPayableReturn = (hcbStatus: string | null): boolean =>
 	hcbStatus === PRE_ACTIVATION_STATUS || (hcbStatus !== null && PLAIN_RETURN_STATUSES.includes(hcbStatus))
 
 interface ReturnedDesignCard {
-	amountCents: number
 	hcbCardGrantId: string | null
 	hcbStatus: string | null
 	id: string
@@ -63,17 +61,19 @@ export async function syncGrantReturnCoins(input: {
 	/** A dry run's preview: the cards the buffer sync would mark RETURNED, with the HCB status it would store. Empty on a live run. */
 	pending?: readonly PendingReturn[]
 }): Promise<GrantReturnCoinsResult> {
-	const pendingById = new Map<string, string | null>()
-	for (const pending of input.pending ?? []) pendingById.set(pending.id, pending.hcbStatus)
+	const pendingById = new Map<string, PendingReturn>()
+	for (const pending of input.pending ?? []) pendingById.set(pending.id, pending)
 	const rows = await db.orm.public.HcbGrantCard.where({ phase: Phase.DESIGN })
 		.where(row => row.status.in([HcbGrantCardStatus.RETURNED, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]))
-		.select("amountCents", "hcbCardGrantId", "hcbStatus", "id", "spentCents", "status", "themeProjectId", "userId")
+		.select("hcbCardGrantId", "hcbStatus", "id", "spentCents", "status", "themeProjectId", "userId")
 		.all()
 	const cards: ReturnedDesignCard[] = []
 	// A live run has already marked its returns, so an unmarked card is not a return yet. A dry run previews the ones it would mark.
-	for (const row of rows)
-		if (pendingById.has(row.id)) cards.push({ ...row, hcbStatus: pendingById.get(row.id) ?? null })
+	for (const row of rows) {
+		const pending = pendingById.get(row.id)
+		if (pending) cards.push({ ...row, hcbStatus: pending.hcbStatus, spentCents: pending.spentCents ?? row.spentCents })
 		else if (row.status === HcbGrantCardStatus.RETURNED) cards.push(row)
+	}
 
 	const byProject = new Map<string, ReturnedDesignCard[]>()
 	for (const card of cards) {
@@ -148,9 +148,8 @@ export async function syncGrantReturnCoins(input: {
 			continue
 		}
 
-		const issuedCents = group.reduce((sum, card) => sum + card.amountCents, 0)
 		const spentCents = spent.reduce((sum, value) => sum + value, 0)
-		const target = grantReturnCoins(capUsd, issuedCents, spentCents)
+		const target = grantReturnCoins(capUsd, spentCents)
 		const userId = group[0]?.userId
 		if (userId === undefined) continue
 		if (!input.dryRun)
