@@ -14,6 +14,7 @@ import {
 	returnedByMaker,
 	returnHcbStatus,
 	selectBufferTopUps,
+	spentFromReturn,
 } from "@/lib/hcb-buffer-topups"
 
 const disbursement = (overrides: Partial<GrantDisbursement> = {}): GrantDisbursement => ({
@@ -194,5 +195,19 @@ describe("returnHcbStatus", () => {
 		expect(returnHcbStatus({ grantStatus: "canceled", makerRequested: false, preActivation: true })).toBe(
 			"canceled before activation",
 		)
+	})
+})
+
+describe("spentFromReturn", () => {
+	test("a $12 grant topped up by $10 and returned at $5 spent $17", () => {
+		expect(spentFromReturn(2200, 500)).toBe(1700)
+	})
+
+	test("a $32 grant returned at $22 spent $10", () => {
+		expect(spentFromReturn(3200, 2200)).toBe(1000)
+	})
+
+	test("a return larger than what was granted is not a spend figure", () => {
+		expect(spentFromReturn(1000, 1200)).toBeNull()
 	})
 })
