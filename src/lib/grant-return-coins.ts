@@ -4,7 +4,7 @@ import { HcbGrantCardStatus, LedgerKind, Phase, PhaseStatus } from "@/lib/enums"
 import { grantCardCapUsd } from "@/lib/grant-card-policy"
 import { isWeekOneStarter } from "@/lib/grant-cards"
 import { readCardGrantSpend } from "@/lib/hcb"
-import { MAKER_RETURN_STATUS, PRE_ACTIVATION_STATUS } from "@/lib/hcb-buffer-topups"
+import { MAKER_RETURN_STATUS, type PendingReturn, PRE_ACTIVATION_STATUS } from "@/lib/hcb-buffer-topups"
 import db from "@/lib/prisma8"
 
 /**
@@ -58,13 +58,22 @@ interface ReturnedDesignCard {
  *
  * Designs with no tier, no approved grant, or a declined grant are skipped. A declined grant was never taken out of the cap, so there is nothing to pay back. A design whose spend HCB cannot report is also skipped and tried again next run, rather than guessed at.
  */
-export async function syncGrantReturnCoins(input: { dryRun: boolean }): Promise<GrantReturnCoinsResult> {
-	const cards: ReturnedDesignCard[] = await db.orm.public.HcbGrantCard.where({
-		phase: Phase.DESIGN,
-		status: HcbGrantCardStatus.RETURNED,
-	})
-		.select("amountCents", "hcbCardGrantId", "hcbStatus", "id", "spentCents", "themeProjectId", "userId")
+export async function syncGrantReturnCoins(input: {
+	dryRun: boolean
+	/** A dry run's preview: the cards the buffer sync would mark RETURNED, with the HCB status it would store. Empty on a live run. */
+	pending?: readonly PendingReturn[]
+}): Promise<GrantReturnCoinsResult> {
+	const pendingById = new Map<string, string | null>()
+	for (const pending of input.pending ?? []) pendingById.set(pending.id, pending.hcbStatus)
+	const rows = await db.orm.public.HcbGrantCard.where({ phase: Phase.DESIGN })
+		.where(row => row.status.in([HcbGrantCardStatus.RETURNED, HcbGrantCardStatus.ISSUED, HcbGrantCardStatus.AMBIGUOUS]))
+		.select("amountCents", "hcbCardGrantId", "hcbStatus", "id", "spentCents", "status", "themeProjectId", "userId")
 		.all()
+	const cards: ReturnedDesignCard[] = []
+	// A live run has already marked its returns, so an unmarked card is not a return yet. A dry run previews the ones it would mark.
+	for (const row of rows)
+		if (pendingById.has(row.id)) cards.push({ ...row, hcbStatus: pendingById.get(row.id) ?? null })
+		else if (row.status === HcbGrantCardStatus.RETURNED) cards.push(row)
 
 	const byProject = new Map<string, ReturnedDesignCard[]>()
 	for (const card of cards) {
