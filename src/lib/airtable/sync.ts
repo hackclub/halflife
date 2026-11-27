@@ -23,6 +23,7 @@ import { fieldKey, LOOPS_REVIEW_OVERRIDE, toFields, YSWS_REVIEW_STATUS, YSWS_SUB
 import { overrideCells, parseUnifiedOverrides } from "@/lib/airtable/unified-overrides"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { projectUrl } from "@/lib/app-url"
+import { AuditAction, logAudit } from "@/lib/audit"
 import { bomTotalUsd } from "@/lib/bom-policy"
 import { projectDisplayTitle, scheduledWeekFor, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
@@ -691,23 +692,49 @@ export async function mirrorReviewDecision(
 			overrideJustification,
 		)
 	} catch (err) {
-		// The reads before the write can fail too (settings, the row's id), and the promise above is that nothing here reaches the caller: on the Ari path a throw is a 5xx and a redelivery of a decision that has already been applied.
-		console.error(`[airtable] could not set the review status for ${themeProjectId} (${phase}):`, err)
+		// The reads before the write can fail too (settings, the row's id), and the promise above is that nothing here reaches the caller: a throw would surface as a 5xx on a decision that has already been applied.
+		const message = err instanceof Error ? err.message : String(err)
+		await recordMirrorFailure(themeProjectId, phase, status, `could not set the review status: ${message}`, false)
 		return
 	}
 	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
 	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
-		console.error(
-			`[airtable] could not set the review status for ${themeProjectId} (${phase}) to "${status}": ${mirrored.reason}`,
-		)
+		await recordMirrorFailure(themeProjectId, phase, status, mirrored.reason ?? "unknown", false)
 	else if (mirrored.noteFailed)
-		console.error(
-			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the reviewer's note: ${mirrored.noteFailed}`,
+		await recordMirrorFailure(
+			themeProjectId,
+			phase,
+			status,
+			`moved the status but could not write the reviewer's note: ${mirrored.noteFailed}`,
+			true,
 		)
 	else if (mirrored.reviewerFailed)
-		console.error(
-			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the pass 1 reviewer: ${mirrored.reviewerFailed}`,
+		await recordMirrorFailure(
+			themeProjectId,
+			phase,
+			status,
+			`moved the status but could not write the pass 1 reviewer: ${mirrored.reviewerFailed}`,
+			true,
 		)
+}
+
+/**
+ * Log a decision that did not reach the base, and write an `AIRTABLE_SYNC_FAILURE` row so an admin can see it on `/admin/audit`. `partial` is set when the status did land and only a column behind it did not. The audit write is itself best-effort: a failure to record a failure must not reach the caller either.
+ */
+async function recordMirrorFailure(
+	themeProjectId: string,
+	phase: Phase,
+	status: string,
+	detail: string,
+	partial: boolean,
+): Promise<void> {
+	console.error(`[airtable] ${themeProjectId} (${phase}) to "${status}": ${detail}`)
+	await logAudit({
+		action: AuditAction.AIRTABLE_SYNC_FAILURE,
+		metadata: { error: detail, kind: "review_decision", partial, phase, status },
+		targetId: themeProjectId,
+		targetType: "ThemeProject",
+	}).catch(() => undefined)
 }
 
 /**
