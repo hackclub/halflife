@@ -44,7 +44,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
 /**
  * One handed-in (themed project, phase) → one row in `YSWS Project Submission`, written at submit as "Pending Review".
  *
- * Half Life has no review page of its own: reviewers work on ari.hackclub.com, straight from this table. So the row is the submission, and everything a reviewer needs to judge it goes into it here – the repo, the hours, the timelapses, the parts money, the address to ship to.
+ * Reviewers decide on the review platform (`/reviews`), and the base reads this row, so the row is the submission as the base sees it: everything the pipeline needs goes into it here – the repo, the hours, the timelapses, the parts money, the address to ship to.
  */
 
 /**
@@ -393,7 +393,7 @@ async function readReviewRow(config: AirtableConfig, recordId: string): Promise<
  *
  * `Optional - Override Hours Spent` holds the hours for approved rows, so it must never be blank: when a review cut the claimed total, it holds the approved hours; otherwise it holds the claimed (self-reported) hours from the row. The claimed figure comes from the row rather than being recomputed here, because it is the number the base already shows and recomputing it from local hours would drift from the base whenever Hackatime's cache or an entry approval has moved since hand-in.
  *
- * `Justification - Deflation Justification` is only written when hours were cut. `reason` is the reviewer's justification for the cut – Ari's own deflation reason when it carried one, else the review's internal note – and never the note to the maker, which has its own column and is quoted in the email.
+ * `Justification - Deflation Justification` is only written when hours were cut. `reason` is the reviewer's justification for the cut – the deflation reason when it carried one, else the review's internal note – and never the note to the maker, which has its own column and is quoted in the email.
  *
  * An approved row whose frozen hours are missing is left alone: nothing here can say what figure to put. A non-approved row is cleared, because an override that outlived its approval would keep paying hours nobody is standing behind.
  */
@@ -469,25 +469,25 @@ async function wroteOverrideJustification(themeProjectId: string, phase: Phase):
 }
 
 /**
- * Move a submission's row on to the decision Ari just reached: the status Loops triggers on, the reviewer's note the email quotes, and the project and week that decision is about.
+ * Move a submission's row on to the decision just made: the status Loops triggers on, the reviewer's note the email quotes, and the project and week that decision is about.
  *
  * The email-tools poller only forwards a `Loops - …` field when the value on that row changed. The row's `Loops - halfLifeProjectName` and `Loops - halfLifeProjectWeek` are written at submit and never change on a decision, so the poller never re-sends them; the contact keeps whatever was submitted most recently. The `Loops - Override - …` columns are separate fields, so writing them here is a change the poller forwards, and email-tools maps them onto the same contact property with its override strategy. The status trigger and the project it names then arrive in one contact update.
  *
- * Half Life writes the row as "Pending Review" and reviewers work from ari.hackclub.com, but a decision there changes nothing in the base – without this the status sits at "Pending Review" forever and the note is never written (see YSWS_REVIEW_STATUS in lib/airtable/schema).
+ * Half Life writes the row as "Pending Review", and without this a decision would leave the status there forever and the note would never be written (see YSWS_REVIEW_STATUS in lib/airtable/schema).
  *
- * Best-effort, and only ever after the fact: the review is already committed in Postgres by the time this runs, so a base that is briefly unreachable must not throw and turn a decided submission into one Ari redelivers. No row is not a failure either – a submission written before this sync existed has no record id, and one taken back has none any more.
+ * Best-effort, and only ever after the fact: the review is already committed in Postgres by the time this runs, so a base that is briefly unreachable must not throw and turn an already-committed decision into a 5xx. No row is not a failure either – a submission written before this sync existed has no record id, and one taken back has none any more.
  *
  * The status, note, first-pass reviewer, overrides, deflation, alternate-tracking and specific-features values are written together in the ordinary case. If that request is refused, the fallback keeps the status load-bearing: status + overrides + hours, then status alone, then the note and the reviewer. Each failure is named.
  *
- * `reviewerEmail` is Ari's `review.reviewer.email`, the reviewer who made the decision (the first of Ari's two passes). Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
+ * `reviewerEmail` is the reviewer who made the decision. Omitting it leaves the column alone; passing null clears it for a decision that no longer stands.
  *
  * `overrideJustification` is a website approval's account in Fabricate's format (see lib/review-platform/justification), written to `Optional - Override Hours Spent Justification`, which the pipeline sends in place of every `Justification - …` column. Undefined leaves the column alone – every Ari decision, so its row keeps the formula – except that a status other than approved clears text a website approval wrote there, since that approval no longer stands.
  *
- * `deflationReason` is Ari's `review.justification.deflation_reason`: the reviewer's own account of why they approved fewer hours than the row claims. It is preferred for `Justification - Deflation Justification`; without it that column falls back to the review's internal reason. The maker-facing note is never used there – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it says nothing about the cut.
+ * `deflationReason` is the reviewer's own account of why they approved fewer hours than the row claims. It is preferred for `Justification - Deflation Justification`; without it that column falls back to the review's internal reason. The maker-facing note is never used there – it is written to `Loops - halfLifeReviewerNotes` and emailed, and it says nothing about the cut.
  *
  * The review's internal reason is also written to `Justification - Additional Justification`, which is the column for the reviewer's "Justification notes" note, with a link to the project after it (see `additionalJustificationCell`). `justificationNotes` is that note; undefined leaves the column alone (an older caller), null clears the note for a decision that no longer stands and leaves the link.
  *
- * The reviewer's technical features come from the standing review (`SubmissionReview.technicalFeatures`, Ari's `review.justification.technical_features`). `Justification - Specific Technical Features` carries those words and nothing else – a decision overwrites whatever an earlier account or journal text put there, and a decision made without them writes an empty cell. A refresh never re-adds the maker's account.
+ * The reviewer's technical features come from the standing review (`SubmissionReview.technicalFeatures`). `Justification - Specific Technical Features` carries those words and nothing else – a decision overwrites whatever an earlier account or journal text put there, and a decision made without them writes an empty cell. A refresh never re-adds the maker's account.
  */
 export async function syncReviewDecisionToYsws(
 	themeProjectId: string,
@@ -598,11 +598,11 @@ export async function syncReviewDecisionToYsws(
 						hasSpecificColumn || (status === YSWS_REVIEW_STATUS.approved && (hasDeflationColumns || hasAlternateColumn))
 							? await readReviewRow(config, recordId)
 							: null
-					// The review's internal note, which is the reviewer's own reasoning rather than the words they sent the maker. It is Ari's `audit_note` – the "Justification notes" field – and the fallback for the deflation column.
+					// The review's internal note, which is the reviewer's own reasoning rather than the words they sent the maker. It is the "Justification notes" field, and the fallback for the deflation column.
 					const reviewReason = submission?.reviews[0]?.reason?.trim() || null
-					// Ari's `review.justification.technical_features`: what the reviewer said the project has that accounts for the hours. The section is replaced wholesale, not composed.
+					// The reviewer's technical features: what they said the project has that accounts for the hours. The section is replaced wholesale, not composed.
 					const reviewerFeatures = submission?.reviews[0]?.technicalFeatures?.trim() || null
-					// Ari's dedicated deflation reason when the decision carried one; never the maker's note, which is quoted in the email and says nothing about why hours came down.
+					// The dedicated deflation reason when the decision carried one; never the maker's note, which is quoted in the email and says nothing about why hours came down.
 					const justificationReason = deflationReasonText(deflationReason, reviewReason)
 					if (hasDeflationColumns)
 						Object.assign(deflationFields, deflationColumns(project, phase, status, justificationReason, row))
@@ -665,7 +665,7 @@ export async function syncReviewDecisionToYsws(
 /**
  * Put a decision on the submission's Airtable row, for Loops, and log whatever did not land.
  *
- * Every decision path calls this once its own change has committed – the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is the reviewer's justification for a cut, which is preferred over the review's internal note in the deflation column. `justificationNotes` is Ari's "Justification notes" (`review.audit_note`), written to `Justification - Additional Justification`; omit it to leave that column alone, or pass null to clear it. `overrideJustification` is a website approval's signed account, for `Optional - Override Hours Spent Justification` (see `syncReviewDecisionToYsws`).
+ * Every decision path calls this once its own change has committed – the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in, `note` is the reviewer's own words, and `reviewerEmail` is who made the decision, each null to clear its column. `deflationReason` is the reviewer's justification for a cut, which is preferred over the review's internal note in the deflation column. `justificationNotes` is the reviewer's "Justification notes", written to `Justification - Additional Justification`; omit it to leave that column alone, or pass null to clear it. `overrideJustification` is a website approval's signed account, for `Optional - Override Hours Spent Justification` (see `syncReviewDecisionToYsws`).
  *
  * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. That is load-bearing – a throw would surface as an error on a decision that has already been applied.
  */

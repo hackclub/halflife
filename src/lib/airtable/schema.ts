@@ -83,14 +83,14 @@ export const YSWS_SUBMISSION = {
 			"fldYswsOverrideHoursSpentJustification",
 			"Optional - Override Hours Spent Justification",
 		),
-		// The reviewer whose decision the webhook carries as `review.reviewer.email`. Half Life stores that address on the review (`SubmissionReview.reviewerEmail`), and the same mirror that moves the status fills this column from it. Ari names no one for its second pass – the organizer who confirms a held decision exists only in Ari's internal activity log – so this is the only reviewer column.
+		// The reviewer who made the decision. Half Life stores that address on the review (`SubmissionReview.reviewerEmail`), and the same mirror that moves the status fills this column from it.
 		pass1Reviewer: f<string>("fldYswsPass1Reviewer", "Pass 1 reviewer"),
 		playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
 		projectName: f<string>("fldYswsProjectName", "Project name"),
 		// Which program week this submission is for, as the single select Loops triggers off (`Week 1` … `Week 10`). Derived from the theme and phase's own scheduled week (see `projectWeekLabel` in lib/airtable/sync); a warm-up reads `Warm-up`.
 		projectWeek: f<string>("fldYswsProjectWeek", "Loops - halfLifeProjectWeek"),
 		requestedFunding: f<number>("fldYswsRequestedFunding", "Requested funding"),
-		// The reviewer's own words on that decision, beside the status and in the same Loops family. Written by the same mirror the status is (see `syncReviewDecisionToYsws` in lib/airtable/sync), because a decision on ari.hackclub.com reaches the base only through it.
+		// The reviewer's own words on that decision, beside the status and in the same Loops family. Written by the same mirror the status is (see `syncReviewDecisionToYsws` in lib/airtable/sync), because a decision reaches the base only through it.
 		reviewerNotes: f<string>("fldYswsReviewerNotes", "Loops - halfLifeReviewerNotes"),
 		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
 		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
@@ -123,7 +123,7 @@ export const YSWS_PENDING_REVIEW = "Pending Review"
 /**
  * The rest of what `Loops - halfLifeReviewStatus` can say, one per decision the console reaches.
  *
- * The column is Loops': it is how a maker hears their work was decided, and a decision on ari.hackclub.com writes nothing to the base on its own – the status is put on the row when the decision arrives (see `syncReviewStatusToYsws` in lib/airtable/sync). A later rewrite of the row derives the status from the phase state rather than resetting it, so the two cannot disagree.
+ * The column is Loops': it is how a maker hears their work was decided, and it is written by the mirror every committed decision makes (see `mirrorReviewDecision` in lib/airtable/sync). A later rewrite of the row derives the status from the phase state rather than resetting it, so the two cannot disagree.
  *
  * Written with `typecast: false`, so each string has to already be an option in the base: a new word here is a 422 the update reports, not an option invented in the base (see the note on typecast in lib/airtable/ysws).
  */
