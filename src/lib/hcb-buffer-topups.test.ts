@@ -6,10 +6,12 @@ import {
 	fundsReturn,
 	grantReturn,
 	grantReturnedAt,
+	HCB_SYSTEM_USER_ID,
 	MAKER_RETURN_STATUS,
 	memoKind,
 	returnedBy,
 	returnedById,
+	returnedByMaker,
 	returnHcbStatus,
 	selectBufferTopUps,
 } from "@/lib/hcb-buffer-topups"
@@ -171,6 +173,15 @@ describe("returnedById", () => {
 		expect(returnedById("user_2", "user_1")).toBe("other")
 		expect(returnedById(null, "user_1")).toBe("unknown")
 		expect(returnedById("user_1", null)).toBe("unknown")
+	})
+})
+
+describe("returnedByMaker", () => {
+	test("the maker's own account and HCB's system account both count as the maker, and another admin account does not", () => {
+		expect(returnedByMaker("user_1", "user_1")).toBe(true)
+		expect(returnedByMaker(HCB_SYSTEM_USER_ID, "user_1")).toBe(true)
+		expect(returnedByMaker("user_2", "user_1")).toBe(false)
+		expect(returnedByMaker(null, "user_1")).toBe(false)
 	})
 })
 

@@ -91,6 +91,21 @@ export function returnedById(senderId: string | null, ownerId: string | null): R
 }
 
 /**
+ * HCB's own system account. When a maker returns a grant through HCB, HCB sends the balance back under this account, so a
+ * return it sends counts as the maker's. Matched by id: the name "HCB" is not something an account can be trusted to keep.
+ */
+export const HCB_SYSTEM_USER_ID = "usr_ZBtVvG"
+
+/**
+ * Whether a return counts as the maker's: sent from the grant's own account, or from HCB's system account. An admin's own
+ * account is neither, so an admin cancel stays held.
+ */
+export function returnedByMaker(senderId: string | null, ownerId: string | null): boolean {
+	if (senderId === HCB_SYSTEM_USER_ID) return true
+	return returnedById(senderId, ownerId) === "maker"
+}
+
+/**
  * Who asked HCB for the return: the maker themselves, someone else, or HCB did not say. Only the email is compared, so
  * nothing else about the sender is kept.
  */
@@ -340,8 +355,7 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 			grantReturn(read.rows) ?? (beforeActivation === null ? null : { disbursement: beforeActivation, expired: false })
 		const hcbStatus = returnHcbStatus({
 			grantStatus: grant.status,
-			makerRequested:
-				found !== null && !found.expired && returnedById(found.disbursement.senderId, grant.ownerId) === "maker",
+			makerRequested: found !== null && !found.expired && returnedByMaker(found.disbursement.senderId, grant.ownerId),
 			preActivation: beforeActivation !== null && found?.disbursement === beforeActivation,
 		})
 		if (found?.disbursement.createdAt)
