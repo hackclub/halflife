@@ -26,6 +26,7 @@ import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePe
 import { statusFor } from "@/lib/phase"
 import db from "@/lib/prisma8"
 import { getProgramSettings, isPhaseDecided } from "@/lib/program"
+import { toManageDisputes } from "@/lib/project-directory"
 import { getUserDetail } from "@/lib/queries/admin"
 import { firstValues, type SearchParamValue } from "@/lib/search-params"
 import { parseDbTimestamp } from "@/lib/time"
@@ -361,6 +362,7 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 									buildStatus: project.buildStatus,
 									designFunding: fundingByProject.get(project.id) ?? null,
 									designStatus: project.designStatus,
+									disputes: toManageDisputes(project.disputes),
 									extension: project.submissionExtensionUntil?.toISOString() ?? null,
 									grantSent: project.hcbGrantTopUps.length > 0,
 									// A grant is decided with the design, so one on an undecided project is an artefact of an import rather than money owed.
