@@ -172,6 +172,8 @@ export interface ProjectFilters {
 export interface ProjectDirectoryRow {
 	buildStatus: Models.public_ThemeProject["buildStatus"]
 	designStatus: Models.public_ThemeProject["designStatus"]
+	/** The disputes raised on this project's hand-ins, oldest hand-in first. Empty for most projects. */
+	disputes: ProjectDirectoryDispute[]
 	githubRepo: string | null
 	grantSent: boolean
 	grantUsd: number | null
@@ -199,6 +201,23 @@ export interface ProjectDirectoryRow {
 		phase: Phase
 		title: string
 	}[]
+}
+
+/** One maker's dispute on a hand-in, with its thread, as the project list needs it. */
+export interface ProjectDirectoryDispute {
+	createdAt: Date
+	id: string
+	messages: {
+		author: { displayName: string | null; name: string | null } | null
+		body: string
+		createdAt: Date
+		fromReviewer: boolean
+		id: string
+	}[]
+	note: string
+	outcome: "upheld" | "stood" | null
+	phase: Phase
+	resolvedAt: Date | null
 }
 
 export async function listProjects(
@@ -290,6 +309,19 @@ export async function listProjects(
 				.where({ phase: "DESIGN" })
 				.where(topUp => topUp.sentAt.isNotNull()),
 		)
+		.include("submissions", submissions =>
+			submissions
+				.select("id", "phase")
+				.include("dispute", dispute =>
+					dispute.select("createdAt", "id", "note", "outcome", "resolvedAt").include("messages", messages =>
+						messages
+							.select("body", "createdAt", "fromReviewer", "id")
+							.include("author", author => author.select("displayName", "name"))
+							.orderBy(message => message.createdAt.asc()),
+					),
+				)
+				.orderBy(submission => submission.createdAt.asc()),
+		)
 		.include("user", user => user.select("displayName", "email", "id", "name", "slackId", "submissionExtensionUntil"))
 		.include("workSessions", sessions =>
 			sessions
@@ -304,6 +336,27 @@ export async function listProjects(
 		return {
 			buildStatus: row.buildStatus,
 			designStatus: row.designStatus,
+			disputes: row.submissions.flatMap(submission => {
+				const { dispute } = submission
+				if (!dispute) return []
+				return [
+					{
+						createdAt: parseDbTimestamp(dispute.createdAt),
+						id: dispute.id,
+						messages: dispute.messages.map(message => ({
+							author: message.author,
+							body: message.body,
+							createdAt: parseDbTimestamp(message.createdAt),
+							fromReviewer: message.fromReviewer,
+							id: message.id,
+						})),
+						note: dispute.note,
+						outcome: dispute.outcome,
+						phase: submission.phase,
+						resolvedAt: parseNullableTimestamp(dispute.resolvedAt),
+					},
+				]
+			}),
 			githubRepo: row.githubRepo,
 			grantSent: row.hcbGrantTopUps.length > 0,
 			grantUsd: row.grantUsd,

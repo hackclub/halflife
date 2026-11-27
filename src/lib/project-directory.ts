@@ -72,6 +72,23 @@ export function toProjectRow(project: ProjectDirectoryRow, now: Date): ProjectRo
 	return {
 		buildStatus: project.buildStatus,
 		designStatus: project.designStatus,
+		disputes: project.disputes.map(item => ({
+			dispute: {
+				at: item.createdAt.getTime(),
+				id: item.id,
+				messages: item.messages.map(message => ({
+					at: message.createdAt.getTime(),
+					body: message.body,
+					fromReviewer: message.fromReviewer,
+					id: message.id,
+					reviewerName: message.author ? displayName(message.author) : null,
+				})),
+				note: item.note,
+				outcome: item.outcome,
+				resolvedAt: item.resolvedAt?.getTime() ?? null,
+			},
+			phase: item.phase,
+		})),
 		extension: project.submissionExtensionUntil?.toISOString() ?? null,
 		extensionLabel: project.submissionExtensionUntil ? formatUtcDateTime(project.submissionExtensionUntil) : null,
 		githubRepo: project.githubRepo,

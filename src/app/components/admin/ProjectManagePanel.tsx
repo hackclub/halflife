@@ -7,12 +7,21 @@ import { BomSyncForm } from "@/app/components/forms/BomSyncForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
 import { JournalHoursEditor, type JournalHoursEntry } from "@/app/components/forms/JournalHoursEditor"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
-import type { Theme } from "@/lib/enums"
+import type { Phase, Theme } from "@/lib/enums"
+import type { PhaseDispute } from "@/lib/queries/project-page"
+
+/** A maker's dispute on one of a project's hand-ins, with the phase it was raised in. */
+export interface ProjectManageDispute {
+	dispute: PhaseDispute
+	phase: Phase
+}
 
 /** What a project's manage panel acts on. Both the projects list and a user's themed projects hand this to the same panel. */
 export interface ProjectManageData {
 	buildStatus: string
 	designStatus: string
+	/** Every dispute on the project, oldest first. Only the projects list fills this, so the panel leaves the section out when it is absent. */
+	disputes?: ProjectManageDispute[]
 	/** ISO string, so the extension form edits the same instant the server holds. */
 	extension: string | null
 	grantSent: boolean
