@@ -80,7 +80,9 @@ export async function forgeCredentials(userId: string, forge: Forge): Promise<Fo
 		accessToken = (await oauthAccessToken(account.id, userId)) ?? accessToken
 	} catch (err) {
 		// The losing half of a refresh race is not a broken link: if another request refreshed and persisted while this one failed, its token is the good one.
-		console.warn(`[forge-write] could not read the ${forge.id} token for account ${account.id}; retrying:`, err)
+		console.warn(
+			`[forge-write] could not read the ${forge.id} token for account ${account.id}; retrying: ${failureText(err)}`,
+		)
 		accessToken = (await oauthAccessToken(account.id, userId).catch(() => null)) ?? accessToken
 	}
 
@@ -130,6 +132,11 @@ async function apiDetail(res: Response): Promise<string | null> {
 	} catch {
 		return null
 	}
+	return detailOf(text)
+}
+
+/** The sentence `apiDetail` quotes, from a body already read. Shared with the log line, so a 5xx logs its one sentence rather than the raw body. */
+function detailOf(text: string): string | null {
 	if (!text) return null
 
 	let message = text
@@ -147,6 +154,13 @@ async function apiDetail(res: Response): Promise<string | null> {
 	// An HTML page has no sentence to quote, and reading a regex tag out of one helps nobody.
 	if (!message || /<[a-z!/]/i.test(message)) return null
 	return message.length > 200 ? `${message.slice(0, 199)}…` : message
+}
+
+/** A thrown error as one log line: its message, and the cause that explains it when there is one. Not the object, whose stack and properties bury that line. */
+function failureText(err: unknown): string {
+	if (!(err instanceof Error)) return String(err)
+	const cause = err.cause instanceof Error ? `: ${err.cause.message}` : ""
+	return `${err.message}${cause}`
 }
 
 /**
@@ -219,7 +233,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 			})
 		} catch (err) {
 			// The maker sees the network wording; the cause is for whoever runs this.
-			console.warn(`[forge-write] ${forge.id} ${method} ${path} failed (attempt ${attempt + 1}):`, err)
+			console.warn(`[forge-write] ${forge.id} ${method} ${path} failed (attempt ${attempt + 1}): ${failureText(err)}`)
 			why = `${forge.label} did not answer after several attempts; this is usually a temporary network or ${forge.label} problem, so try again.`
 		} finally {
 			release()
@@ -250,7 +264,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 			}
 			const body = await res.text().catch(() => "")
 			console.warn(
-				`[forge-write] ${forge.id} ${method} ${path} → ${res.status} (attempt ${attempt + 1}): ${body.slice(0, 200)}`,
+				`[forge-write] ${forge.id} ${method} ${path} → ${res.status} (attempt ${attempt + 1}): ${detailOf(body) ?? "no detail"}`,
 			)
 			await sleep(RETRY_DELAYS_MS[attempt] ?? RETRY_FALLBACK_MS)
 			continue
