@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
+import { describeDatabaseError, describeUnreachableDatabase, isDatabaseUnreachable } from "@/lib/db-error"
 import { API_ERROR_STATUS, type ApiErrorCode, HttpError } from "@/lib/errors"
 import { rateLimited } from "@/lib/rate-limit"
 
@@ -316,8 +317,10 @@ export function withRoute<A extends unknown[]>(
 			return await handler(...args)
 		} catch (err) {
 			if (err instanceof HttpError) return fail(err.code, err.message, err.details)
-			// The stack alone: logging the error object also dumps its enumerable properties, such as a timeout's DOMException error codes.
-			console.error(`[api] unhandled error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`)
+			// One line naming the failure. A stack points into minified chunks, and logging the error object dumps its enumerable properties too.
+			console.error(
+				`[api] unhandled error: ${isDatabaseUnreachable(err) ? describeUnreachableDatabase(err) : describeDatabaseError(err)}`,
+			)
 			return fail("INTERNAL", "Something went wrong")
 		}
 	}
