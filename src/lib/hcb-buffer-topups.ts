@@ -212,8 +212,22 @@ const LIVE_CARD_STATUSES = [
 type CardTable = "project" | "shop"
 
 interface LiveCardRef {
+	/** The row's original amount. Null for a shop card, which the coin pass never pays. */
+	amountCents: number | null
 	id: string
+	/** What the row already records as spent. Null until a return fixes it. */
+	spentCents: number | null
 	table: CardTable
+}
+
+/**
+ * What a card spent, from HCB's own totals: everything the grant was given (its original amount, every top-up, and any
+ * amount above the tier) less the balance HCB sent back. Spend cannot be read from the card once it is returned, so this
+ * is the figure the coin pass uses. Null when the totals do not add up, so the design is skipped rather than guessed at.
+ */
+export function spentFromReturn(grantedCents: number, returnedCents: number): number | null {
+	const spent = grantedCents - returnedCents
+	return spent < 0 ? null : spent
 }
 
 /**
@@ -225,6 +239,7 @@ export async function markCardReturned(
 	id: string,
 	returnedAt: string,
 	hcbStatus: string | null,
+	spentCents: number | null,
 ): Promise<void> {
 	const error = "The maker returned this grant on HCB; its balance went back to the organisation"
 	const update = {
@@ -239,6 +254,7 @@ export async function markCardReturned(
 	await db.orm.public.HcbGrantCard.where({ id }).update({
 		...update,
 		returnedAt: formatDbTimestamp(new Date(returnedAt)),
+		...(spentCents === null ? {} : { spentCents }),
 	})
 }
 
@@ -272,7 +288,7 @@ export async function refuseCancelOrRecordReturn(
 		throw error
 	}
 	if (returnedAt === null) throw error
-	await markCardReturned(table, id, returnedAt, null)
+	await markCardReturned(table, id, returnedAt, null, null)
 	throw new HttpError(
 		"CONFLICT",
 		"The maker already returned this grant on HCB, so it cannot be cancelled. It is now marked returned",
@@ -283,6 +299,7 @@ export async function refuseCancelOrRecordReturn(
 export interface PendingReturn {
 	hcbStatus: string | null
 	id: string
+	spentCents: number | null
 }
 
 export interface BufferTopUpSyncResult {
@@ -332,18 +349,36 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 	const liveCards = new Map<string, LiveCardRef>()
 	for (const card of await db.orm.public.HcbGrantCard.where({})
 		.where(row => row.status.in(LIVE_CARD_STATUSES))
-		.select("hcbCardGrantId", "id")
+		.select("amountCents", "hcbCardGrantId", "id", "spentCents")
 		.all())
-		if (card.hcbCardGrantId) liveCards.set(bareGrantId(card.hcbCardGrantId), { id: card.id, table: "project" })
+		if (card.hcbCardGrantId)
+			liveCards.set(bareGrantId(card.hcbCardGrantId), {
+				amountCents: card.amountCents,
+				id: card.id,
+				spentCents: card.spentCents,
+				table: "project",
+			})
 	for (const card of await db.orm.public.HcbShopGrantCard.where({})
 		.where(row => row.status.in(LIVE_CARD_STATUSES))
 		.select("hcbCardGrantId", "id")
 		.all())
-		if (card.hcbCardGrantId) liveCards.set(bareGrantId(card.hcbCardGrantId), { id: card.id, table: "shop" })
+		if (card.hcbCardGrantId)
+			liveCards.set(bareGrantId(card.hcbCardGrantId), {
+				amountCents: null,
+				id: card.id,
+				spentCents: null,
+				table: "shop",
+			})
 
 	let topUpsFound = 0
 	let alreadyRecorded = 0
-	const returned: { hcbStatus: string | null; id: string; returnedAt: string; table: CardTable }[] = []
+	const returned: {
+		hcbStatus: string | null
+		id: string
+		returnedAt: string
+		spentCents: number | null
+		table: CardTable
+	}[] = []
 	const grantStatuses: { [_: string]: number } = {}
 	const returnsSeen: ReturnSeen[] = []
 	const canceledWithoutReturn: CanceledWithoutReturn[] = []
@@ -384,9 +419,22 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 			})
 		const returnedAt = found !== null && !found.expired ? found.disbursement.createdAt : null
 		const liveCardId = liveCards.get(bareGrantId(grant.id))
-		if (returnedAt !== null && liveCardId)
-			returned.push({ hcbStatus, id: liveCardId.id, returnedAt, table: liveCardId.table })
-		for (const [index, disbursement] of selectBufferTopUps(read.rows, sitePayments, grant.id).entries()) {
+		const buffered = selectBufferTopUps(read.rows, sitePayments, grant.id)
+		if (returnedAt !== null && liveCardId && found !== null) {
+			// Granted is the card's original amount plus every top-up, whether it came from the buffer or from Half Life.
+			// Spent is what that left once HCB sent the balance back. A row that already has a figure keeps it.
+			const siteTopUps = sitePayments.filter(p => bareGrantId(p.grantHashid) === bareGrantId(grant.id))
+			const grantedCents =
+				(liveCardId.amountCents ?? 0)
+				+ buffered.reduce((sum, d) => sum + d.amountCents, 0)
+				+ siteTopUps.reduce((sum, p) => sum + p.amountCents, 0)
+			const spentCents =
+				liveCardId.table === "project" && liveCardId.amountCents !== null
+					? (liveCardId.spentCents ?? spentFromReturn(grantedCents, found.disbursement.amountCents))
+					: null
+			returned.push({ hcbStatus, id: liveCardId.id, returnedAt, spentCents, table: liveCardId.table })
+		}
+		for (const [index, disbursement] of buffered.entries()) {
 			topUpsFound++
 			const key = bufferTopUpKey(grant.id, disbursement, index)
 			if (known.has(key)) {
@@ -405,7 +453,8 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 	}
 
 	if (!input.dryRun && returned.length > 0)
-		for (const card of returned) await markCardReturned(card.table, card.id, card.returnedAt, card.hcbStatus)
+		for (const card of returned)
+			await markCardReturned(card.table, card.id, card.returnedAt, card.hcbStatus, card.spentCents)
 
 	if (!input.dryRun && fresh.length > 0)
 		await db.orm.public.HcbBufferTopUp.createAll(
@@ -425,7 +474,9 @@ export async function syncBufferTopUps(input: { dryRun: boolean }): Promise<Buff
 		grantStatuses,
 		grantsScanned: list.rows.length,
 		pendingReturns: input.dryRun
-			? returned.filter(r => r.table === "project").map(r => ({ hcbStatus: r.hcbStatus, id: r.id }))
+			? returned
+					.filter(r => r.table === "project")
+					.map(r => ({ hcbStatus: r.hcbStatus, id: r.id, spentCents: r.spentCents }))
 			: [],
 		recorded: input.dryRun ? 0 : fresh.length,
 		returnedMarked: input.dryRun ? 0 : returned.length,

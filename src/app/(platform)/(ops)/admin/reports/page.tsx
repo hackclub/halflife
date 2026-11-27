@@ -164,6 +164,7 @@ function filterFor(status: string | undefined): Filter {
 /** The chosen report in full: what it is about, who sent it, when, and the decisions open to staff. */
 function ReportDetail({ report }: { report: ContentReportRow }) {
 	const subject = subjectOf(report)
+	const reporterName = displayName(report.reporter, report.reporter?.email ?? "")
 	return (
 		<div className="hl-stack hl-stack--tight">
 			<div>
@@ -185,7 +186,8 @@ function ReportDetail({ report }: { report: ContentReportRow }) {
 				</blockquote>
 			) : null}
 			<p className="hl-hint" style={{ margin: 0 }}>
-				Reported by {displayName(report.reporter, report.reporter?.email ?? "")} on{" "}
+				Reported by{" "}
+				{report.reporter ? <Link href={`/admin/users/${report.reporter.id}`}>{reporterName}</Link> : reporterName} on{" "}
 				{formatUtcDateTime(parseDbTimestamp(report.createdAt))}
 			</p>
 			<ReportActions report={report} subject={subject} />
