@@ -27,8 +27,6 @@ The six items from the original notes are **done**. This file records the cross-
 
 ## Original notes
 
-- Project approval (when done in Ari) should notify the user
-  - By email and by Slack DM
 - Indicate submission state on the projects page for each project
   - Green border = approved
   - Blue border = submitted, not reviewed
