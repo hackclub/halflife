@@ -12,7 +12,7 @@ import { PenaltyCard } from "@/app/components/forms/PenaltyCard"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, Table } from "@/app/components/ui"
 import { type ProjectAirtableLinks, projectAirtableLinks } from "@/lib/airtable/links"
-import { CREDIT_NAME_PLURAL, scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
+import { CREDIT_NAME_PLURAL, scheduledWeekFor, scheduleForWeek, TOTAL_WEEKS, themeLabel } from "@/lib/config/program"
 import { projectTierId } from "@/lib/config/tiers"
 import { formatUtcDateTime } from "@/lib/deadline"
 import { displayName } from "@/lib/display-name"
@@ -103,6 +103,10 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 	const settings = await getProgramSettings()
 	// Where each approved design's money stands (queued, awaiting funding, funded), read the same way the maker's own pages read it.
 	const fundingByProject = await designFundingStates(user.themeProjects)
+	// A theme's design and build share one row, so ordering the rows by the design week reads 1 & 6, 2 & 7, … with a warm-up (week 0) first.
+	const projectsByWeek = [...user.themeProjects].sort(
+		(a, b) => scheduledWeekFor(a.theme, Phase.DESIGN) - scheduledWeekFor(b.theme, Phase.DESIGN),
+	)
 	// Airtable is the old payer; under HCB a manual top-up would be a second way to pay the same project.
 	const canSendGrant =
 		canManageCredit && isHcbConfigured() && identityVerified && settings.payoutSource === PayoutSource.AIRTABLE
@@ -354,7 +358,7 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 							canSendGrant || canMoveTheme || canManageUsers || canOverride ? "Actions" : null,
 						].filter(Boolean)}
 					>
-						{user.themeProjects.map(project => (
+						{projectsByWeek.map(project => (
 							<ThemedProjectRow
 								data={{
 									airtableLinks: airtableLinks.get(project.id) ?? {},
